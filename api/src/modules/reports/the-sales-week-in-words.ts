@@ -1,5 +1,5 @@
 import { aDepositSaid } from '../board/a-deals-proof-is-about-that-deal';
-import type { ADealOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
+import { whatWasSold, type ADealOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
 import { theCriteriaOnRecord, THE_FOUR } from '../board/a-deals-four-criteria';
 import { aLineIsAbout } from '../board/a-deals-value-and-buying-date';
 import { theContactOf } from '../board/a-deal-that-has-stalled';
@@ -92,7 +92,7 @@ export function theSalesWeekInWords(input: {
     const L = p.label;
     const theirWon = deals.filter((d) => d.ownerParticipantId === p.id && won(d) && !d.dropped);
     const sold: string[] = theirWon.map((d) => {
-      const u = theUnitsOf(d);
+      const u = theUnitsOf({ fields: whatWasSold(d) });
       const units = u === null ? '' : `${u} ${u === 1 ? 'unit' : 'units'}`;
       /* A deposit only is never "paid" (final real-model check, item 10). */
       if (d.paid && d.deposit) return `${L} sold ${units || 'it'} to ${d.name} on a deposit. ${aDepositSaid(d.deposit)}`;

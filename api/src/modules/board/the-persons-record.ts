@@ -60,6 +60,8 @@ export interface AnItemOfTheirs {
   paid?: boolean;
   signed?: boolean;
   proven?: boolean;
+  /** The M-Pesa code that is its payment record, where it is one (theMPesaCodeFor). */
+  mpesaCode?: string | null;
   fields?: Record<string, string> | null;
   /** Proof filed on the item, each with what it was read as. */
   evidence?: { id: string; readAs: string; countsAsProof: boolean }[];
@@ -460,8 +462,9 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
     } else if (l.mark === 'confirmed') {
       proof = 'a colleague confirmed it'; proofSays = 'A colleague confirmed it';
     } else if (item && (item.paid || (kind === 'sale' && item.signed))) {
-      proof = item.paid ? 'a payment record' : 'a signed order';
-      proofSays = item.paid ? 'A payment record' : 'A signed order';
+      /* A code given in words is said as the M-Pesa code (Hafsah, 19 October), on the sale it pays for as well (polish round 15, U14). */
+      proof = item.paid ? (item.mpesaCode ? 'an M-Pesa code' : 'a payment record') : 'a signed order';
+      proofSays = item.paid ? (item.mpesaCode ? `The M-Pesa code ${item.mpesaCode}` : 'A payment record') : 'A signed order';
       proofIds.push(item.id);
     } else if (item && (item.evidence ?? []).some((e) => e.countsAsProof && (kind === 'sale' || /payment/i.test(e.readAs)))) {
       const e = (item.evidence ?? []).find((x) => x.countsAsProof && (kind === 'sale' || /payment/i.test(x.readAs)))!;
@@ -471,6 +474,25 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
       proof = 'an M-Pesa code'; proofSays = `The M-Pesa code ${typedCode}`;
     } else if (code && t(code.at) <= t(l.createdAt) + 2 * DAY) {
       proof = 'an M-Pesa code'; proofSays = `The M-Pesa code ${code.code}`;
+    } else if (kind === 'sale' || kind === 'payment') {
+      /*
+       * THE CODE THAT ANSWERED THE QUESTION ABOUT THIS SALE (polish round 15, U14). Joseph said "Mr. Mutua bought 2 units yesterday at KES
+       * 5,000 each.", was asked "What shows the sale of those two units?", and answered "M-Pesa code TGH5K2M9QX." A code typed later in the
+       * same check-in, in answer to a question asking what shows it, shows the last sale they said before it.
+       */
+      const saidAt = t(whenTheySaidIt(l, []));
+      const answered = input.codes.find((c) => {
+        const at = t(c.at);
+        const turn = (input.theirTurns ?? []).find((x) => x.checkInId === l.checkInId && t(x.at) === at);
+        if (!l.checkInId || !turn || at <= saidAt) return false;
+        const asked = (input.ourTurns ?? []).filter((x) => x.checkInId === l.checkInId && t(x.at) < at).sort((a, b) => t(b.at) - t(a.at))[0];
+        if (!asked || !(ASKS_FOR_PROOF.test(String(asked.content ?? '')) || /\bwhat (?:would )?shows?\b/i.test(String(asked.content ?? '')))) return false;
+        /* No other sale of theirs was said between this one and the code. */
+        return !lines.some((x) => x !== l && x.checkInId === l.checkInId && String(x.type).toUpperCase() === 'PROGRESS'
+          && intoSentences(String(x.text ?? '')).some((s) => !!aClaimIn(s))
+          && (() => { const w = t(whenTheySaidIt(x, [])); return w > saidAt && w < at; })());
+      });
+      if (answered) { proof = 'an M-Pesa code'; proofSays = `The M-Pesa code ${answered.code}`; }
     }
     const proven = proof !== 'nothing';
     const names = item ? theNamesOf(item) : [];

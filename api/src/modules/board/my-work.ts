@@ -586,7 +586,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
         note: `${open.length} open`,
         itemWord: words.itemWord,
         rows,
-        emptySays: words.keepsItems
+        /* Said only where there are none: "You have no deals on the board yet." was served beside Kevin's four deals (polish round 15, U8). */
+        emptySays: rows.length ? '' : words.keepsItems
           ? (self ? `You have no ${words.itemsWord} on the board yet.` : `${first} has no ${words.itemsWord} on the board yet.`)
           : 'This check-in keeps no items on its board.',
       },
@@ -645,7 +646,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       note: `${open.length} open`,
       itemWord: words.itemWord,
       rows,
-      emptySays: words.keepsItems
+      /* Said only where there are none: "You have no deals on the board yet." was served beside Kevin's four deals (polish round 15, U8). */
+      emptySays: rows.length ? '' : words.keepsItems
         ? (self ? `You have no ${words.itemsWord} on the board yet.` : `${first} has no ${words.itemsWord} on the board yet.`)
         : 'This check-in keeps no items on its board.',
     },

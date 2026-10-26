@@ -1,6 +1,6 @@
 import type { ADeposit } from '../board/a-deals-proof-is-about-that-deal';
 import { aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
-import { theMoneyOf, type ACountFromTheDeals, type ADealOnRecord, type WhatASalesAimCounts } from '../board/a-sales-aim-is-counted-from-the-deals';
+import { theMoneyOf, whatWasSold, type ACountFromTheDeals, type ADealOnRecord, type WhatASalesAimCounts } from '../board/a-sales-aim-is-counted-from-the-deals';
 import { theStagesOnRecord, theMovesBetween, theDayItWasWon } from '../board/a-deals-stages-are-kept';
 import { notAnsweringSince, hasStalled, theContactOf, STALLED_AFTER_WORKING_DAYS } from '../board/a-deal-that-has-stalled';
 import { theCriteriaOnRecord, THE_FOUR, type ACriterion } from '../board/a-deals-four-criteria';
@@ -233,7 +233,7 @@ export function theSalesWeek(
       open: open.length, complete, missing,
     };
   });
-  const each = wonDeals.map((d) => ({ d, m: theMoneyOf(d.fields) }));
+  const each = wonDeals.map((d) => ({ d, m: theMoneyOf(whatWasSold(d)) }));
   const currencies = each.map((x) => x.m?.currency ?? '').filter(Boolean);
   const currency = currencies.sort((a, b) => currencies.filter((c) => c === b).length - currencies.filter((c) => c === a).length)[0] ?? null;
   const value = { currency, amount: 0, proven: 0, leftOut: 0 };

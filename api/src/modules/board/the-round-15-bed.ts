@@ -16,13 +16,16 @@ export const R15: any = (RUN as any).default ?? RUN;
 export const R15_FRIDAY_EVENING = new Date('2026-10-16T14:30:00.000Z');
 
 export function theRound15AsADatabase(opts: { personRecord?: ReturnType<typeof aPersonRecordTable>; asOf?: Date } = {}) {
-  const R = opts.asOf ? asItStoodAt(dated(R15.drop), opts.asOf) : dated(R15.drop);
+  const R0 = opts.asOf ? asItStoodAt(dated(R15.drop), opts.asOf) : dated(R15.drop);
+  /* Each person carries their check-ins, as a read that includes them gets them. */
+  const R = { ...R0, participants: R0.participants.map((p: any) => ({ ...p, checkIns: R0.checkIns.filter((c: any) => c.participantId === p.id) })) };
   const orgRow = (R15.org as any[])[0];
   const ground = {
     ...R.ground,
     organization: { timeZone: orgRow?.timeZone ?? 'Africa/Nairobi', name: orgRow?.name },
     initiator: (() => { const p = R.participants.find((y: any) => y.userId === R.ground.initiatorId); return p ? { firstName: p.user?.firstName ?? null, lastName: p.user?.lastName ?? null, email: p.email } : null; })(),
     participants: R.participants,
+    objectives: R.objectives,
   };
   const org = { ...orgRow, directMorningOn: true, personJudgementsOn: true, release1bTabsOn: true, release1SalesBoardOn: true };
   const whose = new Map((R.checkIns as any[]).map((c) => [c.id, c.participantId]));

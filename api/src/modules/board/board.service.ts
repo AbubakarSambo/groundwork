@@ -58,7 +58,7 @@ import { theDealWasDropped, theLostDeal } from './a-deal-that-was-dropped';
 import { theStartOfATargetFromTheDeals } from './where-a-target-from-the-deals-started';
 import { theDealsThePromisesAreAbout } from './the-deal-a-promise-is-about';
 import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
-import { theWordsNameTheDeal, theDepositFor, aDepositSaid, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
+import { theWordsNameTheDeal, theDepositFor, aDepositSaid, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, withTheSaleEachCodeAnswered, theTurnsBehindTheCodes, theSaleAsItsPaymentShowsIt, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
 import { withTheValueWorkedOut, withOnlyTheNumbersSaid, theBuyingDateOf, theBuyingDateTheySaid, BUYING_DATE, aLineIsAbout } from './a-deals-value-and-buying-date';
 import { theirLine, theirCheckInToday, HAS_NOT_CHECKED_IN_TODAY, CHECKED_IN_TODAY } from './each-persons-line-today';
 import { withoutADealsFigure } from './a-deals-units-are-not-a-target';
@@ -237,7 +237,7 @@ import { theStagesKept } from './a-deals-stages-are-kept';
 import { aDaySaidInFull } from './a-day-said-in-full';
 import { theStallRuleOnRecord, theStallRuleAsALine, theStallRuleDeclined, NO_STALL_RULE_YET, THE_SUGGESTED_DAYS, THE_STALL_RULE_ASKED, type TheStallRule } from './the-stall-rule';
 import { whenTheyPay, theUnitsOf } from './a-sales-aim-is-counted-from-the-deals';
-import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, whereAWeeklyCountStands, whatTheseDealsHold, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
+import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, whereAWeeklyCountStands, whatTheseDealsHold, theDealsTheCountIsMadeOf, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
 import { theWaitsOnCustomersApart, theirOwnAnswersWhereTheWaitsWereSaid, withoutTheWaitsOnCustomers } from './a-customers-reply-is-on-its-deal';
 import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from './the-switchboard';
@@ -2749,7 +2749,7 @@ export class BoardService {
         const mayReadTheWordsOf = (pid: string | null | undefined) => !!pid && (pid === me?.id || readsEveryonesWords);
         const everyLine = ((await (this.prisma.recordEntry.findMany({
           where: { disputedAt: null, participant: { groundId } } as any,
-          select: { id: true, text: true, participantId: true, createdAt: true, disputedAt: true, ...WHAT_A_MARK_READS } as any,
+          select: { id: true, text: true, participantId: true, checkInId: true, createdAt: true, disputedAt: true, ...WHAT_A_MARK_READS } as any,
         }) as Promise<any[]>).catch(() => [] as any[])) ?? []) as any[];
         const readableRows = everyLine.filter((l) => !l.disputedAt && mayReadTheWordsOf(l.participantId));
         const whoAddedEach = await whoAddedEachBackingDocument(this.prisma, readableRows).catch(() => new Map<string, string | null>());
@@ -2778,8 +2778,16 @@ export class BoardService {
          * Each payment record is about the customer its document names, or, with no document, the customer its line names
          * (Drop Access run 1, A1: Savannah Cafe's M-Pesa message is not a payment from Ngong Road Minimart).
          */
+        /* A code typed as the answer to a question about one sale is read with that sale (polish round 15, U14; withTheSaleEachCodeAnswered). */
+        const readableAsProof = releaseOne
+          ? withTheSaleEachCodeAnswered(
+            readableRows.map((l) => ({ ...l, text: cleanText(l.text ?? '') })),
+            await theTurnsBehindTheCodes(this.prisma, readableRows.map((l) => ({ ...l, text: cleanText(l.text ?? '') }))).catch(() => []),
+            rows.filter((r) => r.kind === 'deal').map((r) => ({ name: r.name, fields: r.fields, ownerParticipantId: r.ownerParticipantId ?? null })),
+          )
+          : readableRows;
         const provenHere = releaseOne
-          ? readableRows
+          ? readableAsProof
             .filter((l) => theRecordsMark(theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAddedEach)) === 'proven')
             .map((l) => ({ text: cleanText(l.text ?? ''), createdAt: l.createdAt, anchoredDocumentId: l.anchoredDocumentId ?? null }))
           : [];
@@ -2810,15 +2818,22 @@ export class BoardService {
                 .map((l) => String(l.text ?? ''))
                 .filter((t) => theWordsNameTheDeal(t, { name: r.name, fields: r.fields }) || theWordsNameTheDeal(cleanText(t), { name: r.name, fields: r.fields }))
               : [];
-            const worked = withTheValueWorkedOut(aboutIt.length ? withOnlyTheNumbersSaid(r.fields, aboutIt) : r.fields, theirs);
+            let worked = withTheValueWorkedOut(aboutIt.length ? withOnlyTheNumbersSaid(r.fields, aboutIt) : r.fields, theirs);
             /* Filed on the deal, or, where the listener has not filed it yet, the latest the owner said: the reports' own rule, so the board and the reports agree. */
             r.buyingDate = theBuyingDateOf(worked)
               ?? theBuyingDateTheySaid({ name: r.name, ownerParticipantId: r.ownerParticipantId, fields: worked }, everyLine.filter((l) => !l.disputedAt).map((l) => ({ text: cleanText(l.text ?? ''), participantId: l.participantId, createdAt: l.createdAt })));
             delete worked[BUYING_DATE];
-            r.fields = worked;
             r.paymentRecord = aPaymentRecordFor({ name: r.name, fields: worked }, paymentLines);
+            /*
+             * What was sold is what its payment shows (polish round 15, U2 and U14; theSaleAsItsPaymentShowsIt), the count's own rule: kept
+             * beside the deal's own details, which only take a value where they had none.
+             */
+            const soldFields = r.paymentRecord ? theSaleAsItsPaymentShowsIt({ name: r.name, fields: worked }, paymentLines) : null;
+            if (soldFields) (r as any).soldFields = soldFields;
+            if (soldFields?.Value && !Object.keys(worked).some((k) => /^(?:deal\s+)?(?:value|amount|worth|size)$/i.test(k.trim()))) worked = { ...worked, Value: soldFields.Value };
+            r.fields = worked;
             /* A deposit only is said as a deposit, never as paid (final real-model check, item 10): "Deposit paid, KES 15,000 of KES 30,000." */
-            const deposit = r.paymentRecord ? theDepositFor({ name: r.name, fields: worked }, paymentLines) : null;
+            const deposit = r.paymentRecord ? theDepositFor({ name: r.name, fields: soldFields ?? worked }, paymentLines) : null;
             if (deposit) (r as any).deposit = { ...deposit, says: aDepositSaid(deposit) };
             /* An M-Pesa code given in words is the payment record, shown as "M-Pesa code" (Hafsah, 19 October; theMPesaCodeFor). */
             const shownByADocument = r.paymentRecord && aPaymentRecordFor({ name: r.name, fields: worked }, thePaymentRecords(provenHere.filter((l) => !!l.anchoredDocumentId), docOf));
@@ -3452,7 +3467,7 @@ export class BoardService {
             const c = countedFromTheDeals.get(f.objectiveId);
             if (!releaseOne || !c) return true;
             const sessionsCounted = new Set(((counts ?? []) as any[]).filter((x) => x.objectiveId === f.objectiveId).map((x) => x.sessionNumber)).size;
-            const sales = (c.paidDeals?.length ?? 0) + (c.signedDeals?.length ?? 0) + (c.saidDeals?.length ?? 0);
+            const sales = theDealsTheCountIsMadeOf(c).length;
             return sessionsCounted >= 4 && sales >= 3;
           });
         if (forecast.length) out.forecast = forecast;
@@ -3544,7 +3559,7 @@ export class BoardService {
           }
           sales = theSalesSignals({
             sold: c.count, target: teamAim.target, thing: c.counts === 'value' ? '' : c.thing,
-            wonDeals: [...(c.paidDeals ?? []), ...(c.signedDeals ?? []), ...(c.saidDeals ?? [])].map((x) => x.name),
+            wonDeals: theDealsTheCountIsMadeOf(c).map((x) => x.name),
             openHold,
             answersWaiting: [...waiting.entries()].map(([pid, v]) => ({ first: firstOf(pid) ?? 'Somebody', ...v })),
             paymentsDue,
