@@ -466,6 +466,9 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
     } else if (item && (item.evidence ?? []).some((e) => e.countsAsProof && (kind === 'sale' || /payment/i.test(e.readAs)))) {
       const e = (item.evidence ?? []).find((x) => x.countsAsProof && (kind === 'sale' || /payment/i.test(x.readAs)))!;
       proof = 'proof filed on it'; proofSays = e.readAs; proofIds.push(e.id);
+    } else if (typedCode && kind === 'sale' || typedCode && kind === 'payment') {
+      /* The code typed in the same line as the sale is what shows it (polish round 2: Joseph's Juja Hardware line carried TGH5K2M9QX, and read "Nothing on file shows it"). */
+      proof = 'an M-Pesa code'; proofSays = `The M-Pesa code ${typedCode}`;
     } else if (code && t(code.at) <= t(l.createdAt) + 2 * DAY) {
       proof = 'an M-Pesa code'; proofSays = `The M-Pesa code ${code.code}`;
     }
