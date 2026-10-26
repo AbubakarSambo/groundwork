@@ -1,3 +1,4 @@
+import { forHumans } from '../presentation/outbound';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { asksWhatWeKnowOfTheirJob, parseAJobCorrection, theCorrectionSaidBack, whatTheyToldUs, SHARE_KIND as JOB_CORRECTION_KIND } from './my-job-in-ask';
@@ -45,7 +46,7 @@ import {
 import { KnowledgeService, STOPWORDS } from '../knowledge/knowledge.service';
 import {
   ADDED_TO_THE_HANDBOOK, FOR_THE_ORGANISATION, NOT_ADDED, NO_WORDS_IN_IT, OFFER_FOR_THE_ORGANISATION, ONLY_AN_ADMIN_ADDS_ONE,
-  ORGANISATION_DOCUMENT_KIND, SAYS_IT_IS_FOR_THE_ORGANISATION, SAYS_IT_IS_FOR_THE_WHOLE_ORGANISATION, itsParts, whatTheDocumentSays,
+  ORGANISATION_DOCUMENT_KIND, SAYS_IT_IS_FOR_THE_ORGANISATION, SAYS_IT_IS_FOR_THE_WHOLE_ORGANISATION, itsParts, whatTheDocumentSays, WHAT_IS_IN_IT_PROMPT,
 } from './a-document-for-the-whole-organisation';
 import { keptForTheOrganisation, keptThatTouches, mayReadWhatIsKept } from '../knowledge/organisation-memory';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
@@ -1760,7 +1761,8 @@ export class AssistantService {
         where: { organizationId, personExternalId: who, kind: ORGANISATION_DOCUMENT_KIND, state: 'PARKED' },
         data: { state: 'DROPPED', resolvedAt: new Date(), payload: {} as never },
       });
-      const { body, summary } = whatTheDocumentSays(title, clean, name);
+      const inIt = await this.engine.respond(WHAT_IS_IN_IT_PROMPT, [{ role: 'user', content: clean.slice(0, 6000) }]).then((r) => forHumans(r)).catch(() => '');
+      const { body, summary } = whatTheDocumentSays(title, clean, name, inIt);
       const proposal = await this.prisma.assistantProposal.create({
         data: { organizationId, personExternalId: who, kind: ORGANISATION_DOCUMENT_KIND, state: 'PARKED', summary, payload: { title, fileName, words: clean } as never },
       });
