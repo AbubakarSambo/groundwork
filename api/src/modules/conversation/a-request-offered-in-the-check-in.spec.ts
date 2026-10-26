@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs';
+/* Changed 26 October 2026 (Hafsah after round 3): no forced close; the close is timeToClose, from "Anything else I should know?" (a-short-day.ts). */
 import { join } from 'path';
 import { withoutACannotApprove, aRequestAfterTheirTurn, whatTheYesOpens, theyAreAnsweringAnOffer, withoutAPromiseToPassItOn } from './a-request-offered-in-the-check-in';
 
@@ -201,7 +202,7 @@ describe('a yes to an offer never closes the check-in (B12)', () => {
   it('is asked before the close is judged, so the reply the model wrote as a goodbye cannot close it', () => {
     const src = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
     // Changed 26 October 2026 (Hafsah: item 4): the signal also takes the seventh answer; a yes to an offer still comes first and still cannot close it.
-    expect(src).toContain('const signalled = !answeringAnOffer && (hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message) || itIsTimeToClose(');
+    expect(src).toContain('const signalled = !answeringAnOffer && (hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message) || timeToClose)');
   });
 });
 

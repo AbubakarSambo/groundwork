@@ -174,7 +174,7 @@ import { theirApprovedLeave } from '../suites/who-is-away';
 import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture, anAnswerToTheIdeaOffer, ANSWERED_THE_IDEA_OFFER } from './ideas-from-the-team';
 import { askWhatItIs, askedWhatItIs, whatTheySaidItIs, SAID_WHAT_IT_IS } from './a-vague-promise-says-what-it-is';
 import { withTheOpeningLine } from './the-opening-line';
-import { A_SHORT_DAY, THE_DAY_IS_COVERED, itIsTimeToClose, itMustCloseNow, theCloseThatCoversToday } from './a-short-day';
+import { A_SHORT_DAY, itIsTimeToClose, whereTheEndStands, whatToSayAboutTheEnd, itIsTimeToSayTheyCanEnd, YOU_CAN_END_NOW } from './a-short-day';
 import { theSumsOnlyARequestSaid, whereARequestInAnOrdinaryCheckInGoes } from './a-request-in-an-ordinary-check-in-goes-to-ask';
 import { withoutARatingOfWhatHappened } from './the-anchor-does-not-rate-what-happened';
 import { aRequestAfterTheirTurn, theyAreAnsweringAnOffer, withoutACannotApprove, withoutAPromiseToPassItOn } from './a-request-offered-in-the-check-in';
@@ -2263,9 +2263,17 @@ export class ConversationService {
     const lastReply = await Promise.resolve((this.prisma.conversationTurn as any).findFirst?.({ where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'desc' }, select: { content: true } }))
       .catch(() => null) as { content: string | null } | null;
     const saysWhatItIs = askedWhatItIs(lastReply?.content ?? '');
-    /* 5 to 7 questions on a normal day, said every turn, and the close from the fifth answer (a-short-day.ts, 26 October). */
-    const timeToClose = itIsTimeToClose(personTurnCount + 1, !!(checkIn as any).isSelfCorrection);
-    const fullSystem = [composed, inTheBaseline ? null : A_SHORT_DAY, inTheBaseline ? null : aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null, timeToClose ? null : whatItIs, timeToClose ? THE_DAY_IS_COVERED : null]
+    /*
+     * No question limit and no forced close (a-short-day.ts, Hafsah after round 3): once today's needs are covered it asks "Anything else I
+     * should know?", and closes after they answer it or say there is nothing more, with at most two follow-ups on what they added.
+     */
+    const ourTurnsNewestFirst: string[] = await Promise.resolve((this.prisma.conversationTurn as any).findMany?.({
+      where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'desc' }, take: 12, select: { content: true },
+    })).then((rows: any[]) => (Array.isArray(rows) ? rows : []).map((r) => String(r.content ?? ''))).catch(() => []);
+    const endStands = whereTheEndStands(ourTurnsNewestFirst, message);
+    const timeToClose = itIsTimeToClose(endStands, !!(checkIn as any).isSelfCorrection);
+    const aboutTheEnd = inTheBaseline ? null : whatToSayAboutTheEnd(personTurnCount + 1, endStands, !!(checkIn as any).isSelfCorrection);
+    const fullSystem = [composed, inTheBaseline ? null : A_SHORT_DAY, inTheBaseline ? null : aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null, timeToClose ? null : whatItIs, aboutTheEnd]
       .filter(Boolean)
       .join('\n\n')
       /* The anchor's short reminder, when it is in play, is read after everything else. */
@@ -3359,7 +3367,7 @@ export class ConversationService {
       const more = theFloorForAPersonsFinish(!!(checkIn as any).isSelfCorrection, theirScenario) - (personTurnCount + 1);
       if (more > 0) aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: aFinishTooSoon(aiTurn.content ?? '', more) } });
     }
-    const signalled = !answeringAnOffer && (hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message) || itIsTimeToClose(personTurnCount + 1, !!(checkIn as any).isSelfCorrection));
+    const signalled = !answeringAnOffer && (hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message) || timeToClose);
     const close: { ready: boolean; ask?: string; sayFirst?: string; nextStep?: { isLead: boolean; personSaid: string[] } } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
     /* A close on an apology says, first, that none was owed. See an-apology-is-not-owed. */
     /* WITH THE DIRECT MORNING ON (email/a-direct-email.ts): nothing about how the record will read, and an apology met in four words. */
@@ -3424,13 +3432,12 @@ export class ConversationService {
       }
     }
     let sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));
-    /* Past seven answers the product closes, whatever was written: one line on what is recorded (a-short-day.ts, 26 October). */
-    if (!sessionComplete && !answeringAnOffer && itMustCloseNow(personTurnCount + 1, !!(checkIn as any).isSelfCorrection)) {
-      const lead = await Promise.resolve((this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { initiatorId: true, initiator: { select: { id: true, firstName: true } } } })).catch(() => null);
-      const leadFirst = lead?.initiatorId && lead.initiatorId !== (checkIn as any).participant?.userId ? (lead?.initiator?.firstName ?? null) : null;
-      aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: theCloseThatCoversToday(leadFirst) } });
-      sessionComplete = true;
-      this.logger.log(`Check-in ${checkIn.id}: past five answers; the product closes it.`);
+    /*
+     * A CHECK-IN THAT RUNS LONG IS OFFERED AN END, NEVER GIVEN ONE (Hafsah after round 3). Said once, after the reply, and the person decides;
+     * on WhatsApp the same line says "reply END" (the-opening-line.ts).
+     */
+    if (!sessionComplete && !answeringAnOffer && !(checkIn as any).isSelfCorrection && itIsTimeToSayTheyCanEnd(personTurnCount + 1, false, ourTurnsNewestFirst)) {
+      aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: `${String(aiTurn.content ?? '').trim()}\n\n${YOU_CAN_END_NOW}` } });
     }
     /* They said they are leaving: no "One thing before you go - ..." handing their own words back as a request, whether
        the product closes now or tells them how to finish (reviewer, 14 October). */

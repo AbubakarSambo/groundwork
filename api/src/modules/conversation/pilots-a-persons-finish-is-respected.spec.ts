@@ -1,4 +1,5 @@
 import { ConversationService } from './conversation.service';
+/* Changed 26 October 2026 (Hafsah after round 3): no forced close; the close is timeToClose, from "Anything else I should know?" (a-short-day.ts). */
 import { tooFewAnswersToFinish, NOT_ENOUGH_YET_TO_FINISH_HERE } from './close-readiness';
 import { theFloorFor } from './how-short-a-check-in-may-be';
 
@@ -76,7 +77,7 @@ describe('a person saying they are done closes the check-in, whatever the model 
     expect(src).toContain("const theyAreLeaving = (!answeringAnOffer && askedToFinish([message]) && !tooFewAnswersToFinish(personTurnCount + 1");
     expect(src).toContain('|| leavingEarly;');
     // Changed 26 October 2026 (Hafsah: item 4): the close is also signalled from the seventh answer, and past seven the product closes, so sessionComplete is a let.
-    expect(src).toContain('(hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message) || itIsTimeToClose(');
+    expect(src).toContain('(hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message) || timeToClose)');
     expect(src).toContain("let sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));");
   });
 });
