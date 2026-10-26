@@ -1,3 +1,4 @@
+import { aDaySaidInFull } from '../board/a-day-said-in-full';
 /**
  * A CORRECTION SAID IN ASK IS CHECKED AGAINST THE RECORD, NOT SHRUGGED AT (polish round 1, 26 October 2026; the first principle).
  *
@@ -36,7 +37,7 @@ export function whatTheyMean(message: string, theirTurns: ATurnOfTheirs[], least
   return best ? { sentence: best.sentence, at: best.at, label: best.label, checkInId: best.checkInId, participantId: best.participantId } : null;
 }
 
-const onTheDay = (d: Date) => d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Nairobi' });
+const onTheDay = (d: Date) => aDaySaidInFull(new Date(d));
 
 /** What Ask says back. `quotedButNotFound`: they quoted words nothing of theirs holds, so the line is taken off. */
 export function theCorrectionAnswered(found: { sentence: string; at: Date; label: string | null } | null, quotedButNotFound: boolean): string {

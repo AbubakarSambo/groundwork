@@ -6,7 +6,7 @@ export const A_NORMAL_DAY_ASKS_AT_MOST = 7;
 
 export const A_SHORT_DAY = [
   'TODAY IS SHORT: 5 TO 7 QUESTIONS IN ALL, FEWER IF THEY ARE LATE OR SHORT OF TIME.',
-  'Ask only what the board needs that is not on record yet: the next step and its day for each open item, proof for anything new they claim, what changed since last time, and one coaching or follow-up question.',
+  'Ask only for what the board still needs. That is the next step and its day for each open item, proof for anything new they claim, what changed since last time, and one coaching or follow-up question.',
   'Never ask what the record already holds, or what they answered last time unless it has changed.',
   'Put related things in one question: "Westgate and Ngong Road: what is next for each, and when?"',
   'As soon as today’s needs are covered, close.',

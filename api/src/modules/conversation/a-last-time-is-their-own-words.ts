@@ -12,6 +12,8 @@
  * date). A "last time you said" sentence is replaced by the sentence of theirs it is about, word for word, with its day. When
  * nothing they wrote is about it, the claim is cut and only the question after it stays.
  */
+import { aDaySaidInFull } from '../board/a-day-said-in-full';
+
 export interface AWordTheyWrote { text: string; at: Date }
 
 const A_LAST_TIME = /\b(?:last\s+time|previously|earlier|the\s+last\s+time\s+we\s+spoke|on\s+(?:mon|tues|wednes|thurs|fri|satur|sun)day(?:\s+\d{1,2}\s+[A-Z][a-z]+)?)\b[\s,]*(?:what\s+)?you\s+(?:said|told\s+me|mentioned|wrote|named|shared)\b/i;
@@ -21,7 +23,7 @@ const STOP = new Set(['that', 'this', 'with', 'from', 'have', 'said', 'what', 'w
 const words = (t: string) => String(t ?? '').toLowerCase().replace(/[‘’]/g, "'").replace(/[^a-z0-9' -]+/g, ' ').split(/[\s-]+/).filter((w) => w.length >= 4 && !STOP.has(w));
 const sentencesOf = (t: string) => String(t ?? '').split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const onTheDay = (d: Date) => d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Nairobi' });
+const onTheDay = (d: Date) => aDaySaidInFull(new Date(d));
 
 /** The sentence of theirs a claim is about: the one sharing the most words with it, two at least; the latest on a tie. */
 function theirSentenceAbout(claim: string, earlier: AWordTheyWrote[]): { sentence: string; at: Date } | null {

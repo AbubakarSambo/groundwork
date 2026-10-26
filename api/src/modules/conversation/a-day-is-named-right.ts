@@ -11,7 +11,7 @@ const A_DAY = `(${DAYS.join('|')})`;
 
 /** The weekday of a calendar day, counted in the given time zone. */
 function weekdayOf(d: Date, timeZone: string): string {
-  return d.toLocaleDateString('en-GB', { weekday: 'long', timeZone });
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone }).format(d);
 }
 
 export function aDayIsNamedRight(text: string, now: Date, timeZone = 'Africa/Nairobi'): { text: string; changed: boolean } {
@@ -25,7 +25,7 @@ export function aDayIsNamedRight(text: string, now: Date, timeZone = 'Africa/Nai
   let out = text.replace(new RegExp(`\\b(yesterday|today|tomorrow)(,?\\s+\\(?)${A_DAY}\\b`, 'gi'), (m, word: string, between: string) => `${word}${between}${near[word.toLowerCase()]}`);
   out = out.replace(new RegExp(`\\b${A_DAY}(,?\\s+)(yesterday|today|tomorrow)\\b`, 'gi'), (m, _d: string, between: string, word: string) => `${near[word.toLowerCase()]}${between}${word}`);
   /* "Wednesday 13 October": the date is what was meant, so the weekday follows it. The year is this one. */
-  const year = Number(now.toLocaleDateString('en-GB', { year: 'numeric', timeZone }));
+  const year = Number(new Intl.DateTimeFormat('en-GB', { year: 'numeric', timeZone }).format(now));
   out = out.replace(new RegExp(`\\b${A_DAY}(,?\\s+)(\\d{1,2})(?:st|nd|rd|th)?(\\s+)(${MONTHS.join('|')})\\b`, 'g'), (m, _d: string, a: string, day: string, b: string, month: string) => {
     const at = new Date(Date.UTC(year, MONTHS.indexOf(month), Number(day), 12));
     return `${weekdayOf(at, 'UTC')}${a}${day}${b}${month}`;

@@ -36,7 +36,7 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
   {
     area: 'direction',
     why: 'the chat is the wrong shape',
-    because: 'Release 6: the company’s direction is set and approved on its own page, team by team, and each person recommits their own goals there. A goal changed by a sentence in chat would skip the lead who approves it.',
+    because: 'Release 6 sets the company’s direction on its own page. It is approved team by team, and each person recommits their own goals there. A goal changed by a sentence in chat would skip the lead who approves it.',
   },
   {
     area: 'policy',

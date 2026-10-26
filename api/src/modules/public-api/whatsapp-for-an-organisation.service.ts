@@ -284,12 +284,12 @@ export class WhatsAppForAnOrganisationService {
      * opening later today, opens that one now, and the message goes into it.
      */
     if (userId && !everyOpen.length && arrived.kind === 'text' && !looksLikeARequest(arrived.text) && !aDecisionIn(arrived.text) && !/\?\s*$/.test(arrived.text.trim())) {
-      const later = await this.prisma.checkIn.findFirst({
+      const later: any = await Promise.resolve((this.prisma.checkIn as any)?.findFirst?.({
         where: { participant: { userId, ground: { organizationId } }, status: CheckInStatus.NOT_STARTED, availableFrom: { gt: new Date(), lte: new Date(Date.now() + 18 * 3_600_000) } },
         orderBy: { availableFrom: 'asc' }, select: { id: true },
-      }).catch(() => null);
+      })).catch(() => null);
       if (later) {
-        await this.prisma.checkIn.update({ where: { id: later.id }, data: { availableFrom: new Date() } }).catch(() => undefined);
+        await Promise.resolve(this.prisma.checkIn.update({ where: { id: later.id }, data: { availableFrom: new Date() } })).catch(() => undefined);
         everyOpen = await this.openCheckInsFor(organizationId, userId);
       }
     }

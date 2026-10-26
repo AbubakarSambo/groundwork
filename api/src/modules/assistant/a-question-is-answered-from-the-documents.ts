@@ -16,6 +16,7 @@
  */
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { cleanText } from '../reports/what-the-record-actually-holds';
+import { aDaySaidInFull } from '../board/a-day-said-in-full';
 
 /** Whether a message asks something, rather than tells something. Read by its shape, never by a model. */
 const STARTS_A_QUESTION = /^\s*(?:(?:and|so|but|also|please|ok|okay)[\s,]+)?(?:what|what's|whats|when|where|which|who|whom|whose|why|how|is|are|was|were|does|do|did|can|could|will|would|should|has|have|according to|tell me|do you know)\b/i;
@@ -107,7 +108,7 @@ export async function theDocumentsTheyMayOpen(
  * staff assessment: what each person in their check-ins said, on which day, what is proven, their deals and the proof filed on them.
  * Anybody else reads only their own. It is given to the same answer as one more document, and the same figure check applies.
  */
-const DAY_SAID = (d: Date) => new Date(d).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Nairobi' });
+const DAY_SAID = (d: Date) => aDaySaidInFull(new Date(d));
 const MOST_LINES_FOR_ONE = 20;
 
 export async function theRecordTheyMayRead(

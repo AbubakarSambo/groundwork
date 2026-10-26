@@ -1,3 +1,4 @@
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Section, Panel, EdgeList, EdgeRow } from '@/components/gw/ui'
 
 /**
@@ -32,7 +33,7 @@ const whyOf = (b: Any, key: ASituationKey) =>
 
 const dayAndMonth = (iso: string) => {
   const d = new Date(`${iso}T12:00:00Z`)
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' })
+  return Number.isNaN(d.getTime()) ? iso : whenItWas(d, 'dayAndMonthLong', 'UTC')
 }
 
 /** The one line above a situation's board: empty while nothing is clear, and what is still to come once something is. */

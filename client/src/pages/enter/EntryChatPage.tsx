@@ -1,3 +1,4 @@
+import { whenItWas } from '../../lib/a-date-reads-the-same-everywhere'
 import { useState, useEffect, useRef } from 'react'
 import { HOW_A_SITUATION_IS_CHOSEN, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
 import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENCE_VALUE, type ScenarioKey } from '@/lib/scenario-catalog'
@@ -1116,8 +1117,8 @@ export function groupOf(card: { cardKey: string; scenario: string }): string {
  */
 export const THE_SETUP_LINE = 'This sets up your team’s check-ins, so they can give updates against what you tell me here. It takes about 10 minutes, and you can stop any time with End session.'
 export function theSetupIsDoneSaying(firstOpensOn: string | null): string {
-  const d = firstOpensOn ? new Date(`${firstOpensOn}T00:00:00`) : null
-  const day = d && !isNaN(d.getTime()) ? d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) : null
+  const d = firstOpensOn ? new Date(`${firstOpensOn}T12:00:00Z`) : null
+  const day = d && !isNaN(d.getTime()) ? whenItWas(d, 'weekdayAndDay', 'UTC') : null
   return `Done. Your board is set up, and your team’s first check-in opens ${day ? `on ${day}` : 'as soon as you invite them'}.`
 }
 
