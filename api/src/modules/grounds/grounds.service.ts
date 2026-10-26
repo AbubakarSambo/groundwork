@@ -6009,6 +6009,17 @@ export class GroundsService {
     /* Added by address, but already working here: their own name from their membership, not the address (user journeys, F-7). */
     if (!colleagueName && !dto.displayName?.trim() && dto.email) {
       colleagueName = (await theMemberWithThisAddress(this.prisma as any, organizationId, dto.email))?.name ?? null;
+      /*
+       * Or on the organisation's own list of people, with no sign-in yet (polish round 2, 26 October 2026): Grace added Samuel Otieno on
+       * People, then to the sales check-in by his address, and the board called him "A" all week. The name on that list is his name.
+       */
+      if (!colleagueName) {
+        const listed: any = await Promise.resolve((this.prisma as any).person?.findFirst?.({
+          where: { organizationId, email: { equals: dto.email.toLowerCase(), mode: 'insensitive' }, active: true },
+          select: { displayName: true, givenName: true, familyName: true },
+        })).catch(() => null);
+        colleagueName = (listed?.displayName?.trim() || [listed?.givenName, listed?.familyName].filter(Boolean).join(' ').trim()) || null;
+      }
     }
     /**
      * A start date in the future means the work has not begun. Today or the past means it has, so the
