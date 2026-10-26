@@ -46,6 +46,9 @@ export function intoSentences(text: string): string[] {
     /* A full stop inside a word is not the end of a sentence: "mpesa-kilele-hotel.pdf is the M-Pesa message" was cut after "hotel.",
        and Kevin read "The mpesa-kilele-hotel.That counts as proof for that deal." (final real-model check, item 17). */
     if (ch === '.' && end === i + 1 && end < text.length && /[\p{L}\d]/u.test(text[end]) && i > start && /[\p{L}\d_-]/u.test(text[i - 1])) continue;
+    /* Nor after a title or a short form: "Mr. Kiprop" was cut into "Mr" and "Kiprop", and Grace read "Kevin and Joseph are on installations, and
+       Mr Before we finish" (polish round 3). */
+    if (ch === '.' && /(?:^|[^\p{L}])(?:Mr|Mrs|Ms|Dr|Prof|St|Mt|Jr|Sr|v|vs|No|Ltd|Co|Inc|etc)$/u.test(text.slice(Math.max(start, i - 6), i))) continue;
     while (end < text.length && (text[end] === ' ' || text[end] === '\t')) end++;
     out.push(text.slice(start, end));
     start = end;

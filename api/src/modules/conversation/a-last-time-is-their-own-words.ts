@@ -33,9 +33,16 @@ function sentencesOf(t: string): string[] {
   let inQuote = false;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
+    const closing = c === '”' || (c === '"' && inQuote);
     if (c === '“') inQuote = true;
     else if (c === '”') inQuote = false;
     else if (c === '"') inQuote = !inQuote;
+    /* A quotation that ends its sentence ("... Upper Hill.” What happened?") ends it after the closing mark. */
+    if (closing && i > 0 && /[.!?]/.test(text[i - 1]) && (i + 1 >= text.length || /\s/.test(text[i + 1]))) {
+      out.push(text.slice(start, i + 1).trim());
+      start = i + 1;
+      continue;
+    }
     if (inQuote || !/[.!?]/.test(c)) continue;
     let j = i + 1;
     while (j < text.length && /[”"’)]/.test(text[j])) j++;
@@ -67,7 +74,14 @@ function theirSentenceAbout(claim: string, earlier: AWordTheyWrote[]): { sentenc
 export function aLastTimeInTheirOwnWords(reply: string, earlier: AWordTheyWrote[]): { text: string; changed: boolean } {
   if (!reply?.trim() || !(A_LAST_TIME.test(reply) || sentencesOf(reply).some((s) => ALSO_YOU_SAID.test(s)))) return { text: reply, changed: false };
   let changed = false;
+  /* A question right after a claim that was cut, pointing back at it ("What exists in the record now to show that?"), points at nothing. */
+  let cutJustBefore = false;
+  const POINTS_BACK = /\b(?:that|this|it|those|them)\b/i;
   const out = reply.split(/\n/).map((line) => sentencesOf(line).map((s) => {
+    if (cutJustBefore) {
+      cutJustBefore = false;
+      if (POINTS_BACK.test(s) && /\?\s*$/.test(s)) return 'What has moved since your last check-in?';
+    }
     if (!A_LAST_TIME.test(s) && !ALSO_YOU_SAID.test(s)) return s;
     /* A quotation that is word for word theirs already is the citation. */
     const quoted = /["“]([^"”]{6,})["”]/.exec(s)?.[1];
@@ -81,6 +95,7 @@ export function aLastTimeInTheirOwnWords(reply: string, earlier: AWordTheyWrote[
     const citation = theirs ? `You wrote on ${onTheDay(theirs.at)}: “${theirs.sentence.replace(/[“”"]/g, '')}”` : '';
     if (theirs && question) return `${citation} ${question}`;
     if (theirs) return /\?\s*$/.test(s) ? `${citation} Is that still where it stands?` : citation;
+    if (!question) cutJustBefore = true;
     return question ?? '';
   }).filter(Boolean).join(' ')).join('\n').replace(/\n{3,}/g, '\n\n').replace(/(^|\n)\s*[”"]\s*/g, '$1').trim();
   return out ? { text: out, changed } : { text: reply, changed: false };

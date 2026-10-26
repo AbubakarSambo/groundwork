@@ -51,3 +51,16 @@ describe('a quotation is kept whole (polish round 2)', () => {
     expect(s.text).toBe('You wrote on Wednesday 14 October: “The reply in Kasarani Foods v. Tumaini Traders was filed on Wednesday.”');
   });
 });
+
+describe('a quotation that ends a sentence, and a question that pointed at a cut claim (polish round 3)', () => {
+  const at = (d: string) => new Date(`${d}T09:00:00+03:00`);
+  const e = [{ text: 'I will visit Upper Hill tomorrow.', at: at('2026-10-14') }];
+  it('the question after the quotation is kept, with no stray mark', () => {
+    expect(aLastTimeInTheirOwnWords('On Wednesday you mentioned “a visit to Upper Hill.” What happened?', e).text)
+      .toBe('You wrote on Wednesday 14 October: “I will visit Upper Hill tomorrow.” What happened?');
+  });
+  it('a question pointing back at a cut claim asks plainly instead', () => {
+    expect(aLastTimeInTheirOwnWords('Last time you said “Mr. Kiprop will reply.” What exists in the record now to show that?', e).text)
+      .toBe('What has moved since your last check-in?');
+  });
+});
