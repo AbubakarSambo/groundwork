@@ -276,7 +276,23 @@ export class WhatsAppForAnOrganisationService {
     }
 
     const ask = await askNameOf(this.prisma, organizationId);
-    const everyOpen = userId ? await this.openCheckInsFor(organizationId, userId) : [];
+    let everyOpen = userId ? await this.openCheckInsFor(organizationId, userId) : [];
+    /*
+     * AN UPDATE SENT BEFORE TODAY'S CHECK-IN OPENS IS ITS FIRST ANSWER (polish round 1, 26 October 2026). Kevin wrote his day's
+     * update at five in the morning, before the 8am check-in opened: it went to Ask, was shrugged at five times, and the day's
+     * update was lost. A message that is not a request, a decision or a question, from somebody with nothing open and a check-in
+     * opening later today, opens that one now, and the message goes into it.
+     */
+    if (userId && !everyOpen.length && arrived.kind === 'text' && !looksLikeARequest(arrived.text) && !aDecisionIn(arrived.text) && !/\?\s*$/.test(arrived.text.trim())) {
+      const later = await this.prisma.checkIn.findFirst({
+        where: { participant: { userId, ground: { organizationId } }, status: CheckInStatus.NOT_STARTED, availableFrom: { gt: new Date(), lte: new Date(Date.now() + 18 * 3_600_000) } },
+        orderBy: { availableFrom: 'asc' }, select: { id: true },
+      }).catch(() => null);
+      if (later) {
+        await this.prisma.checkIn.update({ where: { id: later.id }, data: { availableFrom: new Date() } }).catch(() => undefined);
+        everyOpen = await this.openCheckInsFor(organizationId, userId);
+      }
+    }
     /*
      * A CHECK-IN KEPT IN THE APP TAKES NOTHING FROM THE PHONE (survey item 5). The lead said this one
      * stays off WhatsApp, so it is never offered in the list, never remembered as the current one, and
