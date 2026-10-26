@@ -283,7 +283,15 @@ export class WhatsAppForAnOrganisationService {
      * update was lost. A message that is not a request, a decision or a question, from somebody with nothing open and a check-in
      * opening later today, opens that one now, and the message goes into it.
      */
-    if (userId && !everyOpen.length && arrived.kind === 'text' && !looksLikeARequest(arrived.text) && !aDecisionIn(arrived.text) && !/\?\s*$/.test(arrived.text.trim())) {
+    /*
+     * Only an update: eight words or more, and not within two hours of their last check-in closing. "Thanks, talk tomorrow!" after a
+     * close opened the next day's check-in and closed it again, five times over (polish round 2, Kevin, 12 October).
+     */
+    const anUpdate = arrived.kind === 'text' && arrived.text.trim().split(/\s+/).length >= 8;
+    const justClosed = anUpdate && userId ? await Promise.resolve((this.prisma.checkIn as any)?.findFirst?.({
+      where: { participant: { userId, ground: { organizationId } }, completedAt: { gte: new Date(Date.now() - 2 * 3_600_000) } }, select: { id: true },
+    })).catch(() => null) : null;
+    if (userId && !everyOpen.length && anUpdate && !justClosed && arrived.kind === 'text' && !looksLikeARequest(arrived.text) && !aDecisionIn(arrived.text) && !/\?\s*$/.test(arrived.text.trim())) {
       const later: any = await Promise.resolve((this.prisma.checkIn as any)?.findFirst?.({
         where: { participant: { userId, ground: { organizationId } }, status: CheckInStatus.NOT_STARTED, availableFrom: { gt: new Date(), lte: new Date(Date.now() + 18 * 3_600_000) } },
         orderBy: { availableFrom: 'asc' }, select: { id: true },

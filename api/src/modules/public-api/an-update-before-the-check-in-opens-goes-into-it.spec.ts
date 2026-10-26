@@ -13,6 +13,10 @@ describe('an update sent before the check-in opens goes into it', () => {
     expect(door.indexOf('data: { availableFrom: new Date() }')).toBeGreaterThan(forward);
     expect(door.indexOf('const open = everyOpen.filter')).toBeGreaterThan(forward);
   });
+  it('never for a short thanks, or within two hours of a close (polish round 2: "Thanks, talk tomorrow!" opened the next day)', () => {
+    expect(door).toContain("arrived.text.trim().split(/\\s+/).length >= 8");
+    expect(door).toContain('completedAt: { gte: new Date(Date.now() - 2 * 3_600_000) }');
+  });
   it('never for a request, a decision or a question', () => {
     expect(door).toContain("!looksLikeARequest(arrived.text) && !aDecisionIn(arrived.text) && !/\\?\\s*$/.test(arrived.text.trim())");
   });
