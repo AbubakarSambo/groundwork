@@ -10,6 +10,7 @@ import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
 import { whatTheyTriedFirst } from './what-they-tried-first';
 import { intoSentences } from '../conversation/nothing-invented-reaches-them';
 import { saidWhatTheyTried } from '../grounds/a-wait-is-the-speakers-account';
+import { theCheckInsCounted, theFirstAnswerIn, type ASessionToCount } from './a-day-they-checked-in';
 
 /**
  * A RECORD FOR EACH PERSON, KEPT FROM THE RECORD (Groundwork does the managing, part 1; Hafsah, 21 October 2026: "The lead relies on
@@ -656,26 +657,26 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
     };
   });
 
-  /* CHECK-IN QUALITY */
-  const checkIns: ACheckInRead[] = input.checkIns
-    .filter((c) => aCheckInWasDue(c, now))
-    .sort((a, b) => a.sessionNumber - b.sessionNumber)
+  /*
+   * CHECK-IN QUALITY, FROM WHAT ACTUALLY HAPPENED (a-day-they-checked-in.ts; polish round 15). Done is a session they answered in, on any
+   * channel, whatever its status, and on time where their first answer came within a day of it opening. On a check-in that opens each
+   * working day, each working day counts once: Kevin's Tuesday session, opened the evening before from his email and closed by the clock
+   * that morning, read "On Tuesday 13 October, the check-in was not done" beside his Tuesday answer. A day with nothing from them is not
+   * done (item 5 of the final check: a daily session left open stands for each working day since).
+   */
+  const firstAnswer = theFirstAnswerIn(input.theirTurns ?? []);
+  const toCount = (c: ACheckInOfTheirs): ASessionToCount => ({
+    ...c, answers: c._count?.turns ?? null, firstAnsweredAt: firstAnswer.get(c.id) ?? null, specific: aCheckInWasSpecific(c),
+  });
+  const checkIns: ACheckInRead[] = theCheckInsCounted(input.checkIns.map(toCount), { now, zone, daily: input.daily, due: (s) => aCheckInWasDue(s as any, now) })
     .map((c) => ({
-      checkInId: c.id,
-      sessionNumber: c.sessionNumber,
-      on: (c.completedAt ?? c.availableFrom ?? c.createdAt) ? dayIn((c.completedAt ?? c.availableFrom ?? c.createdAt)!, zone) : null,
-      /* Closed with no answer from them is not done (polish round 2: Peter read "four of five check-ins, all on time" after answering two). */
-      done: c.status === 'COMPLETED' && (c._count?.turns == null || c._count.turns > 0),
-      onTime: (c._count?.turns == null || c._count.turns > 0) && aCheckInWasOnTime(c),
-      specific: c.status === 'COMPLETED' && aCheckInWasSpecific(c),
-    }))
-    /* A daily session left open stands for each working day since: each is a check-in not done (item 5). */
-    .flatMap((read) => {
-      const c = input.checkIns.find((x) => x.id === read.checkInId)!;
-      return [read, ...theDaysAnOpenDailySessionWasMissed(c, now, zone, input.daily).map((k) => ({
-        ...read, on: whenItWas(new Date(`${k}T12:00:00Z`), 'weekdayAndDay', 'UTC'), done: false, onTime: false, specific: false,
-      }))];
-    });
+      checkInId: c.checkInId ?? '',
+      sessionNumber: c.sessionNumber ?? 0,
+      on: c.day ? whenItWas(new Date(`${c.day}T12:00:00Z`), 'weekdayAndDay', 'UTC') : null,
+      done: c.done,
+      onTime: c.onTime,
+      specific: c.specific,
+    }));
 
   return { claims, promises, changes, focus, blockers, checkIns, summary: theSummaryOf({ claims, promises, changes, focus, blockers, checkIns }) };
 }

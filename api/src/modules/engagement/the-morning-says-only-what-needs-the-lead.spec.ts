@@ -65,10 +65,14 @@ describe('Wanjiru, Muchemi & Co (test)', () => {
     expect(theMessage(m)).not.toMatch(/\bNjeri\b/);
   });
 
-  it('on the litigation team, David is not in it yet: one check-in since his coaching is still Groundwork’s to coach, and a check-in not made since Friday stays on the board', async () => {
+  /*
+   * Changed in polish round 15 (a-day-they-checked-in.ts): each working day now counts once, from what happened that day. Read by the day,
+   * David's coaching came after his Wednesday check-in and two check-ins since got worse, so he is Wanjiru's now, in "Your team today".
+   */
+  it('on the litigation team, David is in it now: two check-ins since his coaching got worse, and a check-in not made since Friday stays on the board', async () => {
     const m = await morningOf('lit', await theNightRunsDatabaseWithRecords('lit', { directMorning: true }));
-    expect(theEmailParts([m!]).map((p) => p.heading)).toEqual(['What needs you today']);
-    expect(theMessage(m)).not.toMatch(/\bDavid\b/);
+    expect(theEmailParts([m!]).map((p) => p.heading)).toEqual(['What needs you today', 'Your team today']);
+    expect(theMessage(m)).toMatch(/Groundwork has coached David on it since Wednesday 14 October, and it has got worse, so call David\./);
     expect(asServedOnTheBoard(m!).parts.find((p) => p.key === 'team')!.lines).toContain("Brian hasn't checked in since Friday.");
   });
 });
