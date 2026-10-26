@@ -76,7 +76,7 @@ export function aLastTimeInTheirOwnWords(reply: string, earlier: AWordTheyWrote[
   let changed = false;
   /* A question right after a claim that was cut, pointing back at it ("What exists in the record now to show that?"), points at nothing. */
   let cutJustBefore = false;
-  const POINTS_BACK = /\b(?:that|this|it|those|them)\b/i;
+  const POINTS_BACK = /\b(?:that|it|those|them)\b(?!\s+(?:week|month|day|morning|afternoon|quarter))/i;
   const out = reply.split(/\n/).map((line) => sentencesOf(line).map((s) => {
     if (cutJustBefore) {
       cutJustBefore = false;
