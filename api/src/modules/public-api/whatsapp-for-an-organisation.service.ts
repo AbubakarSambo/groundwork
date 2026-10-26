@@ -462,6 +462,12 @@ export class WhatsAppForAnOrganisationService {
     if (repliedTo || announced) {
       current = (repliedTo ?? announced)!;
       await this.remember(organizationId, from, current.id);
+      /*
+       * START ANSWERS THE NEWEST OPENING, AND SAYS THE OTHER IS OPEN TOO (polish round 15, 19 October). Brian was sent the Fee notes
+       * opening and then the litigation one, replied START, and was put in the litigation check-in with nothing said about Fee notes,
+       * so he answered as if he were in Fee notes. START (not a reply to one message) names which one this is and which waits.
+       */
+      if (!repliedTo && open.length > 1) intro = oneAtATime([current, ...closingSoonestFirst(open.filter((c) => c.id !== current!.id))]);
     } else if (picked) {
       current = picked;
       await this.remember(organizationId, from, picked.id);
@@ -948,13 +954,23 @@ export class WhatsAppForAnOrganisationService {
     const signIn = !person?.email && userId ? await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }).catch(() => null) : null;
     const email = person?.email ?? signIn?.email ?? null;
     if (!email) return null;
-    const invited = await this.prisma.groundParticipant.findFirst({
+    /*
+     * EVERY INVITATION WAITING, NOT ONLY THE FIRST (polish round 15, 12 October). Brian was invited to "Litigation team daily" and "Fee notes",
+     * was sent both openings on WhatsApp, and replied START after the Fee notes one. Only his first invitation was accepted, so only the
+     * litigation check-in was open for him, and his Fee notes answers went into it. The number the company added is its word for who he is
+     * in every check-in he was invited to, so each one waiting is accepted, oldest first, and START then goes to the one it answers.
+     */
+    const waiting = await this.prisma.groundParticipant.findMany({
       where: { email: { equals: email, mode: 'insensitive' }, userId: null, inviteToken: { not: null }, ground: { organizationId, status: { notIn: [...A_GROUND_IS_OVER] } } },
       orderBy: { createdAt: 'asc' },
       select: { inviteToken: true, nameGiven: true },
     });
+    const invited = waiting.find((w) => !!w.inviteToken);
     if (!invited?.inviteToken) return null;
     await this.participants.accept(invited.inviteToken);
+    for (const more of waiting.filter((w) => w !== invited && !!w.inviteToken)) {
+      await this.participants.accept(more.inviteToken!).catch((err: any) => this.logger?.warn?.(`Could not accept another invitation from the phone: ${err?.message ?? err}`));
+    }
     const user = await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' }, deletedAt: null }, select: { id: true } });
     if (!user) return null;
     if (person) await this.prisma.person.updateMany({ where: { id: person.id, linkedUserId: null }, data: { linkedUserId: user.id } }).catch(() => undefined);
