@@ -60,7 +60,7 @@ export async function readTheInputs(prisma: any, groundId: string, now: Date = n
   const [checkIns, rows, commitments, deps, turns, workItems, evidence] = await Promise.all([
     safe<any[]>(prisma.checkIn?.findMany?.({
       where: { groundId, participantId: { in: ids }, isSetup: false, isSelfCorrection: false, isClarification: false, isPostSignOff: false, optional: false },
-      select: { id: true, participantId: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true, specificityDimensions: true },
+      select: { id: true, participantId: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true, specificityDimensions: true, _count: { select: { turns: { where: { role: 'PERSON' } } } } },
     }), []),
     safe<any[]>(prisma.recordEntry?.findMany?.({
       where: { participantId: { in: ids }, disputedAt: null },

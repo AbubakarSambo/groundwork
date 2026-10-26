@@ -96,6 +96,8 @@ export interface ACheckInOfTheirs {
   completedAt?: Date | string | null;
   specificityLevel?: string | null;
   specificityDimensions?: unknown;
+  /** How many answers they gave in it, where it was read. A session closed with none from them was not a check-in they did. */
+  _count?: { turns?: number } | null;
 }
 
 export interface AnMPesaCodeOfTheirs { code: string; sale: string; at: Date | string }
@@ -630,8 +632,9 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
       checkInId: c.id,
       sessionNumber: c.sessionNumber,
       on: (c.completedAt ?? c.availableFrom ?? c.createdAt) ? dayIn((c.completedAt ?? c.availableFrom ?? c.createdAt)!, zone) : null,
-      done: c.status === 'COMPLETED',
-      onTime: aCheckInWasOnTime(c),
+      /* Closed with no answer from them is not done (polish round 2: Peter read "four of five check-ins, all on time" after answering two). */
+      done: c.status === 'COMPLETED' && (c._count?.turns == null || c._count.turns > 0),
+      onTime: (c._count?.turns == null || c._count.turns > 0) && aCheckInWasOnTime(c),
       specific: c.status === 'COMPLETED' && aCheckInWasSpecific(c),
     }))
     /* A daily session left open stands for each working day since: each is a check-in not done (item 5). */
