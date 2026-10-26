@@ -60,6 +60,8 @@ export interface AMoveThatDay {
   to: string;
   /** Proof for the stage it moved to: a payment record for the last stage, a document for any other. */
   proven: boolean;
+  /** It moved because its payment came in: said "Now paid.", never as a stage it was not put at. */
+  byPayment?: boolean;
 }
 
 /** Each deal that moved forward on one of these days, to the furthest stage it reached on them. A deal's first stage on record is not a move. */
@@ -77,6 +79,18 @@ export function theMovesOnTheDays(deals: readonly ADealOnRecord[], stages: reado
       if (at(kept[i].stage) <= at(kept[i - 1].stage) && at(kept[i - 1].stage) >= 0) continue;
       if (from === null) from = kept[i - 1].stage;
       to = kept[i].stage;
+    }
+    /*
+     * A PAYMENT COMING IN IS A SALE MOVING TO WON (polish round 15, U29). A deal with its payment on file is sold whatever stage was written
+     * for it (theCountFromTheDeals), so the day its first payment came in is the day it moved to the last stage. Friday's team report read
+     * "No sale moved forward today" on the day Joseph's M-Pesa code for Juja Hardware came in.
+     */
+    if (!same(to, last) && d.paymentOnFile && d.paidOn && days.has(aDayKey(new Date(d.paidOn), zone))) {
+      const before = kept.filter((k) => new Date(k.on).getTime() <= new Date(d.paidOn!).getTime()).pop()?.stage ?? null;
+      if (!same(before, last)) {
+        out.push({ dealId: d.id, name: d.name, ownerParticipantId: d.ownerParticipantId, from: from ?? before ?? d.stage ?? stages[0] ?? 'Lead', to: last, proven: !!d.paid, byPayment: true });
+        continue;
+      }
     }
     if (!from || !to) continue;
     const proven = same(to, last) ? !!d.paid : !!d.proven;
@@ -107,14 +121,14 @@ export function theStageItReached(stage: string): string {
 }
 
 export function whatAMoveSays(
-  move: Pick<AMoveThatDay, 'name' | 'to'>,
+  move: Pick<AMoveThatDay, 'name' | 'to' | 'byPayment'>,
   deal: { name: string; fields?: Record<string, string> | null },
   /* The owner's own lines from this session's check-in: `raw` as kept (the record's note included), `text` as people read it. */
   theirLines: readonly { raw: string; text: string; type?: string | null }[],
   /* "Mercy", or "You" where the reader is the owner; null where nobody may be named. */
   who: string | null,
 ): string {
-  const reached = theStageItReached(move.to);
+  const reached = move.byPayment ? 'Now paid.' : theStageItReached(move.to);
   const about = theirLines.filter((l) => aLineIsAbout(l.raw, deal) && !aLineSaysACriterionIsMissing(l.text) && l.text.trim());
   const stem = String(move.to ?? '').trim().split(/\s+/)[0].toLowerCase().replace(/(?:ed|d|s)$/, '');
   const line = (stem.length >= 3 ? about.find((l) => l.text.toLowerCase().includes(stem)) : undefined)

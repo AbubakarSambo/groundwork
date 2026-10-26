@@ -259,9 +259,10 @@ export async function withTheSalesReadings<T>(prisma: Prisma, groundId: string, 
       })(),
       /* How sure Groundwork is (T-12): the sales with a payment or a signed order behind them, and the deals still open. */
       howSure: howSureGroundworkIs(
-        deals.filter((d) => String(d.stage ?? '').toLowerCase() === lastStage.toLowerCase() && !d.dropped)
+        /* Sold: at the last stage, or with its payment or signed order on file whatever stage was written (polish round 15, U29). */
+        deals.filter((d) => (String(d.stage ?? '').toLowerCase() === lastStage.toLowerCase() || !!d.paymentOnFile) && !d.dropped)
           .map((d) => ({ name: d.name, paid: !!d.paid, signed: !!d.signed, mpesaCode: d.mpesaCode ?? null, byMPesa: documents.some((x) => /m-?pesa/i.test(`${x.fileName ?? ''} ${x.content ?? ''}`) && `${x.fileName ?? ''} ${x.content ?? ''}`.toLowerCase().replace(/[^a-z0-9]+/g, ' ').includes(d.name.toLowerCase())) })),
-        deals.filter((d) => !d.dropped && String(d.stage ?? '').trim() && String(d.stage ?? '').toLowerCase() !== lastStage.toLowerCase()).length,
+        deals.filter((d) => !d.dropped && !d.paymentOnFile && String(d.stage ?? '').trim() && String(d.stage ?? '').toLowerCase() !== lastStage.toLowerCase()).length,
       ),
     };
 
