@@ -81,6 +81,7 @@ import { whatTheyAskedFor } from './what-they-asked-for-in-so-many-words';
 import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
+import { whatIsAnswered, whatItAsksAgain, doNotAskAgain, withoutAskingAgain, theQuestionAskedBefore, doNotAskThatAgain, withoutTheSameQuestion } from './setup-never-asks-twice';
 import { THE_FIRST_UPDATE_TOO, SETUP_IS_DONE, whereSetupEnds, whatToSayAboutTheEndOfSetup } from './setup-is-the-first-check-in';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
 import { PromptsService } from '../prompts';
@@ -1376,7 +1377,7 @@ from finishing at all.`;
     const extractionInFlight: Promise<typeof extracted | null | Error> = (async () =>
       this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, messages, EXTRACT_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true }))()
       .catch((err: Error) => err);
-    const reply = await replyInFlight;
+    const firstReply = await replyInFlight;
     try {
       const result = await extractionInFlight;
       if (result instanceof Error) throw result;
@@ -1414,6 +1415,28 @@ from finishing at all.`;
         extracted.peopleNamed = withoutThePersonSettingItUp(extracted.peopleNamed, me);
         const theirAddresses = theAddressesTheyGave(extracted.peopleNamed, messages.filter((m) => m.role === 'user').map((m) => m.content));
         if (Object.keys(theirAddresses).length) (extracted as any).peopleEmails = theirAddresses;
+      }
+    }
+    /*
+     * NEVER ASKED TWICE (26 October 2026). A reply that asks why now, or the lead's own part, after they already said it, is written again
+     * without it; if it still asks, that question comes out. See setup-never-asks-twice.
+     */
+    let reply = firstReply;
+    if (!endOfSetup.close) {
+      const answered = whatIsAnswered({ decision: soFar?.decision ?? extracted.decision, yourRole: soFar?.yourRole ?? extracted.yourRole }, theirWords);
+      const again = whatItAsksAgain(reply, answered);
+      if (again.length) {
+        this.logger.warn(`Setup asked again for ${again.join(' and ')}; written again without it.`);
+        const second = await this.guardedReply(`${setupPrompt}\n\n---\n\n${doNotAskAgain(answered, again)}`, messages).catch(() => reply);
+        reply = whatItAsksAgain(second, answered).length ? withoutAskingAgain(second, answered) : second;
+      }
+      const earlier = (messages as { role: string; content: string }[]).filter((m) => m.role === 'assistant').map((m) => m.content ?? '');
+      const repeated = theQuestionAskedBefore(reply, earlier);
+      if (repeated) {
+        this.logger.warn(`Setup asked "${repeated.slice(0, 80)}" again; written again without it.`);
+        const second = await this.guardedReply(`${setupPrompt}\n\n---\n\n${doNotAskThatAgain(repeated)}`, messages).catch(() => reply);
+        const theyHaveSaidALot = messages.filter((m) => m.role === 'user').length >= 3;
+        reply = theQuestionAskedBefore(second, earlier) || whatItAsksAgain(second, answered).length ? withoutTheSameQuestion(withoutAskingAgain(second, answered), earlier, theyHaveSaidALot) : second;
       }
     }
     const stoppedAsking = theSetupHasStoppedAsking(messages, reply);
