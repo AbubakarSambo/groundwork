@@ -135,7 +135,9 @@ export const THE_CLOSE_WAS_HELD =
  * reads back past those to the last turn with something in it.
  */
 const AN_ACKNOWLEDGEMENT = /^\s*(?:(?:no|yes|yeah|yep|ok|okay|sure|fine|good|great|perfect|done|understood|noted|alright|right|that'?s (?:it|all|everything)|we are good|we're good|i'?m good|nothing (?:else|more)|no,? (?:we are|we're|that'?s) (?:good|it|all|fine)|nope|all good|ready|let'?s close(?: it)?|thank you|thanks)[\s.!,]*){1,3}$/i;
-export const isAnAcknowledgement = (turn: string): boolean => AN_ACKNOWLEDGEMENT.test((turn ?? '').trim());
+/* A thank-you or a goodbye in a few more words is one too (polish round 3: "Thanks! Have a good one everyone." was answered "That did not come out right"). */
+const A_THANK_YOU_OR_GOODBYE = /^\s*(?:thank(?:s| you)|cheers|bye|goodbye|ok(?:ay)?,? thanks?)\b[^?]{0,80}$/i;
+export const isAnAcknowledgement = (turn: string): boolean => AN_ACKNOWLEDGEMENT.test((turn ?? '').trim()) || A_THANK_YOU_OR_GOODBYE.test((turn ?? '').trim());
 
 export function lastSubstantiveTurn(personSaid: string[]): string {
   for (let i = personSaid.length - 1; i >= 0; i--) {
