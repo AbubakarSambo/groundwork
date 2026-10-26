@@ -232,7 +232,7 @@ import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
 import { aDayIsNamedRight } from './a-day-is-named-right';
 import { theCheckInToAddTo, WHAT_WOULD_YOU_LIKE_TO_ADD, ADD_SOMETHING_REFUSED } from './add-something';
-import { aLastTimeInTheirOwnWords, type AWordTheyWrote } from './a-last-time-is-their-own-words';
+import { aLastTimeInTheirOwnWords, type AWordTheyWrote, anOpeningWithNothingLeftOver } from './a-last-time-is-their-own-words';
 import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
 import { isShut } from '../grounds/a-ground-that-has-ended';
 import { whenTheNextSessionOpens } from '../grounds/the-check-ins-own-schedule';
@@ -1537,7 +1537,7 @@ export class ConversationService {
     const guarded = personal ? await this.thePersonalOpeningAsSaid(checkIn as any, personal.text) : await this.withTheNewsTheyWaitOn(checkIn as any, guarded0).catch(() => guarded0);
     /* The checks after the bar can take the question out (Kevin's first WhatsApp message read only "This is our first
        check-in, and it's about getting a regular read on the work you're doing."): the opening always ends on a question (reviewer, 14 October). */
-    const opening = isADeadEnd(guarded, false) ? withAQuestion(guarded, { opening: true }) : guarded;
+    const opening = anOpeningWithNothingLeftOver(isADeadEnd(guarded, false) ? withAQuestion(guarded, { opening: true }) : guarded);
 
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.

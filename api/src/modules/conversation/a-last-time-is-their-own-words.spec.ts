@@ -64,3 +64,17 @@ describe('a quotation that ends a sentence, and a question that pointed at a cut
       .toBe('What has moved since your last check-in?');
   });
 });
+
+describe('nothing left over in an opening (26 October 2026)', () => {
+  const { anOpeningWithNothingLeftOver } = require('./a-last-time-is-their-own-words');
+  it('Kevin\'s "” Did that move forward this period?" is asked plainly', () => {
+    expect(anOpeningWithNothingLeftOver('” Did that move forward this period?')).toBe('What has moved since your last check-in?');
+  });
+  it('a stray closing quote after a sentence goes, and the rest stays', () => {
+    expect(anOpeningWithNothingLeftOver('Kevin, welcome back. ” What happened at Ngong Road Minimart?')).toBe('Kevin, welcome back. What happened at Ngong Road Minimart?');
+  });
+  it('a quotation that is whole is left alone', () => {
+    const t = 'You wrote on Friday 16 October: “I spoke to the receptionist.” Did that move forward?';
+    expect(anOpeningWithNothingLeftOver(t)).toBe(t);
+  });
+});
