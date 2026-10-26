@@ -66,6 +66,7 @@ import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { theOpenSession as theOpenSessionOfACheckIn, whereOneStands } from '../engagement/heres-what-is-new';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
+import { theRecordForPromises, thePromisesSaidDone } from '../conversation/a-promise-said-done-is-kept';
 import { onWhatsApp, askedOnWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 /** The parked kinds that belong to the app's setup conversation (Add context), never to a message on WhatsApp. */
 const THE_APPS_OWN_SETUP_KINDS = new Set(['context', 'context_turn', 'context_line', 'lead_note', 'which_context_check_in']);
@@ -1244,11 +1245,20 @@ export class AssistantService {
 
   private async whatNext(organizationId: string, who: string | null, userId: string | null = null): Promise<Reply> {
     if (!who) return rules('what_next', text('I cannot see you in your organisation records, so I have nothing to put first.'));
-    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { email: true } });
-    const [commitments, toDos] = await Promise.all([
-      this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN', ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }).then((rows) => withoutCommitmentsFromGoalsNotToldYet(this.prisma, rows)),
+    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { email: true, linkedUserId: true } as any }) as any;
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
+    const [fromTheirSystems, toDos, inCheckIns] = await Promise.all([
+      this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN', ...notFromAKeptCheckIn(kept, 'sourceGroundId') }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }).then((rows) => withoutCommitmentsFromGoalsNotToldYet(this.prisma, rows)),
       this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
+      /* The promises in their own check-ins, read as "What did I promise?" reads them (polish round 15, U5). */
+      this.theOpenPromisesInTheirCheckIns(organizationId, person?.linkedUserId ?? null, kept),
     ]);
+    const sameWords = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const listed = new Set((fromTheirSystems as any[]).map((c) => sameWords(String(c.text ?? ''))));
+    const commitments = [
+      ...(fromTheirSystems as any[]),
+      ...inCheckIns.filter((c) => !listed.has(sameWords(c.text))).map((c) => ({ id: c.id, text: c.text, dueSaid: c.whenSaid, dueAt: null, statedAt: c.createdAt, state: 'OPEN' as const, lastFollowedUpAt: null })),
+    ];
     const key = person?.email?.toLowerCase() ?? null;
     const readerIsAdmin = !!userId && await this.isAnAdminHere(organizationId, userId);
     const week = key ? await this.board.whoNeedsYouThisWeek(organizationId, key, { ...(await this.theBoardLeavesOut(organizationId)), readerIsAdmin }) : { buckets: [] as any[] };
@@ -5525,6 +5535,34 @@ export class AssistantService {
   }
 
   /**
+   * THE PROMISES STILL OPEN IN THEIR OWN CHECK-INS, ONE READING FOR EVERY LANE (polish round 15, U5). Kevin asked "What did I promise this
+   * week?" and read "You said you would do 2 things that are still waiting", then "What should I do next about Upper Hill Offices?" and
+   * read "You have no open commitments or to-dos": one lane read his check-ins' promises and the other did not. Both read this. A promise
+   * the record shows was done (thePromisesSaidDone, the lead's morning summary's own reading) is not open. Only the asker's own place in
+   * each check-in is read, never through a name.
+   */
+  private async theOpenPromisesInTheirCheckIns(organizationId: string, linkedUserId: string | null | undefined, kept: any): Promise<{ id: string; text: string; whenSaid: string | null; createdAt: Date; ground: { label: string } | null }[]> {
+    if (!linkedUserId) return [];
+    const rows: any[] = await (this.prisma as any).groundCommitment?.findMany?.({
+      where: {
+        status: 'UNKNOWN',
+        /* Held for a seat keeps their own promises (decision 110, B3): only the seat limit stops, and only new participation. */
+        participant: { userId: linkedUserId },
+        ground: { organizationId, ...notAKeptCheckIn(kept) },
+      },
+      select: { id: true, text: true, whenSaid: true, createdAt: true, participantId: true, groundId: true, ground: { select: { label: true } } },
+      orderBy: { createdAt: 'asc' },
+    })?.catch?.(() => []) ?? [];
+    if (!rows.length) return [];
+    const forPromises = await theRecordForPromises(this.prisma as any, [...new Set(rows.map((r) => String(r.groundId)).filter(Boolean))]).catch(() => ({ lines: [], waits: [], people: [], answers: [] } as any));
+    const done = new Set(thePromisesSaidDone(
+      rows.map((c) => ({ id: c.id, participantId: c.participantId, text: c.text, createdAt: c.createdAt })),
+      forPromises.lines, forPromises.waits, (id: string) => forPromises.people.find((p: any) => p.id === id)?.names ?? [], forPromises.people.map((p: any) => p.id), forPromises.answers,
+    ).map((x) => x.id));
+    return rows.filter((r) => !done.has(r.id)).map((r) => ({ id: r.id, text: String(r.text ?? ''), whenSaid: r.whenSaid ?? null, createdAt: new Date(r.createdAt), ground: r.ground ?? null }));
+  }
+
+  /**
    * WHAT THE PERSON SAID THEY WOULD DO, IN PLAIN WORDS (requests 170, 180 item 2 and 182 item 8). It read only the commitments brought in from the
    * organisation's own systems, so somebody with two promises written down in a check-in ("ground_commitments", still unsettled) was told they had
    * none, in the words "open actions". Both are read now, and only the asker's own: a check-in's promises are found through the asker's own
@@ -5542,18 +5580,7 @@ export class AssistantService {
       where: { organizationId, personExternalId: me.externalId, state: 'OPEN', ...notFromAKeptCheckIn(kept, 'sourceGroundId') },
       orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }],
     }));
-    const inCheckIns: any[] = me.linkedUserId
-      ? await (this.prisma as any).groundCommitment?.findMany?.({
-        where: {
-          status: 'UNKNOWN',
-          /* Held for a seat keeps their own promises (decision 110, B3): only the seat limit stops, and only new participation. */
-          participant: { userId: me.linkedUserId },
-          ground: { organizationId, ...notAKeptCheckIn(kept) },
-        },
-        select: { text: true, whenSaid: true, ground: { select: { label: true } } },
-        orderBy: { createdAt: 'asc' },
-      })?.catch?.(() => []) ?? []
-      : [];
+    const inCheckIns: any[] = await this.theOpenPromisesInTheirCheckIns(organizationId, me.linkedUserId, kept);
 
     /*
      * WHAT THEY SAID THEY WOULD DO, WRITTEN DOWN WHILE SETTING A CHECK-IN UP OR ANSWERING, AS THE YOU PAGE READS IT (user journeys, F-5).

@@ -17,6 +17,11 @@
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { aDaySaidInFull } from '../board/a-day-said-in-full';
+import { theMarkOf, whoAddedEachBackingDocument } from '../reports/how-a-line-is-known';
+import { isASalesKind } from '../board/the-kind-of-work';
+import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, theSalesAnswer, theUnitsOf, theMoneyOf, whatWasSold, type ADealOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
+import { aDepositSaid } from '../board/a-deals-proof-is-about-that-deal';
+import { aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
 
 /** Whether a message asks something, rather than tells something. Read by its shape, never by a model. */
 const STARTS_A_QUESTION = /^\s*(?:(?:and|so|but|also|please|ok|okay)[\s,]+)?(?:what|what's|whats|when|where|which|who|whom|whose|why|how|is|are|was|were|does|do|did|can|could|will|would|should|has|have|according to|tell me|do you know)\b/i;
@@ -36,7 +41,8 @@ Rules:
 - Copy every number exactly as the document writes it, with its currency, unit or percent sign: write "KES 12,400", never "12400" or "12,400 shillings".
 - Where the answer needs a sum the document does not state, show it from the document's own figures, for example "40 units are in the 30 to 99 band, at KES 12,400 a unit, so 40 units cost KES 496,000."
 - Say which document the answer comes from, by its file name. When it comes from "the record of" a check-in, say "on the record" instead, and name the day it was said.
-- In "the record of" a check-in, a line marked "their word" is what the person said, with nothing to show it yet; say so plainly. A line marked "proven by a document" has its proof. Name people by their names.
+- In "the record of" a check-in, a line marked "their word" is what the person said, with nothing to show it yet; say so plainly. A line marked "proven by a document", "proven by the M-Pesa code they typed", "proven by a reference they typed" or "confirmed by a colleague" has its proof. Name people by their names.
+- For what is sold, how much of it has proof of payment, and how far a sales target is from being met, use "THE SALES ON RECORD" in the record. It is counted the way the board counts it, and it is the only count to give.
 - Write plain, full sentences that a person with basic English understands. Speak to the person as "you". No lists, no headings, no colons joining pieces.
 - At most three sentences.
 - A short question names things loosely. "The Kamau defence" is the defence in "Kamau v. Apex Ltd"; "Kilele" is "Kilele Hotel". Match a short name to the fuller one in the documents, and answer when one thing clearly fits.`;
@@ -122,8 +128,8 @@ export async function theRecordTheyMayRead(
       ...(input.groundId ? { id: input.groundId } : {}),
       OR: [{ initiatorId: input.userId }, { participants: { some: { userId: input.userId } } }],
     },
-    select: { id: true, label: true, initiatorId: true },
-  })).catch(() => [])) ?? []) as { id: string; label: string; initiatorId: string | null }[];
+    select: { id: true, label: true, initiatorId: true, kindOfWork: true, workStages: true },
+  })).catch(() => [])) ?? []) as { id: string; label: string; initiatorId: string | null; kindOfWork?: unknown; workStages?: unknown }[];
   const out: ADocumentToAnswerFrom[] = [];
   const since = new Date(now.getTime() - 45 * 86_400_000);
   for (const g of grounds) {
@@ -145,12 +151,13 @@ export async function theRecordTheyMayRead(
       const entries = ((await Promise.resolve(prisma.recordEntry?.findMany?.({
         where: { participantId: p.id, disputedAt: null, createdAt: { gte: since } },
         orderBy: { createdAt: 'desc' }, take: MOST_LINES_FOR_ONE,
-        select: { text: true, type: true, createdAt: true, anchoredDocumentId: true },
+        select: { text: true, type: true, createdAt: true, anchoredDocumentId: true, participantId: true, recallBased: true, anchoredOrigin: true, confirmedAt: true },
       })).catch(() => [])) ?? []) as any[];
       const who = p.userId === input.userId ? `${nameOf(p)} (you)` : nameOf(p);
       lines.push(`PERSON: ${who}`);
+      const whoAdded = await whoAddedEachBackingDocument(prisma, entries).catch(() => new Map<string, string | null>());
       for (const e of entries.reverse()) {
-        lines.push(`- ${DAY_SAID(e.createdAt)}, ${String(e.type).toLowerCase().replace(/_/g, ' ')}${e.anchoredDocumentId ? ', proven by a document' : ', their word'}: ${cleanText(String(e.text ?? '')).replace(/\s+/g, ' ').trim()}`);
+        lines.push(`- ${DAY_SAID(e.createdAt)}, ${String(e.type).toLowerCase().replace(/_/g, ' ')}, ${howItIsKnown(e, whoAdded)}: ${cleanText(String(e.text ?? '')).replace(/\s+/g, ' ').trim()}`);
       }
       if (!entries.length) lines.push('- Nothing on record in the last six weeks.');
     }
@@ -173,8 +180,77 @@ export async function theRecordTheyMayRead(
         lines.push(`- ${i.name}${owners.get(i.ownerParticipantId) ? `, ${owners.get(i.ownerParticipantId)}'s` : ''}${i.stage ? `, at ${i.stage}` : ''}${plain ? `. ${plain}` : ''}. ${filed.length ? `Proof on file: ${filed.join(', ')}.` : 'No proof on file.'}`);
       }
     }
-    out.push({ fileName: `the record of ${g.label}`, content: lines.join('\n').slice(0, MOST_WE_READ_FROM_ONE) });
+    /* The sales, counted as the board counts them, first: a long record must never push them out (polish round 15, U3 and U4). */
+    const sales = isASalesKind(g.kindOfWork) ? await theSalesOnRecord(prisma, g, people, nameOf, isLead, now).catch(() => [] as string[]) : [];
+    const content = [...sales, ...lines].join('\n');
+    out.push({ fileName: `the record of ${g.label}`, content: content.slice(0, MOST_WE_READ_FROM_ONE) });
   }
+  return out;
+}
+
+/*
+ * HOW A LINE IS KNOWN, AS THE BOARD MARKS IT (polish round 15, U3). Joseph's "M-Pesa code TGH5K2M9QX." and Kevin's "The M-Pesa code is
+ * SFK2P8LQ4C" were given to Ask as "their word", so Ask told Grace the only sale with proof was Kilele's. A code typed in full is proof.
+ */
+function howItIsKnown(e: { text?: string | null; anchoredDocumentId?: string | null; recallBased?: boolean | null; anchoredOrigin?: string | null; confirmedAt?: Date | null; type?: string | null; participantId?: string | null }, whoAdded: Map<string, string | null>): string {
+  /* A document somebody else added does not prove their line (U28: Peter's line read "proven by a document" from Kevin's M-Pesa message). */
+  if (e.anchoredDocumentId) {
+    const by = whoAdded.get(e.anchoredDocumentId);
+    if (by === undefined || by === null || by === e.participantId) return 'proven by a document';
+  }
+  const mark = theMarkOf({ ...e, text: cleanText(String(e.text ?? '')) } as any, whoAdded);
+  if (mark === 'proven' && !e.anchoredDocumentId) return /\b(?=[A-Z0-9]{10}\b)(?=[A-Z0-9]*\d)(?=(?:[0-9]*[A-Z]){2})[A-Z0-9]{10}\b/.test(String(e.text ?? '')) ? 'proven by the M-Pesa code they typed' : 'proven by a reference they typed';
+  if (mark === 'confirmed') return 'confirmed by a colleague';
+  return 'their word';
+}
+
+/**
+ * THE SALES ON RECORD, COUNTED AS THE BOARD COUNTS THEM (polish round 15, U3 and U4). Ask told Grace "The only sale with proof is from
+ * Kilele Hotel for 40 units... 80 units away" and Kevin "You have sold 40 units with proof", while the board said 53 and 51: Ask counted
+ * from the twenty latest lines of each person and the raw deal rows. It is given the board's own count (theDealsOnRecord and
+ * theAimsTheDealsCount), so it cannot count differently. A lead reads every deal and every aim; anybody else only their own.
+ */
+async function theSalesOnRecord(
+  prisma: any,
+  g: { id: string; workStages?: unknown },
+  people: any[],
+  nameOf: (p: any) => string,
+  isLead: boolean,
+  now: Date,
+): Promise<string[]> {
+  const theirs = new Set(people.map((p) => p.id));
+  const all: ADealOnRecord[] = await theDealsOnRecord(prisma, g.id, { paymentRecord: true });
+  const deals = isLead ? all : all.filter((d) => !!d.ownerParticipantId && theirs.has(d.ownerParticipantId));
+  const aims = (((await Promise.resolve(prisma.groundObjective?.findMany?.({ where: { groundId: g.id } })).catch(() => [])) ?? []) as any[])
+    .filter((o) => isLead || (!!o.ownerParticipantId && theirs.has(o.ownerParticipantId)));
+  const stages = theSalesStages(g.workStages);
+  if (!stages.length) return [];
+  const last = stages[stages.length - 1].toLowerCase();
+  const owner = (pid: string | null) => { const p = people.find((x) => x.id === pid); return p ? nameOf(p) : null; };
+  const out: string[] = ['THE SALES ON RECORD, COUNTED THE WAY THE BOARD COUNTS THEM:'];
+  const counts = theAimsTheDealsCount(aims.map((o) => ({ id: o.id, name: o.name, ownerParticipantId: o.ownerParticipantId ?? null })), deals, stages, now, 'Africa/Nairobi');
+  for (const o of aims) {
+    const c = counts.get(o.id);
+    const target = Number(o.target);
+    if (!c || !(target > 0) || c.counts === 'new leads') continue;
+    const whose = o.ownerParticipantId ? `${owner(o.ownerParticipantId) ?? 'One person'}’s own aim` : 'The team’s aim';
+    const n = (v: number) => (c.counts === 'value' && c.currency ? `${c.currency} ${aNumberPeopleCanRead(v)}` : aNumberPeopleCanRead(v));
+    const short = target - c.count;
+    out.push(`- ${whose}, “${String(o.name ?? '').trim()}”, is ${n(target)}. ${c.says} ${theSalesAnswer(c, target, 0)}${short > 0 ? ` It is ${n(short)} short of the ${n(target)}.` : ''}`);
+  }
+  const sold = deals.filter((d) => !d.dropped && ((d.stage ?? '').toLowerCase() === last || d.paymentOnFile));
+  for (const d of sold) {
+    const f = whatWasSold(d);
+    const units = theUnitsOf(f);
+    const money = theMoneyOf(f);
+    const worth = [units !== null ? `${aNumberPeopleCanRead(units)} ${units === 1 ? 'unit' : 'units'}` : '', money ? `${money.currency ? `${money.currency} ` : ''}${aNumberPeopleCanRead(money.amount)}` : ''].filter(Boolean).join(' for ');
+    const shows = d.deposit ? `It is on a deposit. ${aDepositSaid(d.deposit)}`
+      : d.paid ? (d.mpesaCode ? `It is paid, and the M-Pesa code ${d.mpesaCode} shows it.` : 'It is paid, and a payment record shows it.')
+        : d.signed ? 'A signed order shows it, and it is not paid yet.'
+          : 'Nothing on file shows it yet. It rests on what was said.';
+    out.push(`- ${d.name} is sold${owner(d.ownerParticipantId) ? ` by ${owner(d.ownerParticipantId)}` : ''}${worth ? `, ${worth}` : ''}. ${shows}`);
+  }
+  if (!sold.length) out.push('- Nothing is sold on record yet.');
   return out;
 }
 

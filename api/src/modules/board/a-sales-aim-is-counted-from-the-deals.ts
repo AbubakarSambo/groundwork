@@ -363,7 +363,8 @@ export function theSalesAnswer(c: ACountFromTheDeals, target: number, likely: nu
     const of = c.counts === 'value'
       ? `${n(c.count)} of the ${n(target)} is sold.`
       : `${read(c.count)} of the ${read(target)}${thingOfTarget} ${many(c.count) ? 'are' : 'is'} ${c.counts === 'sales' ? 'closed' : 'sold'}.`;
-    const isOrAre = (v: number) => (many(v) ? 'are' : 'is');
+    /* An amount of money is one thing: "KES 265,000 is paid", never "are" (polish round 15). */
+    const isOrAre = (v: number) => (c.counts !== 'value' && many(v) ? 'are' : 'is');
     const sum = (xs: { holds: number }[]) => xs.reduce((t, x) => t + x.holds, 0);
     const names = (xs: { name: string }[]) => {
       const ns = xs.map((x) => x.name);
@@ -380,7 +381,7 @@ export function theSalesAnswer(c: ACountFromTheDeals, target: number, likely: nu
       const pays = signed.length === 1 && signed[0].paysWhen ? `, which ${signed[0].paysWhen}` : '';
       parts.push(`${n(sum(signed))} ${isOrAre(sum(signed))} on a signed order (${names(signed)})${pays}`);
     }
-    if (said.length) parts.push(`${n(sum(said))} ${many(sum(said)) ? 'rest' : 'rests'} on what somebody said (${names(said)})`);
+    if (said.length) parts.push(`${n(sum(said))} ${c.counts !== 'value' && many(sum(said)) ? 'rest' : 'rests'} on what somebody said (${names(said)})`);
     const proof = parts.length ? ` ${parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`}.` : '';
     const more = likely > 0
       ? ` ${c.counts === 'value' ? `${n(likely)} more is likely` : `${n(likely)} more ${likely === 1 ? 'is' : 'are'} likely`}, which makes ${n(c.count + likely)} of the ${n(target)} needed.`
