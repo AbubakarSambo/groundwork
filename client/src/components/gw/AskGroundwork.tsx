@@ -418,9 +418,21 @@ export function AskGroundwork({
       return
     }
     setReading(true)
+    /*
+     * WHAT IS IN IT, SAID BACK (26 October 2026): Ask waits for the file's own reading (up to a minute), says in a few lines what it holds,
+     * then asks about any numbers in it. A photo with no numbers is not waited on for numbers it will never have.
+     * the-document-card-waits-for-its-reading.spec.ts holds the same for the check-in.
+     */
+    let summary: string[] = []
     try {
       const uploaded = await documentsApi.upload(groundId, file)
-      await pollNumbersWaiting(groundId, uploaded.id, pollIntervalMs, pollTimeoutMs)
+      const deadline = Date.now() + pollTimeoutMs
+      for (;;) {
+        const found = await documentsApi.list(groundId).then((all) => all.find((d) => d.id === uploaded.id)).catch(() => undefined)
+        summary = found?.assessment?.suggests ?? []
+        if (found?.assessment || Date.now() >= deadline) break
+        await wait(pollIntervalMs)
+      }
     } catch (err: unknown) {
       setReading(false)
       const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -428,6 +440,10 @@ export function AskGroundwork({
       return
     }
     setReading(false)
+    if (summary.length) {
+      const body = `${file.name}: ${summary.slice(0, 3).join(' ')}`
+      setSaid((s) => [...s, { from: 'groundwork' as const, reply: { blocks: [{ type: 'text', body }] } as unknown as AskReply }])
+    }
     ask(SAID_AFTER_UPLOAD, false, groundId)
   }
 

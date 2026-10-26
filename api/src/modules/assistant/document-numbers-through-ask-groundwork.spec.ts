@@ -207,3 +207,20 @@ describe('a link to a document is not the document (B-027)', () => {
     expect(prisma.groundObjective.createMany).not.toHaveBeenCalled();
   });
 });
+
+describe('only the document just added (26 October 2026)', () => {
+  it('Grace adds a photo after a PDF: Ask does not offer the PDF\'s numbers in its place', async () => {
+    const PHOTO = { id: 'doc-photo', fileName: 'mpesa.jpg', groundId: 'g1', visibility: 'OWN', content: 'An M-Pesa message.', holds: null, createdAt: new Date() };
+    const { service, prisma } = svc({ docs: [PHOTO, A_DOC] });
+    /* The fake honours take, newest first, as the database would. */
+    (prisma.groundDocument.findMany as jest.Mock).mockImplementation(async (q: any) => [PHOTO, A_DOC].slice(0, q?.take ?? 2));
+    const reply = await service.respond('org-a', 'p1', "I've uploaded it");
+    const said = reply.blocks.map((b: any) => b.body ?? b.summary ?? '').join(' ');
+    expect(said).not.toContain('Q4 targets.xlsx');
+    expect(prisma.assistantProposal.create).not.toHaveBeenCalled();
+    /* Not "I cannot answer that one yet": the file is kept, and can be asked about. */
+    expect(said).toBe('I have kept it with the check-in, and I will use it from now on. Ask me anything about what is in it.');
+    /* Not "I cannot answer that one yet": the file is kept, and can be asked about. */
+    expect(said).toBe('I have kept it with the check-in, and I will use it from now on. Ask me anything about what is in it.');
+  });
+});

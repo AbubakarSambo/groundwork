@@ -192,6 +192,7 @@ const SETUP_LANES = new Set<string>(['add_context', 'context_line', 'lead_note',
  * "I've uploaded it" - as opposed to `add_a_document`'s own patterns, which are about STARTING an
  * upload ("upload the handbook"). Narrow on purpose: a word for having just done it, not a request.
  */
+const A_FILE_KEPT = 'I have kept it with the check-in, and I will use it from now on. Ask me anything about what is in it.';
 const JUST_ADDED_A_DOCUMENT =
   /\bi(?:'ve| have)?\s+(?:just\s+)?(?:added|uploaded|attached|put\s+(?:up|in))\b/i;
 
@@ -585,6 +586,11 @@ export class AssistantService {
       }
       const waiting = await this.waitingDocumentFor(organizationId, personId, groundId);
       if (waiting) return this.proposeDocumentNumbers(organizationId, who, waiting);
+      /*
+       * NOTHING TO RECORD FROM IT (26 October 2026). Grace added a photo of an M-Pesa message in Ask; the panel said what was in it, then
+       * her "I've uploaded it." was answered "I cannot answer that one yet". A file with no numbers to record is simply kept and can be asked about.
+       */
+      if (JUST_ADDED_A_DOCUMENT.test(message) && (await this.aFileJustAdded(organizationId, personId, groundId))) return rules('add_a_document', text(A_FILE_KEPT));
     }
 
     /*
@@ -1564,6 +1570,25 @@ export class AssistantService {
    * chosen check-in when one was chosen (see ask.service.ts `checkTheCheckIn`), and to every check-in
    * this person is on otherwise, most recently read first.
    */
+  /** Whether this person added a file of their own in the last fifteen minutes. */
+  private async aFileJustAdded(organizationId: string, personId: string, groundId?: string): Promise<boolean> {
+    const person = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { linkedUserId: true } });
+    if (!person?.linkedUserId) return false;
+    const participants = await this.prisma.groundParticipant.findMany({
+      where: { userId: person.linkedUserId, ...(groundId ? { groundId } : {}) },
+      select: { id: true },
+    });
+    if (!participants.length) return false;
+    const [newest] = await this.prisma.groundDocument.findMany({
+      where: { participantId: { in: participants.map((p) => p.id) } },
+      orderBy: { createdAt: 'desc' },
+      take: 1,
+      select: { createdAt: true },
+    });
+    const at = newest?.createdAt ? new Date(newest.createdAt).getTime() : NaN;
+    return Number.isFinite(at) && Date.now() - at < 15 * 60_000;
+  }
+
   private async waitingDocumentFor(
     organizationId: string,
     personId: string,
@@ -1580,10 +1605,15 @@ export class AssistantService {
     });
     if (!participants.length) return null;
 
+    /*
+     * ONLY THE DOCUMENT JUST ADDED (26 October 2026). Grace added a photo of an M-Pesa message in Ask and was asked to record the numbers of
+     * a PDF she had added earlier: the newest documents with numbers waiting were walked, and the photo, still being read, was skipped.
+     * What was just added is the one Ask talks about, or none.
+     */
     const docs = await this.prisma.groundDocument.findMany({
-      where: { participantId: { in: participants.map((p) => p.id) }, NOT: { holds: { equals: null as any } } },
+      where: { participantId: { in: participants.map((p) => p.id) } },
       orderBy: { createdAt: 'desc' },
-      take: 5,
+      take: 1,
       select: { id: true, fileName: true, holds: true, groundId: true, visibility: true, participantId: true },
     });
     for (const d of docs) {
@@ -1615,7 +1645,8 @@ export class AssistantService {
     const docs = await this.prisma.groundDocument.findMany({
       where: { participantId: { in: mine.map((m) => m.id) } },
       orderBy: { createdAt: 'desc' },
-      take: 3,
+      /* Only the one just added, never an older one in its place (see waitingDocumentFor). */
+      take: 1,
       select: { id: true, groundId: true, content: true, holds: true },
     });
     for (const d of docs) {

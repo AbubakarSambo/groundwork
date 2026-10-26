@@ -243,6 +243,18 @@ export class DocumentsService {
   }
 
   /**
+   * A FILE READ DURING SETUP, BEFORE ANY CHECK-IN EXISTS (a new company's lead, 26 October 2026: "the lead couldn't upload docs"). The
+   * same reading every upload gets (PDF, Word, Excel, PowerPoint, photos, text), for the person signed in, and nothing is stored. Bank details are hidden
+   * the same way as every upload, and the text goes back to the setup conversation, which reads it and says what it found.
+   */
+  async readForSetup(file: Express.Multer.File | undefined): Promise<{ name: string; text: string }> {
+    if (!file?.buffer?.length) throw new BadRequestException('Choose a file to add.');
+    const text = (await this.extractContent(file)).trim();
+    if (!text) throw new BadRequestException('Nothing could be read from that file. Paste the text instead.');
+    return { name: file.originalname, text: text.slice(0, 40_000) };
+  }
+
+  /**
    * THE TEXT OF A FILE, WITH ITS BANK DETAILS ALREADY GONE.
    *
    * Every path that stores a document or hands its text to a model starts here: an upload, an
@@ -255,18 +267,6 @@ export class DocumentsService {
    */
   private async extractContent(file: Express.Multer.File): Promise<string> {
     return withoutBankDetails(await this.readTheText(file));
-  }
-
-  /**
-   * A FILE READ DURING SETUP, BEFORE ANY CHECK-IN EXISTS (a new company's lead, 26 October 2026: "the lead couldn't upload docs"). The
-   * same reading every upload gets (PDF, Word, Excel, PowerPoint, photos, text), for the person signed in, and nothing is stored: the
-   * text goes back to the setup conversation, which reads it and says what it found.
-   */
-  async readForSetup(file: Express.Multer.File | undefined): Promise<{ name: string; text: string }> {
-    if (!file?.buffer?.length) throw new BadRequestException('Choose a file to add.');
-    const text = (await this.readTheText(file)).trim();
-    if (!text) throw new BadRequestException('Nothing could be read from that file. Paste the text instead.');
-    return { name: file.originalname, text: text.slice(0, 40_000) };
   }
 
   private async readTheText(file: Express.Multer.File): Promise<string> {

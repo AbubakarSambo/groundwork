@@ -114,6 +114,27 @@ describe('after the file is chosen, Ask says back what it read and asks before k
     expect(askApi.answer).not.toHaveBeenCalled()
   })
 
+  it('once the file is read, Ask says what is in it (26 October 2026)', async () => {
+    as('MEMBER'); vi.mocked(askApi.mine).mockResolvedValue(PAGE(true))
+    vi.mocked(askApi.ask)
+      .mockResolvedValueOnce({ lane: 'add_a_document', composedBy: 'rules', blocks: [
+        { type: 'text', body: IT_GOES_ON },
+        { type: 'next_step', label: 'Choose a file', href: '/grounds', kind: 'upload_a_document', id: 'g-sales', context: { groundId: 'g-sales', label: 'Sales team, Q3' } },
+      ] })
+      .mockResolvedValueOnce({ lane: 'add_a_document', composedBy: 'rules', blocks: [{ type: 'text', body: 'Anything else?' }] })
+    vi.mocked(documentsApi.upload).mockResolvedValue({ id: 'doc-2' } as never)
+    vi.mocked(documentsApi.list).mockResolvedValue([
+      { id: 'doc-1', assessment: { suggests: ['An older price list.'] } },
+      { id: 'doc-2', assessment: { suggests: ['An M-Pesa message for KES 12,000 from Ngong Road.'] } },
+    ] as never)
+    vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
+    const { container } = panel()
+    fireEvent.click(await screen.findByRole('button', { name: PLUS }))
+    fireEvent.change(picker(container), { target: { files: [new File(['x'], 'mpesa.jpg', { type: 'image/jpeg' })] } })
+    expect(await screen.findByText('mpesa.jpg: An M-Pesa message for KES 12,000 from Ngong Road.')).toBeInTheDocument()
+    expect(screen.queryByText(/An older price list/)).toBeNull()
+  })
+
   it('for Grace: the document for the whole organisation is read and said back, and kept only on her yes', async () => {
     as('ADMIN'); vi.mocked(askApi.mine).mockResolvedValue(PAGE(false))
     vi.mocked(askApi.ask).mockResolvedValue({ lane: 'add_a_document', composedBy: 'rules', blocks: [
