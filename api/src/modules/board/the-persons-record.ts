@@ -268,7 +268,7 @@ export const asTheySaidIt = (raw: string) => stop(cleanText(String(raw ?? '').re
 /* "went through" is a payment only where it is the money that went through: "how quickly everything went through" is not (item 10). */
 const A_PAYMENT = /\b(?:paid|(?:payment|money|transfer|it|m-?pesa|the funds|funds|deposit)\s+(?:has\s+|have\s+)?(?:went|came|gone|come) through|is sorted|it['’]s sorted|deposit|(?:is|are|was|were) in the bank|cleared (?:our|the|their|its|his|her|that|this) (?:fee notes?|invoices?|bills?|balance|loan)|recorded (?:a payment|the payment|(?:KES|KSh|Ksh|USD|NGN|₦|\$)\s?[\d,]+))/i;
 const A_SALE = /\b(?:sold|bought|signed|closed|won)\b/i;
-const NOT_A_CLAIM = /\b(?:will|won['’]t|wont|going to|to be|expect|expects|expecting|if|once|hasn['’]t|haven['’]t|has not|have not|did not|didn['’]t|not|no|never|yet|nothing|need|needs|waiting|until|hope|plan|planning|might|could|should|would|soon)\b|['’]ll\b|n['’]t\b/i;
+const NOT_A_CLAIM = /\b(?:will|won['’]t|wont|going to|to be|expect|expects|expecting|if|once|hasn['’]t|haven['’]t|has not|have not|did not|didn['’]t|not|no|never|yet|nothing|nobody|no one|none|neither|nor|need|needs|waiting|until|hope|plan|planning|might|could|should|would|soon)\b|['’]ll\b|n['’]t\b/i;
 /* Their own later words that it did not happen: "hasn't actually come through yet", "I was mistaken", "hasn't actually paid yet". */
 const TAKEN_BACK = /\b(?:was mistaken|i was wrong|not actually|hasn['’]t actually|haven['’]t actually|has not actually|didn['’]t actually|did not actually|hasn['’]t (?:come through|paid|signed)|has not (?:come through|paid|signed)|not (?:paid|signed) yet|still choosing|fell through|pulled out|backed out|cancelled)\b/i;
 
