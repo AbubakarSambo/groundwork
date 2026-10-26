@@ -189,3 +189,17 @@ describe('a first name finds somebody invited by address alone (found in the bro
     expect(whoThisNameIs('Amani', two)).toBeNull();
   });
 });
+
+describe('an action and a name, said properly (26 October 2026)', () => {
+  const { aSentence } = require('./what-a-document-holds');
+  it('"Hold this as a record" is something Groundwork will do, not a guess', () => {
+    expect(aSentence('Hold this as a record of the transaction between the two parties')).toBe('I will hold this as a record of the transaction between the two parties.');
+    expect(aSentence('use this to establish the cost of van hire')).toBe('I will use this to establish the cost of van hire.');
+  });
+  it('a company name keeps its capital', () => {
+    expect(aSentence('Drop Access Ltd hired a delivery van from Kisumu Motors Ltd for 3 days')).toBe('It looks like Drop Access Ltd hired a delivery van from Kisumu Motors Ltd for 3 days.');
+  });
+  it('a fragment is still a guess, as before', () => {
+    expect(aSentence('A price list for the 600L cookers')).toBe('It looks like a price list for the 600L cookers.');
+  });
+});
