@@ -699,6 +699,24 @@ export function ChatPage() {
         })
       }
       setMsgs(v => [...v, ...newMsgs])
+      /*
+       * WHAT THE DOCUMENT SUGGESTS, SHOWN ONCE IT IS READ (26 October 2026). Since a0db2a191 ("Nobody waits for a model") the reading is
+       * written onto the document after the upload is answered, so `doc.assessment` is never on the upload's reply and this card had
+       * quietly stopped appearing. It is fetched when it is ready, for up to a minute, and shown then. the-document-card-waits-for-its-reading.spec.ts
+       */
+      if (!doc.assessment && groundId) {
+        const docId = doc.id, docName = doc.name, gid = groundId
+        void (async () => {
+          for (let i = 0; i < 20; i++) {
+            await new Promise((r) => setTimeout(r, 3000))
+            const found = await documentsApi.list(gid).then((all: any) => (Array.isArray(all) ? all : all?.data ?? []).find((d: any) => d.id === docId)).catch(() => null)
+            if (found?.assessment?.suggests?.length) {
+              setMsgs(v => v.some(m => m.id === `doc-assess-${docId}`) ? v : [...v, { id: `doc-assess-${docId}`, role: 'AI', content: '', docAssessment: { docId, docName, assessment: found.assessment } }])
+              return
+            }
+          }
+        })()
+      }
 
       // The engine has a real follow-up for a fresh upload - acknowledge it
       // by name and ask what it confirms (documentReceived), instead of

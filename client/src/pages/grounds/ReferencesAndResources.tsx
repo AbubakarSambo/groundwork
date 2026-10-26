@@ -313,9 +313,10 @@ function Evidence({ groundId, served }: { groundId: string; served: Served }) {
     queryFn: () => groundsApi.referencesEvidence(groundId, { page, q: q.trim() || undefined, group: group || undefined, person: person || undefined, when }),
     enabled: filtered && !!served.evidence,
   })
+  /* Every hook before the early return, so the hooks run in the same order on every render (26 October 2026). */
+  const [showAllEvidence, setShowAllEvidence] = useState(false)
   if (!served.evidence) return null
   const ev: AnEvidencePage = filtered && asked.data && 'items' in (asked.data as any) ? (asked.data as AnEvidencePage) : served.evidence
-  const [showAllEvidence, setShowAllEvidence] = useState(false)
   const first = ev.total ? (ev.page - 1) * ev.pageSize + 1 : 0
   const last = Math.min(ev.page * ev.pageSize, ev.total)
   return (
@@ -354,7 +355,8 @@ function Evidence({ groundId, served }: { groundId: string; served: Served }) {
                         <Text size="14" weight={600}>{e.readAs}</Text>
                         <Tag tone={e.countsAsProof ? 'proven' : 'plain'}>{e.countsAsProof ? 'Counts as proof' : 'Not proof'}</Tag>
                       </FlexRow>
-                      {e.shows && <Text size="13" ink="sub">{e.shows}</Text>}
+                      {(e.summary ?? e.shows) && <Text size="13" ink="sub">{e.summary ?? e.shows}</Text>}
+                      {e.usedFor && <Text size="13">{e.usedFor}</Text>}
                     </div>
                     <Text size="14">{e.belongsTo}</Text>
                     <Text size="14">{e.addedBy}</Text>

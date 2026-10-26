@@ -143,6 +143,8 @@ describe('the screens draw what the server serves', () => {
   it('the JSON the fee notes page is tested with is exactly what the server serves Wanjiru and Aisha', async () => {
     const kept = JSON.parse(readFileSync(join(__dirname, '..', '..', '..', '..', 'client', 'src', 'pages', 'grounds', '__fixtures__', 'fee-notes-references-served.json'), 'utf8'));
     const served = { wanjiru: await read(theFeeNotesCheckIn(), 'u-wanjiru'), aisha: await read(theFeeNotesCheckIn(), 'u-aisha') };
-    expect(JSON.parse(JSON.stringify(served))).toEqual(kept);
+    /* WRITE_FIXTURE=1 rewrites the client's copy from what the server serves now, when the server's shape changed on purpose (26 October 2026: each piece of evidence says its summary and what it is used for). */
+    if (process.env.WRITE_FIXTURE === '1') require('fs').writeFileSync(join(__dirname, '..', '..', '..', '..', 'client', 'src', 'pages', 'grounds', '__fixtures__', 'fee-notes-references-served.json'), `${JSON.stringify(served, null, 2)}\n`);
+    else expect(JSON.parse(JSON.stringify(served))).toEqual(kept);
   });
 });

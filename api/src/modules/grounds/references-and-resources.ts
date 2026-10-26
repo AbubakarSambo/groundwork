@@ -71,6 +71,10 @@ export interface APieceOfEvidence {
   id: string;
   readAs: string;
   shows: string | null;
+  /** What is in it, in a sentence or two, from the document's own reading (its assessment), when it has been read. */
+  summary?: string | null;
+  /** What it is used for: proof for the item it is filed on, or what Groundwork will do with it. */
+  usedFor?: string | null;
   belongsTo: string;
   addedBy: string;
   addedById: string | null;
@@ -285,12 +289,19 @@ async function theEvidencePage(prisma: any, ground: any, view: string, mine: any
   const people = new Map<string, string>((ground.participants ?? []).map((p: any) => [p.id, fullName(p.user, p.nameGiven) || 'Somebody']));
   const here = await theTemplateHere(prisma, ground);
   const itemWord = here.template.itemWord;
+  /* Each piece's summary and what it is used for, from its document's assessment (Hafsah, 26 October 2026: every upload "filed into References and
+     resources, where its summary and what it's used for appear"). */
+  const assessed: any[] = (await Promise.resolve(prisma.groundDocument?.findMany?.({ where: { id: { in: rows.map((r) => r.documentId).filter(Boolean) } }, select: { id: true, assessment: true } })).catch(() => [])) ?? [];
+  const readingOf = new Map<string, { suggests?: string[]; willDo?: string[] }>(assessed.map((d) => [d.id, (d.assessment ?? {}) as any]));
   const all: APieceOfEvidence[] = rows.map((r) => {
+    const reading = readingOf.get(r.documentId) ?? {};
     const by = r.participantId ? firstOf(people.get(r.participantId)) : '';
     return {
       id: r.id,
       readAs: r.readAs,
       shows: r.shows ?? null,
+      summary: (reading.suggests ?? []).slice(0, 2).map((x) => String(x).trim()).filter(Boolean).join(' ') || null,
+      usedFor: r.countsAsProof && r.itemName ? `Proof for ${r.itemName}, on the board.` : ((reading.willDo ?? [])[0] ? String(reading.willDo![0]).trim() : null),
       belongsTo: r.itemName ? (here.collections ? theBillItBelongsTo(r.itemName, itemWord) : r.itemName) : `Not filed on ${/^[aeiou]/i.test(itemWord) ? 'an' : 'a'} ${itemWord} yet`,
       addedBy: view === 'member' ? 'You' : (by || 'Somebody'),
       addedById: r.participantId ?? null,

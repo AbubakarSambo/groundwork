@@ -90,6 +90,8 @@
           "id": "ev-fn004",
           "readAs": "A payment",
           "shows": "Equity Bank remittance advice: KES 250,000 received from Kasarani Foods for FN-004.",
+          "summary": null,
+          "usedFor": "Proof for FN-004, on the board.",
           "belongsTo": "Fee note FN-004",
           "addedBy": "Njeri",
           "addedById": "p-njeri",
@@ -102,6 +104,8 @@
           "id": "ev-fn007-email",
           "readAs": "A client email",
           "shows": "Will pay once head office releases the funds.",
+          "summary": null,
+          "usedFor": null,
           "belongsTo": "Fee note FN-007",
           "addedBy": "Aisha",
           "addedById": "p-aisha",
@@ -135,6 +139,7 @@
       "emptySays": "Nobody has asked about this work yet. Questions asked with Ask about this work will show here, with their answers."
     },
     "suggested": [],
+    "peopleAlsoSeenBy": "",
     "people": [
       {
         "participantId": "p-brian",
@@ -160,8 +165,7 @@
         "helpWith": null,
         "earlier": []
       }
-    ],
-    "peopleAlsoSeenBy": ""
+    ]
   },
   "aisha": {
     "on": true,
@@ -245,6 +249,8 @@
           "id": "ev-fn007-email",
           "readAs": "A client email",
           "shows": "Will pay once head office releases the funds.",
+          "summary": null,
+          "usedFor": null,
           "belongsTo": "Fee note FN-007",
           "addedBy": "You",
           "addedById": "p-aisha",
