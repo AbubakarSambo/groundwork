@@ -1415,9 +1415,10 @@ export function ChatPage() {
                         onSend={send}
                         sendLabel="Send message"
                         disabled={loading || completed || declined || !opened}
-                        onPlus={groundId ? () => setAttachOpen(o => !o) : undefined}
+                        /* Always beside the typing box, never missing; only disabled for the moment before the check-in has loaded (26 October 2026). */
+                        onPlus={() => { if (groundId) setAttachOpen(o => !o) }}
                         plusOpen={attachOpen}
-                        plusDisabled={completed || declined}
+                        plusDisabled={completed || declined || !groundId}
                         plusMenu={groundId ? (
                           <>
                             {/* A photo first, because that is what the check-in asks for: "A photo of it is

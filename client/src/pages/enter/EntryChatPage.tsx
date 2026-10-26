@@ -1,3 +1,5 @@
+import { documentsApi } from '@/api/documents'
+import { UPLOAD_ACCEPT_ATTR, WHAT_YOU_CAN_UPLOAD_SHORT } from '@/lib/what-you-can-upload'
 import { whenItWas } from '../../lib/a-date-reads-the-same-everywhere'
 import { useState, useEffect, useRef } from 'react'
 import { HOW_A_SITUATION_IS_CHOSEN, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
@@ -2758,7 +2760,14 @@ export function EntryChatPage() {
   }
 
   // Read a text-based file client-side (no ground exists yet during onboarding).
+  /*
+   * A FILE OF ANY KIND IS READ (a new company's lead, 26 October 2026: "the lead couldn't upload docs"). Plain text is read here; a PDF,
+   * Word, Excel or PowerPoint file, or a photo, is read by the server, which keeps nothing (documentsApi.readForSetup). What comes back
+   * goes into the conversation, and Groundwork says what is in it and uses it from then on.
+   */
+  const isPlainText = (file: File) => file.type.startsWith('text/') || /\.(txt|csv|md|json|log)$/i.test(file.name)
   async function readDocFile(file: File): Promise<string> {
+    if (!isPlainText(file)) return (await documentsApi.readForSetup(file)).text
     return new Promise((resolve, reject) => {
       const r = new FileReader()
       r.onload = () => resolve(String(r.result || ''))
@@ -2770,12 +2779,12 @@ export function EntryChatPage() {
   async function handleDocFileUpload(file: File) {
     try {
       const text = await readDocFile(file)
-      if (!text.trim()) { toast.error('That file looks empty or is not plain text. Try pasting the content instead.'); return }
+      if (!text.trim()) { toast.error('Nothing could be read from that file. Try pasting the content instead.'); return }
       setDocLabel(file.name)
       setDocPasteText(text)
       setDocTab('paste') // show what was read so they can add context and confirm
-    } catch {
-      toast.error('Could not read that file. Paste the text instead.')
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message ?? 'Could not read that file. Paste the text instead.')
     }
   }
 
@@ -2956,10 +2965,13 @@ export function EntryChatPage() {
       setUploadedDoc({ name: file.name, content: content.slice(0, A_MESSAGE_MAX) })
     }
     reader.onerror = () => toast.error('Could not read file.')
-    if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.md')) {
+    if (isPlainText(file)) {
       reader.readAsText(file)
     } else {
-      setUploadedDoc({ name: file.name, content: `[Binary file: ${file.name}]` })
+      /* Read by the server, never sent in as "[Binary file: ...]" with nothing in it. */
+      documentsApi.readForSetup(file)
+        .then((r) => setUploadedDoc({ name: file.name, content: r.text.slice(0, A_MESSAGE_MAX) }))
+        .catch((err: any) => { toast.error(err?.response?.data?.message ?? 'Could not read that file. Paste the text instead.'); setDocContextMode(false) })
     }
     e.currentTarget.value = ''
     setDocContext('')
@@ -4469,8 +4481,8 @@ export function EntryChatPage() {
                       </div>
                       {docTab === 'upload' && (
                         <label className="gwui-ec-doc-upload-label">
-                          📎 Choose a text file (.txt, .md, .csv). For PDF or Word, paste the text instead.
-                          <input type="file" accept=".txt,.md,.csv,.json,.log" className="gwui-sr-only"
+                          📎 Choose a file: {WHAT_YOU_CAN_UPLOAD_SHORT}.
+                          <input type="file" accept={UPLOAD_ACCEPT_ATTR} className="gwui-sr-only"
                             onChange={e => { const f = e.target.files?.[0]; if (f) handleDocFileUpload(f) }} />
                         </label>
                       )}
@@ -4703,7 +4715,7 @@ export function EntryChatPage() {
                 <label htmlFor="entry-doc-upload-chip" title="Upload a document" className="gwui-ec-quick-action gwui-ec-quick-action-attach">
                   Attach a document
                 </label>
-                <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" className="gwui-sr-only" onChange={handleFileChange} />
+                <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept={UPLOAD_ACCEPT_ATTR} className="gwui-sr-only" onChange={handleFileChange} />
                 <div className="gwui-ec-quick-actions-end">
                   {/* No arrow (U.8 review): a button says what it does, and the other "End session"
                       button on this same screen (the natural-close prompt above) already says it
@@ -4749,6 +4761,11 @@ export function EntryChatPage() {
                   sendLabel="Send message"
                   placeholder="Type your response."
                   inputRef={taRef}
+                  /* The attach button beside the typing box, back (it went with the composer rebuild, 9be66c0ef). */
+                  onPlus={() => fileRef.current?.click()}
+                  plusGlyph="+ Doc"
+                  plusLabel="Add a document or a photo"
+                  plusDisabled={loading}
                 />
               </div>
             )}

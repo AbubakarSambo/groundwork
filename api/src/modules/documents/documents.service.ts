@@ -257,6 +257,18 @@ export class DocumentsService {
     return withoutBankDetails(await this.readTheText(file));
   }
 
+  /**
+   * A FILE READ DURING SETUP, BEFORE ANY CHECK-IN EXISTS (a new company's lead, 26 October 2026: "the lead couldn't upload docs"). The
+   * same reading every upload gets (PDF, Word, Excel, PowerPoint, photos, text), for the person signed in, and nothing is stored: the
+   * text goes back to the setup conversation, which reads it and says what it found.
+   */
+  async readForSetup(file: Express.Multer.File | undefined): Promise<{ name: string; text: string }> {
+    if (!file?.buffer?.length) throw new BadRequestException('Choose a file to add.');
+    const text = (await this.readTheText(file)).trim();
+    if (!text) throw new BadRequestException('Nothing could be read from that file. Paste the text instead.');
+    return { name: file.originalname, text: text.slice(0, 40_000) };
+  }
+
   private async readTheText(file: Express.Multer.File): Promise<string> {
     /* A file the browser could not name, whose extension says it is text, is read as text. */
     if (UNHELPFUL_MIMES.includes(file.mimetype ?? '') && looksLikeTextFromItsName(file.originalname)) {
