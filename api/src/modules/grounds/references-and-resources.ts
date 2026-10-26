@@ -397,7 +397,8 @@ export async function readReferencesAndResources(
     const docs: any[] = (await prisma.groundDocument?.findMany?.({
       where: documentWhereFor(ground.id, { participantId: mine?.id ?? null, isLead } as any, input.contextEnabled) as any,
       select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true, visibility: true, participantId: true, isConversation: true },
-      orderBy: { createdAt: 'asc' },
+      /* Newest first, as the evidence list: what was just added is at the top, not below every older file (26 October 2026). */
+      orderBy: { createdAt: 'desc' },
     }).catch(() => [])) ?? [];
     const items = docs.filter((d) => !filedIds.has(d.id)).map((d): ADocument => {
       const by = firstOf(d.participantId ? nameOf.get(d.participantId) : '') || 'Somebody';
