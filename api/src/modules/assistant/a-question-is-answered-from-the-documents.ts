@@ -128,9 +128,13 @@ export async function theRecordTheyMayRead(
     const isLead = g.initiatorId === input.userId;
     const people = ((await Promise.resolve(prisma.groundParticipant?.findMany?.({
       where: { groundId: g.id, ...(isLead ? {} : { userId: input.userId }) },
-      select: { id: true, userId: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
+      select: { id: true, userId: true, email: true, nameGiven: true },
     })).catch(() => [])) ?? []) as any[];
     if (!people.length) continue;
+    const users = ((await Promise.resolve(prisma.user?.findMany?.({
+      where: { id: { in: people.map((p) => p.userId).filter(Boolean) } }, select: { id: true, firstName: true, lastName: true },
+    })).catch(() => [])) ?? []) as any[];
+    for (const p of people) if (!p.user) p.user = users.find((u) => u.id === p.userId) ?? null;
     const nameOf = (p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || String(p.email ?? '').split('@')[0];
     const lines: string[] = [];
     for (const p of people) {
