@@ -66,6 +66,26 @@ const A_COLLEAGUE = 'colleague:'
  * entry is an address first, and the name is looked up by it here, from the map the people step
  * builds as names are typed.
  */
+/**
+ * THE NAME THE LEAD ALREADY USED (polish round 1, 26 October 2026). Grace named "Kevin Omondi, Mercy Wairimu, Joseph Kariuki and Peter Njoroge"
+ * in setup and invited them by address; nobody typed a name on the invite, so Kevin and Peter, who joined from the phone, had no name anywhere
+ * and the board called them "One" and "A". An address with no name typed takes the full name from her own setup words whose first name is
+ * the address's first part (kevin@... is Kevin Omondi). Only her words; never a guess beyond them.
+ */
+export function namesFromTheirSetupWords(entries: string[], theirWords: string[], typed: Record<string, string> = {}): Record<string, string> {
+  const out: Record<string, string> = { ...typed }
+  const said = theirWords.join(' ')
+  for (const e of entries) {
+    const address = e.split(/\s+[-–]\s+/)[0].trim().toLowerCase()
+    if (!address.includes('@') || out[address]) continue
+    const first = address.split('@')[0].split(/[._-]/)[0]
+    if (first.length < 2) continue
+    const m = new RegExp(`\\b(${first.charAt(0).toUpperCase()}${first.slice(1)})\\s+([A-Z][a-z’'-]+)\\b`).exec(said)
+    if (m) out[address] = `${m[1]} ${m[2]}`
+  }
+  return out
+}
+
 function asSomeoneToInvite(entry: string, displayNames?: Record<string, string>): { email?: string; colleagueId?: string; context?: string; displayName?: string } {
   const dash = entry.indexOf(' - ')
   const head = dash === -1 ? entry : entry.slice(0, dash)
@@ -3020,7 +3040,7 @@ export function EntryChatPage() {
         // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
         // on the second contributor and silently drop them.
-        contributors: everyoneNamedSoFar().map(e => asSomeoneToInvite(e, displayNames)),
+        contributors: everyoneNamedSoFar().map(e => asSomeoneToInvite(e, namesFromTheirSetupWords(everyoneNamedSoFar(), theirOwnSetupWords(onboardingHistory), displayNames))),
         /**
          * THE DOCUMENT SURVIVES AS A DOCUMENT, not just as words in the chat.
          *
@@ -3315,7 +3335,7 @@ export function EntryChatPage() {
         runsUntilEnded: runsUntilEnded || undefined,
         lastCheckInBy: runsUntilEnded ? undefined : (lastCheckInBy.trim() || undefined),
         inviteNote: inviteNote.trim() || undefined,
-        contributors: everyoneNamedSoFar().map(e => asSomeoneToInvite(e, displayNames)),
+        contributors: everyoneNamedSoFar().map(e => asSomeoneToInvite(e, namesFromTheirSetupWords(everyoneNamedSoFar(), theirOwnSetupWords(onboardingHistory), displayNames))),
       }
       entryApi.patchDraft(draftToken, patch).catch(() => { /* best-effort: localStorage still mirrors this */ })
       // Keep the local commit body (gw_commit_payload) in sync with these
