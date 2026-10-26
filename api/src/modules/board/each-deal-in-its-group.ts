@@ -81,7 +81,8 @@ function theFacts(r: AServedRecord & { lastSaidOn?: string | null; proofOnAnothe
     recent: !!lastSaid && now.getTime() - lastSaid.getTime() < RECENT_DAYS * 86_400_000,
     /* On Release 1's sales board, a step on the deal from a wait on its customer is its next step too, as the grid reads it. */
     next: !!r.next || (byBuyingDate && !!r.nextStep),
-    won: !!lastStage && !!r.stage && r.stage.toLowerCase() === lastStage.toLowerCase(),
+    /* Or its payment or its signed order is on record (polish round 2: Kilele Hotel, paid, read "Kevin has no deal won on record yet"). */
+    won: (!!lastStage && !!r.stage && r.stage.toLowerCase() === lastStage.toLowerCase()) || !!r.paymentRecord || !!r.signedOrder,
     ...(criteria ? { criteriaClose: everyCriterionMetOrClose(theCriteriaOnRecord(r.fields, r.buyingDate ?? null, { readTheDetails: true, wonWithProof: !!(r as any).paymentRecord || !!(r as any).signedOrder }), criteria.range, r.fields) } : {}),
   };
 }
