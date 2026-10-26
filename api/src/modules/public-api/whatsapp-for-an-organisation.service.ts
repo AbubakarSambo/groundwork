@@ -549,6 +549,14 @@ export class WhatsAppForAnOrganisationService {
         await say(YES_OR_NO_TO_AN_ANSWER(q ?? { askedBy: '', about: 'your request' }));
         return;
       }
+    } else if (!pending && who.personId && (A_YES.test(text) || A_NO.test(text)) && (await this.askWaitsForAYes(organizationId, who.personId))) {
+      /*
+       * A YES OR NO TO WHAT ASK JUST SAID BACK IS ASK'S (polish round 2, 26 October 2026). Mercy asked for leave on WhatsApp, Ask said it
+       * back and asked "Shall I send it to an admin to approve?", and her "yes" opened her check-in instead. The leave was never sent.
+       */
+      const answered = asATextMessage(await this.assistant.respondOnWhatsApp(organizationId, who.personId, text)) || 'Noted.';
+      await say(current.status === 'IN_PROGRESS' ? `${answered}\n\nWrite "back" to return to your check-in.` : `${answered}\n\nYour check-in for ${current.label} is still open. Reply START when you are ready.`);
+      return;
     } else if (pending) {
       if (A_YES.test(text) && who.personId) {
         await this.forgetTheRequest(organizationId, from);
@@ -722,6 +730,18 @@ export class WhatsAppForAnOrganisationService {
   }
 
   /** Whether anything waits for this person to approve or decline (decision 82, item 1). Never throws. */
+  /** Ask said something back in the last fifteen minutes and waits for this person's yes or no. */
+  private async askWaitsForAYes(organizationId: string, personId: string): Promise<boolean> {
+    try {
+      const person: any = await Promise.resolve((this.prisma as any).person?.findFirst?.({ where: { id: personId, organizationId }, select: { externalId: true } }));
+      if (!person?.externalId) return false;
+      const parked: any = await Promise.resolve((this.prisma as any).assistantProposal?.findFirst?.({
+        where: { organizationId, personExternalId: person.externalId, state: 'PARKED', createdAt: { gte: new Date(Date.now() - 15 * 60_000) } }, select: { id: true },
+      }));
+      return !!parked;
+    } catch { return false; }
+  }
+
   private async aDecisionWaitsFor(organizationId: string, personId: string): Promise<boolean> {
     try { return !!(await this.assistant.somethingWaitsForYouToDecide(organizationId, personId)); } catch { return false; }
   }

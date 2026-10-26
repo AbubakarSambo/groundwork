@@ -21,3 +21,16 @@ describe('an update sent before the check-in opens goes into it', () => {
     expect(door).toContain("!looksLikeARequest(arrived.text) && !aDecisionIn(arrived.text) && !/\\?\\s*$/.test(arrived.text.trim())");
   });
 });
+
+/** Mercy, polish round 2: her "yes" to Ask's "Shall I send it to an admin to approve?" opened her check-in, and the leave was never sent. */
+describe('a yes or no to what Ask just said back is Ask\'s', () => {
+  const door = fs.readFileSync(path.join(__dirname, 'whatsapp-for-an-organisation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  it('is sent to Ask before anything in the check-in reads it', () => {
+    const toAsk = door.indexOf('(A_YES.test(text) || A_NO.test(text)) && (await this.askWaitsForAYes(organizationId, who.personId))');
+    expect(toAsk).toBeGreaterThan(-1);
+    expect(toAsk).toBeLessThan(door.indexOf('} else if (pending) {'));
+  });
+  it('only while Ask waits, for fifteen minutes', () => {
+    expect(door).toContain("state: 'PARKED', createdAt: { gte: new Date(Date.now() - 15 * 60_000) }");
+  });
+});
