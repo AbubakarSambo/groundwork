@@ -51,9 +51,12 @@ export function withEarlierWordsOnTheirOwnDay(reply: string, earlier: readonly A
     if (!theirs) return s;
     const day = dayOf(theirs.e.at);
     let t = s;
-    for (const [re, instead] of days) t = t.replace(re, instead);
+    /* Never inside a quotation: those are their words as they wrote them (polish round 2). */
+    for (const [re, instead] of days) t = t.split(/(“[^”]*(?:”|$))/).map((part) => (part.startsWith('“') ? part : part.replace(re, instead))).join('');
+    /* The day is already said in the sentence: it is not said twice (polish round 2: "On Wednesday 14 October you wrote on Wednesday 14 October"). */
+    if (t.includes(day)) { changed = true; return t; }
     if (/^(\W*)last time,?\s+you\b/i.test(t)) t = t.replace(/^(\W*)last time,?\s+you\b/i, (_m, lead: string) => `${lead}In the last check-in, on ${day}, you`);
-    else if (/\byou (?:said|mentioned|told me|wrote)\b/i.test(t)) t = t.replace(/\byou (said|mentioned|told me|wrote)\b/i, (_m, verb: string) => `you ${verb} on ${day}`);
+    else if (/\byou (?:said|mentioned|told me|wrote)\b/i.test(t)) t = t.replace(/\b([Yy])ou (said|mentioned|told me|wrote)\b/, (_m, y: string, verb: string) => `${y}ou ${verb} on ${day}`);
     changed = true;
     return t;
   });

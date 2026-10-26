@@ -9,7 +9,7 @@ describe('"last time you said" is their own words, or it is not said', () => {
       { text: 'I went to Upper Hill offices and spoke to the receptionist. She said to come back Monday.', at: at('2026-10-14') },
     ]);
     expect(r.changed).toBe(true);
-    expect(r.text).toBe('On Wednesday 14 October you wrote: “I went to Upper Hill offices and spoke to the receptionist.” What happened there this week?');
+    expect(r.text).toBe('You wrote on Wednesday 14 October: “I went to Upper Hill offices and spoke to the receptionist.” What happened there this week?');
     expect(r.text).not.toMatch(/key account/);
   });
 
@@ -17,7 +17,7 @@ describe('"last time you said" is their own words, or it is not said', () => {
     const r = aLastTimeInTheirOwnWords('Last time you said the reply in Kasarani Foods v Tumaini Traders has already been filed; what is the next step?', [
       { text: 'The reply in Kasarani Foods v Tumaini Traders is ready, waiting for the KES 3,500 filing fee.', at: at('2026-10-16') },
     ]);
-    expect(r.text).toBe('On Friday 16 October you wrote: “The reply in Kasarani Foods v Tumaini Traders is ready, waiting for the KES 3,500 filing fee.” What is the next step?');
+    expect(r.text).toBe('You wrote on Friday 16 October: “The reply in Kasarani Foods v Tumaini Traders is ready, waiting for the KES 3,500 filing fee.” What is the next step?');
   });
 
   it('Wanjiru: words from the setup that she never wrote are cut, and the question stays', () => {
@@ -35,5 +35,19 @@ describe('"last time you said" is their own words, or it is not said', () => {
   it('a quotation that is word for word theirs stays', () => {
     const t = 'Last time you said “Westgate will pay on Friday”. Did they?';
     expect(aLastTimeInTheirOwnWords(t, [{ text: 'Westgate will pay on Friday.', at: at('2026-10-14') }]).text).toBe(t);
+  });
+});
+
+describe('a quotation is kept whole (polish round 2)', () => {
+  const at = (d: string) => new Date(`${d}T09:00:00+03:00`);
+  it('"Kasarani Foods v. Tumaini Traders" is one sentence, and no stray quotation mark is left at the start', () => {
+    const r = aLastTimeInTheirOwnWords('Last time you said “I will file. Then I will call.” What happened?', [
+      { text: 'The reply in Kasarani Foods v. Tumaini Traders was filed on Wednesday.', at: at('2026-10-14') },
+    ]);
+    expect(r.text).not.toMatch(/^\s*”/);
+    const s = aLastTimeInTheirOwnWords('Last time you said the reply in Kasarani Foods was filed.', [
+      { text: 'The reply in Kasarani Foods v. Tumaini Traders was filed on Wednesday.', at: at('2026-10-14') },
+    ]);
+    expect(s.text).toBe('You wrote on Wednesday 14 October: “The reply in Kasarani Foods v. Tumaini Traders was filed on Wednesday.”');
   });
 });

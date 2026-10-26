@@ -21,7 +21,32 @@ const ALSO_YOU_SAID = /\byou\s+(?:said|told\s+me|mentioned|wrote)\b[^.?!]*\b(?:l
 
 const STOP = new Set(['that', 'this', 'with', 'from', 'have', 'said', 'what', 'when', 'will', 'would', 'they', 'there', 'their', 'your', 'last', 'time', 'about', 'which', 'been', 'were', 'just', 'also', 'told', 'mentioned', 'wrote', 'previously', 'earlier', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']);
 const words = (t: string) => String(t ?? '').toLowerCase().replace(/[‘’]/g, "'").replace(/[^a-z0-9' -]+/g, ' ').split(/[\s-]+/).filter((w) => w.length >= 4 && !STOP.has(w));
-const sentencesOf = (t: string) => String(t ?? '').split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
+/*
+ * Sentences, with a quotation kept whole and "v." or "Mrs." never taken for the end of one (polish round 2: "Kasarani Foods v." was cut
+ * there, and a quotation split in two left a stray "”" at the start of ten openings).
+ */
+const ABBREVIATIONS = /\b(?:v|vs|Mr|Mrs|Ms|Dr|Prof|St|No|Ltd|Co)\.$/;
+function sentencesOf(t: string): string[] {
+  const text = String(t ?? '');
+  const out: string[] = [];
+  let start = 0;
+  let inQuote = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '“') inQuote = true;
+    else if (c === '”') inQuote = false;
+    else if (c === '"') inQuote = !inQuote;
+    if (inQuote || !/[.!?]/.test(c)) continue;
+    let j = i + 1;
+    while (j < text.length && /[”"’)]/.test(text[j])) j++;
+    if (j < text.length && !/\s/.test(text[j])) continue;
+    if (ABBREVIATIONS.test(text.slice(start, i + 1))) continue;
+    out.push(text.slice(start, j).trim());
+    start = j;
+  }
+  out.push(text.slice(start).trim());
+  return out.filter(Boolean);
+}
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const onTheDay = (d: Date) => aDaySaidInFull(new Date(d));
 
@@ -53,10 +78,10 @@ export function aLastTimeInTheirOwnWords(reply: string, earlier: AWordTheyWrote[
     const question = cut > 0 ? capital(s.slice(cut + 1).trim()) : null;
     const theirs = theirSentenceAbout(claim, earlier);
     changed = true;
-    const citation = theirs ? `On ${onTheDay(theirs.at)} you wrote: “${theirs.sentence.replace(/[“”"]/g, '')}”` : '';
+    const citation = theirs ? `You wrote on ${onTheDay(theirs.at)}: “${theirs.sentence.replace(/[“”"]/g, '')}”` : '';
     if (theirs && question) return `${citation} ${question}`;
     if (theirs) return /\?\s*$/.test(s) ? `${citation} Is that still where it stands?` : citation;
     return question ?? '';
-  }).filter(Boolean).join(' ')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  }).filter(Boolean).join(' ')).join('\n').replace(/\n{3,}/g, '\n\n').replace(/(^|\n)\s*[”"]\s*/g, '$1').trim();
   return out ? { text: out, changed } : { text: reply, changed: false };
 }
