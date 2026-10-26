@@ -12162,10 +12162,14 @@ ${told}` : '';
     }
 
     const systemPrompt =
-      'You are Groundwork. A supporting document has just been attached to this check-in session. Acknowledge it by name in one sentence. Then ask one question: what does this document confirm about what you have described? Wait for their answer before asking about complications. Warm, direct, brief. Do not summarise the document. Do not make a judgement. Do not list questions.';
+      /*
+       * WHAT IS IN IT IS SAID BACK, AND USED (Hafsah, 26 October 2026: "document synthesize needs to happen each chat where it tells them
+       * whats in the doc and uses it as context, we used to have that"). This said "Do not summarise the document."
+       */
+      'You are Groundwork. A document has just been attached to this check-in. Name it, then say in two or three short sentences what is in it that matters to this check-in: the names, amounts, dates and items, exactly as the document writes them. Then ask one question: what does it confirm about what they have told you? Plain, full sentences. Do not make a judgement. Do not list questions.';
 
     const docContext = doc
-      ? `[Document attached: "${doc.fileName}"]\n${doc.content.slice(0, 1000)}`
+      ? `[Document attached: "${doc.fileName}"]\n${doc.content.slice(0, 6000)}`
       : '[A document was attached but could not be read.]';
 
     const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: docContext }]);

@@ -2985,7 +2985,8 @@ export function EntryChatPage() {
     /* The whole turn has to fit a message (8,000 characters, the same cap every door has), so the
        document part gives way to the wrapper and the context rather than the server refusing it. */
     const head = `[Document: "${uploadedDoc.name}"]\n`
-    const tail = `\n\nContext from me: ${ctx || 'See attached document.'}`
+    /* Groundwork says what is in it, then uses it (Hafsah, 26 October 2026: "it tells them what's in the doc and uses it as context"). */
+    const tail = `\n\nContext from me: ${ctx || 'See attached document.'}\n\nPlease read it, tell me in a few short lines what is in it that I have not already said, and use it from now on.`
     const content = `${head}${uploadedDoc.content.slice(0, Math.max(0, A_MESSAGE_MAX - head.length - tail.length))}${tail}`
     setUploadedDoc(null)
     setDocContext('')

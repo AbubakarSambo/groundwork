@@ -504,8 +504,10 @@ export class WhatsAppForAnOrganisationService {
         const direct = await theDirectMorningIsOnFor(this.prisma, ground!.groundId);
         const once = direct ? '' : await this.sayOnceThatProofIsShared(doc, organizationId, from);
         if (doc?.couldNotRead) { await say(`${I_COULD_NOT_OPEN_THAT_FILE}${once}`); return; }
-        if (direct) { await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? `, with your note "${arrived.caption.replace(/[.\s]+$/, '')}"` : ''}.`); return; }
-        await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? ` with your note: ${arrived.caption}` : ''}.${doc?.visibility === 'OPEN' ? '' : ` ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'}`} Anything it backs up is read against what you said.${once}`);
+        /* What is in it, said back, as in the check-in on the web (Hafsah, 26 October 2026). Said instead of only "it is on your check-in". */
+        const readBack: string = await Promise.resolve().then(() => (this.conversation as any).documentReceived?.(current.id, userId!)).then((r: any) => String(r?.reply ?? '').trim()).catch(() => '');
+        if (direct) { await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? `, with your note "${arrived.caption.replace(/[.\s]+$/, '')}"` : ''}.${readBack ? `\n\n${readBack}` : ''}`); return; }
+        await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? ` with your note: ${arrived.caption}` : ''}.${doc?.visibility === 'OPEN' ? '' : ` ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'}`} Anything it backs up is read against what you said.${once}${readBack ? `\n\n${readBack}` : ''}`);
       } catch (err: any) {
         await say(aFileProblemInWords(err));
       }
