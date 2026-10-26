@@ -12568,6 +12568,7 @@ ${told}` : '';
         status: true,
         completedAt: true,
         createdAt: true,
+        availableFrom: true,
         isSelfCorrection: true,
         selfCorrectionTargetSession: true,
         turns: {
@@ -12582,10 +12583,10 @@ ${told}` : '';
         checkInId: c.id,
         sessionNumber: c.sessionNumber,
         status: c.status,
-        // The date the divider shows. A session spans days, so the date it was
-        // finished is the one that places it; an unfinished one is placed by when
-        // it opened, which is the only date it has.
-        date: (c.completedAt ?? c.createdAt).toISOString(),
+        /* The day the session belongs to: the last time they said something in it, else the day it opened. Not the day it was
+           finished: one the clock closed at midnight read as the next day (Kevin's Monday 19 October session read "20 October",
+           26 October 2026). */
+        date: ([...c.turns].reverse().find((t) => t.role === TurnRole.PERSON)?.createdAt ?? c.availableFrom ?? c.completedAt ?? c.createdAt).toISOString(),
         isSelfCorrection: c.isSelfCorrection,
         correctionOf: c.selfCorrectionTargetSession,
         /* Cleaned on the way out, same as `open` above: a turn stored before a rule existed keeps
