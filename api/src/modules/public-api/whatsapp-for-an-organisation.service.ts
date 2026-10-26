@@ -892,7 +892,7 @@ export class WhatsAppForAnOrganisationService {
   private async joinFromTheNumberTheCompanyAdded(organizationId: string, personId: string | null, userId: string | null = null): Promise<string | null> {
     if (!this.participants) return null;
     /* The number that wrote matched the roster or the sign-in, so the address comes from whichever we have (one number for a person). */
-    const person = personId ? await this.prisma.person.findFirst({ where: { id: personId, organizationId, active: true }, select: { id: true, email: true } }) : null;
+    const person = personId ? await this.prisma.person.findFirst({ where: { id: personId, organizationId, active: true }, select: { id: true, email: true, givenName: true, familyName: true, displayName: true } }) : null;
     const signIn = !person?.email && userId ? await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }).catch(() => null) : null;
     const email = person?.email ?? signIn?.email ?? null;
     if (!email) return null;
@@ -906,6 +906,14 @@ export class WhatsAppForAnOrganisationService {
     const user = await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' }, deletedAt: null }, select: { id: true } });
     if (!user) return null;
     if (person) await this.prisma.person.updateMany({ where: { id: person.id, linkedUserId: null }, data: { linkedUserId: user.id } }).catch(() => undefined);
+    /*
+     * THEIR NAME COMES WITH THEM (polish round 1, 26 October 2026). Joining from the phone made a sign-in with no name, so Brian's request to
+     * spend was dropped from the approver's queue and boards read "Somebody". The name the organisation gave them goes on the sign-in,
+     * only where it has none.
+     */
+    const first = String(person?.givenName ?? '').trim() || String(person?.displayName ?? '').trim().split(/\s+/)[0] || '';
+    const last = String(person?.familyName ?? '').trim() || String(person?.displayName ?? '').trim().split(/\s+/).slice(1).join(' ') || '';
+    if (first) await this.prisma.user.updateMany({ where: { id: user.id, firstName: '' }, data: { firstName: first, ...(last ? { lastName: last } : {}) } }).catch(() => undefined);
     this.logger?.log?.(`Somebody joined their check-in from the number their organisation added.`);
     return user.id;
   }

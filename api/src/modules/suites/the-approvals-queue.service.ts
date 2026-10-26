@@ -308,8 +308,23 @@ export class ApprovalsQueueService {
   private async namesOf(ids: string[]): Promise<Map<string, { first: string; full: string }>> {
     const unique = [...new Set(ids.filter(Boolean))];
     if (!unique.length) return new Map();
-    const us = await this.prisma.user.findMany({ where: { id: { in: unique } }, select: { id: true, firstName: true, lastName: true } });
-    return new Map((us ?? []).map((u) => [u.id, { first: u.firstName?.trim() || '', full: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() }]));
+    const us = await this.prisma.user.findMany({ where: { id: { in: unique } }, select: { id: true, firstName: true, lastName: true, email: true } });
+    /*
+     * A REQUEST IS NEVER DROPPED FOR WANT OF A NAME (polish round 1, 26 October 2026). Brian joined without a first or last name on his
+     * sign-in, and the queue left out every item with no name: his request to spend was counted ("One request is waiting") and never
+     * shown, so nobody could approve it. The name falls back to the staff list, then the name he gave in a check-in, then his address's
+     * first part, as he is known.
+     */
+    const blank = (us ?? []).filter((u) => !u.firstName?.trim()).map((u) => u.id);
+    const roster: any[] = blank.length ? await Promise.resolve((this.prisma as any).person?.findMany?.({ where: { linkedUserId: { in: blank } }, select: { linkedUserId: true, givenName: true, familyName: true, displayName: true } })).catch(() => []) ?? [] : [];
+    const given: any[] = blank.length ? await Promise.resolve((this.prisma as any).groundParticipant?.findMany?.({ where: { userId: { in: blank }, nameGiven: { not: null } }, select: { userId: true, nameGiven: true } })).catch(() => []) ?? [] : [];
+    const fromTheirAddress = (email: string | null | undefined) => { const w = String(email ?? '').split('@')[0].split(/[._-]/)[0]; return w ? w.charAt(0).toUpperCase() + w.slice(1) : ''; };
+    return new Map((us ?? []).map((u) => {
+      if (u.firstName?.trim()) return [u.id, { first: u.firstName.trim(), full: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() }];
+      const e = roster.find((x) => x.linkedUserId === u.id);
+      const full = (e ? [e.givenName, e.familyName].filter(Boolean).join(' ').trim() || String(e.displayName ?? '').trim() : '') || String(given.find((x) => x.userId === u.id)?.nameGiven ?? '').trim() || fromTheirAddress(u.email);
+      return [u.id, { first: full.split(/\s+/)[0] ?? '', full }];
+    }));
   }
 
   /** The six rows the queue reads, in one query: the two suites and the four kinds of rule kept beside them. */
