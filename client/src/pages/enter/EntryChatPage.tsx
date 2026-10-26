@@ -1117,7 +1117,7 @@ export function groupOf(card: { cardKey: string; scenario: string }): string {
  * THE OPENING LINE, AND THE CLOSE, OF THE LEAD'S SETUP (Hafsah, 26 October 2026). Said in the chat itself: what this is for, how long it
  * takes and how to stop, added in front of the first message she reads, which stays as it was; and one line when setup is done.
  */
-export const THE_SETUP_LINE = 'This sets up your team’s check-ins, so they can give updates against what you tell me here. It takes about 10 minutes, and you can stop any time with End session.'
+export const THE_SETUP_LINE = 'This sets up your team’s check-ins and records where things stand today. It takes about 10 minutes, and you can stop any time with End session.'
 export function theSetupIsDoneSaying(firstOpensOn: string | null): string {
   const d = firstOpensOn ? new Date(`${firstOpensOn}T12:00:00Z`) : null
   const day = d && !isNaN(d.getTime()) ? whenItWas(d, 'weekdayAndDay', 'UTC') : null
@@ -2473,6 +2473,8 @@ export function EntryChatPage() {
   }
   /* The moment setup is ready, the check-in begins. Not for the anchor, whose setup conversation is
      already the whole conversation (request 165), and never twice. */
+  /* Kept only for a setup that was ready before 26 October and never reached its check-in: it still opens one. Setup that ends now is the
+     first check-in itself (see the ready step in sendOnboarding), so this finds the history already there and does nothing. */
   useEffect(() => {
     if (!onboardingReady || onboardingLoading || flowPath !== null || isAnchorDraft()) return
     if (phase !== 'onboarding' || history.length > 0 || startCheckin.isPending) return
@@ -2709,7 +2711,15 @@ export function EntryChatPage() {
        * transcript becomes the session's record straight away, and the next thing she sees is the
        * reveal and the people step.
        */
-      if (res.ready && isAnchorDraft()) {
+      /*
+       * AND NOW FOR EVERY LEAD (Hafsah, 26 October 2026): setup is the lead's first check-in. It gathered the lead's own first update and
+       * ended with "Anything else I should know?", so its transcript is the first session's record and no second conversation opens.
+       */
+      if (res.ready) {
+        if (!isAnchorDraft()) {
+          setFlowPath('self')
+          setOnboardingStep(ONBOARDING_STEPS + 1)
+        }
         setHistory(updatedHistory)
         setClosed(true)
         setShowSave(true)

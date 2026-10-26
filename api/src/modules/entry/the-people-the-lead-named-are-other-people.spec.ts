@@ -1,3 +1,4 @@
+import { SETUP_IS_DONE } from './setup-is-the-first-check-in';
 import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
 
 const SAID = 'Check in weekly for four weeks. The new starter is Chidi Okafor, chidi.okafor@kito.test, a customer support agent. Wairimu Njoroge leads it.';
@@ -53,7 +54,8 @@ describe('what the setup screen is handed', () => {
 
   it('the closing words never say who "gives the accounts"', async () => {
     const out: any = await world(model, 'This will help us track Chidi. The next screen will ask who gives the accounts, and the check-in itself will come after that.').onboard(said as any, undefined, undefined, undefined, undefined, { userId: 'u-w', organizationId: 'o1' });
-    expect(out.reply).toBe('This will help us track Chidi. The next screen will ask whether you will check in too, and the check-in itself will come after that.');
+    /* A reply with no question ends setup, so the product's last line follows it (26 October 2026, setup-is-the-first-check-in). */
+    expect(out.reply).toBe(`This will help us track Chidi. The next screen will ask whether you will check in too, and the check-in itself will come after that.\n\n${SETUP_IS_DONE}`);
     expect(out.reply).not.toMatch(/account/i);
   });
 });

@@ -5,7 +5,7 @@ import { YOU_CAN_END_NOW, YOU_CAN_END_NOW_ON_WHATSAPP } from './a-short-day';
  */
 export const THE_CHECK_IN_LINE = 'This takes about 10 minutes. You can stop any time with End session.';
 export const THE_CHECK_IN_LINE_ON_WHATSAPP = 'This takes about 10 minutes. Reply END to stop any time.';
-export const THE_SETUP_LINE = 'This sets up your team’s check-ins, so they can give updates against what you tell me here. It takes about 10 minutes, and you can stop any time with End session.';
+export const THE_SETUP_LINE = 'This sets up your team’s check-ins and records where things stand today. It takes about 10 minutes, and you can stop any time with End session.';
 
 /** The first message of a check-in with the line in front of it, once. */
 export function withTheOpeningLine(first: string): string {

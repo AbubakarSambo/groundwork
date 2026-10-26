@@ -44,7 +44,8 @@ describe('the opener for an open link', () => {
     const open = CONV.slice(CONV.indexOf('async open(checkInId: string'), CONV.indexOf('private async whatTheDocumentWaitsFor('));
     expect(open).toMatch(/theOpener: aiTurn\.content/);
     /* Changed 26 October 2026 (Hafsah: the opening line): what the guards passed is stored, with the line about how long it takes in front (not for a self-correction). */
-    expect(open).toMatch(/content: \(checkIn as any\)\.isSelfCorrection \? opening : withTheOpeningLine\(opening\),/);
+    /* And not for a check-in opened by Add something, whose first line is "What would you like to add?" (26 October 2026). */
+    expect(open).toMatch(/content: \(checkIn as any\)\.isSelfCorrection \|\| alreadyWritten === WHAT_WOULD_YOU_LIKE_TO_ADD \? opening : withTheOpeningLine\(opening\),/);
   });
 
   /*

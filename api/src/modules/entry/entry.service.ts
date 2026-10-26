@@ -81,6 +81,7 @@ import { whatTheyAskedFor } from './what-they-asked-for-in-so-many-words';
 import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
+import { THE_FIRST_UPDATE_TOO, SETUP_IS_DONE, whereSetupEnds, whatToSayAboutTheEndOfSetup } from './setup-is-the-first-check-in';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
 import { PromptsService } from '../prompts';
 import { theAnchorGuidance, theChallengeWasUsed, theHopeWasAskedAndAnswered, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
@@ -1230,22 +1231,41 @@ Rules:
     }
     const settled = whatIsSettledAndWhatIsNot(soFar);
     const theyAreKnownHere = whatTheyAlreadyHave(await this.whatThisLeadAlreadyHas(askedBy));
+    /*
+     * WHERE THE END OF SETUP STANDS, FROM ITS OWN TURNS. The board's needs are read from what the last turn already worked out (`soFar`),
+     * because this turn's own reading runs beside the reply. Once they answer "Anything else I should know?" with nothing, the product
+     * writes the last line itself.
+     */
+    const theirLastNow = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
+    const theBoardIsCovered = !!soFar && theGate(soFar as any, scenarioForTheQuestion ?? scenarioInput ?? undefined);
+    const endOfSetup = whereSetupEnds(
+      (messages as { role: string; content: string }[]).filter((m) => m.role === 'assistant').map((m) => m.content ?? '').reverse(),
+      theirLastNow,
+      theBoardIsCovered,
+    );
+    const aboutTheEndOfSetup = whatToSayAboutTheEndOfSetup(theBoardIsCovered, endOfSetup);
     const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioForTheQuestion, momentInput)
       + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '')
       + (theyAreKnownHere ? `\n\n---\n\n${theyAreKnownHere}` : '')
       + (settled ? `\n\n---\n\n${settled}` : '')
+      /* Setup is the lead's first check-in (26 October 2026). See setup-is-the-first-check-in. */
+      + `\n\n---\n\n${THE_FIRST_UPDATE_TOO}`
       /* Last, after everything. See the-last-thing-it-reads-is-the-thing-it-must-not-miss. */
-      + `\n\n---\n\n${theThingsThatCannotBeMissed(theirWords, theyPushedBackOnTheQuestions(theirWords))}`;
+      + `\n\n---\n\n${theThingsThatCannotBeMissed(theirWords, theyPushedBackOnTheQuestions(theirWords))}`
+      /* The end of setup is read last of all, so it is not lost under the rest (26 October 2026: it was never asked from the middle). */
+      + (aboutTheEndOfSetup ? `\n\n---\n\n${aboutTheEndOfSetup}` : '');
     /*
      * THE REPLY AND THE EXTRACTION RUN SIDE BY SIDE. The extraction reads what the person said, and
      * they have already said it; the reply being composed at the same time is a question, and a
      * question adds no fact about their situation. In sequence the two doubled the turn.
      */
-    const replyInFlight = this.guardedReply(
-      repeating ? `${setupPrompt}\n\n---\n\n${repeating}` : setupPrompt,
-      messages,
-      onDelta,
-    );
+    const replyInFlight = endOfSetup.close
+      ? Promise.resolve(SETUP_IS_DONE).then((done) => { onDelta?.(done); return done; })
+      : this.guardedReply(
+        repeating ? `${setupPrompt}\n\n---\n\n${repeating}` : setupPrompt,
+        messages,
+        onDelta,
+      );
 
     // Second lightweight call to extract structured fields
     const EXTRACT_SYSTEM = `You are extracting structured data from an onboarding conversation for Groundwork.
@@ -1404,7 +1424,8 @@ from finishing at all.`;
      * twenty-two to two. Read that file before trying again.
      */
     const forThisSituation = scenarioForTheQuestion ?? scenarioInput ?? undefined;
-    const ready = theGate(extracted, forThisSituation) || stoppedAsking;
+    /* Ready once setup has ended the way a check-in ends, or the assistant has stopped asking. Never the moment the gate opens: the first update comes next. */
+    const ready = endOfSetup.close || stoppedAsking;
     if (stoppedAsking && !theGate(extracted, forThisSituation)) {
       this.logger.warn(
         `Setup finished without ${whatSetupNeverGot(extracted, forThisSituation).join(', ')} - the assistant had stopped asking.`,
@@ -1456,6 +1477,8 @@ from finishing at all.`;
     out = out
       .replace(/\bwho (?:gives|should give|will give) (?:the |their |your )?accounts?\b/gi, 'whether you will check in too')
       .replace(/\bwho (?:gives|should give|will give) (?:an? )?account\b/gi, 'whether you will check in too');
+    /* Whichever way setup ended, its last line says what was set up and what happens next. */
+    if (ready && !out.includes(SETUP_IS_DONE)) out = `${out.trim()}\n\n${SETUP_IS_DONE}`;
     return { reply: out, extracted, ready, needsPeople };
   }
 

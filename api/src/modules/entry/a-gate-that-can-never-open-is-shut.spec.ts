@@ -95,7 +95,10 @@ describe('and so the gate opens', () => {
        file is about is the `|| stoppedAsking`, which is unchanged: a gate that can never open is
        shut, and a thin check-in beats stranding somebody in front of a screen with nothing to
        click. */
-    expect(SERVICE).toContain('theGate(extracted, forThisSituation) || stoppedAsking');
+    /* Since 26 October 2026 setup is the lead's first check-in: the gate opening tells the model the board is covered, and setup is ready
+       once it has ended the way a check-in ends. The `|| stoppedAsking` is unchanged. See setup-is-the-first-check-in. */
+    expect(SERVICE).toContain('const ready = endOfSetup.close || stoppedAsking;');
+    expect(SERVICE).toContain('theGate(soFar as any,');
   });
 
   it('and says in the log what it never got, rather than passing silently', () => {
