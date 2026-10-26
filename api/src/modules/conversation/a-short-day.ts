@@ -11,6 +11,7 @@ export const A_SHORT_DAY = [
   'Ask only for what the board still needs. That is the next step and its day for each open item, proof for anything new they claim, what changed since last time, and one coaching or follow-up question.',
   'Never ask what the record already holds, or what they answered last time unless it has changed.',
   'Put related things in one question: "Westgate and Ngong Road: what is next for each, and when?"',
+  'Never ask about a motive, as if they meant to hold something back or let somebody down. Brian said he had not told Njeri about the filing yet, and was asked "What is the goal of holding that information back from Njeri?". Ask what happens next instead: "When will Njeri hear about the filing, and from whom?"',
   'As soon as today’s needs are covered, close.',
 ].join(' ');
 

@@ -159,3 +159,21 @@ describe('what waited for approval went out (real-model run, 25 October)', () =>
     expect(aLineSaysItIsDone(line('p-brian', 'I will send FN-009 to Kito Foods once it is approved.'), wait, none)).toBe(false);
   });
 });
+
+/** Kevin, polish round 2: told three mornings running "Grace is waiting on you for an update on Kilele Hotel", after saying there was none. */
+describe('the one holding it says nothing is owed', () => {
+  const names = (pid: string) => ({ 'p-grace': ['Grace', 'Achieng'], 'p-kevin': ['Kevin', 'Omondi'] } as Record<string, string[]>)[pid] ?? [];
+  const KILELE: AnOpenWait = { id: 'w-k', fromParticipantId: 'p-grace', onParticipantId: 'p-kevin', onLabel: null, what: 'an update on Kilele Hotel', createdAt: at('2026-10-13T11:00:00Z'), sourceCheckInId: 'c-g' };
+  const said = (text: string, type = 'PROGRESS'): ALineOnRecord => ({ id: 'x', participantId: 'p-kevin', checkInId: 'c-k', type, text, createdAt: at('2026-10-14T07:30:00Z') });
+  it.each([
+    ["I dealt with Kilele Hotel myself, there's no update for Grace.", true],
+    ["I don't have an update on Kilele Hotel for Grace; that sale was complete on Monday.", true],
+    ['I will send Grace the Kilele Hotel update tomorrow.', false],
+    ['Kilele Hotel is still thinking about it.', false],
+  ])('%s', (text, yes) => {
+    expect(aLineSaysItIsDone(said(text as string, 'WORRY'), KILELE, names)).toBe(yes);
+  });
+  it('only the one holding it can say so', () => {
+    expect(aLineSaysItIsDone({ ...said("There's no update for Grace on Kilele Hotel."), participantId: 'p-joseph' }, KILELE, names)).toBe(false);
+  });
+});
