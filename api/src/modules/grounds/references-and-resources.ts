@@ -303,7 +303,7 @@ async function theEvidencePage(prisma: any, ground: any, view: string, mine: any
       readAs: r.readAs,
       shows: r.shows ?? null,
       summary: (reading.suggests ?? []).slice(0, 2).map((x) => String(x).trim()).filter(Boolean).join(' ') || null,
-      usedFor: r.countsAsProof && r.itemName ? `Proof for ${r.itemName}, on the board.` : ((reading.willDo ?? [])[0] ? String(reading.willDo![0]).trim() : null),
+      usedFor: r.countsAsProof && r.itemName ? `Proof for ${r.itemName}, on the board.` : null,
       belongsTo: r.itemName ? (here.collections ? theBillItBelongsTo(r.itemName, itemWord) : r.itemName) : `Not filed on ${/^[aeiou]/i.test(itemWord) ? 'an' : 'a'} ${itemWord} yet`,
       addedBy: view === 'member' ? 'You' : (by || 'Somebody'),
       addedById: r.participantId ?? null,
@@ -409,7 +409,8 @@ export async function readReferencesAndResources(
         added: `${mineToo ? 'You' : by}, ${aDayIn(d.createdAt, timeZone)}`,
         addedOn: new Date(d.createdAt).toISOString().slice(0, 10),
         summary: suggests[0] ? String(suggests[0]).trim() : (mineToo && d.uploaderNote ? String(d.uploaderNote).trim() : null),
-        usedFor: d.uploaderNote && String(d.uploaderNote).trim() ? String(d.uploaderNote).trim() : (Array.isArray(d.assessment?.willDo) && d.assessment.willDo[0] ? String(d.assessment.willDo[0]).trim() : null),
+        /* What the person who added it said it is for. Never the reader's own note to itself ("It looks like hold this as evidence…"), which read as broken English. */
+        usedFor: d.uploaderNote && String(d.uploaderNote).trim() ? String(d.uploaderNote).trim() : null,
         whoCanSee: whoCanSeeIt(d, { participantId: mine?.id ?? null, isLead }, by, firstOf(leadName)),
         kind: theKindOfDocument(d.mimeType, d.fileName),
       };

@@ -282,7 +282,9 @@ export function AskGroundwork({
     ? (isMine(chosen) ? chosen : '')
     : (isMine(here) ? here : '')
 
-  useEffect(() => { end.current?.scrollIntoView?.({ block: 'end' }) }, [said.length, reading, sending])
+  /* Opens on the newest answer, earlier ones included once they load (26 October 2026: it opened on the oldest). */
+  const earlierTurns = page.data?.turns?.length ?? 0
+  useEffect(() => { end.current?.scrollIntoView?.({ block: 'end' }) }, [said.length, reading, sending, earlierTurns])
 
   useEffect(() => {
     if (!sending) { setWaitedAWhile(false); return }
