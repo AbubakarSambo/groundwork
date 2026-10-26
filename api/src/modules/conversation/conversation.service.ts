@@ -231,6 +231,7 @@ import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
 import { aDayIsNamedRight } from './a-day-is-named-right';
+import { theCheckInToAddTo, WHAT_WOULD_YOU_LIKE_TO_ADD, ADD_SOMETHING_REFUSED } from './add-something';
 import { aLastTimeInTheirOwnWords, type AWordTheyWrote } from './a-last-time-is-their-own-words';
 import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
 import { isShut } from '../grounds/a-ground-that-has-ended';
@@ -1543,7 +1544,7 @@ export class ConversationService {
       data: {
         /* How long it takes and how to stop, in front of the first message, which stays as it was (the-opening-line.ts, 26 October). */
         /* Not on a correction of their own record: that is not a ten-minute check-in, and the short day does not apply to it. */
-        checkInId: checkIn.id, role: TurnRole.AI, content: (checkIn as any).isSelfCorrection ? opening : withTheOpeningLine(opening),
+        checkInId: checkIn.id, role: TurnRole.AI, content: (checkIn as any).isSelfCorrection || alreadyWritten === WHAT_WOULD_YOU_LIKE_TO_ADD ? opening : withTheOpeningLine(opening),
         /* Stamped as it is written, so the two-party balance can be counted without ever reading
            one person's turns while answering another - see the-same-burden-on-both-sides.ts. */
         askedFor: stampWhatItAskedFor(opening),
@@ -2140,6 +2141,26 @@ export class ConversationService {
    * through `streamDraft`. Everything after the draft is the same code, and the final text, which is
    * what is saved, replaces the draft on the screen. See sendMessageStream.
    */
+  /** Add something to their own record, any time (add-something.ts): into the check-in that is open, else the next one, opened now. */
+  async addSomething(groundId: string, userId: string, text: string): Promise<{ checkInId: string; reply: string }> {
+    const said = String(text ?? '').trim();
+    if (!said) throw new BadRequestException(ADD_SOMETHING_REFUSED.empty);
+    const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId }, select: { id: true } });
+    if (!participant) throw new ForbiddenException(ADD_SOMETHING_REFUSED.notInIt);
+    const theirs = await this.prisma.checkIn.findMany({
+      where: { groundId, participantId: participant.id, status: { in: [CheckInStatus.IN_PROGRESS, CheckInStatus.NOT_STARTED] }, isSetup: false, isSelfCorrection: false },
+      select: { id: true, status: true, sessionNumber: true },
+    });
+    const target = theCheckInToAddTo(theirs as any[]);
+    if (!target) throw new BadRequestException(ADD_SOMETHING_REFUSED.nothingToAddTo);
+    if (target.status === CheckInStatus.NOT_STARTED) {
+      await this.prisma.checkIn.update({ where: { id: target.id }, data: { availableFrom: new Date() } });
+      await this.open(target.id, userId, WHAT_WOULD_YOU_LIKE_TO_ADD);
+    }
+    const out: any = await this.sendMessage(target.id, userId, said);
+    return { checkInId: target.id, reply: String(out?.reply ?? out?.content ?? '') };
+  }
+
   async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string, how: { streamDraft?: (text: string) => void; alreadyJoined?: boolean; door?: Door; answering?: string | null } = {}): Promise<any> {
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
     /*

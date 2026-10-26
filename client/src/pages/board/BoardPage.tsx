@@ -1,3 +1,4 @@
+import { AddSomething } from '@/components/gw/AddSomething'
 import { RELEASE_4_ORDERS, whereItFolds, theRelease4Order } from './release-4-orders'
 import { hasEnded, howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
@@ -2662,6 +2663,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </Link>
                 )
               )}
+              {/* Add something, any time, for anybody in the check-in (Hafsah after polish round 3; components/gw/AddSomething.tsx). */}
+              {(isAParty || viewerRunsThisCheckIn) && !groundEnded && <AddSomething groundId={id!} />}
               {/* Board review, 1 October, item 8: a quiet text link that opens Ask, drawn with its
                   own one-off classes instead of the shared `gwui-plain-link` every other quiet
                   text link on this board uses - the button-count test could not tell it apart

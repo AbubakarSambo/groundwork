@@ -39,6 +39,7 @@ import { closingSoonestFirst, oneAtATime, theNextOne } from './several-check-ins
 import { whenItIsDue } from '../whatsapp/what-goes-to-a-phone';
 import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { theCheckInIsCompleteSaying } from '../grounds/what-is-sent-in-simpler-words';
+import { WHAT_WOULD_YOU_LIKE_TO_ADD } from '../conversation/add-something';
 import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, nothingToReadYet, THANKS_YOUR_ANSWER_IS_IN, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
   NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_WISH_TO_CARRY_ON_THE_CHECK_IN, isAGreetingOrARequestToStart, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
   ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest, aReportWorthItsTemplate, THANKS_ONLY } from './a-whatsapp-message-is-routed';
@@ -284,20 +285,21 @@ export class WhatsAppForAnOrganisationService {
      * opening later today, opens that one now, and the message goes into it.
      */
     /*
-     * Only an update: eight words or more, and not within two hours of their last check-in closing. "Thanks, talk tomorrow!" after a
-     * close opened the next day's check-in and closed it again, five times over (polish round 2, Kevin, 12 October).
+     * ANY MESSAGE BETWEEN CHECK-INS IS ADDED TO THE RECORD (Hafsah after polish round 3; add-something.ts). Something they write with
+     * nothing open, that is not a request, a decision, a question or a thank-you, opens their next check-in now with "What would you like
+     * to add?", and goes in as the first answer, so it is filed where it belongs. A thank-you after a close never opens one (polish round
+     * 2: "Thanks, talk tomorrow!" opened and closed the next day's check-in five times).
      */
-    const anUpdate = arrived.kind === 'text' && arrived.text.trim().split(/\s+/).length >= 8;
-    const justClosed = anUpdate && userId ? await Promise.resolve((this.prisma.checkIn as any)?.findFirst?.({
-      where: { participant: { userId, ground: { organizationId } }, completedAt: { gte: new Date(Date.now() - 2 * 3_600_000) } }, select: { id: true },
-    })).catch(() => null) : null;
-    if (userId && !everyOpen.length && anUpdate && !justClosed && arrived.kind === 'text' && !looksLikeARequest(arrived.text) && !aDecisionIn(arrived.text) && !/\?\s*$/.test(arrived.text.trim())) {
+    const aPleasantry = arrived.kind === 'text' && /^\s*(?:thank(?:s| you)|cheers|bye|goodbye|ok(?:ay)?|great|good|noted|sure|fine|perfect)\b[^?]{0,60}$/i.test(arrived.text.trim());
+    const anUpdate = arrived.kind === 'text' && !aPleasantry && arrived.text.trim().split(/\s+/).length >= 4;
+    if (userId && !everyOpen.length && anUpdate && arrived.kind === 'text' && !looksLikeARequest(arrived.text) && !aDecisionIn(arrived.text) && !/\?\s*$/.test(arrived.text.trim())) {
       const later: any = await Promise.resolve((this.prisma.checkIn as any)?.findFirst?.({
-        where: { participant: { userId, ground: { organizationId } }, status: CheckInStatus.NOT_STARTED, availableFrom: { gt: new Date(), lte: new Date(Date.now() + 18 * 3_600_000) } },
+        where: { participant: { userId, ground: { organizationId } }, status: CheckInStatus.NOT_STARTED, isSetup: false },
         orderBy: { availableFrom: 'asc' }, select: { id: true },
       })).catch(() => null);
       if (later) {
         await Promise.resolve(this.prisma.checkIn.update({ where: { id: later.id }, data: { availableFrom: new Date() } })).catch(() => undefined);
+        await this.conversation.open(later.id, userId, WHAT_WOULD_YOU_LIKE_TO_ADD).catch(() => undefined);
         everyOpen = await this.openCheckInsFor(organizationId, userId);
       }
     }

@@ -7,15 +7,18 @@ import * as path from 'path';
  */
 describe('an update sent before the check-in opens goes into it', () => {
   const door = fs.readFileSync(path.join(__dirname, 'whatsapp-for-an-organisation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-  it('the WhatsApp door brings the next one forward before it reads what is open', () => {
-    const forward = door.indexOf("status: CheckInStatus.NOT_STARTED, availableFrom: { gt: new Date(), lte: new Date(Date.now() + 18 * 3_600_000) }");
+  /* Changed 26 October 2026 (Hafsah after round 3): any message between check-ins is added, so there is no eighteen-hour window and no two-hour wait. */
+  it('the WhatsApp door opens the next one with "What would you like to add?" before it reads what is open', () => {
+    const forward = door.indexOf('status: CheckInStatus.NOT_STARTED, isSetup: false');
     expect(forward).toBeGreaterThan(-1);
     expect(door.indexOf('data: { availableFrom: new Date() }')).toBeGreaterThan(forward);
+    expect(door.indexOf('this.conversation.open(later.id, userId, WHAT_WOULD_YOU_LIKE_TO_ADD)')).toBeGreaterThan(forward);
     expect(door.indexOf('const open = everyOpen.filter')).toBeGreaterThan(forward);
   });
-  it('never for a short thanks, or within two hours of a close (polish round 2: "Thanks, talk tomorrow!" opened the next day)', () => {
-    expect(door).toContain("arrived.text.trim().split(/\\s+/).length >= 8");
-    expect(door).toContain('completedAt: { gte: new Date(Date.now() - 2 * 3_600_000) }');
+  it('never for a thank-you (polish round 2: "Thanks, talk tomorrow!" opened the next day)', () => {
+    const thanks = new RegExp(door.match(/const aPleasantry = [^;]*?\/(\^[^/]+)\/i\.test/)![1], 'i');
+    for (const t of ['Thanks, talk tomorrow!', 'Thank you', 'Okay great', 'Cheers']) expect(thanks.test(t)).toBe(true);
+    expect(thanks.test('Kilele Hotel wants ten more units next month')).toBe(false);
   });
   it('never for a request, a decision or a question', () => {
     expect(door).toContain("!looksLikeARequest(arrived.text) && !aDecisionIn(arrived.text) && !/\\?\\s*$/.test(arrived.text.trim())");
