@@ -18,7 +18,7 @@ import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
 import { aPromiseAsASentence } from './a-promise-as-a-sentence';
 import { noSeatYetSays, whenIsMyNextCheckIn, whatMyCheckInIsFor, theCompanysPriorities, asksWhatTheCompanyIsWorkingOn, isTheStrategyMoving, THE_REQUEST_STARTERS, howToAskForLeaveOrSpending } from './about-your-check-ins-and-the-company';
 import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
-import { isACorrection, whatTheyMean, theCorrectionAnswered } from './a-correction-said-in-ask';
+import { isACorrection, whatTheyMean, theCorrectionAnswered, aChangeOfTheirs, theChangePutOnRecord } from './a-correction-said-in-ask';
 import { ReportsService } from '../reports/reports.service';
 import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-their-own';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -324,13 +324,13 @@ export class AssistantService {
     const userId = await theirSignIn(this.prisma, organizationId, me).catch(() => me?.linkedUserId ?? null);
 
     /* A correction is checked against what they wrote, never shrugged at (a-correction-said-in-ask.ts, 26 October). */
+    const theirTurns = async () => ((await Promise.resolve((this.prisma as any).conversationTurn?.findMany?.({
+      where: { role: 'PERSON', checkIn: { participant: { userId } } },
+      orderBy: { createdAt: 'desc' }, take: 200,
+      select: { content: true, createdAt: true, checkInId: true, checkIn: { select: { participantId: true, ground: { select: { label: true } } } } },
+    })).catch(() => [])) ?? []).map((t: any) => ({ text: String(t.content ?? ''), at: new Date(t.createdAt), label: t.checkIn?.ground?.label ?? null, checkInId: t.checkInId, participantId: t.checkIn?.participantId }));
     if (userId && isACorrection(message)) {
-      const turns: any[] = await (this.prisma as any).conversationTurn.findMany({
-        where: { role: 'PERSON', checkIn: { participant: { userId } } },
-        orderBy: { createdAt: 'desc' }, take: 200,
-        select: { content: true, createdAt: true, checkIn: { select: { ground: { select: { label: true } } } } },
-      }).catch(() => []);
-      const theirs = (turns ?? []).map((t: any) => ({ text: String(t.content ?? ''), at: new Date(t.createdAt), label: t.checkIn?.ground?.label ?? null }));
+      const theirs = await theirTurns();
       const found = whatTheyMean(message, theirs);
       const quoted = /["“]([^"”]{6,})["”]/.exec(message)?.[1]?.trim() ?? null;
       if (!found && quoted) {
@@ -339,7 +339,19 @@ export class AssistantService {
       }
       return rules('a_correction', text(theCorrectionAnswered(found, !found && !!quoted)));
     }
-    const reply = await this.answer(organizationId, personId, who, message, false, groundId, userId, openedFromSetup);
+    let reply = await this.answer(organizationId, personId, who, message, false, groundId, userId, openedFromSetup);
+    /* Not a question, about something they wrote: their update, kept beside it, never "I cannot answer that one yet" (a-correction-said-in-ask.ts). */
+    const shrugged = (reply as any)?.blocks?.[0]?.type === 'text' && /^I cannot answer that one yet\./.test((reply as any).blocks[0].body ?? '');
+    if (shrugged && userId && aChangeOfTheirs(message)) {
+      const found = whatTheyMean(message, await theirTurns(), 2);
+      if (found?.participantId) {
+        const kept = await Promise.resolve((this.prisma as any).recordEntry?.create?.({
+          data: { participantId: found.participantId, checkInId: found.checkInId ?? null, type: 'PROGRESS', text: String(message).trim(), recallBased: true },
+          select: { id: true },
+        })).catch(() => null);
+        if (kept) reply = rules('a_correction', text(theChangePutOnRecord(found, message)));
+      }
+    }
 
     /*
      * NOTHING FROM THE CONTEXT LANE IS REMEMBERED HERE. The setup conversation has never kept its

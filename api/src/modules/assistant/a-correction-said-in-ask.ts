@@ -16,24 +16,24 @@ const STOP = new Set(['that', 'this', 'with', 'from', 'have', 'said', 'what', 'w
 const words = (t: string) => String(t ?? '').toLowerCase().replace(/[‘’]/g, "'").replace(/[^a-z0-9' -]+/g, ' ').split(/[\s-]+/).filter((w) => w.length >= 4 && !STOP.has(w));
 const sentences = (t: string) => String(t ?? '').split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
 
-export interface ATurnOfTheirs { text: string; at: Date; label: string | null }
+export interface ATurnOfTheirs { text: string; at: Date; label: string | null; checkInId?: string; participantId?: string }
 
 /** The sentence of theirs the correction is about: a quotation in it, else the one sharing the most words with it (two at least). */
-export function whatTheyMean(message: string, theirTurns: ATurnOfTheirs[]): { sentence: string; at: Date; label: string | null } | null {
+export function whatTheyMean(message: string, theirTurns: ATurnOfTheirs[], leastShared = 1): { sentence: string; at: Date; label: string | null; checkInId?: string; participantId?: string } | null {
   const quoted = /["“]([^"”]{6,})["”]/.exec(message)?.[1]?.trim() ?? null;
-  const said = theirTurns.flatMap((t) => sentences(t.text).map((s) => ({ sentence: s, at: t.at, label: t.label })));
+  const said = theirTurns.flatMap((t) => sentences(t.text).map((s) => ({ sentence: s, at: t.at, label: t.label, checkInId: t.checkInId, participantId: t.participantId })));
   if (quoted) {
     const q = quoted.toLowerCase().replace(/[.!?]+$/, '');
     return said.find((s) => s.sentence.toLowerCase().includes(q)) ?? null;
   }
   const mine = new Set(words(message));
   if (!mine.size) return null;
-  let best: { sentence: string; at: Date; label: string | null; n: number } | null = null;
+  let best: { sentence: string; at: Date; label: string | null; checkInId?: string; participantId?: string; n: number } | null = null;
   for (const s of said) {
     const n = new Set(words(s.sentence).filter((w) => mine.has(w))).size;
-    if (n >= 1 && (!best || n > best.n || (n === best.n && s.at > best.at))) best = { ...s, n };
+    if (n >= leastShared && (!best || n > best.n || (n === best.n && s.at > best.at))) best = { ...s, n };
   }
-  return best ? { sentence: best.sentence, at: best.at, label: best.label } : null;
+  return best ? { sentence: best.sentence, at: best.at, label: best.label, checkInId: best.checkInId, participantId: best.participantId } : null;
 }
 
 const onTheDay = (d: Date) => d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Nairobi' });
@@ -45,4 +45,19 @@ export function theCorrectionAnswered(found: { sentence: string; at: Date; label
   }
   if (quotedButNotFound) return 'I checked, and nothing you wrote says that. It is taken off, and Groundwork will not say it again.';
   return 'Which line is wrong? Copy it here, or say it in your own words, and I will check it against what you wrote.';
+}
+
+/**
+ * A CHANGE SAID IN ASK IS PUT ON RECORD NEXT TO WHAT IT CHANGES (polish round 1, 26 October 2026). Aisha wrote in Ask "I actually
+ * don't need to reach out to Jamii Clinics for this", about a step she had given in her check-in, and read "I cannot answer that
+ * one yet." A statement, not a question, about something they wrote, is their update: it is kept with their own words, beside the
+ * line it changes, and they are told plainly where it went.
+ */
+export function aChangeOfTheirs(message: string): boolean {
+  const m = String(message ?? '').trim();
+  return !!m && !/\?\s*$/.test(m) && m.split(/\s+/).length >= 4;
+}
+
+export function theChangePutOnRecord(found: { sentence: string; at: Date; label: string | null }, message: string): string {
+  return `Noted, and put on your record next to what you wrote on ${onTheDay(found.at)}${found.label ? ` in “${found.label}”` : ''}: “${found.sentence.replace(/[“”"]/g, '')}” Your update reads: “${String(message).trim().replace(/[“”"]/g, '')}”`;
 }

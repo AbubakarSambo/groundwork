@@ -26,3 +26,25 @@ describe('a correction said in Ask is checked against what they wrote', () => {
     expect(theCorrectionAnswered(null, false)).toMatch(/^Which line is wrong\?/);
   });
 });
+
+describe('a change said in Ask is put on record next to what it changes (Aisha, polish round 1)', () => {
+  const { aChangeOfTheirs, theChangePutOnRecord, whatTheyMean: mean } = require('./a-correction-said-in-ask');
+  const theirs = [
+    { text: 'I will reach out to Jamii Clinics for the signed engagement letter on Tuesday.', at: new Date('2026-10-14T09:00:00+03:00'), label: 'Fee notes', checkInId: 'c1', participantId: 'p1' },
+    { text: 'Fee note FN-007 is paid.', at: new Date('2026-10-13T09:00:00+03:00'), label: 'Fee notes', checkInId: 'c0', participantId: 'p1' },
+  ];
+  it('a statement about a line of theirs is their update, and says where it went', () => {
+    const said = "I actually don't need to reach out to Jamii Clinics for the letter, the partner has it.";
+    expect(aChangeOfTheirs(said)).toBe(true);
+    const found = mean(said, theirs, 2);
+    expect(found).toMatchObject({ checkInId: 'c1', participantId: 'p1' });
+    expect(theChangePutOnRecord(found, said)).toBe('Noted, and put on your record next to what you wrote on Wednesday 14 October in “Fee notes”: “I will reach out to Jamii Clinics for the signed engagement letter on Tuesday.” Your update reads: “I actually don\'t need to reach out to Jamii Clinics for the letter, the partner has it.”');
+  });
+  it('a question, or a few words, is never taken for an update', () => {
+    expect(aChangeOfTheirs('Is FN-007 paid?')).toBe(false);
+    expect(aChangeOfTheirs('Jamii Clinics')).toBe(false);
+  });
+  it('one shared word is not enough to say which line they mean', () => {
+    expect(mean('The partner has the letter now.', theirs, 2)).toBeNull();
+  });
+});
