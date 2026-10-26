@@ -181,6 +181,12 @@ export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
       if (aFigureForEachOne(read, n.raw)) continue;
       /* A target's own number said again is that target, not a count of anything (point 9; answer 7): "120 units sold in total". */
       if (input.customers && input.targets.some((t) => t.target != null && t.target === n.value)) continue;
+      /*
+       * ON A SALES CHECK-IN, A FIGURE ABOUT NO CUSTOMER ON RECORD IS NOT SET AGAINST ANOTHER (polish round 1, 26 October 2026). Kevin was
+       * asked three days running which stood now: "you hit 30 units" (his own target) or "Jane will pay for 6 units" (a new customer), after
+       * proving the 40 units to Kilele. Two figures that name no known customer are as likely two deals as one deal told twice.
+       */
+      if (input.customers && !about) continue;
       const key = about ? `${n.unit}\u0000${about.toLowerCase()}` : n.unit;
       byUnit.set(key, [...(byUnit.get(key) ?? []), { value: n.value, session: s.session, text: s.text }]);
     }
