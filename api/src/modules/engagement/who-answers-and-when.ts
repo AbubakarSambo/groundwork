@@ -160,11 +160,13 @@ export function theirDay(participantId: string, all: ASessionOnRecord[], now: Da
   const lastCheckedIn = days.length ? days[days.length - 1] : null;
 
   /* Missed days: after the last day they checked in, before today, a session of theirs opened and was not answered that day. */
+  /* A day they answered any session on is a day they checked in (polish round 15; board/a-day-they-checked-in.ts). */
+  const answeredDays = new Set(days);
   const missed = new Set<string>();
   for (const c of mine) {
     const k = aDayIn(openedAt(c)!, zone);
     if (k >= today || (lastCheckedIn && k <= lastCheckedIn)) continue;
-    if (answeredOn(c) === k) continue;
+    if (answeredOn(c) === k || (c.opensDaily && answeredDays.has(k))) continue;
     missed.add(k);
   }
   /* A daily session still open is missed on each working day since it opened, up to yesterday: no new session opened on those days. */
@@ -185,6 +187,11 @@ export function theirDay(participantId: string, all: ASessionOnRecord[], now: Da
   for (const c of [...mine].reverse()) {
     const opened = aDayIn(openedAt(c)!, zone);
     if (!answeredOn(c) && opened === today && !lateToday) continue;
+    /*
+     * A session left quiet on a day they answered another does not break the run (polish round 15). Kevin answered every day, but his Tuesday
+     * session, opened from his email the evening before and closed by the clock that morning, stopped his run: "on time 4 days running".
+     */
+    if (!answeredOn(c) && c.opensDaily && answeredDays.has(opened)) continue;
     if (!onTimeFor(c)) break;
     onTimeRunning++;
     onTimeLastDay = onTimeLastDay ?? answeredOn(c);
@@ -268,13 +275,15 @@ export async function onTimeForThemselves(prisma: any, groundId: string | null |
   try {
     if (!groundId) return null;
     if (!(await theDirectMorningIsOnFor(prisma, groundId))) return null;
-    const g = await prisma?.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true } });
+    const g = await prisma?.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, cadence: true, workingDays: true } });
     const zone = (g?.organizationId ? await theOrganisationsZone(prisma, g.organizationId).catch(() => null) : null) ?? THE_PRODUCTS_OWN_ZONE;
     const sessions: ASessionOnRecord[] = (await prisma?.checkIn?.findMany?.({
       where: { groundId, participantId },
       select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true },
     })) ?? [];
-    return onTimeSaidToYou(theirDay(participantId, sessions, now, zone), aDayIn(now, zone));
+    /* Whether it opens each working day, read the same way as the lead's morning (the-direct-morning.ts). */
+    const daily = String(g?.cadence ?? '').toUpperCase() === 'DAILY';
+    return onTimeSaidToYou(theirDay(participantId, sessions.map((c) => ({ ...c, opensDaily: daily, workingDays: g?.workingDays ?? null })), now, zone), aDayIn(now, zone));
   } catch {
     return null;
   }

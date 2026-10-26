@@ -16,8 +16,9 @@ import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
  *     was not done.
  *   - A session they answered is on the day of their first answer. One with no answer is on the day it opened, never the day the clock
  *     closed it.
- *   - A session with no answer, on a day they answered another session of the same check-in, is not a missed day: they checked in that
- *     day. That day counts once, as done.
+ *   - On a check-in that opens each working day, a session with no answer, on a day they answered another session of the same check-in,
+ *     is not a missed day: they checked in that day. That day counts once, as done. (Once a week or less often, each session is its own
+ *     check-in: answering last week's late does not answer this week's.)
  *   - On time: their first answer came on the day the session opened, on a check-in that opens each working day; on any other, within a
  *     day of it opening.
  */
@@ -149,10 +150,8 @@ export function theCheckInsCounted(
     return { checkInId: s.id, sessionNumber: s.sessionNumber, day: theDayItCountsOn(s, zone), done, onTime: o.daily ? onTheDayItOpened(s) : answeredOnTime(s), specific: done && !!s.specific };
   };
   const ordered = [...sessions].sort((a, b) => a.sessionNumber - b.sessionNumber);
-  if (!o.daily) {
-    const answeredOn = theDaysTheyCheckedIn(ordered, zone);
-    return ordered.filter((s) => o.due(s) || theyAnsweredIn(s)).map(read).filter((r) => r.done || !r.day || !answeredOn.has(r.day));
-  }
+  /* Once a week or less often: each session is its own check-in, and answering last week's late does not answer this week's. */
+  if (!o.daily) return ordered.filter((s) => o.due(s) || theyAnsweredIn(s)).map(read);
   const works = (o.daily.workingDays ?? []).length ? new Set(o.daily.workingDays) : new Set([1, 2, 3, 4, 5]);
   const today = theDayIn(now, zone);
   const opened = ordered.map((s) => whenItOpened(s)).filter((d): d is Date => !!d && d <= now);

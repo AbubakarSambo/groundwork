@@ -1,6 +1,8 @@
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { theDayZone } from '../../common/the-organisations-own-day';
 import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
+import { aQuietSessionOnADayTheyCheckedIn } from './a-day-they-checked-in';
+import { THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { theNoteBesideTheClaim, WhoTheNoteNames } from '../grounds/a-wait-is-the-speakers-account';
 import { theWaitSaid, aHolderThatIsOnlyTheThing, PLAIN_WORDS } from './a-wait-said-in-full';
 import { howManyGoalsAreNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
@@ -127,6 +129,9 @@ export interface ASession {
   sessionNumber: number;
   status: string;
   completedAt: Date | string | null;
+  /** When it opened, to tell the day a quiet session was for (board/a-day-they-checked-in.ts). */
+  availableFrom?: Date | string | null;
+  createdAt?: Date | string | null;
   isSetup?: boolean;
   /** With `turns` (their first word, if any): a session the clock closed with nothing said was MISSED, never answered. */
   closedReason?: string | null;
@@ -500,6 +505,8 @@ export function thePersonHistory(
   handoffs: AHandoff[],
   sessions: ASession[],
   r: WhoIsReading,
+  /** The check-in opens a session each working day (cadence DAILY). */
+  opensDaily = false,
 ): APersonHistory[] {
   const out: APersonHistory[] = [];
   for (const p of people) {
@@ -510,7 +517,14 @@ export function thePersonHistory(
     const who = whoIs(r, p.id);
     const mine = sessions.filter((s) => s.participantId === p.id && !s.isSetup).sort((a, b) => a.sessionNumber - b.sessionNumber);
     const done = mine.filter(answered);
-    const gone = mine.filter(missed);
+    /*
+     * NO MISS ON A DAY THEY CHECKED IN (polish round 15; a-day-they-checked-in.ts). Kevin's own page read "You have missed 1 session. In session
+     * 2, you did not check in before it closed." about Tuesday's session, opened from his email the evening before and closed by the clock that
+     * morning, when he answered that afternoon in the next one. On a check-in that opens each working day, that day he checked in.
+     */
+    const asItHappened = (s: ASession) => ({ ...s, answers: Array.isArray(s.turns) ? s.turns.length : null, firstAnsweredAt: Array.isArray(s.turns) ? (s.turns[0] as any)?.createdAt ?? null : null });
+    const theirs = mine.map(asItHappened);
+    const gone = mine.filter(missed).filter((s) => !opensDaily || !aQuietSessionOnADayTheyCheckedIn(asItHappened(s), theirs, THE_PRODUCTS_OWN_ZONE));
     if (!done.length && !gone.length) continue;
     const theirCommitments = commitments.filter((c) => c.participantId === p.id);
     const theirWaits = handoffs.filter((d) => d.fromParticipantId === p.id);

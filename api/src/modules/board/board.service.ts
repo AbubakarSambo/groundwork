@@ -227,6 +227,7 @@ import { itWasTakenFurther } from '../reports/what-they-said-they-did-about-it';
 import { ESCALATE_AFTER_DAYS } from '../webhooks/a-handoff-that-has-sat-too-long';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
 import { theDayZone } from '../../common/the-organisations-own-day';
+import { theDayIn, theDaysTheyCheckedIn } from './a-day-they-checked-in';
 import { whatTheDealStillNeeds, theValueLine } from './what-a-deal-still-needs';
 import { theDecisionsTheLeadPromised } from './a-decision-the-lead-promised';
 import { thePromisesCarriedOver } from './a-promise-carried-over';
@@ -781,12 +782,13 @@ export class BoardService {
            only whoever runs the check-in reads. See saidAnythingCheckable. */
         completedAt: true, specificityLevel: true, specificityDimensions: true,
         /* When each session opened, for the session lines (request 107 e). */
-        availableFrom: true, startedAt: true,
+        availableFrom: true, startedAt: true, createdAt: true,
         /* Whether it was a set-up conversation, which the timeline leaves out: the anchor lead's set-up is saved done, and read as "the first answers for
            session 1 came in" before anybody had answered (review of fd583ba5). */
         isSetup: true,
         /* Whether the clock closed it with nothing said, which is not an answer (the grid's "answered"). */
-        closedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } },
+        /* And when their first answer came, so a quiet session on a day they answered another is no miss (board/a-day-they-checked-in.ts). */
+        closedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } },
       },
       orderBy: { sessionNumber: 'asc' },
     });
@@ -1856,7 +1858,15 @@ export class BoardService {
               : (heldBack.has(p.id) ? { by: null, at: null, declined: false } : undefined),
             target: theirs?.target ?? null,
             count: theirs?.count ?? 0,
-            answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED && !wasAQuietClose(thisRound as any),
+            /*
+             * ANSWERED, FROM WHAT ACTUALLY HAPPENED (polish round 15; a-day-they-checked-in.ts). Wanjiru's board read "Aisha Kamau has not
+             * checked in for this session yet" every evening, about the next day's session written ahead of time, on days Aisha had answered.
+             * A session that has not opened yet is not one anybody is late for, and on a check-in that opens each working day, answering
+             * any session today is checking in today.
+             */
+            answeredThisRound: (thisRound?.status === CheckInStatus.COMPLETED && !wasAQuietClose(thisRound as any))
+              || (!!thisRound && thisRound.status === CheckInStatus.NOT_STARTED && !!thisRound.availableFrom && new Date(thisRound.availableFrom) > now)
+              || (String((ground as any).cadence ?? '').toUpperCase() === 'DAILY' && theDaysTheyCheckedIn(mine.map((c: any) => ({ ...c, answers: Array.isArray(c.turns) ? c.turns.length : null, firstAnsweredAt: Array.isArray(c.turns) ? c.turns[0]?.createdAt ?? null : null })), theDayZone()).has(theDayIn(now, theDayZone()))),
             roundsSoFar: new Set(mine.map((c) => c.sessionNumber)).size,
             missedJustBefore: missedJustBefore.get(p.id)?.length ?? 0,
             inTheWay: (ground.dependencies ?? [])
@@ -3114,7 +3124,7 @@ export class BoardService {
         aColleague: (pid) => aColleague(pid),
       };
       const mine = await this.theRecordTheSwitchboardsSectionsRead(groundId, checkIns as any[]);
-      const sessions = (checkIns as any[]).map((c) => ({ id: c.id, participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, isSetup: !!c.isSetup, closedReason: c.closedReason ?? null, turns: c.turns }));
+      const sessions = (checkIns as any[]).map((c) => ({ id: c.id, participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, availableFrom: c.availableFrom ?? null, createdAt: c.createdAt ?? null, isSetup: !!c.isSetup, closedReason: c.closedReason ?? null, turns: c.turns }));
       const people = (ground.participants as any[]).map((p) => ({ id: p.id, managingOnly: !!p.managingOnly }));
       /* A quotation mark goes only round words found character for character in what that person typed. */
       /*
@@ -3139,7 +3149,7 @@ export class BoardService {
       if (workPlan.length) out.workPlan = workPlan;
       const timeline = theTimeline(mine.commitments, handoffs, sessions, (ground as any).closedAt ?? null, reader);
       if (timeline.length) out.timeline = timeline;
-      const personHistory = thePersonHistory(people, mine.commitments, handoffs, sessions, reader);
+      const personHistory = thePersonHistory(people, mine.commitments, handoffs, sessions, reader, String((ground as any).cadence ?? '').toUpperCase() === 'DAILY');
       if (personHistory.length) out.personHistory = personHistory;
       const blockerCheck = theBlockerCheck(handoffs, reader);
       if (blockerCheck.length) out.blockerCheck = blockerCheck;

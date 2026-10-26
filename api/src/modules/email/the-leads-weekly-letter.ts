@@ -335,7 +335,7 @@ const WEEK = 7 * 86_400_000;
  * Counts one check-in's last seven days. Reads nothing anybody said: only who finished, counts of
  * commitments and handoffs, and first names.
  */
-export async function theWeekOf(prisma: any, g: { id: string; label: string; initiatorId: string }, now: Date): Promise<AWeekInOneCheckIn> {
+export async function theWeekOf(prisma: any, g: { id: string; label: string; initiatorId: string; cadence?: string | null }, now: Date): Promise<AWeekInOneCheckIn> {
   const since = new Date(now.getTime() - WEEK);
   const [people, finished, saidNext, done, waiting, doneRows, waitingRows] = await Promise.all([
     prisma.groundParticipant.findMany({ where: { groundId: g.id }, select: { id: true, userId: true, email: true, managingOnly: true, nameGiven: true, lastNudgedAt: true, ...WHAT_SAYS_SOMEBODY_JOINED, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
@@ -351,7 +351,7 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   /* Each session that closed in the week, for everybody who owes one (item 17). Read like the missed check-ins are (missed-check-ins.ts). */
   const sessions: any[] = await Promise.resolve(prisma.checkIn?.findMany?.({
     where: { groundId: g.id, isSetup: false },
-    select: { participantId: true, sessionNumber: true, status: true, isSetup: true, optional: true, closedReason: true, availableFrom: true, createdAt: true, completedAt: true, missedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } } },
+    select: { participantId: true, sessionNumber: true, status: true, isSetup: true, optional: true, closedReason: true, availableFrom: true, createdAt: true, completedAt: true, missedReason: true, turns: { where: { role: 'PERSON' }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } },
   }) ?? []).catch(() => []);
   /* Decision 133: the lead is counted only in a week they checked in, and never listed as not yet. */
   const checkedInThisWeek = new Set((finished as any[]).map((r) => r.participantId));
@@ -419,7 +419,8 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
     if (p.userId && p.userId === g.initiatorId) continue;
     const theirs = (Array.isArray(sessions) ? sessions : []).filter((c) => c.participantId === p.id);
     const inTheWeek = new Set(theirs.filter((c) => { const at = new Date(c.availableFrom ?? c.createdAt); return at >= since && at <= now; }).map((c) => c.sessionNumber));
-    const closed = theirClosedSessions(theirs, [], now).filter((c) => inTheWeek.has(c.sessionNumber));
+    /* On a check-in that opens each working day, a quiet session on a day they answered another is no miss: "Kevin missed one of six" (polish round 15). */
+    const closed = theirClosedSessions(theirs, [], now, { opensDaily: String(g.cadence ?? '').toUpperCase() === 'DAILY' }).filter((c) => inTheWeek.has(c.sessionNumber));
     const missed = closed.filter((c) => c.missed).length;
     checkInsDue += closed.length;
     checkInsMade += closed.length - missed;
@@ -451,7 +452,7 @@ export async function sendTheLeadsWeeklyLetters(
   const kind = every ? (every.anchorIsOn ? {} : WHERE_A_GROUND_IS_NOT_THE_ANCHORS) : WHERE_A_GROUND_IS_THE_ANCHORS;
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
     where: { ...kind, status: { notIn: TERMINAL } },
-    select: { id: true, label: true, initiatorId: true, organizationId: true, ...(every ? { scenario: true } : {}) },
+    select: { id: true, label: true, initiatorId: true, organizationId: true, cadence: true, ...(every ? { scenario: true } : {}) },
     ...page,
   }), 1000);
   const byLead = new Map<string, { id: string; label: string; initiatorId: string; organizationId?: string; scenario?: string | null }[]>();
