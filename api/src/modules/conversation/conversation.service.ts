@@ -230,6 +230,7 @@ import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
 import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
+import { aDayIsNamedRight } from './a-day-is-named-right';
 import { aLastTimeInTheirOwnWords, type AWordTheyWrote } from './a-last-time-is-their-own-words';
 import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
 import { isShut } from '../grounds/a-ground-that-has-ended';
@@ -1658,6 +1659,8 @@ export class ConversationService {
     raw = aPersonNeverReadsAnInternalName(raw, `check-in ${(checkIn as any)?.id ?? ''} turn`, this.logger);
     /* "Wanjiru's's" is "Wanjiru's" on every path (messages test, fourth run). */
     raw = withOnePossessive(raw);
+    /* "yesterday, Tuesday" on a Tuesday is put right from the calendar (a-day-is-named-right.ts, 26 October). */
+    raw = aDayIsNamedRight(raw, new Date()).text;
     /*
      * AND A QUESTION THE LEAD CONFIRMED IS ASKED IN THE WORDS THEY CONFIRMED. Decision 34: the model
      * decides when to ask it, and where it asked it its own way the confirmed sentence is put back.
