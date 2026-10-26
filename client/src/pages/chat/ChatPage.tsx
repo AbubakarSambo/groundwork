@@ -69,6 +69,7 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
   groundId: string; docId: string; docName: string; assessment: DocumentAssessment
   onCorrected: (a: DocumentAssessment) => void
 }) {
+  const [agreed, setAgreed] = useState(false)
   const [editing, setEditing] = useState(false)
   const [suggestsText, setSuggestsText] = useState(assessment.suggests.join('\n'))
   const [willDoText, setWillDoText] = useState(assessment.willDo.join('\n'))
@@ -104,9 +105,15 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
           <ul className="gwui-ci-assessment-list gwui-ci-assessment-list-last">
             {assessment.willDo.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
-          <button onClick={() => setEditing(true)} className="gwui-ci-assessment-link">
-            Not right? Correct this
-          </button>
+          {/* The prototype's "That's right" beside "Not right" (references-upload-in-check-in.txt), restored 26 October 2026. */}
+          {agreed ? <div className="gwui-ci-assessment-label">Kept as it reads.</div> : (
+            <div className="gwui-ci-assessment-actions">
+              <button onClick={() => setAgreed(true)} className="gwui-ci-assessment-link">That’s right</button>
+              <button onClick={() => setEditing(true)} className="gwui-ci-assessment-link">
+                Not right? Correct this
+              </button>
+            </div>
+          )}
         </>
       ) : (
         <>

@@ -3790,7 +3790,11 @@ export function EntryChatPage() {
       {inviteAdded.length > 0 && (
         <div className="gwui-ec-savecard-invite-list">
           {inviteAdded.map(e => (
-            <div key={e} className="gwui-ec-savecard-invite-chip">✓ {shownEntry(e)}</div>
+            <div key={e} className="gwui-ec-savecard-invite-chip">
+              ✓ {shownEntry(e)}
+              {/* The prototype's "×": somebody added by mistake comes off the list before anything is sent (26 October 2026). */}
+              <button type="button" className="gwui-plain-link" aria-label={`Remove ${shownEntry(e)}`} onClick={() => setInviteAdded(prev => prev.filter(x => x !== e))}>×</button>
+            </div>
           ))}
         </div>
       )}
