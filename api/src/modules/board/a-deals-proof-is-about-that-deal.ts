@@ -183,8 +183,38 @@ export function theDepositFor(deal: { name: string; fields?: Record<string, stri
   const reads = about.map((p) => ({ deposit: /\bdeposit\b|\badvance\b|\bpart[\s-]payment\b/i.test(p.text), money: amountIn(p.text) }));
   const each = reads.map((r) => r.deposit || (!!r.money && of !== null && r.money.amount < of));
   if (!each.every(Boolean)) return null;
+  /*
+   * THE BALANCE PAID MAKES IT PAID IN FULL (polish round 15, U7). Jane paid Savannah Cafe's KES 15,000 deposit (RBT7Y3KQ2P) and, on Friday
+   * 16 October, the remaining KES 15,000 (SGL9W4MN7T). Each payment on its own is less than the KES 30,000, so each read as a deposit, and
+   * the board said "Deposit paid, KES 15,000 of KES 30,000" after the balance was paid. The payments are added up, each once: where they
+   * reach what the deal is worth, it is paid in full.
+   */
+  const paidInAll = thePaymentsAddedUp(about);
+  if (of !== null && paidInAll && paidInAll.amount >= of) return null;
   const paid = reads.map((r) => r.money?.amount ?? 0).reduce((a, b) => Math.max(a, b), 0) || null;
   return { paid, of, currency: reads.find((r) => r.money)?.money?.currency ?? 'KES' };
+}
+
+/**
+ * WHAT THE PAYMENT RECORDS ADD UP TO, EACH PAYMENT ONCE (polish round 15, U2 and U7). One payment is often on record more than once: the
+ * Kilele M-Pesa message behind every line that repeats the sale, or the same code typed in two check-ins. A payment is known by its M-Pesa
+ * code where it has one, otherwise by its words. Null where no payment record says an amount.
+ */
+export function thePaymentsAddedUp(payments: readonly { text: string }[]): { amount: number; currency: string } | null {
+  const seen = new Set<string>();
+  let amount = 0;
+  let currency: string | null = null;
+  for (const p of payments) {
+    const money = amountIn(p.text);
+    if (!money) continue;
+    const key = theMPesaCodesIn(p.text)[0] ?? String(p.text ?? '').trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (currency && money.currency !== currency) continue;
+    currency = money.currency;
+    amount += money.amount;
+  }
+  return currency ? { amount, currency } : null;
 }
 /** "Deposit paid, KES 15,000 of KES 30,000." */
 export const aDepositSaid = (d: ADeposit): string => {

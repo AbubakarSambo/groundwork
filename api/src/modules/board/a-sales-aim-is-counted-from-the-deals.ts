@@ -499,7 +499,7 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
         alreadyOpen: wasAlreadyOpen({ name: i.name, fields, createdAt: new Date(i.createdAt) }, lines.map((l) => ({ ...l, text: cleanText(l.text ?? '') })), leadRows),
         paysWhen: whenTheyPay(fields, lines.filter((l) => !owner || l.participantId === owner).map((l) => ({ text: cleanText(l.text ?? ''), createdAt: new Date(l.createdAt) }))),
         peopleThere: peopleAt.get(i.id) ?? [],
-        dropped: theDealWasDropped({ name: i.name, stage: i.stage ?? null, ownerParticipantId: owner, fields }, lines, { lastStage: stagesHere[stagesHere.length - 1] ?? null, peopleThere: peopleAt.get(i.id) ?? [], saidInTheCheckIn: (i.fields as any)?._dropped ?? null }),
+        dropped: theDealWasDropped({ name: i.name, stage: i.stage ?? null, ownerParticipantId: owner, fields }, lines, { lastStage: stagesHere[stagesHere.length - 1] ?? null, peopleThere: peopleAt.get(i.id) ?? [], saidInTheCheckIn: (i.fields as any)?._dropped ?? null, otherDeals: items.map((x) => String(x.name ?? '')) }),
       } : {}),
     });
   }
