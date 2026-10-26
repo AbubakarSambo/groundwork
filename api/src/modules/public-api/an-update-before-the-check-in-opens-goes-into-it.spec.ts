@@ -34,3 +34,13 @@ describe('a yes or no to what Ask just said back is Ask\'s', () => {
     expect(door).toContain("state: 'PARKED', createdAt: { gte: new Date(Date.now() - 15 * 60_000) }");
   });
 });
+
+/** Peter, polish round 2: two "yes" replies to two questions, seconds apart; the second was dropped as the same words again. */
+describe('a quick yes or no is never dropped as the same words again', () => {
+  const door = fs.readFileSync(path.join(__dirname, 'whatsapp-for-an-organisation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  it('the same-words check lets a yes or a no through', () => {
+    const check = door.slice(door.indexOf('private async notTheSameWordsJustNow'));
+    expect(check.indexOf('(?:yes|no|y|n|ok|okay|yeah|yep|nope|sure)')).toBeGreaterThan(-1);
+    expect(check.indexOf('(?:yes|no|y|n|ok|okay|yeah|yep|nope|sure)')).toBeLessThan(check.indexOf("createHash('sha1')"));
+  });
+});

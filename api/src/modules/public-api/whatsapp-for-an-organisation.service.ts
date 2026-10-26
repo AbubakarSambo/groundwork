@@ -802,6 +802,12 @@ export class WhatsAppForAnOrganisationService {
    * is looked at too, so two copies on either side of a step edge are still one. Words sent again a moment later than that are a new answer.
    */
   private async notTheSameWordsJustNow(organizationId: string, phone: string, words: string): Promise<boolean> {
+    /*
+     * A yes or a no is an answer to whatever was just asked, and two questions in a row can both be answered "yes" (polish round 2:
+     * Peter's "yes" to "Shall I treat this as a leave request?" and his "yes" to "Shall I send it?" came seconds apart, and the second
+     * was dropped, so his leave was never sent). A redelivery of one is still caught by its message id.
+     */
+    if (/^\s*(?:yes|no|y|n|ok|okay|yeah|yep|nope|sure)\s*[.!]?\s*$/i.test(words)) return true;
     const said = createHash('sha1').update(words.trim().replace(/\s+/g, ' ').toLowerCase()).digest('hex').slice(0, 20);
     const step = Math.floor(Date.now() / 5000);
     const key = (n: number) => `same:${phone}:${said}:${n}`;
