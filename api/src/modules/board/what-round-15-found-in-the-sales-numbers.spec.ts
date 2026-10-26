@@ -4,6 +4,8 @@ import { BoardService } from './board.service';
 import { aPersonRecordTable } from './the-persons-record-bed';
 import { rebuildThePersonsRecords, readThePersonsRecord } from './the-persons-record-store';
 import { theRecordInWords } from './the-persons-record-in-words';
+import { theDirectMorningFor } from '../engagement/the-direct-morning';
+import { sendTheLeadsWeeklyLetters } from '../email/the-leads-weekly-letter';
 import { theDealsOnRecord, theCountFromTheDeals, theSalesStages, theSalesAnswer } from './a-sales-aim-is-counted-from-the-deals';
 import { theDepositFor, thePaymentsAddedUp } from './a-deals-proof-is-about-that-deal';
 import { theDealWasDropped } from './a-deal-that-was-dropped';
@@ -116,5 +118,38 @@ describe('the team’s numbers, as Grace, Kevin and Joseph read them (U1, U2, U7
     const lines = everyLine(await theBoardAs('Kevin'));
     expect(lines).toContain('You have sold 51 units so far, 21 more than your target of 30, all to Kilele, Ngong Road Minimart and Savannah Cafe, paid.');
     expect(lines.filter((l) => /no deals on the board yet|was lost/.test(l) && /Ngong Road Minimart|no deals/.test(l))).toEqual([]);
+  });
+});
+
+describe('Grace’s morning and her weekly letter read the board’s own count (U1)', () => {
+  async function theRebuiltRecords() {
+    const t = aPersonRecordTable();
+    await rebuildThePersonsRecords(theRound15AsADatabase({ asOf: R15_FRIDAY_EVENING, personRecord: t }), R15.drop.ground.id, R15_FRIDAY_EVENING);
+    return t;
+  }
+  it('the morning says 53 of 120 sold, all 53 paid, and 67 short', async () => {
+    const db = theRound15AsADatabase({ asOf: R15_FRIDAY_EVENING });
+    const m: any = await theDirectMorningFor(db, { groundId: R15.drop.ground.id, leadUserId: R15.drop.ground.initiatorId, board: await theBoardAs('Grace'), now: R15_FRIDAY_EVENING });
+    expect(everyLine(m)).toContain('53 of 120 sold, 53 paid, 67 short, and the open deals cover 48.');
+    expect(everyLine(m).filter((l) => /on a deposit|51 of 120|45 paid/.test(l))).toEqual([]);
+  });
+  it('the letter says where the target stands, and what moved with proof, each with its own M-Pesa code', async () => {
+    const db: any = theRound15AsADatabase({ asOf: R15_FRIDAY_EVENING, personRecord: await theRebuiltRecords() });
+    const board = await theBoardAs('Grace');
+    db.user = { findUnique: jest.fn(async () => ({ email: 'lead@test', deletedAt: null })) };
+    db.ground.findMany = jest.fn(async () => [{ ...R15.drop.ground }]);
+    const sent: any[] = [];
+    await sendTheLeadsWeeklyLetters({
+      prisma: db, frontendUrl: 'http://localhost:5220',
+      email: { sendTheLeadsWeeklyLetter: async (...a: any[]) => { sent.push(a); } },
+      everyCheckIn: { anchorIsOn: true, weeklyReport: async () => null },
+      board: { get: async () => board },
+    } as any, R15_FRIDAY_EVENING);
+    const lines: string[] = sent[0][2];
+    expect(lines).toContain('Here is where the target stands. 53 of 120 sold, 53 paid, 67 short, and the open deals cover 48.');
+    const moved = lines.find((l) => l.startsWith('Here is what moved this week, with what shows it.'))!;
+    expect(moved).toContain('On Thursday 15 October Joseph said “Juja Hardware bought 2 units today. KES 10,000 by M-Pesa.” The M-Pesa code TGH5K2M9QX shows it.');
+    expect(moved).toContain('On Friday 16 October Kevin said “Savannah Cafe paid the remaining KES 15,000 today after I delivered the 6 units this morning.” The M-Pesa code SGL9W4MN7T shows it.');
+    expect(lines.join(' ')).not.toMatch(/Nothing on file shows it|on a deposit/);
   });
 });

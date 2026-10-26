@@ -1,3 +1,4 @@
+import { theWordsNameTheDeal } from './a-deals-proof-is-about-that-deal';
 import { aLineNamesTheCustomer } from './one-deal-per-customer';
 import { theUnitsTheyGave } from '../conversation/their-own-deals-and-what-is-on-file';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
@@ -462,9 +463,15 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
     } else if (l.mark === 'confirmed') {
       proof = 'a colleague confirmed it'; proofSays = 'A colleague confirmed it';
     } else if (item && (item.paid || (kind === 'sale' && item.signed))) {
-      /* A code given in words is said as the M-Pesa code (Hafsah, 19 October), on the sale it pays for as well (polish round 15, U14). */
-      proof = item.paid ? (item.mpesaCode ? 'an M-Pesa code' : 'a payment record') : 'a signed order';
-      proofSays = item.paid ? (item.mpesaCode ? `The M-Pesa code ${item.mpesaCode}` : 'A payment record') : 'A signed order';
+      /*
+       * A code given in words is said as the M-Pesa code (Hafsah, 19 October), on the sale it pays for as well (polish round 15, U14): the
+       * code they gave for this deal nearest the day they said it, so Savannah Cafe's balance reads SGL9W4MN7T and its deposit RBT7Y3KQ2P.
+       */
+      const near = item.paid && item.mpesaCode
+        ? input.codes.filter((c) => theWordsNameTheDeal(c.sale, { name: item.name, fields: item.fields ?? null })).sort((a, b) => Math.abs(t(a.at) - t(l.createdAt)) - Math.abs(t(b.at) - t(l.createdAt)))[0]?.code ?? item.mpesaCode
+        : null;
+      proof = item.paid ? (near ? 'an M-Pesa code' : 'a payment record') : 'a signed order';
+      proofSays = item.paid ? (near ? `The M-Pesa code ${near}` : 'A payment record') : 'A signed order';
       proofIds.push(item.id);
     } else if (item && (item.evidence ?? []).some((e) => e.countsAsProof && (kind === 'sale' || /payment/i.test(e.readAs)))) {
       const e = (item.evidence ?? []).find((x) => x.countsAsProof && (kind === 'sale' || /payment/i.test(x.readAs)))!;
