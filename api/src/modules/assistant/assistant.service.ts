@@ -54,6 +54,7 @@ import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { SuitesService } from '../suites/suites.service';
 import { readDuties } from '../suites/who-holds-each-duty';
+import { setsSpendingSteps, theStepsSaid, theStepsSetSaid } from './spending-steps-said-in-ask';
 import type { Duties } from '../suites/who-holds-each-duty';
 import type { Weekday } from '../suites/the-time-sheet-rules';
 import {
@@ -469,6 +470,12 @@ export class AssistantService {
     if (who && userId) {
       const theirs = await this.aboutTheirJob(organizationId, who, userId, message);
       if (theirs) return theirs;
+    }
+
+    /* "Spending over KES 20,000 should be approved by Mercy in finance first, and then by me." Set, and said back (26 October 2026). */
+    if (who && userId && setsSpendingSteps(message)) {
+      const set = await this.setSpendingStepsSaid(organizationId, userId, message);
+      if (set) return set;
     }
 
     if (who) {
@@ -2461,6 +2468,38 @@ export class AssistantService {
       ? ((await (this.prisma as any).user?.findMany?.({ where: { id: { in: [holderId] } }, select: { firstName: true } }).catch(() => [])) ?? [])[0]?.firstName?.trim() || null
       : null;
     return onlyAnAdminSetsThisUp(suite, await this.adminsByFirstName(organizationId), holder);
+  }
+
+  /**
+   * APPROVAL STEPS FOR SPENDING, SAID IN ONE SENTENCE (spending-steps-said-in-ask.ts). Written through SuitesService.setSpendRules, the
+   * same call the spending page makes, which refuses anybody but an admin or whoever looks after finance. What was set is said back.
+   */
+  private async setSpendingStepsSaid(organizationId: string, userId: string, message: string): Promise<Reply | null> {
+    if (!this.suites) return null;
+    const reader = { userId, organizationId };
+    if (!(await this.suites.maySetUp(reader, 'spend').catch(() => false))) {
+      return rules('set_up_a_suite', text(await this.whoSetsThisUp(organizationId, 'spend')));
+    }
+    const members: any[] = await this.prisma.organizationMembership
+      .findMany({ where: { organizationId }, select: { userId: true, role: true, user: { select: { firstName: true, lastName: true } } } })
+      .catch(() => []);
+    const people = (members ?? []).map((m) => ({ userId: m.userId, first: String(m.user?.firstName ?? '').trim(), full: `${m.user?.firstName ?? ''} ${m.user?.lastName ?? ''}`.trim() }));
+    const me = people.find((p) => p.userId === userId) ?? { userId, first: '', full: '' };
+    const isAdmin = (members ?? []).some((m) => m.userId === userId && m.role === 'ADMIN');
+    const duties = await readDuties(this.prisma, organizationId).catch(() => ({}));
+    const read = theStepsSaid(message, me, isAdmin, people.filter((p) => p.userId !== userId), duties);
+    if ('notRead' in read) return rules('set_up_a_suite', text(`${read.notRead} Nothing has changed.`));
+    const now = await this.suites.spendRules(reader).catch(() => null);
+    const thresholds = [...(now?.rules?.thresholds ?? []).filter((t: any) => t.above !== read.above), { above: read.above, steps: read.steps.map((r) => [r]) }]
+      .sort((a: any, b: any) => a.above - b.above);
+    try {
+      await this.suites.setSpendRules(reader, { thresholds });
+    } catch (e: any) {
+      return rules('set_up_a_suite', text(`${e?.response?.message ?? e?.message ?? 'That could not be set.'} Nothing has changed.`));
+    }
+    const suite: any = await (this.prisma as any).organizationSuite?.findUnique?.({ where: { organizationId_suite: { organizationId, suite: 'spend' } }, select: { answers: true } }).catch(() => null);
+    const currency = typeof suite?.answers?.currency === 'string' ? suite.answers.currency : null;
+    return rules('set_up_a_suite', text(theStepsSetSaid(currency, read, me.first)));
   }
 
   private async isAnAdminHere(organizationId: string, userId: string): Promise<boolean> {
