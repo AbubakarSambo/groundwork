@@ -123,7 +123,7 @@ describe('Omar, a member named for anything over KES 20,000', () => {
       /* Where it is, in a full sentence (decision 85, build step 4). */
       where: 'It is waiting for you.',
       /* The spending rules (build step 9): none set, so no category and no evidence. */
-      category: null, needs: [],
+      category: null, needs: [], attached: null,
       /* Questions about it (build step 9): none asked. */
       questions: [],
     }]);

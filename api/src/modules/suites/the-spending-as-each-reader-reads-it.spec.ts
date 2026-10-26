@@ -137,7 +137,7 @@ describe('Grace, an admin', () => {
       /* Where it is, in a full sentence (decision 85, build step 4): one step, waiting for his lead. */
       where: 'It is waiting for Fatuma.',
       /* The spending rules (build step 9): none set, so no category and no evidence. */
-      category: null, needs: [],
+      category: null, needs: [], attached: null,
       /* Questions about it (build step 9): none asked. */
       questions: [],
     });

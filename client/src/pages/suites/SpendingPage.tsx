@@ -171,6 +171,7 @@ function ARequest({ w, board }: { w: SpendWaiting; board: SpendBoard }) {
         {w.category && <> <Tag>{w.category}</Tag>{' '}</>}
         {known && <p className="gwui-panel-text">{known}</p>}
         <p className="gwui-panel-text">{w.where}</p>
+        {w.attached && <p className="gwui-panel-text">{w.attached}</p>}
         {w.needs.map((n, i) => <p key={`n${i}`} className="gwui-panel-text">{n}</p>)}
         {w.questions.map((q, i) => <p key={`q${i}`} className="gwui-panel-text">{q}</p>)}
         {w.mayDecide && (

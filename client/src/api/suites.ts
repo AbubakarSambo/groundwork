@@ -392,6 +392,8 @@ export const roleMapApi = {
 export type SpendApprover = { kind: 'manager' } | { kind: 'person'; firstName: string } | { kind: 'admin' }
 export interface SpendWaiting {
   id: string
+  /** What they attached, said as a sentence, or null. */
+  attached?: string | null
   name: string
   firstName: string
   amount: number
