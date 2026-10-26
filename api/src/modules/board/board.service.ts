@@ -2668,7 +2668,7 @@ export class BoardService {
           .map((t) => ({ checkInId: t.checkInId ?? null, participantId: t.checkIn?.participantId ?? null, role: String(t.role), content: String(t.content ?? ''), createdAt: t.createdAt })))
         : [];
       const aboutDeal = promiseTurns.length
-        ? theDealsThePromisesAreAbout(openPromisesAsKept, promiseTurns, (items as any[]).filter((i) => i.kind === 'deal').map((i) => ({ name: String(i.name ?? ''), ownerParticipantId: (i.sourceEntryId ? lineOf.get(i.sourceEntryId)?.participantId : null) ?? i.ownerParticipantId ?? null })))
+        ? theDealsThePromisesAreAbout(openPromisesAsKept, promiseTurns, (items as any[]).filter((i) => i.kind === 'deal').map((i) => ({ name: String(i.name ?? ''), ownerParticipantId: (i.sourceEntryId ? lineOf.get(i.sourceEntryId)?.participantId : null) ?? i.ownerParticipantId ?? null , contact: String((i.fields as any)?.Contact ?? '').trim() || null})))
         : new Map<string, string>();
       const openPromises = openPromisesAsKept.map((c) => (aboutDeal.has(c.id) ? { ...c, about: aboutDeal.get(c.id) } : c));
       /* Whoever runs it reads every commitment about a record; anybody else only their own and the record holder's, never the lead's (decisions 4 and 30). */
