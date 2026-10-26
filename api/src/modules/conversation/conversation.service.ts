@@ -230,6 +230,7 @@ import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
 import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
+import { aLastTimeInTheirOwnWords, type AWordTheyWrote } from './a-last-time-is-their-own-words';
 import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
 import { isShut } from '../grounds/a-ground-that-has-ended';
 import { whenTheNextSessionOpens } from '../grounds/the-check-ins-own-schedule';
@@ -1519,8 +1520,15 @@ export class ConversationService {
     ].filter(Boolean).join(' ').trim() || null;
     const quoted = nothingSaidYetCannotBeQuoted(held, saidSoFar, whoSetItUp);
     if (quoted.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener quoted a person who has not spoken; rewritten.`);
+    /* "Last time you said..." is their own words with its day, or it is not said (a-last-time-is-their-own-words.ts, 26 October). */
+    const theirEarlier: AWordTheyWrote[] = personal ? [] : await (this.prisma.conversationTurn?.findMany?.({
+      where: { role: TurnRole.PERSON, checkIn: { participantId: checkIn.participantId }, NOT: { checkInId: checkIn.id } },
+      select: { content: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 200,
+    }) ?? Promise.resolve([])).then((ts: any[]) => ts.map((t) => ({ text: t.content ?? '', at: t.createdAt }))).catch(() => []);
+    const theirOwn = personal ? { text: quoted.text, changed: false } : aLastTimeInTheirOwnWords(quoted.text, theirEarlier);
+    if (theirOwn.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener told them what they said before; now in their own words.`);
     /* An opener never answers its own question for them: "Is that now filed? Understood. What is..." (E7). */
-    const guarded0 = await this.theTurnAsItIsSaved(checkIn as any, withoutAnAnswerToItsOwnQuestion(quoted.text));
+    const guarded0 = await this.theTurnAsItIsSaved(checkIn as any, withoutAnAnswerToItsOwnQuestion(theirOwn.text));
     /* News a promise of theirs waits on, that somebody else already gave: told in one line, first (Hafsah, 19 October, FN-005). See a-promise-that-waits-on-news. */
     /* The direct morning's own opening is said as it was written, first; news a promise of theirs waits on follows it. */
     const guarded = personal ? await this.thePersonalOpeningAsSaid(checkIn as any, personal.text) : await this.withTheNewsTheyWaitOn(checkIn as any, guarded0).catch(() => guarded0);

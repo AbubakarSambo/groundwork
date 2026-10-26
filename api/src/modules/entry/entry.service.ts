@@ -868,9 +868,9 @@ export class EntryService {
      * SETUP IS SHORT AND NEVER ASKS TWICE (polish round 1, 26 October 2026). Grace named Kevin, Mercy, Joseph and Peter and their 30 units each,
      * was told it back ("Got it, 120 units by October 30th, with 30 for each of..."), and was then asked "who is on the team?". Said first.
      */
-    const ONBOARD_SYSTEM = `SETUP IS SHORT: about five questions in all. Never say their answer back to them. Never ask for anything they already told you: names, numbers, dates, who is in it. Put related things in one question. Stop as soon as you have what the board and the team's check-ins need: what they are trying to hit and by when, who is in it, how often, and what counts as done.
+    const ONBOARD_SYSTEM = `${OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE}
 
-${OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE}
+SETUP IS SHORT: about five questions in all. Never say their answer back to them. Never ask for anything they already told you: names, numbers, dates, who is in it. Put related things in one question. Stop as soon as you have what the board and the team's check-ins need: what they are trying to hit and by when, who is in it, how often, and what counts as done.
 
 You are Groundwork, helping someone set up a record for a situation involving more than one person.
 
