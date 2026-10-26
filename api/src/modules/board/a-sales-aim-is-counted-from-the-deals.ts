@@ -102,6 +102,8 @@ export interface ADealOnRecord {
   peopleThere?: string[];
   /** A SIGNED ORDER backs it (theSignedOrders), and no payment record yet. Only where the payment record is read. */
   signed?: boolean;
+  /** A payment or a signed order on file for this deal itself: it is sold, whatever stage was written. Only where the payment record is read. */
+  paymentOnFile?: boolean;
   /**
    * ALREADY OPEN BEFORE THIS CHECK-IN, so never a new lead (Hafsah's quality pass, 18 October, B-2): the lead named it in her own
    * check-in before anybody else did ("especially Kilele Hotel, Greenfield Supermarket, and Mama Pima Stores"), or its owner
@@ -224,7 +226,11 @@ export function theCountFromTheDeals(
     };
   }
   const last = stages[stages.length - 1].toLowerCase();
-  const atTheLast = theirs.filter((d) => (d.stage ?? '').toLowerCase() === last);
+  /*
+   * A DEAL WITH ITS PAYMENT OR ITS SIGNED ORDER ON FILE IS SOLD, WHATEVER STAGE WAS WRITTEN FOR IT (polish round 1, 26 October 2026).
+   * Kevin's Kilele Hotel had the M-Pesa statement for its 40 units on file, but no stage, and Grace's board read "0 of 120 sold".
+   */
+  const atTheLast = theirs.filter((d) => (d.stage ?? '').toLowerCase() === last || !!d.paymentOnFile);
   /* Where the lead's rule says a sale counts only with a payment or a signed order, one said won with neither is not counted yet. */
   const notYet = (d: ADealOnRecord) => !!d.wonNeedsProof && !d.paid && !d.signed;
   const won = atTheLast.filter((d) => !notYet(d));
@@ -475,6 +481,7 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
       firstOnRecordAt: new Date(i.createdAt),
       proven,
       paid: opts.paymentRecord ? paidOnALine.length > 0 || paymentFiled.length > 0 : proven,
+      paymentOnFile: !!opts.paymentRecord && (paidOnALine.length > 0 || paymentFiled.length > 0 || orderFiled.length > 0),
       /* Only the payment records on the lines can say a deposit; a payment filed on the deal is read as paid, as before. */
       deposit: opts.paymentRecord && paidOnALine.length && !paymentFiled.length ? theDepositFor({ name: i.name, fields }, payments) : null,
       paidOn: opts.paymentRecord

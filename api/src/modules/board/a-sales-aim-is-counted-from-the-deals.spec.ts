@@ -194,6 +194,15 @@ describe('the rules, one at a time', () => {
     expect(c.says).toBe('5 sold, 5 with proof of payment. 1 won deal has no record of how many units, so it is not counted.');
   });
 
+  it('a deal with its payment on file is sold, whatever stage was written (Kilele Hotel, polish round 1)', () => {
+    const deals: ADealOnRecord[] = [
+      { id: '1', name: 'Kilele Hotel', stage: null, ownerParticipantId: 'p', fields: { Units: '40' }, firstOnRecordAt: NOW, proven: true, paid: true, paymentOnFile: true },
+      { id: '2', name: 'Mama Pima', stage: null, ownerParticipantId: 'p', fields: { Units: '15' }, firstOnRecordAt: NOW, proven: true, paid: true },
+    ];
+    const c = theCountFromTheDeals({ name: 'Sell 120 units' }, deals, ['Contacted', 'Won'], NOW, 'Africa/Nairobi')!;
+    expect(c.count).toBe(40);
+  });
+
   it('the headline answer has the prototype\'s shape', () => {
     const c = { counts: 'units' as const, count: 21, proven: 17, leftOut: 0, thing: 'freezers', currency: null, says: '' };
     expect(theSalesAnswer(c, 25, 2)).toBe('Not yet. 21 freezers are sold and 2 more are likely. That makes 23 of the 25 needed.');

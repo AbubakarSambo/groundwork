@@ -1,3 +1,4 @@
+import { fileProofThatWasFiledOnNothing } from '../documents/proof-filed-on-its-item';
 import { Injectable, Logger } from '@nestjs/common';
 import { aMilestoneAcceptedIsAnInvoiceToRaise } from './release-5-projects';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -279,6 +280,8 @@ export class BoardListener {
         }
       }
       this.logger.log(`Kept ${kept.length} record(s) of ${kind} from check-in ${e.checkInId}.`);
+      /* Proof sent before its deal was on record is filed on it now (proof-filed-on-its-item.ts, polish round 1). */
+      await fileProofThatWasFiledOnNothing(this.prisma, e.groundId).catch(() => 0);
       if (isASalesKind(kind)) await this.fileTheBuyingDatesSaid(e.groundId, lines, saidIn);
     } catch (err: any) {
       this.logger.warn(`Reading the records for check-in ${e.checkInId} failed: ${err?.message}`);
