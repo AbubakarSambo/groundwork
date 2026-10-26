@@ -26,7 +26,8 @@ describe('the opener is held to the same bar', () => {
   it('the opener is checked before it is stored, not after it is read', () => {
     const held = SRC.indexOf('theOpenerIsHeldToTheSameBar(checkIn.id');
     // Changed 26 October 2026 (Hafsah: item 1): the stored opener now has the opening line in front (not on a correction); it is still checked first.
-    const stored = SRC.indexOf('checkInId: checkIn.id, role: TurnRole.AI, content: (checkIn as any).isSelfCorrection ? opening : withTheOpeningLine(opening)');
+    /* Changed 26 October 2026 (Hafsah after round 3): "What would you like to add?" (add-something.ts) opens without the ten-minute line too. */
+    const stored = SRC.indexOf('checkInId: checkIn.id, role: TurnRole.AI, content: (checkIn as any).isSelfCorrection || alreadyWritten === WHAT_WOULD_YOU_LIKE_TO_ADD ? opening : withTheOpeningLine(opening)');
     expect(held).toBeGreaterThan(-1);
     expect(stored).toBeGreaterThan(held);
   });
