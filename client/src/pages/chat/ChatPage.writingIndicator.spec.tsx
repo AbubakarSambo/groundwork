@@ -43,7 +43,7 @@ describe('the check-in chat: the writing indicator', () => {
 
     renderChat()
     await screen.findByText('What moved this week?', {}, { timeout: 6000 })
-    const box = screen.getByPlaceholderText(/Type, or hold to speak/i)
+    const box = screen.getByPlaceholderText(/Type your answer/i)
     fireEvent.change(box, { target: { value: 'Shipped the release.' } })
     fireEvent.keyDown(box, { key: 'Enter' })
 
@@ -64,7 +64,7 @@ describe('the check-in chat: the writing indicator', () => {
 
     renderChat()
     await screen.findByText('What moved this week?', {}, { timeout: 6000 })
-    const box = screen.getByPlaceholderText(/Type, or hold to speak/i) as HTMLTextAreaElement
+    const box = screen.getByPlaceholderText(/Type your answer/i) as HTMLTextAreaElement
     fireEvent.change(box, { target: { value: 'Shipped the release.' } })
     fireEvent.keyDown(box, { key: 'Enter' })
 
