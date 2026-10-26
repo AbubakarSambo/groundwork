@@ -15,6 +15,7 @@
  * them ("KES 12,400", "16%", "KES 466,450.00"). An answer that carries a figure no document holds is not said.
  */
 import { documentWhereFor } from '../documents/who-can-see-a-document';
+import { cleanText } from '../reports/what-the-record-actually-holds';
 
 /** Whether a message asks something, rather than tells something. Read by its shape, never by a model. */
 const STARTS_A_QUESTION = /^\s*(?:(?:and|so|but|also|please|ok|okay)[\s,]+)?(?:what|what's|whats|when|where|which|who|whom|whose|why|how|is|are|was|were|does|do|did|can|could|will|would|should|has|have|according to|tell me|do you know)\b/i;
@@ -107,7 +108,7 @@ export async function theDocumentsTheyMayOpen(
  * Anybody else reads only their own. It is given to the same answer as one more document, and the same figure check applies.
  */
 const DAY_SAID = (d: Date) => new Date(d).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Nairobi' });
-const MOST_LINES_FOR_ONE = 40;
+const MOST_LINES_FOR_ONE = 20;
 
 export async function theRecordTheyMayRead(
   prisma: any,
@@ -137,6 +138,8 @@ export async function theRecordTheyMayRead(
     for (const p of people) if (!p.user) p.user = users.find((u) => u.id === p.userId) ?? null;
     const nameOf = (p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || String(p.email ?? '').split('@')[0];
     const lines: string[] = [];
+    /* The team first and the reader's own last, so a long record of their own never pushes the team out. */
+    people.sort((a, b) => Number(a.userId === input.userId) - Number(b.userId === input.userId));
     for (const p of people) {
       const entries = ((await Promise.resolve(prisma.recordEntry?.findMany?.({
         where: { participantId: p.id, disputedAt: null, createdAt: { gte: since } },
@@ -146,7 +149,7 @@ export async function theRecordTheyMayRead(
       const who = p.userId === input.userId ? `${nameOf(p)} (you)` : nameOf(p);
       lines.push(`PERSON: ${who}`);
       for (const e of entries.reverse()) {
-        lines.push(`- ${DAY_SAID(e.createdAt)}, ${String(e.type).toLowerCase().replace(/_/g, ' ')}${e.anchoredDocumentId ? ', proven by a document' : ', their word'}: ${String(e.text ?? '').replace(/\s+/g, ' ').trim()}`);
+        lines.push(`- ${DAY_SAID(e.createdAt)}, ${String(e.type).toLowerCase().replace(/_/g, ' ')}${e.anchoredDocumentId ? ', proven by a document' : ', their word'}: ${cleanText(String(e.text ?? '')).replace(/\s+/g, ' ').trim()}`);
       }
       if (!entries.length) lines.push('- Nothing on record in the last six weeks.');
     }
