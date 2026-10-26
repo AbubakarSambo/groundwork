@@ -43,7 +43,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  */
 export function WhosInItRoster({
   ground, isInitiator, isOrgAdmin, colleagues, addingMany, addManyParticipants,
-  newParticipantEmail, setNewParticipantEmail, newParticipantNote, setNewParticipantNote,
+  newParticipantEmail, setNewParticipantEmail, newParticipantName = '', setNewParticipantName = () => undefined, newParticipantNote, setNewParticipantNote,
   newParticipantDepartment, setNewParticipantDepartment, addParticipantMut,
   queuedToAdd, setQueuedToAdd, inviteTheQueue, lastInvitedEmail, whyItWaits, lastInviteWaits,
   billingStatus, onShareCode, fixingEmailId, setFixingEmailId, fixingEmailValue,
@@ -58,6 +58,8 @@ export function WhosInItRoster({
   addManyParticipants: (picked: { id: string; name: string }[]) => void
   newParticipantEmail: string
   setNewParticipantEmail: (v: string) => void
+  newParticipantName?: string
+  setNewParticipantName?: (v: string) => void
   newParticipantNote: string
   setNewParticipantNote: (v: string) => void
   newParticipantDepartment: string
@@ -137,7 +139,7 @@ export function WhosInItRoster({
         <AddPeopleForm
           isOrgAdmin={isOrgAdmin} colleagues={colleagues} participants={participants} seats={seats} seatsFull={seatsFull}
           addingMany={addingMany} addManyParticipants={addManyParticipants}
-          newParticipantEmail={newParticipantEmail} setNewParticipantEmail={setNewParticipantEmail}
+          newParticipantEmail={newParticipantEmail} setNewParticipantEmail={setNewParticipantEmail} newParticipantName={newParticipantName} setNewParticipantName={setNewParticipantName}
           newParticipantNote={newParticipantNote} setNewParticipantNote={setNewParticipantNote}
           newParticipantDepartment={newParticipantDepartment} setNewParticipantDepartment={setNewParticipantDepartment}
           addParticipantMut={addParticipantMut} queuedToAdd={queuedToAdd} setQueuedToAdd={setQueuedToAdd}
@@ -361,7 +363,7 @@ export function whereThisPersonIs(p: any, c: {
 /** "Add a person to this check-in": today's form, unchanged, so the new People and setup opens the very same one. */
 export function AddPeopleForm({
   isOrgAdmin, colleagues, participants, seats, seatsFull, addingMany, addManyParticipants,
-  newParticipantEmail, setNewParticipantEmail, newParticipantNote, setNewParticipantNote,
+  newParticipantEmail, setNewParticipantEmail, newParticipantName = '', setNewParticipantName = () => undefined, newParticipantNote, setNewParticipantNote,
   newParticipantDepartment, setNewParticipantDepartment, addParticipantMut,
   queuedToAdd, setQueuedToAdd, inviteTheQueue, lastInvitedEmail, whyItWaits, lastInviteWaits, onShareCode,
 }: {
@@ -374,6 +376,8 @@ export function AddPeopleForm({
   addManyParticipants: (picked: { id: string; name: string }[]) => void
   newParticipantEmail: string
   setNewParticipantEmail: (v: string) => void
+  newParticipantName?: string
+  setNewParticipantName?: (v: string) => void
   newParticipantNote: string
   setNewParticipantNote: (v: string) => void
   newParticipantDepartment: string
@@ -419,6 +423,11 @@ export function AddPeopleForm({
           alreadyIn={participants.map((m) => m.userId ?? '').filter(Boolean)}
           adding={addingMany}
           onAdd={(picked) => addManyParticipants(picked)}
+        />
+        <input
+          type="text" placeholder="Their name, e.g. Samuel Otieno" aria-label="Their name"
+          value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)}
+          className="gwui-input"
         />
         <input
           type="email" placeholder="name@company.com" aria-label="Their email address"

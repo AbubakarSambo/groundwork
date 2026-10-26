@@ -899,7 +899,7 @@ export class WhatsAppForAnOrganisationService {
     const invited = await this.prisma.groundParticipant.findFirst({
       where: { email: { equals: email, mode: 'insensitive' }, userId: null, inviteToken: { not: null }, ground: { organizationId, status: { notIn: [...A_GROUND_IS_OVER] } } },
       orderBy: { createdAt: 'asc' },
-      select: { inviteToken: true },
+      select: { inviteToken: true, nameGiven: true },
     });
     if (!invited?.inviteToken) return null;
     await this.participants.accept(invited.inviteToken);
@@ -911,8 +911,9 @@ export class WhatsAppForAnOrganisationService {
      * spend was dropped from the approver's queue and boards read "Somebody". The name the organisation gave them goes on the sign-in,
      * only where it has none.
      */
-    const first = String(person?.givenName ?? '').trim() || String(person?.displayName ?? '').trim().split(/\s+/)[0] || '';
-    const last = String(person?.familyName ?? '').trim() || String(person?.displayName ?? '').trim().split(/\s+/).slice(1).join(' ') || '';
+    const theName = String(person?.displayName ?? '').trim() || [person?.givenName, person?.familyName].filter(Boolean).join(' ').trim() || String((invited as any).nameGiven ?? '').trim();
+    const first = String(person?.givenName ?? '').trim() || theName.split(/\s+/)[0] || '';
+    const last = String(person?.familyName ?? '').trim() || theName.split(/\s+/).slice(1).join(' ') || '';
     if (first) await this.prisma.user.updateMany({ where: { id: user.id, firstName: '' }, data: { firstName: first, ...(last ? { lastName: last } : {}) } }).catch(() => undefined);
     this.logger?.log?.(`Somebody joined their check-in from the number their organisation added.`);
     return user.id;
