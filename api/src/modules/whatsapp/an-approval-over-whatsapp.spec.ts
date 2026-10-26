@@ -235,6 +235,8 @@ describe('Wairimu approves by replying', () => {
 
   it('with nothing waiting she is told so', async () => {
     expect((await anApprover({ waiting: [] }).said('approve')).text).toBe('Nothing is waiting for you to approve or decline right now.');
+    /* Polish round 1: a decision with a date and a reason in it is never read as the approver's own leave. */
+    expect((await anApprover({ waiting: [] }).said('Decline Peter\'s leave because Friday 23 October is the day the 60 units arrive.')).text).toBe('Nothing is waiting for you to approve or decline right now.');
   });
 });
 

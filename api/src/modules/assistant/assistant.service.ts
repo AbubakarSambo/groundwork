@@ -4447,7 +4447,12 @@ export class AssistantService {
   private async proposeADecision(organizationId: string, who: string, userId: string, message: string): Promise<Reply | null> {
     const outcome = aDecisionIn(message)!;
     const all = await this.waitingForYouToDecide(organizationId, userId);
-    if (!all.length) return onlyTheDecision(message) ? rules('decide_a_request', text(NOTHING_TO_DECIDE)) : null;
+    /*
+     * A message that opens with "approve" or "decline" is a decision, never the sender's own request (polish round 1, 26 October
+     * 2026): Grace's "Decline Peter's leave because Friday 23 October is the day the 60 units arrive" found nothing waiting for
+     * her, fell through to the leave lane, and was read as Grace asking for Friday off herself.
+     */
+    if (!all.length) return rules('decide_a_request', text(NOTHING_TO_DECIDE));
     const said = message.toLowerCase();
     const byName = all.filter((r) => r.firstName && new RegExp(`\\b${r.firstName.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(said));
     const named = byName.length ? byName : all;
