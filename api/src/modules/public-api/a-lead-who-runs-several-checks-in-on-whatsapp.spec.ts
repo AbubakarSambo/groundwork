@@ -22,3 +22,16 @@ describe('which check-in a lead means', () => {
     expect((await svc(null).theOneTheLeadMeans(RUNS, 'u-grace', 'Hi')).id).toBe('g-kiosks');
   });
 });
+
+describe('a check-in Groundwork has just closed is not open (Mercy, 26 October 2026)', () => {
+  it('while it is being finished, a message goes to the next one', async () => {
+    const s = Object.create(WhatsAppForAnOrganisationService.prototype) as any;
+    const ground = { label: 'Sales team, Q4', createdAt: new Date('2026-10-01'), initiator: { firstName: 'Grace' }, overWhatsApp: true, cadence: 'DAILY', simplerWords: false };
+    s.prisma = { checkIn: { findMany: jest.fn(async () => [
+      { id: 'ci-9', status: 'IN_PROGRESS', sessionNumber: 9, availableFrom: new Date('2026-10-22'), createdAt: new Date('2026-10-22'), ground },
+      { id: 'ci-10', status: 'NOT_STARTED', sessionNumber: 10, availableFrom: new Date('2026-10-22'), createdAt: new Date('2026-10-22'), ground },
+    ]) } };
+    s.conversation = { isBeingFinished: (id: string) => id === 'ci-9' };
+    expect((await s.openCheckInsFor('org', 'u-mercy')).map((c: any) => c.id)).toEqual(['ci-10']);
+  });
+});

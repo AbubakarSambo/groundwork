@@ -7533,6 +7533,14 @@ ${told}` : '';
    * complete() protect against a person leaving nothing behind; a person who left is the case they
    * cannot help.
    */
+  /**
+   * Whether Groundwork closed this check-in and is still finishing it (writing its end card and record, up to about a minute). A message
+   * that arrives meanwhile belongs to the next check-in, as something added, never to this one (Mercy on WhatsApp, 26 October 2026).
+   */
+  isBeingFinished(checkInId: string): boolean {
+    return !!this.finishedByGroundwork?.has(checkInId);
+  }
+
   async closeByTheClock(checkInId: string): Promise<{ status: 'completed'; groundId: string }> {
     const checkIn = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },

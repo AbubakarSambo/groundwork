@@ -961,7 +961,8 @@ export class WhatsAppForAnOrganisationService {
   }
 
   private async openCheckInsFor(organizationId: string, userId: string): Promise<AnOpenCheckIn[]> {
-    const rows = await this.prisma.checkIn.findMany({
+    /* One Groundwork has just closed and is still finishing is not open: a message now goes to the next one (26 October 2026). */
+    const rows = (await this.prisma.checkIn.findMany({
       where: {
         participant: { userId, ground: { organizationId } },
         status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] },
@@ -969,7 +970,7 @@ export class WhatsAppForAnOrganisationService {
       },
       orderBy: { createdAt: 'asc' },
       select: { id: true, status: true, sessionNumber: true, availableFrom: true, createdAt: true, ground: { select: { label: true, createdAt: true, initiator: { select: { firstName: true } }, overWhatsApp: true, cadence: true, simplerWords: true } } },
-    });
+    })).filter((r) => !(this.conversation as any).isBeingFinished?.(r.id));
     /* Two of the same name are told apart by when each started (or who runs it), so "You have two check-ins open" can be answered. */
     const said = namesTheyCanTellApart(rows.map((r) => ({ id: r.id, label: r.ground.label, startedAt: r.ground.createdAt, leadName: r.ground.initiator?.firstName })));
     /* The one closing soonest first (decision 106 item 1), by the same due date the reminders use. */
