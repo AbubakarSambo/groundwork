@@ -209,7 +209,8 @@ describe('"finish" closes an anchor check-in as it closes any other (final check
     expect(out.sessionComplete).toBe(true);
   });
   it('an anchor reply that asks nothing, when it was not told to close, is still given its question as before', async () => {
-    const w = worldReading({ turns: FIVE, answer: 'Getting the trucks out on time.' }, { learned: { workingOn: true } });
+    /* Changed 26 October 2026 (polish round 2): from the fifth answer a normal day is told to close, so this reads the third. */
+    const w = worldReading({ turns: FIVE.slice(0, 5), answer: 'Getting the trucks out on time.' }, { learned: { workingOn: true } });
     (w.service as any).anthropic.respond = jest.fn(async () => 'Thank you for telling me that.');
     const out: any = await w.service.sendMessage('ci2', 'user-1', 'Getting the trucks out on time.');
     expect(out.reply).toContain('?');

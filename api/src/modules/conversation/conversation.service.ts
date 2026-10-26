@@ -2263,7 +2263,7 @@ export class ConversationService {
     const lastReply = await Promise.resolve((this.prisma.conversationTurn as any).findFirst?.({ where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'desc' }, select: { content: true } }))
       .catch(() => null) as { content: string | null } | null;
     const saysWhatItIs = askedWhatItIs(lastReply?.content ?? '');
-    /* 5 to 7 questions on a normal day, said every turn, and the close from the seventh answer (a-short-day.ts, 26 October). */
+    /* 5 to 7 questions on a normal day, said every turn, and the close from the fifth answer (a-short-day.ts, 26 October). */
     const timeToClose = itIsTimeToClose(personTurnCount + 1, !!(checkIn as any).isSelfCorrection);
     const fullSystem = [composed, inTheBaseline ? null : A_SHORT_DAY, inTheBaseline ? null : aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null, timeToClose ? null : whatItIs, timeToClose ? THE_DAY_IS_COVERED : null]
       .filter(Boolean)
@@ -3430,7 +3430,7 @@ export class ConversationService {
       const leadFirst = lead?.initiatorId && lead.initiatorId !== (checkIn as any).participant?.userId ? (lead?.initiator?.firstName ?? null) : null;
       aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: theCloseThatCoversToday(leadFirst) } });
       sessionComplete = true;
-      this.logger.log(`Check-in ${checkIn.id}: past seven answers; the product closes it.`);
+      this.logger.log(`Check-in ${checkIn.id}: past five answers; the product closes it.`);
     }
     /* They said they are leaving: no "One thing before you go - ..." handing their own words back as a request, whether
        the product closes now or tells them how to finish (reviewer, 14 October). */
