@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { NameYourOrganisation, isAMadeUpWorkspaceName } from './NameYourOrganisation'
+import { NameYourOrganisation, isAMadeUpWorkspaceName, isOnlyTheEmailDomain } from './NameYourOrganisation'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -12,8 +12,8 @@ vi.mock('@/api/auth', () => ({ authApi: { renameOrganization: vi.fn() } }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 import { authApi } from '@/api/auth'
 
-function as(role: 'ADMIN' | 'MEMBER', organizationName: string) {
-  useAuthStore.setState({ user: { id: 'u1', role, organizationId: 'o1', firstName: 'Hafsah', organizationName }, token: 't', isAuthenticated: true } as any)
+function as(role: 'ADMIN' | 'MEMBER', organizationName: string, email = 'hafsah@gmail.com') {
+  useAuthStore.setState({ user: { id: 'u1', role, organizationId: 'o1', firstName: 'Hafsah', organizationName, email }, token: 't', isAuthenticated: true } as any)
 }
 const show = () => render(<QueryClientProvider client={new QueryClient()}><NameYourOrganisation /></QueryClientProvider>)
 
@@ -52,5 +52,14 @@ describe('on Today', () => {
     as('ADMIN', 'My workspace'); show()
     fireEvent.click(screen.getByRole('button', { name: 'Not now' }))
     expect(screen.queryByText('What is your organisation called?')).toBeNull()
+  })
+})
+
+describe('a name that is only the email domain', () => {
+  it('"Kisumulamps" for achieng@kisumulamps.test is a guess, and Achieng is asked', () => {
+    expect(isOnlyTheEmailDomain('Kisumulamps', 'achieng@kisumulamps.test')).toBe(true)
+    expect(isOnlyTheEmailDomain('Kisumu Lamps Ltd', 'achieng@kisumulamps.test')).toBe(false)
+    as('ADMIN', 'Kisumulamps', 'achieng@kisumulamps.test'); show()
+    expect(screen.getByText('What is your organisation called?')).toBeInTheDocument()
   })
 })

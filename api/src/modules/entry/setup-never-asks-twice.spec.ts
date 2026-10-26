@@ -76,3 +76,14 @@ describe('the same question twice', () => {
     expect(withoutTheSameQuestion('Thanks. How many lamps are each of them looking to sell by November 30?', earlier, true)).toBe('Thanks. Anything else I should know?');
   });
 });
+
+describe('the same question in other words (Achieng, 26 October 2026)', () => {
+  const { theQuestionAskedBefore } = require('./setup-never-asks-twice');
+  it('"How many of the remaining 160 lamps is each person responsible for selling?" after "How many lamps is each person aiming to sell?"', () => {
+    expect(theQuestionAskedBefore('How many of the remaining 160 lamps is each person responsible for selling?', ['Got it. How many lamps is each person aiming to sell towards the 200 by November 30th?'])).toBeTruthy();
+  });
+  it('a different question about the same team is not a repeat', () => {
+    expect(theQuestionAskedBefore('Where do things stand today, and what is still open?', ['How many lamps is each person aiming to sell towards the 200?'])).toBeNull();
+    expect(theQuestionAskedBefore('Who approves a price below KES 4,800?', ['How many lamps is each person aiming to sell?'])).toBeNull();
+  });
+});

@@ -60,14 +60,17 @@ export function withoutAskingAgain(reply: string, answered: WhatIsAnswered): str
  * AND NOT THE SAME QUESTION TWICE (26 October 2026). Grace did not give a number per person, and was asked "how many lamps is each person
  * looking to sell" three turns running. A question she has been asked and passed over is left; she is not asked it again.
  */
-const wordsOf = (t: string) => new Set(String(t ?? '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w.length >= 4));
+/* Words of four letters or more, with an ending taken off, so "sell" and "selling", "lamp" and "lamps" match. */
+const STOP_WORDS = new Set(['what', 'which', 'that', 'this', 'with', 'your', 'they', 'their', 'there', 'about', 'from', 'have', 'will', 'would', 'each', 'many', 'much', 'does', 'the']);
+const wordsOf = (t: string) => new Set(String(t ?? '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/)
+  .filter((w) => w.length >= 4 && !STOP_WORDS.has(w)).map((w) => w.replace(/(?:ing|ed|es|s)$/, '')));
 const questionsIn = (t: string) => (String(t ?? '').match(/[^.!?\n]*\?/g) ?? []).map((q) => q.trim()).filter(Boolean);
 function alike(a: string, b: string): boolean {
   const x = wordsOf(a), y = wordsOf(b);
-  if (x.size < 3 || y.size < 3) return false;
+  if (x.size < 2 || y.size < 2) return false;
   let both = 0;
   x.forEach((w) => { if (y.has(w)) both++; });
-  return both / Math.min(x.size, y.size) >= 0.6;
+  return both / Math.min(x.size, y.size) >= 0.5;
 }
 
 /** The earlier question of setup's that this reply asks again, if any. */

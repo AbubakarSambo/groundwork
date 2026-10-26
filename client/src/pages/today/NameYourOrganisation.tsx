@@ -17,6 +17,19 @@ export function isAMadeUpWorkspaceName(name?: string | null): boolean {
   return !n || /^my workspace$/i.test(n) || /^.+['’]s workspace$/i.test(n)
 }
 
+/**
+ * OR ONLY THE EMAIL ADDRESS'S DOMAIN (26 October 2026). Achieng signed up as achieng@kisumulamps.test, left the box as it was filled in
+ * from her address, and her organisation was called "Kisumulamps". That is a guess too, so she is asked for the real name. A public
+ * address (gmail and the like) never gives a name like this, so it is never asked about.
+ */
+export function isOnlyTheEmailDomain(name?: string | null, email?: string | null): boolean {
+  const domain = String(email ?? '').split('@')[1]?.split('.')[0] ?? ''
+  const n = String(name ?? '').replace(/[^a-z0-9]/gi, '').toLowerCase()
+  return !!domain && n === domain.replace(/[^a-z0-9]/gi, '').toLowerCase()
+}
+
+export const theNameIsAGuess = (name?: string | null, email?: string | null) => isAMadeUpWorkspaceName(name) || isOnlyTheEmailDomain(name, email)
+
 const NOT_NOW = 'gw-name-your-organisation-not-now'
 
 export function NameYourOrganisation() {
@@ -29,7 +42,7 @@ export function NameYourOrganisation() {
     onSuccess: (org) => { updateUser({ organizationName: org.name } as any); toast.success(`Your organisation is now called ${org.name}.`) },
     onError: () => toast.error('The name did not change. Try again.'),
   })
-  if (user?.role !== 'ADMIN' || notNow || !isAMadeUpWorkspaceName(user?.organizationName)) return null
+  if (user?.role !== 'ADMIN' || notNow || !theNameIsAGuess(user?.organizationName, user?.email)) return null
   const ok = name.trim().length >= 2
   return (
     <Panel as="section" heading="What is your organisation called?" aria-label="Name your organisation">
