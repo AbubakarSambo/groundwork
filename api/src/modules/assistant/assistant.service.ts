@@ -620,6 +620,8 @@ export class AssistantService {
       case 'what_am_i_on':
         return this.compose(await this.whatAmIOn(organizationId, personId));
       case 'who_is':
+        /* "Who's my best performer this month?" asks about the record, not for somebody called "my best performer" (polish round 1). */
+        if (userId && /^(?:my|our|the)\b/i.test(routed.subject ?? '')) return this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId ?? null, message);
         return this.compose(await this.whoIs(organizationId, routed.subject ?? ''));
       case 'what_did_i_commit_to':
         return this.myCommitments(organizationId, personId);

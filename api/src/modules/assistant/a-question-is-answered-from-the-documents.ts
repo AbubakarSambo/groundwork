@@ -33,7 +33,8 @@ Rules:
 - Answer only from the documents. If they do not say, set found to false and leave answer empty.
 - Copy every number exactly as the document writes it, with its currency, unit or percent sign: write "KES 12,400", never "12400" or "12,400 shillings".
 - Where the answer needs a sum the document does not state, show it from the document's own figures, for example "40 units are in the 30 to 99 band, at KES 12,400 a unit, so 40 units cost KES 496,000."
-- Say which document the answer comes from, by its file name.
+- Say which document the answer comes from, by its file name. When it comes from "the record of" a check-in, say "on the record" instead, and name the day it was said.
+- In "the record of" a check-in, a line marked "their word" is what the person said, with nothing to show it yet; say so plainly. A line marked "proven by a document" has its proof. Name people by their names.
 - Write plain, full sentences that a person with basic English understands. Speak to the person as "you". No lists, no headings, no colons joining pieces.
 - At most three sentences.
 - A short question names things loosely. "The Kamau defence" is the defence in "Kamau v. Apex Ltd"; "Kilele" is "Kilele Hotel". Match a short name to the fuller one in the documents, and answer when one thing clearly fits.`;
@@ -98,12 +99,84 @@ export async function theDocumentsTheyMayOpen(
   return out;
 }
 
+/**
+ * THE RECORD IS READ TOO, AS EACH READER MAY READ IT (polish round 1, 26 October 2026). Grace asked "Has Joseph proved his Mama Pima
+ * sale?", "What did Kevin promise this week?" and "Who's my best performer this month?", and read "I could not find the answer to that
+ * in the documents you can open" each time, while the answers were on her own board. A lead may read what a manager would see in a
+ * staff assessment: what each person in their check-ins said, on which day, what is proven, their deals and the proof filed on them.
+ * Anybody else reads only their own. It is given to the same answer as one more document, and the same figure check applies.
+ */
+const DAY_SAID = (d: Date) => new Date(d).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Nairobi' });
+const MOST_LINES_FOR_ONE = 40;
+
+export async function theRecordTheyMayRead(
+  prisma: any,
+  input: { organizationId: string; userId: string; groundId?: string | null },
+  now: Date = new Date(),
+): Promise<ADocumentToAnswerFrom[]> {
+  const grounds = ((await Promise.resolve(prisma.ground?.findMany?.({
+    where: {
+      organizationId: input.organizationId,
+      ...(input.groundId ? { id: input.groundId } : {}),
+      OR: [{ initiatorId: input.userId }, { participants: { some: { userId: input.userId } } }],
+    },
+    select: { id: true, label: true, initiatorId: true },
+  })).catch(() => [])) ?? []) as { id: string; label: string; initiatorId: string | null }[];
+  const out: ADocumentToAnswerFrom[] = [];
+  const since = new Date(now.getTime() - 45 * 86_400_000);
+  for (const g of grounds) {
+    const isLead = g.initiatorId === input.userId;
+    const people = ((await Promise.resolve(prisma.groundParticipant?.findMany?.({
+      where: { groundId: g.id, ...(isLead ? {} : { userId: input.userId }) },
+      select: { id: true, userId: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
+    })).catch(() => [])) ?? []) as any[];
+    if (!people.length) continue;
+    const nameOf = (p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || String(p.email ?? '').split('@')[0];
+    const lines: string[] = [];
+    for (const p of people) {
+      const entries = ((await Promise.resolve(prisma.recordEntry?.findMany?.({
+        where: { participantId: p.id, disputedAt: null, createdAt: { gte: since } },
+        orderBy: { createdAt: 'desc' }, take: MOST_LINES_FOR_ONE,
+        select: { text: true, type: true, createdAt: true, anchoredDocumentId: true },
+      })).catch(() => [])) ?? []) as any[];
+      const who = p.userId === input.userId ? `${nameOf(p)} (you)` : nameOf(p);
+      lines.push(`PERSON: ${who}`);
+      for (const e of entries.reverse()) {
+        lines.push(`- ${DAY_SAID(e.createdAt)}, ${String(e.type).toLowerCase().replace(/_/g, ' ')}${e.anchoredDocumentId ? ', proven by a document' : ', their word'}: ${String(e.text ?? '').replace(/\s+/g, ' ').trim()}`);
+      }
+      if (!entries.length) lines.push('- Nothing on record in the last six weeks.');
+    }
+    const items = ((await Promise.resolve(prisma.workItem?.findMany?.({
+      where: { groundId: g.id, ...(isLead ? {} : { ownerParticipantId: { in: people.map((p) => p.id) } }) },
+      select: { id: true, kind: true, name: true, stage: true, fields: true, ownerParticipantId: true },
+    })).catch(() => [])) ?? []) as any[];
+    const proof = ((await Promise.resolve(prisma.itemEvidence?.findMany?.({
+      where: { groundId: g.id, countsAsProof: true, workItemId: { in: items.map((i) => i.id) } },
+      select: { workItemId: true, readAs: true },
+    })).catch(() => [])) ?? []) as any[];
+    const owners = new Map(people.map((p) => [p.id, nameOf(p)]));
+    const work = items.filter((i) => !String(i.kind).startsWith('request') && !String(i.kind).startsWith('idea'));
+    if (work.length) {
+      lines.push('THE WORK ON RECORD:');
+      for (const i of work) {
+        const f = i.fields && typeof i.fields === 'object' ? i.fields : {};
+        const plain = Object.entries(f).filter(([k, v]) => !k.startsWith('_') && typeof v === 'string').map(([k, v]) => `${k} ${v}`).join('; ');
+        const filed = proof.filter((x) => x.workItemId === i.id).map((x) => x.readAs.toLowerCase());
+        lines.push(`- ${i.name}${owners.get(i.ownerParticipantId) ? `, ${owners.get(i.ownerParticipantId)}'s` : ''}${i.stage ? `, at ${i.stage}` : ''}${plain ? `. ${plain}` : ''}. ${filed.length ? `Proof on file: ${filed.join(', ')}.` : 'No proof on file.'}`);
+      }
+    }
+    out.push({ fileName: `the record of ${g.label}`, content: lines.join('\n').slice(0, MOST_WE_READ_FROM_ONE) });
+  }
+  return out;
+}
+
 /** The answer to say, or the sentence that says it is not in the documents. Never offered as a line. */
 export async function answerFromTheDocuments(
   deps: { prisma: any; engine: { extract: (system: string, history: any[], tool: any) => Promise<any> } },
   input: { organizationId: string; userId: string; groundId?: string | null; question: string },
 ): Promise<string> {
-  const documents = await theDocumentsTheyMayOpen(deps.prisma, input);
+  const records = await theRecordTheyMayRead(deps.prisma, input).catch(() => [] as ADocumentToAnswerFrom[]);
+  const documents = [...records, ...(await theDocumentsTheyMayOpen(deps.prisma, input))];
   if (!documents.length) return NO_DOCUMENTS_TO_READ;
   let room = MOST_WE_READ_IN_ALL;
   const given: ADocumentToAnswerFrom[] = [];
