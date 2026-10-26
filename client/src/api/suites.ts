@@ -423,6 +423,16 @@ export interface SpendBoard {
   teams: string[]
 }
 
+/** THE APPROVAL STEPS BY AMOUNT (GET and PUT /suites/spend/rules, thresholds only): one setting, which the spending page, Ask and the policy board all write. */
+export type ApprovalRole = 'manager' | 'departmentHead' | 'budgetOwner' | 'finance' | 'hr' | 'chiefExecutive' | 'admin'
+export interface AnAmountsSteps { above: number; steps: ApprovalRole[][] }
+export interface TheSpendRules { rules: { thresholds?: AnAmountsSteps[] }; said: string[] }
+export const spendRulesApi = {
+  get: async (): Promise<TheSpendRules> => (await apiClient.get('/suites/spend/rules', { skipForbiddenToast: true } as any)).data,
+  setThresholds: async (thresholds: AnAmountsSteps[]): Promise<TheSpendRules> =>
+    (await apiClient.put('/suites/spend/rules', { thresholds: thresholds.length ? thresholds : null })).data,
+}
+
 export const spendApi = {
   /* B-214: see onboardingBoardApi.get's own note - a switched-off suite answers 404, and the
      board already shows the server's own sentence, so the generic 404 toast repeated it. */
