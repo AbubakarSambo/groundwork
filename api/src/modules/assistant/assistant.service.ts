@@ -345,14 +345,13 @@ export class AssistantService {
     const waitingNamed = shrugged && userId ? aWaitingRequestNamed(message, await this.waitingForYouToDecide(organizationId, userId).catch(() => [])) : null;
     if (waitingNamed) reply = rules('decide_a_request', text(stillWaitingSaid(waitingNamed)));
     else if (shrugged && userId && aChangeOfTheirs(message)) {
+      /*
+       * NEVER WRITTEN TO THE RECORD FROM ASK (polish round 3). What somebody types in Ask is theirs alone, always. Kept on the record, a
+       * line Wanjiru typed in Ask was served word for word to Aisha as Wanjiru's check-in words. Ask shows them the line it is about and
+       * says how to put the change on record themselves: Add something, or their next check-in.
+       */
       const found = whatTheyMean(message, await theirTurns(), 2);
-      if (found?.participantId) {
-        const kept = await Promise.resolve((this.prisma as any).recordEntry?.create?.({
-          data: { participantId: found.participantId, checkInId: found.checkInId ?? null, type: 'PROGRESS', text: String(message).trim(), recallBased: true },
-          select: { id: true },
-        })).catch(() => null);
-        if (kept) reply = rules('a_correction', text(theChangePutOnRecord(found, message)));
-      }
+      if (found) reply = rules('a_correction', text(theChangePutOnRecord(found, message)));
     }
 
     /*

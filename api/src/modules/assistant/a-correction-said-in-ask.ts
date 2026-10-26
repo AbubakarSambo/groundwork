@@ -49,7 +49,7 @@ export function theCorrectionAnswered(found: { sentence: string; at: Date; label
 }
 
 /**
- * A CHANGE SAID IN ASK IS PUT ON RECORD NEXT TO WHAT IT CHANGES (polish round 1, 26 October 2026). Aisha wrote in Ask "I actually
+ * A CHANGE SAID IN ASK IS SHOWN BESIDE WHAT IT CHANGES, AND NEVER WRITTEN TO THE RECORD FROM ASK (polish rounds 1 and 3, 26 October 2026). Aisha wrote in Ask "I actually
  * don't need to reach out to Jamii Clinics for this", about a step she had given in her check-in, and read "I cannot answer that
  * one yet." A statement, not a question, about something they wrote, is their update: it is kept with their own words, beside the
  * line it changes, and they are told plainly where it went.
@@ -63,8 +63,9 @@ export function aChangeOfTheirs(message: string): boolean {
 const SAID_DONE = /\b(?:done\s+deal|sold|paid|signed|closed|came\s+through|delivered)\b/i;
 
 export function theChangePutOnRecord(found: { sentence: string; at: Date; label: string | null }, message: string): string {
-  const kept = `Noted, and put on your record next to what you wrote on ${onTheDay(found.at)}${found.label ? ` in “${found.label}”` : ''}: “${found.sentence.replace(/[“”"]/g, '')}” Your update reads: “${String(message).trim().replace(/[“”"]/g, '')}”`;
-  return SAID_DONE.test(message) ? `${kept} It counts as done once something shows it, such as the payment message or the signed order. Add it in your next check-in.` : kept;
+  const said = `I checked. On ${onTheDay(found.at)}${found.label ? `, in “${found.label}”,` : ','} you wrote: “${found.sentence.replace(/[“”"]/g, '')}”`;
+  const proof = SAID_DONE.test(message) ? ' It counts as done once something shows it, such as the payment message or the signed order.' : '';
+  return `${said} What you have just told me is not on your record yet.${proof} To put it there, press Add something on your check-in, or say it in your next check-in.`;
 }
 
 /**

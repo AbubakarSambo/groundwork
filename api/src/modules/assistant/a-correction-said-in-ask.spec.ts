@@ -38,7 +38,8 @@ describe('a change said in Ask is put on record next to what it changes (Aisha, 
     expect(aChangeOfTheirs(said)).toBe(true);
     const found = mean(said, theirs, 2);
     expect(found).toMatchObject({ checkInId: 'c1', participantId: 'p1' });
-    expect(theChangePutOnRecord(found, said)).toBe('Noted, and put on your record next to what you wrote on Wednesday 14 October in “Fee notes”: “I will reach out to Jamii Clinics for the signed engagement letter on Tuesday.” Your update reads: “I actually don\'t need to reach out to Jamii Clinics for the letter, the partner has it.”');
+    /* Changed 26 October 2026 (polish round 3): nothing said in Ask is written to the record; Ask shows the line and says how to add the change. */
+    expect(theChangePutOnRecord(found, said)).toBe('I checked. On Wednesday 14 October, in “Fee notes”, you wrote: “I will reach out to Jamii Clinics for the signed engagement letter on Tuesday.” What you have just told me is not on your record yet. To put it there, press Add something on your check-in, or say it in your next check-in.');
   });
   it('a question, or a few words, is never taken for an update', () => {
     expect(aChangeOfTheirs('Is FN-007 paid?')).toBe(false);
@@ -62,6 +63,13 @@ describe('a statement about a request still waiting is answered with where it st
   });
   it('"a done deal" is kept as their word, and asks for what shows it', () => {
     expect(kept({ sentence: 'Mama Pima wants 15 units.', at: new Date('2026-10-12T09:00:00+03:00'), label: 'Sales team, Q4' }, 'Mama Pima is a done deal, 15 units.'))
-      .toMatch(/It counts as done once something shows it, such as the payment message or the signed order\. Add it in your next check-in\.$/);
+      .toMatch(/It counts as done once something shows it, such as the payment message or the signed order\. To put it there, press Add something on your check-in, or say it in your next check-in\.$/);
+  });
+});
+
+describe('nothing typed in Ask is written to the record (polish round 3)', () => {
+  it('the Ask service never creates a record line', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'assistant.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(src).not.toMatch(/recordEntry\??\.create/);
   });
 });
