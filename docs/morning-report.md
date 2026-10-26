@@ -1,5 +1,31 @@
 # Morning report
 
+**26 October, the UX and functionality stretch on `wip/polish` (pushed to `mine/wip/polish`). No engine changes beyond what the six items needed, no scoring, no rounds.**
+
+What now works, each checked in a browser on the local test bed as the person who uses it:
+
+1. **Documents.** The attach button is back beside the answer box in check-ins, on the web and the phone, and in setup ("+ Doc"). A photo or document sent on WhatsApp gets a short summary back. Every upload is read, said back in two or three sentences, filed as evidence on the right item, and listed in References and resources with what is in it and what it is for. The lead can add documents in References and resources and sees the same summary. Ask answers from them and names the file. Tests pin each piece, so the clean-up cannot quietly remove it again.
+2. **Ask.** It opens from the header, from References and resources ("Ask about this work", set to that check-in) and from Today (set to the whole organisation). It opens on its newest answer. A file added in Ask is read and said back ("mpesa-ngong-road.jpg: A payment of 25,000 Kenyan shillings…"), and Ask talks about that file, not an older one. When nothing is in the documents it says so plainly. Mercy asked about a photo Grace kept private and was told it is not in the documents she can open.
+3. **Setup is the lead's first check-in.** One conversation takes what the board needs and where things stand today, then "Anything else I should know?". A "no" ends it with "Done: your board is ready with today's picture. Next, add your team below and choose when their first check-in opens." Session 1's report is built from that conversation, and no second conversation opens. Ending early keeps everything, and Start a check-in offers "Carry on with this one".
+4. **Ending.** Every check-in opens with "This takes about 10 minutes. You can stop any time with End session." (on WhatsApp, "Reply END to stop any time"). End session shows on the web and phone, and END works on WhatsApp (the reply takes about 30 seconds). There is no question limit and no forced close.
+5. **Add something.** The button on the board works on the web and phone, and any WhatsApp message between check-ins opens the next check-in with "What would you like to add?". Joseph's WhatsApp addition about Juja Hardware showed on Grace's board under Joseph.
+6. **The next session picks up.** Mercy's and Joseph's openings start from what was still open last time (Mrs Achola's decision, the Juja Hardware price).
+
+**Fixed along the way.** A file read during setup skipped the bank-detail hiding; it now goes through the same filter as every upload (the privacy test counts it as the fourth way in). The answer box no longer says "hold to speak", because there is no voice yet. An opening no longer starts with a stray quote mark and "Did that move forward?". The Documents list no longer shows Groundwork's own note to itself as "Used for: It looks like hold this as evidence".
+
+**Must reach staging first, when Hafsah says so:** the Ask privacy fix (03186f8f0, nothing typed in Ask is written to the record), the upload fix, and the setup bank-detail fix (baf22d542).
+
+**Choices made without asking, safest for existing users.** Setup that was ready before today and never reached its check-in still opens one, as before. Existing check-ins keep their cadence and settings; nothing was migrated.
+
+**Left for Hafsah.**
+- Setup still sometimes asks "why now" after it was answered, and asks the lead's role. Both come from the setup prompt's required fields; changing them is engine work.
+- Setup does not always ask "Anything else I should know?" in so many words before it ends; a plain "no" ends it either way.
+- The WhatsApp "check-in is open" template says "about five minutes" while the check-in says "about 10 minutes". Templates are Meta-approved text, so it is left.
+- Joseph's reply on WhatsApp said Juja Hardware was "down from 20 units at the start of the week", which the record does not show. Engine work, not touched.
+- Voice input was never built. The prototype's Confirmed chip, "Read what he'll see", Change links, Opens at and Closes at, "Turn the link off" and the QR code in setup are still left out, as before.
+- Tests that were already failing and are not about this work: who-else-can-see-it (2), the-board-said-directly (4), no-new-class-without-a-shared-part, and the older audit specs listed before.
+
+
 **6 October, just after midnight. Tester A's final check of `2bd25a9e`.** The staging checks pass: all 361 migrations apply on a new database, the clean install and build pass, the production start check passes, and the API starts with every optional setting missing. The existing clients' checks read the same as at 20:00. But 7 API tests in 6 files fail on this commit. Six of them, in five files, are guard tests that the WhatsApp and release commits of 5 October tripped, plus the "try it alone" line that the screens workspace took out of the check-ins list. The sixth is the migration count in `existing-clients-carry-on.spec.ts`, 83 where there are now 84. The details are in `docs/staging-compatibility.md` section 8 and `docs/existing-users.md` section 10.
 
 **6 October, early.** Decision 106 is built and run end to end. With several check-ins open, they are taken one at a time. The first message to a number names the organisation and says "Not you? Reply STOP." This is a new template, `groundwork_first_contact`, which must be submitted to Meta; until it is approved, no first message goes. "Connect WhatsApp" is in the invitation and on the person's own reads. Numbers are kept in step between sign-in and roster. STOP now says that decisions still come by email, and they do. Invitations no longer say "Nobody on your team sees what you write". The halfway messages from decision 107 are off at release (`release.whatsappHalfwayMessages`), because the run did not prove them for every kind. Run 6 passed 205 of 212 checks; what each person reads at the end of each kind of check-in is in `docs/run-log.md`.
