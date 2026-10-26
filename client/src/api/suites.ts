@@ -181,7 +181,7 @@ export interface YourReview {
   appealStands?: AppealStands | null
   appealSays?: string | null
 }
-export interface ReviewsBoard { every: string | null; next: NextReview[] }
+export interface ReviewsBoard { every: string | null; next: NextReview[]; startNow?: { externalId: string; name: string }[] }
 export interface Noticed { says: string; mark: 'proven' | 'said' }
 /** What Groundwork understands from the record, as one reader is served it: each part, each line, and the person's correction beside it. */
 export interface TheRecord {
@@ -325,6 +325,7 @@ export const reviewsApi = {
   mineQuietly: async (): Promise<YourReview[]> =>
     (await apiClient.get('/suites/reviews/mine', { skipNotFoundToast: true } as any)).data,
   start: async (dueId: string): Promise<{ id: string }> => (await apiClient.post(`/suites/reviews/due/${dueId}/start`)).data,
+  startNow: async (personExternalId: string): Promise<{ id: string }> => (await apiClient.post(`/suites/reviews/start-now/${encodeURIComponent(personExternalId)}`)).data,
   one: async (id: string): Promise<AReview> => (await apiClient.get(`/suites/reviews/${id}`, { skipForbiddenToast: true } as any)).data,
   words: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/words`, { text })).data,
   view: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/view`, { text })).data,

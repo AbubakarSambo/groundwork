@@ -353,6 +353,12 @@ export class SuitesController {
     return this.reviews.start({ userId: user.id, organizationId: user.organizationId }, dueId);
   }
 
+  @Post('reviews/start-now/:personExternalId')
+  @ApiOperation({ summary: 'The person who would write it starts a review today for someone nothing has fallen due for' })
+  startReviewNow(@Param('personExternalId') personExternalId: string, @CurrentUser() user: CurrentUserData) {
+    return this.reviews.startNow({ userId: user.id, organizationId: user.organizationId }, personExternalId);
+  }
+
   @Get('reviews/mine')
   @ApiOperation({ summary: 'The reviews about you, once somebody has started them, and what you can do now' })
   myReviews(@CurrentUser() user: CurrentUserData) {
