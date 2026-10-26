@@ -22,7 +22,8 @@ export function whatIsAnswered(read: { decision?: string | null; yourRole?: stri
   };
 }
 
-const ASKS_WHY_NOW = /\b(?:right time|why now|what (?:prompted|brought (?:this|it) on|made you|is driving|'s driving)|driving this timing|the timing)\b/i;
+/* And the situation pack's own way of asking it: "Is it a new quarter, a quarter that missed, a handover ...?" (Achieng, 26 October). */
+const ASKS_WHY_NOW = /\b(?:right time|why now|what (?:prompted|brought (?:this|it) on|made you|is driving|'s driving)|driving this timing|the timing|a new quarter|a quarter that missed|a handover|why (?:this|it) is happening now)\b/i;
 const ASKS_THEIR_PART = /\byour (?:own )?(?:part|role)\b|\bare you (?:running|managing|leading|selling|doing)\b/i;
 
 /** The questions in this reply that ask again for what is answered. */

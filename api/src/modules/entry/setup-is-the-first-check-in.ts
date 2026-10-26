@@ -40,3 +40,10 @@ export function whatToSayAboutTheEndOfSetup(boardIsCovered: boolean, end: { aske
   if (end.asked) return THEY_ADDED_SOMETHING_IN_SETUP;
   return boardIsCovered ? THE_BOARD_IS_COVERED : null;
 }
+
+/** Sentences about a next screen or a later first check-in belong to the two-part flow that is gone, so they are taken out. */
+export function withoutTalkOfTheNextScreen(reply: string): string {
+  return String(reply ?? '').split(/(?<=[.!?])\s+/)
+    .filter((sentence) => !/\b(?:next screen|next step|on the next page|after that, your first check-in|your first check-in will be ready|check in too)\b/i.test(sentence))
+    .join(' ').trim();
+}

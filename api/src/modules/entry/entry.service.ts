@@ -82,7 +82,8 @@ import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
 import { whatIsAnswered, whatItAsksAgain, doNotAskAgain, withoutAskingAgain, theQuestionAskedBefore, doNotAskThatAgain, withoutTheSameQuestion } from './setup-never-asks-twice';
-import { THE_FIRST_UPDATE_TOO, SETUP_IS_DONE, whereSetupEnds, whatToSayAboutTheEndOfSetup } from './setup-is-the-first-check-in';
+import { THE_FIRST_UPDATE_TOO, SETUP_IS_DONE, whereSetupEnds, whatToSayAboutTheEndOfSetup, withoutTalkOfTheNextScreen } from './setup-is-the-first-check-in';
+import { ANYTHING_ELSE } from '../conversation/a-short-day';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
 import { PromptsService } from '../prompts';
 import { theAnchorGuidance, theChallengeWasUsed, theHopeWasAskedAndAnswered, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
@@ -1448,7 +1449,13 @@ from finishing at all.`;
      */
     const forThisSituation = scenarioForTheQuestion ?? scenarioInput ?? undefined;
     /* Ready once setup has ended the way a check-in ends, or the assistant has stopped asking. Never the moment the gate opens: the first update comes next. */
-    const ready = endOfSetup.close || stoppedAsking;
+    /*
+     * WHEN THE MODEL STOPS ASKING, SETUP ASKS THE LAST QUESTION ITSELF (26 October 2026). Achieng's third answer was met with "The next
+     * screen will ask if you want to check in too", the two-part flow that is gone, and setup ended before "Anything else I should know?".
+     * Now that turn's talk of a next screen is taken out and the product asks "Anything else I should know?"; only a no to it ends setup.
+     */
+    const ready = endOfSetup.close;
+    const askTheLastQuestion = stoppedAsking && !endOfSetup.close;
     if (stoppedAsking && !theGate(extracted, forThisSituation)) {
       this.logger.warn(
         `Setup finished without ${whatSetupNeverGot(extracted, forThisSituation).join(', ')} - the assistant had stopped asking.`,
@@ -1501,6 +1508,7 @@ from finishing at all.`;
       .replace(/\bwho (?:gives|should give|will give) (?:the |their |your )?accounts?\b/gi, 'whether you will check in too')
       .replace(/\bwho (?:gives|should give|will give) (?:an? )?account\b/gi, 'whether you will check in too');
     /* Whichever way setup ended, its last line says what was set up and what happens next. */
+    if (askTheLastQuestion) out = `${withoutTalkOfTheNextScreen(out)}\n\n${ANYTHING_ELSE}`.trim();
     if (ready && !out.includes(SETUP_IS_DONE)) out = `${out.trim()}\n\n${SETUP_IS_DONE}`;
     return { reply: out, extracted, ready, needsPeople };
   }

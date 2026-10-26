@@ -87,3 +87,11 @@ describe('the same question in other words (Achieng, 26 October 2026)', () => {
     expect(theQuestionAskedBefore('Who approves a price below KES 4,800?', ['How many lamps is each person aiming to sell?'])).toBeNull();
   });
 });
+
+describe('why now, as the situation pack asks it', () => {
+  const { whatIsAnswered, whatItAsksAgain } = require('./setup-never-asks-twice');
+  it('"Is it a new quarter, a quarter that missed, a handover ...?" after "It is a new target for this quarter"', () => {
+    const a = whatIsAnswered({}, 'A daily check-in. It is a new target for this quarter, and I run the team.');
+    expect(whatItAsksAgain('Is it a new quarter, a quarter that missed, a handover, or needing the team lined up on it?', a)).toEqual(['why now']);
+  });
+});

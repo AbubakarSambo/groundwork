@@ -30,7 +30,7 @@ export function AddADocument({
   docId,
   fileName,
   contextEnabled,
-  placeName = 'Context and resources',
+  placeName = 'References and resources',
   startingNote,
   onChooseAnother,
   onClose,
