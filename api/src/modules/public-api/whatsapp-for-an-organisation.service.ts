@@ -1,3 +1,5 @@
+import { setsSpendingSteps } from '../assistant/spending-steps-said-in-ask';
+import { asksToSetUpASuite } from '../assistant/a-suite-set-up-by-talking';
 import { asItReadsOnWhatsApp } from '../conversation/the-opening-line';
 import { theDirectMorningIsOn, theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
@@ -317,14 +319,31 @@ export class WhatsAppForAnOrganisationService {
      * request to start opens her own check-in on the one she runs, through the same door as the app's button. She is
      * still never chased: nothing is opened or sent unless she writes first.
      */
-    if (!everyOpen.length && userId && arrived.kind === 'text' && (beginning || isAGreetingOrARequestToStart(arrived.text) || /\bcheck[\s-]?in\b[^?]*\b(myself|my own)\b/i.test(arrived.text))) {
-      const runs: { id: string }[] = await Promise.resolve((this.prisma as any).ground?.findMany?.({
+    /*
+     * AND WHEN SHE RUNS MORE THAN ONE, OR SENDS AN UPDATE (26 October 2026). Grace runs Sales team, Q4 and County water kiosks pilot; her
+     * START and her "Kondele Market paid Otieno for the first 10 lamps today." were both answered "I cannot answer that one yet", and the
+     * update was lost. The check-in she names is opened, else the one she last checked in on, and she is told which. An update with
+     * nothing open opens it with "What would you like to add?" and goes in as her first answer, as Add something does for her team.
+     */
+    const theLeadsUpdate = arrived.kind === 'text' && anUpdate && !looksLikeARequest(arrived.text) && !aDecisionIn(arrived.text) && !/\?\s*$/.test(arrived.text.trim()) && !setsSpendingSteps(arrived.text) && !asksToSetUpASuite(arrived.text);
+    if (!everyOpen.length && userId && arrived.kind === 'text' && (beginning || theLeadsUpdate || isAGreetingOrARequestToStart(arrived.text) || /\bcheck[\s-]?in\b[^?]*\b(myself|my own)\b/i.test(arrived.text))) {
+      const runs: { id: string; label?: string | null }[] = await Promise.resolve((this.prisma as any).ground?.findMany?.({
         where: { organizationId, initiatorId: userId, status: { notIn: [...A_GROUND_IS_OVER, ...A_GROUND_HAS_STOPPED, ...A_GROUND_IS_HELD] } },
-        select: { id: true },
+        select: { id: true, label: true },
       }) ?? []).catch(() => []);
-      if (runs.length === 1) {
-        const made = await openTheLeadsCheckIn(this.prisma, runs[0].id, organizationId, userId).catch(() => null);
-        if (made) {
+      const chosen = runs.length > 1 ? await this.theOneTheLeadMeans(runs, userId, arrived.text) : runs[0] ?? null;
+      if (chosen) {
+        const made = await openTheLeadsCheckIn(this.prisma, chosen.id, organizationId, userId).catch(() => null);
+        if (made && theLeadsUpdate && !beginning) {
+          await this.conversation.open(made.checkInId, userId, WHAT_WOULD_YOU_LIKE_TO_ADD).catch(() => undefined);
+          everyOpen = await this.openCheckInsFor(organizationId, userId);
+          open.push(...everyOpen.filter((c) => !c.keptOffThePhone && !open.some((o) => o.id === c.id)));
+        } else if (made) {
+          if (runs.length > 1) {
+            const others = runs.filter((r) => r.id !== chosen.id).map((r) => `“${r.label ?? 'another check-in'}”`);
+            /* Said in front of the opening, never as a message of its own: on its own it went out and the opening did not. */
+            intro = `This is your check-in for “${chosen.label ?? 'your check-in'}”. To check in on ${others.join(' or ')} instead, finish this one and reply with its name.`;
+          }
           const again = await this.openCheckInsFor(organizationId, userId);
           open.push(...again.filter((c) => !c.keptOffThePhone));
           inTheApp.push(...again.filter((c) => c.keptOffThePhone));
@@ -928,6 +947,18 @@ export class WhatsAppForAnOrganisationService {
   }
 
   /* --- helpers --- */
+
+  /** Which of the check-ins a lead runs she means: one she names, else the one she last checked in on, else the newest. */
+  private async theOneTheLeadMeans(runs: { id: string; label?: string | null }[], userId: string, said: string): Promise<{ id: string; label?: string | null }> {
+    const words = String(said ?? '').toLowerCase();
+    const named = runs.find((r) => r.label && words.includes(r.label.toLowerCase()));
+    if (named) return named;
+    const last: any = await Promise.resolve((this.prisma as any).checkIn?.findFirst?.({
+      where: { groundId: { in: runs.map((r) => r.id) }, participant: { userId }, status: 'COMPLETED' },
+      orderBy: { completedAt: 'desc' }, select: { groundId: true },
+    })).catch(() => null);
+    return runs.find((r) => r.id === last?.groundId) ?? runs[0];
+  }
 
   private async openCheckInsFor(organizationId: string, userId: string): Promise<AnOpenCheckIn[]> {
     const rows = await this.prisma.checkIn.findMany({
