@@ -48,3 +48,20 @@ describe('a change said in Ask is put on record next to what it changes (Aisha, 
     expect(mean('The partner has the letter now.', theirs, 2)).toBeNull();
   });
 });
+
+describe('a statement about a request still waiting is answered with where it stands (Grace, polish round 1)', () => {
+  const { aWaitingRequestNamed, stillWaitingSaid, theChangePutOnRecord: kept } = require('./a-correction-said-in-ask');
+  const mercy = { kind: 'leave', firstName: 'Mercy', thing: 'Mercy’s leave from Monday 26 October to Tuesday 27 October' };
+  it('"Mercy\'s leave is already approved." is checked against the record', () => {
+    const r = aWaitingRequestNamed("Mercy's leave is already approved.", [mercy]);
+    expect(stillWaitingSaid(r)).toBe('I checked, and Mercy’s leave from Monday 26 October to Tuesday 27 October is still waiting for you. Nothing has been decided on it yet. Reply "approve" or "decline" to decide it now.');
+  });
+  it('a sentence about somebody else, or about nothing decided, is not taken for it', () => {
+    expect(aWaitingRequestNamed("Kevin's leave is already approved.", [mercy])).toBeNull();
+    expect(aWaitingRequestNamed('Mercy is on leave next week.', [mercy])).toBeNull();
+  });
+  it('"a done deal" is kept as their word, and asks for what shows it', () => {
+    expect(kept({ sentence: 'Mama Pima wants 15 units.', at: new Date('2026-10-12T09:00:00+03:00'), label: 'Sales team, Q4' }, 'Mama Pima is a done deal, 15 units.'))
+      .toMatch(/It counts as done once something shows it, such as the payment message or the signed order\. Add it in your next check-in\.$/);
+  });
+});

@@ -58,6 +58,27 @@ export function aChangeOfTheirs(message: string): boolean {
   return !!m && !/\?\s*$/.test(m) && m.split(/\s+/).length >= 4;
 }
 
+/** A sale, a payment or a signing said done: it is their word until something shows it (Joseph's "Mama Pima is a done deal"). */
+const SAID_DONE = /\b(?:done\s+deal|sold|paid|signed|closed|came\s+through|delivered)\b/i;
+
 export function theChangePutOnRecord(found: { sentence: string; at: Date; label: string | null }, message: string): string {
-  return `Noted, and put on your record next to what you wrote on ${onTheDay(found.at)}${found.label ? ` in “${found.label}”` : ''}: “${found.sentence.replace(/[“”"]/g, '')}” Your update reads: “${String(message).trim().replace(/[“”"]/g, '')}”`;
+  const kept = `Noted, and put on your record next to what you wrote on ${onTheDay(found.at)}${found.label ? ` in “${found.label}”` : ''}: “${found.sentence.replace(/[“”"]/g, '')}” Your update reads: “${String(message).trim().replace(/[“”"]/g, '')}”`;
+  return SAID_DONE.test(message) ? `${kept} It counts as done once something shows it, such as the payment message or the signed order. Add it in your next check-in.` : kept;
+}
+
+/**
+ * A STATEMENT ABOUT A REQUEST THAT IS STILL WAITING FOR THEM IS ANSWERED WITH WHERE IT STANDS (polish round 1). Grace read that
+ * Mercy's leave was waiting for her, wrote in Ask "Mercy's leave is already approved.", and was shrugged at. It was not approved
+ * yet: the record says so, plainly, and tells her how to decide it.
+ */
+export function aWaitingRequestNamed<T extends { firstName: string; kind: string; thing: string }>(message: string, waiting: T[]): T | null {
+  const said = String(message ?? '').toLowerCase();
+  if (!/\b(?:approved|declined|decided|sorted|done|paid|already)\b/.test(said)) return null;
+  const kinds: Record<string, RegExp> = { leave: /\b(?:leave|time off|days? off)\b/, hours: /\b(?:hours?|time ?sheets?)\b/, spend: /\b(?:spend|spending|money|request|expense|fee)\b/ };
+  const named = waiting.filter((r) => r.firstName && new RegExp(`\\b${r.firstName.toLowerCase()}\\b`).test(said) && (kinds[r.kind]?.test(said) ?? false));
+  return named.length === 1 ? named[0] : null;
+}
+
+export function stillWaitingSaid(r: { thing: string }): string {
+  return `I checked, and ${r.thing} is still waiting for you. Nothing has been decided on it yet. Reply "approve" or "decline" to decide it now.`;
 }

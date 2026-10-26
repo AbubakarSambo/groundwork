@@ -18,7 +18,7 @@ import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
 import { aPromiseAsASentence } from './a-promise-as-a-sentence';
 import { noSeatYetSays, whenIsMyNextCheckIn, whatMyCheckInIsFor, theCompanysPriorities, asksWhatTheCompanyIsWorkingOn, isTheStrategyMoving, THE_REQUEST_STARTERS, howToAskForLeaveOrSpending } from './about-your-check-ins-and-the-company';
 import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
-import { isACorrection, whatTheyMean, theCorrectionAnswered, aChangeOfTheirs, theChangePutOnRecord } from './a-correction-said-in-ask';
+import { isACorrection, whatTheyMean, theCorrectionAnswered, aChangeOfTheirs, theChangePutOnRecord, aWaitingRequestNamed, stillWaitingSaid } from './a-correction-said-in-ask';
 import { ReportsService } from '../reports/reports.service';
 import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-their-own';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -342,7 +342,9 @@ export class AssistantService {
     let reply = await this.answer(organizationId, personId, who, message, false, groundId, userId, openedFromSetup);
     /* Not a question, about something they wrote: their update, kept beside it, never "I cannot answer that one yet" (a-correction-said-in-ask.ts). */
     const shrugged = (reply as any)?.blocks?.[0]?.type === 'text' && /^I cannot answer that one yet\./.test((reply as any).blocks[0].body ?? '');
-    if (shrugged && userId && aChangeOfTheirs(message)) {
+    const waitingNamed = shrugged && userId ? aWaitingRequestNamed(message, await this.waitingForYouToDecide(organizationId, userId).catch(() => [])) : null;
+    if (waitingNamed) reply = rules('decide_a_request', text(stillWaitingSaid(waitingNamed)));
+    else if (shrugged && userId && aChangeOfTheirs(message)) {
       const found = whatTheyMean(message, await theirTurns(), 2);
       if (found?.participantId) {
         const kept = await Promise.resolve((this.prisma as any).recordEntry?.create?.({
