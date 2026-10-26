@@ -325,6 +325,7 @@ import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } fro
 import { theFullerPromise, nameTwoDifferentDates } from './the-same-promise-said-more-fully';
 import { aPromiseSomebodyElseMade } from './a-promise-somebody-else-made';
 import { clearTheWaitsSaidDone, clearTheWaitsAnEventEnded } from './a-wait-said-done-is-cleared';
+import { clearTheWaitsOverAcrossTheOrganisation } from './a-wait-is-over-across-the-organisation';
 import { aWaitForTheirCheckIn, removeTheWaitsForACheckIn } from './a-wait-for-a-check-in-is-not-a-wait';
 import { whereTheirNumberStands } from './something-they-could-not-have-said-themselves';
 import { fileTheProofOnItsItem } from '../documents/proof-filed-on-its-item';
@@ -7644,6 +7645,10 @@ ${told}` : '';
       /* And every wait for an event, in any of the organisation's check-ins, that somebody has now said happened (messages test, fourth run). */
       .then(() => clearTheWaitsAnEventEnded(this.prisma, checkIn.groundId))
       .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) for something somebody said has happened.`); })
+      /* And every wait the record ends in any of the organisation's check-ins: done by the one waiting, told to them, corrected by the lead,
+         or filed by the one holding it (polish round 15, Muchemi & Co). See a-wait-is-over-across-the-organisation.ts. */
+      .then(() => clearTheWaitsOverAcrossTheOrganisation(this.prisma, checkIn.groundId))
+      .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) the record says are over.`); })
       /* And every open promise its maker, or the person it was for, has now said is done is kept (Drop Access run 1, item 13). */
       .then(() => keepThePromisesSaidDone(this.prisma, checkIn.groundId))
       .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: kept ${n} promise(s) somebody said were done.`); })
@@ -11691,7 +11696,8 @@ ${told}` : '';
     const touched: string[] = [];
 
     for (const d of valid) {
-      const onParticipantId = matchParticipant(d.onName);
+      /* A colleague named only as the label ("Njeri") is that colleague, so the wait is on her and she can end it (polish round 15, F4). */
+      const onParticipantId = matchParticipant(d.onName) ?? matchParticipant(d.onLabel);
       const status = (['BLOCKING', 'WAITING', 'CLEARED'] as const).includes(d.status as any)
         ? (d.status as DependencyStatus)
         : DependencyStatus.WAITING;

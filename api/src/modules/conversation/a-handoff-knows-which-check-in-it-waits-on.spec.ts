@@ -113,4 +113,16 @@ describe('the handoff the conversation records', () => {
     expect(created[0].waitingOnGroundId).toBeNull();
     expect(DependencyStatus.WAITING).toBe('WAITING');
   });
+
+  /*
+   * A COLLEAGUE NAMED AS THE LABEL IS THAT COLLEAGUE (polish round 15, F4). Brian's wait was kept on the label "Njeri", not on Njeri,
+   * so when Njeri said "I recorded the FN-004 payment today." nothing could end it, and Wanjiru's board said for a week "Brian Otieno
+   * has been waiting on Njeri for the record of what has been paid".
+   */
+  it('a wait whose label is the name of somebody in the check-in is on that person', async () => {
+    const { svc, created } = scaffold({ dependencies: [{ ...finance18, onLabel: 'Miriam' }] });
+    await svc.extractDependencies('c1', 'p-other', 'sales');
+    expect(created[0].onParticipantId).toBe('p-miriam');
+    expect(created[0].onLabel).toBeNull();
+  });
 });
