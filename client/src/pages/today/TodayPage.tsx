@@ -15,6 +15,7 @@ import { partOfTheDay, whenItComes } from './when-it-comes'
 import { AppealsToDecide } from '@/components/gw/Suggestions'
 import { groundsApi } from '@/api/grounds'
 import { YouAreIn } from './YouAreIn'
+import { NameYourOrganisation } from './NameYourOrganisation'
 import { TheReasonYouMissed } from './TheReasonYouMissed'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { QueueLink } from '@/pages/suites/QueuePage'
@@ -202,6 +203,9 @@ export function TodayPage() {
               {lineNudge && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => nudge.mutate()} disabled={nudge.isPending || nudge.isSuccess}>{nudge.isSuccess ? 'Sent.' : `Remind ${lineNudge.firstName}`}</button></>}
             </>}
           />
+
+          {/* An organisation still called by the name Groundwork made up ("Hafsah's workspace") is named here, by an admin (26 October). */}
+          <NameYourOrganisation />
 
           {/* The free trial, one line, for an admin while it runs (Hafsah, 12 October). The server decides who reads it. */}
           {/* With the way to Plan and billing beside it (fix list item 6). Only an admin is served the line. */}
