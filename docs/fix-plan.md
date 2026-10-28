@@ -352,3 +352,33 @@ Listed for Hafsah under "Needs Hafsah". Nothing is changed without her decision.
 - **Left:** the staff prompts page.
 
 **Not in a pattern, for Hafsah:** what a contractor sees; a staff sign-up making an organisation; the plan and 90-day boards; how long the first question takes.
+
+## The two-week check (weeks 14 and 15, 11 to 22 January 2027 on the test bed, real model) — 29 October 2026
+
+The full results, finding by finding, are in ~/Desktop/quarter-test/after-fixes.html: 33 of 42 checks held.
+
+**Held:**
+- Promises are counted the same on My work and You (Kevin, Joseph and Mercy).
+- Kevin's and Mercy's targets are the same on both pages.
+- Corrections in any words land: Brian's, Kevin's, Aisha's and Joseph's are checked against the record and proof, and Njeri's against her payment slip.
+- No weekday check-in said it was due on a weekend, and no session opened on one.
+- No apology was repeated.
+- No thank-you went for an unanswered session.
+- None of "check-in number 43", "about 10 minutes" or "The person stays in the role" came back.
+- 83 of the 116 new promises carry a clear action beside the person's words.
+
+**Came back, and fixed by pattern since:**
+- Joseph had two targets, and one of them named no measure, so You read "0 of 30" while My work counted 17. A person's own target with no measure is now counted in the team's measure, and both pages order targets alike.
+- Aisha's old goal in Groundwork's words, kept before the fix, still showed. Every reader now leaves Groundwork's own sentences out.
+- "Understood. We can leave that there." still followed answers. It is the repeated-question guard's line, not the correction rule; it now says "Thank you, that is noted."
+- Wanjiru's morning summary went three times from the night's held queue. A held message now claims its own outbox key.
+- Three emails a day about one session, and two report emails a day about one check-in. Session news is now one email a person a day, and report news one a check-in a day.
+- "There is no check-in open here" went to people whose check-in was open. It is said only when nothing is open.
+- A wait long over ("Aisha is waiting on you for FN-007", paid in October) was still shown. A correction the record backs can now clear the wait.
+- Reopening a check-in, or giving a running one more time, opened no session. Each person's next session is now opened.
+- Peter's WhatsApp went to a session of his ended plan ("This check-in is closed", twice). WhatsApp now leaves out sessions of ended check-ins, and a reply's minute slides.
+- The correction check could not see check-in counts (Peter's "4 out of 14"). It is now given them.
+
+**Not counted as failures, after checking:**
+- The Litigation end date without a year: the end, 13 October 2027, is in the same year as the bed's date.
+- Repeated replies to people who sent the same thing twice.
