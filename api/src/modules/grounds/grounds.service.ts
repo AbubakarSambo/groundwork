@@ -7479,8 +7479,20 @@ export class GroundsService {
        */
       await this.theNextSessionsAfterReopening(groundId).catch((err: any) =>
         this.logger.warn(`Could not open the next sessions for ${groundId} after it reopened: ${err?.message}`));
+    } else if (requestedDays !== undefined && !isShut(ground.status) && await this.itNowEndsLater(groundId, ground as any)) {
+      /* Given more time while still running: a session kept as the closing one is not the closing one now (Fee notes, two-week check). */
+      await this.theNextSessionsAfterReopening(groundId).catch((err: any) =>
+        this.logger.warn(`Could not open the next sessions for ${groundId} after it was given more time: ${err?.message}`));
     }
     return updated;
+  }
+
+  /** Whether the check-in now ends later than it did before this change. */
+  private async itNowEndsLater(groundId: string, before: { createdAt: Date; startsAt: Date | null; timelineDays: number | null; endsAt?: Date | null; runsUntilEnded?: boolean | null }): Promise<boolean> {
+    const now: any = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { createdAt: true, startsAt: true, timelineDays: true, endsAt: true, runsUntilEnded: true } });
+    const was = deadlineOf(before as any);
+    const is = now ? deadlineOf(now) : null;
+    return !!now && (is === null ? !!was : !!was && is.getTime() > was.getTime());
   }
 
   /** Each person's next session after a check-in reopens, where their last one is finished: the same rule a finished session uses. */
@@ -7489,8 +7501,10 @@ export class GroundsService {
     if (!conversation?.ensureNextSession) return;
     const people = await this.prisma.groundParticipant.findMany({ where: { groundId, leftAt: null }, select: { id: true } });
     for (const p of people) {
-      const last = await this.prisma.checkIn.findFirst({ where: { participantId: p.id, isSetup: false }, orderBy: { sessionNumber: 'desc' }, select: { sessionNumber: true, status: true } });
+      const last = await this.prisma.checkIn.findFirst({ where: { participantId: p.id, isSetup: false }, orderBy: { sessionNumber: 'desc' }, select: { id: true, sessionNumber: true, status: true, isFinal: true } });
       if (!last || ['NOT_STARTED', 'IN_PROGRESS'].includes(String(last.status))) continue;
+      /* The session kept as the closing one was the closing one for the old end. With more time, it is not, so the next can follow it. */
+      if (last.isFinal) await this.prisma.checkIn.update({ where: { id: last.id }, data: { isFinal: false } });
       await conversation.ensureNextSession(groundId, p.id, last.sessionNumber);
     }
   }
