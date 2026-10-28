@@ -123,7 +123,7 @@ export interface ATargetFromTheDeals {
   count: number;
   proven: number | null;
   currency: string | null;
-  window: 'week' | null;
+  window: 'week' | 'month' | null;
   thing: string;
   /** Deals on record behind it: the holder's own, or the team's. A 0 with none behind it is not listed. */
   dealsBehind: number;

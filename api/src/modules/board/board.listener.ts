@@ -19,9 +19,8 @@ import { withAClaim } from './a-claim-on-a-record-is-checked-first';
 import { withTheStageKept, theStagesToKeep } from './a-deals-stages-are-kept';
 import { theSameCustomer, aDealTheLeadNamedBecomesTheReps } from './one-deal-per-customer';
 import { aDealNamedAsAPerson, theDealThePersonIsAt, thePersonsDetailsOnTheDeal, theQuestionBefore } from './a-deals-contact-is-never-a-deal';
-import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages } from './a-sales-aim-is-counted-from-the-deals';
+import { theAimsCountedNow } from './an-aim-is-counted-now';
 import { whatTheOwnerSaidOfEachDeal } from './what-the-owner-said-of-each-deal';
-import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import {
   WHAT_THE_RECORD_SAYS_PROMPT,
   WHAT_THE_RECORD_SAYS_SCHEMA,
@@ -399,13 +398,9 @@ export class BoardListener {
         where: { id: groundId },
         select: { kindOfWork: true, workStages: true, organizationId: true, objectives: { select: { id: true, name: true, ownerParticipantId: true, count: true } } } as any,
       }) as any;
-      if (!isASalesKind(ground?.kindOfWork) || !(ground?.objectives ?? []).length) return counted;
-      /* Only with Release 1's sales board switched on for the organisation (release-one-sales-board). Off, each aim's count is
-         read from what was said, as it was before, so the board it returns to reads the count it had. */
-      if (!(await theReleaseOneSalesBoardIsOn(this.prisma, ground.organizationId))) return counted;
-      const deals = await theDealsOnRecord(this.prisma, groundId, { paymentRecord: true });
-      const zone = (await theOrganisationsZone(this.prisma as any, ground.organizationId)) ?? THE_PRODUCTS_OWN_ZONE;
-      const counts = theAimsTheDealsCount(ground.objectives, deals, theSalesStages(ground.workStages), now, zone);
+      if (!(ground?.objectives ?? []).length) return counted;
+      /* The one counter every page reads (an-aim-is-counted-now.ts): sales kinds, with Release 1's sales board on, else nothing. */
+      const counts = await theAimsCountedNow(this.prisma as any, { id: groundId, organizationId: ground.organizationId, kindOfWork: ground.kindOfWork, workStages: ground.workStages }, ground.objectives, now);
       for (const o of ground.objectives as any[]) {
         const c = counts.get(o.id);
         if (!c) continue;

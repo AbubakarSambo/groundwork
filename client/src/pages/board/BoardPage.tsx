@@ -1319,6 +1319,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         <Panel>
           <p className="t-body">{(data as any).saying}</p>
           <UIButton kind="primary" onClick={() => navigate(`/grounds/${id}`)}>Do my check-in</UIButton>
+          {/* Add something is never behind the board's gate (fix plan, pattern 3; quarter test, Mercy): the gate keeps others' answers back, not your own addition. */}
+          <AddSomething groundId={id!} />
         </Panel>
       </div>
     )

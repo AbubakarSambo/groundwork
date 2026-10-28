@@ -20,6 +20,7 @@ import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch'
 import { readThePersonsRecord, readTheirOtherRecords } from './the-persons-record-store';
 import { theRecordInWords, acrossTheirCheckIns, type TheRecordInWords } from './the-persons-record-in-words';
 import { thePraiseFromYourLead } from './the-praise-from-your-lead';
+import { withTheirCountNow } from './an-aim-is-counted-now';
 import { thePromisesOf, thePromisesCounted } from '../grounds/the-promises-counted-once';
 import { theCheckInsCounted } from './a-day-they-checked-in';
 
@@ -197,7 +198,8 @@ export interface TheRecordForOnePerson {
   teamCoaching: string[];
   /** The lead's "help them with" line for this person: only where this reader may read it. */
   helpWith: string | null;
-  target: { count: number; target: number } | null;
+  /** With the deals' own count where the deals count it (an-aim-is-counted-now.ts): what the sold tile says too. */
+  target: { count: number; target: number; fromTheDeals?: { count: number; proven: number; deposit: number; thing: string } } | null;
   now: Date;
   timeZone: string;
   /** The check-in opens a session each working day, on these days (cadence DAILY). */
@@ -442,7 +444,12 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   /* Sold on a deposit is said apart from paid, never as "with proof" of payment (final real-model check, item 10: "46 with proof"). */
   const onADeposit = proven.filter((i) => !!(i as any).deposit && !i.signedOrder);
   const paidInFull = proven.filter((i) => !onADeposit.includes(i));
-  if (words.keepsItems && items.length) {
+  const fromTheDeals = r.target?.fromTheDeals ?? null;
+  if (fromTheDeals && words.keepsItems) {
+    /* The sold tile and the target say one count: the deals', under the lead's rule for proof (an-aim-is-counted-now.ts). */
+    const paidN = fromTheDeals.proven;
+    numbers.push({ value: String(fromTheDeals.count), label: fromTheDeals.deposit ? `${words.doneWord}, ${paidN} paid with proof, ${fromTheDeals.deposit} on a deposit` : `${words.doneWord}, ${paidN} with proof` });
+  } else if (words.keepsItems && items.length) {
     numbers.push(inUnits
       ? { value: String(soldUnits), label: onADeposit.length ? `${words.doneWord}, ${unitsIn(paidInFull) ?? 0} paid with proof, ${unitsIn(onADeposit) ?? 0} on a deposit` : `${words.doneWord}, ${unitsIn(proven) ?? 0} with proof` }
       : { value: String(finished.length), label: onADeposit.length ? `${words.doneWord}, ${paidInFull.length} paid with proof, ${onADeposit.length} on a deposit` : `${words.doneWord}, ${proven.length} with proof` });
@@ -669,7 +676,7 @@ const GROUND_SELECT = {
   id: true, label: true, organizationId: true, initiatorId: true, scenario: true, kindOfWork: true, peersVisibleToEachOther: true,
   initiator: { select: { firstName: true, lastName: true } },
   organization: { select: { timeZone: true } },
-  cadence: true, workingDays: true,
+  cadence: true, workingDays: true, workStages: true,
   participants: {
     select: {
       id: true, userId: true, email: true, nameGiven: true, partyType: true, managingOnly: true, createdAt: true,
@@ -754,7 +761,7 @@ export async function readMyWork(
       select: { kind: true, text: true, audience: true, aboutParticipantId: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
     }).catch(() => []) ?? [],
-    prisma.groundObjective?.findMany?.({ where: { groundId: ground.id, ownerParticipantId: pid }, select: { name: true, target: true, count: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } }).catch(() => []) ?? [],
+    prisma.groundObjective?.findMany?.({ where: { groundId: ground.id, ownerParticipantId: pid }, select: { id: true, name: true, target: true, count: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } }).catch(() => []) ?? [],
   ]);
 
   /*
@@ -791,7 +798,9 @@ export async function readMyWork(
     ? [...(lines as any[])].reverse().find((l) => l.kind === 'HELP_WITH' && l.aboutParticipantId === pid && String(l.text ?? '').trim())?.text ?? null
     : null;
   /* The person's own target, through the one rule for whose number is whose: the lead reads every one, a person their own. */
-  const mayRead = targetsFor(objectives as any[], mine?.id ?? null, 'their own', { isLead }).shown as any[];
+  /* Each target's number as it is counted now, as the board and the You page count it (an-aim-is-counted-now.ts), never a number stored earlier. */
+  const objectivesNow = await withTheirCountNow(prisma, ground as any, (objectives as any[]) ?? [], now).catch(() => (objectives as any[]) ?? []);
+  const mayRead = targetsFor(objectivesNow as any[], mine?.id ?? null, 'their own', { isLead }).shown as any[];
   const target = mayRead.find((o) => o.ownerParticipantId === pid && !o.isADecisionAboutAPerson && typeof o.target === 'number' && o.target > 0) ?? null;
 
   /* Judgements of a person off for this organisation: no pattern, note or coaching about the person is read into the page. */
@@ -817,7 +826,7 @@ export async function readMyWork(
     patterns: judgements ? patterns.map((p: any) => ({ heading: String(p.heading ?? ''), kind: String(p.kind ?? ''), oneStep: p.oneStep ?? null, yours: p.yours })) : [],
     teamCoaching: (lines as any[]).filter((l) => l.kind === 'COACHING').map((l) => String(l.text ?? '').trim()).filter(Boolean),
     helpWith: judgements ? helpWith : null,
-    target: target ? { count: target.count ?? 0, target: target.target } : null,
+    target: target ? { count: target.count ?? 0, target: target.target, ...(target.fromTheDeals ? { fromTheDeals: { count: target.fromTheDeals.count, proven: target.fromTheDeals.proven ?? 0, deposit: target.fromTheDeals.deposit ?? 0, thing: target.fromTheDeals.thing } } : {}) } : null,
     now,
     timeZone,
     daily: String((ground as any).cadence ?? '').toUpperCase() === 'DAILY' ? { workingDays: (ground as any).workingDays ?? null } : null,

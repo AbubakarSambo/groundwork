@@ -1,3 +1,4 @@
+import { withTheirCountNow } from '../board/an-aim-is-counted-now';
 import { theRunningRecordFrom, type TheRunningRecord } from '../suites/the-running-record';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
@@ -180,7 +181,9 @@ export class YourBoardService {
           select: { groundId: true, participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
         })
       : [];
-    const targetsYouMayRead = (ownedTargets as any[]).filter((t) => {
+    /* Each target's number as it is counted now, the way the board and My work count it (board/an-aim-is-counted-now.ts). */
+    const ownedCountedNow = await this.theTargetsCountedNow(ownedTargets as any[]);
+    const targetsYouMayRead = ownedCountedNow.filter((t) => {
       const g = mine.find((x) => x.id === t.groundId);
       const runsIt = theyRunThisCheckIn(reader.userId, g as any);
       return withoutWhatTheLeadHasNotToldThemAbout([t], untoldRows.filter((r) => r.groundId === t.groundId), (g?.participants ?? []) as any[], runsIt).kept.length === 1;
@@ -221,6 +224,18 @@ export class YourBoardService {
       ...(direct ? { turns: needsSaidDirectly(withHeld.turns ?? []) } : {}),
       directMorning: direct,
     };
+  }
+
+  /** Owned targets with the number counted now (board/an-aim-is-counted-now.ts), one check-in at a time. */
+  private async theTargetsCountedNow<T extends { id: string; groundId: string; name: string; count?: number | null; ownerParticipantId?: string | null }>(targets: T[]): Promise<T[]> {
+    const byGround = new Map<string, T[]>();
+    for (const t of targets) byGround.set(t.groundId, [...(byGround.get(t.groundId) ?? []), t]);
+    const out: T[] = [];
+    for (const [groundId, aims] of byGround) {
+      const g = await Promise.resolve((this.prisma as any).ground?.findUnique?.({ where: { id: groundId }, select: { id: true, organizationId: true, kindOfWork: true, workStages: true } })).catch(() => null);
+      out.push(...(g ? await withTheirCountNow(this.prisma as any, g, aims).catch(() => aims) : aims));
+    }
+    return targets.map((t) => out.find((o) => o.id === t.id) ?? t);
   }
 
   /** RELEASE 7: the running record of your own commitments, proof and goal changes, across your check-ins. Null with Release 7 off. */

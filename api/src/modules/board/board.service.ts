@@ -238,7 +238,8 @@ import { theStagesKept } from './a-deals-stages-are-kept';
 import { aDaySaidInFull } from './a-day-said-in-full';
 import { theStallRuleOnRecord, theStallRuleAsALine, theStallRuleDeclined, NO_STALL_RULE_YET, THE_SUGGESTED_DAYS, THE_STALL_RULE_ASKED, type TheStallRule } from './the-stall-rule';
 import { whenTheyPay, theUnitsOf } from './a-sales-aim-is-counted-from-the-deals';
-import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, whereAWeeklyCountStands, whatTheseDealsHold, theDealsTheCountIsMadeOf, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
+import { theAimsCountedNow } from './an-aim-is-counted-now';
+import { theDealsOnRecord, theSalesStages, whereAWeeklyCountStands, whatTheseDealsHold, theDealsTheCountIsMadeOf, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
 import { theWaitsOnCustomersApart, theirOwnAnswersWhereTheWaitsWereSaid, withoutTheWaitsOnCustomers } from './a-customers-reply-is-on-its-deal';
 import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from './the-switchboard';
@@ -492,7 +493,8 @@ export class BoardService {
     if (releaseOne && isASalesKind((ground as any).kindOfWork)) {
       /* "With proof of payment" counts the payment records only (Hafsah's point 12). */
       theDealsCounted = await theDealsOnRecord(this.prisma, groundId, { paymentRecord: true }).catch(() => [] as ADealOnRecord[]);
-      const counted = theAimsTheDealsCount(ground.objectives as any[], theDealsCounted, theSalesStages((ground as any).workStages), now, theDayZone());
+      /* The one counter every page reads (an-aim-is-counted-now.ts), handed the deals already read. */
+      const counted = await theAimsCountedNow(this.prisma, { id: groundId, organizationId: (ground as any).organizationId, kindOfWork: (ground as any).kindOfWork, workStages: (ground as any).workStages }, (ground.objectives ?? []) as any[], now, { deals: theDealsCounted, zone: theDayZone() });
       for (const o of (ground.objectives ?? []) as any[]) {
         const c = counted.get(o.id);
         if (!c) continue;
