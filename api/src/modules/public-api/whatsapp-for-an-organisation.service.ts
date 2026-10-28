@@ -1,3 +1,4 @@
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { setsSpendingSteps } from '../assistant/spending-steps-said-in-ask';
 import { asksToSetUpASuite } from '../assistant/a-suite-set-up-by-talking';
 import { asItReadsOnWhatsApp } from '../conversation/the-opening-line';
@@ -817,7 +818,9 @@ export class WhatsAppForAnOrganisationService {
        * thanked him again. A repair is never somebody answering, and an answer already thanked is not thanked twice. The report itself
        * still goes, once, when there is something in it to read.
        */
-      const thankedAlready = e.source === 'repair' || !!(await this.prisma.whatsAppSend.findFirst({ where: { checkInId: c.id, kind: THANKS_ONLY, sentAt: { not: null } }, select: { id: true } }).catch(() => null));
+      /* Nor a session the clock closed with no answer in it (fix plan, pattern 6; quarter test): "Thank you, your answer is in" went for sessions nobody answered. */
+      const nobodyAnswered = !(await Promise.resolve((this.prisma as any).conversationTurn?.findFirst?.({ where: { checkInId: c.id, role: 'PERSON' }, select: { id: true } }) ?? { id: 'unknown' }).catch(() => ({ id: 'unknown' })));
+      const thankedAlready = e.source === 'repair' || nobodyAnswered || !!(await this.prisma.whatsAppSend.findFirst({ where: { checkInId: c.id, kind: THANKS_ONLY, sentAt: { not: null } }, select: { id: true } }).catch(() => null));
       void this.sendTheReport(c.ground.organizationId, { id: c.id, status: c.status, sessionNumber: c.sessionNumber, label: c.ground.label, simplerWords: c.ground.simplerWords }, c.participant.userId, phone, { thankedAlready })
         .catch((err: any) => this.logger.warn(`WhatsApp report after completion failed for ${e.checkInId}: ${err?.message}`));
     } catch (err: any) {
@@ -969,14 +972,15 @@ export class WhatsAppForAnOrganisationService {
         OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
       },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, status: true, sessionNumber: true, availableFrom: true, createdAt: true, ground: { select: { label: true, createdAt: true, initiator: { select: { firstName: true } }, overWhatsApp: true, cadence: true, simplerWords: true } } },
+      select: { id: true, status: true, sessionNumber: true, availableFrom: true, createdAt: true, ground: { select: { label: true, createdAt: true, startsAt: true, cadenceAnchorDay: true, workingDays: true, organizationId: true, initiator: { select: { firstName: true } }, overWhatsApp: true, cadence: true, simplerWords: true } } },
     })).filter((r) => !(this.conversation as any).isBeingFinished?.(r.id));
     /* Two of the same name are told apart by when each started (or who runs it), so "You have two check-ins open" can be answered. */
     const said = namesTheyCanTellApart(rows.map((r) => ({ id: r.id, label: r.ground.label, startedAt: r.ground.createdAt, leadName: r.ground.initiator?.firstName })));
+    const zone = await theOrganisationsZone(this.prisma as any, organizationId).catch(() => null);
     /* The one closing soonest first (decision 106 item 1), by the same due date the reminders use. */
     return closingSoonestFirst(rows.map((r) => ({
       id: r.id, status: r.status, sessionNumber: r.sessionNumber, label: said.get(r.id) ?? r.ground.label, simplerWords: r.ground.simplerWords, keptOffThePhone: keptOffThePhone(r.ground),
-      dueAt: whenItIsDue(r.availableFrom ?? r.createdAt, r.ground.cadence),
+      dueAt: whenItIsDue(r.availableFrom ?? r.createdAt, r.ground as any, zone),
     })));
   }
 

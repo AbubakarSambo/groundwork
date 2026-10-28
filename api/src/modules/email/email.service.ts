@@ -1,3 +1,4 @@
+import { theOutboxKey, mayItGo } from '../../common/the-one-outbox';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { whatHappensWhenThisPersonJoins } from '../participants/named-when-an-admin-approved';
 import { theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
@@ -468,6 +469,16 @@ export class EmailService implements OnModuleInit {
      */
     if (/@unclaimed\.invalid$/i.test(options.to ?? '')) {
       this.logger.log(`Not sending "${options.subject}": that check-in has no address on it yet.`);
+      return undefined;
+    }
+    /*
+     * THE ONE OUTBOX (common/the-one-outbox.ts; fix plan, pattern 6). The same mail never goes twice: one a day for the same thing, and an
+     * invitation once a day to a person whatever check-in it is for. A sign-in link, a code or a password mail is never held: the person asked for it.
+     */
+    const askedForNow = /sign-?in|magic|code|password|verify|security|otp|login/i.test(sender ?? '') || context?.kind === 'MAGIC_LINK';
+    if (!askedForNow && !(await mayItGo(this.prisma, theOutboxKey({ channel: 'email', to: options.to, kind: sender ?? context?.kind ?? null, about: context?.groundId ?? context?.participantId ?? null, text: options.subject })))) {
+      this.logger.log(`Not sending "${options.subject}": the same mail already went today.`);
+      if (context) context.outcome = 'suppressed';
       return undefined;
     }
     /* ONE ROUTINE MESSAGE A PERSON A DAY, ACROSS EMAIL AND WHATSAPP TOGETHER (decision 109, item 6). Asked after the person's own wishes, and only of the

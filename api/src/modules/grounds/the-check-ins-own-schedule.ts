@@ -1,3 +1,4 @@
+import { isAPublicHoliday } from './public-holidays';
 import { Cadence } from '@prisma/client';
 import { theDayIn } from './when-a-handoff-is-due';
 import { workingDaysOf } from './which-days-this-team-works';
@@ -64,11 +65,12 @@ type Day = number;
 
 const theDay = (zone: string, at: Date): Day => theDayIn(zone, at).getTime();
 
-function onADayTheyWork(day: Day, workingDays: number[] | null | undefined): Day {
+/* A day they work: one of the team's working days, and not a public holiday where the organisation is (public-holidays.ts), when the zone is known. */
+function onADayTheyWork(day: Day, workingDays: number[] | null | undefined, zone?: string | null): Day {
   const days = workingDaysOf(workingDays);
-  if (days.length === 0) return day;
+  const off = (d: Day) => (days.length > 0 && !days.includes(new Date(d).getUTCDay() as any)) || (zone !== undefined && isAPublicHoliday(d, zone));
   let d = day;
-  for (let i = 0; i < 7 && !days.includes(new Date(d).getUTCDay() as any); i += 1) d += DAY;
+  for (let i = 0; i < 14 && off(d); i += 1) d += DAY;
   return d;
 }
 
@@ -140,11 +142,12 @@ function roundDay(s: TheSchedule, start: Day, k: number): Day {
  */
 export function howManyRoundsUpTo(s: Omit<TheSchedule, 'startedAt' | 'zone'>, startDay: number, endDay: number): number {
   const sched = s as TheSchedule;
-  const start = onADayTheyWork(startDay, s.workingDays);
+  const zone = (s as TheSchedule).zone;
+  const start = onADayTheyWork(startDay, s.workingDays, zone);
   let last: Day = -Infinity;
   let count = 0;
   for (let k = 0; k < 5000; k += 1) {
-    const d = onADayTheyWork(roundDay(sched, start, k), s.workingDays);
+    const d = onADayTheyWork(roundDay(sched, start, k), s.workingDays, zone);
     if (d > endDay) break;
     if (d > last) { count += 1; last = d; }
   }
@@ -180,12 +183,12 @@ function theHourItOpens(s: Pick<TheSchedule, 'cadence'>, zone: string, day: Day)
 
 /** The day the round after the one a session opened in begins, or null when the schedule has none. */
 function theRoundAfter(s: TheSchedule, zone: string, lastOpenedAt: Date): Day | null {
-  const start = onADayTheyWork(theDay(zone, s.startedAt), s.workingDays);
+  const start = onADayTheyWork(theDay(zone, s.startedAt), s.workingDays, zone);
   const opened = theDay(zone, lastOpenedAt);
   /* The round the last session belonged to, and the round after it. */
   let roundOfLast: Day = start;
   for (let k = 0; k < 5000; k += 1) {
-    const d = onADayTheyWork(roundDay(s, start, k), s.workingDays);
+    const d = onADayTheyWork(roundDay(s, start, k), s.workingDays, zone);
     if (d <= opened) roundOfLast = d;
     else if (d > roundOfLast) return d;
   }

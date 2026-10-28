@@ -144,6 +144,8 @@ export interface ACheckInRow {
 export interface ACommitmentRow {
   id: string;
   text: string;
+  /** What is shown: the clear action where there is one, else their words as an action (onePromiseOneState). */
+  shown?: string;
   whenSaid?: string | null;
   status?: string | null;
   explicit?: boolean | null;
@@ -487,7 +489,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       const late = !isDone && !!when && /^It was due on /.test(when);
       return {
         id: c.id,
-        text: asAnAction(c.text),
+        text: c.shown ?? asAnAction(c.text),
         when: when ? (isDone || late ? when : cap(when)) : null,
         done: isDone,
         late,
@@ -771,7 +773,7 @@ export async function readMyWork(
    */
   const commitments: ACommitmentRow[] = promises
     .map((p) => ({
-      id: p.id, text: p.raw, whenSaid: p.whenSaid, status: p.status, settledAt: p.settledAt, createdAt: p.createdAt,
+      id: p.id, text: p.raw, shown: p.text, whenSaid: p.whenSaid, status: p.status, settledAt: p.settledAt, createdAt: p.createdAt,
       ...(p.explicit !== undefined ? { explicit: p.explicit } : {}),
     }));
 

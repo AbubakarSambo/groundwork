@@ -60,11 +60,11 @@ export interface PicturedBoardProps {
  */
 export function theScheduleInWords(cadence: string | null | undefined, workingDays: number[] | null | undefined, opensAt: string | null | undefined, anchorDay: number | null = null): string | null {
   const days = [...new Set(workingDays ?? [])].sort().join(',')
-  const when = opensAt ? new Date(opensAt) : null
-  const hour = when && !Number.isNaN(when.getTime())
-    ? new Intl.DateTimeFormat('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).format(when).replace(':00', '').replace(/\s/g, '').toLowerCase()
-    : null
-  const from = hour ? `, from ${hour}` : ''
+  /*
+   * ONLY A DAILY CHECK-IN OPENS AT AN HOUR, 8 IN THE MORNING WHERE THE ORGANISATION IS (the server's theHourItOpens). Every other rhythm opens
+   * at the start of its day, and its "from 10pm" was that midnight read in another zone (fix plan, pattern 4; quarter test, Faith's 90 days).
+   */
+  const from = cadence === 'DAILY' && opensAt ? ', from 8am' : ''
   if (cadence === 'DAILY') return days === '1,2,3,4,5' ? `Daily on weekdays${from}.` : `Every day${from}.`
   const day = anchorDay != null ? ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'][anchorDay] : null
   if (cadence === 'WEEKLY') return day ? `Weekly, ${day}.` : `Weekly${from}.`

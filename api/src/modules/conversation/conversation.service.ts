@@ -321,7 +321,8 @@ import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { aQuestionNotYetAsked, WHAT_ELSE } from './nobody-is-left-looking-at-a-paragraph';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargets } from '../board/a-hidden-target-stays-hidden';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
-import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
+import { itIsTheirs, AN_AIM_IN_WORDS, A_PERIOD_REPORTED } from './a-promise-is-theirs-not-ours';
+import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep, worthWritingDown } from './what-they-said-they-would-do-next';
 import { theFullerPromise, nameTwoDifferentDates } from './the-same-promise-said-more-fully';
 import { aPromiseSomebodyElseMade } from './a-promise-somebody-else-made';
 import { clearTheWaitsSaidDone, clearTheWaitsAnEventEnded } from './a-wait-said-done-is-cleared';
@@ -6580,6 +6581,8 @@ ${told}` : '';
     if (agreed.kind === 'no') return { forTheModel: whatHappenedToTheOffer(agreed, false), weSay: '' };
     /* A yes to somebody else's promise is not theirs to keep (Hafsah's point 13, Release 1): nothing is written. */
     if (aPromiseSomebodyElseMade(agreed.text) && ((await theReleaseOneSalesBoardIsOnFor(this.prisma, checkIn.groundId)) || (await aCollectionsCheckInWithRelease2(this.prisma, checkIn.groundId)))) return { forTheModel: '', weSay: '' };
+    /* The one test of what is a promise, as the check-in's own reading uses (fix plan, pattern 5): "Today. I promise." was kept as one. */
+    if (!worthWritingDown({ action: agreed.text })) return { forTheModel: whatHappenedToTheOffer(agreed, false), weSay: '' };
     let written: boolean | 'already' = false;
     try {
       const theirs = await this.prisma.groundCommitment.findMany({
@@ -8707,16 +8710,26 @@ ${told}` : '';
       where: { id: checkInId },
       select: {
         groundId: true, sessionNumber: true, participantId: true,
-        turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true, stage: true } },
+        turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true, stage: true, createdAt: true } },
       },
     });
     if (!row?.participantId) return;
     const said = row.turns.map((t) => (t.content ?? '').trim()).filter(Boolean);
     if (!said.length) return;
+    /* Each answer with the question it answered (fix plan, pattern 5): "Follow up with her then" was kept with nobody named, because the model saw answers alone. */
+    const asked = ((await Promise.resolve((this.prisma as any).conversationTurn?.findMany?.({ where: { checkInId, role: TurnRole.AI }, orderBy: { createdAt: 'asc' }, select: { content: true, createdAt: true } })).catch(() => [])) ?? []) as any[];
+    const theQuestionBefore = (at: Date | null | undefined) => {
+      const before = (asked as any[]).filter((q) => !at || new Date(q.createdAt) <= new Date(at)).pop();
+      return before ? String(before.content ?? '').replace(/\s+/g, ' ').trim().slice(-300) : '';
+    };
+    const pairs = row.turns.filter((t) => (t.content ?? '').trim()).map((t, n) => {
+      const q = theQuestionBefore((t as any).createdAt);
+      return `${n + 1}. ${q ? `Asked: ${q}\n   They said: ` : ''}${(t.content ?? '').trim()}`;
+    });
 
     const read = await this.anthropic.extract<any>(
       READ_WHAT_THEY_PROMISED,
-      [{ role: 'user', content: `THEIR OWN WORDS, in order:\n${said.map((x, n) => `${n + 1}. ${x}`).join('\n')}` }],
+      [{ role: 'user', content: `THEIR OWN WORDS, in order, each after the question it answered:\n${pairs.join('\n')}` }],
       WHAT_THEY_PROMISED_SCHEMA as any,
       { fast: true, thinkingBudget: 0 },
     ).catch((err: any) => {
@@ -8779,6 +8792,8 @@ ${told}` : '';
           groundId: row.groundId,
           participantId: row.participantId,
           text: c.action.slice(0, 400),
+          /* The same promise as a clear action, beside their words (fix plan, pattern 5). */
+          action: c.clear ?? null,
           /* What "it" is, where they were asked: their answer, as typed (a-vague-promise-says-what-it-is). */
           whatItIs: whatTheySaidItIs(c.action, row.turns as any),
           outcome: c.outcome ?? null,
@@ -10611,7 +10626,11 @@ ${told}` : '';
     for (const p of result.promises) {
       const text = (p.promise ?? '').trim();
       if (!text) continue;
+      /* Theirs, in their own words, never a sentence of Groundwork's (a-promise-is-theirs-not-ours.ts). */
+      if (!itIsTheirs(text, transcript)) continue;
       const kind = KINDS.includes(p.kind ?? '') ? (p.kind as any) : 'TODO';
+      /* A figure they reported is what happened, not an aim (fix plan, pattern 5; Njeri's "November collections KES 720,000" became "You have 0 of 720,000"). */
+      if (kind === 'TARGET' && !p.dueSaid && A_PERIOD_REPORTED.test(text) && !AN_AIM_IN_WORDS.test(text)) continue;
       const check = CHECKS.includes(p.check ?? '') ? (p.check as any) : 'NOT_CHECKABLE';
       const dueKind = DUES.includes(p.dueKind ?? '') ? (p.dueKind as any) : 'NOT_SAID';
       const dueSaid = (p.dueSaid ?? '').trim() || null;

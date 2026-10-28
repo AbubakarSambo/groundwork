@@ -1,3 +1,6 @@
+import { theOutboxKey, mayItGo } from '../../common/the-one-outbox';
+/** What a message already sent is answered: nothing goes. */
+const ALREADY_SENT = 'already sent';
 import * as crypto from 'crypto';
 import { aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
 import { sealTheirKey, theirKey, theServerCanKeepSecrets, THE_SERVER_HAS_NO_KEY, isSealed, THEIR_KEYS_CANNOT_BE_OPENED, KEYS_NEED_TYPING_AGAIN, theKeysCannotBeOpened, whyItCannot } from './an-organisations-own-keys';
@@ -613,6 +616,8 @@ export class WhatsAppService implements OnModuleInit {
    */
   async sendFor(organizationId: string, phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
     const to = await this.reachable(organizationId, phoneNumber);
+    /* The one outbox (common/the-one-outbox.ts): the same message never goes twice. One held for the night was claimed when it was held. */
+    if (!context.afterTheNight && !(await mayItGo(this.prisma, theOutboxKey({ channel: 'whatsapp', to, kind: context.kind ?? null, about: context.checkInId ?? null, text })))) return { sent: false, error: ALREADY_SENT };
     const held = (await this.heldFor(organizationId, to, context)) ?? (await this.heldForTheNight(organizationId, to, text, context));
     if (held) return held;
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
@@ -648,6 +653,7 @@ export class WhatsAppService implements OnModuleInit {
   async sendOn(via: WhichNumber, organizationId: string, phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
     if (via === 'theirs') return this.sendFor(organizationId, phoneNumber, text, context);
     const to = await this.reachable(organizationId, phoneNumber);
+    if (!context.afterTheNight && !(await mayItGo(this.prisma, theOutboxKey({ channel: 'whatsapp', to, kind: context.kind ?? null, about: context.checkInId ?? null, text })))) return { sent: false, error: ALREADY_SENT };
     const held = (await this.heldFor(organizationId, to, context)) ?? (await this.heldForTheNight(organizationId, to, text, context));
     if (held) return held;
     return this.sendOnOurNumber(organizationId, to, text, context);

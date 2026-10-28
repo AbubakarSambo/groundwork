@@ -57,7 +57,7 @@ describe('an aim is counted from the deals, in its own month', () => {
 });
 
 describe('every page reads an aim’s number through the one counter', () => {
-  const src = (f: string) => fs.readFileSync(path.join(__dirname, f), 'utf8');
+  const src = (f: string) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('My work, the You page, the board and the listener all count through an-aim-is-counted-now', () => {
     expect(src('./my-work.ts')).toMatch(/withTheirCountNow\(/);
@@ -74,7 +74,7 @@ describe('every page reads an aim’s number through the one counter', () => {
       for (const e of fs.readdirSync(d, { withFileTypes: true })) {
         const f = path.join(d, e.name);
         if (e.isDirectory()) walk(f);
-        else if (e.name.endsWith('.ts') && !e.name.endsWith('.spec.ts') && !allowed.has(e.name) && /theAimsTheDealsCount\(/.test(fs.readFileSync(f, 'utf8'))) offenders.push(path.relative(root, f));
+        else if (e.name.endsWith('.ts') && !e.name.endsWith('.spec.ts') && !allowed.has(e.name) && /theAimsTheDealsCount\(/.test(fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''))) offenders.push(path.relative(root, f));
       }
     };
     walk(root);

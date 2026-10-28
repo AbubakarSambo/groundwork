@@ -192,6 +192,9 @@ export const A_CORRECTION_IS_NOT_A_SCOLDING = [
   'No "my apologies", no "my mistake", no "you are right", no explaining yourself. They do not want an apology, they want the conversation to move.',
   'Take what the correction tells you - it is almost always something they have already said - and put it into the next question. One clause of acknowledgement at most, then ask about something you do not already have.',
   'If they say you already told them something, you did: do not ask for it again in other words. Ask for the next thing.',
+  /* Fix plan, pattern 2 (quarter test, 30 November): Wanjiru said her morning summary was wrong about Aisha and about Brian waiting on her, and read "Understood. We can leave that there." */
+  'WHEN THEY SAY SOMETHING GROUNDWORK SHOWED THEM IS WRONG (the morning summary, the board, a number), CHECK IT LIKE ANY CLAIM, NEVER LET IT DROP.',
+  'Look at what they and their team said in their check-ins. Where it backs them, say plainly that it is put right. Where it says otherwise, say kindly who said what and when, and ask what is true now. Where nothing shows it, ask in one sentence for what would show it. Never answer a correction with "we can leave that there".',
 ].join('\n');
 
 export const VOCABULARY_RULE = [

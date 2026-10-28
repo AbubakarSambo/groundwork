@@ -1,3 +1,5 @@
+import { Cadence } from '@prisma/client';
+import { whenTheRoundCloses } from '../grounds/the-check-ins-own-schedule';
 import { TEMPLATES, fill } from './a-message-outside-the-window';
 import { theReminderBody } from '../grounds/what-is-sent-in-simpler-words';
 import { whatToDoToday, type ChasingPolicy } from '../conversation/chasing-belongs-to-the-lead';
@@ -62,9 +64,31 @@ export const yourViewMatters = (w: WhoAndWhat, leadFirstName: string | null | un
  * lead's own check-in) has no due day, so nothing says it is due or overdue.
  */
 export const DAYS_BETWEEN_SESSIONS: Record<string, number> = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 };
-export function whenItIsDue(openedAt: Date | string, cadence: string | null | undefined): Date | null {
+/*
+ * AND IT IS DUE WHEN THE CHECK-IN'S OWN SCHEDULE SAYS THE NEXT ROUND OPENS (fix plan, pattern 4; quarter test, 20 November). A
+ * weekday check-in opened on Friday was "due tomorrow, Saturday 21 November": one calendar day was added to Friday. Given the check-in,
+ * the due day is the round's close on its own schedule (the-check-ins-own-schedule.ts whenTheRoundCloses): working days, its set day,
+ * and the organisation's zone. Only a cadence with nothing else falls back to the step.
+ */
+export function whenItIsDue(
+  openedAt: Date | string,
+  ground: string | null | undefined | { cadence: string | null; cadenceAnchorDay?: number | null; workingDays?: number[] | null; startsAt?: Date | string | null; createdAt?: Date | string | null },
+  zone?: string | null,
+): Date | null {
+  const cadence = typeof ground === 'string' || ground == null ? ground : ground.cadence;
   const step = cadence ? DAYS_BETWEEN_SESSIONS[cadence] : undefined;
   if (!step) return null;
+  if (ground && typeof ground === 'object') {
+    const closes = whenTheRoundCloses({
+      cadence: ground.cadence as Cadence,
+      anchorDay: ground.cadenceAnchorDay ?? null,
+      workingDays: ground.workingDays ?? [],
+      startedAt: new Date(ground.startsAt ?? ground.createdAt ?? openedAt),
+      startsNow: !ground.startsAt,
+      zone: zone ?? null,
+    }, new Date(openedAt));
+    if (closes) return closes;
+  }
   return new Date(new Date(openedAt).getTime() + step * 86_400_000);
 }
 

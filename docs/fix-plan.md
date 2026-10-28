@@ -287,6 +287,68 @@ One fix in the shared layout components (the two-column row and the link list) s
 
 Listed for Hafsah under "Needs Hafsah". Nothing is changed without her decision.
 
-## Status
+## Status (28 October 2026)
 
-Each pattern is marked here when it is fixed, with its commit and its tests.
+**1. Numbers: fixed at the source.**
+- Promises are read and counted once (`grounds/the-promises-counted-once.ts`) by My work, You and the self-review.
+- Targets are counted when they are read (`board/an-aim-is-counted-now.ts`) by the board, the listener, My work, You and Ask: sales from the deals, in the aim's own month, and collections from the bills paid.
+- People in a check-in are counted by the round's own rule (`reports/how-many-have-answered.ts whoAnswersThisCheckIn`).
+- Removed: the You page's own commitment count, My work's own target number and sold recount, and the board's and the listener's inline deal counts.
+- Not changed, because they are right: the session counts ("session 23 of 59" is a daily check-in's real length). Their wording moves to pattern 7.
+- Moved to pattern 5: Njeri's "0 of 720,000". It was a figure she reported, saved as a target.
+
+**2. Corrections: fixed for Ask, not yet for the check-in itself.**
+- Ask reads what a message means with the model where the rules place nothing (`assistant/ask-understands-with-the-model.ts`). Only lanes that read can be chosen; the rules keep everything that writes.
+- A correction in any words is checked against the person's own record (`assistant/a-correction-is-checked-like-a-claim.ts`):
+  - backed, it changes the promise or takes the line off, so every page reads it;
+  - not backed, it asks for the proof.
+- Statements the model reads as questions or updates reach the documents.
+- Kept: the old regex path (`a-correction-said-in-ask.ts`) only runs when the model gives no answer. It stays as the fallback for an outage, not as a second way.
+- **Left:** a correction said during a check-in, on WhatsApp ("We can leave that there"). That is the check-in prompt, and is next.
+
+**3. Flows: four fixed.**
+- Add something stays on the board while it waits for the person's check-in.
+- END, with nothing open, says so and says when the next check-in comes.
+- A review in progress opens its fold, so the own-view box and Update from the record show.
+- The ending reads as said to each reader. It is not yet one press.
+- **To check in the two-week run, before changing anything:**
+  - The lead's missing Update from the record was on a review already decided, where it is closed by design.
+  - People who finished a plan or a 90 days probably move to "The next reviews" as due, rather than dropping off the list.
+
+**4. Dates: fixed at the source.**
+- Due comes from the check-in's own schedule (`whenItIsDue` reads `whenTheRoundCloses`).
+- The schedule skips public holidays where the organisation is (`grounds/public-holidays.ts`). Fixed-date holidays only; Easter and the Eids are not there yet.
+- A chosen end runs to the end of its day, and the stall checks read it.
+- A day in another year says its year (`aDayInItsZone`).
+- Nobody on leave is told about missed check-ins.
+- Only a daily check-in says an opening hour.
+- A direction whose day has passed asks the admin what is next, on Today.
+
+**5. Commitments: fixed at the source.**
+- One reading takes question-and-answer pairs, leaves out hedges, misses and unfinished work, and keeps a clear action beside the person's own words. This adds the new `GroundCommitment.action` column (migration `20261028120000`).
+- The "yes" path goes through the same test.
+- Groundwork's own sentences are never kept as someone's promise or goal (`conversation/a-promise-is-theirs-not-ours.ts`).
+- A reported figure is not a target.
+- A goal and its target are shown once.
+- "Reached" is said only of what a counter counted.
+
+**6. Messages: fixed at the source.**
+- One outbox key is claimed before any email or WhatsApp goes (`common/the-one-outbox.ts`, migration `20261028130000`).
+- Each message about the same thing goes once a day, invitations once a day per person, and one apology per half hour. Replies are held only when the same words come twice in a minute.
+- No thank-you is sent for a session nobody answered.
+- Today merges the same question across check-ins into one item that names them.
+- **Left for Hafsah:** the two WhatsApp templates already submitted to Meta say "about five minutes", while the rest of the product says "about ten minutes". They are frozen until she resubmits them.
+
+**7. Wording: started.**
+- "About ten minutes" everywhere outside the frozen templates.
+- "The 43rd check-in", not "check-in number 43".
+- The ending said to the reader ("You stay in the role").
+- The ending said once on the person's own page.
+- Not changed, because it is the prototype's own wording: "Mercy’s work" on Mercy's own My work.
+
+**8. Phone layout: two fixed.**
+- The Company links each sit on their own line.
+- The Direction "What changed" list keeps its text in one column.
+- **Left:** the staff prompts page.
+
+**Not in a pattern, for Hafsah:** what a contractor sees; a staff sign-up making an organisation; the plan and 90-day boards; how long the first question takes.

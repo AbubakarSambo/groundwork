@@ -125,7 +125,7 @@ export async function theRunningRecordFrom(prisma: any, ids: string[], label: Ma
     Promise.resolve(prisma.goalVersion?.findMany?.({ where: { ownerParticipantId: { in: ids } }, select: { name: true, outcome: true, newName: true, decidedBy: true, decidedAt: true } })).catch(() => []),
   ]);
   return theRunningRecord(
-    promises.filter((c) => label.has(c.groundId)).map((c) => ({ id: c.id, text: c.raw, status: c.status, checkIn: label.get(c.groundId)!, session: null, settledOn: day(c.settledAt), madeOn: day(c.createdAt) ?? day(c.t)!, explicit: c.explicit })),
+    promises.filter((c) => label.has(c.groundId)).map((c) => ({ id: c.id, text: c.text, status: c.status, checkIn: label.get(c.groundId)!, session: null, settledOn: day(c.settledAt), madeOn: day(c.createdAt) ?? day(c.t)!, explicit: c.explicit })),
     ((proof as any[]) ?? []).map((x) => ({ itemName: String(x.itemName ?? ''), countsAsProof: x.countsAsProof === true, on: day(x.createdAt)! })),
     ((versions as any[]) ?? []).map((v) => ({ name: v.name, outcome: v.outcome === 'stopped' ? 'stopped' : v.outcome === 'continued' ? 'continued' : 'changed', newName: v.newName ?? null, on: day(v.decidedAt)!, byThem: v.decidedBy === 'person' })),
   );

@@ -55,7 +55,8 @@ function TheCompany({ d }: { d: NonNullable<DirectionRead['direction']> }) {
         <div className="g4">{d.now.map((x) => <div key={x.title} className="panel pad gw-col-6"><b>{x.title}</b><p className="t-small">{x.says}</p></div>)}</div>
       </Section>
       <Section heading="What changed" note={d.setOn}>
-        <ol className="gw-numbered">{d.whatChanged.map((x) => <li key={x.n}><b>{x.label}</b> {x.says}</li>)}</ol>
+        {/* One element beside the number (fix plan, pattern 8): the label and the text were two grid cells, so the text fell into the number's 22px column, one word per line. */}
+        <ol className="gw-numbered">{d.whatChanged.map((x) => <li key={x.n}><span><b>{x.label}</b> {x.says}</span></li>)}</ol>
       </Section>
       <Section heading="What it means for each team" note="Worked out for each team, approved by its lead">
         <EdgeList label="What it means for each team">

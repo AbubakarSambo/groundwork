@@ -5,7 +5,9 @@ const c = (action: string) => ({ action });
 describe('what they said they would do', () => {
   it('keeps an action they said they would take', () => {
     expect(worthWritingDown(c('I will call Mrs Nwosu on Friday'))).toBe(true);
-    expect(worthWritingDown(c('I am setting up the meetings with the technical team'))).toBe(true);
+    /* Changed 28 October 2026 (fix plan, pattern 5): work in progress is a promise only with when it will be finished. */
+    expect(worthWritingDown({ ...c('I am setting up the meetings with the technical team'), when: 'by Friday' })).toBe(true);
+    expect(worthWritingDown(c('I am setting up the meetings with the technical team'))).toBe(false);
   });
 
   /*

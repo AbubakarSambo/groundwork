@@ -5851,6 +5851,9 @@ model GroundCommitment {
   /// The action, in the words it was written in.
   text          String  @db.Text
   /// What "it" or "that" in the promise is, where the check-in asked: their answer, in their own words, never reworded.
+  /// THE PROMISE AS A CLEAR ACTION (fix plan, pattern 5; Hafsah, 28 October 2026): who does what, by when, with "her", "that" and "then"
+  /// said as the names and things the question and their answer meant. `text` stays their own words, word for word, kept beside it.
+  action            String?   @map("action") @db.Text
   whatItIs      String? @map("what_it_is") @db.Text
   /// What it is for, where that was said. Never invented.
   outcome       String? @db.Text
@@ -8994,4 +8997,14 @@ model SetupItem {
 
   @@index([organizationId, area])
   @@map("setup_items")
+}
+
+/// THE ONE OUTBOX (fix plan, pattern 6; Hafsah, 28 October 2026). Every email and WhatsApp claims its key here before it is sent: the
+/// channel, who to, what kind, what about, and the day. A key already claimed was already sent, so the same message never goes twice,
+/// from two timers, two copies of the server, or two paths that both decided to send it.
+model OutboxClaim {
+  key       String   @id
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("outbox_claims")
 }

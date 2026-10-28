@@ -1,3 +1,4 @@
+import { theEndingSaid } from '../resolution/end-states';
 import { withTheDirectMorningSaid } from '../organisation/the-screen-is-told-the-direct-morning';
 import { THE_TEMPLATES, theTemplate } from '../board/the-thirteen-templates';
 import { theRelease4TeamsIsOn } from '../board/release-4-teams';
@@ -3187,8 +3188,19 @@ export class GroundsService {
     /* In an anchor check-in the lead's own set-up (her aim, what it will cover, what a complete answer holds) is hers alone (decision 96, item 8). */
     /* The reader's own first name, as a possessive, is "your": "Zawadi's first weeks" is "Your first weeks" to Zawadi (privacy sweep, 7 October). */
     const myFirstName = ((ground.participants ?? []) as any[]).find((p: any) => !!requestingUserId && p.userId === requestingUserId)?.user?.firstName ?? null;
+    /*
+     * HOW IT ENDED, SAID TO THIS READER (fix plan, pattern 7; quarter test, 8 January). Faith read "This check-in has ended. The person stays
+     * in the role." on her own 90 days: the page had only the stored key, and said it of nobody. The ending's own words for this reader
+     * (resolution/end-states.ts theEndingSaid): "You stay in the role." to her, "Faith stays in the role." to Grace.
+     */
+    const theOneItIsAbout = ((ground.participants ?? []) as any[]).filter((p: any) => p.partyType !== 'INITIATOR');
+    const endStateLabel = (ground as any).endState
+      ? theEndingSaid((ground as any).scenario, (ground as any).endState, theOneItIsAbout.length === 1
+        ? { isTheReader: !!requestingUserId && theOneItIsAbout[0].userId === requestingUserId, name: theOneItIsAbout[0].user?.firstName ?? null }
+        : null)
+      : null;
     const asAMemberReadsIt = <P extends Record<string, any>>(page: P): P => {
-      const out: any = withoutTheLeadsSetUpForAMember(page, { startedFrom: (ground as any).startedFrom ?? null, scenario: (ground as any).scenario ?? null, runsIt: viewerRunsThisGround });
+      const out: any = withoutTheLeadsSetUpForAMember(endStateLabel ? { ...page, endStateLabel } : page, { startedFrom: (ground as any).startedFrom ?? null, scenario: (ground as any).scenario ?? null, runsIt: viewerRunsThisGround });
       if (viewerRunsThisGround || !myFirstName) return out;
       return { ...out, label: theirOwnFirstNameAsYour(out.label, myFirstName), brief: theirOwnFirstNameAsYour(out.brief, myFirstName), ...(out.briefAsEveryoneReadsIt !== undefined ? { briefAsEveryoneReadsIt: theirOwnFirstNameAsYour(out.briefAsEveryoneReadsIt, myFirstName) } : {}) };
     };

@@ -1,3 +1,4 @@
+import { aDayInItsZone } from '../board/a-day-said-in-full';
 import { whoAnswersThisCheckIn } from '../reports/how-many-have-answered';
 import { NotFoundException } from '@nestjs/common';
 import { theRelease1bTabsAreOn } from './release-1b-tabs';
@@ -113,8 +114,8 @@ export function theRhythmInWords(g: { cadence?: string | null; workingDays?: num
   }
 }
 
-const aDay = (d: Date, timeZone: string, weekday = false) =>
-  new Intl.DateTimeFormat('en-GB', { ...(weekday ? { weekday: 'long' } : {}), day: 'numeric', month: 'long', timeZone }).format(d);
+/* With the year when it is not this one (board/a-day-said-in-full.ts). */
+const aDay = (d: Date, timeZone: string, weekday = false) => aDayInItsZone(d, timeZone, weekday);
 
 /** "5 people answer every weekday, until 30 October, on WhatsApp or here." The one sentence at the top, for every reader. */
 export function howThisCheckInRuns(a: {

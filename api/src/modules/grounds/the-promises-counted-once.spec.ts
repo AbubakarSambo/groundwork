@@ -53,7 +53,7 @@ describe('a person’s promises are read and counted once', () => {
   it('no page that shows promises reads the commitment rows for itself', () => {
     const readers = ['../board/my-work.ts', '../suites/the-running-record.ts', './your-board.service.ts'];
     for (const f of readers) {
-      const src = fs.readFileSync(path.join(__dirname, f), 'utf8');
+      const src = fs.readFileSync(path.join(__dirname, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
       const ownReads = (src.match(/groundCommitment\?*\.findMany\?*\(\{\s*where:\s*\{\s*(?:groundId:[^}]*,\s*)?participantId:\s*(?:pid|\{\s*in:\s*(?:ids|participantIds))/g) ?? []);
       expect({ file: f, ownReads }).toEqual({ file: f, ownReads: [] });
     }

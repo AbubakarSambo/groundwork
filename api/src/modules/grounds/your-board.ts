@@ -78,6 +78,8 @@ export interface GroundCommitmentRow {
   /** When it was settled, done or not done (week 9). What "in the last 4 weeks" reads. */
   settledAt?: Date | string | null;
   createdAt?: Date | string | null;
+  /** The promise as a clear action, kept beside their words (fix plan, pattern 5). What is shown, where there is one. */
+  action?: string | null;
 }
 
 export interface CoachingRow {
@@ -418,7 +420,7 @@ export function onePromiseOneState(
     if (!state || !rawText) continue;
     const by = state !== 'open' && c.settledBy ? SETTLED_BY[c.settledBy] : undefined;
     addSaid({
-      id: c.id, text: asAnAction(rawText), when: state === 'open' ? whenItWasFor(c.whenSaid, c.createdAt, now) : whenInOneForm(c.whenSaid),
+      id: c.id, text: c.action?.trim() || asAnAction(rawText), when: state === 'open' ? whenItWasFor(c.whenSaid, c.createdAt, now) : whenInOneForm(c.whenSaid),
       checkIn: labelOf(c.groundId), state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}),
       saidAt: c.createdAt ? new Date(c.createdAt).toISOString() : null, t: time(c.createdAt), open: state === 'open', groundId: c.groundId,
       raw: rawText, whenSaid: c.whenSaid ?? null, createdAt: c.createdAt ?? null, settledAt: c.settledAt ?? null,
@@ -537,6 +539,15 @@ export function yourBoard(
   }
   for (const t of rows.ownedTargets) {
     if (!labelOf.has(t.groundId) || !(t.name ?? '').trim()) continue;
+    /*
+     * ONE GOAL, ONCE (fix plan, pattern 5; quarter test). A target they said is kept as their own goal and as a target, so Kevin read
+     * "Trying to get those 30 units moved" beside "You are really focused on hitting your 30-unit target", and Faith "7 units in
+     * November." beside "7 units in November. You have 2 of 7." In one check-in, a goal that names the same figure as a target is that
+     * target, shown once, with its count.
+     */
+    const figures = theFiguresIn(t.name);
+    if (figures) for (let i = goals.length - 1; i >= 0; i -= 1) if (goals[i].checkIn === labelOf.get(t.groundId) && theFiguresIn(goals[i].says.split(/ You have /)[0]) === figures) goals.splice(i, 1);
+    if (figures && goals.some((g) => g.checkIn === labelOf.get(t.groundId) && theFiguresIn(g.says.split(/ You have /)[0]) === figures)) continue;
     goals.push({ id: t.id, says: goalFromTarget(t, myFirstNames), checkIn: labelOf.get(t.groundId)! });
   }
 
@@ -617,4 +628,10 @@ export function theOwnKept(
 ): { kept: number; of: number } | null {
   const r = keptLately(rows, now, []);
   return r ? { kept: r.kept, of: r.of } : null;
+}
+
+/** The figures a goal names, as one key ("30", "7"), or null where it names none: how two goals for one target are told to be one. */
+function theFiguresIn(text: string | null | undefined): string | null {
+  const ns = (String(text ?? '').replace(/(\d),(\d{3})/g, '$1$2').match(/\d+(?:\.\d+)?/g) ?? []).filter((n) => !/^(?:19|20)\d\d$/.test(n));
+  return ns.length ? [...new Set(ns)].sort().join(',') : null;
 }
