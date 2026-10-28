@@ -1,3 +1,4 @@
+import { thePromisesOf, thePromisesCounted } from '../grounds/the-promises-counted-once';
 /**
  * RELEASE 7: EACH PERSON'S RUNNING RECORD, ON THEIR YOU BOARD (docs/release-plan.md, Release 7: "commitment → action → evidence →
  * learning → adaptation → outcome. It builds up from every check-in they're in, across all scenarios").
@@ -17,6 +18,8 @@ export interface ACommitmentOnRecord {
   session: number | null;
   settledOn: string | null;
   madeOn: string;
+  /** False where the lead asked for it rather than the person saying it: not theirs to count. */
+  explicit?: boolean | null;
 }
 export interface ProofOnRecord { itemName: string; countsAsProof: boolean; on: string }
 export interface AGoalChange { name: string; outcome: 'continued' | 'changed' | 'stopped'; newName: string | null; on: string; byThem: boolean }
@@ -75,16 +78,15 @@ export function theRunningRecord(commitments: ACommitmentOnRecord[], proof: Proo
     g.outcome === 'stopped'
       ? `You stopped “${clean(g.name)}” on ${dayAndMonth(g.on)}, when the direction changed.`
       : `You changed “${clean(g.name)}”${g.newName ? ` to “${clean(g.newName)}”` : ''} on ${dayAndMonth(g.on)}, when the direction changed.`);
-  const done = commitments.filter((c) => String(c.status).toUpperCase() === 'DONE').length;
-  const notDone = commitments.filter((c) => String(c.status).toUpperCase() === 'NOT_DONE').length;
-  const open = commitments.filter((c) => !['DONE', 'NOT_DONE', 'DROPPED'].includes(String(c.status).toUpperCase())).length;
+  /* The one count of promises (grounds/the-promises-counted-once.ts), so this line and My work's tile never disagree. */
+  const { said, kept: done, notDone, open } = thePromisesCounted(commitments.map((c) => ({ status: String(c.status).toUpperCase(), explicit: c.explicit })));
   return {
     heading: 'Your record so far',
     rows,
     more: Math.max(0, sorted.length - MOST),
     adapted,
-    inShort: commitments.length
-      ? `You said you would do ${commitments.length} ${commitments.length === 1 ? 'thing' : 'things'}. ${done} done, ${notDone} not done, ${open} still open.`
+    inShort: said
+      ? `You said you would do ${said} ${said === 1 ? 'thing' : 'things'}. ${done} done, ${notDone} not done, ${open} still open.`
       : 'Nothing you said you would do is on record yet.',
   };
 }
@@ -106,16 +108,25 @@ export function aSelfReviewDraft(r: TheRunningRecord): string {
 /** The running record of one person across every check-in they are in, read from the database. For that person's own use only. */
 export async function theRunningRecordOf(prisma: any, userId: string): Promise<TheRunningRecord> {
   const places = ((await Promise.resolve(prisma.groundParticipant?.findMany?.({ where: { userId }, select: { id: true, groundId: true, ground: { select: { label: true } } } })).catch(() => [])) ?? []) as any[];
-  const ids = places.map((p) => p.id);
   const label = new Map(places.map((p) => [p.groundId, String(p.ground?.label ?? 'a check-in')]));
+  return theRunningRecordFrom(prisma, places.map((p) => p.id), label);
+}
+
+/**
+ * The running record of these participants (one person's places), with their promises read the one way every page reads them
+ * (grounds/the-promises-counted-once.ts): what the record says is done is done, and a promise kept twice is one promise.
+ */
+export async function theRunningRecordFrom(prisma: any, ids: string[], label: Map<string, string>): Promise<TheRunningRecord> {
   const day = (d: any) => (d ? new Date(d).toISOString().slice(0, 10) : null);
   if (!ids.length) return theRunningRecord([], [], []);
-  const commitments = ((await Promise.resolve(prisma.groundCommitment?.findMany?.({ where: { participantId: { in: ids } }, select: { id: true, groundId: true, text: true, status: true, statedInSession: true, settledAt: true, createdAt: true } })).catch(() => [])) ?? []) as any[];
-  const proof = ((await Promise.resolve(prisma.itemEvidence?.findMany?.({ where: { participantId: { in: ids } }, select: { itemName: true, countsAsProof: true, createdAt: true } })).catch(() => [])) ?? []) as any[];
-  const versions = ((await Promise.resolve(prisma.goalVersion?.findMany?.({ where: { ownerParticipantId: { in: ids } }, select: { name: true, outcome: true, newName: true, decidedBy: true, decidedAt: true } })).catch(() => [])) ?? []) as any[];
+  const [promises, proof, versions] = await Promise.all([
+    thePromisesOf(prisma, ids, (g) => label.get(g) ?? 'a check-in'),
+    Promise.resolve(prisma.itemEvidence?.findMany?.({ where: { participantId: { in: ids } }, select: { itemName: true, countsAsProof: true, createdAt: true } })).catch(() => []),
+    Promise.resolve(prisma.goalVersion?.findMany?.({ where: { ownerParticipantId: { in: ids } }, select: { name: true, outcome: true, newName: true, decidedBy: true, decidedAt: true } })).catch(() => []),
+  ]);
   return theRunningRecord(
-    commitments.map((c) => ({ id: c.id, text: c.text, status: c.status, checkIn: label.get(c.groundId) ?? 'a check-in', session: c.statedInSession ?? null, settledOn: day(c.settledAt), madeOn: day(c.createdAt)! })),
-    proof.map((x) => ({ itemName: String(x.itemName ?? ''), countsAsProof: x.countsAsProof === true, on: day(x.createdAt)! })),
-    versions.map((v) => ({ name: v.name, outcome: v.outcome === 'stopped' ? 'stopped' : v.outcome === 'continued' ? 'continued' : 'changed', newName: v.newName ?? null, on: day(v.decidedAt)!, byThem: v.decidedBy === 'person' })),
+    promises.filter((c) => label.has(c.groundId)).map((c) => ({ id: c.id, text: c.raw, status: c.status, checkIn: label.get(c.groundId)!, session: null, settledOn: day(c.settledAt), madeOn: day(c.createdAt) ?? day(c.t)!, explicit: c.explicit })),
+    ((proof as any[]) ?? []).map((x) => ({ itemName: String(x.itemName ?? ''), countsAsProof: x.countsAsProof === true, on: day(x.createdAt)! })),
+    ((versions as any[]) ?? []).map((v) => ({ name: v.name, outcome: v.outcome === 'stopped' ? 'stopped' : v.outcome === 'continued' ? 'continued' : 'changed', newName: v.newName ?? null, on: day(v.decidedAt)!, byThem: v.decidedBy === 'person' })),
   );
 }

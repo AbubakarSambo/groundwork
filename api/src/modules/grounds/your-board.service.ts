@@ -1,4 +1,4 @@
-import { theRunningRecord, type TheRunningRecord } from '../suites/the-running-record';
+import { theRunningRecordFrom, type TheRunningRecord } from '../suites/the-running-record';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
@@ -228,16 +228,7 @@ export class YourBoardService {
     const on = await Promise.resolve((this.prisma as any).organization?.findUnique?.({ where: { id: organizationId }, select: { release7PeopleOn: true } })).catch(() => null);
     if (on?.release7PeopleOn !== true || !participantIds.length) return null;
     const label = new Map(mine.map((g: any) => [g.id, String(g.label ?? 'a check-in')]));
-    const db = this.prisma as any;
-    const commitments = ((await Promise.resolve(db.groundCommitment?.findMany?.({ where: { participantId: { in: participantIds } }, select: { id: true, groundId: true, text: true, status: true, statedInSession: true, settledAt: true, createdAt: true } })).catch(() => [])) ?? []) as any[];
-    const proof = ((await Promise.resolve(db.itemEvidence?.findMany?.({ where: { participantId: { in: participantIds } }, select: { itemName: true, countsAsProof: true, createdAt: true } })).catch(() => [])) ?? []) as any[];
-    const versions = ((await Promise.resolve(db.goalVersion?.findMany?.({ where: { ownerParticipantId: { in: participantIds } }, select: { name: true, outcome: true, newName: true, decidedBy: true, decidedAt: true } })).catch(() => [])) ?? []) as any[];
-    const day = (d: any) => (d ? new Date(d).toISOString().slice(0, 10) : null);
-    return theRunningRecord(
-      commitments.filter((c) => label.has(c.groundId)).map((c) => ({ id: c.id, text: c.text, status: c.status, checkIn: label.get(c.groundId)!, session: c.statedInSession ?? null, settledOn: day(c.settledAt), madeOn: day(c.createdAt)! })),
-      proof.map((x) => ({ itemName: String(x.itemName ?? ''), countsAsProof: x.countsAsProof === true, on: day(x.createdAt)! })),
-      versions.map((v) => ({ name: v.name, outcome: v.outcome === 'stopped' ? 'stopped' : v.outcome === 'continued' ? 'continued' : 'changed', newName: v.newName ?? null, on: day(v.decidedAt)!, byThem: v.decidedBy === 'person' })),
-    );
+    return theRunningRecordFrom(this.prisma as any, participantIds, label);
   }
 
   /** Your own latest finished session on each check-in you are held for a seat on: its name, when it finished, and where your own report is. Nobody else's, nothing more. */
