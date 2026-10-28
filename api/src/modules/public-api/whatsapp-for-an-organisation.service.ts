@@ -967,7 +967,9 @@ export class WhatsAppForAnOrganisationService {
     /* One Groundwork has just closed and is still finishing is not open: a message now goes to the next one (26 October 2026). */
     const rows = (await this.prisma.checkIn.findMany({
       where: {
-        participant: { userId, ground: { organizationId } },
+        /* Not a session of a check-in that has ended or is held (two-week check, Peter): his plan ended on 8 January, its last session was
+           still open, his replies went to it, and he read "This check-in is closed" twice. */
+        participant: { userId, ground: { organizationId, status: { notIn: ['RESOLVED', 'CLOSED', 'STALLED', 'PAUSED'] as any } } },
         status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] },
         OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
       },

@@ -44,6 +44,12 @@ export function theOutboxKey(m: { channel: AChannel; to: string; kind?: string |
 export async function mayItGo(prisma: any, key: string | null): Promise<boolean> {
   if (!key || !prisma?.outboxClaim?.create) return true;
   try {
+    /* A reply's minute is a sliding one: the same words twelve seconds apart across the turn of a minute are the same reply (two-week check). */
+    const reply = /\|reply\|[0-9a-f]+\|(\d+)$/.exec(key);
+    if (reply && prisma.outboxClaim.findUnique) {
+      const before = await prisma.outboxClaim.findUnique({ where: { key: key.replace(/\d+$/, String(Number(reply[1]) - 1)) } }).catch(() => null);
+      if (before && Date.now() - new Date(before.createdAt).getTime() < 60_000) return false;
+    }
     await prisma.outboxClaim.create({ data: { key } });
     return true;
   } catch (err: any) {
