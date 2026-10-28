@@ -1,3 +1,4 @@
+import { ConversationService as ConversationServiceForReopening } from '../conversation/conversation.service';
 import { theEndingSaid } from '../resolution/end-states';
 import { withTheDirectMorningSaid } from '../organisation/the-screen-is-told-the-direct-morning';
 import { THE_TEMPLATES, theTemplate } from '../board/the-thirteen-templates';
@@ -7471,8 +7472,27 @@ export class GroundsService {
        */
       this.tellThemItIsOpenAgain(groundId).catch((err: any) =>
         this.logger.warn(`Could not tell everybody ${groundId} is open again: ${err?.message}`));
+      /*
+       * AND IT CAN BE ANSWERED AGAIN (fix plan, pattern 3; the two-week check, Kevin, 11 January 2027). Sales team, Q4 was given until
+       * 31 March and opened again, but nobody had a session to answer: none is made while a check-in is stalled, and reopening made none.
+       * Each person's next session is made now, on the check-in's own schedule, as it would have been had it never stalled.
+       */
+      await this.theNextSessionsAfterReopening(groundId).catch((err: any) =>
+        this.logger.warn(`Could not open the next sessions for ${groundId} after it reopened: ${err?.message}`));
     }
     return updated;
+  }
+
+  /** Each person's next session after a check-in reopens, where their last one is finished: the same rule a finished session uses. */
+  private async theNextSessionsAfterReopening(groundId: string): Promise<void> {
+    const conversation = this.moduleRef?.get(ConversationServiceForReopening, { strict: false }) as any;
+    if (!conversation?.ensureNextSession) return;
+    const people = await this.prisma.groundParticipant.findMany({ where: { groundId, leftAt: null }, select: { id: true } });
+    for (const p of people) {
+      const last = await this.prisma.checkIn.findFirst({ where: { participantId: p.id, isSetup: false }, orderBy: { sessionNumber: 'desc' }, select: { sessionNumber: true, status: true } });
+      if (!last || ['NOT_STARTED', 'IN_PROGRESS'].includes(String(last.status))) continue;
+      await conversation.ensureNextSession(groundId, p.id, last.sessionNumber);
+    }
   }
 
   /** One email each to everybody on a check-in that has just been given more time. */

@@ -4,6 +4,8 @@ import { understandTheMessage, type TheMessageUnderstood } from './ask-understan
 /** END, done or finish, on its own: what a check-in that has closed is told (it reaches Ask only when nothing is open). */
 const AN_END_WITH_NOTHING_OPEN = /^\s*(?:end|end it|end the (?:check-?in|session)|stop the (?:check-?in|session)|finish|finished|done|i'?m done|i am done)\s*[.!]*\s*$/i;
 const NOTHING_TO_END = 'There is no check-in open here, so there is nothing to end.';
+/** What an update said in Ask is told, where nothing of theirs on record is what it changes. Ask is private, so it is not put on the record from here. */
+const AN_UPDATE_SAID_IN_ASK = 'Thank you. What you say here in Ask stays between you and Groundwork, so it is not on your record yet. To put it there, say it in your next check-in, or press Add something on your check-in.';
 import { checkTheCorrection, type WhatTheRecordHolds, type TheCorrectionChecked, type ANumberShownThem } from './a-correction-is-checked-like-a-claim';
 import { thePromisesOf, thePromisesCounted } from '../grounds/the-promises-counted-once';
 import { withTheirCountNow } from '../board/an-aim-is-counted-now';
@@ -234,7 +236,7 @@ function aSourceInPlainWords(sys: string, _stale: boolean): string {
   return aSourceIsGroundworks(sys) ? 'What you have told Groundwork' : sys;
 }
 
-import { isAQuestion, answerFromTheDocuments, NO_DOCUMENTS_TO_READ } from './a-question-is-answered-from-the-documents';
+import { isAQuestion, answerFromTheDocuments, NO_DOCUMENTS_TO_READ, NOT_IN_THE_DOCUMENTS } from './a-question-is-answered-from-the-documents';
 import { openTheLeadsCheckIn } from '../grounds/check-in-yourself';
 /** "I want to do my own check-in", "check in myself", "my check-in now". */
 const A_WISH_TO_CHECK_IN_MYSELF = /\b(?:(?:do|start|begin|answer)\s+my\s+(?:own\s+)?check[\s-]?in|check[\s-]?in\s+(?:myself|for\s+myself)|my\s+own\s+check[\s-]?in)\b/i;
@@ -393,6 +395,8 @@ export class AssistantService {
        */
       const found = whatTheyMean(message, await theirTurns(), 2);
       if (found) reply = rules('a_correction', text(theChangePutOnRecord(found, message)));
+      /* An update with nothing of theirs to set it beside is still not shrugged at: where it goes is said (two-week check, Kevin). */
+      else if (understood?.kind === 'update') reply = rules('an_update', text(AN_UPDATE_SAID_IN_ASK));
     }
 
     /*
@@ -596,7 +600,8 @@ export class AssistantService {
 
     let routedByRules = route(message);
     /* Where the rules place nothing, the lane the model read it as, which is only ever one that reads (ask-understands-with-the-model.ts). */
-    if (routedByRules.lane === 'unplaced' && understood?.lane) routedByRules = understood.about ? { lane: understood.lane as any, subject: understood.about } : { lane: understood.lane as any };
+    /* Only for something asked: a statement the model took for a question was sent to "There is nothing on your to-do list" (two-week check, Kevin). */
+    if (routedByRules.lane === 'unplaced' && understood?.lane && (isAQuestion(message) || /^\s*(?:tell|show|list|give)\b/i.test(message))) routedByRules = understood.about ? { lane: understood.lane as any, subject: understood.about } : { lane: understood.lane as any };
     /* The company by its own name: the router cannot know it, so it is asked here (B-134). */
     if (routedByRules.lane === 'unplaced' && /\bworking\s+on\b/i.test(message)) {
       const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }).catch(() => null);
@@ -764,7 +769,7 @@ export class AssistantService {
         if (userId && understood?.kind === 'update') {
           const fromTheDocuments = await this.aQuestionAnsweredFromTheDocuments(organizationId, who, userId, groundId ?? null, message).catch(() => null);
           const said = (fromTheDocuments as any)?.blocks?.[0]?.body ?? '';
-          if (fromTheDocuments && said && said !== NO_DOCUMENTS_TO_READ && !/\bnothing\b.*\b(?:document|on file)\b/i.test(said)) return fromTheDocuments;
+          if (fromTheDocuments && said && said !== NO_DOCUMENTS_TO_READ && said !== NOT_IN_THE_DOCUMENTS && !/\bnothing\b.*\b(?:document|on file)\b/i.test(said)) return fromTheDocuments;
         }
         if (who) {
           const proposal = await this.maybePropose(organizationId, who, message);
