@@ -804,6 +804,14 @@ export class AssistantService {
     const counted = thePromisesCounted(promises as any[]);
     const numbers: ANumberShownThem[] = [];
     if (counted.kept + counted.notDone) numbers.push({ name: 'Promises kept', says: `You kept ${counted.kept} of ${counted.kept + counted.notDone} promises.`, howItIsCounted: 'every promise you made in your check-ins that is settled, done or not done, with a to-do you wrote and the same promise said in a check-in counted once.' });
+    /* Their check-ins, done and specific, as My work counts them (the two-week check: Peter's "4 out of 14" had nothing to be checked against). */
+    for (const p of places) {
+      const rows = ((await Promise.resolve(db.checkIn?.findMany?.({ where: { participantId: p.id, isSetup: false }, select: { status: true, specificityLevel: true, availableFrom: true } })).catch(() => [])) ?? []) as any[];
+      const due = rows.filter((c) => !c.availableFrom || new Date(c.availableFrom) <= new Date());
+      const done = due.filter((c) => c.status === 'COMPLETED');
+      const specific = done.filter((c) => c.specificityLevel === 'specific');
+      if (due.length) numbers.push({ name: `Check-ins in ${label.get(p.groundId)}`, says: `${done.length} of ${due.length} check-ins done, ${specific.length} of the ${done.length} done were specific.`, howItIsCounted: 'every session of this check-in that has opened for you, done where you finished it, and specific where you named the item, what changed and the day.' });
+    }
     for (const p of places) {
       const aims = ((await Promise.resolve(db.groundObjective?.findMany?.({ where: { groundId: p.groundId, ownerParticipantId: p.id }, select: { id: true, name: true, target: true, count: true, ownerParticipantId: true } })).catch(() => [])) ?? []) as any[];
       for (const a of await withTheirCountNow(db, p.ground, aims).catch(() => aims)) {
