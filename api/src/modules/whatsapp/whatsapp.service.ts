@@ -1,4 +1,12 @@
 import { theOutboxKey, mayItGo } from '../../common/the-one-outbox';
+/*
+ * The one outbox key for a send. A message held for the night was claimed when it was held, so its morning send claims its own key: the held
+ * queue sent Wanjiru's morning summary three times in eleven seconds (two-week check, 15 January).
+ */
+function aKeyForThisSend(to: string, text: string, context: { kind?: string | null; checkInId?: string | null; afterTheNight?: boolean }): string | null {
+  const key = theOutboxKey({ channel: 'whatsapp', to, kind: context.kind ?? null, about: context.checkInId ?? null, text });
+  return key && context.afterTheNight ? `held|${key}` : key;
+}
 /** What a message already sent is answered: nothing goes. */
 const ALREADY_SENT = 'already sent';
 import * as crypto from 'crypto';
@@ -617,7 +625,7 @@ export class WhatsAppService implements OnModuleInit {
   async sendFor(organizationId: string, phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
     const to = await this.reachable(organizationId, phoneNumber);
     /* The one outbox (common/the-one-outbox.ts): the same message never goes twice. One held for the night was claimed when it was held. */
-    if (!context.afterTheNight && !(await mayItGo(this.prisma, theOutboxKey({ channel: 'whatsapp', to, kind: context.kind ?? null, about: context.checkInId ?? null, text })))) return { sent: false, error: ALREADY_SENT };
+    if (!(await mayItGo(this.prisma, aKeyForThisSend(to, text, context)))) return { sent: false, error: ALREADY_SENT };
     const held = (await this.heldFor(organizationId, to, context)) ?? (await this.heldForTheNight(organizationId, to, text, context));
     if (held) return held;
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
@@ -653,7 +661,7 @@ export class WhatsAppService implements OnModuleInit {
   async sendOn(via: WhichNumber, organizationId: string, phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
     if (via === 'theirs') return this.sendFor(organizationId, phoneNumber, text, context);
     const to = await this.reachable(organizationId, phoneNumber);
-    if (!context.afterTheNight && !(await mayItGo(this.prisma, theOutboxKey({ channel: 'whatsapp', to, kind: context.kind ?? null, about: context.checkInId ?? null, text })))) return { sent: false, error: ALREADY_SENT };
+    if (!(await mayItGo(this.prisma, aKeyForThisSend(to, text, context)))) return { sent: false, error: ALREADY_SENT };
     const held = (await this.heldFor(organizationId, to, context)) ?? (await this.heldForTheNight(organizationId, to, text, context));
     if (held) return held;
     return this.sendOnOurNumber(organizationId, to, text, context);

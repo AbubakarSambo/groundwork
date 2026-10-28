@@ -52,7 +52,10 @@ describe('one key per message', () => {
 describe('both senders claim the key before anything goes', () => {
   const src = (f: string) => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   it('WhatsApp, both doors, and email', () => {
-    expect((src('../modules/whatsapp/whatsapp.service.ts').match(/mayItGo\(this\.prisma, theOutboxKey\(\{ channel: 'whatsapp'/g) ?? []).length).toBe(2);
+    const wa = src('../modules/whatsapp/whatsapp.service.ts');
+    expect((wa.match(/mayItGo\(this\.prisma, aKeyForThisSend\(/g) ?? []).length).toBe(2);
+    /* A message held for the night claims its own key when it goes in the morning (Wanjiru's summary went three times from the held queue). */
+    expect(wa).toMatch(/theOutboxKey\(\{ channel: 'whatsapp'[\s\S]*afterTheNight \? `held\|\$\{key\}`/);
     expect(src('../modules/email/email.service.ts')).toMatch(/mayItGo\(this\.prisma, theOutboxKey\(\{ channel: 'email'/);
   });
 });

@@ -25,8 +25,9 @@ describe('the check-in\'s own lines, switch off: exactly as before', () => {
 describe('the check-in\'s own lines, switch on: plain, and nothing about how the record reads', () => {
   it('a question let go is let go, and the next question follows', () => {
     expect(recordAndMoveOn('what the target is', { question: 'Which deal closes next?' }, true)).toBe('Understood. Which deal closes next?');
-    expect(recordAndMoveOn(null, {}, true)).toBe('Understood. We can leave that there.');
-    expect(recordAndMoveOn('what the target is', {}, true)).toBe('Understood. We can leave that there.');
+    /* Changed 29 October 2026 (two-week check): "We can leave that there" followed Brian's correction and read as brushing it off. */
+    expect(recordAndMoveOn(null, {}, true)).toBe('Thank you, that is noted.');
+    expect(recordAndMoveOn('what the target is', {}, true)).toBe('Thank you, that is noted.');
   });
   it('the apology and the ceiling', () => {
     expect(NOTHING_TO_APOLOGISE_FOR_DIRECTLY).toBe('No need to say sorry.');

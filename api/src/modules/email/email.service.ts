@@ -476,7 +476,15 @@ export class EmailService implements OnModuleInit {
      * invitation once a day to a person whatever check-in it is for. A sign-in link, a code or a password mail is never held: the person asked for it.
      */
     const askedForNow = /sign-?in|magic|code|password|verify|security|otp|login/i.test(sender ?? '') || context?.kind === 'MAGIC_LINK';
-    if (!askedForNow && !(await mayItGo(this.prisma, theOutboxKey({ channel: 'email', to: options.to, kind: sender ?? context?.kind ?? null, about: context?.groundId ?? context?.participantId ?? null, text: options.subject })))) {
+    /*
+     * AND NEWS OF THE SAME KIND GOES ONCE A DAY (two-week check, 21 and 22 January). Brian read "session 69 is complete", "Thank you, your
+     * answer is in" and "has closed" about one session, and Grace two "The report found ... differences" mails for one check-in, on the same
+     * day. How a session went is one mail a person a day; a report's news is one mail a check-in a day, the check-in read from its own name.
+     */
+    const family = /^(?:sendTheAnswerByEmail|sendTheMessageByEmail|sendRoundDigest|sendParticipantCheckedIn)$/.test(sender ?? '') ? 'session-news'
+      : /^(?:sendReportReady|sendTheReportFollowUp)$/.test(sender ?? '') ? 'report-news' : null;
+    const aboutWhich = family === 'report-news' ? (context?.groundId ?? /["“]([^"”]+)["”]/.exec(options.subject)?.[1] ?? null) : family === 'session-news' ? 'the-day' : (context?.groundId ?? context?.participantId ?? null);
+    if (!askedForNow && !(await mayItGo(this.prisma, theOutboxKey({ channel: 'email', to: options.to, kind: family ?? sender ?? context?.kind ?? null, about: aboutWhich, text: options.subject })))) {
       this.logger.log(`Not sending "${options.subject}": the same mail already went today.`);
       if (context) context.outcome = 'suppressed';
       return undefined;

@@ -10,7 +10,7 @@ export function itIsTheirs(promise: string, transcript: string): boolean {
   const p = String(promise ?? '').trim();
   if (!p) return false;
   /* Groundwork's own offers to help are never somebody's goal. */
-  if (/^(?:i can help|i am here to|i'm here to|let me help|i will remind you|groundwork)\b/i.test(p)) return false;
+  if (GROUNDWORKS_OWN_OFFER.test(p)) return false;
   const lines = String(transcript ?? '').split('\n');
   const ours = lines.filter((l) => l.startsWith('GROUNDWORK:')).join(' ');
   const theirs = lines.filter((l) => !l.startsWith('GROUNDWORK:')).join(' ');
@@ -29,3 +29,6 @@ export const AN_AIM_IN_WORDS = /\b(?:target|aim|aiming|goal|want|plan|planning|h
 
 /** A figure said of a period that has happened or is happening ("November collections", "so far", "to date"): a report, unless aim words make it an aim. */
 export const A_PERIOD_REPORTED = /\b(?:january|february|march|april|may|june|july|august|september|october|november|december|so far|to date|last (?:week|month|quarter))\b/i;
+
+/** A sentence of Groundwork's own, offering to help: never a person's promise or goal, written or already kept (the readers leave it out too). */
+export const GROUNDWORKS_OWN_OFFER = /^(?:i can help|i am here to|i'm here to|let me help|i will remind you|groundwork)\b/i;

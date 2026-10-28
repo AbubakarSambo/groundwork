@@ -15,11 +15,15 @@
 export interface APromiseTheyMade { id: string; table: 'commitment' | 'todo'; text: string; status: 'DONE' | 'NOT_DONE' | 'UNKNOWN'; checkIn: string; madeOn: string }
 export interface ALineOfTheirs { id: string; text: string; checkIn: string; on: string; proof: boolean }
 export interface ANumberShownThem { name: string; says: string; howItIsCounted: string }
+/** A wait the person is in: somebody waiting on them, or them waiting on somebody. */
+export interface AWaitOfTheirs { id: string; says: string; since: string }
 
 export interface WhatTheRecordHolds {
   promises: APromiseTheyMade[];
   lines: ALineOfTheirs[];
   numbers: ANumberShownThem[];
+  /** Waits still open that they are in (two-week check: "Aisha is waiting on you for FN-007" months after it was paid). */
+  waits?: AWaitOfTheirs[];
   /** Documents they added recently, by name and day. */
   documents: { name: string; on: string }[];
   firstName: string;
@@ -35,6 +39,8 @@ export interface TheCorrectionChecked {
   promise?: { id: string; nowIs: 'DONE' | 'NOT_DONE' } | null;
   /** Only on "backed": a line of theirs that is not true and comes off the record. */
   lineOff?: string | null;
+  /** Only on "backed": a wait that is over. */
+  waitOver?: string | null;
 }
 
 export const CORRECTION_PROMPT_KEY = 'ask.check-a-correction';
@@ -48,7 +54,7 @@ Decide one verdict:
 
 When they question a number, say how it was counted and from what (you are given this), then decide as above.
 
-Only on "backed", you may name one promise of theirs whose state is now known (its id, and DONE or NOT_DONE), or one line of theirs that is not true (its id), from the lists you are given. Never any other id.
+Only on "backed", you may name one promise of theirs whose state is now known (its id, and DONE or NOT_DONE), one line of theirs that is not true (its id), or one wait that is over (its id), from the lists you are given. Never any other id.
 
 Write the reply to them as "you", in short, plain, full sentences that people with basic English understand. Use names. No lists, no colons, no work jargon. Never more than four sentences.`;
 
@@ -63,6 +69,7 @@ export const CORRECTION_SCHEMA = {
       promiseId: { type: 'string' },
       promiseIs: { type: 'string', enum: ['DONE', 'NOT_DONE'] },
       lineOffId: { type: 'string' },
+      waitOverId: { type: 'string' },
     },
     required: ['verdict', 'reply'],
   },
@@ -74,6 +81,7 @@ export function theCorrectionAsked(message: string, r: WhatTheRecordHolds): stri
   const lines = r.lines.map((l) => `- ${l.id}: "${l.text}", in ${l.checkIn} on ${l.on}${l.proof ? ', with a document' : ''}`).join('\n') || '- none';
   const numbers = r.numbers.map((n) => `- ${n.name}: ${n.says} Counted from ${n.howItIsCounted}`).join('\n') || '- none';
   const docs = r.documents.map((d) => `- ${d.name}, added on ${d.on}`).join('\n') || '- none';
+  const waits = (r.waits ?? []).map((w) => `- ${w.id}: ${w.says}, since ${w.since}`).join('\n') || '- none';
   return `${r.firstName} wrote: "${String(message).slice(0, 1200)}"
 
 Their promises:
@@ -86,7 +94,10 @@ Numbers Groundwork showed them, and how each was counted:
 ${numbers}
 
 Documents they added:
-${docs}`;
+${docs}
+
+Waits still open that they are in:
+${waits}`;
 }
 
 /** What the model said, made safe: an id it was not handed is dropped, and nothing changes unless the verdict is "backed". */
@@ -99,7 +110,8 @@ export function theVerdictMadeSafe(raw: any, r: WhatTheRecordHolds): TheCorrecti
   const promise = backed && typeof raw.promiseId === 'string' && r.promises.some((p) => p.id === raw.promiseId) && (raw.promiseIs === 'DONE' || raw.promiseIs === 'NOT_DONE')
     ? { id: raw.promiseId as string, nowIs: raw.promiseIs as 'DONE' | 'NOT_DONE' } : null;
   const lineOff = backed && typeof raw.lineOffId === 'string' && r.lines.some((l) => l.id === raw.lineOffId) ? (raw.lineOffId as string) : null;
-  return { verdict, reply, promise, lineOff };
+  const waitOver = backed && typeof raw.waitOverId === 'string' && (r.waits ?? []).some((w) => w.id === raw.waitOverId) ? (raw.waitOverId as string) : null;
+  return { verdict, reply, promise, lineOff, waitOver };
 }
 
 export async function checkTheCorrection(

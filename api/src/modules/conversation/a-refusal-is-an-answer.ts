@@ -58,7 +58,8 @@ export function recordAndMoveOn(declinedWhat: string | null, next: { question?: 
    * thing that is true either way and that the person is actually owed: nothing goes on the record
    * about it.
    */
-  if (direct) return 'Understood. We can leave that there.';
+  /* Not "We can leave that there": this follows an answer, often a correction, and read as brushing it off (two-week check, Brian). */
+  if (direct) return 'Thank you, that is noted.';
   return declinedWhat ? first : 'Understood. This record shows nothing more on that.';
 }
 

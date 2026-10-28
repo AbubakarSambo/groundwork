@@ -1,3 +1,4 @@
+import { GROUNDWORKS_OWN_OFFER } from '../conversation/a-promise-is-theirs-not-ours';
 import { howManyCheckIns } from './which-check-in-it-is';
 import { wasAQuietClose } from './an-answer-includes-a-refusal';
 import { isShut } from './a-ground-that-has-ended';
@@ -534,6 +535,8 @@ export function yourBoard(
      * decision for Hafsah rather than a licence to edit what somebody said.
      */
     const text = (o.text ?? '').trim();
+    /* A goal kept before the fix in Groundwork's own words is not shown as theirs (a-promise-is-theirs-not-ours.ts; two-week check, Aisha). */
+    if (GROUNDWORKS_OWN_OFFER.test(text)) continue;
     const theirOwnWords = o.authoredBy === 'self';
     if (text) goals.push({ id: o.id, says: asASentence(theirOwnWords ? text : aboutTheReaderAsYou(asTheReader(text), myFirstNames)), checkIn: labelOf.get(o.groundId)! });
   }

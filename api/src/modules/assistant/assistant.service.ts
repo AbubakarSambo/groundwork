@@ -354,6 +354,12 @@ export class AssistantService {
      * "finish" reaches Ask, and was answered "I cannot answer that one yet". It says so, and when the next one comes.
      */
     if (AN_END_WITH_NOTHING_OPEN.test(message)) {
+      /* Only where nothing is open: "There is no check-in open here" went to people whose check-in was open (two-week check). */
+      const stillOpen = userId ? await Promise.resolve((this.prisma as any).checkIn?.findFirst?.({
+        where: { participant: { userId, ground: { organizationId, status: { notIn: ['RESOLVED', 'CLOSED', 'STALLED', 'PAUSED'] } } }, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] }, isSetup: false, OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }] },
+        select: { ground: { select: { label: true } } }, orderBy: { createdAt: 'desc' },
+      })).catch(() => null) : null;
+      if (stillOpen) return rules('a_check_in_still_open', text(`Your check-in for “${stillOpen.ground?.label ?? 'your team'}” is still open, so nothing was ended. Go back into it to finish it, or carry on answering there.`));
       const next = await this.answer(organizationId, personId, who, 'When is my next check-in?', false, groundId, userId, openedFromSetup);
       const first = (next as any)?.blocks?.[0];
       const after = first?.type === 'text' && first.body && !/^I cannot answer that one yet/.test(first.body) ? ` ${first.body}` : '';
@@ -820,7 +826,14 @@ export class AssistantService {
       }
     }
     const me = await Promise.resolve(db.user?.findUnique?.({ where: { id: userId }, select: { firstName: true } })).catch(() => null);
+    const waitRows = ((await Promise.resolve(db.groundDependency?.findMany?.({
+      where: { status: { in: ['BLOCKING', 'WAITING'] }, OR: [{ fromParticipantId: { in: ids } }, { onParticipantId: { in: ids } }] },
+      select: { id: true, what: true, fromParticipantId: true, onParticipantId: true, createdAt: true, groundId: true },
+      orderBy: { createdAt: 'desc' }, take: 30,
+    })).catch(() => [])) ?? []) as any[];
+    const waits = waitRows.map((w) => ({ id: w.id, says: `${ids.includes(w.onParticipantId) ? 'Somebody is waiting on you' : 'You are waiting on somebody'} for ${String(w.what ?? '').slice(0, 200)} (in ${label.get(w.groundId) ?? 'a check-in'})`, since: day(w.createdAt) }));
     return {
+      waits,
       firstName: String(me?.firstName ?? 'They'),
       promises: (promises as any[]).slice(-40).map((p) => ({ id: p.id, table: commitmentIds.has(p.id) ? 'commitment' : 'todo', text: String(p.raw ?? ''), status: p.status, checkIn: label.get(p.groundId) ?? 'a check-in', madeOn: day(p.createdAt) })),
       lines: lines.map((l) => ({ id: l.id, text: cleanText(String(l.text ?? '')).slice(0, 300), checkIn: label.get(l.participant?.groundId) ?? 'a check-in', on: day(l.createdAt), proof: !!l.anchoredDocumentId })),
@@ -840,6 +853,8 @@ export class AssistantService {
       else if (p && checked.promise.nowIs === 'DONE') await db.personObjective.update({ where: { id: p.id }, data: { status: 'MET', statusChangedAt: now } });
     }
     if (checked.lineOff) await db.recordEntry.update({ where: { id: checked.lineOff }, data: { disputedAt: now } });
+    /* A wait the record shows is over is cleared, so no page says somebody is still waiting (two-week check, Njeri and FN-007). */
+    if (checked.waitOver) await db.groundDependency.update({ where: { id: checked.waitOver }, data: { status: 'CLEARED' } });
   }
 
   /**

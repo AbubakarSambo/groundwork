@@ -763,7 +763,7 @@ export async function readMyWork(
       select: { kind: true, text: true, audience: true, aboutParticipantId: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
     }).catch(() => []) ?? [],
-    prisma.groundObjective?.findMany?.({ where: { groundId: ground.id, ownerParticipantId: pid }, select: { id: true, name: true, target: true, count: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } }).catch(() => []) ?? [],
+    prisma.groundObjective?.findMany?.({ where: { groundId: ground.id, ownerParticipantId: pid }, select: { id: true, name: true, target: true, count: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, /* The same order as the You page lists them, so both lead with one target (two-week check, Joseph). */ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }).catch(() => []) ?? [],
   ]);
 
   /*

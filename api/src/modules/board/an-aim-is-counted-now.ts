@@ -1,4 +1,4 @@
-import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
+import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, whatASalesAimCounts, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
 import { isASalesKind } from './the-kind-of-work';
 import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
@@ -17,7 +17,7 @@ import { anAmount, thePaidDay, type ABillOnTheBoard } from './the-collections-bo
  * asks here: an aim the deals count is counted from the deals, now, under the lead's rule for proof and in the aim's own month; any
  * other aim keeps its stored number.
  */
-export interface AnAimToCount { id: string; name: string | null | undefined; ownerParticipantId?: string | null; count?: number | null }
+export interface AnAimToCount { id: string; name: string | null | undefined; ownerParticipantId?: string | null; count?: number | null; target?: number | null }
 
 export async function theAimsCountedNow(
   prisma: any,
@@ -31,7 +31,26 @@ export async function theAimsCountedNow(
   if (!(await theReleaseOneSalesBoardIsOn(prisma, ground.organizationId ?? null).catch(() => false))) return new Map();
   const deals = opts.deals ?? (await theDealsOnRecord(prisma, ground.id, { paymentRecord: true }).catch(() => [] as ADealOnRecord[]));
   const zone = opts.zone ?? ((ground.organizationId ? await theOrganisationsZone(prisma, ground.organizationId).catch(() => null) : null) ?? THE_PRODUCTS_OWN_ZONE);
-  return theAimsTheDealsCount(aims.map((a) => ({ id: a.id, name: a.name, ownerParticipantId: a.ownerParticipantId ?? null })), deals, theSalesStages(ground.workStages), now, zone);
+  const stages = theSalesStages(ground.workStages);
+  const counted = theAimsTheDealsCount(aims.map((a) => ({ id: a.id, name: a.name, ownerParticipantId: a.ownerParticipantId ?? null })), deals, stages, now, zone);
+  /*
+   * A PERSON'S OWN TARGET THAT NAMES NO MEASURE IS COUNTED IN THE TEAM'S (the two-week check, Joseph). "You are on track for 30" says no
+   * unit, so nothing counted it, and Joseph's You page read "0 of 30" while his My work counted 17 sold for his other target. On a sales
+   * check-in whose own aims count units, value or sales, a person's numbered target with no measure of its own is counted in that one.
+   */
+  const allAims = ((await Promise.resolve(prisma.groundObjective?.findMany?.({ where: { groundId: ground.id }, select: { name: true } })).catch(() => null)) ?? aims) as { name: string | null | undefined }[];
+  const theTeams = [...aims, ...allAims].map((a) => whatASalesAimCounts(a.name)).find((w) => w && w.counts !== 'new leads') ?? null;
+  if (theTeams) {
+    for (const a of aims) {
+      if (counted.has(a.id) || !a.ownerParticipantId || whatASalesAimCounts(a.name)) continue;
+      const target = (a as any).target;
+      if (typeof target !== 'number' || target <= 0) continue;
+      const asTheTeams = theTeams.counts === 'value' ? `KES ${target} in sales` : theTeams.counts === 'sales' ? `${target} sales` : `${target} units`;
+      const c = theAimsTheDealsCount([{ id: a.id, name: asTheTeams, ownerParticipantId: a.ownerParticipantId }], deals, stages, now, zone).get(a.id);
+      if (c) counted.set(a.id, c);
+    }
+  }
+  return counted;
 }
 
 /** The aims with their number as it is counted now: the deals' count where the deals count it, the stored one otherwise. */
