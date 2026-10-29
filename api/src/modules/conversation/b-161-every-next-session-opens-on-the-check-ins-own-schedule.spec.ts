@@ -290,7 +290,8 @@ describe('item 5: the start the lead chose, then the schedule (Lagos, every Mond
     const c = aCheckIn({ cadence: Cadence.MONTHLY, cadenceAnchorDay: 20, createdAt: setUp, timeZone: 'Africa/Lagos' });
     c.opened('amina', 1, null, setUp);
     expect(await c.finishes('amina', 1, at('2026-10-12T09:00:00Z'))).toEqual(at('2026-11-19T23:00:00Z'));
-    expect(await c.finishes('amina', 2, at('2026-11-20T09:00:00Z'))).toEqual(at('2026-12-19T23:00:00Z'));
+    /* 20 December 2026 is a Sunday: since one calendar for each check-in (29 October), Monday to Friday unless the lead says, it opens Monday 21. */
+    expect(await c.finishes('amina', 2, at('2026-11-20T09:00:00Z'))).toEqual(at('2026-12-20T23:00:00Z'));
   });
 
   it('Now, monthly on the 20th, on the 25th: 20 November is 26 days away, at least half a month, so the next is 20 November', async () => {
@@ -298,7 +299,8 @@ describe('item 5: the start the lead chose, then the schedule (Lagos, every Mond
     const c = aCheckIn({ cadence: Cadence.MONTHLY, cadenceAnchorDay: 20, createdAt: the25th, timeZone: 'Africa/Lagos' });
     c.opened('amina', 1, null, the25th);
     expect(await c.finishes('amina', 1, at('2026-10-26T09:00:00Z'))).toEqual(at('2026-11-19T23:00:00Z'));
-    expect(await c.finishes('amina', 2, at('2026-11-20T09:00:00Z'))).toEqual(at('2026-12-19T23:00:00Z'));
+    /* 20 December 2026 is a Sunday: since one calendar for each check-in (29 October), Monday to Friday unless the lead says, it opens Monday 21. */
+    expect(await c.finishes('amina', 2, at('2026-11-20T09:00:00Z'))).toEqual(at('2026-12-20T23:00:00Z'));
   });
 
   it('On a date, monthly on the 20th, starting Monday 12: the next one is the 20th of the same month', async () => {

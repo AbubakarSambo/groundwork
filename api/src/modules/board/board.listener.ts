@@ -10,14 +10,14 @@ import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
 import { theBuyingDateTheySaid, BUYING_DATE } from './a-deals-value-and-buying-date';
 import { withTheCriteriaSaid, thePriceRangeAnswer, theLeadsRangeAnswerIn, THE_RANGE_QUESTION } from './a-deals-four-criteria';
 import { theAnswerAsALine } from './what-needs-you-and-what-to-do';
-import { oneOfTheKinds, isASalesKind, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, theSameName, type AnOfferedRecord, type APersonALineMayName , KINDS_THAT_ARE_NOT_WORK } from './the-kind-of-work';
+import { oneOfTheKinds, isASalesKind, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, type AnOfferedRecord, type APersonALineMayName , KINDS_THAT_ARE_NOT_WORK } from './the-kind-of-work';
 import { theRoomsLabelFor } from './the-room-is-stored-with-labels';
 import { fileTheBillsSaid } from './the-collections-record';
 import { fileTheFeeNotesDueOnAnEvent } from './a-fee-note-due-on-an-event';
 import { aSaleWonIsAnInvoiceToRaise } from './raising-invoices-on-time';
 import { withAClaim } from './a-claim-on-a-record-is-checked-first';
 import { withTheStageKept, theStagesToKeep } from './a-deals-stages-are-kept';
-import { theSameCustomer, aDealTheLeadNamedBecomesTheReps } from './one-deal-per-customer';
+import { aDealTheLeadNamedBecomesTheReps } from './one-deal-per-customer';
 import { aDealNamedAsAPerson, theDealThePersonIsAt, thePersonsDetailsOnTheDeal, theQuestionBefore } from './a-deals-contact-is-never-a-deal';
 import { theAimsCountedNow } from './an-aim-is-counted-now';
 import { whatTheOwnerSaidOfEachDeal } from './what-the-owner-said-of-each-deal';
@@ -151,14 +151,15 @@ export class BoardListener {
       const dealsOnRecord = isASalesKind(kind)
         ? ((await (this.prisma as any).workItem.findMany({ where: { groundId: e.groundId, kind: 'deal' }, select: { name: true, fields: true, ownerParticipantId: true } }).catch(() => [])) as any[])
         : [];
-      const withContacts = dealsOnRecord.map((d) => ({ name: String(d.name), contact: String((d.fields as any)?.Contact ?? '').trim() })).filter((d) => d.contact);
+      /* Every item on record, by id, so the model says which one a line is about, however it is named (one owner, one source; 29 October). */
+      const onRecord = ((await (this.prisma as any).workItem.findMany({ where: { groundId: e.groundId, kind: { notIn: KINDS_THAT_ARE_NOT_WORK } }, select: { id: true, kind: true, name: true, fields: true, ownerParticipantId: true } }).catch(() => [])) ?? []) as any[];
       const answer = await this.anthropic.extract<{ records?: AnOfferedRecord[] }>(
         theRecordsPrompt(kind),
         [{
           role: 'user',
           content: [
             ...(everybody.length ? [`People in this check-in: ${everybody.join(', ')}.`, ''] : []),
-            ...(withContacts.length ? [`Deals on record, with the person at each customer: ${withContacts.map((d) => `${d.name} (${d.contact})`).join(', ')}.`, ''] : []),
+            ...(onRecord.length ? ['Items on record:', ...onRecord.map((d) => `[${d.id}] ${d.kind}: ${d.name}${d.ownerParticipantId ? `, ${nameOf(d.ownerParticipantId)}'s` : ''}${String((d.fields as any)?.Contact ?? '').trim() ? `, through ${String((d.fields as any).Contact).trim()}` : ''}`), ''] : []),
             ...lines.map((l: any) => `[${l.id}] ${nameOf(l.participantId)} said: ${l.text}`),
           ].join('\n'),
         }],
@@ -166,6 +167,7 @@ export class BoardListener {
       );
       const kept = onlyRecordsTheLinesSay(kind, answer?.records ?? [], lines, ground?.workStages, people, dealsOnRecord.map((d) => ({ name: String(d.name), fields: d.fields as any, ownerParticipantId: d.ownerParticipantId ?? null })));
       const speakerOf = new Map(lines.map((l: any) => [l.id, l.participantId]));
+      const sameAsOf = (r: any): string | null => (answer?.records ?? []).find((x) => x.lineId === r.sourceEntryId && (x.kind ?? r.kind) === r.kind && x.sameAs)?.sameAs ?? null;
       /*
        * WHICH CHECK-IN SAID EACH OF A DEAL'S FOUR CRITERIA (Hafsah's answer to Needs Hafsah 7; a-deals-four-criteria): the need,
        * the budget the customer stated, the decision maker and the buying date are kept on the deal's details, and beside them,
@@ -211,11 +213,9 @@ export class BoardListener {
           if (!at) { this.logger.log(`A deal named as a person ("${r.name}") was not kept: no deal it is surely about.`); continue; }
           r = { ...r, name: at.name, fields: thePersonsDetailsOnTheDeal(at, r as any) as any, ownerParticipantId: at.ownerParticipantId ?? r.ownerParticipantId };
         }
-        /* "a four-hour acknowledgement" and "the four-hour acknowledgement" are one record (item 21). */
-        const same = (already as any[]).find((a) => a.kind === r.kind && (a.name.trim().toLowerCase() === r.name.trim().toLowerCase()
-          || (theSameName(a.name) === theSameName(r.name) && (a.ownerParticipantId ?? null) === (r.ownerParticipantId ?? null))))
-          /* One deal per customer, whoever says it and however it is said: "Kilele 40" and "Kilele M-Pesa" are the Kilele Hotel deal (problem 2). */
-          ?? (r.kind === 'deal' ? (already as any[]).find((a) => a.kind === 'deal' && theSameCustomer(a.name, r.name)) : undefined);
+        /* The item on record it is: the one the model named, however it was said ("Mama Rose's kiosk" is Mama Rose), or the same name. */
+        const same = (already as any[]).find((a) => a.id === sameAsOf(r) && a.kind === r.kind)
+          ?? (already as any[]).find((a) => a.kind === r.kind && a.name.trim().toLowerCase() === r.name.trim().toLowerCase());
         if (same) {
           /*
            * THE DEAL STAYS WITH WHOEVER IT IS. A record is shown as owned by the person who said the line it was

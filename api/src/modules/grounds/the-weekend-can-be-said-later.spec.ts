@@ -86,10 +86,11 @@ describe('and what the days do to a date', () => {
     expect(theNextDayTheyWork(sunday, [1, 2, 3, 4, 5]).getTime()).toBeGreaterThan(sunday.getTime());
   });
 
-  it('and leaves it where it is when nobody said', () => {
-    expect(theNextDayTheyWork(sunday, []).getTime()).toBe(sunday.getTime());
-    expect(isAWorkingDay(sunday, [])).toBe(true);
-    /* Seven days listed is the same instruction as saying nothing. */
-    expect(workingDaysOf([0, 1, 2, 3, 4, 5, 6])).toEqual([]);
+  /* Updated 29 October (one calendar for each check-in): no days given is Monday to Friday; all seven listed is every day. */
+  it('with no days given moves it to Monday, and with every day leaves it where it is', () => {
+    expect(theNextDayTheyWork(sunday, []).getDay()).toBe(1);
+    expect(isAWorkingDay(sunday, [])).toBe(false);
+    expect(workingDaysOf([0, 1, 2, 3, 4, 5, 6])).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(theNextDayTheyWork(sunday, [0, 1, 2, 3, 4, 5, 6]).getTime()).toBe(sunday.getTime());
   });
 });

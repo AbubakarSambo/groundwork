@@ -10,7 +10,8 @@ describe('saying you are done on WhatsApp closes the check-in', () => {
     const h = anInboundHarness({ open: [{ id: 'ci-kevin', status: 'IN_PROGRESS', label: 'Sales daily' }], thread: { checkInId: 'ci-kevin' } });
     h.conversation.sendMessage = jest.fn(async () => ({ reply: `Thanks, Kevin.\n\n${THE_CLOSE_ON.whatsapp}`, sessionComplete: true }));
     await h.service.handle('org-1', h.message(word), 'ours');
-    expect(h.conversation.complete).toHaveBeenCalledWith('ci-kevin', 'u-1', { waitForTheCard: false, theyAskedToFinish: true });
+    /* Updated 29 October (one state for a session): the engine's close already finishes it on the server, so there is no second close. */
+    expect(h.conversation.complete).not.toHaveBeenCalled();
     const said = h.said.join('\n');
     expect(said).not.toContain('Reply "finish"');
     expect(said).toContain('Thanks, Kevin.');

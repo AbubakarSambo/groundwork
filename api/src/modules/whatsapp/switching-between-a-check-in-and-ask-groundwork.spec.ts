@@ -42,14 +42,17 @@ describe('"ask" and "back"', () => {
   it('"back" returns to the check-in they were in', async () => {
     const h = anInboundHarness({ open: [SALES, PLANNING], thread: { checkInId: 'ask:ci-1' } });
     await h.service.handle('org-1', h.message('back'), 'ours');
-    expect(h.thread()?.checkInId).toBe('ci-1');
+    /* Updated 29 October (a reply belongs to what it answers): leaving Ask clears the thread, and what is said next is about the check-in. */
+    expect(h.thread()?.checkInId).toBeNull();
+    expect(h.sent[h.sent.length - 1].context).toMatchObject({ checkInId: 'ci-1' });
     expect(h.said).toEqual(['You are back in your check-in. Sales team, session 1. Carry on where you left off.']);
   });
 
   it("so does the check-in's name", async () => {
     const h = anInboundHarness({ open: [SALES, PLANNING], thread: { checkInId: 'ask:ci-1' } });
     await h.service.handle('org-1', h.message('Company planning'), 'ours');
-    expect(h.thread()?.checkInId).toBe('ci-2');
+    expect(h.thread()?.checkInId).toBeNull();
+    expect(h.sent[h.sent.length - 1].context).toMatchObject({ checkInId: 'ci-2' });
   });
 });
 

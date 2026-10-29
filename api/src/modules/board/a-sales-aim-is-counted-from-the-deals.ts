@@ -479,15 +479,24 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
     documentBy: l.anchoredDocumentId ? (whoAdded.get(l.anchoredDocumentId) ?? null) : null,
     documentWords: theDocumentBehind(l.anchoredDocumentId, docOf).documentWords,
   }));
-  /* The payment records: a document that reads as a payment, or a reference typed in full, each about the customer it names (the board's own rule). */
-  const payments: { text: string; at: Date }[] = opts.paymentRecord
-    ? thePaymentRecords(
+  /*
+   * The payment records: a document that reads as a payment, or a reference typed in full, each about the customer it names (the board's
+   * own rule). ONE OWNER, ONE SOURCE (29 October 2026): a deal's payments are read from its owner's own lines, and the lead's (who is
+   * told of a payment), never another rep's. Faith's customer at
+   * Bahari Cafe, Mrs Achola, paid by M-Pesa, and Greenfield's contact is also a Mrs Achola, so her payment paid Mercy's dropped quote of
+   * 25 units and Mercy's My work read "27 sold".
+   */
+  const paymentsOf = new Map<string | null, { text: string; at: Date }[]>();
+  const paymentsBy = (owner: string | null): { text: string; at: Date }[] => {
+    if (!opts.paymentRecord) return [];
+    if (!paymentsOf.has(owner)) paymentsOf.set(owner, thePaymentRecords(
       asProof
-        .filter((l) => theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAdded) === 'proven')
+        .filter((l) => ((l.participantId ?? null) === owner || leadRows.has(l.participantId)) && theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAdded) === 'proven')
         .map((l) => ({ text: cleanText(l.text ?? ''), createdAt: l.createdAt, anchoredDocumentId: l.anchoredDocumentId ?? null })),
       docOf,
-    )
-    : [];
+    ));
+    return paymentsOf.get(owner)!;
+  };
   /* The payment records a document shows, so a code typed beside an M-Pesa message is not said as the proof. */
   const documentPayments: { text: string; at: Date }[] = opts.paymentRecord
     ? thePaymentRecords(
@@ -536,6 +545,7 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
     const orderFiled = filedOn(i.id, 'A signed order');
     const proven = sourceMark === 'proven' || proofNamesTheDeal(i.name, marked, owner) || paymentFiled.length > 0 || orderFiled.length > 0;
     const said = plainFields(i.fields);
+    const payments = paymentsBy(owner);
     const paidOnALine = opts.paymentRecord ? payments.filter((t) => aPaymentRecordFor({ name: i.name, fields: said }, [t])).map((t) => t.at) : [];
     /*
      * What was sold is what its payment shows: the units the payment was for, and what was paid (U2, U14). Kept beside the deal's own

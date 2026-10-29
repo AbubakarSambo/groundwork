@@ -382,3 +382,140 @@ The full results, finding by finding, are in ~/Desktop/quarter-test/after-fixes.
 **Not counted as failures, after checking:**
 - The Litigation end date without a year: the end, 13 October 2027, is in the same year as the bed's date.
 - Repeated replies to people who sent the same thing twice.
+
+## The simplifying fixes (Hafsah, 29 October 2026, evening): remove the cause, end with less code
+
+The re-check of 29 January to 2 February left six problems. Hafsah's rule for these: fix the design cause by simplifying. No new detectors, word filters, regular expressions or special cases. Where an old guard or patch becomes unnecessary, delete it. For each: the cause found, and the simplest change, with what it deletes. What each change actually removed is in "What the simplifying fixes removed", below, once built.
+
+### 1. Mercy's numbers ("27 sold", "17 over your target of 10")
+- **What happened.** Her My work counted 27 units: Greenfield Supermarket's 25 (a quote she gave up on) and the same one-unit sale twice ("Mama Rose" and "Mama Rose's kiosk"). It also said "your target of 10", although she had said "My target is actually 30 units, not 10".
+- **Cause 1: a person's figure was built from other people's record.** Whether a deal is paid was decided by matching every proven payment line in the check-in, from anybody, to every deal by name (`thePaymentRecords` and `aPaymentRecordFor` in `a-sales-aim-is-counted-from-the-deals.ts`). Faith's Bahari Cafe customer, Mrs Achola, paid by M-Pesa; Greenfield's contact is also "Mrs Achola"; so Faith's payment paid Mercy's dropped quote.
+- **Cause 2: a correction made a new item.** A person's own target goes through two paths that each decide "is this new?" by word-matching (`theAimsThatAreNew`, `theTargetItSaysAgain`). "My target is actually 30 units, not 10" matched neither, so a second target was written beside the first.
+- **Change.**
+  - A deal's figures come from its owner's own record only: their own lines and the proof filed on the deal. The payment lines read for a deal are its owner's.
+  - The extraction model is shown the person's targets on record, by id, and says which one a number they give corrects. The product edits that row's number and keeps the old one in the check-in's audit log (who, when, from, to, their words). A new item is written only when it is new.
+  - A dropped deal is not a sale.
+- **Deletes.** The word-matching on the person's own target path (`theTargetItSaysAgain` and `theAimsThatAreNew` used for a person's own number). The model's id replaces them.
+
+### 2. "Understood. We can leave that there."
+- **What happened.** It came back twice in check-ins.
+- **Cause.** Hafsah suspected the model is given its own old replies from earlier sessions. Traced, that is not so: the history for a turn is that check-in's own turns only (`conversation.service.ts`, the `findMany` on `checkInId` before `respond`). The phrase is in the prompt. My earlier fix added `Never answer a correction with "we can leave that there"` to `A_CORRECTION_IS_NOT_A_SCOLDING`, which goes into every check-in prompt, and an instruction that quotes the words teaches them. The 102 older turns were the product's own fixed line (`recordAndMoveOn`), already changed on 28 October.
+- **Change.**
+  - Delete the quoted phrase; keep the positive instruction (check the claim, say plainly what is put right, or ask what is true now).
+  - Within a session, the model keeps the person's words in full and Groundwork's last two turns as written. Older Groundwork turns are given only as the question they asked, so a fixed sentence of ours is not there to copy.
+  - No phrase filter.
+- **Deletes.** The quoted phrase. Nothing else, because the guards against repeating within one session (`alreadyAskedTwice`, `opensByRepeatingThem`) catch behaviour inside a session, not inherited wording.
+
+### 3. "Due tomorrow, Sunday 31 January", and 6. summaries at the weekend
+- **What happened.** Brian was told Fee notes is "due tomorrow, Sunday 31 January". Leads got a morning summary on Saturdays and Sundays.
+- **Cause.** A check-in can exist without its working days. `theDaysItRunsOn` sets Monday to Friday only for a daily check-in; a weekly one like Fee notes is saved with none. Each reader then makes up its own meaning for "none":
+  - every day (`isAWorkingDay`, `onADayTheyWork`);
+  - Monday to Friday (`who-answers-and-when.ts`, `the-direct-morning.ts`);
+  - always send (the lead's summary sends unless every check-in has days and today is not one).
+- **Change.**
+  - One calendar per check-in, set at setup: the lead's days, Monday to Friday unless they say otherwise, for every cadence, and never empty.
+  - The lead's summary goes on a day at least one of her check-ins works, and not otherwise.
+  - The test database is filled in the same way (no live users).
+- **Deletes.**
+  - The fallbacks for empty days (`[]` read as Monday to Friday in `who-answers-and-when.ts` and `the-direct-morning.ts`).
+  - The empty-days guards in the lead's summary and the daily delivery alert.
+  - `workingDaysOf` turning all seven days into "none".
+
+### 4. Faith's "complete", then "still open"
+- **What happened.** On WhatsApp Faith was told "Your check-in is complete and on record". A minute later her END was answered "Your check-in for 'Sales team, Q4' is still open, so nothing was ended".
+- **Cause.** A session's state lived in two places. When Groundwork closed it, the row stayed IN_PROGRESS for the 70 seconds the record took to write, and was set to COMPLETED only at the end. An in-memory map (`finishedByGroundwork` and `isBeingFinished`) told WhatsApp it was finishing. Ask read only the row.
+- **Change.**
+  - The row is set to COMPLETED the moment Groundwork closes the session (or the person finishes it); the record is written after, on the same row.
+  - `completedAt` is stamped when the record is written, which is what the round and the report already wait for, and the completion event is sent then, as now.
+  - Every reader reads the status.
+- **Deletes.**
+  - The `finishedByGroundwork` map and `isBeingFinished`.
+  - The WhatsApp filter that read the map.
+  - The in-flight wait and the error-text catch in `complete()`.
+  - The duplicate close path `theirOwnWordsClosedIt`, if it is only a second way to the same close.
+
+### 5. START opening the wrong check-in
+- **What happened.** Brian's and Njeri's Tuesday WhatsApp check-ins both went to Fee notes, although START was meant to open "Litigation team daily".
+- **Cause.** Routing ignored what the person was replying to. It picked a check-in by stacked rules: a remembered thread, the newest opening notice only for START, closing soonest, and "one at a time". Groundwork's own replies were not tagged with their check-in, so "the last thing we said to this person" could not be read.
+- **Change.**
+  - A reply belongs to the check-in of the message it answers: the replied-to message where WhatsApp gives it, otherwise the last message Groundwork sent this person about an open check-in, including Groundwork's own replies, which now carry their check-in.
+  - Only when that is truly unclear (nothing sent about any open one), Groundwork asks which one.
+- **Deletes.**
+  - The remembered-thread routing (`remember()` and its calls).
+  - The opening-notice-only branch for START.
+  - The closing-soonest choice as a router.
+  - `oneAtATime` as a router.
+  - The thread row stays for its other jobs (Ask mode and a pending pick).
+
+## What the simplifying fixes removed (29 October 2026, night)
+
+**Overall.** Outside the tests, 183 lines were added and 173 removed. Counting only code, without comments, 120 were added and 110 removed. So the code is about the same size, not smaller. What changed is how many paths there are and how many places decide the same thing. Every path listed below as deleted is gone. What was added is one owner for each thing, and the model naming an item by its id where code used to match words.
+
+**1. Mercy's numbers** (`a-sales-aim-is-counted-from-the-deals.ts`, `board.listener.ts`, `the-kind-of-work.ts`, `conversation.service.ts`, `prompt-library.ts`)
+- **Changed.** A deal's payments are read from its owner's lines and the lead's, never another rep's. On the test data, Mercy's count went from 27 to 2.
+- **Changed.** The model is shown every item on record by id and says which one a line is about (`sameAs`). The model is shown the person's targets by id and says which one a new number corrects (`corrects`). The product edits that target and keeps the old number in the check-in's log (`targetChanges`: who, when, from, to, their words).
+- **Deleted.** The word-matching used when a check-in writes a deal (`theSameName` and `theSameCustomer` in the listener). The separate "Deals on record, with the person at each customer" list, now folded into the items list.
+- **Left.** Those two matchers stay for items added by hand on the board. `theAimsThatAreNew` and `theTargetItSaysAgain` stay for numbers a lead sets for other people, where the model has no id to give.
+- **Left.** One duplicate deal from before the change ("Mama Rose" and "Mama Rose's kiosk") stays on the test data. Nothing merges existing rows, so Mercy's My work reads 2 where she sold 1.
+- **Dropped from the plan.** "A dropped deal is not a sale" was not needed: Greenfield was only counted because of Faith's payment.
+
+**2. The copied phrase** (`prompt-library.ts`, new `the-conversation-so-far.ts`, `conversation.service.ts`)
+- **Deleted.** The quoted phrase in the instruction about corrections.
+- **Changed.** The history given to the model keeps the person's words in full and Groundwork's last two turns as written. An older Groundwork turn is given only as the question it asked.
+- **Kept.** The guards against repeating within one session still catch what they catch.
+
+**3 and 6. One calendar** (`which-days-this-team-works.ts`, `schema.prisma` plus migration `20261029120000`, `who-answers-and-when.ts`, `the-direct-morning.ts`, `the-leads-daily-nudge.ts`, `the-daily-delivery-alert.ts`)
+- **Changed.**
+  - No days given now means Monday to Friday for every cadence and for every reader.
+  - All seven days listed means every day, no longer "nobody said".
+  - The column defaults to Monday to Friday.
+  - Empty rows are filled in, on the test database through the migration.
+  - The lead's summary goes only on a day one of her check-ins works, in her organisation's time zone.
+- **Deleted.**
+  - The three "empty means Monday to Friday" fallbacks.
+  - The two "only if every check-in said its days" guards.
+  - The "nobody said" branches in `isAWorkingDay`, `theNextDayTheyWork`, `sayWhichDays` and `everyDayThatTheyWork`.
+
+**4. One state for a session** (`conversation.service.ts`, `whatsapp-for-an-organisation.service.ts`)
+- **Changed.** `itIsFinished` sets COMPLETED the moment a session is closed, on every path. The record's own stamp (`completedAt`) is the guard that runs the rest once.
+- **Deleted.**
+  - The in-memory `finishedByGroundwork` map and `isBeingFinished`.
+  - The WhatsApp filter that read the map.
+  - The in-flight wait and the error-text catch in `complete()`. `openTheDoor` now hands back a finished session.
+  - The second close path `theirOwnWordsClosedIt`, about 20 lines.
+
+**5. A reply belongs to what it answers** (`whatsapp-for-an-organisation.service.ts`, `several-check-ins-open.ts`)
+- **Changed.** Groundwork's own replies are recorded with their check-in. A message goes to:
+  1. a pick;
+  2. the message replied to;
+  3. the last message Groundwork sent the person about an open check-in;
+  4. the only open check-in;
+  5. otherwise, a question asking which one.
+- **Deleted.**
+  - The remembered-thread routing (`remember()` and its seven calls).
+  - The opening-notice branch only for START (`theLastOpeningNoticeTo`).
+  - "Closing soonest" as a router.
+  - The "you have two check-ins open, let's start with" line (`oneAtATime`).
+  - The three thread deletes when a session finished.
+  - The "I am done" close path.
+- **Kept.** The thread row, for Ask mode and a pending pick.
+
+**Tests updated, each with its reason in the file:**
+- The calendar's old "nobody said is every day" tests (5 files).
+- The routing and closing tests (6 files).
+- The shape of finishing (3 guarded writes instead of 2).
+- A monthly session on Sunday 20 December now opens Monday the 21st.
+- Four chase tests whose clock was a Sunday: their teams now say they work every day.
+
+**Tests added:**
+- `the-conversation-so-far.spec.ts`
+- `one-calendar-for-each-check-in.spec.ts`
+
+**Results.** The touched tests pass, apart from the one already failing on staging (`groundwork-recommends-for-a-team-member-is-their-own-work`). Privacy passes: 30 suites, 200 tests. Typecheck passes.
+
+**How each fix meets the five rules in CLAUDE.md:**
+1. Each fix removes a cause, not one instance of it.
+2. Each deletes the paths listed above. In lines the code is about the same size, as said at the top of this section.
+3. Each leaves one owner: the deal owner's record, the target row, the check-in's calendar, the session's status, and the check-in a message was about.
+4. The model names items and targets by id instead of word rules deciding.
+5. Each is tested across its pattern, and in the real-model re-check that follows.

@@ -80,9 +80,11 @@ describe('the morning reminder and the days a team works (B-020)', () => {
     await service.sendScheduledNudges();
     expect(mailed.length).toBeGreaterThan(0);
   });
-  it('still reminds on a Sunday when the team never said which days it works', async () => {
+  /* Updated 29 October (one calendar for each check-in): no days given is Monday to Friday, so nothing on a Sunday; every day listed still reminds. */
+  it('sends nothing on a Sunday when the team never said which days it works, and reminds when it said every day', async () => {
     jest.setSystemTime(new Date('2026-10-11T08:00:00.000Z'));
-    const { service, mailed } = withDays([]);
+    expect((await (async () => { const w = withDays([]); await w.service.sendScheduledNudges(); return w.mailed; })())).toEqual([]);
+    const { service, mailed } = withDays([0, 1, 2, 3, 4, 5, 6]);
     await service.sendScheduledNudges();
     expect(mailed.length).toBeGreaterThan(0);
   });

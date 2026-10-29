@@ -16,14 +16,13 @@
  */
 
 /**
- * A DAILY CHECK-IN IS MONDAY TO FRIDAY UNLESS THE LEAD SAYS OTHERWISE (Hafsah, 15 October 2026). This reverses the
- * "never defaulted to weekdays" rule above for a daily rhythm only: "Every day" made 90 check-ins with every weekend in
- * them. Days she gave are kept as she gave them, and every day listed (her "Any day is fine") still means any day.
- * Any other rhythm is left exactly as before.
+ * ONE CALENDAR FOR EVERY CHECK-IN, SET AT SETUP (Hafsah, 15 and 29 October 2026). The lead's days, Monday to Friday unless she says
+ * otherwise, for every rhythm, daily, weekly or monthly. This reverses the "never defaulted to weekdays" rule above: a weekly check-in
+ * saved with no days was due on a Sunday ("due tomorrow, Sunday 31 January"), and each reader made up its own meaning for "no days".
+ * Days she gave are kept as she gave them; every day listed means every day.
  */
-export function theDaysItRunsOn(cadence: string | null | undefined, said: number[] | null | undefined): number[] | undefined {
-  if (said !== undefined && said !== null) return said;
-  return cadence === 'DAILY' ? [1, 2, 3, 4, 5] : undefined;
+export function theDaysItRunsOn(_cadence: string | null | undefined, said: number[] | null | undefined): number[] {
+  return workingDaysOf(said);
 }
 
 /** 0 = Sunday .. 6 = Saturday, the same numbering as `Date.getDay` and `cadenceAnchorDay`. */
@@ -34,27 +33,28 @@ export const MONDAY_TO_FRIDAY: Weekday[] = [1, 2, 3, 4, 5];
 export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
- * A LIST THAT MEANS NOTHING IS TREATED AS NOBODY SAID.
- *
- * Seven days listed is every day, which is the same instruction as saying nothing, so it collapses
- * to the same answer rather than running a pointless loop. A list with junk in it is filtered
- * rather than rejected: an out-of-range number from an old client must not make a check-in
- * unschedulable, and the rest of the list is still a real answer.
+ * THE DAYS A CHECK-IN WORKS, NEVER NONE. A list with junk in it is filtered rather than rejected (an out-of-range number from an old
+ * client must not make a check-in unschedulable); a list with nothing in it is Monday to Friday, the one default every reader shares.
  */
 export function workingDaysOf(raw: number[] | null | undefined): Weekday[] {
   const days = [...new Set((raw ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))] as Weekday[];
-  return days.length === 0 || days.length === 7 ? [] : days.sort((a, b) => a - b);
+  return days.length ? days.sort((a, b) => a - b) : [...MONDAY_TO_FRIDAY];
 }
 
-/** Whether this date falls on a day the team works. Always true when nobody said. */
-export function isAWorkingDay(date: Date, raw: number[] | null | undefined): boolean {
-  const days = workingDaysOf(raw);
-  return days.length === 0 || days.includes(date.getDay() as Weekday);
+/** The day of the week a moment falls on where the check-in is (its organisation's zone), or on this server's clock with none. */
+export function theWeekdayIn(date: Date, zone?: string | null): Weekday {
+  if (!zone) return date.getDay() as Weekday;
+  const name = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: zone }).format(date);
+  return DAY_NAMES.indexOf(name) as Weekday;
+}
+
+/** Whether this moment falls on a day the check-in works. */
+export function isAWorkingDay(date: Date, raw: number[] | null | undefined, zone?: string | null): boolean {
+  return workingDaysOf(raw).includes(theWeekdayIn(date, zone));
 }
 
 /**
- * Move a date forward to the next day this team works. Returns the same date when nobody said, and
- * when it is already a working day.
+ * Move a date forward to the next day this team works. Returns the same date when it is already a working day.
  *
  * FORWARD, NEVER BACK. Rolling a Saturday check-in back to Friday would move it into a week the
  * team has already reported on, and would quietly pull a deadline earlier than the one somebody
@@ -62,7 +62,6 @@ export function isAWorkingDay(date: Date, raw: number[] | null | undefined): boo
  */
 export function theNextDayTheyWork(date: Date, raw: number[] | null | undefined): Date {
   const days = workingDaysOf(raw);
-  if (days.length === 0) return date;
   const d = new Date(date);
   // At most seven steps: a non-empty list always contains a day of the week.
   for (let i = 0; i < 7 && !days.includes(d.getDay() as Weekday); i += 1) {
@@ -78,7 +77,7 @@ export function theNextDayTheyWork(date: Date, raw: number[] | null | undefined)
  */
 export function sayWhichDays(raw: number[] | null | undefined): string | null {
   const days = workingDaysOf(raw);
-  if (days.length === 0) return null;
+  if (days.length === 7) return null;
   if (days.length === 5 && MONDAY_TO_FRIDAY.every((d) => days.includes(d))) {
     return 'Weekdays only. A check-in never opens on a Saturday or a Sunday.';
   }
@@ -98,7 +97,7 @@ export function sayWhichDays(raw: number[] | null | undefined): string | null {
 const WEEK_FROM_MONDAY: Weekday[] = [1, 2, 3, 4, 5, 6, 0];
 export function everyDayThatTheyWork(raw: number[] | null | undefined): string {
   const days = workingDaysOf(raw);
-  if (!days.length) return 'every day';
+  if (days.length === 7) return 'every day';
   if (days.length === 5 && MONDAY_TO_FRIDAY.every((d) => days.includes(d))) return 'every weekday, Monday to Friday';
   const ordered = WEEK_FROM_MONDAY.filter((d) => days.includes(d));
   const at = ordered.map((d) => WEEK_FROM_MONDAY.indexOf(d));

@@ -8,7 +8,8 @@ import { RemindService } from '../conversation/remind.service';
  * days and was chased at once, and the lead was told the chasing was over a week after it began.
  */
 const lead = { email: 'grace@x.test', firstName: 'Grace' };
-const ground = { label: 'Q4 priorities', organizationId: 'org', initiatorId: 'u-g', brief: null, chaseAfterDays: [3, 7, 14], chasingStopped: false, tellTheLead: true, initiator: lead };
+/* Since one calendar for each check-in (29 October), no days given is Monday to Friday, and this test's clock is a Sunday: the team says it works every day, so the test stays about what it was written for. */
+const ground = { label: 'Q4 priorities', organizationId: 'org', initiatorId: 'u-g', brief: null, workingDays: [0, 1, 2, 3, 4, 5, 6], chaseAfterDays: [3, 7, 14], chasingStopped: false, tellTheLead: true, initiator: lead };
 
 function sweep(row: { createdAt: Date; availableFrom: Date | null }) {
   const rows = [{

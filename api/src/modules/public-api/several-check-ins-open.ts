@@ -28,13 +28,6 @@ export function closingSoonestFirst<T extends { dueAt?: Date | string | null }>(
   return open.map((c, i) => ({ c, i })).sort((a, b) => at(a.c) - at(b.c) || a.i - b.i).map((x) => x.c);
 }
 
-/** "You have two check-ins open: "A" and "B". Let's start with "A"." */
-export function oneAtATime(ordered: { label: string }[]): string {
-  const n = ordered.length;
-  const howMany = NUMBER_WORDS[n] ?? String(n);
-  return `You have ${howMany} check-ins open: ${inOneSentence(ordered.map((c) => c.label))}. Let's start with ${named(ordered[0].label)}.`;
-}
-
 /** Said after one finishes, when another is still open. */
 export function theNextOne(next: { label: string }): string {
   return `You also have ${named(next.label)} open. Reply START when you are ready to begin it.`;

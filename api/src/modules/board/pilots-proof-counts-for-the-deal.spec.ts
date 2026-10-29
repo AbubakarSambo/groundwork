@@ -93,7 +93,8 @@ describe('the deal is written once per customer, and stays with its owner', () =
   it('"Kilele 40" and "Kilele M-Pesa" move the Kilele Hotel deal on, and make no new deal', async () => {
     const { listener, created, updated } = run(
       [{ id: 'e-1', participantId: 'p-kevin', text: 'Kilele 40 paid and delivered.' }, { id: 'e-2', participantId: 'p-kevin', text: 'Kilele M-Pesa came in, 496,000.' }],
-      [{ lineId: 'e-1', kind: 'deal', name: 'Kilele 40', stage: 'Won' }, { lineId: 'e-2', kind: 'deal', name: 'Kilele M-Pesa', stage: 'Won' }],
+      /* Updated 29 October (understand, don't match): the model is shown the items on record by id and says which one a line is about. */
+      [{ lineId: 'e-1', kind: 'deal', name: 'Kilele 40', stage: 'Won', sameAs: 'w-kilele' }, { lineId: 'e-2', kind: 'deal', name: 'Kilele M-Pesa', stage: 'Won', sameAs: 'w-kilele' }],
       [{ id: 'w-kilele', kind: 'deal', name: 'Kilele Hotel', fields: {}, ownerParticipantId: 'p-kevin' }],
     );
     await listener.onCheckInCompleted({ checkInId: 'c1', groundId: 'g-1', participantId: 'p-kevin', sessionNumber: 3 });

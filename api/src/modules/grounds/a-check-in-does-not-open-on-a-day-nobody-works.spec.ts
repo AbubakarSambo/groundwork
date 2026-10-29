@@ -6,13 +6,14 @@ const saturday = () => new Date(2026, 8, 19);
 const wednesday = () => new Date(2026, 8, 16);
 
 describe('a check-in does not open on a day nobody works', () => {
-  it('leaves every date alone when nobody said', () => {
-    expect(theNextDayTheyWork(sunday(), []).getDay()).toBe(0);
-    expect(theNextDayTheyWork(sunday(), null).getDay()).toBe(0);
+  /* Updated 29 October. ONE CALENDAR FOR EACH CHECK-IN (Hafsah, 29 October 2026): no days given is Monday to Friday, for every reader; all seven listed is every day. */
+  it('with no days given, a Sunday moves to Monday, as on weekdays', () => {
+    expect(theNextDayTheyWork(sunday(), []).getDay()).toBe(1);
+    expect(theNextDayTheyWork(sunday(), null).getDay()).toBe(1);
   });
 
-  it('treats all seven days listed as nobody said', () => {
-    expect(workingDaysOf([0, 1, 2, 3, 4, 5, 6])).toEqual([]);
+  it('all seven days listed is every day: a Sunday stays a Sunday', () => {
+    expect(workingDaysOf([0, 1, 2, 3, 4, 5, 6])).toEqual([0, 1, 2, 3, 4, 5, 6]);
     expect(theNextDayTheyWork(sunday(), [0, 1, 2, 3, 4, 5, 6]).getDay()).toBe(0);
   });
 
@@ -42,8 +43,9 @@ describe('a check-in does not open on a day nobody works', () => {
     expect(theNextDayTheyWork(sunday(), [1, 2, 99])).toBeInstanceOf(Date);
   });
 
-  it('says nothing when nobody said', () => {
-    expect(sayWhichDays([])).toBeNull();
+  it('says weekdays when no days were given, and nothing when every day is', () => {
+    expect(sayWhichDays([])).toContain('Weekdays only');
+    expect(sayWhichDays([0, 1, 2, 3, 4, 5, 6])).toBeNull();
   });
 
   it('names weekdays as weekdays and anything else by its days', () => {
@@ -55,6 +57,6 @@ describe('a check-in does not open on a day nobody works', () => {
   it('answers whether a given day is one they work', () => {
     expect(isAWorkingDay(sunday(), MONDAY_TO_FRIDAY)).toBe(false);
     expect(isAWorkingDay(wednesday(), MONDAY_TO_FRIDAY)).toBe(true);
-    expect(isAWorkingDay(sunday(), [])).toBe(true);
+    expect(isAWorkingDay(sunday(), [])).toBe(false);
   });
 });

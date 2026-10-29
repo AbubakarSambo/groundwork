@@ -1,3 +1,4 @@
+import { workingDaysOf } from '../grounds/which-days-this-team-works';
 import { isASalesKind } from '../board/the-kind-of-work';
 import { theTeamsTargetsSaid } from '../board/release-4-teams';
 import { theDealsOnRecord, theUnitsOf, type ADealOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
@@ -127,7 +128,7 @@ export function sinceADay(key: string, today: string): string {
 
 /** The working day before today: yesterday, or Friday on a Monday (and Saturday and Sunday are skipped unless the team works them). */
 export function theWorkingDayBefore(today: string, workingDays: number[] | null | undefined): string {
-  const works = (workingDays ?? []).length ? new Set(workingDays) : new Set([1, 2, 3, 4, 5]);
+  const works = new Set<number>(workingDaysOf(workingDays));
   let k = plus(today, -1);
   for (let i = 0; i < 7 && !works.has(noon(k).getUTCDay()); i++) k = plus(k, -1);
   return k;

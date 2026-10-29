@@ -10,7 +10,8 @@ import { whatThisMailIs } from '../email/nothing-goes-out-that-was-turned-off';
  */
 const NOW = new Date('2026-10-25T08:00:00.000Z');
 const lead = { email: 'mira@x.test', firstName: 'Mira' };
-const ground = (id: string, label: string) => ({ label, organizationId: 'org', initiatorId: 'u-mira', createdAt: new Date('2026-10-02T00:00:00Z'), brief: null, chaseAfterDays: [3, 7, 14], chasingStopped: false, tellTheLead: true, initiator: lead, id });
+/* Since one calendar for each check-in (29 October), no days given is Monday to Friday, and this test's clock is a Sunday: the team says it works every day, so the test stays about what it was written for. */
+const ground = (id: string, label: string) => ({ label, organizationId: 'org', initiatorId: 'u-mira', createdAt: new Date('2026-10-02T00:00:00Z'), brief: null, workingDays: [0, 1, 2, 3, 4, 5, 6], chaseAfterDays: [3, 7, 14], chasingStopped: false, tellTheLead: true, initiator: lead, id });
 const row = (n: string, groundId: string, label: string, first: string) => ({
   id: `c${n}`, createdAt: new Date('2026-10-05T08:00:00.000Z'), sessionNumber: 1, availableFrom: null, participantId: `p${n}`, groundId, leadToldAt: null,
   ground: ground(groundId, label),

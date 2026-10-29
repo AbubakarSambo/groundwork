@@ -192,9 +192,9 @@ export const A_CORRECTION_IS_NOT_A_SCOLDING = [
   'No "my apologies", no "my mistake", no "you are right", no explaining yourself. They do not want an apology, they want the conversation to move.',
   'Take what the correction tells you - it is almost always something they have already said - and put it into the next question. One clause of acknowledgement at most, then ask about something you do not already have.',
   'If they say you already told them something, you did: do not ask for it again in other words. Ask for the next thing.',
-  /* Fix plan, pattern 2 (quarter test, 30 November): Wanjiru said her morning summary was wrong about Aisha and about Brian waiting on her, and read "Understood. We can leave that there." */
+  /* Fix plan, pattern 2 (quarter test, 30 November): Wanjiru said her morning summary was wrong about Aisha and about Brian waiting on her, and her correction was dropped. Never quote here the words not to say: a quoted phrase is taught (29 October). */
   'WHEN THEY SAY SOMETHING GROUNDWORK SHOWED THEM IS WRONG (the morning summary, the board, a number), CHECK IT LIKE ANY CLAIM, NEVER LET IT DROP.',
-  'Look at what they and their team said in their check-ins. Where it backs them, say plainly that it is put right. Where it says otherwise, say kindly who said what and when, and ask what is true now. Where nothing shows it, ask in one sentence for what would show it. Never answer a correction with "we can leave that there".',
+  'Look at what they and their team said in their check-ins. Where it backs them, say plainly that it is put right. Where it says otherwise, say kindly who said what and when, and ask what is true now. Where nothing shows it, ask in one sentence for what would show it.',
 ].join('\n');
 
 export const VOCABULARY_RULE = [
@@ -2048,6 +2048,10 @@ The first line, THE PERSON SPEAKING, gives the name of the person who said all o
    Leave it out entirely where they did not give themselves one. A lead who sets targets for a team
    and none for themselves is a normal thing and not a gap.
 
+   - corrects: where their targets on record are listed and this number is a new number for one of
+     them ("My target is actually 30 units, not 10", or a target they changed), the id of that one.
+     Leave it out when it is a target of a different thing.
+
 3. expectations: for each OTHER person they named, what they said they expect of that person.
    - personName: the other person's name exactly as the speaker said it.
    - expectation: what they expect of that person, as a STANDALONE STATEMENT OF THE WORK. Keep their
@@ -2373,6 +2377,7 @@ export const EXPECTATION_SCHEMA = {
         properties: {
           name: { type: 'string', description: 'One plain, full sentence about the speaker by first name, saying what the number is for. "Bisi is aiming for 50 contracts", not "Contracts".' },
           target: { type: 'number' },
+          corrects: { type: 'string', description: 'The id of their target on record this is a new number for, where it is one. Omit for a target of a different thing.' },
         },
         required: ['name', 'target'],
       },

@@ -113,7 +113,8 @@ describe('"Finish my check-in now" before the conversation closed (journey 3, ro
     ] as const) {
       const prisma: any = { conversationTurn: { findMany: jest.fn(async () => turns) } };
       const service = aService(prisma);
-      service.loadOwnedCheckIn = jest.fn(async () => ({ id: 'ci1', participantId: 'p1', groundId: 'g1', status }));
+      /* Finished means its record is written (completedAt): since one state for a session (29 October), COMPLETED without it is still being finished. */
+      service.loadOwnedCheckIn = jest.fn(async () => ({ id: 'ci1', participantId: 'p1', groundId: 'g1', status, completedAt: status === 'COMPLETED' ? new Date() : null }));
       service.theEndCardFor = jest.fn();
       expect(await service.theEndCardWhenReady('ci1', 'u1')).toEqual({ endCard: null });
       expect(service.theEndCardFor).not.toHaveBeenCalled();

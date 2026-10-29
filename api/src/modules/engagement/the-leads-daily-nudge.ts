@@ -764,8 +764,9 @@ export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = n
   let tried = 0;
   for (const lead of leads) {
     try {
-      /* A team that said which days it works is not nudged on the others. */
-      if (lead.grounds.every((g) => (g.workingDays ?? []).length > 0 && !isAWorkingDay(now, g.workingDays))) continue;
+      /* Only on a day one of her check-ins works, where her organisation is (one calendar for each check-in, 29 October). */
+      const zoneHere = await theOrganisationsZone(prisma, lead.organizationId).catch(() => null);
+      if (!lead.grounds.some((g) => isAWorkingDay(now, g.workingDays, zoneHere))) continue;
       const user = await prisma.user.findUnique({ where: { id: lead.userId }, select: { firstName: true, email: true, phoneNumber: true, deletedAt: true, isActive: true } });
       if (!user || user.deletedAt || user.isActive === false) continue;
       if (fallsInLeave(now, await theirApprovedLeave(prisma, lead.userId, lead.organizationId))) continue;

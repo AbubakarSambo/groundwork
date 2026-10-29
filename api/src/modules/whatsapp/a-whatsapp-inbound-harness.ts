@@ -72,12 +72,16 @@ export function anInboundHarness(opts: {
           && (!w.OR || w.OR.some((c: any) => !c.kind?.startsWith || x.kind.startsWith(c.kind.startsWith)))
           && (!w.checkInId?.in || w.checkInId.in.includes(x.checkInId))
           && (!w.createdAt?.gt || x.createdAt > w.createdAt.gt));
-        if (!w.providerMessageId && !w.kind && !w.OR) return null;
         return rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null;
       }),
     },
   };
-  const record = (org: string | null, to: string, text: string, context?: any, via?: string) => { said.push(text); sent.push({ org, via, to, text, context }); return { sent: true }; };
+  /* What Groundwork says about a check-in is on the send record with it, as whatsapp.service writes it, so the next reply comes back to it. */
+  const record = (org: string | null, to: string, text: string, context?: any, via?: string) => {
+    said.push(text); sent.push({ org, via, to, text, context });
+    if (context?.checkInId) (opts.sends ??= []).push({ checkInId: context.checkInId, kind: context.kind ?? 'reply', createdAt: new Date(Date.now() + sent.length) });
+    return { sent: true };
+  };
   const whatsapp: any = {
     whoIsWritingTo: jest.fn(async () => opts.who ?? { personId: 'person-1', userId: 'u-1', externalId: 'ext-1' }),
     sendFor: jest.fn(async (org: string, to: string, text: string, context?: any) => record(org, to, text, context, 'theirs')),

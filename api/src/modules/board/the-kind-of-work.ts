@@ -406,6 +406,7 @@ export const THE_RECORDS_SCHEMA = {
             stage: { type: 'string' },
             due: { type: 'string' },
             details: { type: 'array', items: { type: 'object', properties: { label: { type: 'string' }, value: { type: 'string' } } } },
+            sameAs: { type: 'string', description: 'The id of the item on record this line is about, when it is one of them: the same customer or thing, however it is named ("Mama Rose" and "Mama Rose\'s kiosk"). Omit when it is new.' },
           },
           required: ['lineId', 'kind', 'name'],
         },
@@ -424,6 +425,8 @@ export interface AnOfferedRecord {
   /** The person the line names as the one whose record it is, when that is not the speaker. */
   owner?: string;
   details?: { label?: string; value?: string }[];
+  /** The item on record it is, by id, as the model read it. */
+  sameAs?: string;
 }
 
 /** A person in the check-in, with the names a line may call them by. */
