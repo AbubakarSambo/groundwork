@@ -2,6 +2,26 @@
 
 Read this first, every session. Then read `docs/tasks.md` and carry on from the first task that is not ticked.
 
+## How we fix things: five rules (Hafsah, 29 October 2026)
+
+Standing rules for every fix. Follow them before any fix, and in each fix's note say how it meets them.
+
+1. **Fix the cause, not the symptom.** Before changing code, find what produces the problem and every other place it shows up. One fix removes the whole pattern, not one instance.
+2. **Leave it simpler.** Every fix removes or replaces code rather than adding to it. No new guards, filters, word lists or special cases. Delete any old patch the fix makes unnecessary.
+3. **One source for each thing.** Every fact, number, date, session state and message has one owner, and everything else reads from it. If two places can disagree, make one read from the other.
+4. **Understand, don't match.** The model works out what people mean from the record and their words. Fixed rules only where something is approved, paid, sent or seen (leave, money, messages, privacy), because those must be predictable.
+5. **Prove it didn't break something else.** Test the whole pattern, not just the reported case; run the touched tests and a short real run; say what else the change affects before calling it fixed.
+
+## The first principle: errors get fixed in the conversation (Hafsah, 22 October 2026)
+
+Groundwork will never be free of errors, and more rules won't get it there. The standard is an excellent, intuitive team manager: a conversation that flows, gets the evidence, spots patterns, coaches well, and gets fixed easily when it's wrong. When Groundwork gets something wrong, the people it's about fix it, the way you'd correct a colleague.
+
+1. Anyone can correct Groundwork in the conversation: in the check-in, in Ask, or on WhatsApp. "That's not right, I sent the Kilele proof on Monday." A lead can correct things about their team the same way.
+2. A correction is a claim, so it goes through the same probe as any claim. Groundwork checks the record, asks for the proof naturally if it isn't there, and doesn't accuse. When it holds up, Groundwork says plainly what it changed, and the record updates everywhere: the board, the lead's morning, My work and Ask. A correction that isn't backed up stays unproven, like any claim.
+3. Once fixed, it stays fixed. Groundwork never repeats something a person has corrected.
+
+This principle sits above the detailed rules. Where a detailed rule conflicts with it, this principle wins, except the four safety guards.
+
 ## The goal
 
 Bring the current Groundwork product up to the prototype, without losing anything valuable the product already does.
@@ -43,14 +63,14 @@ Keep `docs/morning-report.md` up to date all the time, not only at the end.
 
 **Judge the output, never only the code.** Every real bug so far was found by reading what a person actually sees, not by reading the code or its tests. A test that checks your own new code against the old defect can pass while testing nothing. Check the rendered text, for each reader: lead, participant, admin.
 
-**Wording.** Everything a person reads is in plain, full sentences that people with basic English understand. No clipped phrases. No pieces joined with colons, dots or arrows. No work jargon. Use people's names; the reader is "you". Copy the prototype's wording from its screens (`docs/prototype/screens/*/*.txt`), never from the prototype's code, which still holds some old wording.
+**Wording.** Everything a person reads is in plain, full sentences that people with basic English understand. No clipped phrases. No pieces joined with colons, dots or arrows. No work jargon. Use people's names; the reader is "you". Copy the prototype's wording from its screens (`docs/prototype/screens/*/*.txt`), never from the prototype's code, which still holds some old wording. **The one exception (Hafsah, 21 October):** the lead's morning summary keeps its colon labels, "Target:", "Needs you today:", "Closing:" and "Your team:". Nowhere else joins pieces with colons.
 
 **Privacy.** Enforced in the backend, never only hidden on screen.
 - What people say in check-ins can be shown word for word to the people in that check-in.
 - Private, always: questions to Ask Groundwork, each person's own report, a lead's private notes, each person's load across check-ins.
 - A participant never reads the lead's judgement.
 - Reports stay stored without names; names are swapped in only when served, and only through the wrapper that also handles anonymous sharing.
-- Leads never see how a person's answers were rated.
+- A lead may see what a manager would see in a normal staff assessment, including check-in grades, specificity and coverage.
 - Never delete or weaken a privacy test.
 
 **No labels on people.** No scores or labels such as "PIP", "exit", "at risk" shown on a person. Say what happened, why, and what would change it. See "a verdict, told like a signal" in `docs/decisions.md`.
@@ -63,24 +83,24 @@ Keep `docs/morning-report.md` up to date all the time, not only at the end.
 
 **Tests.** All must pass. If a test only checks old wording or old defective behaviour, update it, and write the reason in the commit and in the morning report. Never delete a test to make things pass.
 
-**Nothing goes anywhere except Hafsah's own `wip/` branches.** The only push allowed is `git push mine wip/<branch>` (or `git push mine <local>:wip/<branch>`), where "mine" is Hafsah's own private copy on GitHub, never with force. **Never push to "origin": it is Abubakar's repository (`AbubakarSambo/groundwork`).** Never push to main, staging, production, or anyone else's branch. No pull requests, no deploys, and nothing goes to staging, until Hafsah says so herself, in her own words. The only merge allowed is `git merge mine/wip/<branch>` into a `wip/` branch, to stay in step with the other workspace.
+**Nothing goes anywhere except Hafsah's own `wip/` branches.** The only push allowed is `git push mine wip/<branch>` (or `git push mine <local>:wip/<branch>`), where "mine" is Hafsah's own private copy on GitHub, never with force. **Never push to "origin": it is Abubakar's repository (`AbubakarSambo/groundwork`).** Never push to main, staging, production, or anyone else's branch. No pull requests, no deploys, and nothing goes to staging, until Hafsah says so herself, in her own words. The only merge allowed is `git merge mine/wip/<branch>` into a `wip/` branch, to keep `wip/next` in step with `wip/release`.
 
-## Two workspaces
+## One workspace
 
-Two copies of Claude Code work on this at once, on two computers. Check which one you are, with `git rev-parse --abbrev-ref HEAD`:
+Since 11 October there is one copy of Claude Code, and it owns both the engine (`api/`) and the screens (`client/`). There is no screens workspace any more, so there are no requests or answers files between workspaces: every change is made here, engine and screens together. Check which branch you are on with `git rev-parse --abbrev-ref HEAD`:
 
-| Your branch | You are | Your task list | Your start message |
-| --- | --- | --- | --- |
-| `wip/plain-reports` | **The engine workspace:** reports and the conversation | `docs/tasks.md`, phases 0 to 2 | `START.md` |
-| `wip/prototype-ui` | **The screens workspace:** the prototype's screens and the suites | `docs/tasks-ui.md` | `START-UI.md` |
+| Your branch | What it holds | Your task list |
+| --- | --- | --- |
+| `wip/release` | The work for the open release: the must-fixes and recent decisions (decision 139), engine and screens | The table at the top of `docs/morning-report.md` |
+| `wip/next` | Next month's work (reviews with ratings, finance batches, and the rest of `docs/roadmap.md`), never brought into `wip/release` | `docs/roadmap.md` |
 
-**The engine workspace owns** the conversation, reports, boards' text, prompts, labels and names, and the scorer runs. **The screens workspace owns** the screens (`client/`) and new backend parts the screens need (suites, the You board, the Company page, and so on).
+**This workspace owns** the conversation, reports, boards' text, prompts, labels and names, the scorer runs, the screens (`client/`) and the backend parts the screens need (suites, the You board, the Company page, and so on). When a change needs both, make both in the same task, and check both: the engine's output and the screen that shows it, for each reader.
 
-**The screens workspace never changes the engine's code:** the conversation, report synthesis, prompts, pattern detection, label and name handling, or `theJudgement`. If a screen needs something from the engine, it writes a request in `docs/requests-to-engine.md` on its branch, and carries on with something else. The engine workspace reads that file at the start of each session with `git fetch mine && git show mine/wip/prototype-ui:docs/requests-to-engine.md`, and answers in the same file on its own branch.
+`docs/requests-to-engine.md`, `docs/answers-from-engine.md` and `docs/morning-report-ui.md` are kept as history. Nothing new is written in them; the morning report is `docs/morning-report.md` alone.
 
-**Staying in step:** at the start of each session, and after each finished task, run `git fetch mine`, then `git merge mine/wip/<the other branch>`, then push your own branch. If the merge has conflicts in files the other workspace owns, keep their version. If you cannot resolve a conflict safely, stop, abort the merge, and write it under "Needs Hafsah".
+**Staying in step:** at the start of each session, and after each finished task, run `git fetch mine` and push your own branch. Next month's work goes on `wip/next` only; `wip/release` never takes it. When `wip/release` should reach `wip/next`, merge `mine/wip/release` into `wip/next`. If a merge has conflicts you cannot resolve safely, stop, abort the merge, and write it under "Needs Hafsah".
 
-**Before the very first push from either workspace,** read every workflow in `.github/workflows/` and any deploy settings (for example `render.yaml`, `vercel.json`, `fly.toml`, `railway.json`, `Procfile`, `app.json`). If any of them would deploy, migrate a database, or touch staging when a `wip/` branch is pushed, do not push. Write it under "Needs Hafsah" and keep working locally.
+**Before the very first push of a new branch,** read every workflow in `.github/workflows/` and any deploy settings (for example `render.yaml`, `vercel.json`, `fly.toml`, `railway.json`, `Procfile`, `app.json`). If any of them would deploy, migrate a database, or touch staging when a `wip/` branch is pushed, do not push. Write it under "Needs Hafsah" and keep working locally.
 
 **Never:** push anywhere except your own `wip/` branch, merge anything except `mine/wip/<branch>` into a `wip/` branch, open a pull request, deploy anywhere (staging included), change the git remotes, touch the live database, use live keys, send real emails, or edit `.env` files, `docs/decisions.md`, `docs/baseline.json`, `tools/score_run.py` or `.claude/`. The safety rules in `.claude/settings.json` block these.
 
