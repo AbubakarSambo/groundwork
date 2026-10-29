@@ -3155,8 +3155,9 @@ export class BoardService {
       if (personHistory.length) out.personHistory = personHistory;
       const blockerCheck = theBlockerCheck(handoffs, reader);
       if (blockerCheck.length) out.blockerCheck = blockerCheck;
-      /* RELEASE 8: where the time went, from what each person committed to, by the piece of work it names. Never hours. To whoever runs it. */
-      if (runsIt) {
+      /* RELEASE 8: where the time went, from what each person committed to, by the piece of work it names. Never hours. To whoever runs it,
+         and only where Release 8 is switched on: off, the board is what staging served (the-direct-morning-off-reads-as-staging.spec.ts). */
+      if (runsIt && (await theRelease8SituationsIsOn(this.prisma, (ground as any).organizationId).catch(() => false))) {
         const itemNames = ((out.workRecords ?? []) as any[]).flatMap((sec: any) => ((sec?.rows ?? []) as any[]).map((x: any) => String(x?.name ?? ''))).filter(Boolean);
         const timeWent = whereTheTimeWent(mine.commitments, itemNames, reader);
         if (timeWent.length) (out as any).whereTheTimeWent = timeWent;

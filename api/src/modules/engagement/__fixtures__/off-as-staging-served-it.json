@@ -3444,6 +3444,10 @@
       "buyingDate": null,
       "paymentRecord": true,
       "signedOrder": false,
+      "soldFields": {
+       "Units": "40",
+       "Value": "KES 200,000"
+      },
       "value": "KES 200,000",
       "valueSays": null,
       "contactHistory": [
@@ -5697,6 +5701,10 @@
       "buyingDate": null,
       "paymentRecord": true,
       "signedOrder": false,
+      "soldFields": {
+       "Units": "40",
+       "Value": "KES 200,000"
+      },
       "value": "KES 200,000",
       "valueSays": null,
       "contactHistory": [

@@ -6,6 +6,7 @@ const AN_END_WITH_NOTHING_OPEN = /^\s*(?:end|end it|end the (?:check-?in|session
 const NOTHING_TO_END = 'There is no check-in open here, so there is nothing to end.';
 /** What an update said in Ask is told, where nothing of theirs on record is what it changes. Ask is private, so it is not put on the record from here. */
 const AN_UPDATE_SAID_IN_ASK = 'Thank you. What you say here in Ask stays between you and Groundwork, so it is not on your record yet. To put it there, say it in your next check-in, or press Add something on your check-in.';
+import { clearTheWaitsTheRecordEnds } from '../conversation/a-wait-is-over-from-what-it-means';
 import { checkTheCorrection, type WhatTheRecordHolds, type TheCorrectionChecked, type ANumberShownThem } from './a-correction-is-checked-like-a-claim';
 import { thePromisesOf, thePromisesCounted } from '../grounds/the-promises-counted-once';
 import { withTheirCountNow } from '../board/an-aim-is-counted-now';
@@ -375,6 +376,9 @@ export class AssistantService {
       const checked = record ? await checkTheCorrection(this.engine as any, this.prompts as any, message, record).catch(() => null) : null;
       if (checked) {
         await this.putTheCorrectionOnRecord(record!, checked).catch(() => undefined);
+        /* A backed correction closes, everywhere in the organisation, every wait it shows is over, not only the one the check named
+           (Hafsah, 29 October). Only that a wait is over is written; nothing they typed here reaches anybody. After the reply, not before. */
+        if (checked.verdict === 'backed') void this.closeTheWaitsACorrectionEnds(organizationId, userId, message, checked.reply).catch(() => undefined);
         return rules('a_correction', text(checked.reply));
       }
     }
@@ -842,6 +846,16 @@ export class AssistantService {
     };
   }
 
+  private async closeTheWaitsACorrectionEnds(organizationId: string, userId: string, message: string, checked: string): Promise<void> {
+    const db = this.prisma as any;
+    const place = await Promise.resolve(db.groundParticipant?.findFirst?.({ where: { userId, ground: { organizationId } }, select: { groundId: true, user: { select: { firstName: true } } } })).catch(() => null);
+    if (!place?.groundId) return;
+    await clearTheWaitsTheRecordEnds(db, this.engine as any, this.prompts as any, place.groundId, [{
+      id: 'correction', who: String(place.user?.firstName ?? 'They'), kind: 'correction', where: 'a correction checked against the record',
+      on: new Date(), text: `${String(message).slice(0, 600)} (checked against the record: ${String(checked).slice(0, 400)})`, byUserId: userId,
+    }]);
+  }
+
   /** A backed correction changes the record itself, so every page reads the new thing. Only an id the check was handed, in only two ways. */
   private async putTheCorrectionOnRecord(record: WhatTheRecordHolds, checked: TheCorrectionChecked): Promise<void> {
     if (checked.verdict !== 'backed') return;
@@ -854,7 +868,7 @@ export class AssistantService {
     }
     if (checked.lineOff) await db.recordEntry.update({ where: { id: checked.lineOff }, data: { disputedAt: now } });
     /* A wait the record shows is over is cleared, so no page says somebody is still waiting (two-week check, Njeri and FN-007). */
-    if (checked.waitOver) await db.groundDependency.update({ where: { id: checked.waitOver }, data: { status: 'CLEARED' } });
+    if (checked.waitOver) await db.groundDependency.update({ where: { id: checked.waitOver }, data: { status: 'CLEARED', clearedAt: now } });
   }
 
   /**

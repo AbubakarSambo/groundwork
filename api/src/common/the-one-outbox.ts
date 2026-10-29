@@ -56,3 +56,9 @@ export async function mayItGo(prisma: any, key: string | null): Promise<boolean>
     return err?.code !== 'P2002';
   }
 }
+
+/** A message the provider refused gives its key back, so it can be tried again. Never throws. */
+export async function letItGoAgain(prisma: any, key: string | null): Promise<void> {
+  if (!key || !prisma?.outboxClaim?.deleteMany) return;
+  await prisma.outboxClaim.deleteMany({ where: { key } }).catch(() => undefined);
+}
