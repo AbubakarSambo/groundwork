@@ -1,7 +1,7 @@
 # Release status
 
 <!-- STATUS START -->
-## Status (updated 30 October 2026, 09:44 WAT)
+## Status (updated 30 October 2026, 09:45 WAT)
 
 **Overall: 100% to ready for staging.** Each item counts only once it is proved by tests and the real-model re-check, not when it is written.
 
@@ -16,11 +16,11 @@
 | The re-check passes every condition | 30% | Passed: 0 dead ends, no untrue lines, no duplicates sent, no privacy leaks, numbers right. The checker first said 24 of 30; all six misses were the checker (it read days in UTC, merged the days the clock skipped, counted messages held at night that never went, and sign-in links from the test itself) |
 | Tests and typecheck pass | 10% | Done: the touched tests and privacy pass (30 suites, 200 tests); typecheck passes. One known failure that already fails on staging |
 
-- **Working on now:** All six fixes are proved and the re-check passed. Next, the five pull requests into staging, in order, as Hafsah asked on 30 October.
+- **Working on now:** Stopped before pull request 1 of 5. Nothing was opened or merged.
 - **Next:**
-  1. Open and merge the five pull requests into staging, in order, stopping at the first one with conflicts or a failing check
-  2. Then the engine-and-system quarter, from staging's latest code
-- **Blocking:** Nothing.
+  1. Pull requests 1 to 5 into staging, once a branch can be put on AbubakarSambo/groundwork
+  2. Then the engine-and-system quarter, from staging's latest code once the five are merged
+- **Blocking:** Each pull request needs its branch on AbubakarSambo/groundwork (your copy, groundwork-wip, is not a fork of it, so a pull request cannot come from there). Pushing PR 1's branch (systemic-1-the-prototype-look, up to ef4b4c862) there was refused by the safety check on this computer. CLAUDE.md also says never push to origin. Staging is still at fc6cfafd1, and wip/systemic sits on top of it with nothing in between, so there are no conflicts to expect.
 <!-- STATUS END -->
 
 
