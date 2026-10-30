@@ -382,8 +382,9 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 <div id={`person-${p.id}`} key={p.id}>
                   <PersonRow
                     extraColumns="minmax(170px, 1fr) 190px 210px"
-                    /* B8: the name and "Runs it" or "Checks in"; the address is on the person's own page and on hover. */
-                    person={{ initials: initialsOf(row.name), name: row.name, level: <span title={p.userId ? p.email : undefined}>{isLead ? 'Runs it' : 'Checks in'}</span> }}
+                    /* The name, "Runs it" or "Checks in", and the address the invitation went to, as A4 draws it under every name
+                       (restored, 30 October 2026: on hover only, nobody on a phone could read it). */
+                    person={{ initials: initialsOf(row.name), name: row.name, level: isLead ? 'Runs it' : 'Checks in', email: p.userId ? p.email : undefined }}
                     help={row.help}
                   >
                     <span>
@@ -401,7 +402,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                       {numberFor === p.id
                         ? <TheirNumber groundId={id} participantId={p.id} name={row.name} phone={phone} onDone={() => setNumberFor(null)} />
                         : phone
-                          ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{onWhatsApp?.says ? <span className="gwui-sr-only">{onWhatsApp.says}</span> : null}</>
+                          ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{onWhatsApp?.says ? <span className="gwui-note">{' '}{onWhatsApp.says}</span> : null}</>
                           : <>None yet{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Add a number</button></>}
                     </span>
                     <Stack gap={4}>
@@ -410,12 +411,10 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                           {[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= stage.reached ? 'on' : undefined} />)}
                         </span>
                       )}
-                      <span title={[stage?.says, row.sessionLine, row.when].filter(Boolean).join(' ')}>
-                        <Tag tone={problem ? row.tone : 'proven'}>{problem || !stage ? row.statusText : STAGE_SAID[stage.reached]}</Tag>
-                      </span>
-                      {/* B8 draws the bar and its label only. The sentences behind them are kept for anyone who needs them: one quiet line when something is wrong, the rest on hover and for screen readers. */}
-                      {problem && stage && <Text size="13" ink="sub" as="p">{stage.says}</Text>}
-                      <span className="gwui-sr-only">{[problem ? null : stage?.says, row.sessionLine, row.when].filter(Boolean).join(' ')}</span>
+                      <Tag tone={problem ? row.tone : 'proven'}>{problem || !stage ? row.statusText : STAGE_SAID[stage.reached]}</Tag>
+                      {/* Where they are, their session and when they last did something, as one quiet line anyone can read, on a phone
+                          too (restored, 30 October 2026: it was for screen readers and hover only). */}
+                      {[stage?.says, row.sessionLine, row.when].some(Boolean) && <Text size="13" ink="sub" as="p">{[stage?.says, row.sessionLine, row.when].filter(Boolean).join(' ')}</Text>}
                     </Stack>
                   </PersonRow>
                 </div>

@@ -1750,7 +1750,9 @@ export function GroundAdminPage() {
           costs and how many people have still not answered, because the decision it is asking for
           is whether those people still will.
         */}
-        {tab === 'chat' && (() => {
+        {/* On every tab, as "Out of time" below is, so a lead who lands on the board sees that the check-in is about to run
+            out (restored, 30 October 2026: it was on the Check-in tab only). */}
+        {(() => {
           const left = whenItRunsOut(ground as any)
           if (left.state === 'fine') return null
           const said = sayHowLongIsLeft(left, ground.overdue ?? 0)

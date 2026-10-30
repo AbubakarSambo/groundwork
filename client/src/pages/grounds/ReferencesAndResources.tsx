@@ -368,8 +368,10 @@ function Evidence({ groundId, served }: { groundId: string; served: Served }) {
                 ))}
               </RowList>
             </Panel>
-            {!showAllEvidence && ev.items.length > 3 && <button type="button" className="gw-link t-small gw-start" onClick={() => setShowAllEvidence(true)}>{`and ${ev.total - 3} more`}</button>}
-            {(showAllEvidence || ev.items.length <= 3) && <FlexRow gap={8} align="center" wrap>
+            {/* "and N more" counts what the tap shows, this page's rest; the count and the pages are always there (restored,
+                30 October 2026: they were hidden until the tap, and N counted every page). */}
+            {!showAllEvidence && ev.items.length > 3 && <button type="button" className="gw-link t-small gw-start" onClick={() => setShowAllEvidence(true)}>{`and ${ev.items.length - 3} more`}</button>}
+            {<FlexRow gap={8} align="center" wrap>
               <Note tone="muted">{`Newest first. ${first} to ${last} of ${ev.total.toLocaleString('en-GB')}.`}</Note>
               <Button kind="secondary" size="small" disabled={ev.page <= 1} onClick={() => setPage(ev.page - 1)}>Previous</Button>
               <Button kind="secondary" size="small" disabled={last >= ev.total} onClick={() => setPage(ev.page + 1)}>Next</Button>
