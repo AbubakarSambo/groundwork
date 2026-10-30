@@ -372,10 +372,10 @@ export function SettingsPage() {
             label="Email"
             value={<span>{user?.email}<span className="gwui-field-help">Where your sign-in links go.</span></span>}
           />
-          {/* Your number is always here to add or change (Hafsah, 30 October 2026); while WhatsApp is off it is
-              called a phone number and nothing mentions WhatsApp (her rule of 26 September). */}
+          {/* Your phone number is always here to add or change, whether WhatsApp is on or off (Hafsah, 30 October 2026); what is
+              said about WhatsApp shows only while it is on (her rule of 26 September). */}
             <FieldRow
-              label={whatsappOn ? 'WhatsApp' : 'Phone number'}
+              label="Phone number"
               value={!editingPhone ? (
                 <span>
                   {user?.phoneNumber || 'Not set'}
@@ -406,7 +406,7 @@ export function SettingsPage() {
                 </span>
               ) : (
                 <Stack gap={10}>
-                  <TextField value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="+254 712 345 678" aria-label={whatsappOn ? 'Your WhatsApp number' : 'Your phone number'} />
+                  <TextField value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="+254 712 345 678" aria-label="Your phone number" />
                   <div className="gwui-invite-actions">
                     <Button kind="secondary" size="small" onClick={() => savePhone.mutate(phoneNumber || null)} disabled={savePhone.isPending}>
                       {savePhone.isPending ? 'Saving…' : 'Save'}

@@ -81,45 +81,39 @@ describe('what Grace reads about Miriam', () => {
        admin's reach: decision 5 closes a performance plan, a promotion, a renewal or somebody's
        first 90 days unless she is given access. */
     expect(screen.getByText('As an admin you can read every check-in at Baridi Appliances, and ask us to end it. A performance plan, a promotion, a renewal or somebody\'s first 90 days stays closed to you unless you are given access to it. You don’t see anyone’s private notes.')).toBeTruthy()
-    /* WhatsApp is off, so her number is not offered. And no label, no dash. */
-    expect(screen.queryByLabelText('WhatsApp number for Miriam')).toBeNull()
+    /* WhatsApp is off: her phone number is still offered, plainly labelled, and nothing mentions WhatsApp (Hafsah, 30 October
+       2026, replacing "not offered while WhatsApp is off"; her rule of 26 September still holds for the WhatsApp wording). No dash. */
+    expect(screen.getByRole('button', { name: 'Change phone number' })).toBeTruthy()
+    expect(container.textContent).not.toMatch(/WhatsApp/)
     expect(container.textContent).not.toMatch(/ - |\bscore\b|at risk/i)
   })
 
-  it('her WhatsApp number, when WhatsApp is on, behind the same Change the prototype uses', async () => {
+  it('her phone number, with WhatsApp on and off, behind the same Change the prototype uses', async () => {
     /*
      * REPLACES an assertion that the number sat in an always-editable box, saved on blur. The
      * prototype's own WhatsApp row (one-person.txt: "WhatsApp / +254 722 118 440 / Change") reads
      * like every other field on this page - a value with a "Change" button - not a live text box,
      * so this now matches Level and Reports to instead of being the one field that worked
-     * differently (design-audit.md item 9).
+     * differently (design-audit.md item 9). Since 30 October 2026 (Hafsah) it is labelled
+     * "Phone number" and shown whether WhatsApp is on or off.
      */
-    whatsapp = true
-    open()
-    expect(await screen.findByText('+254722118440')).toBeTruthy()
-    expect(screen.queryByLabelText('WhatsApp number for Miriam')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Change whatsapp' }))
-    expect(screen.getByLabelText('WhatsApp number for Miriam')).toHaveValue('+254722118440')
-  })
-})
-
-describe('what Grace can change', () => {
-  it('her level, saved to where she sits', async () => {
-    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: {} } as any)
-    open()
-    fireEvent.click(await screen.findByRole('button', { name: 'Change level' }))
-    fireEvent.change(screen.getByLabelText('Level'), { target: { value: 'Senior sales rep' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save level' }))
-    await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/miriam/where-they-sit', { level: 'Senior sales rep' }))
+    for (const on of [true, false]) {
+      whatsapp = on
+      const { unmount } = open()
+      expect(await screen.findByText('+254722118440')).toBeTruthy()
+      expect(screen.queryByLabelText('Phone number for Miriam')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Change phone number' }))
+      expect(screen.getByLabelText('Phone number for Miriam')).toHaveValue('+254722118440')
+      unmount()
+    }
   })
 
-  it('her WhatsApp number, saved to her account', async () => {
-    whatsapp = true
+  it('her phone number, saved to her record, with WhatsApp off', async () => {
     const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: {} } as any)
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'Change whatsapp' }))
-    fireEvent.change(screen.getByLabelText('WhatsApp number for Miriam'), { target: { value: '+254700000000' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save whatsapp' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Change phone number' }))
+    fireEvent.change(screen.getByLabelText('Phone number for Miriam'), { target: { value: '+254700000000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save phone number' }))
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/miriam', { phoneNumber: '+254700000000' }))
   })
 

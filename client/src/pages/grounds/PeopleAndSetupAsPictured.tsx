@@ -366,7 +366,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             />
           )}
           <PeopleTable>
-            <PeopleTableHead extraColumns="minmax(170px, 1fr) 190px 210px" labels={['Person', 'Their role here', 'WhatsApp', 'Getting started']} />
+            <PeopleTableHead extraColumns="minmax(170px, 1fr) 190px 210px" labels={['Person', 'Their role here', 'Phone number', 'Getting started']} />
             {[...participants].sort((a, b) => (a.userId === g?.initiatorId ? -1 : b.userId === g?.initiatorId ? 1 : 0)).map((p: any) => {
               const row = whereThisPersonIs(p, {
                 ground: g, isInitiator, isOrgAdmin, isNotCounted, sessionParties: props.whoIsInThisParties, notOpenYet: props.whoIsInThisNotOpenYet,
@@ -402,7 +402,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                       {numberFor === p.id
                         ? <TheirNumber groundId={id} participantId={p.id} name={row.name} phone={phone} onDone={() => setNumberFor(null)} />
                         : phone
-                          ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{onWhatsApp?.says ? <span className="gwui-note">{' '}{onWhatsApp.says}</span> : null}</>
+                          ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{props.whatsAppIsOn && onWhatsApp?.says ? <span className="gwui-note">{' '}{onWhatsApp.says}</span> : null}</>
                           : <>None yet{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Add a number</button></>}
                     </span>
                     <Stack gap={4}>
@@ -425,7 +425,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             Getting started goes from Invited, to Reached, to Verified, to First check-in, to Coming back. Their role here shapes
             the questions their check-in asks. Their role in your organisation is set in People.
           </Note>
-          <Note>Groundwork writes to each person on WhatsApp once their number is here, and they can answer there.</Note>
+          {props.whatsAppIsOn && <Note>Groundwork writes to each person on WhatsApp once their number is here, and they can answer there.</Note>}
           {!direct && (
           <Note>
             {props.whoIsInThisPeersHidden
@@ -723,7 +723,7 @@ function OneChoice({ label, value, options, onChange, canChange }: {
   )
 }
 
-/** A person's WhatsApp number, added or changed in their row. Saved at once, as today: adding one can send the opening there. */
+/** A person's phone number, added or changed in their row, whether WhatsApp is on or off (Hafsah, 30 October 2026). Saved at once, as today: where WhatsApp is on, adding one can send the opening there. */
 function TheirNumber({ groundId, participantId, name, phone, onDone }: { groundId: string; participantId: string; name: string; phone: string | null; onDone: () => void }) {
   const qc = useQueryClient()
   const [value, setValue] = useState('')
@@ -741,7 +741,7 @@ function TheirNumber({ groundId, participantId, name, phone, onDone }: { groundI
   }
   return (
     <Stack gap={4}>
-      <TextField aria-label={`WhatsApp number for ${name}`} placeholder="0712 345 678" value={value} onChange={(e) => setValue(e.target.value)} />
+      <TextField aria-label={`Phone number for ${name}`} placeholder="0712 345 678" value={value} onChange={(e) => setValue(e.target.value)} />
       <FlexRow gap={6} wrap>
         <Button size="small" kind="secondary" disabled={saving || !value.trim()} onClick={() => keep(value)}>{saving ? 'Saving…' : 'Keep the number'}</Button>
         {phone && <Button size="small" kind="quiet" disabled={saving} onClick={() => keep('')}>Remove</Button>}

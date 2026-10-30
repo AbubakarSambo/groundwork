@@ -250,12 +250,11 @@ export function OnePersonPage() {
           <FieldRow label="Now" value={status === 'Checking in' ? <Tag tone="proven">Checking in</Tag> : status} />
           {/* A guest with an account takes a seat too (U.4 re-review); one held for a seat does not yet. */}
           {!m.awaitingOrgApproval && <FieldRow label="Seat" value={m.heldForASeat ? 'No seat on your plan' : 'Holds a seat'} />}
-          {/* Their number is always here to add or change, so a lead can set people up before WhatsApp is turned on
-              (Hafsah, 30 October 2026). While WhatsApp is off it is called a phone number, so nothing mentions
-              WhatsApp (her rule of 26 September). */}
+          {/* Their phone number is always here to add or change, whether WhatsApp is on or off (Hafsah, 30 October 2026). Only what
+              is said about WhatsApp, the line below, waits until it is on (her rule of 26 September). */}
           <EditableField
-            label={whatsappOn ? 'WhatsApp' : 'Phone number'}
-            inputLabel={`${whatsappOn ? 'WhatsApp' : 'Phone'} number for ${first}`}
+            label="Phone number"
+            inputLabel={`Phone number for ${first}`}
             value={m.phoneNumber ?? ''}
             empty="Not set"
             saving={phone.isPending}

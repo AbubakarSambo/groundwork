@@ -19,16 +19,15 @@ export function useSaveTheirNumber(id: string) {
   })
 }
 
-/** Their number in their row on People, with "Change" to add or change it there. While WhatsApp is off it is a phone number (her rule of 26 September). */
+/** Their number in their row on People, with "Add" or "Change" there. It is a phone number, whether WhatsApp is on or off (Hafsah, 30 October 2026); only what is said about WhatsApp shows while it is on (her rule of 26 September). */
 export function TheirNumberInTheRow({ m, first, whatsappOn }: { m: OrgMember; first: string; whatsappOn: boolean }) {
   const save = useSaveTheirNumber(m.id)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
-  const what = whatsappOn ? 'WhatsApp' : 'phone'
   if (editing) {
     return (
       <span className="gwui-edge-acts" data-testid="their-number">
-        <TextField aria-label={`${whatsappOn ? 'WhatsApp' : 'Phone'} number for ${first}`} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="+254 712 345 678" maxLength={40} />
+        <TextField aria-label={`Phone number for ${first}`} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="+254 712 345 678" maxLength={40} />
         <Button kind="quiet" size="small" disabled={save.isPending} onClick={() => { save.mutate(draft); setEditing(false) }}>Save</Button>
         <Button kind="quiet" size="small" onClick={() => setEditing(false)}>Cancel</Button>
       </span>
@@ -36,10 +35,10 @@ export function TheirNumberInTheRow({ m, first, whatsappOn }: { m: OrgMember; fi
   }
   return (
     <span className="gwui-note" data-testid="their-number">
-      {' '}{m.phoneNumber ? `Their ${what} number is ${m.phoneNumber}. ` : `No ${what} number yet. `}
+      {' '}{m.phoneNumber ? `Their phone number is ${m.phoneNumber}. ` : 'No phone number yet. '}
       {whatsappOn && m.whatsappSays ? `${m.whatsappSays} ` : ''}
       {!m.noAccountYet && (
-        <Button kind="quiet" size="small" aria-label={`${m.phoneNumber ? 'Change' : 'Add'} the ${what} number for ${first}`} onClick={() => { setDraft(m.phoneNumber ?? ''); setEditing(true) }}>
+        <Button kind="quiet" size="small" aria-label={`${m.phoneNumber ? 'Change' : 'Add'} the phone number for ${first}`} onClick={() => { setDraft(m.phoneNumber ?? ''); setEditing(true) }}>
           {m.phoneNumber ? 'Change' : 'Add'}
         </Button>
       )}
