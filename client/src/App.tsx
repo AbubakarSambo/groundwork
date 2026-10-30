@@ -210,7 +210,7 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', color: 'var(--gw-text)' }}>
             This part is for Groundwork staff
           </div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', marginBottom: 18 }}>
             It is not part of your organisation's admin, and there is nothing here that affects your
             check-ins. Being an admin in your own organisation does not include it.
           </div>
@@ -322,10 +322,10 @@ function AFrontDoorOfItsOwn() {
         <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.4, color: 'var(--gw-navy)', marginBottom: 12 }}>
           GROUNDWORK
         </div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 8px', letterSpacing: '-.02em' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)', margin: '0 0 8px', letterSpacing: '-.02em' }}>
           This is not the live site.
         </h1>
-        <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 18px' }}>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '24px', margin: '0 0 18px' }}>
           It is a test build of the product, with its own database. A sign-in from the live site does
           not work here.
         </p>
@@ -397,16 +397,16 @@ function RootRoute() {
           <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.4, color: 'var(--gw-navy)', marginBottom: 10 }}>
             GROUNDWORK
           </div>
-          <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 12px' }}>
+          <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '24px', margin: '0 0 12px' }}>
             Taking you to <strong>{MARKETING_URL.replace(/^https?:\/\//, '')}</strong>. If nothing
             happens, follow the link.
           </p>
           <p style={{ margin: 0 }}>
-            <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', fontSize: 14.5 }}>Continue →</a>
+            <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', fontSize: 14 }}>Continue →</a>
             {' · '}
             {/* The way back into the product itself, for somebody who landed here and wanted to
                 sign in rather than read about it. */}
-            <a href="/auth" style={{ color: 'var(--gw-sub)', fontSize: 14.5 }}>Sign in</a>
+            <a href="/auth" style={{ color: 'var(--gw-sub)', fontSize: 14 }}>Sign in</a>
           </p>
         </div>
       </div>

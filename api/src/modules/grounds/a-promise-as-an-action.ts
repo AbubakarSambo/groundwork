@@ -10,13 +10,21 @@
  * CLAUDE.md's "plain, full sentences" is about what a person reads as prose, and a to-do already reads
  * as one action, the same way the prototype's own to-dos carry no trailing full stop either.
  */
-const LEADING_I_WILL = /^i\s*['’]?ll\b\s*|^i\s+will\b\s*|^i\s*am\s+going\s+to\b\s*/i;
+const LEADING_I_WILL = /^i\s*['’]?ll\b\s*|^i\s+will\b\s*|^i\s*am\s+going\s+to\b\s*|^i\s+(?:need|have)\s+to\b\s*|^i\s+must\b\s*/i;
+
+/*
+ * "I'll be calling the HR manager tomorrow" read on My work as "Be calling the HR manager tomorrow", and "Be arranging that call
+ * myself" (polish round 1, 26 October 2026). Cut down to an action, a promise that says how they will be doing something is not one,
+ * so it reads as their own sentence about themselves instead: "You will be calling the HR manager tomorrow."
+ */
+const yours = (t: string) => t.replace(/\bmyself\b/gi, 'yourself').replace(/\bmy\b/gi, 'your').replace(/\bme\b/gi, 'you');
 
 export function asAnAction(text: string | null | undefined): string {
   const trimmed = (text ?? '').trim();
   if (!trimmed) return trimmed;
   const stripped = trimmed.replace(LEADING_I_WILL, '');
   if (!stripped) return stripped;
+  if (/^be\s+\w+ing\b/i.test(stripped)) return `You will ${yours(stripped.charAt(0).toLowerCase() + stripped.slice(1))}`;
   return stripped.charAt(0).toUpperCase() + stripped.slice(1);
 }
 

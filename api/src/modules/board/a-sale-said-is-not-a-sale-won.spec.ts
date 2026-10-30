@@ -29,3 +29,11 @@ describe('a sale somebody said they made is their claim, not a sale won', () => 
     expect(sec.groups.map((g: any) => [g.group, g.rowIds])).toEqual([['said-won', ['d-said']], ['won', ['d-proven', 'd-confirmed', 'd-lead']]]);
   });
 });
+
+/** Kilele Hotel, polish round 2: its payment on record, no stage written, and the board said "Kevin has no deal won on record yet". */
+describe('a deal with its payment on record is won, whatever stage was written', () => {
+  it('goes under Won', () => {
+    const [sec] = grid([{ ...deal('d-kilele', 'proven'), stage: null, paymentRecord: true }]);
+    expect(sec.groups.map((g: any) => g.group)).toEqual(['won']);
+  });
+});

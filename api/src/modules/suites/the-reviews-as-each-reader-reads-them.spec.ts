@@ -75,6 +75,7 @@ function setup(opts: { on?: boolean } = {}) {
     evaluationDue: {
       findMany: jest.fn(async ({ where }: any) => dues.filter((x) => x.organizationId === where.organizationId)),
       findUnique: jest.fn(async ({ where }: any) => dues.find((x) => x.id === where.id) ?? null),
+      create: jest.fn(async ({ data }: any) => { const x = { id: `d-new-${dues.length}`, ...data }; dues.push(x); return x; }),
     },
     performanceReview: {
       findMany: jest.fn(async ({ where }: any) => reviews.filter((r) => where.evaluationDueId.in.includes(r.evaluationDueId))),
@@ -124,6 +125,18 @@ describe('the next reviews', () => {
     expect((await svc.board(as('u-kamau'), TODAY)).next.map((x) => [x.name, x.mayStart])).toEqual([['Otieno Ouma', false]]);
     await expect(svc.start(as('u-kamau'), 'd-otieno')).rejects.toThrow(new ForbiddenException(REVIEW_REFUSED.onlyTheWriter));
     await expect(svc.start(as('u-grace'), 'd-miriam')).rejects.toThrow(ForbiddenException);
+  });
+
+  it('a review can start today for anyone the reader writes for, with nothing due (polish round 1, 26 October 2026)', async () => {
+    const { svc, as } = setup();
+    const b = await svc.board(as('u-grace'), TODAY);
+    expect(b.startNow.map((x) => x.name)).toEqual(['Kamau Njenga', 'Wairimu Kamau']);
+    expect((await svc.board(as('u-wairimu'), TODAY)).startNow).toEqual([]);
+    expect((await svc.board(as('u-kamau'), TODAY)).startNow).toEqual([]);
+    const { id } = await svc.startNow(as('u-grace'), 'p-kamau');
+    expect(id).toMatch(/^r-new-/);
+    expect((await svc.board(as('u-grace'), TODAY)).startNow.map((x) => x.name)).toEqual(['Wairimu Kamau']);
+    await expect(svc.startNow(as('u-kamau'), 'p-wairimu')).rejects.toThrow(new ForbiddenException(REVIEW_REFUSED.onlyTheWriter));
   });
 
   it('a member and a guest are refused the board', async () => {

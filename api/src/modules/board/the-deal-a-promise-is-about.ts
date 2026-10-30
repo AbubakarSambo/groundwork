@@ -22,7 +22,7 @@ const itsWords = (t: string) => flat(t).replace(/^(?:i ?'ll|i will|i shall|i am 
 export function theDealsThePromisesAreAbout(
   promises: readonly APromiseOnRecord[],
   turns: readonly ATurnOnRecord[],
-  deals: readonly { name: string; ownerParticipantId: string | null }[],
+  deals: readonly { name: string; ownerParticipantId: string | null; contact?: string | null }[],
 ): Map<string, string> {
   const out = new Map<string, string>();
   const sorted = [...turns].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -31,6 +31,14 @@ export function theDealsThePromisesAreAbout(
     const one = (text: string) => { const named = theirs.filter((d) => aLineNamesTheCustomer(text, d.name)); return named.length === 1 ? named[0].name : null; };
     const own = one(p.text);
     if (own) { out.set(p.id, own); continue; }
+    /*
+     * THE PERSON IT NAMES IS AT ONE DEAL (polish round 1, 26 October 2026). Mercy's "I need to call Mrs. Achola" was said while Sunrise Primary
+     * was being talked about, and was read as Sunrise's next step; Mrs. Achola is Greenfield Supermarket's contact. A promise naming the contact
+     * of exactly one of their deals is about that deal, before the conversation around it is read.
+     */
+    const bare = (n: string) => flat(n).replace(/^(?:mr|mrs|ms|miss|dr)\s+/, '').split(' ').filter((w) => w.length >= 3);
+    const atOne = theirs.filter((d) => { const c = bare(String(d.contact ?? '').split(',')[0]); return c.length > 0 && c.every((w) => ` ${flat(p.text)} `.includes(` ${w} `)); });
+    if (atOne.length === 1) { out.set(p.id, atOne[0].name); continue; }
     const words = itsWords(p.text);
     if (words.length < 6) continue;
     const at = sorted.findIndex((t) => t.role === 'PERSON' && (!p.participantId || t.participantId === p.participantId) && flat(t.content).includes(words));

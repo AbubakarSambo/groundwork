@@ -14,7 +14,7 @@ const SL: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--g
 function Stat({ val, label, accent }: { val: string | number; label: string; accent?: boolean }) {
   return (
     <div style={{ ...C, flex: 1, minWidth: 100 }}>
-      <div style={{ fontSize: 22, fontWeight: 800, color: accent ? 'var(--gw-navy)' : 'var(--gw-navy)' }}>{val}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: accent ? 'var(--gw-navy)' : 'var(--gw-navy)' }}>{val}</div>
       <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 3 }}>{label}</div>
     </div>
   )
@@ -215,8 +215,8 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
       onKeyDown={e => { if (e.key === 'Escape' && !loading) onClose() }}
     >
       <div style={{ background: 'white', borderRadius: 10, padding: '24px 24px 20px', maxWidth: 400, width: '100%', boxShadow: 'var(--gw-shadow-modal)' }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6 }}>{title}</div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 20 }}>{description}</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6 }}>{title}</div>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', marginBottom: 20 }}>{description}</div>
 
         {step === 'request' ? (
           <>
@@ -241,7 +241,7 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
           </>
         ) : (
           <>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-muted)', marginBottom: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 6 }}>
               Enter the 6-digit code sent to your email
             </div>
             <input
@@ -344,7 +344,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
                   <td style={{ padding: '8px 10px', color: 'var(--gw-text)' }}>{c.creatorEmail}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{whenItWas(c.createdAt, 'day')}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{c.expiresAt ? whenItWas(c.expiresAt, 'day') : '-'}</td>
-                  <td style={{ padding: '8px 10px', fontWeight: 600, color: expired ? 'var(--gw-danger)' : dl === '∞' ? 'var(--gw-muted)' : Number(dl) <= 7 ? 'var(--gw-amber-b)' : 'var(--gw-text)' }}>{dl}</td>
+                  <td style={{ padding: '8px 10px', fontWeight: 700, color: expired ? 'var(--gw-danger)' : dl === '∞' ? 'var(--gw-muted)' : Number(dl) <= 7 ? 'var(--gw-amber-b)' : 'var(--gw-text)' }}>{dl}</td>
                   <td style={{ padding: '8px 10px' }}>
                     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.active ? 'var(--gw-green-bg)' : 'var(--gw-bg)', color: c.active ? 'var(--gw-green-t)' : 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>
                       {c.active ? 'Active' : 'Disabled'}
@@ -355,7 +355,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
                       {c.allowCodeCreation ? 'Yes' : 'No'}
                     </span>
                   </td>
-                  <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{c.redemptionCount}</td>
+                  <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--gw-navy)', textAlign: 'right' }}>{c.redemptionCount}</td>
                   <td style={{ padding: '8px 10px' }}>
                     {c.active && (
                       <button className="btn sec sm red"
@@ -526,7 +526,7 @@ function FeedbackSection({ feedback }: { feedback: AdminFeedback[] }) {
                 <span style={{ fontSize: 11, color: 'var(--gw-muted)', whiteSpace: 'nowrap', marginLeft: 12 }}>{timeAgo(f.createdAt)}</span>
               </div>
               {f.note && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, fontStyle: 'italic', marginTop: 4 }}>"{f.note}"</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', fontStyle: 'italic', marginTop: 4 }}>"{f.note}"</div>
               )}
             </div>
           ))}
@@ -587,8 +587,8 @@ function AdminManagementSection({
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderTop: '1px solid var(--gw-border)' }}
           >
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{a.email}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>{a.email}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
                 {[a.firstName, a.lastName].filter(Boolean).join(' ') || 'no name on the account'}
               </div>
             </div>
@@ -623,7 +623,7 @@ function AdminManagementSection({
             Add them
           </button>
         </form>
-        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 8 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 8 }}>
           They have to have a Groundwork account already - this promotes one, it does not create one.
         </div>
       </div>
@@ -781,17 +781,17 @@ function OpsAccessSection() {
           <div key={p.key} style={{ padding: '9px 0', borderTop: '1px solid var(--gw-border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>
                   {p.displayName}
                   {!p.active && <span style={{ fontWeight: 400, color: 'var(--gw-sub)' }}> · not active</span>}
                 </div>
-                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
                   {p.functionalRole.replace(/_/g, ' ').toLowerCase()}
                   {!p.linkedAccount && ' · no account connected'}
                 </div>
                 {/* ONE PERSON, SEVERAL ADDRESSES. Each one is its own way in and comes off on its own. */}
                 {[p.linkedAccount, ...(p.otherAccounts ?? [])].filter((a): a is string => !!a).map(a => (
-                  <div key={a} style={{ fontSize: 11.5, color: 'var(--gw-sub)', display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                  <div key={a} style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', gap: 8, alignItems: 'baseline' }}>
                     <span>{a}</span>
                     <button
                       onClick={() => run(() => adminApi.unlinkOpsAccount(p.key, a))}
@@ -886,9 +886,9 @@ function UserUsageSection({ users }: { users: UserUsage[] }) {
             {sorted.map(u => (
               <tr key={u.userId} style={{ borderBottom: '1px solid var(--gw-border)' }}>
                 <td style={{ padding: '8px 10px', color: 'var(--gw-text)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</td>
-                <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.groundCount}</td>
-                <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.codeCount}</td>
-                <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.redemptionCount}</td>
+                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.groundCount}</td>
+                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.codeCount}</td>
+                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.redemptionCount}</td>
                 <td style={{ padding: '8px 10px', color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>{timeAgo(u.lastActive)}</td>
               </tr>
             ))}
@@ -949,7 +949,7 @@ export function AdminDashboardPage() {
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-bg)', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Admin Dashboard</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Admin Dashboard</div>
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>Codes · Billing · Users · Feedback</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>

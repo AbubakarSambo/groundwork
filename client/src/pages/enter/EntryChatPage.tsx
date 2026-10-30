@@ -1,3 +1,4 @@
+import { whenItWas } from '../../lib/a-date-reads-the-same-everywhere'
 import { useState, useEffect, useRef } from 'react'
 import { HOW_A_SITUATION_IS_CHOSEN, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
 import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENCE_VALUE, type ScenarioKey } from '@/lib/scenario-catalog'
@@ -66,6 +67,26 @@ const A_COLLEAGUE = 'colleague:'
  * entry is an address first, and the name is looked up by it here, from the map the people step
  * builds as names are typed.
  */
+/**
+ * THE NAME THE LEAD ALREADY USED (polish round 1, 26 October 2026). Grace named "Kevin Omondi, Mercy Wairimu, Joseph Kariuki and Peter Njoroge"
+ * in setup and invited them by address; nobody typed a name on the invite, so Kevin and Peter, who joined from the phone, had no name anywhere
+ * and the board called them "One" and "A". An address with no name typed takes the full name from her own setup words whose first name is
+ * the address's first part (kevin@... is Kevin Omondi). Only her words; never a guess beyond them.
+ */
+export function namesFromTheirSetupWords(entries: string[], theirWords: string[], typed: Record<string, string> = {}): Record<string, string> {
+  const out: Record<string, string> = { ...typed }
+  const said = theirWords.join(' ')
+  for (const e of entries) {
+    const address = e.split(/\s+[-–]\s+/)[0].trim().toLowerCase()
+    if (!address.includes('@') || out[address]) continue
+    const first = address.split('@')[0].split(/[._-]/)[0]
+    if (first.length < 2) continue
+    const m = new RegExp(`\\b(${first.charAt(0).toUpperCase()}${first.slice(1)})\\s+([A-Z][a-z’'-]+)\\b`).exec(said)
+    if (m) out[address] = `${m[1]} ${m[2]}`
+  }
+  return out
+}
+
 function asSomeoneToInvite(entry: string, displayNames?: Record<string, string>): { email?: string; colleagueId?: string; context?: string; displayName?: string } {
   const dash = entry.indexOf(' - ')
   const head = dash === -1 ? entry : entry.slice(0, dash)
@@ -1090,6 +1111,17 @@ export function groupOf(card: { cardKey: string; scenario: string }): string {
   return groupOfCard(card)
 }
 
+/*
+ * THE OPENING LINE, AND THE CLOSE, OF THE LEAD'S SETUP (Hafsah, 26 October 2026). Said in the chat itself: what this is for, how long it
+ * takes and how to stop, added in front of the first message she reads, which stays as it was; and one line when setup is done.
+ */
+export const THE_SETUP_LINE = 'This sets up your team’s check-ins, so they can give updates against what you tell me here. It takes about 10 minutes, and you can stop any time with End session.'
+export function theSetupIsDoneSaying(firstOpensOn: string | null): string {
+  const d = firstOpensOn ? new Date(`${firstOpensOn}T12:00:00Z`) : null
+  const day = d && !isNaN(d.getTime()) ? whenItWas(d, 'weekdayAndDay', 'UTC') : null
+  return `Done. Your board is set up, and your team’s first check-in opens ${day ? `on ${day}` : 'as soon as you invite them'}.`
+}
+
 export const THE_OPENING_QUESTION =
   /* The words followed the picker. "Scroll for the full list" and "describe your own at the bottom"
      were both true of a long scrolling list with the catch-all last, and both wrong the moment it
@@ -1531,7 +1563,7 @@ export function EntryChatPage() {
    * in the sense that matters: the two screens agreed yesterday and do not today.
    */
   // Once the user dismisses the natural-close banner, never re-show it
-  const [endPromptDismissed, setEndPromptDismissed] = useState(false)
+  const [, setEndPromptDismissed] = useState(false)
 
   // Onboarding state
   const defaultSels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || '' }
@@ -2265,7 +2297,9 @@ export function EntryChatPage() {
     onSuccess: (res) => {
       /* DECISION 133: no intro line between setup and the check-in. The same conversation simply
          carries on with the first check-in question, so the lead may not notice the change. */
-      const h: Turn[] = [{ role: 'assistant', content: res.reply }]
+      /* Changed 26 October 2026 (Hafsah): setup closes with one line saying it is done and when the team's first check-in opens, in front of
+         the lead's own first question, which carries on as decision 133 has it. */
+      const h: Turn[] = [{ role: 'assistant', content: `${theSetupIsDoneSaying(checkInBy || null)}\n\n${res.reply}` }]
       setHistory(h)
       setDisplayedHistory(h)
       setPhase('checkin')
@@ -2319,8 +2353,9 @@ export function EntryChatPage() {
       /* Not while it is still asking. See itIsStillAskingSomething: the completion signal can
          arrive on a turn that ends in a question, and offering to close over the top of one loses
          the answer. The signal comes again on the next turn. */
-      if (sessionHasClosed(res) && !closed && !endPromptDismissed && !itIsStillAskingSomething(res.reply)) {
-        setShowEndPrompt(true)
+      /* It ends on its own (Hafsah, 26 October 2026): Groundwork has what it needs, so the session is ended, with no prompt to press. */
+      if (sessionHasClosed(res) && !closed && !itIsStillAskingSomething(res.reply)) {
+        handleEndSession()
       }
       persistCheckin(updated)
     },
@@ -3006,7 +3041,7 @@ export function EntryChatPage() {
         // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
         // on the second contributor and silently drop them.
-        contributors: everyoneNamedSoFar().map(e => asSomeoneToInvite(e, displayNames)),
+        contributors: everyoneNamedSoFar().map(e => asSomeoneToInvite(e, namesFromTheirSetupWords(everyoneNamedSoFar(), theirOwnSetupWords(onboardingHistory), displayNames))),
         /**
          * THE DOCUMENT SURVIVES AS A DOCUMENT, not just as words in the chat.
          *
@@ -3301,7 +3336,7 @@ export function EntryChatPage() {
         runsUntilEnded: runsUntilEnded || undefined,
         lastCheckInBy: runsUntilEnded ? undefined : (lastCheckInBy.trim() || undefined),
         inviteNote: inviteNote.trim() || undefined,
-        contributors: everyoneNamedSoFar().map(e => asSomeoneToInvite(e, displayNames)),
+        contributors: everyoneNamedSoFar().map(e => asSomeoneToInvite(e, namesFromTheirSetupWords(everyoneNamedSoFar(), theirOwnSetupWords(onboardingHistory), displayNames))),
       }
       entryApi.patchDraft(draftToken, patch).catch(() => { /* best-effort: localStorage still mirrors this */ })
       // Keep the local commit body (gw_commit_payload) in sync with these
@@ -4315,7 +4350,7 @@ export function EntryChatPage() {
               // for (fault 1): it goes straight to the narrow, conversational column.
               className={`gwui-ec-messages ${onboardingHistory.length === 1 && !pickedSituation && !anchorConversationOpensDirectly() && phase === 'onboarding' ? 'gwui-ec-messages-wide' : 'gwui-ec-messages-narrow'}`}
             >
-              {onboardingHistory.map((m, i) => {
+              {(() => { const firstShown = onboardingHistory.findIndex((t, j) => t.role === 'assistant' && !(j === 0 && t.content === THE_OPENING_QUESTION)); return onboardingHistory.map((m, i) => {
                 /*
                  * THE OPENER IS NOT DRAWN WHILE THE PICKER IS, because the picker says it better.
                  *
@@ -4346,10 +4381,10 @@ export function EntryChatPage() {
                     {/* THE LAST PLACE BEFORE A READER'S EYES. `[[SESSION_COMPLETE]]` was photographed
                         in a bubble in production, with its markdown asterisks intact. Stripped on the
                         server too - this is a net, not the fix. */}
-                    {nothingInternalReachesTheBubble(m.content)}
+                    {i === firstShown ? <><span className="gwui-setup-line">{THE_SETUP_LINE}</span><br /><br /><span>{nothingInternalReachesTheBubble(m.content)}</span></> : nothingInternalReachesTheBubble(m.content)}
                   </Bubble>
                 )
-              })}
+              }) })()}
 
               {/*
                 * THE WAY IN (U.6, B1). The prototype's first screen: one box, five examples and a
@@ -4493,6 +4528,14 @@ export function EntryChatPage() {
                       rows={2}
                       autoFocus
                     />
+                    {/* END SESSION DURING SETUP TOO (Hafsah, 26 October 2026). What she said is kept as a draft, and setting up again picks up where she stopped. */}
+                    {onboardingHistory.some((t) => t.role === 'user') && (
+                      <div className="gwui-ec-quick-actions-end">
+                        <button type="button" className="gwui-ec-quick-action gwui-ec-quick-action-navy" onClick={() => { toast.success('Saved. Start a check-in again to pick up where you stopped.'); navigate('/today') }} disabled={onboardingLoading}>
+                          End session
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

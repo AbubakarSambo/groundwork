@@ -254,6 +254,8 @@ export function GroundAdminPage() {
   const [groundScenario, setGroundScenario] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
+  /* Their name, as the lead knows them (polish round 1, 26 October): without it, people who join from the phone had no name anywhere. */
+  const [newParticipantName, setNewParticipantName] = useState('')
   const { data: colleagues } = useQuery({ queryKey: ['colleagues'], queryFn: () => authApi.colleagues(), staleTime: 5 * 60 * 1000 })
   /** Whether the last person added is waiting for the start date rather than having been emailed. */
   const [lastInviteWaits, setLastInviteWaits] = useState(false)
@@ -1035,7 +1037,7 @@ export function GroundAdminPage() {
   })
 
   const addParticipantMut = useMutation({
-    mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined, department: newParticipantDepartment.trim() || undefined }),
+    mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), ...(newParticipantName.trim() ? { displayName: newParticipantName.trim() } : {}), note: newParticipantNote.trim() || undefined, department: newParticipantDepartment.trim() || undefined }),
     onSuccess: (added) => {
       /*
        * "INVITE SENT" WAS SAID WHETHER OR NOT ONE WAS SENT.
@@ -1081,6 +1083,7 @@ export function GroundAdminPage() {
       }
       setLastInvitedEmail(newParticipantEmail.trim())
       setNewParticipantEmail('')
+      setNewParticipantName('')
       setNewParticipantNote('')
       qc.invalidateQueries({ queryKey: ['ground', id] })
     },
@@ -3063,7 +3066,7 @@ export function GroundAdminPage() {
             colleagues={colleagues}
             addingMany={addingMany}
             addManyParticipants={addManyParticipants}
-            newParticipantEmail={newParticipantEmail} setNewParticipantEmail={setNewParticipantEmail}
+            newParticipantEmail={newParticipantEmail} setNewParticipantEmail={setNewParticipantEmail} newParticipantName={newParticipantName} setNewParticipantName={setNewParticipantName}
             newParticipantNote={newParticipantNote} setNewParticipantNote={setNewParticipantNote}
             newParticipantDepartment={newParticipantDepartment} setNewParticipantDepartment={setNewParticipantDepartment}
             addParticipantMut={addParticipantMut}

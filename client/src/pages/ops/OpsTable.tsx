@@ -32,7 +32,7 @@ export function DueDate({ value }: { value: string | null | undefined }) {
   const due = new Date(value)
   const late = due < new Date()
   return (
-    <span style={late ? { color: 'var(--gw-red-t)', fontWeight: 600 } : undefined}>
+    <span style={late ? { color: 'var(--gw-red-t)', fontWeight: 700 } : undefined}>
       {whenItWas(due, 'day')}
       {late ? ' · overdue' : ''}
     </span>

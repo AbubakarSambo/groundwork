@@ -200,6 +200,8 @@ export type PeopleAndSetupProps = {
   addingMany: boolean
   addManyParticipants: (picked: { id: string; name: string }[]) => void
   newParticipantEmail: string; setNewParticipantEmail: (v: string) => void
+  newParticipantName?: string
+  setNewParticipantName?: (v: string) => void
   newParticipantNote: string; setNewParticipantNote: (v: string) => void
   newParticipantDepartment: string; setNewParticipantDepartment: (v: string) => void
   addParticipantMut: { mutate: () => void; isPending: boolean }
@@ -325,7 +327,7 @@ function TodaysPeopleAndSetup(props: PeopleAndSetupProps) {
           colleagues={props.colleagues}
           addingMany={props.addingMany}
           addManyParticipants={props.addManyParticipants}
-          newParticipantEmail={props.newParticipantEmail} setNewParticipantEmail={props.setNewParticipantEmail}
+          newParticipantEmail={props.newParticipantEmail} setNewParticipantEmail={props.setNewParticipantEmail} newParticipantName={props.newParticipantName} setNewParticipantName={props.setNewParticipantName}
           newParticipantNote={props.newParticipantNote} setNewParticipantNote={props.setNewParticipantNote}
           newParticipantDepartment={props.newParticipantDepartment} setNewParticipantDepartment={props.setNewParticipantDepartment}
           addParticipantMut={props.addParticipantMut}

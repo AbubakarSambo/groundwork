@@ -147,7 +147,7 @@ export function EntryChat() {
 
         {!done && (
           <>
-            <div style={{ padding: '4px 14px', borderTop: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
+            <div style={{ padding: '4px 14px', borderTop: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: '15px' }}>
               Your words are private. Nothing is saved until you choose to save it.
             </div>
             <div className="gw-chat-bar">

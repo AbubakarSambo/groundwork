@@ -691,7 +691,7 @@ export function TheAssistantAsACustomerSeesIt() {
             * checked: `public API` appears nowhere in the client or the marketing site apart from
             * here. The server module keeps the name, which nobody reads.
             */}
-          <p style={{ fontSize: 11.5, color: 'var(--gw-sub)', margin: '2px 0 0' }}>
+          <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '2px 0 0' }}>
             {/* Which of the two things is happening, at the top where somebody looks first. */}
             {inCheckIn
               ? 'You are in a check-in. This is the same conversation the product runs.'
@@ -714,10 +714,10 @@ export function TheAssistantAsACustomerSeesIt() {
         {panel.data && !panel.data.ready && (
           /* The refusal names what is missing, because every state this can be
              in is something somebody can fix. */
-          <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{panel.data.why}</p>
+          <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>{panel.data.why}</p>
         )}
 
-        {problem && <p style={{ fontSize: 13, color: 'var(--gw-red-t)', lineHeight: 1.6 }}>{problem}</p>}
+        {problem && <p style={{ fontSize: 13, color: 'var(--gw-red-t)', lineHeight: '21px' }}>{problem}</p>}
 
         {/* WHAT IS WAITING, OFFERED RATHER THAN OPENED. The panel does not put
             somebody into a check-in because they opened a chat window — a
@@ -755,7 +755,7 @@ export function TheAssistantAsACustomerSeesIt() {
             disabled={busy}
             style={{
               alignSelf: 'flex-start',
-              fontSize: 12.5,
+              fontSize: 12,
               padding: '5px 12px',
               borderRadius: 6,
               border: '1px solid var(--gw-border)',
@@ -779,7 +779,7 @@ export function TheAssistantAsACustomerSeesIt() {
               borderRadius: 10,
               padding: '10px 12px',
               fontSize: 13,
-              lineHeight: 1.6,
+              lineHeight: '21px',
             }}
           >
             <strong>{g.label}</strong>
@@ -811,7 +811,7 @@ export function TheAssistantAsACustomerSeesIt() {
               borderRadius: 10,
               padding: '10px 12px',
               fontSize: 13,
-              lineHeight: 1.6,
+              lineHeight: '21px',
               color: 'var(--gw-sub)',
             }}
           >
@@ -828,7 +828,7 @@ export function TheAssistantAsACustomerSeesIt() {
               borderRadius: 10,
               padding: '10px 12px',
               fontSize: 13,
-              lineHeight: 1.6,
+              lineHeight: '21px',
             }}
           >
             You have a check-in waiting on {c.ground?.label ?? 'a piece of work'}.
@@ -856,7 +856,7 @@ export function TheAssistantAsACustomerSeesIt() {
               borderTopLeftRadius: s.from === 'us' ? 10 : 3,
               padding: '8px 11px',
               fontSize: 13,
-              lineHeight: 1.55,
+              lineHeight: '20px',
               whiteSpace: 'pre-wrap',
             }}
           >
@@ -955,7 +955,7 @@ export function TheAssistantAsACustomerSeesIt() {
               />
               {/* Said before the act, not after it, because it is the thing somebody would want to
                   know BEFORE typing a colleague's address into a widget. */}
-              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
                 This adds them to your people list. They do not become a member of your organisation
                 until they accept something and an admin approves them.
               </div>

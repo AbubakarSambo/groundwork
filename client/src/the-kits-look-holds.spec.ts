@@ -74,7 +74,7 @@ describe('a button is the kit button', () => {
 
   it('primary is flat navy with white words; secondary is the surface with a 1.5px hairline inside', () => {
     expect(PROTO).toMatch(/\.btn\.pri\{background:var\(--navy\);color:#fff\}/)
-    expect(PROTO).toMatch(/\.btn\.sec\{background:var\(--surface\);[^}]*box-shadow:inset 0 0 0 1\.5px var\(--rule2\)\}/)
+    expect(PROTO).toMatch(/\.btn\.sec\{background:var\(--surface\);[^}]*box-shadow:inset 0 0 0 1px var\(--rule2-crisp\)\}/)
   })
 
   it('the older button classes have the same shape, so a page still using one looks the same', () => {

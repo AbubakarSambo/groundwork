@@ -27,7 +27,8 @@ describe('a reply does not ask and answer itself', () => {
   });
   it('both the opener and every reply are read this way', () => {
     const src = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
-    expect(src).toContain('withoutAnAnswerToItsOwnQuestion(quoted.text)');
+    /* Changed 26 October 2026: the opener first puts any "last time you said" in their own words (a-last-time-is-their-own-words.ts). */
+    expect(src).toContain('withoutAnAnswerToItsOwnQuestion(theirOwn.text)');
     expect(src).toContain('withoutAnAnswerToItsOwnQuestion(withoutTheirWordsHandedBack(screened.text, theirTurnsHere))');
   });
 });

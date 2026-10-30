@@ -102,14 +102,14 @@ export function PeoplePicker({
             else shown.forEach((p) => next.add(p.id))
             return next
           })}
-          style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: '0 4px', whiteSpace: 'nowrap' }}
+          style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: '0 4px', whiteSpace: 'nowrap' }}
         >
           {allShownChosen ? 'Clear' : shown.length === candidates.length ? 'Select everyone' : `Select these ${shown.length}`}
         </button>
       </div>
       <div role="listbox" aria-multiselectable="true" style={{ maxHeight: 260, overflowY: 'auto' }}>
         {shown.length === 0 && (
-          <div style={{ padding: '10px 12px', fontSize: 12.5, color: 'var(--gw-muted)' }}>Nobody in your organisation matches that. Add them by their email address below.</div>
+          <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--gw-muted)' }}>Nobody in your organisation matches that. Add them by their email address below.</div>
         )}
         {shown.map((p) => {
           const on = chosen.has(p.id)
@@ -125,8 +125,8 @@ export function PeoplePicker({
                 {p.name.trim().charAt(0).toUpperCase()}
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                {roleAndTeam(p) && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{roleAndTeam(p)}</span>}
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                {roleAndTeam(p) && <span style={{ display: 'block', fontSize: 12, color: 'var(--gw-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{roleAndTeam(p)}</span>}
               </span>
             </label>
           )

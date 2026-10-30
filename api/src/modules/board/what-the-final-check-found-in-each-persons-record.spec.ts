@@ -211,3 +211,11 @@ describe('Grace reads Kevin’s Savannah Cafe as sold on a deposit (item 10)', (
     expect(d.proven).toEqual(['Savannah Cafe is won for 6 units on a deposit, and the M-Pesa code RBT7Y3KQ2P shows it. Deposit paid, KES 15,000 of KES 30,000.']);
   });
 });
+
+/** Mercy, polish round 2: "Nobody bought anything" was read as a sale with nothing on file, and the board said she needed coaching on proof. */
+describe('a sentence that says nothing was sold is not a claim', () => {
+  const { aClaimIn: claim } = require('./the-persons-record');
+  it.each(['Nobody bought anything today.', 'No one paid yet.', 'None of them signed.'])('%s', (s) => {
+    expect(claim(s)).toBeNull();
+  });
+});

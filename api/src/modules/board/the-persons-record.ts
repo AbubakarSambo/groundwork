@@ -1,3 +1,4 @@
+import { theWordsNameTheDeal } from './a-deals-proof-is-about-that-deal';
 import { aLineNamesTheCustomer } from './one-deal-per-customer';
 import { theUnitsTheyGave } from '../conversation/their-own-deals-and-what-is-on-file';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
@@ -9,6 +10,7 @@ import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
 import { whatTheyTriedFirst } from './what-they-tried-first';
 import { intoSentences } from '../conversation/nothing-invented-reaches-them';
 import { saidWhatTheyTried } from '../grounds/a-wait-is-the-speakers-account';
+import { theCheckInsCounted, theFirstAnswerIn, type ASessionToCount } from './a-day-they-checked-in';
 
 /**
  * A RECORD FOR EACH PERSON, KEPT FROM THE RECORD (Groundwork does the managing, part 1; Hafsah, 21 October 2026: "The lead relies on
@@ -60,6 +62,8 @@ export interface AnItemOfTheirs {
   paid?: boolean;
   signed?: boolean;
   proven?: boolean;
+  /** The M-Pesa code that is its payment record, where it is one (theMPesaCodeFor). */
+  mpesaCode?: string | null;
   fields?: Record<string, string> | null;
   /** Proof filed on the item, each with what it was read as. */
   evidence?: { id: string; readAs: string; countsAsProof: boolean }[];
@@ -96,6 +100,8 @@ export interface ACheckInOfTheirs {
   completedAt?: Date | string | null;
   specificityLevel?: string | null;
   specificityDimensions?: unknown;
+  /** How many answers they gave in it, where it was read. A session closed with none from them was not a check-in they did. */
+  _count?: { turns?: number } | null;
 }
 
 export interface AnMPesaCodeOfTheirs { code: string; sale: string; at: Date | string }
@@ -268,7 +274,7 @@ export const asTheySaidIt = (raw: string) => stop(cleanText(String(raw ?? '').re
 /* "went through" is a payment only where it is the money that went through: "how quickly everything went through" is not (item 10). */
 const A_PAYMENT = /\b(?:paid|(?:payment|money|transfer|it|m-?pesa|the funds|funds|deposit)\s+(?:has\s+|have\s+)?(?:went|came|gone|come) through|is sorted|it['’]s sorted|deposit|(?:is|are|was|were) in the bank|cleared (?:our|the|their|its|his|her|that|this) (?:fee notes?|invoices?|bills?|balance|loan)|recorded (?:a payment|the payment|(?:KES|KSh|Ksh|USD|NGN|₦|\$)\s?[\d,]+))/i;
 const A_SALE = /\b(?:sold|bought|signed|closed|won)\b/i;
-const NOT_A_CLAIM = /\b(?:will|won['’]t|wont|going to|to be|expect|expects|expecting|if|once|hasn['’]t|haven['’]t|has not|have not|did not|didn['’]t|not|no|never|yet|nothing|need|needs|waiting|until|hope|plan|planning|might|could|should|would|soon)\b|['’]ll\b|n['’]t\b/i;
+const NOT_A_CLAIM = /\b(?:will|won['’]t|wont|going to|to be|expect|expects|expecting|if|once|hasn['’]t|haven['’]t|has not|have not|did not|didn['’]t|not|no|never|yet|nothing|nobody|no one|none|neither|nor|need|needs|waiting|until|hope|plan|planning|might|could|should|would|soon)\b|['’]ll\b|n['’]t\b/i;
 /* Their own later words that it did not happen: "hasn't actually come through yet", "I was mistaken", "hasn't actually paid yet". */
 const TAKEN_BACK = /\b(?:was mistaken|i was wrong|not actually|hasn['’]t actually|haven['’]t actually|has not actually|didn['’]t actually|did not actually|hasn['’]t (?:come through|paid|signed)|has not (?:come through|paid|signed)|not (?:paid|signed) yet|still choosing|fell through|pulled out|backed out|cancelled)\b/i;
 
@@ -458,14 +464,43 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
     } else if (l.mark === 'confirmed') {
       proof = 'a colleague confirmed it'; proofSays = 'A colleague confirmed it';
     } else if (item && (item.paid || (kind === 'sale' && item.signed))) {
-      proof = item.paid ? 'a payment record' : 'a signed order';
-      proofSays = item.paid ? 'A payment record' : 'A signed order';
+      /*
+       * A code given in words is said as the M-Pesa code (Hafsah, 19 October), on the sale it pays for as well (polish round 15, U14): the
+       * code they gave for this deal nearest the day they said it, so Savannah Cafe's balance reads SGL9W4MN7T and its deposit RBT7Y3KQ2P.
+       */
+      const near = item.paid && item.mpesaCode
+        ? input.codes.filter((c) => theWordsNameTheDeal(c.sale, { name: item.name, fields: item.fields ?? null })).sort((a, b) => Math.abs(t(a.at) - t(l.createdAt)) - Math.abs(t(b.at) - t(l.createdAt)))[0]?.code ?? item.mpesaCode
+        : null;
+      proof = item.paid ? (near ? 'an M-Pesa code' : 'a payment record') : 'a signed order';
+      proofSays = item.paid ? (near ? `The M-Pesa code ${near}` : 'A payment record') : 'A signed order';
       proofIds.push(item.id);
     } else if (item && (item.evidence ?? []).some((e) => e.countsAsProof && (kind === 'sale' || /payment/i.test(e.readAs)))) {
       const e = (item.evidence ?? []).find((x) => x.countsAsProof && (kind === 'sale' || /payment/i.test(x.readAs)))!;
       proof = 'proof filed on it'; proofSays = e.readAs; proofIds.push(e.id);
+    } else if (typedCode && kind === 'sale' || typedCode && kind === 'payment') {
+      /* The code typed in the same line as the sale is what shows it (polish round 2: Joseph's Juja Hardware line carried TGH5K2M9QX, and read "Nothing on file shows it"). */
+      proof = 'an M-Pesa code'; proofSays = `The M-Pesa code ${typedCode}`;
     } else if (code && t(code.at) <= t(l.createdAt) + 2 * DAY) {
       proof = 'an M-Pesa code'; proofSays = `The M-Pesa code ${code.code}`;
+    } else if (kind === 'sale' || kind === 'payment') {
+      /*
+       * THE CODE THAT ANSWERED THE QUESTION ABOUT THIS SALE (polish round 15, U14). Joseph said "Mr. Mutua bought 2 units yesterday at KES
+       * 5,000 each.", was asked "What shows the sale of those two units?", and answered "M-Pesa code TGH5K2M9QX." A code typed later in the
+       * same check-in, in answer to a question asking what shows it, shows the last sale they said before it.
+       */
+      const saidAt = t(whenTheySaidIt(l, []));
+      const answered = input.codes.find((c) => {
+        const at = t(c.at);
+        const turn = (input.theirTurns ?? []).find((x) => x.checkInId === l.checkInId && t(x.at) === at);
+        if (!l.checkInId || !turn || at <= saidAt) return false;
+        const asked = (input.ourTurns ?? []).filter((x) => x.checkInId === l.checkInId && t(x.at) < at).sort((a, b) => t(b.at) - t(a.at))[0];
+        if (!asked || !(ASKS_FOR_PROOF.test(String(asked.content ?? '')) || /\bwhat (?:would )?shows?\b/i.test(String(asked.content ?? '')))) return false;
+        /* No other sale of theirs was said between this one and the code. */
+        return !lines.some((x) => x !== l && x.checkInId === l.checkInId && String(x.type).toUpperCase() === 'PROGRESS'
+          && intoSentences(String(x.text ?? '')).some((s) => !!aClaimIn(s))
+          && (() => { const w = t(whenTheySaidIt(x, [])); return w > saidAt && w < at; })());
+      });
+      if (answered) { proof = 'an M-Pesa code'; proofSays = `The M-Pesa code ${answered.code}`; }
     }
     const proven = proof !== 'nothing';
     const names = item ? theNamesOf(item) : [];
@@ -622,25 +657,26 @@ export function thePersonsRecord(input: ThePersonsInputs): ThePersonsRecord {
     };
   });
 
-  /* CHECK-IN QUALITY */
-  const checkIns: ACheckInRead[] = input.checkIns
-    .filter((c) => aCheckInWasDue(c, now))
-    .sort((a, b) => a.sessionNumber - b.sessionNumber)
+  /*
+   * CHECK-IN QUALITY, FROM WHAT ACTUALLY HAPPENED (a-day-they-checked-in.ts; polish round 15). Done is a session they answered in, on any
+   * channel, whatever its status, and on time where their first answer came within a day of it opening. On a check-in that opens each
+   * working day, each working day counts once: Kevin's Tuesday session, opened the evening before from his email and closed by the clock
+   * that morning, read "On Tuesday 13 October, the check-in was not done" beside his Tuesday answer. A day with nothing from them is not
+   * done (item 5 of the final check: a daily session left open stands for each working day since).
+   */
+  const firstAnswer = theFirstAnswerIn(input.theirTurns ?? []);
+  const toCount = (c: ACheckInOfTheirs): ASessionToCount => ({
+    ...c, answers: c._count?.turns ?? null, firstAnsweredAt: firstAnswer.get(c.id) ?? null, specific: aCheckInWasSpecific(c),
+  });
+  const checkIns: ACheckInRead[] = theCheckInsCounted(input.checkIns.map(toCount), { now, zone, daily: input.daily, due: (s) => aCheckInWasDue(s as any, now) })
     .map((c) => ({
-      checkInId: c.id,
-      sessionNumber: c.sessionNumber,
-      on: (c.completedAt ?? c.availableFrom ?? c.createdAt) ? dayIn((c.completedAt ?? c.availableFrom ?? c.createdAt)!, zone) : null,
-      done: c.status === 'COMPLETED',
-      onTime: aCheckInWasOnTime(c),
-      specific: c.status === 'COMPLETED' && aCheckInWasSpecific(c),
-    }))
-    /* A daily session left open stands for each working day since: each is a check-in not done (item 5). */
-    .flatMap((read) => {
-      const c = input.checkIns.find((x) => x.id === read.checkInId)!;
-      return [read, ...theDaysAnOpenDailySessionWasMissed(c, now, zone, input.daily).map((k) => ({
-        ...read, on: whenItWas(new Date(`${k}T12:00:00Z`), 'weekdayAndDay', 'UTC'), done: false, onTime: false, specific: false,
-      }))];
-    });
+      checkInId: c.checkInId ?? '',
+      sessionNumber: c.sessionNumber ?? 0,
+      on: c.day ? whenItWas(new Date(`${c.day}T12:00:00Z`), 'weekdayAndDay', 'UTC') : null,
+      done: c.done,
+      onTime: c.onTime,
+      specific: c.specific,
+    }));
 
   return { claims, promises, changes, focus, blockers, checkIns, summary: theSummaryOf({ claims, promises, changes, focus, blockers, checkIns }) };
 }

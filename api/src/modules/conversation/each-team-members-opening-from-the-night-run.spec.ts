@@ -4,6 +4,7 @@ import { ConversationService } from './conversation.service';
 import { anInboundHarness } from '../whatsapp/a-whatsapp-inbound-harness';
 import { WebhooksListener } from '../webhooks/webhooks.listener';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
+import { withTheOpeningLine } from './the-opening-line';
 
 /**
  * EACH TEAM MEMBER'S OPENING, READ FROM THE SECOND NIGHT RUN (the direct morning, part 3; Hafsah, 20 October 2026).
@@ -155,22 +156,25 @@ describe('the check-in opens on that line (web, and the first message after STAR
   it('switch on, Kevin: the opening turn is the line word for word, and the model is not asked to write it', async () => {
     const { service, anthropic, saved, ci, userId } = aCheckInOver('drop', 'Kevin', true);
     const r: any = await service.open(ci.id, userId);
-    expect(r.reply).toBe(KEVIN);
+    // Changed 26 October 2026 (Hafsah: item 1): the opening line is in front; the line itself is still word for word after it.
+    expect(r.reply).toBe(withTheOpeningLine(KEVIN));
     expect(r.personalOpening).toBe(true);
-    expect(saved.filter((t) => t.role === 'AI').map((t) => t.content)).toEqual([KEVIN]);
+    expect(saved.filter((t) => t.role === 'AI').map((t) => t.content)).toEqual([withTheOpeningLine(KEVIN)]);
     expect(anthropic.respond).not.toHaveBeenCalled();
   });
 
   it('switch on, Joseph who is late: the short version is the opening turn', async () => {
     const { service, ci, userId } = aCheckInOver('drop', 'Joseph', true);
-    expect((await service.open(ci.id, userId)).reply).toBe(JOSEPH_LATE);
+    // Changed 26 October 2026 (Hafsah: item 1): the opening line is in front of the short version.
+    expect((await service.open(ci.id, userId)).reply).toBe(withTheOpeningLine(JOSEPH_LATE));
   });
 
   it('switch off, Kevin: the opening is the model\'s, exactly as before', async () => {
     const { service, anthropic, ci, userId } = aCheckInOver('drop', 'Kevin', false);
     const r: any = await service.open(ci.id, userId);
     expect(anthropic.respond).toHaveBeenCalledTimes(1);
-    expect(r.reply).toBe('What moved on your deals since yesterday?');
+    // Changed 26 October 2026 (Hafsah: item 1): the model's opening is unchanged, with the opening line in front.
+    expect(r.reply).toBe(withTheOpeningLine('What moved on your deals since yesterday?'));
     expect(r.personalOpening).toBeUndefined();
   });
 
@@ -178,14 +182,16 @@ describe('the check-in opens on that line (web, and the first message after STAR
     const { service, anthropic, ci, userId } = aCheckInOver('drop', 'Peter', true);
     const r: any = await service.open(ci.id, userId);
     expect(anthropic.respond).toHaveBeenCalledTimes(1);
-    expect(r.reply).toBe('What moved on your deals since yesterday?');
+    // Changed 26 October 2026 (Hafsah: item 1): the model's opening is unchanged, with the opening line in front.
+    expect(r.reply).toBe(withTheOpeningLine('What moved on your deals since yesterday?'));
   });
 
   it('switch on, the lead: her opening is the model\'s, as before', async () => {
     const { service, anthropic, ci, userId } = aCheckInOver('drop', 'Grace', true, 'Good morning Grace. What do you need from the team today?');
     const r: any = await service.open(ci.id, userId);
     expect(anthropic.respond).toHaveBeenCalledTimes(1);
-    expect(r.reply).toBe('Good morning Grace. What do you need from the team today?');
+    // Changed 26 October 2026 (Hafsah: item 1): the lead's opening is unchanged, with the opening line in front.
+    expect(r.reply).toBe(withTheOpeningLine('Good morning Grace. What do you need from the team today?'));
   });
 
   it('the turns after it are told the question was asked and what the record holds behind it, in a block the code builds', async () => {

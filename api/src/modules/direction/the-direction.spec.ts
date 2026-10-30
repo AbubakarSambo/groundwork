@@ -116,3 +116,33 @@ describe('Release 6: recommitting, so nobody is judged against the old plan', ()
     expect(off.writes).toEqual([]);
   });
 });
+
+/*
+ * WHOSE GOAL IT IS (polish round 1, 25 October): Kevin had nothing to recommit because no goal had an owner. A goal with nobody named is
+ * the goal of whoever runs the check-in; a goal the lead named somebody for is theirs.
+ */
+describe('Release 6: the goals each person recommits', () => {
+  const goals = [
+    { id: 'o-team', groundId: 'g-sales', name: '120 units sold by 30 October', target: 120, ownerParticipantId: null },
+    { id: 'o-kevin', groundId: 'g-sales', name: '30 units sold', target: 30, ownerParticipantId: 'p-kevin' },
+  ];
+  const world = () => {
+    const prisma: any = {
+      organization: { findUnique: async () => ({ release6DirectionOn: true }) },
+      directionVersion: { findFirst: async () => ({ version: 2, setAt: BARIDI.setAt, setByUserId: 'u-amani', now: BARIDI.now, whatChanged: BARIDI.whatChanged, teams: BARIDI.teams }) },
+      groundParticipant: { findMany: async ({ where }: any) => (where.userId === 'u-kevin' ? [{ id: 'p-kevin', groundId: 'g-sales' }] : where.userId === 'u-wairimu' ? [{ id: 'p-wairimu', groundId: 'g-sales' }] : []) },
+      ground: { findMany: async ({ where }: any) => (where.initiatorId === 'u-wairimu' ? [{ id: 'g-sales' }] : []) },
+      groundObjective: {
+        findMany: async ({ where }: any) => goals.filter((g) => where.OR.some((c: any) => (c.ownerParticipantId?.in ? c.ownerParticipantId.in.includes(g.ownerParticipantId) : c.ownerParticipantId === null && g.ownerParticipantId === null && c.groundId.in.includes(g.groundId)))),
+      },
+      goalVersion: { findMany: async () => [] },
+    };
+    return new DirectionService(prisma);
+  };
+
+  it('the lead who runs the check-in has the team goal nobody was named for; Kevin has his own', async () => {
+    const svc = world();
+    expect((await svc.mine({ userId: 'u-wairimu', organizationId: 'o-baridi', role: 'LEAD' } as any)).goals.map((g: any) => g.id)).toEqual(['o-team']);
+    expect((await svc.mine({ userId: 'u-kevin', organizationId: 'o-baridi', role: 'MEMBER' } as any)).goals.map((g: any) => g.id)).toEqual(['o-kevin']);
+  });
+});

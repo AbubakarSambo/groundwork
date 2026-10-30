@@ -34,11 +34,11 @@
 import { asksForHomework, THE_LEADS_DECISION, whatIsConcreteIn, ONE_MORE_QUESTION, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
 
 /** From this many answers on, the model is told the question is still owed. One past the floor of five. */
-export const SAY_IT_IS_STILL_OWED_FROM = 6;
+export const SAY_IT_IS_STILL_OWED_FROM = 3;
 /** From this many answers on, the model is told to ask it on this turn. */
-export const ASK_IT_NOW_FROM = 7;
+export const ASK_IT_NOW_FROM = 4;
 /** Where the check-ins on the runs closed by themselves, said to the model as a fact about check-ins. */
-export const A_CHECK_IN_USUALLY_CLOSES_AFTER = 8;
+export const A_CHECK_IN_USUALLY_CLOSES_AFTER = 6;
 
 /** The question the product asks at the close, when the model closed without it. The prompt's own sentence. */
 export const WHAT_WILL_YOU_DO = 'What will you do about this, and by when?';

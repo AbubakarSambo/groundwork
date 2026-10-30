@@ -130,7 +130,14 @@ export class DirectionService {
     if (!d) return { goals: [] };
     const mine = await (this.prisma as any).groundParticipant.findMany({ where: { userId: r.userId, groundId: { in: d.teams.map((t) => t.groundId) } }, select: { id: true, groundId: true } });
     const ids = mine.map((p: any) => p.id);
-    const goals = ids.length ? await (this.prisma as any).groundObjective.findMany({ where: { ownerParticipantId: { in: ids } }, select: { id: true, groundId: true, name: true, target: true } }) : [];
+    /*
+     * WHOSE GOAL IT IS (polish round 1, 25 October): the person named for it, or, where the lead named nobody, whoever runs the check-in.
+     * Kevin had nothing to recommit because no goal had an owner and no screen set one.
+     */
+    const runs = await Promise.resolve((this.prisma as any).ground?.findMany?.({ where: { initiatorId: r.userId, id: { in: d.teams.map((t) => t.groundId) } }, select: { id: true } })).catch(() => []) ?? [];
+    const runIds = (runs as any[]).map((g) => g.id);
+    const owned = [...(ids.length ? [{ ownerParticipantId: { in: ids } }] : []), ...(runIds.length ? [{ ownerParticipantId: null, groundId: { in: runIds } }] : [])];
+    const goals = owned.length ? await (this.prisma as any).groundObjective.findMany({ where: { OR: owned }, select: { id: true, groundId: true, name: true, target: true } }) : [];
     const decided = await (this.prisma as any).goalVersion.findMany({ where: { organizationId: r.organizationId, directionVersion: d.version, ownerParticipantId: { in: ids } } });
     return {
       goals: goals.map((g: any) => ({ ...g, team: d.teams.find((t) => t.groundId === g.groundId)?.team ?? null, decided: decided.find((x: any) => x.objectiveId === g.id)?.outcome ?? null })),

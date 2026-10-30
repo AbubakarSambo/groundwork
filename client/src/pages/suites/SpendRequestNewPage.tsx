@@ -38,6 +38,9 @@ export function SpendRequestNewPage() {
   const [what, setWhat] = useState(prefill?.what ?? '')
   const [category, setCategory] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
+  /* A receipt or a proforma, attached as they ask (polish round 1, 25 October). Only its name and words are kept. */
+  const [file, setFile] = useState<File | null>(null)
+  const [fileKind, setFileKind] = useState<'receipt' | 'quote'>('quote')
 
   const form = useQuery({ queryKey: ['spend-form'], queryFn: fileARequestApi.spendForm, retry: false })
   /* RESTORED (8 October, nothing-removed audit S3): only a genuine refusal (a 4xx) hides the form.
@@ -48,8 +51,17 @@ export function SpendRequestNewPage() {
   const loadFailed = form.isError && !loadRefused
 
   const send = useMutation({
-    mutationFn: () => fileARequestApi.spending({ amount: Number(amount), what: what.trim(), ...(category ? { category } : {}) }),
-    onSuccess: (res) => navigate('/suite/mine', { state: { sentMessage: res?.says ?? 'Your payment request has been sent.' } }),
+    mutationFn: async () => {
+      const res = await fileARequestApi.spending({ amount: Number(amount), what: what.trim(), ...(category ? { category } : {}) })
+      /* The request is sent first; a file that does not go through is said, and the request still stands. */
+      let attachedSays: string | null = null
+      if (file && res?.id) {
+        try { attachedSays = (await fileARequestApi.attachToSpending(res.id, file, fileKind))?.says ?? null }
+        catch (e: any) { attachedSays = `Your request is sent, but ${e?.response?.data?.message ? e.response.data.message.charAt(0).toLowerCase() + e.response.data.message.slice(1) : 'the file did not go through. Send it to the approver another way.'}` }
+      }
+      return { ...res, says: [res?.says, attachedSays].filter(Boolean).join(' ') }
+    },
+    onSuccess: (res) => navigate('/suite/mine', { state: { sentMessage: res?.says || 'Your payment request has been sent.' } }),
     onError: (e: unknown) => setProblem(whatFilingARequestSays(e, user?.organizationName)),
   })
 
@@ -95,6 +107,16 @@ export function SpendRequestNewPage() {
                 </Select>
               </div>
             )}
+            <div className="gwui-suite-q">
+              <FieldLabel htmlFor="spend-file">A receipt or proforma, if you have one</FieldLabel>
+              <input id="spend-file" type="file" accept="application/pdf,image/*,text/plain" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+              {file && (
+                <Select id="spend-file-kind" aria-label="Which is it" value={fileKind} onChange={e => setFileKind(e.target.value as 'receipt' | 'quote')}>
+                  <option value="quote">A proforma or quote</option>
+                  <option value="receipt">A receipt</option>
+                </Select>
+              )}
+            </div>
             <div><Button type="submit" disabled={!canSend}>Send</Button></div>
             {problem && <Note tone="error">{problem}</Note>}
           </form>

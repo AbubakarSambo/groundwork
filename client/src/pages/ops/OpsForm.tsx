@@ -90,7 +90,7 @@ export function Adder<T>({
 
       <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
         {fields.map((f) => (
-          <label key={f.name} style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-sub)' }}>
+          <label key={f.name} style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)' }}>
             {f.label}
             {f.required && <span aria-hidden> *</span>}
             {f.options ? (
@@ -187,7 +187,7 @@ export function Choose<T>({
         disabled={move.isPending}
         onChange={(e) => move.mutate(e.target.value)}
         style={{
-          fontSize: 12.5,
+          fontSize: 12,
           padding: '3px 6px',
           borderRadius: 6,
           border: '1px solid var(--gw-border)',
@@ -215,7 +215,7 @@ const INPUT: React.CSSProperties = {
   fontSize: 16,
   fontFamily: 'inherit',
   color: 'var(--gw-text)',
-  border: '1.5px solid var(--gw-rule-2)',
+  border: '1px solid var(--rule2-crisp)',
   borderRadius: 10,
   background: 'var(--gw-card)',
 }

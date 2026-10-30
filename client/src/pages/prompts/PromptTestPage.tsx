@@ -39,7 +39,7 @@ function ChatBubble({ turn }: { turn: Turn }) {
         maxWidth: '85%', padding: '8px 11px', borderRadius: isUser ? '10px 10px 3px 10px' : '10px 10px 10px 3px',
         background: isUser ? 'var(--gw-navy)' : 'white',
         color: isUser ? 'white' : 'var(--gw-text)',
-        fontSize: 12, lineHeight: 1.55,
+        fontSize: 12, lineHeight: '19px',
         border: isUser ? 'none' : '1px solid var(--gw-border)',
         whiteSpace: 'pre-wrap',
       }}>
@@ -238,7 +238,7 @@ export function PromptTestPage() {
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button onClick={() => navigate('/prompts')} style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>← Back</button>
-            <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-dark)' }}>Prompt test panel</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>Prompt test panel</span>
           </div>
           <button onClick={() => navigate('/admin')} style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Ops dashboard</button>
         </div>
@@ -247,7 +247,7 @@ export function PromptTestPage() {
       <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', padding: '16px 16px 64px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Description */}
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.65 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '20px' }}>
           Edit the check-in prompt below, then run it across an admin and two participants. Each lane keeps its own conversation and uses the prompt exactly as edited here, so you can change the engine and see the effect on all three roles at once. Attach a document to any lane, and generate the reports from the conversations below.
         </div>
 
@@ -272,10 +272,10 @@ export function PromptTestPage() {
             <textarea
               value={systemPrompt}
               onChange={e => setSystemPrompt(e.target.value)}
-              style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, border: 'none', padding: '12px 14px', resize: 'vertical', minHeight: 200, color: 'var(--gw-text)', outline: 'none' }}
+              style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 11, lineHeight: '18px', border: 'none', padding: '12px 14px', resize: 'vertical', minHeight: 200, color: 'var(--gw-text)', outline: 'none' }}
             />
           ) : (
-            <pre style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, padding: '12px 14px', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--gw-sub-d)', maxHeight: 160, overflowY: 'auto' }}>
+            <pre style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: '18px', padding: '12px 14px', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--gw-sub-d)', maxHeight: 160, overflowY: 'auto' }}>
               {systemPrompt}
             </pre>
           )}
@@ -320,7 +320,7 @@ export function PromptTestPage() {
               {generateReport.isPending ? 'Generating…' : 'Generate reports'}
             </button>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 11, color: 'var(--gw-muted)', lineHeight: '18px' }}>
             Builds the advice-led reports from the conversations above: the admin cross reference across all lanes, and each participant's own insight. Needs a connected model - the demo responder does not return report JSON.
           </div>
         </div>
@@ -354,17 +354,17 @@ export function PromptTestPage() {
 
             <div style={{ padding: '16px 18px' }}>
               {reportTab === 'cross' && (
-                <pre style={{ fontFamily: 'inherit', fontSize: 13, lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, color: 'var(--gw-text)' }}>
+                <pre style={{ fontFamily: 'inherit', fontSize: 13, lineHeight: '21px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, color: 'var(--gw-text)' }}>
                   {report.crossReference || 'No cross reference generated.'}
                 </pre>
               )}
               {reportTab === 'p1' && (
-                <pre style={{ fontFamily: 'inherit', fontSize: 13, lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, color: 'var(--gw-text)' }}>
+                <pre style={{ fontFamily: 'inherit', fontSize: 13, lineHeight: '21px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, color: 'var(--gw-text)' }}>
                   {report.p1Report || 'No participant 1 report generated.'}
                 </pre>
               )}
               {reportTab === 'p2' && (
-                <pre style={{ fontFamily: 'inherit', fontSize: 13, lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, color: 'var(--gw-text)' }}>
+                <pre style={{ fontFamily: 'inherit', fontSize: 13, lineHeight: '21px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, color: 'var(--gw-text)' }}>
                   {report.p2Report || 'No participant 2 report generated.'}
                 </pre>
               )}

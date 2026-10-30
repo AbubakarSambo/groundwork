@@ -66,3 +66,20 @@ describe('planning ahead off a sales team', () => {
     expect(page.performing.behaviours.find((b: any) => b.key === 'planning-ahead').verdict).toBe('Not enough yet');
   });
 });
+
+/* Polish round 1 (26 October 2026): Mercy's "I need to call Mrs. Achola" was read as Sunrise Primary's next step; Mrs. Achola is Greenfield's contact. */
+describe('a promise naming one deal\'s contact is about that deal', () => {
+  it('Mrs. Achola is Greenfield Supermarket, whatever was being talked about', () => {
+    const at = '2026-10-14T09:00:00Z';
+    const deals = [
+      { name: 'Greenfield Supermarket', ownerParticipantId: 'p-mercy', contact: 'Mrs. Achola' },
+      { name: 'Sunrise Primary', ownerParticipantId: 'p-mercy', contact: 'the head teacher' },
+    ];
+    const promises = [{ id: 'c1', participantId: 'p-mercy', text: 'I need to call Mrs. Achola', createdAt: at }];
+    const turns = [
+      { checkInId: 'ci', participantId: null, role: 'AI', content: 'What is next for Sunrise Primary, and when?', createdAt: '2026-10-14T08:59:00Z' },
+      { checkInId: 'ci', participantId: 'p-mercy', role: 'PERSON', content: 'Sunrise has no budget until January. I need to call Mrs. Achola.', createdAt: at },
+    ];
+    expect(theDealsThePromisesAreAbout(promises, turns, deals).get('c1')).toBe('Greenfield Supermarket');
+  });
+});

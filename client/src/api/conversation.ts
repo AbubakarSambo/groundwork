@@ -120,8 +120,9 @@ export const conversationApi = {
   send: (checkInId: string, message: string, answering?: string | null) =>
     apiClient.post<SendMessageResponse>(`/check-ins/${checkInId}/messages`, answering ? { message, answering } : { message }).then(r => r.data),
 
-  complete: (checkInId: string) =>
-    apiClient.post(`/check-ins/${checkInId}/complete`).then(r => r.data),
+  /** `ended`: the person pressed End session, which is honoured with anything said (26 October). */
+  complete: (checkInId: string, ended = false) =>
+    apiClient.post(`/check-ins/${checkInId}/complete`, ended ? { ended: true } : undefined).then(r => r.data),
 
   decline: (checkInId: string) =>
     apiClient.post(`/check-ins/${checkInId}/decline`).then(r => r.data),

@@ -9,6 +9,8 @@ import { A_GROUND_NO_MESSAGE_IS_ABOUT } from './a-ground-that-has-ended';
 import { theConfirmedWaits } from './a-wait-is-the-speakers-account';
 import { whoHasNotJoinedYet } from './invited-not-joined-yet';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
+import { aQuietSessionOnADayTheyCheckedIn } from '../board/a-day-they-checked-in';
+import { THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 
 /**
  * REPEATEDLY MISSING CHECK-INS (decision 136, change 8).
@@ -68,6 +70,8 @@ export interface WhereTheyStand {
 
 const at = (d: Date | string | null | undefined): Date | null => (d ? new Date(d) : null);
 const overlaps = (from: Date, to: Date, leave: Stretch[]) => leave.some((s) => s.from <= to && s.to >= from);
+/** The check-in opens a session each working day. */
+const opensDaily = (p: { ground?: { cadence?: string | null } | null }) => String(p?.ground?.cadence ?? '').toUpperCase() === 'DAILY';
 
 /** Answered, missed, or not closed yet. A decline is an answer (an-answer-includes-a-refusal.ts). */
 function whatBecameOf(s: ASessionOfTheirs, aLaterOneOpened: boolean): 'answered' | 'missed' | 'open' {
@@ -81,9 +85,21 @@ function whatBecameOf(s: ASessionOfTheirs, aLaterOneOpened: boolean): 'answered'
  * Each closed session of theirs, oldest first, as missed (true) or answered (false). Optional rows, set-up
  * conversations, open sessions and sessions in approved leave are left out.
  */
-export function theirClosedSessions(rows: ASessionOfTheirs[], leave: Stretch[] = [], now: Date = new Date()): { sessionNumber: number; missed: boolean; reason: string | null }[] {
+export function theirClosedSessions(rows: ASessionOfTheirs[], leave: Stretch[] = [], now: Date = new Date(), o: { opensDaily?: boolean; zone?: string } = {}): { sessionNumber: number; missed: boolean; reason: string | null }[] {
   const sessions = rows.filter((r) => !r.isSetup).sort((a, b) => a.sessionNumber - b.sessionNumber);
   const out: { sessionNumber: number; missed: boolean; reason: string | null }[] = [];
+  /*
+   * NO MISS ON A DAY THEY CHECKED IN (polish round 15; board/a-day-they-checked-in.ts). Kevin's Tuesday session was opened on Monday evening
+   * from his email and closed by the clock on Tuesday morning; he answered that afternoon in the next session. The letter read "Kevin missed
+   * one of six". On a check-in that opens each working day, a session closed with nothing from them, on a day they answered another, is
+   * left out: that day they checked in.
+   */
+  const asItHappened = (s: ASessionOfTheirs) => {
+    const said = Array.isArray(s.turns) ? s.turns : null;
+    const first = said && said.length ? (said[0] as any)?.createdAt ?? null : null;
+    return { ...s, answers: said ? said.length : null, firstAnsweredAt: first, closedReason: s.closedReason ?? null } as any;
+  };
+  const theirs = sessions.map(asItHappened);
   sessions.forEach((s, i) => {
     const next = sessions.slice(i + 1).find((n) => n.sessionNumber > s.sessionNumber);
     const opened = !!next && (!next.availableFrom || (at(next.availableFrom) as Date) <= now);
@@ -93,6 +109,7 @@ export function theirClosedSessions(rows: ASessionOfTheirs[], leave: Stretch[] =
     const from = at(s.availableFrom) ?? at(s.createdAt) ?? now;
     const to = at(s.completedAt) ?? (next ? at(next.availableFrom) ?? at(next.createdAt) : null) ?? now;
     if (overlaps(from, to, leave)) return;
+    if (became === 'missed' && o.opensDaily && aQuietSessionOnADayTheyCheckedIn(asItHappened(s), theirs, o.zone ?? THE_PRODUCTS_OWN_ZONE)) return;
     out.push({ sessionNumber: s.sessionNumber, missed: became === 'missed', reason: s.missedReason?.trim() || null });
   });
   return out;
@@ -151,10 +168,12 @@ export async function whoHasMissedCheckIns(prisma: any, groundIds: string[], now
     select: {
       id: true, groundId: true, userId: true, partyType: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true,
       user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
+      /* Whether it opens each working day: a quiet session on a day they answered another is then no miss (board/a-day-they-checked-in.ts). */
+      ground: { select: { cadence: true } },
       checkIns: {
         select: {
           id: true, sessionNumber: true, status: true, isSetup: true, optional: true, closedReason: true, availableFrom: true,
-          createdAt: true, completedAt: true, missedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } },
+          createdAt: true, completedAt: true, missedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } },
         },
       },
     },
@@ -165,10 +184,10 @@ export async function whoHasMissedCheckIns(prisma: any, groundIds: string[], now
   const leave = await leaveOfThePeopleOn(prisma, [...new Set(theirs.map((p) => p.groundId as string))]).catch(() => new Map<string, Stretch[]>());
   const out: SomebodyWhoMissed[] = [];
   for (const p of theirs) {
-    const stand = whereTheyStand(theirClosedSessions(p.checkIns ?? [], leave.get(p.id) ?? [], now));
+    const stand = whereTheyStand(theirClosedSessions(p.checkIns ?? [], leave.get(p.id) ?? [], now, { opensDaily: opensDaily(p) }));
     if (stand.stage === 0) continue;
     const latest = [...(p.checkIns ?? [])].filter((c: any) => !c.isSetup).sort((a: any, b: any) => b.sessionNumber - a.sessionNumber);
-    const closed = theirClosedSessions(p.checkIns ?? [], leave.get(p.id) ?? [], now);
+    const closed = theirClosedSessions(p.checkIns ?? [], leave.get(p.id) ?? [], now, { opensDaily: opensDaily(p) });
     const lastMissed = [...closed].reverse().find((c) => c.missed);
     out.push({
       participantId: p.id,
@@ -190,11 +209,11 @@ export async function whoHasMissedCheckIns(prisma: any, groundIds: string[], now
  * board said "nothing here needs you this week". This counts back from the session before his latest:
  * the session numbers missed in a row there, oldest first. The lead and managing-only rows are never read.
  */
-export function theMissesJustBefore(rows: ASessionOfTheirs[], leave: Stretch[] = [], now: Date = new Date()): number[] {
+export function theMissesJustBefore(rows: ASessionOfTheirs[], leave: Stretch[] = [], now: Date = new Date(), o: { opensDaily?: boolean } = {}): number[] {
   const sessions = rows.filter((r) => !r.isSetup);
   if (!sessions.length) return [];
   const latest = Math.max(...sessions.map((s) => s.sessionNumber));
-  const closed = theirClosedSessions(rows, leave, now).filter((c) => c.sessionNumber < latest);
+  const closed = theirClosedSessions(rows, leave, now, o).filter((c) => c.sessionNumber < latest);
   const run: number[] = [];
   for (let i = closed.length - 1; i >= 0 && closed[i].missed; i--) run.unshift(closed[i].sessionNumber);
   return run;
@@ -209,10 +228,11 @@ export async function whoMissedTheCheckInsJustBefore(prisma: any, groundId: stri
     select: {
       id: true, groundId: true, userId: true, partyType: true, managingOnly: true, cameThroughTheLink: true,
       user: { select: { awaitingOrgApproval: true } },
+      ground: { select: { cadence: true } },
       checkIns: {
         select: {
           id: true, sessionNumber: true, status: true, isSetup: true, optional: true, closedReason: true, availableFrom: true,
-          createdAt: true, completedAt: true, missedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } },
+          createdAt: true, completedAt: true, missedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } },
         },
       },
     },
@@ -222,7 +242,7 @@ export async function whoMissedTheCheckInsJustBefore(prisma: any, groundId: stri
   if (!theirs.length) return out;
   const leave = await leaveOfThePeopleOn(prisma, [groundId]).catch(() => new Map<string, Stretch[]>());
   for (const p of theirs) {
-    const run = theMissesJustBefore(p.checkIns ?? [], leave.get(p.id) ?? [], now);
+    const run = theMissesJustBefore(p.checkIns ?? [], leave.get(p.id) ?? [], now, { opensDaily: opensDaily(p) });
     if (run.length) out.set(p.id, run);
   }
   return out;

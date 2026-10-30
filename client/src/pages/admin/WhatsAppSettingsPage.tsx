@@ -13,10 +13,10 @@ import { whatsAppSettingsApi, type OurWhatsAppSettings, type SaveOurWhatsAppSett
  * here (RequirePlatformAdmin, and PlatformAdminGuard on every route behind it).
  */
 
-const small = { fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55 } as const
+const small = { fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' } as const
 const label = { fontSize: 13, fontWeight: 700, display: 'block', marginBottom: 4 } as const
 /* The kit's field (app.css .input). */
-const input = { width: '100%', boxSizing: 'border-box', padding: '12px 16px', fontSize: 16, border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)', fontFamily: 'inherit' } as const
+const input = { width: '100%', boxSizing: 'border-box', padding: '12px 16px', fontSize: 16, border: '1px solid var(--rule2-crisp)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)', fontFamily: 'inherit' } as const
 const card = { border: '1px solid var(--gw-border)', borderRadius: 8, padding: 16, marginTop: 16, background: 'var(--gw-card)' } as const
 
 type Plain = 'displayNumber' | 'phoneNumberId' | 'businessAccountId'
@@ -113,7 +113,7 @@ function TheForm({ page }: { page: OurWhatsAppSettings }) {
           <div key={key} style={{ marginTop: 14 }}>
             <label htmlFor={`wa-${key}`} style={label}>
               {name}{' '}
-              <span style={{ fontWeight: 600, color: s.state === 'set' ? 'var(--gw-green-t)' : 'var(--gw-sub)' }}>{s.state === 'set' ? 'Set' : 'Not set'}</span>
+              <span style={{ fontWeight: 700, color: s.state === 'set' ? 'var(--gw-green-t)' : 'var(--gw-sub)' }}>{s.state === 'set' ? 'Set' : 'Not set'}</span>
             </label>
             <input
               id={`wa-${key}`}
@@ -151,7 +151,7 @@ function TheConnection() {
       {connection.isLoading && <p style={small}>Asking Meta…</p>}
       {connection.error && <p style={{ ...small, color: 'var(--gw-red-t)' }}>{said(connection.error, 'Groundwork could not check the connection. Try again.')}</p>}
       {connection.data && (
-        <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: 1.6, color: connection.data.connected ? 'var(--gw-green-t)' : 'var(--gw-text)' }}>
+        <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: '22px', color: connection.data.connected ? 'var(--gw-green-t)' : 'var(--gw-text)' }}>
           <strong>{connection.data.connected ? 'Connected' : 'Not connected'}.</strong> {connection.data.saying.replace(/^(Connected|Not connected)\.\s*/, '')}
         </p>
       )}
@@ -205,12 +205,12 @@ export function WhatsAppSettingsPage() {
       <button
         type="button"
         onClick={() => navigate('/admin')}
-        style={{ fontSize: 12.5, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+        style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
       >
         ← Back office
       </button>
       <h1 style={{ fontSize: 24, margin: '10px 0 0' }}>Groundwork's WhatsApp number</h1>
-      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 8 }}>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px', marginTop: 8 }}>
         This is the one WhatsApp number every organisation uses, unless it has connected a number of its own.
         Type in the number and its keys from Meta, give Meta the webhook address below, check that it is
         connected, and send yourself a test message. Nothing goes to anybody until WhatsApp is switched on
@@ -224,7 +224,7 @@ export function WhatsAppSettingsPage() {
         <>
           <div style={card}>
             <h2 style={{ fontSize: 15, margin: 0 }}>Is WhatsApp on?</h2>
-            <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: 1.6 }}>{page.switch.saying}</p>
+            <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: '22px' }}>{page.switch.saying}</p>
           </div>
 
           <TheConnection />
@@ -232,7 +232,7 @@ export function WhatsAppSettingsPage() {
 
           <div style={card}>
             <h2 style={{ fontSize: 15, margin: 0 }}>The webhook address to give Meta</h2>
-            <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: 1.6, wordBreak: 'break-all' }}>{page.webhook.saying}</p>
+            <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: '22px', wordBreak: 'break-all' }}>{page.webhook.saying}</p>
             {page.webhook.address && (
               <button
                 type="button"

@@ -1,4 +1,6 @@
 import { theDayInWords } from '../board/the-day-in-words';
+import { aQuietSessionOnADayTheyCheckedIn, theDayIn, theDaysTheyCheckedIn } from '../board/a-day-they-checked-in';
+import { THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { theAwayLine } from '../suites/who-is-away';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
@@ -381,7 +383,20 @@ export function whatNeedsYou(
       const heldOut = useCounted ? counted!.waitingOn!.filter((id) => notLetInIds.has(id)).length : 0;
       const total = useCounted ? counted!.ofPeople! - heldOut : rows.length;
       const answered = useCounted ? counted!.answeredThisRound ?? 0 : rows.filter((c) => c.status === 'COMPLETED').length;
-      const waitingIds = useCounted ? counted!.waitingOn!.filter((id) => !notLetInIds.has(id)) : rows.filter((c) => c.status !== 'COMPLETED').map((c) => c.participantId);
+      /*
+       * NOBODY IS WAITED ON FOR A SESSION THAT HAS NOT OPENED, OR ON A DAY THEY CHECKED IN (polish round 15; board/a-day-they-checked-in.ts).
+       * Wanjiru's Today read "Aisha has not checked in yet" every evening that week, about the next day's session written ahead of time, on
+       * days Aisha had answered. On a check-in that opens each working day, answering any session today is checking in today.
+       */
+      const theirSessions = (pid: string) => sessions.filter((c) => c.participantId === pid).map((c: any) => ({
+        ...c, answers: Array.isArray(c.turns) ? c.turns.length : null, firstAnsweredAt: Array.isArray(c.turns) ? c.turns[0]?.createdAt ?? null : null,
+      }));
+      const opensDaily = String((g as any).cadence ?? '').toUpperCase() === 'DAILY';
+      const theDay = theDayIn(new Date(at), THE_PRODUCTS_OWN_ZONE);
+      const checkedInToday = (pid: string) => opensDaily && theDaysTheyCheckedIn(theirSessions(pid), THE_PRODUCTS_OWN_ZONE).has(theDay);
+      const notOpenYet = (pid: string) => rows.some((c) => c.participantId === pid && c.status === 'NOT_STARTED' && (time(c.availableFrom) ?? 0) > at);
+      const waitingIds = (useCounted ? counted!.waitingOn!.filter((id) => !notLetInIds.has(id)) : rows.filter((c) => c.status !== 'COMPLETED').map((c) => c.participantId))
+        .filter((id) => !notOpenYet(id) && !checkedInToday(id));
       /*
        * NOBODY LEFT WHO CAN BE ASKED (request 118, 1). The count people read ("4 of 5") is the round header's;
        * who is still waited on is the round-closing rule's, which also leaves out somebody not let in yet or
@@ -399,6 +414,8 @@ export function whatNeedsYou(
         .filter((c: any) => !c.optional && wasAQuietClose(c) && !waitingIds.includes(c.participantId))
         .filter((c) => !checksInOnlyWhenTheyChoose(byId.get(c.participantId) as any))
         .filter((c) => !rows.some((o: any) => o.participantId === c.participantId && o.status === 'COMPLETED' && !wasAQuietClose(o)))
+        /* A session left quiet on a day they answered another is no miss: that day they checked in. */
+        .filter((c: any) => !opensDaily || !aQuietSessionOnADayTheyCheckedIn({ ...c, answers: Array.isArray(c.turns) ? c.turns.length : null }, theirSessions(c.participantId), THE_PRODUCTS_OWN_ZONE))
         .map((c) => c.participantId))];
       if (n > 0 && total > 1 && answered < total && (waitingIds.length > 0 || missedIds.length > 0) && (!line || total > line.people)) {
         const who = (id: string) => {

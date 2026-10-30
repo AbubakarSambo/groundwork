@@ -1,3 +1,4 @@
+import { whatWasAttachedSaid } from './what-was-attached-to-a-spend-request';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AN_ADMIN_SWITCHES_IT_ON } from './a-suite-that-is-off-says-what-to-do';
@@ -72,6 +73,8 @@ export interface AQueueItem {
   clash: { count: number; names: string[]; says: string } | null;
   /** Set when the reader reads this only because they stand in for somebody on leave: who, until when, and the sentence. */
   standingIn: { name: string; until: string | null; says: string } | null;
+  /** A request to spend: what the person attached when they asked, if anything (polish round 1, 25 October). */
+  attached?: { name: string; kind: string | null; words: string | null } | null;
 }
 
 export interface TheQueue {
@@ -293,7 +296,9 @@ export class ApprovalsQueueService {
       const amount = num(r.amount);
       return {
         id: r.id, suite: 'spend', name: fullOf(r.userId), firstName: first, team, waitingSince: m.since.toISOString(), workingDaysWaiting: waited, pastTheDeadline,
-        says: `${first} asked to spend ${c.spendAnswers.currency ? `${c.spendAnswers.currency} ` : ''}${amount.toLocaleString('en-US')} on ${whatTheMoneyIsFor(r.what ?? '', c.lookups.knownNames)}.`,
+        says: `${first} asked to spend ${c.spendAnswers.currency ? `${c.spendAnswers.currency} ` : ''}${amount.toLocaleString('en-US')} on ${whatTheMoneyIsFor(r.what ?? '', c.lookups.knownNames)}.${(() => { const att = whatWasAttachedSaid(first || 'They', r as any); return att ? ` ${att}` : ''; })()}`,
+        /* What they attached, with its words where they could be read, for the approver to read before deciding (polish round 1, 25 October). */
+        attached: (r as any).attachedName ? { name: (r as any).attachedName, kind: (r as any).attachedKind, words: (r as any).attachedText ?? null } : null,
         waitedSays, where, amount, line: `${first}: ${spendInWords(amount, c.spendAnswers.currency, r.what ?? '', c.lookups.knownNames)}`, startsOn: null, endsOn: null, clash: null, standingIn,
       };
     }).filter((i) => i.name);
@@ -303,8 +308,23 @@ export class ApprovalsQueueService {
   private async namesOf(ids: string[]): Promise<Map<string, { first: string; full: string }>> {
     const unique = [...new Set(ids.filter(Boolean))];
     if (!unique.length) return new Map();
-    const us = await this.prisma.user.findMany({ where: { id: { in: unique } }, select: { id: true, firstName: true, lastName: true } });
-    return new Map((us ?? []).map((u) => [u.id, { first: u.firstName?.trim() || '', full: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() }]));
+    const us = await this.prisma.user.findMany({ where: { id: { in: unique } }, select: { id: true, firstName: true, lastName: true, email: true } });
+    /*
+     * A REQUEST IS NEVER DROPPED FOR WANT OF A NAME (polish round 1, 26 October 2026). Brian joined without a first or last name on his
+     * sign-in, and the queue left out every item with no name: his request to spend was counted ("One request is waiting") and never
+     * shown, so nobody could approve it. The name falls back to the staff list, then the name he gave in a check-in, then his address's
+     * first part, as he is known.
+     */
+    const blank = (us ?? []).filter((u) => !u.firstName?.trim()).map((u) => u.id);
+    const roster: any[] = blank.length ? await Promise.resolve((this.prisma as any).person?.findMany?.({ where: { linkedUserId: { in: blank } }, select: { linkedUserId: true, givenName: true, familyName: true, displayName: true } })).catch(() => []) ?? [] : [];
+    const given: any[] = blank.length ? await Promise.resolve((this.prisma as any).groundParticipant?.findMany?.({ where: { userId: { in: blank }, nameGiven: { not: null } }, select: { userId: true, nameGiven: true } })).catch(() => []) ?? [] : [];
+    const fromTheirAddress = (email: string | null | undefined) => { const w = String(email ?? '').split('@')[0].split(/[._-]/)[0]; return w ? w.charAt(0).toUpperCase() + w.slice(1) : ''; };
+    return new Map((us ?? []).map((u) => {
+      if (u.firstName?.trim()) return [u.id, { first: u.firstName.trim(), full: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() }];
+      const e = roster.find((x) => x.linkedUserId === u.id);
+      const full = (e ? [e.givenName, e.familyName].filter(Boolean).join(' ').trim() || String(e.displayName ?? '').trim() : '') || String(given.find((x) => x.userId === u.id)?.nameGiven ?? '').trim() || fromTheirAddress(u.email);
+      return [u.id, { first: full.split(/\s+/)[0] ?? '', full }];
+    }));
   }
 
   /** The six rows the queue reads, in one query: the two suites and the four kinds of rule kept beside them. */

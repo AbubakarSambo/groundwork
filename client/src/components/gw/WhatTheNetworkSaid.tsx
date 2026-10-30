@@ -61,7 +61,7 @@ export function WhatTheNetworkSaid({ picture }: { picture: any }) {
     <section aria-label="What the accounts add up to" className="gwui-mt-6">
       {p.thePicture && (
         <div className={`${CARD} gwui-accent-left-blue`} style={{ background: 'white', borderRadius: 10 }}>
-          <div className="gwui-fs-16 gwui-ink-text" style={{ lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{p.thePicture}</div>
+          <div className="gwui-fs-16 gwui-ink-text" style={{ lineHeight: '26px', whiteSpace: 'pre-wrap' }}>{p.thePicture}</div>
         </div>
       )}
 
@@ -142,7 +142,7 @@ export function WhatTheNetworkSaid({ picture }: { picture: any }) {
         <>
           <div className={H}>What nobody said</div>
           <div className={CARD} style={{ background: 'var(--gw-bg)', borderRadius: 10 }}>
-            <ul className="gwui-fs-15 gwui-ink-sub gwui-pl-18 gwui-m-0" style={{ lineHeight: 1.7 }}>
+            <ul className="gwui-fs-15 gwui-ink-sub gwui-pl-18 gwui-m-0" style={{ lineHeight: '26px' }}>
               {p.whatNobodySaid.map((g: string, i: number) => <li key={i}>{g}</li>)}
             </ul>
           </div>
@@ -153,7 +153,7 @@ export function WhatTheNetworkSaid({ picture }: { picture: any }) {
         <>
           <div className={H}>What to ask next time</div>
           <div className={CARD} style={{ background: 'white', borderRadius: 10 }}>
-            <ul className="gwui-fs-15 gwui-ink-text gwui-pl-18 gwui-m-0" style={{ lineHeight: 1.7 }}>
+            <ul className="gwui-fs-15 gwui-ink-text gwui-pl-18 gwui-m-0" style={{ lineHeight: '26px' }}>
               {p.whatToAskNextTime.map((q: string, i: number) => <li key={i}>{q}</li>)}
             </ul>
           </div>

@@ -220,6 +220,7 @@ const unitsOf = (r: any): number | null => { const n = Number(String(r?.fields?.
 function whatShowsIt(row: any, claims: readonly AClaim[], name: string): string | null {
   const said = [...claims].reverse().find((c) => c.proven && c.about && String(c.about).toLowerCase() === String(row?.name ?? '').toLowerCase());
   if (said?.proofSays) return said.proofSays.replace(/^A document you added$/, `a document ${name} added`).replace(/^A reference you typed$/, `a reference ${name} typed`).replace(/^A colleague confirmed it$/, 'a colleague’s confirmation').replace(/^The /, 'the ').replace(/^A /, 'a ');
+  if (row?.mpesaCode) return `the M-Pesa code ${row.mpesaCode}`;
   if (row?.paymentRecord) return 'a payment record';
   if (row?.signedOrder) return 'a signed order';
   return null;
@@ -236,8 +237,10 @@ export function whatTheyDelivered(o: { participantId: string; name: string; role
     const rows: any[] = ((o.board?.workRecords ?? []) as any[]).filter((s) => s?.section === 'Deal grid').flatMap((s) => (s.rows ?? []) as any[])
       .filter((r) => (r.kind ?? 'deal') === 'deal' && r.ownerParticipantId === o.participantId);
     const proven = rows.filter((r) => r.group === 'won').map((r) => {
-      const amount = amountOf(r);
-      const units = unitsOf(r);
+      /* What was sold, as its payment shows it (polish round 15, U14: Juja Hardware's 2 units, not the 5 Joseph asked a price for). */
+      const sold = r.soldFields ? { ...r, value: null, fields: r.soldFields } : r;
+      const amount = amountOf(sold);
+      const units = unitsOf(sold);
       /* A deposit only is said as a deposit, with the code that shows it, never "a payment record" (final real-model check, item 10). */
       if (r.deposit?.says) {
         const code = r.mpesaCode ? `, and the M-Pesa code ${r.mpesaCode} shows it` : '';

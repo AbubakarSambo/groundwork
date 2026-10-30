@@ -1,6 +1,5 @@
 import { aWaitSomebodyElseChases } from './a-wait-somebody-else-chases';
 import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
-import { theDaysAnOpenDailySessionWasMissed } from './the-persons-record';
 import { whatTheyTriedFirst } from './what-they-tried-first';
 import { saidWhatTheyTried } from '../grounds/a-wait-is-the-speakers-account';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -23,6 +22,7 @@ import { theRecordInWords, acrossTheirCheckIns, type TheRecordInWords } from './
 import { thePraiseFromYourLead } from './the-praise-from-your-lead';
 import { onePromiseOneState } from '../grounds/your-board';
 import { thePromisesAsTheRecordKeepsThem } from '../grounds/a-promise-said-done-is-read-the-same-everywhere';
+import { theCheckInsCounted } from './a-day-they-checked-in';
 
 /**
  * MY WORK, AS EACH READER IS SERVED IT (Release 1B, pull request 3 of 3; Hafsah's references-and-my-work.md of 17 October 2026,
@@ -135,6 +135,10 @@ export interface ACheckInRow {
   completedAt?: Date | string | null;
   specificityLevel?: string | null;
   specificityDimensions?: unknown;
+  closedReason?: string | null;
+  /** How many answers of theirs it holds, and when the first came, where read (a-day-they-checked-in.ts). */
+  answers?: number | null;
+  firstAnsweredAt?: Date | string | null;
 }
 
 export interface ACommitmentRow {
@@ -272,13 +276,6 @@ function wasDue(c: ACheckInRow, now: Date): boolean {
   return !!opened && new Date(opened).getTime() + DAY <= now.getTime();
 }
 
-/** Done within a day of opening. */
-function wasOnTime(c: ACheckInRow): boolean {
-  if (c.status !== 'COMPLETED' || !c.completedAt) return false;
-  const opened = c.availableFrom ?? c.createdAt ?? null;
-  if (!opened) return true;
-  return new Date(c.completedAt).getTime() - new Date(opened).getTime() <= DAY;
-}
 
 const NOT_ENOUGH = 'Not enough check-ins show this yet.';
 
@@ -306,18 +303,26 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const promises = r.commitments.filter((c) => c.explicit !== false);
   const settled = promises.filter((c) => c.status === 'DONE' || c.status === 'NOT_DONE');
   const kept = settled.filter((c) => c.status === 'DONE');
-  /* A daily session left open counts once for each working day it stayed open, as the person's record counts it (final check, item 5). */
-  const due = r.checkIns.filter((c) => wasDue(c, r.now)).sort((a, b) => a.sessionNumber - b.sessionNumber)
-    .flatMap((c) => [c, ...theDaysAnOpenDailySessionWasMissed(c as any, r.now, r.timeZone, r.daily).map(() => c)]);
-  const done = due.filter((c) => c.status === 'COMPLETED');
-  const onTime = done.filter(wasOnTime);
+  /*
+   * A daily session left open counts once for each working day it stayed open, as the person's record counts it (final check, item 5).
+   * Done is a session they answered in, and a day they answered on is done whatever else opened and closed quietly that day: Peter's own
+   * page read "You did 4 of 5 check-ins on time" when he had answered on two days (polish round 15; a-day-they-checked-in.ts).
+   */
+  const counted = theCheckInsCounted(r.checkIns.map((c) => ({ ...c, specific: c.specificityLevel === 'specific' || (c.specificityDimensions as any)?.checkable === 'specific' })), {
+    now: r.now, zone: r.timeZone, daily: r.daily, due: (c) => wasDue(c as ACheckInRow, r.now),
+  });
+  const rowOf = new Map(r.checkIns.map((c) => [c.id, c]));
+  const asRow = (x: (typeof counted)[number]): ACheckInRow => ({ ...(rowOf.get(x.checkInId ?? '') ?? { id: x.checkInId ?? '', sessionNumber: x.sessionNumber ?? 0, status: 'NOT_STARTED' }), status: x.done ? 'COMPLETED' : 'NOT_STARTED' });
+  const due = counted.map(asRow);
+  const done = counted.filter((x) => x.done).map(asRow);
+  const onTime = counted.filter((x) => x.onTime);
   /*
    * SPECIFIC BY THE BOARD'S OWN RULE (engine test, Drop Access). Kevin gave the M-Pesa code QJK4TL2MX9, "Jane wants 6 units, so I sent
    * a quote for 30k", names, days and amounts, and his My work said "0 of 6 were specific", while the board read the same rounds as
    * checkable. A check-in is specific where its own read says so, or where at least one thing in it could be checked: the board's
    * first test of whether a round can be checked (aRoundCanBeChecked).
    */
-  const specific = done.filter((c) => c.specificityLevel === 'specific' || (c.specificityDimensions as any)?.checkable === 'specific');
+  const specific = counted.filter((x) => x.specific);
   /* Not a blocker of theirs to have tried on: a wait a colleague here is chasing or has promised (a-wait-somebody-else-chases). */
   /* Nor a customer's own budget or approval, asking for a view, or waiting for a check-in (final check, item 2). */
   const raised = dedupeDependencies(r.raised.filter((d) => d.onParticipantId !== r.person.participantId && !aWaitSomebodyElseChases(String((d as any).what ?? ''), r.othersChase ?? []) && !notABlockerTheyRaised(d as any, { sales: words.sales, namesHere: r.namesHere, theLeadOnHerTeam: r.personRunsIt })) as any[]) as AHandoffRow[];
@@ -410,7 +415,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
         if (due.length < 3) return read(b.key, 'Not enough yet', '', null);
         /* Needs work by the same bar their record is coached on: at least two that fell short, missed, late or vague (final check, item 3).
            One missed check-in in four is not "Needs work" here while their record does not coach on it. */
-        const fellShort = due.length - done.filter((c) => wasOnTime(c) && (c.specificityLevel === 'specific' || (c.specificityDimensions as any)?.checkable === 'specific')).length;
+        const fellShort = due.length - counted.filter((x) => x.done && x.onTime && x.specific).length;
         const strong = fellShort < 2 || (done.length / due.length >= 0.8 && onTime.length / due.length >= 0.7 && (done.length ? specific.length / done.length : 0) >= 0.7);
         const timing = onTime.length === done.length ? ' on time' : `, ${onTime.length} of them on time`;
         const happened = `${You} did ${done.length} of ${plural(due.length, 'check-in')}${timing}. ${specific.length} of ${done.length} ${specific.length === 1 ? 'was' : 'were'} specific.`;
@@ -586,7 +591,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
         note: `${open.length} open`,
         itemWord: words.itemWord,
         rows,
-        emptySays: words.keepsItems
+        /* Said only where there are none: "You have no deals on the board yet." was served beside Kevin's four deals (polish round 15, U8). */
+        emptySays: rows.length ? '' : words.keepsItems
           ? (self ? `You have no ${words.itemsWord} on the board yet.` : `${first} has no ${words.itemsWord} on the board yet.`)
           : 'This check-in keeps no items on its board.',
       },
@@ -645,7 +651,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       note: `${open.length} open`,
       itemWord: words.itemWord,
       rows,
-      emptySays: words.keepsItems
+      /* Said only where there are none: "You have no deals on the board yet." was served beside Kevin's four deals (polish round 15, U8). */
+      emptySays: rows.length ? '' : words.keepsItems
         ? (self ? `You have no ${words.itemsWord} on the board yet.` : `${first} has no ${words.itemsWord} on the board yet.`)
         : 'This check-in keeps no items on its board.',
     },
@@ -734,9 +741,13 @@ export async function readMyWork(
     prisma.workMention?.findMany?.({ where: { groundId: ground.id, aboutParticipantId: pid, kind: 'CREDIT' }, select: { sourceParticipantId: true, checkInId: true } }).catch(() => []) ?? [],
     prisma.checkIn?.findMany?.({
       where: { participantId: pid, groundId: ground.id, isSetup: false, isSelfCorrection: false, isClarification: false, isPostSignOff: false, optional: false },
-      select: { id: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true, specificityDimensions: true },
+      select: {
+        id: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true, specificityDimensions: true, closedReason: true,
+        /* Their own answers in it, to count what actually happened (a-day-they-checked-in.ts). */
+        turns: { where: { role: 'PERSON' }, select: { createdAt: true }, orderBy: { createdAt: 'asc' } },
+      },
       orderBy: { sessionNumber: 'asc' },
-    }).catch(() => []) ?? [],
+    }).then((rows: any[]) => (rows ?? []).map(({ turns, ...c }: any) => ({ ...c, ...(Array.isArray(turns) ? { answers: turns.length, firstAnsweredAt: turns[0]?.createdAt ?? null } : {}) }))).catch(() => []) ?? [],
     prisma.groundContextItem?.findMany?.({
       where: { groundId: ground.id, closedAt: null, OR: [{ kind: 'COACHING', audience: 'EVERYONE', aboutParticipantId: null }, { kind: 'HELP_WITH', aboutParticipantId: pid }] },
       select: { kind: true, text: true, audience: true, aboutParticipantId: true, createdAt: true },

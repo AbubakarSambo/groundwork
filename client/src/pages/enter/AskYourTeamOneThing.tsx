@@ -105,11 +105,11 @@ export default function AskYourTeamOneThing({ onBack }: { onBack?: () => void })
 
   const field: React.CSSProperties = {
     /* The kit's field (app.css .input). */
-    width: '100%', padding: '12px 16px', fontSize: 16, border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)',
+    width: '100%', padding: '12px 16px', fontSize: 16, border: '1px solid var(--rule2-crisp)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)',
     fontFamily: 'inherit', boxSizing: 'border-box',
   }
-  const legend: React.CSSProperties = { fontWeight: 600, fontSize: 14, marginBottom: 6 }
-  const hint: React.CSSProperties = { fontSize: 12.5, color: 'var(--gw-muted)', marginTop: 5 }
+  const legend: React.CSSProperties = { fontWeight: 700, fontSize: 14, marginBottom: 6 }
+  const hint: React.CSSProperties = { fontSize: 12, color: 'var(--gw-muted)', marginTop: 5 }
 
   if (checkYourEmail) {
     return (

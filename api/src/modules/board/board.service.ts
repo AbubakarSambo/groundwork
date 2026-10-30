@@ -58,7 +58,7 @@ import { theDealWasDropped, theLostDeal } from './a-deal-that-was-dropped';
 import { theStartOfATargetFromTheDeals } from './where-a-target-from-the-deals-started';
 import { theDealsThePromisesAreAbout } from './the-deal-a-promise-is-about';
 import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
-import { theWordsNameTheDeal, theDepositFor, aDepositSaid, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
+import { theWordsNameTheDeal, theDepositFor, aDepositSaid, theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, withTheSaleEachCodeAnswered, theTurnsBehindTheCodes, theSaleAsItsPaymentShowsIt, type ABackingDocument } from './a-deals-proof-is-about-that-deal';
 import { withTheValueWorkedOut, withOnlyTheNumbersSaid, theBuyingDateOf, theBuyingDateTheySaid, BUYING_DATE, aLineIsAbout } from './a-deals-value-and-buying-date';
 import { theirLine, theirCheckInToday, HAS_NOT_CHECKED_IN_TODAY, CHECKED_IN_TODAY } from './each-persons-line-today';
 import { withoutADealsFigure } from './a-deals-units-are-not-a-target';
@@ -227,6 +227,7 @@ import { itWasTakenFurther } from '../reports/what-they-said-they-did-about-it';
 import { ESCALATE_AFTER_DAYS } from '../webhooks/a-handoff-that-has-sat-too-long';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
 import { theDayZone } from '../../common/the-organisations-own-day';
+import { theDayIn, theDaysTheyCheckedIn } from './a-day-they-checked-in';
 import { whatTheDealStillNeeds, theValueLine } from './what-a-deal-still-needs';
 import { theDecisionsTheLeadPromised } from './a-decision-the-lead-promised';
 import { thePromisesCarriedOver } from './a-promise-carried-over';
@@ -237,7 +238,7 @@ import { theStagesKept } from './a-deals-stages-are-kept';
 import { aDaySaidInFull } from './a-day-said-in-full';
 import { theStallRuleOnRecord, theStallRuleAsALine, theStallRuleDeclined, NO_STALL_RULE_YET, THE_SUGGESTED_DAYS, THE_STALL_RULE_ASKED, type TheStallRule } from './the-stall-rule';
 import { whenTheyPay, theUnitsOf } from './a-sales-aim-is-counted-from-the-deals';
-import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, whereAWeeklyCountStands, whatTheseDealsHold, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
+import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, whereAWeeklyCountStands, whatTheseDealsHold, theDealsTheCountIsMadeOf, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
 import { theWaitsOnCustomersApart, theirOwnAnswersWhereTheWaitsWereSaid, withoutTheWaitsOnCustomers } from './a-customers-reply-is-on-its-deal';
 import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from './the-switchboard';
@@ -781,12 +782,13 @@ export class BoardService {
            only whoever runs the check-in reads. See saidAnythingCheckable. */
         completedAt: true, specificityLevel: true, specificityDimensions: true,
         /* When each session opened, for the session lines (request 107 e). */
-        availableFrom: true, startedAt: true,
+        availableFrom: true, startedAt: true, createdAt: true,
         /* Whether it was a set-up conversation, which the timeline leaves out: the anchor lead's set-up is saved done, and read as "the first answers for
            session 1 came in" before anybody had answered (review of fd583ba5). */
         isSetup: true,
         /* Whether the clock closed it with nothing said, which is not an answer (the grid's "answered"). */
-        closedReason: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } },
+        /* And when their first answer came, so a quiet session on a day they answered another is no miss (board/a-day-they-checked-in.ts). */
+        closedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } },
       },
       orderBy: { sessionNumber: 'asc' },
     });
@@ -1856,7 +1858,15 @@ export class BoardService {
               : (heldBack.has(p.id) ? { by: null, at: null, declined: false } : undefined),
             target: theirs?.target ?? null,
             count: theirs?.count ?? 0,
-            answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED && !wasAQuietClose(thisRound as any),
+            /*
+             * ANSWERED, FROM WHAT ACTUALLY HAPPENED (polish round 15; a-day-they-checked-in.ts). Wanjiru's board read "Aisha Kamau has not
+             * checked in for this session yet" every evening, about the next day's session written ahead of time, on days Aisha had answered.
+             * A session that has not opened yet is not one anybody is late for, and on a check-in that opens each working day, answering
+             * any session today is checking in today.
+             */
+            answeredThisRound: (thisRound?.status === CheckInStatus.COMPLETED && !wasAQuietClose(thisRound as any))
+              || (!!thisRound && thisRound.status === CheckInStatus.NOT_STARTED && !!thisRound.availableFrom && new Date(thisRound.availableFrom) > now)
+              || (String((ground as any).cadence ?? '').toUpperCase() === 'DAILY' && theDaysTheyCheckedIn(mine.map((c: any) => ({ ...c, answers: Array.isArray(c.turns) ? c.turns.length : null, firstAnsweredAt: Array.isArray(c.turns) ? c.turns[0]?.createdAt ?? null : null })), theDayZone()).has(theDayIn(now, theDayZone()))),
             roundsSoFar: new Set(mine.map((c) => c.sessionNumber)).size,
             missedJustBefore: missedJustBefore.get(p.id)?.length ?? 0,
             inTheWay: (ground.dependencies ?? [])
@@ -2668,7 +2678,7 @@ export class BoardService {
           .map((t) => ({ checkInId: t.checkInId ?? null, participantId: t.checkIn?.participantId ?? null, role: String(t.role), content: String(t.content ?? ''), createdAt: t.createdAt })))
         : [];
       const aboutDeal = promiseTurns.length
-        ? theDealsThePromisesAreAbout(openPromisesAsKept, promiseTurns, (items as any[]).filter((i) => i.kind === 'deal').map((i) => ({ name: String(i.name ?? ''), ownerParticipantId: (i.sourceEntryId ? lineOf.get(i.sourceEntryId)?.participantId : null) ?? i.ownerParticipantId ?? null })))
+        ? theDealsThePromisesAreAbout(openPromisesAsKept, promiseTurns, (items as any[]).filter((i) => i.kind === 'deal').map((i) => ({ name: String(i.name ?? ''), ownerParticipantId: (i.sourceEntryId ? lineOf.get(i.sourceEntryId)?.participantId : null) ?? i.ownerParticipantId ?? null , contact: String((i.fields as any)?.Contact ?? '').trim() || null})))
         : new Map<string, string>();
       const openPromises = openPromisesAsKept.map((c) => (aboutDeal.has(c.id) ? { ...c, about: aboutDeal.get(c.id) } : c));
       /* Whoever runs it reads every commitment about a record; anybody else only their own and the record holder's, never the lead's (decisions 4 and 30). */
@@ -2749,7 +2759,7 @@ export class BoardService {
         const mayReadTheWordsOf = (pid: string | null | undefined) => !!pid && (pid === me?.id || readsEveryonesWords);
         const everyLine = ((await (this.prisma.recordEntry.findMany({
           where: { disputedAt: null, participant: { groundId } } as any,
-          select: { id: true, text: true, participantId: true, createdAt: true, disputedAt: true, ...WHAT_A_MARK_READS } as any,
+          select: { id: true, text: true, participantId: true, checkInId: true, createdAt: true, disputedAt: true, ...WHAT_A_MARK_READS } as any,
         }) as Promise<any[]>).catch(() => [] as any[])) ?? []) as any[];
         const readableRows = everyLine.filter((l) => !l.disputedAt && mayReadTheWordsOf(l.participantId));
         const whoAddedEach = await whoAddedEachBackingDocument(this.prisma, readableRows).catch(() => new Map<string, string | null>());
@@ -2778,8 +2788,16 @@ export class BoardService {
          * Each payment record is about the customer its document names, or, with no document, the customer its line names
          * (Drop Access run 1, A1: Savannah Cafe's M-Pesa message is not a payment from Ngong Road Minimart).
          */
+        /* A code typed as the answer to a question about one sale is read with that sale (polish round 15, U14; withTheSaleEachCodeAnswered). */
+        const readableAsProof = releaseOne
+          ? withTheSaleEachCodeAnswered(
+            readableRows.map((l) => ({ ...l, text: cleanText(l.text ?? '') })),
+            await theTurnsBehindTheCodes(this.prisma, readableRows.map((l) => ({ ...l, text: cleanText(l.text ?? '') }))).catch(() => []),
+            rows.filter((r) => r.kind === 'deal').map((r) => ({ name: r.name, fields: r.fields, ownerParticipantId: r.ownerParticipantId ?? null })),
+          )
+          : readableRows;
         const provenHere = releaseOne
-          ? readableRows
+          ? readableAsProof
             .filter((l) => theRecordsMark(theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAddedEach)) === 'proven')
             .map((l) => ({ text: cleanText(l.text ?? ''), createdAt: l.createdAt, anchoredDocumentId: l.anchoredDocumentId ?? null }))
           : [];
@@ -2810,15 +2828,22 @@ export class BoardService {
                 .map((l) => String(l.text ?? ''))
                 .filter((t) => theWordsNameTheDeal(t, { name: r.name, fields: r.fields }) || theWordsNameTheDeal(cleanText(t), { name: r.name, fields: r.fields }))
               : [];
-            const worked = withTheValueWorkedOut(aboutIt.length ? withOnlyTheNumbersSaid(r.fields, aboutIt) : r.fields, theirs);
+            let worked = withTheValueWorkedOut(aboutIt.length ? withOnlyTheNumbersSaid(r.fields, aboutIt) : r.fields, theirs);
             /* Filed on the deal, or, where the listener has not filed it yet, the latest the owner said: the reports' own rule, so the board and the reports agree. */
             r.buyingDate = theBuyingDateOf(worked)
               ?? theBuyingDateTheySaid({ name: r.name, ownerParticipantId: r.ownerParticipantId, fields: worked }, everyLine.filter((l) => !l.disputedAt).map((l) => ({ text: cleanText(l.text ?? ''), participantId: l.participantId, createdAt: l.createdAt })));
             delete worked[BUYING_DATE];
-            r.fields = worked;
             r.paymentRecord = aPaymentRecordFor({ name: r.name, fields: worked }, paymentLines);
+            /*
+             * What was sold is what its payment shows (polish round 15, U2 and U14; theSaleAsItsPaymentShowsIt), the count's own rule: kept
+             * beside the deal's own details, which only take a value where they had none.
+             */
+            const soldFields = r.paymentRecord ? theSaleAsItsPaymentShowsIt({ name: r.name, fields: worked }, paymentLines) : null;
+            if (soldFields) (r as any).soldFields = soldFields;
+            if (soldFields?.Value && !Object.keys(worked).some((k) => /^(?:deal\s+)?(?:value|amount|worth|size)$/i.test(k.trim()))) worked = { ...worked, Value: soldFields.Value };
+            r.fields = worked;
             /* A deposit only is said as a deposit, never as paid (final real-model check, item 10): "Deposit paid, KES 15,000 of KES 30,000." */
-            const deposit = r.paymentRecord ? theDepositFor({ name: r.name, fields: worked }, paymentLines) : null;
+            const deposit = r.paymentRecord ? theDepositFor({ name: r.name, fields: soldFields ?? worked }, paymentLines) : null;
             if (deposit) (r as any).deposit = { ...deposit, says: aDepositSaid(deposit) };
             /* An M-Pesa code given in words is the payment record, shown as "M-Pesa code" (Hafsah, 19 October; theMPesaCodeFor). */
             const shownByADocument = r.paymentRecord && aPaymentRecordFor({ name: r.name, fields: worked }, thePaymentRecords(provenHere.filter((l) => !!l.anchoredDocumentId), docOf));
@@ -2832,7 +2857,7 @@ export class BoardService {
              * supports it. Read from the owner's lines whoever reads, so every reader reads the same deal. See a-deal-that-was-dropped.
              */
             const salesStages = theSalesStages((ground as any).workStages);
-            const dropped = theDealWasDropped({ name: r.name, stage: r.stage, ownerParticipantId: r.ownerParticipantId, fields: worked }, everyLine, { lastStage: salesStages[salesStages.length - 1] ?? null, peopleThere: peopleAt.get(r.id) ?? [], saidInTheCheckIn: ((items as any[]).find((x) => x.id === r.id)?.fields as any)?._dropped ?? null });
+            const dropped = theDealWasDropped({ name: r.name, stage: r.stage, ownerParticipantId: r.ownerParticipantId, fields: worked }, everyLine, { lastStage: salesStages[salesStages.length - 1] ?? null, peopleThere: peopleAt.get(r.id) ?? [], saidInTheCheckIn: ((items as any[]).find((x) => x.id === r.id)?.fields as any)?._dropped ?? null, otherDeals: rows.filter((x) => x.kind === 'deal').map((x) => String(x.name ?? '')) });
             if (dropped) {
               const who = !mayReadTheWordsOf(r.ownerParticipantId) ? null : r.ownerParticipantId === me?.id ? 'You' : (r.owner ? theShortNameOf(r.owner) : null);
               r.lost = { on: dropped.on, ...theLostDeal(r.name, dropped, who) };
@@ -3099,7 +3124,7 @@ export class BoardService {
         aColleague: (pid) => aColleague(pid),
       };
       const mine = await this.theRecordTheSwitchboardsSectionsRead(groundId, checkIns as any[]);
-      const sessions = (checkIns as any[]).map((c) => ({ id: c.id, participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, isSetup: !!c.isSetup, closedReason: c.closedReason ?? null, turns: c.turns }));
+      const sessions = (checkIns as any[]).map((c) => ({ id: c.id, participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, availableFrom: c.availableFrom ?? null, createdAt: c.createdAt ?? null, isSetup: !!c.isSetup, closedReason: c.closedReason ?? null, turns: c.turns }));
       const people = (ground.participants as any[]).map((p) => ({ id: p.id, managingOnly: !!p.managingOnly }));
       /* A quotation mark goes only round words found character for character in what that person typed. */
       /*
@@ -3124,7 +3149,7 @@ export class BoardService {
       if (workPlan.length) out.workPlan = workPlan;
       const timeline = theTimeline(mine.commitments, handoffs, sessions, (ground as any).closedAt ?? null, reader);
       if (timeline.length) out.timeline = timeline;
-      const personHistory = thePersonHistory(people, mine.commitments, handoffs, sessions, reader);
+      const personHistory = thePersonHistory(people, mine.commitments, handoffs, sessions, reader, String((ground as any).cadence ?? '').toUpperCase() === 'DAILY');
       if (personHistory.length) out.personHistory = personHistory;
       const blockerCheck = theBlockerCheck(handoffs, reader);
       if (blockerCheck.length) out.blockerCheck = blockerCheck;
@@ -3452,7 +3477,7 @@ export class BoardService {
             const c = countedFromTheDeals.get(f.objectiveId);
             if (!releaseOne || !c) return true;
             const sessionsCounted = new Set(((counts ?? []) as any[]).filter((x) => x.objectiveId === f.objectiveId).map((x) => x.sessionNumber)).size;
-            const sales = (c.paidDeals?.length ?? 0) + (c.signedDeals?.length ?? 0) + (c.saidDeals?.length ?? 0);
+            const sales = theDealsTheCountIsMadeOf(c).length;
             return sessionsCounted >= 4 && sales >= 3;
           });
         if (forecast.length) out.forecast = forecast;
@@ -3544,7 +3569,7 @@ export class BoardService {
           }
           sales = theSalesSignals({
             sold: c.count, target: teamAim.target, thing: c.counts === 'value' ? '' : c.thing,
-            wonDeals: [...(c.paidDeals ?? []), ...(c.signedDeals ?? []), ...(c.saidDeals ?? [])].map((x) => x.name),
+            wonDeals: theDealsTheCountIsMadeOf(c).map((x) => x.name),
             openHold,
             answersWaiting: [...waiting.entries()].map(([pid, v]) => ({ first: firstOf(pid) ?? 'Somebody', ...v })),
             paymentsDue,
@@ -4731,7 +4756,7 @@ export class BoardService {
   async createObjective(
     groundId: string,
     requestingUserId: string,
-    dto: { name: string; target?: number | null; ownerParticipantId?: string | null; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null; dueOn?: string | null; assumes?: string[] },
+    dto: { name: string; target?: number | null; ownerParticipantId?: string | null; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null; dueOn?: string | null; assumes?: string[]; unit?: string | null },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const owner = await this.whoOnThisGround(groundId, dto.ownerParticipantId);
@@ -4757,6 +4782,8 @@ export class BoardService {
         groundId,
         name: dto.name.trim(),
         target: dto.target ?? null,
+        /* What the number counts, as the lead wrote it ("units", "%", "KES"); blank is none (round 1 dead end, 25 October). */
+        unit: String(dto.unit ?? '').trim().slice(0, 12) || null,
         ownerParticipantId: owner,
         sortOrder: count,
         addedAtSession,
@@ -4837,7 +4864,7 @@ export class BoardService {
     groundId: string,
     objectiveId: string,
     requestingUserId: string,
-    dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null; dueOn?: string | null },
+    dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null; dueOn?: string | null; unit?: string | null; ownerParticipantId?: string | null },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     /* A person's own aim read from their promise (request 110): the lead's change puts it on the record first, as theirs. */
@@ -4867,6 +4894,10 @@ export class BoardService {
           ? { assumes: dto.assumes.map((a) => String(a ?? '').trim()).filter(Boolean).slice(0, 12) }
           : {}),
         ...(dto.target !== undefined ? { target: dto.target } : {}),
+        /* Whose goal it is, as the lead names it: somebody in this check-in, or null for whoever runs it (round 1, 25 October). */
+        ...(dto.ownerParticipantId !== undefined ? { ownerParticipantId: await this.whoOnThisGround(groundId, dto.ownerParticipantId) } : {}),
+        /* The unit the lead writes; blank takes it off (round 1, 25 October). */
+        ...(dto.unit !== undefined ? { unit: String(dto.unit ?? '').trim().slice(0, 12) || null } : {}),
         ...(dto.count !== undefined ? { count: dto.count, prevCount: existing.count } : {}),
         /* Decision 46: the lead alone (assertInitiatorOfBoardGround above), set plainly, never guessed. */
         ...(dto.isADecisionAboutAPerson !== undefined ? { isADecisionAboutAPerson: dto.isADecisionAboutAPerson === true } : {}),

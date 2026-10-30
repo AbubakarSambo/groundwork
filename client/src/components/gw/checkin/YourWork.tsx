@@ -67,7 +67,7 @@ function CommitmentMark({ done }: { done: boolean }) {
       aria-hidden
       style={{
         width: 15, height: 15, borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 10, fontWeight: 800, marginTop: 2,
+        fontSize: 10, fontWeight: 700, marginTop: 2,
         background: done ? 'var(--gw-green-bg)' : 'white',
         color: done ? 'var(--gw-green-t)' : 'var(--gw-sub-d)',
         border: '1px solid ' + (done ? 'var(--gw-green-b)' : 'var(--gw-border)'),
@@ -101,7 +101,7 @@ function CorrectionsYouHaveMade({ groundId }: { groundId: string }) {
             <span className="gwui-panel-text">
               Session {c.correctionOf ?? c.sessionNumber}. Corrected on {whenItWas(c.date, 'full')}.
             </span>
-            <Link to={`/checkin/${c.checkInId}`} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Details</Link>
+            <Link to={`/checkin/${c.checkInId}`} style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Details</Link>
           </div>
         ))}
       </Panel>
@@ -271,15 +271,15 @@ export function YourWork({
                 <div key={s.id} style={{ padding: '11px 16px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                     <span className="gwui-panel-text">Session {s.sessionNumber}, your own</span>
-                    <Link to={`/checkin/${s.id}/report`} className="gwui-tap-44" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>
+                    <Link to={`/checkin/${s.id}/report`} className="gwui-tap-44" style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>
                   </div>
                   {aTeamReportComes && (
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
                       <span className="gwui-panel-text">Session {s.sessionNumber}, the team’s</span>
                       {teamReleased
                         ? (onReadTeamReport
-                          ? <button type="button" onClick={onReadTeamReport} className="gwui-tap-44" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>Read</button>
-                          : <Link to={`/grounds/${groundId}/session/${s.sessionNumber}`} className="gwui-tap-44" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>)
+                          ? <button type="button" onClick={onReadTeamReport} className="gwui-tap-44" style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>Read</button>
+                          : <Link to={`/grounds/${groundId}/session/${s.sessionNumber}`} className="gwui-tap-44" style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>)
                         : <Tag tone="attention">Not shared yet</Tag>}
                     </div>
                   )}
@@ -326,7 +326,7 @@ export function YourWork({
               <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
                 {totalSessions != null && (
                   <div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)' }}>{completedCount} of {totalSessions}</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)' }}>{completedCount} of {totalSessions}</div>
                     {/* RE-REVIEW: "check-ins of 12" repeated the number already above it and read as
                         a clipped fragment rather than a caption. "Sessions so far" says what the
                         number is without saying it twice. "Session" is the one word for a single
@@ -336,7 +336,7 @@ export function YourWork({
                 )}
                 {keptThisMonth && (
                   <div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)' }}>{keptThisMonth.kept}/{keptThisMonth.of}</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)' }}>{keptThisMonth.kept}/{keptThisMonth.of}</div>
                     <div className="gwui-panel-text-muted">promises kept this month</div>
                   </div>
                 )}

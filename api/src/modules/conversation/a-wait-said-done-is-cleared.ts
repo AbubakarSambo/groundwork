@@ -136,8 +136,27 @@ function whatWaitedForApprovalWentOut(line: ALineOnRecord, wait: AnOpenWait): bo
   return sentences(line.text).some((s) => IT_WENT_OUT.test(s) && !NOT_YET.test(s) && numbersIn(s).some((n) => numbers.includes(n)));
 }
 
+/*
+ * THE ONE HOLDING IT SAYS NOTHING IS OWED (polish round 2, 26 October 2026). Kevin was told three mornings running that "Grace is waiting
+ * on you for an update on Kilele Hotel". He said "I dealt with Kilele Hotel myself, there's no update for Grace." and "I don't have an
+ * update on Kilele Hotel for Grace; that sale was complete on Monday." The wait came back each day. Once fixed, it stays fixed: a line from
+ * the one holding it that names the thing and the one waiting, and says there is nothing for them, ends the wait.
+ */
+const NOTHING_OWED = /\b(?:there(?:'s| is) no|(?:i )?(?:don't|do not) have an?|nothing (?:to give|owed|for))\b[^.;!?]*\b(?:for|to)\s+([A-Za-z]+)|\bdealt with [^.;!?]* myself\b/i;
+function theHolderSaysNothingIsOwed(line: ALineOnRecord, wait: AnOpenWait, namesOf: (participantId: string) => string[]): boolean {
+  if (!wait.onParticipantId || line.participantId !== wait.onParticipantId) return false;
+  const thing = theThingsOwnWords(wait.what);
+  if (!thing.length) return false;
+  const waiting = namesOf(wait.fromParticipantId).flatMap((n) => wordsOf(n)).filter((w) => w.length >= 2);
+  const text = sentences(line.text).join(' ');
+  const said = new Set(wordsOf(text).map(one));
+  if (!thing.some((w) => said.has(w))) return false;
+  return sentences(line.text).some((x) => NOTHING_OWED.test(x) && (waiting.some((w) => new Set(wordsOf(x)).has(w)) || /\bmyself\b/i.test(x)));
+}
+
 /** Whether one line says this wait is done. `namesOf` gives a person's own names (first name, full name); `leads`, who runs the check-in. */
 export function aLineSaysItIsDone(line: ALineOnRecord, wait: AnOpenWait, namesOf: (participantId: string) => string[], atTheCustomer: (holder: string) => string[] = () => [], leads: ReadonlySet<string> = new Set()): boolean {
+  if (theHolderSaysNothingIsOwed(line, wait, namesOf)) return true;
   if (String(line.type).toUpperCase() !== 'PROGRESS') return false;
   if (theLeadDecidedIt(line, wait, leads) || whatWaitedForApprovalWentOut(line, wait)) return true;
   const byTheOneWaiting = line.participantId === wait.fromParticipantId;

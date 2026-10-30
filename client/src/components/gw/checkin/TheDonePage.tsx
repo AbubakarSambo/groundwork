@@ -88,7 +88,7 @@ function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, te
            * it read as an extra button the prototype's own card does not have.
            */
           className="gwui-plain-link"
-          style={{ background: 'none', border: 'none', padding: 0, marginTop: 10, color: 'var(--gw-navy)', fontSize: 12.5, cursor: correcting ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+          style={{ background: 'none', border: 'none', padding: 0, marginTop: 10, color: 'var(--gw-navy)', fontSize: 12, cursor: correcting ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
         >
           {correcting ? 'Opening…' : 'Something here isn’t right'}
         </button>
@@ -222,7 +222,7 @@ export function TheDonePage({
         subtitle={`Your check-in is saved.${next ? ` ${next}` : ''}`}
       />
       {nextOpenId && (
-        <p style={{ margin: '-16px 0 0', fontSize: 13.5 }}>
+        <p style={{ margin: '-16px 0 0', fontSize: 14 }}>
           <Link to={`/checkin/${nextOpenId}`} style={{ color: 'var(--gw-navy)', fontWeight: 700, textDecoration: 'underline' }}>
             Go to it
           </Link>
@@ -234,7 +234,7 @@ export function TheDonePage({
       {isInitiator && sessionNumber === 1 && g && (() => {
         const c = theClosingAfterYourFirstCheckIn(g)
         return (
-          <p data-testid="the-leads-first-closing" style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}>
+          <p data-testid="the-leads-first-closing" style={{ margin: 0, fontSize: 15, lineHeight: '23px' }}>
             {c.before}
             <Link to={`/grounds/${groundId}?tab=settings`} style={{ color: 'var(--gw-navy)', fontWeight: 700, textDecoration: 'underline' }}>{c.link}</Link>
             {c.after}
@@ -328,7 +328,7 @@ export function TheDonePage({
               difference; a sighted reader now sees the prototype's own short line.
             */}
             {five.map(f => (
-              <li key={f.key} style={{ display: 'flex', gap: 8, fontSize: 13.5, lineHeight: 1.45, color: f.there ? 'var(--gw-text)' : 'var(--gw-sub)' }}>
+              <li key={f.key} style={{ display: 'flex', gap: 8, fontSize: 14, lineHeight: '20px', color: f.there ? 'var(--gw-text)' : 'var(--gw-sub)' }}>
                 <span aria-hidden style={{ width: 14, flexShrink: 0, color: f.there ? 'var(--gw-green-t)' : 'var(--gw-sub-d)', fontWeight: 700 }}>{f.there ? '✓' : '○'}</span>
                 <span>
                   {f.there ? f.met : f.missing}

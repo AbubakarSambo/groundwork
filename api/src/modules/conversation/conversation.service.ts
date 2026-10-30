@@ -173,6 +173,8 @@ import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture, anAnswerToTheIdeaOffer, ANSWERED_THE_IDEA_OFFER } from './ideas-from-the-team';
 import { askWhatItIs, askedWhatItIs, whatTheySaidItIs, SAID_WHAT_IT_IS } from './a-vague-promise-says-what-it-is';
+import { withTheOpeningLine } from './the-opening-line';
+import { A_SHORT_DAY, itIsTimeToClose, whereTheEndStands, whatToSayAboutTheEnd, itIsTimeToSayTheyCanEnd, YOU_CAN_END_NOW } from './a-short-day';
 import { theSumsOnlyARequestSaid, whereARequestInAnOrdinaryCheckInGoes } from './a-request-in-an-ordinary-check-in-goes-to-ask';
 import { withoutARatingOfWhatHappened } from './the-anchor-does-not-rate-what-happened';
 import { aRequestAfterTheirTurn, theyAreAnsweringAnOffer, withoutACannotApprove, withoutAPromiseToPassItOn } from './a-request-offered-in-the-check-in';
@@ -228,6 +230,9 @@ import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
 import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
+import { aDayIsNamedRight } from './a-day-is-named-right';
+import { theCheckInToAddTo, WHAT_WOULD_YOU_LIKE_TO_ADD, ADD_SOMETHING_REFUSED } from './add-something';
+import { aLastTimeInTheirOwnWords, type AWordTheyWrote } from './a-last-time-is-their-own-words';
 import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
 import { isShut } from '../grounds/a-ground-that-has-ended';
 import { whenTheNextSessionOpens } from '../grounds/the-check-ins-own-schedule';
@@ -1517,8 +1522,15 @@ export class ConversationService {
     ].filter(Boolean).join(' ').trim() || null;
     const quoted = nothingSaidYetCannotBeQuoted(held, saidSoFar, whoSetItUp);
     if (quoted.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener quoted a person who has not spoken; rewritten.`);
+    /* "Last time you said..." is their own words with its day, or it is not said (a-last-time-is-their-own-words.ts, 26 October). */
+    const theirEarlier: AWordTheyWrote[] = personal ? [] : await (this.prisma.conversationTurn?.findMany?.({
+      where: { role: TurnRole.PERSON, checkIn: { participantId: checkIn.participantId }, NOT: { checkInId: checkIn.id } },
+      select: { content: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 200,
+    }) ?? Promise.resolve([])).then((ts: any[]) => ts.map((t) => ({ text: t.content ?? '', at: t.createdAt }))).catch(() => []);
+    const theirOwn = personal ? { text: quoted.text, changed: false } : aLastTimeInTheirOwnWords(quoted.text, theirEarlier);
+    if (theirOwn.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener told them what they said before; now in their own words.`);
     /* An opener never answers its own question for them: "Is that now filed? Understood. What is..." (E7). */
-    const guarded0 = await this.theTurnAsItIsSaved(checkIn as any, withoutAnAnswerToItsOwnQuestion(quoted.text));
+    const guarded0 = await this.theTurnAsItIsSaved(checkIn as any, withoutAnAnswerToItsOwnQuestion(theirOwn.text));
     /* News a promise of theirs waits on, that somebody else already gave: told in one line, first (Hafsah, 19 October, FN-005). See a-promise-that-waits-on-news. */
     /* The direct morning's own opening is said as it was written, first; news a promise of theirs waits on follows it. */
     const guarded = personal ? await this.thePersonalOpeningAsSaid(checkIn as any, personal.text) : await this.withTheNewsTheyWaitOn(checkIn as any, guarded0).catch(() => guarded0);
@@ -1530,7 +1542,9 @@ export class ConversationService {
     // never reach a person even if the model emits it in the wrong place.
     const aiTurn = await this.prisma.conversationTurn.create({
       data: {
-        checkInId: checkIn.id, role: TurnRole.AI, content: opening,
+        /* How long it takes and how to stop, in front of the first message, which stays as it was (the-opening-line.ts, 26 October). */
+        /* Not on a correction of their own record: that is not a ten-minute check-in, and the short day does not apply to it. */
+        checkInId: checkIn.id, role: TurnRole.AI, content: (checkIn as any).isSelfCorrection || alreadyWritten === WHAT_WOULD_YOU_LIKE_TO_ADD ? opening : withTheOpeningLine(opening),
         /* Stamped as it is written, so the two-party balance can be counted without ever reading
            one person's turns while answering another - see the-same-burden-on-both-sides.ts. */
         askedFor: stampWhatItAskedFor(opening),
@@ -1646,6 +1660,8 @@ export class ConversationService {
     raw = aPersonNeverReadsAnInternalName(raw, `check-in ${(checkIn as any)?.id ?? ''} turn`, this.logger);
     /* "Wanjiru's's" is "Wanjiru's" on every path (messages test, fourth run). */
     raw = withOnePossessive(raw);
+    /* "yesterday, Tuesday" on a Tuesday is put right from the calendar (a-day-is-named-right.ts, 26 October). */
+    raw = aDayIsNamedRight(raw, new Date()).text;
     /*
      * AND A QUESTION THE LEAD CONFIRMED IS ASKED IN THE WORDS THEY CONFIRMED. Decision 34: the model
      * decides when to ask it, and where it asked it its own way the confirmed sentence is put back.
@@ -2125,6 +2141,26 @@ export class ConversationService {
    * through `streamDraft`. Everything after the draft is the same code, and the final text, which is
    * what is saved, replaces the draft on the screen. See sendMessageStream.
    */
+  /** Add something to their own record, any time (add-something.ts): into the check-in that is open, else the next one, opened now. */
+  async addSomething(groundId: string, userId: string, text: string): Promise<{ checkInId: string; reply: string }> {
+    const said = String(text ?? '').trim();
+    if (!said) throw new BadRequestException(ADD_SOMETHING_REFUSED.empty);
+    const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId }, select: { id: true } });
+    if (!participant) throw new ForbiddenException(ADD_SOMETHING_REFUSED.notInIt);
+    const theirs = await this.prisma.checkIn.findMany({
+      where: { groundId, participantId: participant.id, status: { in: [CheckInStatus.IN_PROGRESS, CheckInStatus.NOT_STARTED] }, isSetup: false, isSelfCorrection: false },
+      select: { id: true, status: true, sessionNumber: true },
+    });
+    const target = theCheckInToAddTo(theirs as any[]);
+    if (!target) throw new BadRequestException(ADD_SOMETHING_REFUSED.nothingToAddTo);
+    if (target.status === CheckInStatus.NOT_STARTED) {
+      await this.prisma.checkIn.update({ where: { id: target.id }, data: { availableFrom: new Date() } });
+      await this.open(target.id, userId, WHAT_WOULD_YOU_LIKE_TO_ADD);
+    }
+    const out: any = await this.sendMessage(target.id, userId, said);
+    return { checkInId: target.id, reply: String(out?.reply ?? out?.content ?? '') };
+  }
+
   async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string, how: { streamDraft?: (text: string) => void; alreadyJoined?: boolean; door?: Door; answering?: string | null } = {}): Promise<any> {
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
     /*
@@ -2248,7 +2284,17 @@ export class ConversationService {
     const lastReply = await Promise.resolve((this.prisma.conversationTurn as any).findFirst?.({ where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'desc' }, select: { content: true } }))
       .catch(() => null) as { content: string | null } | null;
     const saysWhatItIs = askedWhatItIs(lastReply?.content ?? '');
-    const fullSystem = [composed, inTheBaseline ? null : aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null, whatItIs]
+    /*
+     * No question limit and no forced close (a-short-day.ts, Hafsah after round 3): once today's needs are covered it asks "Anything else I
+     * should know?", and closes after they answer it or say there is nothing more, with at most two follow-ups on what they added.
+     */
+    const ourTurnsNewestFirst: string[] = await Promise.resolve((this.prisma.conversationTurn as any).findMany?.({
+      where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'desc' }, take: 12, select: { content: true },
+    })).then((rows: any[]) => (Array.isArray(rows) ? rows : []).map((r) => String(r.content ?? ''))).catch(() => []);
+    const endStands = whereTheEndStands(ourTurnsNewestFirst, message);
+    const timeToClose = itIsTimeToClose(endStands, !!(checkIn as any).isSelfCorrection);
+    const aboutTheEnd = inTheBaseline ? null : whatToSayAboutTheEnd(personTurnCount + 1, endStands, !!(checkIn as any).isSelfCorrection);
+    const fullSystem = [composed, inTheBaseline ? null : A_SHORT_DAY, inTheBaseline ? null : aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null, timeToClose ? null : whatItIs, aboutTheEnd]
       .filter(Boolean)
       .join('\n\n')
       /* The anchor's short reminder, when it is in play, is read after everything else. */
@@ -3342,7 +3388,7 @@ export class ConversationService {
       const more = theFloorForAPersonsFinish(!!(checkIn as any).isSelfCorrection, theirScenario) - (personTurnCount + 1);
       if (more > 0) aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: aFinishTooSoon(aiTurn.content ?? '', more) } });
     }
-    const signalled = !answeringAnOffer && (hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message));
+    const signalled = !answeringAnOffer && (hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message) || timeToClose);
     const close: { ready: boolean; ask?: string; sayFirst?: string; nextStep?: { isLead: boolean; personSaid: string[] } } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
     /* A close on an apology says, first, that none was owed. See an-apology-is-not-owed. */
     /* WITH THE DIRECT MORNING ON (email/a-direct-email.ts): nothing about how the record will read, and an apology met in four words. */
@@ -3406,7 +3452,14 @@ export class ConversationService {
         });
       }
     }
-    const sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));
+    let sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));
+    /*
+     * A CHECK-IN THAT RUNS LONG IS OFFERED AN END, NEVER GIVEN ONE (Hafsah after round 3). Said once, after the reply, and the person decides;
+     * on WhatsApp the same line says "reply END" (the-opening-line.ts).
+     */
+    if (!sessionComplete && !answeringAnOffer && !(checkIn as any).isSelfCorrection && itIsTimeToSayTheyCanEnd(personTurnCount + 1, false, ourTurnsNewestFirst)) {
+      aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: `${String(aiTurn.content ?? '').trim()}\n\n${YOU_CAN_END_NOW}` } });
+    }
     /* They said they are leaving: no "One thing before you go - ..." handing their own words back as a request, whether
        the product closes now or tells them how to finish (reviewer, 14 October). */
     if (!answeringAnOffer && askedToFinish([message])) {
@@ -3563,7 +3616,17 @@ export class ConversationService {
      * local corpus, and nobody should wait that long for "That's all for today". It is kept on this
      * turn and served on the transcript, where the screen picks it up.
      */
-    if (sessionComplete) this.startTheEndCard(checkIn as any, aiTurn.id);
+    if (sessionComplete) {
+      this.startTheEndCard(checkIn as any, aiTurn.id);
+      /*
+       * IT ENDS ON ITS OWN (Hafsah, 26 October 2026). Once Groundwork has closed it, the session is marked finished here, on every door,
+       * with no button to press: on the live platform check-ins were left open after the goodbye. It waits for the card, then writes the
+       * record, off this reply. A press of "That’s right, finish" or "finish" meanwhile waits for this and gets the same answer.
+       */
+      (this.finishedByGroundwork ??= new Map()).set(checkIn.id, this.finishTheSession(checkIn as any, 'the person', { waitForTheCard: true })
+        .catch((err: any) => { this.logger.warn(`Check-in ${checkIn.id}: finishing on its own failed: ${err?.message}`); return null as any; })
+        .finally(() => setTimeout(() => this.finishedByGroundwork?.delete(checkIn.id), 60_000).unref?.()));
+    }
     /*
      * AN IDEA, SAID BACK FOR A YES (anchor piece 19). Only on a check-in started from the anchor link, with the switch
      * on: their yes captures the idea waiting for it, and a new idea in what they just wrote is offered in the spec's
@@ -3706,6 +3769,11 @@ export class ConversationService {
       }),
     ]);
     const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
+    /*
+     * THEIR OWN END, WITH ANYTHING SAID (Hafsah, 26 October 2026). complete() honours a person's own request to finish with any answer
+     * given, so the close does too, by the same reading, before the thin-record hold (request 47: the two always agree).
+     */
+    if (personSaid.length > 0 && askedToFinish(personSaid)) return { ready: true };
     /*
      * NEVER A GOODBYE FOR A RECORD THE SERVER WILL NOT WRITE (request 47). complete() refuses an
      * empty record whatever was said, so the close refuses it by the same reading, first.
@@ -7319,7 +7387,18 @@ ${told}` : '';
    *   Read live, 22 Sep 2026: three answers on an open-link discovery, "I am done", and "a few more
    *   exchanges are needed" - the pop-up Hafsah had reported that morning, on the other path.
    */
+  /** Sessions Groundwork closed and is finishing on its own (sendMessage): a finish pressed meanwhile waits for it, never runs twice. */
+  private finishedByGroundwork = new Map<string, Promise<any>>();
+
   async complete(checkInId: string, requestingUserId: WhoIsAsking, how: { theyAskedToFinish?: boolean; waitForTheCard?: boolean } = {}) {
+    const inFlight = this.finishedByGroundwork?.get(checkInId);
+    if (inFlight) {
+      /* Only the session's own person: the door's refusal stands, except the one that says it is already finished, which is the
+         background finish landing first ("You have already finished this check-in", loadOwnedOpenCheckIn; ownership is checked before it). */
+      await this.openTheDoor(checkInId, requestingUserId).catch((e: any) => { if (!/already finished this check-in|already complete/i.test(String(e?.response?.message ?? e?.message ?? ''))) throw e; });
+      const done = await inFlight;
+      if (done) return done;
+    }
     const checkIn = await this.openTheDoor(checkInId, requestingUserId);
 
     // Completion-readiness gate (B4): a check-in only closes once the person has
@@ -7369,7 +7448,16 @@ ${told}` : '';
     const scenarioOfThis = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { scenario: true } }).then((g) => g?.scenario ?? null).catch(() => null);
     /* Pressing finish, or writing it, is the person's own request: three answers are enough (problem 4). */
     const minTurns = theFloorForAPersonsFinish(!!checkIn.isSelfCorrection, scenarioOfThis);
-    if (personTurnRows.length < minTurns && !how.theyAskedToFinish && !askedToFinish(personTurnRows.map((t) => t.content ?? ''))) {
+    /*
+     * ENDING EARLY KEEPS EVERYTHING SAID (Hafsah, 26 October 2026). "End session" is always there, and a person who ends it, with
+     * anything said, is finished: what they said is kept and the next session picks up what is missing. With nothing said yet there
+     * is nothing to keep, and the check-in stays open for when they come back.
+     */
+    const theyEndedIt = !!how.theyAskedToFinish || askedToFinish(personTurnRows.map((t) => t.content ?? ''));
+    if (theyEndedIt && personTurnRows.length === 0) {
+      throw new BadRequestException({ message: 'Nothing has been said yet, so there is nothing to save. Your check-in stays open for when you come back.', canContinue: true });
+    }
+    if (personTurnRows.length < minTurns && !theyEndedIt) {
       throw new BadRequestException({
         message:
           /* The same sentence the app and WhatsApp say (4 October 2026), in whole sentences, with no dash. */
@@ -7419,7 +7507,7 @@ ${told}` : '';
      * the sentence would make the copy load-bearing: somebody rewording it later would silently
      * reinstate the trap.
      */
-    if (almostNothingHereYet(personTurnRows.map((t) => t.content ?? ''), !!checkIn.isSelfCorrection)) {
+    if (!theyEndedIt && almostNothingHereYet(personTurnRows.map((t) => t.content ?? ''), !!checkIn.isSelfCorrection)) {
       throw new BadRequestException({
         message: 'There is almost nothing here yet. Answer a couple of the questions properly, then complete.',
         canContinue: true,

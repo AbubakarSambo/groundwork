@@ -40,15 +40,15 @@ function WhatGroundworkHasSentUs() {
       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>
         Callbacks from Groundwork to this back office
       </div>
-      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>
         We are a Groundwork customer too. This is what it has sent us, with each signature checked.
       </div>
       {(arrived.data.events ?? []).length === 0 ? (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{arrived.data.says}</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' }}>{arrived.data.says}</div>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
           {(arrived.data.events ?? []).slice(0, 8).map((e, i) => (
-            <li key={i} style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
+            <li key={i} style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
               {/* A delivery that did not verify is the one worth seeing, so it is said first and in
                   the product's own words rather than shown as a red dot. */}
               {e.verified ? (e.says ?? e.kind) : `${e.kind} - the signature did not check out`}
@@ -84,7 +84,7 @@ export function OpsDeploymentPage() {
     {
       head: 'Client',
       cell: (d) => (
-        <Link to={`/ops/companies/${d.company.key}`} style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>
+        <Link to={`/ops/companies/${d.company.key}`} style={{ color: 'var(--gw-navy)', fontWeight: 700 }}>
           {d.company.name}
         </Link>
       ),

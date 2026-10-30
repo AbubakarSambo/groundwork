@@ -193,6 +193,8 @@ describe('every surface that hands out whose number it is', () => {
     /* Release 7, a review built from check-ins: the person's own goals and their versions, read for that person's review only. */
     'modules/suites/the-reviews.service.ts': "reads the reviewed person's own goals and their versions, for that person's review, under the review's own readers",
     'modules/suites/the-running-record.ts': "reads a person's own goal versions for their own running record and self-review, read by that person alone",
+    /* Polish round 1, 26 October 2026: Ask reads the record a reader may read. A lead reads their team's deals and whose each is; anybody else only their own. Never a target or a number. */
+    'modules/assistant/a-question-is-answered-from-the-documents.ts': "reads each deal's owner (a work item) for Ask: the lead who runs the check-in reads the team's, anybody else only their own; never a target or a number",
     'modules/board/your-team-person-by-person.ts': "reads each person's own records (work items) by their own id, for the lead who runs the check-in alone; never a target or a number",
   };
 

@@ -13,7 +13,7 @@ export const YOU_HAVE_NO_SHARE_YET = 'There is no number of yours on this board 
 export function theShareSays(
   name: string, count: number | null | undefined, target: number, direction?: string | null,
   /* Where the count is the reader's own deals on record (a-sales-aim-is-counted-from-the-deals). */
-  fromTheDeals?: { counts: string; proven: number | null; shown?: number | null; currency?: string | null; thing?: string | null; paidDeals?: { name: string; holds: number }[]; signedDeals?: { name: string; holds: number; paysWhen: string | null }[]; saidDeals?: { name: string; holds: number }[] } | null,
+  fromTheDeals?: { counts: string; proven: number | null; shown?: number | null; currency?: string | null; thing?: string | null; paidDeals?: { name: string; holds: number }[]; depositDeals?: { name: string; holds: number }[]; signedDeals?: { name: string; holds: number; paysWhen: string | null }[]; saidDeals?: { name: string; holds: number }[] } | null,
 ): string {
   const aim = /[.!?]$/.test((name ?? '').trim()) ? name.trim() : `${(name ?? '').trim()}.`;
   /*
@@ -21,13 +21,15 @@ export function theShareSays(
    * to Greenfield Supermarket, on a signed order. Payment is due on delivery on Friday 16 October." Where the deals are named
    * (Release 1's sales board), from the reader's own deals only.
    */
-  if (fromTheDeals && fromTheDeals.counts !== 'new leads' && !direction && count && (fromTheDeals.paidDeals || fromTheDeals.signedDeals || fromTheDeals.saidDeals)) {
+  if (fromTheDeals && fromTheDeals.counts !== 'new leads' && !direction && count && (fromTheDeals.paidDeals || fromTheDeals.depositDeals || fromTheDeals.signedDeals || fromTheDeals.saidDeals)) {
     const say = (v: number) => (fromTheDeals.counts === 'value' && fromTheDeals.currency ? `${fromTheDeals.currency} ${aNumberPeopleCanRead(v)}` : aNumberPeopleCanRead(v));
     const thing = fromTheDeals.counts === 'value' ? '' : ` ${fromTheDeals.counts === 'sales' ? 'sales' : (fromTheDeals.thing ?? 'units')}`;
     const listed = (xs: { name: string }[]) => (xs.length <= 1 ? xs.map((x) => x.name).join('') : `${xs.slice(0, -1).map((x) => x.name).join(', ')} and ${xs[xs.length - 1].name}`);
     const sum = (xs: { holds: number }[]) => xs.reduce((t, x) => t + x.holds, 0);
     const groups = [
       { xs: fromTheDeals.paidDeals ?? [], word: 'paid' },
+      /* A deposit is a sale, said as a deposit, never left out of the names (polish round 15, U8). */
+      { xs: fromTheDeals.depositDeals ?? [], word: 'on a deposit' },
       { xs: fromTheDeals.signedDeals ?? [], word: 'on a signed order' },
       { xs: fromTheDeals.saidDeals ?? [], word: 'on your word' },
     ].filter((g) => g.xs.length);

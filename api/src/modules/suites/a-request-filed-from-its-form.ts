@@ -1,3 +1,4 @@
+import { attachToASpendRequest } from './what-was-attached-to-a-spend-request';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LeaveBoardService } from './the-leave-board.service';
@@ -38,6 +39,11 @@ export class ARequestFiledFromItsForm {
     /* The request is on the approver's board by now. Failing to word it must not turn a sent request into a server fault the person would send again. */
     const says = await theLeaveRequestSent(this.prisma, reader, asked).catch(() => THE_REQUEST_WAS_SENT);
     return { id: (created as { id: string }).id, says };
+  }
+
+  /** A receipt or a proforma, attached by the person who asked, while the request waits (what-was-attached-to-a-spend-request.ts). */
+  attachToSpending(reader: { userId: string; organizationId: string }, id: string, kind: unknown, file: any) {
+    return attachToASpendRequest(this.prisma, reader, id, kind, file);
   }
 
   async spendingRequest(reader: { userId: string; organizationId: string }, input: { amount: number; what: string; category?: string | null }): Promise<{ id: string; says: string }> {

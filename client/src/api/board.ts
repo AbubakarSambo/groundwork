@@ -1082,10 +1082,10 @@ export const boardApi = {
     }>(`/grounds/${groundId}/board/objectives/propose`, dto).then((r) => r.data),
 
   /** Initiator only: the lead's frame. A target, never an assessment of a person. */
-  createObjective: (groundId: string, dto: { name: string; target?: number | null }) =>
+  createObjective: (groundId: string, dto: { name: string; target?: number | null; unit?: string | null }) =>
     apiClient.post(`/grounds/${groundId}/board/objectives`, dto).then((r) => r.data),
 
-  updateObjective: (groundId: string, objectiveId: string, dto: { name?: string; target?: number | null; count?: number; assumes?: string[] }) =>
+  updateObjective: (groundId: string, objectiveId: string, dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; unit?: string | null; ownerParticipantId?: string | null }) =>
     apiClient.patch(`/grounds/${groundId}/board/objectives/${objectiveId}`, dto).then((r) => r.data),
 
   deleteObjective: (groundId: string, objectiveId: string) =>

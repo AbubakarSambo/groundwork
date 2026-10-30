@@ -279,10 +279,10 @@ export function ContextChat({ groundId }: { groundId: string }) {
         account - which is the sentence that makes a person willing to use it at all.
       */
       <div style={{ background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
           The context chat
         </div>
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 11 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginBottom: 11 }}>
           Talk through what this check-in is for, what each person is working to, and what you know
           about how it is going - or paste it all in at once. It fills in this page as you go, and
           what lands here guides the check-ins and the coaching. Nothing is written until you say so.
@@ -338,7 +338,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
         What stays true and is worth saying: nothing is written until you say so, and nothing you
         write about a person is ever quoted to them or in a report.
       */}
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginBottom: 14 }}>
         {/*
           GROUP 3'S REVIEW, BATCH A FAULT 6: "SAY IT, PASTE IT, OR ATTACH IT: WHAT LANDS HERE..."
           JOINED TWO SENTENCES WITH A COLON.
@@ -365,7 +365,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
               paddingLeft: 12,
               color: m.role === 'user' ? 'var(--gw-dark)' : 'var(--gw-text)',
               fontWeight: m.role === 'user' ? 600 : 400,
-              fontSize: 13.5,
+              fontSize: 14,
               lineHeight: 1.65,
               whiteSpace: 'pre-wrap',
             }}
@@ -388,7 +388,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
         */}
       {proposal && (
         <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
-          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 10, whiteSpace: 'pre-wrap' }}>{proposal.say}</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '20px', marginBottom: 10, whiteSpace: 'pre-wrap' }}>{proposal.say}</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn pri sm"
               onClick={() => confirm.mutate()}
@@ -481,7 +481,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
               setText('')
               qc.removeQueries({ queryKey: ['context-chat-opening', groundId] })
             }}
-            style={{ fontSize: 11.5, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+            style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
             title="Clear this conversation and start again. Anything already saved stays."
           >
             Start this conversation over

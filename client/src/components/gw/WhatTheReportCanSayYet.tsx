@@ -181,10 +181,10 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
       */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
         {/* REVIEW ROUND 3, ITEM 5: NOT SHOUTED IN CAPITALS. */}
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>
           How much the report has to go on
         </div>
-        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
           {have} of {rows.length}
         </div>
       </div>
@@ -211,7 +211,7 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
               on render only, so it reads as a short caption under its bar rather than a piece of a
               sentence that got cut off.
             */}
-            <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.25 }}>
+            <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: '11px' }}>
               {r.short.charAt(0).toUpperCase() + r.short.slice(1)}
             </div>
             {/*
@@ -222,7 +222,7 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
               longer depend on it.
             */}
             {!r.can && r.because && (
-              <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.25 }}>
+              <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: '11px' }}>
                 {r.because}
               </div>
             )}
@@ -238,7 +238,7 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
         is left is the one fact the labels cannot carry: a dashed bar is a thing the report cannot
         say yet, not a thing it failed at.
       */}
-      <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 8, lineHeight: 1.5 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 8, lineHeight: 1.5 }}>
         Dashed ones it cannot say yet. What each one is waiting for is written under it.
       </div>
     </div>

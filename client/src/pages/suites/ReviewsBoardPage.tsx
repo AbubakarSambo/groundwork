@@ -150,7 +150,31 @@ export function ReviewsBoardPage() {
           </Panel>
         </Section>
       ))}
+      {(data?.startNow ?? []).length > 0 && (
+        <Section heading="Start a review now" note="Nothing has fallen due for these people yet. You can start one today.">
+          <RowList label="Start a review now">
+            {data!.startNow!.map(p => <StartNowRow key={p.externalId} p={p} />)}
+          </RowList>
+        </Section>
+      )}
     </Page>
+  )
+}
+
+/** Anyone the reader would write a review for, with nothing due, can be reviewed today (polish round 1, 26 October 2026). */
+function StartNowRow({ p }: { p: { externalId: string; name: string } }) {
+  const go = useNavigate()
+  const [problem, setProblem] = useState<string | null>(null)
+  const start = useMutation({
+    mutationFn: () => reviewsApi.startNow(p.externalId),
+    onSuccess: (r) => go(`/suite/reviews/${r.id}`),
+    onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
+  })
+  return (
+    <Row columns="minmax(0, 1fr) auto">
+      <div><b>{p.name}</b>{problem && <span role="alert"> {problem}</span>}</div>
+      <Button kind="secondary" size="small" onClick={() => start.mutate()} disabled={start.isPending} aria-label={`Start ${p.name}’s review`}>Start a review</Button>
+    </Row>
   )
 }
 

@@ -37,7 +37,7 @@ import { Button as UIButton, Stack } from '@/components/gw/ui'
 const cardClass = 'gwui-fs-13-5 gwui-ink-text gwui-pt-16 gwui-pr-18 gwui-pb-16 gwui-pl-18 gwui-mb-18'
 const cardStyle: React.CSSProperties = { background: 'white', borderRadius: 12, lineHeight: 1.6, borderStyle: 'solid', borderWidth: 2, borderColor: 'var(--gw-text)' }
 const h3Class = 'gwui-fs-16 gwui-mb-8'
-const h3Style: React.CSSProperties = { fontWeight: 800 }
+const h3Style: React.CSSProperties = { fontWeight: 700 }
 const subClass = 'gwui-fs-13 gwui-mt-12 gwui-mb-2'
 const subStyle: React.CSSProperties = { fontWeight: 700 }
 const quietClass = 'gwui-fs-13 gwui-ink-sub gwui-mt-4 gwui-mb-4'

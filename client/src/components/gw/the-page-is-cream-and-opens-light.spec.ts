@@ -188,7 +188,7 @@ describe('the darker cream #FAF5EA is nowhere in the product', () => {
   it('the Enterprise panel on /pricing is the prototype\'s chat cream, --gw-bg', () => {
     const pricing = strip(readFileSync(join(SRC, 'pages/billing/PricingPage.tsx'), 'utf8'))
     expect(pricing).toMatch(/Enterprise/)
-    expect(pricing).toMatch(/background: 'var\(--gw-bg\)', border: '1\.5px solid var\(--gw-border\)'/)
+    expect(pricing).toMatch(/background: 'var\(--gw-bg\)', border: '1px solid var\(--rule2-crisp\)'/)
   })
 
   it('no colour setting in index.css is #FAF5EA (a second name for it slipped past once, --gw-slate)', () => {

@@ -183,8 +183,38 @@ export function theDepositFor(deal: { name: string; fields?: Record<string, stri
   const reads = about.map((p) => ({ deposit: /\bdeposit\b|\badvance\b|\bpart[\s-]payment\b/i.test(p.text), money: amountIn(p.text) }));
   const each = reads.map((r) => r.deposit || (!!r.money && of !== null && r.money.amount < of));
   if (!each.every(Boolean)) return null;
+  /*
+   * THE BALANCE PAID MAKES IT PAID IN FULL (polish round 15, U7). Jane paid Savannah Cafe's KES 15,000 deposit (RBT7Y3KQ2P) and, on Friday
+   * 16 October, the remaining KES 15,000 (SGL9W4MN7T). Each payment on its own is less than the KES 30,000, so each read as a deposit, and
+   * the board said "Deposit paid, KES 15,000 of KES 30,000" after the balance was paid. The payments are added up, each once: where they
+   * reach what the deal is worth, it is paid in full.
+   */
+  const paidInAll = thePaymentsAddedUp(about);
+  if (of !== null && paidInAll && paidInAll.amount >= of) return null;
   const paid = reads.map((r) => r.money?.amount ?? 0).reduce((a, b) => Math.max(a, b), 0) || null;
   return { paid, of, currency: reads.find((r) => r.money)?.money?.currency ?? 'KES' };
+}
+
+/**
+ * WHAT THE PAYMENT RECORDS ADD UP TO, EACH PAYMENT ONCE (polish round 15, U2 and U7). One payment is often on record more than once: the
+ * Kilele M-Pesa message behind every line that repeats the sale, or the same code typed in two check-ins. A payment is known by its M-Pesa
+ * code where it has one, otherwise by its words. Null where no payment record says an amount.
+ */
+export function thePaymentsAddedUp(payments: readonly { text: string }[]): { amount: number; currency: string } | null {
+  const seen = new Set<string>();
+  let amount = 0;
+  let currency: string | null = null;
+  for (const p of payments) {
+    const money = amountIn(p.text);
+    if (!money) continue;
+    const key = theMPesaCodesIn(p.text)[0] ?? String(p.text ?? '').trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (currency && money.currency !== currency) continue;
+    currency = money.currency;
+    amount += money.amount;
+  }
+  return currency ? { amount, currency } : null;
 }
 /** "Deposit paid, KES 15,000 of KES 30,000." */
 export const aDepositSaid = (d: ADeposit): string => {
@@ -231,3 +261,109 @@ export function theMPesaCodeFor(deal: { name: string; fields?: Record<string, st
 
 /** How the proof of a payment typed as an M-Pesa code is said: "M-Pesa code QJK4TL2MX9". */
 export const anMPesaCode = (code: string) => `M-Pesa code ${code}`;
+
+/*
+ * A CODE GIVEN AS AN ANSWER IS ABOUT THE SALE IT WAS ASKED FOR (polish round 15, U14). Joseph said on Thursday 15 October "Juja Hardware
+ * bought 2 units today. KES 10,000 by M-Pesa.", and on Friday Groundwork asked him "You're on track for 30 units, and Juja Hardware bought
+ * two. What shows the sale of those two units?" He answered "M-Pesa code TGH5K2M9QX." The line kept from his answer names no customer, so
+ * no deal read it as its payment, and Juja Hardware's 2 units read 0 on his targets, his review and the board. A code typed on a line that
+ * names no customer is about the one deal the question it answered named; the line is read with the owner's own line about that sale
+ * (the latest one that says it was bought or paid, in the three days before), so its units and its amount are read with it.
+ */
+export interface ALineThatMayCarryACode {
+  text: string;
+  participantId?: string | null;
+  checkInId?: string | null;
+  createdAt: Date | string;
+  anchoredDocumentId?: string | null;
+}
+export interface ATurnOfTheCheckIn { checkInId: string; role: string; content: string; createdAt: Date | string }
+
+const A_SALE_SAID = /\b(?:bought|paid|purchased|ordered|sold)\b/i;
+const THREE_DAYS = 3 * 86_400_000;
+
+/** The deal the question just before the answer that typed this code named, where it named exactly one. */
+export function theDealTheCodeAnswered<D extends { name: string; fields?: Record<string, string> | null; ownerParticipantId?: string | null }>(
+  code: string, line: ALineThatMayCarryACode, turns: readonly ATurnOfTheCheckIn[], deals: readonly D[],
+): D | null {
+  if (!line.checkInId) return null;
+  const here = turns.filter((t) => t.checkInId === line.checkInId).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const i = here.findIndex((t) => String(t.role).toUpperCase() === 'PERSON' && String(t.content ?? '').includes(code));
+  if (i < 1) return null;
+  const asked = [...here.slice(0, i)].reverse().find((t) => String(t.role).toUpperCase() !== 'PERSON');
+  if (!asked) return null;
+  const theirs = deals.filter((d) => !line.participantId || !d.ownerParticipantId || d.ownerParticipantId === line.participantId);
+  const named = theirs.filter((d) => aLineNamesTheCustomer(String(asked.content ?? ''), d.name));
+  return named.length === 1 ? named[0] : null;
+}
+
+/**
+ * The lines, each code typed as an answer read with the sale it was given for. A line that names a customer, or carries a document, is
+ * kept as it is.
+ */
+export function withTheSaleEachCodeAnswered<L extends ALineThatMayCarryACode, D extends { name: string; fields?: Record<string, string> | null; ownerParticipantId?: string | null }>(
+  lines: readonly L[], turns: readonly ATurnOfTheCheckIn[], deals: readonly D[],
+): L[] {
+  return lines.map((l) => {
+    if (l.anchoredDocumentId) return l;
+    const code = theMPesaCodesIn(l.text)[0];
+    if (!code || deals.some((d) => theWordsNameTheDeal(l.text, d))) return l;
+    const deal = theDealTheCodeAnswered(code, l, turns, deals);
+    if (!deal) return l;
+    const at = new Date(l.createdAt).getTime();
+    const sale = lines
+      .filter((x) => x !== l && x.participantId === l.participantId && A_SALE_SAID.test(x.text) && theWordsNameTheDeal(x.text, deal))
+      .filter((x) => { const t = new Date(x.createdAt).getTime(); return t <= at && t >= at - THREE_DAYS; })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    return { ...l, text: `${l.text.trim()} ${sale ? sale.text.trim() : `This is the payment from ${deal.name}.`}` };
+  });
+}
+
+/** The turns of the check-ins the code lines were said in, read only where a code line names no customer. */
+export async function theTurnsBehindTheCodes(prisma: any, lines: readonly ALineThatMayCarryACode[]): Promise<ATurnOfTheCheckIn[]> {
+  const ids = [...new Set(lines.filter((l) => !l.anchoredDocumentId && l.checkInId && theMPesaCodesIn(l.text).length).map((l) => l.checkInId as string))];
+  if (!ids.length) return [];
+  return ((await Promise.resolve(prisma?.conversationTurn?.findMany?.({
+    where: { checkInId: { in: ids } }, select: { checkInId: true, role: true, content: true, createdAt: true }, orderBy: { createdAt: 'asc' },
+  })).catch(() => [])) ?? []) as ATurnOfTheCheckIn[];
+}
+
+/*
+ * WHAT WAS SOLD IS WHAT ITS PAYMENT SHOWS (polish round 15, U2 and U14). A won deal with no Value read "2 won deals have no record of what
+ * it is worth" beside the Kilele M-Pesa message for KES 200,000 and Savannah Cafe's two codes for KES 15,000 each; and Juja Hardware held
+ * the 5 units Joseph had asked a price for, while the payment he proved was for the 2 units he sold. Where every payment on record for the
+ * deal says how many units were bought, those are the units sold, and what was paid is its value; where the deal has no value of its own
+ * and is paid in full, what was paid is its value. A deposit keeps the deal's own value, so what is left to pay can still be said.
+ *
+ * It is the deal as it was sold, for whatever counts or says what was sold. The deal's own details are kept as they were said, so the price
+ * Joseph asked about for 5 units is still read as 5 units; only a value the deal never had is added to them (theDealsOnRecord).
+ */
+const UNITS_BOUGHT = /\b(?:bought|purchased|paid for|ordered|took|sold)\s+(?:the\s+)?(\d[\d,]*)\s+(?:units?|dispensers?|pieces?)\b/i;
+const A_VALUE_FIELD = /^(?:deal\s+)?(?:value|amount|worth|size)$/i;
+
+export function theSaleAsItsPaymentShowsIt(
+  deal: { name: string; fields?: Record<string, string> | null },
+  payments: readonly { text: string }[],
+): Record<string, string> {
+  const fields = { ...(deal.fields ?? {}) };
+  const about = payments.filter((p) => theWordsNameTheDeal(p.text, deal));
+  if (!about.length) return fields;
+  const once = new Map<string, { text: string }>();
+  for (const p of about) once.set(theMPesaCodesIn(p.text)[0] ?? String(p.text ?? '').trim().toLowerCase(), p);
+  const each = [...once.values()];
+  const paid = thePaymentsAddedUp(each);
+  const says = each.map((p) => UNITS_BOUGHT.exec(String(p.text ?? ''))?.[1]).map((n) => (n ? Number(n.replace(/,/g, '')) : null));
+  const unitsKey = Object.keys(fields).find((k) => /^(?:units?|quantity|qty|how many)$/i.test(k.trim())) ?? 'Units';
+  const valueKey = Object.keys(fields).find((k) => A_VALUE_FIELD.test(k.trim()));
+  const money = (m: { amount: number; currency: string }) => `${m.currency} ${Math.round(m.amount).toLocaleString('en-US')}`;
+  if (says.length && says.every((n) => n !== null && n > 0)) {
+    const sold = says.reduce<number>((t, n) => t + (n ?? 0), 0);
+    if (String(sold) !== String(fields[unitsKey] ?? '').replace(/[^\d]/g, '')) {
+      fields[unitsKey] = String(sold);
+      if (paid) fields[valueKey ?? 'Value'] = money(paid);
+      return fields;
+    }
+  }
+  if (!valueKey && paid && !theDepositFor({ name: deal.name, fields }, each)) fields.Value = money(paid);
+  return fields;
+}

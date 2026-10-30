@@ -36,7 +36,7 @@ export async function theDealsThatHaveStalled(prisma: any, ground: { id: string;
   for (const d of deals) {
     if (!String(d.name ?? '').trim() || String(d.stage ?? '').trim().toLowerCase() === last) continue;
     const there = peopleAt.get(d.id) ?? [];
-    if (theDealWasDropped({ name: d.name, stage: d.stage, ownerParticipantId: d.ownerParticipantId, fields: d.fields }, lines, { lastStage: stages[stages.length - 1] ?? null, peopleThere: there, saidInTheCheckIn: (d.fields as any)?._dropped ?? null })) continue;
+    if (theDealWasDropped({ name: d.name, stage: d.stage, ownerParticipantId: d.ownerParticipantId, fields: d.fields }, lines, { lastStage: stages[stages.length - 1] ?? null, peopleThere: there, saidInTheCheckIn: (d.fields as any)?._dropped ?? null, otherDeals: deals.map((x) => String(x.name ?? '')) })) continue;
     const since = notAnsweringSince(d.name, said, { people: ourSide, contact: theContactOf(d.fields), peopleThere: there });
     if (since && (days === undefined ? hasStalled(since, now) : hasStalled(since, now, days))) out.push({ id: d.id, name: String(d.name).trim(), ownerParticipantId: d.ownerParticipantId ?? null, since });
   }

@@ -74,7 +74,7 @@ export function SoloReportBody({ report, dense, on = 'dark' }: {
                 ))}
               </ul>
             ) : (
-              <div style={{ fontSize: body, lineHeight: dense ? 1.6 : 1.65, color: on === 'light' ? 'var(--gw-text)' : undefined }}>{withoutTheColonOpening(String(val))}</div>
+              <div style={{ fontSize: body, lineHeight: `${Math.round(body * (dense ? 1.6 : 1.65))}px`, color: on === 'light' ? 'var(--gw-text)' : undefined }}>{withoutTheColonOpening(String(val))}</div>
             )}
           </div>
         )

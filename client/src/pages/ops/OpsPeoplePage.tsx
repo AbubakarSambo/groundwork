@@ -31,7 +31,7 @@ function TheirAgreement({ personKey }: { personKey: string }) {
 
   const a = agreement.data
   return (
-    <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '6px 0 0' }}>
+    <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '6px 0 0' }}>
       {a?.originatorSharePercent
         ? `Agreed: ${Number(a.originatorSharePercent)}% originator share${
             a.originatorShareMonths ? ` for ${a.originatorShareMonths} months` : ''
@@ -78,7 +78,7 @@ function Capability({
         does not say which of them it is about.
       */}
       {refusal && (
-        <p role="alert" style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '4px 0 6px' }}>
+        <p role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', margin: '4px 0 6px' }}>
           {refusal}
         </p>
       )}
@@ -183,7 +183,7 @@ export default function OpsPeoplePage() {
           </div>
 
           {p.email && (
-            <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '3px 0 0' }}>{p.email}</p>
+            <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '3px 0 0' }}>{p.email}</p>
           )}
 
           {/*
@@ -221,7 +221,7 @@ export default function OpsPeoplePage() {
           <div style={{ marginTop: 10 }}>
             {groupCapabilities(capabilities.data ?? []).map(([domain, caps]) => (
               <div key={domain} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4 }}>
-                <span style={{ ...LABEL, fontSize: 9.5, width: 72, flex: 'none', paddingTop: 3 }}>
+                <span style={{ ...LABEL, fontSize: 10, width: 72, flex: 'none', paddingTop: 3 }}>
                   {domain}
                 </span>
                 <div style={{ flex: 1 }}>

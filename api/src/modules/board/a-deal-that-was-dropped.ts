@@ -42,13 +42,34 @@ export function aLineDropsADeal(text: string): boolean {
 }
 
 /**
+ * WHETHER THE SENTENCE THAT DROPS IT IS ABOUT THIS DEAL (polish round 15, U6). Kevin said "I'll stop chasing Upper Hill Offices. I'll use
+ * that time to focus on other shops on Ngong Road next week.", and Ngong Road Minimart, which had paid KES 25,000 the day before, read
+ * "Ngong Road Minimart was lost". The line names the minimart's road; the sentence that gives a deal up names Upper Hill Offices, another
+ * deal on record. A sentence that drops a deal drops the deal it is about: the one it names, or, where it names none ("They already buy
+ * from Aqua Pure."), the one the sentence before it named. Where nothing before it names a deal, it is the deal the line is about.
+ */
+function itDropsThisDeal(raw: string, name: string, about: (s: string) => boolean, otherDeals: readonly string[]): boolean {
+  const sentences = String(raw ?? '').split(/(?<=[.!?])\s+(?=[A-Z“"])/).filter((s) => s.trim());
+  const inFull = (s: string, n: string) => s.toLowerCase().includes(n.trim().toLowerCase());
+  let speakingOf: 'this' | 'another' | null = null;
+  for (const s of sentences) {
+    const other = otherDeals.find((n) => n.trim() && theWordsNameTheDeal(s, { name: n }));
+    /* "Kamau Electricals on Ngong Road" names Kamau Electricals in full, and only the road of Ngong Road Minimart. */
+    if (about(s) && !(other && inFull(s, other) && !inFull(s, name))) speakingOf = 'this';
+    else if (other) speakingOf = 'another';
+    if (aLineDropsADeal(s) && speakingOf !== 'another') return true;
+  }
+  return false;
+}
+
+/**
  * Whether the deal was dropped, from its owner's lines. `lines` may be any lines on the check-in; only the owner's, about this
  * deal, are read.
  */
 export function theDealWasDropped(
   deal: { name: string; stage?: string | null; ownerParticipantId?: string | null; fields?: Record<string, string> | null },
   lines: readonly { text: string; participantId?: string | null; createdAt: Date | string; disputedAt?: Date | string | null; anchoredDocumentId?: string | null }[],
-  opts: { lastStage?: string | null; peopleThere?: readonly string[]; saidInTheCheckIn?: { on: string; line: string } | null } = {},
+  opts: { lastStage?: string | null; peopleThere?: readonly string[]; saidInTheCheckIn?: { on: string; line: string } | null; otherDeals?: readonly string[] } = {},
 ): ADroppedDeal | null {
   if (opts.lastStage && String(deal.stage ?? '').trim().toLowerCase() === opts.lastStage.trim().toLowerCase()) return null;
   const about = (raw: string) => theWordsNameTheDeal(raw, deal)
@@ -69,7 +90,7 @@ export function theDealWasDropped(
     if (/\bbecause\b/i.test(inTheCheckIn.text)) withAReason = dropped;
   }
   for (const l of inTheCheckIn ? theirs.filter((x) => x.at.toISOString().slice(0, 10) > opts.saidInTheCheckIn!.on || aLineDropsADeal(x.text)) : theirs) {
-    if (aLineDropsADeal(l.text)) {
+    if (aLineDropsADeal(l.text) && itDropsThisDeal(l.raw, deal.name, about, (opts.otherDeals ?? []).filter((n) => n !== deal.name))) {
       dropped = { line: l.text, at: l.at, shown: l.shown };
       if (/\bbecause\b/i.test(l.text)) withAReason = { line: l.text, at: l.at, shown: l.shown };
     } else if (dropped && OPENED_AGAIN.test(l.text) && !NEGATED.test(l.text)) {

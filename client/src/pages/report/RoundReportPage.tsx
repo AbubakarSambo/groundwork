@@ -105,7 +105,7 @@ export default function RoundReportPage() {
         <button
           onClick={() => navigate(`/grounds/${id}?tab=report`)}
           className="gwui-tap-44"
-          style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}
+          style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}
         >
           &larr; Every session
         </button>
@@ -115,7 +115,7 @@ export default function RoundReportPage() {
           people in the check-in (docs/decisions.md, rule 4). The report below says how many people
           checked in, as the prototype's session page does.
         */}
-        <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 12 }}>Session {n}</div>
+        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Session {n}</div>
         {!!id && Number.isFinite(n) && (
           <TheSessionsReport
             groundId={id}

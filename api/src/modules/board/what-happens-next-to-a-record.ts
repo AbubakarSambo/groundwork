@@ -102,7 +102,8 @@ const NO_END = new Set(['then', 'for', 'on', 'to', 'the', 'a', 'an', 'of', 'and'
  */
 export function inAboutEightWords(step: string): string {
   /* One step, so one sentence: the first. */
-  const parts = (step ?? '').trim().split(/(?<=[a-z0-9)”’])\.\s+(?=[A-Z])/);
+  /* A title is not the end of a sentence: "call Mrs. Achola" was cut at "Mrs." and turned round into "Achola. call Mrs." (round 1, 26 October). */
+  const parts = (step ?? '').trim().split(/(?<=[a-z0-9)”’])(?<!\b(?:Mr|Mrs|Ms|Dr|Prof|St|Mt|Jr|Sr))\.\s+(?=[A-Z])/);
   /* "Nothing booked." alone says no step: the step said last goes first, with it ("Ask Rose when Mama Mboga Mart will buy. Nothing booked."). */
   if (parts.length > 1 && parts[0].split(/\s+/).length <= 3) {
     const step = inAboutEightWords(parts[parts.length - 1].replace(/\.$/, ''));

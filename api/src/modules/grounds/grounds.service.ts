@@ -1465,7 +1465,7 @@ export class GroundsService {
            * The detail endpoint has always returned it. That is why one check-in could say "your turn"
            * in the rail and say nothing at all on its own page - two surfaces, one rule, different data.
            */
-          select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true, closedReason: true, optional: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } },
+          select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true, closedReason: true, optional: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } },
         },
         // A released report that nobody is told about is a report nobody reads.
         // Ten grounds released theirs and not one person ever activated.
@@ -1538,7 +1538,7 @@ export class GroundsService {
         participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
             checkIns: {
               /** Must match the sibling query above: both feed the same list. GW-EXP-6. */
-              select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true, closedReason: true, optional: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } },
+              select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true, closedReason: true, optional: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } },
             },
             report: { select: { releasedAt: true, releasedSessions: true, agreements: true, divergences: true, sharedAs: true } },
             /* Must match the sibling query above: both feed the same list, and a card fed by this
@@ -1946,7 +1946,7 @@ export class GroundsService {
     /* `closedReason` and one person turn (an id only): a session the clock closed with nothing said is not an answer, so no count of
        who checked in may count it (night quality run 1, problem 4: "5 of 5 checked in" with Jared missing). `optional`: the lead's
        own row, which never dates a round the team ran later. */
-    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, startedAt: true, isFinal: true, isSetup: true, specificityLevel: true, specificityDimensions: true, closedReason: true, optional: true, turns: { where: { role: 'PERSON' as any }, take: 1, select: { id: true } } } as const;
+    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, startedAt: true, isFinal: true, isSetup: true, specificityLevel: true, specificityDimensions: true, closedReason: true, optional: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } } as const;
 
     let ground = await this.prisma.ground.findFirst({
       where: { id, organizationId },
@@ -6009,6 +6009,17 @@ export class GroundsService {
     /* Added by address, but already working here: their own name from their membership, not the address (user journeys, F-7). */
     if (!colleagueName && !dto.displayName?.trim() && dto.email) {
       colleagueName = (await theMemberWithThisAddress(this.prisma as any, organizationId, dto.email))?.name ?? null;
+      /*
+       * Or on the organisation's own list of people, with no sign-in yet (polish round 2, 26 October 2026): Grace added Samuel Otieno on
+       * People, then to the sales check-in by his address, and the board called him "A" all week. The name on that list is his name.
+       */
+      if (!colleagueName) {
+        const listed: any = await Promise.resolve((this.prisma as any).person?.findFirst?.({
+          where: { organizationId, email: { equals: dto.email.toLowerCase(), mode: 'insensitive' }, active: true },
+          select: { displayName: true, givenName: true, familyName: true },
+        })).catch(() => null);
+        colleagueName = (listed?.displayName?.trim() || [listed?.givenName, listed?.familyName].filter(Boolean).join(' ').trim()) || null;
+      }
     }
     /**
      * A start date in the future means the work has not begun. Today or the past means it has, so the

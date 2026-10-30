@@ -47,8 +47,8 @@ export function WhatThisServes({
   return (
     <div style={{ marginTop: 8 }}>
       {said ? (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-          <span style={{ ...LABEL, fontSize: 9.5, marginRight: 8 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' }}>
+          <span style={{ ...LABEL, fontSize: 10, marginRight: 8 }}>
             {options.data?.find((o) => o.serves === said.serves)?.label ?? said.serves}
           </span>
           {said.justification}
@@ -62,7 +62,7 @@ export function WhatThisServes({
           )}
         </div>
       ) : (
-        <span style={{ fontSize: 12.5, color: 'var(--gw-red-t)' }}>Has not said what it serves</span>
+        <span style={{ fontSize: 12, color: 'var(--gw-red-t)' }}>Has not said what it serves</span>
       )}
 
       <Adder
@@ -146,9 +146,9 @@ export function TheFreeze() {
       <p style={{ ...LABEL, color: f.isOn ? 'var(--gw-blue-t)' : 'var(--gw-muted)' }}>
         {f.isOn ? 'The product is frozen' : 'Nothing is frozen'}
       </p>
-      <p style={{ fontSize: 13.5, margin: '5px 0 0', maxWidth: '62ch', lineHeight: 1.6 }}>{f.says}</p>
+      <p style={{ fontSize: 14, margin: '5px 0 0', maxWidth: '62ch', lineHeight: '22px' }}>{f.says}</p>
       {f.isOn && (
-        <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '6px 0 0', maxWidth: '62ch', lineHeight: 1.6 }}>
+        <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '6px 0 0', maxWidth: '62ch', lineHeight: '19px' }}>
           Making an unsupported use case work, and keeping what exists running, go through as normal.
           Anything else - including the moat - needs somebody to agree it cannot wait.
         </p>
@@ -156,7 +156,7 @@ export function TheFreeze() {
       {f.overdue && (
         /* Said, never done. A freeze that lifts itself ends without anybody
            deciding it should. */
-        <p style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', margin: '6px 0 0' }}>
+        <p style={{ fontSize: 12, color: 'var(--gw-amber-t)', margin: '6px 0 0' }}>
           It is past the date it was meant to lift. Somebody has to decide whether it stays.
         </p>
       )}
@@ -212,7 +212,7 @@ function WhatWasDecidedAboutTheFreeze() {
         {open ? 'Hide what was decided before' : 'What was decided before'}
       </button>
       {open && (
-        <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+        <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' }}>
           {(past.data ?? []).map((d) => (
             <li key={d.id}>
               <strong>{d.isOn ? 'Frozen' : 'Lifted'}</strong> {readDate(d.decidedAt)} by {d.decidedById} - {d.because}
@@ -264,7 +264,7 @@ export function TheFrame({ item }: { item: { id: string; title: string; descript
       <p style={LABEL}>Not a proposal</p>
       <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-navy)', margin: '4px 0 6px' }}>{item.title}</h2>
       {item.description && (
-        <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: 0, maxWidth: '68ch', lineHeight: 1.6 }}>
+        <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: 0, maxWidth: '68ch', lineHeight: '21px' }}>
           {item.description}
         </p>
       )}
@@ -274,7 +274,7 @@ export function TheFrame({ item }: { item: { id: string; title: string; descript
           <p
             style={{
               fontSize: 14,
-              fontWeight: 600,
+              fontWeight: 700,
               margin: '10px 0 0',
               color: s.solid ? 'var(--gw-green-t)' : 'var(--gw-text)',
             }}
@@ -294,7 +294,7 @@ export function TheFrame({ item }: { item: { id: string; title: string; descript
               {open && (
                 /* Named, because "three use cases do not work" is only useful
                    if you can see which three and for whom. */
-                <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+                <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--gw-sub)', lineHeight: '20px' }}>
                   {s.bugs.map((b) => (
                     <li key={b.title}>Bug · {b.title}</li>
                   ))}
@@ -336,7 +336,7 @@ export function WorkThatSaysNothing() {
       }}
     >
       <p style={{ ...LABEL, color: 'var(--gw-amber-t)' }}>{nothing.data.says}</p>
-      <p style={{ fontSize: 13, margin: '6px 0 0', lineHeight: 1.6 }}>
+      <p style={{ fontSize: 13, margin: '6px 0 0', lineHeight: '21px' }}>
         {(nothing.data.rows ?? []).map((r) => r.title).join(' · ')}
       </p>
       <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '6px 0 0' }}>

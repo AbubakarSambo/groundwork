@@ -138,6 +138,15 @@ All three are now on the list the Connections page asks an admin to submit (`the
 - **Why:** to tell the person what was decided, whether it was decided in the app or by a reply on WhatsApp. It is not counted as Groundwork writing first, because it answers the person's own request, the same as the report; it still never goes after STOP. Hours cannot be declined in Groundwork, so for hours {{3}} is only ever "approved". Wired on 2 October.
 - **Checked against WhatsApp's rules:** passes.
 
+### `groundwork_request_decided_with_reason` (round 1 of the polish loop, 25 October 2026: the decision told with its reason)
+
+- **Category:** Utility. **Language:** en.
+- **Body:** Hi {{1}}, your request for {{2}} was {{3}} by {{4}}. {{5}} Open Groundwork to read it.
+- **Examples:** {{1}} Peter. {{2}} leave on Friday 23 October. {{3}} declined. {{4}} Grace. {{5}} Grace said, “We are two short that Friday.”
+- **Sample values:** {{1}} Peter. {{2}} leave on Friday 23 October. {{3}} declined. {{4}} Grace. {{5}} Grace said, “We are two short that Friday.”
+- **Why:** the same as `groundwork_request_decided`, with the reason the decider gave, approved or declined. Outside the 24 hours the old template had no place for it, so a decline reached the person on WhatsApp without the reason. Proposed to Hafsah; until it is approved it goes by email, as the other request messages do.
+- **Checked against WhatsApp's rules:** passes (no blank at the start or end, no two blanks side by side, no line break, under 1,024 characters, utility).
+
 ### `groundwork_request_question` (decision 85, build step 7: a question about the person's own request). Proposed, not wired
 
 - **Category:** Utility. **Language:** en.

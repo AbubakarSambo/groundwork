@@ -321,7 +321,7 @@ export class ReviewsService {
     @Optional() private readonly appealTold?: AReviewAppealToldService,
   ) {}
 
-  async board(reader: Reader, today = new Date()): Promise<{ reader: 'admin' | 'lead' | 'approver'; every: string | null; next: NextReview[] }> {
+  async board(reader: Reader, today = new Date()): Promise<{ reader: 'admin' | 'lead' | 'approver'; every: string | null; next: NextReview[]; startNow: { externalId: string; name: string }[] }> {
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
     /*
@@ -384,7 +384,33 @@ export class ReviewsService {
         proposal: stands === 'ready' && isProposedByGroundwork(d.source) ? theProposalSentence(d.source, this.firstOf(p)) : null,
       });
     }
-    return { reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : 'approver', every: answers.every, next: next.filter((n) => n.name) };
+    /*
+     * ANY REVIEW CAN START TODAY (polish round 1, 26 October 2026): Grace wanted to review Joseph
+     * now, and nothing on the board let her, because nothing had fallen due for him. Everyone the
+     * reader would write a review for, with no review on this board, can be started now.
+     */
+    const onTheBoard = new Set(dues.map((d) => d.personExternalId));
+    const startNow: { externalId: string; name: string }[] = [];
+    for (const p of directory.values()) {
+      if (onTheBoard.has(p.externalId) || p.userId === reader.userId || !this.nameOf(p)) continue;
+      if (role !== 'ADMIN' && !(role === 'LEAD' && me && inTheLeadsTeam(me, p))) continue;
+      if (await this.writes(reader, role, p, answers.writer)) startNow.push({ externalId: p.externalId, name: this.nameOf(p) });
+    }
+    startNow.sort((a, b) => a.name.localeCompare(b.name));
+    return { reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : 'approver', every: answers.every, next: next.filter((n) => n.name), startNow };
+  }
+
+  /** The writer starts a review today for someone nothing has fallen due for: a date is written, said to be theirs, and the review starts. */
+  async startNow(reader: Reader, personExternalId: string) {
+    const p = (await this.directory(reader.organizationId)).get(personExternalId);
+    if (!p) throw new NotFoundException(REVIEW_REFUSED.notFound);
+    const answers = await this.suiteAnswers(reader.organizationId);
+    if (!(await this.writes(reader, await this.roleOf(reader), p, answers.writer))) throw new ForbiddenException(REVIEW_REFUSED.onlyTheWriter);
+    const due = await this.prisma.evaluationDue.create({
+      data: { organizationId: reader.organizationId, personExternalId, dueOn: new Date(dayOf(new Date())), kind: 'asked for now', source: `asked for by ${reader.userId}` },
+      select: { id: true },
+    });
+    return this.start(reader, due.id);
   }
 
   /** The person who writes it with them starts it. */

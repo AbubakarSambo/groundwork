@@ -155,7 +155,7 @@ const SIZES = `
 }
 @media (max-width: 640px) {
   .gw-entry-report {
-    --er-lead: 15.5px; --er-body: 14.5px; --er-label: 13px;
+    --er-lead: 16px; --er-body: 14px; --er-label: 13px;
     --er-box: 14px 15px; --er-box-lg: 16px; --er-box-sm: 11px 12px;
     --er-gap: 22px; --er-gap-sm: 12px;
   }

@@ -28,7 +28,7 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   /* The same words as the opening notice, to somebody it never reached (engagement/a-person-the-opening-never-reached.ts). It is the day's routine message and not an opening, so it counts. */
   'checkin-catch-up',
   'anchor-weekly-insight', 'anchor-follow-up',
-  'report', 'report-retry', 'request-waiting', 'request-decided', 'review-started', 'review-decided',
+  'report', 'report-retry', 'request-waiting', 'request-decided', 'request-decided-with-reason', 'review-started', 'review-decided',
   /* A thank-you for an answer when the report has nothing in it yet: Groundwork writes it first, it has no template, so it goes inside the 24 hours only (Drop Access run 1, item 22). */
   'report-thanks',
   /* What waits for an approver, said once for all of it (the-approvals-summary.ts). */
@@ -186,6 +186,8 @@ export const TEMPLATES: Record<string, ATemplate> = {
   /* Ours, proposed to Hafsah: everything waiting for an approver, said once. {{2}} is the whole paragraph, in plain full sentences. */
   'requests-waiting': aTemplate('groundwork_requests_waiting', 'Hi {{1}}. {{2}} You can read and answer them in Groundwork here {{3}} and nothing is decided until you do.'),
   'request-decided': aTemplate('groundwork_request_decided', 'Hi {{1}}, your request for {{2}} was {{3}} by {{4}}. Open Groundwork to read it.'),
+  /* Ours, proposed to Hafsah (round 1 dead end, 25 October): the same, with the reason the decider gave, so a decline outside the 24 hours still says why. {{5}} is "Grace said, “…”". */
+  'request-decided-with-reason': aTemplate('groundwork_request_decided_with_reason', 'Hi {{1}}, your request for {{2}} was {{3}} by {{4}}. {{5}} Open Groundwork to read it.'),
   /*
    * Ours, proposed to Hafsah (item 16): a review waits for the person in the app. Never anything the
    * review says, only who started or decided it, so its contents stay in the app.

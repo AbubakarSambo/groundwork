@@ -33,14 +33,14 @@ function WhatWeDependOn() {
   return (
     <section style={{ ...CARD, marginTop: 20 }}>
       <p style={LABEL}>What we have taken on a dependency for</p>
-      <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '4px 0 10px', maxWidth: '62ch', lineHeight: 1.6 }}>
+      <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '4px 0 10px', maxWidth: '62ch', lineHeight: '19px' }}>
         Declared against the work that added it. Only what somebody wrote down - the lockfile is the
         witness that does not have to be trusted.
       </p>
       {rows.map((r) => (
         <div key={r.id} style={{ borderTop: '1px solid var(--gw-border)', padding: '9px 0 0', marginTop: 9 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 600 }}>{r.dependsOn}</div>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2 }}>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{r.dependsOn}</div>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>
             {/* Whose it is, which is the whole question. */}
             Owned by {r.dependsOnOwnedBy ?? 'nobody said'} · {r.justification}
           </div>
@@ -64,7 +64,7 @@ export default function OpsMoatPage() {
       {d && (
         <>
           <section style={{ ...CARD, marginBottom: 14 }}>
-            <p style={{ fontSize: 15, margin: 0, color: 'var(--gw-navy)', fontWeight: 600, maxWidth: '62ch' }}>
+            <p style={{ fontSize: 15, margin: 0, color: 'var(--gw-navy)', fontWeight: 700, maxWidth: '62ch' }}>
               {d.building}
             </p>
             <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '10px 0 0', maxWidth: '62ch' }}>
@@ -131,12 +131,12 @@ export default function OpsMoatPage() {
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-navy)', margin: 0, flex: 1 }}>
                   {c.name}
                 </h2>
-                <span style={{ fontSize: 12.5, color: c.built === 0 ? 'var(--gw-red-t)' : 'var(--gw-sub)' }}>
+                <span style={{ fontSize: 12, color: c.built === 0 ? 'var(--gw-red-t)' : 'var(--gw-sub)' }}>
                   {c.built === 0 ? 'nothing yet' : `${c.built} built`}
                 </span>
               </div>
 
-              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: '8px 0 0', maxWidth: '68ch' }}>
+              <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: '8px 0 0', maxWidth: '68ch' }}>
                 {c.statement}
               </p>
 
@@ -148,7 +148,7 @@ export default function OpsMoatPage() {
                       style={{ borderTop: '1px solid var(--gw-border)', padding: '8px 0 0', marginTop: 8 }}
                     >
                       <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                        <strong style={{ fontSize: 13.5 }}>{e.title}</strong>
+                        <strong style={{ fontSize: 14 }}>{e.title}</strong>
                         {e.evidenceUrl && (
                           <a
                             href={e.evidenceUrl}
@@ -185,7 +185,7 @@ export default function OpsMoatPage() {
           */}
           <WhatWeDependOn />
 
-          <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', maxWidth: '62ch', marginTop: 20 }}>
+          <p style={{ fontSize: 14, color: 'var(--gw-sub)', maxWidth: '62ch', marginTop: 20 }}>
             <strong style={{ color: 'var(--gw-navy)' }}>What an acquirer is buying: </strong>
             {d.acquirer}
           </p>

@@ -153,7 +153,7 @@ export function TheFiveThingsThatMakeItCheckable({
               style={{
                 flex: '0 0 auto', marginTop: 1, width: 15, height: 15, borderRadius: '50%',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, fontWeight: 800,
+                fontSize: 10, fontWeight: 700,
                 background: r.there ? 'var(--gw-green-bg)' : 'var(--gw-paper-2)',
                 color: r.there ? 'var(--gw-green-t)' : 'var(--gw-sub-d)',
                 border: '1px solid ' + (r.there ? 'var(--gw-green-b)' : 'var(--gw-border)'),
@@ -169,7 +169,7 @@ export function TheFiveThingsThatMakeItCheckable({
               line reads as "you did this" without a sentence having to say so.
             */}
             <span style={{
-              fontSize: 12.5, lineHeight: 1.5,
+              fontSize: 12, lineHeight: 1.5,
               color: r.there ? 'var(--gw-text)' : r.mostUseful ? 'var(--gw-text)' : 'var(--gw-sub)',
               fontWeight: r.mostUseful ? 700 : 400,
             }}>
@@ -200,7 +200,7 @@ export function TheFiveThingsThatMakeItCheckable({
         mark she asked for; this keeps only the half the badge cannot carry, which is the reason.
       */}
       {mostUseful && (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 10, paddingTop: 9, borderTop: '1px solid var(--gw-border)' }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginTop: 10, paddingTop: 9, borderTop: '1px solid var(--gw-border)' }}>
           {mostUseful.says.charAt(0).toUpperCase() + mostUseful.says.slice(1)}
         </div>
       )}
@@ -208,7 +208,7 @@ export function TheFiveThingsThatMakeItCheckable({
       {/* Their own best answer. What a checkable account looked like in their own words teaches what
           no description of specificity can. */}
       {strongest && (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 9 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginTop: 9 }}>
           <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>This one of yours was easy to check. </span>
           <span style={{ fontStyle: 'italic' }}>"{strongest}"</span>
         </div>

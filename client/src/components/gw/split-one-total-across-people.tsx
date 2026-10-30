@@ -57,7 +57,7 @@ export function SplitOneTotalAcrossPeople({ groundId }: { groundId: string }) {
   return (
     <div className="gwui-rule gwui-pt-16 gwui-pr-16 gwui-pb-16 gwui-pl-16 gwui-mb-10" style={{ borderRadius: 12, background: 'white' }}>
       <div className="gwui-fs-13-5 gwui-ink-dark gwui-mb-4" style={{ fontWeight: 700 }}>Split one total across people</div>
-      <div className="gwui-fs-13 gwui-ink-sub gwui-mb-12" style={{ lineHeight: 1.55, maxWidth: '68ch' }}>
+      <div className="gwui-fs-13 gwui-ink-sub gwui-mb-12" style={{ lineHeight: '20px', maxWidth: '68ch' }}>
         Paste the export your CRM already gives you. First row the headings, then one row per
         person: their name, what they closed, and how long they have been doing the job. Nothing is
         saved here.
@@ -93,7 +93,7 @@ export function SplitOneTotalAcrossPeople({ groundId }: { groundId: string }) {
           {/* What it read, above what it concluded. A wrong column is the likeliest fault and the
               hardest to see in a number. */}
           {out.readFromTheFile && (
-            <div className={`gwui-fs-13 gwui-mb-10 ${out.readFromTheFile.missing.length ? 'gwui-ink-amber' : 'gwui-ink-sub'}`} style={{ lineHeight: 1.5 }}>
+            <div className={`gwui-fs-13 gwui-mb-10 ${out.readFromTheFile.missing.length ? 'gwui-ink-amber' : 'gwui-ink-sub'}`} style={{ lineHeight: '20px' }}>
               Read {out.readFromTheFile.people} {out.readFromTheFile.people === 1 ? 'person' : 'people'}
               {out.readFromTheFile.skipped ? `, skipped ${out.readFromTheFile.skipped} row${out.readFromTheFile.skipped === 1 ? '' : 's'} with nothing in them` : ''}
               {out.readFromTheFile.missing.length ? `. No column for: ${out.readFromTheFile.missing.join(', ')}.` : '.'}
@@ -109,9 +109,9 @@ export function SplitOneTotalAcrossPeople({ groundId }: { groundId: string }) {
                       grouped one elsewhere on the board ("6,000") reads as two different systems.
                       Thousands take a comma everywhere - TargetsBand.tsx already does this with
                       `toLocaleString('en-GB')`, so this matches it. */}
-                  <span className="gwui-fs-15 gwui-ink-dark" style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{s.target.toLocaleString('en-GB')}</span>
+                  <span className="gwui-fs-15 gwui-ink-dark" style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{s.target.toLocaleString('en-GB')}</span>
                 </div>
-                <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.5, maxWidth: '68ch' }}>
+                <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: '20px', maxWidth: '68ch' }}>
                   {s.because}
                   {/* Said where it matters: a tenure nobody gave was read as a full year, and that
                       moved this person's number. */}
@@ -121,8 +121,8 @@ export function SplitOneTotalAcrossPeople({ groundId }: { groundId: string }) {
             ))}
           </div>
 
-          <div className="gwui-fs-13 gwui-ink-text gwui-mt-12" style={{ lineHeight: 1.55, maxWidth: '68ch' }}>{out.saying}</div>
-          <div className="gwui-fs-13 gwui-ink-sub gwui-mt-6" style={{ lineHeight: 1.5, maxWidth: '68ch' }}>
+          <div className="gwui-fs-13 gwui-ink-text gwui-mt-12" style={{ lineHeight: '20px', maxWidth: '68ch' }}>{out.saying}</div>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mt-6" style={{ lineHeight: '20px', maxWidth: '68ch' }}>
             Add the ones you want below, and say whose each is. Nothing here has been saved.
           </div>
         </div>

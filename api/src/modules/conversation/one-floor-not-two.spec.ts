@@ -72,7 +72,8 @@ describe('one floor, read in both places', () => {
     expect(SRC.match(/mayCompleteAfter: theFloorForAPersonsFinish\(/g)).toHaveLength(3);
     const page = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'client', 'src', 'pages', 'chat', 'ChatPage.tsx'), 'utf8'));
     /* The count is the answers the server kept (60835ba84, release check): still the server's own floor, never a number of the screen's. */
-    expect(page).toMatch(/answersTheServerKept\(msgs\) >= mayCompleteAfter && \(/);
+    // Changed 26 October 2026 (Hafsah: item 6): End session is offered from the first message, so the page waits on no count at all, its own or the server's.
+    expect(page).toMatch(/\{!done && !completed && !declined && opened && \(/);
     expect(page).not.toMatch(/\.length >= \d+ && \(/);
     expect(page).toContain('setMayCompleteAfter(res.mayCompleteAfter)');
     expect(page).toContain('setMayCompleteAfter(t.mayCompleteAfter)');
@@ -108,7 +109,9 @@ describe('one floor, read in both places', () => {
  */
 describe('a press of "I am done" is asking to finish', () => {
   it('the floor lets the button out the way it lets the sentence out', () => {
-    expect(SRC).toMatch(/personTurnRows\.length < minTurns && !how\.theyAskedToFinish && !askedToFinish\(/);
+    // Changed 26 October 2026 (Hafsah: item 2): the button and the sentence are now read as one "they ended it", which lets them out of the floor and the thin-record hold alike.
+    expect(SRC).toMatch(/const theyEndedIt = !!how\.theyAskedToFinish \|\| askedToFinish\(/);
+    expect(SRC).toMatch(/personTurnRows\.length < minTurns && !theyEndedIt\)/);
     const openLink = strip(readFileSync(join(__dirname, '..', 'entry', 'the-open-link.service.ts'), 'utf8'));
     expect(openLink).toContain('{ theyAskedToFinish: true }');
   });

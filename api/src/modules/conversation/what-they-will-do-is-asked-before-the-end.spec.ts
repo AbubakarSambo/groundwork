@@ -103,13 +103,14 @@ const where = (t: [string, string][], over: Partial<WhereTheCheckInIs> = {}): Wh
 });
 
 describe('the model is told where the check-in is, while what they will do is still unasked', () => {
-  it('Femi, five answers in: nothing yet, the check-in is still finding out', () => {
-    expect(whereTheCheckInIs(where(upTo(FEMI, 5)))).toBe('');
+  /* Changed 26 October 2026 (polish round 2): a normal day closes from the fifth answer, so the question is owed from the third and asked by the fourth. */
+  it('Femi, two answers in: nothing yet, the check-in is still finding out', () => {
+    expect(whereTheCheckInIs(where(upTo(FEMI, 2)))).toBe('');
   });
 
-  it('Femi, six answers in, the blocker named and nothing asked about his part: told it is still owed', () => {
-    const block = whereTheCheckInIs(where(upTo(FEMI, 6)));
-    expect(block).toContain('WHERE THIS CHECK-IN IS. They have given 6 answers. A check-in like this usually closes after about 8, and you have not yet asked them what they will do about what they have told you, and by when.');
+  it('Femi, three answers in, the blocker named and nothing asked about his part: told it is still owed', () => {
+    const block = whereTheCheckInIs(where(upTo(FEMI, 3)));
+    expect(block).toContain('WHERE THIS CHECK-IN IS. They have given 3 answers. A check-in like this usually closes after about 6, and you have not yet asked them what they will do about what they have told you, and by when.');
     expect(block).toContain('At the latest, it is your next question.');
   });
 

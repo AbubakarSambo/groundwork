@@ -124,7 +124,7 @@ export function AddADocument({
             {took.map((t, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '8px 0', borderTop: '1px solid var(--gw-line)', flexWrap: 'wrap' }}>
                 <span aria-hidden style={{ color: 'var(--gw-green-t)' }}>{'✓'}</span>
-                <span style={{ flex: '1 1 200px', fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>{t.what}</span>
+                <span style={{ flex: '1 1 200px', fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>{t.what}</span>
                 {t.detail && <span style={{ flex: '1 1 160px', fontSize: 13, color: 'var(--gw-text)' }}>{t.detail}</span>}
                 {t.page != null && <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Page {t.page}</span>}
               </div>
@@ -140,7 +140,7 @@ export function AddADocument({
             {leftOut.map((t, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '8px 0', borderTop: '1px solid var(--gw-line)', flexWrap: 'wrap' }}>
                 <span aria-hidden style={{ color: 'var(--gw-muted)' }}>{'○'}</span>
-                <span style={{ flex: '1 1 200px', fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>{t.what}</span>
+                <span style={{ flex: '1 1 200px', fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>{t.what}</span>
                 {t.page != null && <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Page {t.page}</span>}
                 <span style={{ flex: '1 1 160px', fontSize: 13, color: 'var(--gw-sub)' }}>{t.why}</span>
               </div>
@@ -160,13 +160,13 @@ export function AddADocument({
               <input type="radio" name="gw-add-doc-who" checked={who === o.v} onChange={() => setWho(o.v)} style={{ marginTop: 3 }} />
               <span>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>{o.title}</span>
-                <span style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2 }}>{o.says}</span>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{o.says}</span>
               </span>
             </label>
           ))}
         </div>
       ) : (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Only you can open it.</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Only you can open it.</div>
       )}
 
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 18, flexWrap: 'wrap' }}>
@@ -183,7 +183,7 @@ export function AddADocument({
         >
           Cancel
         </button>
-        <span style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--gw-sub)' }}>You can remove it later.</span>
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--gw-sub)' }}>You can remove it later.</span>
       </div>
     </section>
   )

@@ -1,3 +1,4 @@
+import { whatWasAttachedSaid } from './what-was-attached-to-a-spend-request';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { PrismaService } from '../prisma/prisma.service';
@@ -61,6 +62,8 @@ export interface ForFinance {
   /** "receipt", "quote": what the rules asked for, and what finance has had. */
   evidenceNeeded: string[];
   evidenceGiven: string[];
+  /** What the person attached when they asked: its name, which it is, and its words where they could be read. */
+  attached?: { name: string; kind: string | null; words: string | null } | null;
   /** Who in finance checked it and when, or null. */
   checked: { by: string; on: string } | null;
   code: string | null;
@@ -116,7 +119,7 @@ export interface TheFinanceView {
 type Row = {
   id: string; organizationId: string; userId: string; amount: unknown; what: string; team: string | null; status: string; createdAt: Date;
   decidedById?: string | null; decidedAt?: Date | null; approvedByIds?: string[] | null;
-  category?: string | null; evidenceNeeded?: string[] | null; evidenceGiven?: string[] | null;
+  category?: string | null; evidenceNeeded?: string[] | null; evidenceGiven?: string[] | null; attachedName?: string | null; attachedKind?: string | null; attachedText?: string | null;
   verifiedById?: string | null; verifiedAt?: Date | null; code?: string | null; paidOn?: Date | null; paidById?: string | null;
 };
 
@@ -361,6 +364,8 @@ export class SpendingForFinanceService {
       const said: string[] = [];
       said.push(`${name}${team ? `, in ${team},` : ''} asked on ${saidAsADate(r.createdAt)} to spend ${spendInWords(n(r.amount), currency, r.what)}.`);
       if (r.category) said.push(`It is for ${r.category}.`);
+      /* What the person attached when they asked (polish round 1, 25 October). */
+      { const att = whatWasAttachedSaid(first.get(r.userId) || 'They', r as any); if (att) said.push(att); }
       if (approvers.length) {
         const names = approvers.map(who);
         const by = listed(names.map((x, i) => (i === 0 ? `${x.charAt(0).toUpperCase()}${x.slice(1)}` : x)));
@@ -383,6 +388,7 @@ export class SpendingForFinanceService {
         approvedBy: approvers.map(who),
         approvedOn: r.decidedAt ? dayOf(r.decidedAt) : null,
         evidenceNeeded: needed, evidenceGiven: given,
+        attached: (r as any).attachedName ? { name: (r as any).attachedName, kind: (r as any).attachedKind, words: (r as any).attachedText ?? null } : null,
         checked: r.verifiedById && r.verifiedAt ? { by: who(r.verifiedById), on: dayOf(r.verifiedAt) } : null,
         code: r.code ?? null,
         paidOn: r.paidOn ? dayOf(r.paidOn) : null,

@@ -40,10 +40,10 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
 
   return (
     <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '20px 20px 16px', marginBottom: 16 }}>
-      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>
         Your session is complete.
       </div>
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', marginBottom: 18 }}>
         Did Groundwork help your team move forward? Choose what works best for you.
       </div>
 
@@ -55,7 +55,7 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>
               Add one more free session
             </div>
-            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px', marginBottom: 12 }}>
               Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Check-in.
             </div>
             <button className="btn sec"
@@ -76,7 +76,7 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>
             Upgrade organisation
           </div>
-          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px', marginBottom: 12 }}>
             Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited sessions for everyone in your organisation with one simple monthly subscription.
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

@@ -92,7 +92,7 @@ export function WhoIsStillOut({ groundId, sessionNumber, myUserId }: { groundId:
 
   return (
     <div style={{ maxWidth: 460, margin: '14px auto 0' }}>
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 7, lineHeight: 1.55 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 7, lineHeight: '19px' }}>
         {header}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -101,7 +101,7 @@ export function WhoIsStillOut({ groundId, sessionNumber, myUserId }: { groundId:
             key={r.id}
             style={{
               display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10,
-              fontSize: 12.5, padding: '5px 0', borderBottom: '1px solid var(--gw-border)',
+              fontSize: 12, padding: '5px 0', borderBottom: '1px solid var(--gw-border)',
             }}
           >
             <span style={{ color: r.done ? 'var(--gw-green-t)' : 'var(--gw-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.state}</span>

@@ -118,8 +118,11 @@ export const aRequestIsWaiting = (approverFirstName: string | null | undefined, 
   notice('request-waiting', [approverFirstName?.trim() || 'there', personFirstName.trim() || 'somebody', what]);
 
 /** groundwork_request_decided: the person is told what was decided about their own request, and by whom. */
-export const aRequestWasDecided = (personFirstName: string | null | undefined, what: string, outcome: 'approved' | 'declined', deciderFirstName: string | null | undefined) =>
-  notice('request-decided', [personFirstName?.trim() || 'there', what, outcome, deciderFirstName?.trim() || 'the person who approves it']);
+export const aRequestWasDecided = (personFirstName: string | null | undefined, what: string, outcome: 'approved' | 'declined', deciderFirstName: string | null | undefined, reasonSaid?: string | null) =>
+  reasonSaid?.trim()
+    /* With the reason the decider gave, approved or declined, in its own template so it still says why outside the 24 hours (round 1, 25 October). */
+    ? notice('request-decided-with-reason', [personFirstName?.trim() || 'there', what, outcome, deciderFirstName?.trim() || 'the person who approves it', reasonSaid.trim()])
+    : notice('request-decided', [personFirstName?.trim() || 'there', what, outcome, deciderFirstName?.trim() || 'the person who approves it']);
 
 /**
  * groundwork_review_started and groundwork_review_decided (item 16): the person's review waits for them

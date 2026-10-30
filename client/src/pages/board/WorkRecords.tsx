@@ -353,7 +353,7 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit, ki
 
   return (
     <div className="gwui-gap-10 gwui-mt-8" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
-      <p className="gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>{sentence}</p>
+      <p className="gwui-fs-15 gwui-ink-text" style={{lineHeight: '23px'}}>{sentence}</p>
       {canEdit && (
         <Button kind="quiet" size="small" onClick={() => setOpen(true)} aria-label={kindOfWork ? 'Change the kind of work' : 'Choose the kind of work'}>
           {kindOfWork ? 'Change' : 'Choose'}
@@ -412,11 +412,11 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit, ki
 function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
   if (row.from === 'lead') {
     const addedBy = readerIsLead ? 'You' : (leadFirstName ?? 'The person running this check-in')
-    return <p className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>{`${addedBy} added it.`}</p>
+    return <p className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: '20px'}}>{`${addedBy} added it.`}</p>
   }
   const saidBy = row.saidBy?.trim()
   return (
-    <div className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>
+    <div className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: '20px'}}>
       <div>{row.saidByLine?.trim() || (saidBy ? `In ${saidBy}'s words,` : 'In the words of someone in this check-in,')}</div>
       {row.said && <p className="gwui-mt-2" style={{fontStyle: 'italic'}}>{`“${row.said}”`}</p>}
     </div>
@@ -1087,7 +1087,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       : `No ${holdsWord} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`
     return (
       <Section heading={heading} note={note}>
-        <p className="gwui-ink-sub gwui-fs-15" style={{lineHeight: 1.55}}>
+        <p className="gwui-ink-sub gwui-fs-15" style={{lineHeight: '23px'}}>
           {sentence}
         </p>
         {canAdd && (

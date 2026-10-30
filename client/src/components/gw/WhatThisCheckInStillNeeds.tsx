@@ -98,13 +98,13 @@ export function WhatThisCheckInStillNeeds({
       <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>
         {missing === 1 ? 'One thing this check-in still needs' : `${missing === 2 ? 'Two' : missing === 3 ? 'Three' : 'Four'} things this check-in still needs`}
       </div>
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 11 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginBottom: 11 }}>
         Nothing to do with the session you just finished. These are about how it runs.
       </div>
 
       {cadenceUnset && (
         <div style={{ marginBottom: 13 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>How often?</div>
+          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>How often?</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 7 }}>
             Nobody has set this, so it is every two weeks by default.
           </div>
@@ -123,7 +123,7 @@ export function WhatThisCheckInStillNeeds({
 
       {startDateUnset && !alreadyStarted && (
         <div style={{ marginBottom: 13 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>When does this start?</div>
+          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>When does this start?</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 7 }}>
             No start date is set, so everything is counted from the day you opened this. A date
             decides two real things: session one stays shut until then, and anybody added before it
@@ -140,7 +140,7 @@ export function WhatThisCheckInStillNeeds({
       )}
       {alreadyStarted && nextOpens && (
         <div style={{ marginBottom: 13 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>When is the next one?</div>
+          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>When is the next one?</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
             Your next session opens on {whenItWas(nextOpens, 'dayAndMonthLong')}. The rhythm is set on People and setup.
           </div>
@@ -149,7 +149,7 @@ export function WhatThisCheckInStillNeeds({
 
       {timelineUnset && (
         <div style={{ marginBottom: 13 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>How long does it run?</div>
+          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>How long does it run?</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 7 }}>
             {saidDate
               ? <>You said {saidDate} in your check-in. The check-in itself is set to {timelineDays ?? 90} days, and everything that says days remaining counts against that, not against your date.</>
@@ -165,7 +165,7 @@ export function WhatThisCheckInStillNeeds({
 
       {standardUnset && (
         <div>
-          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>What does good look like?</div>
+          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>What does good look like?</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 7 }}>
             {briefStandard
               ? <>Your brief says &ldquo;{briefStandard}&rdquo;. That is being read as the standard until you set one here.</>

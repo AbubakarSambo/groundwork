@@ -183,8 +183,8 @@ export class ARequestToldOnWhatsApp {
    * Tell the person what was decided about their own request, and by whom. True when it went. A reason
    * given with a decline is said inside the 24 hours (decision 85, build step 7): "Hi Aisha, your request
    * for leave on Monday 5 October was declined by Wairimu. Wairimu said, “Sales is two short that day.”
-   * Open Groundwork to read it." Outside them the approved template goes as before, and the reason is
-   * read in the app.
+   * Open Groundwork to read it." Outside them, the template with the reason goes (request-decided-with-reason, round 1, 25 October),
+   * so the reason reaches them either way; an approval with a note says it too.
    */
   async decided(organizationId: string, request: AWaitingRequest, outcome: 'approved' | 'declined', deciderUserId: string, reason?: string | null): Promise<boolean> {
     if (!request.personUserId) return false;
@@ -204,10 +204,9 @@ export class ARequestToldOnWhatsApp {
       const person = await this.prisma.user.findUnique({ where: { id: request.personUserId }, select: { email: true, firstName: true, deletedAt: true } });
       if (!person || person.deletedAt) return;
       const decider = await this.prisma.user.findUnique({ where: { id: deciderUserId }, select: { firstName: true } }).catch(() => null);
-      const said = aRequestWasDecided(person.firstName?.trim() || request.firstName, request.what, outcome, decider?.firstName);
-      const sentence = outcome === 'declined' && reason?.trim()
-        ? said.text.replace(/ Open Groundwork to read it\.$/, ` ${aReasonSaid(decider?.firstName?.trim() || 'They', reason)} Open Groundwork to read it.`)
-        : said.text;
+      /* The reason, whenever one was given, approved or declined (round 1, 25 October). */
+      const said = aRequestWasDecided(person.firstName?.trim() || request.firstName, request.what, outcome, decider?.firstName, reason?.trim() ? aReasonSaid(decider?.firstName?.trim() || 'They', reason) : null);
+      const sentence = said.text;
       await this.mailer.sendRequestDecided(person.email, sentence, request.what, outcome);
       await recordIt(this.prisma, { organizationId, suite: SUITE_OF_A_REQUEST[request.kind], ref: request.ref, kind: 'told', toUserId: request.personUserId, basis: { message: `${said.kind}:email` } });
     } catch (err: any) {
@@ -221,10 +220,9 @@ export class ARequestToldOnWhatsApp {
       const to = await this.reach(organizationId, request.personUserId);
       if (!to.phone) return false;
       const decider = await this.prisma.user.findUnique({ where: { id: deciderUserId }, select: { firstName: true } }).catch(() => null);
-      const said = aRequestWasDecided(to.firstName ?? request.firstName, request.what, outcome, decider?.firstName);
-      const withReason = outcome === 'declined' && reason?.trim()
-        ? said.text.replace(/ Open Groundwork to read it\.$/, ` ${aReasonSaid(decider?.firstName?.trim() || 'They', reason)} Open Groundwork to read it.`)
-        : said.text;
+      /* The reason, whenever one was given, in the words and in the template, so it is said inside the 24 hours and outside them (round 1, 25 October). */
+      const said = aRequestWasDecided(to.firstName ?? request.firstName, request.what, outcome, decider?.firstName, reason?.trim() ? aReasonSaid(decider?.firstName?.trim() || 'They', reason) : null);
+      const withReason = said.text;
       const sent = (await this.whatsapp.sendFor(organizationId, to.phone, withReason, { kind: said.kind, params: said.params })).sent;
       /* One record of who did what (decision 85, build step 5): told, only when it went. */
       if (sent) await recordIt(this.prisma, { organizationId, suite: SUITE_OF_A_REQUEST[request.kind], ref: request.ref, kind: 'told', toUserId: request.personUserId, basis: { message: said.kind } });

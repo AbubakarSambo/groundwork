@@ -71,7 +71,7 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
         Lines taken from what you said
       </div>
       {/* Eleven identical 'Not what I said' buttons made the one that mattered invisible. One control opens them. */}
-      <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, maxWidth: '68ch' }}>
+      <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', maxWidth: '68ch' }}>
         These lines are what Groundwork took from what you wrote. Every count on this page is built from them.{' '}
         {!disputing ? (
           /*
@@ -95,7 +95,7 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
          */
         const saidBefore = mine.slice(0, i).some(x => !x.disputedAt && x.documentSays === r.documentSays)
         return (
-          <div key={r.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 12.5, lineHeight: 1.55 }}>
+          <div key={r.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 12, lineHeight: '19px' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <span style={{ color: r.disputedAt ? 'var(--gw-muted)' : 'var(--gw-text)', textDecoration: r.disputedAt ? 'line-through' : 'none' }}>{r.text}</span>
               {/*
@@ -119,7 +119,7 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
               <button
                 onClick={() => dispute.mutate({ checkInId: r.checkInId!, id: r.id })}
                 disabled={dispute.isPending}
-                style={{ background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
               >
                 Not what I said
               </button>

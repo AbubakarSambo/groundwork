@@ -48,14 +48,14 @@ export function WhatToWalkInWith({ guide }: { guide: { openingLine?: string; que
     <div className="gwui-rule-blue gwui-pt-14 gwui-pb-14 gwui-pl-17 gwui-pr-17 gwui-mb-16" style={{ background: 'var(--gw-blue-bg)', borderRadius: 8 }}>
       <Section heading="Before you talk to them" />
       {!direct && (
-        <div className="gwui-fs-13 gwui-ink-sub gwui-mb-12" style={{ lineHeight: 1.6 }}>
+        <div className="gwui-fs-13 gwui-ink-sub gwui-mb-12" style={{ lineHeight: '21px' }}>
           Yours alone, and not part of the shared report. Nobody else is shown this.
         </div>
       )}
       {rows.map((r, i) => (
         <div key={i} className={i === rows.length - 1 ? 'gwui-mb-0' : 'gwui-mb-11'}>
           <div className="gwui-fs-13 gwui-ink-text gwui-mb-3" style={{ fontWeight: 700 }}>{r.h}</div>
-          <div className="gwui-fs-13-5 gwui-ink-text" style={{ lineHeight: 1.65 }}>{r.text}</div>
+          <div className="gwui-fs-13-5 gwui-ink-text" style={{ lineHeight: '23px' }}>{r.text}</div>
         </div>
       ))}
     </div>

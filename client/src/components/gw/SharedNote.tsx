@@ -37,9 +37,9 @@ export function SharedNote({ text, leadName, isViewerTheLead }: { text?: string 
           borderLeft: '2px solid var(--gw-navy)',
           borderRadius: 8,
           padding: '13px 15px',
-          fontSize: 13.5,
+          fontSize: 14,
           color: 'var(--gw-text)',
-          lineHeight: 1.65,
+          lineHeight: '23px',
         }}
       >
         {body}
@@ -48,7 +48,7 @@ export function SharedNote({ text, leadName, isViewerTheLead }: { text?: string 
         The one sentence that has to be here. Somebody reading this needs to know it is not a finding
         about them and that disagreeing with it is a normal thing to do in their own session.
       */}
-      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 7 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', marginTop: 7 }}>
         This is how the situation has been described to everyone, not a finding about anybody. If you
         see it differently, say so in your check-in and that goes on the record too.
       </div>

@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpStatus, Param, Post, Put, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Param, Post, Put, Query, Res, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { CurrentUser, CurrentUserData } from '../../common';
 import { SuitesService } from './suites.service';
@@ -352,6 +353,12 @@ export class SuitesController {
     return this.reviews.start({ userId: user.id, organizationId: user.organizationId }, dueId);
   }
 
+  @Post('reviews/start-now/:personExternalId')
+  @ApiOperation({ summary: 'The person who would write it starts a review today for someone nothing has fallen due for' })
+  startReviewNow(@Param('personExternalId') personExternalId: string, @CurrentUser() user: CurrentUserData) {
+    return this.reviews.startNow({ userId: user.id, organizationId: user.organizationId }, personExternalId);
+  }
+
   @Get('reviews/mine')
   @ApiOperation({ summary: 'The reviews about you, once somebody has started them, and what you can do now' })
   myReviews(@CurrentUser() user: CurrentUserData) {
@@ -561,6 +568,14 @@ export class SuitesController {
   @ApiOperation({ summary: 'What the payment request form may offer a person asking to spend: the categories, and the currency. Names only.' })
   spendForm(@CurrentUser() user: CurrentUserData) {
     return this.suites.spendForm({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Post('spend/requests/:id/attachment')
+  @ApiOperation({ summary: 'The person who asked attaches a receipt or a proforma to their own request while it waits. Its name and words are kept, no file.' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  attachToSpend(@CurrentUser() user: CurrentUserData, @Param('id') id: string, @UploadedFile() file: Express.Multer.File, @Body() body: { kind?: string }) {
+    return this.filed.attachToSpending({ userId: user.id, organizationId: user.organizationId }, id, body?.kind, file);
   }
 
   @Post('spend/requests')

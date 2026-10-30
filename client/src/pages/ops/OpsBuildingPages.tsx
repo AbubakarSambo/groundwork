@@ -170,7 +170,7 @@ export function OpsReadinessPage() {
     {
       head: 'Company',
       cell: (u) => (
-        <Link to={`/ops/companies/${u.company.key}`} style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>
+        <Link to={`/ops/companies/${u.company.key}`} style={{ color: 'var(--gw-navy)', fontWeight: 700 }}>
           {u.company.name}
         </Link>
       ),

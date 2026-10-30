@@ -117,12 +117,12 @@ export function WhatYourRecordCanSupport({
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '15px 17px' }}>
       <div>
         {/* REVIEW ROUND 3, ITEM 5: NOT SHOUTED IN CAPITALS. */}
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>
           Where what you have shared stands
         </div>
-        <div style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--gw-text)' }}>{read.says}</div>
+        <div style={{ fontSize: 14, lineHeight: '22px', color: 'var(--gw-text)' }}>{read.says}</div>
         {going && (
-          <div style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--gw-sub)', marginTop: 5 }}>{going}</div>
+          <div style={{ fontSize: 12, lineHeight: '19px', color: 'var(--gw-sub)', marginTop: 5 }}>{going}</div>
         )}
       </div>
 
@@ -168,12 +168,12 @@ export function WhatYourRecordCanSupport({
                       }} />
                     )}
                   </div>
-                  <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontVariantNumeric: 'tabular-nums' }}>{d.sessionNumber}</div>
+                  <div style={{ fontSize: 10, color: 'var(--gw-muted)', fontVariantNumeric: 'tabular-nums' }}>{d.sessionNumber}</div>
                 </div>
               )
             })}
           </div>
-          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 7, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 7, lineHeight: 1.5 }}>
             {/*
               IT HAS TO SAY WHAT MAKES A BAR FULLER, OR IT IS A SCORE WITH NO SCALE.
 
@@ -195,7 +195,7 @@ export function WhatYourRecordCanSupport({
           renders one, and a private alignment check-in has none. */}
       {(alsoNoticed?.length ?? 0) > 0 && (
         <div style={{ marginTop: 13, paddingTop: 11, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 5 }}>
+          <div style={{ fontSize: 10, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 5 }}>
             Also noticed
           </div>
           <div style={{ display: 'grid', gap: 5 }}>

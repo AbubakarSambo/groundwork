@@ -7,7 +7,7 @@ import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theStagesKept, type AStageOnRecord } from './a-deals-stages-are-kept';
 import { theDealWasDropped, type ADroppedDeal } from './a-deal-that-was-dropped';
 import { thePeopleAtEachCustomer } from './a-deal-that-has-stalled';
-import { theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, theDepositFor, aDepositSaid, type ABackingDocument, type ADeposit } from './a-deals-proof-is-about-that-deal';
+import { theBackingDocuments, theDocumentBehind, thePaymentRecords, theSignedOrders, aPaymentRecordFor, theMPesaCodeFor, theDepositFor, aDepositSaid, theTurnsBehindTheCodes, withTheSaleEachCodeAnswered, theSaleAsItsPaymentShowsIt, type ABackingDocument, type ADeposit } from './a-deals-proof-is-about-that-deal';
 import { aLineIsAbout } from './a-deals-value-and-buying-date';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
 import { aDaySaidInFull } from './a-day-said-in-full';
@@ -102,6 +102,8 @@ export interface ADealOnRecord {
   peopleThere?: string[];
   /** A SIGNED ORDER backs it (theSignedOrders), and no payment record yet. Only where the payment record is read. */
   signed?: boolean;
+  /** A payment or a signed order on file for this deal itself: it is sold, whatever stage was written. Only where the payment record is read. */
+  paymentOnFile?: boolean;
   /**
    * ALREADY OPEN BEFORE THIS CHECK-IN, so never a new lead (Hafsah's quality pass, 18 October, B-2): the lead named it in her own
    * check-in before anybody else did ("especially Kilele Hotel, Greenfield Supermarket, and Mama Pima Stores"), or its owner
@@ -114,7 +116,15 @@ export interface ADealOnRecord {
   wonNeedsProof?: boolean;
   /** The M-Pesa code typed for it, where that is its payment record (theMPesaCodeFor). Only where the payment record is read. */
   mpesaCode?: string | null;
+  /**
+   * THE DEAL AS IT WAS SOLD, where a payment record is about it (theSaleAsItsPaymentShowsIt; polish round 15, U2 and U14): its Units and
+   * Value as the payment shows them. Whatever counts or says what was sold reads these (whatWasSold); the deal's own details stay as said.
+   */
+  soldFields?: Record<string, string> | null;
 }
+
+/** The details that say what a deal sold: as its payment shows them, where one does, otherwise as they were said. */
+export const whatWasSold = (d: { fields?: Record<string, string> | null; soldFields?: Record<string, string> | null }): Record<string, string> => d.soldFields ?? d.fields ?? {};
 
 const NUMBER_WORDS: Record<string, number> = {
   one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
@@ -224,13 +234,17 @@ export function theCountFromTheDeals(
     };
   }
   const last = stages[stages.length - 1].toLowerCase();
-  const atTheLast = theirs.filter((d) => (d.stage ?? '').toLowerCase() === last);
+  /*
+   * A DEAL WITH ITS PAYMENT OR ITS SIGNED ORDER ON FILE IS SOLD, WHATEVER STAGE WAS WRITTEN FOR IT (polish round 1, 26 October 2026).
+   * Kevin's Kilele Hotel had the M-Pesa statement for its 40 units on file, but no stage, and Grace's board read "0 of 120 sold".
+   */
+  const atTheLast = theirs.filter((d) => (d.stage ?? '').toLowerCase() === last || !!d.paymentOnFile);
   /* Where the lead's rule says a sale counts only with a payment or a signed order, one said won with neither is not counted yet. */
   const notYet = (d: ADealOnRecord) => !!d.wonNeedsProof && !d.paid && !d.signed;
   const won = atTheLast.filter((d) => !notYet(d));
   const notCountedDeals = atTheLast.filter(notYet).map((d) => ({
     name: d.name,
-    holds: what.counts === 'units' ? (theUnitsOf(d.fields) ?? 0) : what.counts === 'value' ? (theMoneyOf(d.fields)?.amount ?? 0) : 1,
+    holds: what.counts === 'units' ? (theUnitsOf(whatWasSold(d)) ?? 0) : what.counts === 'value' ? (theMoneyOf(whatWasSold(d))?.amount ?? 0) : 1,
   }));
   let count = 0;
   let proven = 0;
@@ -252,7 +266,7 @@ export function theCountFromTheDeals(
     else if (!d.proven) saidDeals.push({ name: d.name, holds });
   };
   if (what.counts === 'value') {
-    const each = won.map((d) => ({ d, m: theMoneyOf(d.fields) }));
+    const each = won.map((d) => ({ d, m: theMoneyOf(whatWasSold(d)) }));
     const currencies = each.map((x) => x.m?.currency ?? '').filter(Boolean);
     currency = currencies.sort((a, b) => currencies.filter((c) => c === b).length - currencies.filter((c) => c === a).length)[0] ?? null;
     for (const { d, m } of each) {
@@ -264,7 +278,7 @@ export function theCountFromTheDeals(
     }
   } else if (what.counts === 'units') {
     for (const d of won) {
-      const u = theUnitsOf(d.fields);
+      const u = theUnitsOf(whatWasSold(d));
       if (u == null) { leftOut += 1; continue; }
       count += u;
       if (paidInFull(d)) proven += u;
@@ -292,6 +306,15 @@ export function theCountFromTheDeals(
     ...(named ? { paidDeals, signedDeals, saidDeals, ...(depositDeals.length ? { depositDeals, deposit } : {}) } : {}),
     ...(notCountedDeals.length ? { notCountedDeals } : {}),
   };
+}
+
+/**
+ * EVERY DEAL THE COUNT IS MADE OF, by name: paid, on a deposit, on a signed order, and on somebody's word (polish round 15, U1). The
+ * forecast's "The 51 sold came from two orders, Kilele and Ngong Road Minimart" left out Savannah Cafe, which was on a deposit, because
+ * each reader listed the deals by hand and forgot the deposit.
+ */
+export function theDealsTheCountIsMadeOf(c: Pick<ACountFromTheDeals, 'paidDeals' | 'depositDeals' | 'signedDeals' | 'saidDeals'>): { name: string; holds: number }[] {
+  return [...(c.paidDeals ?? []), ...(c.depositDeals ?? []), ...(c.signedDeals ?? []), ...(c.saidDeals ?? [])];
 }
 
 /**
@@ -340,7 +363,8 @@ export function theSalesAnswer(c: ACountFromTheDeals, target: number, likely: nu
     const of = c.counts === 'value'
       ? `${n(c.count)} of the ${n(target)} is sold.`
       : `${read(c.count)} of the ${read(target)}${thingOfTarget} ${many(c.count) ? 'are' : 'is'} ${c.counts === 'sales' ? 'closed' : 'sold'}.`;
-    const isOrAre = (v: number) => (many(v) ? 'are' : 'is');
+    /* An amount of money is one thing: "KES 265,000 is paid", never "are" (polish round 15). */
+    const isOrAre = (v: number) => (c.counts !== 'value' && many(v) ? 'are' : 'is');
     const sum = (xs: { holds: number }[]) => xs.reduce((t, x) => t + x.holds, 0);
     const names = (xs: { name: string }[]) => {
       const ns = xs.map((x) => x.name);
@@ -357,7 +381,7 @@ export function theSalesAnswer(c: ACountFromTheDeals, target: number, likely: nu
       const pays = signed.length === 1 && signed[0].paysWhen ? `, which ${signed[0].paysWhen}` : '';
       parts.push(`${n(sum(signed))} ${isOrAre(sum(signed))} on a signed order (${names(signed)})${pays}`);
     }
-    if (said.length) parts.push(`${n(sum(said))} ${many(sum(said)) ? 'rest' : 'rests'} on what somebody said (${names(said)})`);
+    if (said.length) parts.push(`${n(sum(said))} ${c.counts !== 'value' && many(sum(said)) ? 'rest' : 'rests'} on what somebody said (${names(said)})`);
     const proof = parts.length ? ` ${parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`}.` : '';
     const more = likely > 0
       ? ` ${c.counts === 'value' ? `${n(likely)} more is likely` : `${n(likely)} more ${likely === 1 ? 'is' : 'are'} likely`}, which makes ${n(c.count + likely)} of the ${n(target)} needed.`
@@ -402,7 +426,18 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
   const whoAdded = await whoAddedEachBackingDocument(prisma, lines).catch(() => new Map<string, string | null>());
   /* The documents behind the lines: proof counts for the customer the document names (a-deals-proof-is-about-that-deal). */
   const docOf = await theBackingDocuments(prisma, lines).catch(() => new Map<string, ABackingDocument>());
-  const marked = lines.map((l) => ({
+  /*
+   * A code typed as the answer to "What shows the sale of those two units?" is read with the sale it was asked for (polish round 15, U14;
+   * withTheSaleEachCodeAnswered). Only for the payment records: every other reading of a line reads it as it was said.
+   */
+  const asProof: any[] = opts.paymentRecord
+    ? withTheSaleEachCodeAnswered(
+      lines.map((l) => ({ ...l, text: cleanText(l.text ?? '') })),
+      await theTurnsBehindTheCodes(prisma, lines.map((l) => ({ ...l, text: cleanText(l.text ?? '') }))).catch(() => []),
+      items.map((i) => ({ name: i.name, fields: plainFields(i.fields), ownerParticipantId: (i.sourceEntryId ? byId.get(i.sourceEntryId)?.participantId : null) ?? i.ownerParticipantId ?? null })),
+    )
+    : lines;
+  const marked = asProof.map((l) => ({
     text: cleanText(l.text ?? ''),
     mark: theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAdded) as string,
     documentBy: l.anchoredDocumentId ? (whoAdded.get(l.anchoredDocumentId) ?? null) : null,
@@ -411,7 +446,7 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
   /* The payment records: a document that reads as a payment, or a reference typed in full, each about the customer it names (the board's own rule). */
   const payments: { text: string; at: Date }[] = opts.paymentRecord
     ? thePaymentRecords(
-      lines
+      asProof
         .filter((l) => theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAdded) === 'proven')
         .map((l) => ({ text: cleanText(l.text ?? ''), createdAt: l.createdAt, anchoredDocumentId: l.anchoredDocumentId ?? null })),
       docOf,
@@ -464,8 +499,15 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
     const paymentFiled = filedOn(i.id, 'A payment');
     const orderFiled = filedOn(i.id, 'A signed order');
     const proven = sourceMark === 'proven' || proofNamesTheDeal(i.name, marked, owner) || paymentFiled.length > 0 || orderFiled.length > 0;
-    const fields = plainFields(i.fields);
-    const paidOnALine = opts.paymentRecord ? payments.filter((t) => aPaymentRecordFor({ name: i.name, fields }, [t])).map((t) => t.at) : [];
+    const said = plainFields(i.fields);
+    const paidOnALine = opts.paymentRecord ? payments.filter((t) => aPaymentRecordFor({ name: i.name, fields: said }, [t])).map((t) => t.at) : [];
+    /*
+     * What was sold is what its payment shows: the units the payment was for, and what was paid (U2, U14). Kept beside the deal's own
+     * details, which only take a value where they had none.
+     */
+    const soldFields = opts.paymentRecord && paidOnALine.length ? theSaleAsItsPaymentShowsIt({ name: i.name, fields: said }, payments) : null;
+    const hasAValue = Object.keys(said).some((k) => /^(?:deal\s+)?(?:value|amount|worth|size)$/i.test(k.trim()));
+    const fields = soldFields?.Value && !hasAValue ? { ...said, Value: soldFields.Value } : said;
     out.push({
       id: i.id,
       name: i.name,
@@ -475,8 +517,10 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
       firstOnRecordAt: new Date(i.createdAt),
       proven,
       paid: opts.paymentRecord ? paidOnALine.length > 0 || paymentFiled.length > 0 : proven,
+      paymentOnFile: !!opts.paymentRecord && (paidOnALine.length > 0 || paymentFiled.length > 0 || orderFiled.length > 0),
       /* Only the payment records on the lines can say a deposit; a payment filed on the deal is read as paid, as before. */
-      deposit: opts.paymentRecord && paidOnALine.length && !paymentFiled.length ? theDepositFor({ name: i.name, fields }, payments) : null,
+      deposit: opts.paymentRecord && paidOnALine.length && !paymentFiled.length ? theDepositFor({ name: i.name, fields: soldFields ?? fields }, payments) : null,
+      ...(soldFields ? { soldFields } : {}),
       paidOn: opts.paymentRecord
         ? [...paidOnALine, ...paymentFiled.map((e) => e.createdAt)].sort((a, b) => a.getTime() - b.getTime())[0] ?? null
         : null,
@@ -486,13 +530,13 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
         signed: aPaymentRecordFor({ name: i.name, fields }, signedOrders) || orderFiled.length > 0,
         ...(wonNeedsProof ? { wonNeedsProof: true } : {}),
         /* Only where no document shows the payment: an M-Pesa message sent is said as before. */
-        mpesaCode: aPaymentRecordFor({ name: i.name, fields }, documentPayments) || paymentFiled.length > 0 ? null : theMPesaCodeFor({ name: i.name, fields }, lines
+        mpesaCode: aPaymentRecordFor({ name: i.name, fields }, documentPayments) || paymentFiled.length > 0 ? null : theMPesaCodeFor({ name: i.name, fields }, asProof
           .filter((l) => theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAdded) === 'proven')
           .map((l) => ({ text: cleanText(l.text ?? ''), anchoredDocumentId: l.anchoredDocumentId ?? null }))),
         alreadyOpen: wasAlreadyOpen({ name: i.name, fields, createdAt: new Date(i.createdAt) }, lines.map((l) => ({ ...l, text: cleanText(l.text ?? '') })), leadRows),
         paysWhen: whenTheyPay(fields, lines.filter((l) => !owner || l.participantId === owner).map((l) => ({ text: cleanText(l.text ?? ''), createdAt: new Date(l.createdAt) }))),
         peopleThere: peopleAt.get(i.id) ?? [],
-        dropped: theDealWasDropped({ name: i.name, stage: i.stage ?? null, ownerParticipantId: owner, fields }, lines, { lastStage: stagesHere[stagesHere.length - 1] ?? null, peopleThere: peopleAt.get(i.id) ?? [], saidInTheCheckIn: (i.fields as any)?._dropped ?? null }),
+        dropped: theDealWasDropped({ name: i.name, stage: i.stage ?? null, ownerParticipantId: owner, fields }, lines, { lastStage: stagesHere[stagesHere.length - 1] ?? null, peopleThere: peopleAt.get(i.id) ?? [], saidInTheCheckIn: (i.fields as any)?._dropped ?? null, otherDeals: items.map((x) => String(x.name ?? '')) }),
       } : {}),
     });
   }

@@ -4,6 +4,7 @@ import { isASalesKind, oneOfTheKinds } from './the-kind-of-work';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
 import { theRecordForPromises, thePromisesSaidDone } from '../conversation/a-promise-said-done-is-kept';
 import { theMPesaCodesSaid } from '../conversation/an-mpesa-code-is-asked-about-once';
+import { withTheSaleEachCodeAnswered } from './a-deals-proof-is-about-that-deal';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { thePersonsRecord, theCoachingFollowedUp, theCoachingTheRecordStillHolds, theRecordForOneSession, type ThePersonsInputs, type ThePersonsRecord, type ACoaching, type AnItemOfTheirs } from './the-persons-record';
 import { theRecordInWords, type TheRecordInWords } from './the-persons-record-in-words';
@@ -60,7 +61,7 @@ export async function readTheInputs(prisma: any, groundId: string, now: Date = n
   const [checkIns, rows, commitments, deps, turns, workItems, evidence] = await Promise.all([
     safe<any[]>(prisma.checkIn?.findMany?.({
       where: { groundId, participantId: { in: ids }, isSetup: false, isSelfCorrection: false, isClarification: false, isPostSignOff: false, optional: false },
-      select: { id: true, participantId: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true, specificityDimensions: true },
+      select: { id: true, participantId: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true, specificityDimensions: true, _count: { select: { turns: { where: { role: 'PERSON' } } } } },
     }), []),
     safe<any[]>(prisma.recordEntry?.findMany?.({
       where: { participantId: { in: ids }, disputedAt: null },
@@ -77,7 +78,7 @@ export async function readTheInputs(prisma: any, groundId: string, now: Date = n
   const items: AnItemOfTheirs[] = sales
     ? (await safe(theDealsOnRecord(prisma, groundId, { paymentRecord: true }), [] as any[])).map((d: any) => ({
         id: d.id, name: d.name, stage: d.stage ?? null, ownerParticipantId: d.ownerParticipantId ?? null, dropped: !!d.dropped,
-        paid: !!d.paid, signed: !!d.signed, proven: !!d.proven, fields: d.fields ?? null,
+        paid: !!d.paid, signed: !!d.signed, proven: !!d.proven, mpesaCode: d.mpesaCode ?? null, fields: d.fields ?? null,
         evidence: (evidence as any[]).filter((e) => e.workItemId === d.id).map((e) => ({ id: e.id, readAs: String(e.readAs ?? ''), countsAsProof: !!e.countsAsProof })),
       }))
     : (workItems as any[]).map((i) => {
@@ -127,7 +128,18 @@ export async function readTheInputs(prisma: any, groundId: string, now: Date = n
         ...(deps as any[]).filter((d) => d.fromParticipantId !== p.id).map((d) => String(d.what ?? '')),
         ...(commitments as any[]).filter((c) => c.participantId !== p.id).map((c) => String(c.text ?? '')),
       ].filter((x) => x.trim()),
-      codes: theMPesaCodesSaid(theirTurns.filter((x) => x.role === 'PERSON').map((x) => ({ text: String(x.content ?? ''), at: x.createdAt }))),
+      /*
+       * A code typed as the answer to a question about one sale is given for that sale (polish round 15, U14): "M-Pesa code TGH5K2M9QX."
+       * answered "What shows the sale of those two units?" about Juja Hardware, so it is read with Joseph's own line about that sale.
+       */
+      codes: theMPesaCodesSaid(withTheSaleEachCodeAnswered(
+        [
+          ...(rows as any[]).filter((l) => l.participantId === p.id).map((l) => ({ text: String(l.text ?? ''), participantId: p.id, checkInId: l.checkInId ?? null, createdAt: l.createdAt, anchoredDocumentId: l.anchoredDocumentId ?? null, turn: false })),
+          ...theirTurns.filter((x) => x.role === 'PERSON').map((x) => ({ text: String(x.content ?? ''), participantId: p.id, checkInId: x.checkInId ?? null, createdAt: x.createdAt, anchoredDocumentId: null, turn: true })),
+        ],
+        theirTurns.map((x) => ({ checkInId: x.checkInId, role: String(x.role), content: String(x.content ?? ''), createdAt: x.createdAt })),
+        items.map((i) => ({ name: i.name, fields: i.fields ?? null, ownerParticipantId: i.ownerParticipantId ?? null })),
+      ).filter((x) => x.turn).map((x) => ({ text: x.text, at: x.createdAt }))),
       ourTurns: theirTurns.filter((x) => x.role === 'AI').map((x) => ({ content: String(x.content ?? ''), at: x.createdAt, checkInId: x.checkInId ?? null })),
       theirTurns: theirTurns.filter((x) => x.role === 'PERSON').map((x) => ({ content: String(x.content ?? ''), at: x.createdAt, checkInId: x.checkInId ?? null })),
     };

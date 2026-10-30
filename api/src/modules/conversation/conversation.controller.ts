@@ -32,6 +32,14 @@ class WhatWorkedDto {
 @UseGuards(JwtAuthGuard)
 @Controller('check-ins')
 export class ConversationController {
+  /** Add something to your own record, any time (add-something.ts): it goes in as an answer, and is filed where it belongs. */
+  @Post('add-something/:groundId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Add something to your own record, between check-ins or during one' })
+  async addSomething(@Param('groundId') groundId: string, @Body() dto: AMessageIntoACheckInDto, @CurrentUser('id') userId: string) {
+    return this.conversation.addSomething(groundId, userId, dto.message);
+  }
+
   private readonly logger = new Logger(ConversationController.name);
   constructor(
     private readonly conversation: ConversationService,
@@ -111,8 +119,9 @@ export class ConversationController {
 
   @Post(':id/complete')
   @ApiOperation({ summary: 'Mark a check-in complete' })
-  async complete(@Param('id') id: string, @CurrentUser('id') userId: string) {
-    return this.conversation.complete(id, userId);
+  async complete(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() body?: { ended?: boolean }) {
+    /* "End session", pressed by the person: their own end, honoured with anything said (26 October). */
+    return this.conversation.complete(id, userId, body?.ended === true ? { theyAskedToFinish: true } : {});
   }
 
   @Post(':id/decline')

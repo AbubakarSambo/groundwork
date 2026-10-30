@@ -107,3 +107,32 @@ export async function fileTheProofOnItsItem(
   });
   return made;
 }
+
+/**
+ * PROOF SENT BEFORE ITS DEAL WAS ON RECORD IS FILED ON IT ONCE IT IS (polish round 1, 26 October 2026). Kevin sent the M-Pesa message
+ * for Kilele Hotel's 40 units at 11:03, and the check-in put Kilele Hotel on the record at 11:06. The proof was filed on nothing, and
+ * Grace's board read "0 of 120 sold" all week. After each check-in's records are kept, proof filed on no item is read again against
+ * the items now on record, by the same rule: the one item its words name, the person's own first, never a guess.
+ */
+export async function fileProofThatWasFiledOnNothing(prisma: any, groundId: string): Promise<number> {
+  const orphans: any[] = (await Promise.resolve(prisma.itemEvidence?.findMany?.({
+    where: { groundId, workItemId: null, countsAsProof: true },
+    select: { id: true, documentId: true, participantId: true },
+  })).catch(() => [])) ?? [];
+  if (!orphans.length) return 0;
+  const items: AnItem[] = (await Promise.resolve(prisma.workItem?.findMany?.({
+    where: { groundId },
+    select: { id: true, kind: true, name: true, ownerParticipantId: true, fields: true },
+  })).catch(() => [])) ?? [];
+  let filed = 0;
+  for (const o of orphans) {
+    const doc: any = await Promise.resolve(prisma.groundDocument?.findUnique?.({ where: { id: o.documentId }, select: { fileName: true, uploaderNote: true, content: true } })).catch(() => null);
+    if (!doc) continue;
+    const words = [doc.fileName, doc.uploaderNote, weCouldNotReadIt(doc.content) ? '' : doc.content].filter((x) => String(x ?? '').trim()).join(' ');
+    const item = theItemItNames(words, items, o.participantId ?? null);
+    if (!item) continue;
+    await prisma.itemEvidence.update({ where: { id: o.id }, data: { workItemId: item.id, itemName: item.name } }).catch(() => undefined);
+    filed++;
+  }
+  return filed;
+}

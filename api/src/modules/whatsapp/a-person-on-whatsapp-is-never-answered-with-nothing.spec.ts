@@ -107,7 +107,8 @@ describe('the organisation handler', () => {
        that had closed, which put the try a few characters further back. Still the one try around the open and the answer. */
     /* 1100 (20 October): the words that switch are now said through theWordsOnce, and the direct morning's own opening is read on the same path. Still the one try. */
     const before = SRC.slice(at - 1100, at);
-    const after = SRC.slice(at, at + 700);
+    // Changed 26 October 2026 (Hafsah: item 3): 1500, not 700: an engine close now ends the check-in on the phone inside the same try, which put the catch further on.
+    const after = SRC.slice(at, at + 1500);
     expect(before).toMatch(/try \{/);
     expect(after).toMatch(/catch \(e: any\) \{[\s\S]*await say\(/);
   });

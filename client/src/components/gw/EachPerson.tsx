@@ -279,15 +279,15 @@ export function EachPerson({
                 <Part title={isMe ? 'Your to-dos' : 'What they are down as doing'}>
                   {theirToDos.length ? theirToDos.map((t) => (
                     <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5, flexWrap: 'wrap' }}>
-                      <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.5, minWidth: 180 }}>{t.text}</span>
-                      {t.whenSaid && <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>{t.whenSaid}</span>}
+                      <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: '20px', minWidth: 180 }}>{t.text}</span>
+                      {t.whenSaid && <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{t.whenSaid}</span>}
                       {/*
                         WHOSE WORDS, TO WHOEVER IS READING - and the commitments band two bands
                         below already said "your words, not theirs" about the same fact, so the page
                         named the lead in the third person and in the second within one scroll.
                       */}
                       {!t.explicit && (
-                        <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>
+                        <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
                           {isTheLead ? 'These are your words, not theirs.' : isMe ? `These are ${leadsOwn} words, not yours.` : `These are ${leadsOwn} words, not theirs.`}
                         </span>
                       )}
@@ -316,8 +316,8 @@ export function EachPerson({
                   <Part title={isMe ? 'What you said you would show' : 'What they said they would show'}>
                     {theirAsks.length ? theirAsks.map((a) => (
                       <div key={a.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5, flexWrap: 'wrap' }}>
-                        <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.5, minWidth: 180 }}>{a.what}</span>
-                        {a.askedIn && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>{a.askedIn}</span>}
+                        <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: '20px', minWidth: 180 }}>{a.what}</span>
+                        {a.askedIn && <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{a.askedIn}</span>}
                         {isMe && onUploadFor && <Small onClick={() => onUploadFor(p.id, a)}>Attach it</Small>}
                       </div>
                     )) : <Empty>Nothing outstanding. When a check-in asks you for something in writing, it appears here.</Empty>}
@@ -328,7 +328,7 @@ export function EachPerson({
                   {theirFiles.length ? theirFiles.map((f) => (
                     <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4, flexWrap: 'wrap' }}>
                       <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 160 }}>{f.fileName ?? f.name}</span>
-                      <span style={{ fontSize: 11.5, color: f.visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
+                      <span style={{ fontSize: 12, color: f.visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
                         {f.visibility === 'OPEN'
                           ? 'Everyone in this check-in can read it.'
                           : f.visibility === 'CLOSED' ? 'Whoever runs this check-in can read it.' : 'Only you can read it.'}
@@ -350,14 +350,14 @@ export function EachPerson({
 function Part({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ borderTop: '1px solid var(--gw-line)', paddingTop: 8, marginTop: 8 }}>
-      <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 4 }}>{title}</div>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 4 }}>{title}</div>
       {children}
     </div>
   )
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.55 }}>{children}</div>
+  return <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px' }}>{children}</div>
 }
 
 /*
@@ -371,7 +371,7 @@ function Small({ onClick, children }: { onClick: () => void; children: React.Rea
     <button
       onClick={onClick}
       className="gwui-tap-44"
-      style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+      style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
     >
       {children}
     </button>

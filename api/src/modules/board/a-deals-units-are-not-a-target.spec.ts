@@ -76,6 +76,17 @@ describe('what does not add up, as the model is told it (items 27 and 28)', () =
     expect(whatDoesNotAddUp(input).map((d) => d.kind)).toContain('counted differently');
     expect(sayWhatDoesNotAddUp({ ...input, customers: CUSTOMERS, people: PEOPLE })).toBe('');
   });
+  it('figures that name no customer on record are not set against each other (Kevin, polish round 1)', () => {
+    const input = {
+      said: [
+        { text: 'I hit 30 units.', type: 'PROGRESS', session: 1 },
+        { text: 'Jane will pay for 6 units.', type: 'PROGRESS', session: 4 },
+      ],
+      thisSession: 5, targets: [], sessionsLeft: 2, aiTurnsThisSession: [], customers: CUSTOMERS, people: PEOPLE,
+    };
+    expect(whatDoesNotAddUp(input).map((d) => d.kind)).not.toContain('counted differently');
+  });
+
   it('the same customer counted differently is still put to them', () => {
     const input = {
       said: [

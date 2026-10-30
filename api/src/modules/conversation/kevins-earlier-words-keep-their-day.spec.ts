@@ -40,3 +40,11 @@ describe("Kevin's earlier words are put back with their own day", () => {
     expect(withEarlierWordsOnTheirOwnDay(now, TUESDAY, WEDNESDAY)).toBe(now);
   });
 });
+
+describe('a day already said, and words in quotation marks (polish round 2)', () => {
+  const e = [{ content: 'I will check on Brian today.', at: new Date('2026-10-14T09:00:00+03:00') }];
+  it('is not said twice, and their quoted words are left as they wrote them', () => {
+    expect(withEarlierWordsOnTheirOwnDay('You wrote on Wednesday 14 October: “I will check on Brian today.” Did he?', e, new Date('2026-10-16T09:00:00+03:00')))
+      .toBe('You wrote on Wednesday 14 October: “I will check on Brian today.” Did he?');
+  });
+});

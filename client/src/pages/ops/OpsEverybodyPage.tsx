@@ -48,7 +48,7 @@ function PersonRow({ row }: { row: OpsEverybodyRow }) {
     <div style={{ ...CARD, marginBottom: 12 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-start' }}>
         <div style={{ minWidth: 170, flex: '1 1 170px' }}>
-          <div style={{ fontSize: 16, fontWeight: 600 }}>{row.displayName}</div>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>{row.displayName}</div>
           <div style={{ ...LABEL, fontSize: 10, marginTop: 2 }}>
             {row.functionalRole.replace(/_/g, ' ').toLowerCase()}
           </div>

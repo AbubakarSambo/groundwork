@@ -113,3 +113,19 @@ describe('the manager an admin sets on the People page approves leave', () => {
     expect((await queue.queue({ userId: 'u-bola', organizationId: ORG }, {}, today)).says).toBe('Nothing is waiting for you to approve or decline.');
   });
 });
+
+/*
+ * POLISH ROUND 1 (26 October 2026): Brian joined without a first or last name on his sign-in, and the queue counted his request and never
+ * showed it. A request is never dropped for want of a name: it reads by the staff list, the name given in a check-in, or the address.
+ */
+describe('a request from somebody whose sign-in has no name', () => {
+  it('is still in the approver\'s queue, by the first part of their address', async () => {
+    const { prisma, people } = anOrganisation();
+    await people.setWhereTheySit(ORG, 'u-chidi', { reportsToUserId: 'u-bola' });
+    const before = prisma.user.findMany;
+    prisma.user.findMany = jest.fn(async (a: any) => (await before(a)).map((u: any) => (u.id === 'u-chidi' ? { ...u, firstName: null, lastName: null } : u)));
+    const bola = await new ApprovalsQueueService(prisma).queue({ userId: 'u-bola', organizationId: ORG }, {}, new Date('2026-10-12T09:00:00Z'));
+    expect(bola.counts.all).toBe(1);
+    expect(bola.items.map((i) => i.says)).toEqual(['Chidi asked for leave from Monday 19 October to Wednesday 21 October, which is 3 working days.']);
+  });
+});

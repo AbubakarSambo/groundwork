@@ -35,3 +35,11 @@ describe('a step after Nothing booked', () => {
     expect(inAboutEightWords('Nothing booked. Rose has your KES 10,000 quote. Ask Rose when Mama Mboga Mart will buy.')).toBe('Ask Rose when Mama Mboga Mart will buy. Nothing booked.');
   });
 });
+
+/* Polish round 1 (26 October 2026): "call Mrs. Achola" was cut at "Mrs." and turned round into "Achola. call Mrs.". */
+describe('a title is not the end of a sentence', () => {
+  it('keeps "Mrs. Achola" whole', () => {
+    expect(aStepOnItsOwn('call Mrs. Achola for Greenfield')).toBe('Call Mrs. Achola for Greenfield');
+    expect(inAboutEightWords('Follow up with their procurement manager, Mr. Ochieng')).toBe('Follow up with their procurement manager, Mr. Ochieng');
+  });
+});

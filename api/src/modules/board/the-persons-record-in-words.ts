@@ -188,7 +188,7 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
       says: `${You(w)} did ${inWords(s.checkInsDone)} of ${plural(s.checkInsDue, 'check-in')}${s.checkInsDone ? `, ${timing}` : ''}. ${cap(inWords(s.checkInsSpecific))} of them named the item, what changed and the day.`,
       toChange: s.checkInsDue >= 3 && (s.checkInsDone / s.checkInsDue < 0.8 || s.checkInsOnTime / s.checkInsDue < 0.7 || (s.checkInsDone ? s.checkInsSpecific / s.checkInsDone : 0) < 0.7)
         ? 'Naming the item, what changed and the day, every time, would change this.' : null,
-      evidence: r.checkIns.filter((c) => !c.done || !c.onTime || !c.specific).map((c) => `${c.on ? `On ${c.on}` : `In session ${c.sessionNumber}`}, ${!c.done ? 'the check-in was not done' : !c.onTime ? 'the check-in was done more than a day after it opened' : 'the check-in did not name the item, what changed and the day'}.`),
+      evidence: r.checkIns.filter((c) => !c.done || !c.onTime || !c.specific).map((c) => `${c.on ? `On ${c.on}` : `In session ${c.sessionNumber}`}, ${!c.done ? 'the check-in was not done' : !c.onTime ? 'the check-in was done after the day it opened' : 'the check-in did not name the item, what changed and the day'}.`),
     });
   }
 

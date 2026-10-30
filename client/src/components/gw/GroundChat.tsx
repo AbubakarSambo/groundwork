@@ -84,7 +84,7 @@ function GroundTopic({ brief }: {
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 6 }}>
       {/* Gated with the brief it heads: a check-in created without one showed this heading over nothing. */}
       {brief && (
-      <div style={{ fontSize: 10.5, letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
+      <div style={{ fontSize: 10, letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
         About this check-in
       </div>
       )}
@@ -101,7 +101,7 @@ function GroundTopic({ brief }: {
         moment they start typing.
       */}
       {brief && (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, borderTop: '1px solid var(--gw-border)', paddingTop: 9, marginTop: 9 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', borderTop: '1px solid var(--gw-border)', paddingTop: 9, marginTop: 9 }}>
           {brief}
         </div>
       )}
@@ -141,14 +141,14 @@ export function SessionSummary({ checkInId, groundId, sessionNumber }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <button
           onClick={() => setOpen(o => !o)}
-          style={{ fontSize: 11.5, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600 }}
+          style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 700 }}
         >
           {open ? 'Hide what we heard' : 'What we heard from you'}
         </button>
         <button
           onClick={() => correct.mutate()}
           disabled={correct.isPending}
-          style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
+          style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
         >
           {correct.isPending ? 'Opening…' : 'Something wrong here? Continue this session to correct it'}
         </button>
@@ -158,9 +158,9 @@ export function SessionSummary({ checkInId, groundId, sessionNumber }: {
           {isLoading && <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>Loading…</div>}
           {data?.artifact ? (
             <>
-              <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6 }}>{data.artifact.summary}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: '19px' }}>{data.artifact.summary}</div>
               {data.artifact.whatToCarry && (
-                <div style={{ fontSize: 12.5, color: 'var(--gw-navy)', fontWeight: 600, borderTop: '1px solid var(--gw-border)', paddingTop: 8, marginTop: 8 }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-navy)', fontWeight: 700, borderTop: '1px solid var(--gw-border)', paddingTop: 8, marginTop: 8 }}>
                   Carry forward: {data.artifact.whatToCarry}
                 </div>
               )}
@@ -229,7 +229,7 @@ export function Message({ role, content }: { role: 'AI' | 'PERSON'; content: str
         borderRadius: mine ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
         padding: '10px 14px',
         fontSize: 14,
-        lineHeight: 1.65,
+        lineHeight: '23px',
         whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
       }}
     >
@@ -364,12 +364,12 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
     <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14, marginTop: 18 }}>
       {waiting.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
+          <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
             Waiting for your next check-in
           </div>
           {waiting.map(n => (
             <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 11px', marginBottom: 6 }}>
-              <div style={{ flex: 1, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0 }}>{n.text}</div>
+              <div style={{ flex: 1, fontSize: 12, color: 'var(--gw-text)', lineHeight: '19px', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0 }}>{n.text}</div>
               <button
                 onClick={() => remove.mutate(n.id)}
                 title="Delete this note"
@@ -397,7 +397,7 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
           looks like a check-in. It also says where the note goes, because a
           private box in a product about shared records needs to say which it is.
         */}
-        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
           {nextOpensAt
             ? `Your next check-in opens ${whenItWas(nextOpensAt, 'dayAndMonthLong')}. `
             : 'No check-in is open right now. '}
@@ -407,7 +407,7 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
             <>
               <button
                 onClick={onGoToSetup}
-                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--gw-navy)', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--gw-navy)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
               >
                 Change how often this runs
               </button>
@@ -418,7 +418,7 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
         </div>
         <label
           title="Attach a document for your next check-in"
-          style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: upload.isPending ? 'wait' : 'pointer', padding: '9px 6px' }}
+          style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', cursor: upload.isPending ? 'wait' : 'pointer', padding: '9px 6px' }}
         >
           {upload.isPending ? 'Adding…' : '+ Document'}
           <input
@@ -522,7 +522,7 @@ export function GroundChat({
         )}
 
         {isParty && !isLoading && !isError && sessions.length === 0 && (
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>
             Nothing on record yet. Your first check-in starts the conversation, and everything
             you say in it stays here for you to come back to.
           </div>
@@ -558,12 +558,12 @@ export function GroundChat({
         */}
         {(signals ?? []).length > 0 && (
           <details style={{ alignSelf: 'stretch' }}>
-            <summary style={{ fontSize: 11.5, color: 'var(--gw-sub)', cursor: 'pointer', fontWeight: 600 }}>
+            <summary style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', fontWeight: 700 }}>
               What Groundwork has noticed ({(signals ?? []).length})
             </summary>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
               {(signals ?? []).map((sig, i) => (
-                <div key={i} style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '8px 11px' }}>
+                <div key={i} style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '8px 11px' }}>
                   <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>{sig.label}</span>
                   <span style={{ color: 'var(--gw-muted)' }}> · session {sig.session}</span>
                   <div style={{ marginTop: 3 }}>{sig.text}</div>
@@ -581,11 +581,11 @@ export function GroundChat({
         {!isParty && (history ?? []).map(h => (
           <div key={h.sessionNumber} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <SessionDivider sessionNumber={h.sessionNumber} date={h.date} isCorrection={false} correctionOf={null} />
-            <div style={{ alignSelf: 'center', fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', lineHeight: 1.6 }}>
+            <div style={{ alignSelf: 'center', fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', lineHeight: '19px' }}>
               {h.people.length === 0
                 ? 'Nobody has checked in yet.'
                 : `Checked in: ${h.people.join(', ')}.`}
-              <div style={{ color: 'var(--gw-muted)', fontSize: 11.5, marginTop: 2 }}>
+              <div style={{ color: 'var(--gw-muted)', fontSize: 12, marginTop: 2 }}>
                 What each person wrote stays with them. The report is where those answers meet.
               </div>
             </div>
@@ -593,7 +593,7 @@ export function GroundChat({
         ))}
 
         {!isParty && (history ?? []).length === 0 && (
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, textAlign: 'center' }}>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', textAlign: 'center' }}>
             No sessions yet. When people check in, each one appears here.
           </div>
         )}

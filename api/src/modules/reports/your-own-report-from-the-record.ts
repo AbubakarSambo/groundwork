@@ -1,4 +1,4 @@
-import type { ADealOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
+import { whatWasSold, type ADealOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
 import { aLineIsAbout } from '../board/a-deals-value-and-buying-date';
 import { aPromiseSomebodyElseMade } from '../conversation/a-promise-somebody-else-made';
 import { aDayKey, aDayInWords } from './a-sales-report-read-from-the-deals';
@@ -135,7 +135,7 @@ export function yourOwnReport(input: {
   const sentences: string[] = [];
   if (theirWon.length && input.target) {
     const first = [...theirWon].sort((a, b) => a.firstOnRecordAt.getTime() - b.firstOnRecordAt.getTime());
-    const sold = theirWon.reduce((n, d) => n + (theUnitsOf(d) ?? 0), 0);
+    const sold = theirWon.reduce((n, d) => n + (theUnitsOf({ fields: whatWasSold(d) }) ?? 0), 0);
     const latest = first[first.length - 1];
     sentences.push(`${latest.name} is your ${ORDINALS[first.length - 1] ?? `number ${first.length}`} sale, ${sold} of your ${input.target.amount} ${input.target.unit}.`);
   }

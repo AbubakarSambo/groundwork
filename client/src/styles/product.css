@@ -15,7 +15,7 @@
 .btn.sec.red { color: var(--con); }
 /* A button that cannot be pressed yet stays readable (Hafsah, 13 October): outlined, in the muted ink. */
 .btn:disabled, .btn[aria-disabled="true"] { cursor: not-allowed; filter: none; }
-.btn.pri:disabled, .btn.pri[aria-disabled="true"], .btn.sec:disabled, .btn.sec[aria-disabled="true"] { background: var(--surface); color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--rule2); }
+.btn.pri:disabled, .btn.pri[aria-disabled="true"], .btn.sec:disabled, .btn.sec[aria-disabled="true"] { background: var(--surface); color: var(--muted); box-shadow: inset 0 0 0 1px var(--rule2-crisp); }
 .btn.quiet:disabled { color: var(--muted); }
 /* A section's own actions sit at the end of its heading, as the prototype's "See it all". */
 .gw-sec-action { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -29,7 +29,7 @@
 /* A setting that is on or off, as B8 draws it: a plain checkbox in the navy. */
 .gw-check { width: 20px; height: 20px; margin: 0; accent-color: var(--navy); cursor: pointer; flex: none; }
 /* The prototype's sign-in links sit at the two ends of their row; its own rule styles them as links (a), these are buttons. */
-.signlinks .btn { font-size: 14.5px; white-space: nowrap; min-height: 44px; padding: 0; }
+.signlinks .btn { font-size: 14px; white-space: nowrap; min-height: 44px; padding: 0; }
 
 /* Small layout pieces the prototype writes inline in its own markup; named here once so no component repeats them. */
 .gw-min0 { min-width: 0; }
@@ -87,7 +87,7 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
 /* Figures in the name face line up with the text around them (quality pass, D-6). */
 .t-title, .t-greet { font-variant-numeric: lining-nums; }
 /* B7: the focus band names itself inside the band, small and spaced. */
-.gw-focus-label { margin: 0 0 6px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gw-blue-b); }
+.gw-focus-label { margin: 0 0 6px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gw-blue-b); line-height: 20px;}
 /* The product's tap floor (44px for anything you can tap): the prototype's small button, chips, choices and view links are 36 to 40px. */
 .btn.sm, .chip, .seg button, .views a { min-height: 44px; }
 /* Lines read one under another with the prototype's thin rule between them. */
@@ -100,7 +100,7 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
 .gw-templates-list { display: flex; flex-direction: column; gap: 2px; }
 .gw-templates-list .ci-row { border: 0; background: none; font: inherit; text-align: left; width: 100%; cursor: pointer; }
 .gw-template-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px 24px; margin: 0; }
-.gw-template-facts dt { font-size: 13px; color: var(--muted); }
+.gw-template-facts dt { font-size: 13px; color: var(--muted); line-height: 20px;}
 .gw-template-facts dd { margin: 2px 0 0; }
 .gw-ladder-row { grid-template-columns: 160px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); padding: 12px 18px; min-width: 720px; }
 .gw-ladder-head { border-top: 0; }
@@ -138,7 +138,7 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
    heading, the first row with its edge and a full-width button, and the rest as plain rows tapped as a whole. */
 @media (max-width: 640px) {
   .gw-today .t-greet { font-size: 32px; }
-  .gw-today .gwui-greeting p, .gw-today header p.t-body { font-size: 14.5px; line-height: 1.45; }
+  .gw-today .gwui-greeting p, .gw-today header p.t-body { font-size: 14px; line-height: 20px; }
   .gw-today .sec-h .t-h2 { font-size: 18px; }
   .gw-today .list .item:first-child > .acts { justify-self: stretch; }
   .gw-today .list .item:first-child > .acts .btn { width: 100%; }
