@@ -49,6 +49,8 @@ import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
 import { groundsApi } from '@/api/grounds'
+import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
+import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import {
   COLLECT_WHATS_OWED, COLLECT_WHATS_OWED_CARD, COLLECT_WHATS_OWED_GROUP, COLLECT_WHATS_OWED_OPENER, COLLECT_WHATS_OWED_FOR_EXAMPLE,
   soundsLikeCollectingWhatsOwed,
@@ -1424,6 +1426,28 @@ export function effectiveFallbackGroundName(
  *   coexist with the save card's own hidden primary (see the-entry-chats-own-test-helpers.ts for
  *   why that one is hidden from a person regardless), nobody ever sees two navy buttons at once.
  */
+/**
+ * THE NUMBERS GIVEN IN THE SETUP, SAVED ONCE THE CHECK-IN IS SAVED (Hafsah, 30 October 2026). The save does not say which place each
+ * person has, so the check-in is read once for them, and each number goes through the one writer for a lead's number
+ * (PATCH /grounds/:id/participants/:participantId/whatsapp-number). One that does not save says so; the check-in and the person stay.
+ */
+export async function theNumbersGivenInTheSetup(groundId: string, phones: Record<string, string>, whatsappOn: boolean): Promise<void> {
+  const given = Object.entries(phones).filter(([, n]) => n.trim())
+  if (!given.length) return
+  let people: { id: string; email: string | null }[] = []
+  try { people = ((await groundsApi.get(groundId)) as any)?.participants ?? [] } catch { people = [] }
+  for (const [email, number] of given) {
+    const p = people.find(x => String(x.email ?? '').trim().toLowerCase() === email)
+    try {
+      if (!p) throw new Error('not on it')
+      await groundsApi.addTheirWhatsAppNumber(groundId, p.id, number)
+    } catch (e: any) {
+      /* The server's sentence names WhatsApp, so it is said only while WhatsApp is on (Hafsah's rule of 26 September). */
+      toast.error(whatsappOn && e?.response?.data?.message ? e.response.data.message : `The phone number for ${email} did not save. The check-in is saved, and they are on it.`)
+    }
+  }
+}
+
 export function EntryChatPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -1853,6 +1877,15 @@ export function EntryChatPage() {
   const [inviteDisplayName, setInviteDisplayName] = useState('')
   const [pendingDisplayName, setPendingDisplayName] = useState('')
   const [displayNames, setDisplayNames] = useState<Record<string, string>>({})
+  /*
+   * A PHONE NUMBER BESIDE EACH PERSON ADDED (Hafsah, 30 October 2026: always asked, whether WhatsApp is on or off). Kept by address,
+   * the way their name is, and saved to each of them through the one writer for a lead's number once the check-in is saved and they
+   * are on it (theNumbersGivenInTheSetup).
+   */
+  const whatsappOn = useWhatsAppIsOn()
+  const [invitePhone, setInvitePhone] = useState('')
+  const [pendingPhone, setPendingPhone] = useState('')
+  const [phones, setPhones] = useState<Record<string, string>>({})
   const [inviteNote, setInviteNote] = useState('')
   const [inviteAdded, setInviteAdded] = useState<string[]>([])
   const [inviteContextFor, setInviteContextFor] = useState<string | null>(null)
@@ -3231,6 +3264,7 @@ export function EntryChatPage() {
       sayWhoWasNotInvited(res)
       rememberTheFirstCheckInClosing(res.groundId)
       navigate(`/grounds/${res.groundId}`, { replace: true })
+      void theNumbersGivenInTheSetup(res.groundId, phones, whatsappOn)
       /*
        * WHERE THE PANEL THAT JUST VANISHED WENT.
        *
@@ -3404,6 +3438,8 @@ export function EntryChatPage() {
        so it is still there to keep once the person is actually added - Skip included. */
     setPendingDisplayName(inviteDisplayName.trim())
     setInviteDisplayName('')
+    setPendingPhone(invitePhone.trim())
+    setInvitePhone('')
     setInviteContextFor(e)
     setInviteContext('')
   }
@@ -3413,6 +3449,10 @@ export function EntryChatPage() {
     const name = pendingDisplayName.trim()
     if (name) setDisplayNames(prev => ({ ...prev, [email.trim().toLowerCase()]: name }))
     setPendingDisplayName('')
+    /* And the number typed beside it, kept the same way. */
+    const number = pendingPhone.trim()
+    if (number) setPhones(prev => ({ ...prev, [email.trim().toLowerCase()]: number }))
+    setPendingPhone('')
   }
 
   // Queues a recommended addition / mentioned person straight into the
@@ -3470,6 +3510,9 @@ export function EntryChatPage() {
     const newNames = name ? { ...displayNames, [inviteContextFor.trim().toLowerCase()]: name } : displayNames
     if (name) setDisplayNames(newNames)
     setPendingDisplayName('')
+    const number = pendingPhone.trim()
+    if (number) setPhones(prev => ({ ...prev, [inviteContextFor.trim().toLowerCase()]: number }))
+    setPendingPhone('')
     setInviteContext('')
     // Drain bulk queue: advance to next email if one is waiting
     const [next, ...rest] = bulkQueue
@@ -3929,6 +3972,7 @@ export function EntryChatPage() {
             onChange={e => setInviteDisplayName(e.target.value)}
             className="gwui-ec-savecard-field"
           />
+          <PhoneNumberField id="setup-person-phone" value={invitePhone} onChange={setInvitePhone} whose="theirs" whatsappOn={whatsappOn} />
           <div className="gwui-ec-savecard-invite-add-row">
             <TextField type="email" placeholder="name@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addInviteEmail()}

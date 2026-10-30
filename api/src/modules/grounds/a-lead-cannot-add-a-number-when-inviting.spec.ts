@@ -5,9 +5,14 @@ import { ValidationPipe, BadRequestException } from '@nestjs/common';
 import { AddParticipantDto } from './dto/add-participant.dto';
 
 /**
- * A LEAD CANNOT ADD A PHONE NUMBER WHEN INVITING (decision 106 item 6). Numbers come from the person
- * themselves (Settings) or from an admin (the roster). This does not change, and these tests pin it:
- * the invitation's own fields have no number, and the API's pipe refuses one sent anyway.
+ * THE INVITATION ITSELF STILL CARRIES NO NUMBER. Decision 106 item 6 ("Leads cannot add numbers when
+ * inviting") was replaced by Hafsah on 30 October 2026: "phone numbers are always shown and editable,
+ * whether WhatsApp is on or off ... adding people, People and setup, and joining". The add form now asks
+ * for a phone number, and it goes through the one writer for a lead's number, PATCH
+ * /grounds/:id/participants/:participantId/whatsapp-number (the-lead-adds-a-whatsapp-number.ts), right
+ * after the add and the setup's save. So the add's own fields stay as they were, with no number, and
+ * the API's pipe still refuses one sent with them: one way in for a number, not two. These assertions
+ * are kept unchanged.
  */
 const PIPE = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
 
