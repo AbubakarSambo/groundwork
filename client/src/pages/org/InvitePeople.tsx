@@ -4,6 +4,9 @@ import { ThisAddsASeat } from '@/components/gw/this-adds-a-seat'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
 import { Section, Panel, Stack, TextArea, Select, Button, Note, Tag } from '@/components/gw/ui'
+import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
+import { fetchMembers } from './people-here'
+import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 
 /**
  * "INVITE PEOPLE" (A4 people.txt): one per line, a name and an email, or a list from a spreadsheet,
@@ -12,15 +15,15 @@ import { Section, Panel, Stack, TextArea, Select, Button, Note, Tag } from '@/co
  * no seat), the page shows what would happen to each one and sends only after that is read. An
  * admin never emails half a company without knowing which half.
  *
- * WORDING LEFT AS THE PRODUCT'S OWN, ON PURPOSE (design-audit.md item 12). The prototype's text
- * offers "or a WhatsApp number" and "or a WhatsApp message", and a "Guest" role, here. Neither is
- * true of this product yet: the paste-many endpoint this form calls
- * (api/src/modules/users/putting-a-whole-company-on.ts) only ever reads email addresses, whatever
- * the organisation's own WhatsApp switch says, and inviting somebody straight into "Guest" throws on
- * the server (aRoleToInviteAs, inviting-with-a-role-and-a-name.spec.ts) - a guest is somebody a lead
- * adds to one check-in, not somebody an admin invites to the organisation. So this keeps the
- * product's true sentence rather than the prototype's, until WhatsApp invites and Guest-by-invite
- * both exist.
+ * A PHONE NUMBER, ALWAYS ASKED (Hafsah, 30 October 2026: "phone numbers are always shown and editable,
+ * whether WhatsApp is on or off ... Label it plainly 'Phone number'"; this replaces decision 106 item
+ * 6). The invitation itself still goes by email: the paste-many endpoint
+ * (api/src/modules/users/putting-a-whole-company-on.ts) reads addresses only. So the number is one
+ * optional field for the one person on the list, saved to them through PATCH /users/:id, the same save
+ * People uses, once their invitation has gone. The invitation's answer does not carry their id, so it
+ * is read from People by their address. With several people on the list, each number is added on
+ * People. A "Guest" role is still not offered: inviting somebody straight into it throws on the server
+ * (aRoleToInviteAs) - a guest is somebody a lead adds to one check-in.
  *
  * REBUILT FROM THE SHARED PARTS (item 11: the role choice, "Send their invitations" and "Upload a
  * list" sit on one line under the text box, which is the standard 16px `TextArea`). The sentence,
@@ -57,6 +60,31 @@ const ROLES = [
   ['ADMIN', 'Admin'],
 ] as const
 
+/**
+ * THE NUMBER, SAVED TO THE ONE PERSON JUST INVITED. Their id is read from People by their address, since the invitation's answer has
+ * none. A number that does not save says so, and the invitation stands.
+ */
+export async function saveTheNumberOfTheOneInvited(rows: PastedRow[], number: string): Promise<void> {
+  const n = number.trim()
+  if (!n) return
+  const invited = rows.filter((r) => r.result === 'invited')
+  if (invited.length !== 1) {
+    if (invited.length > 1) toast.info('The phone number was not saved, because the list has more than one person. Add each number on People.')
+    return
+  }
+  const who = invited[0]
+  const said = who.name?.trim() || who.email
+  try {
+    const { data } = await fetchMembers()
+    const person = data.find((m) => m.email.toLowerCase() === who.email.toLowerCase())
+    if (!person) throw new Error('not found')
+    await apiClient.patch(`/users/${person.id}`, { phoneNumber: n })
+    toast.success(`${said}’s phone number is saved.`)
+  } catch (e: any) {
+    toast.error(e?.response?.data?.message ?? `${said}’s phone number did not save. Their invitation went out. Add the number on People.`)
+  }
+}
+
 function pasteMany(pasted: string, preview: boolean, role: string): Promise<PasteAnswer> {
   return apiClient.post('/users/invitations', { pasted, preview, role }).then((r) => r.data.data ?? r.data)
 }
@@ -65,18 +93,24 @@ export function InvitePeople() {
   const qc = useQueryClient()
   const [pasted, setPasted] = useState('')
   const [role, setRole] = useState<string>('MEMBER')
+  const [phone, setPhone] = useState('')
+  const whatsappOn = useWhatsAppIsOn()
   const [answer, setAnswer] = useState<PasteAnswer | null>(null)
   const file = useRef<HTMLInputElement>(null)
 
   const send = useMutation({
     mutationFn: () => pasteMany(pasted, false, role),
-    onSuccess: (a) => {
+    onSuccess: async (a) => {
       setAnswer(a)
       setPasted('')
+      const number = phone
+      setPhone('')
       qc.invalidateQueries({ queryKey: ['org-members'] })
       /* And the head count, "N people, on the … plan", which went stale until a reload (U.4 review). */
       qc.invalidateQueries({ queryKey: ['billing-status-people'] })
       toast.success(a.summary)
+      await saveTheNumberOfTheOneInvited(a.rows, number)
+      qc.invalidateQueries({ queryKey: ['org-members'] })
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'None of those invitations went out, and nobody has been emailed. Try again.'),
   })
@@ -108,6 +142,8 @@ export function InvitePeople() {
             onChange={(e) => { setPasted(e.target.value); setAnswer(null) }}
             placeholder={'Faith Kerubo, faith@yourcompany.com\nJoseph Kiprono, joseph@yourcompany.com'}
           />
+          <PhoneNumberField id="invite-phone" value={phone} onChange={setPhone} whose="theirs" whatsappOn={whatsappOn} />
+          <Note>A phone number is saved for the one person on the list. With several people, add each number on People.</Note>
           <div className="gwui-invite-actions">
             <label className="gwui-inline-label">
               Role{' '}
