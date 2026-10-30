@@ -519,3 +519,14 @@ The re-check of 29 January to 2 February left six problems. Hafsah's rule for th
 3. Each leaves one owner: the deal owner's record, the target row, the check-in's calendar, the session's status, and the check-in a message was about.
 4. The model names items and targets by id instead of word rules deciding.
 5. Each is tested across its pattern, and in the real-model re-check that follows.
+
+## The one-day re-check after the simplifying fixes (Wednesday 3 to Monday 8 February on the test clock)
+
+Real model, kept awake, at low priority. Kevin, Joseph, Faith and Aisha on WhatsApp, Mercy, Brian and Njeri on the web; Peter forgot, as written. Every check-in closed naturally and is COMPLETED with its record. 0 dead ends. The clock then ran through the weekend to Monday 8 February.
+
+- Mercy's numbers: her My work counts only her own sales and her corrected target of 30.
+- The copied phrase: not said in any check-in. Nobody corrected Groundwork inside a check-in that day, so this is not yet a full proof.
+- The calendar and weekend summaries: no lead summary on Saturday 6 or Sunday 7 February, one each weekday. Monday's openings went once each; the copies held overnight never went.
+- One session state: 0 sessions COMPLETED without their record; none told "complete" and then "still open".
+- START: every WhatsApp reply went to the check-in it answered.
+- The checker first said 24 of 30. All six misses were the checker: it read days in UTC, merged the days the clock skipped into one, counted messages held at night that were never sent, and counted the sign-in links the test itself asks for. Each was checked against the database.
