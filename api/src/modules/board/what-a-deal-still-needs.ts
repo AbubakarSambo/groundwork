@@ -190,12 +190,14 @@ export function theValueLine(d: ADealToSay, waits: readonly AWaitAboutADeal[], w
   const eachAmount = [...amountsIn(each)][0];
   const unagreed = eachAmount && waits.some((w) => OPEN.has(String(w.status).toUpperCase()) && !!who.lead && w.onParticipantId === who.lead
     && w.fromParticipantId === d.ownerParticipantId && [...amountsIn(`${w.what ?? ''}`)].includes(eachAmount));
+  /* The deal's units lead its line wherever the record holds them, read by theUnitsOf, the same count that closes the gap (boards audit, S9). */
+  const many = units ? `${units} ${units === 1 ? 'unit' : 'units'}` : null;
   if (unagreed && value) {
     const agree = who.lead === who.me ? 'you agree' : `${who.firstName(who.lead) ?? 'the lead'} agrees to`;
-    return `${units ? `${units} ${units === 1 ? 'unit' : 'units'}, ` : ''}${value} if ${agree} ${each}`;
+    return `${many ? `${many}, ` : ''}${value} if ${agree} ${each}`;
   }
-  if (quoted && (!value || [...amountsIn(value)].join() === [...amountsIn(quoted)].join())) return `${quoted} quoted`;
-  return value || null;
+  const money = quoted && (!value || [...amountsIn(value)].join() === [...amountsIn(quoted)].join()) ? `${quoted} quoted` : value || null;
+  return [many, money].filter(Boolean).join(', ') || null;
 }
 
 /**

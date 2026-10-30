@@ -84,9 +84,12 @@ export function theNextStepTheyGave(fields: Record<string, string> | null | unde
   return { next: says, nextStep: aStepOnItsOwn(by && !already ? `${step}, by ${by}` : step), nextKnown: 'said', nextSays: says };
 }
 
-/** "send the quote, with a photo" as the column reads it: "Send the quote, with a photo". In about eight words (Hafsah, 25 October). */
+/**
+ * "send the quote, with a photo" as the column reads it: "Send the quote, with a photo". Whole: the board cuts every step to about
+ * eight words in one place, where the direct morning is on (board.service), so the rule has one source.
+ */
 export function aStepOnItsOwn(step: string): string {
-  const t = inAboutEightWords(step.trim().replace(/[.\s]+$/, ''));
+  const t = step.trim().replace(/[.\s]+$/, '');
   return t ? `${t.charAt(0).toUpperCase()}${t.slice(1)}` : t;
 }
 
