@@ -1656,12 +1656,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * the rest of the board is the same for every situation.
    */
   const situationRow = picturedLead && !picturedManyInTeams && b.scenario !== 'OKR_ALIGNMENT' ? (SWITCHBOARD_MATRIX.find((r) => r.scenario === b.scenario) ?? null) : null
+  /* Every situation's sales board opens on the same first screen as Grace's (Hafsah, 24 October: the headline, What needs you, What's
+     closing and the team): where the team stands against the target, what is closing, what needs the lead and who is delivering.
+     The morning block used to say these above every board; since it left the board (24 October) this order had none of them
+     (restored, 30 October 2026). The switchboard still decides the rest. */
   const situationOrder = situationRow ? [
-    ...(situationRow.sectionsOn.includes('Lead actions') ? ['assumes', 'needsYou'] : []),
+    'headline', 'closing', 'needsYou', 'teamToday', 'yourTeam',
+    ...(situationRow.sectionsOn.includes('Lead actions') ? ['assumes'] : []),
     ...(situationRow.sectionsOn.includes('Deal grid') ? ['deals'] : []),
     ...(situationRow.sectionsOn.includes('Blockers') ? ['blockers'] : []),
     ...(situationRow.sectionsOn.includes('Patterns') ? ['patterns'] : []),
-    'reported', 'whoCheckedIn', 'teamToday', 'overTime', 'reports', 'otherBoards', 'help', 'otherTeams', 'openIssues', 'heading', 'ask', 'recommends',
+    'reported', 'whoCheckedIn', 'overTime', 'reports', 'otherBoards', 'help', 'otherTeams', 'openIssues', 'heading', 'ask', 'recommends',
   ] : null
   /* An engineering release, drawn the same way (eng-board.jpg), for whoever runs it. The other kinds whose example is drawn so join here as their own screens are matched. */
   /* RELEASE 8 (release-8-situations): a situation no kit picture draws, with the sections its situation switches on, for every reader the server serves it to. */
@@ -2731,7 +2736,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {/* The direct morning is no longer one block above the board (Hafsah, 24 October): each of its lines is drawn once where it belongs on the board (pictured/TheMorningOnTheBoard.tsx). */}
         {/* Your team, person by person (pictured/YourTeamPersonByPerson.tsx): served to the lead alone, beside the direct morning, for her monthly look. */}
         {/* On the pictured board it is drawn after the team today, where the prototype puts the people (see `yourTeam` below); elsewhere it stays here. */}
-        {!groundId && (b as any).yourTeam && id && !(!picturedCollections && !picturedMatter && (((picturedLead && picturedManyInTeams) || picturedOtherKind) || (picturedLead && !picturedManyInTeams && !situationOrder))) && <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} />}
+        {!groundId && (b as any).yourTeam && id && !(!picturedCollections && !picturedMatter && (((picturedLead && picturedManyInTeams) || picturedOtherKind) || (picturedLead && !picturedManyInTeams))) && <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} />}
         {picturedCollections && b.collections && (
           <TheCollectionsBoard
             board={b.collections}
@@ -2838,6 +2843,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             order={situationOrder as any}
             b={b}
             groundId={id!}
+            yourTeam={!groundId && (b as any).yourTeam && id ? <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} /> : null}
             sessionRows={sessionRows as any[]}
             renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
             overTime={overTimeSection()}
