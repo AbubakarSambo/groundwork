@@ -13,6 +13,7 @@ import {
 import {
   type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, isNamePlaceholder, roleWord, statusWord, needsSomething, whereTheySitLine, checkInsPartsApart,
 } from './people-here'
+import { TheirNumberInTheRow } from './their-number'
 
 /**
  * "EVERYONE AT BARIDI" AND "WHO REPORTS TO WHOM" (A4 people.txt), the People page's list.
@@ -328,12 +329,9 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
                       <Tag tone={roleTagTone(role)}>{role}</Tag>
                       <span>
                         <Tag tone={statusTagTone(st)}>{st}</Tag>
-                        {/* Their WhatsApp number and where they are on it, where WhatsApp is on (pilots on WhatsApp, 14 October). */}
-                        {whatsappOn && (
-                          <span className="gwui-note" data-testid="their-whatsapp">
-                            {' '}{m.phoneNumber ? `Their WhatsApp number is ${m.phoneNumber}. ` : ''}{m.whatsappSays ?? ''}
-                          </span>
-                        )}
+                        {/* Their number, always, with "Change" to add or change it here (Hafsah, 30 October 2026); where
+                            they are on WhatsApp only while it is on (pilots on WhatsApp, 14 October). */}
+                        <TheirNumberInTheRow m={m} first={firstNameOf(m)} whatsappOn={whatsappOn} />
                       </span>
                       <CheckInsCell m={m} startOf={startOf} />
                       {/* Nothing has been written for them yet, so there is no page to open (U.4
