@@ -267,7 +267,8 @@ export function TheLightSummaryFirst() {
             {BOX_ORDER.map((box) => (
               <div key={box} className="gwui-light-glance-row">
                 <span className="gwui-light-glance-name">{boxName(box, s.glance)}</span>
-                <span className="gwui-light-glance-fact">{(s.glance.boxes?.[box] ?? []).slice(0, 2).join(' · ')}</span>
+                {/* Every fact, each its own line: never cut to two, never joined with a dot (boards audit O1). */}
+                <span className="gwui-light-glance-fact">{(s.glance.boxes?.[box] ?? []).map((f: string) => <span className="gwui-light-glance-line" key={f}>{f}</span>)}</span>
               </div>
             ))}
             {s.glance.needsTheLead && (

@@ -168,7 +168,10 @@ describe('the light sales board, as Grace, an admin who reads it', () => {
     const glance = await screen.findByRole('region', { name: 'At a glance' })
     expect(within(glance).getByText('For you as an admin. The lead runs this check-in.')).toBeTruthy()
     expect(within(glance).getByText('Deals and targets')).toBeTruthy()
-    expect(within(glance).getByText('2 deals, each with what shows it · 21 of 25, on time')).toBeTruthy()
+    /* Each fact on its own line, never two joined with a dot (boards audit O1, 30 October; this read the joined line). */
+    expect(within(glance).getByText('2 deals, each with what shows it')).toBeTruthy()
+    expect(within(glance).getByText('21 of 25, on time')).toBeTruthy()
+    expect(glance.textContent).not.toContain(' · ')
     expect(within(glance).getByText('What needs the lead')).toBeTruthy()
     expect(within(glance).getByText('1 thing: Wairimu Kamau needs to get back to Brian Ochieng.')).toBeTruthy()
     const full = screen.getByText('Open the full board').closest('details') as HTMLElement
