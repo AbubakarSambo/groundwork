@@ -18,13 +18,15 @@ describe('a daily check-in opens at 8 in the morning where the team is', () => {
   it('the next session after Monday opens at 8am on Tuesday in Nairobi, and Monday\'s closes then', () => {
     const opened = new Date('2026-10-19T05:00:00Z');
     const next = whenTheNextSessionOpens(daily as any, opened, new Date('2026-10-19T12:00:00Z'));
-    expect(next.toISOString()).toBe('2026-10-20T05:00:00.000Z');
-    expect(whenTheRoundCloses(daily as any, opened)?.toISOString()).toBe('2026-10-20T05:00:00.000Z');
+    /* Changed 28 October 2026 (fix plan, pattern 4): Tuesday 20 October is Mashujaa Day, a public holiday in Kenya, so the next session opens on Wednesday 21 at 8. */
+    expect(next.toISOString()).toBe('2026-10-21T05:00:00.000Z');
+    expect(whenTheRoundCloses(daily as any, opened)?.toISOString()).toBe('2026-10-21T05:00:00.000Z');
   });
 
   it('a check-in that opened at midnight before this change gets its next one at 8am, and only one', () => {
     const openedAtMidnight = new Date('2026-10-18T21:00:00Z');
-    expect(whenTheRoundCloses(daily as any, openedAtMidnight)?.toISOString()).toBe('2026-10-20T05:00:00.000Z');
+    /* Mashujaa Day, 20 October, is skipped (see above). */
+    expect(whenTheRoundCloses(daily as any, openedAtMidnight)?.toISOString()).toBe('2026-10-21T05:00:00.000Z');
   });
 
   it('a weekly check-in still opens at the start of its day', () => {

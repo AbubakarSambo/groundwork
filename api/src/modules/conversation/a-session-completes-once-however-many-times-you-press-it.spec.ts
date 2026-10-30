@@ -41,11 +41,13 @@ describe('the shape of finishing', () => {
     const writes = [...CODE.matchAll(/status:\s*CheckInStatus\.COMPLETED/g)].filter((m) =>
       /\bdata:\s*\{/.test(CODE.slice(Math.max(0, m.index! - 200), m.index!)),
     );
-    /* Two since missed check-ins were redone (0d9dd8ad2): finishing, and closeAsMissed for a session nobody opened. Both are claims
-       guarded in their where, so neither can complete a session twice. */
-    expect(writes).toHaveLength(2);
+    /* Three since one state for a session (29 October): itIsFinished, the moment it closes, from IN_PROGRESS or NOT_STARTED only; the
+       record's stamp, once, where completedAt is still empty; and closeAsMissed for a session nobody opened. Each is a claim guarded in
+       its where, so none can complete a session twice. */
+    expect(writes).toHaveLength(3);
     const around = writes.map((w) => CODE.slice(w.index! - 200, w.index!));
-    expect(around.some((a) => /updateMany\(\{\s*where: \{ id: checkIn\.id, status: \{ not: CheckInStatus\.COMPLETED \} \}/.test(a))).toBe(true);
+    expect(around.some((a) => /updateMany\(\{ where: \{ id: checkInId, status: \{ in: \[CheckInStatus\.IN_PROGRESS, CheckInStatus\.NOT_STARTED\] \} \}/.test(a))).toBe(true);
+    expect(around.some((a) => /updateMany\(\{\s*where: \{ id: checkIn\.id, completedAt: null \}/.test(a))).toBe(true);
     expect(around.some((a) => /updateMany\(\{\s*where: \{ id: checkInId, status: CheckInStatus\.NOT_STARTED, turns: \{ none: \{ role: TurnRole\.PERSON \} \} \}/.test(a))).toBe(true);
   });
 
@@ -76,6 +78,8 @@ describe('behaviourally', () => {
         findUnique: jest.fn(async () => ({ ...row })),
         updateMany: jest.fn(async (args: any) => {
           if (args.where.status?.not === CheckInStatus.COMPLETED && row.status === CheckInStatus.COMPLETED) return { count: 0 };
+          if (args.where.completedAt === null && row.completedAt) return { count: 0 };
+          if (args.where.status?.in && !args.where.status.in.includes(row.status)) return { count: 0 };
           Object.assign(row, args.data);
           return { count: 1 };
         }),

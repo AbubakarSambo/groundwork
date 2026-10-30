@@ -1,3 +1,5 @@
+import { ConversationService as ConversationServiceForReopening } from '../conversation/conversation.service';
+import { theEndingSaid } from '../resolution/end-states';
 import { withTheDirectMorningSaid } from '../organisation/the-screen-is-told-the-direct-morning';
 import { THE_TEMPLATES, theTemplate } from '../board/the-thirteen-templates';
 import { theRelease4TeamsIsOn } from '../board/release-4-teams';
@@ -3187,8 +3189,19 @@ export class GroundsService {
     /* In an anchor check-in the lead's own set-up (her aim, what it will cover, what a complete answer holds) is hers alone (decision 96, item 8). */
     /* The reader's own first name, as a possessive, is "your": "Zawadi's first weeks" is "Your first weeks" to Zawadi (privacy sweep, 7 October). */
     const myFirstName = ((ground.participants ?? []) as any[]).find((p: any) => !!requestingUserId && p.userId === requestingUserId)?.user?.firstName ?? null;
+    /*
+     * HOW IT ENDED, SAID TO THIS READER (fix plan, pattern 7; quarter test, 8 January). Faith read "This check-in has ended. The person stays
+     * in the role." on her own 90 days: the page had only the stored key, and said it of nobody. The ending's own words for this reader
+     * (resolution/end-states.ts theEndingSaid): "You stay in the role." to her, "Faith stays in the role." to Grace.
+     */
+    const theOneItIsAbout = ((ground.participants ?? []) as any[]).filter((p: any) => p.partyType !== 'INITIATOR');
+    const endStateLabel = (ground as any).endState
+      ? theEndingSaid((ground as any).scenario, (ground as any).endState, theOneItIsAbout.length === 1
+        ? { isTheReader: !!requestingUserId && theOneItIsAbout[0].userId === requestingUserId, name: theOneItIsAbout[0].user?.firstName ?? null }
+        : null)
+      : null;
     const asAMemberReadsIt = <P extends Record<string, any>>(page: P): P => {
-      const out: any = withoutTheLeadsSetUpForAMember(page, { startedFrom: (ground as any).startedFrom ?? null, scenario: (ground as any).scenario ?? null, runsIt: viewerRunsThisGround });
+      const out: any = withoutTheLeadsSetUpForAMember(endStateLabel ? { ...page, endStateLabel } : page, { startedFrom: (ground as any).startedFrom ?? null, scenario: (ground as any).scenario ?? null, runsIt: viewerRunsThisGround });
       if (viewerRunsThisGround || !myFirstName) return out;
       return { ...out, label: theirOwnFirstNameAsYour(out.label, myFirstName), brief: theirOwnFirstNameAsYour(out.brief, myFirstName), ...(out.briefAsEveryoneReadsIt !== undefined ? { briefAsEveryoneReadsIt: theirOwnFirstNameAsYour(out.briefAsEveryoneReadsIt, myFirstName) } : {}) };
     };
@@ -7459,8 +7472,41 @@ export class GroundsService {
        */
       this.tellThemItIsOpenAgain(groundId).catch((err: any) =>
         this.logger.warn(`Could not tell everybody ${groundId} is open again: ${err?.message}`));
+      /*
+       * AND IT CAN BE ANSWERED AGAIN (fix plan, pattern 3; the two-week check, Kevin, 11 January 2027). Sales team, Q4 was given until
+       * 31 March and opened again, but nobody had a session to answer: none is made while a check-in is stalled, and reopening made none.
+       * Each person's next session is made now, on the check-in's own schedule, as it would have been had it never stalled.
+       */
+      await this.theNextSessionsAfterReopening(groundId).catch((err: any) =>
+        this.logger.warn(`Could not open the next sessions for ${groundId} after it reopened: ${err?.message}`));
+    } else if (requestedDays !== undefined && !isShut(ground.status) && await this.itNowEndsLater(groundId, ground as any)) {
+      /* Given more time while still running: a session kept as the closing one is not the closing one now (Fee notes, two-week check). */
+      await this.theNextSessionsAfterReopening(groundId).catch((err: any) =>
+        this.logger.warn(`Could not open the next sessions for ${groundId} after it was given more time: ${err?.message}`));
     }
     return updated;
+  }
+
+  /** Whether the check-in now ends later than it did before this change. */
+  private async itNowEndsLater(groundId: string, before: { createdAt: Date; startsAt: Date | null; timelineDays: number | null; endsAt?: Date | null; runsUntilEnded?: boolean | null }): Promise<boolean> {
+    const now: any = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { createdAt: true, startsAt: true, timelineDays: true, endsAt: true, runsUntilEnded: true } });
+    const was = deadlineOf(before as any);
+    const is = now ? deadlineOf(now) : null;
+    return !!now && (is === null ? !!was : !!was && is.getTime() > was.getTime());
+  }
+
+  /** Each person's next session after a check-in reopens, where their last one is finished: the same rule a finished session uses. */
+  private async theNextSessionsAfterReopening(groundId: string): Promise<void> {
+    const conversation = this.moduleRef?.get(ConversationServiceForReopening, { strict: false }) as any;
+    if (!conversation?.ensureNextSession) return;
+    const people = await this.prisma.groundParticipant.findMany({ where: { groundId, leftAt: null }, select: { id: true } });
+    for (const p of people) {
+      const last = await this.prisma.checkIn.findFirst({ where: { participantId: p.id, isSetup: false }, orderBy: { sessionNumber: 'desc' }, select: { id: true, sessionNumber: true, status: true, isFinal: true } });
+      if (!last || ['NOT_STARTED', 'IN_PROGRESS'].includes(String(last.status))) continue;
+      /* The session kept as the closing one was the closing one for the old end. With more time, it is not, so the next can follow it. */
+      if (last.isFinal) await this.prisma.checkIn.update({ where: { id: last.id }, data: { isFinal: false } });
+      await conversation.ensureNextSession(groundId, p.id, last.sessionNumber);
+    }
   }
 
   /** One email each to everybody on a check-in that has just been given more time. */

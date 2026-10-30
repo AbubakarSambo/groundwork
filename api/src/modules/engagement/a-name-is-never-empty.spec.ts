@@ -32,7 +32,8 @@ describe('the not-started email, when somebody has no first name', () => {
   beforeEach(() => jest.useFakeTimers().setSystemTime(NOW));
   afterEach(() => jest.useRealTimers());
   it('never opens with a blank, and the verb agrees', async () => {
-    const ground = { label: 'Kenya launch', organizationId: 'org', initiatorId: 'u-w', createdAt: new Date('2026-10-02T00:00:00Z'), brief: null, chaseAfterDays: [3, 7, 14], chasingStopped: false, tellTheLead: true, initiator: { email: 'w@x.test', firstName: 'Wairimu' } };
+    /* Since one calendar for each check-in (29 October), no days given is Monday to Friday, and this test's clock is a Sunday: the team says it works every day, so the test stays about what it was written for. */
+    const ground = { label: 'Kenya launch', organizationId: 'org', initiatorId: 'u-w', createdAt: new Date('2026-10-02T00:00:00Z'), brief: null, workingDays: [0, 1, 2, 3, 4, 5, 6], chaseAfterDays: [3, 7, 14], chasingStopped: false, tellTheLead: true, initiator: { email: 'w@x.test', firstName: 'Wairimu' } };
     const row = (id: string, first: string, last: string, email: string) => ({ id: `c${id}`, createdAt: new Date('2026-10-05T08:00:00.000Z'), sessionNumber: 1, availableFrom: null, participantId: `p${id}`, groundId: 'g1', leadToldAt: null, ground, participant: { id: `p${id}`, email, userId: `u${id}`, lastNudgedAt: new Date('2026-10-19T08:00:00.000Z'), user: { firstName: first, lastName: last, emailNotifications: true, isActive: true, deletedAt: null } } });
     const told: any[] = [];
     const prisma: any = {

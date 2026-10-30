@@ -61,9 +61,10 @@ export function CompanyPage() {
     <PageFrame>
       <PageTitle title={name} />
       {/* Release 6: the way to the company's direction, only where direction is switched on (the server says). */}
-      {directionOn && <Link to="/direction" className="t-small gw-start">The company’s direction, and what it means for each team</Link>}
+      {/* Each on its own line (fix plan, pattern 8): side by side they ran into one, "...for each teamThe policy board...". */}
+      {directionOn && <p className="t-small gw-start"><Link to="/direction">The company’s direction, and what it means for each team</Link></p>}
       {/* Release 9: the policy board, only where it is switched on (the server says). */}
-      {policyOn && <Link to="/policies" className="t-small gw-start">The policy board, every rule the organisation runs on</Link>}
+      {policyOn && <p className="t-small gw-start"><Link to="/policies">The policy board, every rule the organisation runs on</Link></p>}
 
       {isLoading && <Note>Loading…</Note>}
       {isError && (

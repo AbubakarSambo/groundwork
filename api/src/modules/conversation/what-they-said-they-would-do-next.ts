@@ -30,6 +30,8 @@
 export interface ACommitmentTheyMade {
   /** Their action, in their own words, short. */
   action: string;
+  /** The same promise as a clear action: what, to whom, with "her", "that" and "then" said as what they meant (fix plan, pattern 5). */
+  clear?: string | null;
   /** What it is for, only where they said so. */
   outcome?: string | null;
   /** The timing in their own words. Never parsed. */
@@ -39,12 +41,16 @@ export interface ACommitmentTheyMade {
 export const READ_WHAT_THEY_PROMISED = [
   'You are given one person\'s own words from one check-in. Pull out only the things THIS PERSON said THEY would do next.',
   '',
+  'Each of their answers comes after the question Groundwork asked, so you can tell who "her", "them", "that" and "then" are.',
+  '',
   'TAKE:',
   '  - an action they said they will take ("I will call her on Friday", "I am going to write to the Permanent Secretary").',
-  '  - an action they said they are in the middle of taking, where it is not finished ("I am setting up the meetings with the technical team").',
+  '  - an action they are in the middle of, only where they said when it will be finished ("I am drafting the costs claim and will send it on Thursday").',
   '',
   'LEAVE:',
   '  - anything already done. That is a report, not a commitment.',
+  '  - work in progress with no finish ("I am drafting the costs claim"), a hedge ("I would have to check that", "I was planning to", "maybe"), and a promise they say they missed ("I forgot to call Upper Hill"): none of these is a new promise.',
+  '  - a few words that are not an action ("Today. I promise.", "Ask Grace today." where they had already said what to ask her).',
   '  - anything somebody else is to do, including what they are waiting for.',
   '  - anything the interviewer suggested that they did not take up in their own words.',
   '  - wishes and hopes with no action in them ("it would be good if the ministry moved faster").',
@@ -54,6 +60,7 @@ export const READ_WHAT_THEY_PROMISED = [
   '  - Keep their punctuation and their quotation marks exactly as they typed them. Never add marks, never take theirs away, and never change double marks to single ones or single to double.',
   '  - `when` is the timing exactly as they said it: "next week", "by Friday", "before the end of the month". Leave it out if they gave none. NEVER convert it to a date.',
   '  - `outcome` only where they said what it is for. Leave it out otherwise.',
+  '  - `clear` is the same promise as one short, plain action a colleague could read on its own: the verb, the thing, the person or customer by name, and the time if they gave one ("Confirm the delivery time with Mrs Achola on Friday"). Put the names and things in place of "her", "them", "it", "that" and "then", from the question and their answers. Never add anything they did not say.',
   '  - Two sentences about the same action are ONE item.',
   '  - An empty list is the right answer for a session where somebody committed to nothing.',
 ].join('\n');
@@ -70,6 +77,7 @@ export const WHAT_THEY_PROMISED_SCHEMA = {
           type: 'object',
           properties: {
             action: { type: 'string', description: 'Their action, their words, at most twenty words.' },
+            clear: { type: 'string', description: 'The same promise as one clear, plain action, with names in place of her, them, it, that and then.' },
             outcome: { type: 'string', description: 'What they said it is for. Omit if they did not say.' },
             when: { type: 'string', description: 'Their own words for the timing. Omit if they gave none. Never a date you worked out.' },
           },
@@ -106,6 +114,9 @@ export function worthWritingDown(c: ACommitmentTheyMade): boolean {
   if (ABOUT_WHETHER_SOMEBODY_STAYS.test(text)) return false;
   /* A decision to decide is not an action either. It is the same week, restated as a task. */
   if (/^i (need to|have to|must|should) (decide|think about|work out|consider)\b/i.test(text)) return false;
+  /* A hedge, a miss reported, or work in progress with no finish is not a new promise (fix plan, pattern 5; quarter test). */
+  if (/^(?:i\s+)?(?:would have to|was planning to|might|may|maybe|could|forgot|i forgot)\b/i.test(text) || /\bforgot (?:my|the|to)\b/i.test(text)) return false;
+  if (/^i\s+am\s+\w+ing\b/i.test(text) && !c.when) return false;
   /* A sentence with no verb in it is a topic, not an action. */
   return /\b(will|going to|am|is|are|call|write|send|meet|ask|arrange|set|get|follow|chase|draft|prepare|speak|visit|submit|confirm|book|escalate|check|review|finish|deliver|share|introduce)\b/i.test(text);
 }
@@ -119,7 +130,7 @@ export function theOnesToKeep(commitments: ACommitmentTheyMade[]): ACommitmentTh
     if (!worthWritingDown(c)) continue;
     const key = (c.action ?? '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
     if (kept.some((k) => (k.action ?? '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim() === key)) continue;
-    kept.push({ action: c.action.trim(), outcome: c.outcome?.trim() || null, when: c.when?.trim() || null });
+    kept.push({ action: c.action.trim(), clear: aClearAction(c.clear), outcome: c.outcome?.trim() || null, when: c.when?.trim() || null });
     if (kept.length >= HOW_MANY_FROM_ONE_SESSION) break;
   }
   return kept;
@@ -141,4 +152,13 @@ export function openSince(
   const sessions = `${sessionsOpen} ${sessionsOpen === 1 ? 'session' : 'sessions'}`;
   if (restated === 0) return { sessionsOpen, restated, say: `open ${sessions}, not mentioned again` };
   return { sessionsOpen, restated, say: `open ${sessions}, said again in ${restated} of them` };
+}
+
+/** The clear action the model gave, kept only when it reads as one: a verb first, at most twenty-five words, no "her", "them" or "that" left with nothing named. */
+export function aClearAction(clear: string | null | undefined): string | null {
+  const t = String(clear ?? '').replace(/\s+/g, ' ').trim().replace(/[.!]+$/, '');
+  if (t.length < 6 || t.split(' ').length > 25) return null;
+  if (/^(?:i|we)\b/i.test(t)) return null;
+  if (/\b(?:with|to|for|on|call|ask|tell|email|confirm)\s+(?:her|him|them|it|that)\b/i.test(t) && !/\b[A-Z][a-z]+/.test(t.slice(1))) return null;
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }

@@ -836,7 +836,8 @@ export function GroundParticipantPage() {
            * why) is read, once it has one; this stops the false promise of a next session here.
            */}
           {howItEnded(ground as any) ? (
-            <Callout tone="info" title={howItEnded(ground as any)!}>
+            /* The header above already says how it ended; this says where the reason is, once (fix plan, pattern 7: Faith read the ending twice). */
+            <Callout tone="info" title="Why it ended">
               <Link to={`/grounds/${id}/board`}>Go to the board</Link> to read how it ended and why.
             </Callout>
           ) : dueNow ? (

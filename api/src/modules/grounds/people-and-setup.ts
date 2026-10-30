@@ -1,3 +1,5 @@
+import { aDayInItsZone } from '../board/a-day-said-in-full';
+import { whoAnswersThisCheckIn } from '../reports/how-many-have-answered';
 import { NotFoundException } from '@nestjs/common';
 import { theRelease1bTabsAreOn } from './release-1b-tabs';
 import { readsAsAnAdmin } from './who-may-read-this-check-in';
@@ -112,8 +114,8 @@ export function theRhythmInWords(g: { cadence?: string | null; workingDays?: num
   }
 }
 
-const aDay = (d: Date, timeZone: string, weekday = false) =>
-  new Intl.DateTimeFormat('en-GB', { ...(weekday ? { weekday: 'long' } : {}), day: 'numeric', month: 'long', timeZone }).format(d);
+/* With the year when it is not this one (board/a-day-said-in-full.ts). */
+const aDay = (d: Date, timeZone: string, weekday = false) => aDayInItsZone(d, timeZone, weekday);
 
 /** "5 people answer every weekday, until 30 October, on WhatsApp or here." The one sentence at the top, for every reader. */
 export function howThisCheckInRuns(a: {
@@ -246,7 +248,8 @@ export async function readPeopleAndSetup(
   const askedOnWhatsApp = orgHasWhatsApp && ground.overWhatsApp !== false;
   const noEnd = !!ground.runsUntilEnded || !ground.timelineDays;
   const endsOn = noEnd ? null : deadlineOf(ground);
-  const answering = rows.filter((p) => !p.managingOnly).length;
+  /* The people a session waits on, by the round's own rule (reports/how-many-have-answered.ts), so this and Today's "1 of 5" count the same people. */
+  const answering = whoAnswersThisCheckIn(rows as any[], ground.scenario).length;
   const howItRuns = howThisCheckInRuns({
     answering, cadence: ground.cadence, workingDays: ground.workingDays, cadenceAnchorDay: ground.cadenceAnchorDay,
     endsOn, noEnd, onWhatsApp: askedOnWhatsApp, endedBy: isLead ? 'you' : (ground.initiator?.firstName || 'the person who runs it'), timeZone,

@@ -19,14 +19,17 @@
  */
 const WORDS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
 
-/** "the second check-in", or "check-in number 12" past ten. */
+/* Past ten, "the 43rd", never "check-in number 43", which reads like a reference, not a day in the team's run (fix plan, pattern 7; quarter test). */
+const anOrdinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')}`;
+
+/** "the second check-in", or "the 43rd check-in" past ten. */
 export function theCheckIn(n: number): string {
-  return n >= 1 && n <= WORDS.length ? `the ${WORDS[n - 1]} check-in` : `check-in number ${n}`;
+  return n >= 1 && n <= WORDS.length ? `the ${WORDS[n - 1]} check-in` : `the ${anOrdinal(n)} check-in`;
 }
 
-/** "Your third check-in", for a person's own. */
+/** "Your third check-in", or "Your 43rd check-in", for a person's own. */
 export function yourCheckIn(n: number): string {
-  return n >= 1 && n <= WORDS.length ? `Your ${WORDS[n - 1]} check-in` : `Your check-in number ${n}`;
+  return n >= 1 && n <= WORDS.length ? `Your ${WORDS[n - 1]} check-in` : `Your ${anOrdinal(n)} check-in`;
 }
 
 /**

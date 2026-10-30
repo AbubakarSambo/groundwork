@@ -195,6 +195,9 @@ describe('every surface that hands out whose number it is', () => {
     'modules/suites/the-running-record.ts': "reads a person's own goal versions for their own running record and self-review, read by that person alone",
     /* Polish round 1, 26 October 2026: Ask reads the record a reader may read. A lead reads their team's deals and whose each is; anybody else only their own. Never a target or a number. */
     'modules/assistant/a-question-is-answered-from-the-documents.ts': "reads each deal's owner (a work item) for Ask: the lead who runs the check-in reads the team's, anybody else only their own; never a target or a number",
+    /* Fix plan, pattern 1 (28 October 2026): one counter for an aim's number. It counts only the aims its caller hands in, after the caller has
+       read them through targetsFor (my-work.ts, your-board.service.ts, board.service.ts), and reads a deal's or a bill's owner to count each aim's own. */
+    'modules/board/an-aim-is-counted-now.ts': "counts only the aims its caller hands in, already read through targetsFor, from each aim's own deals or bills; serves nobody",
     'modules/board/your-team-person-by-person.ts': "reads each person's own records (work items) by their own id, for the lead who runs the check-in alone; never a target or a number",
   };
 

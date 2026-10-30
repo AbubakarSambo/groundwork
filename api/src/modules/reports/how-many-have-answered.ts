@@ -219,3 +219,15 @@ export async function howManyHaveAnswered(prisma: PrismaService, groundId: strin
     notJoinedIds: everyone.filter(notInYet).map((p) => p.id),
   };
 }
+
+/**
+ * WHO ANSWERS THIS CHECK-IN, AS A CHECK-IN DESCRIBES ITSELF (fix plan, pattern 1; quarter test). People and setup said "7 people
+ * answer every weekday" while Today said "1 of 5 have checked in": it counted the lead, who checks in when she chooses, and Samuel, who
+ * was invited and had not joined. This is the round's own rule (whoIsInTheRound) for a round nobody has answered yet, without the
+ * leave of the day: everybody a session waits on.
+ */
+export function whoAnswersThisCheckIn<T extends { managingOnly?: boolean | null; partyType?: string | null; userId?: string | null; notJoinedYet?: boolean | null }>(people: T[], scenario?: string | null): T[] {
+  const asARound = (people ?? []).map((p, i) => ({ ...p, i, awayUntil: null, checkIns: [], notJoinedYet: p.notJoinedYet ?? !p.userId }));
+  const kept = new Set(whoIsInTheRound(asARound, Number.MAX_SAFE_INTEGER, scenario).map((p) => p.i));
+  return (people ?? []).filter((_, i) => kept.has(i));
+}

@@ -1,3 +1,15 @@
+import { theOutboxKey, mayItGo, letItGoAgain } from '../../common/the-one-outbox';
+/*
+ * The one outbox key for a send. A message held for the night was claimed when it was held, so its morning send claims its own key: the held
+ * queue sent Wanjiru's morning summary three times in eleven seconds (two-week check, 15 January).
+ */
+function aKeyForThisSend(to: string, text: string, context: { kind?: string | null; checkInId?: string | null }): string | null {
+  return theOutboxKey({ channel: 'whatsapp', to, kind: String(context.kind ?? '').replace(/:(?:template|held|quiet-hours)$/, '') || null, about: context.checkInId ?? null, text });
+}
+/** A read receipt and the "typing" sign are not a message to anybody: they go through the one door, and claim nothing. */
+const A_RECEIPT = Symbol('a read receipt');
+/** What a message already sent is answered: nothing goes. */
+const ALREADY_SENT = 'already sent';
 import * as crypto from 'crypto';
 import { aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
 import { sealTheirKey, theirKey, theServerCanKeepSecrets, THE_SERVER_HAS_NO_KEY, isSealed, THEIR_KEYS_CANNOT_BE_OPENED, KEYS_NEED_TYPING_AGAIN, theKeysCannotBeOpened, whyItCannot } from './an-organisations-own-keys';
@@ -205,8 +217,8 @@ export class WhatsAppService implements OnModuleInit {
     const text = WhatsAppService.heldSaying(saying);
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
     let result: SendResult;
-    if (own && itSendsFromTheirNumber(own)) result = theirKey(own, 'accessToken') ? await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, text) : { sent: false, error: THEIR_KEYS_CANNOT_BE_OPENED };
-    else if (await this.isEnabled()) { const ours = await this.ours(); result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, text); }
+    if (own && itSendsFromTheirNumber(own)) result = theirKey(own, 'accessToken') ? await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, text, { kind: 'held-told' }) : { sent: false, error: THEIR_KEYS_CANNOT_BE_OPENED };
+    else if (await this.isEnabled()) { const ours = await this.ours(); result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, text, { kind: 'held-told' }); }
     else result = { sent: false, error: 'WhatsApp is not configured on this deployment' };
     /* Written down, never counted: this one is free. */
     await this.writeItDown(organizationId, to, result, { checkInId: context.checkInId ?? null, kind: 'held-told' });
@@ -425,7 +437,7 @@ export class WhatsAppService implements OnModuleInit {
     }
 
     const ours = await this.ours();
-    const result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, await this.namedForSomebodyInTwoOrganisations(org, to, text, context));
+    const result = await this.post(ours.phoneNumberId ?? '', ours.accessToken ?? '', to, await this.namedForSomebodyInTwoOrganisations(org, to, text, context), context);
     if (result.sent) this.logger.log(`WhatsApp message sent to ${to}`);
     await this.writeItDown(org, to, result, context);
     if (!result.sent && result.status) await this.byEmailInstead(org, to, text, context, META_REFUSED_IT);
@@ -493,7 +505,7 @@ export class WhatsAppService implements OnModuleInit {
     if (!ours.accessToken || !ours.phoneNumberId) {
       return { sent: false, to, saying: `Nothing was sent to ${to}. Save the phone number ID and the access token first.` };
     }
-    const result = await this.post(ours.phoneNumberId, ours.accessToken, to, WhatsAppService.OUR_TEST_MESSAGE);
+    const result = await this.post(ours.phoneNumberId, ours.accessToken, to, WhatsAppService.OUR_TEST_MESSAGE, { kind: `admin-test:${byUserId}` });
     /* Who sent it, on the row and in the log: the staff member's id, never a secret. */
     await this.writeItDown(null, to, result, { kind: `admin-test:${byUserId}` });
     this.logger.log(`A WhatsApp test message to ${to} was ${result.sent ? 'sent' : 'not sent'} by staff member ${byUserId}.`);
@@ -502,14 +514,39 @@ export class WhatsAppService implements OnModuleInit {
       : { sent: false, to, saying: `The test message did not go to ${to}. ${result.status ? `Meta answered with error ${result.status}.` : 'Meta could not be reached.'} If the number has not written to Groundwork's number in the last 24 hours, Meta may refuse a message that is not a template.` };
   }
 
-  /** The one HTTP call both numbers make. Never throws: the answer is in the result. */
-  private async post(phoneNumberId: string, accessToken: string, to: string, text: string): Promise<SendResult> {
+  /**
+   * THE ONE DOOR TO META (Hafsah, 29 October; two-week check, Wanjiru's morning summary went three times on 25 January). Every message,
+   * from every path (a reply, a template, a list, a held message, a summary, a report, an apology), reaches WhatsApp here and nowhere
+   * else, and claims its key in the one outbox (common/the-one-outbox.ts) first: a key already claimed was already sent, and nothing goes.
+   * A send Meta refused gives its key back, so it can be tried again. A read receipt claims nothing. the-one-door.spec.ts fails if any
+   * other code reaches Meta.
+   */
+  private async toMeta(phoneNumberId: string, accessToken: string, payload: Record<string, unknown>, key: string | null | typeof A_RECEIPT, signal?: AbortSignal): Promise<Response | typeof ALREADY_SENT> {
+    const claims = key !== A_RECEIPT && !!key;
+    if (claims && !(await mayItGo(this.prisma, key as string))) return ALREADY_SENT;
     try {
       const res = await fetch(`${this.graphBase()}/${phoneNumberId}/messages`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messaging_product: 'whatsapp', to: to.replace('+', ''), type: 'text', text: { body: withinWhatsAppsLimit(text) } }),
+        body: JSON.stringify(payload),
+        ...(signal ? { signal } : {}),
       });
+      if (!res.ok && claims) await letItGoAgain(this.prisma, key as string);
+      return res;
+    } catch (err) {
+      if (claims) await letItGoAgain(this.prisma, key as string);
+      throw err;
+    }
+  }
+
+  /** The one text message both numbers send. Never throws: the answer is in the result. */
+  private async post(phoneNumberId: string, accessToken: string, to: string, text: string, context: SendContext = {}): Promise<SendResult> {
+    try {
+      const res = await this.toMeta(phoneNumberId, accessToken, { messaging_product: 'whatsapp', to: to.replace('+', ''), type: 'text', text: { body: withinWhatsAppsLimit(text) } }, aKeyForThisSend(to, text, context));
+      if (res === ALREADY_SENT) {
+        this.logger.log(`Not sending a WhatsApp message to ${to}: the same message already went.`);
+        return { sent: false, error: ALREADY_SENT };
+      }
       if (!res.ok) {
         const body = await res.text().catch(() => '');
         /* Meta's status and error code, not the body it echoed back to us - that body can carry
@@ -562,13 +599,8 @@ export class WhatsAppService implements OnModuleInit {
         accessToken = ours.accessToken;
       }
       if (!phoneNumberId || !accessToken) return;
-      const res = await fetch(`${this.graphBase()}/${phoneNumberId}/messages`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messaging_product: 'whatsapp', status: 'read', message_id: messageId, typing_indicator: { type: 'text' } }),
-        signal: AbortSignal.timeout(READ_RECEIPT_DEADLINE_MS),
-      });
-      if (!res.ok) {
+      const res = await this.toMeta(phoneNumberId, accessToken, { messaging_product: 'whatsapp', status: 'read', message_id: messageId, typing_indicator: { type: 'text' } }, A_RECEIPT, AbortSignal.timeout(READ_RECEIPT_DEADLINE_MS));
+      if (res !== ALREADY_SENT && !res.ok) {
         const body = await res.text().catch(() => '');
         this.logger.debug(`Read receipt refused for ${messageId}: ${res.status} ${metaErrorCode(body)}`);
       }
@@ -613,6 +645,7 @@ export class WhatsAppService implements OnModuleInit {
    */
   async sendFor(organizationId: string, phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
     const to = await this.reachable(organizationId, phoneNumber);
+    /* The one outbox is asked at the one door to Meta (toMeta, below), so a message held now claims its key only when it goes. */
     const held = (await this.heldFor(organizationId, to, context)) ?? (await this.heldForTheNight(organizationId, to, text, context));
     if (held) return held;
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
@@ -633,7 +666,7 @@ export class WhatsAppService implements OnModuleInit {
       await this.byEmailInstead(organizationId, to, text, context, gate.because);
       return result;
     }
-    const result = await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, await this.namedForSomebodyInTwoOrganisations(organizationId, to, text, context));
+    const result = await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), to, await this.namedForSomebodyInTwoOrganisations(organizationId, to, text, context), context);
     if (result.sent) await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } }).catch(() => undefined);
     await this.writeItDown(organizationId, to, result, context);
     if (!result.sent && result.status) await this.byEmailInstead(organizationId, to, text, context, META_REFUSED_IT);
@@ -703,20 +736,17 @@ export class WhatsAppService implements OnModuleInit {
     if (!theirKey(own, 'accessToken')) { this.logger.warn(`WhatsApp list not sent for org ${organizationId}: ${THEIR_KEYS_CANNOT_BE_OPENED}`); return false; }
     const to = WhatsAppService.normalize(phoneNumber).replace('+', '');
     try {
-      const res = await fetch(`${this.graphBase()}/${own.phoneNumberId}/messages`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${theirKey(own, 'accessToken')}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp', to, type: 'interactive',
-          interactive: { type: 'list', body: { text: body.slice(0, 1024) }, action: { button: 'Choose', sections: [{ title: 'Your check-ins', rows: rows.slice(0, 10) }] } },
-        }),
-      });
+      const res = await this.toMeta(own.phoneNumberId, theirKey(own, 'accessToken') as string, {
+        messaging_product: 'whatsapp', to, type: 'interactive',
+        interactive: { type: 'list', body: { text: body.slice(0, 1024) }, action: { button: 'Choose', sections: [{ title: 'Your check-ins', rows: rows.slice(0, 10) }] } },
+      }, aKeyForThisSend(`+${to}`, fallbackText, { kind: 'which-one' }));
+      if (res === ALREADY_SENT) return false;
       if (res.ok) { await this.counted(organizationId, { sent: true }); return true; }
       this.logger.warn(`WhatsApp list refused for ${to}: ${res.status}; sending the numbered text instead.`);
     } catch (err: any) {
       this.logger.warn(`WhatsApp list failed for ${to}: ${err?.message}; sending the numbered text instead.`);
     }
-    return (await this.counted(organizationId, await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), `+${to}`, fallbackText))).sent;
+    return (await this.counted(organizationId, await this.deliver(own.phoneNumberId, theirKey(own, 'accessToken'), `+${to}`, fallbackText, { kind: 'which-one' }))).sent;
   }
 
   /**
@@ -743,8 +773,8 @@ export class WhatsAppService implements OnModuleInit {
     }
   }
 
-  private async deliver(phoneNumberId: string, accessToken: string, to: string, text: string): Promise<SendResult> {
-    return this.post(phoneNumberId, accessToken, to, text);
+  private async deliver(phoneNumberId: string, accessToken: string, to: string, text: string, context: SendContext = {}): Promise<SendResult> {
+    return this.post(phoneNumberId, accessToken, to, text, context);
   }
 
   /**
@@ -1034,14 +1064,11 @@ export class WhatsAppService implements OnModuleInit {
       return result;
     }
     try {
-      const res = await fetch(`${this.graphBase()}/${phoneNumberId}/messages`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp', to: to.replace('+', ''), type: 'template',
-          template: { name: template.name, language: { code: template.language }, components: template.components(text, context.params) },
-        }),
-      });
+      const res = await this.toMeta(phoneNumberId, accessToken, {
+        messaging_product: 'whatsapp', to: to.replace('+', ''), type: 'template',
+        template: { name: template.name, language: { code: template.language }, components: template.components(text, context.params) },
+      }, aKeyForThisSend(to, text, context));
+      if (res === ALREADY_SENT) return { sent: false, error: ALREADY_SENT };
       result = res.ok ? { sent: true, status: res.status, messageId: theMessageIdIn(await readTheBody(res)) } : { sent: false, status: res.status, error: (await res.text().catch(() => '')).slice(0, 500) };
     } catch (err: any) {
       result = { sent: false, error: err?.message ?? 'template send failed' };

@@ -1,3 +1,4 @@
+import { eachQuestionOnce, aDirectionPastItsDay } from './today-says-each-thing-once';
 import { theInvoicesLateToRaiseFor } from '../board/raising-invoices-on-time';
 import { Injectable, Optional } from '@nestjs/common';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
@@ -86,7 +87,16 @@ export class WhatNeedsYouService {
     const read = await Promise.all(mine.map((g) =>
       Promise.resolve().then(() => board.get(g.id, userId)).then((b) => whatTheBoardAsksOfTheLead(b, g)).catch(() => [] as Need[]),
     ));
-    return read.flat();
+    /* One question, once, naming the check-ins it is for (today-says-each-thing-once.ts). */
+    return eachQuestionOnce(read.flat());
+  }
+
+  /** For an admin, who sets the company's direction: its aim's day has passed, so what is it now (today-says-each-thing-once.ts). */
+  private async aDirectionPastItsDayFor(organizationId: string, role: string): Promise<Need[]> {
+    if (role !== 'ADMIN') return [];
+    const d = await Promise.resolve((this.prisma as any).directionVersion?.findFirst?.({ where: { organizationId }, orderBy: { version: 'desc' }, select: { now: true, setAt: true } })).catch(() => null);
+    const need = aDirectionPastItsDay(d ?? null, organizationId, new Date());
+    return need ? [need] : [];
   }
 
   /**
@@ -250,7 +260,7 @@ export class WhatNeedsYouService {
   }
 
   async forReader(userId: string, email: string, organizationId: string, role: string): Promise<WhatNeedsYou> {
-    const [list, waiting, me, toApprove, reviews, leaveQuestions, spendQuestions, finance, hours, letIn] = await Promise.all([
+    const [list, waiting, me, toApprove, reviews, leaveQuestions, spendQuestions, finance, hours, letIn, directionPast] = await Promise.all([
       this.grounds.list(organizationId, userId, email, role),
       role === 'ADMIN' ? this.grounds.listAwaitingApproval(organizationId, userId) : Promise.resolve([]),
       /**
@@ -268,6 +278,7 @@ export class WhatNeedsYouService {
       this.financeFor(userId, organizationId),
       this.hoursFor(userId, organizationId),
       this.peopleWaitingToBeLetIn(userId, organizationId, role),
+      this.aDirectionPastItsDayFor(organizationId, role),
     ]);
     /*
      * ONLY THIS ORGANISATION'S (U.5 review). The list also carries check-ins in other organisations
@@ -296,7 +307,7 @@ export class WhatNeedsYouService {
     }
     /* On approved leave today (week 23): their own check-in says the round does not wait for them. Dates only. */
     const awayUntil = (await whoIsAwayOn(this.prisma, [userId], organizationId).catch(() => new Map<string, string>())).get(userId) ?? null;
-    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...(await this.whatTheirBoardsAsk(userId, here as any[])), ...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance, ...hours, ...letIn]);
+    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...(await this.whatTheirBoardsAsk(userId, here as any[])), ...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance, ...hours, ...letIn, ...directionPast]);
     /* A net: no address stands in for a name in any sentence on Today (week 12c). */
     const called = new Map<string, string>();
     for (const g of here as any[]) {

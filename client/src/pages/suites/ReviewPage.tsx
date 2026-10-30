@@ -88,7 +88,8 @@ export function ReviewPage() {
       {/* Release 7: the review as pictured, built from check-ins, first; the review's own parts follow, folded under it. */}
       {data?.asPictured && <TheReviewAsPictured p={data.asPictured} />}
       {data && (data.asPictured
-        ? <FoldedLine name="The record in full, what Groundwork noticed, and the decision">{<TheReview r={data} myUserId={user?.id ?? null} />}</FoldedLine>
+        /* Open while the review is in progress (fix plan, pattern 3; quarter test, Kevin): the own-view box and Update from the record are in it, and were hidden behind a closed fold. */
+        ? <FoldedLine name="The record in full, what Groundwork noticed, and the decision" defaultOpen={!(data as any).decision}>{<TheReview r={data} myUserId={user?.id ?? null} />}</FoldedLine>
         : <TheReview r={data} myUserId={user?.id ?? null} />)}
     </Page>
   )

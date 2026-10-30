@@ -238,7 +238,8 @@ import { theStagesKept } from './a-deals-stages-are-kept';
 import { aDaySaidInFull } from './a-day-said-in-full';
 import { theStallRuleOnRecord, theStallRuleAsALine, theStallRuleDeclined, NO_STALL_RULE_YET, THE_SUGGESTED_DAYS, THE_STALL_RULE_ASKED, type TheStallRule } from './the-stall-rule';
 import { whenTheyPay, theUnitsOf } from './a-sales-aim-is-counted-from-the-deals';
-import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, whereAWeeklyCountStands, whatTheseDealsHold, theDealsTheCountIsMadeOf, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
+import { theAimsCountedNow } from './an-aim-is-counted-now';
+import { theDealsOnRecord, theSalesStages, whereAWeeklyCountStands, whatTheseDealsHold, theDealsTheCountIsMadeOf, type ACountFromTheDeals, type ADealOnRecord } from './a-sales-aim-is-counted-from-the-deals';
 import { theWaitsOnCustomersApart, theirOwnAnswersWhereTheWaitsWereSaid, withoutTheWaitsOnCustomers } from './a-customers-reply-is-on-its-deal';
 import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
 import { whatTheSwitchboardServes, type TheSwitchboardServed } from './the-switchboard';
@@ -492,7 +493,8 @@ export class BoardService {
     if (releaseOne && isASalesKind((ground as any).kindOfWork)) {
       /* "With proof of payment" counts the payment records only (Hafsah's point 12). */
       theDealsCounted = await theDealsOnRecord(this.prisma, groundId, { paymentRecord: true }).catch(() => [] as ADealOnRecord[]);
-      const counted = theAimsTheDealsCount(ground.objectives as any[], theDealsCounted, theSalesStages((ground as any).workStages), now, theDayZone());
+      /* The one counter every page reads (an-aim-is-counted-now.ts), handed the deals already read. */
+      const counted = await theAimsCountedNow(this.prisma, { id: groundId, organizationId: (ground as any).organizationId, kindOfWork: (ground as any).kindOfWork, workStages: (ground as any).workStages }, (ground.objectives ?? []) as any[], now, { deals: theDealsCounted, zone: theDayZone() });
       for (const o of (ground.objectives ?? []) as any[]) {
         const c = counted.get(o.id);
         if (!c) continue;
@@ -3153,8 +3155,9 @@ export class BoardService {
       if (personHistory.length) out.personHistory = personHistory;
       const blockerCheck = theBlockerCheck(handoffs, reader);
       if (blockerCheck.length) out.blockerCheck = blockerCheck;
-      /* RELEASE 8: where the time went, from what each person committed to, by the piece of work it names. Never hours. To whoever runs it. */
-      if (runsIt) {
+      /* RELEASE 8: where the time went, from what each person committed to, by the piece of work it names. Never hours. To whoever runs it,
+         and only where Release 8 is switched on: off, the board is what staging served (the-direct-morning-off-reads-as-staging.spec.ts). */
+      if (runsIt && (await theRelease8SituationsIsOn(this.prisma, (ground as any).organizationId).catch(() => false))) {
         const itemNames = ((out.workRecords ?? []) as any[]).flatMap((sec: any) => ((sec?.rows ?? []) as any[]).map((x: any) => String(x?.name ?? ''))).filter(Boolean);
         const timeWent = whereTheTimeWent(mine.commitments, itemNames, reader);
         if (timeWent.length) (out as any).whereTheTimeWent = timeWent;

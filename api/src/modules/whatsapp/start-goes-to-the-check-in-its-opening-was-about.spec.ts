@@ -17,7 +17,7 @@ const asOpenRows = (rows: typeof LIT[]) => rows.map((r) => ({
 }));
 
 describe('Brian, invited to two check-ins, replies START after the Fee notes opening (Monday 12 October)', () => {
-  it('both invitations are accepted from his phone, and START opens Fee notes, saying the litigation one waits', async () => {
+  it('both invitations are accepted from his phone, and START opens Fee notes, the last opening sent to him', async () => {
     const h = anInboundHarness({
       open: [],
       who: { personId: 'person-brian', userId: null, externalId: 'participant:p-brian' },
@@ -42,13 +42,14 @@ describe('Brian, invited to two check-ins, replies START after the Fee notes ope
     expect(accepted).toEqual(['tok-lit', 'tok-fees']);
     expect(h.conversation.open).toHaveBeenCalledWith('ci-fees', 'u-brian');
     expect(h.conversation.open).not.toHaveBeenCalledWith('ci-lit', expect.anything());
-    expect(h.said[0].startsWith('You have two check-ins open: "Fee notes" and "Litigation team daily". Let\'s start with "Fee notes".\n\nFee notes, session 1.')).toBe(true);
-    expect(h.thread()?.checkInId).toBe('ci-fees');
+    /* Updated 29 October (a reply belongs to what it answers): START answers the last opening sent to him, with no sentence about the other. */
+    expect(h.said[0].startsWith('Fee notes, session 1.')).toBe(true);
+    expect(h.sent[h.sent.length - 1].context).toMatchObject({ checkInId: 'ci-fees' });
   });
 });
 
 describe('Brian, with both open, replies START after the litigation opening (Monday 19 October)', () => {
-  it('START opens the litigation check-in, the newest opening, and says Fee notes is open too', async () => {
+  it('START opens the litigation check-in, the last opening sent to him', async () => {
     const h = anInboundHarness({
       open: [{ ...FEES }, { ...LIT }],
       who: { personId: 'person-brian', userId: 'u-brian', externalId: 'u-brian' },
@@ -59,7 +60,7 @@ describe('Brian, with both open, replies START after the litigation opening (Mon
     });
     await h.service.handle('org-mu', h.message('START', '254722000002'), 'ours');
     expect(h.conversation.open).toHaveBeenCalledWith('ci-lit', 'u-brian');
-    expect(h.said[0].startsWith('You have two check-ins open: "Litigation team daily" and "Fee notes". Let\'s start with "Litigation team daily".\n\nLitigation team daily, session 1.')).toBe(true);
+    expect(h.said[0].startsWith('Litigation team daily, session 1.')).toBe(true);
   });
 
   it('a reply to the Fee notes opening itself goes to Fee notes, with nothing more to say', async () => {

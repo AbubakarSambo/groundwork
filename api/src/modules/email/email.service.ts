@@ -1,3 +1,4 @@
+import { theOutboxKey, mayItGo, letItGoAgain } from '../../common/the-one-outbox';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { whatHappensWhenThisPersonJoins } from '../participants/named-when-an-admin-approved';
 import { theEndingSaid, theOutcomeIsThat, TheEndingIsAbout } from '../resolution/end-states';
@@ -470,6 +471,7 @@ export class EmailService implements OnModuleInit {
       this.logger.log(`Not sending "${options.subject}": that check-in has no address on it yet.`);
       return undefined;
     }
+    /* The one outbox is asked at the one door to the mail service (deliverNow), so a mail held now claims its key only when it goes. */
     /* ONE ROUTINE MESSAGE A PERSON A DAY, ACROSS EMAIL AND WHATSAPP TOGETHER (decision 109, item 6). Asked after the person's own wishes, and only of the
        routine senders: approvals, openings and closings, and everything somebody asked for are never counted or held back. */
     const rather = (sender ? await this.wouldTheyRatherNot(options.to, sender, context) : null)
@@ -505,8 +507,9 @@ export class EmailService implements OnModuleInit {
       const held = await this.holdForTheMorning(options, context, sender);
       if (held) { if (context) context.outcome = 'held'; return undefined; }
     }
+    if (context) context.outcome = undefined;
     const went = await this.deliverNow(options, context, sender);
-    if (context) context.outcome = 'sent';
+    if (context && context.outcome !== 'suppressed') context.outcome = 'sent';
     return went;
   }
 
@@ -586,7 +589,46 @@ export class EmailService implements OnModuleInit {
     await this.deliverNow({ to: row.toAddress, subject: row.subject, html: row.html }, (row.context ?? undefined) as DeliveryContext | undefined, row.sender ?? undefined);
   }
 
+  /**
+   * THE MAIL'S KEY IN THE ONE OUTBOX (common/the-one-outbox.ts; fix plan, pattern 6). The same mail never goes twice: one a day for the same
+   * thing, and an invitation once a day to a person whatever check-in it is for. News of the same kind goes once a day (two-week check, 21
+   * and 22 January): how a session went is one mail a person a day; a report's news is one mail a check-in a day, the check-in read from its
+   * own name. A sign-in link, a code or a password mail claims nothing: the person asked for it.
+   */
+  private theMailsKey(options: { to: string; subject: string }, context?: DeliveryContext, sender?: string): string | null {
+    const askedForNow = /sign-?in|magic|code|password|verify|security|otp|login/i.test(sender ?? '') || context?.kind === 'MAGIC_LINK';
+    if (askedForNow) return null;
+    const family = /^(?:sendTheAnswerByEmail|sendTheMessageByEmail|sendRoundDigest|sendParticipantCheckedIn)$/.test(sender ?? '') ? 'session-news'
+      : /^(?:sendReportReady|sendTheReportFollowUp)$/.test(sender ?? '') ? 'report-news' : null;
+    const aboutWhich = family === 'report-news' ? (context?.groundId ?? /["“]([^"”]+)["”]/.exec(options.subject)?.[1] ?? null) : family === 'session-news' ? 'the-day' : (context?.groundId ?? context?.participantId ?? null);
+    return theOutboxKey({ channel: 'email', to: options.to, kind: family ?? sender ?? context?.kind ?? null, about: aboutWhich, text: options.subject });
+  }
+
+  /**
+   * THE ONE DOOR TO THE MAIL SERVICE (Hafsah, 29 October). Every mail, sent now or held and sent later, reaches the mail service here and
+   * nowhere else, and claims its key in the one outbox first: a key already claimed was already sent, and nothing goes. A mail the service
+   * refused gives its key back. the-one-door.spec.ts fails if any other code reaches the mail service.
+   */
   private async deliverNow(
+    options: { to: string; subject: string; html: string; text?: string },
+    context?: DeliveryContext,
+    sender?: string,
+  ): Promise<string | undefined> {
+    const key = this.theMailsKey(options, context, sender);
+    if (!(await mayItGo(this.prisma, key))) {
+      this.logger.log(`Not sending "${options.subject}": the same mail already went today.`);
+      if (context) context.outcome = 'suppressed';
+      return undefined;
+    }
+    try {
+      return await this.throughTheDoor(options, context, sender);
+    } catch (err) {
+      await letItGoAgain(this.prisma, key);
+      throw err;
+    }
+  }
+
+  private async throughTheDoor(
     options: { to: string; subject: string; html: string; text?: string },
     context?: DeliveryContext,
     sender?: string,

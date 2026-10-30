@@ -1117,7 +1117,7 @@ export function groupOf(card: { cardKey: string; scenario: string }): string {
  * THE OPENING LINE, AND THE CLOSE, OF THE LEAD'S SETUP (Hafsah, 26 October 2026). Said in the chat itself: what this is for, how long it
  * takes and how to stop, added in front of the first message she reads, which stays as it was; and one line when setup is done.
  */
-export const THE_SETUP_LINE = 'This sets up your team’s check-ins and records where things stand today. It takes about 10 minutes, and you can stop any time with End session.'
+export const THE_SETUP_LINE = 'This sets up your team’s check-ins and records where things stand today. It takes about ten minutes, and you can stop any time with End session.'
 export function theSetupIsDoneSaying(firstOpensOn: string | null): string {
   const d = firstOpensOn ? new Date(`${firstOpensOn}T12:00:00Z`) : null
   const day = d && !isNaN(d.getTime()) ? whenItWas(d, 'weekdayAndDay', 'UTC') : null
@@ -4049,7 +4049,7 @@ export function EntryChatPage() {
                 <span className="gwui-ec-live-dot" />
                 Session 1 in progress
               </>
-            ) : 'Getting started, and this session is about 10 minutes.'}
+            ) : 'Getting started, and this session is about ten minutes.'}
           </div>
         </div>
 

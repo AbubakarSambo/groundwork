@@ -321,11 +321,14 @@ import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { aQuestionNotYetAsked, WHAT_ELSE } from './nobody-is-left-looking-at-a-paragraph';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargets } from '../board/a-hidden-target-stays-hidden';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
-import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
+import { itIsTheirs, AN_AIM_IN_WORDS, A_PERIOD_REPORTED } from './a-promise-is-theirs-not-ours';
+import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep, worthWritingDown } from './what-they-said-they-would-do-next';
 import { theFullerPromise, nameTwoDifferentDates } from './the-same-promise-said-more-fully';
 import { aPromiseSomebodyElseMade } from './a-promise-somebody-else-made';
 import { clearTheWaitsSaidDone, clearTheWaitsAnEventEnded } from './a-wait-said-done-is-cleared';
 import { clearTheWaitsOverAcrossTheOrganisation } from './a-wait-is-over-across-the-organisation';
+import { clearTheWaitsTheRecordEnds } from './a-wait-is-over-from-what-it-means';
+import { theConversationSoFar } from './the-conversation-so-far';
 import { aWaitForTheirCheckIn, removeTheWaitsForACheckIn } from './a-wait-for-a-check-in-is-not-a-wait';
 import { whereTheirNumberStands } from './something-they-could-not-have-said-themselves';
 import { fileTheProofOnItsItem } from '../documents/proof-filed-on-its-item';
@@ -2083,8 +2086,8 @@ export class ConversationService {
    * round per ground, after the idempotency guard that makes a second open() free. Putting it in
    * the door would charge every message.
    */
-  private async openTheDoor(checkInId: string, who: WhoIsAsking) {
-    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, who);
+  private async openTheDoor(checkInId: string, who: WhoIsAsking, how: { finishedIsDone?: boolean } = {}) {
+    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, who, how);
     await this.assertGroundAcceptsInput(checkIn.groundId);
     return checkIn;
   }
@@ -2323,7 +2326,7 @@ export class ConversationService {
     let aiTurn: { id: string; content: string };
     try {
       const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' } });
-      const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
+      const history = theConversationSoFar(turns);
       let rawReply = how.streamDraft
         ? await this.streamTheDraft(checkIn as any, fullSystem, history, turns, message, how.streamDraft)
         : await this.anthropic.respond(fullSystem, history);
@@ -3624,9 +3627,11 @@ export class ConversationService {
        * with no button to press: on the live platform check-ins were left open after the goodbye. It waits for the card, then writes the
        * record, off this reply. A press of "That’s right, finish" or "finish" meanwhile waits for this and gets the same answer.
        */
-      (this.finishedByGroundwork ??= new Map()).set(checkIn.id, this.finishTheSession(checkIn as any, 'the person', { waitForTheCard: true })
-        .catch((err: any) => { this.logger.warn(`Check-in ${checkIn.id}: finishing on its own failed: ${err?.message}`); return null as any; })
-        .finally(() => setTimeout(() => this.finishedByGroundwork?.delete(checkIn.id), 60_000).unref?.()));
+      /* ONE STATE FOR A SESSION (29 October): it is COMPLETED now, before the reply goes, so every door reads the same thing; the record is
+         written after, on the same row, and completedAt is stamped when it is (Faith was told "complete" and then "still open"). */
+      await this.itIsFinished(checkIn.id);
+      void this.finishTheSession(checkIn as any, 'the person', { waitForTheCard: true })
+        .catch((err: any) => this.logger.warn(`Check-in ${checkIn.id}: finishing on its own failed: ${err?.message}`));
     }
     /*
      * AN IDEA, SAID BACK FOR A YES (anchor piece 19). Only on a check-in started from the anchor link, with the switch
@@ -6580,6 +6585,8 @@ ${told}` : '';
     if (agreed.kind === 'no') return { forTheModel: whatHappenedToTheOffer(agreed, false), weSay: '' };
     /* A yes to somebody else's promise is not theirs to keep (Hafsah's point 13, Release 1): nothing is written. */
     if (aPromiseSomebodyElseMade(agreed.text) && ((await theReleaseOneSalesBoardIsOnFor(this.prisma, checkIn.groundId)) || (await aCollectionsCheckInWithRelease2(this.prisma, checkIn.groundId)))) return { forTheModel: '', weSay: '' };
+    /* The one test of what is a promise, as the check-in's own reading uses (fix plan, pattern 5): "Today. I promise." was kept as one. */
+    if (!worthWritingDown({ action: agreed.text })) return { forTheModel: whatHappenedToTheOffer(agreed, false), weSay: '' };
     let written: boolean | 'already' = false;
     try {
       const theirs = await this.prisma.groundCommitment.findMany({
@@ -7388,19 +7395,16 @@ ${told}` : '';
    *   Read live, 22 Sep 2026: three answers on an open-link discovery, "I am done", and "a few more
    *   exchanges are needed" - the pop-up Hafsah had reported that morning, on the other path.
    */
-  /** Sessions Groundwork closed and is finishing on its own (sendMessage): a finish pressed meanwhile waits for it, never runs twice. */
-  private finishedByGroundwork = new Map<string, Promise<any>>();
+
+  /** The one place a session becomes finished. Everything that asks whether it is open reads this status. */
+  private async itIsFinished(checkInId: string): Promise<void> {
+    await this.prisma.checkIn.updateMany({ where: { id: checkInId, status: { in: [CheckInStatus.IN_PROGRESS, CheckInStatus.NOT_STARTED] } }, data: { status: CheckInStatus.COMPLETED } });
+  }
 
   async complete(checkInId: string, requestingUserId: WhoIsAsking, how: { theyAskedToFinish?: boolean; waitForTheCard?: boolean } = {}) {
-    const inFlight = this.finishedByGroundwork?.get(checkInId);
-    if (inFlight) {
-      /* Only the session's own person: the door's refusal stands, except the one that says it is already finished, which is the
-         background finish landing first ("You have already finished this check-in", loadOwnedOpenCheckIn; ownership is checked before it). */
-      await this.openTheDoor(checkInId, requestingUserId).catch((e: any) => { if (!/already finished this check-in|already complete/i.test(String(e?.response?.message ?? e?.message ?? ''))) throw e; });
-      const done = await inFlight;
-      if (done) return done;
-    }
-    const checkIn = await this.openTheDoor(checkInId, requestingUserId);
+    /* A session already finished (Groundwork closed it, or another press got there first) is done: the same answer, nothing run twice. */
+    const checkIn = await this.openTheDoor(checkInId, requestingUserId, { finishedIsDone: true });
+    if (checkIn.status === CheckInStatus.COMPLETED) return { status: 'completed' as const, groundId: checkIn.groundId };
 
     // Completion-readiness gate (B4): a check-in only closes once the person has
     // actually built a record. Hollow completions produce thin, over-confident
@@ -7533,13 +7537,6 @@ ${told}` : '';
    * complete() protect against a person leaving nothing behind; a person who left is the case they
    * cannot help.
    */
-  /**
-   * Whether Groundwork closed this check-in and is still finishing it (writing its end card and record, up to about a minute). A message
-   * that arrives meanwhile belongs to the next check-in, as something added, never to this one (Mercy on WhatsApp, 26 October 2026).
-   */
-  isBeingFinished(checkInId: string): boolean {
-    return !!this.finishedByGroundwork?.has(checkInId);
-  }
 
   async closeByTheClock(checkInId: string): Promise<{ status: 'completed'; groundId: string }> {
     const checkIn = await this.prisma.checkIn.findUnique({
@@ -7607,6 +7604,7 @@ ${told}` : '';
     by: 'the person' | 'the clock',
     how: { waitForTheCard?: boolean } = {},
   ): Promise<{ status: 'completed'; groundId: string; endCard?: EndCard | null; whatYouGave?: WhatTheyGave }> {
+    await this.itIsFinished(checkIn.id);
     // Score session specificity from person's turns before marking complete
     /* A scorer that fails is logged by check-in, and the row says it was TRIED: specificityScoredAt set
        with no level is "scoring failed", which is not "not scored yet" and not a fact about the ground. */
@@ -7648,15 +7646,16 @@ ${told}` : '';
       /* A wait for somebody's check-in was never a wait on their work: any recorded before the rule is removed (final check, item 1). */
       .then(() => removeTheWaitsForACheckIn(this.prisma, checkIn.groundId))
       .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: removed ${n} wait(s) that were only for somebody's check-in.`); })
-      .then(() => clearTheWaitsSaidDone(this.prisma, checkIn.groundId))
-      .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) somebody said were done.`); })
-      /* And every wait for an event, in any of the organisation's check-ins, that somebody has now said happened (messages test, fourth run). */
-      .then(() => clearTheWaitsAnEventEnded(this.prisma, checkIn.groundId))
-      .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) for something somebody said has happened.`); })
-      /* And every wait the record ends in any of the organisation's check-ins: done by the one waiting, told to them, corrected by the lead,
-         or filed by the one holding it (polish round 15, Muchemi & Co). See a-wait-is-over-across-the-organisation.ts. */
-      .then(() => clearTheWaitsOverAcrossTheOrganisation(this.prisma, checkIn.groundId))
-      .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) the record says are over.`); })
+      /* Then every open wait in the organisation the record now shows is over, read by the model from what the lines mean, not their
+         words (Hafsah, 29 October; FN-007). See a-wait-is-over-from-what-it-means.ts. Only when the model cannot be reached do the
+         word rules run instead (a-wait-said-done-is-cleared.ts, a-wait-is-over-across-the-organisation.ts). */
+      .then(() => clearTheWaitsTheRecordEnds(this.prisma, this.anthropic as any, this.prompts as any, checkIn.groundId))
+      .then(async (over) => {
+        if (over) { if (over.length) this.logger.log(`Check-in ${checkIn.id}: cleared ${over.length} wait(s) the record shows are over.`); return; }
+        const n = (await clearTheWaitsSaidDone(this.prisma, checkIn.groundId)) + (await clearTheWaitsAnEventEnded(this.prisma, checkIn.groundId))
+          + (await clearTheWaitsOverAcrossTheOrganisation(this.prisma, checkIn.groundId));
+        if (n) this.logger.log(`Check-in ${checkIn.id}: the model could not be reached; the word rules cleared ${n} wait(s).`);
+      })
       /* And every open promise its maker, or the person it was for, has now said is done is kept (Drop Access run 1, item 13). */
       .then(() => keepThePromisesSaidDone(this.prisma, checkIn.groundId))
       .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: kept ${n} promise(s) somebody said were done.`); })
@@ -7764,8 +7763,9 @@ ${told}` : '';
       .then(() => this.observeForCoaching(checkIn.id, checkIn.participantId, checkIn.sessionNumber))
       .catch((err) => this.logger.warn(`Coaching observation failed for check-in ${checkIn.id}: ${err.message}`));
 
+    /* The record is written: completedAt is stamped once, which is what the round, the report and the event wait for. */
     const won = await this.prisma.checkIn.updateMany({
-      where: { id: checkIn.id, status: { not: CheckInStatus.COMPLETED } },
+      where: { id: checkIn.id, completedAt: null },
       data: {
         status: CheckInStatus.COMPLETED,
         completedAt: new Date(),
@@ -8707,16 +8707,26 @@ ${told}` : '';
       where: { id: checkInId },
       select: {
         groundId: true, sessionNumber: true, participantId: true,
-        turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true, stage: true } },
+        turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true, stage: true, createdAt: true } },
       },
     });
     if (!row?.participantId) return;
     const said = row.turns.map((t) => (t.content ?? '').trim()).filter(Boolean);
     if (!said.length) return;
+    /* Each answer with the question it answered (fix plan, pattern 5): "Follow up with her then" was kept with nobody named, because the model saw answers alone. */
+    const asked = ((await Promise.resolve((this.prisma as any).conversationTurn?.findMany?.({ where: { checkInId, role: TurnRole.AI }, orderBy: { createdAt: 'asc' }, select: { content: true, createdAt: true } })).catch(() => [])) ?? []) as any[];
+    const theQuestionBefore = (at: Date | null | undefined) => {
+      const before = (asked as any[]).filter((q) => !at || new Date(q.createdAt) <= new Date(at)).pop();
+      return before ? String(before.content ?? '').replace(/\s+/g, ' ').trim().slice(-300) : '';
+    };
+    const pairs = row.turns.filter((t) => (t.content ?? '').trim()).map((t, n) => {
+      const q = theQuestionBefore((t as any).createdAt);
+      return `${n + 1}. ${q ? `Asked: ${q}\n   They said: ` : ''}${(t.content ?? '').trim()}`;
+    });
 
     const read = await this.anthropic.extract<any>(
       READ_WHAT_THEY_PROMISED,
-      [{ role: 'user', content: `THEIR OWN WORDS, in order:\n${said.map((x, n) => `${n + 1}. ${x}`).join('\n')}` }],
+      [{ role: 'user', content: `THEIR OWN WORDS, in order, each after the question it answered:\n${pairs.join('\n')}` }],
       WHAT_THEY_PROMISED_SCHEMA as any,
       { fast: true, thinkingBudget: 0 },
     ).catch((err: any) => {
@@ -8779,6 +8789,8 @@ ${told}` : '';
           groundId: row.groundId,
           participantId: row.participantId,
           text: c.action.slice(0, 400),
+          /* The same promise as a clear action, beside their words (fix plan, pattern 5). */
+          action: c.clear ?? null,
           /* What "it" is, where they were asked: their answer, as typed (a-vague-promise-says-what-it-is). */
           whatItIs: whatTheySaidItIs(c.action, row.turns as any),
           outcome: c.outcome ?? null,
@@ -9431,7 +9443,7 @@ ${told}` : '';
      */
     const last = turns[turns.length - 1] as any;
     const theyAnswered = turns.some((t: any) => t.role === TurnRole.PERSON);
-    if (checkIn.status !== CheckInStatus.IN_PROGRESS || !theyAnswered || !last || last.role !== TurnRole.AI) return { endCard: null };
+    if (checkIn.completedAt || checkIn.status === CheckInStatus.DECLINED || !theyAnswered || !last || last.role !== TurnRole.AI) return { endCard: null };
     this.startTheEndCard(checkIn as any, last.id);
     await this.waitForTheCardBeingBuilt(checkIn.id);
     const now = await this.prisma.conversationTurn.findMany({
@@ -10611,7 +10623,11 @@ ${told}` : '';
     for (const p of result.promises) {
       const text = (p.promise ?? '').trim();
       if (!text) continue;
+      /* Theirs, in their own words, never a sentence of Groundwork's (a-promise-is-theirs-not-ours.ts). */
+      if (!itIsTheirs(text, transcript)) continue;
       const kind = KINDS.includes(p.kind ?? '') ? (p.kind as any) : 'TODO';
+      /* A figure they reported is what happened, not an aim (fix plan, pattern 5; Njeri's "November collections KES 720,000" became "You have 0 of 720,000"). */
+      if (kind === 'TARGET' && !p.dueSaid && A_PERIOD_REPORTED.test(text) && !AN_AIM_IN_WORDS.test(text)) continue;
       const check = CHECKS.includes(p.check ?? '') ? (p.check as any) : 'NOT_CHECKABLE';
       const dueKind = DUES.includes(p.dueKind ?? '') ? (p.dueKind as any) : 'NOT_SAID';
       const dueSaid = (p.dueSaid ?? '').trim() || null;
@@ -10849,9 +10865,11 @@ ${told}` : '';
      */
     await this.writeTheirOwnPromises(participantId, groundId, transcriptForHerOwn, saidOn, ground.participants as any);
 
+    /* The speaker's own targets, by id, so a new number for one of them edits it rather than making a second (Mercy, 29 October). */
+    const theirTargetsOnRecord = ((await Promise.resolve(this.prisma.groundObjective.findMany({ where: { groundId, ownerParticipantId: participantId }, select: { id: true, name: true, target: true } })).catch(() => [])) ?? []) as { id: string; name: string; target: number | null }[];
     const result = await this.anthropic.extract<{
       groundAims: { name: string; target?: number | null; by?: string | null }[];
-      theirOwnTarget?: { name: string; target: number } | null;
+      theirOwnTarget?: { name: string; target: number; corrects?: string | null } | null;
       expectations: {
         personName: string;
         targetNumber?: number | null;
@@ -10867,7 +10885,7 @@ ${told}` : '';
         /** REFERENCE only: where the work is tracked. Never its state. */
         trackedUrl?: string;
       }[];
-    }>(EXPECTATION_PROMPT, [{ role: 'user', content: `${theSpeakerLine(me)}\n\n${transcript}` }], EXPECTATION_SCHEMA as any);
+    }>(EXPECTATION_PROMPT, [{ role: 'user', content: `${theSpeakerLine(me)}\n\n${theirTargetsOnRecord.length ? `Their targets on record:\n${theirTargetsOnRecord.map((t) => `[${t.id}] ${t.name}${typeof t.target === 'number' ? `, ${t.target}` : ''}`).join('\n')}\n\n` : ''}${transcript}` }], EXPECTATION_SCHEMA as any);
     if (!result) return;
 
     /** The same resolver as work mentions: a name that matches nobody is dropped, never guessed. */
@@ -11176,13 +11194,34 @@ ${told}` : '';
      * reading the code. Nothing in the tests would have caught it.
      */
     const own = result.theirOwnTarget;
-    if (own?.name?.trim() && Number.isFinite(own.target) && own.target > 0) {
+    /*
+     * A CORRECTION EDITS THE TARGET ITSELF (one owner, one source; 29 October 2026). Mercy said "My target is actually 30 units, not
+     * 10", and a second target was written beside the first, so My work went on saying "17 over your target of 10". A new number for a
+     * target of theirs on record changes that target; the old number, who changed it, when and in what words go to the check-in's log.
+     */
+    const corrected = own?.corrects ? theirTargetsOnRecord.find((t) => t.id === own.corrects) : null;
+    if (corrected && Number.isFinite(own!.target) && own!.target > 0 && numbersInTheirWords.has(Math.round(own!.target))) {
+      if (corrected.target !== Math.round(own!.target)) {
+        await this.prisma.groundObjective.update({ where: { id: corrected.id }, data: { target: Math.round(own!.target) } });
+        await this.keepTheChangeOfATarget(groundId, { objectiveId: corrected.id, from: corrected.target, to: Math.round(own!.target), byParticipantId: participantId, said: theirOwnTurns[theirOwnTurns.length - 1] ?? null });
+        this.logger.log(`Ground ${groundId}: a target of ${participantId} changed from ${corrected.target} to ${Math.round(own!.target)}, in their words.`);
+      }
+    } else if (own?.name?.trim() && Number.isFinite(own.target) && own.target > 0) {
       theirOwnNumbers.push({ participantId, name: own.name.trim(), target: Math.round(own.target) });
     }
 
     /* A sum said only to ask for it is the request's, never somebody's goal (user journeys, F-9). */
     await this.putOwnedTargetsOnTheRecord(groundId, theirOwnNumbers.filter((t) => !sumsOnlyARequestSaid.has(t.target)), participantId,
       (await this.theLeadsTargetsWaitForHerYes(groundId)) ? { holdFor: theirOwnTurns, people: ground.participants as any[] } : undefined);
+  }
+
+  /** A target's number changed in somebody's words: kept in the check-in's log, beside what was there, so its history stays. */
+  private async keepTheChangeOfATarget(groundId: string, change: { objectiveId: string; from: number | null; to: number; byParticipantId: string; said: string | null }): Promise<void> {
+    const g: any = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { groundAuditLog: true } as any }).catch(() => null);
+    const raw = g?.groundAuditLog;
+    const log: any = raw && !Array.isArray(raw) && typeof raw === 'object' ? { ...raw } : { timeline: Array.isArray(raw) ? raw : [], contextNotes: [] };
+    log.targetChanges = [...(Array.isArray(log.targetChanges) ? log.targetChanges : []), { ...change, said: change.said?.slice(0, 400) ?? null, at: new Date().toISOString() }];
+    await this.prisma.ground.update({ where: { id: groundId }, data: { groundAuditLog: log } as any }).catch(() => undefined);
   }
 
   /** On a sales check-in with Release 1's sales board on, the targets read from the lead's words wait for her yes. */
@@ -12618,13 +12657,13 @@ ${told}` : '';
    * wall in the name of a rule about writing. So the loader's NAME carries the distinction, and a
    * future write path gets the rule by picking the right one rather than by remembering it.
    */
-  private async loadOwnedOpenCheckIn(checkInId: string, who: WhoIsAsking) {
+  private async loadOwnedOpenCheckIn(checkInId: string, who: WhoIsAsking, how: { finishedIsDone?: boolean } = {}) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, who);
     /* NEW PARTICIPATION STOPS FOR SOMEBODY HELD FOR A SEAT (decision 110, B3): no new session, and no answer to one. What they have already said and their own report stay theirs to read, through the readers above. */
     if ((checkIn as any).participant?.awaitingSeat === true) throw new ForbiddenException(HELD_FOR_A_SEAT);
     /* AND FOR THE PEOPLE OVER THE PLAN, picked by the one rule People and Plan and billing use (request 197, common/over-the-plan.ts). */
     if (await this.isHeldOverThePlan(checkIn)) throw new ForbiddenException(HELD_FOR_A_SEAT);
-    if (checkIn.status === CheckInStatus.COMPLETED) {
+    if (checkIn.status === CheckInStatus.COMPLETED && !how.finishedIsDone) {
       throw new BadRequestException('You have already finished this check-in, so there is nothing more to add.');
     }
     if (checkIn.status === CheckInStatus.DECLINED) {

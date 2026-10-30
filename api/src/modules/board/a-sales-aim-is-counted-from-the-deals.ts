@@ -42,8 +42,10 @@ export type WhatASalesAimCounts = 'units' | 'value' | 'sales' | 'new leads';
 
 export interface WhatTheAimCounts {
   counts: WhatASalesAimCounts;
-  /** "week": the working week so far. Null: since the check-in began. Only for new leads. */
-  window: 'week' | null;
+  /** "week": the working week so far (new leads). "month": one calendar month (`month`, 1 to 12, or null for this month). Null: since the check-in began. */
+  window: 'week' | 'month' | null;
+  /** The month a "month" window counts, 1 to 12, or null for the month `now` is in. */
+  month?: number | null;
   /** What is counted, in the aim's own word: "units", "water dispensers", "sales". */
   thing: string;
 }
@@ -63,11 +65,13 @@ export function whatASalesAimCounts(name: string | null | undefined): WhatTheAim
   if (!t) return null;
   if (A_LEAD.test(t)) return { counts: 'new leads', window: A_WEEK.test(t) ? 'week' : null, thing: 'new leads' };
   /* Money counts from the deals only where the words say it is sold: "Naira disbursed" is a loan book, not a sale. */
-  if (MONEY.test(t)) return A_SALE.test(t) ? { counts: 'value', window: null, thing: 'value' } : null;
-  if (UNITS.test(t)) return { counts: 'units', window: null, thing: 'units' };
-  if (SALES_OR_DEALS.test(t)) return { counts: 'sales', window: null, thing: 'sales' };
+  /* "7 units in November", "KES 300,000 this month": counted in that month only (quarter test, Faith's goal counted all time). */
+  const inAMonth = theMonthItCounts(t);
+  if (MONEY.test(t)) return A_SALE.test(t) ? { counts: 'value', ...inAMonth, thing: 'value' } : null;
+  if (UNITS.test(t)) return { counts: 'units', ...inAMonth, thing: 'units' };
+  if (SALES_OR_DEALS.test(t)) return { counts: 'sales', ...inAMonth, thing: 'sales' };
   const sold = t.match(SELL_A_THING);
-  if (sold && !/\b(?:target|aim|goal)\b/i.test(sold[1])) return { counts: 'units', window: null, thing: sold[1].trim().toLowerCase() };
+  if (sold && !/\b(?:target|aim|goal)\b/i.test(sold[1])) return { counts: 'units', ...inAMonth, thing: sold[1].trim().toLowerCase() };
   return null;
 }
 
@@ -173,7 +177,7 @@ export interface ACountFromTheDeals {
   /** For value: the currency, as the deals write it ("KES"). */
   currency: string | null;
   /** "week": a count that starts again each working week, so it is never carried forward at a pace. */
-  window?: 'week' | null;
+  window?: 'week' | 'month' | null;
   /**
    * WHICH DEALS MAKE THE COUNT, by name (Hafsah's quality pass, 18 October, Q1): those a payment record backs, those a signed order
    * backs, and those that rest on what somebody said. Only where the payment record is read (Release 1's sales board).
@@ -193,6 +197,35 @@ export interface ACountFromTheDeals {
 
 const dayKeyIn = (d: Date, zone: string): string =>
   new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+
+const MONTH_NAMES = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+/** The month an aim's own words count in: a month named ("in November", "November collections"), or "this month", "a month", "monthly". */
+export function theMonthItCounts(t: string): { window: 'month' | null; month: number | null } {
+  /* "in November", "during November", "November sales": that month. "by 30 October" is a deadline, not a month to count in. */
+  const M = MONTH_NAMES.join('|');
+  const named = new RegExp(`\\b(?:in|during|for)\\s+(?:the\\s+month\\s+of\\s+)?(${M})\\b`, 'i').exec(t)
+    ?? new RegExp(`(?:^|[^a-z0-9]\\s*)(${M})\\s+(?:sales|collections|target|units|revenue|orders|deals)\\b`, 'i').exec(t);
+  if (named) return { window: 'month', month: MONTH_NAMES.indexOf(named[1].toLowerCase()) + 1 };
+  if (/\b(?:this|each|every|a|per)\s+month\b|\bmonthly\b/i.test(t)) return { window: 'month', month: null };
+  return { window: null, month: null };
+}
+
+/** The first and last day keys of the month an aim counts in, in the zone: the latest such month that has begun by `now`. */
+export function theMonthsDays(month: number | null, now: Date, zone: string): { from: string; to: string } {
+  const today = dayKeyIn(now, zone);
+  const y = Number(today.slice(0, 4));
+  const m = month ?? Number(today.slice(5, 7));
+  const year = m > Number(today.slice(5, 7)) ? y - 1 : y;
+  const last = new Date(Date.UTC(year, m, 0)).getUTCDate();
+  const mm = String(m).padStart(2, '0');
+  return { from: `${year}-${mm}-01`, to: `${year}-${mm}-${String(last).padStart(2, '0')}` };
+}
+
+/** The day a won deal was won: its first payment record, else the day it reached its last stage, else the day its stage was said. */
+function theDayItWasWon(d: ADealOnRecord, last: string): Date {
+  const atLast = (d.stagesKept ?? []).filter((s: any) => String(s.stage ?? '').toLowerCase() === last).map((s: any) => new Date(s.at ?? s.on ?? s.createdAt)).filter((x) => !Number.isNaN(x.getTime()));
+  return d.paidOn ?? atLast[0] ?? d.stageSaidOn ?? d.firstOnRecordAt;
+}
 
 /** The Monday of the working week `now` falls in, as a day key in the zone. */
 export function theMondayOf(now: Date, zone: string): string {
@@ -241,7 +274,10 @@ export function theCountFromTheDeals(
   const atTheLast = theirs.filter((d) => (d.stage ?? '').toLowerCase() === last || !!d.paymentOnFile);
   /* Where the lead's rule says a sale counts only with a payment or a signed order, one said won with neither is not counted yet. */
   const notYet = (d: ADealOnRecord) => !!d.wonNeedsProof && !d.paid && !d.signed;
-  const won = atTheLast.filter((d) => !notYet(d));
+  /* An aim for one month counts only what was won in that month. */
+  const days = what.window === 'month' ? theMonthsDays(what.month ?? null, now, zone) : null;
+  const inTheWindow = (d: ADealOnRecord) => !days || ((k) => k >= days.from && k <= days.to)(dayKeyIn(theDayItWasWon(d, last), zone));
+  const won = atTheLast.filter((d) => !notYet(d) && inTheWindow(d));
   const notCountedDeals = atTheLast.filter(notYet).map((d) => ({
     name: d.name,
     holds: what.counts === 'units' ? (theUnitsOf(whatWasSold(d)) ?? 0) : what.counts === 'value' ? (theMoneyOf(whatWasSold(d))?.amount ?? 0) : 1,
@@ -443,15 +479,24 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
     documentBy: l.anchoredDocumentId ? (whoAdded.get(l.anchoredDocumentId) ?? null) : null,
     documentWords: theDocumentBehind(l.anchoredDocumentId, docOf).documentWords,
   }));
-  /* The payment records: a document that reads as a payment, or a reference typed in full, each about the customer it names (the board's own rule). */
-  const payments: { text: string; at: Date }[] = opts.paymentRecord
-    ? thePaymentRecords(
+  /*
+   * The payment records: a document that reads as a payment, or a reference typed in full, each about the customer it names (the board's
+   * own rule). ONE OWNER, ONE SOURCE (29 October 2026): a deal's payments are read from its owner's own lines, and the lead's (who is
+   * told of a payment), never another rep's. Faith's customer at
+   * Bahari Cafe, Mrs Achola, paid by M-Pesa, and Greenfield's contact is also a Mrs Achola, so her payment paid Mercy's dropped quote of
+   * 25 units and Mercy's My work read "27 sold".
+   */
+  const paymentsOf = new Map<string | null, { text: string; at: Date }[]>();
+  const paymentsBy = (owner: string | null): { text: string; at: Date }[] => {
+    if (!opts.paymentRecord) return [];
+    if (!paymentsOf.has(owner)) paymentsOf.set(owner, thePaymentRecords(
       asProof
-        .filter((l) => theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAdded) === 'proven')
+        .filter((l) => ((l.participantId ?? null) === owner || leadRows.has(l.participantId)) && theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAdded) === 'proven')
         .map((l) => ({ text: cleanText(l.text ?? ''), createdAt: l.createdAt, anchoredDocumentId: l.anchoredDocumentId ?? null })),
       docOf,
-    )
-    : [];
+    ));
+    return paymentsOf.get(owner)!;
+  };
   /* The payment records a document shows, so a code typed beside an M-Pesa message is not said as the proof. */
   const documentPayments: { text: string; at: Date }[] = opts.paymentRecord
     ? thePaymentRecords(
@@ -500,6 +545,7 @@ export async function theDealsOnRecord(prisma: any, groundId: string, opts: { pa
     const orderFiled = filedOn(i.id, 'A signed order');
     const proven = sourceMark === 'proven' || proofNamesTheDeal(i.name, marked, owner) || paymentFiled.length > 0 || orderFiled.length > 0;
     const said = plainFields(i.fields);
+    const payments = paymentsBy(owner);
     const paidOnALine = opts.paymentRecord ? payments.filter((t) => aPaymentRecordFor({ name: i.name, fields: said }, [t])).map((t) => t.at) : [];
     /*
      * What was sold is what its payment shows: the units the payment was for, and what was paid (U2, U14). Kept beside the deal's own

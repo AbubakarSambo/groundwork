@@ -20,8 +20,8 @@ import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch'
 import { readThePersonsRecord, readTheirOtherRecords } from './the-persons-record-store';
 import { theRecordInWords, acrossTheirCheckIns, type TheRecordInWords } from './the-persons-record-in-words';
 import { thePraiseFromYourLead } from './the-praise-from-your-lead';
-import { onePromiseOneState } from '../grounds/your-board';
-import { thePromisesAsTheRecordKeepsThem } from '../grounds/a-promise-said-done-is-read-the-same-everywhere';
+import { withTheirCountNow } from './an-aim-is-counted-now';
+import { thePromisesOf, thePromisesCounted } from '../grounds/the-promises-counted-once';
 import { theCheckInsCounted } from './a-day-they-checked-in';
 
 /**
@@ -144,6 +144,8 @@ export interface ACheckInRow {
 export interface ACommitmentRow {
   id: string;
   text: string;
+  /** What is shown: the clear action where there is one, else their words as an action (onePromiseOneState). */
+  shown?: string;
   whenSaid?: string | null;
   status?: string | null;
   explicit?: boolean | null;
@@ -198,7 +200,8 @@ export interface TheRecordForOnePerson {
   teamCoaching: string[];
   /** The lead's "help them with" line for this person: only where this reader may read it. */
   helpWith: string | null;
-  target: { count: number; target: number } | null;
+  /** With the deals' own count where the deals count it (an-aim-is-counted-now.ts): what the sold tile says too. */
+  target: { count: number; target: number; fromTheDeals?: { count: number; proven: number; deposit: number; thing: string } } | null;
   now: Date;
   timeZone: string;
   /** The check-in opens a session each working day, on these days (cadence DAILY). */
@@ -300,9 +303,10 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const finished = items.filter((i) => isFinished(i, words.lastStage));
   const open = items.filter((i) => !isFinished(i, words.lastStage));
   const proven = finished.filter((i) => theProofOf(i).proven);
-  const promises = r.commitments.filter((c) => c.explicit !== false);
-  const settled = promises.filter((c) => c.status === 'DONE' || c.status === 'NOT_DONE');
-  const kept = settled.filter((c) => c.status === 'DONE');
+  /* The one count of promises (grounds/the-promises-counted-once.ts): what the You page and the self-review say too. */
+  const promisesCounted = thePromisesCounted(r.commitments.map((c) => ({ status: String(c.status ?? ''), explicit: c.explicit })));
+  const settledN = promisesCounted.kept + promisesCounted.notDone;
+  const keptN = promisesCounted.kept;
   /*
    * A daily session left open counts once for each working day it stayed open, as the person's record counts it (final check, item 5).
    * Done is a session they answered in, and a day they answered on is done whatever else opened and closed quietly that day: Peter's own
@@ -352,9 +356,9 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const behaviours: ABehaviourRead[] = THE_SEVEN_BEHAVIOURS.map((b): ABehaviourRead => {
     switch (b.key) {
       case 'keeping-promises': {
-        if (settled.length < 3) return read(b.key, 'Not enough yet', '', null);
-        const strong = kept.length / settled.length >= 0.75;
-        return read(b.key, strong ? 'Strength' : 'Needs work', `${You} kept ${kept.length} of ${settled.length} promises.`, `${Your} check-ins`);
+        if (settledN < 3) return read(b.key, 'Not enough yet', '', null);
+        const strong = keptN / settledN >= 0.75;
+        return read(b.key, strong ? 'Strength' : 'Needs work', `${You} kept ${keptN} of ${settledN} promises.`, `${Your} check-ins`);
       }
       case 'planning-ahead': {
         /* A deal the record says cannot buy now ("no budget this year", "until January") has nothing to book yet: not counted here. */
@@ -442,7 +446,12 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   /* Sold on a deposit is said apart from paid, never as "with proof" of payment (final real-model check, item 10: "46 with proof"). */
   const onADeposit = proven.filter((i) => !!(i as any).deposit && !i.signedOrder);
   const paidInFull = proven.filter((i) => !onADeposit.includes(i));
-  if (words.keepsItems && items.length) {
+  const fromTheDeals = r.target?.fromTheDeals ?? null;
+  if (fromTheDeals && words.keepsItems) {
+    /* The sold tile and the target say one count: the deals', under the lead's rule for proof (an-aim-is-counted-now.ts). */
+    const paidN = fromTheDeals.proven;
+    numbers.push({ value: String(fromTheDeals.count), label: fromTheDeals.deposit ? `${words.doneWord}, ${paidN} paid with proof, ${fromTheDeals.deposit} on a deposit` : `${words.doneWord}, ${paidN} with proof` });
+  } else if (words.keepsItems && items.length) {
     numbers.push(inUnits
       ? { value: String(soldUnits), label: onADeposit.length ? `${words.doneWord}, ${unitsIn(paidInFull) ?? 0} paid with proof, ${unitsIn(onADeposit) ?? 0} on a deposit` : `${words.doneWord}, ${unitsIn(proven) ?? 0} with proof` }
       : { value: String(finished.length), label: onADeposit.length ? `${words.doneWord}, ${paidInFull.length} paid with proof, ${onADeposit.length} on a deposit` : `${words.doneWord}, ${proven.length} with proof` });
@@ -452,7 +461,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       ? { value: `${r.target.count - r.target.target} over`, label: `${your} target of ${r.target.target}` }
       : { value: `${r.target.count} of ${r.target.target}`, label: `${your} target` });
   }
-  if (settled.length) numbers.push({ value: `${kept.length} of ${settled.length}`, label: 'promises kept' });
+  if (settledN) numbers.push({ value: `${keptN} of ${settledN}`, label: 'promises kept' });
   if (numbers.length < 3 && due.length) numbers.push({ value: `${done.length} of ${due.length}`, label: 'check-ins' });
 
   const needsWork = behaviours.find((b) => b.verdict === 'Needs work');
@@ -480,7 +489,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       const late = !isDone && !!when && /^It was due on /.test(when);
       return {
         id: c.id,
-        text: asAnAction(c.text),
+        text: c.shown ?? asAnAction(c.text),
         when: when ? (isDone || late ? when : cap(when)) : null,
         done: isDone,
         late,
@@ -499,7 +508,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       text: `${creditors.length === 1 ? creditors[0] : 'Colleagues'} mentioned ${your} help in ${plural(creditCheckIns, 'check-in')}.`,
       proof: creditors.length === 1 && creditors[0] !== 'A colleague' ? `${creditors[0]}’s check-ins` : 'Their check-ins',
     }] : []),
-    ...(settled.length ? [{ text: `${You} kept ${kept.length} of ${settled.length} promises.`, proof: `${Your} check-ins` }] : []),
+    ...(settledN ? [{ text: `${You} kept ${keptN} of ${settledN} promises.`, proof: `${Your} check-ins` }] : []),
   ];
 
   /* ------------------------------------------------------------------ coaching */
@@ -669,7 +678,7 @@ const GROUND_SELECT = {
   id: true, label: true, organizationId: true, initiatorId: true, scenario: true, kindOfWork: true, peersVisibleToEachOther: true,
   initiator: { select: { firstName: true, lastName: true } },
   organization: { select: { timeZone: true } },
-  cadence: true, workingDays: true,
+  cadence: true, workingDays: true, workStages: true,
   participants: {
     select: {
       id: true, userId: true, email: true, nameGiven: true, partyType: true, managingOnly: true, createdAt: true,
@@ -735,8 +744,9 @@ export async function readMyWork(
   const items = boardRows.filter((row: any) => row?.ownerParticipantId === pid);
   const patterns = ((served?.patterns ?? []) as any[]).filter((p: any) => p?.participantId === pid);
 
-  const [commitmentRows, deps, mentions, checkIns, lines, objectives, ownToDos] = await Promise.all([
-    prisma.groundCommitment?.findMany?.({ where: { groundId: ground.id, participantId: pid }, orderBy: { createdAt: 'asc' } }).catch(() => []) ?? [],
+  const [promises, deps, mentions, checkIns, lines, objectives] = await Promise.all([
+    /* Their promises, read once for every page (grounds/the-promises-counted-once.ts). */
+    thePromisesOf(prisma, [pid], () => ground.label ?? '', { groundId: ground.id, now }),
     prisma.groundDependency?.findMany?.({ where: { groundId: ground.id, OR: [{ fromParticipantId: pid }, { onParticipantId: pid }] }, orderBy: { createdAt: 'asc' } }).catch(() => []) ?? [],
     prisma.workMention?.findMany?.({ where: { groundId: ground.id, aboutParticipantId: pid, kind: 'CREDIT' }, select: { sourceParticipantId: true, checkInId: true } }).catch(() => []) ?? [],
     prisma.checkIn?.findMany?.({
@@ -753,13 +763,7 @@ export async function readMyWork(
       select: { kind: true, text: true, audience: true, aboutParticipantId: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
     }).catch(() => []) ?? [],
-    prisma.groundObjective?.findMany?.({ where: { groundId: ground.id, ownerParticipantId: pid }, select: { name: true, target: true, count: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } }).catch(() => []) ?? [],
-    /* What they wrote down themselves as a promise or a to-do in this check-in: the second place a promise lives (onePromiseOneState). */
-    prisma.personObjective?.findMany?.({
-      where: { groundId: ground.id, participantId: pid, authoredBy: 'self', kind: { in: ['COMMITMENT', 'TODO'] } },
-      select: { id: true, groundId: true, participantId: true, text: true, kind: true, status: true, statusChangedAt: true, authoredBy: true, dueSaid: true, createdAt: true },
-      orderBy: { createdAt: 'asc' },
-    }).catch(() => []) ?? [],
+    prisma.groundObjective?.findMany?.({ where: { groundId: ground.id, ownerParticipantId: pid }, select: { id: true, name: true, target: true, count: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, /* The same order as the You page lists them, so both lead with one target (two-week check, Joseph). */ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }).catch(() => []) ?? [],
   ]);
 
   /*
@@ -767,11 +771,9 @@ export async function readMyWork(
    * here and Kept on his own page. It now reads the promises the way the You board does: what the record says is done is done, and a
    * commitment and his own to-do for the same promise are one promise, kept where either is kept.
    */
-  const asKept = await thePromisesAsTheRecordKeepsThem(prisma, (commitmentRows as any[]) ?? [], (ownToDos as any[]) ?? []);
-  const commitments: ACommitmentRow[] = onePromiseOneState(asKept.commitments, asKept.objectives, () => ground.label ?? '', now)
-    .sort((a, b) => a.t - b.t)
+  const commitments: ACommitmentRow[] = promises
     .map((p) => ({
-      id: p.id, text: p.raw, whenSaid: p.whenSaid, status: p.status, settledAt: p.settledAt, createdAt: p.createdAt,
+      id: p.id, text: p.raw, shown: p.text, whenSaid: p.whenSaid, status: p.status, settledAt: p.settledAt, createdAt: p.createdAt,
       ...(p.explicit !== undefined ? { explicit: p.explicit } : {}),
     }));
 
@@ -798,7 +800,9 @@ export async function readMyWork(
     ? [...(lines as any[])].reverse().find((l) => l.kind === 'HELP_WITH' && l.aboutParticipantId === pid && String(l.text ?? '').trim())?.text ?? null
     : null;
   /* The person's own target, through the one rule for whose number is whose: the lead reads every one, a person their own. */
-  const mayRead = targetsFor(objectives as any[], mine?.id ?? null, 'their own', { isLead }).shown as any[];
+  /* Each target's number as it is counted now, as the board and the You page count it (an-aim-is-counted-now.ts), never a number stored earlier. */
+  const objectivesNow = await withTheirCountNow(prisma, ground as any, (objectives as any[]) ?? [], now).catch(() => (objectives as any[]) ?? []);
+  const mayRead = targetsFor(objectivesNow as any[], mine?.id ?? null, 'their own', { isLead }).shown as any[];
   const target = mayRead.find((o) => o.ownerParticipantId === pid && !o.isADecisionAboutAPerson && typeof o.target === 'number' && o.target > 0) ?? null;
 
   /* Judgements of a person off for this organisation: no pattern, note or coaching about the person is read into the page. */
@@ -824,7 +828,7 @@ export async function readMyWork(
     patterns: judgements ? patterns.map((p: any) => ({ heading: String(p.heading ?? ''), kind: String(p.kind ?? ''), oneStep: p.oneStep ?? null, yours: p.yours })) : [],
     teamCoaching: (lines as any[]).filter((l) => l.kind === 'COACHING').map((l) => String(l.text ?? '').trim()).filter(Boolean),
     helpWith: judgements ? helpWith : null,
-    target: target ? { count: target.count ?? 0, target: target.target } : null,
+    target: target ? { count: target.count ?? 0, target: target.target, ...(target.fromTheDeals ? { fromTheDeals: { count: target.fromTheDeals.count, proven: target.fromTheDeals.proven ?? 0, deposit: target.fromTheDeals.deposit ?? 0, thing: target.fromTheDeals.thing } } : {}) } : null,
     now,
     timeZone,
     daily: String((ground as any).cadence ?? '').toUpperCase() === 'DAILY' ? { workingDays: (ground as any).workingDays ?? null } : null,

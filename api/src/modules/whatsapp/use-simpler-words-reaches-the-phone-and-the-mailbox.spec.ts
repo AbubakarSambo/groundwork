@@ -99,7 +99,8 @@ describe('what Amani is told when she writes "finish", and about the report', ()
     expect(src).toContain('theCheckInIsCompleteSaying(current.simplerWords)');
     // Changed 26 October 2026 (Hafsah: item 3): an engine close no longer asks for "finish"; it says the check-in is complete, with the same switch, on every path that ends it.
     expect(src).not.toContain('enoughToCloseSaying(current.simplerWords)');
-    expect((src.match(/theCheckInIsCompleteSaying\(current\.simplerWords\)/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    /* Two since 29 October: the second way to the same close ("I am done", theirOwnWordsClosedIt) went; the engine's close says it. */
+    expect((src.match(/theCheckInIsCompleteSaying\(current\.simplerWords\)/g) ?? []).length).toBeGreaterThanOrEqual(2);
     /* Changed 20 Oct 2026: and the direct morning's switch after it (email/a-direct-email.ts). */
     expect(src).toContain('reportAsText(report, c.label, c.simplerWords, direct)');
   });

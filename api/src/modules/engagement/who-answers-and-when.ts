@@ -1,3 +1,4 @@
+import { workingDaysOf } from '../grounds/which-days-this-team-works';
 /**
  * WHO HAS ANSWERED TODAY, BY THEIR USUAL TIME, AND WHO KEEPS ANSWERING ON TIME (nudges that get answers; Hafsah, 20 October 2026; behind
  * `organizations.direct_morning_on`, organisation/the-direct-morning-switch.ts, wherever it changes what somebody reads).
@@ -172,7 +173,7 @@ export function theirDay(participantId: string, all: ASessionOnRecord[], now: Da
   /* A daily session still open is missed on each working day since it opened, up to yesterday: no new session opened on those days. */
   for (const c of mine) {
     if (!c.opensDaily || answeredOn(c) || String(c.status ?? '').toUpperCase() === 'COMPLETED' || /auto|expired|timed|missed/i.test(String(c.closedReason ?? ''))) continue;
-    const works = (c.workingDays ?? []).length ? new Set(c.workingDays) : new Set([1, 2, 3, 4, 5]);
+    const works = new Set<number>(workingDaysOf(c.workingDays));
     for (let k = aDayIn(openedAt(c)!, zone), n = 0; k < today && n < 400; k = plus(k, 1), n++) {
       if (lastCheckedIn && k <= lastCheckedIn) continue;
       if (works.has(noon(k).getUTCDay())) missed.add(k);
@@ -204,7 +205,7 @@ export function theirDay(participantId: string, all: ASessionOnRecord[], now: Da
 
 /** Whether the days follow one another, counting only the days the team works. */
 export function oneAfterAnother(days: string[], workingDays: number[] | null | undefined): boolean {
-  const works = (workingDays ?? []).length ? new Set(workingDays) : new Set([1, 2, 3, 4, 5]);
+  const works = new Set<number>(workingDaysOf(workingDays));
   for (let i = 1; i < days.length; i++) {
     let k = plus(days[i - 1], 1);
     for (let n = 0; n < 7 && !works.has(noon(k).getUTCDay()); n++) k = plus(k, 1);

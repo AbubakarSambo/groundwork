@@ -1,3 +1,4 @@
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { isAWorkingDay } from '../grounds/which-days-this-team-works';
 import { leaveOfThePeopleOn, awayUntilOn, theirApprovedLeave } from '../suites/who-is-away';
@@ -301,7 +302,9 @@ export async function whatWentWrongYesterday(prisma: any, now: Date = new Date()
   for (const lead of leads.values()) {
     const u = lead.user;
     if (u.deletedAt || u.isActive === false) continue;
-    if (lead.grounds.every((g) => (g.workingDays ?? []).length > 0 && !isAWorkingDay(summaryAt, g.workingDays))) continue;
+    /* Only on a day one of their check-ins works, where their organisation is (one calendar for each check-in, 29 October). */
+    const zoneHere = await theOrganisationsZone(prisma, lead.organizationId).catch(() => null);
+    if (!lead.grounds.some((g) => isAWorkingDay(summaryAt, g.workingDays, zoneHere))) continue;
     const away = await theirApprovedLeave(prisma, u.id, lead.organizationId).catch(() => []);
     if (away.some((s: any) => summaryAt >= s.from && summaryAt <= s.to)) continue;
     const phones = new Set<string>([

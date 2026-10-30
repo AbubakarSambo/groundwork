@@ -1,4 +1,5 @@
-import { theRunningRecord, type TheRunningRecord } from '../suites/the-running-record';
+import { withTheirCountNow } from '../board/an-aim-is-counted-now';
+import { theRunningRecordFrom, type TheRunningRecord } from '../suites/the-running-record';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
@@ -180,7 +181,9 @@ export class YourBoardService {
           select: { groundId: true, participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
         })
       : [];
-    const targetsYouMayRead = (ownedTargets as any[]).filter((t) => {
+    /* Each target's number as it is counted now, the way the board and My work count it (board/an-aim-is-counted-now.ts). */
+    const ownedCountedNow = await this.theTargetsCountedNow(ownedTargets as any[]);
+    const targetsYouMayRead = ownedCountedNow.filter((t) => {
       const g = mine.find((x) => x.id === t.groundId);
       const runsIt = theyRunThisCheckIn(reader.userId, g as any);
       return withoutWhatTheLeadHasNotToldThemAbout([t], untoldRows.filter((r) => r.groundId === t.groundId), (g?.participants ?? []) as any[], runsIt).kept.length === 1;
@@ -223,21 +226,24 @@ export class YourBoardService {
     };
   }
 
+  /** Owned targets with the number counted now (board/an-aim-is-counted-now.ts), one check-in at a time. */
+  private async theTargetsCountedNow<T extends { id: string; groundId: string; name: string; count?: number | null; ownerParticipantId?: string | null }>(targets: T[]): Promise<T[]> {
+    const byGround = new Map<string, T[]>();
+    for (const t of targets) byGround.set(t.groundId, [...(byGround.get(t.groundId) ?? []), t]);
+    const out: T[] = [];
+    for (const [groundId, aims] of byGround) {
+      const g = await Promise.resolve((this.prisma as any).ground?.findUnique?.({ where: { id: groundId }, select: { id: true, organizationId: true, kindOfWork: true, workStages: true } })).catch(() => null);
+      out.push(...(g ? await withTheirCountNow(this.prisma as any, g, aims).catch(() => aims) : aims));
+    }
+    return targets.map((t) => out.find((o) => o.id === t.id) ?? t);
+  }
+
   /** RELEASE 7: the running record of your own commitments, proof and goal changes, across your check-ins. Null with Release 7 off. */
   private async theRunningRecordFor(organizationId: string, participantIds: string[], mine: any[]): Promise<TheRunningRecord | null> {
     const on = await Promise.resolve((this.prisma as any).organization?.findUnique?.({ where: { id: organizationId }, select: { release7PeopleOn: true } })).catch(() => null);
     if (on?.release7PeopleOn !== true || !participantIds.length) return null;
     const label = new Map(mine.map((g: any) => [g.id, String(g.label ?? 'a check-in')]));
-    const db = this.prisma as any;
-    const commitments = ((await Promise.resolve(db.groundCommitment?.findMany?.({ where: { participantId: { in: participantIds } }, select: { id: true, groundId: true, text: true, status: true, statedInSession: true, settledAt: true, createdAt: true } })).catch(() => [])) ?? []) as any[];
-    const proof = ((await Promise.resolve(db.itemEvidence?.findMany?.({ where: { participantId: { in: participantIds } }, select: { itemName: true, countsAsProof: true, createdAt: true } })).catch(() => [])) ?? []) as any[];
-    const versions = ((await Promise.resolve(db.goalVersion?.findMany?.({ where: { ownerParticipantId: { in: participantIds } }, select: { name: true, outcome: true, newName: true, decidedBy: true, decidedAt: true } })).catch(() => [])) ?? []) as any[];
-    const day = (d: any) => (d ? new Date(d).toISOString().slice(0, 10) : null);
-    return theRunningRecord(
-      commitments.filter((c) => label.has(c.groundId)).map((c) => ({ id: c.id, text: c.text, status: c.status, checkIn: label.get(c.groundId)!, session: c.statedInSession ?? null, settledOn: day(c.settledAt), madeOn: day(c.createdAt)! })),
-      proof.map((x) => ({ itemName: String(x.itemName ?? ''), countsAsProof: x.countsAsProof === true, on: day(x.createdAt)! })),
-      versions.map((v) => ({ name: v.name, outcome: v.outcome === 'stopped' ? 'stopped' : v.outcome === 'continued' ? 'continued' : 'changed', newName: v.newName ?? null, on: day(v.decidedAt)!, byThem: v.decidedBy === 'person' })),
-    );
+    return theRunningRecordFrom(this.prisma as any, participantIds, label);
   }
 
   /** Your own latest finished session on each check-in you are held for a seat on: its name, when it finished, and where your own report is. Nobody else's, nothing more. */

@@ -1106,18 +1106,10 @@ model Ground {
   /// repeats; a one-time check-in shares when everyone has checked in, as before. See reports/a-report-shares-itself.ts.
   reportSharesAt   String? @map("report_shares_at") @db.VarChar(5)
 
-  /// WHICH DAYS THIS TEAM WORKS. 0=Sun..6=Sat. Empty means every day, which is the honest default
-  /// for a product that does not know whose week this is.
-  ///
-  /// A daily cadence was `+1 day`, flat, so it landed on Saturday and it landed on Sunday. Nothing
-  /// in the schema, the date maths or the form knew what a weekend was - and daily is the one
-  /// cadence with no day picker, so "weekdays only" could not be said at all.
-  ///
-  /// IT IS CHOSEN, NEVER ASSUMED. Monday to Friday is not a fact about the world: field teams work
-  /// Saturdays, and the week starts on Sunday in much of the region this is built for. So the form
-  /// offers it and the empty list means nobody said, which is different from somebody saying every
-  /// day - and both are rendered as what they are.
-  workingDays     Int[]     @default([]) @map("working_days")
+  /// WHICH DAYS THE CHECK-IN WORKS. 0 = Sunday .. 6 = Saturday, as `Date.getDay`. ONE CALENDAR FOR EACH CHECK-IN (Hafsah, 29 October
+  /// 2026): set at setup to the lead's days, Monday to Friday unless she says otherwise, for every rhythm, and never empty. Sessions,
+  /// due days, reminders and the lead's summary all read it (which-days-this-team-works.ts).
+  workingDays     Int[]     @default([1, 2, 3, 4, 5]) @map("working_days")
   startsAt        DateTime? @map("starts_at") // when the first scheduled check-in opens (start date)
   endsAt          DateTime? @map("ends_at") // no new check-ins scheduled after this (end date)
   endState        String?   @map("end_state") // the decision the process worked toward
@@ -5851,6 +5843,9 @@ model GroundCommitment {
   /// The action, in the words it was written in.
   text          String  @db.Text
   /// What "it" or "that" in the promise is, where the check-in asked: their answer, in their own words, never reworded.
+  /// THE PROMISE AS A CLEAR ACTION (fix plan, pattern 5; Hafsah, 28 October 2026): who does what, by when, with "her", "that" and "then"
+  /// said as the names and things the question and their answer meant. `text` stays their own words, word for word, kept beside it.
+  action            String?   @map("action") @db.Text
   whatItIs      String? @map("what_it_is") @db.Text
   /// What it is for, where that was said. Never invented.
   outcome       String? @db.Text
@@ -8994,4 +8989,14 @@ model SetupItem {
 
   @@index([organizationId, area])
   @@map("setup_items")
+}
+
+/// THE ONE OUTBOX (fix plan, pattern 6; Hafsah, 28 October 2026). Every email and WhatsApp claims its key here before it is sent: the
+/// channel, who to, what kind, what about, and the day. A key already claimed was already sent, so the same message never goes twice,
+/// from two timers, two copies of the server, or two paths that both decided to send it.
+model OutboxClaim {
+  key       String   @id
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("outbox_claims")
 }

@@ -2,7 +2,7 @@ import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch'
 import { CheckInStatus } from '@prisma/client';
 import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
 import { checksInOnlyWhenTheyChoose } from './the-lead-checks-in-when-they-choose';
-import { leaveOfThePeopleOn, type Stretch } from '../suites/who-is-away';
+import { leaveOfThePeopleOn, theirApprovedLeave, fallsInLeave, type Stretch } from '../suites/who-is-away';
 import { nameToCall, SOMEONE } from '../engagement/a-name-to-call-them';
 import { aNumberInWords } from '../engagement/a-number-in-words';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from './a-ground-that-has-ended';
@@ -404,6 +404,12 @@ export async function whatThePersonIsToldAboutMissing(prisma: any, userId: strin
     select: { groundId: true },
   }).catch(() => []) ?? [];
   if (!mine.length) return [];
+  /*
+   * NOT WHILE THEY ARE AWAY (fix plan, pattern 4; quarter test, Mercy, 13 November). Today said "You've missed your last three check-ins"
+   * on a day of her approved leave, above "You are on leave until Friday 13 November, so this round does not wait for you". On leave, a
+   * person is not told about missing; they are told when they are back, if the misses still stand.
+   */
+  if (fallsInLeave(now, await theirApprovedLeave(prisma, userId, organizationId).catch(() => []))) return [];
   const found = (await whoHasMissedCheckIns(prisma, [...new Set(mine.map((m) => m.groundId as string))], now)).filter((f) => f.userId === userId);
   const out: WhatThePersonIsTold[] = [];
   for (const f of found) {

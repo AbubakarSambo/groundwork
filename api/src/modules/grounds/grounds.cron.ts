@@ -271,7 +271,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           stallWarningSentAt: null,
         },
         select: {
-          id: true, label: true, createdAt: true, startsAt: true, timelineDays: true, runsUntilEnded: true,
+          id: true, label: true, createdAt: true, startsAt: true, endsAt: true, timelineDays: true, runsUntilEnded: true,
           initiator: { select: { email: true } },
         },
       });
@@ -343,7 +343,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           status: { notIn: [...TERMINAL, ...HELD, ...STOPPED] },
           stallWarningSentAt: { not: null },
         },
-        select: { id: true, createdAt: true, startsAt: true, timelineDays: true, runsUntilEnded: true, status: true },
+        select: { id: true, createdAt: true, startsAt: true, endsAt: true, timelineDays: true, runsUntilEnded: true, status: true },
       });
 
       const staleIds = candidates
@@ -913,7 +913,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       },
       select: {
         id: true, groundId: true, sessionNumber: true, createdAt: true, availableFrom: true, participantId: true,
-        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, workingDays: true, startedFrom: true, simplerWords: true, initiatorId: true, initiator: { select: { firstName: true } } } },
+        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, cadenceAnchorDay: true, startsAt: true, createdAt: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, workingDays: true, startedFrom: true, simplerWords: true, initiatorId: true, initiator: { select: { firstName: true } } } },
         participant: { select: { id: true, email: true, userId: true, remindersStoppedAt: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
       ...page,
@@ -944,7 +944,8 @@ export class GroundsCron implements OnApplicationBootstrap {
         });
         const had = new Set(before.map((b) => (b.kind ?? '').split(':')[0]));
         const lastChase = before.find((b) => /^(team-almost-in|your-view-matters|anchor-follow-up)/.test(b.kind ?? ''));
-        const dueAt = whenItIsDue(ci.availableFrom ?? ci.createdAt, ci.ground.cadence);
+        /* Due when the round closes on the check-in's own schedule (what-goes-to-a-phone.ts whenItIsDue): never on a day it does not run. */
+        const dueAt = whenItIsDue(ci.availableFrom ?? ci.createdAt, ci.ground as any, await theOrganisationsZone(this.prisma as any, ci.ground.organizationId).catch(() => null));
         const what = whatToSendThisMorning({
           policy: { days: ci.ground.chaseAfterDays, stopped: ci.ground.chasingStopped, tellTheLead: ci.ground.tellTheLead },
           daysOpen: Math.floor((now.getTime() - new Date(ci.createdAt).getTime()) / 86_400_000),

@@ -53,13 +53,11 @@ describe('every door into a session goes through the same door first', () => {
   /* Changed 26 October 2026 (Hafsah: item 3): complete() first looks up, in memory, whether Groundwork is already finishing this session;
      that reads no session. The door is still the first thing that touches it, on both paths: before waiting for that finish, and before anything else. */
   it('complete opens the door before anything else', () => {
+    /* Updated 29 October (one state for a session): no in-memory wait first. The door is the first statement, and a session already
+       finished comes back from it as done, so a second press runs nothing twice. */
     const body = bodyOf('complete', 2000);
-    expect(firstStatementOf('complete')).toBe('const inFlight = this.finishedByGroundwork?.get(checkInId);');
-    const door = body.indexOf('await this.openTheDoor(checkInId, requestingUserId)');
-    expect(door).toBeGreaterThan(-1);
-    expect(body.indexOf('await inFlight')).toBeGreaterThan(door);
-    const afterTheWait = body.slice(body.indexOf('await inFlight'));
-    expect(afterTheWait).toMatch(/^await inFlight;\s*if \(done\) return done;\s*\}\s*const checkIn = await this\.openTheDoor\(checkInId, requestingUserId\);/);
+    expect(firstStatementOf('complete')).toBe('const checkIn = await this.openTheDoor(checkInId, requestingUserId, { finishedIsDone: true });');
+    expect(body).toMatch(/if \(checkIn\.status === CheckInStatus\.COMPLETED\) return \{ status: 'completed' as const, groundId: checkIn\.groundId \};/);
   });
 
   it('open does its work only through openOnce, and is keyed by who is asking', () => {
