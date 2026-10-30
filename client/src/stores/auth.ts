@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { saveTheNumberTheyGave } from '@/lib/a-number-given-before-signing-in'
 import { persist } from 'zustand/middleware'
 import { posthog } from '@/lib/posthog'
 import { markSignedIn, clearSignedIn } from '@/lib/signed-in-flag'
@@ -70,6 +71,8 @@ export const useAuthStore = create<AuthState>()(
           organizationId: user.organizationId,
         })
         set({ user, token, isAuthenticated: true })
+        /* A phone number they gave when joining, before they were signed in, is saved to them now (a-number-given-before-signing-in). */
+        void saveTheNumberTheyGave(user.email)
       },
 
       logout: () => {
