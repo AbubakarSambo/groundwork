@@ -83,7 +83,7 @@ Keep `docs/morning-report.md` up to date all the time, not only at the end.
 
 **Tests.** All must pass. If a test only checks old wording or old defective behaviour, update it, and write the reason in the commit and in the morning report. Never delete a test to make things pass.
 
-**Nothing goes anywhere except Hafsah's own `wip/` branches.** The only push allowed is `git push mine wip/<branch>` (or `git push mine <local>:wip/<branch>`), where "mine" is Hafsah's own private copy on GitHub, never with force. **Never push to "origin": it is Abubakar's repository (`AbubakarSambo/groundwork`).** Never push to main, staging, production, or anyone else's branch. No pull requests, no deploys, and nothing goes to staging, until Hafsah says so herself, in her own words. The only merge allowed is `git merge mine/wip/<branch>` into a `wip/` branch, to keep `wip/next` in step with `wip/release`.
+**Where work may go (guard version 6, Hafsah, 30 October 2026).** Work is pushed to Hafsah's own private copy with `git push mine wip/<branch>` (or `git push mine <local>:wip/<branch>`). Release branches may also be pushed to "origin", Abubakar's repository (`AbubakarSambo/groundwork`), and their pull requests may be opened into staging and merged into staging. Never push to or merge into main or production, never force-push, and never delete a branch, on either repository. Nothing else goes to anyone else's branch. The only other merge allowed is `git merge mine/wip/<branch>` into a `wip/` branch, to keep `wip/next` in step with `wip/release`.
 
 ## One workspace
 
@@ -102,7 +102,7 @@ Since 11 October there is one copy of Claude Code, and it owns both the engine (
 
 **Before the very first push of a new branch,** read every workflow in `.github/workflows/` and any deploy settings (for example `render.yaml`, `vercel.json`, `fly.toml`, `railway.json`, `Procfile`, `app.json`). If any of them would deploy, migrate a database, or touch staging when a `wip/` branch is pushed, do not push. Write it under "Needs Hafsah" and keep working locally.
 
-**Never:** push anywhere except your own `wip/` branch, merge anything except `mine/wip/<branch>` into a `wip/` branch, open a pull request, deploy anywhere (staging included), change the git remotes, touch the live database, use live keys, send real emails, or edit `.env` files, `docs/decisions.md`, `docs/baseline.json`, `tools/score_run.py` or `.claude/`. The safety rules in `.claude/settings.json` block these.
+**Never:** push to or merge into main or production, force-push, delete a branch, push anything to origin except a release branch, open a pull request into anything but staging, deploy anywhere except by merging into staging, change the git remotes, touch the live database, use live keys, send real emails, or edit `.env` files, `docs/decisions.md`, `docs/baseline.json`, `tools/score_run.py` or `.claude/`. The safety rules in `.claude/settings.json` block these.
 
 ## Stop and ask Hafsah (write it in the morning report, then move to the next task)
 
