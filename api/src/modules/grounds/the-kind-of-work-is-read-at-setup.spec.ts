@@ -24,8 +24,9 @@ function build(ground: Record<string, any>, answer: any) {
 }
 
 describe('the kind of work, read at setup (request 76)', () => {
-  it('knows exactly the twelve kinds (the eleven, and "sales team" since Release 1), and nothing near them', () => {
-    expect(KINDS_OF_WORK).toHaveLength(12);
+  /* Fifteen since Release 4 added "leadership" and Release 5 "a funded project" and "client delivery" (a type of project, Hafsah, 25 October). */
+  it('knows exactly the fifteen kinds (the eleven, "sales team", "leadership", "a funded project" and "client delivery"), and nothing near them', () => {
+    expect(KINDS_OF_WORK).toHaveLength(15);
     expect(oneOfTheKinds(' Sales Team')).toBe('sales team');
     expect(oneOfTheKinds('  Sales Org ')).toBe('sales org');
     expect(oneOfTheKinds('a law firm matter')).toBe('a law firm matter');

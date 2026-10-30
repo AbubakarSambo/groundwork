@@ -201,6 +201,13 @@ export const adminApi = {
   setFreeTrial: (on: boolean) =>
     apiClient.patch<AdminFreeTrial>('/admin/pricing/free-trial', { on }).then(r => r.data),
 
+  /** Every switch of one organisation (Groundwork staff only; the server refuses anyone else). */
+  theSwitchesOf: (organizationId: string) =>
+    apiClient.get<{ id: string; name: string; switches: { key: string; name: string; on: boolean }[] }>(`/admin/organisations/${organizationId}/switches`).then(r => r.data),
+
+  setASwitch: (organizationId: string, key: string, on: boolean) =>
+    apiClient.patch<{ id: string; name: string; switches: { key: string; name: string; on: boolean }[] }>(`/admin/organisations/${organizationId}/switches/${key}`, { on }).then(r => r.data),
+
   getAnchorTrial: () =>
     apiClient.get<AdminAnchorTrial>('/admin/pricing/anchor-trial').then(r => r.data),
 

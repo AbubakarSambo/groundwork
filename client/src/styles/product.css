@@ -95,6 +95,24 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
 .gw-ruled-rows > :last-child { border-bottom: 1px solid var(--rule); }
 /* A column of sections 30px apart, where a part sits outside the page's own stack. */
 .gw-stack-30 > * + * { margin-top: 30px; }
+/* The template library (templates.jpg): the list at the left, the chosen template beside it. */
+.gw-templates { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 40px; align-items: start; }
+.gw-templates-list { display: flex; flex-direction: column; gap: 2px; }
+.gw-templates-list .ci-row { border: 0; background: none; font: inherit; text-align: left; width: 100%; cursor: pointer; }
+.gw-template-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px 24px; margin: 0; }
+.gw-template-facts dt { font-size: 13px; color: var(--muted); }
+.gw-template-facts dd { margin: 2px 0 0; }
+.gw-ladder-row { grid-template-columns: 160px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); padding: 12px 18px; min-width: 720px; }
+.gw-ladder-head { border-top: 0; }
+.gw-template-target { display: grid; grid-template-columns: minmax(0, 1fr) 140px 160px; gap: 12px; }
+@media (max-width: 860px) { .gw-templates { grid-template-columns: 1fr; } .gw-template-target { grid-template-columns: 1fr; gap: 2px; } }
+/* Release 6, the direction: what changed as numbered steps; a brief line's three fields in one row. */
+.gw-numbered { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; counter-reset: gwn; }
+.gw-numbered li { counter-increment: gwn; display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: baseline; }
+.gw-numbered li::before { content: counter(gwn); width: 22px; height: 22px; border-radius: 50%; background: var(--chat); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.gw-brief-row { display: grid; grid-template-columns: 180px minmax(0, 1fr) 200px; gap: 8px; }
+@media (max-width: 640px) { .gw-brief-row { grid-template-columns: 1fr; } }
+.gw-caps { text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
 
 /* A quiet button inside a sentence, as the prototype's "Send it to him on WhatsApp" (C1). */
 .gw-inline-btn { padding: 0 4px; vertical-align: baseline; }
@@ -129,3 +147,5 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
   .gw-today .list .item:not(:first-child) .h { font-size: 16px; }
   .gw-today .list .item:not(:first-child) .s { font-size: 14px; }
 }
+/* A reading's evidence: short lines under it, no bullets. */
+.gw-evidence { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }

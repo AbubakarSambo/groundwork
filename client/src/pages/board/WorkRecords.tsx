@@ -40,6 +40,9 @@ const KIND_OF_WORK_SENTENCE: Record<KindOfWork, string> = {
   'MarketView Q4': 'This check-in is about subscriptions, what was said and what was paid.',
   'a law firm matter': 'This check-in is about a law firm matter.',
   'a government programme': 'This check-in is about a government programme.',
+  leadership: 'This check-in is about a leadership team and its priorities.',
+  'a funded project': 'This check-in is about a funded or client project, its milestones, money and stakeholders.',
+  'client delivery': 'This check-in is about work delivered to a client, with its milestones, money and the client.',
 }
 
 /**
@@ -66,6 +69,9 @@ export const KIND_OF_WORK_OPTION_LABEL: Record<KindOfWork, string> = {
   'MarketView Q4': 'Subscriptions, said and paid',
   'a law firm matter': 'A law firm matter',
   'a government programme': 'A government programme',
+  leadership: 'A leadership team',
+  'a funded project': 'A funded or client project',
+  'client delivery': 'Client delivery',
 }
 
 /**
@@ -79,6 +85,10 @@ const ITEM_KINDS_FOR_HOLDS: Record<string, { value: string; label: string }[]> =
   'deals': [{ value: 'deal', label: 'Deal' }],
   'releases and tasks': [{ value: 'release', label: 'Release' }, { value: 'task', label: 'Task' }],
   'tickets': [{ value: 'ticket', label: 'Ticket' }],
+  'the priorities across the teams': [{ value: 'priority', label: 'Priority' }],
+  'milestones': [{ value: 'milestone', label: 'Milestone' }],
+  'money in and out, by month': [{ value: 'money', label: 'A month' }],
+  'stakeholders': [{ value: 'stakeholder', label: 'Stakeholder' }],
   'incidents': [{ value: 'incident', label: 'Incident' }],
   'trader groups': [{ value: 'group', label: 'Trader group' }],
   'commitments and decisions': [{ value: 'commitment', label: 'Commitment' }, { value: 'decision', label: 'Decision' }],
@@ -123,6 +133,9 @@ const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
   'asset loans': 'Every trader, and what shows it',
   'MarketView Q4': 'Every subscription, and what shows it',
   'a government programme': 'Every county, and what shows it',
+  leadership: 'Every priority, and what shows it',
+  'a funded project': 'Every milestone, and what shows it',
+  'client delivery': 'Every milestone, and what shows it',
 }
 const WORK_PLAN_HEADING: Partial<Record<KindOfWork, string>> = {
   /* THE FOUNDER'S OWN CHECK-IN BOARD (founder.txt): the prototype's own heading for this table is
@@ -216,6 +229,9 @@ const ITEM_NOUN_FOR_KIND: Record<KindOfWork, string> = {
   /* Board review, 30 September, item 3: this section holds counties AND their projects (kind
      "county" or "project" rows, side by side) - "County" alone was wrong for half the rows. */
   'a government programme': 'County or project',
+  leadership: 'Priority',
+  'a funded project': 'Milestone',
+  'client delivery': 'Milestone',
 }
 
 /** The word for whose it is, at the head of the owner column ("Rep" for sales, "Agent" for support desk...). */
@@ -232,6 +248,9 @@ const OWNER_LABEL_FOR_KIND: Record<KindOfWork, string> = {
   'MarketView Q4': 'Owner',
   'a law firm matter': 'Owner',
   'a government programme': 'Owner',
+  leadership: 'Owner',
+  'a funded project': 'Owner',
+  'client delivery': 'Owner',
 }
 
 /**

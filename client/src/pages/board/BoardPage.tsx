@@ -1,3 +1,4 @@
+import { RELEASE_4_ORDERS, whereItFolds, theRelease4Order } from './release-4-orders'
 import { hasEnded, howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
 import { ThisAddsASeat } from '@/components/gw/this-adds-a-seat'
@@ -147,7 +148,9 @@ import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
 import { whenTheBoardLastChanged, whenTheBoardLastChangedInShort, whenItRanOutOfTime } from './when-the-board-last-changed'
 import { TheDirectMorning, useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { ThePicturedSalesBoard, theScheduleInWords, ThePicturedOwnDeals, ThePicturedAskBar, GroundworkRecommends } from './pictured/ThePicturedSalesBoard'
-import { ThePicturedBoard } from './pictured/ThePicturedBoard'
+import { PROJECT_ORDER, PROJECT_FOLD_AFTER } from './release-5-orders'
+import { theSituationsOrder } from './pictured/TheSituationsSections'
+import { ThePicturedBoard, TheTemplateSection } from './pictured/ThePicturedBoard'
 import { MessageCircle } from 'lucide-react'
 import { YourTeamPersonByPerson } from './pictured/YourTeamPersonByPerson'
 import { TheLightSalesBoard, TheLightNeedsYou, TheLightBesideTheHeadline, TheLightBoxes, TheLightSummaryFirst } from './TheLightSalesBoard'
@@ -1656,8 +1659,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     'reported', 'whoCheckedIn', 'teamToday', 'overTime', 'reports', 'otherBoards', 'help', 'otherTeams', 'openIssues', 'heading', 'ask', 'recommends',
   ] : null
   /* An engineering release, drawn the same way (eng-board.jpg), for whoever runs it. The other kinds whose example is drawn so join here as their own screens are matched. */
-  const picturedOtherKind = !theWholeBoard && viewerRunsThisCheckIn && !isParticipantView && !groundId
-    && ['engineering release', 'support desk', 'distribution operations', 'trader training programme', "founder's own check-in", 'asset loans', 'MarketView where next', 'MarketView Q4', 'a law firm matter', 'a government programme'].includes(String((b as any).kindOfWork ?? ''))
+  /* RELEASE 8 (release-8-situations): a situation no kit picture draws, with the sections its situation switches on, for every reader the server serves it to. */
+  const picturedSituation = !theWholeBoard && !groundId && !!(b as any).releaseEightSituations && !!(b as any).situation
+    /* Where a kit picture draws it, the picture wins: a sales check-in with deals, a big decision for whoever runs it (supplier-board.jpg), and each kind of work drawn as its own example. */
+    && !picturedLead && !(b.scenario === 'CRISIS_ALIGNMENT' && viewerRunsThisCheckIn && !isParticipantView)
+    && !['engineering release', 'support desk', 'distribution operations', 'trader training programme', "founder's own check-in", 'asset loans', 'MarketView where next', 'MarketView Q4', 'a law firm matter', 'a government programme'].includes(String((b as any).kindOfWork ?? ''))
+  const picturedOtherKind = picturedSituation || !theWholeBoard && !groundId && (((b as any).releaseFourTeams && (b as any).kindOfWork === 'leadership') || ((b as any).releaseFiveProjects && (b as any).project) || (viewerRunsThisCheckIn && !isParticipantView
+    && ([...['engineering release', 'support desk', 'distribution operations', 'trader training programme', "founder's own check-in", 'asset loans', 'MarketView where next', 'MarketView Q4', 'a law firm matter', 'a government programme'], ...((b as any).releaseFourTeams ? ['sales org'] : [])]).includes(String((b as any).kindOfWork ?? ''))))
   /* An admin who only reads a sales check-in reads the same board as pictured, with nothing to press (read-only-view.jpg). */
   const picturedReader = !theWholeBoard && isSalesOrg && !viewerRunsThisCheckIn && !isParticipantView && !groundId && !!b.readOnlyNote
     && (b.workRecords ?? []).some((s: any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: any) => r.kind === 'deal'))
@@ -2728,8 +2736,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {picturedMatter && b.matter && <TheMatterBoard board={b.matter} />}
         {!picturedCollections && !picturedMatter && ((picturedLead && picturedManyInTeams) || picturedOtherKind) && (
           <ThePicturedBoard
+            /* Release 4: the first screen is the headline with each target and what needs you; the rest is folded under its own heading. */
+            foldAfter={(b as any).releaseFiveProjects && (b as any).project ? PROJECT_FOLD_AFTER : (b as any).releaseFourTeams && RELEASE_4_ORDERS[(b as any).kindOfWork] ? whereItFolds((b as any).kindOfWork) : undefined}
             /* A founder's own check-in has one person in it (founder-board.jpg): no team today, no areas, no row per person. */
-            order={(((b as any).kindOfWork === 'a government programme'
+            order={((picturedSituation
+              ? theSituationsOrder((b as any).situation, viewerRunsThisCheckIn && !isParticipantView)
+              : (b as any).kindOfWork === 'a government programme'
               /* A programme across levels (gov-board.jpg): what each level understood, the visit log, the counties. */
               ? ['eachLevel', 'visitLog', 'counties', 'heading', 'recommends']
               : (b as any).kindOfWork === 'a law firm matter'
@@ -2744,13 +2756,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               : (b as any).kindOfWork === 'asset loans'
               /* A lending cohort (loans-board.jpg): what needs you, where the cohort stands, every trader, and what keeps coming up as the cohort's own question. */
               ? ['needsYou', 'cohortStands', 'everySale', 'personPlaceOrModel', 'supportGiven', 'heading']
+              /* RELEASE 4 (release-4-teams): each team type as its kit picture. support.jpg: headline and each target, what needs you, every ticket, the team, volume and causes, by queue, who checked in, blockers, what keeps coming up, over time, reports, every session, the other boards, where this is heading. */
+              /* RELEASE 5 (release-5-projects): a project, as the Check-in Reports file's "A project": the plan, money in and out, the stakeholders, what is coming up, and if it goes off track. */
+              : (b as any).releaseFiveProjects && (b as any).project
+              ? PROJECT_ORDER
+              : (b as any).releaseFourTeams && theRelease4Order((b as any).kindOfWork, viewerRunsThisCheckIn)
+              ? theRelease4Order((b as any).kindOfWork, viewerRunsThisCheckIn)!
               : (b as any).kindOfWork === "founder's own check-in"
               ? ['headlineTargets', 'needsYou', 'everySale', 'reported', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'ask', 'recommends']
               : ['headlineTargets', 'needsYou', 'everySale', 'teamToday', 'reported', 'themes', 'byTeam', 'whoCheckedIn', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'ask', 'recommends'])
               /* With no piece of work on record yet, the kind of work's own empty table says so and offers to add one, in place of the table. */
               .flatMap((k) => (k === 'everySale' && !(b.workRecords ?? []).some((x: any) => (x.section === 'Deal grid' || x.section === 'Work plan') && (x.rows ?? []).length) ? ['kindOfWork', 'otherRecords'] : [k]))
               /* The lead's person-by-person part goes after the team today, or before where this is heading when there is no team today. */
-              .flatMap((k, _i, all) => (k === 'teamToday' ? [k, 'yourTeam'] : k === 'heading' && !all.includes('teamToday') ? ['yourTeam', k] : [k]))) as any}
+              .flatMap((k, _i, all) => (k === 'teamToday' ? [k, 'yourTeam'] : k === 'heading' && !all.includes('teamToday') && !picturedSituation ? ['yourTeam', k] : [k]))) as any}
             yourTeam={!groundId && (b as any).yourTeam && id ? <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} /> : null}
             otherRecords={(
               <WorkRecordsSections
@@ -2815,7 +2833,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             navigate={navigate}
           />
         )}
-        {!picturedCollections && !picturedMatter && picturedLead && !picturedManyInTeams && !situationOrder && (
+        {!picturedCollections && !picturedMatter && picturedLead && !picturedManyInTeams && !situationOrder && !picturedOtherKind && (
           <ThePicturedSalesBoard
             b={b}
             groundId={id!}
@@ -2856,7 +2874,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             /* Before anybody has answered (faith90-board.jpg) the board says it fills in after the first check-ins, and shows what was agreed and what is left to do. */
             order={(b.checkInGrid?.rows ?? []).length > 0 && !(b.checkInGrid?.rows ?? []).some((r: any) => Object.values(r.cells ?? {}).includes('done'))
               ? ['fillsIn', 'agreedAndApart', 'firstSteps', 'mayBeRelevant', 'heading']
-              : ['lastSession', 'agreedAtTheStart', 'changeSinceLast', 'ninetyDays', 'history', 'otherRecords', 'bothSeeIt', 'everySession', 'otherBoards', 'heading', 'ask', 'recommends']}
+              /* Release 8: the switchboard's purple sections for a new hire, after the kit picture's own. */
+              : ['lastSession', 'agreedAtTheStart', 'changeSinceLast', 'ninetyDays', 'history', 'otherRecords', 'bothSeeIt', ...((b as any).releaseEight ? ['whereTimeWent', 'evidenceIndex', 'busyOrMoving', 'contradictions', 'questionsForTheLead'] : []), 'everySession', 'otherBoards', 'heading', 'ask', 'recommends'] as any}
             line={picturedCadenceLine}
             otherRecords={(
               <WorkRecordsSections
@@ -2919,7 +2938,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
         {!picturedCollections && !picturedMatter && picturedPlan && (
           <ThePicturedBoard
-            order={['suggestion', 'theCase', 'everySession', 'otherBoards', 'heading', 'ask', 'recommends']}
+            /* Release 8: the switchboard's purple sections for a plan to get back on track, after the kit picture's own. */
+            order={['suggestion', 'theCase', ...((b as any).releaseEight ? ['whereTimeWent', 'evidenceIndex', 'busyOrMoving', 'contradictions', 'questionsForTheLead'] : []), 'everySession', 'otherBoards', 'heading', 'ask', 'recommends'] as any}
             personId={planPersonId}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
             b={b}
@@ -5426,6 +5446,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {/* As pictured, after the ask bar: only offers about the reader's own work (answer 5). */}
         {picturedParticipant && <GroundworkRecommends offers={myOwnRecommendedOffers as any} onAnswer={(offerId, yes) => answerRecommendation.mutate({ offerId, yes })} busy={answerRecommendation.isPending} />}
         </>)}
+        {/* Release 4: a template on a team whose board is not one of the kit's team types shows its stages here (Release 4 only). */}
+        {(b as any).releaseFourTeams && (b as any).template && !picturedOtherKind && <TheTemplateSection b={b} />}
       </MaybeTheLightSalesBoard>
     </Page>
     </TheDirectMorning>

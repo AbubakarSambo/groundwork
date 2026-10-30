@@ -120,6 +120,11 @@ import { boardRendersFor } from '../board/board-families';
 import { whatThisSalesCheckInGathers } from './what-a-sales-check-in-gathers';
 import { THE_PEOPLE_NOTES, whatReferencesAndResourcesHold } from './what-references-and-resources-hold';
 import { whatTheOpenFeeNotesWaitFor } from './what-the-open-fee-notes-wait-for';
+import { theDirectionBlock } from '../direction/the-direction';
+import { theCurrentDirection, theRelease6DirectionIsOn } from '../direction/direction.service';
+import { theTemplate, theTemplateBlock } from '../board/the-thirteen-templates';
+import { theRelease4TeamsIsOn } from '../board/release-4-teams';
+import { whatThisPersonShouldRaise } from '../board/raising-invoices-on-time';
 import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE, UniversalMode } from '../board/role-maps';
 import { STARTING_SCENARIOS, WHO_ARE_YOU_IN_THIS } from './prompt-library';
 import { PLAIN_WORDS } from './plain-words';
@@ -167,6 +172,7 @@ import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-be
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture, anAnswerToTheIdeaOffer, ANSWERED_THE_IDEA_OFFER } from './ideas-from-the-team';
+import { askWhatItIs, askedWhatItIs, whatTheySaidItIs, SAID_WHAT_IT_IS } from './a-vague-promise-says-what-it-is';
 import { theSumsOnlyARequestSaid, whereARequestInAnOrdinaryCheckInGoes } from './a-request-in-an-ordinary-check-in-goes-to-ask';
 import { withoutARatingOfWhatHappened } from './the-anchor-does-not-rate-what-happened';
 import { aRequestAfterTheirTurn, theyAreAnsweringAnOffer, withoutACannotApprove, withoutAPromiseToPassItOn } from './a-request-offered-in-the-check-in';
@@ -2235,7 +2241,14 @@ export class ConversationService {
       this.logger.log(`Check-in ${checkIn.id}: what they said does not meet the objective; asking which it is.`);
     }
 
-    const fullSystem = [composed, inTheBaseline ? null : aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null]
+    /* A promise named only by "it" or "that" is asked once what it is, when nothing else is being asked this turn (a-vague-promise-says-what-it-is). */
+    const whatItIs = inTheBaseline || aboutTheirDeadline || numbersGap ? null : askWhatItIs(message, repliesInThisCheckIn);
+    if (whatItIs) this.logger.log(`Check-in ${checkIn.id}: a promise named only by a pronoun; asking once what it is.`);
+    /* Their answer to that question is marked, so the promise keeps it in their words. */
+    const lastReply = await Promise.resolve((this.prisma.conversationTurn as any).findFirst?.({ where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'desc' }, select: { content: true } }))
+      .catch(() => null) as { content: string | null } | null;
+    const saysWhatItIs = askedWhatItIs(lastReply?.content ?? '');
+    const fullSystem = [composed, inTheBaseline ? null : aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null, whatItIs]
       .filter(Boolean)
       .join('\n\n')
       /* The anchor's short reminder, when it is in play, is read after everything else. */
@@ -2249,7 +2262,7 @@ export class ConversationService {
     const answersTheOfferShowing = anAnswerToTheIdeaOffer(message)
       && ((await (this.prisma as any).workItem?.count?.({ where: { groundId: checkIn.groundId, kind: 'idea-offered', ownerParticipantId: (checkIn as any).participantId ?? '' } })?.catch?.(() => 0)) ?? 0) > 0;
     const personTurn = await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message, ...(answersTheOfferShowing ? { stage: ANSWERED_THE_IDEA_OFFER } : {}) },
+      data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message, ...(answersTheOfferShowing ? { stage: ANSWERED_THE_IDEA_OFFER } : saysWhatItIs ? { stage: SAID_WHAT_IT_IS } : {}) },
     });
     await this.keepTheDocumentDescription(checkIn.id, personTurn.id, message).catch((err) =>
       this.logger.warn(`Could not keep a document description on ${checkIn.id}: ${err?.message}`),
@@ -5683,6 +5696,32 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const feeNotesWaitBlock = (await whatTheOpenFeeNotesWaitFor(this.prisma as any, checkIn as any).catch(() => ({ block: '' }))).block;
     if (feeNotesWaitBlock) this.logger.log(`fee-notes-wait-for check-in=${checkIn.id} on=yes`);
     /*
+     * WHAT THIS PERSON SHOULD RAISE NOW (Release 3, raising invoices on time). On a "Collect what's owed" check-in with Release 3 on,
+     * the person who raises its invoices is told which are due to go out, the amount and why, until each is said to be raised. Code-side
+     * words, no stored prompt. Anywhere else it is empty and the check-in asks exactly as before. See board/raising-invoices-on-time.
+     */
+    const invoicesToRaiseBlock = (await whatThisPersonShouldRaise(this.prisma as any, { groundId: (checkIn as any).groundId, participantId: (checkIn as any).participantId }).catch(() => ({ block: '' }))).block;
+    if (invoicesToRaiseBlock) this.logger.log(`invoices-to-raise check-in=${checkIn.id} on=yes`);
+    /* THE TEAM'S TEMPLATE (Release 4): its stages, what each needs, the questions it asks and its stall rule. Code-side words, no stored
+       prompt; only where Release 4 is on and the lead attached one (board/the-thirteen-templates). Anywhere else empty, as before. */
+    const templateBlock = await (async () => {
+      const g = await this.prisma.ground.findUnique({ where: { id: (checkIn as any).groundId }, select: { templateId: true, organizationId: true } as any }) as any;
+      if (!g?.templateId || !(await theRelease4TeamsIsOn(this.prisma, g.organizationId))) return '';
+      return theTemplateBlock(theTemplate(g.templateId));
+    })().catch(() => '');
+    if (templateBlock) this.logger.log(`team-template check-in=${checkIn.id} on=yes`);
+    /* THE COMPANY'S DIRECTION (Release 6): what it means for this team, its brief, the questions now, and the goals stopped with the change,
+       never counted as missed. Code-side words, no stored prompt; only where Release 6 is on and this team is in the direction. */
+    const directionBlock = await (async () => {
+      const g = await this.prisma.ground.findUnique({ where: { id: (checkIn as any).groundId }, select: { organizationId: true } as any }) as any;
+      if (!g?.organizationId || !(await theRelease6DirectionIsOn(this.prisma, g.organizationId))) return '';
+      const d = await theCurrentDirection(this.prisma, g.organizationId);
+      if (!d) return '';
+      const stopped = await (this.prisma as any).goalVersion.findMany({ where: { organizationId: g.organizationId, groundId: (checkIn as any).groundId, outcome: { in: ['stopped', 'replaced', 'modified'] } }, select: { name: true } });
+      return theDirectionBlock(d, (checkIn as any).groundId, stopped.map((s: any) => ({ name: s.name, owner: null })));
+    })().catch(() => '');
+    if (directionBlock) this.logger.log(`direction check-in=${checkIn.id} on=yes`);
+    /*
      * THEIR JOB (decision 129). In a person's FIRST check-in the conversation also learns what they are responsible for, what doing
      * well looks like, who they depend on and who depends on them, and what usually gets in their way, as a checklist the model works
      * through in its own words. In their later check-ins it is given what they told us, so its questions are about their actual work.
@@ -6037,7 +6076,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const named: [string, string][] = [
       ['language', theirLanguage], ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
       ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
-      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['salesGathers', salesGathersBlock], ['references', referencesBlock], ['feeNotesWait', feeNotesWaitBlock], ['theirJob', theJob], ['roleConfirm', roleConfirmationBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
+      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['salesGathers', salesGathersBlock], ['references', referencesBlock], ['feeNotesWait', feeNotesWaitBlock], ['invoicesToRaise', invoicesToRaiseBlock], ['teamTemplate', templateBlock], ['direction', directionBlock], ['theirJob', theJob], ['roleConfirm', roleConfirmationBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
       ['floorGiveBack', theFloorGiveBack], ['whoCarries', numbersAndOwners.whoCarries], ['whereItStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem], ['whereItIs', whereItIs],
@@ -6181,7 +6220,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['theirWeek', theirWeek], ['howWeDoIt', howWeDoIt], ['styleBlock', styleBlock],
       ['clarificationContext', clarificationContext], ['selfCorrectionContext', selfCorrectionContext],
       ['finalSessionContext', finalSessionContext], ['howLongThisRuns', howLongThisRuns], ['returningUserContext', returningUserContext],
-      ['roleProbeBlock', roleProbeBlock], ['salesGathersBlock', salesGathersBlock], ['referencesBlock', referencesBlock], ['feeNotesWaitBlock', feeNotesWaitBlock], ['theirJob', theJob], ['theJobThisTurn', theJobThisTurn], ['coachingBlock', coachingBlock],
+      ['roleProbeBlock', roleProbeBlock], ['salesGathersBlock', salesGathersBlock], ['referencesBlock', referencesBlock], ['feeNotesWaitBlock', feeNotesWaitBlock], ['invoicesToRaiseBlock', invoicesToRaiseBlock], ['templateBlock', templateBlock], ['directionBlock', directionBlock], ['theirJob', theJob], ['theJobThisTurn', theJobThisTurn], ['coachingBlock', coachingBlock],
       ['patternProbeBlock', patternProbeBlock], ['theHole', theHole], ['theOneThingToday', theOneThingToday], ['theOneThingBack', theOneThingBack],
       ['theFloorGiveBack', theFloorGiveBack], ['whoCarriesWhichPart', numbersAndOwners.whoCarries], ['whereTheNumberStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['oneThingToDoBetter', oneThingToDoBetter],
@@ -6272,10 +6311,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     if (leanIsOnForThisProcess()) {
       const theLeanRules = [THE_LEAN_CORE, theirLanguage].filter(Boolean).join('\n\n');
-      return [THE_LEAN_CORE, theirLanguage, intakeBlock, recordAlreadyHolds, managingBlock, alreadyGiven, owedBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, finalSessionContext, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, theJob, theJobThisTurn, roleConfirmationBlock, coachingBlock, patternProbeBlock, dynamicContext, docContext, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday]
+      return [THE_LEAN_CORE, theirLanguage, intakeBlock, recordAlreadyHolds, managingBlock, alreadyGiven, owedBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, finalSessionContext, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, directionBlock, theJob, theJobThisTurn, roleConfirmationBlock, coachingBlock, patternProbeBlock, dynamicContext, docContext, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday]
         .filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theLeanRules, calledHere));
     }
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, managingBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, managingBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, directionBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
   }
 
   /**
@@ -8567,7 +8606,7 @@ ${told}` : '';
       where: { id: checkInId },
       select: {
         groundId: true, sessionNumber: true, participantId: true,
-        turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } },
+        turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true, stage: true } },
       },
     });
     if (!row?.participantId) return;
@@ -8639,6 +8678,8 @@ ${told}` : '';
           groundId: row.groundId,
           participantId: row.participantId,
           text: c.action.slice(0, 400),
+          /* What "it" is, where they were asked: their answer, as typed (a-vague-promise-says-what-it-is). */
+          whatItIs: whatTheySaidItIs(c.action, row.turns as any),
           outcome: c.outcome ?? null,
           whenSaid: c.when ?? null,
           explicit: true,

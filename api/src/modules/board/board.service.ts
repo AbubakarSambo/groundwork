@@ -1,3 +1,9 @@
+import { theSituationBoard, theRelease8SituationsIsOn } from './release-8-situations';
+import { whereTheTimeWent } from './the-switchboards-own-sections';
+import { theRelease4TeamsIsOn, theUnitOfATarget } from './release-4-teams';
+import { theProjectBoard, theRelease5ProjectsIsOn, isAProject, aMilestoneAcceptedIsAnInvoiceToRaise } from './release-5-projects';
+import { eachPersonsOwnBesideTheTeams, whyTheNumbersDoNotMatch } from './the-team-and-each-persons-figures';
+import { theTemplate } from './the-thirteen-templates';
 import { inAboutEightWords } from './what-happens-next-to-a-record';
 import { theDirectMorningFor, asServedOnTheBoard } from '../engagement/the-direct-morning';
 import { yourTeamPersonByPerson, theLeadActsOnAPerson, type AnActionAsked } from './your-team-person-by-person';
@@ -460,6 +466,8 @@ export class BoardService {
     let theDealsCounted: ADealOnRecord[] = [];
     /* Release 1's sales board, switched on per organisation (release-one-sales-board). Off, the board reads as it did before it. */
     const releaseOne = await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId);
+    /* Release 4 (release-4-teams): each team type's board as its kit picture, and each target with its unit. Off, as before. */
+    const releaseFour = await theRelease4TeamsIsOn(this.prisma, (ground as any).organizationId);
     /* The direct morning (organisation/the-direct-morning-switch): it changes the board's own words, never who reads what. Off, as before. */
     const direct = await theDirectMorningIsOn(this.prisma, (ground as any).organizationId).catch(() => false);
     /* The lead's answer on whether a price range counts as a budget, from how we work (a-deals-four-criteria). Release 1 only. */
@@ -982,12 +990,15 @@ export class BoardService {
       kindOfWork: oneOfTheKinds((ground as any).kindOfWork),
       /* Whether this organisation has Release 1's sales board switched on (release-one-sales-board), so the page draws what it serves. */
       releaseOneSalesBoard: releaseOne,
+      /* Release 4 (release-4-teams): each team type's board drawn as its kit picture, where the organisation has it on. Off, as before. */
+      /* Release 4 off, nothing new is served, so every reader gets exactly what they got before. On, the template the lead attached. */
+      ...(releaseFour ? { releaseFourTeams: true, template: theTemplate((ground as any).templateId) } : {}),
       /* What the switchboard picks for this scenario and type (the-switchboard.ts), only where Release 2 is on; off, the key is not served at all. */
       ...(await this.theSwitchboardsPick(ground as any)),
       /* The collections board, where the switchboard picks it, walled for this reader (the-collections-board.service). */
       ...(await this.theCollectionsBoardIfPicked(ground as any, { runsIt: isInitiator || theyRunIt, participantId: me?.id ?? null }, now)),
       /* The kinds a NEW check-in may be given at release. A check-in that holds another keeps it above. */
-      kindsOffered: await theBoardKindsOffered(this.prisma),
+      kindsOffered: await theBoardKindsOffered(this.prisma, (ground as any).organizationId),
       /* Whether a new anchor check-in can be started (release.anchorScenario). Off at release. Nothing on the board changes with it yet. */
       anchorScenarioOn: await theAnchorScenarioIsOn(this.prisma),
       /**
@@ -1531,6 +1542,20 @@ export class BoardService {
      * shown: the person running the check-in and an admin get no field, and a goal the lead has not
      * told them about is not here. Who else sees it is said by the check-in's own setting.
      */
+    /* RELEASE 4: EACH TARGET CARRIES ITS UNIT, as stored, or "%" for a share to keep at or above (a rate), so "91% of 90%" reads correctly. */
+    if (releaseFour && Array.isArray(out.objectives)) {
+      const stored = new Map(((ground.objectives ?? []) as any[]).map((o) => [o.id, o]));
+      out.objectives = (out.objectives as any[]).map((o) => ({ ...o, unit: theUnitOfATarget(stored.get(o.id) ?? o) }));
+    }
+    /*
+     * RELEASE 4: EACH PERSON'S OWN TARGET BESIDE THE TEAM'S, AND WHY THE NUMBERS DON'T MATCH (the-team-and-each-persons-figures). Only
+     * for whoever already reads every target here (the lead and an admin, the same `targetsFor` rule); read only from targets on record.
+     */
+    if (releaseFour && Array.isArray(out.objectives) && runsThisGround) {
+      const nameOfParticipant = (pid: string) => { const p = ((ground as any).participants ?? []).find((x: any) => x.id === pid); return p ? nameOf(p) : null; };
+      out.eachPersonsOwn = eachPersonsOwnBesideTheTeams(out.objectives as any[], nameOfParticipant);
+      out.whyTheNumbersDoNotMatch = whyTheNumbersDoNotMatch(out.objectives as any[], nameOfParticipant);
+    }
     if (!isInitiator && me?.id && Array.isArray(out.objectives)) {
       const mine = (out.objectives as any[]).filter((o) => o.ownerParticipantId === me.id && o.target != null);
       const leadName = theLeadsRow ? nameOf(theLeadsRow) : null;
@@ -3103,6 +3128,12 @@ export class BoardService {
       if (personHistory.length) out.personHistory = personHistory;
       const blockerCheck = theBlockerCheck(handoffs, reader);
       if (blockerCheck.length) out.blockerCheck = blockerCheck;
+      /* RELEASE 8: where the time went, from what each person committed to, by the piece of work it names. Never hours. To whoever runs it. */
+      if (runsIt) {
+        const itemNames = ((out.workRecords ?? []) as any[]).flatMap((sec: any) => ((sec?.rows ?? []) as any[]).map((x: any) => String(x?.name ?? ''))).filter(Boolean);
+        const timeWent = whereTheTimeWent(mine.commitments, itemNames, reader);
+        if (timeWent.length) (out as any).whereTheTimeWent = timeWent;
+      }
       /* Their words, so only for those whose words this reader may read: their own, or everybody's where people see each other or the reader runs it. */
       const evidenceIndex = theEvidenceIndex(
         mine.lines.map((l) => ({ ...l, wordsMayBeRead: mayReadEveryone || l.participantId === me?.id || !peersWalled })),
@@ -3797,6 +3828,13 @@ export class BoardService {
         /* Each deal in its group, with why, from the rows this reader is served (request 112 a). See each-deal-in-its-group. */
         walled.workRecords = eachDealInItsGroup(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, deadlineOf(ground as any), now, { countedFromTheDeals: releaseOne, contactedWhenSpokenOf: releaseOne, byBuyingDate: releaseOne, criteria: criteriaFor(), stallDays });
         walled.byArea = theWorkByArea(walled.workRecords);
+        /* RELEASE 5: a funded project's board (release-5-projects), from the same records this reader is served. Off, nothing new. */
+        if (isAProject((ground as any).kindOfWork) && (await theRelease5ProjectsIsOn(this.prisma, (ground as any).organizationId))) {
+          const rows = ((walled.workRecords ?? []) as any[]).flatMap((s: any) => (s.rows ?? []) as any[]);
+          const invoicesFollow = await Promise.resolve((this.prisma as any).organization?.findUnique?.({ where: { id: (ground as any).organizationId }, select: { release3InvoicesOn: true } })).then((o: any) => o?.release3InvoicesOn === true).catch(() => false);
+          walled.project = theProjectBoard(rows, now.toISOString().slice(0, 10), { invoicesFollow });
+          walled.releaseFiveProjects = true;
+        }
         const atEachStage = reportedAgainstTheRules(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, { criteria: !!criteriaFor() });
         if (atEachStage) walled.reportedAgainstCriteria = atEachStage;
         /* The stages said were read for that count only; they are not served on each row. */
@@ -3884,6 +3922,17 @@ export class BoardService {
          already says "you" for the reader where a sentence is true of several people (request 118, part 2). */
       /* And a sentence stored before the wording rules reads right as it is served (decision 91). */
       /* A line typed as an intention that intends nothing is sent with no kind (requests 127 item 4, 129 item 5), after every board that reads the kind. */
+      /*
+       * RELEASE 8: THE REMAINING SITUATIONS (release-8-situations). Which of the sections already served, after every wall above, this
+       * situation's board draws, and in which order. Built from the board this reader is served and nothing else. Off, nothing new.
+       */
+      const releaseEight = await theRelease8SituationsIsOn(this.prisma, (ground as any).organizationId);
+      /* The purple, situation-only sections are drawn on the kit boards too, only with Release 8 on. */
+      if (releaseEight) (walled as any).releaseEight = true;
+      if (!(walled as any).collections && !(walled as any).matter && !(walled as any).project && releaseEight) {
+        const situation = theSituationBoard(String((ground as any).scenario ?? ''), walled as any, { runsIt: isInitiator || theyRunIt });
+        if (situation) { (walled as any).situation = situation; (walled as any).releaseEightSituations = true; }
+      }
       if (Array.isArray((walled as any).whoOwnsWhat)) (walled as any).whoOwnsWhat = eachLineWithTheKindThatFits((walled as any).whoOwnsWhat);
       const asServed = everyActionHasALabel(aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null)), (ground.participants ?? []).map((p: any) => nameOf(p.id)).filter((n: any): n is string => typeof n === 'string' && n.length > 1))));
       /*
@@ -4504,7 +4553,10 @@ export class BoardService {
     if (data.ownerParticipantId !== undefined && theClaimOn(item.fields)) {
       data.fields = afterTheLeadsAnswer(data.fields ?? item.fields, data.ownerParticipantId === theClaimOn(item.fields)!.participantId);
     }
-    return (this.prisma as any).workItem.update({ where: { id: itemId }, data });
+    const updated = await (this.prisma as any).workItem.update({ where: { id: itemId }, data });
+    /* Release 5: a milestone the lead moves to Accepted is an invoice to raise at once (release-5-projects). Off, nothing. */
+    if (item.kind === 'milestone' && data.stage === 'Accepted') await aMilestoneAcceptedIsAnInvoiceToRaise(this.prisma, groundId).catch(() => 0);
+    return updated;
   }
 
   /**

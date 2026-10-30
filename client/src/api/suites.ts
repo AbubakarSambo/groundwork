@@ -284,7 +284,18 @@ export interface ReviewForThePerson {
   mayAppealSays?: string | null
   appeal?: YourAppeal | null
 }
-export type AReview = ReviewForTheWriter | ReviewForThePerson
+/** RELEASE 7: the review as pictured ("A review built from check-ins"), served where the organisation has Release 7 on. */
+export interface AReviewAsPictured {
+  readings: { label: string; question: string; says: string; evidence?: string[] }[]
+  committedHeading: string
+  committed: { title: string; says: string; tone: 'rec' | 'att' | 'act' | 'con' }[]
+  blockedOrDropped: { title: string; says: string; tone: 'rec' | 'att' | 'act' | 'con' }[]
+  ownViewHeading: string
+  ownView: string
+  decidesHeading: string
+  decides: string
+}
+export type AReview = (ReviewForTheWriter | ReviewForThePerson) & { asPictured?: AReviewAsPictured }
 
 /**
  * AN ADMIN'S LIST OF APPEALS (decision 113, GET /suites/reviews/appeals). Not drawn until now
@@ -317,6 +328,10 @@ export const reviewsApi = {
   one: async (id: string): Promise<AReview> => (await apiClient.get(`/suites/reviews/${id}`, { skipForbiddenToast: true } as any)).data,
   words: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/words`, { text })).data,
   view: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/view`, { text })).data,
+  /** Release 7: your own view, drafted from your running record. Nothing is kept until you save it. */
+  selfReviewDraft: async (id: string): Promise<string> => ((await apiClient.get(`/suites/reviews/${id}/self-review-draft`)).data as any)?.draft ?? '',
+  /** The person, or whoever writes it, reads the record again for a review in progress. */
+  updateFromTheRecord: async (id: string): Promise<AReview> => (await apiClient.post(`/suites/reviews/${id}/update-from-the-record`)).data,
   correct: async (id: string, lineKey: string, text: string): Promise<AReview> =>
     (await apiClient.post(`/suites/reviews/${id}/lines/${encodeURIComponent(lineKey)}/correction`, { text })).data,
   decide: async (id: string, decision: string, reasons: string): Promise<AReview> =>

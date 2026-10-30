@@ -102,9 +102,44 @@ function theThingItselfWasFiled(line: ALineOnRecord, wait: AnOpenWait, thing: st
   });
 }
 
-/** Whether one line says this wait is done. `namesOf` gives a person's own names (first name, full name). */
-export function aLineSaysItIsDone(line: ALineOnRecord, wait: AnOpenWait, namesOf: (participantId: string) => string[], atTheCustomer: (holder: string) => string[] = () => []): boolean {
+/*
+ * THE LEAD ANSWERED THE DECISION (real-model run, 25 October). Joseph waited on "Management" for "a decision on whether to offer a unit
+ * at KES 4,500", and said it twice in two words ("the KES 4,500 price"). Grace, who runs the check-in, said "I approved the KES 4,500
+ * price for Juja Hardware for 5 units only." That cleared the second wait, not the first, and her morning and Joseph's review went on
+ * saying he was waiting on Management. A wait for a decision is answered by the lead of the check-in saying she approved or declined it,
+ * with the same amount, in a sentence that does not say it has not happened yet.
+ */
+const A_DECISION_WAITED_ON = /\b(?:decision|decide|approv\w*|yes or no|go-ahead|sign[- ]off|price|pricing)\b/i;
+const SHE_DECIDED = /\b(?:approved|agreed to|said yes to|accepted|signed off|okayed|declined|rejected|refused|said no to|turned down)\b/i;
+const amountsIn = (t: string) => (String(t ?? '').match(/\d[\d,]*(?:\.\d+)?/g) ?? []).map((n) => n.replace(/,/g, '')).filter((n) => n.length >= 3);
+function theLeadDecidedIt(line: ALineOnRecord, wait: AnOpenWait, leads: ReadonlySet<string>): boolean {
+  if (!leads.has(line.participantId) || line.participantId === wait.fromParticipantId) return false;
+  if (wait.onParticipantId && !leads.has(wait.onParticipantId)) return false;
+  if (!A_DECISION_WAITED_ON.test(wait.what)) return false;
+  const amounts = amountsIn(wait.what);
+  if (!amounts.length) return false;
+  return sentences(line.text).some((s) => SHE_DECIDED.test(s) && !NOT_YET.test(s.replace(/\b(?:only|no more than)\b/gi, '')) && amounts.some((a) => amountsIn(s).includes(a)));
+}
+
+/*
+ * WHAT WAS WAITING FOR APPROVAL WENT OUT (real-model run, 25 October). Brian waited on Wanjiru for "approval for FN-009", then said
+ * "I sent FN-009 to Kito Foods on Tuesday." Her morning still said he was waiting on her for the approval. A wait for approval of a
+ * numbered thing (a fee note, an invoice, a quote) is over when the one waiting says that same number was sent, raised or filed.
+ */
+const A_NUMBER = /\b[A-Za-z]{1,6}[-\s]?\d{2,8}\b/g;
+const IT_WENT_OUT = /\b(?:sent|raised|issued|filed|submitted|delivered)\b/i;
+const numbersIn = (t: string) => (String(t ?? '').match(A_NUMBER) ?? []).map((n) => n.toLowerCase().replace(/[-\s]/g, ''));
+function whatWaitedForApprovalWentOut(line: ALineOnRecord, wait: AnOpenWait): boolean {
+  if (line.participantId !== wait.fromParticipantId || !/\bapprov/i.test(wait.what)) return false;
+  const numbers = numbersIn(wait.what);
+  if (!numbers.length) return false;
+  return sentences(line.text).some((s) => IT_WENT_OUT.test(s) && !NOT_YET.test(s) && numbersIn(s).some((n) => numbers.includes(n)));
+}
+
+/** Whether one line says this wait is done. `namesOf` gives a person's own names (first name, full name); `leads`, who runs the check-in. */
+export function aLineSaysItIsDone(line: ALineOnRecord, wait: AnOpenWait, namesOf: (participantId: string) => string[], atTheCustomer: (holder: string) => string[] = () => [], leads: ReadonlySet<string> = new Set()): boolean {
   if (String(line.type).toUpperCase() !== 'PROGRESS') return false;
+  if (theLeadDecidedIt(line, wait, leads) || whatWaitedForApprovalWentOut(line, wait)) return true;
   const byTheOneWaiting = line.participantId === wait.fromParticipantId;
   const byTheOneHoldingIt = !!wait.onParticipantId && line.participantId === wait.onParticipantId;
   const thing = theThingsOwnWords(wait.what);
@@ -134,6 +169,7 @@ export function theWaitsSaidDone(
   namesOf: (participantId: string) => string[],
   lastRaisedAt: (w: AnOpenWait) => Date,
   atTheCustomer: (holder: string) => string[] = () => [],
+  leads: ReadonlySet<string> = new Set(),
 ): { id: string; clearedAt: Date; lineId: string }[] {
   const out: { id: string; clearedAt: Date; lineId: string }[] = [];
   for (const w of waits) {
@@ -141,7 +177,7 @@ export function theWaitsSaidDone(
     const done = lines
       .filter((l) => l.checkInId !== w.sourceCheckInId && new Date(l.createdAt).getTime() > after)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      .find((l) => aLineSaysItIsDone(l, w, namesOf, atTheCustomer));
+      .find((l) => aLineSaysItIsDone(l, w, namesOf, atTheCustomer, leads));
     if (done) out.push({ id: w.id, clearedAt: new Date(done.createdAt), lineId: done.id });
   }
   return out;
@@ -157,8 +193,9 @@ export async function clearTheWaitsSaidDone(prisma: any, groundId: string): Prom
   if (!waits.length) return 0;
   const people: any[] = await prisma.groundParticipant.findMany({
     where: { groundId },
-    select: { id: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
+    select: { id: true, nameGiven: true, partyType: true, user: { select: { firstName: true, lastName: true } } },
   });
+  const leads = new Set<string>(people.filter((p) => p.partyType === 'INITIATOR').map((p) => p.id));
   const namesOf = (pid: string): string[] => {
     const p = people.find((x) => x.id === pid);
     return [p?.user?.firstName, p?.user?.lastName, p?.nameGiven].filter((n): n is string => !!n && !!String(n).trim());
@@ -187,7 +224,7 @@ export async function clearTheWaitsSaidDone(prisma: any, groundId: string): Prom
     const at = w.sourceCheckInId ? doneAt.get(w.sourceCheckInId) : null;
     const made = new Date(w.createdAt);
     return at && at.getTime() > made.getTime() ? at : made;
-  }, atTheCustomer);
+  }, atTheCustomer, leads);
   for (const c of cleared) {
     await prisma.groundDependency.updateMany({ where: { id: c.id, clearedAt: null }, data: { status: 'CLEARED', clearedAt: c.clearedAt } });
   }

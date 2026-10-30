@@ -406,6 +406,24 @@ export class SuitesService {
     return this.leaveRules(reader);
   }
 
+  /**
+   * RELEASE 9: the leave days a year, from a policy an admin approved (modules/policy). Only the days are written; whether the
+   * leave suite is on, and every other answer, stays as it was. Kept in the history like any other change.
+   */
+  async setLeaveDaysFromPolicy(reader: Reader, days: number): Promise<void> {
+    if (!(await this.maySetUp(reader, 'leave'))) throw new ForbiddenException(LEAVE_RULES_REFUSED.onlyAnAdmin);
+    if (!Number.isInteger(days) || days < 0 || days > 365) throw new BadRequestException('Give the leave days as a whole number from 0 to 365.');
+    const where = { organizationId_suite: { organizationId: reader.organizationId, suite: 'leave' } };
+    const before = (await this.rows(reader.organizationId).catch(() => new Map())).get('leave') ?? null;
+    const answers = { ...((before?.answers && typeof before.answers === 'object' ? before.answers : {}) as Record<string, unknown>), days } as never;
+    await this.prisma.organizationSuite.upsert({
+      where,
+      create: { organizationId: reader.organizationId, suite: 'leave', isOn: false, answers, changedById: reader.userId },
+      update: { answers, changedById: reader.userId },
+    });
+    await this.keepTheChange(reader, 'leave', before, { isOn: before?.isOn === true, answers });
+  }
+
   /** The spending rules, for whoever sets them: an admin, or whoever holds the finance duty. Nobody else reads this. */
   async spendRules(reader: Reader): Promise<TheSpendRules> {
     if (!(await this.maySetUp(reader, 'spend'))) throw new ForbiddenException(SPEND_RULES_REFUSED.onlyAnAdmin);
@@ -434,6 +452,19 @@ export class SuitesService {
     });
     await this.keepTheChange(reader, SPEND_RULES_ROW, row ? { isOn: false, answers: row.answers } : null, { isOn: false, answers });
     return this.spendRules(reader);
+  }
+
+  /** Release 9: reopen a week that locked, by its Monday. Whoever sets the time sheet rules (an admin, or whoever holds finance). */
+  async reopenAWeek(reader: Reader, weekOf: string): Promise<TheTimeRules> {
+    if (!(await this.maySetUp(reader, 'time'))) throw new ForbiddenException(TIME_RULES_REFUSED.onlyAnAdmin);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(weekOf ?? ''))) throw new BadRequestException('Say which week, by its Monday, such as 2026-10-19.');
+    const where = { organizationId_suite: { organizationId: reader.organizationId, suite: TIME_RULES_ROW } };
+    const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });
+    const kept = timeRulesFrom(row?.answers);
+    const answers = { ...kept, reopened: [...new Set([...(kept.reopened ?? []), weekOf])] } as never;
+    await this.prisma.organizationSuite.upsert({ where, create: { organizationId: reader.organizationId, suite: TIME_RULES_ROW, isOn: false, answers, changedById: reader.userId }, update: { answers, changedById: reader.userId } });
+    await this.keepTheChange(reader, TIME_RULES_ROW, row ? { isOn: false, answers: row.answers } : null, { isOn: false, answers });
+    return this.timeRules(reader);
   }
 
   /** The time sheet rules, for whoever sets them: an admin, or whoever holds the finance duty. Nobody else reads this. */

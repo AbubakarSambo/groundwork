@@ -367,6 +367,13 @@ export class GroundsController {
     return this.grounds.situationsOffered(user.organizationId);
   }
 
+  /** Release 4: the template library (#/templates). Declared before `@Get(':id')` so the word is never read as an id. */
+  @Get('templates')
+  @ApiOperation({ summary: 'The thirteen templates a lead can attach to a team, where Release 4 is on' })
+  async theTemplates(@CurrentUser('organizationId') organizationId: string) {
+    return this.grounds.theTemplates(organizationId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a ground (status, participants, check-ins)' })
   async get(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
@@ -985,6 +992,16 @@ export class GroundsController {
     @Body() body: { kind?: string | null; stages?: string[] | null },
   ) {
     return this.grounds.setKindOfWork(id, userId, body ?? {});
+  }
+
+  @Patch(':id/template')
+  @ApiOperation({ summary: 'The lead attaches one of the thirteen templates to this check-in, or takes it off (Release 4)' })
+  async setTemplate(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { template?: unknown },
+  ) {
+    return this.grounds.setTemplate(id, userId, body ?? {});
   }
 
   @Patch(':id/who-sees-targets')

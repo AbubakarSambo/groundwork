@@ -359,3 +359,28 @@
 .pb-fold.pb-fold-open { padding-bottom: 16px; }
 .pb-fold > .sec-h:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .pb-fold > .sec-h::after { transition: none; } }
+/* Release 4, support.jpg: volume from the helpdesk as tiles, causes from the check-ins as bars. */
+.pb-volume { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.pb-volume-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 12px; align-content: start; }
+.pb-volume-tile { display: flex; flex-direction: column; gap: 2px; font-size: 14.5px; }
+.pb-volume-n { font-family: var(--gw-font-name); font-weight: 500; font-size: 26px; line-height: 1.1; font-variant-numeric: lining-nums; }
+.pb-volume-causes { display: flex; flex-direction: column; gap: 10px; }
+.pb-cause { display: flex; flex-direction: column; gap: 4px; font-size: 14.5px; }
+.pb-cause-top { display: flex; justify-content: space-between; gap: 12px; }
+.pb-cause-bar { display: block; height: 6px; border-radius: 3px; background: var(--gw-navy); }
+@media (max-width: 640px) { .pb-volume { grid-template-columns: 1fr; } }
+/* Release 4, ops.jpg: incidents by site and type. */
+.pb-heat-wrap { overflow-x: auto; }
+.pb-heat { border-collapse: collapse; font-size: 14.5px; font-variant-numeric: lining-nums tabular-nums; }
+.pb-heat th { text-align: left; font-weight: 700; padding: 6px 12px 6px 0; }
+.pb-heat thead th { font-weight: 400; color: var(--gw-sub); }
+.pb-heat td { width: 64px; height: 36px; text-align: center; border: 2px solid var(--gw-card); border-radius: 6px; }
+.pb-heat-0 { background: var(--gw-bg); color: var(--gw-sub); }
+.pb-heat-1 { background: var(--gw-blue-bg); }
+.pb-heat-2 { background: var(--gw-blue-b); }
+.pb-heat-3 { background: var(--gw-navy); color: #fff; font-weight: 700; }
+/* Release 4: each person's own target under the team's, and why the two don't add up, inside the same panel (no box in a box). */
+.pb-target-row:has(.pb-own-shares) { flex-wrap: wrap; }
+.pb-own-shares { flex-basis: 100%; list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px; }
+.pb-own-shares li { display: flex; justify-content: space-between; gap: 12px; }
+.pb-numbers-differ { border-top: 1px solid var(--rule); padding-top: 12px; margin-top: 12px; display: grid; gap: 6px; }

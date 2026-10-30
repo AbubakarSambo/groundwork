@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PageCrash } from '@/components/gw/PageCrash'
 import EveryReportSideBySide from '@/pages/preview/EveryReportSideBySide'
+import { Release4Boards } from '@/pages/preview/Release4Boards'
 import PartsSamplePage from '@/pages/dev/PartsSamplePage'
 import ConversationPreviewPage from '@/pages/dev/ConversationPreviewPage'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Link } from 'react-router-dom'
@@ -73,6 +74,10 @@ import { FinancePage } from '@/pages/suites/FinancePage'
 import { TodosPage } from '@/pages/suites/TodosPage'
 import { CustomersPage } from '@/pages/suites/CustomersPage'
 import { EquipmentPage } from '@/pages/suites/EquipmentPage'
+import { DirectionPage } from '@/pages/direction/DirectionPage'
+import { PolicyBoardPage } from '@/pages/policy/PolicyBoardPage'
+import { SetUpFromYourDocumentsPage } from '@/pages/policy/SetUpFromYourDocumentsPage'
+import { TemplatesPage } from '@/pages/templates/TemplatesPage'
 import { AskPage } from '@/pages/ask/AskPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
@@ -569,6 +574,13 @@ export default function App() {
             <Route path="/company/context" element={<RequireOrgSetup><CompanyContextPage /></RequireOrgSetup>} />
             {/* THE SUITES PAGE (E, U.17). What each reader is given is the server's (GET /suites). */}
             <Route path="/settings/suites" element={<RequireOrgSetup><SuitesPage /></RequireOrgSetup>} />
+            {/* Release 4: the template library (B1, #/templates). */}
+            <Route path="/templates" element={<RequireOrgSetup><TemplatesPage /></RequireOrgSetup>} />
+            {/* Release 6: the company's direction. */}
+            <Route path="/direction" element={<RequireOrgSetup><DirectionPage /></RequireOrgSetup>} />
+            {/* Release 9: the policy board, and setting up from documents. */}
+            <Route path="/policies" element={<RequireOrgSetup><PolicyBoardPage /></RequireOrgSetup>} />
+            <Route path="/policies/setup" element={<RequireOrgSetup><SetUpFromYourDocumentsPage /></RequireOrgSetup>} />
             <Route path="/suite/onboard" element={<RequireOrgSetup><OnboardingBoardPage /></RequireOrgSetup>} />
             <Route path="/suite/mine" element={<RequireOrgSetup><YourRequestsPage /></RequireOrgSetup>} />
             <Route path="/suite/leave/new" element={<RequireOrgSetup><LeaveRequestNewPage /></RequireOrgSetup>} />
@@ -622,6 +634,8 @@ export default function App() {
               tool, so it sits behind the same gate as the rest of the platform back office.
             */}
             <Route path="/preview/reports" element={<RequirePlatformAdmin><EveryReportSideBySide /></RequirePlatformAdmin>} />
+            {/* Release 4's boards from their hand-written test organisations: development builds only, never in production. */}
+            {import.meta.env.DEV && <Route path="/release-4-preview" element={<Release4Boards />} />}
             {/*
               THE SHARED PARTS' SAMPLE PAGE (design-audit.md section 4, step 1), development only.
               `import.meta.env.DEV` is false in a built, production app, so this route does not

@@ -43,6 +43,12 @@ export interface TimeRules {
   cutOff?: { day: Weekday | number | 'last'; time: string };
   /** Billable or not for each client or project; `otherwise` for every other one. Unset: every hour is billable. */
   billable?: { clients?: Record<string, boolean>; otherwise?: boolean };
+  /** Release 9 (a policy approved on the policy board): the most hours a day on one project without approval. Unset: no limit. */
+  mostHoursADay?: number;
+  /** Release 9: the weekday a week locks on; after it the week is changed only by whoever approves time sheets. Unset: never locks. */
+  weekLocksOn?: Weekday;
+  /** Release 9: weeks reopened after they locked, by their Monday ("2026-10-19"). */
+  reopened?: string[];
 }
 
 export const MAX_HOURS_A_WEEK = 80;
@@ -55,6 +61,8 @@ export const TIME_RULES_REFUSED = {
   badCutOff: 'Give the cut-off as a day and a time such as 17:00. For hours sent each week the day is a weekday, such as Friday. For hours sent each month it is a day of the month from 1 to 28, or the last day.',
   badSubmitters: 'Name the teams and the people who keep a time sheet, each from your staff directory and your organisation.',
   badBillable: 'Say for each client or project on the list whether its hours are billable, and whether the hours on every other one are.',
+  badMostHours: 'Give the most hours a day as a number from 1 to 24.',
+  badLock: 'Give the day a week locks as a weekday, such as Monday.',
 };
 
 const isWeekday = (x: unknown): x is Weekday => typeof x === 'string' && (WEEKDAYS as readonly string[]).includes(x.toLowerCase());
@@ -102,6 +110,9 @@ export function timeRulesFrom(answers: unknown): TimeRules {
   if (c) out.cutOff = c;
   const b = billableFrom(a.billable);
   if (b) out.billable = b;
+  if (typeof a.mostHoursADay === 'number' && a.mostHoursADay >= 1 && a.mostHoursADay <= 24) out.mostHoursADay = a.mostHoursADay;
+  if (isWeekday(a.weekLocksOn)) out.weekLocksOn = a.weekLocksOn.toLowerCase() as Weekday;
+  if (Array.isArray(a.reopened)) { const w = a.reopened.filter((x: unknown): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x)); if (w.length) out.reopened = w.slice(-60); }
   return out;
 }
 
@@ -147,6 +158,16 @@ export function changeTimeRules(
   } else if (next.cutOff && g.every !== undefined && !cutOffFrom(next.cutOff, next.every ?? 'week')) {
     /* How often changed, and the kept cut-off no longer fits it: it must be given again. */
     return { refused: TIME_RULES_REFUSED.badCutOff };
+  }
+  if (g.mostHoursADay !== undefined) {
+    if (g.mostHoursADay === null) delete next.mostHoursADay;
+    else if (typeof g.mostHoursADay !== 'number' || !Number.isFinite(g.mostHoursADay) || g.mostHoursADay < 1 || g.mostHoursADay > 24) return { refused: TIME_RULES_REFUSED.badMostHours };
+    else next.mostHoursADay = g.mostHoursADay;
+  }
+  if (g.weekLocksOn !== undefined) {
+    if (g.weekLocksOn === null) delete next.weekLocksOn;
+    else if (!isWeekday(g.weekLocksOn)) return { refused: TIME_RULES_REFUSED.badLock };
+    else next.weekLocksOn = String(g.weekLocksOn).toLowerCase() as Weekday;
   }
   if (g.submitters !== undefined) {
     if (g.submitters === null) delete next.submitters;
@@ -328,6 +349,8 @@ export function theTimeRulesSaid(rules: TimeRules, approval: string | null, name
   out.push(rules.every === 'month' ? 'Hours are sent each month.' : 'Hours are sent each week.');
   out.push(rules.hoursAWeek ? `Each person is asked for ${hoursAsRead(rules.hoursAWeek)} a week.` : 'No number of hours is asked for each week.');
   out.push(cutOffSaid(rules));
+  if (rules.mostHoursADay) out.push(`No more than ${hoursAsRead(rules.mostHoursADay)} a day on any project without approval.`);
+  if (rules.weekLocksOn) out.push(`A week locks on ${rules.weekLocksOn.charAt(0).toUpperCase()}${rules.weekLocksOn.slice(1)}. Whoever approves time sheets can reopen it.`);
   const b = rules.billable;
   if (!b) out.push('Every hour is billable, so the billing file holds every approved hour.');
   else {
@@ -354,4 +377,24 @@ export function billableSaidBack(rules: TimeRules, entries: { client: string }[]
     else if (!byRule) out.push(`The hours on ${e.client} are billable, as you said.`);
   }
   return out;
+}
+
+
+/** Release 9: the entries above the day's limit, said once each, so the person and the approver both see what needs approval. */
+export function aboveTheDaysLimit(rules: TimeRules, entries: { client: string; onDay: string; hours: number }[]): string[] {
+  if (!rules.mostHoursADay) return [];
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const day = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${Number(iso.slice(8, 10))} ${MONTHS[Number(iso.slice(5, 7)) - 1]}` : iso);
+  return entries.filter((e) => e.hours > rules.mostHoursADay!).map((e) => `${hoursAsRead(e.hours)} on ${e.client} on ${day(e.onDay)} is more than ${hoursAsRead(rules.mostHoursADay!)}, so it needs approval.`);
+}
+
+/** Release 9: whether a week is locked on this day. A week locks on its lock day after it ends (a Monday lock locks last week on Monday). */
+export function isTheWeekLocked(rules: TimeRules, weekOf: string, today: string): boolean {
+  if (!rules.weekLocksOn || (rules.reopened ?? []).includes(weekOf)) return false;
+  const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const monday = new Date(`${weekOf}T12:00:00Z`);
+  const end = new Date(monday); end.setUTCDate(end.getUTCDate() + 6);
+  const lock = new Date(end); lock.setUTCDate(lock.getUTCDate() + 1);
+  while (DAYS[lock.getUTCDay()] !== rules.weekLocksOn) lock.setUTCDate(lock.getUTCDate() + 1);
+  return today >= lock.toISOString().slice(0, 10);
 }

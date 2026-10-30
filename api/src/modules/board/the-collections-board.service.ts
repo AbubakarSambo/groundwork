@@ -1,3 +1,4 @@
+import { theRelease3InvoicesIsOn, thePeopleWhoMayRaise, whoRaisesInvoices, theOrganisationsBills, theRaisingPattern, theInvoicesToRaise, whatIsLateToRaise } from './raising-invoices-on-time';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { theCollectionsStallRuleIn } from '../grounds/collect-whats-owed';
 import { buildTheCollectionsBoard, anAmount, type ABillOnTheBoard, type TheCollectionsBoard } from './the-collections-board';
@@ -171,10 +172,23 @@ export async function theCollectionsBoardFor(prisma: any, groundId: string, read
     if (at && (!lastCheckIn[c.participantId] || at > (lastCheckIn[c.participantId] as Date))) lastCheckIn[c.participantId] = at;
   }
   const ways = ((await Promise.resolve(prisma?.groundContextItem?.findMany?.({ where: { groundId, kind: 'WAY_OF_WORKING' }, select: { text: true, kind: true, closedAt: true } })).catch(() => [])) ?? []) as any[];
+  /* Release 3, where it is on: who raises the invoices here, and their pattern when they raise late (raising-invoices-on-time). */
+  let raising: { raiser: string | null; pattern: { says: string; instances: string[] } | null; lateLines?: string[] } | undefined;
+  if (await theRelease3InvoicesIsOn(prisma, ground.organizationId)) {
+    const mayRaise = await thePeopleWhoMayRaise(prisma, groundId);
+    const raiserId = whoRaisesInvoices(mayRaise, null);
+    const raiser = mayRaise.find((p) => p.id === raiserId) ?? null;
+    const theirName = raiser ? (raiser.id === reader.participantId ? 'You' : raiser.firstName) : null;
+    const allHere = (await theOrganisationsBills(prisma, ground.organizationId)).filter((b) => b.groundId === groundId);
+    const today = now.toISOString().slice(0, 10);
+    const lateLines = theInvoicesToRaise(allHere, today).filter((i) => i.daysLate >= 1).map((i) => whatIsLateToRaise(i, it.billWord, raiser && !raiser.isTheLead ? raiser.firstName : null));
+    raising = { raiser: theirName, pattern: raiser ? theRaisingPattern(allHere, raiser.firstName, it.billWord) : null, lateLines };
+  }
   return buildTheCollectionsBoard({
     type: it.type, billWord: it.billWord, rows, people, lastCheckIn, now, zone, reader,
     stallRuleSet: theCollectionsStallRuleIn(ways).set,
     groundId,
+    ...(raising ? { raising } : {}),
   });
 }
 

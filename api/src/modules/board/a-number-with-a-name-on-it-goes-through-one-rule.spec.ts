@@ -183,6 +183,16 @@ describe('every surface that hands out whose number it is', () => {
     /* Groundwork does the managing, part 2: each person's part of the lead's board reads their own records (work items) by their own id, for the deadline and reassign taps, and is served to the lead who runs the check-in alone. Never a target. */
     /* The final real-model check's follow-up: which of a person's own deals a promise of theirs is about, read from their own conversation. Never a target. */
     'modules/board/the-deal-a-promise-is-about.ts': "reads a deal's owner (a work item) only to keep a person's promise to their own deals; serves nobody, never a target or a number",
+    /* Release 3, raising invoices on time: who raises a bill is read from the bill's owner (a work item), to tell that person in their own check-in. */
+    'modules/board/raising-invoices-on-time.ts': "reads a bill's owner (a work item) to tell the person who raises it in their own check-in; never a target or a number",
+    /* Release 6, direction: a person's goals, to keep a version of each when they recommit, and to say who has realigned. Read by that person,
+       and named to others only for an admin and the lead of that goal's team (who-reads-a-persons-goal-on-the-direction-page.spec.ts). */
+    'modules/direction/direction.service.ts': "reads a person's own goals to recommit them, and names a goal only to an admin and the lead of its team",
+    'modules/direction/the-direction.ts': "says which goals the brief stops, from the goals the service already walled for this reader",
+    'modules/direction/__fixtures__/baridi-direction.ts': 'hand-written test data for the direction specs',
+    /* Release 7, a review built from check-ins: the person's own goals and their versions, read for that person's review only. */
+    'modules/suites/the-reviews.service.ts': "reads the reviewed person's own goals and their versions, for that person's review, under the review's own readers",
+    'modules/suites/the-running-record.ts': "reads a person's own goal versions for their own running record and self-review, read by that person alone",
     'modules/board/your-team-person-by-person.ts': "reads each person's own records (work items) by their own id, for the lead who runs the check-in alone; never a target or a number",
   };
 

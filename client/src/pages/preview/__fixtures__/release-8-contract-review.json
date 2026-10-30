@@ -1,0 +1,42 @@
+{
+  "scenario": "CONTRACT_REVIEW",
+  "releaseEightSituations": true,
+  "myParticipantId": "p-grace",
+  "participants": [
+    { "id": "p-grace", "name": "Grace Achieng", "managingOnly": false },
+    { "id": "p-amani", "name": "Amani Otieno", "managingOnly": false },
+    { "id": "p-wairimu", "name": "Wairimu Kamau", "managingOnly": false }
+  ],
+  "situation": {
+    "scenario": "CONTRACT_REVIEW",
+    "situation": "Check an agreement before signing",
+    "group": "Something is starting",
+    "sections": [
+      { "key": "lead", "heading": "What needs you", "why": "It shows what only you can do, and what happens if you do not." },
+      { "key": "start", "heading": "What was agreed at the start", "why": "It keeps what everyone agreed on the first day, so later changes can be read against it." },
+      { "key": "oblig", "heading": "What each side promised", "why": "It shows what each side committed to, and what others are waiting on them for." },
+      { "key": "risks", "heading": "Risks", "why": "It shows what could go wrong next, and the facts each risk rests on." }
+    ],
+    "stillToCome": "What each person said appears here once a check-in gives it something to show.",
+    "empty": null
+  },
+  "startingState": {
+    "heading": "What was agreed at the start",
+    "rows": [
+      { "when": "Day 1", "what": "Juma Logistics (test) delivers to all 14 depots within 48 hours of an order." },
+      { "when": "Day 1", "what": "Baridi pays within 30 days of each delivery note." }
+    ]
+  },
+  "obligations": [
+    { "participantId": "p-amani", "who": "Amani", "promised": ["Amani will send the contract back with the penalty clause marked by Friday 30 October."], "othersWaitFor": [] },
+    { "participantId": null, "who": "Juma Logistics (test)", "promised": [], "othersWaitFor": ["Wairimu is waiting on Juma Logistics (test) for their insurance certificate."] }
+  ],
+  "risks": [
+    { "id": "r1", "says": "The contract could be signed before anyone has read the penalty clause again.", "because": "Amani raised it on 20 October. Nobody has said what was decided about it." },
+    { "id": "r2", "says": "Deliveries could start without insurance in place.", "because": "Wairimu first asked for the certificate on 19 October. No time has been given for it." }
+  ],
+  "leadActions": [
+    { "id": "a1", "says": "Decide whether the penalty clause goes back to Juma Logistics (test) before you sign." }
+  ],
+  "checkInGrid": { "sessions": [1] }
+}

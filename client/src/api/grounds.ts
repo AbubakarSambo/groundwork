@@ -229,6 +229,14 @@ export const groundsApi = {
       .patch<{ id: string; checkInType: string | null; checkInTypeConfirmedAt: string | null }>(`/grounds/${id}/check-in-type`, { type })
       .then(r => r.data),
 
+  /** RELEASE 4: the thirteen templates, where the organisation has Release 4 on (`on: false` and none otherwise). */
+  templates: () =>
+    apiClient.get<{ on: boolean; templates: ATemplate[] }>('/grounds/templates').then(r => ((r.data as any)?.data ?? r.data) as { on: boolean; templates: ATemplate[] }),
+
+  /** RELEASE 4: the lead attaches one of the thirteen templates (its id), or takes it off (null). A refusal is the server's sentence. */
+  setTemplate: (id: string, template: string | null) =>
+    apiClient.patch<{ id: string; templateId: string | null; workStages: string[] | null }>(`/grounds/${id}/template`, { template }).then(r => r.data),
+
   /** RELEASE 2: whether this organisation may start a check-in to collect what is owed. The server asks again on create. */
   situationsOffered: () =>
     apiClient.get<{ collections: boolean }>('/grounds/situations-offered').then(r => (r.data as any)?.data ?? r.data),
@@ -754,3 +762,19 @@ export type MyWork =
       /** Only where the organisation's direct morning and judgements of a person are on. */
       record?: ThePersonsRecordServed
     }
+
+/** RELEASE 4: one of the thirteen templates (api board/the-thirteen-templates.ts), as the library and a board read it. */
+export interface ATemplate {
+  id: string
+  name: string
+  aim: string
+  shape: string
+  unitOfWork: string
+  rollsUpBy: string
+  verifiedBy: string
+  stallRule: string
+  ladder: { stage: string; needs: string; verifiedBy: string; asks: string }[]
+  targets: { name: string; reads: string; value: string }[]
+  howClaimsGetInflated: { name: string; says: string }[]
+  rulesALeadMightSay: { said: string; means: string }[]
+}

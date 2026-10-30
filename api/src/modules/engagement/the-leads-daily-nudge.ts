@@ -1,3 +1,4 @@
+import { theInvoicesLateToRaiseFor } from '../board/raising-invoices-on-time';
 import { rebuildThePersonsRecords } from '../board/the-persons-record-store';
 import { theFeeNotesThatFellDueOnAnEvent } from '../board/a-fee-note-that-fell-due-said-to-the-lead';
 import { theNewsThesePromisesWaitOn, type TheNewsGiven } from './a-promise-that-waits-on-news';
@@ -619,7 +620,18 @@ export async function whatIsOutstandingFor(
    * A FEE NOTE THAT FELL DUE ON AN EVENT, OR CAN NOW BE RAISED (messages test, 19 October, finding 4), where Release 2 is on: said in the
    * week after the event was reported, while the fee note waits to be followed up or raised. See a-fee-note-that-fell-due-said-to-the-lead.
    */
+  /*
+   * RELEASE 3, RAISING INVOICES ON TIME, where it is on: each invoice in her check-ins that is late to raise, with the day it was due to
+   * go out, why, and who has not said it is raised (board/raising-invoices-on-time). It replaces Release 2's "can be raised now" line for
+   * the same bill, so a bill is said once. No new message: this is a line in the morning she already gets.
+   */
+  const lateToRaise = await theInvoicesLateToRaiseFor(prisma, lead.organizationId, ids, now).catch(() => []);
+  for (const l of lateToRaise) {
+    out.needsYou.push({ text: l.text, group: 0, late: l.daysLate, keptInTheApp: kept(l.groundId), place: labelOf.get(l.groundId), groundId: l.groundId, about: { kind: 'fee-note', ids: [l.billId] } });
+  }
+  const saidAlready = new Set(lateToRaise.map((l) => l.billId));
   for (const f of await theFeeNotesThatFellDueOnAnEvent(prisma, { userId: lead.userId, organizationId: lead.organizationId }, ids, new Date(now.getTime() - 7 * DAY)).catch(() => [])) {
+    if (saidAlready.has(f.billId)) continue;
     out.needsYou.push({ text: f.text, group: 0, keptInTheApp: kept(f.groundId), place: labelOf.get(f.groundId), groundId: f.groundId, about: { kind: 'fee-note', ids: [f.billId] } });
   }
   /* Most important first within a part: in "Needs you" what waits for her to approve, then a decision she owes, then her own late commitments; always the most overdue first. */

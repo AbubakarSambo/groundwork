@@ -1,7 +1,7 @@
 import { BoardListener } from './board.listener';
 import {
   theCollectionsRecordsPrompt, onlyBillsTheLinesSay, theSameBill, theBillAfter, aBillIsNamed, fileTheBillsSaid,
-  BILL, LOAN_OWED, NOT_YET_RAISED, FOLLOWS_UP_ID, PROMISES,
+  BILL, LOAN_OWED, NOT_YET_RAISED, FOLLOWS_UP_ID, PROMISES, inTheYearItWasSaid,
 } from './the-collections-record';
 import { theStagesKept } from './a-deals-stages-are-kept';
 import { THE_RECORDS_SCHEMA } from './the-kind-of-work';
@@ -102,9 +102,33 @@ describe('the same bill, moved on', () => {
     expect(theStagesKept(after.fields).map((s) => s.stage)).toEqual(['Reminded', 'Promised']);
   });
 
-  it('a stage never moves back from a check-in, and paid stays paid', () => {
+  it('a stage never moves back from a check-in, and paid with proof stays paid', () => {
     const paid = { ...onFile[0], stage: 'Paid' };
-    expect(theBillAfter(paid as any, kept({ stage: 'Reminded' }), 'invoices or fee notes', new Date()).stage).toBe('Paid');
+    expect(theBillAfter(paid as any, kept({ stage: 'Reminded' }), 'invoices or fee notes', new Date(), true).stage).toBe('Paid');
+    const chased = { ...onFile[0], stage: 'Chased' };
+    expect(theBillAfter(chased as any, kept({ stage: 'Reminded' }), 'invoices or fee notes', new Date()).stage).toBe('Chased');
+  });
+
+  /*
+   * Changed on 25 October (real-model run): this test said "paid stays paid" for a bill with no proof. FN-004 was marked Paid on
+   * Njeri's word, then Wanjiru said "FN-004 is still unpaid and 12 days past due", and the morning went on saying it was paid.
+   * Under the first principle a correction is fixed in the conversation, so Paid on somebody's word moves back; Paid with proof never does.
+   */
+  it('paid on somebody\'s word, with no proof, is corrected by a later line saying it is not paid', () => {
+    const paid = { ...onFile[0], stage: 'Paid', fields: { ...(onFile[0] as any).fields, Paid: 'KES 250,000' } };
+    const after = theBillAfter(paid as any, kept({ stage: 'Due' }), 'invoices or fee notes', new Date('2026-10-25T09:00:00Z'));
+    expect(after.stage).toBe('Due');
+    expect(after.fields['Paid']).toBeUndefined();
+  });
+
+  it('the reader is told that a fee note said to be not paid yet is at Due (real-model run, 25 October: "Still nothing for FN-004")', () => {
+    expect(theCollectionsRecordsPrompt('invoices or fee notes', 'fee note')).toContain('is not paid yet ("still unpaid", "has not arrived", "nothing came in for it") gives it at "Due"');
+  });
+
+  it('a day said without its year is the one nearest the day it was said', () => {
+    expect(inTheYearItWasSaid('2023-10-31', 'Mr. Baraka said FN-004 will be paid by 31 October.', new Date('2026-10-25T09:00:00Z'))).toBe('2026-10-31');
+    expect(inTheYearItWasSaid('2027-01-10', 'They will pay on 10 January.', new Date('2026-12-20T09:00:00Z'))).toBe('2027-01-10');
+    expect(inTheYearItWasSaid('2025-10-31', 'It was due on 31 October 2025.', new Date('2026-10-25T09:00:00Z'))).toBe('2025-10-31');
   });
 });
 

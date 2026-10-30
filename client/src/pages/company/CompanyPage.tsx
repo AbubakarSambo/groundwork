@@ -1,3 +1,6 @@
+import { Link } from 'react-router-dom'
+import { directionApi } from '@/api/direction'
+import { policyApi } from '@/api/policy'
 import { useQuery } from '@tanstack/react-query'
 import { companyApi, type CompanyPage as Page, type CompanyPriority, type CompanyLevel } from '@/api/company'
 import { useAuthStore } from '@/stores/auth'
@@ -51,10 +54,16 @@ export function CompanyPage() {
   })
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
   const name = data?.name || user?.organizationName || 'Company'
+  const directionOn = useQuery({ queryKey: ['direction'], queryFn: directionApi.read, retry: false, staleTime: 60_000 }).data?.on === true
+  const policyOn = useQuery({ queryKey: ['policy'], queryFn: policyApi.board, retry: false, staleTime: 60_000 }).data?.on === true
 
   return (
     <PageFrame>
       <PageTitle title={name} />
+      {/* Release 6: the way to the company's direction, only where direction is switched on (the server says). */}
+      {directionOn && <Link to="/direction" className="t-small gw-start">The company’s direction, and what it means for each team</Link>}
+      {/* Release 9: the policy board, only where it is switched on (the server says). */}
+      {policyOn && <Link to="/policies" className="t-small gw-start">The policy board, every rule the organisation runs on</Link>}
 
       {isLoading && <Note>Loading…</Note>}
       {isError && (

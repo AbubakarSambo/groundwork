@@ -10,7 +10,8 @@ import { whatThisMailIs } from '../email/nothing-goes-out-that-was-turned-off';
  * board holds her own promises, and two requests waiting on her. She reads her own words and counts; the subject carries no name; nothing from
  * Old pilot; and a colleague's own promises are never in it, because the board never holds them.
  */
-const NOW = new Date();
+/* Pinned (25 October): with the real clock the "since" day in Vera's line moved with each day the suite ran, and failed. */
+const NOW = new Date('2026-10-24T09:00:00Z');
 const recent = new Date(NOW.getTime() - 5 * 86_400_000);
 const board = (over: any = {}) => ({
   saidYoudDo: [

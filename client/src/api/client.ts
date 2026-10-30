@@ -104,7 +104,8 @@ apiClient.interceptors.response.use(
       toast.error('That one is not yours to open', {
         description: 'If you think it should be, whoever runs this check-in can let you in.',
       })
-    } else if (error.response?.status === 404 && !error.config?.skipNotFoundToast) {
+    } else if (error.response?.status === 404 && !error.config?.skipNotFoundToast && !window.location.pathname.startsWith('/release-4-preview')) {
+      /* (Release 4's preview draws a hand-written test organisation that the server does not hold, so its lookups are not this message's.) */
       toast.error('That is not here any more', {
         description: message,
       })

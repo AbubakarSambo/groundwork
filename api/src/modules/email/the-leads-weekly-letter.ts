@@ -316,7 +316,9 @@ export async function theWeekForTheLead(
   await rebuildThePersonsRecords(prisma, g.id, now).catch(() => 0);
   const served = board ? await board.get(g.id, g.initiatorId).catch(() => null) : null;
   const morning = served ? await theDirectMorningFor(prisma, { groundId: g.id, leadUserId: g.initiatorId, board: served, now }).catch(() => null) : null;
-  const theTarget = morning?.parts.find((p) => p.key === 'target')?.lines[0]?.text ?? null;
+  /* Every target line the morning says (one on a sales check-in, one per team target under Release 4). */
+  const targetLines = morning?.parts.find((p) => p.key === 'target')?.lines ?? [];
+  const theTarget = (served?.releaseFourTeams && !isASalesKind(oneOfTheKinds(ground.kindOfWork)) ? targetLines.map((l) => l.text).join(' ') : targetLines[0]?.text) || null;
   const team = ((ground.participants ?? []) as any[]).filter((p) => p.userId !== g.initiatorId && !p.managingOnly && !p.leftAt);
   const records = await theStoredRecords(prisma, ground.organizationId, team.map((p) => p.id), g.id);
   const people = team.map((p) => ({ name: nameToCall(p), stored: records.get(p.id) ?? null })).filter((p) => !!p.name);

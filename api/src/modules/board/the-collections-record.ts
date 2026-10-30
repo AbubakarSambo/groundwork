@@ -25,8 +25,9 @@ import { theWordForTheBill, theBillsPlural, type ACollectionsType } from '../gro
  *  - A client's promise to pay is the client's: kept on the bill as "Promised by", with the day it was said, never as something
  *    the person checking in will do. The conversation's own promise reader leaves such a line out (a-promise-somebody-else-made).
  *  - A bill not yet raised is a row, at "Not yet raised".
- *  - A stage never moves back from a check-in.
- *  - Dates are real days or are not kept.
+ *  - A stage never moves back from a check-in, except Paid on somebody's word, with no proof filed: a later line saying it is not paid
+ *    corrects it (the first principle: a correction is fixed in the conversation). Paid with proof never moves back.
+ *  - Dates are real days or are not kept. A day said without its year is the one nearest the day it was said.
  */
 
 /** The `WorkItem.kind` of a bill (an invoice or a fee note), and of a loan somebody owes. Neither is any other board's kind. */
@@ -94,7 +95,7 @@ Each line has an id. For every ${bill} a line names, give the id of the line, ki
 
 Give other details only when the line says them, as short label and value pairs, using only these labels: Client (the client who owes it), Matter (the matter or piece of work it is for), Number (the ${bill}'s number, such as FN-004), Amount (the whole amount of the ${bill}, such as KES 250,000; never a part of it), Follows up (the person in the check-in who follows it up, by name), Due when (the event it falls due on, when it waits for one, such as "the reply is filed"), Paid (what came in, such as KES 250,000), Proof said (the record they say shows the payment, such as a bank slip; it is never proof by itself), Promised by (the day the client promised to pay by, as YYYY-MM-DD: the client's promise, never the speaker's), In the way (what is in the way, in the speaker's own words), Disputed (what the client disputes, in the words the line gives), Next step (what the speaker will do next, in a few words), Next step by (its day, as YYYY-MM-DD), Last contact (the day the speaker last spoke to the client, as YYYY-MM-DD).
 
-A client's promise to pay goes on the ${bill} as Promised by. It is never something the speaker will do. Groundwork never raises or writes a ${bill}: a ${bill} that should go out and has not is given at "${NOT_YET_RAISED}".
+A client's promise to pay goes on the ${bill} as Promised by. It is never something the speaker will do. A line that says a ${bill} that has gone out is not paid yet ("still unpaid", "has not arrived", "nothing came in for it") gives it at "Due", unless the line says a later stage. Groundwork never raises or writes a ${bill}: a ${bill} that should go out and has not is given at "${NOT_YET_RAISED}".
 
 Leave out anything the line does not say. Never make up a ${bill}, a number, an amount, a date or a stage. A person in the check-in is never a client. When no line names a ${bill}, give an empty list.
 
@@ -110,6 +111,21 @@ export function aDay(v: unknown): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
   const d = new Date(`${s}T12:00:00Z`);
   return isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== s ? null : s;
+}
+
+/**
+ * A DAY SAID WITHOUT ITS YEAR (real-model run, 25 October). Aisha said on 25 October 2026 "FN-004 will be paid by 31 October", and the
+ * model kept 2023-10-31. Where the line does not say the year, the day is moved to the year that puts it nearest the day it was said.
+ */
+export function inTheYearItWasSaid(day: string | null, lineText: string, saidOn: Date | null | undefined): string | null {
+  if (!day || !saidOn || Number.isNaN(saidOn.getTime())) return day;
+  const year = day.slice(0, 4);
+  if (new RegExp(`\\b${year}\\b`).test(String(lineText ?? ''))) return day;
+  const y = saidOn.getUTCFullYear();
+  const options = [y - 1, y, y + 1].map((n) => aDay(`${n}${day.slice(4)}`)).filter((d): d is string => !!d);
+  if (!options.length) return day;
+  const at = saidOn.getTime();
+  return options.sort((a, b) => Math.abs(new Date(`${a}T12:00:00Z`).getTime() - at) - Math.abs(new Date(`${b}T12:00:00Z`).getTime() - at))[0];
 }
 
 export interface ABillKept {
@@ -130,7 +146,7 @@ export interface ABillKept {
 export function onlyBillsTheLinesSay(
   type: ACollectionsType,
   offered: AnOfferedRecord[] | null | undefined,
-  lines: { id: string; text: string; participantId: string }[],
+  lines: { id: string; text: string; participantId: string; createdAt?: Date | null }[],
   people: readonly APersonALineMayName[] = [],
 ): ABillKept[] {
   const byId = new Map(lines.map((l) => [l.id, l]));
@@ -153,7 +169,7 @@ export function onlyBillsTheLinesSay(
       const label = Object.values(F).find((l) => l.toLowerCase() === String(d?.label ?? '').trim().toLowerCase());
       const value = String(d?.value ?? '').trim().slice(0, 300);
       if (!label || !value) continue;
-      if (DATED.has(label)) { const day = aDay(value); if (day) fields[label] = day; continue; }
+      if (DATED.has(label)) { const day = inTheYearItWasSaid(aDay(value), line.text, line.createdAt); if (day) fields[label] = day; continue; }
       if (label === F.client && isOneOfThePeople(value, people)) continue;
       if (label === F.followsUp) {
         const who = people.find((p) => isOneOfThePeople(value, [p]));
@@ -166,7 +182,7 @@ export function onlyBillsTheLinesSay(
     if (type !== 'loans' && !fields[F.client] && !/\d/.test(name)) fields[F.client] = name;
     if (type !== 'loans' && !fields[F.number] && /^[A-Za-z]{0,6}[-\s]?\d{1,8}$/.test(name)) fields[F.number] = name;
     const stage = stages.find((s) => s.toLowerCase() === String(r.stage ?? '').trim().toLowerCase()) ?? null;
-    const due = aDay(r.due) ?? (typeof fields[F.fallsDue] === 'string' ? (fields[F.fallsDue] as string) : null);
+    const due = inTheYearItWasSaid(aDay(r.due), line.text, line.createdAt) ?? (typeof fields[F.fallsDue] === 'string' ? (fields[F.fallsDue] as string) : null);
     if (due) fields[F.fallsDue] = due;
     const key = `${line.id}|${type === 'loans' ? line.participantId : `${squash(name)}|${aNumber(fields[F.number])}`}`;
     if (seen.has(key)) continue;
@@ -229,10 +245,13 @@ export function thePromisesKept(fields: unknown): { by: string; said: string }[]
  * with its day, the client's promise added to its promises, and "Last contact" the day of the line where the line says the
  * client answered (a promise, a dispute, a call to somebody there).
  */
-export function theBillAfter(onFile: ABillOnFile | null, kept: ABillKept, type: ACollectionsType, saidOn: Date): { stage: string | null; fields: Record<string, unknown>; dueAt: Date | null } {
+export function theBillAfter(onFile: ABillOnFile | null, kept: ABillKept, type: ACollectionsType, saidOn: Date, paidWithProof = false): { stage: string | null; fields: Record<string, unknown>; dueAt: Date | null } {
   const before = ((onFile?.fields ?? {}) as Record<string, unknown>);
-  const stage = kept.stage && !(onFile && anEarlierStage(kept.stage, onFile.stage, type)) ? kept.stage : onFile?.stage ?? null;
+  /* Paid on somebody's word, with no proof filed, is corrected by a later line that says where it really stands ("FN-004 is still unpaid"). */
+  const corrected = !!onFile && onFile.stage === 'Paid' && !paidWithProof && !!kept.stage && kept.stage !== 'Paid';
+  const stage = kept.stage && (corrected || !(onFile && anEarlierStage(kept.stage, onFile.stage, type))) ? kept.stage : onFile?.stage ?? null;
   let fields: Record<string, unknown> = { ...before, ...kept.fields, ...theStagesToKeep(before) };
+  if (corrected && !kept.fields[F.paid]) delete fields[F.paid];
   if (Array.isArray(before[PROMISES])) fields[PROMISES] = before[PROMISES];
   const day = saidOn.toISOString().slice(0, 10);
   const promised = aDay(kept.fields[F.promisedBy]);
@@ -309,11 +328,12 @@ export async function fileTheBillsSaid(
       schema,
     );
     const kept = onlyBillsTheLinesSay(it.type, answer?.records ?? [], lines, people);
+    const proven = new Set(((await Promise.resolve(prisma.itemEvidence?.findMany?.({ where: { groundId: e.groundId, readAs: 'A payment', workItemId: { not: null } }, select: { workItemId: true } })).catch(() => [])) ?? []).map((x: any) => x.workItemId));
     const at = new Map(lines.map((l) => [l.id, l.createdAt]));
     let written = 0;
     for (const k of kept) {
       const same = theSameBill(onFile, k);
-      const after = theBillAfter(same, k, it.type, at.get(k.sourceEntryId) ?? new Date());
+      const after = theBillAfter(same, k, it.type, at.get(k.sourceEntryId) ?? new Date(), !!same && proven.has(same.id));
       if (same) {
         const fromSomebodyElse = !!same.ownerParticipantId && same.ownerParticipantId !== k.ownerParticipantId;
         await prisma.workItem.update({

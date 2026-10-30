@@ -1,4 +1,7 @@
+import { aSelfReviewDraft, theRunningRecordOf } from './the-running-record';
+import { DUTIES_ROW, dutiesFrom } from './who-holds-each-duty';
 import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { theReviewAsPictured } from './the-review-as-pictured';
 import { answersUnderTheQuestionsOwnIds } from './the-answers-under-the-questions-own-ids';
 import { suiteOf } from './the-ten-suites';
 import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
@@ -41,6 +44,8 @@ export const REVIEW_REFUSED = {
   notYet: 'This review cannot start yet, because a check-in that decides something about this person is still open. It can start once that check-in is decided.',
   writeSomething: 'Write something first.',
   onlyThePersonCorrects: 'Only the person this review is about can correct what it says about their work.',
+  onlyThePersonOrTheWriterUpdates: 'Only the person this review is about, or whoever writes it, can update it from the record.',
+  alreadyDecided: 'This review is decided, so it stays as it was read.',
   noSuchLine: 'That line is not in this review.',
   sayWhatIsTrue: 'Say what is true, in a sentence or two.',
   sayWhatAndWhy: 'Say what you decided, and why, in a sentence or two.',
@@ -486,8 +491,11 @@ export class ReviewsService {
     const recognising = await theRecordForRecognising(this.prisma, {
       organizationId: reader.organizationId, personUserId: person.userId, writerUserId: row.startedById, startedAt: (row as any).startedAt,
     }).catch(() => null);
+    /* RELEASE 7: the review as pictured, built from the lines this reader may read, judged against the direction in force (Release 6). */
+    const asPictured = await this.theReviewAsPicturedFor(row as any, person, reader.userId, writerFirst).catch(() => null);
     if (person.userId === reader.userId) {
       return {
+        ...(asPictured ? { asPictured } : {}),
         reader: 'person', id: row.id, firstName: this.firstOf(person), writtenWithFirstName: await this.whoHasDecidedItNow(row as any, writerFirst, directory),
         dueOn, noticed: this.noticedOf(row.noticed, true),
         record: await this.theRecordServed(row, person, reader.userId, writerId, writerFirst),
@@ -509,7 +517,16 @@ export class ReviewsService {
     }
     const writes = await this.writes(reader, role, person, answers.writer);
     const me = [...directory.values()].find((p) => p.userId === reader.userId) ?? null;
-    const readsIt = writes || role === 'ADMIN' || (role === 'LEAD' && !!me && inTheLeadsTeam(me, person));
+    const manager = writes || (role === 'LEAD' && !!me && inTheLeadsTeam(me, person));
+    /*
+     * RELEASE 7, WHO READS A REVIEW (Hafsah's decision, 25 October): the person, their manager, HR where the organisation has someone
+     * holding the HR duty, and an admin only where they set up or approved one of the person's check-ins. Enforced here. With Release 7
+     * off, as before: an admin reads every review.
+     */
+    const releaseSeven = (await Promise.resolve((this.prisma as any).organization?.findUnique?.({ where: { id: reader.organizationId }, select: { release7PeopleOn: true } })).catch(() => null))?.release7PeopleOn === true;
+    const readsIt = releaseSeven
+      ? manager || (await this.holdsTheHrDuty(reader, me)) || (role === 'ADMIN' && (await this.setUpOrApprovedACheckInOf(reader.userId, person.userId ?? null)))
+      : manager || role === 'ADMIN';
     if (!readsIt) throw new ForbiddenException(REVIEW_REFUSED.notYours);
     const record = await this.theRecordServed(row, person, reader.userId, writerId, writerFirst);
     const briefing = await this.theBriefing(row, person, reader.userId, writes, theOneWhoDecidesSaid(writerFirst, named.anAdmin), record);
@@ -520,6 +537,7 @@ export class ReviewsService {
       ? await this.suggestions.latestForTheLeadAbout(person.userId, reader).catch(() => null)
       : null;
     return {
+      ...(asPictured ? { asPictured } : {}),
       reader: writes ? 'writer' : role === 'ADMIN' ? 'admin' : 'lead',
       id: row.id, name: this.nameOf(person), firstName: this.firstOf(person),
       writtenWith: await this.fullNameOf(writerId, directory), writtenWithFirstName: writerFirst,
@@ -552,6 +570,18 @@ export class ReviewsService {
   }
 
   /** The person's own view of their work. */
+  /**
+   * RELEASE 7, SELF-REVIEW (P4): the person drafts their own view from their running record. Only the person reviewed, and only with
+   * Release 7 on. Nothing is kept: the draft goes into the box they write their view in, and they change it before saving.
+   */
+  async selfReviewDraft(reader: Reader, id: string): Promise<{ draft: string }> {
+    const { person } = await this.theReview(reader, id);
+    if (person.userId !== reader.userId) throw new ForbiddenException(REVIEW_REFUSED.notYours);
+    const on = await Promise.resolve((this.prisma as any).organization?.findUnique?.({ where: { id: reader.organizationId }, select: { release7PeopleOn: true } })).catch(() => null);
+    if (on?.release7PeopleOn !== true) throw new ForbiddenException(REVIEW_REFUSED.notYours);
+    return { draft: aSelfReviewDraft(await theRunningRecordOf(this.prisma, reader.userId)) };
+  }
+
   async writeView(reader: Reader, id: string, view: string) {
     await this.suiteAnswers(reader.organizationId);
     const { row, person } = await this.theReview(reader, id);
@@ -567,6 +597,27 @@ export class ReviewsService {
    * correction is kept beside the line, in its own row, and the line and the record it came from never
    * change. A second correction of the same line is kept too; the latest is the one served.
    */
+  async updateFromTheRecord(reader: Reader, id: string) {
+    /*
+     * UPDATE FROM THE RECORD (Hafsah's answer on reviews, 25 October 2026). A review reads the record once, when it starts, and opening it
+     * never reads it again. While it is in progress, the person or whoever writes it may ask for it to be read again, from the same first
+     * day up to today: Joseph's first review still said he waited on Management after Grace had said yes. Corrections stay beside their lines.
+     */
+    const answers = await this.suiteAnswers(reader.organizationId);
+    const { row, person } = await this.theReview(reader, id);
+    if ((row as any).decidedAt) throw new BadRequestException(REVIEW_REFUSED.alreadyDecided);
+    const isThePerson = person.userId === reader.userId;
+    if (!isThePerson && !(await this.writes(reader, await this.roleOf(reader), person, answers.writer))) throw new ForbiddenException(REVIEW_REFUSED.onlyThePersonOrTheWriterUpdates);
+    const now = new Date();
+    const from = (row as any).recordFrom ? new Date((row as any).recordFrom) : new Date((row as any).startedAt);
+    const recordRead = await theRecordForAReview(this.prisma, {
+      organizationId: reader.organizationId, personUserId: person.userId, personExternalId: person.externalId, from, until: now,
+    });
+    await this.prisma.performanceReview.update({ where: { id: row.id }, data: { recordRead: recordRead as any, recordReadAt: now } as any });
+    await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'reviews', ref: row.id, kind: 'updated-from-the-record', byUserId: reader.userId, basis: { row: 'performance_reviews', id: row.id } });
+    return this.one(reader, id);
+  }
+
   async correct(reader: Reader, id: string, lineKey: string, whatIsTrue: string) {
     await this.suiteAnswers(reader.organizationId);
     const { row, person } = await this.theReview(reader, id);
@@ -825,6 +876,23 @@ export class ReviewsService {
 
   // ---------------------------------------------------------------------------------------------
 
+  /** Whether this reader holds the organisation's HR duty (who-holds-each-duty). */
+  private async holdsTheHrDuty(reader: Reader, me: { id?: string | null; userId?: string | null } | null): Promise<boolean> {
+    const row = await Promise.resolve((this.prisma as any).organizationSuite?.findUnique?.({ where: { organizationId_suite: { organizationId: reader.organizationId, suite: DUTIES_ROW } }, select: { answers: true } })).catch(() => null);
+    const hr = dutiesFrom(row?.answers).hr;
+    return !!hr && (hr === reader.userId || (!!me?.id && hr === me.id));
+  }
+
+  /** Whether an admin set up or approved a check-in this person is in. */
+  private async setUpOrApprovedACheckInOf(adminUserId: string, personUserId: string | null): Promise<boolean> {
+    if (!personUserId) return false;
+    const g = await Promise.resolve((this.prisma as any).ground?.findFirst?.({
+      where: { participants: { some: { userId: personUserId } }, OR: [{ createdByUserId: adminUserId }, { approvedById: adminUserId }, { initiatorId: adminUserId }] },
+      select: { id: true },
+    })).catch(() => null);
+    return !!g;
+  }
+
   private async theReview(reader: Reader, id: string) {
     const row = await this.prisma.performanceReview.findUnique({ where: { id } });
     if (!row || row.organizationId !== reader.organizationId) throw new NotFoundException(REVIEW_REFUSED.notFound);
@@ -854,6 +922,37 @@ export class ReviewsService {
       db.ground?.findMany?.({ where: { id: { in: groundIds }, OR: [{ initiatorId: userId }, { createdByUserId: userId }] }, select: { id: true } }).catch(() => []),
     ]);
     return { isThePerson, inCheckIns: new Set(((ins ?? []) as any[]).map((x) => x.groundId)), runsCheckIns: new Set(((runs ?? []) as any[]).map((x) => x.id)), notTold };
+  }
+
+  /**
+   * RELEASE 7: THE REVIEW AS PICTURED (suites/the-review-as-pictured), only where the organisation has Release 7 on. From the lines this
+   * reader may read, the person's goal versions and the direction changes in the review's period (Release 6), and their live goals.
+   */
+  private async theReviewAsPicturedFor(row: any, person: Person, readerUserId: string, deciderFirst: string | null) {
+    const on = await (this.prisma as any).organization.findUnique({ where: { id: row.organizationId }, select: { release7PeopleOn: true } }).catch(() => null);
+    if (on?.release7PeopleOn !== true || !Array.isArray(row.recordRead)) return null;
+    const lines = await this.readableLines(row, person, readerUserId);
+    const isThePerson = person.userId === readerUserId;
+    const first = this.firstOf(person) || 'this person';
+    const from: Date = row.recordFrom ? new Date(row.recordFrom) : new Date(0);
+    const until: Date = new Date(row.startedAt ?? Date.now());
+    const theirs = person.userId ? await (this.prisma as any).groundParticipant.findMany({ where: { userId: person.userId }, select: { id: true } }).catch(() => []) : [];
+    const ids: string[] = theirs.map((p: any) => p.id);
+    const versions = ids.length ? await (this.prisma as any).goalVersion.findMany({ where: { ownerParticipantId: { in: ids }, decidedAt: { gte: from, lte: until } } }).catch(() => []) : [];
+    const changes = await (this.prisma as any).directionVersion.findMany({ where: { organizationId: row.organizationId, setAt: { gte: from, lte: until } } }).catch(() => []);
+    const liveAll = ids.length ? await (this.prisma as any).groundObjective.findMany({ where: { ownerParticipantId: { in: ids } }, select: { groundId: true, name: true, count: true, target: true } }).catch(() => []) : [];
+    /* Each person's load across check-ins is private: anybody but the person reads only the goals and versions of check-ins whose goals they already read. */
+    const goalGrounds = new Set(lines.filter((l) => l.kind === 'goal').map((l) => l.groundId));
+    const live = isThePerson ? liveAll : liveAll.filter((g: any) => goalGrounds.has(g.groundId));
+    const versionsRead = isThePerson ? versions : versions.filter((v: any) => goalGrounds.has(v.groundId));
+    return theReviewAsPictured({
+      lines, who: isThePerson ? 'you' : first, personFirst: first, isThePerson, deciderFirst, theirView: row.theirView ?? null,
+      goalVersions: versionsRead.map((v: any) => ({ name: v.name, target: v.target ?? null, outcome: v.outcome, newName: v.newName ?? null, newTarget: v.newTarget ?? null, decidedAt: new Date(v.decidedAt).toISOString(), decidedBy: v.decidedBy })),
+      directionChanges: changes.map((c: any) => ({ setAt: new Date(c.setAt).toISOString(), stops: ((c.teams ?? []) as any[]).flatMap((t) => ((t.brief?.items ?? []) as any[]).filter((i) => i.verb === 'Stop').map((i) => ({ what: i.what, whoParticipantId: i.whoParticipantId ?? null }))) })),
+      personParticipantIds: ids,
+      /* Only the goals this reader may already read: the person, or whoever runs the check-in (the lines decide who reads goals). */
+      liveGoals: live.map((g: any) => ({ name: g.name, count: g.count ?? 0, target: g.target ?? null })),
+    });
   }
 
   /** The lines of the record this reader may read. */
@@ -901,7 +1000,7 @@ export class ReviewsService {
     }).catch(() => [])) ?? []);
     const latest = new Map<string, any>();
     for (const c of corrections) latest.set(c.lineKey, c);
-    const who = { isThePerson, userId: readerUserId, personFirst: first };
+    const who = { isThePerson, userId: readerUserId, personFirst: first, readOn: row.recordReadAt ? new Date(row.recordReadAt).toISOString().slice(0, 10) : null };
     const parts = THE_PARTS.map((part) => ({
       part,
       heading: thePartsHeading(part, who),

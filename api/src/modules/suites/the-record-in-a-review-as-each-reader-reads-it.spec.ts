@@ -194,3 +194,38 @@ describe('lines read from the local test database, as a person reads them', () =
     expect(saysNothingOnItsOwn('I will ask Amina to clarify my role.')).toBe(false);
   });
 });
+
+/*
+ * UPDATE FROM THE RECORD (Hafsah's answer on reviews, 25 October 2026). Opening a review never reads the record again. While it is in
+ * progress, the person or whoever writes it may press "Update from the record", and it is read again up to that day.
+ */
+describe('Update from the record', () => {
+  it('opening never reads it again; Aisha and Wairimu may update it, and what is still open says the day it was read', async () => {
+    const { svc, as, reviews } = setup();
+    const { id } = await svc.start(as('u-wairimu'), 'd-aisha');
+    await svc.one(as('u-aisha'), id);
+    await svc.one(as('u-wairimu'), id);
+    expect(reviews[0].recordReadAt).toBeUndefined();
+    const mine: any = await svc.updateFromTheRecord(as('u-aisha'), id);
+    expect(reviews[0].recordReadAt).toBeInstanceOf(Date);
+    expect(JSON.stringify(mine.record)).toMatch(/still open on \d{1,2} \w+ 20\d\d, when the review was last updated from the record\./);
+    expect(JSON.stringify(mine.record)).not.toMatch(/when this review started/);
+    await expect(svc.updateFromTheRecord(as('u-wairimu'), id)).resolves.toBeTruthy();
+  });
+
+  it('nobody else may, and a decided review stays as it was read', async () => {
+    const { svc, as, reviews } = setup();
+    const { id } = await svc.start(as('u-wairimu'), 'd-aisha');
+    await expect(svc.updateFromTheRecord(as('u-miriam'), id)).rejects.toThrow(ForbiddenException);
+    reviews[0].decidedAt = new Date();
+    await expect(svc.updateFromTheRecord(as('u-aisha'), id)).rejects.toThrow(new BadRequestException(REVIEW_REFUSED.alreadyDecided));
+  });
+});
+
+describe('a vague promise, with what "it" was in their own words', () => {
+  it('is said with their promise as it was and their answer beside it', () => {
+    const bola = { isThePerson: false, userId: 'u-w', personFirst: 'Joseph' };
+    expect(aRecordLineSaid({ key: 'commitment:c', kind: 'commitment', groundId: 'g', label: 'Sales team, Q4', words: "I'll get it to him", wordForWord: true, whatItIs: 'the signed quote for Juja Hardware', madeOn: '2026-10-13', status: 'NOT_DONE', saidAgain: 0, settledOn: '2026-10-16' } as any, bola))
+      .toBe('On 13 October 2026, in “Sales team, Q4”, Joseph said, “I\'ll get it to him.” Asked what “it” was, Joseph said, “the signed quote for Juja Hardware.” It was marked as not done on 16 October 2026.');
+  });
+});

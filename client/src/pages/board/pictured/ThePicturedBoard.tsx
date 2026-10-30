@@ -1,3 +1,6 @@
+import { FoldTheRest } from './FoldTheRest'
+import { AddToTheProject } from './AddToTheProject'
+import { TheSituationsNote, WhatEachSidePromised, TheRisks, WhatHappenedDayByDay, WhatKeepsBeingRaised, TheSituationsWorkPlan } from './TheSituationsSections'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTheDirectMorning } from '@/lib/the-direct-morning'
 import { Link } from 'react-router-dom'
@@ -6,12 +9,13 @@ import { Section, Panel, Tag, Button, EdgeList, EdgeRow } from '@/components/gw/
 import { apiClient } from '@/api/client'
 import { toast } from 'sonner'
 import { reportsApi } from '@/api/reports'
-import { WhereTheCohortStandsSection, SupportGivenSection, ByWhoTheyAreSection, WhereTheyDisagreeSection, WhatTheSystemsShowSection, WhereWhatWasSaidAndTheSystemsDifferSection, WhereTheMatterStandsSection, WhatYouNeedToDecideSection, WhatChangedThisWeekSection, WhatEachLevelUnderstoodSection, WhatTheVisitLogShowsSection, TheCountiesSection } from '../TheSwitchboardsSections'
+import { EvidenceIndexSection, BusyOrMovingSection, ContradictionsSection, QuestionsForTheLeadSection, WhereTheCohortStandsSection, SupportGivenSection, ByWhoTheyAreSection, WhereTheyDisagreeSection, WhatTheSystemsShowSection, WhereWhatWasSaidAndTheSystemsDifferSection, WhereTheMatterStandsSection, WhatYouNeedToDecideSection, WhatChangedThisWeekSection, WhatEachLevelUnderstoodSection, WhatTheVisitLogShowsSection, TheCountiesSection } from '../TheSwitchboardsSections'
 import { aRealOrganisationName } from '@/lib/ask-name'
 import { groundsApi } from '@/api/grounds'
 import { isASalesKind } from '@/lib/a-sales-kind'
 import { companyApi } from '@/api/company'
 import { useAuthStore } from '@/stores/auth'
+import { useAskStore } from '@/stores/ask'
 import { howARowReads, isFinished, type ListRow } from '@/pages/grounds/how-a-row-reads'
 import {
   HeadlineAndGap, WhatTheTargetAssumes, WhatNeedsYou, EveryDealDayByDay, TheTeamToday, Blockers, WhatKeepsComingUp,
@@ -34,7 +38,8 @@ export type APicturedSection =
   | 'lastSession' | 'headline' | 'assumes' | 'needsYou' | 'deals' | 'agreedAtTheStart' | 'changeSinceLast' | 'ninetyDays'
   | 'history' | 'bothSeeIt' | 'teamToday' | 'blockers' | 'patterns' | 'reported' | 'whoCheckedIn' | 'overTime' | 'reports'
   | 'everySession' | 'otherBoards' | 'help' | 'otherTeams' | 'openIssues' | 'heading' | 'ask' | 'recommends' | 'otherRecords' | 'kindOfWork' | 'yourTeam'
-  | 'participantNote' | 'priorities' | 'yourPart' | 'teamReport' | 'companyBoard'
+  | 'participantNote' | 'priorities' | 'yourPart' | 'teamReport' | 'companyBoard' | 'template'
+  | 'plan' | 'money' | 'stakeholders' | 'projectComingUp' | 'offTrack'
   | 'theDecision' | 'accounts' | 'knownBelievedUnknown'
   | 'suggestion' | 'theCase'
   | 'fillsIn' | 'agreedAndApart' | 'firstSteps' | 'mayBeRelevant'
@@ -44,6 +49,8 @@ export type APicturedSection =
   | 'question' | 'systemsShow' | 'saidAndSystemsDiffer'
   | 'matterStands' | 'youNeedToDecide' | 'changedThisWeek'
   | 'eachLevel' | 'visitLog' | 'counties'
+  | 'situationNote' | 'situationThemes' | 'obligations' | 'situationTimeline' | 'situationPlan' | 'risks'
+  | 'whereTimeWent' | 'evidenceIndex' | 'busyOrMoving' | 'contradictions' | 'questionsForTheLead'
 
 const firstName = (n: string | null | undefined) => (n ?? '').trim().split(/\s+/)[0] || ''
 
@@ -214,6 +221,9 @@ function ThePrioritiesThisQuarter() {
                 {tag && <Tag tone={tone as Any}>{tag}</Tag>}
               </div>
               <p className="pb-card-h" style={{ marginTop: 10 }}>{p.title}</p>
+              {/* The roll-up: which teams' check-ins feed this priority, and how it is going, as the Company page says them. */}
+              {p.reading?.says && <p className="t-small gw-mt-4">{p.reading.says}</p>}
+              {p.fedBy && <p className="t-tiny mut gw-mt-4">{p.fedBy}</p>}
             </Panel>
           )
         })}
@@ -413,6 +423,24 @@ export function whatATargetCounts(name: string): string {
 }
 
 /** The question and where the team stands, beside each target and the board's own word for how it stands. */
+/** A number with its unit, as support.jpg writes it: "91%", "9.5h", "KES 7.0 million". Release 4 serves the unit; without one, the number alone. */
+function withItsUnit(n: number, unit: string | null | undefined): string {
+  const v = Number(n).toLocaleString('en-GB')
+  const u = String(unit ?? '').trim()
+  if (!u) return v
+  if (/^[A-Z]{3}\b/.test(u)) return `${u.slice(0, 3)} ${v}${u.slice(3)}`
+  return /^[%a-z]{1,3}$/.test(u) ? `${v}${u}` : `${v} ${u}`
+}
+
+/** The prototype's colour for where a target stands (support.jpg, ops.jpg): met is green, over its limit or behind is red, close is amber. */
+function aTargetsTone(word: string): 'proven' | 'concern' | 'attention' | 'plain' {
+  const w = String(word).toLowerCase()
+  if (/^(met|on time|within|on track)$/.test(w)) return 'proven'
+  if (/^(over limit|behind|missed|late)$/.test(w)) return 'concern'
+  if (/^(close|at risk)$/.test(w)) return 'attention'
+  return 'plain'
+}
+
 function TheHeadlineAndEachTarget({ b, withoutTargets = false }: { b: Any; withoutTargets?: boolean }) {
   const h = b.headline
   const targets: Any[] = withoutTargets ? [] : (b.objectives ?? []).filter((o: Any) => !o.ownerParticipantId && o.target != null)
@@ -430,11 +458,27 @@ function TheHeadlineAndEachTarget({ b, withoutTargets = false }: { b: Any; witho
             <div className="pb-target-row" key={o.id}>
               <div>
                 <b>{whatATargetCounts(o.name)}</b>
-                <span className="pb-sub">{`${Number(o.count ?? 0).toLocaleString('en-GB')} of ${Number(o.target).toLocaleString('en-GB')}`}</span>
+                {/* A limit not to go over reads as the picture's "7 of ≤ 5"; Release 4 only, so every other board reads as before. */}
+                <span className="pb-sub">{`${withItsUnit(o.count ?? 0, b.releaseFourTeams ? o.unit : null)} of ${b.releaseFourTeams && o.journey?.direction === 'down' ? '≤ ' : ''}${withItsUnit(o.target, b.releaseFourTeams ? o.unit : null)}`}</span>
               </div>
-              {o.stands?.word ? <Tag tone="attention">{o.stands.word}</Tag> : o.notSettled ? <Tag tone="plain">Not settled</Tag> : null}
+              {o.stands?.word ? <Tag tone={aTargetsTone(o.stands.word)}>{o.stands.word}</Tag> : o.notSettled ? <Tag tone="plain">Not settled</Tag> : null}
+              {/* Release 4: each person's own target of the same name, under the team's (the lead and an admin only; the server decides). */}
+              {b.releaseFourTeams && (b.eachPersonsOwn ?? []).find((x: Any) => x.objectiveId === o.id) && (
+                <ul className="pb-own-shares" aria-label={`Each person's own target for ${whatATargetCounts(o.name)}`}>
+                  {(b.eachPersonsOwn as Any[]).find((x: Any) => x.objectiveId === o.id).people.map((p: Any) => (
+                    <li key={p.participantId} className="t-small"><span>{firstName(p.name)}</span><span className="mut">{p.says}</span></li>
+                  ))}
+                </ul>
+              )}
             </div>
           ))}
+          {/* Release 4: where the team's figure and the people's own do not add up, from the record only. */}
+          {b.releaseFourTeams && (b.whyTheNumbersDoNotMatch ?? []).length > 0 && (
+            <div className="pb-numbers-differ">
+              <h3 className="t-h3">Why the numbers don’t match</h3>
+              {(b.whyTheNumbersDoNotMatch as Any[]).map((w) => <p key={w.objectiveId} className="t-small">{w.says}</p>)}
+            </div>
+          )}
         </Panel>
       )}
     </div>
@@ -492,13 +536,72 @@ function VolumeAndCauses({ b }: { b: Any }) {
   const t = (b.workRecords ?? []).find((x: Any) => x.section === 'Themes')
   if (!t) return null
   return (
-    <Section heading={b.kindOfWork === 'support desk' ? 'Volume from the helpdesk, causes from the check-ins' : 'Themes'} note="The shape of the work">
+    <Section heading={b.kindOfWork === 'support desk' ? 'Volume from the helpdesk, causes from the check-ins' : b.releaseFourTeams && b.kindOfWork === 'distribution operations' ? 'Incidents by site and type, last 8 weeks' : 'Themes'} note="The shape of the work">
       <Panel>
         {t.state === 'not-known' || !(t.rows ?? []).length
           ? <p className="gwui-panel-text">{t.why ?? 'Nothing is on record here yet.'}</p>
-          : (t.rows ?? []).map((r: Any) => <p className="gwui-panel-text" key={r.id}><b>{r.name}</b> {r.said ?? ''}</p>)}
+          : b.releaseFourTeams && (t.rows ?? []).some((r: Any) => r.fields?.site && r.fields?.type)
+            ? <IncidentsBySiteAndType rows={t.rows ?? []} />
+          : b.releaseFourTeams && (t.rows ?? []).some((r: Any) => typeof r.fields?.count === 'number')
+            ? <TheVolumeAndItsCauses rows={t.rows ?? []} />
+            : (t.rows ?? []).map((r: Any) => <p className="gwui-panel-text" key={r.id}><b>{r.name}</b> {r.said ?? ''}</p>)}
       </Panel>
     </Section>
+  )
+}
+
+/**
+ * RELEASE 4, support.jpg: the counts as tiles, each with where it comes from (proven where a system counts it), and the causes people
+ * gave, each with how many and who said it. Every number and word is the row's own; nothing is worked out here.
+ */
+/** RELEASE 4, ops.jpg: incidents counted by site and type, a cell darker the more it repeats. Every number is the row's own. */
+function IncidentsBySiteAndType({ rows }: { rows: Any[] }) {
+  const sites = [...new Set(rows.map((r) => String(r.fields.site)))]
+  const types = [...new Set(rows.map((r) => String(r.fields.type)))]
+  const n = (s: string, ty: string) => rows.filter((r) => r.fields.site === s && r.fields.type === ty).reduce((a, r) => a + Number(r.fields.count ?? 0), 0)
+  return (
+    <div className="pb-heat-wrap">
+      <table className="pb-heat">
+        <thead><tr><th />{types.map((ty) => <th key={ty} scope="col">{ty}</th>)}</tr></thead>
+        <tbody>
+          {sites.map((s) => (
+            <tr key={s}><th scope="row">{s}</th>{types.map((ty) => { const c = n(s, ty); return <td key={ty} className={`pb-heat-${Math.min(3, c)}`}>{c}</td> })}</tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="pb-foot">Darker cells repeat. A cell of 3 or more points to the site itself.</p>
+    </div>
+  )
+}
+
+function TheVolumeAndItsCauses({ rows }: { rows: Any[] }) {
+  const counts = rows.filter((r) => typeof r.fields?.count === 'number' && !r.fields?.cause)
+  const causes = rows.filter((r) => typeof r.fields?.count === 'number' && r.fields?.cause)
+  const most = Math.max(1, ...causes.map((r) => r.fields.count))
+  return (
+    <div className="pb-volume">
+      <div className="pb-volume-tiles">
+        {counts.map((r) => (
+          <div key={r.id} className="pb-volume-tile">
+            <b className="pb-volume-n">{Number(r.fields.count).toLocaleString('en-GB')}</b>
+            <span>{r.name}</span>
+            <span className="pb-sub"><span className={`pb-dot ${r.mark === 'proven' ? 'pb-dot-proof' : 'pb-dot-said'}`} /> {r.fields.from ?? ''}</span>
+          </div>
+        ))}
+      </div>
+      {causes.length > 0 && (
+        <div className="pb-volume-causes">
+          <p className="pb-card-h">Causes, from the check-ins</p>
+          {causes.map((r) => (
+            <div key={r.id} className="pb-cause">
+              <div className="pb-cause-top"><span>{r.name}</span><b>{r.fields.count}</b></div>
+              <span className="pb-cause-bar" style={{ width: `${Math.round((r.fields.count / most) * 100)}%` }} />
+              {r.said && <span className="pb-sub">{r.said}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -697,7 +800,7 @@ function ThisMayBeRelevant({ b, groundId }: { b: Any; groundId: string }) {
 
 /* ------------------------------------------------------------------ the board */
 
-export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null; order: APicturedSection[]; personId?: string | null; seeTheSamePictures?: string | null; leadFirstName?: string | null; reportHeading?: string; unknown?: string[] }) {
+export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null; order: APicturedSection[]; personId?: string | null; seeTheSamePictures?: string | null; leadFirstName?: string | null; reportHeading?: string; unknown?: string[]; /** Release 4: every section after this one is folded under its own heading (FoldTheRest); Ask and what Groundwork recommends stay open. */ foldAfter?: APicturedSection }) {
   const { b } = p
   const now = useMemo(() => new Date(), [])
   const deals = (b.workRecords ?? []).find((s: Any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: Any) => r.kind === 'deal')) ?? null
@@ -708,7 +811,7 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     lastSession: () => <TheLastSessionIsDone b={b} groundId={p.groundId} />,
     headline: () => <HeadlineAndGap b={b} deals={deals} groups={groups} />,
     assumes: () => <WhatTheTargetAssumes b={b} />,
-    needsYou: () => <WhatNeedsYou b={b} renderActions={p.renderActions} groundId={p.groundId} deals={deals} sessionRows={p.sessionRows} manyInTeams={p.order.includes('everySale')} heading={p.order.includes('cohortStands') || p.order.includes('systemsShow') ? 'What needs you' : undefined} />,
+    needsYou: () => <WhatNeedsYou b={b} renderActions={p.renderActions} groundId={p.groundId} deals={deals} sessionRows={p.sessionRows} manyInTeams={p.order.includes('everySale') && (!b.releaseFourTeams || b.kindOfWork === 'sales org')} heading={p.order.includes('cohortStands') || p.order.includes('systemsShow') ? 'What needs you' : undefined} />,
     deals: () => (deals ? <EveryDealDayByDay b={b} section={deals} now={now} groundId={p.groundId} /> : null),
     agreedAtTheStart: () => <WhatWasAgreedAtTheStart b={b} />,
     changeSinceLast: () => <ChangeSinceLastCheckIn b={b} />,
@@ -733,6 +836,12 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     otherRecords: () => p.otherRecords,
     yourTeam: () => p.yourTeam,
     kindOfWork: () => p.kindOfWork,
+    template: () => <TheTemplateSection b={b} />,
+    plan: () => <TheProjectsPlan b={b} groundId={p.groundId} />,
+    money: () => <MoneyInAndOut b={b} groundId={p.groundId} />,
+    stakeholders: () => <TheStakeholders b={b} groundId={p.groundId} />,
+    projectComingUp: () => <WhatIsComingUpOnTheProject b={b} />,
+    offTrack: () => <IfItGoesOffTrack b={b} />,
     participantNote: () => <YouAreAParticipantHere leadFirstName={p.leadFirstName ?? null} />,
     priorities: () => <ThePrioritiesThisQuarter />,
     yourPart: () => <YourPart b={b} />,
@@ -767,8 +876,129 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     agreedAndApart: () => <AgreedOnDayOneAndSetUpApart b={b} personId={p.personId ?? null} />,
     firstSteps: () => <TheFirstSteps b={b} groundId={p.groundId} />,
     mayBeRelevant: () => <ThisMayBeRelevant b={b} groundId={p.groundId} />,
+    situationNote: () => <TheSituationsNote b={b} />,
+    situationThemes: () => <WhatKeepsBeingRaised b={b} />,
+    obligations: () => <WhatEachSidePromised b={b} />,
+    situationTimeline: () => <WhatHappenedDayByDay b={b} />,
+    situationPlan: () => <TheSituationsWorkPlan b={b} />,
+    risks: () => <TheRisks b={b} />,
+    whereTimeWent: () => (b.whereTheTimeWent ?? []).length ? <Section heading="Where the time went"><EdgeList label="Where the time went">{(b.whereTheTimeWent as Any[]).map((x) => <EdgeRow key={x.participantId ?? x.who} kind="look" reason={null} title={x.says} />)}</EdgeList></Section> : null,
+    evidenceIndex: () => (b.evidenceIndex ?? []).length ? <EvidenceIndexSection rows={b.evidenceIndex} /> : null,
+    busyOrMoving: () => b.busyOrMoving ? <BusyOrMovingSection data={b.busyOrMoving} /> : null,
+    contradictions: () => (b.contradictions ?? []).length ? <ContradictionsSection rows={b.contradictions} /> : null,
+    questionsForTheLead: () => (b.questionsForTheLead ?? []).length ? <QuestionsForTheLeadSection rows={b.questionsForTheLead} /> : null,
     companyBoard: () => <div style={{ textAlign: 'center' }}><Button kind="quiet" to="/company">See the company board</Button></div>,
+  }
+  const at = p.foldAfter ? p.order.indexOf(p.foldAfter) : -1
+  if (at >= 0) {
+    const open: APicturedSection[] = ['ask', 'recommends', 'kindOfWork']
+    const head = p.order.slice(0, at + 1)
+    const rest = p.order.slice(at + 1)
+    return (
+      <div className="pb">
+        {head.map((k) => <FragmentKey key={k}>{draw[k]()}</FragmentKey>)}
+        <FoldTheRest>{rest.filter((k) => !open.includes(k)).map((k) => <FragmentKey key={k}>{draw[k]()}</FragmentKey>)}</FoldTheRest>
+        {rest.filter((k) => open.includes(k)).map((k) => <FragmentKey key={k}>{draw[k]()}</FragmentKey>)}
+      </div>
+    )
   }
   return <div className="pb">{p.order.map((k) => <FragmentKey key={k}>{draw[k]()}</FragmentKey>)}</div>
 }
 function FragmentKey({ children }: { children: ReactNode }) { return <>{children}</> }
+
+/**
+ * RELEASE 4: THE TEAM'S TEMPLATE, as the template library draws it (templates.jpg): what one piece of work is, the stages in order
+ * with what each needs and what shows it, and when a piece of work has stalled. Only where the lead attached one; otherwise nothing.
+ */
+export function TheTemplateSection({ b }: { b: Any }) {
+  const t = b?.template
+  if (!t) return null
+  return (
+    <Section heading="How this team’s work moves" note={`From the ${t.name} template`}>
+      <p className="t-small">{`One piece of work is ${String(t.unitOfWork).charAt(0).toLowerCase()}${String(t.unitOfWork).slice(1)}. It rolls up by ${String(t.rollsUpBy).charAt(0).toLowerCase()}${String(t.rollsUpBy).slice(1)}. It has stalled when: ${String(t.stallRule).charAt(0).toLowerCase()}${String(t.stallRule).slice(1)}.`}</p>
+      <div className="list" role="list" aria-label="The stages, in order">
+        {(t.ladder as Any[]).map((s, i) => (
+          <div className="item" role="listitem" key={s.stage}>
+            <i className="sp act" aria-hidden />
+            <div className="gw-min0"><div className="h">{`${i + 1}. ${s.stage}`}</div><div className="s">{`It needs ${String(s.needs).charAt(0).toLowerCase()}${String(s.needs).slice(1)}. Shown by ${String(s.verifiedBy).charAt(0).toLowerCase()}${String(s.verifiedBy).slice(1)}.`}</div></div>
+          </div>
+        ))}
+      </div>
+    </Section>
+  )
+}
+
+/* ---------------------------------------------------------------- Release 5: a project (the Check-in Reports file, "A project") */
+const PROJECT_EDGE: Record<string, 'ready' | 'decide' | 'look' | 'concern'> = { rec: 'ready', act: 'decide', att: 'look', con: 'concern' }
+
+/** The plan: each milestone in order, when it is due and what share of the contract it pays. */
+function TheProjectsPlan({ b, groundId }: { b: Any; groundId: string }) {
+  const rows: Any[] = b?.project?.plan ?? []
+  return (
+    <Section heading="The plan" note={rows.length ? undefined : 'No milestones are on record yet.'}>
+      {rows.length > 0 && <EdgeList label="The plan">{rows.map((r) => <EdgeRow key={r.id} kind={PROJECT_EDGE[r.tone] ?? 'decide'} title={r.title} detail={r.says} reason={null} />)}</EdgeList>}
+      {b.canEditFrame && <AddToTheProject groundId={groundId} what="milestone" participants={b.participants ?? []} />}
+    </Section>
+  )
+}
+
+/** Money in and out, a card for each month, and the tightest month said in its own card. */
+function MoneyInAndOut({ b, groundId }: { b: Any; groundId: string }) {
+  const m = b?.project?.money
+  const add = b.canEditFrame ? <AddToTheProject groundId={groundId} what="money" participants={b.participants ?? []} /> : null
+  if (!m?.months?.length) return <Section heading="Money in and out" note="Nothing about money is on record yet.">{add}</Section>
+  return (
+    <Section heading="Money in and out">
+      <div className="g3">
+        {(m.months as Any[]).map((x) => (
+          <div key={x.month} className="panel pad gw-col-6">
+            <b>{x.month}</b>
+            <p className="t-small">{x.says}</p>
+            {x.tightest && m.tightestSays && <p className="t-small"><b>{m.tightestSays}</b></p>}
+          </div>
+        ))}
+      </div>
+      {add}
+    </Section>
+  )
+}
+
+/** The stakeholders: who keeps in touch with each, and what they need, or that it is not known yet. */
+function TheStakeholders({ b, groundId }: { b: Any; groundId: string }) {
+  const rows: Any[] = b?.project?.stakeholders ?? []
+  return (
+    <Section heading="Stakeholders" note={rows.length ? undefined : 'No stakeholders are on record yet.'}>
+      {rows.length > 0 && <EdgeList label="Stakeholders">{rows.map((r) => <EdgeRow key={r.id} kind={PROJECT_EDGE[r.tone] ?? 'decide'} title={r.title} detail={r.says} reason={null} />)}</EdgeList>}
+      {b.canEditFrame && <AddToTheProject groundId={groundId} what="stakeholder" participants={b.participants ?? []} />}
+    </Section>
+  )
+}
+
+/** What is coming up: the funder's next update, with "Rehearse with me" opening Ask on the brief, and the next milestone's invoice. */
+function WhatIsComingUpOnTheProject({ b }: { b: Any }) {
+  const rows: Any[] = b?.project?.comingUp ?? []
+  const showWith = useAskStore((s) => s.showWith)
+  if (!rows.length) return null
+  return (
+    <Section heading="Coming up">
+      <EdgeList label="Coming up on the project">
+        {rows.map((r) => (
+          <EdgeRow key={r.id} kind="decide" title={r.title} detail={r.says}
+            actions={r.rehearse && r.brief ? <Button kind="secondary" size="small" onClick={() => showWith(`Rehearse this update with me. Here is the brief Groundwork drew from the record. ${r.brief}`)}>Rehearse with me</Button> : undefined} />
+        ))}
+      </EdgeList>
+    </Section>
+  )
+}
+
+/** If it goes off track: what is late, the money gap and the stakeholders at risk, from the record; or that nothing is. */
+function IfItGoesOffTrack({ b }: { b: Any }) {
+  const p = b?.project
+  if (!p) return null
+  return (
+    <Section heading="If it goes off track">
+      {(p.offTrack as string[]).length > 0 && <div className="gw-ruled-rows">{(p.offTrack as string[]).map((t) => <p key={t} className="t-small">{t}</p>)}</div>}
+      <p className="t-body">{p.offTrackSays}</p>
+    </Section>
+  )
+}
