@@ -31,7 +31,8 @@ describe('Release 6: the company\'s direction, as everybody reads it', () => {
     expect(d.realigned).toEqual([
       { title: 'Teams that have not agreed what it means for them', says: 'Operations is waiting for Njeri.' },
       { title: 'Commitments that no longer make sense', says: 'Miriam’s target, 20 new small shops a month, is still on the board, though Sales\'s brief stops it. It is suggested to them as one to stop or change.' },
-      { title: 'Goals nobody has looked at since the change', says: '1 goal has not been continued, changed or stopped yet, from Miriam.' },
+      /* Each goal is named, not only counted, so the one to look at can be found (boards audit, R6-1, 30 October). */
+      { title: 'Goals nobody has looked at since the change', says: 'Miriam’s target, 20 new small shops a month, has not been continued, changed or stopped yet.' },
     ]);
     expect(d.nextCheckOn).toBe('13 October');
   });

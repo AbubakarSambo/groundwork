@@ -2783,7 +2783,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               /* With no piece of work on record yet, the kind of work's own empty table says so and offers to add one, in place of the table. */
               .flatMap((k) => (k === 'everySale' && !(b.workRecords ?? []).some((x: any) => (x.section === 'Deal grid' || x.section === 'Work plan') && (x.rows ?? []).length) ? ['kindOfWork', 'otherRecords'] : [k]))
               /* The lead's person-by-person part goes after the team today, or before where this is heading when there is no team today. */
-              .flatMap((k, _i, all) => (k === 'teamToday' ? [k, 'yourTeam'] : k === 'heading' && !all.includes('teamToday') && !picturedSituation ? ['yourTeam', k] : [k]))) as any}
+              .flatMap((k, _i, all) => (k === 'teamToday' ? [k, 'yourTeam'] : k === 'heading' && !all.includes('teamToday') ? ['yourTeam', k] : [k]))) as any}
             yourTeam={!groundId && (b as any).yourTeam && id ? <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} /> : null}
             otherRecords={(
               <WorkRecordsSections

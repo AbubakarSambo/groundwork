@@ -48,10 +48,8 @@ export function theRealignment(d: ADirectionVersion, live: ALiveGoal[], lookedAt
     }
   }
   const unlooked = live.filter((g) => g.ownerParticipantId && !lookedAt.has(g.id) && d.teams.some((t) => t.groundId === g.groundId));
-  if (unlooked.length) {
-    const who = [...new Set(unlooked.map((g) => first(g.ownerName)).filter(Boolean))] as string[];
-    out.push({ title: 'Goals nobody has looked at since the change', says: `${unlooked.length} ${unlooked.length === 1 ? 'goal has' : 'goals have'} not been continued, changed or stopped yet${who.length ? `, from ${who.length === 1 ? who[0] : `${who.slice(0, -1).join(', ')} and ${who[who.length - 1]}`}` : ''}.` });
-  }
+  /* Each goal by its name and whose it is, as the commitments above are said, so the one to look at can be found (boards audit, R6-1). */
+  if (unlooked.length) out.push({ title: 'Goals nobody has looked at since the change', says: unlooked.map((g) => `${first(g.ownerName) ?? 'Someone'}’s target, ${g.name.replace(/[.]+$/, '')}, has not been continued, changed or stopped yet.`).join(' ') });
   return out;
 }
 
