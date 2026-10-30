@@ -148,7 +148,7 @@ export function OnePersonPage() {
   if (isError) {
     return (
       <Page>
-        <Note>We could not load this person just now. Reload the page, and if it keeps happening, tell us.</Note>
+        <Note>That didn’t load. Reload the page.</Note>
       </Page>
     )
   }

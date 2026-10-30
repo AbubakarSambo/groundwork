@@ -50,7 +50,7 @@ export function TheCollectionsBoard({ board: c, onRecordTheDecision, onAnswer, a
                     <button
                       key={ch.label}
                       type="button"
-                      className={`gwui-btn ${/^No\b/.test(ch.label) ? 'gwui-btn-quiet' : 'gwui-btn-secondary'}`}
+                      className={`btn ${/^No\b/.test(ch.label) ? 'quiet' : 'sec'}`}
                       disabled={answering}
                       onClick={() => onAnswer(ch.route)}
                     >
@@ -166,7 +166,7 @@ export function TheCollectionsBoard({ board: c, onRecordTheDecision, onAnswer, a
               <div className="pb-decides">
                 <b>{c.heading.whoDecides}</b>
                 <p>{c.heading.groundworkDoesNotChoose}</p>
-                {onRecordTheDecision && <button type="button" className="gwui-btn gwui-btn-secondary" onClick={onRecordTheDecision}>Record the decision</button>}
+                {onRecordTheDecision && <button type="button" className="btn sec" onClick={onRecordTheDecision}>Record the decision</button>}
               </div>
             </div>
           </div>

@@ -47,7 +47,7 @@ export function OpsContributionPage() {
   })
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name="Commercial contribution"
         answers="What has each person actually created, and what share of new revenue came from them?"
@@ -229,7 +229,7 @@ export function OpsPositioningPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name="Market access"
         answers="Whose relationships and networks are opening doors, and what came of them?"
@@ -279,7 +279,7 @@ export function OpsAttributionPage() {
     r === 'OPPORTUNITY_ORIGINATOR' ? 'Opportunity originator' : 'Positioning source'
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name="Attribution review"
         answers="Who says they created what, and is that right?"
@@ -561,7 +561,7 @@ export function OpsCommercialPipelinePage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name="Commercial pipeline"
         answers="What are we selling, who created each one, and what has actually been paid?"

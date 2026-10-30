@@ -306,7 +306,7 @@ function TodaysPeopleAndSetup(props: PeopleAndSetupProps) {
   const [editingName, setEditingName] = useState(false)
 
   return (
-    <div className="gwui-page-wrap">
+    <div className="wrap gw-stack">
       <Section
         heading="Who's in it"
         action={(
@@ -775,7 +775,7 @@ function TodaysPeopleAndSetup(props: PeopleAndSetupProps) {
         {isInitiator ? (
           <>
             <Note>You can end this check-in when it has done its job.</Note>
-            <a className="gwui-btn gwui-btn-secondary" href={`/grounds/${props.id}/end`}>Decide how it ends</a>
+            <a className="btn sec" href={`/grounds/${props.id}/end`}>Decide how it ends</a>
           </>
         ) : (
           <>
@@ -787,7 +787,7 @@ function TodaysPeopleAndSetup(props: PeopleAndSetupProps) {
                 : ' Somebody else runs it, so ending it ends something they are running.')}
             </Note>
             <a
-              className="gwui-btn gwui-btn-secondary gwui-btn-red-text"
+              className="btn sec red"
               href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`}
             >
               Ask us to end this check-in

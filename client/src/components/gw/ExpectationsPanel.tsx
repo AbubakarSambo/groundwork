@@ -316,7 +316,7 @@ function TrackedElsewhere({
             placeholder="What does it say now?"
             style={{ flex: 1 }}
           />
-          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+          <button className="btn pri sm"
             onClick={() => looking.trim() && looked.mutate(looking.trim())}
             disabled={!looking.trim() || looked.isPending}
           >

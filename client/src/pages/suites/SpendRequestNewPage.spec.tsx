@@ -142,7 +142,7 @@ describe('Ask to spend money', () => {
   it('on a 5xx loading the form, shows the form with a "Try again", not just an error note', async () => {
     ;(fileARequestApi.spendForm as any).mockRejectedValue(refusal(500))
     open()
-    await screen.findByText('That did not load, and nothing has changed.')
+    await screen.findByText('That didn’t load. Try again.')
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
     expect(screen.getByLabelText('Amount')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument()
@@ -151,7 +151,7 @@ describe('Ask to spend money', () => {
   it('on a network fault loading the form, shows the form with a "Try again", not just an error note', async () => {
     ;(fileARequestApi.spendForm as any).mockRejectedValue(new Error('Network Error'))
     open()
-    await screen.findByText('That did not load, and nothing has changed.')
+    await screen.findByText('That didn’t load. Try again.')
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
     expect(screen.getByLabelText('Amount')).toBeInTheDocument()
   })
@@ -160,7 +160,7 @@ describe('Ask to spend money', () => {
     ;(fileARequestApi.spendForm as any).mockRejectedValueOnce(refusal(500)).mockResolvedValueOnce({ currency: null, categoryCalled: 'category', categories: [] })
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
-    await waitFor(() => expect(screen.queryByText('That did not load, and nothing has changed.')).toBeNull())
+    await waitFor(() => expect(screen.queryByText('That didn’t load. Try again.')).toBeNull())
     expect(fileARequestApi.spendForm).toHaveBeenCalledTimes(2)
   })
 })

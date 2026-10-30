@@ -69,6 +69,10 @@ export interface WhatNeedsYou {
   checkInOnWhatsApp?: { says: string; link: string; label: string } | null
   /** Absent for everybody but a lead with something here to add (request 198 (b)). */
   forTheLead?: ForTheLead
+  /** The one person the line names as not checked in yet, for the lead: the board's own nudge, beside the line. */
+  lineNudge?: { groundId: string; participantId: string; firstName: string } | null
+  /** "Since yesterday" (C1): what moved since the round before, for the check-in the line is about. */
+  sinceYesterday?: { heading: string; says: string; also: string | null } | null
 }
 
 /**

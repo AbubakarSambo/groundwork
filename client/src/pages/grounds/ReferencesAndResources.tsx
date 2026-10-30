@@ -72,9 +72,13 @@ function ThePage({ groundId, served, ground, isTheLead }: { groundId: string; se
   const people = served.people ?? []
 
   return (
+    /* B6: section headings in Literata, as the picture draws them (gwui-b-tab). */
+    <div className="gwui-b-tab">
     <Stack gap={30}>
       {/* THE TOP BAR: one line on what the page is, "Ask about this work", and "Add" for the lead. */}
       <div data-gw-references-top>
+        {/* B6: the top line sits in a light band, with its two actions at the right. */}
+        <div className="gwui-ref-band">
         <FlexRow gap={12} align="center" wrap justify="space-between">
           <Text size="15" ink="sub" as="p">{served.topLine}</Text>
           <FlexRow gap={8} wrap>
@@ -82,6 +86,7 @@ function ThePage({ groundId, served, ground, isTheLead }: { groundId: string; se
             {served.mayAdd && <Button kind="primary" size="small" onClick={() => setAdding(adding ? null : 'RULE')}>Add</Button>}
           </FlexRow>
         </FlexRow>
+        </div>
         {served.mayAdd && adding && (
           <AddSomething groundId={groundId} kind={adding} onKind={setAdding} people={people} alsoSeenBy={served.peopleAlsoSeenBy} contextEnabled={ground?.contextEnabled === true}
             onDone={() => { setAdding(null); refresh() }} />
@@ -96,6 +101,7 @@ function ThePage({ groundId, served, ground, isTheLead }: { groundId: string; se
       <QuestionsAndAnswers served={served} />
       {served.people && <People groundId={groundId} people={served.people} alsoSeenBy={served.peopleAlsoSeenBy} onDone={refresh} />}
     </Stack>
+    </div>
   )
 }
 
@@ -113,9 +119,11 @@ function AboutThisWork({ groundId, served, ground, isTheLead }: { groundId: stri
               <p data-gw-references-purpose className="gwui-panel-text gwui-pre-line">{'“'}{a.purpose}{'”'}</p>
               {a.whose && <Note>{a.whose}</Note>}
               {a.yourOwnWords && (
-                <Folded summary="What you wrote">
-                  <p className="gwui-panel-text-muted gwui-pre-line">{a.yourOwnWords}</p>
-                </Folded>
+                /* A plain fold with no box of its own: the prototype never puts a box inside a box. */
+                <details className="t-small gw-plain-fold">
+                  <summary className="gw-link">What you wrote</summary>
+                  <p className="mut gwui-pre-line">{a.yourOwnWords}</p>
+                </details>
               )}
             </>
           ) : (
@@ -138,7 +146,7 @@ function AboutThisWork({ groundId, served, ground, isTheLead }: { groundId: stri
           </Panel>
         )}
         {/* "What doing well looks like" moves here from People and setup, with its versions and wording (Hafsah, 18 October). */}
-        <BaselinePanel groundId={groundId} canState={isTheLead} groundStartedAt={ground?.startsAt || ground?.createdAt} />
+        <BaselinePanel asFold groundId={groundId} canState={isTheLead} groundStartedAt={ground?.startsAt || ground?.createdAt} />
       </Stack>
     </Section>
   )
@@ -148,15 +156,17 @@ function AboutThisWork({ groundId, served, ground, isTheLead }: { groundId: stri
 
 function Suggested({ groundId, items, onDone }: { groundId: string; items: NonNullable<Served['suggested']>; onDone: () => void }) {
   const [editing, setEditing] = useState<{ id: string; says: string } | null>(null)
-  const failed = (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again in a moment.')
+  const [showAll, setShowAll] = useState(false)
+  const failed = (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.')
   const add = useMutation({ mutationFn: (id: string) => groundsApi.confirmPlanCard(groundId, id, null), onSuccess: onDone, onError: failed })
   const dismiss = useMutation({ mutationFn: (id: string) => groundsApi.planCardNotNow(groundId, id), onSuccess: onDone, onError: failed })
   const edit = useMutation({ mutationFn: (e: { id: string; says: string }) => groundsApi.editPlanCard(groundId, e.id, e.says), onSuccess: () => { setEditing(null); onDone() }, onError: failed })
   return (
     <Section heading="Suggested from your check-ins">
       <Stack gap={10}>
-        {items.map((s) => (
-          <Panel key={s.id}>
+        {items.slice(0, showAll ? items.length : 2).map((s, i) => (
+          /* B6: one compact amber row each, what it says on the left and its three actions on the right. */
+          <div key={s.id} className="gwui-suggestion-row">
             <div data-gw-suggestion={s.id}>
               <Note tone="muted">{`${s.from}, ${s.what}.`}</Note>
               {editing?.id === s.id ? (
@@ -165,7 +175,8 @@ function Suggested({ groundId, items, onDone }: { groundId: string; items: NonNu
                 <Text size="15" weight={600} as="p">{s.says}</Text>
               )}
               {s.saidAs && <Note>{`The plan says “${s.saidAs}”`}</Note>}
-              <FlexRow gap={8} wrap>
+            </div>
+              <FlexRow gap={8} wrap align="center">
                 {editing?.id === s.id ? (
                   <>
                     <Button kind="secondary" size="small" onClick={() => edit.mutate(editing)} disabled={edit.isPending || !editing.says.trim()}>Save</Button>
@@ -173,15 +184,18 @@ function Suggested({ groundId, items, onDone }: { groundId: string; items: NonNu
                   </>
                 ) : (
                   <>
-                    <Button kind="secondary" size="small" onClick={() => add.mutate(s.id)} disabled={add.isPending}>Add</Button>
+                    {/* B6: Add, Edit, and Dismiss as a plain word. Only the first card's Add is navy. */}
+                    <Button kind={i === 0 ? 'primary' : 'secondary'} size="small" onClick={() => add.mutate(s.id)} disabled={add.isPending}>Add</Button>
                     <Button kind="secondary" size="small" onClick={() => setEditing({ id: s.id, says: s.says })}>Edit</Button>
-                    <Button kind="quiet" size="small" onClick={() => dismiss.mutate(s.id)} disabled={dismiss.isPending}>Dismiss</Button>
+                    <button type="button" className="gw-link t-small" onClick={() => dismiss.mutate(s.id)} disabled={dismiss.isPending}>Dismiss</button>
                   </>
                 )}
               </FlexRow>
-            </div>
-          </Panel>
+          </div>
         ))}
+        {items.length > 2 && !showAll && (
+          <button type="button" className="gw-link t-small gw-start" onClick={() => setShowAll(true)}>{`Show the other ${items.length - 2}`}</button>
+        )}
       </Stack>
     </Section>
   )
@@ -198,7 +212,7 @@ function Lines({ lines, onRemove }: { lines: AReferenceLine[]; onRemove?: (id: s
             <span>{l.text}</span>
             {l.fromTheTemplate && <Tag>{'Groundwork’s'}</Tag>}
             {l.onlyYou && <Tag tone="attention">Only you</Tag>}
-            {onRemove && !l.fromTheTemplate && <Button kind="quiet" size="small" onClick={() => onRemove(l.id)}>Remove</Button>}
+            {onRemove && !l.fromTheTemplate && <button type="button" className="gw-link t-small" onClick={() => onRemove(l.id)}>Remove</button>}
           </FlexRow>
         </li>
       ))}
@@ -215,22 +229,23 @@ function HowWeWork({ groundId, served, onDone }: { groundId: string; served: Ser
   const h = served.howWeWork
   const empty = served.mayAdd ? 'Nothing here yet. Use Add to write the first one.' : 'Nothing here yet.'
   const part = (title: string, lines: AReferenceLine[]) => (
-    <div>
+    <Panel>
       <SubHeading as="h3">{title}</SubHeading>
       {lines.length ? <Lines lines={lines} onRemove={served.mayAdd ? (id) => remove.mutate(id) : undefined} /> : <Note tone="muted">{empty}</Note>}
-    </div>
+    </Panel>
   )
   return (
     <Section heading="How we work" note="Check-ins use these to guide each person and to know what to ask about.">
-      <Panel>
-        <Stack gap={12}>
+      {/* B6: the four parts side by side, one small panel each. */}
+      <Stack gap={8}>
+        <div className="gwui-four-up">
           {part('Rules', h.rules)}
           {part('What each stage needs', h.stageNeeds)}
           {part('Coaching', h.coaching)}
           {part('Risks to watch for', h.risks)}
-          {h.startingSetSays && <Note tone="muted">{h.startingSetSays}</Note>}
-        </Stack>
-      </Panel>
+        </div>
+        {h.startingSetSays && <Note tone="muted">{h.startingSetSays}</Note>}
+      </Stack>
     </Section>
   )
 }
@@ -249,7 +264,7 @@ function Documents({ served }: { served: Served }) {
   return (
     <Section heading="Documents" note={docs.notOpenToYou ? undefined : `${plural(docs.total, 'document')}.`}>
       {docs.notOpenToYou ? (
-        <Note>Documents here are shared by the people in this check-in, so you cannot open them from here.</Note>
+        <Note>You can’t open these documents from here.</Note>
       ) : docs.total === 0 ? (
         <Note tone="muted">{served.mayAdd ? 'No documents yet. Use Add to share one with your team.' : 'No documents have been shared with you yet.'}</Note>
       ) : (
@@ -300,6 +315,7 @@ function Evidence({ groundId, served }: { groundId: string; served: Served }) {
   })
   if (!served.evidence) return null
   const ev: AnEvidencePage = filtered && asked.data && 'items' in (asked.data as any) ? (asked.data as AnEvidencePage) : served.evidence
+  const [showAllEvidence, setShowAllEvidence] = useState(false)
   const first = ev.total ? (ev.page - 1) * ev.pageSize + 1 : 0
   const last = Math.min(ev.page * ev.pageSize, ev.total)
   return (
@@ -330,7 +346,8 @@ function Evidence({ groundId, served }: { groundId: string; served: Served }) {
           <>
             <Panel pad={false}>
               <RowList label="Evidence">
-                {ev.items.map((e) => (
+                {/* Three, then "and N more" (Hafsah, 25 October: lists stop at three). */}
+                {ev.items.slice(0, showAllEvidence ? undefined : 3).map((e) => (
                   <Row key={e.id} columns="2fr 2fr 1fr 1fr" inset="panel">
                     <div data-gw-evidence={e.id}>
                       <FlexRow gap={6} align="center" wrap>
@@ -346,14 +363,14 @@ function Evidence({ groundId, served }: { groundId: string; served: Served }) {
                 ))}
               </RowList>
             </Panel>
-            <FlexRow gap={8} align="center" wrap>
+            {!showAllEvidence && ev.items.length > 3 && <button type="button" className="gw-link t-small gw-start" onClick={() => setShowAllEvidence(true)}>{`and ${ev.total - 3} more`}</button>}
+            {(showAllEvidence || ev.items.length <= 3) && <FlexRow gap={8} align="center" wrap>
               <Note tone="muted">{`Newest first. ${first} to ${last} of ${ev.total.toLocaleString('en-GB')}.`}</Note>
               <Button kind="secondary" size="small" disabled={ev.page <= 1} onClick={() => setPage(ev.page - 1)}>Previous</Button>
               <Button kind="secondary" size="small" disabled={last >= ev.total} onClick={() => setPage(ev.page + 1)}>Next</Button>
-            </FlexRow>
+            </FlexRow>}
           </>
         )}
-        <Note tone="muted">{`On the board, each ${served.itemWord} shows its own evidence, so nobody has to scroll this list to find it.`}</Note>
       </Stack>
     </Section>
   )
@@ -390,13 +407,14 @@ const onlyYouSeeThis = (alsoSeenBy?: string | null) => (alsoSeenBy?.trim() ? `On
 function People({ groundId, people, alsoSeenBy, onDone }: { groundId: string; people: NonNullable<Served['people']>; alsoSeenBy?: string; onDone: () => void }) {
   const direct = useTheDirectMorning()
   const [q, setQ] = useState('')
+  const [showAllPeople, setShowAllPeople] = useState(false)
   const [editing, setEditing] = useState<{ pid: string; kind: 'PERSON_NOTE' | 'HELP_WITH'; lineId: string | null; text: string } | null>(null)
   const save = useMutation({
     mutationFn: (e: NonNullable<typeof editing>) => (e.lineId
       ? groundsApi.changeAReference(groundId, e.lineId, { text: e.text })
       : groundsApi.addAReference(groundId, { kind: e.kind, text: e.text, aboutParticipantId: e.pid })),
     onSuccess: () => { setEditing(null); onDone() },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. What you typed is still here, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
   const shown = people.filter((p) => !q.trim() || [p.name, p.role, p.note?.text, p.helpWith?.text].some((x) => String(x ?? '').toLowerCase().includes(q.trim().toLowerCase())))
   const editor = (p: (typeof people)[number], kind: 'PERSON_NOTE' | 'HELP_WITH', line: AReferenceLine | null) => (
@@ -411,7 +429,7 @@ function People({ groundId, people, alsoSeenBy, onDone }: { groundId: string; pe
     ) : (
       <FlexRow gap={8} align="center" wrap>
         <span>{line?.text ?? (kind === 'PERSON_NOTE' ? 'No note yet.' : 'Nothing yet.')}</span>
-        <Button kind="quiet" size="small" onClick={() => setEditing({ pid: p.participantId, kind, lineId: line?.id ?? null, text: line?.text ?? '' })}>{line ? 'Change' : 'Add'}</Button>
+        <button type="button" className="gw-link t-small" onClick={() => setEditing({ pid: p.participantId, kind, lineId: line?.id ?? null, text: line?.text ?? '' })}>{line ? 'Change' : 'Add'}</button>
       </FlexRow>
     )
   )
@@ -425,7 +443,8 @@ function People({ groundId, people, alsoSeenBy, onDone }: { groundId: string; pe
           </FlexRow>
         )}
         {people.length === 0 && <Note tone="muted">Nobody else is in this check-in yet.</Note>}
-        {shown.map((p) => (
+        {/* Three, then "and N more" (lists stop at three); a search shows every match. */}
+        {(q.trim() || showAllPeople ? shown : shown.slice(0, 3)).map((p) => (
           <Panel key={p.participantId}>
             <div data-gw-person-note={p.participantId}>
               <Stack gap={6}>
@@ -443,6 +462,7 @@ function People({ groundId, people, alsoSeenBy, onDone }: { groundId: string; pe
             </div>
           </Panel>
         ))}
+        {!q.trim() && !showAllPeople && shown.length > 3 && <button type="button" className="gw-link t-small gw-start" onClick={() => setShowAllPeople(true)}>{`and ${shown.length - 3} more`}</button>}
       </Stack>
     </Section>
   )
@@ -468,7 +488,7 @@ function AddSomething({ groundId, kind, onKind, people, alsoSeenBy, contextEnabl
   const add = useMutation({
     mutationFn: () => groundsApi.addAReference(groundId, { kind: kind as AReferenceKind, text, ...(kind === 'KEY_FACT' ? { label } : {}), ...(kind === 'PERSON_NOTE' || kind === 'HELP_WITH' ? { aboutParticipantId: who } : {}) }),
     onSuccess: () => { toast.success('Added. Your team’s check-ins use it from now on.'); setText(''); setLabel(''); onDone() },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. What you typed is still here, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
   const upload = useMutation({
     mutationFn: (f: File) => documentsApi.upload(groundId, f),

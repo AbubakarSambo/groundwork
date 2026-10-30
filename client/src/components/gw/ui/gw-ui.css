@@ -13,6 +13,7 @@
  * file uses them; where they do not (the --gw-muted / "faint" trap the audit found), it defines its
  * own token instead of silently reusing the wrong one.
  */
+:where(button, summary, select, [role="button"], [role="switch"], [role="tab"]):not(.gwui-in-a-sentence) { min-height: 44px; }
 
 .gwui-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
@@ -63,7 +64,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
  * strictly needs costs nothing - a little extra white space at the foot of a page - while reserving
  * too little is the bug this fixes.
  */
-.gwui-page-main { padding: 32px 48px 110px; min-width: 0; }
+
 .gwui-page-wrap { max-width: 1150px; }
 /* THE PAGE'S OWN FULL-HEIGHT BACKGROUND (group 3, piece 5): no prototype class (the prototype's
    `body` itself is the cream colour); for the rare page that renders outside `Page` altogether -
@@ -78,15 +79,12 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    file) has the same specificity as a plain ".gwui-page-narrow > * + *" and would otherwise win
    the cascade and cancel the gap - live on the expired-link page, whose foot line touched the
    button above it. */
-.gwui-page-wrap.gwui-page-wrap > * + *, .gwui-page-narrow.gwui-page-narrow > * + * { margin-top: 30px; }
+.wrap.gw-stack > * + *, .gwui-page-narrow.gwui-page-narrow > * + * { margin-top: 30px; }
 /* THE WHITE CARD BEHIND SIGN-UP AND THE OTHER NARROW ACCOUNT SCREENS (group 3 review, batch B;
    signup.jpg, verify-expired.jpg): `AuthCard` (auth-kit.tsx) now wraps its mark, heading and form
    in a `Panel`, one level deeper inside `Page narrow` than before - this gives that panel's own
    direct children the same 30px rhythm the rule above gives a bare `Page narrow`. */
 .gwui-auth-card.gwui-auth-card > * + * { margin-top: 30px; }
-@media (max-width: 860px) {
-  .gwui-page-main { padding: 20px 18px 140px; }
-}
 
 /* ── STACK (the invitation and its hand-off screens: tighter groups inside Page's 30px stack) ── */
 /* The doubled class (".gwui-stack-18.gwui-stack-18") raises specificity above a plain single-class
@@ -106,26 +104,14 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 .gwui-stack-30.gwui-stack-30 > * + * { margin-top: 30px; }
 
 /* ── PAGE TITLE (prototype: .t-title, .crumb, .t-small, .av at 56px) ────── */
-.gwui-pt-eyebrow { font-size: 14.5px; color: var(--gw-sub); margin: 0 0 6px; }
-.gwui-pt-crumb { font-size: 14px; color: var(--gw-sub); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0 0 6px; }
+
 /*
  * PHONE CHECK, ITEM 9: THE "CHECK-INS" CRUMB WAS A LINE OF TEXT, NO TALLER THAN ITS OWN TYPE. Padding
  * plus an equal negative margin grows the tap area to 40px without moving the crumb row itself or
  * widening the gap to "/" and the title beside it - the same technique used for a plain text link
  * that must not shift the layout around it.
  */
-.gwui-pt-crumb a { color: var(--gw-navy); text-decoration: underline; display: inline-block; padding: 9px 0; margin: -9px 0; }
-.gwui-pt-crumb .gwui-pt-sep { margin: 0 6px; }
-.gwui-pt-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
-.gwui-pt-head { display: flex; align-items: center; gap: 16px; min-width: 0; }
-.gwui-pt-headtext { min-width: 0; }
-.gwui-pt-title {
-  font-family: var(--gw-font-name); font-size: 30px; line-height: 1.18; font-weight: 500;
-  color: var(--gw-text); margin: 0; font-variant-numeric: lining-nums;
-}
-@media (max-width: 640px) {
-  .gwui-pt-title { font-size: 24px; }
-}
+
 .gwui-pt-sub { font-size: 16px; line-height: 1.5; color: var(--gw-sub); margin-top: 6px; }
 /* "Almost in", "Out of time", "This link has expired" (prototype): the line under the title is ink, not muted. */
 .gwui-pt-sub-ink { color: var(--gw-text); }
@@ -133,8 +119,6 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    while something loads, replacing a page's own one-off gwui-pt-sub paragraph with a centring inline
    style. */
 .gwui-title-centre { text-align: center; }
-.gwui-title-centre .gwui-pt-row { justify-content: center; }
-.gwui-title-centre .gwui-pt-head { justify-content: center; width: 100%; }
 
 /* ── THE 44px FLOOR AND THE TAP TARGET (Hafsah, 21 October) ──────────────── */
 /*
@@ -144,13 +128,13 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
  * whose drawn shape must stay small (a switch, a tag you can tap, a coloured initial) keeps its shape and takes a 44px tap target
  * instead (`.gwui-tap-target` and the list beside it, below). A button that sits inside a sentence takes `.gwui-in-a-sentence`.
  */
-:where(button, summary, select, [role="button"], [role="switch"], [role="tab"]):not(.gwui-in-a-sentence) { min-height: 44px; }
+
 /* A TAP TARGET 44px TALL AROUND A SMALL DRAWN SHAPE: an invisible layer, centred on the control, at least 44px tall, so nothing drawn
    moves or grows. Only as wide as the control itself, so it never reaches over the one beside it. */
-.gwui-tap-target, .gw-switch, .gwui-toggle, button.gwui-tag, .gw-rl-ini { position: relative; }
+.gwui-tap-target, .gwui-toggle, button.tag, .gw-rl-ini { position: relative; }
 /* The switches and a hand-drawn small control keep the height they are drawn at; the floor above would otherwise stretch them. */
-.gwui-tap-target, .gw-switch, .gwui-toggle { min-height: 0; }
-.gwui-tap-target::after, .gw-switch::after, .gwui-toggle::after, button.gwui-tag::after, .gw-rl-ini::after {
+.gwui-tap-target, .gwui-toggle { min-height: 0; }
+.gwui-tap-target::after, .gwui-toggle::after, button.tag::after, .gw-rl-ini::after {
   content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max(100%, 44px); transform: translateY(-50%);
 }
 
@@ -269,30 +253,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 }
 .gwui-tab-on { color: var(--gw-text); font-weight: 700; border-bottom-color: var(--gw-navy); }
 
-/* ── SECTION (prototype: section.sec, .sec-h, .note) ─────────────────────
-   Headings are never navy (design-audit.md item 5). */
-/* B-221: a direct link to a section (`#your-data`) must not land under the app's own sticky
-   header - the same offset `.cg-group` already uses in index.css, for the same reason. */
-.gwui-section { display: flex; flex-direction: column; scroll-margin-top: calc(var(--gw-hdr-h) + 12px); }
-.gwui-section-h {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap;
-}
-.gwui-section-title {
-  font-family: var(--gw-font-ui); font-size: 21px; line-height: 1.25; font-weight: 700;
-  color: var(--gw-text); margin: 0;
-}
-.gwui-section-note { font-size: 14.5px; color: var(--gw-sub); }
-.gwui-section-action { display: flex; gap: 10px; flex-wrap: wrap; }
-.gwui-section-h:has(.gwui-section-action) { align-items: center; }
-.gwui-section-body { margin-top: 14px; }
-.gwui-section-foot { margin-top: 14px; font-size: 13.5px; color: var(--gw-sub); }
-
-/* ── PANEL (prototype: .panel, .pad) ─────────────────────────────────────── */
-.gwui-panel {
-  background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px;
-}
-.gwui-panel-pad { padding: 20px 22px; }
-.gwui-panel-heading { font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--gw-text); margin: 0 0 8px; }
+/* SECTION, PANEL, BUTTON AND TAG are the prototype's own classes now (styles/prototype.css). */
 /* PANEL'S DARK TONE (group 3, piece 5): the same radius and padding, `--gw-dark` fill and white
    text, for the one place a panel sits on dark rather than white - a person's private report,
    previewed on the lead's own roster after they have shared it (`GroundAdminPage.tsx`'s check-ins
@@ -310,21 +271,12 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 .gwui-panel-private { background: var(--gw-paper-2); border-radius: 14px; }
 
 /* ── EDGE LIST / EDGE ROW (prototype: .list, .item, .sp) ─────────────────── */
-.gwui-edge-list { border-top: 1px solid var(--gw-border); list-style: none; margin: 0; padding: 0; }
-.gwui-edge-row {
-  display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: 16px;
-  padding: 16px 0; border-bottom: 1px solid var(--gw-border); align-items: center;
-}
-.gwui-edge-sp { align-self: stretch; border-radius: 2px; }
-.gwui-edge-sp-ready  { background: var(--gw-green-t); }
-.gwui-edge-sp-decide { background: var(--gw-navy); }
-.gwui-edge-sp-look   { background: var(--gw-amber-t); }
-.gwui-edge-sp-concern{ background: var(--gw-red-t); }
+
 .gwui-edge-h { font-size: 17px; font-weight: 700; line-height: 1.3; color: var(--gw-text); overflow-wrap: anywhere; }
-.gwui-edge-s { font-size: 15px; color: var(--gw-sub); margin-top: 2px; overflow-wrap: anywhere; }
+
 .gwui-edge-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 640px) {
-  .gwui-edge-row { grid-template-columns: 4px minmax(0, 1fr); }
+  
   .gwui-edge-acts { grid-column: 2; }
 }
 
@@ -369,8 +321,9 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
   font-size: 14.5px;
 }
-.gwui-person-help-look { background: var(--gw-amber-bg); color: var(--gw-amber-t); }
-.gwui-person-help-concern { background: var(--gw-red-bg); color: var(--gw-red-t); }
+/* B8: what a person still needs reads as a line in their row, in its colour, with no box of its own. */
+.gwui-person-help-look { color: var(--gw-amber-t); background: none; padding: 0; }
+.gwui-person-help-concern { color: var(--gw-red-t); background: none; padding: 0; }
 /* The heading goes where the rows stack (1180px, below), not only on a phone: at 1024 the rows were
    cards under a heading that still named five columns, the last cut off (live walk, 6 October). */
 @media (max-width: 1180px) {
@@ -512,7 +465,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
  * "Change this", a target row's muted one, "Attach it" / "Attach something" at 11.5px). This is
  * the same `min-height` plus `inline-flex`/`align-items: center` technique under its own name, so
  * any such control can take the same floor without borrowing a look that was not its own. Scoped
- * to phone width, same as the board's own small-button fix (`.gwui-btn-small` below) - above
+ * to phone width, same as the board's own small-button fix (`.btn.sm` below) - above
  * 640px these already clear 40px or sit beside enough else on the row that the extra room is not
  * needed.
  */
@@ -573,8 +526,8 @@ a.gwui-person-row:hover { background: var(--gw-page); }
  * nothing empty above or below it; the two captions no longer force-align when the illustrations
  * are genuinely different heights, which is honest rather than papering over the difference.
  */
-.gwui-two-up > .gwui-panel:has(figure) { align-self: start; }
-.gwui-two-up > .gwui-panel > figure { margin: 0; }
+.gwui-two-up > .panel:has(figure) { align-self: start; }
+.gwui-two-up > .panel > figure { margin: 0; }
 
 /* ── PANEL ROW (more than one fact inside one Panel(pad=false), a line between each -
    "Who can join": the domain switch and the invite link, in one white panel) ─────────────────── */
@@ -748,67 +701,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-ci-assessment-textarea { font-size: 16px; }
 }
 
-/* ── BUTTON (prototype: .btn, plus a `danger` kind) ───────────────────────── */
-.gwui-btn {
-  min-height: 44px; padding: 0 18px; border-radius: 8px; border: 0;
-  font: inherit; font-family: var(--gw-font-ui); font-size: 16px; font-weight: 700; line-height: 1.2;
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  cursor: pointer; white-space: nowrap; text-decoration: none; text-align: center;
-}
-.gwui-btn:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
-/* A button that cannot be pressed yet stays readable (setup page review, 13 October: a pale "Add"
-   on beige). It was the same button at 55% opacity, which put white on a washed-out navy and pale
-   text on beige. Now it reads as an outlined button in the secondary ink, dark on white. */
-.gwui-btn:disabled, .gwui-btn[aria-disabled="true"] { cursor: not-allowed; }
-.gwui-btn-primary:disabled, .gwui-btn-primary[aria-disabled="true"],
-.gwui-btn-secondary:disabled, .gwui-btn-secondary[aria-disabled="true"] {
-  background: var(--gw-card); color: var(--gw-sub); box-shadow: inset 0 0 0 1.5px var(--gw-rule-2);
-}
-.gwui-btn-quiet:disabled, .gwui-btn-quiet[aria-disabled="true"] { color: var(--gw-sub); }
-.gwui-btn-primary { background: var(--gw-navy); color: #fff; }
-.gwui-btn-primary:hover:not(:disabled) { background: var(--gw-navy-d); }
-.gwui-btn-secondary { background: var(--gw-card); color: var(--gw-text); box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); }
-.gwui-btn-quiet { background: transparent; color: var(--gw-navy); padding: 0 8px; }
-.gwui-btn-quiet:hover:not(:disabled) { text-decoration: underline; }
-/* the danger kind (app.css: .btn.danger{background:var(--con);color:#fff}) - solid red, the
-   prototype's only danger style. 30 September (Hafsah): was a secondary-styled outline, with a
-   second "dangerSolid" flag for the one place that actually matched the prototype; the outline
-   and the "quiet danger" red-text variant are both gone now, so every danger button reads the
-   same weight the prototype gives it. */
-.gwui-btn-danger { background: var(--gw-red-t); color: #fff; }
-/* The prototype's own "End this check-in" (s41.js): an ordinary secondary button, white with its
-   thin grey outline, whose words are red. Not a fifth kind: the secondary kind with red text. */
-.gwui-btn-secondary.gwui-btn-red-text { color: var(--gw-red-t); }
-.gwui-btn-big { min-height: 54px; font-size: 17px; padding: 0 22px; }
-.gwui-btn-small { min-height: 44px; font-size: 14.5px; padding: 0 12px; }
-/*
- * FAULT D1 (reviewer, third round): THE FORK BUTTON'S TEXT WAS CLIPPED ON THE LEFT AT 1024px
- * ("heck in once…"). `.gwui-btn`'s own `white-space: nowrap` already had a mobile-only exception
- * (`@media (max-width: 640px)`, below) for exactly this - a long sentence on a button narrower
- * than its own one-line width - but a wide button's fork sits in a column only 346px wide even on
- * a 1024px screen (it is 82% of the messages column, not of the viewport), so the same overflow
- * happened above 640px with nothing to catch it. `wide` already means "a full sentence is likely
- * long enough to need its own line or three", at any width, so it gets this directly rather than
- * only below the phone breakpoint; a short wide button (most of them) still reads as one line,
- * since nothing here forces a break where the text does not already need one.
- */
-.gwui-btn-wide { width: 100%; white-space: normal; }
-@media (max-width: 640px) {
-  .gwui-btn { white-space: normal; }
-  .gwui-btn-small { min-height: 44px; }
-}
-
-/* ── TAG (prototype: .tag, .tag.rec/.att/.act/.con/.plain) ────────────────── */
-.gwui-tag {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 10px;
-  border-radius: 13px; font-size: 13.5px; font-weight: 700; white-space: nowrap;
-}
-.gwui-tag-proven    { background: var(--gw-green-bg); color: var(--gw-green-t); box-shadow: inset 0 0 0 1px var(--gw-green-b); }
-.gwui-tag-attention { background: var(--gw-amber-bg); color: var(--gw-amber-t); box-shadow: inset 0 0 0 1px var(--gw-amber-b); }
-.gwui-tag-action    { background: var(--gw-blue-bg);  color: var(--gw-blue-t);  box-shadow: inset 0 0 0 1px var(--gw-blue-b); }
-.gwui-tag-concern   { background: var(--gw-red-bg);   color: var(--gw-red-t);   box-shadow: inset 0 0 0 1px var(--gw-red-b); }
-.gwui-tag-plain     { background: var(--gw-bg);       color: var(--gw-text); }
-
 /* ── NOTE / EMPTY (prototype: .note, an empty sentence, a locked door) ────── */
 .gwui-note { font-size: 13.5px; color: var(--gw-sub); }
 .gwui-note-error { color: var(--gw-red-t); }
@@ -866,12 +758,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 
 /* ── CONVERSATION CARD (prototype: .ci-focus, .ci-card, app.css) ─────────── */
-.gwui-conv-outer { max-width: 560px; margin: 0 auto; }
-.gwui-conv-back-row { padding: 8px 12px 10px; flex-shrink: 0; }
-.gwui-conv-card {
-  flex: 1; min-height: 0; display: flex; flex-direction: column; background: white;
-  border: 1px solid var(--gw-border); border-radius: 16px; overflow: hidden;
-}
+
 /*
   REVIEW ROUND 3, ITEM 7: AT 375 WIDE, THE CARD RUNS FULL WIDTH.
   The prototype's own rule (app.css, `body.focus .ci-card` at <=860px): no side gutters, no
@@ -879,11 +766,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   a framed box inside them. `.gwui-conv-outer` drops its own max-width/margin at the same
   breakpoint so nothing above the card re-adds the gutter it just removed.
 */
-@media (max-width: 640px) {
-  .gwui-conv-outer { max-width: none; margin: 0; }
-  .gwui-conv-back-row { padding-left: 16px; padding-right: 16px; }
-  .gwui-conv-card { border-radius: 0; border-left: none; border-right: none; }
-}
 
 /* ── EXAMPLE EXCHANGE (fault 5 of the live walk of the suites: "How people ask"/"How people use
    it" on the leave and spending boards) - the shared Bubble stacked in a flex column, the same
@@ -907,9 +789,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-stage-track-name  { font-weight: 700; }
 .gwui-stage-track-count { font-weight: 500; }
 .gwui-stage-track-done    { background: var(--gw-green-bg); color: var(--gw-green-t); }
-.gwui-stage-track-current { background: var(--gw-navy); color: white; }
-.gwui-stage-track-current .gwui-stage-track-name,
-.gwui-stage-track-current .gwui-stage-track-count { font-weight: 700; }
 
 /* ── UTILITY SCALE (design-audit.md section 4, the guard test) ───────────────
    For a page on REBUILT_PAGES: no inline fontSize, color, margin*, padding*, border
@@ -955,20 +834,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ink-clay  { color: var(--gw-clay); }
 /* ReportPage.tsx's own centred-column layout (ReportBody, unmounted today - see the file's own
    comment) - a straight rename of its repeated `maxWidth: 1040, margin: '0 auto'` inline style. */
-.gwui-report-wrap { max-width: 1040px; margin-left: auto; margin-right: auto; }
-.gwui-rule-right      { border-right: 1px solid var(--gw-border); }
-.gwui-rule-right-none { border-right: none; }
-.gwui-pt-34 { padding-top: 34px; }
-.gwui-pb-60 { padding-bottom: 60px; }
-.gwui-pt-1 { padding-top: 1px; } .gwui-pb-1 { padding-bottom: 1px; }
-.gwui-pl-5 { padding-left: 5px; } .gwui-pr-5 { padding-right: 5px; }
-.gwui-pl-3 { padding-left: 3px; } .gwui-pr-3 { padding-right: 3px; }
+
+ 
+ 
+ 
 .gwui-pl-30 { padding-left: 30px; }
 /* where-to-focus.tsx's own list grid gap (row, column), kept as its own class for the same reason
    as .gwui-gap-6-20 above - a row/column pair, not a single value. */
 .gwui-gap-12-20 { gap: 12px 20px; }
 /* Bullet's own dot, nudged down to sit on the text's baseline rather than its cap height. */
-.gwui-mt-055em { margin-top: .55em; }
 
 /* Spacing (margin-top/right/bottom/left, padding-top/right/bottom/left, gap), the exact
    pixel values the board already used - a plain numeric scale, not a redesign. */
@@ -991,22 +865,22 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-pt-8 { padding-top: 8px; } .gwui-pt-9 { padding-top: 9px; } .gwui-pt-10 { padding-top: 10px; }
 .gwui-pt-11 { padding-top: 11px; } .gwui-pt-12 { padding-top: 12px; } .gwui-pt-13 { padding-top: 13px; }
 .gwui-pt-14 { padding-top: 14px; }
-.gwui-pt-16 { padding-top: 16px; } .gwui-pt-18 { padding-top: 18px; } .gwui-pt-22 { padding-top: 22px; }
+.gwui-pt-16 { padding-top: 16px; }  
 .gwui-pr-0 { padding-right: 0; } .gwui-pr-8 { padding-right: 8px; } .gwui-pr-9 { padding-right: 9px; }
 .gwui-pr-10 { padding-right: 10px; } .gwui-pr-13 { padding-right: 13px; } .gwui-pr-14 { padding-right: 14px; }
 .gwui-pr-15 { padding-right: 15px; } .gwui-pr-16 { padding-right: 16px; } .gwui-pr-18 { padding-right: 18px; }
 .gwui-pr-20 { padding-right: 20px; }
-.gwui-pr-22 { padding-right: 22px; } .gwui-pr-24 { padding-right: 24px; }
+.gwui-pr-22 { padding-right: 22px; } 
 .gwui-pb-0 { padding-bottom: 0; } .gwui-pb-2 { padding-bottom: 2px; } .gwui-pb-6 { padding-bottom: 6px; }
 .gwui-pb-7 { padding-bottom: 7px; } .gwui-pb-8 { padding-bottom: 8px; } .gwui-pb-9 { padding-bottom: 9px; }
 .gwui-pb-10 { padding-bottom: 10px; } .gwui-pb-11 { padding-bottom: 11px; } .gwui-pb-12 { padding-bottom: 12px; }
 .gwui-pb-14 { padding-bottom: 14px; }
-.gwui-pb-16 { padding-bottom: 16px; } .gwui-pb-18 { padding-bottom: 18px; } .gwui-pb-22 { padding-bottom: 22px; }
+.gwui-pb-16 { padding-bottom: 16px; }  
 .gwui-pl-0 { padding-left: 0; } .gwui-pl-8 { padding-left: 8px; } .gwui-pl-9 { padding-left: 9px; }
 .gwui-pl-10 { padding-left: 10px; } .gwui-pl-13 { padding-left: 13px; } .gwui-pl-14 { padding-left: 14px; }
 .gwui-pl-15 { padding-left: 15px; } .gwui-pl-16 { padding-left: 16px; } .gwui-pl-18 { padding-left: 18px; }
 .gwui-pl-20 { padding-left: 20px; }
-.gwui-pl-22 { padding-left: 22px; } .gwui-pl-24 { padding-left: 24px; } .gwui-pl-28 { padding-left: 28px; }
+.gwui-pl-22 { padding-left: 22px; }  .gwui-pl-28 { padding-left: 28px; }
 .gwui-p-0 { padding: 0; }
 
 .gwui-gap-3  { gap: 3px; }
@@ -1024,10 +898,10 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-rule-none  { border: none; }
 .gwui-rule-blue  { border: 1px solid var(--gw-blue-b); }
 .gwui-rule-amber { border: 1px solid var(--gw-amber-b); }
-.gwui-rule-dark  { border: 1.5px solid var(--gw-dark); }
+
 .gwui-rule-dashed { border: 1px dashed var(--gw-border); }
 .gwui-rule-top       { border-top: 1px solid var(--gw-border); }
-.gwui-rule-top-none  { border-top: none; }
+
 .gwui-rule-top-dashed { border-top: 1px dashed var(--gw-border); }
 /* A repeated inner list row (an item inside a wider card, e.g. a per-person panel's own
    lines, or a poll option): a line above every row but the first, without an `i === 0`
@@ -1066,17 +940,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-fs-22 { font-size: 22px; }
 .gwui-fs-30 { font-size: 30px; }
 .gwui-ink-green-soft { color: var(--gw-green-t-soft); }
-.gwui-mt-24 { margin-top: 24px; } .gwui-mt-30 { margin-top: 30px; } .gwui-mt-32 { margin-top: 32px; }
-.gwui-mt-40 { margin-top: 40px; }
-.gwui-mb-1  { margin-bottom: 1px; } .gwui-mb-3  { margin-bottom: 3px; } .gwui-mb-5  { margin-bottom: 5px; }
-.gwui-mb-11 { margin-bottom: 11px; } .gwui-mb-20 { margin-bottom: 20px; } .gwui-mb-22 { margin-bottom: 22px; }
-.gwui-mb-34 { margin-bottom: 34px; }
-.gwui-pt-24 { padding-top: 24px; }
+  
+
+ .gwui-mb-3  { margin-bottom: 3px; } 
+.gwui-mb-11 { margin-bottom: 11px; }  
+
 .gwui-pl-17 { padding-left: 17px; }
 .gwui-gap-2 { gap: 2px; } .gwui-gap-18 { gap: 18px; }
 .gwui-rule-left       { border-left: 3px solid var(--gw-border); }
-.gwui-rule-left-amber { border-left: 3px solid var(--gw-amber-b); }
-.gwui-rule-left-green { border-left: 3px solid var(--gw-green-b); }
+
 /* A soft-tint rule, for a surface whose own tint is the point (the "did this feel fair" feedback
    buttons' equal green/amber weight; see their own comment for why they are plain buttons, not
    the shared Button, whose four kinds are all navy/white/text/red). */
@@ -1088,7 +960,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ink-white-55 { color: rgba(255, 255, 255, .55); }
 .gwui-ink-white-75 { color: rgba(255, 255, 255, .75); }
 .gwui-ink-white-90 { color: rgba(255, 255, 255, .9); }
-.gwui-rule-white-16 { border: 1px solid rgba(255, 255, 255, .16); }
+
 /* "In their own voice" quote box (board): their own words when given, else a muted placeholder. */
 /* A colour picked from data at render time (WhatSuccessLooksLike's moving/stuck/unspoken tone),
    never a fixed design value - `color` still has to come from a class (the guard bans the inline
@@ -1097,8 +969,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ownvoice { background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); color: var(--gw-blue-t); }
 .gwui-ownvoice-none { border: 1px dashed var(--gw-border); color: var(--gw-muted); }
 /* The "words only / with a bar" toggle (board coverage variant), chosen vs not. */
-.gwui-toggle-chip-on  { border: 1px solid var(--gw-dark); background: var(--gw-dark); color: #fff; }
-.gwui-toggle-chip-off { border: 1px solid var(--gw-border); background: #fff; color: var(--gw-sub); }
+
 /* The poll's winning option, picked out from the rest (board: "Find a time"). */
 .gwui-win-row { background: var(--gw-green-bg); border-radius: 9px; margin: 2px -8px; }
 /* The poll's own "I can make this" toggle, picked vs not. */
@@ -1244,10 +1115,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 .gwui-more-row + .gwui-more-row { border-top: 1px solid var(--gw-border); }
 .gwui-more-row b { font-size: 16px; font-weight: 700; }
-.gwui-more-org-row { display: flex; align-items: center; gap: 12px; padding: 14px 22px; }
-.gwui-more-org-row + .gwui-more-org-row { border-top: 1px solid var(--gw-border); }
-.gwui-more-org-name { font-size: 16px; font-weight: 700; color: var(--gw-text); flex: 1; min-width: 0; }
-.gwui-more-org-check { color: var(--gw-green-t); font-weight: 700; }
 
 /* A numbered set of steps, each opened as its own turn comes (Connect WhatsApp). Unlike `Steps`
    (a closed checklist of done/not-done facts), each step here carries its own body and a number
@@ -1264,7 +1131,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-numstep-body { flex: 1; min-width: 0; }
 .gwui-numstep-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .gwui-numstep-title { font-size: 16px; font-weight: 700; color: var(--gw-text); margin: 0; }
-.gwui-numstep-title-btn { background: none; border: none; padding: 0; font: inherit; font-size: 16px; font-weight: 700; color: var(--gw-text); cursor: pointer; text-align: left; }
+
 .gwui-numstep-content { margin-top: 12px; }
 
 /* ── OPS CONSOLE EXAMPLE (F1-connections/tools.jpg, connections.jpg: "How it looks inside your
@@ -1337,11 +1204,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * VIEWPORT'S. A plain `@media` query above only sees the viewport - at 960-1280px wide the viewport
  * is nowhere near 640px, but `.gwui-two-up` (above) can still be sitting this example at ~565px or
  * less once there are two of them side by side, which is exactly the width this split needs to
- * stack. `.gwui-panel` becomes this query's own container (scoped to a panel that actually holds
+ * stack. `.panel` becomes this query's own container (scoped to a panel that actually holds
  * this split, so no other panel is affected), and the rules are the same ones the viewport query
  * already uses.
  */
-.gwui-panel:has(.gwui-embed-split) { container-type: inline-size; }
+.panel:has(.gwui-embed-split) { container-type: inline-size; }
 @container (max-width: 520px) {
   .gwui-embed-split { flex-direction: column; }
   .gwui-embed-host { border-right: none; border-bottom: 1px solid var(--gw-border); }
@@ -1375,16 +1242,10 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 
 /* ── GREETING (prototype: .t-greet, app.css - Today's own big heading, C1, U.5 group 2) ────── */
-.gwui-greet-block { margin: 0; }
-.gwui-greet { font-family: var(--gw-font-name); font-size: clamp(30px, 4vw, 38px); line-height: 1.12; font-weight: 500; letter-spacing: -.01em; margin: 0 0 8px; color: var(--gw-text); }
-.gwui-greet-sub { font-size: 17px; line-height: 1.5; color: var(--gw-sub); margin: 0; }
-@media (max-width: 860px) {
-  .gwui-greet { font-size: 30px; }
-}
 
 /* ── TODAY'S TWO-COLUMN LAYOUT (prototype: .side, app.css line 78: "minmax(0,1fr) 340px", gap
    44px; the check-ins list, board and other screens share the same shape) ─────────────────── */
-.gwui-side { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 44px; align-items: start; }
+.gwui-side { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 48px; align-items: start; }
 @media (max-width: 1100px) {
   .gwui-side { grid-template-columns: minmax(0, 1fr); }
 }
@@ -1397,11 +1258,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* ── COMING UP (prototype: Today's own sidebar list, app.css) ───────────────────────────────── */
 .gwui-comingup-h { margin: 0 0 12px; font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--gw-text); }
-.gwui-comingup-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
-.gwui-comingup-list li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; }
-.gwui-comingup-list b { color: var(--gw-text); }
-.gwui-comingup-list a { color: var(--gw-text); text-decoration: none; }
-.gwui-comingup-list a:hover, .gwui-comingup-list a:focus-visible { text-decoration: underline; }
 
 /* ── WELCOME CARD AND "GET <ORGANISATION> GOING" (prototype: the admin's first-run doors and
    checklist, C1/A3, U.3 and U.5) ────────────────────────────────────────────────────────────── */
@@ -1452,7 +1308,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-ci-table th:nth-child(1) { width: 30%; }
   .gwui-ci-table th:nth-child(2) { width: 22%; }
   .gwui-ci-table th:nth-child(3) { width: 15%; }
-  .gwui-ci-table td:nth-child(3) .gwui-tag { white-space: normal; }
+  .gwui-ci-table td:nth-child(3) .tag { white-space: normal; }
 }
 @media (max-width: 860px) {
   .gwui-ci-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -1508,14 +1364,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    `div` of stacked content to reach the row's own width), so a bare `Button` sitting beside that
    content - "Change", on one of "What we are aiming for"'s own targets, with nothing else on its
    line - stretched edge to edge and its own `justify-content: center` then centred the word
-   "Change" in the middle of the row, not under the name above it. Scoped to `.gwui-btn` only, so
+   "Change" in the middle of the row, not under the name above it. Scoped to `.btn` only, so
    every row still stretches its ordinary block content exactly as it did. */
-.gwui-row > .gwui-btn { justify-self: start; }
+.gwui-row > .btn { justify-self: start; }
 /* THE SAME SYMPTOM, FOR A BARE TAG (fault 8 of the live walk of the suites, YourRequestsPage at
    375): "Waiting"/"Approved" sat as `Row`'s own second column, which stretched it edge to edge the
    same way a lone Button did above, once the row's grid collapses to its single narrow-width
-   column. Scoped to `.gwui-tag` only, for the same reason the Button rule is scoped. */
-.gwui-row > .gwui-tag { justify-self: start; }
+   column. Scoped to `.tag` only, for the same reason the Button rule is scoped. */
+.gwui-row > .tag { justify-self: start; }
 /* Row's own named side insets (board task, batch 3, part 5) - see the doc comment in Rows.tsx. */
 .gwui-row-inset-panel { padding-left: 22px; padding-right: 22px; }
 .gwui-row-inset-list { padding-left: 15px; padding-right: 15px; }
@@ -1569,11 +1425,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * card is only a fraction of the page, and a long name ("Performance reviews") or sentence can
  * leave the switch with nowhere to go. A viewport breakpoint cannot see a CARD's own width here -
  * the same viewport holds one card full-width or three squeezed ones - so this queries the card
- * itself: `.gwui-panel` becomes this one query's own container (scoped to a panel that actually
+ * itself: `.panel` becomes this one query's own container (scoped to a panel that actually
  * holds a suite head, so no other panel anywhere is affected), and below ~420px of ITS width the
  * switch drops under the text instead of squeezing beside it.
  */
-.gwui-panel:has(> .gwui-suite-head) { container-type: inline-size; }
+.panel:has(> .gwui-suite-head) { container-type: inline-size; }
 @container (max-width: 420px) {
   .gwui-suite-head { grid-template-columns: minmax(0, 1fr); row-gap: 10px; }
   .gwui-suite-switch { justify-self: start; }
@@ -1592,7 +1448,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-record-table thead th { border-top: 0; font-weight: 500; font-size: 13px; color: var(--gw-sub); }
 .gwui-record-table tbody th { font-weight: 600; }
 .gwui-record-table .gwui-nobody { color: var(--gw-red-t); }
-.gwui-record-table select, .gwui-record-table input { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--gw-border); border-radius: 7px; background: var(--gw-card); color: var(--gw-text); max-width: 100%; }
+/* The prototype's field (.input): 1.5px hairline in the rule colour, 10px corners, 16px type. Compact in a table row, still 44px to tap. */
+.gwui-record-table select, .gwui-record-table input { font: inherit; font-size: 16px; min-height: 44px; padding: 0 12px; border: 1.5px solid var(--gw-rule-2); border-radius: 10px; background: var(--gw-card); color: var(--gw-text); max-width: 100%; }
 @media (max-width: 860px) {
   .gwui-record-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .gwui-record-table, .gwui-record-table tbody, .gwui-record-table tr, .gwui-record-table th, .gwui-record-table td { display: block; width: auto; }
@@ -1681,13 +1538,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    real fault a picture check found here (coordinator, after the first pass): rgb(247, 241, 229)
    painted over #FDFBF6. */
 .gwui-split { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--gw-page); }
-.gwui-split-form { padding: clamp(24px, 6vw, 96px); display: flex; flex-direction: column; }
-.gwui-split-body { max-width: 420px; width: 100%; margin: auto 0; padding-top: 32px; }
+/* A2 (the prototype's sign-in): the form's column is padded 56px 96px, the mark at its top, the heading 80px under it. */
+.gwui-split-form { padding: 56px 96px; display: flex; flex-direction: column; gap: 28px; }
+.gwui-split-body { max-width: 420px; width: 100%; margin: 80px 0 0; }
 /* The split form's own top-level rhythm (signin.jpg's source, s1.js: the form's outer column is
    `gap:24px` between its heading, its fields and the line under them) - clear space between the
    subtitle and the first field, the fault a picture check found here (coordinator, after the
    first pass): the heading and the form used to sit with no gap at all. */
-.gwui-split-body > * + * { margin-top: 24px; }
+.gwui-split-body > * + * { margin-top: 28px; }
 .gwui-split-panel { background: var(--gw-dark); color: #fff; padding: clamp(24px, 5vw, 72px); display: flex; flex-direction: column; justify-content: center; }
 .gwui-split-panel-line { font-family: var(--gw-font-name); font-size: 28px; line-height: 1.35; margin: 0 0 22px; max-width: 540px; }
 .gwui-split-panel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; font-size: 16px; }
@@ -1697,9 +1555,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-split-dot-proven { background: var(--gw-green-b); }
 @media (max-width: 860px) {
   .gwui-split { grid-template-columns: minmax(0, 1fr); }
-  .gwui-split-panel { display: none; }
-  .gwui-split-form { padding: 24px 16px 40px; }
-  .gwui-split-body { margin: 0; padding-top: 28px; }
+  /* On a phone the prototype keeps the dark half, under the form. */
+  .gwui-split-form { padding: 56px 18px 28px; }
+  .gwui-split-panel { padding: 56px 18px; }
 }
 
 /* THE TWO SMALL TEXT ACTIONS UNDER A SIGN-IN FORM (signin.jpg: "Forgot password?" / "New here?
@@ -1715,12 +1573,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    place, the same as every other rebuilt page. */
 
 /* The header strip (check-in-start.jpg): the check-in's name, the line under it, and Pause. */
-.gwui-ci-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--gw-border); background: #fff; flex-shrink: 0; }
-.gwui-ci-header-text { min-width: 0; }
-.gwui-ci-header-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--gw-text); line-height: 1.35; overflow-wrap: anywhere; }
-.gwui-ci-header-sub { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
+
 .gwui-ci-pause-wrap { position: relative; flex-shrink: 0; }
-.gwui-ci-pause-btn { background: none; border: none; padding: 6px 4px; font-size: 14px; font-weight: 700; color: var(--gw-navy); cursor: pointer; font-family: inherit; min-height: 44px; }
+
 .gwui-ci-menu { position: absolute; right: 0; top: 40px; z-index: 30; background: #fff; border: 1px solid var(--gw-border); border-radius: 12px; box-shadow: var(--gw-shadow-menu); padding: 6px; width: 260px; }
 .gwui-ci-menu-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 10px 12px; border-radius: 8px; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; text-align: left; }
 .gwui-ci-menu-item-title { font-weight: 700; color: var(--gw-text); }
@@ -1735,7 +1590,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ci-banner-warn-btn[disabled] { opacity: .6; }
 
 /* "What this check-in is about" link, above the first turn. */
-.gwui-ci-about-link { background: none; border: none; padding: 0; font-size: 13px; color: var(--gw-navy); cursor: pointer; font-family: inherit; text-decoration: underline; margin-bottom: 4px; }
 
 /* The read-only recap of an earlier session (correcting it). */
 .gwui-ci-prior { border: 1px dashed var(--gw-border); border-radius: 10px; padding: 10px 12px; margin-bottom: 4px; background: var(--gw-bg); }
@@ -1747,8 +1601,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ci-prior-foot { font-size: 13px; color: var(--gw-muted); margin-top: 8px; line-height: 1.5; }
 
 /* The waiting dots in an assistant bubble, and the note once it has taken a while. */
-.gwui-ci-dots { display: inline-flex; align-items: center; gap: 8px; }
-.gwui-ci-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--gw-sub); animation: gwDotBounce 1.2s ease-in-out infinite; }
+
 @keyframes gwDotBounce { 0%, 80%, 100% { transform: translateY(0); opacity: .4; } 40% { transform: translateY(-5px); opacity: 1; } }
 .gwui-ci-dot-note { font-size: 13px; color: var(--gw-sub); }
 .gwui-ci-caret { display: inline-block; width: 2px; height: 1em; background: var(--gw-navy); margin-left: 2px; vertical-align: text-bottom; animation: blink .7s step-end infinite; }
@@ -1763,7 +1616,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 
 /* "Finish my check-in now", once enough has been said. */
-.gwui-ci-finish-link { font-size: 13px; color: var(--gw-navy); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; min-height: 44px; }
 
 /* Declining the session, and confirming it first. */
 .gwui-ci-settled-box { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 16px 18px; }
@@ -2036,7 +1888,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-messages-narrow { max-width: 680px; }
 .gwui-ec-picked-chip { align-self: flex-end; font-size: 13px; color: var(--gw-sub); padding: 6px 12px; border: 1px solid var(--gw-border); border-radius: 999px; background: white; }
 
-
 .gwui-ec-doc-panel { padding: 12px 16px; border-bottom: 1px solid var(--gw-border); background: var(--gw-paper-2); }
 .gwui-ec-doc-panel-inner { max-width: 680px; margin: 0 auto; }
 .gwui-ec-doc-panel-tabs { display: flex; gap: 6px; margin-bottom: 8px; align-items: center; }
@@ -2056,8 +1907,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 @media (max-width: 640px) {
   .gwui-ec-door-slot { padding-bottom: 64px; }
 }
-.gwui-ec-thinking { margin-right: 6px; font-style: normal; color: var(--gw-muted); font-size: 13px; }
-.gwui-ec-fork { display: flex; flex-direction: column; gap: 8px; max-width: 82%; align-self: flex-start; margin-top: 4px; }
+
 /*
  * FAULT 7 (live review, 390px walk), THEN FAULT C3 (reviewer, third round): THE FLOATING
  * FEEDBACK TRIGGER STILL COVERED THE END OF "I CHECK IN ONCE TO SET THE CONTEXT, THEN ONLY THEY
@@ -2070,12 +1920,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * same number this container now reserves, so the fork can never end inside it, however long the
  * conversation above it runs.
  */
-@media (max-width: 640px) {
-  .gwui-ec-fork { padding-bottom: 148px; }
-}
-.gwui-ec-fork-note { font-weight: 700; margin-top: 8px; }
-.gwui-ec-sofar-heading { font-size: 13px; font-weight: 700; letter-spacing: .3px; color: var(--gw-sub); margin-bottom: 5px; }
-.gwui-ec-sofar-row { display: flex; gap: 7px; font-size: 13px; line-height: 1.5; margin-bottom: 3px; }
+
 /*
  * FAULT 6 (live review): A 56px LABEL COLUMN WRAPPED "What you are aiming for" ONE WORD AT A TIME
  * ("What / you are / aiming / for"), AND THE CLAMP ON ITS VALUE THEN CUT THE ANSWER OFF ON A PHONE
@@ -2084,7 +1929,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * its value instead of beside it once the screen is too narrow to keep that width, and the clamp is
  * gone - the point of the card is to show what is on the record, not to hide part of it.
  */
-.gwui-ec-sofar-label { color: var(--gw-sub); font-weight: 700; flex: 0 0 160px; }
+
 /*
  * FAULT D2 (reviewer, third round): THE VALUE COLUMN HELD ONLY 2 OR 3 WORDS A LINE AT 1024px.
  * The card sits in a chat bubble with no width of its own (`Bubble.tsx`'s `maxWidth: '82%'`, no
@@ -2096,7 +1941,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * column a real preferred width to claim from that remaining space, the same way the label column
  * already claims its own 160px, rather than leaving it to guess.
  */
-.gwui-ec-sofar-value { color: var(--gw-text); flex: 1 1 320px; min-width: 0; }
+
 /*
  * AND THE CARD ITSELF: a flex-basis on the value column alone could not widen it, because the
  * bubble around this card (`Bubble.tsx`) has no width of its own - only `max-width: 82%` - so
@@ -2106,14 +1951,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * calculation has to honour going back up that chain - still capped by the bubble's own 82% and
  * the viewport beneath it, so it never forces the card wider than the screen actually allows.
  */
-@media (min-width: 900px) {
-  .gwui-ec-sofar { min-width: 480px; }
-}
-@media (max-width: 480px) {
-  .gwui-ec-sofar-row { flex-direction: column; gap: 1px; }
-  .gwui-ec-sofar-label { flex-basis: auto; }
-}
-.gwui-ec-sofar-missing { font-size: 13px; line-height: 1.55; margin-top: 6px; color: var(--gw-amber-t); }
+
 .gwui-ec-doc-panel-spacer { flex: 1; }
 
 /* 4D-2: the natural-close prompt, the quick-action chips, the attached-doc pill, and the actions
@@ -2207,7 +2045,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-savecard-invite-context-ask { font-size: 13px; color: var(--gw-sub); margin-bottom: 8px; line-height: 1.5; }
 .gwui-ec-savecard-row-gap8 { display: flex; gap: 8px; }
 .gwui-ec-savecard-row-gap8-grow-last > *:last-child { flex: 1; }
-.gwui-ec-savecard-row-gap8-mb { display: flex; gap: 8px; margin-bottom: 8px; }
+
 .gwui-ec-savecard-invite-add-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .gwui-ec-savecard-invite-add-row > :first-child { flex: 1; }
 .gwui-ec-savecard-link-row { display: flex; align-items: center; gap: 8px; }
@@ -2229,8 +2067,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-checkin-notice-inner { max-width: 680px; margin: 0 auto; font-size: 13px; color: var(--gw-amber-t); line-height: 1.5; }
 .gwui-ec-checkin-messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; max-width: 680px; width: 100%; margin: 0 auto; box-sizing: border-box; }
 .gwui-ec-checkin-starting { font-size: 13px; color: var(--gw-sub); text-align: center; padding: 24px; }
-.gwui-ec-checkin-seam { display: flex; align-items: center; gap: 10px; padding: 2px 12px 10px; }
-.gwui-ec-checkin-seam-text { font-size: 13px; color: var(--gw-sub); font-weight: 700; white-space: nowrap; }
+
 .gwui-ec-checkin-note { font-size: 13px; color: var(--gw-sub); text-align: center; padding: 4px 12px 8px; line-height: 1.5; }
 .gwui-ec-checkin-note-row { display: flex; align-items: center; gap: 8px; justify-content: center; padding: 0 12px 10px; }
 
@@ -2304,11 +2141,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    one-line sentence beside its name, set off from the page by the same fill a dropzone and an empty
    state already use. */
 .gwui-group-head { background: var(--gw-bg); padding: 10px 16px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-/* A PILL THAT IS ALSO A CONTROL: `.gwui-tag`'s own shape (26px, round, 13.5px bold) on a `<select>`
+/* A PILL THAT IS ALSO A CONTROL: `.tag`'s own shape (26px, round, 13.5px bold) on a `<select>`
    or `<button>` instead of a `<span>` - who can read a document, toggled or chosen on the row
    itself. Resets the native element's own border, font and pointer so only the tag's look shows. */
 /*
- * WIDTH CHECK, ITEM 10: THE VISIBILITY SELECT OVERFLOWING INTO THE NEXT CARD. `.gwui-tag`'s own
+ * WIDTH CHECK, ITEM 10: THE VISIBILITY SELECT OVERFLOWING INTO THE NEXT CARD. `.tag`'s own
  * `white-space: nowrap` is right for a short fixed word ("Everyone", "Only you"), but this is also
  * the lead's `<select>`, whose longest option reads "Whoever runs this check-in" - inside
  * `.gwui-doc-grid`'s own narrow `minmax(200px, 1fr)` card, nowrap let that text run past the
@@ -2400,9 +2237,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    because a plain <select> clips rather than wraps. The row itself already wraps (`flexWrap:
    'wrap'`); this gives the select the full row to itself there, instead of a squeezed remainder
    beside "About". Written up in docs/the-parts-against-the-prototype.md. */
-@media (max-width: 420px) {
-  .gwui-ask-about-select { flex-basis: 100% !important; }
-}
 
 /* ── A CHECK-IN'S OWN HEADER, WHEN IT IS NEVER THE LAST THING ON THE SCREEN (B-231) ──
    .gwui-page-main's own bottom padding (140px on a phone) is right for a page that ends there,
@@ -2411,8 +2245,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    roughly 150px empty gap above a check-in's own failure note before a single word of it (Dov's
    own account, review6/shots/b226-dov-mywork-390.png). Zeroed at narrow widths, where the gap was
    measured; written up in docs/the-parts-against-the-prototype.md. */
-@media (max-width: 640px) {
-  .gwui-ground-header-wrap .gwui-page-main { padding-bottom: 0; }
+/* At every width now (wip/ui, 24 October): on a computer the same 110px left an empty band above
+   My work. And the body under it starts at the header's own left edge, not 32px further left. */
+
+@media (min-width: 641px) {
+  .gwui-ground-header-wrap + .gw-bd { padding-left: 48px; padding-right: 48px; }
 }
 
 /* ===== THE LIGHT PARTS (light prototype, 13 October 2026; docs/light-rebuild/sales-first.md,
@@ -2436,11 +2273,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-fold-chev { justify-self: end; font-size: 18px; color: var(--gw-sub); transition: transform .15s; }
 .gwui-fold[open] > summary .gwui-fold-chev, .gwui-box[open] > summary .gwui-fold-chev { transform: rotate(90deg); }
 .gwui-fold-body { padding: 4px 18px 18px; display: flex; flex-direction: column; gap: 12px; overflow-x: auto; }
-.gwui-fold-body > .gwui-section { margin-top: 0; }
-.gwui-fold-body .gwui-section-h { margin-bottom: 8px; }
+.gwui-fold-body > .sec { margin-top: 0; }
+.gwui-fold-body .sec-h { margin-bottom: 8px; }
 /* Inside a folded line, a card is not a card again (light-layer.css: ".ctx-inner .panel"). */
-.gwui-fold-body .gwui-panel { border: 0; background: none; }
-.gwui-fold-body .gwui-panel-pad { padding-left: 0; padding-right: 0; }
+.gwui-fold-body .panel { border: 0; background: none; }
+.gwui-fold-body .panel.pad { padding-left: 0; padding-right: 0; }
 /* The box: a group of folded lines with its two most useful facts */
 .gwui-boxes { display: flex; flex-direction: column; gap: 10px; }
 .gwui-box { border: 1px solid var(--gw-border); border-radius: 12px; background: var(--gw-card); overflow: hidden; }
@@ -2489,8 +2326,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-menu-pop-left { left: 0; right: auto; }
 /* One page header on a phone: no breadcrumb, the main action small beside the title */
 @media (max-width: 640px) {
-  .gwui-cih .gwui-pt-crumb { display: none; }
-  .gwui-cih .gwui-pt-row { flex-wrap: nowrap; align-items: flex-start; gap: 10px; }
+  
+  
   .gwui-cih .gwui-pt-sub { font-size: 13px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .gwui-fold > summary.gwui-fold-sum, .gwui-box > summary.gwui-box-sum { grid-template-columns: minmax(0, 44%) minmax(0, 1fr) 16px; gap: 8px; padding: 12px 14px; }
   .gwui-box-body > .gwui-fold > summary.gwui-fold-sum, .gwui-box-body > .gwui-fold > .gwui-fold-body { padding-left: 22px; }
@@ -2509,14 +2346,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-light-slot:empty, .gwui-light-folds:empty { display: none; }
 .gwui-light-needs { display: flex; flex-direction: column; gap: 16px; margin-top: 22px; }
 .gwui-light-needs:not(:has(.gwui-light-slot > *)) { display: none; }
-.gwui-light-needs > .gwui-light-slot > .gwui-section .gwui-section-title { font-size: 22px; }
+.gwui-light-needs > .gwui-light-slot > .sec .sec-h .t-h2 { font-size: 22px; }
 .gwui-light-else { margin-top: 28px; }
 /* A line, a box or a summary with nothing in it for this reader is not drawn: nothing says more than what is inside. */
 .gwui-fold:has(> .gwui-fold-body > .gwui-light-part):not(:has(.gwui-light-part > *)) { display: none; }
 .gwui-box:not(:has(.gwui-light-part > *, .gwui-light-folds > *)) { display: none; }
 /* The main section's heading is the line's own name, so it is not said twice; nor its note, when the note is the line's fact. */
-.gwui-light-part[data-main] > .gwui-light-sec > .gwui-section > .gwui-section-h > .gwui-section-title { display: none; }
-.gwui-light-sec[data-note-is-fact] > .gwui-section > .gwui-section-h > .gwui-section-note { display: none; }
+.gwui-light-part[data-main] > .gwui-light-sec > .sec > .sec-h > .sec-h .t-h2 { display: none; }
+.gwui-light-sec[data-note-is-fact] > .sec > .sec-h > .sec-h .t-small { display: none; }
 .gwui-light-part[data-main] .gwui-assumes-title { display: none; }
 .gwui-light-part + .gwui-light-part:not(:empty) { margin-top: 18px; }
 .gwui-light-folds { display: flex; flex-direction: column; }
@@ -2569,12 +2406,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-target-figure { margin-left: auto; text-align: right; }
 
 /* ===== THE LIGHT CONTEXT PAGE (docs/light-rebuild/sales-first.md, section 4; s56, s63, s72) ===== */
-.gwui-ctx-same > .gwui-section:first-child > .gwui-section-h > .gwui-section-title { display: none; }
+.gwui-ctx-same > .sec:first-child > .sec-h > .sec-h .t-h2 { display: none; }
 .gwui-ctx-light { display: flex; flex-direction: column; gap: 28px; margin-top: 8px; }
-.gwui-ctx-light .gwui-section + .gwui-folds { margin-top: 14px; }
+.gwui-ctx-light .sec + .gwui-folds { margin-top: 14px; }
 .gwui-ctx-actions { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
 .gwui-ctx-actions > .gwui-menu .gwui-menu-pop { min-width: min(320px, calc(100vw - 32px)); }
-
 
 /* THE END CARD, LIGHT (sales-first.md, section 5): the next opening as one line, and the fold. */
 .gwui-ci-endcard-row { align-items: flex-start; }
@@ -2595,3 +2431,36 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-done-changed .gw-ladder-stages { gap: 4px; letter-spacing: -0.01em; }
   .gwui-done-changed .gw-ladder-stages li { overflow-wrap: normal; word-break: normal; }
 }
+
+/* THE PROTOTYPE'S DENSITY, AS CLASSES (wip/ui, 24 October): rows divided by thin rules, not boxes. */
+.gwui-stack-32 { display: flex; flex-direction: column; gap: 32px; }
+.gwui-three-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.gwui-field-with-label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.gwui-setup-problem { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-bd); border-radius: 8px; padding: 4px 12px; font-size: 14.5px; color: var(--gw-text); }
+.gwui-ruled { border-top: 1px solid var(--gw-rule); }
+.gwui-ruled-row { border-bottom: 1px solid var(--gw-rule); }
+.gwui-person-part { border-bottom: 1px solid var(--gw-rule); padding: 18px 0; }
+.gwui-person-part-name { margin: 0; font-size: 17px; font-weight: 700; color: var(--gw-text); }
+.gwui-session-row-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 10px 0; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 400; color: var(--gw-text); text-align: left; }
+.gwui-session-row-open { font-size: 14.5px; color: var(--gw-navy); font-weight: 700; flex-shrink: 0; }
+.gwui-session-row-body { padding: 4px 0 16px; display: flex; flex-direction: column; gap: 12px; }
+/* B7's three numbers: small chips, the number in Literata beside its words. */
+.gwui-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.gwui-chip { display: inline-flex; align-items: baseline; gap: 6px; background: var(--gw-card); border: 1px solid var(--gw-rule); border-radius: 8px; padding: 6px 12px; }
+.gwui-chip-value { font-family: var(--gw-font-name); font-weight: 500; font-size: 19px; font-variant-numeric: lining-nums; color: var(--gw-text); }
+.gwui-chip-label { font-size: 14px; color: var(--gw-sub); }
+/* B7's focus this week: the one dark band, its line in Literata. */
+.gwui-focus-band { background: var(--gw-navy-d); color: #fff; border-radius: 12px; padding: 16px 18px; }
+.gwui-focus-line { margin: 0; font-family: var(--gw-font-name); font-size: 19px; font-weight: 500; line-height: 1.35; color: #fff; }
+.gwui-focus-why { margin: 6px 0 0; font-size: 14.5px; color: var(--gw-blue-b); }
+/* B6, References and resources: the top band, a suggestion's compact row, and How we work's four parts side by side. */
+.gwui-ref-band { background: var(--gw-blue-bg); border-radius: 8px; padding: 10px 16px; }
+.gwui-suggestion-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-bd); border-radius: 8px; padding: 10px 14px; }
+@media (max-width: 640px) { .gwui-suggestion-row { grid-template-columns: 1fr; } }
+.gwui-four-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; align-items: start; }
+.gwui-composer-aside { padding: 4px 16px 8px; }
+/* B8, People and setup: the summary line in Literata, and a field's label small and quiet above it. */
+.gwui-b8-line { margin: 0; font-family: var(--gw-font-name); font-size: 19px; font-weight: 500; line-height: 1.35; color: var(--gw-text); }
+.gwui-b8-field-label { font-size: 13px; color: var(--gw-sub); }
+/* B6, B7 and B8 (References and resources, My work, People and setup): section headings in Literata, as the pictures draw them. */
+.gwui-b-tab .sec-h .t-h2 { font-family: var(--gw-font-name); font-weight: 500; font-size: 22px; line-height: 1.25; }

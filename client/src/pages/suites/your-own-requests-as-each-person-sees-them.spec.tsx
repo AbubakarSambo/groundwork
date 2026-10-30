@@ -147,7 +147,7 @@ describe('Aisha reads her own requests', () => {
    * The fix is in gw-ui.css ("A BARE TAG" rule, beside the existing bare-Button one), which only
    * takes effect through real CSS layout a browser applies - jsdom does not run layout, so what is
    * checked here is the one thing a render test can prove: each tag is still `Row`'s own direct
-   * child, with no override of the shared `.gwui-tag` class the CSS rule is scoped to, so the fix
+   * child, with no override of the shared `.tag` class the CSS rule is scoped to, so the fix
    * keeps reaching it.
    */
   it('keeps each status tag as a plain, direct child of its row, so the row’s own width fix still reaches it', async () => {
@@ -156,7 +156,7 @@ describe('Aisha reads her own requests', () => {
     for (const label of ['Waiting', 'Declined', 'Approved']) {
       const tag = screen.getByText(label)
       expect(tag.parentElement).toHaveClass('gwui-row')
-      expect(tag).toHaveClass('gwui-tag')
+      expect(tag).toHaveClass('tag')
       expect(tag.getAttribute('style')).toBeFalsy()
     }
   })

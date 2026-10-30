@@ -56,7 +56,7 @@ export function toCloseTheGap(
   end: Date | null,
   now: Date,
   /* Release 1's sales board (release-one-sales-board): a deal with no next step on record reads the kit's "Nothing booked." */
-  opts: { nothingBooked?: boolean; inShort?: boolean } = {},
+  opts: { nothingBooked?: boolean; inShort?: boolean; /** The direct morning's shorter words (Hafsah, 25 October). Off, as before. */ short?: boolean } = {},
 ): ToCloseTheGap | null {
   if (!isASalesKind(kind) || !Array.isArray(sections)) return null;
   /* A limit not to go over, a share, a date or a zero is not an aim with a gap to close: "35 more are needed" of a credit limit of 35 per cent counted deals toward it (user journeys, F-4). */
@@ -88,7 +88,7 @@ export function toCloseTheGap(
     owner: r.owner ?? null,
     says: `${r.name} is ${r.owner ? `${r.owner === 'You' ? 'your' : `${r.owner}'s`} deal` : 'a deal with nobody\'s name on it yet'}. ${theNextStepOf(r, !!opts.nothingBooked)}`,
   }));
-  if (measure) return byWhatEachDealHolds(measure, aim.fromTheDeals?.currency ?? null, gap, aimName, by, open, deals, !!opts.inShort);
+  if (measure) return byWhatEachDealHolds(measure, aim.fromTheDeals?.currency ?? null, gap, aimName, by, open, deals, !!opts.inShort, !!opts.short);
   const counted = `Each open deal is counted as one toward the aim of ${aim.target}.`;
   const heading = theHeading(gap, open.filter((r) => r.group === 'likely').map(() => 1), open.filter((r) => r.group === 'possible').map(() => 1 as number | null));
   if (!deals.length) {
@@ -114,7 +114,7 @@ const inWords = (n: number) => (n >= 0 && n < NUMBER_WORDS.length ? NUMBER_WORDS
  * where nothing on record says). The fewest possible deals that would be enough, the largest first. Null where the likely ones
  * are already enough, or there is no possible deal.
  */
-export function theHeading(gap: number, likely: number[], possible: (number | null)[]): string | null {
+export function theHeading(gap: number, likely: number[], possible: (number | null)[], short = false): string | null {
   const left = gap - likely.reduce((a, b) => a + b, 0);
   if (left <= 0 || !possible.length) return null;
   const known = possible.filter((x): x is number => typeof x === 'number' && x > 0).sort((a, b) => b - a);
@@ -122,6 +122,8 @@ export function theHeading(gap: number, likely: number[], possible: (number | nu
   let k = 0;
   while (k < known.length && sum < left) { sum += known[k]; k += 1; }
   const n = possible.length;
+  /* Short, as the prototype's "two of these three" (Hafsah, 25 October): every one of them, and more. Off, as before. */
+  if (sum < left && short) return n === 1 ? 'To close the gap, this one and more' : `To close the gap, all ${inWords(n)} and more`;
   if (sum < left) return `To close the gap, more than these ${inWords(n)} ${n === 1 ? 'deal is' : 'deals are'} needed`;
   return k === n ? (n === 1 ? 'To close the gap, this one' : n === 2 ? 'To close the gap, both of these' : `To close the gap, all ${inWords(n)} of these`) : `To close the gap, ${inWords(k)} of these ${inWords(n)}`;
 }
@@ -140,6 +142,7 @@ function byWhatEachDealHolds(
   open: AServedRecord[],
   deals: ToCloseTheGap['deals'],
   inShort = false,
+  short = false,
 ): ToCloseTheGap {
   const holds = (r: AServedRecord): number | null => {
     if (measure === 'units') return theUnitsOf(r.fields ?? {});
@@ -153,7 +156,7 @@ function byWhatEachDealHolds(
   const likelyHold = likely.reduce((a, r) => a + (holds(r) ?? 0), 0);
   const left = gap - likelyHold;
   const needed = measure === 'value' ? `${n(gap)} more is needed${by}.` : `${n(gap)} more ${gap === 1 ? 'unit is' : 'units are'} needed${by}.`;
-  const heading = theHeading(gap, likely.map((r) => holds(r) ?? 0), possible.map(holds));
+  const heading = theHeading(gap, likely.map((r) => holds(r) ?? 0), possible.map(holds), short);
   if (!open.length) return { gap, aim: aimName, deals, heading: null, says: `${needed} No deal on record is still open before then.` };
   const fromLikely = likelyHold > 0 ? ` The deals likely to close hold ${n(likelyHold)}${thing(likelyHold)}.` : '';
   if (left <= 0) return { gap, aim: aimName, deals, heading, says: `${needed}${fromLikely} That is enough to close the gap if they close.` };
@@ -174,6 +177,12 @@ function byWhatEachDealHolds(
     const here = possible.length === 1 ? 'this one closes' : `all ${inWords(possible.length)} here close`;
     const also = likelyHold > 0 ? ' too' : '';
     const sum = all >= gap ? `that is ${n(all)}${thing(all)}, enough to close the gap.` : `that is ${n(all)}${thing(all)}, ${n(gap - all)} short.`;
+    if (short) {
+      /* Customer names go in the list, not here (Hafsah, 25 October): the count of deals with no number, said once. */
+      const noNumber = possible.filter((r) => holds(r) == null).length;
+      const unsaidShort = noNumber ? ` ${noNumber === 1 ? 'One of them has' : `${inWords(noNumber).replace(/^./, (c) => c.toUpperCase())} of them have`} no ${measure === 'units' ? 'number of units' : 'value'} yet.` : '';
+      return { gap, aim: aimName, deals, heading, says: `Even if ${here}${also}, ${sum}${unsaidShort}` };
+    }
     const noNumber = possible.filter((r) => holds(r) == null).map((r) => r.name);
     const unsaidHere = noNumber.length
       ? ` ${noNumber.length === 1 ? noNumber[0] : `${noNumber.slice(0, -1).join(', ')} and ${noNumber[noNumber.length - 1]}`} ${noNumber.length === 1 ? 'has' : 'have'} no ${measure === 'units' ? 'number of units' : 'value'} yet.`

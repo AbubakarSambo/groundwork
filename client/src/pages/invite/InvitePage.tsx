@@ -53,13 +53,13 @@ function theDayOf(iso: string): string {
  * ONE PLACE FOR THE PAGE'S OWN "ONE MOMENT" LINE (B-205 follow-up). This page's loading and
  * in-between states ("Loading your invitation…", "Opening your question…", and now "Opening your
  * check-in…" for somebody already signed in as the invitee) are one centred status line each, and
- * they used to repeat the same `className="gwui-pt-sub"` inline at each call site. One-off style
+ * they used to repeat the same `className="t-body mut gw-pt-sub"` inline at each call site. One-off style
  * classes are only ever meant to go down (one-off-uses-only-go-down.spec.ts) - adding a third
  * literal use of an already-flagged class for the new state would have moved it the wrong way, so
  * this says it once and every call site reads from here instead.
  */
 function OneLineStatus({ children }: { children: React.ReactNode }) {
-  return <p role="status" className="gwui-pt-sub" style={{ textAlign: 'center' }}>{children}</p>
+  return <p role="status" className="t-body mut gw-pt-sub" style={{ textAlign: 'center' }}>{children}</p>
 }
 
 export function InvitePage() {

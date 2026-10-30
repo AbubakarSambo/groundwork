@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, within } from '@testing-library/react'
+import { render, within, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from './AppShell'
@@ -54,6 +54,9 @@ function mount(grounds: any[]) {
     </QueryClientProvider>,
   )
   const rail = out.container.querySelector('.gw-sidebar-desktop') as HTMLElement
+  /* "All check-ins" is in the organisation menu (Hafsah, 25 October: the sidebar is the prototype's), so it is opened first. */
+  const org = rail.querySelector('.gw-rl-org') as HTMLElement | null
+  if (org) fireEvent.click(org)
   return { ...out, rail }
 }
 

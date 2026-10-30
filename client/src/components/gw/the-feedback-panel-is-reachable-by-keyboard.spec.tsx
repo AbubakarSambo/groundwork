@@ -50,10 +50,20 @@ beforeEach(() => {
   useFeedbackStore.setState({ open: false })
 })
 
+/* UPDATED 24 October (Hafsah: fewer buttons; the prototype has no floating Feedback pill): the panel is opened the way it is
+   now, from "Send feedback" on the person's own menu, which asks the same store to show it. Standing in for that menu item: */
+function theMenusSendFeedback(): HTMLElement {
+  const b = document.createElement('button')
+  b.textContent = 'Send feedback'
+  b.addEventListener('click', () => useFeedbackStore.getState().show())
+  document.body.appendChild(b)
+  return b
+}
+
 describe('B-225: the wording is plain, full sentences', () => {
   it('the middle tab reads plain phrases, not clipped jargon', () => {
     mount()
-    fireEvent.click(document.querySelector('.gw-feedback-btn') as HTMLElement)
+    fireEvent.click(theMenusSendFeedback())
     fireEvent.click(screen.getByText('Something you would like'))
     expect(screen.getByText('Reminders by email')).toBeTruthy()
     expect(screen.getByText('Notices in Slack')).toBeTruthy()
@@ -65,7 +75,7 @@ describe('B-225: the wording is plain, full sentences', () => {
 
   it('names what to do with "Pick what you would like us to build.", not "Pick what you need built."', () => {
     mount()
-    fireEvent.click(document.querySelector('.gw-feedback-btn') as HTMLElement)
+    fireEvent.click(theMenusSendFeedback())
     fireEvent.click(screen.getByText('Something you would like'))
     expect(screen.getByText('Pick what you would like us to build.')).toBeTruthy()
     expect(screen.queryByText('Pick what you need built.')).toBeNull()
@@ -75,7 +85,7 @@ describe('B-225: the wording is plain, full sentences', () => {
 describe('B-225: the panel\'s fields get the app\'s usual visible focus', () => {
   it('"Tell us what happened" and the email field carry the focus-visible class, not outline: none', () => {
     mount()
-    fireEvent.click(document.querySelector('.gw-feedback-btn') as HTMLElement)
+    fireEvent.click(theMenusSendFeedback())
     fireEvent.click(screen.getByText('Something went wrong'))
     const wrongBox = screen.getByPlaceholderText('Tell us what happened') as HTMLTextAreaElement
     const email = screen.getByPlaceholderText("Your email, if you'd like a reply") as HTMLInputElement
@@ -89,7 +99,7 @@ describe('B-225: the panel\'s fields get the app\'s usual visible focus', () => 
 describe('B-225: Tab stays inside the panel, and focus returns to its opener', () => {
   it('Shift+Tab from the first focusable element wraps to the last, not out of the panel', () => {
     mount()
-    const openerBtn = document.querySelector('.gw-feedback-btn') as HTMLElement
+    const openerBtn = theMenusSendFeedback()
     openerBtn.focus()
     fireEvent.click(openerBtn)
     const dialog = screen.getByRole('dialog', { name: 'Feedback' })
@@ -105,7 +115,7 @@ describe('B-225: Tab stays inside the panel, and focus returns to its opener', (
 
   it('after Cancel, focus returns to the button that opened the panel', async () => {
     mount()
-    const openerBtn = document.querySelector('.gw-feedback-btn') as HTMLElement
+    const openerBtn = theMenusSendFeedback()
     openerBtn.focus()
     fireEvent.click(openerBtn)
     await screen.findByRole('dialog', { name: 'Feedback' })
@@ -115,7 +125,7 @@ describe('B-225: Tab stays inside the panel, and focus returns to its opener', (
 
   it('Escape closes the panel and also returns focus to its opener', async () => {
     mount()
-    const openerBtn = document.querySelector('.gw-feedback-btn') as HTMLElement
+    const openerBtn = theMenusSendFeedback()
     openerBtn.focus()
     fireEvent.click(openerBtn)
     await screen.findByRole('dialog', { name: 'Feedback' })
@@ -131,7 +141,7 @@ describe('B-225 (review 6): the thank-you line reads as a full sentence, and kee
       id: 'f1', tab: 'reaction', pill: 'This clicked', text: null, status: 'new', createdAt: new Date().toISOString(),
     })
     mount()
-    const openerBtn = document.querySelector('.gw-feedback-btn') as HTMLElement
+    const openerBtn = theMenusSendFeedback()
     openerBtn.focus()
     fireEvent.click(openerBtn)
     await screen.findByRole('dialog', { name: 'Feedback' })

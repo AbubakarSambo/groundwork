@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Section, Panel, Note, Callout, Stack, FlexRow, FoldedLine, Text, Button, FieldLabel, TextArea, TextField, Select } from '@/components/gw/ui'
+import { Section, Note, Callout, Stack, FlexRow, FoldedLine, Text, Button, FieldLabel, TextArea, TextField, Select } from '@/components/gw/ui'
 import { boardApi, type YourTeamServed, type APersonOnYourBoard, type AnActionOnAPerson } from '@/api/board'
 
 /**
@@ -16,9 +16,10 @@ export function YourTeamPersonByPerson({ groundId, team }: { groundId: string; t
   return (
     <div data-your-team>
       <Section heading={team.heading} note={team.note}>
-        <Stack gap={12}>
+        {/* One row per person, divided by thin rules as the prototype's team list is, not a card each. */}
+        <div className="gwui-ruled">
           {team.people.map((p) => <ThePerson key={p.participantId} groundId={groundId} p={p} />)}
-        </Stack>
+        </div>
       </Section>
     </div>
   )
@@ -27,9 +28,12 @@ export function YourTeamPersonByPerson({ groundId, team }: { groundId: string; t
 function ThePerson({ groundId, p }: { groundId: string; p: APersonOnYourBoard }) {
   const otherCoaching = (p.record?.coaching ?? []).filter((c) => !p.whereTheyStand?.evidence.includes(c.said))
   return (
-    <Panel heading={p.name}>
+    <section aria-label={p.name} className="gwui-person-part">
       <Stack gap={8}>
-        {p.role && <Note tone="muted">{p.role}</Note>}
+        <FlexRow gap={10} align="baseline" wrap>
+          <h3 className="gwui-person-part-name">{p.name}</h3>
+          {p.role && <Text size="14-5" ink="sub" as="span">{p.role}</Text>}
+        </FlexRow>
         {p.whereTheyStand && (
           <div data-where-they-stand={p.whereTheyStand.standing}>
             <Text size="14-5" as="p">{p.whereTheyStand.says}</Text>
@@ -76,7 +80,7 @@ function ThePerson({ groundId, p }: { groundId: string; p: APersonOnYourBoard })
           </FoldedLine>
         )}
         {p.fromYou.length > 0 && (
-          <FoldedLine name="What you have done" defaultOpen>
+          <FoldedLine name="What you have done">
             <ul className="gwui-panel-list">
               {p.fromYou.map((l) => <li key={l}>{l}</li>)}
             </ul>
@@ -84,7 +88,7 @@ function ThePerson({ groundId, p }: { groundId: string; p: APersonOnYourBoard })
         )}
         <TheActions groundId={groundId} p={p} />
       </Stack>
-    </Panel>
+    </section>
   )
 }
 
@@ -126,7 +130,7 @@ function TheActions({ groundId, p }: { groundId: string; p: APersonOnYourBoard }
     <div data-actions-for={p.participantId}>
       <FlexRow gap={8} wrap>
         {usable.map((a) => (
-          <Button key={a.kind} kind="secondary" onClick={() => start(a)} aria-expanded={open?.kind === a.kind}>{a.label}</Button>
+          <Button key={a.kind} kind="quiet" onClick={() => start(a)} aria-expanded={open?.kind === a.kind}>{a.label}</Button>
         ))}
       </FlexRow>
       {said && <Note role="status">{said}</Note>}

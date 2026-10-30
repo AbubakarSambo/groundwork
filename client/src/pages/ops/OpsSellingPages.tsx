@@ -137,7 +137,7 @@ export function OpsDeploymentPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Deployment" answers="Who is stuck getting live, and on what?" />
       <WhatGroundworkHasSentUs />
       <Adder
@@ -219,7 +219,7 @@ export function OpsMarketingPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Marketing" answers="What did we put out, and what did it bring in?" />
       <Adder
         title="Plan a campaign"

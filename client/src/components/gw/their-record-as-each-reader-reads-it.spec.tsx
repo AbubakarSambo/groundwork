@@ -31,7 +31,7 @@ function myWork(payload: any) {
   render(<QueryClientProvider client={qc}><MemoryRouter><MyWorkPage groundId="g1" /></MemoryRouter></QueryClientProvider>)
 }
 async function theRecordOnThePage() {
-  return within((await screen.findByText(/record in /, { selector: 'h2, h3' })).closest('[data-gw-their-record]') as HTMLElement)
+  return within((await screen.findByText(/record in /, { selector: 'h2, h3, .gwui-fold-name' })).closest('[data-gw-their-record]') as HTMLElement)
 }
 
 describe('on My work', () => {
@@ -95,18 +95,11 @@ describe('in your own report', () => {
     render(<QueryClientProvider client={qc}><MemoryRouter><TheCheckInYouJustFinished checkInId="c2" groundId="g1" sessionNumber={2} pictured /></MemoryRouter></QueryClientProvider>)
   }
 
-  it('Aisha reads what Groundwork followed up for her on Monday 19 October', async () => {
+  /* Your record is on My work, not on your own report (Hafsah's answer, 25 October), even where the server sends it. */
+  it('Aisha does not read her record on her own report', async () => {
     ownReport(S.ownReport['Aisha, session 2'])
-    expect(await screen.findByText('What Groundwork followed up for you')).toBeTruthy()
-    expect(screen.getByText('You said once that something was sold, paid or signed, and nothing on file shows it yet.')).toBeTruthy()
-    expect(screen.getByText('You promised “I\'ll follow up with Mr. Baraka.” for Monday 19 October, and nothing you have said since shows it done.')).toBeTruthy()
-  })
-
-  it('Kevin reads his M-Pesa code as proof, with nothing for him to change', async () => {
-    ownReport(S.ownReport['Kevin, session 6'])
-    expect(await screen.findByText('What Groundwork followed up for you')).toBeTruthy()
-    expect(screen.getByText(/The M-Pesa code RCD8M1LS4W shows it\.$/)).toBeTruthy()
-    expect(screen.queryByText(/would change this\./)).toBeNull()
+    expect(await screen.findByText('Something here isn’t right')).toBeTruthy()
+    expect(screen.queryByText('What Groundwork followed up for you')).toBeNull()
   })
 
   it('and nothing where the server sends nothing', async () => {

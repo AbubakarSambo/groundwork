@@ -159,7 +159,7 @@ export function useOpenSession(groundId: string | undefined) {
         setPaywallCode('')
       }
     },
-    onError: () => setPaywallCodeMsg({ ok: false, text: 'Something went wrong. Try again.' }),
+    onError: () => setPaywallCodeMsg({ ok: false, text: 'That didn’t work. Try again.' }),
   })
 
   const claimFreeExtensionMut = useMutation({

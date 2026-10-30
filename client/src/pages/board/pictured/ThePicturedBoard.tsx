@@ -33,7 +33,7 @@ type Any = any
 export type APicturedSection =
   | 'lastSession' | 'headline' | 'assumes' | 'needsYou' | 'deals' | 'agreedAtTheStart' | 'changeSinceLast' | 'ninetyDays'
   | 'history' | 'bothSeeIt' | 'teamToday' | 'blockers' | 'patterns' | 'reported' | 'whoCheckedIn' | 'overTime' | 'reports'
-  | 'everySession' | 'otherBoards' | 'help' | 'otherTeams' | 'openIssues' | 'heading' | 'ask' | 'recommends' | 'otherRecords' | 'kindOfWork'
+  | 'everySession' | 'otherBoards' | 'help' | 'otherTeams' | 'openIssues' | 'heading' | 'ask' | 'recommends' | 'otherRecords' | 'kindOfWork' | 'yourTeam'
   | 'participantNote' | 'priorities' | 'yourPart' | 'teamReport' | 'companyBoard'
   | 'theDecision' | 'accounts' | 'knownBelievedUnknown'
   | 'suggestion' | 'theCase'
@@ -359,7 +359,7 @@ export function TheOtherBoardsYouAreIn({ groundId }: { groundId: string }) {
         {rows.map((g) => {
           const reads = howARowReads(g, me?.id ?? null, now)
           return (
-            <Link key={g.id} to={`/grounds/${g.id}/board`} className="gwui-panel gwui-panel-pad pb-board-card">
+            <Link key={g.id} to={`/grounds/${g.id}/board`} className="panel pad pb-board-card">
               <b>{g.label}</b>
               <span>{reads.needs ? <Tag tone={reads.needs.tone}>{reads.needs.text}</Tag> : reads.stands ? <Tag tone="plain">{reads.stands}</Tag> : null}</span>
             </Link>
@@ -675,7 +675,7 @@ function ThisMayBeRelevant({ b, groundId }: { b: Any; groundId: string }) {
   const notRelevant = useMutation({
     mutationFn: () => apiClient.post(`/grounds/${groundId}/board/not-relevant`, { memoryIds: items.map((i) => i.id) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['board', groundId] }),
-    onError: () => toast.error('That did not save. It is still offered here, so try again.'),
+    onError: () => toast.error('That didn’t save. Try again.'),
   })
   if (!items.length) return null
   return (
@@ -731,6 +731,7 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     ask: () => <AskAboutThisBoard example={example} />,
     recommends: () => <GroundworkRecommends offers={p.recommendations} onAnswer={p.onAnswerRecommendation} busy={p.recommendationBusy} />,
     otherRecords: () => p.otherRecords,
+    yourTeam: () => p.yourTeam,
     kindOfWork: () => p.kindOfWork,
     participantNote: () => <YouAreAParticipantHere leadFirstName={p.leadFirstName ?? null} />,
     priorities: () => <ThePrioritiesThisQuarter />,

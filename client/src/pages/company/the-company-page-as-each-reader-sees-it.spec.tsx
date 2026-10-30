@@ -225,7 +225,7 @@ describe('Kofi, a guest from another company', () => {
 describe('when there is nothing yet, or it fails', () => {
   it('says there are no priorities yet', async () => {
     open(GRACE, '/company', { ...GRACES, priorities: [] })
-    expect(await screen.findByText('No priorities have come in from your organisation’s own systems yet.')).toBeInTheDocument()
+    expect(await screen.findByText('No priorities yet.')).toBeInTheDocument()
   })
 
   it('says nothing has been added to company context yet', async () => {

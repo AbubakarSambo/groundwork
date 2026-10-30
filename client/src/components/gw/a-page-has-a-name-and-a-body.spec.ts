@@ -77,7 +77,9 @@ describe('a page has a name and a body', () => {
 
   it('and a heading class carries no margin of its own, so nothing moved', () => {
     /* An h1 brings a browser margin-top that a div did not. Every page would have shifted. */
-    expect(CSS).toMatch(/\.gw-ttl \{[^}]*margin: 0 0 6px/)
-    expect(CSS).toMatch(/\.gw-page-h1 \{[^}]*margin: 0/)
+    /* UPDATED 24 October: .gw-ttl and .gw-page-h1 were removed with the styles nothing used; the prototype's own stylesheet
+       takes every heading's browser margin away (h1,h2,h3,p{margin:0}). */
+    const PROTO = readFileSync(join(__dirname, '../../styles/prototype.css'), 'utf8')
+    expect(PROTO).toMatch(/h1,h2,h3,p\{margin:0\}/)
   })
 })

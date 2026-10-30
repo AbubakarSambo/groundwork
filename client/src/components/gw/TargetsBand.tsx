@@ -67,7 +67,7 @@ export function TargetsBand({
       setDraft('')
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. What you wrote is still here, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   const lead = participants.find((p: any) => p.partyType === 'INITIATOR')
@@ -163,7 +163,7 @@ export function TargetsBand({
                 placeholder="One thing on each line."
               />
               <div className="gwui-gap-8 gwui-mt-8" style={{ display: 'flex' }}>
-                <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+                <button className="btn pri sm"
                   onClick={() => saveAssumes.mutate({ id: t.id, lines: draft.split('\n').map((l) => l.trim()).filter(Boolean) })}
                   disabled={saveAssumes.isPending}
                 >

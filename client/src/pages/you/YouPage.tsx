@@ -88,12 +88,12 @@ export function YouPage() {
   return (
     <TheDirectMorning on={direct}>
     <Page>
-      <PageTitle title="You" subtitle={data ? theYouSubtitle(data.checkIns ?? [], direct) : 'What’s yours, across your check-ins. Only you see this page.'} />
+      <PageTitle title="You" subtitle={data ? theYouSubtitle(data.checkIns ?? [], direct) : 'What’s yours, across your check-ins.'} />
 
       {isLoading && <Note>Loading…</Note>}
       {isError && (
         <div>
-          <Note tone="error">Your board did not load. Nothing you have written is affected.</Note>
+          <Note tone="error">Your board didn’t load. Try again.</Note>
           <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
         </div>
       )}
@@ -221,7 +221,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
             {turns.map((t, i) => (
               <div key={t.key} className="gwui-welcome-card">
                 <div className="gwui-welcome-card-head">
-                  <span className="gwui-edge-h">{t.title}</span>
+                  <span className="t-h3">{t.title}</span>
                   <Button
                     kind={t.action.label === 'Start it' && i === turns.findIndex(m => m.action.label === 'Start it') ? 'primary' : 'secondary'}
                     size="small"

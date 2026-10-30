@@ -172,7 +172,7 @@ export default function SessionReportPage() {
       qc.invalidateQueries({ queryKey: ['ground', data?.groundId] })
       toast.success('Saved. That is how often this runs now.')
     },
-    onError: () => toast.error('That did not save. Nothing has changed - try again.'),
+    onError: () => toast.error('That didn’t save. Try again.'),
   })
 
   /*
@@ -289,26 +289,30 @@ export default function SessionReportPage() {
     return (
       <TheDirectMorning on={direct}>
       <Page>
-        <div className="pb-own">
-          <div className="pb-own-top">
-            <span className="pb-sub">{`${checkInLabel}${data.finishedAt ? `, ${whenItWas(data.finishedAt, 'dayAndMonthLong')}` : ''}`}</span>
-            {!direct && <Tag>Only you</Tag>}
+        {/* The prototype's own report: one narrow column, the check-in and day with "Only you", the title, the report, then
+            whether the team's report is shared. */}
+        <div className="gw-own">
+          <div className="gw-col-18 gw-own-in">
+          <div>
+            <div className="gw-spread">
+              <span className="t-tiny mut">{`${checkInLabel}${data.finishedAt ? `, ${whenItWas(data.finishedAt, 'dayAndMonthLong')}` : ''}`}</span>
+              {!direct && <Tag>Only you</Tag>}
+            </div>
+            <h1 className="t-title gw-mt-4">Your report</h1>
           </div>
-          <h1 className="pb-own-title">Your report</h1>
           {/* Credit for checking in on time (api engagement/who-answers-and-when.ts): served to the person whose report it is, with the direct morning on. */}
-          {data.onTime && <p className="pb-on-time">{data.onTime}</p>}
+          {data.onTime && <p className="t-small">{data.onTime}</p>}
           <TheCheckInYouJustFinished checkInId={checkInId!} groundId={data.groundId as string} sessionNumber={data.sessionNumber as number} light pictured />
-          <div className="pb-own-team">
+          <div className="gw-spread gw-ruled-top">
             <div>
-              <b>The team’s report</b>
-              <p className="pb-sub">{teamShared ? ((shape as any)?.releaseOneSalesReport === true || direct ? 'Shared. Open it.' : 'Shared. Open it to read the whole team’s picture.') : `Not shared yet.${sharing?.says && !sharing.shared ? ` ${sharing.says.replace(/ You’ll get an email when.*$/, '')}` : ''}`}</p>
+              <b className="t-small">The team’s report</b>
+              <div className="t-tiny mut">{teamShared ? ((shape as any)?.releaseOneSalesReport === true || direct ? 'Shared. Open it.' : 'Shared. Open it to read the whole team’s picture.') : `Not shared yet.${sharing?.says && !sharing.shared ? ` ${sharing.says.replace(/ You’ll get an email when.*$/, '')}` : ''}`}</div>
             </div>
             {teamShared
-              ? <Link className="gwui-plain-link" to={`/grounds/${data.groundId}/session/${data.sessionNumber}`}>Open it</Link>
+              ? <Link className="t-small" to={`/grounds/${data.groundId}/session/${data.sessionNumber}`}>Open it</Link>
               : <Tag tone="attention">Waiting</Tag>}
           </div>
-          <div className="pb-whole-board-link">
-            <Link to={`/checkin/${checkInId}/report?whole=1`} className="gwui-plain-link">See every other part of this report</Link>
+          <Link to={`/checkin/${checkInId}/report?whole=1`} className="t-small">See every other part of this report</Link>
           </div>
         </div>
       </Page>

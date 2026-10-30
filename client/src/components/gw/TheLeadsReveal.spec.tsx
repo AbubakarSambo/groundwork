@@ -84,7 +84,7 @@ describe('TheLeadsReveal, piece 9', () => {
     expect(screen.getByText('Help my team understand')).toBeTruthy()
     expect(screen.getByText(fixture.carrying!)).toBeTruthy()
     expect(screen.queryByText('What meaningful change would look like')).toBeNull()
-    expect(screen.queryByText('What Groundwork will explore')).toBeNull()
+    expect(screen.queryByText('What it will ask about')).toBeNull()
     expect(screen.queryByText("How I'll work with your team")).toBeNull()
   })
 })

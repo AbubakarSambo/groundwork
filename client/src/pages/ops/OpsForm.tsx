@@ -65,7 +65,7 @@ export function Adder<T>({
 
   if (!open) {
     return (
-      <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+      <button className="btn sec sm"
         type="button"
         onClick={() => setOpen(true)}
         style={{ marginBottom: 14 }}
@@ -128,13 +128,13 @@ export function Adder<T>({
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+        <button className="btn pri sm"
           type="submit"
           disabled={save.isPending || missing.length > 0}
         >
           {save.isPending ? 'Saving…' : submitLabel}
         </button>
-        <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+        <button className="btn sec sm"
           type="button"
           onClick={() => {
             setOpen(false)

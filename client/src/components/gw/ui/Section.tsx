@@ -45,14 +45,14 @@ export function Section({ heading, note, action, foot, children, id, headingRef 
   const nested = useContext(InsideASection)
   const section = (
     <InsideASection.Provider value={true}>
-    <section id={id} className="gwui-section" aria-labelledby={headingId}>
-      <div className="gwui-section-h">
-        <h2 id={headingId} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="gwui-section-title">{heading}</h2>
-        {note && <span className="gwui-section-note">{note}</span>}
-        {action && <span className="gwui-section-action">{action}</span>}
+    <section id={id} className="sec" aria-labelledby={headingId}>
+      <div className="sec-h">
+        <h2 id={headingId} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="t-h2">{heading}</h2>
+        {note && <span className="t-small mut">{note}</span>}
+        {action && <span className="gw-sec-action">{action}</span>}
       </div>
-      {children !== undefined && <div className="gwui-section-body">{children}</div>}
-      {foot && <p className="gwui-section-foot">{foot}</p>}
+      {children !== undefined && <div>{children}</div>}
+      {foot && <p className="note">{foot}</p>}
     </section>
     </InsideASection.Provider>
   )

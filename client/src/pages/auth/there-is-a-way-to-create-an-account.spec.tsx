@@ -98,7 +98,7 @@ describe('the create-account door', () => {
     expect(chosen.className).not.toContain('gwui-choice-on ')
     expect(chosen.className.trim()).not.toBe('gwui-choice gwui-choice-on')
     expect(chosen.className).toContain('gwui-choice-on-quiet')
-    expect(screen.getByRole('button', { name: /^Create account$/ }).className).toContain('gwui-btn-primary')
+    expect(screen.getByRole('button', { name: /^Create account$/ }).className).toContain('pri')
   })
 
   it('asks for the name and the organisation', async () => {

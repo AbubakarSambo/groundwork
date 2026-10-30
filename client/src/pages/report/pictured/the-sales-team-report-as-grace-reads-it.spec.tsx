@@ -208,8 +208,8 @@ describe('the team’s report, as Grace reads it', () => {
     ] } }] } as any)
     wrap()
     const no = await screen.findByRole('button', { name: 'No' })
-    expect(no.className).toMatch(/gwui-btn-quiet/)
-    expect(screen.getByRole('button', { name: 'Yes, agree to it' }).className).toMatch(/gwui-btn-primary/)
+    expect(no.className).toMatch(/quiet/)
+    expect(screen.getByRole('button', { name: 'Yes, agree to it' }).className).toMatch(/pri/)
   })
 
   it('with Release 1’s switch off, the report reads as before', async () => {

@@ -11,5 +11,7 @@ import './gw-ui.css'
 export type TagTone = 'proven' | 'attention' | 'action' | 'concern' | 'plain'
 
 export function Tag({ tone = 'plain', children }: { tone?: TagTone; children: React.ReactNode }) {
-  return <span className={`gwui-tag gwui-tag-${tone}`}>{children}</span>
+  /* The prototype's .tag and its tones. */
+  const cls = ({ proven: 'rec', attention: 'att', action: 'act', concern: 'con', plain: 'plain' } as const)[tone]
+  return <span className={`tag ${cls}`}>{children}</span>
 }

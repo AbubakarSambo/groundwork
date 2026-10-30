@@ -40,6 +40,9 @@ function trigger(container: HTMLElement) {
   return container.querySelector('.gw-feedback-btn') as HTMLElement | null
 }
 
+/* UPDATED 24 October (Hafsah: fewer buttons): the prototype has no floating Feedback pill, so it is drawn nowhere and can
+   never cover the Ask box or the chat. Its old rest positions are now checks that it is not drawn. "Send feedback" on the
+   person's own menu opens the same panel (the-feedback-panel-is-reachable-by-keyboard.spec.tsx). */
 describe('the feedback pill clears the ask box and the chat', () => {
   /*
    * B-217 (said why in the commit): "raised a fixed amount" was itself the bug - `AskTheBoard`'s
@@ -58,9 +61,8 @@ describe('the feedback pill clears the ask box and the chat', () => {
     expect(trigger(mount('/grounds/g1?tab=settings').container)).toBeNull()
   })
 
-  it('keeps its plain bottom-right rest position everywhere else', () => {
-    const btn = trigger(mount('/grounds').container)
-    expect(btn!.style.bottom).toBe('20px')
+  it('is not drawn here either: the prototype has no floating Feedback pill (/grounds)', () => {
+    expect(trigger(mount('/grounds').container)).toBeNull()
   })
 
   /*
@@ -68,21 +70,16 @@ describe('the feedback pill clears the ask box and the chat', () => {
    * button - a real control this route carries that `/chat/:id` and `/checkin/:id` do not, so it
    * needs its own, taller clearance rather than the plain chat-page value.
    */
-  it('takes a taller top position on the ground page\'s own bare check-in tab (no ?tab=), clear of "Your check-in"', () => {
-    const btn = trigger(mount('/grounds/g1').container)
-    expect(btn!.style.top).toBe('140px')
-    expect(btn!.style.bottom).toBe('')
+  it('is not drawn here either: the prototype has no floating Feedback pill (/grounds/g1)', () => {
+    expect(trigger(mount('/grounds/g1').container)).toBeNull()
   })
 
-  it('takes the same top position on ?tab=chat, the Check-in tab\'s own query key', () => {
-    const btn = trigger(mount('/grounds/g1?tab=chat').container)
-    expect(btn!.style.top).toBe('140px')
+  it('is not drawn here either: the prototype has no floating Feedback pill (/grounds/g1?tab=chat)', () => {
+    expect(trigger(mount('/grounds/g1?tab=chat').container)).toBeNull()
   })
 
-  it('does not take the chat treatment on the ground page\'s other tabs', () => {
-    const btn = trigger(mount('/grounds/g1?tab=context').container)
-    expect(btn!.style.bottom).toBe('20px')
-    expect(btn!.style.top).toBe('')
+  it('is not drawn here either: the prototype has no floating Feedback pill (/grounds/g1?tab=context)', () => {
+    expect(trigger(mount('/grounds/g1?tab=context').container)).toBeNull()
   })
 
   /*
@@ -95,9 +92,8 @@ describe('the feedback pill clears the ask box and the chat', () => {
    * open it. Lowered here, on this one page only: every other chat page keeps `top: 12`, since
    * none of them carries a control in that corner.
    */
-  it('rests lower on /start, clear of its own session header', () => {
-    const btn = trigger(mount('/start').container)
-    expect(btn!.style.top).toBe('64px')
+  it('is not drawn here either: the prototype has no floating Feedback pill (/start)', () => {
+    expect(trigger(mount('/start').container)).toBeNull()
   })
 
   /*

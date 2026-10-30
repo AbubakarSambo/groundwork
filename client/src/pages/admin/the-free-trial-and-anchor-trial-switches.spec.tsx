@@ -107,10 +107,10 @@ describe('the anchor trial row', () => {
 
   it('says a failure in a full sentence', async () => {
     ;(adminApi.getAnchorTrial as any).mockResolvedValue({ on: false, months: 1, people: 20 })
-    ;(adminApi.setAnchorTrial as any).mockRejectedValue({ response: { data: { message: 'That did not save. Try again.' } } })
+    ;(adminApi.setAnchorTrial as any).mockRejectedValue({ response: { data: { message: 'That didn’t save. Try again.' } } })
     renderWith(<AnchorTrialRow />)
     const button = await screen.findByRole('button', { name: 'Turn on the anchor trial' })
     fireEvent.click(button)
-    expect(await screen.findByText('That did not save. Try again.')).toBeTruthy()
+    expect(await screen.findByText('That didn’t save. Try again.')).toBeTruthy()
   })
 })

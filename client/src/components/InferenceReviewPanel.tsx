@@ -53,12 +53,12 @@ export function InferenceReviewPanel({ groundId, inferences }: Props) {
             Inferred because: {inf.reason}
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               onClick={() => setDismissed(prev => new Set([...prev, inf.id]))}
             >
               This is right
             </button>
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               onClick={() => clarifyMut.mutate(inf.id)}
               disabled={clarifyMut.isPending}
             >

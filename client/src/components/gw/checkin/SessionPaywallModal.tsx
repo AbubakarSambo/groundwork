@@ -56,7 +56,7 @@ export function SessionPaywallModal({
                 <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
                   Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Check-in.
                 </div>
-                <button className="gwui-btn gwui-btn-secondary"
+                <button className="btn sec"
                   onClick={() => paywall.claimFreeExtension.mutate()}
                   disabled={paywall.claimFreeExtension.isPending}
                   style={{ width: '100%' }}
@@ -71,14 +71,14 @@ export function SessionPaywallModal({
               <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
                 Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited sessions for everyone in your organisation with one simple monthly subscription.
               </div>
-              <button className="gwui-btn gwui-btn-primary"
+              <button className="btn pri"
                 onClick={() => paywall.createSubscription.mutate('STARTER')}
                 disabled={paywall.createSubscription.isPending}
                 style={{ width: '100%', marginBottom: 8 }}
               >
                 {paywall.createSubscription.isPending ? 'Redirecting...' : 'Upgrade organisation'}
               </button>
-              <button className="gwui-btn gwui-btn-secondary"
+              <button className="btn sec"
                 onClick={() => navigate('/pricing')}
                 style={{ width: '100%' }}
               >
@@ -96,7 +96,7 @@ export function SessionPaywallModal({
               remindedSays ? (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6, marginBottom: 14 }}>{remindedSays}</div>
               ) : (
-                <button className="gwui-btn gwui-btn-secondary"
+                <button className="btn sec"
                   onClick={() => remindTheAdmins.mutate()}
                   disabled={remindTheAdmins.isPending}
                   style={{ width: '100%', marginBottom: 14 }}
@@ -119,7 +119,7 @@ export function SessionPaywallModal({
                 placeholder="Enter code"
                 className="gwui-input" style={{ flex: 1, ...(paywall.codeMsg && !paywall.codeMsg.ok ? { borderColor: 'var(--gw-danger)' } : {}) }}
               />
-              <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+              <button className="btn pri sm"
                 onClick={() => paywall.redeem.mutate()}
                 disabled={!paywall.code.trim() || paywall.redeem.isPending}
               >

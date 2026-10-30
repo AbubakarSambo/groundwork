@@ -117,7 +117,7 @@ export function OpsQuarterPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Objectives" answers="What are we trying to achieve, and are we?" />
 
       <select
@@ -147,7 +147,7 @@ export function OpsQuarterPage() {
       {canOpen.data?.ready && mayOpen && (periods.data ?? []).find((p) => p.key === period)?.status !== 'OPEN' && (
         <section style={{ ...CARD, marginBottom: 14 }}>
           <p style={{ fontSize: 14, margin: 0 }}>{canOpen.data.says}</p>
-          <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+          <button className="btn sec sm"
             type="button"
             onClick={() => open.mutate()}
             disabled={open.isPending}
@@ -508,7 +508,7 @@ export function OpsCommitmentsPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Commitments" answers="What did I say I would do this cycle, and what happened?" />
       <select
         value={period}
@@ -625,7 +625,7 @@ export function OpsApprovalsPage() {
   const days = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Approvals" answers="What is waiting on me, and how long has it waited?" />
       {(approvals.data ?? []).map((a) => (
         <section key={a.id} style={{ ...CARD, marginBottom: 10 }}>
@@ -649,7 +649,7 @@ export function OpsApprovalsPage() {
           )}
           <div style={{ display: 'flex', gap: 6 }}>
             {(['APPROVED', 'CHANGES_REQUESTED', 'REJECTED'] as const).map((status) => (
-              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+              <button className="btn sec sm"
                 key={status}
                 type="button"
                 onClick={() => decide.mutate({ id: a.id, status })}
@@ -721,7 +721,7 @@ export function OpsSpendPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Spend" answers="What has the company claimed, and what is left?" />
 
       {balance.data && (
@@ -802,7 +802,7 @@ export function OpsFundraisePage() {
   const t = fundraise.data?.totals
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Fundraise" answers="Who might fund us, and what have I not chased?" />
 
       {t && (
@@ -950,7 +950,7 @@ export function OpsStrategyPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Strategy" answers="Which relationships could become something?" />
       <Adder
         title="Record a relationship"
@@ -985,7 +985,7 @@ export function OpsIntegrationPage() {
   const s = status.data
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name="Groundwork"
         answers="Are we connected to our own product, and what did we last send?"
@@ -1001,7 +1001,7 @@ export function OpsIntegrationPage() {
       </section>
 
       {s?.enabled && (
-        <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+        <button className="btn sec sm"
           type="button"
           onClick={() => push.mutate()}
           disabled={push.isPending}
@@ -1086,7 +1086,7 @@ export function OpsRequestsPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Requests" answers="What is somebody blocked on, and what would unblock them?" />
 
       <div style={{ marginBottom: 16 }}>
@@ -1147,7 +1147,7 @@ export function OpsDecisionsPage() {
   const settings = useQuery({ queryKey: ['ops', 'settings'], queryFn: opsApi.settings, retry: false })
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Decisions" answers="What has this system been told to assume?" />
 
       <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 16, maxWidth: 620, lineHeight: 1.6 }}>

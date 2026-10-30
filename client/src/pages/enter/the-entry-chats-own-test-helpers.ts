@@ -16,7 +16,8 @@
  * exclusion on its own.
  */
 export function visiblePrimaryButtons(container: HTMLElement): Element[] {
-  return Array.from(container.querySelectorAll('.gwui-btn-primary')).filter(
-    (el) => !el.closest('.gwui-ec-savecard-overlay-hidden'),
+  return Array.from(container.querySelectorAll('.btn.pri')).filter(
+    /* The composer's own send arrow is the prototype's .btn.pri.ci-sq, part of the box you type in, not a section's action. */
+    (el) => !el.closest('.gwui-ec-savecard-overlay-hidden') && !el.closest('.gw-composer'),
   )
 }

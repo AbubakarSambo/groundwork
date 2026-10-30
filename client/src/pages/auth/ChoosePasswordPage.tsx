@@ -135,7 +135,7 @@ export function ChoosePasswordPage() {
       const what = whatTheLinkDid(msg)
       if (what === 'expired') { setExpired(true); return }
       if (what === 'did-not-work') { setDidNotWork(true); return }
-      setError(Array.isArray(msg) ? msg[0] : (msg ?? 'That did not save, because something went wrong on our side. Please try again.'))
+      setError(Array.isArray(msg) ? msg[0] : (msg ?? 'That didn’t save. Try again.'))
     },
   })
 

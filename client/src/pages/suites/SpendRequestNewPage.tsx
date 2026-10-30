@@ -65,7 +65,7 @@ export function SpendRequestNewPage() {
       <PageTitle
         crumbs={[{ label: 'Suites', to: '/suite/mine' }, { label: 'Ask to spend money' }]}
         title="Ask to spend money"
-        subtitle="Say how much, and what it is for, and Groundwork will send it to the right person."
+        subtitle="Say how much and what it’s for."
       />
       <Panel>
         {offSentence ? (
@@ -74,7 +74,7 @@ export function SpendRequestNewPage() {
           <form className="gwui-suite-ask-alone" onSubmit={e => { e.preventDefault(); if (canSend) send.mutate() }}>
             {loadFailed && (
               <Note tone="error">
-                That did not load, and nothing has changed.{' '}
+                That didn’t load. Try again.{' '}
                 <Button kind="quiet" onClick={() => form.refetch()}>Try again</Button>
               </Note>
             )}

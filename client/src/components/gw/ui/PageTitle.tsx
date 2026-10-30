@@ -48,32 +48,28 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, su
   /** Centred, with no title and no avatar - the same title-less loading line above. */
   center?: boolean
 }) {
+  /* The prototype's page head: the crumb (.crumb), then the title (.t-title) with its lines under it and the page's
+     actions at the right, as on the reports and the board. */
   return (
     <div className={center ? 'gwui-title-centre' : undefined}>
-      {eyebrow && <p className="gwui-pt-eyebrow">{eyebrow}</p>}
+      {eyebrow && <p className="t-small mut gw-pt-eyebrow">{eyebrow}</p>}
       {crumbs && crumbs.length > 0 && (
-        <nav className="gwui-pt-crumb" aria-label="Where you are">
+        <nav className="crumb" aria-label="Where you are">
           {crumbs.map((c, i) => (
             <React.Fragment key={c.label}>
-              {i > 0 && <span className="gwui-pt-sep" aria-hidden>/</span>}
+              {i > 0 && <span aria-hidden>/</span>}
               {c.to ? <Link to={c.to}>{c.label}</Link> : <span>{c.label}</span>}
             </React.Fragment>
           ))}
         </nav>
       )}
-      <div className="gwui-pt-row">
-        <div className="gwui-pt-head">
-          {/* B-066: `avatarInitials` can legitimately be '' (a nameless person's neutral mark,
-              via `initialsOf`) - `!== undefined` so that still draws the circle, rather than the
-              old `avatarInitials &&` silently dropping the avatar for them. */}
+      <div className="gw-pt-row">
+        <div className="gw-pt-head">
           {avatarInitials !== undefined && <Avatar initials={avatarInitials} size={56} />}
-          <div className="gwui-pt-headtext">
-            {title && <h1 className="gwui-pt-title">{title}</h1>}
+          <div className="gw-min0">
+            {title && <h1 className="t-title">{title}</h1>}
             {subtitle && (
-              <p
-                className={subtitleTone === 'ink' ? 'gwui-pt-sub gwui-pt-sub-ink' : 'gwui-pt-sub'}
-                role={subtitleRole}
-              >
+              <p className={subtitleTone === 'ink' ? 't-body gw-pt-sub' : 't-body mut gw-pt-sub'} role={subtitleRole}>
                 {subtitle}
               </p>
             )}

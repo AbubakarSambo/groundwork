@@ -115,7 +115,7 @@ export default function OpsPeoplePage() {
   })
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="The team" answers="Who is here, and what can each of them actually do?" />
 
       <Adder
@@ -173,7 +173,7 @@ export default function OpsPeoplePage() {
             {p.holdsNothing && p.active && (
               <span style={{ fontSize: 12, color: 'var(--gw-red-t)' }}>holds nothing at all</span>
             )}
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               type="button"
               onClick={() => setActive.mutate({ key: p.key, active: !p.active })}
               style={{ marginLeft: 'auto' }}

@@ -177,7 +177,8 @@ function FeedbackWidget() {
    * as People; "Send feedback" on the person's own menu (and "More" on a phone) still opens the
    * same panel.
    */
-  const hideTrigger = location.pathname === '/more' || location.pathname.startsWith('/checkin/')
+  /* The prototype has no floating Feedback pill: "Send feedback" on the person's own menu opens it (Hafsah, 24 October: fewer buttons). */
+  const hideTrigger = true || location.pathname === '/more' || location.pathname.startsWith('/checkin/')
     || location.pathname === '/chat' || location.pathname === '/settings/suites' || location.pathname === '/org/members'
     || location.pathname === '/settings'
     /* BROWSER TEST, 20 OCTOBER: AND A CHECK-IN'S "PEOPLE AND SETUP", FOR THE SAME REASON AS PEOPLE. At 1280 by 900 the
@@ -615,14 +616,14 @@ function FeedbackWidget() {
                 )}
 
                 <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                  <button className="gwui-btn gwui-btn-secondary" onClick={() => hidePanel()}
+                  <button className="btn sec" onClick={() => hidePanel()}
                     >
                     Cancel
                   </button>
                   {whyNotValid() && (
                     <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', width: '100%', marginBottom: 6 }}>{whyNotValid()}</div>
                   )}
-                  <button className="gwui-btn gwui-btn-primary" onClick={submit} disabled={!valid()}
+                  <button className="btn pri" onClick={submit} disabled={!valid()}
                     style={{ flex: 1 }}>
                     Send
                   </button>
@@ -951,8 +952,14 @@ export function AppSidebar() {
 
   /* ONE GATE. Every door below comes out of `navItemsFor`, and is only sorted into its part here. */
   const items = navItemsFor(user, navOpts)
-  const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
-  const adminItems = items.filter(i => (i as any).adminOnly)
+  /*
+   * THE SIDEBAR IS THE PROTOTYPE'S (Hafsah, 25 October): your check-ins, then Today, Company, You, People for an admin, and Suites, as one
+   * list. Boards, Connections, All check-ins and Plan and billing are in the organisation menu, under its name at the top.
+   */
+  const IN_THE_ORG_MENU = ['/boards', '/settings/connections', '/billing']
+  const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings' && !IN_THE_ORG_MENU.includes(i.to))
+  const adminItems = items.filter(i => (i as any).adminOnly && !IN_THE_ORG_MENU.includes(i.to))
+  const orgMenuItems = [{ to: '/grounds', label: hiddenCount > 0 ? `All check-ins (${grounds.length})` : 'All check-ins' }, ...items.filter(i => IN_THE_ORG_MENU.includes(i.to)).map(i => ({ to: i.to, label: i.label }))]
   const staffItems = items.filter(i => (i as any).platformAdminOnly)
   /* "Jump to" offers only what this reader already sees: these check-ins and these doors. */
   const jumpItems = whatYouCanJumpTo(grounds as any, user?.id, items)
@@ -1130,6 +1137,10 @@ export function AppSidebar() {
             </button>
             {orgOpen && (
               <div className="gw-rl-menu gw-rl-menu-org" style={{ left: collapsed ? 70 : 10 }}>
+                {orgMenuItems.map(item => (
+                  <NavLink key={item.to} to={item.to} className="gw-rl-menu-item" onClick={() => setOrgOpen(false)}>{item.label}</NavLink>
+                ))}
+                <hr />
                 <div className="gw-rl-menu-h">Organisations</div>
                 <OrganisationChoices />
               </div>
@@ -1208,7 +1219,7 @@ export function AppSidebar() {
                   <p className="gw-rl-empty">Nothing in progress yet.</p>
                 )}
                 {listFailed && !listLoaded && (
-                  <p className="gw-rl-empty" role="alert">Your check-ins did not load. Reload the page to try again.</p>
+                  <p className="gw-rl-empty" role="alert">Your check-ins didn’t load. Reload the page.</p>
                 )}
                 {/* The heading stays, because it is the way to the whole list, and says why it is empty. */}
                 {unpinned.length === 0 && pinned.length > 0 && (
@@ -1219,9 +1230,7 @@ export function AppSidebar() {
                     anything out - with how many there are only when they did. ALWAYS shown (Hafsah,
                     6 October): an admin with nothing waiting and nothing opened has no rows, and
                     this is then her way to every check-in. */}
-                <NavLink to="/grounds" className="gw-rl-nav">
-                  {hiddenCount > 0 ? `All check-ins (${grounds.length})` : 'All check-ins'}
-                </NavLink>
+                {/* "All check-ins" is in the organisation menu now, and the "Check-ins" heading above goes to the whole list. */}
                 {closed.length > 0 && (
                   <>
                     <button
@@ -1263,7 +1272,6 @@ export function AppSidebar() {
                     behind them is admin-only on the server too. */}
                 {adminItems.length > 0 && (
                   <>
-                    <div className="gw-rl-h"><span>{orgName}</span></div>
                     <ul className="gw-rl-list">
                       {adminItems.map(item => (
                         <li key={item.to}>
@@ -1566,6 +1574,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isBareCheckInRoute = /^\/checkin\/[^/]+$/.test(location.pathname)
   const checkInFocused = useCheckInFocusStore(s => s.focused)
   const onConversationPage = isBareCheckInRoute && checkInFocused
+  /* The prototype marks a focused check-in on the body (body.focus): on a phone its card then fills the screen. */
+  useEffect(() => {
+    document.body.classList.toggle('focus', onConversationPage)
+    return () => document.body.classList.remove('focus')
+  }, [onConversationPage])
   const consumePendingAskMessage = useAskStore(s => s.consumePendingMessage)
   /* Decision 65: a check-in's own Context and resources page tells Ask which one it was opened from. */
   const pendingAskOpenedFromGroundId = useAskStore(s => s.openedFromCheckInSetupGroundId)

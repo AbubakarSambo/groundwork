@@ -70,7 +70,7 @@ export function LeaveRequestNewPage() {
       <PageTitle
         crumbs={[{ label: 'Suites', to: '/suite/mine' }, { label: 'Request leave' }]}
         title="Request leave"
-        subtitle="Say when you will be away, and Groundwork will send it to the right person."
+        subtitle="Say when you’ll be away."
       />
       <Panel>
         {offSentence ? (
@@ -79,7 +79,7 @@ export function LeaveRequestNewPage() {
           <form className="gwui-suite-ask-alone" onSubmit={e => { e.preventDefault(); if (canSend) send.mutate() }}>
             {loadFailed && (
               <Note tone="error">
-                That did not load, and nothing has changed.{' '}
+                That didn’t load. Try again.{' '}
                 <Button kind="quiet" onClick={() => form.refetch()}>Try again</Button>
               </Note>
             )}

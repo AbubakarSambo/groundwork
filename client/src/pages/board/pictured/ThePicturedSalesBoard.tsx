@@ -1,6 +1,7 @@
 import { theZoneDatesAreIn } from '@/lib/a-date-reads-the-same-everywhere'
 import { ItsEvidence } from '@/components/gw/ItsEvidence'
 import { useMemo, useState, type ReactNode } from 'react'
+import { FoldTheRest } from './FoldTheRest'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
@@ -47,6 +48,8 @@ export interface PicturedBoardProps {
   kindOfWork?: ReactNode
   /** The record's other sections that hold something (a forecast from another system), drawn as the board always drew them. */
   otherRecords?: ReactNode
+  /** The lead's person-by-person part (YourTeamPersonByPerson), drawn after the team today rather than above the board. */
+  yourTeam?: ReactNode
   /** An admin who only reads (read-only-view.jpg): the same board, with nothing to press that only whoever runs it may do. */
   readOnly?: boolean
 }
@@ -175,7 +178,8 @@ export function HeadlineAndGap({ b, deals, groups }: { b: Any; deals: Any; group
         <Panel>
           <h2 className="pb-gap-h">{gapHeading}</h2>
           {gapSays && <p className="pb-note">{gapSays}</p>}
-          {possible.map((d: Any) => (
+          {/* Three, as "two of these three"; the rest behind "and N more" (Hafsah, 25 October). */}
+          {possible.slice(0, 3).map((d: Any) => (
             <div className="pb-gap-row" key={d.id}>
               <div className="pb-gap-row-top">
                 <span className="pb-gap-name">{d.name}</span>
@@ -185,6 +189,20 @@ export function HeadlineAndGap({ b, deals, groups }: { b: Any; deals: Any; group
               <div className={d.next || d.nextStep ? 'pb-gap-next' : 'pb-gap-next pb-gap-next-none'}>{d.nextStep ?? d.next ?? (b.releaseOneSalesBoard ? NOTHING_BOOKED : d.nextSays)}</div>
             </div>
           ))}
+          {possible.length > 3 && (
+            <details className="pb-fold">
+              <summary>{`and ${possible.length - 3} more`}</summary>
+              {possible.slice(3).map((d: Any) => (
+                <div className="pb-gap-row" key={d.id}>
+                  <div className="pb-gap-row-top">
+                    <span className="pb-gap-name">{d.name}</span>
+                    <span className="pb-gap-who">{firstName(d.owner)}</span>
+                  </div>
+                  <div className={d.next || d.nextStep ? 'pb-gap-next' : 'pb-gap-next pb-gap-next-none'}>{d.nextStep ?? d.next ?? (b.releaseOneSalesBoard ? NOTHING_BOOKED : d.nextSays)}</div>
+                </div>
+              ))}
+            </details>
+          )}
         </Panel>
       )}
     </div>
@@ -198,7 +216,8 @@ export function WhatTheTargetAssumes({ b }: { b: Any }) {
     <>
       {rows.map((o: Any) => (
         <Panel key={o.id}>
-          <h2 className="pb-panel-h">{`What the target of ${Number(o.target).toLocaleString('en-GB')} assumes`}</h2>
+          {/* A bold line in its panel, not a section heading, as the prototype's board draws it. */}
+          <b className="t-h3">{`What the target of ${Number(o.target).toLocaleString('en-GB')} assumes`}</b>
           <ul className="pb-bullets">
             {o.assumes.map((a: string) => <li key={a}>{a}</li>)}
           </ul>
@@ -290,7 +309,19 @@ export function WhatNeedsYou({ b, renderActions, groundId, deals, sessionRows, m
       })
     }
   }
-  for (const [i, d] of (b.decisions ?? []).entries()) {
+  /*
+   * WHAT NEEDS HER, ONCE (Hafsah, 24 October): the direct morning is no longer drawn above the board, so where the server serves its
+   * Needs you lines for this board they are this section's items, the same sentences as her morning. The board's own decisions are
+   * drawn only where there are none, so nothing is said twice.
+   */
+  const morningPart = ((b.theMorning?.parts ?? []) as Any[]).find((p: Any) => p.key === 'needsYou')
+  const morningNeeds: string[] = morningPart?.lines ?? []
+  /* As a row where the server gives one: a short title and one line of detail (Hafsah, 25 October); otherwise the sentence. */
+  morningNeeds.forEach((line, i) => {
+    const row = morningPart?.rows?.[i]
+    items.push({ key: `d-m${i}`, kind: 'look', title: row?.title ?? String(line), detail: row?.detail })
+  })
+  for (const [i, d] of (morningNeeds.length ? [] : (b.decisions ?? [])).entries()) {
     /* A wait is drawn once, as its own card under "Blockers" (what-needs-you-does-not-repeat-a-blocker). */
     if (d.source === 'blocker') continue
     /* A difference between people is followed under "Open issues" when that list is served. */
@@ -517,7 +548,7 @@ function GroupRows({ g, byId, openId, onOpen, days, today, api, claims, releaseO
             <div className="pb-deal-name">{r.name}</div>
             <div className="pb-deal-sub">{[firstName(r.owner) || 'Nobody is named for it yet.', r.valueLine ?? ('value' in r ? r.value : aValueKeptWithIt(r.fields))].filter(Boolean).join(', ')}</div>
           </td>
-          <td><span className="pb-stage"><span className={`pb-dot ${r.mark === 'proven' ? 'pb-dot-proof' : 'pb-dot-said'}`} />{r.stage ? <span className="gwui-tag gwui-tag-plain pb-stage-word">{r.stage}</span> : releaseOne ? NOT_CONTACTED_YET : 'No stage said yet.'}</span></td>
+          <td><span className="pb-stage"><span className={`pb-dot ${r.mark === 'proven' ? 'pb-dot-proof' : 'pb-dot-said'}`} />{r.stage ? <span className="tag plain pb-stage-word">{r.stage}</span> : releaseOne ? NOT_CONTACTED_YET : 'No stage said yet.'}</span></td>
           <td className="pb-last">{lastContactIn(r, today)}</td>
           <td colSpan={6}><TheDays r={r} days={days} today={today} /></td>
           <td className={r.group === 'cold' ? 'pb-next pb-next-stall' : r.next ? 'pb-next' : 'pb-next pb-next-none'}>
@@ -974,13 +1005,16 @@ export function OpenIssues({ b, renderActions }: { b: Any; renderActions: (a: An
   /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
   const direct = useTheDirectMorning()
   const data = b.openIssues
-  const rows: Any[] = Array.isArray(data?.issues) ? data.issues : []
+  const all: Any[] = Array.isArray(data?.issues) ? data.issues : []
+  /* The picture shows a short row of issues. The first three are drawn, in the engine's order; the rest wait behind one quiet link. */
+  const [everyOne, setEveryOne] = useState(false)
+  const rows: Any[] = everyOne ? all : all.slice(0, 3)
   if (!data) return null
   /* The kit shows Open issues only with issues in it (quality pass, 18 October, B-25; standing decision 4 of the findings). */
-  if (b.releaseOneSalesBoard && !rows.length) return null
+  if (b.releaseOneSalesBoard && !all.length) return null
   return (
     <Section heading="Open issues" note={direct ? undefined : 'Each one moving towards a decision. You always choose'}>
-      {rows.length === 0 ? (
+      {all.length === 0 ? (
         <Panel><p className="gwui-panel-text">{data.why ?? 'Nothing is open.'}</p></Panel>
       ) : (
         <div className="pb-issues">
@@ -1013,6 +1047,11 @@ export function OpenIssues({ b, renderActions }: { b: Any; renderActions: (a: An
             )
           })}
         </div>
+      )}
+      {all.length > 3 && (
+        <Button kind="quiet" onClick={() => setEveryOne((v) => !v)} aria-expanded={everyOne}>
+          {everyOne ? 'Show the first three' : `Show all ${all.length}`}
+        </Button>
       )}
     </Section>
   )
@@ -1066,7 +1105,7 @@ export function WhereThisIsHeading({ b, onRecordTheDecision, readOnly = false }:
           <div className="pb-decides">
             <b>{d.whoDecides}</b>
             <p>{d.groundworkDoesNotChoose}</p>
-            {d.decided ? <p>{d.decided}</p> : readOnly ? null : <button type="button" className="gwui-btn gwui-btn-secondary" onClick={onRecordTheDecision}>{d.recordTheDecision ?? 'Record the decision'}</button>}
+            {d.decided ? <p>{d.decided}</p> : readOnly ? null : <button type="button" className="btn sec" onClick={onRecordTheDecision}>{d.recordTheDecision ?? 'Record the decision'}</button>}
           </div>
         </div>
       </div>
@@ -1129,23 +1168,29 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
   const example = nextQuarterDeal ? `Why is ${nextQuarterDeal.name} next quarter?` : 'Who is waiting on whom?'
   return (
     <div className="pb">
+      {/* THE FIRST SCREEN, AS THE PROTOTYPE HAS IT (Hafsah, 24 October): the headline with what is closing the gap, What needs you, and the team. */}
       <HeadlineAndGap b={b} deals={deals} groups={groups} />
+      {/* Right under the gap, as the prototype's board has it. */}
       <WhatTheTargetAssumes b={b} />
       {/* An admin who only reads is never told "What needs you": it is not hers to do (the light board's rule, kept). */}
       {!p.readOnly && <WhatNeedsYou b={b} renderActions={p.renderActions} groundId={p.groundId} deals={deals} sessionRows={p.sessionRows} />}
-      {deals && <EveryDealDayByDay b={b} section={deals} now={now} groundId={p.groundId} />}
-      {p.otherRecords}
       <TheTeamToday b={b} deals={deals} today={isoDay(now)} groundId={p.groundId} />
-      <Blockers b={b} groundId={p.groundId} />
-      <WhatKeepsComingUp b={b} />
-      <ReportedAgainstCriteria b={b} />
-      <WhoCheckedIn b={b} />
-      {p.overTime}
+      {/* Everything else, folded under its own heading (FoldTheRest): the same sections and words, opened with a tap. */}
+      <FoldTheRest>
+        {deals && <EveryDealDayByDay b={b} section={deals} now={now} groundId={p.groundId} />}
+        {p.otherRecords}
+        {p.yourTeam}
+        <Blockers b={b} groundId={p.groundId} />
+        <OpenIssues b={b} renderActions={p.readOnly ? () => null : p.renderActions} />
+        <WhatKeepsComingUp b={b} />
+        <ReportedAgainstCriteria b={b} />
+        <WhoCheckedIn b={b} />
+        {p.overTime}
+        <HelpNobodyMentioned b={b} />
+        <WaitingOnOtherTeams groundId={p.groundId} />
+        <WhereThisIsHeading b={b} onRecordTheDecision={p.onRecordTheDecision} readOnly={p.readOnly} />
+      </FoldTheRest>
       <Reports b={b} groundId={p.groundId} sessionRows={p.sessionRows} navigate={p.navigate} now={now} />
-      <HelpNobodyMentioned b={b} />
-      <WaitingOnOtherTeams groundId={p.groundId} />
-      <OpenIssues b={b} renderActions={p.readOnly ? () => null : p.renderActions} />
-      <WhereThisIsHeading b={b} onRecordTheDecision={p.onRecordTheDecision} readOnly={p.readOnly} />
       <AskAboutThisBoard example={example} />
       <GroundworkRecommends offers={p.recommendations} onAnswer={p.onAnswerRecommendation} busy={p.recommendationBusy} />
       {p.kindOfWork}

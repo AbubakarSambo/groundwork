@@ -75,7 +75,7 @@ export function AddADocument({
       toast.success(`${fileName} is in Context.`)
       onClose()
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. The document is still here and still private to you, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
   const drop = useMutation({
     mutationFn: () => documentsApi.remove(groundId, docId),
@@ -166,11 +166,11 @@ export function AddADocument({
           ))}
         </div>
       ) : (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Only you can see this. Nobody else on the check-in can open it.</div>
+        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Only you can open it.</div>
       )}
 
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 18, flexWrap: 'wrap' }}>
-        <button className="gwui-btn gwui-btn-primary"
+        <button className="btn pri"
           onClick={() => keep.mutate()}
           disabled={keep.isPending || drop.isPending}
         >

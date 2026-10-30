@@ -76,7 +76,7 @@ export class EmailService implements OnModuleInit {
       const connect = await connectWhatsAppFor(this.prisma, this.configService, { organizationId: checkIn.organizationId, email, keptInTheApp: keptOffThePhone(checkIn), forTheInvitation });
       if (!connect) return '';
       return `<p>${escapeHtml(youCanAlsoAnswerOnWhatsApp(connect.number))}</p>
-         <p><a href="${connect.link}" style="display:inline-block;background:#25D366;color:#0A1628;padding:12px 20px;border:0;border-radius:8px;text-decoration:none;font-weight:700;font-size:16px;line-height:20px;font-family:Atkinson Hyperlegible,Arial,Helvetica,sans-serif;">${connect.says}</a></p>`;
+         <p><a href="${connect.link}" style="display:inline-block;background:#FFFFFF;color:#1A1916;padding:10.5px 18.5px;border:1.5px solid #DFD3BE;border-radius:8px;text-decoration:none;font-weight:700;font-size:16px;line-height:20px;font-family:Atkinson Hyperlegible,Arial,Helvetica,sans-serif;">${connect.says}</a></p>`;
     } catch {
       return '';
     }
@@ -887,7 +887,7 @@ export class EmailService implements OnModuleInit {
     const theirFirstName = (them?.user?.firstName?.trim() || them?.nameGiven?.trim().split(/\s+/)[0] || '') || null;
     /* Free text from the inviter, inside a styled block, in a mail from noreply@: escaped, so a note
        with an ampersand or an angle bracket renders as written rather than as half a sentence. */
-    const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4E4236;font-style:italic;">${escapeHtml(note)}</p>` : '';
+    const noteHtml = note ? `<p style="border-left:3px solid #EDE5D6;padding:8px 14px;margin:20px 0;color:#4E4236;font-style:italic;">${escapeHtml(note)}</p>` : '';
     const devUrl = await this.sendEmail({
       to: email,
       subject: `${founderName} would like your take on ${groundLabel}`,
@@ -1292,7 +1292,7 @@ export class EmailService implements OnModuleInit {
       subject,
       html: this.layout(
         `<p>${escapeHtml(who)}</p>` +
-        `<p style="border-left:3px solid #5DCAA5;padding:10px 16px;margin:20px 0;font-size:17px;">${escapeHtml(question)}</p>` +
+        `<p style="border-left:3px solid #EDE5D6;padding:10px 16px;margin:20px 0;font-size:17px;">${escapeHtml(question)}</p>` +
         rest.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
         `<p><a href="${url}" style="${MAIL_BUTTON}">${THE_TEAM_BUTTON} &rarr;</a></p>` +
         (await this.theWhatsAppLine(email, context)) +
@@ -1392,7 +1392,7 @@ export class EmailService implements OnModuleInit {
       subject,
       html: this.layout(
         `<p>${escapeHtml(allIn)}</p>` +
-        `<p style="border-left:3px solid #5DCAA5;padding:10px 16px;margin:20px 0;font-size:17px;">${escapeHtml(question)}</p>` +
+        `<p style="border-left:3px solid #EDE5D6;padding:10px 16px;margin:20px 0;font-size:17px;">${escapeHtml(question)}</p>` +
         rest.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
         (sharedByAnAdminSentence ? `<p>${escapeHtml(sharedByAnAdminSentence)}</p>` : '') +
         `<p><a href="${reportUrl}" style="${MAIL_BUTTON}">${THE_LEAD_BUTTON} &rarr;</a></p>`,

@@ -271,7 +271,7 @@ export function GroundsListPage() {
       )}
       {/* An admin or a lead who runs none and is in none: said, so the list does not open on someone else's heading (U.5 review). */}
       {others.length > 0 && youRun.length === 0 && youreIn.length === 0 && (
-        <Note>You do not run any check-ins, and you are not in any yet.</Note>
+        <Note>No check-ins yet. Start one.</Note>
       )}
       {others.length > 0 && (
         <Section heading={`Other check-ins in ${orgName}`} note={`${others.length} open`}>

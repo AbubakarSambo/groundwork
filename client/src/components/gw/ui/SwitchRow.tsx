@@ -17,7 +17,8 @@ import './gw-ui.css'
  * shrinking the text column to wrap internally. `flex: 1, minWidth: 0` on the text column is what
  * makes it shrink and wrap its OWN text instead; the row itself no longer needs to wrap at all.
  */
-export function SwitchRow({ title, detail, on, onChange, disabled }: {
+export function SwitchRow({ title, detail, on, onChange, disabled, look }: {
+  look?: 'switch' | 'checkbox'
   title: string
   detail?: ReactNode
   on: boolean
@@ -30,7 +31,7 @@ export function SwitchRow({ title, detail, on, onChange, disabled }: {
         <div className="gwui-switch-row-title">{title}</div>
         {detail && <div className="gwui-switch-row-detail">{detail}</div>}
       </div>
-      <Toggle on={on} onChange={onChange} label={title} disabled={disabled} />
+      <Toggle on={on} onChange={onChange} label={title} disabled={disabled} look={look} />
     </div>
   )
 }

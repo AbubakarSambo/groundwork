@@ -54,6 +54,12 @@ describe('Grace’s direct morning, Tuesday 20 October, Drop Access (test), from
         'Juja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph.',
         'Peter has been waiting on you since Thursday for a specific area to focus on.',
         'Peter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will.',
+      ],
+      /* The same three as board rows, a short title and one line of detail (Hafsah, 25 October); the message keeps the sentences above. */
+      rows: [
+        { title: 'Juja Hardware wants 5 units at KES 4,500, not 5,000', detail: 'Joseph is waiting for a yes or no from Management. Get it for Joseph.' },
+        { title: 'Peter is waiting on you', detail: 'For a specific area to focus on, since Thursday.' },
+        { title: 'Peter is waiting for a list of leads for this week', detail: 'Nobody is named to give it. Send it or say who will.' },
       ] },
       { key: 'closing', heading: 'About to close', lines: ['Ngong Road Minimart pays KES 25,000 for 5 units on delivery tomorrow.'] },
       { key: 'team', heading: 'Your team today', lines: [

@@ -269,7 +269,7 @@ function VersionRow({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
           {!v.isActive && confirmActivateId !== v.id && (
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               onClick={() => onActivateClick(v.id)}
               disabled={activating}
             >
@@ -281,13 +281,13 @@ function VersionRow({
               <span style={{ fontSize: 11, color: 'var(--gw-text)' }}>
                 Activate v{v.version}? In-progress check-ins keep their version.
               </span>
-              <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+              <button className="btn pri sm"
                 onClick={() => onConfirm(v.id)}
                 disabled={activating}
               >
                 Confirm
               </button>
-              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+              <button className="btn sec sm"
                 onClick={onCancel}
               >
                 Cancel
@@ -377,7 +377,7 @@ function DraftEditor({
       if (data?.error === 'invariant_violation' && Array.isArray(data?.missing)) {
         setInvariantError(data.missing as string[])
       } else {
-        toast.error('The draft did not save. What you typed is still here - try again.')
+        toast.error('The draft didn’t save. Try again.')
       }
     },
   })
@@ -429,13 +429,13 @@ function DraftEditor({
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {!confirmPublish ? (
             <>
-              <button className="gwui-btn gwui-btn-secondary gwui-btn-small gwui-btn-red-text"
+              <button className="btn sec sm red"
                 onClick={() => discard.mutate()}
                 disabled={discard.isPending}
               >
                 {discard.isPending ? 'Discarding…' : 'Discard draft'}
               </button>
-              <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+              <button className="btn pri sm"
                 onClick={() => setConfirmPublish(true)}
                 disabled={saveStatus === 'unsaved' || save.isPending}
                 title={saveStatus === 'unsaved' ? 'Save changes before publishing' : ''}
@@ -446,13 +446,13 @@ function DraftEditor({
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 4, padding: '6px 12px' }}>
               <span style={{ fontSize: 12, color: 'var(--gw-amber-t)' }}>Publish v{draft.version} live for new conversations?</span>
-              <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+              <button className="btn pri sm"
                 onClick={() => activate.mutate()}
                 disabled={activate.isPending}
               >
                 {activate.isPending ? 'Publishing…' : 'Confirm'}
               </button>
-              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+              <button className="btn sec sm"
                 onClick={() => setConfirmPublish(false)}
               >
                 Cancel
@@ -614,13 +614,13 @@ function TestRunner({ version, promptKey }: { version: PromptVersion; promptKey:
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
           disabled={loading}
         />
-        <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+        <button className="btn pri sm"
           onClick={send}
           disabled={loading || !input.trim()}
         >
           ↑
         </button>
-        <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+        <button className="btn sec sm"
           onClick={() => setMessages([])}
         >
           Clear
@@ -813,7 +813,7 @@ export function PromptVersioningPage() {
                     )
                   })}
                   {!draft && activeVersion && (
-                    <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+                    <button className="btn pri sm"
                       onClick={() => startDraft.mutate()}
                       disabled={startDraft.isPending}
                     >

@@ -55,10 +55,11 @@ export function TheCheckInHeader({
   }, [open])
 
   return (
-    <div className="gwui-ci-header">
-      <div className="gwui-ci-header-text">
-        <h1 className="gwui-ci-header-title">{title}</h1>
-        {underTitle && <div className="gwui-ci-header-sub">{underTitle}</div>}
+    <div className="ci-h">
+      <div>
+        {/* The prototype's bold line; a heading for screen readers. */}
+        <b className="t-body gw-block" role="heading" aria-level={1}>{title}</b>
+        {underTitle && <div className="t-tiny mut">{underTitle}</div>}
       </div>
       {mayPause && (onStopForNow || onSkip) && (
         <div ref={box} className="gwui-ci-pause-wrap">
@@ -67,7 +68,7 @@ export function TheCheckInHeader({
             onClick={() => setOpen(o => !o)}
             aria-expanded={open}
             aria-haspopup="true"
-            className="gwui-ci-pause-btn"
+            className="btn quiet sm"
           >
             Pause
           </button>

@@ -35,7 +35,7 @@ export function WhoCanOpenACheckIn({ orgName }: { orgName: string }) {
   const how = q.data ?? THE_STRICTER_OF_EACH
 
   const OPTIONS: [WhoMayOpen, string, string][] = [
-    ['NAMED_LEADS', 'Only the people you name', 'You choose who on this page. Everybody else takes part.'],
+    ['NAMED_LEADS', 'Only the people you name', 'Choose who can open check-ins. Everybody else takes part.'],
     ['EVERYONE', 'Anybody signed in here', `Anyone at ${orgName} can start a check-in.`],
   ]
 

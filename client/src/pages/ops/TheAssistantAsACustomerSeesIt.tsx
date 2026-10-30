@@ -787,7 +787,7 @@ export function TheAssistantAsACustomerSeesIt() {
             {g.brief && (
               <div style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{g.brief}</div>
             )}
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               type="button"
               onClick={() => startIt(g.groundId)}
               disabled={busy}
@@ -832,7 +832,7 @@ export function TheAssistantAsACustomerSeesIt() {
             }}
           >
             You have a check-in waiting on {c.ground?.label ?? 'a piece of work'}.
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               type="button"
               onClick={() => openCheckIn(c.checkInId)}
               disabled={busy}
@@ -1055,7 +1055,7 @@ export function TheAssistantAsACustomerSeesIt() {
           aria-label="Message"
           style={{ flex: 1 }}
         />
-        <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+        <button className="btn pri sm"
           type="submit"
           disabled={!session || busy || !typing.trim()}
         >

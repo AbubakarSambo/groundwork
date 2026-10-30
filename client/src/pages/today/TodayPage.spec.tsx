@@ -70,10 +70,12 @@ afterEach(() => { vi.useRealTimers() })
 /* Rebuilt from the shared parts (group 2): the row is now the shared `EdgeRow` (`gwui-edge-row`,
    `gwui-edge-h`, `gwui-edge-s`), in place of the old `NeedsYouRow` (`gw-need`, `gw-need-h`, `gw-need-s`) -
    the same shape, one shared part used by every list of things that need a reader. */
-const rows = () => [...document.querySelectorAll('.gwui-edge-row')].map(li => ({
-  title: li.querySelector('.gwui-edge-h')?.textContent,
-  detail: li.querySelector('.gwui-edge-s')?.textContent ?? null,
-  action: [...li.querySelectorAll('a')].map(a => [a.textContent, a.getAttribute('href')]),
+/* 24 October: the prototype's own row markup (.item, .h, .s), one stylesheet, the prototype's. */
+const rows = () => [...document.querySelectorAll('.item')].map(li => ({
+  title: li.querySelector('.h')?.textContent,
+  detail: li.querySelector('.s')?.textContent ?? null,
+  /* The row's own link (a row is tapped as a whole, as the prototype's phone Today) is its title, not its action. */
+  action: [...li.querySelectorAll('a:not(.gw-row-link)')].map(a => [a.textContent, a.getAttribute('href')]),
 }))
 
 describe('Today, as the lead', () => {
@@ -120,7 +122,7 @@ describe('Today, as the lead', () => {
   it('says what is coming up, in her own time', async () => {
     open(WAIRIMU, LEAD_READ)
     const aside = await screen.findByRole('complementary', { name: 'Coming up' })
-    expect([...aside.querySelectorAll('li')].map(li => li.textContent)).toEqual([
+    expect([...aside.querySelectorAll('.gw-when-row')].map(li => li.textContent)).toEqual([
       'Tomorrow, 4pmSession 39 of Sales team, Q3 opens.',
       'FridayKwame, first 90 days ends.',
     ])
@@ -137,29 +139,36 @@ describe('Today, as the lead', () => {
 /**
  * THE LEAD'S DAILY NUDGE'S OWN LINK (decision 120, GET /today/outstanding): "Needs you", "Overdue
  * on your team" and "Risks", every sentence already worded by the server.
+ *
+ * UPDATED 24 October (Hafsah: the prototype's structure, same sections in the same order): the prototype's Today has one
+ * list, "What needs you", most important first. The nudge's three lists are rows of it, after the ones Today serves, in
+ * the order served, never sections of their own. Every sentence is still drawn, once.
  */
 describe('Today: the lead’s daily nudge, "to see everything"', () => {
-  it('draws all three lists, in the order served, under their own headings', async () => {
+  it('draws all three lists, in the order served, as rows of What needs you', async () => {
     ;(todayApi.outstanding as any).mockResolvedValue({
       needsYou: ['Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.'],
       overdueOnYourTeam: ['Omar committed to “send the price list” by Tuesday 6 October, and it is six days late.'],
       risks: ['Bisi has been waiting on Omar for the price list since Monday 21 September.'],
     })
     open(WAIRIMU, LEAD_READ)
-    expect(await screen.findByRole('heading', { name: 'Needs you' })).toBeTruthy()
-    expect(screen.getByText('Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Overdue on your team' })).toBeTruthy()
-    expect(screen.getByText('Omar committed to “send the price list” by Tuesday 6 October, and it is six days late.')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Risks' })).toBeTruthy()
-    expect(screen.getByText('Bisi has been waiting on Omar for the price list since Monday 21 September.')).toBeTruthy()
-  })
-
-  it('leaves out a heading whose list is empty', async () => {
-    ;(todayApi.outstanding as any).mockResolvedValue({ needsYou: [], overdueOnYourTeam: ['Omar is six days late.'], risks: [] })
-    open(WAIRIMU, LEAD_READ)
-    expect(await screen.findByRole('heading', { name: 'Overdue on your team' })).toBeTruthy()
+    /* Each as a row: one line of title, the rest as its detail (Hafsah, 25 October). */
+    await screen.findByText('Kofi is waiting on you for the pricing for Q4.')
+    expect(screen.getByText('Since Thursday 8 October.')).toBeTruthy()
+    const titles = rows().map(r => r.title)
+    const at = (t: string) => titles.indexOf(t)
+    expect(at('Kofi is waiting on you for the pricing for Q4.')).toBeLessThan(at('Omar committed to “send the price list” by Tuesday 6 October.'))
+    expect(at('Omar committed to “send the price list” by Tuesday 6 October.')).toBeLessThan(at('Bisi has been waiting on Omar for the price list.'))
     expect(screen.queryByRole('heading', { name: 'Needs you' })).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Risks' })).toBeNull()
+  })
+
+  it('adds a row for each sentence served, and none for an empty list', async () => {
+    ;(todayApi.outstanding as any).mockResolvedValue({ needsYou: [], overdueOnYourTeam: ['Omar is six days late.'], risks: [] })
+    open(WAIRIMU, LEAD_READ)
+    await screen.findByText('Omar is six days late.')
+    expect(rows().filter(r => r.title === 'Omar is six days late.')).toHaveLength(1)
+    expect(screen.getByText('4 things, most important first')).toBeTruthy()
   })
 
   it('draws nothing for a member, since the server gives her null', async () => {
@@ -186,8 +195,7 @@ describe('Today: the lead’s daily nudge, "to see everything"', () => {
         { key: 'd', kind: 'decide', title: 'Decide whether a price range counts as a budget', detail: 'Brian and Miriam both raised it.', action: { label: 'Decide', to: '/x' }, groundId: 'g', organizationId: 'o' },
       ],
     })
-    expect(await screen.findByRole('heading', { name: 'Needs you' })).toBeTruthy()
-    expect(screen.getByText('Kofi is waiting on you for the pricing for Q4 since Thursday 8 October.')).toBeTruthy()
+    expect(await screen.findByText('Kofi is waiting on you for the pricing for Q4.')).toBeTruthy()
     expect(screen.getAllByText('Decide whether a price range counts as a budget')).toHaveLength(1)
   })
 })
@@ -283,7 +291,7 @@ describe('when the read fails', () => {
     useAuthStore.setState({ user: WAIRIMU, token: 't', isAuthenticated: true } as any)
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter><TodayPage /></MemoryRouter></QueryClientProvider>)
-    expect(await screen.findByText('What needs you did not load. Nothing you have written is affected.')).toBeTruthy()
+    expect(await screen.findByText('What needs you didn’t load. Try again.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
     expect(screen.queryByText('Nothing needs you right now.')).toBeNull()
   })
@@ -331,9 +339,9 @@ describe('Today has one navy button', () => {
     open(WAIRIMU, LEAD_READ)
     const starts = await screen.findAllByRole('link', { name: 'Start it' })
     expect(starts).toHaveLength(2)
-    expect(starts[0].className).toContain('gwui-btn-primary')
-    expect(starts[1].className).not.toContain('gwui-btn-primary')
-    expect(document.querySelectorAll('.gwui-btn-primary')).toHaveLength(1)
+    expect(starts[0].className).toContain('pri')
+    expect(starts[1].className).not.toContain(' pri')
+    expect(document.querySelectorAll('.btn.pri')).toHaveLength(1)
   })
 })
 
@@ -346,15 +354,18 @@ describe('the lead’s Today, with what her mail also tells her', () => {
     nobodyHasStarted: [{ groundId: 'd', label: 'Distributor review', subject: 'Nobody has started “Distributor review” yet, and Groundwork is following up', lines: ['You invited Kito and Lerato three days ago.', 'Groundwork is reminding them.'], linkLabel: 'See who has started', to: '/grounds/d' }],
     whatIWouldDoThisWeek: [{ groundId: 's', label: 'Sales team, Q3', lines: ['Here is what I would do this week.', 'Ask Omar about the Naivas order, because it has been open for a fortnight.'] }],
   }
-  it('draws each sentence once, with its link, for the lead', async () => {
+  /* Today is one list (Hafsah, 25 October: merge Needs you, Risks and From Groundwork into "What needs you", with no repeats): each is a row of it,
+     its title, one line of detail and its one action. */
+  it('draws each as a row of What needs you, once, with its link, for the lead', async () => {
     open(WAIRIMU, { ...LEAD_READ, forTheLead: FOR_THE_LEAD })
-    const region = await screen.findByRole('list', { name: 'From Groundwork' })
+    const region = await screen.findByRole('list', { name: 'What needs you' })
     expect(within(region).getAllByText('Nobody has started “Distributor review” yet, and Groundwork is following up')).toHaveLength(1)
-    expect(within(region).getByText('Groundwork is reminding them.')).toBeInTheDocument()
+    expect(within(region).getByText('You invited Kito and Lerato three days ago.')).toBeInTheDocument()
     expect(within(region).getByRole('link', { name: 'See who has started' })).toHaveAttribute('href', '/grounds/d')
-    expect(within(region).getByText('Here is what I would do this week.')).toBeInTheDocument()
     expect(within(region).getByText('Ask Omar about the Naivas order, because it has been open for a fortnight.')).toBeInTheDocument()
-    expect(within(region).getByRole('link', { name: 'Open the check-in' })).toHaveAttribute('href', '/grounds/s')
+    expect(within(region).getByText('In Sales team, Q3.')).toBeInTheDocument()
+    expect(within(region).getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/grounds/s')
+    expect(screen.queryByRole('list', { name: 'From Groundwork' })).toBeNull()
   })
   it('draws nothing for a reader the server gave no key', async () => {
     open(MIRIAM, PARTICIPANT_READ)

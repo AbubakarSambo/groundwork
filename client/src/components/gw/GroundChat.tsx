@@ -286,7 +286,7 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
   const add = useMutation({
     mutationFn: (t: string) => groundsApi.addMyNote(groundId, t),
     onSuccess: () => { setText(''); qc.invalidateQueries({ queryKey: ['my-notes', groundId] }) },
-    onError: () => toast.error('The note did not save. It is still in the box - try again.'),
+    onError: () => toast.error('The note didn’t save. Try again.'),
   })
 
   const remove = useMutation({
@@ -318,7 +318,7 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
   if (openCheckInId) {
     return (
       <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14, marginTop: 18 }}>
-        <button className="gwui-btn gwui-btn-primary"
+        <button className="btn pri"
           onClick={() => (onOpenSession ? onOpenSession() : navigate(`/checkin/${openCheckInId}`))}
           disabled={openPending}
           style={{ width: '100%' }}
@@ -428,7 +428,7 @@ export function Composer({ groundId, openCheckInId, openSessionNumber, totalSess
             onChange={e => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = '' }}
           />
         </label>
-        <button className="gwui-btn gwui-btn-primary"
+        <button className="btn pri"
           onClick={() => text.trim() && add.mutate(text.trim())}
           disabled={!text.trim() || add.isPending}
           style={{ flexShrink: 0 }}
@@ -537,7 +537,7 @@ export function GroundChat({
           first session, when there is nothing above it.
         */}
         {isParty && openCheckInId && sessions.length > 0 && (
-          <button className="gwui-btn gwui-btn-primary"
+          <button className="btn pri"
             onClick={() => (onOpenSession ? onOpenSession() : navigate(`/checkin/${openCheckInId}`))}
             disabled={openPending}
             style={{ width: '100%', marginBottom: 6 }}

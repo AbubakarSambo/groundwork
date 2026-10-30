@@ -11,7 +11,7 @@ export function CheckInOnWhatsApp({ link, label, testId, says = YOU_CAN_ALSO_CHE
   return (
     <Note>
       {says}{' '}
-      <a className="gwui-btn gwui-btn-quiet gwui-btn-small" href={link} target="_blank" rel="noopener" data-testid={testId}>
+      <a className="gw-link" href={link} target="_blank" rel="noopener" data-testid={testId}>
         {label}
       </a>
     </Note>

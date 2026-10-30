@@ -289,7 +289,7 @@ function TheRecordSection({ r, record }: { r: AReview; record: TheRecord }) {
       {record.whoReads && <p className="gwui-panel-text-muted">{record.whoReads}</p>}
       {record.parts.map(part => (
         <Panel key={part.part} as="section" aria-label={part.heading}>
-          <h3 className="gwui-panel-heading">{part.heading}</h3>
+          <h3 className="t-h3">{part.heading}</h3>
           <RowList label={part.heading}>
             {part.lines.map(l => <ALine key={l.key} reviewId={r.id} line={l} mayCorrect={record.mayCorrect} />)}
           </RowList>
@@ -348,7 +348,7 @@ function TheBriefing({ b }: { b: ABriefing }) {
       {b.counts && <p className="gwui-panel-text">{b.counts}</p>}
       {b.patterns.length > 0 && (
         <Panel as="section" aria-label="What keeps coming up">
-          <h3 className="gwui-panel-heading">What keeps coming up</h3>
+          <h3 className="t-h3">What keeps coming up</h3>
           <RowList label="What keeps coming up">
             {b.patterns.map((p, i) => (
               <Row key={i} columns="minmax(0, 1fr)">
@@ -367,13 +367,13 @@ function TheBriefing({ b }: { b: ABriefing }) {
       )}
       {b.changedAfterEarlierConversations.length > 0 && (
         <Panel as="section" aria-label="What changed after earlier conversations">
-          <h3 className="gwui-panel-heading">What changed after earlier conversations</h3>
+          <h3 className="t-h3">What changed after earlier conversations</h3>
           {b.changedAfterEarlierConversations.map((c, i) => <p key={i} className="gwui-panel-text">{c}</p>)}
         </Panel>
       )}
       {b.corrections.length > 0 && (
         <Panel as="section" aria-label="What has been marked as wrong">
-          <h3 className="gwui-panel-heading">What has been marked as wrong</h3>
+          <h3 className="t-h3">What has been marked as wrong</h3>
           {b.corrections.map((c, i) => (
             <div key={i}>
               <p className="gwui-panel-text">{c.line}</p>
@@ -402,7 +402,7 @@ function WhatMayBeSuggested({ firstName, r }: { firstName: string | null; r: Rec
 function TheSuggestion({ r, firstName, onAgree, onElse }: { r: RecogniseForTheWriter; firstName: string; onAgree: () => void; onElse: () => void }) {
   return (
     <Panel as="section" aria-label={r.headline}>
-      <h3 className="gwui-panel-heading">{r.headline}</h3>
+      <h3 className="t-h3">{r.headline}</h3>
       <p className="gwui-panel-text">{r.why}</p>
       <p className="gwui-panel-text-muted">{r.whatWouldChangeIt}</p>
       <p className="gwui-panel-text-muted">{r.yourDecision}</p>
@@ -434,7 +434,7 @@ function Decision({ r }: { r: AReview }) {
     return (
       <Section heading={mine ? 'Your decision' : by ? `${by}’s decision` : 'The decision'}>
         <p className="gwui-panel-text">{r.decision.says}</p>
-        <h3 className="gwui-panel-heading">{mine ? 'Your reasons' : by ? `${by}’s reasons` : 'The reasons'}</h3>
+        <h3 className="t-h3">{mine ? 'Your reasons' : by ? `${by}’s reasons` : 'The reasons'}</h3>
         <p className="gwui-panel-text">{r.decision.reasons}</p>
         {mine && <p className="gwui-panel-text-muted">{r.firstName} sees your decision and your reasons.</p>}
       </Section>
@@ -483,7 +483,7 @@ function Appeal({ r }: { r: AReview }) {
 function DecisionWas({ was }: { was: { says: string; reasons: string } }) {
   return (
     <>
-      <h3 className="gwui-panel-heading">What the decision said before</h3>
+      <h3 className="t-h3">What the decision said before</h3>
       <p className="gwui-panel-text-muted">{was.says}</p>
       <p className="gwui-panel-text-muted">{was.reasons}</p>
     </>
@@ -535,12 +535,12 @@ function YourAppealSection({ r, a }: { r: ReviewForThePerson; a: YourAppeal }) {
   return (
     <Section heading="Your appeal">
       <p className="gwui-panel-text">{a.says}</p>
-      <h3 className="gwui-panel-heading">Your reasons</h3>
+      <h3 className="t-h3">Your reasons</h3>
       <p className="gwui-quoted-text">“{a.yourReasons}”</p>
       {a.additions.map((x, i) => <p key={i} className="gwui-quoted-text">“{x.said}”</p>)}
       {decided && a.reasons && a.reasons !== r.decision?.reasons && (
         <>
-          <h3 className="gwui-panel-heading">{a.decidedByFirstName ? `${a.decidedByFirstName}’s reasons` : 'The reasons'}</h3>
+          <h3 className="t-h3">{a.decidedByFirstName ? `${a.decidedByFirstName}’s reasons` : 'The reasons'}</h3>
           <p className="gwui-panel-text">{a.reasons}</p>
         </>
       )}
@@ -577,14 +577,14 @@ function AnAppealForAnotherReader({ r, a }: { r: ReviewForTheWriter; a: AppealFo
       <p className="gwui-panel-text">{a.says}</p>
       {a.theirReasons && (
         <>
-          <h3 className="gwui-panel-heading">{`${a.personFirstName}’s reasons`}</h3>
+          <h3 className="t-h3">{`${a.personFirstName}’s reasons`}</h3>
           <p className="gwui-quoted-text">“{a.theirReasons}”</p>
           {(a.additions ?? []).map((x, i) => <p key={i} className="gwui-quoted-text">“{x.said}”</p>)}
         </>
       )}
       {decided && a.reasons && a.reasons !== r.decision?.reasons && (
         <>
-          <h3 className="gwui-panel-heading">The reasons for the outcome of the appeal</h3>
+          <h3 className="t-h3">The reasons for the outcome of the appeal</h3>
           <p className="gwui-panel-text">{a.reasons}</p>
         </>
       )}

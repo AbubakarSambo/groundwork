@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MyWorkPage } from './MyWorkPage'
@@ -146,12 +146,14 @@ describe('My work, as each reader reads it', () => {
     expect(screen.getByText('sold, 3 with proof')).toBeTruthy()
     expect(screen.getByText('your target')).toBeTruthy()
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-    expect(headings).toEqual(['Mercy’s work', 'Your focus this week', 'To do', 'What you achieved', 'How you’re performing', 'Coaching', 'Your deals'])
-    expect(screen.getByText('3 of your 5 open deals have no next step with a day.', { selector: '.gwui-callout *, .gwui-callout' })).toBeTruthy()
+    expect(headings).toEqual(['Mercy’s work', 'To do', 'What you achieved', 'How you’re performing', 'Coaching', 'Your deals'])
+    expect(screen.getByText('3 of your 5 open deals have no next step with a day.', { selector: '[data-gw-my-work-focus] *' })).toBeTruthy()
     expect(screen.getByText('Joseph is waiting on you for the Kiambu route notes.')).toBeTruthy()
     expect(screen.getByText('By Monday')).toBeTruthy()
     expect(screen.getByText('It was due on 16 October.')).toBeTruthy()
     expect(screen.getByText('Late')).toBeTruthy()
+    /* Three, then "and 2 more" (Hafsah, 25 October: lists stop at three); the rest open on a tap. */
+    fireEvent.click(screen.getByRole('button', { name: 'and 2 more' }))
     expect(screen.getByText('Done on 13 October.')).toBeTruthy()
     expect(screen.getByText('Greenfield Hardware was won, for KES 112,500.')).toBeTruthy()
     for (const b of behaviours('You')) {
@@ -181,7 +183,7 @@ describe('My work, as each reader reads it', () => {
     expect(await screen.findByLabelText('Whose work')).toBeTruthy()
     expect(screen.getByText('What Mercy needs to do, what Mercy has done, and how Mercy can get better. Mercy sees this page too.')).toBeTruthy()
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-    expect(headings).toEqual(['Mercy’s work', 'Mercy’s focus this week', 'To do', 'What Mercy achieved', 'How Mercy is performing', 'Coaching', 'Mercy’s deals'])
+    expect(headings).toEqual(['Mercy’s work', 'To do', 'What Mercy achieved', 'How Mercy is performing', 'Coaching', 'Mercy’s deals'])
     expect(screen.getByText('Asked of Mercy')).toBeTruthy()
     expect(screen.getByText('Mercy kept 8 of 9 promises.')).toBeTruthy()
     expect(screen.getByText('Your note for Mercy')).toBeTruthy()

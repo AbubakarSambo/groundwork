@@ -52,7 +52,7 @@ export function ThePersonPage() {
   if (!person || !runsIt) {
     return (
       <Page>
-        <PageTitle crumbs={crumbs} title="Not available" subtitle="This page is for whoever runs this check-in. Each person’s own check-ins stay with them." />
+        <PageTitle crumbs={crumbs} title="Not available" subtitle="Only the person who runs this check-in can open this." />
       </Page>
     )
   }

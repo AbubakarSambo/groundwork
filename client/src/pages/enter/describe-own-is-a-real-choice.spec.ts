@@ -35,7 +35,7 @@ describe('describing it in your own words', () => {
      * this test exists to rule out. Checking the kind class directly keeps that same guarantee
      * without pinning the whole class string, which a shared part is free to add to (e.g. `wide`).
      */
-    expect(go.className).toMatch(/\bgwui-btn-primary\b/)
+    expect(go.className).toMatch(/\bpri\b/)
     expect(go.getAttribute('style') ?? '').not.toMatch(/dashed|transparent/)
   })
 

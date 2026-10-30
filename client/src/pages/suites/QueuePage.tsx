@@ -247,8 +247,8 @@ export function QueuePage() {
          * classes without a second `<h2>`, rather than giving `Section` an optional heading just
          * for this one page.
          */
-        <div className="gwui-section">
-          <div className="gwui-section-body">
+        <div className="sec">
+          <div>
           <p className="gwui-panel-text">{data.says}</p>
           <Tabs
             label="Filter by suite"

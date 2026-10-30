@@ -99,7 +99,7 @@ export function StopRemindersPage() {
     return (
       <AuthCard
         title="That did not go through"
-        sub="We could not reach our own system just now, so nothing changed. Reload this page, or reply to any of our mail with the word stop and a person will do it by hand."
+        sub="That didn’t work. Try again, or reply to any of our emails with the word stop."
       />
     )
   }

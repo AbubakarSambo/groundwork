@@ -29,6 +29,7 @@ import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-in
 import { everythingOutstandingFor } from '../engagement/the-leads-daily-nudge';
 import { whatTheLeadIsToldOnToday, type WhatTheLeadIsToldOnToday } from '../engagement/what-the-lead-is-told-on-today';
 import { TheWeeklyReportService } from '../reports/the-weekly-report.service';
+import { whatTodayReads } from '../reports/what-today-reads-from-the-record';
 import { theSameWaitInOtherWords } from '../board/reads';
 import { whatThePersonIsToldAboutMissing, keepTheirReason } from './missed-check-ins';
 
@@ -337,6 +338,19 @@ export class WhatNeedsYouService {
     /* The direct morning (organisation/the-screen-is-told-the-direct-morning.ts): one yes or no for the page's fixed words. It shows nothing more. */
     const directMorning = await theDirectMorningIsOn(this.prisma, organizationId);
     if (directMorning) { told.needs = needsSaidDirectly(told.needs); }
+    /* The nudge beside the line is the board's own, which only the direct morning offers. */
+    if (!directMorning) delete (told as any).lineNudge;
+    /* SINCE YESTERDAY (C1, today-lead): what moved since the round before, for the check-in the line is about, read from the record the
+       latest report reads (no model, nothing written). Only for the person who runs it. */
+    /* Behind the direct morning, so an organisation with it off reads Today as before. */
+    if (directMorning && told.lineGroundId) {
+      const g = await (this.prisma as any).ground.findUnique({ where: { id: told.lineGroundId }, select: { initiatorId: true, cadence: true } }).catch(() => null);
+      if (g?.initiatorId === userId) {
+        const read = await whatTodayReads(this.prisma as any, told.lineGroundId, { userId, isAdmin: false }).catch(() => ({} as any));
+        if (read?.sinceLast?.says) told.sinceYesterday = { heading: g.cadence === 'DAILY' ? 'Since yesterday' : 'Since the last check-in', says: read.sinceLast.says, also: read.sinceLast.also ?? null };
+      }
+    }
+    delete (told as any).lineGroundId;
     return forTheLead ? { ...told, forTheLead, directMorning } : { ...told, directMorning };
   }
 

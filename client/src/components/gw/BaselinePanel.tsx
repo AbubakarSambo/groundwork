@@ -1,7 +1,8 @@
+import type React from 'react'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
-import { Section, Panel } from '@/components/gw/ui'
+import { Section, Panel, FoldedLine } from '@/components/gw/ui'
 import { toast } from 'sonner'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { withSentenceCase } from '@/lib/an-aim-reads-as-a-sentence'
@@ -32,7 +33,9 @@ import { withSentenceCase } from '@/lib/an-aim-reads-as-a-sentence'
  * read against is the last thing that should be private from them, and if it moved mid-ground, the
  * move is the part they most need to see.
  */
-export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundId: string; canState: boolean; groundStartedAt?: string | null }) {
+export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
+  /** One folded line under About this work, as the kit draws the page; its own section elsewhere. */
+  asFold?: boolean; groundId: string; canState: boolean; groundStartedAt?: string | null }) {
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
   const [success, setSuccess] = useState('')
@@ -67,14 +70,21 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not record that. Try again.'),
   })
 
+  const Outer = ({ children }: { children: React.ReactNode }) => asFold
+    ? <FoldedLine name="What doing well looks like" fact={current?.successLooksLike ? withSentenceCase(current.successLooksLike) : 'Not stated yet.'}>{children}</FoldedLine>
+    : <Section heading="What doing well looks like">{children}</Section>
+  const Inner = ({ children }: { children: React.ReactNode }) => asFold ? <div>{children}</div> : <Panel>{children}</Panel>
   return (
-    <Section heading="What doing well looks like">
-      <Panel>
+    <Outer>
+      <Inner>
         {current ? (
           <>
+            {/* Folded, the line itself is the fold's own fact, so it is not said twice. */}
+            {!asFold && (
             <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.65 }}>
               {current.successLooksLike ? withSentenceCase(current.successLooksLike) : 'Not stated yet.'}
             </div>
+            )}
             {current.conditions.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>What that rests on</div>
@@ -124,7 +134,7 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
             whether things went well, because nothing has said what well would look like.
           </div>
         )}
-      </Panel>
+      </Inner>
 
       {/* Earlier versions. The arc is the point: what was believed then, against what is held now. */}
       {earlier.length > 0 && (
@@ -146,7 +156,7 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
       )}
 
       {canState && !open && (
-        <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+        <button type="button" className={asFold ? 'gw-link t-small' : 'btn sec sm'}
           onClick={() => setOpen(true)}
           style={{ marginTop: 10 }}
         >
@@ -194,13 +204,13 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
               </>
             )}
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+              <button className="btn pri sm"
                 onClick={() => state.mutate()}
                 disabled={state.isPending || (!success.trim() && !conditions.trim())}
               >
                 {state.isPending ? 'Recording…' : current ? 'Record as a new version' : 'Record it'}
               </button>
-              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+              <button className="btn sec sm"
                 onClick={() => setOpen(false)}
               >
                 Cancel
@@ -209,6 +219,6 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
           </Panel>
         </div>
       )}
-    </Section>
+    </Outer>
   )
 }

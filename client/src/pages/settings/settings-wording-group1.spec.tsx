@@ -63,7 +63,7 @@ describe('Your data', () => {
     expect(downloadBtn).toBeTruthy()
     /* GROUP 1 RE-REVIEW, FAULT E: own-settings.jpg draws this as an outlined secondary button,
        not a quiet text link. */
-    expect(downloadBtn.className).toContain('gwui-btn-secondary')
+    expect(downloadBtn.className).toContain('sec')
   })
 
   it('after "Download it", says the file saved and names answers and check-ins, matching the list shown', async () => {
@@ -104,9 +104,9 @@ describe('Leaving the organisation', () => {
   it('the "Leave" button is a secondary button with red words, not a solid red one', () => {
     open({ id: 'u1', role: 'MEMBER', organizationName: 'Baridi Appliances', firstName: 'Grace', lastName: 'Achieng', email: 'grace@baridi.co.ke' })
     const leaveBtn = screen.getByRole('button', { name: 'Leave' })
-    expect(leaveBtn.className).toContain('gwui-btn-secondary')
-    expect(leaveBtn.className).toContain('gwui-btn-red-text')
-    expect(leaveBtn.className).not.toContain('gwui-btn-danger')
+    expect(leaveBtn.className).toContain('sec')
+    expect(leaveBtn.className).toContain('red')
+    expect(leaveBtn.className).not.toContain('danger')
   })
 
   it('the confirmation says what you said stays on the record, not "contributions"', async () => {

@@ -4,7 +4,7 @@ import { TheLeadsOwnWayIn } from '@/components/gw/TheLeadsOwnWayIn'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
-import { Page, PageTitle, Section, Note, Button, NumberTiles } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Note, Button, NumberTiles, EdgeList, EdgeRow } from '@/components/gw/ui'
 import { whatWentWrong, whyYouCannotSeeThis } from './why-you-cannot-see-this'
 import './weekly-report.css'
 import { TheCheckInsOwnHeader, YourCheckIn } from './pictured/TheCheckInsOwnHeader'
@@ -35,22 +35,22 @@ export function TheWeekForTheLead({ w }: { w: NonNullable<import('@/api/reports'
     <>
       {w.target && (
         <Section heading="Where the target stands">
-          <div className="wr-panel"><p>{w.target}</p></div>
+          <p className="t-body">{w.target}</p>
         </Section>
       )}
       {w.movedWithProof.length > 0 && (
         <Section heading="What moved this week, with what shows it">
-          <div className="wr-panel">{w.movedWithProof.map((line, i) => <p key={i}>{line}</p>)}</div>
+          {/* The lead's own week is rows with thin rules, not more boxes after the prototype's own panels. */}
+          <div className="gw-ruled-rows">{w.movedWithProof.map((line, i) => <p key={i}>{line}</p>)}</div>
         </Section>
       )}
       {w.needsYou.length > 0 && (
         <Section heading="Who needs you">
-          {w.needsYou.map((n, i) => (
-            <div key={i} className="wr-panel">
-              <p><b>{n.says}</b></p>
-              {n.evidence.map((e, j) => <p key={j}>{e}</p>)}
-            </div>
-          ))}
+          <EdgeList label="Who needs you">
+            {w.needsYou.map((n, i) => (
+              <EdgeRow key={i} kind="look" title={n.says} detail={n.evidence.length ? <>{n.evidence.map((e, j) => <span key={j} className="gw-block">{e}</span>)}</> : undefined} />
+            ))}
+          </EdgeList>
         </Section>
       )}
     </>
@@ -147,12 +147,11 @@ export default function WeeklyReportPage() {
       <Page>
         <PageTitle crumbs={crumbs} title={title} subtitle={direct ? undefined : data.whatThisIs} />
         {data.saying && <Note>{data.saying}</Note>}
-        {data.forTheLead && <TheWeekForTheLead w={data.forTheLead} />}
         {data.inNumbers && data.inNumbers.length > 0 && (
           <Section heading="The week in numbers">
-            <div className="wr-tiles">
+            <div className="g4">
               {data.inNumbers.map((row, i) => (
-                <div key={i} className="wr-tile"><b>{String(row.figure)}</b><span>{row.of}</span></div>
+                <div key={i} className="panel pad wr-tile"><b>{String(row.figure)}</b><span className="t-small mut">{row.of}</span></div>
               ))}
             </div>
           </Section>
@@ -160,33 +159,33 @@ export default function WeeklyReportPage() {
         {/* A sales check-in (Release 1): the server's paragraphs, read from the deals, as the kit has them. */}
         {(data.whatThisWeekShows ?? []).length > 0 ? (
           <Section heading="What this week shows">
-            <div className="wr-panel">{(data.whatThisWeekShows ?? []).map((p, i) => <p key={i}>{p}</p>)}</div>
+            <div className="panel pad stack gw-gap-10">{(data.whatThisWeekShows ?? []).map((p, i) => <p key={i}>{p}</p>)}</div>
             {/* sales-weekly-report.txt: the amber strip under the panel (quality pass, 18 October, W-8). */}
-            {(data.acrossTheTeam ?? []).map((line, i) => <p key={`att-${i}`} className="wr-strip">{line}</p>)}
+            {(data.acrossTheTeam ?? []).map((line, i) => <div key={`att-${i}`} className="panel pad gw-att-strip"><b>{line}</b></div>)}
           </Section>
         ) : (data.eachPerson.length > 0 || (data.acrossTheTeam && data.acrossTheTeam.length > 0)) && (
           <Section heading="What this week shows">
             {data.eachPerson.length > 0 && (
-              <div className="wr-panel">{data.eachPerson.map((p, i) => <p key={i}>{p.says}</p>)}</div>
+              <div className="panel pad stack gw-gap-10">{data.eachPerson.map((p, i) => <p key={i}>{p.says}</p>)}</div>
             )}
-            {(data.acrossTheTeam ?? []).map((line, i) => <p key={`att-${i}`} className="wr-strip">{line}</p>)}
+            {(data.acrossTheTeam ?? []).map((line, i) => <div key={`att-${i}`} className="panel pad gw-att-strip"><b>{line}</b></div>)}
           </Section>
         )}
         <Section heading="Things that happened in three check-ins in a row">
           {(data.threeInARow ?? []).length
-            ? <div className="wr-rows">{(data.threeInARow ?? []).map((row, i) => (
-              <div key={i} className="wr-row wr-row-amber"><b>{row.isYou ? 'You' : row.who}</b><span>{row.says}</span></div>
-            ))}</div>
+            ? <EdgeList label="Things that happened in three check-ins in a row">{(data.threeInARow ?? []).map((row, i) => (
+              <EdgeRow key={i} kind="look" title={row.isYou ? 'You' : row.who} detail={row.says} />
+            ))}</EdgeList>
             : <p className="gwui-panel-text">Nothing happened three check-ins in a row this week.</p>}
         </Section>
         {data.saidAndProof && (
           <Section heading="What people said, and what the proof shows">
-            <div className="wr-panel"><p>{data.saidAndProof}</p></div>
+            <div className="panel pad"><p>{data.saidAndProof}</p></div>
           </Section>
         )}
         {changed && (
           <Section heading="What changed">
-            <div className="wr-panel wr-changed">
+            <div className="panel pad wr-changed">
               {/* sales-weekly-report.txt: Moved, Dropped, Adapted (only where somebody changed the way they work, W-6), Result. */}
               {(['moved', 'dropped', 'adapted', 'result'] as const).filter((key) => (changed[key] ?? []).length > 0).map((key) => (
                 <div key={key} className="wr-changed-row">
@@ -199,21 +198,36 @@ export default function WeeklyReportPage() {
         )}
         {data.forNextWeek && data.forNextWeek.length > 0 && (
           <Section heading="For you to do next week">
-            <div className="wr-rows">
+            <EdgeList label="For you to do next week">
               {/* A sales week read from the record is in the order to do it (W-7), up to five; otherwise three from different places. */}
-              {(data.forNextWeekIsRanked ? data.forNextWeek.slice(0, 5) : threeFromDifferentPlaces(data.forNextWeek)).map((row, i) => (
-                <div key={i} className="wr-row wr-row-navy">
-                  <b>{row.do}</b>
-                  {row.why && <span>{row.why}</span>}
-                  {row.comesFrom && <span className="wr-from">{row.comesFrom}</span>}
-                </div>
+              {/* Three, then "and N more" (Hafsah, 25 October: lists stop at three). */}
+              {(data.forNextWeekIsRanked ? data.forNextWeek.slice(0, 5) : threeFromDifferentPlaces(data.forNextWeek)).slice(0, 3).map((row, i) => (
+                <EdgeRow key={i} kind="decide" title={row.do} detail={(row.why || row.comesFrom) ? <>{row.why}{row.why && row.comesFrom ? ' ' : ''}{row.comesFrom && <span className="tag plain">{row.comesFrom}</span>}</> : undefined} />
               ))}
-            </div>
+            </EdgeList>
+            {data.forNextWeekIsRanked && data.forNextWeek.slice(0, 5).length > 3 && (
+              <details className="pb-fold">
+                <summary>{`and ${data.forNextWeek.slice(0, 5).length - 3} more`}</summary>
+                <EdgeList label="And the rest for next week">
+                  {data.forNextWeek.slice(3, 5).map((row, i) => (
+                    <EdgeRow key={i} kind="decide" title={row.do} detail={(row.why || row.comesFrom) ? <>{row.why}{row.why && row.comesFrom ? ' ' : ''}{row.comesFrom && <span className="tag plain">{row.comesFrom}</span>}</> : undefined} />
+                  ))}
+                </EdgeList>
+              </details>
+            )}
           </Section>
+        )}
+        {/* The lead's own week (where the target stands, what moved with what shows it, who needs you), after every part the prototype draws. */}
+        {/* Folded after the prototype's own parts: the prototype's week has no place for them (Hafsah, 25 October: the prototype wins). */}
+        {data.forTheLead && (data.forTheLead.target || data.forTheLead.movedWithProof.length > 0 || data.forTheLead.needsYou.length > 0) && (
+          <details className="pb-fold">
+            <summary>Where the target stands, and what moved with proof</summary>
+            <TheWeekForTheLead w={data.forTheLead} />
+          </details>
         )}
         {/* Kept from the report as it was, though the picture has no place for it: the lead's own way in at the end of a report (decision of 14 October). */}
         {(ground as any)?.viewerIsInitiator && !['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes((ground as any)?.status) && (
-          <TheLeadsOwnWayIn groundId={id!} />
+          <TheLeadsOwnWayIn groundId={id!} asLinks />
         )}
         <div className="pb-whole-board-link">
           <a className="gwui-plain-link" href={`?${new URLSearchParams({ ...(week ? { week } : {}), whole: '1' }).toString()}`} onClick={(e) => { e.preventDefault(); navigate({ search: `?${new URLSearchParams({ ...(week ? { week } : {}), whole: '1' }).toString()}` }) }}>See every other part of this report</a>

@@ -138,6 +138,6 @@ describe('who can read it, and keeping it', () => {
     draw({ contextEnabled: false })
     await screen.findByText('What it took from the document')
     expect(screen.queryByRole('radio')).toBeNull()
-    expect(screen.getByText('Only you can see this. Nobody else on the check-in can open it.')).toBeTruthy()
+    expect(screen.getByText('Only you can open it.')).toBeTruthy()
   })
 })

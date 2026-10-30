@@ -250,6 +250,10 @@
   --gw-shadow-sheet: -12px 0 40px rgba(26, 25, 22, .1);
 }
 
+/* THE PROTOTYPE'S FOCUS RING, FOR EVERYTHING (app.css: :focus-visible{outline:3px solid var(--act);outline-offset:2px;border-radius:6px}).
+   On keyboard focus only. A part with its own ring keeps it; anything without one no longer falls back to the browser's thin blue line. */
+:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 * { border-color: var(--gw-border); }
 
@@ -278,11 +282,6 @@ button, input, select, textarea { font-family: inherit; }
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-}
-
-.entry-chat-shell {
-  min-height: 100vh;
-  flex: 1;
 }
 
 /* ── CHAT LAYOUT ─────────────────────────────────────────── */
@@ -362,15 +361,6 @@ button, input, select, textarea { font-family: inherit; }
   40% { transform: scale(1); opacity: 1; }
 }
 
-.gw-msg-system {
-  background: var(--gw-amber-bg);
-  border: 1px solid var(--gw-amber-b);
-  align-self: flex-start;
-  font-size: 12px;
-  color: var(--gw-amber-t);
-  border-bottom-left-radius: 3px;
-}
-
 /* ── CHAT INPUT BAR ──────────────────────────────────────── */
 .gw-chat-bar {
   padding: 10px 14px;
@@ -378,16 +368,6 @@ button, input, select, textarea { font-family: inherit; }
   display: flex;
   gap: 8px;
   background: white;
-  flex-shrink: 0;
-}
-
-.gw-chat-actions {
-  padding: 8px 14px;
-  background: white;
-  border-top: 1px solid var(--gw-border);
-  display: flex;
-  gap: 7px;
-  flex-wrap: wrap;
   flex-shrink: 0;
 }
 
@@ -532,7 +512,7 @@ button, input, select, textarea { font-family: inherit; }
 @media (max-width: 640px) { .gw-btn-sm { min-height: 44px; } }
 
 /* ── FORMS ───────────────────────────────────────────────── */
-.gw-fld { margin-bottom: 13px; }
+
 .gw-label {
   font-size: 12px;
   color: var(--gw-sub);
@@ -553,8 +533,7 @@ button, input, select, textarea { font-family: inherit; }
  * looks cramped next to the text it is under.
  */
 .gw-input,
-.gw-select,
-.gw-ta {
+.gw-select{
   /* The kit's field (app.css .input): 48px, 16px words (a phone zooms into anything smaller),
      10px corners and the stronger warm line at 1.5px. */
   width: 100%;
@@ -572,11 +551,10 @@ button, input, select, textarea { font-family: inherit; }
 /* Focus was doing two jobs and now does one: the field is already white, so the border is the
    whole signal. A ring rather than a hairline, because a one-pixel colour change is not a focus
    state anybody using a keyboard can see. */
-.gw-input:focus, .gw-select:focus, .gw-ta:focus {
-  border-color: var(--gw-navy);
-  box-shadow: 0 0 0 3px rgba(12, 68, 124, .12);
-}
-.gw-ta { resize: vertical; line-height: 1.5; }
+.gw-input:focus, .gw-select:focus{ border-color: var(--gw-navy); }
+/* The prototype's focus ring (:focus-visible{outline:3px solid var(--act);outline-offset:2px}), on keyboard focus only. */
+.gw-input:focus-visible, .gw-select:focus-visible, .gw-auth-input:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+
 .gw-er { font-size: 12px; color: var(--gw-red-t); margin-top: 5px; min-height: 16px; }
 
 /* ── BODY / CONTENT ──────────────────────────────────────── */
@@ -584,72 +562,20 @@ button, input, select, textarea { font-family: inherit; }
 
 /* Viewport-fixed action bar, offset to match .gw-main-content's sidebar
    margin so it centers with the page content instead of the raw viewport. */
-.cg-fixed-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; }
-@media (min-width: 641px) {
-  .cg-fixed-bar { left: var(--gw-sidebar-w, 256px); }
-}
+
 /* THE PAGE TITLE IS A HEADING, NOT A DIV THAT LOOKS LIKE ONE.
    Every usage is now an <h1>, so `margin-top` and the browser's own font-size have to be
    overridden here or every page shifts. The rendered result is byte-identical to the div. */
-.gw-ttl { font-size: 20px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.01em; color: var(--gw-text); }
+
 .gw-sub-t { font-size: 13px; color: var(--gw-sub); margin-bottom: 20px; line-height: 1.65; }
-.gw-sec { font-size: 11px; color: var(--gw-muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin: 16px 0 8px; }
 
 /* ── INFO BOXES ──────────────────────────────────────────── */
-.gw-box { border-radius: var(--gw-radius); padding: 10px 12px; font-size: 12px; line-height: 1.6; margin-bottom: 12px; }
-.gw-box-blue  { background: #EEF4FB; border: 1px solid #B5D4F4; color: #0C447C; }
-.gw-box-green { background: #E1F5EE; border: 1px solid #5DCAA5; color: #085041; }
-.gw-box-amber { background: #FDF3E3; border: 1px solid #E8A94A; color: #8A5C1A; }
-.gw-box-red   { background: #FCEBEB; border: 1px solid #F09595; color: #791F1F; }
 
 /* ── STATUS PILLS ────────────────────────────────────────── */
-.gw-pill { font-size: 11px; padding: 2px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; display: inline-block; }
-.gw-pill-green { background: #E1F5EE; color: #085041; }
-.gw-pill-amber { background: #FDF3E3; color: #8A5C1A; }
-.gw-pill-red   { background: #FCEBEB; color: #791F1F; }
-.gw-pill-blue  { background: #EEF4FB; color: #0C447C; }
-.gw-pill-gray  { background: var(--gw-bg); color: var(--gw-sub); border: 1px solid var(--gw-border); }
 
 /* ── PERSON ROWS ─────────────────────────────────────────── */
-.gw-prow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--gw-radius);
-  border: 1px solid var(--gw-border);
-  background: white;
-  cursor: pointer;
-  transition: all 0.15s;
-  margin-bottom: 7px;
-}
-.gw-prow:hover { border-color: var(--gw-muted); background: var(--gw-bg); }
-.gw-prow-static { cursor: default; }
-.gw-prow-static:hover { border-color: var(--gw-border); background: white; }
-
-.gw-av {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-.gw-av-0 { background: #EEF4FB; color: #0C447C; }
-.gw-av-1 { background: #E1F5EE; color: #085041; }
-.gw-av-2 { background: #FDF3E3; color: #8A5C1A; }
-.gw-av-3 { background: #EEF4FB; color: #0C447C; }
-.gw-av-4 { background: #FCEBEB; color: #791F1F; }
-.gw-av-5 { background: #F0FDF4; color: #166534; }
 
 /* ── STEPS PROGRESS ──────────────────────────────────────── */
-.gw-steps { display: flex; gap: 4px; margin-bottom: 18px; }
-.gw-step { height: 3px; flex: 1; border-radius: 2px; background: var(--gw-border); }
-.gw-step-done { background: #0C447C; }
-.gw-step-active { background: #60A5FA; }
 
 /* ── CARD ────────────────────────────────────────────────── */
 .gw-card {
@@ -666,218 +592,62 @@ button, input, select, textarea { font-family: inherit; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gw-muted); }
 
 /* ── TABS (ground admin / participant) ───────────────────── */
-.gw-tab {
-  flex: 1;
-  padding: 10px 4px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--gw-sub);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-.gw-tab.active { color: var(--gw-navy); border-bottom-color: var(--gw-navy); font-weight: 600; }
 
 /* ── CONFIDENCE DOTS ─────────────────────────────────────── */
-.gw-conf-dots { display: flex; gap: 3px; align-items: center; }
-.gw-conf-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--gw-border); transition: background 0.3s;
-}
-.gw-conf-dot.f1 { background: var(--gw-sub); }
-.gw-conf-dot.f2, .gw-conf-dot.f3 { background: var(--gw-green-b); }
-.gw-conf-dot.f4, .gw-conf-dot.f5 { background: var(--gw-navy); }
 
 /* ── GROUND CARDS ────────────────────────────────────────── */
-.gw-ground-card {
-  background: white;
-  border: 1px solid var(--gw-border);
-  border-radius: 10px;
-  padding: 14px 16px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
+
 /* D-4: a card keeps no shadow and does not lift; its border says it is under the pointer. */
-.gw-ground-card:hover {
-  border-color: var(--gw-blue-b);
-}
 
 /* ── CREATE GROUND STEP DOTS ─────────────────────────────── */
-.cg-step-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--gw-border); transition: background 0.2s;
-}
-.cg-step-dot.active { background: var(--gw-navy); }
-.cg-step-dot.done { background: var(--gw-green-b); }
 
 /* ── SITUATION CARDS (create ground step 1) ──────────────── */
-.cg-sit-card {
-  border: 1px solid var(--gw-border);
-  border-radius: 8px;
-  padding: 14px;
-  cursor: pointer;
-  transition: all 0.15s;
-  background: white;
-}
+
 /* SELECTION IS NOT A SCALE VALUE.
    Green, amber and red are a scale in this product - aligned, needs realignment, escalate -
    and blue sits beside them on notices meaning 'read this'. Painting a card blue because a
    pointer is over it, or because somebody picked it, teaches the scale a fourth meaning that
    is about the mouse. Selection uses --gw-slate, a neutral surface the system already has, so
    no colour is invented and no colour does two jobs. The navy border still carries 'this one'. */
-.cg-sit-card:hover { border-color: var(--gw-navy); background: var(--gw-slate); }
-.cg-sit-card.selected { border-color: var(--gw-navy); background: var(--gw-slate); }
+
 /* AN EMPTY CIRCLE ON EVERY CARD READ AS A CHECKBOX LIST - "like you can pick multiple options".
    It is a radio: one card, and on the entry chat picking one SENDS immediately, so there is not
    even a selected state to show. The ring only exists to say which one is picked, so it is drawn
    only when one is. Space is held either way, or the heading jumps when a card is chosen. */
-.cg-sit-check {
-  width: 18px; height: 18px; border-radius: 50%;
-  border: 1.5px solid transparent; flex-shrink: 0;
-  transition: all 0.15s;
-}
-.cg-sit-card.selected .cg-sit-check {
-  background: var(--gw-navy); border-color: var(--gw-navy);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' viewBox='0 0 10 8'%3E%3Cpath d='M1 4l3 3 5-6' stroke='white' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: center;
-}
 
 /* ── THE SITUATION PICKER, GROUPED ───────────────────────
    Twenty cards in one unbroken list is a wall, not a list: the recurring read
    sat at position eleven with no heading above it and could not be found. These
    are the six questions a person already has in their head when they arrive.
    Everything here is layout - the card itself is still .cg-sit-card above. */
-.cg-jump {
-  /* NOT STICKY, AND THAT IS NOT A STYLE PREFERENCE.
-     The mockup this came from had a bar that followed you down the page. It cannot
-     here: the page scrolls on the WINDOW, but the content sits inside .gw-bd, which
-     carries overflow:auto. A sticky child sticks to its nearest scrolling ancestor's
-     scrollport, so this bar sticks to .gw-bd - and .gw-bd never scrolls (its
-     scrollHeight equals its clientHeight, it just grows). The result was a bar that
-     scrolled off with the content while claiming to be sticky, and at top:0 it also
-     rendered over the page title, since .gw-hdr sticks in the same strip.
-     Making it follow means either moving it into the app shell beside .gw-hdr, or
-     removing overflow:auto from .gw-bd, which is app-wide. Neither is worth it for a
-     jump bar: the grouping is what makes twenty cards findable, and the bar is a
-     shortcut to the groups. */
-  /* IT WRAPS, BECAUSE SCROLLING HID HALF OF IT.
-     This was `overflow-x: auto`, and measured on the real page at a normal desktop width three of
-     the six groups - "A read on live work", "A decision about one person", "Something is off" -
-     sat past the right edge with nothing on screen to say they were there. A horizontal scroller
-     with no affordance reads as a bar with three groups in it. That is the same failure this bar
-     was built to fix, one level up: the cards were unfindable, so we added navigation, and then
-     half the navigation was unfindable.
-     Six short pills wrap to two rows at worst and cost a line of vertical space. Nothing is
-     hidden, and there is no affordance to get right. */
-  display: flex; flex-wrap: wrap; gap: 8px;
-  padding: 10px 0 10px; margin-bottom: 4px;
-  background: var(--gw-page); border-bottom: 1px solid var(--gw-border);
-}
-.cg-jump a {
-  flex: 0 0 auto; font-size: 12px; font-weight: 600; text-decoration: none;
-  color: var(--gw-sub); background: white; border: 1px solid var(--gw-border);
-  padding: 5px 11px; border-radius: 100px; white-space: nowrap; transition: all .15s;
-}
-.cg-jump a:hover, .cg-jump a:focus-visible { color: var(--gw-navy); border-color: var(--gw-navy); background: var(--gw-slate); }
-.cg-jump a b { color: var(--gw-muted); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* Clear both the header and the jump bar when a jump link lands, or the heading
    you asked for arrives underneath the thing you clicked to get there. */
 /* Clears the app header when a jump link lands, or the heading you asked for
    arrives underneath it. Only the header now, since the bar does not follow. */
 .cg-group { margin-top: 28px; scroll-margin-top: calc(var(--gw-hdr-h) + 12px); }
-.cg-group-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.cg-group-head h3 { font-size: 16px; font-weight: 800; margin: 0; letter-spacing: -.01em; color: var(--gw-text); }
-.cg-group-head span { font-size: 11px; font-weight: 700; color: var(--gw-muted); font-variant-numeric: tabular-nums; }
-.cg-group-q { font-size: 12.5px; color: var(--gw-sub); line-height: 1.55; margin: 4px 0 12px; max-width: 62ch; }
+
 /* THE SITUATION PICKER: FOUR ACROSS, SAID RATHER THAN INFERRED.
    auto-fill with a 275px minimum worked out to three columns inside a 1160px body, because the
    body's own padding comes off the width first and 4 x 275 plus gaps no longer fits. Counting
    columns explicitly means the layout is what it says it is and cannot drift when padding changes.
    Twenty-one situations at four across is five rows and a bit, instead of one very long scroll. */
-.cg-group-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
-@media (min-width: 700px)  { .cg-group-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1000px) { .cg-group-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 1240px) { .cg-group-grid { grid-template-columns: repeat(4, 1fr); } }
+
 /* A group with one situation in it does not want three empty columns beside it. */
-.cg-group-grid.one { grid-template-columns: 1fr !important; }
 
 /* The card face: title, then the one moment a person recognises themselves in.
    The left rule replaces a heading - it says "this is an example" without a label. */
-.cg-sit-card { display: flex; flex-direction: column; gap: 8px; }
-.cg-moment {
-  font-size: 13px; color: var(--gw-text); font-style: italic; line-height: 1.5;
-  margin: 0; padding-left: 9px; border-left: 2px solid var(--gw-border);
-}
-.cg-sit-card.selected .cg-moment { border-left-color: var(--gw-navy); }
 
 /* Cadence, length and count. Three numbers a lead compares between two cards,
    so they are a real grid with tabular numerals and not a sentence. */
-.cg-meta { display: flex; margin-top: auto; padding-top: 9px; border-top: 1px solid var(--gw-border); }
-.cg-meta > div { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+
 /* The pair wraps together: labels wrapping to three lines at ~1150px used to leave a value on the line above its own word. */
-.cg-meta dt {
-  font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--gw-muted); margin: 0 0 1px; line-height: 1.3; min-height: 24px;
-}
-.cg-meta dd { font-size: 12px; font-weight: 600; color: var(--gw-text); margin: 0; font-variant-numeric: tabular-nums; }
-
-.cg-arc { margin: 6px 0 0; padding: 10px 11px; background: var(--gw-paper-2); border-radius: 6px; display: grid; gap: 8px; }
-.cg-arc dt { font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-muted); margin-bottom: 1px; }
-.cg-arc dd { margin: 0; font-size: 12px; color: var(--gw-sub); line-height: 1.5; }
-.cg-arc .warn dt { color: var(--gw-amber-t); }
-.cg-more {
-  align-self: flex-start; background: none; border: none; padding: 2px 0; cursor: pointer;
-  font-family: inherit; font-size: 11.5px; font-weight: 600; color: var(--gw-navy);
-}
-.cg-more:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; border-radius: 3px; }
-
-@media (max-width: 620px) {
-  .cg-group-grid { grid-template-columns: 1fr; }
-  .cg-meta { flex-wrap: wrap; gap: 8px; }
-  .cg-meta > div { flex: 0 0 30%; }
-  .cg-meta dt { min-height: 0; }
-}
 
 /* ── RESOLUTION CARDS (create ground step 4) ─────────────── */
-.cg-res-card {
-  display: flex; align-items: flex-start; gap: 12px;
-  border: 1px solid var(--gw-border); border-radius: 8px;
-  padding: 12px 14px; cursor: pointer; transition: all 0.15s; background: white;
-}
-.cg-res-card:hover { border-color: var(--gw-navy); background: var(--gw-slate); }
-.cg-res-card.selected { border-color: var(--gw-navy); background: var(--gw-slate); }
-.cg-res-check {
-  width: 18px; height: 18px; border-radius: 50%;
-  border: 1.5px solid var(--gw-border); flex-shrink: 0; margin-top: 2px;
-}
-.cg-res-card.selected .cg-res-check {
-  background: var(--gw-navy); border-color: var(--gw-navy);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' viewBox='0 0 10 8'%3E%3Cpath d='M1 4l3 3 5-6' stroke='white' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: center;
-}
 
 /* ── LANDING ─────────────────────────────────────────────── */
-.land-sit-card {
-  padding: 18px 16px; border-radius: 8px;
-  border: 1px solid rgba(255,255,255,.09);
-  cursor: pointer; transition: all 0.15s;
-  background: rgba(255,255,255,.04);
-}
-.land-sit-card:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.18); }
 
 /* ── REPORT SECTION ACCORDION ────────────────────────────── */
-.gw-report-section { background: white; border: 1px solid var(--gw-border); border-radius: 8px; overflow: hidden; }
-.gw-report-section-hdr {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 14px; cursor: pointer; font-size: 13px; font-weight: 600;
-}
-.gw-report-section-body { display: none; padding: 0 14px 14px; border-top: 1px solid var(--gw-border); font-size: 13px; line-height: 1.65; color: var(--gw-sub); }
-.gw-report-section.open .gw-report-section-body { display: block; }
 
 /* ── PARTICIPANT ROW (ground admin) ──────────────────────── */
 /* THE ROW HAD NO GAP, so its status and its three actions ran into each other as one word:
@@ -909,154 +679,16 @@ button, input, select, textarea { font-family: inherit; }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
 /* ── APP SHELL SIDEBAR ───────────────────────────────────── */
-.gw-sidebar {
-  position: fixed;
-  left: 0; top: 0; bottom: 0;
-  z-index: 50;
-  width: 248px;
-  transition: transform 0.22s cubic-bezier(.4,0,.2,1);
-}
-body.gw-sb-collapsed .gw-sidebar { transform: translateX(-248px); }
-
-.gw-main {
-  margin-left: 248px;
-  height: 100vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  transition: margin-left 0.22s cubic-bezier(.4,0,.2,1);
-}
-body.gw-sb-collapsed .gw-main { margin-left: 0; }
-
-@media (max-width: 640px) {
-  .gw-sidebar { display: none !important; transform: none !important; }
-  .gw-main { margin-left: 0 !important; }
-}
-
-.gw-sb-collapse {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--gw-muted);
-  padding: 4px 6px;
-  border-radius: 4px;
-  line-height: 1;
-  font-family: inherit;
-  transition: color 0.1s, background 0.1s;
-}
-.gw-sb-collapse:hover { color: var(--gw-navy); background: var(--gw-bg); }
-
-.gw-sb-reopen {
-  position: fixed;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 60;
-  background: white;
-  border: 1px solid var(--gw-border);
-  border-left: none;
-  border-radius: 0 6px 6px 0;
-  width: 22px;
-  height: 44px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--gw-sub);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  font-family: inherit;
-  /* No shadow: it sits on the page, so its line says where it ends. */
-  box-shadow: var(--gw-hairline);
-  opacity: 0;
-  pointer-events: none;
-  transition: color 0.1s, background 0.1s, opacity 0.22s;
-}
-body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
-.gw-sb-reopen:hover { color: var(--gw-navy); background: var(--gw-bg); }
-@media (max-width: 640px) { .gw-sb-reopen { display: none; } }
 
 /* ── HOMEPAGE MODE PILLS (mobile) ───────────────────────── */
-.gw-mode-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-@media (max-width: 400px) {
-  .gw-mode-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-}
 
 /* ── MOBILE BOTTOM TAB BAR ───────────────────────────────── */
-.gw-mobile-tabs {
-  display: none;
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: white;
-  border-top: 1px solid var(--gw-border);
-  z-index: 100;
-  padding: 0 8px;
-  padding-bottom: env(safe-area-inset-bottom, 0);
-}
-@media (max-width: 640px) {
-  .gw-mobile-tabs { display: flex; }
-}
-.gw-mobile-tab {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 8px 4px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 10px;
-  color: var(--gw-muted);
-  transition: color 0.1s;
-}
-.gw-mobile-tab.active { color: var(--gw-navy); }
+
 @media (max-width: 640px) {
   .gw-bd { padding-bottom: 72px; }
 }
 
 /* ── THREE-PANEL GROUND VIEW ─────────────────────────────── */
-.gw-three-col {
-  flex: 1;
-  display: flex;
-  min-height: 0;
-  overflow: hidden;
-}
-.gw-panel {
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-.gw-panel-left {
-  flex: 0 0 270px;
-  border-right: 1px solid var(--gw-border);
-  background: var(--gw-bg);
-}
-.gw-panel-center {
-  flex: 1;
-  min-width: 0;
-  border-right: 1px solid var(--gw-border);
-  padding: 14px 16px;
-  overflow-y: auto;
-}
-.gw-panel-right {
-  flex: 0 0 270px;
-  padding: 14px 16px;
-  overflow-y: auto;
-}
-@media (max-width: 768px) {
-  .gw-panel-left, .gw-panel-center, .gw-panel-right { flex: 1; border: none; width: 100%; }
-  .gw-panel-hide { display: none !important; }
-  .gw-panel-center { padding: 14px 14px 80px; }
-  .gw-panel-right { padding: 14px 14px 80px; }
-  .gw-panel-left { padding-bottom: 72px; }
-}
-@media (min-width: 769px) {
-  .gw-panel-hide { display: flex !important; }
-}
 
 /* ── THE GROUND'S TAB ROW ─────────────────────────────────────
    Seven tabs in a 390px row. It always scrolled; nothing said so, and the active tab could be
@@ -1065,13 +697,6 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
    The fade is the only thing that says "there is more to the right", so it exists only where there
    is: on a wide screen the row fits and a permanent gradient over the last tab would be decoration
    that hides a destination. */
-.gw-tabs-fade { display: none; }
-@media (max-width: 640px) {
-  .gw-tabs-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .gw-tabs-scroll::-webkit-scrollbar { display: none; }
-  .gw-tabs-scroll .gw-tab { flex: 0 0 auto; }
-  .gw-tabs-fade { display: block; }
-}
 
 /* ── FEEDBACK TRIGGER MOBILE OFFSET ───────────────────────
    The bottom nav bar is a fixed 60px strip on mobile; without this the
@@ -1144,32 +769,9 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
 .gw-feedback-btn:hover { background: var(--gw-navy-d); }
 
 /* ── FEEDBACK WIDGET ──────────────────────────────────────── */
-.gw-fb-trigger {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-}
-.gw-fb-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--gw-navy);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  transition: background 0.1s;
-}
+
 /* D-4: no shadow on a button (the prototype's .btn has none). */
-.gw-fb-btn:hover { background: var(--gw-navy-d); }
-.gw-fb-label { font-size: 10px; color: var(--gw-muted); font-weight: 500; letter-spacing: .02em; }
+
 /* THE OLD FEEDBACK PANEL'S RULES ARE GONE. A `.gw-fb-panel` block from an earlier widget (fixed,
    bottom 80px, right 20px, 320px wide, and an open/closed animation on data-open) still applied to
    today's panel, which shares the class name. Its width lost to the inline width: 100%, but
@@ -1177,83 +779,6 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
    from the right, so it ran from -20 to 355 and "Cancel" was cut off. On a computer it sat fixed in
    the bottom-right corner instead of in the middle of its overlay. Today's panel is laid out by its
    overlay alone (centred, and a bottom sheet on a phone), so nothing here may position it. */
-.gw-fb-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--gw-border);
-}
-.gw-fb-tab {
-  flex: 1;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: 10px 4px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--gw-muted);
-  cursor: pointer;
-  font-family: inherit;
-  transition: color 0.12s, border-color 0.12s;
-  text-align: center;
-  margin-bottom: -1px;
-}
-.gw-fb-tab.active {
-  color: var(--gw-navy);
-  border-bottom-color: var(--gw-navy);
-  font-weight: 700;
-}
-.gw-fb-body { padding: 14px; }
-.gw-fb-heading { font-size: 13px; font-weight: 700; color: var(--gw-text); margin-bottom: 12px; }
-.gw-fb-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-.gw-fb-pill {
-  padding: 5px 10px;
-  border-radius: 20px;
-  border: 1px solid var(--gw-border);
-  background: white;
-  color: var(--gw-text);
-  font-size: 11.5px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: inherit;
-  transition: border-color 0.1s, background 0.1s, color 0.1s;
-  line-height: 1.3;
-}
-.gw-fb-pill:hover { border-color: var(--gw-navy); color: var(--gw-navy); }
-.gw-fb-pill.selected { background: var(--gw-navy); border-color: var(--gw-navy); color: white; }
-.gw-fb-opt-label { font-size: 10px; color: var(--gw-muted); margin-bottom: 4px; }
-.gw-fb-input {
-  width: 100%;
-  padding: 8px 10px;
-  font-size: 12.5px;
-  font-family: inherit;
-  border: 1px solid var(--gw-border);
-  border-radius: 7px;
-  background: var(--gw-bg);
-  color: var(--gw-text);
-  resize: none;
-  box-sizing: border-box;
-  outline: none;
-  transition: border-color 0.1s;
-  margin-bottom: 10px;
-}
-.gw-fb-input:focus { border-color: var(--gw-navy); }
-.gw-fb-send {
-  width: 100%;
-  padding: 9px;
-  background: var(--gw-navy);
-  color: white;
-  border: none;
-  border-radius: 7px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: opacity 0.1s;
-}
-.gw-fb-send:disabled { opacity: 0.4; cursor: not-allowed; }
-.gw-fb-send:not(:disabled):hover { opacity: 0.88; }
-.gw-fb-note { font-size: 11px; color: var(--gw-muted); margin-top: 8px; text-align: center; }
-.gw-fb-confirm { padding: 24px 14px; text-align: center; font-size: 13px; color: var(--gw-text); font-weight: 500; }
-.gw-fb-error { font-size: 11.5px; color: #c0392b; margin-top: 6px; text-align: center; }
 
 /* ── PRINT (the only export there is: Cmd/Ctrl-P on a report page) ─────────────────
  * 21 Sep 2026: this block named classes no page used, so a printed report came out as the screen
@@ -1261,11 +786,10 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
  * the fixed buttons, the buttons in the page and the "What now?" block are not part of a report on
  * paper; the record is. Targets the shell's own elements, so no page has to remember a class. */
 @media print {
-  .gw-print-transcript { display: block !important; }
-  .gw-print-hidden,
+  
+  
   .gw-hdr,
   .gw-chat-msgs,
-  .gw-chat-actions,
   .gw-chat-bar,
   html body aside.gw-sidebar-desktop,
   .gw-feedback-btn,
@@ -1278,7 +802,6 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   section, .gw-card { break-inside: avoid; border-color: var(--gw-rule-2) !important; box-shadow: none !important; }
   @page { margin: 1.5cm 2cm; }
 }
-
 
 /*
  * THE RENAME BUTTON EXISTED AND NOBODY COULD SEE IT.
@@ -1351,27 +874,6 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
 /* SEARCH THE SITUATIONS. Sits above the jump bar because typing your own words is the faster
    route for the person who already knows their situation; the jump bar is for browsing, and it
    hides while a search is running because jumping to a group is meaningless in an ungrouped list. */
-.cg-find {
-  display: flex; align-items: center; gap: 10px;
-  margin: 10px 0 2px;
-}
-.cg-find input {
-  flex: 1 1 auto; min-width: 0;
-  font: inherit; font-size: 13.5px;
-  padding: 9px 13px; border-radius: 8px;
-  border: 1px solid var(--gw-border); background: white; color: var(--gw-navy);
-}
-.cg-find input::placeholder { color: var(--gw-muted); }
-.cg-find input:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 1px; border-color: var(--gw-navy); }
-.cg-find [role="status"] {
-  flex: 0 0 auto; font-size: 12px; font-weight: 600;
-  color: var(--gw-muted); font-variant-numeric: tabular-nums; white-space: nowrap;
-}
-.cg-nomatch {
-  margin: 14px 0 24px; padding: 14px 16px;
-  font-size: 13.5px; line-height: 1.55; color: var(--gw-sub);
-  background: var(--gw-bg); border: 1px solid var(--gw-border); border-radius: 8px;
-}
 
 /* Visible only when focused - the one moment it is wanted. Positioned over the rail so it
    is the first thing seen as well as the first thing reached. */
@@ -1385,7 +887,6 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
 
 /* A page title that happens to sit in the header strip. Neutralises the h1 defaults so the
    header keeps the size and spacing it had as a span. */
-.gw-page-h1 { margin: 0; font-size: inherit; }
 
 /* The report's own manual: present, one line high, open on request. */
 .gw-legend > summary {
@@ -1420,7 +921,6 @@ details > summary.gw-fold-summary::-webkit-details-marker { display: none; }
 details > summary.gw-fold-summary > span:first-child::before { content: '▸ '; color: var(--gw-muted); }
 details[open] > summary.gw-fold-summary > span:first-child::before { content: '▾ '; }
 
-
 /* ── THE TYPE SCALE (A1, the design system) ───────────────────
    Greeting    Literata 38, page titles only ("Morning, Wairimu")
    Title       Literata 30, a check-in, person or deal heading a page
@@ -1429,17 +929,11 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
    Body        Regular 16, everything you read
    Small       14.5, and Tiny 13: never smaller than 13
    The two Literata sizes step down on a phone so a long name still fits in the width. */
-.gw-t-greet { font-family: var(--gw-font-name); font-size: 38px; line-height: 1.12; font-weight: 500; letter-spacing: -.01em; }
-.gw-t-title { font-family: var(--gw-font-name); font-size: 30px; line-height: 1.18; font-weight: 500; }
+
 .gw-t-h2    { font-family: var(--gw-font-ui); font-size: 22px; line-height: 1.25; font-weight: 700; }
 .gw-t-h3    { font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; }
 .gw-t-body  { font-size: 16px; line-height: 1.5; }
 .gw-t-small { font-size: 14.5px; line-height: 1.45; }
-.gw-t-tiny  { font-size: 13px; line-height: 1.4; }
-@media (max-width: 640px) {
-  .gw-t-greet { font-size: 30px; }
-  .gw-t-title { font-size: 24px; }
-}
 
 /* ── BUTTONS, TAGS AND THE "WHAT NEEDS YOU" ROW (A1, the design system) ──
    Built by `Button`, `Tag` and `NeedsYouRow` in components/gw/kit.tsx. One set of shapes, so a
@@ -1589,7 +1083,8 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 }
 .gw-ci-row { position: relative; flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 8px; min-height: 44px; padding: 8px 8px 8px 10px; border-radius: 8px; text-decoration: none; color: var(--gw-text); font-size: 14.5px; line-height: 1.3; }
 .gw-ci-row:hover { background: var(--gw-card); }
-.gw-ci-row.on { background: var(--gw-card); font-weight: 700; box-shadow: inset 0 0 0 1px var(--gw-border); }
+/* The prototype's selected check-in (.ci-row.on): a light blue tint and bold, no box around it. */
+.gw-ci-row.on { background: var(--gw-blue-bg); font-weight: 700; }
 .gw-ci-row.closed { color: var(--gw-sub); }
 .gw-ci-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 6px; background: var(--gw-rule-2); }
 .gw-ci-dot-turn { background: var(--gw-green-t); }
@@ -1645,17 +1140,6 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 @media (hover: none) { .gw-pin { opacity: 1; } }
 
 /* ── "MORE" ON A PHONE, AND THE BOTTOM BAR (A1, layout-phone and more-menu-phone) ── */
-.gw-more { max-width: 560px; margin: 0 auto; padding: 24px 16px 32px; }
-.gw-more-h1 { margin: 8px 0 16px; }
-.gw-more-h2 { margin: 24px 0 10px; }
-.gw-more-list { list-style: none; background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; overflow: hidden; }
-.gw-more-list > li + li { border-top: 1px solid var(--gw-border); }
-.gw-more-item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 18px; border: 0; background: none; font: inherit; font-size: 16px; color: var(--gw-text); text-decoration: none; cursor: pointer; text-align: left; }
-.gw-more-item svg { color: var(--gw-sub); flex: none; }
-.gw-more-item:hover { background: var(--gw-page); }
-.gw-more-item:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: -3px; }
-.gw-more-orgs { padding: 6px; }
-.gw-more-orgs .gw-rl-menu-item + .gw-rl-menu-item { border-top: 1px solid var(--gw-border); border-radius: 0; }
 
 .gw-phone-bar-item { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 52px; padding: 6px 4px; font-size: 13px; line-height: 1.1; color: var(--gw-sub); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gw-phone-bar-item.on { color: var(--gw-text); font-weight: 700; }
@@ -1683,78 +1167,23 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-help-talk { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 24px 20px; border-top: 1px solid var(--gw-border); }
 .gw-help-talk p { font-size: 14.5px; color: var(--gw-sub); line-height: 1.5; flex: 1; min-width: 200px; }
 
-
 /* ── SIGNING IN (A2) ─────────────────────────────────────────
    Built by AuthCard, AuthSplit, AuthField, PasswordField and PasswordRules in
    pages/auth/auth-kit.tsx. The prototype's account screens: the mark in the corner, a white card on
    the cream page, a Literata heading and one plain sentence. Sign-in adds the dark panel. */
-.gw-auth-page { min-height: 100vh; background: var(--gw-page); padding: 12vh 16px 48px; display: flex; justify-content: center; align-items: flex-start; }
-.gw-auth-card { width: 100%; max-width: 444px; background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; padding: 32px; }
-.gw-auth-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--gw-navy); text-decoration: none; font-size: 18px; font-weight: 700; letter-spacing: -.01em; min-height: 44px; }
-.gw-auth-brand:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 3px; border-radius: 4px; }
-.gw-auth-title { font-family: var(--gw-font-name); font-size: 28px; line-height: 1.2; font-weight: 500; color: var(--gw-text); margin: 18px 0 10px; }
-.gw-auth-sub { font-size: 16px; line-height: 1.5; color: var(--gw-sub); margin: 0 0 20px; overflow-wrap: anywhere; }
-.gw-auth-sub strong { color: var(--gw-text); }
+
 .gw-auth-fld { margin-bottom: 16px; }
 .gw-auth-label { display: block; font-size: 14.5px; font-weight: 700; color: var(--gw-text); margin-bottom: 8px; }
 .gw-auth-input { width: 100%; min-height: 48px; padding: 0 16px; font: inherit; font-size: 16px; color: var(--gw-text); background: #fff; border: 1.5px solid var(--gw-rule-2); border-radius: 10px; outline: none; }
-.gw-auth-input:focus { border-color: var(--gw-navy); box-shadow: 0 0 0 3px rgba(12, 68, 124, .14); }
+.gw-auth-input:focus { border-color: var(--gw-navy); }
 .gw-auth-input::placeholder { color: var(--gw-muted); }
-.gw-auth-pw { position: relative; display: block; }
-.gw-auth-pw .gw-auth-input { padding-right: 76px; }
-.gw-auth-show { position: absolute; top: 2px; right: 2px; bottom: 2px; min-width: 64px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 15px; font-weight: 700; color: var(--gw-navy); cursor: pointer; }
-.gw-auth-show:hover { text-decoration: underline; }
-.gw-auth-show:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: -3px; }
-.gw-auth-rules { list-style: none; margin: -4px 0 16px; padding: 0; display: grid; gap: 4px; }
-.gw-auth-rules li { display: flex; align-items: center; gap: 8px; font-size: 14.5px; line-height: 1.4; color: var(--gw-sub); }
-.gw-auth-rules li.met { color: var(--gw-green-t); }
-.gw-auth-rule-mark { width: 16px; text-align: center; flex-shrink: 0; }
+
 .gw-auth-actions { display: grid; gap: 10px; margin-top: 4px; }
-.gw-auth-strength { margin: -4px 0 16px; }
-.gw-auth-strength-bar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; margin-bottom: 8px; }
-.gw-auth-strength-bar span { height: 5px; border-radius: 3px; background: var(--gw-rule-2); }
-.gw-auth-strength-bar span.on { background: var(--gw-green-t); }
-.gw-auth-strength-ok { font-size: 14.5px; font-weight: 700; color: var(--gw-green-t); margin: 0 0 6px; }
-.gw-auth-strength .gw-auth-rules { margin: 0; }
-.gw-auth-error { font-size: 15px; line-height: 1.45; color: var(--gw-red-t); background: var(--gw-red-bg); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; }
-.gw-auth-notice { background: var(--gw-amber-bg); color: var(--gw-amber-t); border: 1px solid var(--gw-amber-b-soft); border-radius: 8px; padding: 12px 14px; margin: 0 0 16px; font-size: 15px; line-height: 1.5; }
-.gw-auth-notice p { margin: 0; }
-.gw-auth-notice .gw-auth-notice-h { font-weight: 700; margin-bottom: 2px; }
-.gw-auth-links { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+
 .gw-auth-link { background: none; border: 0; padding: 0; font: inherit; font-size: 15px; font-weight: 700; color: var(--gw-navy); cursor: pointer; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
 .gw-auth-link:hover { text-decoration: underline; }
 .gw-auth-link:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; border-radius: 4px; }
 .gw-auth-small { font-size: 14.5px; line-height: 1.5; color: var(--gw-sub); margin: 16px 0 0; }
-
-.gw-auth-split { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--gw-page); }
-.gw-auth-split-form { padding: clamp(24px, 6vw, 96px); display: flex; flex-direction: column; }
-.gw-auth-split-body { max-width: 420px; width: 100%; margin: auto 0; padding-top: 32px; }
-.gw-auth-split-panel { background: var(--gw-dark); color: #fff; padding: clamp(24px, 5vw, 72px); display: flex; flex-direction: column; justify-content: center; }
-.gw-auth-panel-line { font-family: var(--gw-font-name); font-size: 28px; line-height: 1.35; margin: 0 0 22px; max-width: 540px; }
-.gw-auth-panel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; font-size: 16px; }
-.gw-auth-panel-list li { display: flex; align-items: center; gap: 12px; }
-.gw-auth-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
-.gw-auth-dot-said { box-shadow: inset 0 0 0 2px #fff; }
-.gw-auth-dot-proven { background: var(--gw-green-b); }
-@media (max-width: 820px) {
-  .gw-auth-split { grid-template-columns: minmax(0, 1fr); }
-  .gw-auth-split-panel { display: none; }
-}
-@media (max-width: 640px) {
-  .gw-auth-page { padding: 24px 16px 40px; }
-  .gw-auth-card { padding: 24px 20px; }
-  .gw-auth-title { font-size: 26px; }
-  .gw-auth-split-form { padding: 24px 16px 40px; }
-  .gw-auth-split-body { margin: 0; padding-top: 28px; }
-  /* Stacked on a phone, so the floating help button in the corner never sits on "Sign up". */
-  .gw-auth-links { flex-direction: column; align-items: flex-start; gap: 6px; }
-}
-.gw-auth-or { text-align: center; font-size: 14.5px; color: var(--gw-sub); margin: 14px 0; }
-.gw-auth-choice { border: 0; padding: 0; margin: 0 0 16px; display: grid; gap: 8px; }
-.gw-auth-choice legend { padding: 0; margin-bottom: 4px; }
-.gw-auth-choice label { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 1.5px solid var(--gw-rule-2); border-radius: 8px; background: #fff; font-size: 16px; color: var(--gw-text); cursor: pointer; }
-.gw-auth-choice input { width: 18px; height: 18px; accent-color: var(--gw-navy); margin: 0; }
-.gw-auth-choice label:has(input:checked) { border-color: var(--gw-navy); box-shadow: inset 0 0 0 1px var(--gw-navy); }
 
 /* "Choose an organisation" (A3, #/orgs): one bordered row per organisation. */
 .gw-org-rows { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 10px; }
@@ -1769,42 +1198,16 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-org-rows-foot { text-align: center; margin: 20px 0 0; }
 .gw-rl-menu-join { color: var(--gw-navy); font-weight: 700; }
 
-.gw-invite-note { background: var(--gw-bg); color: var(--gw-text); border-radius: 8px; padding: 12px 14px; font-size: 14.5px; line-height: 1.5; margin: 0 0 18px; }
-
 /* The invitation's facts (A3, join-invite.txt): "What it asks", "Who sees your answers". */
-.gw-invite-facts { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; display: grid; gap: 14px; }
-.gw-invite-facts h2 { font-size: 15px; font-weight: 700; margin: 0 0 4px; color: var(--gw-text); }
-.gw-invite-facts p { font-size: 14.5px; line-height: 1.55; margin: 0; color: var(--gw-text); }
 
 /* "Almost in" (A3, join-waiting.txt): the three steps, done and still to happen. */
-.gw-steps { list-style: none; margin: 8px 0 0; padding: 14px 18px; border: 1px solid var(--gw-border); border-radius: 10px; background: #fff; display: grid; gap: 10px; }
-.gw-steps li { display: flex; gap: 12px; font-size: 15px; line-height: 1.45; color: var(--gw-text); }
-.gw-steps li > span[aria-hidden] { width: 18px; flex: none; color: var(--gw-sub); }
-.gw-steps li.done > span[aria-hidden] { color: var(--gw-green-t); }
 
 /* "Stop these reminders" (A3, stop.txt): the two ways on, in a soft box. */
 .gw-stop-choices { display: grid; gap: 14px; justify-items: stretch; text-align: left; margin-top: 4px; padding: 18px 20px; border: 1px solid var(--gw-border); border-radius: 10px; background: var(--gw-page); }
 .gw-stop-choices .gw-b { width: 100%; }
 
 /* A new organisation's welcome card and "Get <organisation> going" (A3, U.3; moves to Today in U.5). */
-.gw-first-run { display: grid; gap: 14px; margin-bottom: 18px; }
-.gw-welcome-card { display: grid; gap: 12px; padding: 16px 20px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 2px var(--gw-text); }
-.gw-welcome-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.gw-welcome-card-line { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--gw-sub); }
-.gw-welcome-doors { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
-.gw-welcome-door { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--gw-border); border-radius: 10px; text-decoration: none; color: var(--gw-text); height: 100%; box-sizing: border-box; }
-.gw-welcome-door b { font-size: 14.5px; }
-.gw-welcome-door span { font-size: 13px; line-height: 1.4; color: var(--gw-sub); }
-.gw-welcome-door:hover, .gw-welcome-door:focus-visible { border-color: var(--gw-navy); }
-.gw-welcome-card h2 { margin: 0; font-family: var(--gw-font-name); font-size: 20px; font-weight: 600; color: var(--gw-text); }
-.gw-get-going { padding: 16px 20px; border: 1px solid var(--gw-border); border-radius: 12px; background: #fff; }
-.gw-get-going-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-.gw-get-going-head h2 { margin: 0; font-family: var(--gw-font-name); font-size: 20px; font-weight: 600; color: var(--gw-text); }
-.gw-get-going-head span { font-size: 14.5px; color: var(--gw-sub); }
-.gw-get-going ul { list-style: none; margin: 0; padding: 0; }
-.gw-get-going li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; border-top: 1px solid var(--gw-border); }
-.gw-get-going-title { font-size: 15.5px; font-weight: 700; color: var(--gw-text); }
-.gw-get-going li .gw-b, .gw-welcome-card .gw-b { white-space: nowrap; flex: none; }
+
 /* "Where do you work?" (A3, welcome.txt): rows that hold their own button. */
 .gw-org-row-static { cursor: default; }
 .gw-org-row-static:hover { border-color: var(--gw-border) !important; }
@@ -1814,372 +1217,60 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-rl-sq-guest { background: var(--gw-green-t); }
 .gw-rl-sq-plus { background: var(--gw-page); color: var(--gw-text); }
 /* "Who can join" (A4 people.txt), on the People page. */
-.gw-who-can-join { border: 1px solid var(--gw-border); border-radius: 12px; padding: 18px 20px; margin-bottom: 28px; background: var(--gw-card); }
-.gw-who-can-join h2 { font-size: 15px; font-weight: 700; color: var(--gw-navy); margin: 0 0 10px; }
-.gw-who-can-join p { font-size: 13.5px; color: var(--gw-sub); line-height: 1.55; margin: 4px 0 0; }
-.gw-who-can-join-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.gw-who-can-join-row b { font-size: 14.5px; color: var(--gw-text); }
-.gw-switch { flex: none; width: 46px; height: 26px; border-radius: 13px; border: 0; background: var(--gw-rule-2); position: relative; cursor: pointer; padding: 0; }
-.gw-switch span { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left .15s; }
-.gw-switch.on { background: var(--gw-navy); }
-.gw-switch.on span { left: 23px; }
-.gw-switch:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+
 .gw-org-row-static .gw-org-row-text { min-width: 0; overflow-wrap: break-word; } .gw-org-row-static { gap: 10px; padding: 12px; }
 .gw-auth-small a { color: var(--gw-navy); text-decoration: underline; }
 
 /* The People page and one person's page (U.4, A4 people.txt and one-person.txt). */
-.gw-people-crumb { font-size: 13px; color: var(--gw-sub); margin-bottom: 4px; }
-.gw-people-crumb a { color: var(--gw-navy); }
-.gw-people-h1 { font-size: 26px; font-weight: 700; color: var(--gw-navy); margin: 0 0 18px; letter-spacing: -.01em; }
-.gw-people-sec { margin-bottom: 28px; }
-.gw-people-sec h2 { font-size: 17px; font-weight: 700; color: var(--gw-navy); margin: 0 0 10px; }
-.gw-people-sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.gw-people-sec-head > span { font-size: 13px; color: var(--gw-sub); }
-.gw-people-amber { border: 1px solid var(--gw-amber-b); background: var(--gw-amber-bg); border-radius: 10px; padding: 14px 16px; }
-.gw-people-note { font-size: 13px; color: var(--gw-sub); line-height: 1.55; margin: 6px 0; }
-.gw-people-problem { border: 1px solid var(--gw-amber-b-soft); background: var(--gw-amber-bg); border-radius: 12px; padding: 16px 18px; font-size: 13.5px; color: var(--gw-amber-t); line-height: 1.6; }
-.gw-waiting-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-left: 3px solid var(--gw-amber-t); background: var(--gw-card); border-radius: 6px; padding: 10px 14px; margin-bottom: 8px; }
-.gw-waiting-who { flex: 1; min-width: 220px; }
-.gw-waiting-who b { font-size: 14px; color: var(--gw-text); }
-.gw-waiting-who p { font-size: 13px; color: var(--gw-sub); margin: 2px 0 0; line-height: 1.5; }
-.gw-link-btn { background: none; border: 0; padding: 4px 6px; font: inherit; font-size: 13px; font-weight: 700; color: var(--gw-navy); cursor: pointer; }
-.gw-link-btn:disabled { opacity: .5; cursor: default; }
-.gw-people-tree { border: 1px solid var(--gw-border); border-radius: 10px; padding: 12px 16px; margin-bottom: 28px; background: var(--gw-card); }
-.gw-people-tree summary { cursor: pointer; font-size: 13.5px; }
-.gw-people-tree summary span { color: var(--gw-sub); font-size: 12.5px; }
-.gw-tree { margin: 10px 0 0; padding-left: 18px; font-size: 13.5px; line-height: 1.8; }
-.gw-tree ul { padding-left: 18px; }
-.gw-tree-level { color: var(--gw-sub); }
-.gw-people-filters { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-.gw-people-filters input, .gw-people-filters select, .gw-people-actions select, .gw-people-actions input, .gw-one-edit input, .gw-one-edit select, .gw-one-field input { padding: 7px 10px; font: inherit; font-size: 13px; border: 1px solid var(--gw-border); border-radius: 7px; background: #fff; }
-.gw-people-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.gw-people-chips button { font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--gw-border); background: var(--gw-card); cursor: pointer; color: var(--gw-text); }
-.gw-people-chips button.on { background: var(--gw-navy); color: #fff; border-color: var(--gw-navy); }
-.gw-people-table { border: 1px solid var(--gw-border); border-radius: 10px; background: var(--gw-card); overflow: hidden; }
-.gw-people-tr { display: grid; grid-template-columns: minmax(180px, 2.2fr) 1fr 1.2fr 1.4fr 1.6fr 52px; gap: 10px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--gw-border); font-size: 13px; }
-.gw-people-th { border-top: 0; font-size: 12px; color: var(--gw-sub); }
-.gw-people-person { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
-.gw-people-person b { display: block; color: var(--gw-text); }
-.gw-people-person small { display: block; font-size: 11.5px; color: var(--gw-sub); overflow-wrap: anywhere; }
-.gw-people-av { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--gw-blue-bg); color: var(--gw-navy); font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
-.gw-people-av.big { width: 48px; height: 48px; font-size: 16px; }
-.gw-people-tag { display: inline-block; font-size: 11.5px; font-weight: 700; border-radius: 6px; padding: 2px 7px; background: var(--gw-paper-2); color: var(--gw-text); }
-.gw-people-tag.good { background: var(--gw-green-bg); color: var(--gw-green-t); }
-.gw-people-tag.warn { background: var(--gw-amber-bg); color: var(--gw-amber-t); }
-@media (max-width: 760px) {
-  .gw-people-th { display: none; }
-  .gw-people-tr { grid-template-columns: 1fr auto; }
-  .gw-people-tr > span:nth-child(n+2):not(:last-child) { grid-column: 1 / 2; }
-}
-.gw-people-card { border: 1px solid var(--gw-border); border-radius: 12px; padding: 16px 18px; background: var(--gw-card); }
-.gw-people-card > b { display: block; font-size: 14px; color: var(--gw-text); margin-bottom: 4px; }
-.gw-people-card > p { font-size: 13px; color: var(--gw-sub); line-height: 1.55; margin: 0 0 10px; }
-.gw-people-card textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; font: inherit; font-size: 13.5px; border: 1px solid var(--gw-border); border-radius: 8px; background: #fff; resize: vertical; margin: 8px 0 10px; }
-.gw-people-label { font-size: 13px; color: var(--gw-text); }
-.gw-people-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.gw-people-answer { margin-top: 14px; }
-.gw-people-rows { border: 1px solid var(--gw-border); border-radius: 8px; max-height: 260px; overflow-y: auto; background: #fff; }
-.gw-people-rowline { display: flex; justify-content: space-between; gap: 12px; padding: 7px 12px; font-size: 12.5px; border-top: 1px solid var(--gw-border); }
-.gw-people-rowline:first-child { border-top: 0; }
-.gw-people-rowline.good b { color: var(--gw-green-t); } .gw-people-rowline.bad b { color: var(--gw-amber-t); } .gw-people-rowline.quiet b { color: var(--gw-sub); }
-.gw-people-facts { margin: 0 0 12px; }
-.gw-people-facts > div { display: grid; grid-template-columns: 160px 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--gw-border); font-size: 13.5px; }
-.gw-people-facts dt { font-weight: 700; } .gw-people-facts dd { margin: 0; color: var(--gw-text); }
-.gw-people-choices { display: flex; flex-direction: column; gap: 8px; }
-.gw-people-choices button { text-align: left; font: inherit; border: 1px solid var(--gw-border); border-radius: 8px; background: var(--gw-card); padding: 10px 14px; cursor: pointer; }
-.gw-people-choices button b { display: block; font-size: 13.5px; color: var(--gw-text); }
-.gw-people-choices button span { font-size: 12.5px; color: var(--gw-sub); }
-.gw-people-choices button.on { background: var(--gw-navy); border-color: var(--gw-navy); }
-.gw-people-choices button.on b, .gw-people-choices button.on span { color: #fff; }
-.gw-people-choices button:disabled { cursor: default; opacity: .6; }
-.gw-people-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-.gw-one-head { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
-.gw-one-head .gw-people-h1 { margin: 0; }
-.gw-one-field { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--gw-border); font-size: 13.5px; }
-.gw-one-label { width: 120px; color: var(--gw-sub); }
-.gw-one-value { flex: 1; color: var(--gw-text); min-width: 120px; }
-.gw-one-edit { display: flex; gap: 8px; align-items: center; flex: 1; flex-wrap: wrap; }
+
+  
+
+ 
+
 /* The People page and one person's page: the page's box, and no sideways scroll on a phone (U.4). */
-.gw-people-page { box-sizing: border-box; width: 100%; min-width: 0; overflow-wrap: anywhere; }
-.gw-people-page input, .gw-people-page select, .gw-people-page textarea { max-width: 100%; box-sizing: border-box; }
-@media (max-width: 480px) {
-  .gw-people-page { padding-left: 16px !important; padding-right: 16px !important; }
-  .gw-people-facts > div { grid-template-columns: 1fr; gap: 2px; }
-  .gw-one-label { width: auto; }
-}
 
 /* ── TODAY (C1, U.5): the page and "Coming up" beside it, as today-lead.jpg draws them.
    On a phone the aside drops under the page, and nothing is wider than the screen. */
-.gw-today { box-sizing: border-box; width: 100%; max-width: 1140px; margin: 0 auto; padding: 40px 32px 80px; display: grid; grid-template-columns: minmax(0, 700px) minmax(0, 340px); gap: 48px; align-items: start; overflow-wrap: anywhere; }
-.gw-today-main { min-width: 0; }
-.gw-today-h1 { margin: 0 0 8px; color: var(--gw-text); }
-.gw-today-line { margin: 0 0 32px; font-size: 17px; line-height: 1.5; color: var(--gw-sub); }
-.gw-today-in { margin-bottom: 16px; padding: 12px 16px; border-radius: 10px; background: var(--gw-green-bg); color: var(--gw-green-t); font-size: 14.5px; line-height: 1.5; }
+
 .gw-today-section { margin-bottom: 32px; }
-.gw-today-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-.gw-today-section-head h2 { margin: 0; color: var(--gw-text); }
-.gw-today-section-head span { color: var(--gw-sub); }
-.gw-today-quiet { color: var(--gw-sub); }
-.gw-today-quiet p { margin: 0 0 10px; }
-.gw-today-aside h2 { margin: 0 0 12px; color: var(--gw-text); }
-.gw-coming-up { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
-.gw-coming-up li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; }
-.gw-coming-up b { color: var(--gw-text); }
-.gw-coming-up a { color: var(--gw-text); text-decoration: none; }
-.gw-coming-up a:hover, .gw-coming-up a:focus-visible { text-decoration: underline; }
-@media (max-width: 900px) {
-  .gw-today { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 24px 16px 96px; }
-}
 
 /* ── THE YOU BOARD (C2, U.12), as you-board-miriam.jpg draws it: white cards on the cream page,
    three across on a computer, one under another on a phone, and nothing wider than the screen. */
-.gw-you { box-sizing: border-box; width: 100%; max-width: 1140px; margin: 0 auto; padding: 40px 32px 80px; overflow-wrap: anywhere; }
-.gw-you-h1 { margin: 0 0 6px; color: var(--gw-text); }
-.gw-you-sub { margin: 0 0 20px; font-size: 16px; line-height: 1.5; color: var(--gw-sub); }
-.gw-you-h2 { margin: 0 0 16px; color: var(--gw-text); }
-.gw-you-h2-small { margin: 0 0 12px; color: var(--gw-text); }
-.gw-you-quiet { color: var(--gw-sub); }
-.gw-you-card { background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; min-width: 0; }
-.gw-you-card h3 { margin: 0 0 8px; color: var(--gw-text); }
-.gw-you-card p { margin: 0 0 8px; font-size: 14.5px; line-height: 1.5; color: var(--gw-text); }
-.gw-you-card p:last-child { margin-bottom: 0; }
-.gw-you-card-warm { background: var(--gw-amber-bg); border-color: transparent; }
-.gw-you-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; align-items: start; }
-.gw-you-grid .gw-you-card { margin-bottom: 0; }
-.gw-you-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.gw-you-list { list-style: none; margin: 0; padding: 0; }
-.gw-you-list li { padding: 8px 0; border-top: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
-.gw-you-section { margin: 24px 0; }
-.gw-you-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-.gw-you-section-head h2 { margin: 0; color: var(--gw-text); }
-.gw-you-section-head span { color: var(--gw-sub); }
-.gw-you-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
-.gw-you-row { display: grid; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
-.gw-you-row-said { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; }
-.gw-you-row-report { grid-template-columns: minmax(0, 1fr) auto auto; }
-.gw-you-row-asked { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; }
-.gw-you-row-each { grid-template-columns: minmax(0, 1fr) auto; }
-.gw-you-row a { color: var(--gw-navy); font-weight: 700; text-decoration: none; }
-.gw-you-row a:hover, .gw-you-row a:focus-visible { text-decoration: underline; }
-.gw-you-data { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 24px; }
-@media (max-width: 900px) {
-  .gw-you { padding: 24px 16px 96px; }
-  .gw-you-grid, .gw-you-grid-2 { grid-template-columns: minmax(0, 1fr); }
-  .gw-you-row-said { grid-template-columns: minmax(0, 1fr) auto; }
-  .gw-you-row-said > span:nth-child(2), .gw-you-row-said > span:nth-child(3) { grid-column: 1; }
-  .gw-you-row-asked { grid-template-columns: minmax(0, 1fr); }
-}
 
 /* ── THE COMPANY PAGE (D2, U.15), as company.jpg draws it: the name, the ask buttons and the counts
    at the top, then a card per priority. It borrows the You board's cards, rows and grid. */
-.gw-company-h1 { margin: 0 0 12px; color: var(--gw-text); }
-.gw-company-h2 { margin: 24px 0 12px; color: var(--gw-text); }
-.gw-company-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; margin-bottom: 8px; }
-.gw-company-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.gw-company-line { margin: 8px 0 0; }
-.gw-company-priority-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.gw-company-priority h3 { margin: 4px 0 8px; }
-.gw-company-small { font-size: 13.5px; }
-.gw-company-row-q { grid-template-columns: minmax(0, 1fr) auto; }
-.gw-company-row-card { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); align-items: start; }
-.gw-company-body { white-space: pre-line; }
-.gw-company-team { border-top: 3px solid var(--gw-text); padding-top: 8px; }
-.gw-company-team p { margin: 4px 0 0; }
-.gw-company-crumbs { margin-bottom: 8px; font-size: 14px; color: var(--gw-sub); }
-.gw-company-crumbs a { color: var(--gw-navy); }
-.gw-company-table { width: 100%; border-collapse: collapse; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); margin-bottom: 12px; }
-.gw-company-table th, .gw-company-table td { text-align: left; padding: 12px 8px 12px 0; border-top: 1px solid var(--gw-border); vertical-align: top; }
-@media (max-width: 900px) {
-  .gw-company-row-card { grid-template-columns: minmax(0, 1fr); }
-  .gw-company-table, .gw-company-table tbody, .gw-company-table tr, .gw-company-table th, .gw-company-table td { display: block; }
-  .gw-company-table thead { display: none; }
-}
 
 /* ── THE CHECK-INS LIST (C1, U.5), as check-ins.jpg draws it: a white table per section, four
    columns on a computer; on a phone each row becomes a short stack, and nothing is wider than the
    screen. */
-.gw-ci-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
-.gw-ci-h1 { margin: 0 0 4px; color: var(--gw-text); }
-.gw-ci-sub { margin: 0; color: var(--gw-sub); }
-.gw-ci-section { margin-bottom: 32px; }
-.gw-ci-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.gw-ci-section-head h2 { margin: 0; color: var(--gw-text); }
-.gw-ci-section-head span { color: var(--gw-sub); }
-.gw-ci-table-wrap { border: 1px solid var(--gw-border); border-radius: 12px; background: #fff; overflow: hidden; }
-.gw-ci-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.gw-ci-table th { text-align: left; font-size: 13px; font-weight: 400; color: var(--gw-sub); padding: 12px 18px; border-bottom: 1px solid var(--gw-border); }
-.gw-ci-table th:nth-child(1) { width: 34%; }
-.gw-ci-table th:nth-child(2) { width: 26%; }
-.gw-ci-table th:nth-child(3) { width: 19%; }
-.gw-ci-table td { padding: 16px 18px; vertical-align: middle; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); border-top: 1px solid var(--gw-border); overflow-wrap: anywhere; }
-.gw-ci-table tbody tr:first-child td { border-top: none; }
-.gw-ci-table tbody tr { cursor: pointer; }
-.gw-ci-table tbody tr:hover td { background: var(--gw-page); }
-.gw-ci-table-name { display: block; font-size: 17px; font-weight: 700; color: var(--gw-text); text-decoration: none; }
-.gw-ci-table-name:hover, .gw-ci-table-name:focus-visible { text-decoration: underline; }
-.gw-ci-table-about { margin-top: 2px; font-size: 14.5px; color: var(--gw-sub); }
-.gw-ci-table-also { margin-top: 2px; font-size: 13px; color: var(--gw-sub); }
-.gw-ci-table td a { color: var(--gw-text); }
-.gw-ci-note { margin: 10px 0 0; color: var(--gw-sub); }
-.gw-ci-quiet { color: var(--gw-sub); }
-.gw-ci-empty { text-align: center; padding: 48px 20px; }
-.gw-ci-empty h2 { margin: 0 0 8px; color: var(--gw-text); }
-.gw-ci-empty p { margin: 0 auto 14px; max-width: 360px; color: var(--gw-sub); }
-.gw-ci-link { background: none; border: none; padding: 0; font: inherit; font-size: 14.5px; font-weight: 600; color: var(--gw-navy); text-decoration: underline; cursor: pointer; }
+
 .gw-ci-waiting { margin-bottom: 24px; padding: 16px 18px; border-radius: 12px; background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b-soft); }
 .gw-ci-waiting h2 { margin: 0 0 4px; color: var(--gw-amber-t); }
 .gw-ci-waiting > p { margin: 0 0 12px; color: var(--gw-sub); }
-.gw-ci-waiting-one { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 12px 14px; margin-top: 8px; }
-.gw-ci-waiting-one p { margin: 2px 0 0; color: var(--gw-sub); }
+
 .gw-ci-waiting-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
 .gw-ci-waiting-acts textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--gw-border); font: inherit; font-size: 14.5px; resize: vertical; }
-@media (max-width: 760px) {
-  .gw-ci-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .gw-ci-table, .gw-ci-table tbody, .gw-ci-table tr, .gw-ci-table td { display: block; width: auto; }
-  .gw-ci-table td { border-top: none; padding: 2px 16px; }
-  .gw-ci-table td:first-child { padding-top: 14px; }
-  .gw-ci-table td:last-child { padding-bottom: 14px; }
-  .gw-ci-table tbody tr + tr { border-top: 1px solid var(--gw-border); }
-  .gw-ci-table td:nth-child(2) { color: var(--gw-sub); }
-}
 
 /* U.6: the setup panel that fills in as you talk sits beside the conversation on a wide screen only. */
 .gw-fills-in { display: none; }
 @media (min-width: 1000px) { .gw-fills-in { display: block; } }
 
 /* The Suites page (U.17, E suites-admin.txt and suites-lead.txt). */
-.gw-suites-org { margin: 0 0 4px; font-size: 14px; color: var(--gw-sub); }
-.gw-suites-h1 { margin: 0 0 8px; color: var(--gw-text); }
-.gw-suites .gw-you-sub { max-width: 800px; }
-.gw-suites-group { margin-top: 28px; }
-.gw-suites-group > h2 { margin: 0 0 14px; }
-.gw-suites-one { margin-bottom: 16px; }
-.gw-suite-card h3 { margin: 0 0 4px; }
-.gw-suite-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; }
-.gw-suite-switch { display: flex; gap: 10px; align-items: center; }
-.gw-suite-ask { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--gw-border); display: flex; flex-direction: column; gap: 12px; }
-.gw-suite-ask > p { margin: 0; }
-.gw-suite-q { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.gw-suite-q label { font-size: 14px; font-weight: 600; color: var(--gw-text); }
-.gw-suite-q select, .gw-suite-q input, .gw-suite-q textarea { box-sizing: border-box; width: 100%; max-width: 100%; font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--gw-border); border-radius: 7px; background: var(--gw-card); color: var(--gw-text); }
-.gw-suite-ask-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.gw-suites-already { list-style: none; padding: 4px 20px; margin: 0; }
-.gw-suites-already li { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--gw-border); font-size: 14px; }
-.gw-suites-already li:first-child { border-top: 0; }
 
 /* CONNECTIONS (F1, U.18): #/settings/connections, #/settings/whatsapp, and the section heads on #/settings/tools. */
-.gw-conn { max-width: 960px; }
-.gw-conn-sec { margin-top: 28px; }
-.gw-conn-rows { list-style: none; padding: 4px 20px; margin: 0; }
-.gw-conn-rows li { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr) auto auto; gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--gw-border); font-size: 14px; }
-.gw-conn-rows li:first-child { border-top: 0; }
-.gw-conn-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 8px; }
-.gw-conn-spread { justify-content: space-between; }
-.gw-conn-grow { flex: 1 1 260px; min-width: 0; }
-.gw-conn-actions .gw-input { width: auto; flex: 1 1 220px; min-width: 0; }
-.gw-conn-danger { color: var(--gw-red-t); }
-.gw-conn-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 12px 0; }
-.gw-conn-counts dt { margin: 0; }
-.gw-conn-counts dd { margin: 0; color: var(--gw-sub); }
-.gw-conn-notifier { padding: 12px 0; border-top: 1px solid var(--gw-border); }
-.gw-conn-pictures figure { margin: 0; }
-.gw-conn-pictures img { display: block; width: 100%; border: 1px solid var(--gw-border); border-radius: 12px; margin-top: 8px; background: var(--gw-bg); }
-.gw-conn-back { display: inline-block; margin: 0 0 8px; color: var(--gw-navy); font-weight: 700; text-decoration: none; }
-.gw-conn-back:hover, .gw-conn-back:focus-visible { text-decoration: underline; }
-.gw-wa-steps { list-style: none; margin: 16px 0 0; padding: 0; border-top: 1px solid var(--gw-border); }
-.gw-wa-step { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--gw-border); }
-.gw-wa-num { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; border: 2px solid var(--gw-border); color: var(--gw-sub); background: var(--gw-card); }
-.gw-wa-step.done .gw-wa-num { background: var(--gw-green-t); border-color: var(--gw-green-t); color: white; }
-.gw-wa-step.now .gw-wa-num { background: var(--gw-text); border-color: var(--gw-text); color: white; }
-.gw-wa-step.later h2 { color: var(--gw-sub); }
-.gw-wa-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.gw-wa-head h2 { margin: 0; }
-.gw-wa-body p { margin: 8px 0; font-size: 14.5px; line-height: 1.5; color: var(--gw-text); }
-.gw-wa-field { display: block; margin: 12px 0 0; }
-.gw-wa-field b { display: block; font-size: 14px; margin-bottom: 6px; }
-.gw-wa-field small { display: block; margin-top: 4px; color: var(--gw-sub); font-size: 13px; }
-.gw-wa-copy { display: flex; gap: 8px; }
-.gw-wa-copy .gw-input { flex: 1 1 auto; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.gw-wa-open { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
-.gw-wa-template { display: block; margin: 6px 0; font-size: 14px; }
-.gw-wa-wait { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 14px; border-radius: 8px; background: var(--gw-amber-bg); font-size: 14px; }
-@media (max-width: 640px) {
-  .gw-conn-rows li { grid-template-columns: minmax(0, 1fr); gap: 6px; }
-  .gw-conn-counts { grid-template-columns: minmax(0, 1fr); }
-}
-.gw-suites-already a { color: var(--gw-navy); text-decoration: underline; }
-.gw-bill-rows li { grid-template-columns: minmax(0, 200px) minmax(0, 1fr) auto; }
-.gw-bill-link { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: var(--gw-navy); cursor: pointer; }
-.gw-bill-link:hover, .gw-bill-link:focus-visible { text-decoration: underline; }
-.gw-bill-link:disabled { opacity: 0.55; cursor: not-allowed; }
-.gw-bill-notice { margin-top: 16px; }
-.gw-bill-plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 12px; }
-.gw-bill-plan { margin-bottom: 0; display: flex; flex-direction: column; gap: 4px; }
-.gw-bill-plan .gw-btn-sec, .gw-bill-yours { margin-top: auto; text-align: center; }
-.gw-bill-mine { border: 2px solid var(--gw-navy); }
-.gw-bill-enterprise { background: var(--gw-amber-bg); }
-.gw-bill-price { font-family: Georgia, 'Times New Roman', serif; font-size: 26px; margin: 4px 0 !important; }
-.gw-bill-yours { display: block; padding: 4px 10px; border-radius: 999px; background: var(--gw-blue-bg); color: var(--gw-navy); font-weight: 700; font-size: 13px; }
-.gw-bill-confirm { margin-top: 12px; padding: 14px 16px; border-radius: 10px; background: var(--gw-bg); border: 1px solid var(--gw-border); }
-@media (max-width: 900px) { .gw-bill-plans { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) {
-  .gw-bill-rows li { grid-template-columns: minmax(0, 1fr); }
-  .gw-bill-plans { grid-template-columns: minmax(0, 1fr); }
-}
-@media (max-width: 767px) {
-  .gw-suites-already li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-}
+
 /* The onboarding board (U.17, E suite-onboard.txt). */
-.gw-onboard-steps { list-style: none; margin: 10px 0 0; padding: 0; }
-.gw-onboard-steps li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--gw-border); font-size: 14.5px; }
-.gw-onboard-steps li small { display: block; color: var(--gw-sub); font-size: 13px; margin-top: 2px; }
-.gw-onboard-tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-.gw-suite-open { color: var(--gw-navy); font-weight: 700; font-size: 14px; }
+
 /* The leave board (U.17, E suite-leave.txt). */
-.gw-leave-list, .gw-leave-off { list-style: none; margin: 0; padding: 0; }
-.gw-leave-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 0 14px 16px; border-top: 1px solid var(--gw-border); border-left: 3px solid var(--gw-navy); }
-.gw-leave-row:last-child { border-bottom: 1px solid var(--gw-border); }
-.gw-leave-row b { font-size: 16px; }
-.gw-leave-row p { margin: 4px 0 0; font-size: 14.5px; color: var(--gw-sub); }
-.gw-leave-acts { display: flex; gap: 8px; }
-.gw-leave-off li { display: grid; grid-template-columns: minmax(0, 1fr) 200px 160px; gap: 12px; padding: 12px 0; border-top: 1px solid var(--gw-border); font-size: 14.5px; }
-@media (max-width: 767px) {
-  .gw-leave-row { grid-template-columns: minmax(0, 1fr); }
-  .gw-leave-off li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-}
+
 /* Time sheets (U.17, E suite-time.txt). */
-.gw-time-rule { border: 2px solid var(--gw-text); }
-.gw-time-rule b { display: block; margin-bottom: 4px; }
-.gw-time-table-wrap { overflow-x: auto; padding: 0; }
-.gw-time-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
-.gw-time-table th, .gw-time-table td { text-align: left; padding: 12px 16px; border-top: 1px solid var(--gw-border); white-space: nowrap; }
-.gw-time-table thead th { border-top: 0; font-weight: 500; font-size: 13px; color: var(--gw-sub); }
-.gw-time-agreed { list-style: none; margin: 10px 0 0; padding: 0; }
-.gw-time-agreed li { display: grid; grid-template-columns: minmax(0, 1fr) 150px 140px; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--gw-border); font-size: 14px; }
-.gw-time-bar { display: block; height: 8px; border-radius: 4px; background: var(--gw-rule-2); overflow: hidden; }
-.gw-time-bar span { display: block; height: 100%; background: var(--gw-navy); }
-.gw-time-bar span.over { background: var(--gw-red-t); }
-@media (max-width: 767px) {
-  .gw-time-agreed li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-}
+
 /* Performance reviews (U.17, E suite-reviews.txt). */
-.gw-review-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; margin: 20px 0 16px; }
-.gw-review-grid .gw-you-card { margin-bottom: 0; }
-.gw-review-noticed { list-style: none; margin: 8px 0 0; padding: 0; }
-.gw-review-noticed li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--gw-border); font-size: 14.5px; }
-.gw-review-said { font-family: var(--gw-font-name); font-size: 16px; line-height: 1.5; }
-@media (max-width: 1023px) { .gw-review-grid { grid-template-columns: minmax(0, 1fr); } }
+
 /* When someone leaves (U.17, E suite-leaving.txt). */
-.gw-leaving-step { grid-template-columns: minmax(0, 1fr) 220px auto; }
-.gw-leaving-step select { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--gw-border); border-radius: 7px; background: var(--gw-card); color: var(--gw-text); }
-@media (max-width: 767px) { .gw-leaving-step { grid-template-columns: minmax(0, 1fr); } }
+
 /* The suites' tables that hold sentences, not numbers: the role map and the rest (U.17). */
-.gw-suite-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
-.gw-suite-table th, .gw-suite-table td { text-align: left; vertical-align: top; padding: 12px 16px; border-top: 1px solid var(--gw-border); }
-.gw-suite-table thead th { border-top: 0; font-weight: 500; font-size: 13px; color: var(--gw-sub); }
-.gw-suite-table tbody th { font-weight: 600; }
-.gw-suite-table .gw-nobody { color: var(--gw-red-t); }
-.gw-suite-table select, .gw-suite-table input { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--gw-border); border-radius: 7px; background: var(--gw-card); color: var(--gw-text); max-width: 100%; }
+
 /* GROUP 3, PIECE 2 (the reports): TheCheckInHeader's own tab row, moved out of an inline style
    object (`tabStyle`) into a class, same pixel values, because a listed page
    (SessionReportPage.tsx) now imports this component and the guard
@@ -2196,6 +1287,5 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gwui-ci-tab-on { font-weight: 700; color: var(--gw-text); border-bottom-color: var(--gw-navy); }
 /* SCREEN FAULT 10: 32px tall on a phone, below the 40px floor every other tappable row control
    already has - same technique as `.gwui-plain-link`/`.gwui-open-link`, on this class's own name. */
-@media (max-width: 640px) {
-}
+
 .gwui-ci-tab { min-height: 44px; display: inline-flex; align-items: center; }

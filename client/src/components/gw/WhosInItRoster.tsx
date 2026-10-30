@@ -128,7 +128,7 @@ export function WhosInItRoster({
       )}
 
       {isInitiator && showLink && ground.joinToken && (
-        <div className="gwui-panel gwui-panel-pad">
+        <div className="panel pad">
           <ShareSection joinToken={ground.joinToken} />
         </div>
       )}
@@ -349,9 +349,9 @@ export function whereThisPersonIs(p: any, c: {
       tone: 'look',
       text: waitsForItsStart(p) ? 'Their invitation goes out on the morning the check-in starts.' : 'They have not joined yet.',
       action: !waitsForItsStart(p)
-        ? <Button size="small" kind="secondary" disabled={resendInvite.isPending} onClick={() => resendInvite.mutate(p.id)}>
+        ? <button type="button" className="gw-link t-small" disabled={resendInvite.isPending} onClick={() => resendInvite.mutate(p.id)}>
             {resendInvite.isPending && resendInvite.variables === p.id ? 'Sending…' : 'Resend invite'}
-          </Button>
+          </button>
         : undefined,
     }
   }
@@ -388,7 +388,7 @@ export function AddPeopleForm({
   onShareCode: () => void
 }) {
   return (
-      <div className="gwui-panel gwui-panel-pad">
+      <div className="panel pad">
         <p className="gwui-switch-row-title">Add a person to this check-in</p>
         <ThisAddsASeat />
         {seatsFull && (
@@ -459,7 +459,7 @@ export function AddPeopleForm({
         </div>
 
         {queuedToAdd.length > 0 && (
-          <div className="gwui-panel">
+          <div className="panel">
             {queuedToAdd.map((q) => (
               <div key={q.email} className="gwui-field-row">
                 <div className="gwui-field-row-value">
@@ -472,7 +472,7 @@ export function AddPeopleForm({
                 <button
                   onClick={() => setQueuedToAdd(queuedToAdd.filter((x) => x.email !== q.email))}
                   aria-label={`Remove ${q.email}`}
-                  className="gwui-btn gwui-btn-quiet gwui-btn-small"
+                  className="btn quiet sm"
                 >
                   Remove
                 </button>
@@ -542,7 +542,7 @@ function TheirWhatsAppNumbersOpen({ groundId, people }: { groundId: string; peop
   }
   return (
     <div className="gwui-note" role="group" aria-label="WhatsApp numbers" data-testid="whatsapp-roster">
-      <p className="gwui-panel-text">Groundwork writes to each person on WhatsApp once their number is here, and they can answer there.</p>
+      <p className="gwui-panel-text">Add someone’s number and they can answer on WhatsApp.</p>
       {rows.map((r) => (
         <div key={r.id} data-testid={`whatsapp-row-${r.id}`}>
           <p className="gwui-panel-text">

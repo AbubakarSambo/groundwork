@@ -68,9 +68,9 @@ export default function OpsTargetCompaniesPage() {
 
   if (targetCompanies.isError) {
     return (
-      <section className="gw-page" style={{ padding: 40, maxWidth: 640 }}>
+      <section style={{ padding: 40, maxWidth: 640 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>We could not load the list</h1>
-        <button className="gwui-btn gwui-btn-secondary gwui-btn-small" type="button" onClick={() => targetCompanies.refetch()} >
+        <button className="btn sec sm" type="button" onClick={() => targetCompanies.refetch()} >
           Try again
         </button>
       </section>
@@ -80,7 +80,7 @@ export default function OpsTargetCompaniesPage() {
   const data = targetCompanies.data
 
   return (
-    <section className="gw-page" style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+    <section style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
       <header style={{ marginBottom: 18 }}>
         {/* The back-link went with the board switcher: the navigation is on
             every page now, and a second way home is clutter rather than help. */}

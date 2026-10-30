@@ -56,33 +56,41 @@ describe('the two typefaces are served by the app itself', () => {
   })
 })
 
+/*
+ * UPDATED 24 October (Hafsah: "one stylesheet, the prototype's"): the type scale is the prototype's own (.t-greet, .t-title,
+ * .t-h2, .t-h3, .t-body, .t-small, .t-tiny in styles/prototype.css); the product's copies (.gw-t-*) were removed with the
+ * other competing styles. The greeting and title are clamped in the prototype (clamp(min, vw, max)): the largest is read.
+ */
+const PROTO = strip(readFileSync(join(SRC, 'styles/prototype.css'), 'utf8'))
 describe('the type scale', () => {
   const size = (cls: string) => {
-    const m = CSS.match(new RegExp(`\\.${cls}\\s*\\{[^}]*font-size:\\s*([0-9.]+)px`))
+    const m = PROTO.match(new RegExp(`\\.${cls}\\{[^}]*font-size:(?:clamp\\([^,]+,[^,]+,)?\\s*([0-9.]+)px`))
     if (!m) throw new Error(`.${cls} has no size`)
     return Number(m[1])
   }
 
   it('has the sizes the design system names', () => {
-    expect(size('gw-t-greet')).toBe(38)
-    expect(size('gw-t-title')).toBe(30)
-    expect(size('gw-t-h2')).toBe(22)
-    expect(size('gw-t-h3')).toBe(18)
-    expect(size('gw-t-body')).toBe(16)
+    expect(size('t-greet')).toBe(38)
+    expect(size('t-title')).toBe(30)
+    expect(size('t-h2')).toBe(21)
+    expect(size('t-h3')).toBe(18)
+    expect(size('t-body')).toBe(16)
   })
 
   it('and nothing in it is smaller than 13', () => {
-    const all = [...CSS.matchAll(/\.gw-t-[a-z0-9]+\s*\{[^}]*font-size:\s*([0-9.]+)px/g)].map(m => Number(m[1]))
-    expect(all.length).toBeGreaterThanOrEqual(7)
+    const all = ['t-greet', 't-title', 't-h2', 't-h3', 't-body', 't-small', 't-tiny'].map(size)
     expect(Math.min(...all)).toBeGreaterThanOrEqual(13)
   })
 
   it('the greeting and title are Literata; headings and things to act on are bold Atkinson', () => {
-    for (const c of ['gw-t-greet', 'gw-t-title']) {
-      expect(CSS).toMatch(new RegExp(`\\.${c}\\s*\\{[^}]*font-family:\\s*var\\(--gw-font-name\\)`))
+    for (const c of ['t-greet', 't-title']) {
+      expect(PROTO).toMatch(new RegExp(`\\.${c}\\{font-family:var\\(--name\\)`))
     }
-    for (const c of ['gw-t-h2', 'gw-t-h3']) {
-      expect(CSS).toMatch(new RegExp(`\\.${c}\\s*\\{[^}]*font-family:\\s*var\\(--gw-font-ui\\)[^}]*font-weight:\\s*700`))
+    for (const c of ['t-h2', 't-h3']) {
+      expect(PROTO).toMatch(new RegExp(`\\.${c}\\{[^}]*font-weight:700`))
+      expect(PROTO).not.toMatch(new RegExp(`\\.${c}\\{[^}]*font-family`))
     }
+    expect(PROTO).toMatch(/body\{[^}]*font-family:var\(--ui\)/)
+    expect(PROTO).toMatch(/--ui:'Atkinson Hyperlegible'/)
   })
 })

@@ -88,7 +88,7 @@ function ANewPerson({ p }: { p: NewPerson }) {
       <p className="gwui-panel-text-muted">{`${started}This board is only about getting ${first} set up. It is never used to judge ${first}’s work.`}</p>
       <Panel>
         <div className="gwui-suite-head">
-          <h3 className="gwui-panel-heading">{first}’s to-do list</h3>
+          <h3 className="t-h3">{first}’s to-do list</h3>
           <span className="gwui-ink-sub">{p.done} of {p.of} done</span>
         </div>
         <RowList label={`${first}’s to-do list`}>

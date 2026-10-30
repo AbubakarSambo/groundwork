@@ -57,7 +57,7 @@ export function TheAnchorBoardSections({ sections, onContinue }: {
       {theFourLenses && theFourLenses.lenses.length > 0 && (
         <div className="gwui-stack-18">
           <div>
-            <div className="gwui-section-title" style={{ fontSize: 22, fontWeight: 800 }}>{theFourLenses.heading}</div>
+            <div className="t-h2" style={{ fontSize: 22, fontWeight: 800 }}>{theFourLenses.heading}</div>
             <p className="gwui-panel-text" style={{ margin: '2px 0 0', color: 'var(--gw-sub)' }}>{theFourLenses.question}</p>
           </div>
           <Panel>
@@ -149,7 +149,7 @@ export function TheAnchorBoardSections({ sections, onContinue }: {
       {theEndOfTheMonth && (
         <div className="gwui-stack-18">
           <div>
-            <div className="gwui-section-title" style={{ fontSize: 22, fontWeight: 800 }}>{theEndOfTheMonth.heading}</div>
+            <div className="t-h2" style={{ fontSize: 22, fontWeight: 800 }}>{theEndOfTheMonth.heading}</div>
             <p className="gwui-panel-text" style={{ margin: '6px 0 0', fontStyle: 'italic' }}>&ldquo;{theEndOfTheMonth.yourOwnWords}&rdquo;</p>
           </div>
 

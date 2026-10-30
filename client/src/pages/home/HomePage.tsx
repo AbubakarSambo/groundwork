@@ -110,7 +110,7 @@ export function HomePage() {
               onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
               onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
             />
-            <button className="gwui-btn gwui-btn-primary"
+            <button className="btn pri"
               onClick={handleSubmit}
               disabled={faqMutation.isPending}
               style={{ flexShrink: 0 }}

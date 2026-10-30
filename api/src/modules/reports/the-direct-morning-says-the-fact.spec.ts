@@ -119,7 +119,9 @@ describe('on: what each reader reads', () => {
         /* Nothing new: every word now served was served before, apart from the few the direct sentences use. */
         const before = new Set(text(served).toLowerCase().match(/[a-z’']+/g) ?? []);
         const added = new Set((text(after).toLowerCase().match(/[a-z’']+/g) ?? []).filter((w) => !before.has(w)));
-        for (const w of added) expect(['agree', 'differ', 'came', 'up', 'round', 'second', 'read', 'summary', 'with', 'proof', 'on', 'this', 'there', 'is', 'no', 'yet', 'people', 'and', 'nothing', 'a', 'in', 'check', 'thing', 'things', 'it', 'deal', 'from', 'said', 'different', 'about', 'the', 'first', 'gave', 'next', 'step', 'or', 'date', 'named', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'each', 'day']).toContain(w);
+        for (const w of added) expect(['agree', 'differ', 'came', 'up', 'round', 'second', 'read', 'summary', 'with', 'proof', 'on', 'this', 'there', 'is', 'no', 'yet', 'people', 'and', 'nothing', 'a', 'in', 'check', 'thing', 'things', 'it', 'deal', 'from', 'said', 'different', 'about', 'the', 'first', 'gave', 'next', 'step', 'or', 'date', 'named', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'each', 'day',
+          /* The wording sweep's direct sentences (Hafsah, 25 October). */
+          'once', 'its', 'told', 'talked', 'through', 'it’s', 'counts', 'goal', 'number', 'they’re', 'being', 'asked', 'they’ll', 'be', 'again', 'later', 'won’t', 'you', 'could', 'yourself', 'nobody’s', 'level', 'group', 'record', 'so', 'person’s', 'words', 'are', 'order', 'they', 'joined', 'answers', 'can’t', 'shown', 'by', 'have', 'not', 'answered', 'yet', 'd', 'they’d', 'still', 'open', 'handoff', 'handoffs', 'waiting', 'someone', 'check', 'ins', 'more', 'being', 'lead', 'here', 'to', 'do', 'what', 'report', 'was', 'kept', 'for', 'session', 'below', 'both']).toContain(w);
         expect(text(after)).not.toMatch(/\b(at risk|PIP|underperform|exit)\b/i.test(text(served)) ? /$^/ : /\b(at risk|PIP|underperform)\b/i);
       }
     });
@@ -149,6 +151,20 @@ describe('every sentence the code writes for these places is one the direct morn
     expect(saidTheDirectWay(whoSeesThisDifferently(['a colleague', 'Grace Achieng'], null))).toBe('People said different things about this.');
     expect(saidTheDirectWay('It rests on what somebody said, with no proof yet.')).toBe('There is no proof yet.');
     expect(saidTheDirectWay(whoSeesThisDifferently(['Kevin Omondi', 'Grace Achieng', 'Joseph Kariuki'], 'Kevin Omondi'))).toBe('You, Grace Achieng and Joseph Kariuki said different things about this.');
+  });
+
+  /* The wording sweep (Hafsah, 25 October): one short sentence, what is true or what to do. */
+  it('the month board, the levels and groups, and what is not known yet', () => {
+    expect(saidTheDirectWay('Groundwork is checking in with the three people who have not yet answered this round.')).toBe('Three people have not answered this round yet. They’re being asked.');
+    expect(saidTheDirectWay('Groundwork will ask about the two handoffs still waiting on someone.')).toBe('Two handoffs are still waiting on someone.');
+    expect(saidTheDirectWay('Groundwork is waiting for the first check-ins to come in.')).toBe('No check-ins yet.');
+    expect(saidTheDirectWay("Groundwork does not keep which level each person works at, so each person's own words are shown in the order they joined, after the aim that was set.")).toBe('Nobody’s level is on record, so each person’s words are in the order they joined.');
+    expect(saidTheDirectWay('Omar has not answered it yet. Next: Groundwork will ask him again in a later check-in.')).toBe('Omar has not answered it yet. They’ll be asked again in a later check-in.');
+  });
+
+  it('says nothing about how a record is read', () => {
+    expect(saidTheDirectWay('This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.')).toBe('');
+    expect(saidTheDirectWay('This is read from what Kevin said in Kevin’s check-ins and what is on file. It changes only when something new comes in.')).toBe('');
   });
 
   it('a difference the report\'s writer named "described differently", as stored before the direct block', () => {

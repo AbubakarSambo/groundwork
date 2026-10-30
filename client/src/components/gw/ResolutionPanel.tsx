@@ -95,7 +95,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
           : 'Your choice is recorded.',
       )
     },
-    onError: () => toast.error('That did not save. Your outcome and reason are still here, so you can try again.'),
+    onError: () => toast.error('That didn’t save. Try again.'),
   })
 
   const leadDecides = !!data?.leadDecides
@@ -165,7 +165,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
       )}
       {!viewerIsLead && viewerIsParty && (
         <div className="gwui-mt-12">
-          <Note>Your words are kept, and you can still correct them.</Note>
+          <Note>You can still correct your words.</Note>
         </div>
       )}
     </Panel>
@@ -271,7 +271,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
           type="button"
           onClick={() => picked && setConfirming(true)}
           disabled={!picked || !why.trim() || proposeMut.isPending}
-          className="gwui-btn gwui-btn-primary"
+          className="btn pri"
         >
           {proposeMut.isPending ? 'Saving…' : leadDecides ? 'Save the outcome and end it' : 'This is my answer'}
         </button>

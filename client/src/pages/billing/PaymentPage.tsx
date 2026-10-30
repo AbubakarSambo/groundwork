@@ -54,7 +54,7 @@ export function PaymentPage() {
         setTimeout(() => navigate(groundId ? `/grounds/${groundId}` : '/grounds'), 1200)
       }
     },
-    onError: () => setCodeMsg({ ok: false, text: 'Something went wrong. Try again.' }),
+    onError: () => setCodeMsg({ ok: false, text: 'That didn’t work. Try again.' }),
   })
 
   return (
@@ -128,7 +128,7 @@ export function PaymentPage() {
               {codeMsg && (
                 <div style={{ fontSize: 12, color: codeMsg.ok ? 'var(--gw-green-t)' : 'var(--gw-danger)', marginBottom: 8 }}>{codeMsg.text}</div>
               )}
-              <button className="gwui-btn gwui-btn-primary"
+              <button className="btn pri"
                 onClick={() => redeemCode.mutate()}
                 disabled={!code.trim() || redeemCode.isPending}
                 style={{ width: '100%' }}

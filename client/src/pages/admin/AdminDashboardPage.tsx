@@ -224,7 +224,7 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
               A 6-digit verification code will be sent to your email address.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="gwui-btn gwui-btn-primary"
+              <button className="btn pri"
                 ref={first}
                 onClick={handleRequestOtp}
                 disabled={loading}
@@ -232,7 +232,7 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
               >
                 {loading ? 'Sending…' : 'Send code'}
               </button>
-              <button className="gwui-btn gwui-btn-secondary"
+              <button className="btn sec"
                 onClick={onClose}
               >
                 Cancel
@@ -257,14 +257,14 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
             />
             {error && <div style={{ fontSize: 12, color: 'var(--gw-danger)', marginBottom: 10 }}>{error}</div>}
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="gwui-btn gwui-btn-danger"
+              <button className="btn danger"
                 onClick={handleConfirm}
                 disabled={loading || otp.length < 6}
                 style={{ flex: 1 }}
               >
                 {loading ? 'Confirming…' : 'Confirm'}
               </button>
-              <button className="gwui-btn gwui-btn-secondary"
+              <button className="btn sec"
                 onClick={onClose}
               >
                 Cancel
@@ -358,7 +358,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
                   <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{c.redemptionCount}</td>
                   <td style={{ padding: '8px 10px' }}>
                     {c.active && (
-                      <button className="gwui-btn gwui-btn-secondary gwui-btn-small gwui-btn-red-text"
+                      <button className="btn sec sm red"
                         onClick={() => onDisable(c.id)}
                       >
                         Disable
@@ -592,7 +592,7 @@ function AdminManagementSection({
                 {[a.firstName, a.lastName].filter(Boolean).join(' ') || 'no name on the account'}
               </div>
             </div>
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               onClick={() => setRemoving(a)}
             >
               Take off
@@ -617,7 +617,7 @@ function AdminManagementSection({
             onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
             onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
           />
-          <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+          <button className="btn pri sm"
             type="submit"
           >
             Add them
@@ -756,7 +756,7 @@ function OpsAccessSection() {
               It has not been set up here yet. This writes the periods, the workstreams and the six
               people, and is safe to run twice.
             </div>
-            <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+            <button className="btn pri sm"
               onClick={() => run(adminApi.setUpOps)}
               disabled={busy}
             >
@@ -803,7 +803,7 @@ function OpsAccessSection() {
                   </div>
                 ))}
               </div>
-              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+              <button className="btn sec sm"
                 onClick={() => setLinking(p.key)}
                 disabled={busy}
               >
@@ -828,7 +828,7 @@ function OpsAccessSection() {
                   autoFocus
                   style={{ flex: 1 }}
                 />
-                <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+                <button className="btn pri sm"
                   type="submit"
                   disabled={busy}
                 >
@@ -953,19 +953,19 @@ export function AdminDashboardPage() {
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>Codes · Billing · Users · Feedback</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               onClick={() => navigate('/admin')}
             >
               Platform console →
             </button>
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               onClick={() => navigate('/ops')}
             >
               Our own system →
             </button>
             {/* Access to the API is granted here rather than bought. Our own
                 organisation appears on that list like anybody else's. */}
-            <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+            <button className="btn sec sm"
               onClick={() => navigate('/admin/api-access')}
             >
               API access →

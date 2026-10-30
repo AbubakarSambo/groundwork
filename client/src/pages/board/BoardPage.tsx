@@ -149,7 +149,6 @@ import { TheDirectMorning, useTheDirectMorning, isTheDirectMorningOn } from '@/l
 import { ThePicturedSalesBoard, theScheduleInWords, ThePicturedOwnDeals, ThePicturedAskBar, GroundworkRecommends } from './pictured/ThePicturedSalesBoard'
 import { ThePicturedBoard } from './pictured/ThePicturedBoard'
 import { MessageCircle } from 'lucide-react'
-import { TheMorningAtTheTop } from './pictured/TheMorningAtTheTop'
 import { YourTeamPersonByPerson } from './pictured/YourTeamPersonByPerson'
 import { TheLightSalesBoard, TheLightNeedsYou, TheLightBesideTheHeadline, TheLightBoxes, TheLightSummaryFirst } from './TheLightSalesBoard'
 import { TheCollectionsBoard } from './pictured/TheCollectionsBoard'
@@ -512,7 +511,7 @@ function useRunBoardAction(groundId: string) {
   return useMutation({
     mutationFn: (route: NonNullable<AnAction['choices']>[number]['route']) => {
       if (!isARouteToThisCheckIn(groundId, route)) {
-        return Promise.reject(new Error('That did not save. Nothing has changed, so try again.'))
+        return Promise.reject(new Error('That didn’t save. Try again.'))
       }
       return apiClient.request({ method: route!.method, url: route!.path, data: route!.body }).then((r) => r.data)
     },
@@ -520,7 +519,7 @@ function useRunBoardAction(groundId: string) {
       qc.invalidateQueries({ queryKey: ['board', groundId] })
       if (data?.saidBack) toast.success(data.saidBack)
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Nothing has changed, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 }
 
@@ -1128,11 +1127,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           for (const left of opened.leftOut) toast.info(left.why)
           navigate('/start', { state: { anchorSetUp: opened } })
         } catch {
-          toast.error('That did not save. Try again.')
+          toast.error('That didn’t save. Try again.')
         }
       }
     },
-    onError: () => toast.error('That did not save. Try again.'),
+    onError: () => toast.error('That didn’t save. Try again.'),
   })
 
   /*
@@ -1212,7 +1211,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
       options: pollOpts.split('\n').map((o) => o.trim()).filter(Boolean),
     }),
     onSuccess: () => { setShowPollForm(false); setPollQ(''); setPollOpts(''); invalidate() },
-    onError: () => toast.error('The poll did not save. Your answers are still here - try again.'),
+    onError: () => toast.error('The poll didn’t save. Try again.'),
   })
 
   const togglePoll = useMutation({
@@ -1308,17 +1307,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * answer is simply what the board is waiting on, and the fix is one click away.
    */
   if ((data as any).withheldUntilYouCheckIn) {
+    /* "Check in first, then you'll see the board." with one button (Hafsah, 25 October): no label above it, no way back offered. */
     return (
-      <div className="gwui-mt-48 gwui-mr-auto gwui-mb-48 gwui-ml-auto gwui-pt-0 gwui-pr-20 gwui-pb-0 gwui-pl-20" style={{maxWidth: 620}}>
+      <div className="gw-locked">
         <Panel>
-          <div className="gwui-fs-13 gwui-ink-muted gwui-mb-8" style={{letterSpacing: '.1px', fontWeight: 700}}>
-            Your answer first
-          </div>
-          <div className="gwui-fs-14 gwui-ink-text gwui-mb-16" style={{lineHeight: 1.6}}>{(data as any).saying}</div>
-          <div className="gwui-button-row">
-            <UIButton kind="primary" onClick={() => navigate(`/grounds/${id}`)}>Do my check-in</UIButton>
-            <UIButton kind="secondary" onClick={() => navigate('/grounds')}>Back to check-ins</UIButton>
-          </div>
+          <p className="t-body">{(data as any).saying}</p>
+          <UIButton kind="primary" onClick={() => navigate(`/grounds/${id}`)}>Do my check-in</UIButton>
         </Panel>
       </div>
     )
@@ -2651,7 +2645,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 !viewerRunsThisCheckIn && (noSessionOpenForReader || noSessionOpenForReaderFallback || iHaveNothingOpenOrPending) ? (
                   (whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback) && <Note tone="muted">{whenTheNextSessionOpens ?? whenTheNextSessionOpensFallback}</Note>
                 ) : (
-                  <Link className="gwui-btn gwui-btn-primary"
+                  <Link className="btn pri"
                     to={`/grounds/${id}`}
                   >
                     {isAParty && !viewerRunsThisCheckIn ? 'Start my check-in' : 'Your check-in'}
@@ -2690,7 +2684,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shortUpdatedLine ? (
           <UpdatedLine short={whenTheBoardLastChangedInShort(b.lastChangedAt)} full={whenTheBoardLastChanged(b.lastChangedAt, direct)} />
         ) : whenTheBoardLastChanged(b.lastChangedAt, direct) ? (
-          <p className="gwui-fs-15 gwui-ink-sub gwui-mt-14" style={{lineHeight: 1.55}}>
+          /* The prototype's own size for it (t-tiny, 13px), directly under the tabs. */
+          <p className="gwui-fs-13 gwui-ink-sub gwui-mt-8" style={{lineHeight: 1.4}}>
             {whenTheBoardLastChanged(b.lastChangedAt, direct)}
           </p>
         ) : null}
@@ -2718,10 +2713,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <p role="note" className="gwui-fs-15 gwui-ink-text gwui-mt-8" style={{lineHeight: 1.55}}>{b.readOnlyNote}</p>
         )}
 
-        {/* The direct morning (pictured/TheMorningAtTheTop.tsx): served to the lead alone where her organisation's switch is on; then the board as it is. */}
-        {!groundId && (b as any).theMorning && <TheMorningAtTheTop m={(b as any).theMorning} b={b} />}
+        {/* The direct morning is the morning message's, not the board's (Hafsah, 24 October): the board shows its own headline and What needs you, once. */}
         {/* Your team, person by person (pictured/YourTeamPersonByPerson.tsx): served to the lead alone, beside the direct morning, for her monthly look. */}
-        {!groundId && (b as any).yourTeam && id && <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} />}
+        {/* On the pictured board it is drawn after the team today, where the prototype puts the people (see `yourTeam` below); elsewhere it stays here. */}
+        {!groundId && (b as any).yourTeam && id && !(!picturedCollections && !picturedMatter && (((picturedLead && picturedManyInTeams) || picturedOtherKind) || (picturedLead && !picturedManyInTeams && !situationOrder))) && <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} />}
         {picturedCollections && b.collections && (
           <TheCollectionsBoard
             board={b.collections}
@@ -2753,7 +2748,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               ? ['headlineTargets', 'needsYou', 'everySale', 'reported', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'ask', 'recommends']
               : ['headlineTargets', 'needsYou', 'everySale', 'teamToday', 'reported', 'themes', 'byTeam', 'whoCheckedIn', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'ask', 'recommends'])
               /* With no piece of work on record yet, the kind of work's own empty table says so and offers to add one, in place of the table. */
-              .flatMap((k) => (k === 'everySale' && !(b.workRecords ?? []).some((x: any) => (x.section === 'Deal grid' || x.section === 'Work plan') && (x.rows ?? []).length) ? ['kindOfWork', 'otherRecords'] : [k]))) as any}
+              .flatMap((k) => (k === 'everySale' && !(b.workRecords ?? []).some((x: any) => (x.section === 'Deal grid' || x.section === 'Work plan') && (x.rows ?? []).length) ? ['kindOfWork', 'otherRecords'] : [k]))
+              /* The lead's person-by-person part goes after the team today, or before where this is heading when there is no team today. */
+              .flatMap((k, _i, all) => (k === 'teamToday' ? [k, 'yourTeam'] : k === 'heading' && !all.includes('teamToday') ? ['yourTeam', k] : [k]))) as any}
+            yourTeam={!groundId && (b as any).yourTeam && id ? <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} /> : null}
             otherRecords={(
               <WorkRecordsSections
                 groundId={id!}
@@ -2821,6 +2819,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <ThePicturedSalesBoard
             b={b}
             groundId={id!}
+            yourTeam={!groundId && (b as any).yourTeam && id ? <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} /> : null}
             sessionRows={sessionRows as any[]}
             renderActions={(action) => <ActionButtons groundId={id!} action={action} />}
             overTime={overTimeSection()}

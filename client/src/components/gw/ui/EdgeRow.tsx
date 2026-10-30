@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import './gw-ui.css'
 
 /**
@@ -27,7 +28,9 @@ const EDGE_REASON: Partial<Record<EdgeKind, string>> = {
   concern: 'There is a problem.',
 }
 
-export function EdgeRow({ kind, title, detail, actions }: {
+export function EdgeRow({ kind, title, detail, actions, to }: {
+  /** Where the whole row goes when it is tapped (the prototype's phone rows have no button of their own). */
+  to?: string
   kind: EdgeKind
   title: string
   /** Usually one sentence; the no-seat warning also lists each person waiting under it. */
@@ -45,19 +48,21 @@ export function EdgeRow({ kind, title, detail, actions }: {
    * "ready" leaves the word in exactly where a reader needs it and nowhere it is already said.
    */
   const reason = typeof title === 'string' && title.toLowerCase().includes('ready') ? undefined : EDGE_REASON[kind]
+  /* The prototype's row in a list (.item): a coloured edge (.sp), the line and its detail (.h, .s), then the action. */
+  const edge = ({ ready: 'rec', decide: 'act', look: 'att', concern: 'con' } as Record<string, string>)[kind] ?? 'act'
   return (
-    <li className="gwui-edge-row">
-      <span className={`gwui-edge-sp gwui-edge-sp-${kind}`} aria-hidden />
-      <div style={{ minWidth: 0 }}>
+    <div className="item" role="listitem">
+      <i className={`sp ${edge}`} aria-hidden />
+      <div className="gw-min0">
         {reason && <span className="gwui-sr-only">{reason} </span>}
-        <div className="gwui-edge-h">{title}</div>
-        {detail && <div className="gwui-edge-s">{detail}</div>}
+        <div className="h">{to ? <Link to={to} className="gw-row-link">{title}</Link> : title}</div>
+        {detail && <div className="s">{detail}</div>}
       </div>
-      {actions && <div className="gwui-edge-acts">{actions}</div>}
-    </li>
+      {actions && <span className="acts gw-acts">{actions}</span>}
+    </div>
   )
 }
 
 export function EdgeList({ label, children }: { label: string; children: React.ReactNode }) {
-  return <ul className="gwui-edge-list" aria-label={label}>{children}</ul>
+  return <div className="list" role="list" aria-label={label}>{children}</div>
 }

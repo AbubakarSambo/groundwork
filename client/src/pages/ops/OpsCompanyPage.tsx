@@ -51,7 +51,7 @@ export default function OpsCompanyPage() {
 
   if (detail.isError) {
     return (
-      <section className="gw-page" style={PAGE}>
+      <section style={PAGE}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>No company called {key}</h1>
         <Link to="/ops/target-companies" style={{ fontSize: 13.5 }}>
           Back to the target list
@@ -61,10 +61,10 @@ export default function OpsCompanyPage() {
   }
 
   const d = detail.data
-  if (!d) return <section className="gw-page" style={PAGE}><p style={NOTHING}>Working it out…</p></section>
+  if (!d) return <section style={PAGE}><p style={NOTHING}>Working it out…</p></section>
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <header style={{ marginBottom: 18 }}>
         <Link to="/ops/target-companies" style={{ ...LABEL, textDecoration: 'none', display: 'inline-block' }}>
           ← Target companies

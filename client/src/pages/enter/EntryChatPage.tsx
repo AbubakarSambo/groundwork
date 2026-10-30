@@ -4058,7 +4058,7 @@ export function EntryChatPage() {
                   autoFocus
                 />
               </span>
-              <Note>This is your plan for how many check-ins to run. You can change it at any time.</Note>
+              <Note>How many check-ins to run. You can change it.</Note>
             </>
           ) : (
             <Button
@@ -5058,7 +5058,7 @@ export function EntryChatPage() {
                 */}
               <div className="gwui-ec-savecard-divider" />
               <Section heading="Set up a check-in">
-                <Note>Set up from your conversation. Change anything before it starts; after, changes apply from the next check-in.</Note>
+                <Note>Change anything. After it starts, changes apply from the next check-in.</Note>
                 <TheSetup
                   cadence={cadence}
                   cadenceChosen={cadenceChosen}

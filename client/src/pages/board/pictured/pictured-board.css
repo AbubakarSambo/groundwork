@@ -171,14 +171,14 @@
 .pb-claim { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; font-size: 14px; color: var(--gw-sub); }
 .pb-stage-word { box-shadow: none; background: transparent; padding: 0; font-size: 15px; font-weight: 400; color: var(--gw-text); }
 .pb-team-picture { background: var(--gw-amber-bg); border-color: var(--gw-amber-bg); }
-.pb-team-picture .gwui-btn { width: 100%; }
+.pb-team-picture .btn { width: 100%; }
 
 /* On a phone (board-phone.jpg): the header keeps its breadcrumb and the whole schedule line, with the
    buttons below the title; each deal stacks its parts down the row instead of running off the side. */
 @media (max-width: 640px) {
-  .gwui-page-wrap:has(.pb, .pb-grid) .gwui-cih .gwui-pt-crumb { display: flex; }
-  .gwui-page-wrap:has(.pb, .pb-grid) .gwui-cih .gwui-pt-row { flex-wrap: wrap; align-items: flex-end; }
-  .gwui-page-wrap:has(.pb, .pb-grid) .gwui-cih .gwui-pt-sub { font-size: 16px; display: block; overflow: visible; -webkit-line-clamp: unset; }
+  .wrap:has(.pb, .pb-grid) .gwui-cih .crumb { display: flex; }
+  .wrap:has(.pb, .pb-grid) .gwui-cih .gw-pt-row { flex-wrap: wrap; align-items: flex-end; }
+  .wrap:has(.pb, .pb-grid) .gwui-cih .gw-pt-sub { font-size: 16px; display: block; overflow: visible; -webkit-line-clamp: unset; }
   .pb-head { gap: 24px; }
   .pb-answer { font-size: 26px; }
   .pb-grid { overflow-x: visible; }
@@ -212,10 +212,9 @@
 .pb-trace-decision { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 @media (max-width: 860px) { .pb-trace-row { grid-template-columns: 1fr; } }
 .pb-trace-intro { font-size: 17px; line-height: 1.45; color: var(--gw-sub); max-width: 720px; margin: 6px 0 0; }
-.gwui-page-wrap h2.pb-trace-title { font-size: 30px; }
+.wrap h2.pb-trace-title { font-size: 30px; }
 .pb-row-change { grid-template-columns: 160px minmax(0, 1fr) 100px; }
-.pb-row-board { grid-template-columns: minmax(0, 1fr) auto; color: var(--gw-text); text-decoration: none; }
-.pb-row-board:hover { background: var(--gw-paper); }
+
 .pb-kv-list .pb-kv:first-child { border-top: 0; }
 .pb-panel-blue { background: var(--gw-blue-bg); border-color: var(--gw-blue-bg); }
 .pb-cards3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
@@ -270,39 +269,12 @@
 .pb-share-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .pb-moved { border-top: 1px solid var(--gw-border); padding: 14px 18px; }
 /* own-report.jpg: your own report, narrow, on its own. */
-.pb-own { max-width: 400px; margin: 0 auto; }
-@media (min-width: 900px) { .pb-own { max-width: 420px; } }
-.pb-own-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
-.pb-own-title { font-family: var(--gw-font-name); font-weight: 500; font-size: 30px; margin: 6px 0 16px; color: var(--gw-text); }
-.pb-own-team { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid var(--gw-border); padding-top: 14px; margin-top: 18px; font-size: 15px; }
-.pb-own-team p { margin: 2px 0 0; }
+
 .pb-own-team-actions { display: inline-flex; gap: 12px; align-items: center; }
 /* getting-each-person-started.jpg */
-.pb-start-row { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 8px 18px; padding: 14px 18px; border-top: 1px solid var(--gw-border); }
-.pb-start-row:first-child { border-top: 0; }
-.pb-start-row > div { display: flex; flex-direction: column; }
-.pb-start-row > p { grid-column: 2; margin: 0; }
-.pb-start-steps { display: flex; flex-wrap: wrap; gap: 6px 16px; list-style: none; margin: 0; padding: 0; font-size: 14px; color: var(--gw-sub-d); }
-.pb-start-steps li { display: inline-flex; align-items: center; gap: 6px; }
-.pb-start-done { color: var(--gw-text); font-weight: 600; }
-@media (max-width: 860px) { .pb-start-row { grid-template-columns: 1fr; } .pb-start-row > p { grid-column: 1; } }
+
 /* own-report.jpg (screen 42): your own report as pictured. */
-.pb-own-body { display: grid; gap: 22px; }
-.pb-own-panel { background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; padding: 20px 22px; }
-.pb-own-h { font-size: 18px; font-weight: 700; margin: 0 0 10px; color: var(--gw-text); }
-.pb-own-h-rule { padding-bottom: 8px; border-bottom: 1px solid var(--gw-border); margin-bottom: 0; }
-.pb-own-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.pb-own-list li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 10px; align-items: start; font-size: 15px; line-height: 1.45; color: var(--gw-text); }
-.pb-own-list li .gwui-mk, .pb-own-told li .gwui-mk { margin-top: 3px; }
-.pb-own-story { font-family: var(--gw-font-name); font-weight: 500; font-size: 17.5px; line-height: 1.55; margin: 6px 0 0; color: var(--gw-text); }
-.pb-own-told { list-style: none; margin: 0; padding: 0; }
-.pb-own-told li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 15px; line-height: 1.45; color: var(--gw-text); }
-.pb-own-told li:last-child { border-bottom: 0; }
-.pb-own-told .pb-own-how { display: block; color: var(--gw-sub); }
-.pb-own-gone span { text-decoration: line-through; color: var(--gw-sub); }
-.pb-own-think { margin: 0; font-size: 15px; line-height: 1.5; color: var(--gw-text); }
-.pb-own-think + .pb-own-think { margin-top: 8px; }
-.pb-own-wrong { justify-self: start; background: none; border: 0; padding: 0; font: inherit; font-size: 16px; font-weight: 700; color: var(--gw-navy); cursor: pointer; min-height: 44px; }
+
 .pb-first-report { max-width: 680px; }
 
 /* team-report.jpg, "What I don’t know yet": each thing a bold line, then what is known and what happens next. */
@@ -346,8 +318,6 @@
 @media (max-width: 760px) { .pb-row-person-did { grid-template-columns: 1fr; gap: 4px; } }
 
 /* getting-each-person-started.jpg, "Needs you": the thing on the left, "Fix the address" on the right. */
-.pb-needs-you { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-.pb-needs-you .gwui-panel-text { margin: 4px 0 0; }
 
 /* The team's report, quality pass of 18 October: each person's summary carries its mark (T-7), and the kit's closing line (T-12). */
 .pb-dot-inline { margin-right: 8px; vertical-align: -1px; }
@@ -378,3 +348,14 @@
 .pb-nudged { font-size: 14px; color: var(--gw-text); }
 /* "You checked in on time today, 5 days running." on your own report (SessionReportPage.tsx). */
 .pb-on-time { font-size: 15px; color: var(--gw-text); margin: 6px 0 0; }
+
+/* The rest of the board, folded under its own headings (FoldTheRest.tsx): the heading row alone, divided by rules, until opened. */
+.pb-fold-the-rest { display: flex; flex-direction: column; border-top: 1px solid var(--gw-rule); }
+.pb-fold-the-rest > section.pb-fold, .pb-fold-the-rest section.pb-fold { border-bottom: 1px solid var(--gw-rule); margin: 0; }
+.pb-fold > .sec-h { cursor: pointer; min-height: 44px; display: flex; align-items: center; padding: 6px 0; }
+.pb-fold > .sec-h::after { content: '›'; margin-left: auto; font-size: 20px; color: var(--gw-sub); transition: transform .15s; }
+.pb-fold.pb-fold-open > .sec-h::after { transform: rotate(90deg); }
+.pb-fold:not(.pb-fold-open) > :not(.sec-h) { display: none; }
+.pb-fold.pb-fold-open { padding-bottom: 16px; }
+.pb-fold > .sec-h:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .pb-fold > .sec-h::after { transition: none; } }

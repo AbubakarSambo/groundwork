@@ -90,8 +90,8 @@ export function WhatYouAreCarryingForward({
                 <button
                   onClick={() => mySoloReport.shared ? setSoloSharedMut.mutate(false) : setShowShareConfirm(true)}
                   disabled={setSoloSharedMut.isPending}
-                  className="gwui-tap-44"
-                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', background: 'var(--gw-paper-2)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
+                  type="button"
+                  className="gw-link t-small"
                 >
                   {mySoloReport.shared ? 'Stop sharing' : 'Share with everyone'}
                 </button>
@@ -128,13 +128,13 @@ export function WhatYouAreCarryingForward({
               This is all or nothing. All sections of your private report become visible at once. You can stop sharing at any time.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="gwui-btn gwui-btn-secondary"
+              <button className="btn sec"
                 onClick={() => setShowShareConfirm(false)}
                 style={{ flex: 1 }}
               >
                 Cancel
               </button>
-              <button className="gwui-btn gwui-btn-primary"
+              <button className="btn pri"
                 onClick={() => setSoloSharedMut.mutate(true)}
                 disabled={setSoloSharedMut.isPending}
                 style={{ flex: 1 }}

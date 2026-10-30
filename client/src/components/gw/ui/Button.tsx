@@ -39,13 +39,14 @@ export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, {
   /** For a choice among a small fixed set (e.g. "Right" / "Wrong" / "Not sure"): whether this is the one currently chosen. */
   'aria-pressed'?: boolean
 }>(function Button({ kind = 'primary', size, wide, redText, to, onClick, type = 'button', disabled, children, ...rest }, ref) {
+  /* The prototype's .btn and its kinds (.pri, .sec, .quiet, .danger) and sizes (.big, .sm). */
   const className = [
-    'gwui-btn',
-    `gwui-btn-${kind}`,
-    size && `gwui-btn-${size}`,
-    wide && 'gwui-btn-wide',
-    redText && kind === 'secondary' && 'gwui-btn-red-text',
-  ].filter(Boolean).join(' ')
+    'btn',
+    ({ primary: 'pri', secondary: 'sec', quiet: 'quiet', danger: 'danger' } as const)[kind],
+    size === 'big' ? 'big' : size === 'small' ? 'sm' : null,
+    wide && 'wide',
+    redText && kind === 'secondary' && 'red',
+].filter(Boolean).join(' ')
 
   if (to && !disabled) {
     return <Link ref={ref as React.Ref<HTMLAnchorElement>} to={to} className={className} onClick={onClick} aria-label={rest['aria-label']}>{children}</Link>

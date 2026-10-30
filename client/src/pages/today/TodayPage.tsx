@@ -1,11 +1,14 @@
 import { CheckInOnWhatsApp } from '@/components/gw/CheckInOnWhatsApp'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { aSentenceAsARow } from '@/lib/a-sentence-as-a-row'
+import { boardApi } from '@/api/board'
+import { toast } from 'sonner'
 import { Link, useSearchParams } from 'react-router-dom'
 import { todayApi, type Need } from '@/api/today'
 import { outstandingNotAlreadyShown } from './outstanding-not-already-shown'
 import { withComingUpTellingTwoApart } from './tell-apart-coming-up'
 import { useAuthStore } from '@/stores/auth'
-import { Page, Stack, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp } from '@/components/gw/ui'
+import { Page, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp, Panel } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { AdminFirstRun } from '@/pages/grounds/an-admin-lands-on-a-check-in-list'
 import { partOfTheDay, whenItComes } from './when-it-comes'
@@ -151,18 +154,53 @@ export function TodayPage() {
   /* What the lead's mail also tells her (request 198, b): the server's own sentences and links, drawn once. Absent for everybody else. */
   const nobodyHasStarted = data?.forTheLead?.nobodyHasStarted ?? []
   const whatIWouldDo = data?.forTheLead?.whatIWouldDoThisWeek ?? []
+  /*
+   * ONE LIST, AS THE PROTOTYPE (C1): what needs you, what the lead's nudge adds, and what Groundwork would do, as rows of "What needs
+   * you", most important first, each said once. A row the list already has (the same title) is not added again.
+   */
+  type ARow = { key: string; kind: Need['kind']; title: string; detail?: string; action?: { label: string; to: string } }
+  /* The same thing said in other words is a repeat too: most of its longer words already said in a row above. */
+  const COMMON = new Set(['about', 'after', 'again', 'their', 'there', 'these', 'those', 'which', 'while', 'would', 'could', 'should', 'since', 'today', 'until', 'waiting', 'answer', 'check', 'with', 'from', 'this', 'that', 'your', 'have', 'been', 'what'])
+  const wordsOf = (t: string) => new Set(t.toLowerCase().replace(/[’']s\b/g, '').split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && !COMMON.has(w)))
+  const seen: Set<string>[] = []
+  const once = (r: ARow) => {
+    const w = wordsOf(r.title)
+    if (seen.some((x) => { const both = [...w].filter((y) => x.has(y)).length; return both >= 4 && both / Math.min(w.size, x.size) >= 0.7 })) return false
+    seen.push(w)
+    return true
+  }
+  needs.forEach((n: Need) => once({ key: n.key, kind: n.kind, title: n.title }))
+  const moreRows: ARow[] = [
+    ...nobodyHasStarted.map((n) => ({ key: `started-${n.groundId}`, kind: 'look' as const, title: n.subject, detail: n.lines[0], action: { label: n.linkLabel, to: n.to } })),
+    ...whatIWouldDo.map((w) => {
+      const things = w.lines.slice(1)
+      return { key: `week-${w.groundId}`, kind: 'look' as const, title: things[0] ?? w.lines[0], detail: things.length > 1 ? `In ${w.label}, and ${things.length - 1} more on its board.` : `In ${w.label}.`, action: { label: 'Open', to: `/grounds/${w.groundId}` } }
+    }),
+    ...[...outstandingNeedsYou, ...overdueOnYourTeam, ...risks].map((sentence) => ({ key: sentence, kind: 'look' as const, ...aSentenceAsARow(sentence) })),
+  ].filter(once)
+  const allNeeds = needs.length + moreRows.length
+  const lineNudge = data?.lineNudge ?? null
+  const nudge = useMutation({
+    mutationFn: () => boardApi.nudge(lineNudge!.groundId, lineNudge!.participantId),
+    onSuccess: () => toast.success(`Sent to ${lineNudge!.firstName}.`),
+    onError: () => toast.error('That didn’t send. Try again.'),
+  })
 
   return (
     <Page>
-      <div className="gwui-side">
-        <Stack gap={30}>
+      <div className="gwui-side gw-today">
+        <div className="gw-col-32">
           {params.get('welcome') === '1' && (
             <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} mayStart={user?.mayOpenCheckIns !== false} />
           )}
 
           <Greeting
             title={greeting}
-            subtitle={`${whenItWas(now, 'weekdayAndDay')}.${greetingLine ? ` ${greetingLine}` : ''}`}
+            subtitle={<>
+              {`${whenItWas(now, 'weekdayAndDay')}.${greetingLine ? ` ${greetingLine}` : ''}`}
+              {/* "Send it to him on WhatsApp" (C1), said with their name: the board's own nudge, for the one person not checked in yet. */}
+              {lineNudge && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => nudge.mutate()} disabled={nudge.isPending || nudge.isSuccess}>{nudge.isSuccess ? 'Sent.' : `Remind ${lineNudge.firstName}`}</button></>}
+            </>}
           />
 
           {/* The free trial, one line, for an admin while it runs (Hafsah, 12 October). The server decides who reads it. */}
@@ -172,16 +210,18 @@ export function TodayPage() {
           {/* Appeals to decide (C3, U.13): an admin's only. The server refuses anybody else. */}
           {user?.role === 'ADMIN' && <AppealsToDecide />}
 
-          <Section heading="What needs you" note={needs.length > 1 ? `${needs.length} things, most important first` : undefined}>
+          {/* ONE LIST, AS THE PROTOTYPE: what the lead's nudge adds (needs you, overdue on the team, risks) are rows in
+              "What needs you", most important first, never sections of their own. */}
+          <Section heading="What needs you" note={allNeeds > 1 ? `${allNeeds} things, most important first` : undefined}>
             {isLoading && <Note>Loading…</Note>}
             {isError && (
               <div>
-                <Note tone="error">What needs you did not load. Nothing you have written is affected.</Note>
+                <Note tone="error">What needs you didn’t load. Try again.</Note>
                 <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
               </div>
             )}
-            {data && needs.length === 0 && <Empty>Nothing needs you right now.</Empty>}
-            {needs.length > 0 && (
+            {data && allNeeds === 0 && <Empty>Nothing needs you right now.</Empty>}
+            {allNeeds > 0 && (
               <EdgeList label="What needs you">
                 {/* ONE NAVY BUTTON (Hafsah, 30 September): the prototype's own Today draws every "Start it"
                     navy, but with two check-ins open that is two navy buttons at once. Only the first,
@@ -190,13 +230,19 @@ export function TodayPage() {
                   <EdgeRow
                     key={n.key}
                     kind={n.kind}
-                    title={n.title}
-                    detail={n.detail ?? undefined}
+                    /* One line of title: a second sentence goes to the detail line when there is none (Hafsah, 25 October). */
+                    title={aSentenceAsARow(n.title, n.detail).title}
+                    detail={aSentenceAsARow(n.title, n.detail).detail}
+                    to={whereItGoes(n)}
                     actions={<>
                       <Button kind={n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={whereItGoes(n)}>{n.action.label}</Button>
                       {n.missedReason && <TheReasonYouMissed checkInId={n.missedReason.checkInId} given={n.missedReason.given} />}
                     </>}
                   />
+                ))}
+                {moreRows.map((r) => (
+                  <EdgeRow key={r.key} kind={r.kind} title={r.title} detail={r.detail} to={r.action?.to}
+                    actions={r.action ? <Button kind="secondary" size="small" to={r.action.to}>{r.action.label}</Button> : undefined} />
                 ))}
               </EdgeList>
             )}
@@ -231,59 +277,13 @@ export function TodayPage() {
             </Section>
           )}
 
-          {/* The lead's daily nudge's own link (decision 120): "Needs you", "Overdue on your team"
-              and "Risks", each left out while its own list is empty. `null` for anybody who is not
-              a lead, or who has nothing outstanding, so a member's Today is unaffected. */}
-          {outstandingNeedsYou.length > 0 && (
-            <Section heading="Needs you">
-              <EdgeList label="Needs you">
-                {outstandingNeedsYou.map((sentence) => (
-                  <EdgeRow key={sentence} kind="look" title={sentence} />
-                ))}
-              </EdgeList>
-            </Section>
-          )}
-          {overdueOnYourTeam.length > 0 && (
-            <Section heading="Overdue on your team">
-              <EdgeList label="Overdue on your team">
-                {overdueOnYourTeam.map((sentence) => (
-                  <EdgeRow key={sentence} kind="look" title={sentence} />
-                ))}
-              </EdgeList>
-            </Section>
-          )}
-          {risks.length > 0 && (
-            <Section heading="Risks">
-              <EdgeList label="Risks">
-                {risks.map((sentence) => (
-                  <EdgeRow key={sentence} kind="look" title={sentence} />
-                ))}
-              </EdgeList>
-            </Section>
-          )}
-
-          {(nobodyHasStarted.length > 0 || whatIWouldDo.length > 0) && (
-            <Section heading="From Groundwork">
-              <EdgeList label="From Groundwork">
-                {nobodyHasStarted.map((n) => (
-                  <EdgeRow
-                    key={`started-${n.groundId}`}
-                    kind="look"
-                    title={n.subject}
-                    detail={n.lines.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
-                    actions={<Button kind="secondary" size="small" to={n.to}>{n.linkLabel}</Button>}
-                  />
-                ))}
-                {whatIWouldDo.map((w) => (
-                  <EdgeRow
-                    key={`week-${w.groundId}`}
-                    kind="look"
-                    title={w.lines[0]}
-                    detail={[`This is for ${w.label}.`, ...w.lines.slice(1)].map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
-                    actions={<Button kind="secondary" size="small" to={`/grounds/${w.groundId}`}>Open the check-in</Button>}
-                  />
-                ))}
-              </EdgeList>
+          {/* SINCE YESTERDAY (C1): what moved since the round before, for the check-in the line is about. */}
+          {data?.sinceYesterday && (
+            <Section heading={data.sinceYesterday.heading}>
+              <Panel>
+                <p className="t-body">{data.sinceYesterday.says}</p>
+                {data.sinceYesterday.also && <p className="t-small mut">{data.sinceYesterday.also}</p>}
+              </Panel>
             </Section>
           )}
 
@@ -296,7 +296,7 @@ export function TodayPage() {
             that changes every day comes first, and the one-time welcome comes after it.
           */}
           <AdminFirstRun />
-        </Stack>
+        </div>
 
         {comingUp.length > 0 && (
           <ComingUp items={withComingUpTellingTwoApart(comingUp).map(c => ({

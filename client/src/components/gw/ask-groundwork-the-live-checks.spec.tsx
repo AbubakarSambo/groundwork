@@ -168,7 +168,9 @@ describe('item 3: a sign of work while a reply is on its way', () => {
   })
 })
 
-describe('item 4: the floating Feedback button never covers the Ask panel', () => {
+/* UPDATED 24 October (Hafsah: fewer buttons; the prototype has no floating Feedback pill): the pill is never drawn, so it can
+   never cover the Ask panel. "Send feedback" stays on the person's own menu. */
+describe('item 4: no floating Feedback button can cover the Ask panel', () => {
   /* No organisation name here, to match SALES's own `askName` ('Ask Groundwork') - the sidebar's
      button names Ask from this same organisation name (AppShell.tsx, `askNameFor`). */
   const USER = { id: 'u-m', email: 'm@baridi.test', firstName: 'Miriam', lastName: 'Wanjiku', role: 'MEMBER', organizationId: 'o1', organizationName: '' }
@@ -188,15 +190,15 @@ describe('item 4: the floating Feedback button never covers the Ask panel', () =
       <QueryClientProvider client={qc}><MemoryRouter initialEntries={['/today']}><AppShell><div>page</div></AppShell></MemoryRouter></QueryClientProvider>,
     )
     const rail = container.querySelector('.gw-sidebar-desktop') as HTMLElement
-    expect(screen.getByRole('button', { name: /Feedback/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Feedback$/ })).toBeNull()
 
     fireEvent.click(within(rail).getByRole('button', { name: 'Ask Groundwork' }))
     await screen.findByRole('heading', { name: 'Ask Groundwork' })
-    expect(screen.queryByRole('button', { name: /Feedback/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Feedback$/ })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Ask Groundwork' })).toBeNull())
-    expect(screen.getByRole('button', { name: /Feedback/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Feedback$/ })).toBeNull()
   })
 })
 
@@ -257,11 +259,13 @@ describe('item 6: the "About" picker stays inside the panel', () => {
     }
     panel(WAIRIMUS, '/grounds/g-sales/board')
     await screen.findByPlaceholderText(CAPTION)
+    /* UPDATED 24 October (one stylesheet, the prototype's): the picker is the prototype's .input in the About row, whose
+       own rule (styles/product.css, .gw-ask-about .input) caps it at 240px and lets it shrink, instead of inline styles. */
     const about = screen.getByRole('combobox', { name: 'About' }) as HTMLSelectElement
-    expect(about.style.minWidth).toBe('0px')
-    // jsdom normalises the `flex: 1` shorthand into its three longhands.
-    expect(about.style.flex).toBe('1 1 0%')
-    expect((about.closest('label') as HTMLElement).style.minWidth).toBe('0px')
+    expect(about.className).toContain('input')
+    expect((about.closest('label') as HTMLElement).className).toContain('gw-ask-about')
+    const css = (await import('fs')).readFileSync(require('path').join(__dirname, '../../styles/product.css'), 'utf8')
+    expect(css).toMatch(/\.gw-ask-about \.input \{[^}]*max-width: 240px/)
   })
 })
 

@@ -106,7 +106,7 @@ export function LeadsGuidePage() {
         </p>
       </div>
 
-      <button className="gwui-btn gwui-btn-primary"
+      <button className="btn pri"
         onClick={() => navigate('/grounds/new')}
       >
         Open a check-in

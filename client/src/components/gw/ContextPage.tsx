@@ -217,7 +217,7 @@ export function ContextPage({
       setBriefDraft(null)
       toast.success('Saved. Everyone in this check-in now reads this.')
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save - try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   const uploadDoc = useMutation({
@@ -276,7 +276,7 @@ export function ContextPage({
     mutationFn: ({ itemId, status }: { itemId: string; status: 'DONE' | 'NOT_DONE' | 'DROPPED' }) =>
       groundsApi.setMyCommitment(id, itemId, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again in a moment.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   /*
@@ -295,7 +295,7 @@ export function ContextPage({
       toast.success('Added')
       qc.invalidateQueries({ queryKey: ['ground', id] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save - what you typed is still here, try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   const changeLine = useMutation({
@@ -892,7 +892,7 @@ export function ContextPage({
             <Section heading="Resources" note="Shared, read, and what each checks" />
             {documentsAreNotOpenToYou && (
               <p data-gw-documents-not-open className="gwui-note">
-                Documents here are shared by the people in this check-in, so you cannot open them from here.
+                You can’t open these documents from here.
               </p>
             )}
 
@@ -1075,7 +1075,7 @@ export function ContextPage({
                         visibility: e.target.value as 'OPEN' | 'OWN' | 'CLOSED',
                       })}
                       aria-label={`Who can read ${doc.name}`}
-                      className={`gwui-tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'gwui-tag-proven' : 'gwui-tag-plain'}`}
+                      className={`tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'rec' : 'plain'}`}
                     >
                       <option value="OPEN">Everyone</option>
                       <option value="OWN">Only you</option>
@@ -1104,7 +1104,7 @@ export function ContextPage({
                       title={(doc as any).visibility === 'OPEN'
                         ? 'Everyone in this check-in can read this. Click to make it yours only.'
                         : 'Only you can read this. Click to share it with everyone in this check-in.'}
-                      className={`gwui-tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'gwui-tag-proven' : 'gwui-tag-plain'}`}
+                      className={`tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'rec' : 'plain'}`}
                     >
                       {/* THE DESTINATION IN WORDS, as the design has it. "Everyone" and "Only me"
                           are what a person is choosing between; an icon or a switch makes them
@@ -1117,7 +1117,7 @@ export function ContextPage({
                       Delete was drawn on everybody's OPEN files and answered "Document not found".
                       Only the uploader may delete, so only the uploader is offered it. */}
                   {(doc as any).mine !== false && (
-                    <button onClick={() => deleteDoc.mutate(doc.id)} className="gwui-btn gwui-btn-quiet gwui-btn-small gwui-ink-red">Delete</button>
+                    <button onClick={() => deleteDoc.mutate(doc.id)} className="btn quiet sm gwui-ink-red">Delete</button>
                   )}
                 </div>
                 </div>

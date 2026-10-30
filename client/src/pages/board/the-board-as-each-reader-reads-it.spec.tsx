@@ -253,7 +253,7 @@ describe('the board, as each reader reads it', () => {
  *
  * Her review found the sections had no space between them - "'What we are aiming for' touches the
  * panel above it" - because a wrapping div around the whole page escaped the shared Page frame's
- * own 30px child spacing (`.gwui-page-wrap > * + *`). Fixed by giving each switchboard section its
+ * own 30px child spacing (`.wrap > * + *`). Fixed by giving each switchboard section its
  * own heading AND content together, as one `<Section>`, so each is a direct child of the page wrap
  * again. This does not compute CSS in jsdom; it pins the DOM shape the rule depends on, so the
  * escape hatch cannot come back quietly.
@@ -272,7 +272,7 @@ describe('the switchboard sections sit directly in the page rhythm', () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     const { container } = renderBoard(AS_THE_LEAD)
     await screen.findByRole('heading', { name: 'The team today' })
-    const wrap = container.querySelector('.gwui-page-wrap')
+    const wrap = container.querySelector('.wrap')
     expect(wrap).toBeTruthy()
     const sections = wrap!.querySelectorAll(':scope > section')
     const headings = Array.from(sections).map((s) => s.querySelector('h2')?.textContent)

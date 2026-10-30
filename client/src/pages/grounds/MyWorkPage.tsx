@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { groundsApi, type MyWork, type ABehaviourRead } from '@/api/grounds'
 import { TheirRecord } from '@/components/gw/TheirRecord'
 import {
-  Section, Panel, Note, Callout, Stack, FlexRow, Tag, Text, Select, RowList, Row, NumberTiles, FieldRows, FieldRow, Button,
+  Section, Panel, Note, Callout, Stack, Folded, FlexRow, Tag, Text, Select, RowList, Row, FieldRows, FieldRow,
 } from '@/components/gw/ui'
 
 /**
@@ -68,6 +68,8 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
   /* Judgements of a person are served unless the organisation keeps them off (api organisation/person-judgements.ts). */
   const judged = served.judgements !== false
   return (
+    /* B7: section headings in Literata, as the picture draws them (gwui-b-tab). */
+    <div className="gwui-b-tab">
     <Stack gap={30}>
       {/* THE LEAD CHOOSES WHOSE PAGE. Only in her payload. */}
       {served.people && served.people.length > 0 && (
@@ -82,18 +84,20 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
       {/* THEIR NAME AND THREE NUMBERS */}
       <div data-gw-my-work-top>
         <Section heading={served.heading} note={served.topLine}>
-          <NumberTiles label="Your numbers" tiles={served.numbers.map((n, i) => ({ key: String(i), label: n.label, value: n.value }))} />
+          {/* B7: three small chips, the number large and its words beside it, not three wide tiles. */}
+          <div className="gwui-chips" role="list" aria-label="Your numbers">
+            {served.numbers.map((n, i) => (
+              <span key={i} className="gwui-chip" role="listitem"><b className="gwui-chip-value">{n.value}</b> <span className="gwui-chip-label">{n.label}</span></span>
+            ))}
+          </div>
         </Section>
       </div>
 
       {/* THE FOCUS THIS WEEK, from the most important Needs work. Not served where the organisation keeps judgements of a person off. */}
-      {judged && (
-        <Section heading={`${your} focus this week`}>
-          {served.focus
-            ? <div data-gw-my-work-focus><Callout tone="info" title={served.focus.line}>{served.focus.why}</Callout></div>
-            : <Note tone="muted">{served.focusEmpty}</Note>}
-        </Section>
-      )}
+      {/* B7: the focus is the one dark band on the page, named inside the band, not a section heading of its own. */}
+      {judged && (served.focus
+        ? <section aria-label={`${your} focus this week`} data-gw-my-work-focus className="gwui-focus-band"><p className="gw-focus-label">{`${your} focus this week`}</p><p className="gwui-focus-line">{served.focus.line}</p><p className="gwui-focus-why">{served.focus.why}</p></section>
+        : <Note tone="muted">{served.focusEmpty}</Note>)}
 
       <ToDo served={served} askedOf={self ? 'Asked of you' : `Asked of ${first}`} />
       <Achieved served={served} heading={self ? 'What you achieved' : `What ${first} achieved`} />
@@ -103,7 +107,7 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
       {(judged || served.coaching.better.length > 0) && <Coaching served={served} />}
 
       {/* THEIR RECORD, AND THE COACHING GROUNDWORK GAVE THEM: only where the server sends it (the direct morning). */}
-      {served.record && <TheirRecord record={served.record} />}
+      {served.record && <TheirRecord record={served.record} asOneFold />}
 
       {/* YOUR CHECK-INS AND YOUR REPORTS, side by side */}
       <div className="gwui-two-up">
@@ -130,7 +134,7 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
                   </Row>
                 ))}
               </RowList>
-              {onAllYourReports && <div><Button kind="quiet" size="small" onClick={onAllYourReports}>All your reports</Button></div>}
+              {onAllYourReports && <div><button type="button" className="gw-link t-small gw-bold" onClick={onAllYourReports}>All your reports</button></div>}
             </Stack>
           )}
         </Panel>
@@ -138,13 +142,20 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
 
       <Items groundId={groundId} served={served} />
 
-      {rest}
+      {/* B7 ends with the deals. Everything the page carried before B7 stays, folded under one line, so nothing is lost and the page is B7's length. */}
+      {rest && <Folded summary={self ? 'More from your check-ins' : `More from ${first}’s check-ins`}>{rest}</Folded>}
     </Stack>
+    </div>
   )
 }
 
 function ToDo({ served, askedOf }: { served: Served; askedOf: string }) {
-  const { othersNeed, own, emptySays } = served.toDo
+  const { othersNeed: allOthers, own: allOwn, emptySays } = served.toDo
+  /* Three, then "and N more" (Hafsah, 25 October: lists stop at three). */
+  const [all, setAll] = useState(false)
+  const othersNeed = all ? allOthers : allOthers.slice(0, 3)
+  const own = all ? allOwn : allOwn.slice(0, Math.max(0, 3 - othersNeed.length))
+  const more = allOthers.length + allOwn.length - othersNeed.length - own.length
   return (
     <Section heading="To do">
       {othersNeed.length + own.length === 0 ? <Note tone="muted">{emptySays}</Note> : (
@@ -170,6 +181,7 @@ function ToDo({ served, askedOf }: { served: Served; askedOf: string }) {
           </RowList>
         </Panel>
       )}
+      {more > 0 && <button type="button" className="gw-link t-small gw-start" onClick={() => setAll(true)}>{`and ${more} more`}</button>}
     </Section>
   )
 }

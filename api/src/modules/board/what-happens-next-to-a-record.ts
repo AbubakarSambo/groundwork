@@ -84,8 +84,46 @@ export function theNextStepTheyGave(fields: Record<string, string> | null | unde
   return { next: says, nextStep: aStepOnItsOwn(by && !already ? `${step}, by ${by}` : step), nextKnown: 'said', nextSays: says };
 }
 
-/** "send the quote, with a photo" as the column reads it: "Send the quote, with a photo". */
+/** "send the quote, with a photo" as the column reads it: "Send the quote, with a photo". In about eight words (Hafsah, 25 October). */
 export function aStepOnItsOwn(step: string): string {
-  const t = step.trim().replace(/[.\s]+$/, '');
+  const t = inAboutEightWords(step.trim().replace(/[.\s]+$/, ''));
   return t ? `${t.charAt(0).toUpperCase()}${t.slice(1)}` : t;
+}
+
+const BREAK_BEFORE = new Set(['and', 'so', 'because', 'but', 'which', 'who', 'until', 'since', 'as', 'while', 'if', 'then']);
+const PHRASE_BEFORE = new Set(['for', 'on', 'about', 'with', 'regarding', 'to', 'from', 'after', 'before']);
+const NO_END = new Set(['then', 'for', 'on', 'to', 'the', 'a', 'an', 'of', 'and', 'with', 'at', 'in', 'her', 'his', 'their', 'my', 'our', 'your', 'by', 'from', 'that']);
+
+/**
+ * A NEXT STEP IN ABOUT EIGHT WORDS (Hafsah, 25 October: "Next-step lines: about 8 words at most. Shorter, not vaguer: keep names,
+ * numbers and days"). A step of nine words or fewer is kept whole. A longer one is cut at its first natural break after the fourth
+ * word: a comma, a joining word ("and", "so", "because") or a phrase that only adds detail ("for her final decision on the number"),
+ * so the person, the action and its object stay. With no break it keeps its first eight words. It never ends on "for", "the" or "to".
+ */
+export function inAboutEightWords(step: string): string {
+  /* One step, so one sentence: the first. */
+  const parts = (step ?? '').trim().split(/(?<=[a-z0-9)”’])\.\s+(?=[A-Z])/);
+  /* "Nothing booked." alone says no step: the step said last goes first, with it ("Ask Rose when Mama Mboga Mart will buy. Nothing booked."). */
+  if (parts.length > 1 && parts[0].split(/\s+/).length <= 3) {
+    const step = inAboutEightWords(parts[parts.length - 1].replace(/\.$/, ''));
+    return `${step.replace(/\.$/, '')}. ${parts[0].replace(/\.$/, '')}.`;
+  }
+  const first = parts.length > 1 ? `${parts[0]}.` : parts[0];
+  const words = first.split(/\s+/).filter(Boolean);
+  if (words.length <= 9) return first;
+  /* What a cut would drop must hold no name, number or day: those stay ("Shorter, not vaguer"). */
+  const DAY = /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|january|february|march|april|may|june|july|august|september|october|november|december)$/i;
+  const holdsAFact = (tail: string[]) => tail.some((w) => /\d/.test(w) || DAY.test(w.replace(/[^A-Za-z]/g, '')) || (/^[A-Z][a-z]/.test(w) && !BREAK_BEFORE.has(w.toLowerCase()) && !PHRASE_BEFORE.has(w.toLowerCase())));
+  let cut = -1;
+  for (let i = 3; i < Math.min(words.length, 10); i += 1) {
+    const w = words[i].toLowerCase().replace(/[^a-z']/g, '');
+    const aBreak = (/[,;:]$/.test(words[i - 1]) && i >= 4) || (i >= 4 && BREAK_BEFORE.has(w)) || (i >= 5 && PHRASE_BEFORE.has(w));
+    if (aBreak && !holdsAFact(words.slice(i))) { cut = i; break; }
+  }
+  /* No break drops only detail: a step of fourteen words or fewer stays whole, so a name or a day is never lost; a longer one keeps its first eight. */
+  if (cut < 0 && words.length <= 14) return first;
+  let out = words.slice(0, cut > 0 ? cut : 8);
+  while (out.length > 3 && NO_END.has(out[out.length - 1].toLowerCase().replace(/[^a-z]/g, ''))) out = out.slice(0, -1);
+  /* A sentence stays a sentence. */
+  return `${out.join(' ').replace(/[,;:.]+$/, '')}${/\.$/.test(first) ? '.' : ''}`;
 }

@@ -74,7 +74,7 @@ function Row({ request }: { request: ApiAccessRequest }) {
                 <strong>{f.kind.replace(/-/g, ' ')}</strong> · {whenItWas(f.raisedAt, 'dayAndTime')}
                 <div style={{ color: 'var(--gw-text)' }}>{f.detail}</div>
               </div>
-              <button type="button" onClick={() => clearFlag.mutate(f.id)} disabled={clearFlag.isPending} className="gwui-btn gwui-btn-secondary gwui-btn-small">Looked at</button>
+              <button type="button" onClick={() => clearFlag.mutate(f.id)} disabled={clearFlag.isPending} className="btn sec sm">Looked at</button>
             </div>
           ))}
         </div>
@@ -92,15 +92,15 @@ function Row({ request }: { request: ApiAccessRequest }) {
       <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
         {request.status === 'PENDING' && !asking && (
           <>
-            <button type="button" className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
-            <button type="button" className="gwui-btn gwui-btn-secondary gwui-btn-small" onClick={() => setAsking('DECLINED')}>Decline</button>
+            <button type="button" className="btn pri sm" onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
+            <button type="button" className="btn sec sm" onClick={() => setAsking('DECLINED')}>Decline</button>
           </>
         )}
         {(request.status === 'DECLINED' || request.status === 'WITHDRAWN') && !asking && (
-          <button type="button" className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
+          <button type="button" className="btn pri sm" onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
         )}
         {request.status === 'APPROVED' && !asking && (
-          <button type="button" className="gwui-btn gwui-btn-secondary gwui-btn-small" onClick={() => setAsking('WITHDRAWN')}>Withdraw access</button>
+          <button type="button" className="btn sec sm" onClick={() => setAsking('WITHDRAWN')}>Withdraw access</button>
         )}
         {asking && (
           <>
@@ -112,10 +112,10 @@ function Row({ request }: { request: ApiAccessRequest }) {
               autoFocus
               style={{ flex: '1 1 260px' }}
             />
-            <button type="button" className="gwui-btn gwui-btn-primary gwui-btn-small" onClick={() => decide.mutate(asking)} disabled={decide.isPending || !note.trim()}>
+            <button type="button" className="btn pri sm" onClick={() => decide.mutate(asking)} disabled={decide.isPending || !note.trim()}>
               {asking === 'DECLINED' ? 'Decline' : 'Withdraw'}
             </button>
-            <button type="button" className="gwui-btn gwui-btn-secondary gwui-btn-small" onClick={() => { setAsking(null); setNote('') }}>Cancel</button>
+            <button type="button" className="btn sec sm" onClick={() => { setAsking(null); setNote('') }}>Cancel</button>
           </>
         )}
       </div>
@@ -136,7 +136,7 @@ export function ApiAccessPage() {
   const flagged = decided.filter((r) => r.flags.length > 0)
 
   return (
-    <section className="gw-page" style={{ maxWidth: 820, margin: '0 auto', padding: '24px 20px 80px' }}>
+    <section style={{ maxWidth: 820, margin: '0 auto', padding: '24px 20px 80px' }}>
       <button
         type="button"
         onClick={() => navigate('/admin/dashboard')}

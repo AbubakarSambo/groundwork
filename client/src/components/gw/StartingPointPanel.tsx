@@ -107,7 +107,7 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
       </Section>
 
       {canRecord && !picking && (
-        <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+        <button type="button" className="gw-link t-small"
           onClick={() => setPicking(true)}
           style={{ marginTop: 10 }}
         >
@@ -156,13 +156,13 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
             )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="gwui-btn gwui-btn-primary gwui-btn-small"
+              <button className="btn pri sm"
                 onClick={() => record.mutate()}
                 disabled={!chosen.size || record.isPending}
               >
                 {record.isPending ? 'Recording…' : `Record ${chosen.size || ''} as the starting point`.trim()}
               </button>
-              <button className="gwui-btn gwui-btn-secondary gwui-btn-small"
+              <button className="btn sec sm"
                 onClick={() => { setPicking(false); setChosen(new Set()) }}
               >
                 Cancel

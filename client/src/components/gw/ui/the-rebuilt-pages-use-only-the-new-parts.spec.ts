@@ -559,7 +559,7 @@ describe('the detection itself catches a real offender, not only an empty list',
   })
 
   it('does not confuse the new gwui- classes with the old gw- ones', () => {
-    expect(oldClassesUsed('<button className="gwui-btn gwui-btn-primary">Go</button>')).toEqual([])
+    expect(oldClassesUsed('<button className="btn pri">Go</button>')).toEqual([])
   })
 
   it('catches a text size below 13px, wherever it is written, and passes anything 13 or above', () => {

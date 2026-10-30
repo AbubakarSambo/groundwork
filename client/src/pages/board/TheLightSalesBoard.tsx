@@ -195,7 +195,7 @@ export function TheLightNeedsYou({ title }: { title?: string }) {
   return (
     <div className="gwui-light-needs">
       {/* Approved rename: for an admin or the chief executive, "What needs you in this check-in" reads "What needs the lead". */}
-      {title && <h2 className="gwui-section-title gwui-light-needs-title">{title}</h2>}
+      {title && <h2 className="t-h2 gwui-light-needs-title">{title}</h2>}
       {NEEDS.map((_, i) => <div key={i} ref={s.slot(`needs:${i}`)} className="gwui-light-slot" />)}
     </div>
   )
@@ -213,12 +213,12 @@ export function TheLightBoxes() {
   const s = useContext(LightSlots)
   if (!s) return null
   return (
-    <section className="gwui-section gwui-light-else" aria-labelledby="gwui-light-else-h">
-      <div className="gwui-section-h">
-        <h2 id="gwui-light-else-h" className="gwui-section-title">Everything else</h2>
-        <span className="gwui-section-note">Tap any line to see more</span>
+    <section className="sec gwui-light-else" aria-labelledby="gwui-light-else-h">
+      <div className="sec-h">
+        <h2 id="gwui-light-else-h" className="t-h2">Everything else</h2>
+        <span className="t-small mut">Tap any line to see more</span>
       </div>
-      <div className="gwui-section-body">
+      <div>
         <div className="gwui-boxes">
           {BOX_ORDER.map((box) => (
             <Box key={box} name={boxName(box, s.glance)} facts={s.glance.boxes?.[box] ?? []} defaultOpen={box === 'work' && s.onALaptop}>
@@ -257,12 +257,12 @@ export function TheLightSummaryFirst() {
   if (!s) return null
   return (
     <>
-      <section className="gwui-section gwui-light-glance" aria-labelledby="gwui-light-glance-h">
-        <div className="gwui-section-h">
-          <h2 id="gwui-light-glance-h" className="gwui-section-title">At a glance</h2>
-          <span className="gwui-section-note">For you as an admin. The lead runs this check-in.</span>
+      <section className="sec gwui-light-glance" aria-labelledby="gwui-light-glance-h">
+        <div className="sec-h">
+          <h2 id="gwui-light-glance-h" className="t-h2">At a glance</h2>
+          <span className="t-small mut">For you as an admin. The lead runs this check-in.</span>
         </div>
-        <div className="gwui-section-body">
+        <div>
           <div className="gwui-light-glance-rows">
             {BOX_ORDER.map((box) => (
               <div key={box} className="gwui-light-glance-row">

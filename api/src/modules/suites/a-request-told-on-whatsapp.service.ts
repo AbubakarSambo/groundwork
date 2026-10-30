@@ -1,3 +1,4 @@
+import { whatsAppCouldNotTakeIt } from '../whatsapp/by-email-instead';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -63,11 +64,17 @@ export class ARequestToldOnWhatsApp {
     for (const userId of approverUserIds) {
       try {
         const to = await this.reach(organizationId, userId);
-        if (!to.phone) continue;
         const said = aRequestIsWaiting(to.firstName, request.firstName, request.what);
-        const sent = await this.whatsapp.sendFor(organizationId, to.phone, said.text, { kind: said.kind, params: said.params });
+        const sent = to.phone ? await this.whatsapp.sendFor(organizationId, to.phone, said.text, { kind: said.kind, params: said.params }) : null;
         /* One record of who did what (decision 85, build step 5): told, only when it went. */
         if (sent?.sent) await recordIt(this.prisma, { organizationId, suite: SUITE_OF_A_REQUEST[request.kind], ref: request.ref, kind: 'told', toUserId: userId, basis: { message: said.kind } });
+        /*
+         * WHEN WHATSAPP CANNOT TAKE IT, BY EMAIL, STRAIGHT AWAY (Hafsah, 25 October: finance approvals must work every time). No number,
+         * a first message before Meta approves the first-contact template, outside the 24 hours with no template, or Meta refusing it:
+         * the approver is emailed now, and it is recorded as told, so the morning summary does not say it again. A STOP or "Not now" is
+         * the person's own word and is not overridden.
+         */
+        else if (!to.phone || whatsAppCouldNotTakeIt(sent?.error ?? null)) await this.emailOneRequest(organizationId, userId, to.firstName, said.text, request);
       } catch (err: any) {
         this.logger.warn(`Could not tell an approver about a ${request.kind} request: ${err?.message}`);
       }
@@ -104,6 +111,16 @@ export class ARequestToldOnWhatsApp {
    * the person's quiet hours, on leave, or when they said "Not now": the next morning tries again.
    * Each request it covers is recorded as told, so the next summary is only of what has not been said yet.
    */
+  /** One waiting request, by email, now. Recorded as told so the morning summary does not repeat it. */
+  private async emailOneRequest(organizationId: string, userId: string, firstName: string | null, text: string, request: AWaitingRequest): Promise<void> {
+    if (!this.mailer) return;
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, deletedAt: true } }).catch(() => null);
+    if (!user?.email || user.deletedAt) return;
+    const base = (this.config?.get<string>('resend.frontendUrl') || '').replace(/\/$/, '');
+    await this.mailer.sendApprovalsSummary(user.email, `${request.firstName} is waiting for you`, firstName ? `Hi ${firstName},` : 'Hello,', text.replace(/^Hi [^,]+, /, ''), `${base}/today`);
+    await recordIt(this.prisma, { organizationId, suite: SUITE_OF_A_REQUEST[request.kind], ref: request.ref, kind: 'told', toUserId: userId, basis: { message: 'request-waiting:email' } });
+  }
+
   async summarise(
     organizationId: string, userId: string,
     mine: { counts: { all: number; leave: number; spend: number; pastTheDeadline: number }; refs: { suite: 'leave' | 'spend'; id: string }[]; oldestWorkingDays: number },

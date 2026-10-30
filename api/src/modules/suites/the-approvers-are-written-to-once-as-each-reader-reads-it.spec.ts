@@ -20,7 +20,7 @@ beforeEach(() => { jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 
 afterEach(() => { jest.useRealTimers(); });
 
 /** The hundred, with a phone each, a real sender, an email that is kept, and the real clock. */
-function aWorldThatMessages(opts: { stopped?: string[]; sentToday?: Record<string, string[]>; noPhone?: string[]; outsideTheWindow?: boolean } = {}) {
+function aWorldThatMessages(opts: { stopped?: string[]; sentToday?: Record<string, string[]>; noPhone?: string[]; outsideTheWindow?: boolean; neverInTouch?: boolean } = {}) {
   const w = aHundredPeople();
   const fetchSpy = jest.fn(async () => ({ ok: true, status: 200 }));
   (global as any).fetch = fetchSpy;
@@ -37,7 +37,9 @@ function aWorldThatMessages(opts: { stopped?: string[]; sentToday?: Record<strin
   Object.assign(w.prisma, {
     platformSetting: { findUnique: jest.fn(async () => ({ value: true })) },
     whatsAppConnection: { findUnique: jest.fn(async () => null) },
-    whatsAppInboundMessage: { findFirst: jest.fn(async () => null) },
+    /* Everybody here has written to Groundwork before (their last message is stamped above), so each number has an inbound message on
+       record and is not a first contact (decision 106). Without that row the world contradicted itself and nothing went on WhatsApp. */
+    whatsAppInboundMessage: { findFirst: jest.fn(async () => (opts.neverInTouch ? null : { messageId: 'in-1' })) },
     /* What was sent to one number today, which is all "how often" asks of it. */
     whatsAppSend: {
       findMany: jest.fn(async ({ where }: any) => sendRows.filter((r) => (!where?.phone?.in || where.phone.in.includes(r.phone)) && (!where?.createdAt?.gte || r.createdAt >= where.createdAt.gte))),
@@ -74,6 +76,25 @@ describe('a request on its own goes straight away, as decided', () => {
     await w.spending.tellWhoDecides(request);
     expect(x.wentOnWhatsApp()).toHaveLength(1);
     expect(x.wentOnWhatsApp()[0].text).toMatch(new RegExp(`^Hi ${x.user('finance.m1').firstName}, .+ has asked for KES [\\d,]+ for .+, and it is waiting for you\\.`));
+  });
+});
+
+describe('an approver Groundwork has never been in touch with', () => {
+  /* Finance approvals must reach finance every time (Hafsah, 25 October). Until Meta approves the first-contact template, the first
+     message to a number cannot go on WhatsApp, so the same message goes by email instead, straight away. */
+  it('is told by email, straight away, when WhatsApp cannot take the first message, and the morning does not say it again', async () => {
+    const x = aWorldThatMessages({ neverInTouch: true, outsideTheWindow: true });
+    const w = x.w;
+    w.spend.filter((r) => r.status === 'waiting' && r.step >= 1 && !(r.step === 1 && r.amount > 50_000)).forEach((r) => { r.status = 'declined'; });
+    const request = w.spend.find((r) => r.status === 'declined' && r.step === 1)!;
+    request.status = 'waiting';
+    await w.spending.tellWhoDecides(request);
+    expect(x.wentOnWhatsApp()).toHaveLength(0);
+    const finance = x.user('finance.m1');
+    expect(x.emails).toHaveLength(1);
+    expect(x.emails[0]).toMatchObject({ to: finance.email, greeting: `Hi ${finance.firstName},` });
+    expect(x.emails[0].subject).toMatch(/ is waiting for you$/);
+    expect(x.emails[0].paragraph).toMatch(/has asked for KES [\d,]+ for .+, and it is waiting for you\./);
   });
 });
 

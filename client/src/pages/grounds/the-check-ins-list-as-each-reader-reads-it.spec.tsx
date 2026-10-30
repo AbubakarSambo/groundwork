@@ -89,8 +89,8 @@ describe('the check-ins list, as Hafsah reads it (she runs two and is in two)', 
     expect(screen.getByText('Every check-in you run or take part in. Each has its own board.')).toBeTruthy()
     await screen.findByRole('table', { name: 'You run' })
     /* Rebuilt from the shared parts (group 2): each section heading is now the shared `Section`
-       component (`gwui-section-h`), in place of the page's own `gw-ci-section-head`. */
-    const sections = [...document.querySelectorAll('.gwui-section-h')].map(h => h.textContent)
+       component (`sec-h`), in place of the page's own `gw-ci-section-head`. */
+    const sections = [...document.querySelectorAll('.sec-h')].map(h => h.textContent)
     expect(sections).toEqual(['You run2 open', 'You’re in2 open', 'Finished'])
   })
 
@@ -141,7 +141,7 @@ describe('the check-ins list, as an admin reads it', () => {
     expect(rowsOf(table)).toEqual([['Warehouse, Q3Run by Peter Otieno. Weekly.', 'Keep a read on live work', '', 'Just started']])
     expect(screen.queryByRole('table', { name: 'You run' })).toBeNull()
     /* U.5 review: and says first that none of these are theirs. */
-    expect(screen.getByText('You do not run any check-ins, and you are not in any yet.')).toBeTruthy()
+    expect(screen.getByText('No check-ins yet. Start one.')).toBeTruthy()
   })
 
   it('an admin who also runs one is not told they run none', async () => {

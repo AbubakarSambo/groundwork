@@ -57,7 +57,7 @@ export function TheMorningAtTheTop({ m, b }: { m: TheMorningServed; b: Any }) {
       ))}
       {deals.length > 0 && (
         <div className="pb-morning-deals">
-          <button type="button" className="gwui-btn" aria-expanded={open} onClick={() => setOpen((x) => !x)}>
+          <button type="button" className="btn" aria-expanded={open} onClick={() => setOpen((x) => !x)}>
             {open ? 'Hide the deals' : `See all ${deals.length} deals`}
           </button>
           {open && (
