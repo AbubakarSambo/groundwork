@@ -42,15 +42,15 @@ export interface ALineOnRecord {
 
 const SAID_OF_EVERY_WAIT = new Set(['unit', 'answer', 'reply', 'response', 'decision', 'update', 'call', 'message', 'word', 'news', 'thing', 'information', 'info', 'kes', 'ksh']);
 const STOP = new Set(['the', 'a', 'an', 'for', 'of', 'on', 'to', 'from', 'with', 'and', 'or', 'my', 'our', 'their', 'his', 'her', 'its', 'this', 'that', 'some', 'any', 'about', 'in', 'at', 'by', 'it']);
-const one = (w: string) => w.replace(/ies$/, 'y').replace(/([^s])s$/, '$1');
-const wordsOf = (t: string) => String(t ?? '').toLowerCase().replace(/[‘’]/g, "'").replace(/[^a-z0-9' ]+/g, ' ').split(/\s+/).map((w) => w.replace(/'s$/, '').replace(/'/g, '')).filter(Boolean);
-const theThingsOwnWords = (what: string): string[] => wordsOf(what).filter((w) => w.length >= 3 && !STOP.has(w) && !/^\d/.test(w)).map(one).filter((w) => !SAID_OF_EVERY_WAIT.has(w));
+export const one = (w: string) => w.replace(/ies$/, 'y').replace(/([^s])s$/, '$1');
+export const wordsOf = (t: string) => String(t ?? '').toLowerCase().replace(/[‘’]/g, "'").replace(/[^a-z0-9' ]+/g, ' ').split(/\s+/).map((w) => w.replace(/'s$/, '').replace(/'/g, '')).filter(Boolean);
+export const theThingsOwnWords = (what: string): string[] => wordsOf(what).filter((w) => w.length >= 3 && !STOP.has(w) && !/^\d/.test(w)).map(one).filter((w) => !SAID_OF_EVERY_WAIT.has(w));
 
 const IT_HAPPENED = /\b(?:brought|delivered|sent|gave|given|handed|dropped|shared|arrived|received|got|came|paid|returned|signed|approved|answered|replied|done|sorted|cleared|finished|completed)\b/i;
-const NOT_YET = /\b(?:not|never|no|still|yet|haven't|hasn't|hadn't|didn't|don't|doesn't|won't|will|going to|need to|needs to|wish|hope|should|would|could|if|until|unless|forgot)\b|n't\b|\bI'll\b|\bhe'll\b|\bshe'll\b|\bthey'll\b/i;
-const NOT_WAITING_ANY_MORE = /\b(?:not|no longer)\s+waiting\s+(?:on|for)\b[^.;!?]*?(?:\b(?:any ?more|now)\b|$)|\bno longer waiting\b/i;
+export const NOT_YET = /\b(?:not|never|no|still|yet|haven't|hasn't|hadn't|didn't|don't|doesn't|won't|will|going to|need to|needs to|wish|hope|should|would|could|if|until|unless|forgot)\b|n't\b|\bI'll\b|\bhe'll\b|\bshe'll\b|\bthey'll\b/i;
+export const NOT_WAITING_ANY_MORE = /\b(?:not|no longer)\s+waiting\s+(?:on|for)\b[^.;!?]*?(?:\b(?:any ?more|now)\b|$)|\bno longer waiting\b/i;
 
-const sentences = (t: string) => String(t ?? '').replace(/\[[^\]]*\]/g, '').replace(/[‘’]/g, "'").split(/(?<!\b(?:v|vs|V|Vs|Mr|Mrs|Ms|Dr)\.)(?<=[.;!?])\s+/).map((s) => s.trim()).filter(Boolean);
+export const sentences = (t: string) => String(t ?? '').replace(/\[[^\]]*\]/g, '').replace(/[‘’]/g, "'").split(/(?<!\b(?:v|vs|V|Vs|Mr|Mrs|Ms|Dr)\.)(?<=[.;!?])\s+/).map((s) => s.trim()).filter(Boolean);
 
 /*
  * PART OF IT CAME, AND THE REST IS STILL AWAITED (messages test, third run, item 9). Aisha waited on the client for the witness
@@ -59,8 +59,8 @@ const sentences = (t: string) => String(t ?? '').replace(/\[[^\]]*\]/g, '').repl
  * said "Aisha Kamau is no longer waiting on the client for the witness statements." Some of the thing is not the thing: a sentence
  * that says part of it came does not clear it, and nor does a line in which the one waiting says they are still waiting.
  */
-const ONLY_PART_OF_IT = /\b(?:(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(?:out\s+)?of\s+(?:the\s+|our\s+|their\s+)?(?:two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)|some of|part of|half of|most of|all but|the first (?:one|two|three|part|half)|only (?:one|two|three|some|part))\b/i;
-const STILL_WAITING = /\b(?:still|just|now)\s+waiting\b|\bwaiting\s+(?:on|for)\s+the\s+(?:last|rest|final|other|remaining)\b|\bstill\s+(?:missing|outstanding|to come)\b/i;
+export const ONLY_PART_OF_IT = /\b(?:(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(?:out\s+)?of\s+(?:the\s+|our\s+|their\s+)?(?:two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)|some of|part of|half of|most of|all but|the first (?:one|two|three|part|half)|only (?:one|two|three|some|part))\b/i;
+export const STILL_WAITING = /\b(?:still|just|now)\s+waiting\b|\bwaiting\s+(?:on|for)\s+the\s+(?:last|rest|final|other|remaining)\b|\bstill\s+(?:missing|outstanding|to come)\b/i;
 
 /*
  * WHAT AN OUTSIDE BODY GAVE, SAID BY ANYBODY IN THE CHECK-IN (messages test, third run, item 14). Brian waited on the court for a hearing
@@ -91,7 +91,7 @@ function anOutsideBodyGaveIt(line: ALineOnRecord, wait: AnOpenWait, thing: strin
  * filed, lodged, served or submitted, said by either side, with nothing in the sentence that says it has not.
  */
 const WORK_ON_IT = new Set(['revision', 'review', 'comment', 'draft', 'edit', 'change', 'input', 'feedback', 'amendment', 'correction', 'final', 'finalised', 'finalized', 'version']);
-const IT_WAS_FILED = /\b(?:filed|lodged|served|submitted)\b/i;
+export const IT_WAS_FILED = /\b(?:filed|lodged|served|submitted)\b/i;
 function theThingItselfWasFiled(line: ALineOnRecord, wait: AnOpenWait, thing: string[]): boolean {
   if (!thing.some((w) => WORK_ON_IT.has(w))) return false;
   const itself = thing.filter((w) => !WORK_ON_IT.has(w));
@@ -128,7 +128,7 @@ function theLeadDecidedIt(line: ALineOnRecord, wait: AnOpenWait, leads: Readonly
  */
 const A_NUMBER = /\b[A-Za-z]{1,6}[-\s]?\d{2,8}\b/g;
 const IT_WENT_OUT = /\b(?:sent|raised|issued|filed|submitted|delivered)\b/i;
-const numbersIn = (t: string) => (String(t ?? '').match(A_NUMBER) ?? []).map((n) => n.toLowerCase().replace(/[-\s]/g, ''));
+export const numbersIn = (t: string) => (String(t ?? '').match(A_NUMBER) ?? []).map((n) => n.toLowerCase().replace(/[-\s]/g, ''));
 function whatWaitedForApprovalWentOut(line: ALineOnRecord, wait: AnOpenWait): boolean {
   if (line.participantId !== wait.fromParticipantId || !/\bapprov/i.test(wait.what)) return false;
   const numbers = numbersIn(wait.what);
@@ -318,13 +318,21 @@ export async function clearTheWaitsAnEventEnded(prisma: any, groundId: string): 
   })) ?? [];
   let n = 0;
   for (const { w, e } of events) {
-    const after = new Date(w.createdAt).getTime();
+    /*
+     * AN EVENT SAID BEFORE THE WAIT WAS RAISED HAS STILL HAPPENED (polish round 15, U36). On Friday 16 October at 8.37 Wanjiru said she
+     * was waiting on Brian for "the Kasarani Foods v. Tumaini Traders reply to be filed". Brian had said on Wednesday 14 October "The reply
+     * in Kasarani Foods v. Tumaini Traders was filed today." Only lines after the wait were read, so at 11.13 Brian was told "Wanjiru is
+     * waiting on you for the Kasarani Foods v Tumaini Traders reply to be filed, since this morning." A filing, a date set or a signature
+     * happens once: the wait is over the moment it is raised, and it is never served as open.
+     */
+    const made = new Date(w.createdAt).getTime();
     const done = lines
-      .filter((l) => l.checkInId !== w.sourceCheckInId && new Date(l.createdAt).getTime() > after)
+      .filter((l) => l.checkInId !== w.sourceCheckInId)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       .find((l) => aLineSaysTheEventHappened(l, e));
     if (!done) continue;
-    await prisma.groundDependency.updateMany({ where: { id: w.id, clearedAt: null }, data: { status: 'CLEARED', clearedAt: new Date(done.createdAt) } });
+    const clearedAt = new Date(Math.max(made, new Date(done.createdAt).getTime()));
+    await prisma.groundDependency.updateMany({ where: { id: w.id, clearedAt: null }, data: { status: 'CLEARED', clearedAt } });
     n++;
   }
   return n;

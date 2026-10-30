@@ -1,3 +1,5 @@
+import { documentsApi } from '@/api/documents'
+import { UPLOAD_ACCEPT_ATTR, WHAT_YOU_CAN_UPLOAD_SHORT } from '@/lib/what-you-can-upload'
 import { whenItWas } from '../../lib/a-date-reads-the-same-everywhere'
 import { useState, useEffect, useRef } from 'react'
 import { HOW_A_SITUATION_IS_CHOSEN, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
@@ -1115,7 +1117,7 @@ export function groupOf(card: { cardKey: string; scenario: string }): string {
  * THE OPENING LINE, AND THE CLOSE, OF THE LEAD'S SETUP (Hafsah, 26 October 2026). Said in the chat itself: what this is for, how long it
  * takes and how to stop, added in front of the first message she reads, which stays as it was; and one line when setup is done.
  */
-export const THE_SETUP_LINE = 'This sets up your team’s check-ins, so they can give updates against what you tell me here. It takes about 10 minutes, and you can stop any time with End session.'
+export const THE_SETUP_LINE = 'This sets up your team’s check-ins and records where things stand today. It takes about 10 minutes, and you can stop any time with End session.'
 export function theSetupIsDoneSaying(firstOpensOn: string | null): string {
   const d = firstOpensOn ? new Date(`${firstOpensOn}T12:00:00Z`) : null
   const day = d && !isNaN(d.getTime()) ? whenItWas(d, 'weekdayAndDay', 'UTC') : null
@@ -2471,6 +2473,8 @@ export function EntryChatPage() {
   }
   /* The moment setup is ready, the check-in begins. Not for the anchor, whose setup conversation is
      already the whole conversation (request 165), and never twice. */
+  /* Kept only for a setup that was ready before 26 October and never reached its check-in: it still opens one. Setup that ends now is the
+     first check-in itself (see the ready step in sendOnboarding), so this finds the history already there and does nothing. */
   useEffect(() => {
     if (!onboardingReady || onboardingLoading || flowPath !== null || isAnchorDraft()) return
     if (phase !== 'onboarding' || history.length > 0 || startCheckin.isPending) return
@@ -2707,7 +2711,15 @@ export function EntryChatPage() {
        * transcript becomes the session's record straight away, and the next thing she sees is the
        * reveal and the people step.
        */
-      if (res.ready && isAnchorDraft()) {
+      /*
+       * AND NOW FOR EVERY LEAD (Hafsah, 26 October 2026): setup is the lead's first check-in. It gathered the lead's own first update and
+       * ended with "Anything else I should know?", so its transcript is the first session's record and no second conversation opens.
+       */
+      if (res.ready) {
+        if (!isAnchorDraft()) {
+          setFlowPath('self')
+          setOnboardingStep(ONBOARDING_STEPS + 1)
+        }
         setHistory(updatedHistory)
         setClosed(true)
         setShowSave(true)
@@ -2758,7 +2770,14 @@ export function EntryChatPage() {
   }
 
   // Read a text-based file client-side (no ground exists yet during onboarding).
+  /*
+   * A FILE OF ANY KIND IS READ (a new company's lead, 26 October 2026: "the lead couldn't upload docs"). Plain text is read here; a PDF,
+   * Word, Excel or PowerPoint file, or a photo, is read by the server, which keeps nothing (documentsApi.readForSetup). What comes back
+   * goes into the conversation, and Groundwork says what is in it and uses it from then on.
+   */
+  const isPlainText = (file: File) => file.type.startsWith('text/') || /\.(txt|csv|md|json|log)$/i.test(file.name)
   async function readDocFile(file: File): Promise<string> {
+    if (!isPlainText(file)) return (await documentsApi.readForSetup(file)).text
     return new Promise((resolve, reject) => {
       const r = new FileReader()
       r.onload = () => resolve(String(r.result || ''))
@@ -2770,12 +2789,12 @@ export function EntryChatPage() {
   async function handleDocFileUpload(file: File) {
     try {
       const text = await readDocFile(file)
-      if (!text.trim()) { toast.error('That file looks empty or is not plain text. Try pasting the content instead.'); return }
+      if (!text.trim()) { toast.error('Nothing could be read from that file. Try pasting the content instead.'); return }
       setDocLabel(file.name)
       setDocPasteText(text)
       setDocTab('paste') // show what was read so they can add context and confirm
-    } catch {
-      toast.error('Could not read that file. Paste the text instead.')
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message ?? 'Could not read that file. Paste the text instead.')
     }
   }
 
@@ -2956,10 +2975,13 @@ export function EntryChatPage() {
       setUploadedDoc({ name: file.name, content: content.slice(0, A_MESSAGE_MAX) })
     }
     reader.onerror = () => toast.error('Could not read file.')
-    if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.md')) {
+    if (isPlainText(file)) {
       reader.readAsText(file)
     } else {
-      setUploadedDoc({ name: file.name, content: `[Binary file: ${file.name}]` })
+      /* Read by the server, never sent in as "[Binary file: ...]" with nothing in it. */
+      documentsApi.readForSetup(file)
+        .then((r) => setUploadedDoc({ name: file.name, content: r.text.slice(0, A_MESSAGE_MAX) }))
+        .catch((err: any) => { toast.error(err?.response?.data?.message ?? 'Could not read that file. Paste the text instead.'); setDocContextMode(false) })
     }
     e.currentTarget.value = ''
     setDocContext('')
@@ -2973,7 +2995,8 @@ export function EntryChatPage() {
     /* The whole turn has to fit a message (8,000 characters, the same cap every door has), so the
        document part gives way to the wrapper and the context rather than the server refusing it. */
     const head = `[Document: "${uploadedDoc.name}"]\n`
-    const tail = `\n\nContext from me: ${ctx || 'See attached document.'}`
+    /* Groundwork says what is in it, then uses it (Hafsah, 26 October 2026: "it tells them what's in the doc and uses it as context"). */
+    const tail = `\n\nContext from me: ${ctx || 'See attached document.'}\n\nPlease read it, tell me in a few short lines what is in it that I have not already said, and use it from now on.`
     const content = `${head}${uploadedDoc.content.slice(0, Math.max(0, A_MESSAGE_MAX - head.length - tail.length))}${tail}`
     setUploadedDoc(null)
     setDocContext('')
@@ -3777,7 +3800,11 @@ export function EntryChatPage() {
       {inviteAdded.length > 0 && (
         <div className="gwui-ec-savecard-invite-list">
           {inviteAdded.map(e => (
-            <div key={e} className="gwui-ec-savecard-invite-chip">✓ {shownEntry(e)}</div>
+            <div key={e} className="gwui-ec-savecard-invite-chip">
+              ✓ {shownEntry(e)}
+              {/* The prototype's "×": somebody added by mistake comes off the list before anything is sent (26 October 2026). */}
+              <button type="button" className="gwui-plain-link" aria-label={`Remove ${shownEntry(e)}`} onClick={() => setInviteAdded(prev => prev.filter(x => x !== e))}>×</button>
+            </div>
           ))}
         </div>
       )}
@@ -4469,8 +4496,8 @@ export function EntryChatPage() {
                       </div>
                       {docTab === 'upload' && (
                         <label className="gwui-ec-doc-upload-label">
-                          📎 Choose a text file (.txt, .md, .csv). For PDF or Word, paste the text instead.
-                          <input type="file" accept=".txt,.md,.csv,.json,.log" className="gwui-sr-only"
+                          📎 Choose a file: {WHAT_YOU_CAN_UPLOAD_SHORT}.
+                          <input type="file" accept={UPLOAD_ACCEPT_ATTR} className="gwui-sr-only"
                             onChange={e => { const f = e.target.files?.[0]; if (f) handleDocFileUpload(f) }} />
                         </label>
                       )}
@@ -4703,7 +4730,7 @@ export function EntryChatPage() {
                 <label htmlFor="entry-doc-upload-chip" title="Upload a document" className="gwui-ec-quick-action gwui-ec-quick-action-attach">
                   Attach a document
                 </label>
-                <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" className="gwui-sr-only" onChange={handleFileChange} />
+                <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept={UPLOAD_ACCEPT_ATTR} className="gwui-sr-only" onChange={handleFileChange} />
                 <div className="gwui-ec-quick-actions-end">
                   {/* No arrow (U.8 review): a button says what it does, and the other "End session"
                       button on this same screen (the natural-close prompt above) already says it
@@ -4749,6 +4776,11 @@ export function EntryChatPage() {
                   sendLabel="Send message"
                   placeholder="Type your response."
                   inputRef={taRef}
+                  /* The attach button beside the typing box, back (it went with the composer rebuild, 9be66c0ef). */
+                  onPlus={() => fileRef.current?.click()}
+                  plusGlyph="+ Doc"
+                  plusLabel="Add a document or a photo"
+                  plusDisabled={loading}
                 />
               </div>
             )}

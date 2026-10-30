@@ -37,6 +37,22 @@ export class InviteDocumentsController {
   }
 }
 
+/** A file read for the person signed in, during setup, before a check-in exists. Nothing is stored. */
+@ApiTags('Documents')
+@ApiBearerAuth()
+@Controller('documents/read')
+export class SetupDocumentsController {
+  constructor(private readonly docs: DocumentsService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Read a file (PDF, Word, Excel, PowerPoint, photo or text) during setup and give back its text. Nothing is stored.' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  read(@UploadedFile() file: Express.Multer.File) {
+    return this.docs.readForSetup(file);
+  }
+}
+
 @ApiTags('Documents')
 @ApiBearerAuth()
 @Controller('grounds/:groundId/documents')

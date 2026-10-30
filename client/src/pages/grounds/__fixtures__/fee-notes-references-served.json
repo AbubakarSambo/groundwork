@@ -57,6 +57,7 @@
           "added": "You, 1 September",
           "addedOn": "2026-09-01",
           "summary": "Rates and terms: payment within 30 days.",
+          "usedFor": null,
           "whoCanSee": "Everyone",
           "kind": "PDFs"
         },
@@ -66,6 +67,7 @@
           "added": "Njeri, 1 September",
           "addedOn": "2026-09-01",
           "summary": "When to raise, remind, call and escalate.",
+          "usedFor": null,
           "whoCanSee": "Everyone",
           "kind": "Documents"
         },
@@ -75,6 +77,7 @@
           "added": "You, 3 September",
           "addedOn": "2026-09-03",
           "summary": "Three fee notes of KES 250,000: on instruction, on filing the reply, on the hearing date.",
+          "usedFor": null,
           "whoCanSee": "Only you",
           "kind": "PDFs"
         }
@@ -90,6 +93,8 @@
           "id": "ev-fn004",
           "readAs": "A payment",
           "shows": "Equity Bank remittance advice: KES 250,000 received from Kasarani Foods for FN-004.",
+          "summary": null,
+          "usedFor": "Proof for FN-004, on the board.",
           "belongsTo": "Fee note FN-004",
           "addedBy": "Njeri",
           "addedById": "p-njeri",
@@ -102,6 +107,8 @@
           "id": "ev-fn007-email",
           "readAs": "A client email",
           "shows": "Will pay once head office releases the funds.",
+          "summary": null,
+          "usedFor": null,
           "belongsTo": "Fee note FN-007",
           "addedBy": "Aisha",
           "addedById": "p-aisha",
@@ -135,6 +142,7 @@
       "emptySays": "Nobody has asked about this work yet. Questions asked with Ask about this work will show here, with their answers."
     },
     "suggested": [],
+    "peopleAlsoSeenBy": "",
     "people": [
       {
         "participantId": "p-brian",
@@ -160,8 +168,7 @@
         "helpWith": null,
         "earlier": []
       }
-    ],
-    "peopleAlsoSeenBy": ""
+    ]
   },
   "aisha": {
     "on": true,
@@ -221,6 +228,7 @@
           "added": "Wanjiru, 1 September",
           "addedOn": "2026-09-01",
           "summary": "Rates and terms: payment within 30 days.",
+          "usedFor": null,
           "whoCanSee": "Everyone",
           "kind": "PDFs"
         },
@@ -230,6 +238,7 @@
           "added": "Njeri, 1 September",
           "addedOn": "2026-09-01",
           "summary": "When to raise, remind, call and escalate.",
+          "usedFor": null,
           "whoCanSee": "Everyone",
           "kind": "Documents"
         }
@@ -245,6 +254,8 @@
           "id": "ev-fn007-email",
           "readAs": "A client email",
           "shows": "Will pay once head office releases the funds.",
+          "summary": null,
+          "usedFor": null,
           "belongsTo": "Fee note FN-007",
           "addedBy": "You",
           "addedById": "p-aisha",

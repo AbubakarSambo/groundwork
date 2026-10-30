@@ -17,7 +17,8 @@ describe('the first message ends on a question', () => {
   });
   it('the opening is checked after every guard that can take a question out', () => {
     const src = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
-    expect(src).toMatch(/const opening = isADeadEnd\(guarded, false\) \? withAQuestion\(guarded, \{ opening: true \}\) : guarded;/);
+    /* Wrapped since 26 October 2026 in anOpeningWithNothingLeftOver, which only takes out a stray quote mark and a question pointing at nothing. */
+    expect(src).toMatch(/const opening = anOpeningWithNothingLeftOver\(isADeadEnd\(guarded, false\) \? withAQuestion\(guarded, \{ opening: true \}\) : guarded\);/);
   });
 });
 

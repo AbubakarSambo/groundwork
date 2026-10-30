@@ -81,6 +81,9 @@ import { whatTheyAskedFor } from './what-they-asked-for-in-so-many-words';
 import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
+import { whatIsAnswered, whatItAsksAgain, doNotAskAgain, withoutAskingAgain, theQuestionAskedBefore, doNotAskThatAgain, withoutTheSameQuestion } from './setup-never-asks-twice';
+import { THE_FIRST_UPDATE_TOO, SETUP_IS_DONE, whereSetupEnds, whatToSayAboutTheEndOfSetup, withoutTalkOfTheNextScreen } from './setup-is-the-first-check-in';
+import { ANYTHING_ELSE } from '../conversation/a-short-day';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
 import { PromptsService } from '../prompts';
 import { theAnchorGuidance, theChallengeWasUsed, theHopeWasAskedAndAnswered, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
@@ -1230,22 +1233,41 @@ Rules:
     }
     const settled = whatIsSettledAndWhatIsNot(soFar);
     const theyAreKnownHere = whatTheyAlreadyHave(await this.whatThisLeadAlreadyHas(askedBy));
+    /*
+     * WHERE THE END OF SETUP STANDS, FROM ITS OWN TURNS. The board's needs are read from what the last turn already worked out (`soFar`),
+     * because this turn's own reading runs beside the reply. Once they answer "Anything else I should know?" with nothing, the product
+     * writes the last line itself.
+     */
+    const theirLastNow = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
+    const theBoardIsCovered = !!soFar && theGate(soFar as any, scenarioForTheQuestion ?? scenarioInput ?? undefined);
+    const endOfSetup = whereSetupEnds(
+      (messages as { role: string; content: string }[]).filter((m) => m.role === 'assistant').map((m) => m.content ?? '').reverse(),
+      theirLastNow,
+      theBoardIsCovered,
+    );
+    const aboutTheEndOfSetup = whatToSayAboutTheEndOfSetup(theBoardIsCovered, endOfSetup);
     const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioForTheQuestion, momentInput)
       + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '')
       + (theyAreKnownHere ? `\n\n---\n\n${theyAreKnownHere}` : '')
       + (settled ? `\n\n---\n\n${settled}` : '')
+      /* Setup is the lead's first check-in (26 October 2026). See setup-is-the-first-check-in. */
+      + `\n\n---\n\n${THE_FIRST_UPDATE_TOO}`
       /* Last, after everything. See the-last-thing-it-reads-is-the-thing-it-must-not-miss. */
-      + `\n\n---\n\n${theThingsThatCannotBeMissed(theirWords, theyPushedBackOnTheQuestions(theirWords))}`;
+      + `\n\n---\n\n${theThingsThatCannotBeMissed(theirWords, theyPushedBackOnTheQuestions(theirWords))}`
+      /* The end of setup is read last of all, so it is not lost under the rest (26 October 2026: it was never asked from the middle). */
+      + (aboutTheEndOfSetup ? `\n\n---\n\n${aboutTheEndOfSetup}` : '');
     /*
      * THE REPLY AND THE EXTRACTION RUN SIDE BY SIDE. The extraction reads what the person said, and
      * they have already said it; the reply being composed at the same time is a question, and a
      * question adds no fact about their situation. In sequence the two doubled the turn.
      */
-    const replyInFlight = this.guardedReply(
-      repeating ? `${setupPrompt}\n\n---\n\n${repeating}` : setupPrompt,
-      messages,
-      onDelta,
-    );
+    const replyInFlight = endOfSetup.close
+      ? Promise.resolve(SETUP_IS_DONE).then((done) => { onDelta?.(done); return done; })
+      : this.guardedReply(
+        repeating ? `${setupPrompt}\n\n---\n\n${repeating}` : setupPrompt,
+        messages,
+        onDelta,
+      );
 
     // Second lightweight call to extract structured fields
     const EXTRACT_SYSTEM = `You are extracting structured data from an onboarding conversation for Groundwork.
@@ -1356,7 +1378,7 @@ from finishing at all.`;
     const extractionInFlight: Promise<typeof extracted | null | Error> = (async () =>
       this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, messages, EXTRACT_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true }))()
       .catch((err: Error) => err);
-    const reply = await replyInFlight;
+    const firstReply = await replyInFlight;
     try {
       const result = await extractionInFlight;
       if (result instanceof Error) throw result;
@@ -1396,6 +1418,28 @@ from finishing at all.`;
         if (Object.keys(theirAddresses).length) (extracted as any).peopleEmails = theirAddresses;
       }
     }
+    /*
+     * NEVER ASKED TWICE (26 October 2026). A reply that asks why now, or the lead's own part, after they already said it, is written again
+     * without it; if it still asks, that question comes out. See setup-never-asks-twice.
+     */
+    let reply = firstReply;
+    if (!endOfSetup.close) {
+      const answered = whatIsAnswered({ decision: soFar?.decision ?? extracted.decision, yourRole: soFar?.yourRole ?? extracted.yourRole }, theirWords);
+      const again = whatItAsksAgain(reply, answered);
+      if (again.length) {
+        this.logger.warn(`Setup asked again for ${again.join(' and ')}; written again without it.`);
+        const second = await this.guardedReply(`${setupPrompt}\n\n---\n\n${doNotAskAgain(answered, again)}`, messages).catch(() => reply);
+        reply = whatItAsksAgain(second, answered).length ? withoutAskingAgain(second, answered) : second;
+      }
+      const earlier = (messages as { role: string; content: string }[]).filter((m) => m.role === 'assistant').map((m) => m.content ?? '');
+      const repeated = theQuestionAskedBefore(reply, earlier);
+      if (repeated) {
+        this.logger.warn(`Setup asked "${repeated.slice(0, 80)}" again; written again without it.`);
+        const second = await this.guardedReply(`${setupPrompt}\n\n---\n\n${doNotAskThatAgain(repeated)}`, messages).catch(() => reply);
+        const theyHaveSaidALot = messages.filter((m) => m.role === 'user').length >= 3;
+        reply = theQuestionAskedBefore(second, earlier) || whatItAsksAgain(second, answered).length ? withoutTheSameQuestion(withoutAskingAgain(second, answered), earlier, theyHaveSaidALot) : second;
+      }
+    }
     const stoppedAsking = theSetupHasStoppedAsking(messages, reply);
     /*
      * THE AIM IS NOT IN THIS GATE, AND a-check-in-with-no-aim-has-nothing-to-read-against HOLDS THE
@@ -1404,7 +1448,14 @@ from finishing at all.`;
      * twenty-two to two. Read that file before trying again.
      */
     const forThisSituation = scenarioForTheQuestion ?? scenarioInput ?? undefined;
-    const ready = theGate(extracted, forThisSituation) || stoppedAsking;
+    /* Ready once setup has ended the way a check-in ends, or the assistant has stopped asking. Never the moment the gate opens: the first update comes next. */
+    /*
+     * WHEN THE MODEL STOPS ASKING, SETUP ASKS THE LAST QUESTION ITSELF (26 October 2026). Achieng's third answer was met with "The next
+     * screen will ask if you want to check in too", the two-part flow that is gone, and setup ended before "Anything else I should know?".
+     * Now that turn's talk of a next screen is taken out and the product asks "Anything else I should know?"; only a no to it ends setup.
+     */
+    const ready = endOfSetup.close;
+    const askTheLastQuestion = stoppedAsking && !endOfSetup.close;
     if (stoppedAsking && !theGate(extracted, forThisSituation)) {
       this.logger.warn(
         `Setup finished without ${whatSetupNeverGot(extracted, forThisSituation).join(', ')} - the assistant had stopped asking.`,
@@ -1456,6 +1507,9 @@ from finishing at all.`;
     out = out
       .replace(/\bwho (?:gives|should give|will give) (?:the |their |your )?accounts?\b/gi, 'whether you will check in too')
       .replace(/\bwho (?:gives|should give|will give) (?:an? )?account\b/gi, 'whether you will check in too');
+    /* Whichever way setup ended, its last line says what was set up and what happens next. */
+    if (askTheLastQuestion) out = `${withoutTalkOfTheNextScreen(out)}\n\n${ANYTHING_ELSE}`.trim();
+    if (ready && !out.includes(SETUP_IS_DONE)) out = `${out.trim()}\n\n${SETUP_IS_DONE}`;
     return { reply: out, extracted, ready, needsPeople };
   }
 

@@ -25,7 +25,8 @@ type Phase = 'loading' | 'start' | 'sent' | 'error'
  */
 export function JoinPage() {
   const [params] = useSearchParams()
-  const joinToken = params.get('t') ?? ''
+  /* `token` too: the developer API's check-ins route handed links out as /join?token= until 26 October 2026, and those are still out there. */
+  const joinToken = params.get('t') ?? params.get('token') ?? ''
 
   const [phase, setPhase] = useState<Phase>('loading')
   const [ground, setGround] = useState<{ groundId: string; groundLabel: string; scenario: string; initiatorName: string } | null>(null)

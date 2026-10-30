@@ -392,6 +392,8 @@ export const roleMapApi = {
 export type SpendApprover = { kind: 'manager' } | { kind: 'person'; firstName: string } | { kind: 'admin' }
 export interface SpendWaiting {
   id: string
+  /** What they attached, said as a sentence, or null. */
+  attached?: string | null
   name: string
   firstName: string
   amount: number
@@ -419,6 +421,16 @@ export interface SpendBoard {
   waiting: SpendWaiting[]
   budgets: { team: string; budget: number; spent: number; left: number }[]
   teams: string[]
+}
+
+/** THE APPROVAL STEPS BY AMOUNT (GET and PUT /suites/spend/rules, thresholds only): one setting, which the spending page, Ask and the policy board all write. */
+export type ApprovalRole = 'manager' | 'departmentHead' | 'budgetOwner' | 'finance' | 'hr' | 'chiefExecutive' | 'admin'
+export interface AnAmountsSteps { above: number; steps: ApprovalRole[][] }
+export interface TheSpendRules { rules: { thresholds?: AnAmountsSteps[] }; said: string[] }
+export const spendRulesApi = {
+  get: async (): Promise<TheSpendRules> => (await apiClient.get('/suites/spend/rules', { skipForbiddenToast: true } as any)).data,
+  setThresholds: async (thresholds: AnAmountsSteps[]): Promise<TheSpendRules> =>
+    (await apiClient.put('/suites/spend/rules', { thresholds: thresholds.length ? thresholds : null })).data,
 }
 
 export const spendApi = {

@@ -37,6 +37,26 @@ function aDayInWords(at: Date, now: Date): string {
   return aShortDay(at)
 }
 
+/*
+ * EACH THING ONCE, IN THEIR WORDS (26 October 2026). Grace read Kevin's 16 October as the same sentence four times, with "Kevin Omondi has
+ * reported progress." among them: one line on the record per thing it was filed under. A sentence said once is shown once, and a line that
+ * only says they reported something says nothing.
+ */
+export function oneOfEach(lines: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const line of lines) {
+    for (const s of String(line ?? '').split(/(?<=[.!?])\s+/)) {
+      const t = s.trim()
+      const key = t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+      if (!key || seen.has(key) || /^[a-z ]+ has reported (?:progress|an update)$/.test(key)) continue
+      seen.add(key)
+      out.push(t)
+    }
+  }
+  return out
+}
+
 export function ThePersonPage() {
   const { id, participantId } = useParams<{ id: string; participantId: string }>()
   const user = useAuthStore((s) => s.user)
@@ -128,8 +148,8 @@ export function ThePersonPage() {
         </div>
         <div className="pb-person-days">
           {recent.map((n) => {
-            const said = items.filter((i) => i.sessionNumber === n && i.type !== 'COMMITMENT').map((i) => theirWords(i.text)).join(' ')
-            const will = items.filter((i) => i.sessionNumber === n && i.type === 'COMMITMENT').map((i) => theirWords(i.text))
+            const said = oneOfEach(items.filter((i) => i.sessionNumber === n && i.type !== 'COMMITMENT').map((i) => theirWords(i.text))).join(' ')
+            const will = oneOfEach(items.filter((i) => i.sessionNumber === n && i.type === 'COMMITMENT').map((i) => theirWords(i.text)))
             const when = sessionDate.get(n)
             return (
               <div className="pb-person-day" key={n}>

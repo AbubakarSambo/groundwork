@@ -460,6 +460,9 @@ export function saysWhatTheySaid(text: string): string {
 export function forHumans(text: string | null | undefined): string {
   if (!text) return '';
   let out = stripCloseMarker(text).text;
+  /* A closing quote mark at the start of a line or a sentence is left over from a cut (Kevin's openings of 15 and 19 October read
+     "” What's the latest"), so it goes, on turns saved before the opening's own check existed too (26 October 2026). */
+  out = out.replace(/(^|\n|[.!?]\s+)\s*[”]\s+/g, '$1');
   out = noFullStopInsideAName(out);
   for (const m of CONTROL_MARKERS) out = out.replace(m, '');
   out = withoutMarkdown(out);

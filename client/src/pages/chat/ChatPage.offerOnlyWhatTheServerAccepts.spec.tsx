@@ -136,7 +136,7 @@ describe('a send that never lands does not unlock the offer', () => {
     })
 
   async function typeAndSend(text: string) {
-    const box = await screen.findByPlaceholderText(/Type, or hold to speak/i, {}, { timeout: 5000 })
+    const box = await screen.findByPlaceholderText(/Type your answer/i, {}, { timeout: 5000 })
     fireEvent.change(box, { target: { value: text } })
     fireEvent.click(screen.getByRole('button', { name: /Send message/i }))
   }

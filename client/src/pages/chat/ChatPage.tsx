@@ -69,6 +69,7 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
   groundId: string; docId: string; docName: string; assessment: DocumentAssessment
   onCorrected: (a: DocumentAssessment) => void
 }) {
+  const [agreed, setAgreed] = useState(false)
   const [editing, setEditing] = useState(false)
   const [suggestsText, setSuggestsText] = useState(assessment.suggests.join('\n'))
   const [willDoText, setWillDoText] = useState(assessment.willDo.join('\n'))
@@ -104,9 +105,15 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
           <ul className="gwui-ci-assessment-list gwui-ci-assessment-list-last">
             {assessment.willDo.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
-          <button onClick={() => setEditing(true)} className="gwui-ci-assessment-link">
-            Not right? Correct this
-          </button>
+          {/* The prototype's "That's right" beside "Not right" (references-upload-in-check-in.txt), restored 26 October 2026. */}
+          {agreed ? <div className="gwui-ci-assessment-label">Kept as it reads.</div> : (
+            <div className="gwui-ci-assessment-actions">
+              <button onClick={() => setAgreed(true)} className="gwui-ci-assessment-link">That’s right</button>
+              <button onClick={() => setEditing(true)} className="gwui-ci-assessment-link">
+                Not right? Correct this
+              </button>
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -692,6 +699,24 @@ export function ChatPage() {
         })
       }
       setMsgs(v => [...v, ...newMsgs])
+      /*
+       * WHAT THE DOCUMENT SUGGESTS, SHOWN ONCE IT IS READ (26 October 2026). Since a0db2a191 ("Nobody waits for a model") the reading is
+       * written onto the document after the upload is answered, so `doc.assessment` is never on the upload's reply and this card had
+       * quietly stopped appearing. It is fetched when it is ready, for up to a minute, and shown then. the-document-card-waits-for-its-reading.spec.ts
+       */
+      if (!doc.assessment && groundId) {
+        const docId = doc.id, docName = doc.name, gid = groundId
+        void (async () => {
+          for (let i = 0; i < 20; i++) {
+            await new Promise((r) => setTimeout(r, 3000))
+            const found = await documentsApi.list(gid).then((all: any) => (Array.isArray(all) ? all : all?.data ?? []).find((d: any) => d.id === docId)).catch(() => null)
+            if (found?.assessment?.suggests?.length) {
+              setMsgs(v => v.some(m => m.id === `doc-assess-${docId}`) ? v : [...v, { id: `doc-assess-${docId}`, role: 'AI', content: '', docAssessment: { docId, docName, assessment: found.assessment } }])
+              return
+            }
+          }
+        })()
+      }
 
       // The engine has a real follow-up for a fresh upload - acknowledge it
       // by name and ask what it confirms (documentReceived), instead of
@@ -1415,9 +1440,10 @@ export function ChatPage() {
                         onSend={send}
                         sendLabel="Send message"
                         disabled={loading || completed || declined || !opened}
-                        onPlus={groundId ? () => setAttachOpen(o => !o) : undefined}
+                        /* Always beside the typing box, never missing; only disabled for the moment before the check-in has loaded (26 October 2026). */
+                        onPlus={() => { if (groundId) setAttachOpen(o => !o) }}
                         plusOpen={attachOpen}
-                        plusDisabled={completed || declined}
+                        plusDisabled={completed || declined || !groundId}
                         plusMenu={groundId ? (
                           <>
                             {/* A photo first, because that is what the check-in asks for: "A photo of it is

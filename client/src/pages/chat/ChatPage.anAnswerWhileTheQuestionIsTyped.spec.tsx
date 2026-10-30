@@ -23,7 +23,7 @@ describe('an answer sent while the question is typed out', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/checkin/ci1']}><Routes><Route path="/checkin/:checkInId" element={<ChatPage />} /></Routes></MemoryRouter></QueryClientProvider>)
     await screen.findByText(/^Last time/, {}, { timeout: 6000 })
-    const box = screen.getByPlaceholderText(/Type, or hold to speak/i)
+    const box = screen.getByPlaceholderText(/Type your answer/i)
     fireEvent.change(box, { target: { value: 'Greenfield took delivery of the 25 units today and paid on delivery.' } })
     fireEvent.keyDown(box, { key: 'Enter' })
     await screen.findAllByText('What happened with that quote?', {}, { timeout: 6000 })

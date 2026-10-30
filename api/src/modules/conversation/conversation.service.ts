@@ -232,7 +232,7 @@ import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
 import { aDayIsNamedRight } from './a-day-is-named-right';
 import { theCheckInToAddTo, WHAT_WOULD_YOU_LIKE_TO_ADD, ADD_SOMETHING_REFUSED } from './add-something';
-import { aLastTimeInTheirOwnWords, type AWordTheyWrote } from './a-last-time-is-their-own-words';
+import { aLastTimeInTheirOwnWords, type AWordTheyWrote, anOpeningWithNothingLeftOver } from './a-last-time-is-their-own-words';
 import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
 import { isShut } from '../grounds/a-ground-that-has-ended';
 import { whenTheNextSessionOpens } from '../grounds/the-check-ins-own-schedule';
@@ -325,6 +325,7 @@ import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } fro
 import { theFullerPromise, nameTwoDifferentDates } from './the-same-promise-said-more-fully';
 import { aPromiseSomebodyElseMade } from './a-promise-somebody-else-made';
 import { clearTheWaitsSaidDone, clearTheWaitsAnEventEnded } from './a-wait-said-done-is-cleared';
+import { clearTheWaitsOverAcrossTheOrganisation } from './a-wait-is-over-across-the-organisation';
 import { aWaitForTheirCheckIn, removeTheWaitsForACheckIn } from './a-wait-for-a-check-in-is-not-a-wait';
 import { whereTheirNumberStands } from './something-they-could-not-have-said-themselves';
 import { fileTheProofOnItsItem } from '../documents/proof-filed-on-its-item';
@@ -1536,7 +1537,7 @@ export class ConversationService {
     const guarded = personal ? await this.thePersonalOpeningAsSaid(checkIn as any, personal.text) : await this.withTheNewsTheyWaitOn(checkIn as any, guarded0).catch(() => guarded0);
     /* The checks after the bar can take the question out (Kevin's first WhatsApp message read only "This is our first
        check-in, and it's about getting a regular read on the work you're doing."): the opening always ends on a question (reviewer, 14 October). */
-    const opening = isADeadEnd(guarded, false) ? withAQuestion(guarded, { opening: true }) : guarded;
+    const opening = anOpeningWithNothingLeftOver(isADeadEnd(guarded, false) ? withAQuestion(guarded, { opening: true }) : guarded);
 
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
@@ -7532,6 +7533,14 @@ ${told}` : '';
    * complete() protect against a person leaving nothing behind; a person who left is the case they
    * cannot help.
    */
+  /**
+   * Whether Groundwork closed this check-in and is still finishing it (writing its end card and record, up to about a minute). A message
+   * that arrives meanwhile belongs to the next check-in, as something added, never to this one (Mercy on WhatsApp, 26 October 2026).
+   */
+  isBeingFinished(checkInId: string): boolean {
+    return !!this.finishedByGroundwork?.has(checkInId);
+  }
+
   async closeByTheClock(checkInId: string): Promise<{ status: 'completed'; groundId: string }> {
     const checkIn = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
@@ -7644,6 +7653,10 @@ ${told}` : '';
       /* And every wait for an event, in any of the organisation's check-ins, that somebody has now said happened (messages test, fourth run). */
       .then(() => clearTheWaitsAnEventEnded(this.prisma, checkIn.groundId))
       .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) for something somebody said has happened.`); })
+      /* And every wait the record ends in any of the organisation's check-ins: done by the one waiting, told to them, corrected by the lead,
+         or filed by the one holding it (polish round 15, Muchemi & Co). See a-wait-is-over-across-the-organisation.ts. */
+      .then(() => clearTheWaitsOverAcrossTheOrganisation(this.prisma, checkIn.groundId))
+      .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: cleared ${n} wait(s) the record says are over.`); })
       /* And every open promise its maker, or the person it was for, has now said is done is kept (Drop Access run 1, item 13). */
       .then(() => keepThePromisesSaidDone(this.prisma, checkIn.groundId))
       .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: kept ${n} promise(s) somebody said were done.`); })
@@ -11691,7 +11704,8 @@ ${told}` : '';
     const touched: string[] = [];
 
     for (const d of valid) {
-      const onParticipantId = matchParticipant(d.onName);
+      /* A colleague named only as the label ("Njeri") is that colleague, so the wait is on her and she can end it (polish round 15, F4). */
+      const onParticipantId = matchParticipant(d.onName) ?? matchParticipant(d.onLabel);
       const status = (['BLOCKING', 'WAITING', 'CLEARED'] as const).includes(d.status as any)
         ? (d.status as DependencyStatus)
         : DependencyStatus.WAITING;
@@ -12162,10 +12176,14 @@ ${told}` : '';
     }
 
     const systemPrompt =
-      'You are Groundwork. A supporting document has just been attached to this check-in session. Acknowledge it by name in one sentence. Then ask one question: what does this document confirm about what you have described? Wait for their answer before asking about complications. Warm, direct, brief. Do not summarise the document. Do not make a judgement. Do not list questions.';
+      /*
+       * WHAT IS IN IT IS SAID BACK, AND USED (Hafsah, 26 October 2026: "document synthesize needs to happen each chat where it tells them
+       * whats in the doc and uses it as context, we used to have that"). This said "Do not summarise the document."
+       */
+      'You are Groundwork. A document has just been attached to this check-in. Name it, then say in two or three short sentences what is in it that matters to this check-in: the names, amounts, dates and items, exactly as the document writes them. Then ask one question: what does it confirm about what they have told you? Plain, full sentences. Do not make a judgement. Do not list questions.';
 
     const docContext = doc
-      ? `[Document attached: "${doc.fileName}"]\n${doc.content.slice(0, 1000)}`
+      ? `[Document attached: "${doc.fileName}"]\n${doc.content.slice(0, 6000)}`
       : '[A document was attached but could not be read.]';
 
     const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: docContext }]);
@@ -12558,6 +12576,7 @@ ${told}` : '';
         status: true,
         completedAt: true,
         createdAt: true,
+        availableFrom: true,
         isSelfCorrection: true,
         selfCorrectionTargetSession: true,
         turns: {
@@ -12572,10 +12591,10 @@ ${told}` : '';
         checkInId: c.id,
         sessionNumber: c.sessionNumber,
         status: c.status,
-        // The date the divider shows. A session spans days, so the date it was
-        // finished is the one that places it; an unfinished one is placed by when
-        // it opened, which is the only date it has.
-        date: (c.completedAt ?? c.createdAt).toISOString(),
+        /* The day the session belongs to: the last time they said something in it, else the day it opened. Not the day it was
+           finished: one the clock closed at midnight read as the next day (Kevin's Monday 19 October session read "20 October",
+           26 October 2026). */
+        date: ([...c.turns].reverse().find((t) => t.role === TurnRole.PERSON)?.createdAt ?? c.availableFrom ?? c.completedAt ?? c.createdAt).toISOString(),
         isSelfCorrection: c.isSelfCorrection,
         correctionOf: c.selfCorrectionTargetSession,
         /* Cleaned on the way out, same as `open` above: a turn stored before a rule existed keeps

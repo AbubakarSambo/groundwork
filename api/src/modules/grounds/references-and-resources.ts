@@ -63,6 +63,8 @@ export interface ADocument {
   added: string;
   addedOn: string;
   summary: string | null;
+  /** What it is used for: the line the person gave when they added it, else what Groundwork will do with it (26 October 2026). */
+  usedFor?: string | null;
   whoCanSee: string;
   kind: 'Photos' | 'Spreadsheets' | 'PDFs' | 'Documents';
 }
@@ -71,6 +73,10 @@ export interface APieceOfEvidence {
   id: string;
   readAs: string;
   shows: string | null;
+  /** What is in it, in a sentence or two, from the document's own reading (its assessment), when it has been read. */
+  summary?: string | null;
+  /** What it is used for: proof for the item it is filed on, or what Groundwork will do with it. */
+  usedFor?: string | null;
   belongsTo: string;
   addedBy: string;
   addedById: string | null;
@@ -285,12 +291,19 @@ async function theEvidencePage(prisma: any, ground: any, view: string, mine: any
   const people = new Map<string, string>((ground.participants ?? []).map((p: any) => [p.id, fullName(p.user, p.nameGiven) || 'Somebody']));
   const here = await theTemplateHere(prisma, ground);
   const itemWord = here.template.itemWord;
+  /* Each piece's summary and what it is used for, from its document's assessment (Hafsah, 26 October 2026: every upload "filed into References and
+     resources, where its summary and what it's used for appear"). */
+  const assessed: any[] = (await Promise.resolve(prisma.groundDocument?.findMany?.({ where: { id: { in: rows.map((r) => r.documentId).filter(Boolean) } }, select: { id: true, assessment: true } })).catch(() => [])) ?? [];
+  const readingOf = new Map<string, { suggests?: string[]; willDo?: string[] }>(assessed.map((d) => [d.id, (d.assessment ?? {}) as any]));
   const all: APieceOfEvidence[] = rows.map((r) => {
+    const reading = readingOf.get(r.documentId) ?? {};
     const by = r.participantId ? firstOf(people.get(r.participantId)) : '';
     return {
       id: r.id,
       readAs: r.readAs,
       shows: r.shows ?? null,
+      summary: (reading.suggests ?? []).slice(0, 2).map((x) => String(x).trim()).filter(Boolean).join(' ') || null,
+      usedFor: r.countsAsProof && r.itemName ? `Proof for ${r.itemName}, on the board.` : null,
       belongsTo: r.itemName ? (here.collections ? theBillItBelongsTo(r.itemName, itemWord) : r.itemName) : `Not filed on ${/^[aeiou]/i.test(itemWord) ? 'an' : 'a'} ${itemWord} yet`,
       addedBy: view === 'member' ? 'You' : (by || 'Somebody'),
       addedById: r.participantId ?? null,
@@ -384,7 +397,8 @@ export async function readReferencesAndResources(
     const docs: any[] = (await prisma.groundDocument?.findMany?.({
       where: documentWhereFor(ground.id, { participantId: mine?.id ?? null, isLead } as any, input.contextEnabled) as any,
       select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true, visibility: true, participantId: true, isConversation: true },
-      orderBy: { createdAt: 'asc' },
+      /* Newest first, as the evidence list: what was just added is at the top, not below every older file (26 October 2026). */
+      orderBy: { createdAt: 'desc' },
     }).catch(() => [])) ?? [];
     const items = docs.filter((d) => !filedIds.has(d.id)).map((d): ADocument => {
       const by = firstOf(d.participantId ? nameOf.get(d.participantId) : '') || 'Somebody';
@@ -396,6 +410,8 @@ export async function readReferencesAndResources(
         added: `${mineToo ? 'You' : by}, ${aDayIn(d.createdAt, timeZone)}`,
         addedOn: new Date(d.createdAt).toISOString().slice(0, 10),
         summary: suggests[0] ? String(suggests[0]).trim() : (mineToo && d.uploaderNote ? String(d.uploaderNote).trim() : null),
+        /* What the person who added it said it is for. Never the reader's own note to itself ("It looks like hold this as evidence…"), which read as broken English. */
+        usedFor: d.uploaderNote && String(d.uploaderNote).trim() ? String(d.uploaderNote).trim() : null,
         whoCanSee: whoCanSeeIt(d, { participantId: mine?.id ?? null, isLead }, by, firstOf(leadName)),
         kind: theKindOfDocument(d.mimeType, d.fileName),
       };

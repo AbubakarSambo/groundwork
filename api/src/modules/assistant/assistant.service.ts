@@ -1,3 +1,4 @@
+import { forHumans } from '../presentation/outbound';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { asksWhatWeKnowOfTheirJob, parseAJobCorrection, theCorrectionSaidBack, whatTheyToldUs, SHARE_KIND as JOB_CORRECTION_KIND } from './my-job-in-ask';
@@ -45,7 +46,7 @@ import {
 import { KnowledgeService, STOPWORDS } from '../knowledge/knowledge.service';
 import {
   ADDED_TO_THE_HANDBOOK, FOR_THE_ORGANISATION, NOT_ADDED, NO_WORDS_IN_IT, OFFER_FOR_THE_ORGANISATION, ONLY_AN_ADMIN_ADDS_ONE,
-  ORGANISATION_DOCUMENT_KIND, SAYS_IT_IS_FOR_THE_ORGANISATION, SAYS_IT_IS_FOR_THE_WHOLE_ORGANISATION, itsParts, whatTheDocumentSays,
+  ORGANISATION_DOCUMENT_KIND, SAYS_IT_IS_FOR_THE_ORGANISATION, SAYS_IT_IS_FOR_THE_WHOLE_ORGANISATION, itsParts, whatTheDocumentSays, WHAT_IS_IN_IT_PROMPT,
 } from './a-document-for-the-whole-organisation';
 import { keptForTheOrganisation, keptThatTouches, mayReadWhatIsKept } from '../knowledge/organisation-memory';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
@@ -54,6 +55,7 @@ import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { SuitesService } from '../suites/suites.service';
 import { readDuties } from '../suites/who-holds-each-duty';
+import { setsSpendingSteps, theStepsSaid, theStepsSetSaid } from './spending-steps-said-in-ask';
 import type { Duties } from '../suites/who-holds-each-duty';
 import type { Weekday } from '../suites/the-time-sheet-rules';
 import {
@@ -192,6 +194,7 @@ const SETUP_LANES = new Set<string>(['add_context', 'context_line', 'lead_note',
  * "I've uploaded it" - as opposed to `add_a_document`'s own patterns, which are about STARTING an
  * upload ("upload the handbook"). Narrow on purpose: a word for having just done it, not a request.
  */
+const A_FILE_KEPT = 'I have kept it with the check-in, and I will use it from now on. Ask me anything about what is in it.';
 const JUST_ADDED_A_DOCUMENT =
   /\bi(?:'ve| have)?\s+(?:just\s+)?(?:added|uploaded|attached|put\s+(?:up|in))\b/i;
 
@@ -470,6 +473,12 @@ export class AssistantService {
       if (theirs) return theirs;
     }
 
+    /* "Spending over KES 20,000 should be approved by Mercy in finance first, and then by me." Set, and said back (26 October 2026). */
+    if (who && userId && setsSpendingSteps(message)) {
+      const set = await this.setSpendingStepsSaid(organizationId, userId, message);
+      if (set) return set;
+    }
+
     if (who) {
       const suite = asksToSetUpASuite(message);
       if (suite) return this.setUpASuite(organizationId, who, userId ?? null, suite, message);
@@ -585,6 +594,11 @@ export class AssistantService {
       }
       const waiting = await this.waitingDocumentFor(organizationId, personId, groundId);
       if (waiting) return this.proposeDocumentNumbers(organizationId, who, waiting);
+      /*
+       * NOTHING TO RECORD FROM IT (26 October 2026). Grace added a photo of an M-Pesa message in Ask; the panel said what was in it, then
+       * her "I've uploaded it." was answered "I cannot answer that one yet". A file with no numbers to record is simply kept and can be asked about.
+       */
+      if (JUST_ADDED_A_DOCUMENT.test(message) && (await this.aFileJustAdded(organizationId, personId, groundId))) return rules('add_a_document', text(A_FILE_KEPT));
     }
 
     /*
@@ -1564,6 +1578,25 @@ export class AssistantService {
    * chosen check-in when one was chosen (see ask.service.ts `checkTheCheckIn`), and to every check-in
    * this person is on otherwise, most recently read first.
    */
+  /** Whether this person added a file of their own in the last fifteen minutes. */
+  private async aFileJustAdded(organizationId: string, personId: string, groundId?: string): Promise<boolean> {
+    const person = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { linkedUserId: true } });
+    if (!person?.linkedUserId) return false;
+    const participants = await this.prisma.groundParticipant.findMany({
+      where: { userId: person.linkedUserId, ...(groundId ? { groundId } : {}) },
+      select: { id: true },
+    });
+    if (!participants.length) return false;
+    const [newest] = await this.prisma.groundDocument.findMany({
+      where: { participantId: { in: participants.map((p) => p.id) } },
+      orderBy: { createdAt: 'desc' },
+      take: 1,
+      select: { createdAt: true },
+    });
+    const at = newest?.createdAt ? new Date(newest.createdAt).getTime() : NaN;
+    return Number.isFinite(at) && Date.now() - at < 15 * 60_000;
+  }
+
   private async waitingDocumentFor(
     organizationId: string,
     personId: string,
@@ -1580,10 +1613,15 @@ export class AssistantService {
     });
     if (!participants.length) return null;
 
+    /*
+     * ONLY THE DOCUMENT JUST ADDED (26 October 2026). Grace added a photo of an M-Pesa message in Ask and was asked to record the numbers of
+     * a PDF she had added earlier: the newest documents with numbers waiting were walked, and the photo, still being read, was skipped.
+     * What was just added is the one Ask talks about, or none.
+     */
     const docs = await this.prisma.groundDocument.findMany({
-      where: { participantId: { in: participants.map((p) => p.id) }, NOT: { holds: { equals: null as any } } },
+      where: { participantId: { in: participants.map((p) => p.id) } },
       orderBy: { createdAt: 'desc' },
-      take: 5,
+      take: 1,
       select: { id: true, fileName: true, holds: true, groundId: true, visibility: true, participantId: true },
     });
     for (const d of docs) {
@@ -1615,7 +1653,8 @@ export class AssistantService {
     const docs = await this.prisma.groundDocument.findMany({
       where: { participantId: { in: mine.map((m) => m.id) } },
       orderBy: { createdAt: 'desc' },
-      take: 3,
+      /* Only the one just added, never an older one in its place (see waitingDocumentFor). */
+      take: 1,
       select: { id: true, groundId: true, content: true, holds: true },
     });
     for (const d of docs) {
@@ -1722,7 +1761,8 @@ export class AssistantService {
         where: { organizationId, personExternalId: who, kind: ORGANISATION_DOCUMENT_KIND, state: 'PARKED' },
         data: { state: 'DROPPED', resolvedAt: new Date(), payload: {} as never },
       });
-      const { body, summary } = whatTheDocumentSays(title, clean, name);
+      const inIt = await this.engine.respond(WHAT_IS_IN_IT_PROMPT, [{ role: 'user', content: clean.slice(0, 6000) }]).then((r) => forHumans(r)).catch(() => '');
+      const { body, summary } = whatTheDocumentSays(title, clean, name, inIt);
       const proposal = await this.prisma.assistantProposal.create({
         data: { organizationId, personExternalId: who, kind: ORGANISATION_DOCUMENT_KIND, state: 'PARKED', summary, payload: { title, fileName, words: clean } as never },
       });
@@ -2430,6 +2470,38 @@ export class AssistantService {
       ? ((await (this.prisma as any).user?.findMany?.({ where: { id: { in: [holderId] } }, select: { firstName: true } }).catch(() => [])) ?? [])[0]?.firstName?.trim() || null
       : null;
     return onlyAnAdminSetsThisUp(suite, await this.adminsByFirstName(organizationId), holder);
+  }
+
+  /**
+   * APPROVAL STEPS FOR SPENDING, SAID IN ONE SENTENCE (spending-steps-said-in-ask.ts). Written through SuitesService.setSpendRules, the
+   * same call the spending page makes, which refuses anybody but an admin or whoever looks after finance. What was set is said back.
+   */
+  private async setSpendingStepsSaid(organizationId: string, userId: string, message: string): Promise<Reply | null> {
+    if (!this.suites) return null;
+    const reader = { userId, organizationId };
+    if (!(await this.suites.maySetUp(reader, 'spend').catch(() => false))) {
+      return rules('set_up_a_suite', text(await this.whoSetsThisUp(organizationId, 'spend')));
+    }
+    const members: any[] = await this.prisma.organizationMembership
+      .findMany({ where: { organizationId }, select: { userId: true, role: true, user: { select: { firstName: true, lastName: true } } } })
+      .catch(() => []);
+    const people = (members ?? []).map((m) => ({ userId: m.userId, first: String(m.user?.firstName ?? '').trim(), full: `${m.user?.firstName ?? ''} ${m.user?.lastName ?? ''}`.trim() }));
+    const me = people.find((p) => p.userId === userId) ?? { userId, first: '', full: '' };
+    const isAdmin = (members ?? []).some((m) => m.userId === userId && m.role === 'ADMIN');
+    const duties = await readDuties(this.prisma, organizationId).catch(() => ({}));
+    const read = theStepsSaid(message, me, isAdmin, people.filter((p) => p.userId !== userId), duties);
+    if ('notRead' in read) return rules('set_up_a_suite', text(`${read.notRead} Nothing has changed.`));
+    const now = await this.suites.spendRules(reader).catch(() => null);
+    const thresholds = [...(now?.rules?.thresholds ?? []).filter((t: any) => t.above !== read.above), { above: read.above, steps: read.steps.map((r) => [r]) }]
+      .sort((a: any, b: any) => a.above - b.above);
+    try {
+      await this.suites.setSpendRules(reader, { thresholds });
+    } catch (e: any) {
+      return rules('set_up_a_suite', text(`${e?.response?.message ?? e?.message ?? 'That could not be set.'} Nothing has changed.`));
+    }
+    const suite: any = await (this.prisma as any).organizationSuite?.findUnique?.({ where: { organizationId_suite: { organizationId, suite: 'spend' } }, select: { answers: true } }).catch(() => null);
+    const currency = typeof suite?.answers?.currency === 'string' ? suite.answers.currency : null;
+    return rules('set_up_a_suite', text(theStepsSetSaid(currency, read, me.first)));
   }
 
   private async isAnAdminHere(organizationId: string, userId: string): Promise<boolean> {

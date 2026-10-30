@@ -67,6 +67,12 @@ export const documentsApi = {
    * record of a conversation is taken on the uploader's word and the assumption is said back in the
    * response as `assumed` (product-owner decision, 11 September 2026). Kept so nothing breaks.
    */
+  /** Read a file during setup, before a check-in exists: its text comes back, and nothing is stored. */
+  readForSetup: async (file: File): Promise<{ name: string; text: string }> => {
+    const form = new FormData()
+    form.append('file', file)
+    return (await apiClient.post<{ name: string; text: string }>('/documents/read', form, { headers: { 'Content-Type': 'multipart/form-data' } })).data
+  },
   upload: (groundId: string, file: File, consentConfirmed = false, uploaderNote?: string, opts: { fromTheCheckIn?: boolean } = {}) => {
     const form = new FormData()
     form.append('file', file)

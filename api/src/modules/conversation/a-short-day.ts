@@ -38,7 +38,14 @@ export const FOLLOW_UPS_ON_WHAT_THEY_ADDED = 2;
 
 export const WHEN_TODAY_IS_COVERED = `WHEN TODAY'S NEEDS ARE COVERED, your next question is exactly: "${ANYTHING_ELSE}", alone in its turn. Not before. If they are still explaining or adding something, keep listening and ask about that instead; never cut them off.`;
 
-export const THEY_ADDED_SOMETHING = `They answered "${ANYTHING_ELSE}" with something new. Take it as said and say in a few words where it goes (the deal, the person or the promise). Ask at most ${FOLLOW_UPS_ON_WHAT_THEY_ADDED} follow-up questions about it, and only for what the board needs: the day, or the proof. When you have that, close in one short line saying what is recorded and what happens next, then write [[SESSION_COMPLETE]].`;
+export const THEY_ADDED_SOMETHING = `They answered "${ANYTHING_ELSE}" with something new. Take it as said and say in a few words where it goes (the deal, the person or the promise). Ask at most ${FOLLOW_UPS_ON_WHAT_THEY_ADDED} follow-up questions about it, and only for what the board needs: the day, or the proof. When you have that, ask exactly "${ANYTHING_ELSE}" again, alone in its turn. Never close while they are still adding something.`;
+
+/*
+ * NEVER CUT OFF WHILE THEY ARE ADDING (Mercy, 26 October 2026). She kept adding after "Anything else I should know?" and was closed after
+ * two follow-ups, then told both "Reply finish" and "Your check-in is complete". After the follow-ups the question is asked again; only
+ * a "no" closes, and a long check-in is offered an end (YOU_CAN_END_NOW), never given one.
+ */
+export const ASK_ANYTHING_ELSE_AGAIN = `They have added more. Take it as said in a few words, and your next question is exactly "${ANYTHING_ELSE}", alone in its turn.`;
 
 export const THE_DAY_IS_COVERED = 'TODAY IS COVERED. Ask nothing more. In one short line, say what is now recorded and what happens next, then write [[SESSION_COMPLETE]].';
 
@@ -57,18 +64,19 @@ export function whereTheEndStands(aiTurnsNewestFirst: readonly string[], message
 }
 
 /**
- * Whether this turn closes: they said there is nothing more, or the follow-ups on what they added are done. Never on a count of answers.
+ * Whether this turn closes: they said there is nothing more after "Anything else I should know?". Never on a count of answers, and never
+ * while they are still adding something.
  */
 export function itIsTimeToClose(end: { asked: boolean; followUps: number; nothingMore: boolean }, isSelfCorrection: boolean): boolean {
   if (isSelfCorrection || !end.asked) return false;
-  return end.nothingMore || end.followUps >= FOLLOW_UPS_ON_WHAT_THEY_ADDED;
+  return end.nothingMore;
 }
 
 /** What the model is told this turn about the end of today, if anything. */
 export function whatToSayAboutTheEnd(answersNow: number, end: { asked: boolean; followUps: number; nothingMore: boolean }, isSelfCorrection: boolean): string | null {
   if (isSelfCorrection) return null;
   if (itIsTimeToClose(end, false)) return THE_DAY_IS_COVERED;
-  if (end.asked) return THEY_ADDED_SOMETHING;
+  if (end.asked) return end.followUps >= FOLLOW_UPS_ON_WHAT_THEY_ADDED ? ASK_ANYTHING_ELSE_AGAIN : THEY_ADDED_SOMETHING;
   return answersNow >= ASK_ANYTHING_ELSE_FROM ? WHEN_TODAY_IS_COVERED : null;
 }
 

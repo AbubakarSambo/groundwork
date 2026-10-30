@@ -100,3 +100,13 @@ export function aLastTimeInTheirOwnWords(reply: string, earlier: AWordTheyWrote[
   }).filter(Boolean).join(' ')).join('\n').replace(/\n{3,}/g, '\n\n').replace(/(^|\n)\s*[”"]\s*/g, '$1').trim();
   return out ? { text: out, changed } : { text: reply, changed: false };
 }
+
+/**
+ * NO STRAY QUOTE MARK AND NOTHING POINTING AT NOTHING, WHEREVER THE OPENING WAS CUT (26 October 2026). Kevin's opening read
+ * "” Did that move forward this period?": the sentence before it had been cut, leaving its closing quote mark and a question about
+ * "that". A closing quote at the start of a sentence is always left over, and a first question that points back at nothing is asked plainly.
+ */
+export function anOpeningWithNothingLeftOver(text: string): string {
+  const cleaned = String(text ?? '').replace(/(^|\n|[.!?]\s+)[”]\s*/g, '$1').trim();
+  return /^(?:did|has|have|is|was)\s+(?:that|it|this|those)\b[^?]*\?\s*$/i.test(cleaned) ? 'What has moved since your last check-in?' : cleaned;
+}

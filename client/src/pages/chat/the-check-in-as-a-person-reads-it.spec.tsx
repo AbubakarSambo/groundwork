@@ -207,7 +207,7 @@ describe('suggested answers under the question', () => {
     fireEvent.click(await findByRole('button', { name: 'I met them on ... and they said ...' }, { timeout: 6000 }))
     await settle()
     expect(conversationApi.send).not.toHaveBeenCalled()
-    const box = screen.getByPlaceholderText('Type, or hold to speak') as HTMLTextAreaElement
+    const box = screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement
     expect(box.value).toBe('I met them on ... and they said ...')
     expect(document.activeElement).toBe(box)
     expect(box.selectionStart).toBe('I met them on '.length)
@@ -224,7 +224,7 @@ describe('suggested answers under the question', () => {
     renderChat()
     fireEvent.click(await findByRole('button', { name: 'Not yet' }, { timeout: 6000 }))
     await waitFor(() => expect(conversationApi.send).toHaveBeenCalledWith('ci1', 'Not yet'))
-    const box = screen.getByPlaceholderText('Type, or hold to speak') as HTMLTextAreaElement
+    const box = screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement
     expect(box.value).toBe('')
   })
 
@@ -234,7 +234,7 @@ describe('suggested answers under the question', () => {
     expect(screen.queryByRole('group', { name: 'Suggested answers' })).toBeNull()
     expect(screen.queryByText('What am I missing?')).toBeNull()
     expect(screen.queryByText('What do I carry forward?')).toBeNull()
-    expect(screen.getByPlaceholderText('Type, or hold to speak')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Type your answer')).toBeTruthy()
   })
 })
 
@@ -481,7 +481,7 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Change something' }))
     expect(screen.queryByRole('button', { name: 'That’s right, finish' })).toBeNull()
     expect(screen.queryByText('That’s everything for today')).toBeNull()
-    expect((screen.getByPlaceholderText('Type, or hold to speak') as HTMLTextAreaElement).disabled).toBe(false)
+    expect((screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement).disabled).toBe(false)
     expect(conversationApi.complete).not.toHaveBeenCalled()
   })
 })
@@ -552,7 +552,7 @@ describe('the Done page, after “That’s right, finish”', () => {
     expect(screen.getByText('Not shared yet')).toBeTruthy()
     expect(screen.getByText('Everyone’s check-ins together. You’ll get it once everyone has answered.')).toBeTruthy()
     // The conversation is gone from the screen; the Done page stands on its own.
-    expect(screen.queryByPlaceholderText('Type, or hold to speak')).toBeNull()
+    expect(screen.queryByPlaceholderText('Type your answer')).toBeNull()
   })
 
   it('she reads For tomorrow first, then her reports, then how checkable her own check-in was as one line that opens', async () => {

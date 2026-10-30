@@ -130,7 +130,7 @@ export function TheCheckInHeader({
     /* Someone who neither runs this check-in nor is in it (an admin who only reads) has no
        conversation here: the prototype's read-only view (read-only-view.txt) has three tabs. */
     ...(canRunThisCheckIn || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),
-    { key: 'context', label: 'Context and resources', to: `/grounds/${id}?tab=context` },
+    { key: 'context', label: 'References and resources', to: `/grounds/${id}?tab=context` },
     ...(canRunThisCheckIn || isAParty ? [{ key: myWorkTab, label: 'My work', to: `/grounds/${id}?tab=${myWorkTab}` }] : []),
     { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
   ]

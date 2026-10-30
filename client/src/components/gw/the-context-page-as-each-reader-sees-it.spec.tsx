@@ -122,7 +122,7 @@ describe('adding a document from the page', () => {
     draw('lead', 'u-lead')
     const file = new File(['x'], 'Sales playbook.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
     fireEvent.change(document.getElementById('ga-doc-upload') as HTMLInputElement, { target: { files: [file] } })
-    expect(await screen.findByText('Add it to Context and resources')).toBeTruthy()
+    expect(await screen.findByText('Add it to References and resources')).toBeTruthy()
     expect(documentsApi.upload).toHaveBeenCalledWith('g1', file, false, undefined)
     expect(screen.getByText('Who can read it')).toBeTruthy()
   })

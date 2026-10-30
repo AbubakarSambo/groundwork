@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { whereTheEndStands, itIsTimeToClose, whatToSayAboutTheEnd, itIsTimeToSayTheyCanEnd, saysThereIsNothingMore, A_SHORT_DAY, ANYTHING_ELSE, THE_DAY_IS_COVERED, THEY_ADDED_SOMETHING, WHEN_TODAY_IS_COVERED, YOU_CAN_END_NOW } from './a-short-day';
+import { whereTheEndStands, itIsTimeToClose, whatToSayAboutTheEnd, itIsTimeToSayTheyCanEnd, saysThereIsNothingMore, A_SHORT_DAY, ANYTHING_ELSE, THE_DAY_IS_COVERED, THEY_ADDED_SOMETHING, WHEN_TODAY_IS_COVERED, YOU_CAN_END_NOW, ASK_ANYTHING_ELSE_AGAIN } from './a-short-day';
 import { asItReadsOnWhatsApp } from './the-opening-line';
 
 /** Hafsah, after round 3 (26 October 2026): no question limit and no forced close. */
@@ -23,13 +23,18 @@ describe('no question limit and no forced close', () => {
     expect(whatToSayAboutTheEnd(6, end, false)).toBe(THE_DAY_IS_COVERED);
   });
 
-  it('what they add at the end is taken, with at most two follow-ups, then it closes', () => {
+  /* Changed 26 October 2026 (Mercy was closed while still adding things): after two follow-ups it asks again, and only a "no" closes. */
+  it('what they add at the end is taken, with at most two follow-ups, then "Anything else I should know?" again', () => {
     const added = whereTheEndStands([ANYTHING_ELSE], 'Oh, Savannah Cafe wants six more units next month.');
     expect(itIsTimeToClose(added, false)).toBe(false);
     expect(whatToSayAboutTheEnd(6, added, false)).toBe(THEY_ADDED_SOMETHING);
     expect(THEY_ADDED_SOMETHING).toMatch(/at most 2 follow-up questions.*the day, or the proof/);
+    expect(THEY_ADDED_SOMETHING).toMatch(/Never close while they are still adding something/);
     const afterTwo = whereTheEndStands(['Which day will they pay?', 'What shows the order?', ANYTHING_ELSE], 'Friday.');
-    expect(itIsTimeToClose(afterTwo, false)).toBe(true);
+    expect(itIsTimeToClose(afterTwo, false)).toBe(false);
+    expect(whatToSayAboutTheEnd(8, afterTwo, false)).toBe(ASK_ANYTHING_ELSE_AGAIN);
+    const thenNo = whereTheEndStands([ANYTHING_ELSE, 'Which day will they pay?', 'What shows the order?'], 'No, that is all.');
+    expect(itIsTimeToClose(thenNo, false)).toBe(true);
   });
 
   it('a long check-in is offered an end once, never given one', () => {

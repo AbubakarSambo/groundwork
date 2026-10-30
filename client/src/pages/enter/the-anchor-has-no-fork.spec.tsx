@@ -128,28 +128,30 @@ describe('every other situation (decision 133)', () => {
    * the two-button fork. The fork is gone: setup flows straight into the lead's first check-in, in
    * the same conversation, with no intro line, so the lead may not even notice the change.
    */
-  it('goes straight from setup into the lead\'s first check-in question, with no fork and no intro line', async () => {
+  /*
+   * CHANGED AGAIN 26 OCTOBER (Hafsah): setup IS the lead's first check-in. It gathered today's picture and ended with "Anything else I
+   * should know?", so at ready its own transcript becomes the first session, the way the anchor's always has. No second conversation opens.
+   */
+  it('ends setup as the lead\'s first check-in, with no fork and no second conversation', async () => {
     onboardStream.mockResolvedValueOnce({
-      reply: 'Thank you, that gives me what I need.',
+      reply: 'Done: your board is ready with today’s picture. Next, add your team below and choose when their first check-in opens.',
       extracted: { initial: 'A new project is starting.' },
       ready: true,
       needsPeople: true,
     })
-    ;(entryApi.chat as any).mockResolvedValue({ reply: 'What has the team actually shipped since the project started?' })
 
     renderPage('/start')
     const box = await screen.findByPlaceholderText('For example: our sales targets this quarter')
     fireEvent.change(box, { target: { value: 'A new project is starting.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
 
-    /* Changed 26 October 2026 (Hafsah): setup now closes with one line, "Done. Your board is set up, and your team’s first check-in
-       opens …", in front of the lead's first question in the same message. Still no fork, and the conversation still carries straight on. */
-    expect(await screen.findByText(/Done\. Your board is set up, and your team’s first check-in opens [\s\S]*What has the team actually shipped since the project started\?/)).toBeTruthy()
-    expect(entryApi.chat).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText(/Done: your board is ready with today’s picture\./)).toBeTruthy()
+    await vi.waitFor(() => expect(entryApi.report).toHaveBeenCalledTimes(1))
+    /* The report is built from the setup conversation itself. */
+    expect(JSON.stringify((entryApi.report as any).mock.calls[0][0])).toContain('A new project is starting.')
+    expect(entryApi.chat).not.toHaveBeenCalled()
     expect(screen.queryByText('I set this up and check in myself')).toBeNull()
     expect(screen.queryByText('I check in once to set the context, then only they check in')).toBeNull()
-    expect(screen.queryByText(/Good, I have what I need/)).toBeNull()
-    expect(screen.queryByText(/You.re up first/)).toBeNull()
     expect(screen.queryByText('Setup is done. Your check-in starts here.')).toBeNull()
   })
 })

@@ -284,7 +284,10 @@ function Documents({ served }: { served: Served }) {
                     <Text size="14" weight={600}>{d.name}</Text>
                     <Text size="13" ink="sub">{d.added}</Text>
                   </div>
-                  <Text size="14">{d.summary ?? 'Not read yet.'}</Text>
+                  <div>
+                    <Text size="14">{d.summary ?? 'Not read yet.'}</Text>
+                    {d.usedFor && <Text size="13" ink="sub">{`Used for: ${d.usedFor}`}</Text>}
+                  </div>
                   <Text size="13" ink="sub">{d.whoCanSee}</Text>
                 </Row>
               ))}
@@ -313,9 +316,10 @@ function Evidence({ groundId, served }: { groundId: string; served: Served }) {
     queryFn: () => groundsApi.referencesEvidence(groundId, { page, q: q.trim() || undefined, group: group || undefined, person: person || undefined, when }),
     enabled: filtered && !!served.evidence,
   })
+  /* Every hook before the early return, so the hooks run in the same order on every render (26 October 2026). */
+  const [showAllEvidence, setShowAllEvidence] = useState(false)
   if (!served.evidence) return null
   const ev: AnEvidencePage = filtered && asked.data && 'items' in (asked.data as any) ? (asked.data as AnEvidencePage) : served.evidence
-  const [showAllEvidence, setShowAllEvidence] = useState(false)
   const first = ev.total ? (ev.page - 1) * ev.pageSize + 1 : 0
   const last = Math.min(ev.page * ev.pageSize, ev.total)
   return (
@@ -354,7 +358,8 @@ function Evidence({ groundId, served }: { groundId: string; served: Served }) {
                         <Text size="14" weight={600}>{e.readAs}</Text>
                         <Tag tone={e.countsAsProof ? 'proven' : 'plain'}>{e.countsAsProof ? 'Counts as proof' : 'Not proof'}</Tag>
                       </FlexRow>
-                      {e.shows && <Text size="13" ink="sub">{e.shows}</Text>}
+                      {(e.summary ?? e.shows) && <Text size="13" ink="sub">{e.summary ?? e.shows}</Text>}
+                      {e.usedFor && <Text size="13">{e.usedFor}</Text>}
                     </div>
                     <Text size="14">{e.belongsTo}</Text>
                     <Text size="14">{e.addedBy}</Text>
@@ -508,7 +513,7 @@ function AddSomething({ groundId, kind, onKind, people, alsoSeenBy, contextEnabl
         {kind === 'PLAN' && <FromAPlan groundId={groundId} />}
         {kind === 'DOCUMENT' && (
           reviewing ? (
-            <AddADocument groundId={groundId} docId={reviewing.id} fileName={reviewing.name} contextEnabled={contextEnabled}
+            <AddADocument groundId={groundId} docId={reviewing.id} fileName={reviewing.name} contextEnabled={contextEnabled} placeName="References and resources"
               onChooseAnother={() => { setReviewing(null); fileInput.current?.click() }} onClose={() => { setReviewing(null); onDone() }} />
           ) : (
             <FlexRow gap={8} align="center" wrap>

@@ -285,8 +285,14 @@ export const aSentence = (t: string | null | undefined): string | null => {
   if (HAS_A_VERB.test(s) || /^I(\s|'|\u2019)/.test(s) || /\b(will|shall|can|should|must)\b/i.test(s)) return `${s}.`;
   /* The first letter is made small only where the first word is an ordinary one: not an "I", not an acronym such as OKR or KPI. */
   const first = s.split(/\s+/)[0];
-  const keepsItsCapital = first === 'I' || /^[A-Z]{2,}\b/.test(first) || /^[A-Z][a-z]*[A-Z]/.test(first);
+  /* A name of two capitalised words ("Drop Access Ltd") keeps its capital too: it read "drop Access Ltd" (26 October 2026). */
+  const keepsItsCapital = first === 'I' || /^[A-Z]{2,}\b/.test(first) || /^[A-Z][a-z]*[A-Z]/.test(first) || /^[A-Z][a-z]+\s+[A-Z]/.test(s);
   const lower = keepsItsCapital ? s : `${s.charAt(0).toLowerCase()}${s.slice(1)}`;
+  /*
+   * AN ACTION IS SAID AS ONE (26 October 2026). "What I will do with it" read "It looks like hold this as a record of the transaction":
+   * a line that starts with what will be done is an action, never a guess, so it is "I will hold this as a record ...".
+   */
+  if (/^(?:hold|use|keep|add|file|link|store|treat|compare|check|note|attach|track|record|save|match|flag|ask|send|show|put)\b/i.test(s)) return `I will ${lower}.`;
   return `It looks like ${lower}.`;
 };
 

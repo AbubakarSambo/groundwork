@@ -126,7 +126,7 @@ describe('finishing a check-in the engine already closed', () => {
     // and a live composer take its place.
     expect(await screen.findByText(/I need a little more from you before this check-in can close/i)).toBeTruthy()
     expect(screen.queryByText(/Not enough on record to close this session yet/i)).toBeNull()
-    expect((screen.getByPlaceholderText('Type, or hold to speak') as HTMLTextAreaElement).disabled).toBe(false)
+    expect((screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement).disabled).toBe(false)
   }, 15_000)
 
   it('a failure that is not a 400 (network down, a server error) keeps the confirm button up', async () => {

@@ -16,8 +16,8 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
  * Words from docs/prototype/screens/B2-context/upload.txt: the file's name, "Choose a different
  * file", "What should it be used for? One line is enough; you can skip it.", "What it took from the
  * document", "What it left out", "Who can read it", "Only you", "Everyone in this check-in", "They
- * can open it from Context and resources.", "Add it to Context and resources" and "Cancel" (the tab
- * and page renamed "Context and resources" so its name says what it now holds).
+ * can open it from References and resources.", "Add it to References and resources" and "Cancel" (the tab
+ * and page renamed "References and resources" so its name says what it now holds).
  */
 const readDoc = {
   id: 'd1', name: 'Q3 price list.pdf', uploadedAt: '2026-09-23T10:00:00Z', visibility: 'OWN', mine: true,
@@ -90,18 +90,18 @@ describe('who can read it, and keeping it', () => {
     /* U.7 review: plainer, and says what the document does for its uploader. */
     expect(screen.getByText('Only you can open it. It shapes the questions in your own check-in.')).toBeTruthy()
     expect(screen.getByText('Everyone in this check-in')).toBeTruthy()
-    expect(screen.getByText('They can open it from Context and resources.')).toBeTruthy()
+    expect(screen.getByText('They can open it from References and resources.')).toBeTruthy()
     /* The prototype's sentence is not true today: a private document shapes only its uploader's questions. */
     expect(screen.queryByText(/uses it for everyone/)).toBeNull()
   })
 
-  it('Add it to Context and resources saves what it is for and opens it to everyone when chosen', async () => {
+  it('Add it to References and resources saves what it is for and opens it to everyone when chosen', async () => {
     ;(documentsApi.list as any).mockResolvedValue([readDoc])
     const { onClose } = draw()
     await screen.findByText('What it took from the document')
     await userEvent.type(screen.getByLabelText(/What should it be used for/), 'Checks price objections')
     await userEvent.click(screen.getByRole('radio', { name: /Everyone in this check-in/ }))
-    await userEvent.click(screen.getByText('Add it to Context and resources'))
+    await userEvent.click(screen.getByText('Add it to References and resources'))
     await waitFor(() => expect(onClose).toHaveBeenCalled())
     expect(documentsApi.setNote).toHaveBeenCalledWith('g1', 'd1', 'Checks price objections')
     expect(documentsApi.setVisibility).toHaveBeenCalledWith('g1', 'd1', 'OPEN')
@@ -112,7 +112,7 @@ describe('who can read it, and keeping it', () => {
     ;(documentsApi.list as any).mockResolvedValue([readDoc])
     const { onClose } = draw()
     await screen.findByText('What it took from the document')
-    await userEvent.click(screen.getByText('Add it to Context and resources'))
+    await userEvent.click(screen.getByText('Add it to References and resources'))
     await waitFor(() => expect(onClose).toHaveBeenCalled())
     expect(documentsApi.setVisibility).not.toHaveBeenCalled()
   })

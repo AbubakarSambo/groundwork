@@ -1,3 +1,4 @@
+import { whatWasAttachedSaid } from './what-was-attached-to-a-spend-request';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { answersUnderTheQuestionsOwnIds } from './the-answers-under-the-questions-own-ids';
 import { suiteOf } from './the-ten-suites';
@@ -46,6 +47,8 @@ export type Approver = { kind: 'manager' } | { kind: 'person'; firstName: string
 
 export interface Waiting {
   id: string;
+  /** "Kevin attached a proforma or quote, “proforma.pdf”.", or null. */
+  attached?: string | null;
   name: string;
   firstName: string;
   amount: number;
@@ -229,6 +232,8 @@ export class SpendingService {
         where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides, reader.userId, shared.lookups?.names)),
         category: r.category ?? null,
         needs: this.needsSaid(r, answers),
+        /* What they attached, as the approvals queue says it, so whoever decides here sees it too (26 October 2026). */
+        attached: whatWasAttachedSaid(nm.first || 'They', r as any),
         questions: questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, askers, reader.userId, ask)),
       });
     }

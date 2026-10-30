@@ -2,7 +2,7 @@ import type { KeyboardEvent, ReactNode } from 'react'
 
 /**
  * THE CHECK-IN'S FOOTER BAR (B3, docs/prototype/source/app.css: `.ci-c`, `.ci-sq`; s29.js's
- * `ciFocus`): a "+" square button, "Type, or hold to speak", and a navy send button with an up
+ * `ciFocus`): a "+" square button, "Type your answer", and a navy send button with an up
  * arrow.
  *
  * `.ci-c{padding:12px 16px;border-top:1px solid var(--rule);display:flex;gap:8px;align-items:
@@ -20,7 +20,8 @@ export function Composer({
   disabled, sendDisabled, plusDisabled, plusLabel = 'Add a photo, a document or some text',
   sendLabel = 'Send',
   sendText, plusGlyph = '+',
-  inputRef, placeholder = 'Type, or hold to speak', ariaLabel = 'Your answer', maxLength, autoFocus,
+  /* Not "or hold to speak": there is no voice yet, so the box promised what it could not do (26 October 2026). */
+  inputRef, placeholder = 'Type your answer', ariaLabel = 'Your answer', maxLength, autoFocus,
   rows = 1, variant = 'checkin',
 }: {
   value: string
@@ -59,7 +60,7 @@ export function Composer({
    * FAULT 7 (live walk, 6 October 2026): A LONGER PLACEHOLDER WAS CLIPPED AT 375px.
    *
    * The setup composer's own placeholder ("Type your response, or add a document.") is longer
-   * than the check-in composer's ("Type, or hold to speak") and shares the same single-row box,
+   * than the check-in composer's ("Type your answer") and shares the same single-row box,
    * which only ever shows one line - at a narrow width, with the wide "+ Doc" and "Send" buttons
    * beside it, the placeholder wrapped onto a second line nobody could see. Given only by the
    * caller with the longer placeholder; every other `Composer` keeps the default `rows={1}` it

@@ -9,12 +9,12 @@ const rule = (sel: string) => { const i = PROTO.indexOf(sel + '{'); return i < 0
 
 /**
  * THE CHECK-IN'S FOOTER BAR (docs/prototype/source/app.css: `.ci-c`, `.ci-sq`; s29.js's
- * `ciFocus`): a "+" square button, "Type, or hold to speak", a navy send button with an up arrow.
+ * `ciFocus`): a "+" square button, "Type your answer", a navy send button with an up arrow.
  */
 describe('Composer', () => {
-  it('the field says "Type, or hold to speak", as the prototype does', () => {
+  it('the field says "Type your answer", as the prototype does', () => {
     render(<Composer value="" onChange={() => {}} onSend={() => {}} />)
-    expect(screen.getByPlaceholderText('Type, or hold to speak')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Type your answer')).toBeTruthy()
   })
 
   /**
@@ -27,7 +27,7 @@ describe('Composer', () => {
     render(<Composer value="" onChange={() => {}} onSend={() => {}} />)
     /* UPDATED 24 October (Hafsah: "one stylesheet, the prototype's"): the part is drawn with the prototype's own classes, so the
        values are pinned in styles/prototype.css (read here as text, since jsdom applies no stylesheet), not as inline styles. */
-    const field = screen.getByPlaceholderText('Type, or hold to speak')
+    const field = screen.getByPlaceholderText('Type your answer')
     expect(field.className).toBe('input')
     expect(rule('.input')).toMatch(/border:1px solid var\(--rule2-crisp\)/)
     expect(rule('.input')).toMatch(/background:var\(--surface\)/)
@@ -55,7 +55,7 @@ describe('Composer', () => {
     const onChange = vi.fn()
     const onSend = vi.fn()
     render(<Composer value="" onChange={onChange} onSend={onSend} />)
-    await userEvent.type(screen.getByPlaceholderText('Type, or hold to speak'), 'h')
+    await userEvent.type(screen.getByPlaceholderText('Type your answer'), 'h')
     expect(onChange).toHaveBeenCalledWith('h')
     await userEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(onSend).toHaveBeenCalled()
@@ -65,7 +65,7 @@ describe('Composer', () => {
     render(<Composer value="" onChange={() => {}} onSend={() => {}} onPlus={() => {}} disabled />)
     expect(screen.getByRole('button', { name: 'Add a photo, a document or some text' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
-    expect(screen.getByPlaceholderText('Type, or hold to speak')).toBeDisabled()
+    expect(screen.getByPlaceholderText('Type your answer')).toBeDisabled()
   })
 
   /**
@@ -75,9 +75,9 @@ describe('Composer', () => {
    */
   it('keeps rows=1 by default, and takes a caller\'s own rows when given', () => {
     const { rerender } = render(<Composer value="" onChange={() => {}} onSend={() => {}} />)
-    expect(screen.getByPlaceholderText('Type, or hold to speak').getAttribute('rows')).toBe('1')
+    expect(screen.getByPlaceholderText('Type your answer').getAttribute('rows')).toBe('1')
     rerender(<Composer value="" onChange={() => {}} onSend={() => {}} rows={2} />)
-    expect(screen.getByPlaceholderText('Type, or hold to speak').getAttribute('rows')).toBe('2')
+    expect(screen.getByPlaceholderText('Type your answer').getAttribute('rows')).toBe('2')
   })
 
   it('the attach menu is the caller\'s own content, shown above the "+" only while open', async () => {

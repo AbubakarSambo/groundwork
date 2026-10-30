@@ -67,7 +67,8 @@ export class CheckinsController {
       checkinId: ground.id,
       /* The existing join link. A second invitation mechanism would be a second thing to keep
          working, and this one already has a page behind it. */
-      url: ground.joinToken ? `${base.replace(/\/$/, '')}/join?token=${ground.joinToken}` : null,
+      /* `t`, the parameter the join page reads: `token` opened "That link didn't work" (26 October 2026). */
+      url: ground.joinToken ? `${base.replace(/\/$/, '')}/join?t=${ground.joinToken}` : null,
       subjectExternalId: subject.externalId,
     };
   }
