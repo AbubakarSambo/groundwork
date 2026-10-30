@@ -12,6 +12,7 @@ import { theBillsOnRecord, theBillsThisReaderMayRead, withTheEventsSaid } from '
 import { F, NOT_YET_RAISED } from '../board/the-collections-record';
 import { asHappened } from '../board/a-fee-note-due-on-an-event';
 import { theCollectionsTypeFor } from '../board/the-collections-record';
+import { aDeadlineSaid } from '../board/the-matter-board';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
@@ -64,7 +65,6 @@ export interface AMorningLine {
   boardOnly?: boolean;
   /** The same thing as a board row (Hafsah, 25 October: one line of title, at most one line of detail). The message keeps `text`. */
   row?: { title: string; detail?: string };
-}
   /**
    * The board's own item this line says, where the board has one: the wait it is ("wait-<id>", as the board's decisions and lead actions
    * carry it), a lead action's id, a decision's question, or a bill ("bill-<id>", as the collections board's rows carry it).
@@ -73,6 +73,7 @@ export interface AMorningLine {
   ref?: string;
   /** The person a team line is about, so the board draws it on that person's row of The team today. */
   participantId?: string;
+}
 
 export interface TheMorningPart {
   key: AMorningPartKey;
@@ -494,9 +495,9 @@ export function theTeamLines(input: TheSalesMorningInput, name: (pid: string | n
  * NOTHING NEEDS YOU TODAY (Hafsah, 21 October). Where no line of what needs her and no line about her team goes in the message, the
  * part of what needs her is one line that says so, with no label in front of it: "Target: 75 of 120 sold, ... Nothing needs you today."
  */
-export function withNothingNeedsYou(parts: TheMorningPart[]): { parts: TheMorningPart[]; nothing: boolean } {
 export const NOTHING_NEEDS_YOU = 'Nothing needs you today.';
 
+export function withNothingNeedsYou(parts: TheMorningPart[]): { parts: TheMorningPart[]; nothing: boolean } {
   const inTheMessage = (k: AMorningPartKey) => parts.filter((p) => p.key === k).flatMap((p) => p.lines).some((l) => !l.boardOnly);
   if (inTheMessage('needsYou') || inTheMessage('team')) return { parts, nothing: false };
   const nothing: TheMorningPart = { key: 'needsYou', heading: 'What needs you today', lead: '', lines: [{ text: NOTHING_NEEDS_YOU, rank: 1 }] };
@@ -675,12 +676,12 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
   let first: string | null = null;
   for (const b of unpaid.filter((x) => f(x, F.disputed))) {
     const by = Name(followerOf(b));
-    needs.push({ text: `${whoOwes(b)} disputes ${f(b, F.number) || b.name}, saying ${stop(f(b, F.disputed)).replace(/^./, (c) => c.toLowerCase())}${by && by !== 'You' ? `, and ${by} follows it up` : ''}, so decide whether to correct it.`, rank: 2 });
+    needs.push({ ref: `bill-${b.id}`, text: `${whoOwes(b)} disputes ${f(b, F.number) || b.name}, saying ${stop(f(b, F.disputed)).replace(/^./, (c) => c.toLowerCase())}${by && by !== 'You' ? `, and ${by} follows it up` : ''}, so decide whether to correct it.`, rank: 2 });
     first = first ?? `${whoOwes(b)} disputes ${f(b, F.number) || b.name}`;
   }
   /* Release 3: an invoice late to raise, with the day it was due to go out and who raises it (board/raising-invoices-on-time). */
-  for (const l of (input.served?.needsYou as any)?.lateToRaise ?? []) needs.push({ text: l, rank: 1 });
-  for (const c of input.served?.needsYou?.toConfirm ?? []) needs.push({ text: sentence(stop(c.title)), rank: 3 });
+  for (const l of ((input.served?.needsYou as any)?.lateToRaise ?? []) as { ref: string; says: string }[]) needs.push({ text: l.says, rank: 1, ref: l.ref });
+  for (const c of input.served?.needsYou?.toConfirm ?? []) needs.push({ text: sentence(stop(c.title)), rank: 3, ref: c.id });
   const said = new Set<string>();
   for (const w of input.waits) {
     if (String(w.status).toUpperCase() === 'CLEARED' || w.clearedAt || !w.fromParticipantId || input.hers.has(w.fromParticipantId)) continue;
@@ -692,13 +693,13 @@ export function theCollectionsDirectMorning(input: TheCollectionsMorningInput): 
     said.add(key);
     const rep = Name(w.fromParticipantId);
     if (!rep) continue;
-    needs.push({ text: aWaitOnYouSaid(rep, what, sinceADay(keyIn(new Date(w.createdAt), zone), today)), rank: 3 });
+    needs.push({ text: aWaitOnYouSaid(rep, what, sinceADay(keyIn(new Date(w.createdAt), zone), today)), rank: 3, ref: `wait-${w.id}` });
     first = first ?? `${rep} is waiting on you`;
   }
   for (const b of onAWord) {
     const row = servedRow(b);
     /* Only where she said it herself, in her own line: never of a bill somebody else said was paid (item 9). */
-    if (row && /as you said/i.test(row.payment?.says ?? '') && (!b.paidSaidBy || input.hers.has(b.paidSaidBy))) needs.push({ text: `You said ${numbered(b)} is paid, so file the bank slip or the M-Pesa message.`, rank: 5 });
+    if (row && /as you said/i.test(row.payment?.says ?? '') && (!b.paidSaidBy || input.hers.has(b.paidSaidBy))) needs.push({ text: `You said ${numbered(b)} is paid, so file the bank slip or the M-Pesa message.`, rank: 5, ref: `bill-${b.id}` });
   }
 
   /* 3. Who to chase: the client, the amount, who follows it up. What fell due first, then what is behind, then a payment said with no proof. */
@@ -783,24 +784,24 @@ export function theMatterDirectMorning(input: { groundId: string; label: string;
     if (said.has(key)) continue;
     if (w.onParticipantId && input.hers.has(w.onParticipantId)) {
       said.add(key);
-      needs.push({ text: aWaitOnYouSaid(rep, what, sinceADay(keyIn(new Date(w.createdAt), input.zone), today)), rank: 2 });
+      needs.push({ text: aWaitOnYouSaid(rep, what, sinceADay(keyIn(new Date(w.createdAt), input.zone), today)), rank: 2, ref: `wait-${w.id}` });
       first = first ?? `${rep} is waiting on you`;
     } else if (!w.onParticipantId && String(w.status).toUpperCase() === 'BLOCKING') {
       said.add(key);
       const holder = aNamedHolder(w.onLabel, w.what);
-      needs.push({ text: holder ? aWaitOnAHolderSaid(rep, holder, what, sinceADay(keyIn(new Date(w.createdAt), input.zone), today)) : `${rep} is waiting for ${what}, and nobody has been named to give it, so say who will.`, rank: 4 });
+      needs.push({ text: holder ? aWaitOnAHolderSaid(rep, holder, what, sinceADay(keyIn(new Date(w.createdAt), input.zone), today)) : `${rep} is waiting for ${what}, and nobody has been named to give it, so say who will.`, rank: 4, ref: `wait-${w.id}` });
     }
   }
   for (const d of ((input.board?.decisions ?? []) as any[]).filter((x) => x?.source === 'divergence' && /^you$/i.test(String(x?.owner ?? '')))) {
     const m = /^People in this check-in said different things about (.+?), so it needs settling\.?$/i.exec(String(d.question ?? '').trim());
     /* Never about "this" or "it": a line with no thing in it tells her nothing to settle (final real-model check, item 9). */
-    if (m && !/^(?:this|that|it|them|these|those|the same thing)$/i.test(m[1].trim())) needs.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 5 });
+    if (m && !/^(?:this|that|it|them|these|those|the same thing)$/i.test(m[1].trim())) needs.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 5, ref: String(d.question) });
   }
   const lastDay = plus(today, 7);
   const due = input.items.filter((i) => i.dueAt && keyIn(new Date(i.dueAt), 'UTC') >= today && keyIn(new Date(i.dueAt), 'UTC') <= lastDay)
     .sort((a, b) => new Date(a.dueAt as any).getTime() - new Date(b.dueAt as any).getTime())
     /* What is due this week is the team's to deliver: on the board, never in the message. */
-    .map((i) => ({ text: `${capital(stop(i.name))} is due ${aDayFromToday(keyIn(new Date(i.dueAt as any), 'UTC'), today)}${name(i.ownerParticipantId) ? `, and ${name(i.ownerParticipantId)} has it` : ''}.`, rank: 7, boardOnly: true }));
+    .map((i) => ({ text: aDeadlineSaid(i.name, aDayFromToday(keyIn(new Date(i.dueAt as any), 'UTC'), today), false, name(i.ownerParticipantId)), rank: 7, boardOnly: true }));
   const team = theCheckInsNotMade(input.people, input.hers, input.lastCheckIn, input.firstOpened, today, input.workingDays, input.zone, names, input.sessions, input.now, theRecordLines(input.people, input.hers, names, input.records, 'matter'));
   const { parts, nothing } = withNothingNeedsYou([
     { key: 'needsYou', heading: 'What needs you today', lead: 'Needs you today:', lines: needs },

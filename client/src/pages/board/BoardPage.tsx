@@ -2728,19 +2728,27 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <p role="note" className="gwui-fs-15 gwui-ink-text gwui-mt-8" style={{lineHeight: '23px'}}>{b.readOnlyNote}</p>
         )}
 
-        {/* The direct morning is the morning message's, not the board's (Hafsah, 24 October): the board shows its own headline and What needs you, once. */}
+        {/* The direct morning is no longer one block above the board (Hafsah, 24 October): each of its lines is drawn once where it belongs on the board (pictured/TheMorningOnTheBoard.tsx). */}
         {/* Your team, person by person (pictured/YourTeamPersonByPerson.tsx): served to the lead alone, beside the direct morning, for her monthly look. */}
         {/* On the pictured board it is drawn after the team today, where the prototype puts the people (see `yourTeam` below); elsewhere it stays here. */}
         {!groundId && (b as any).yourTeam && id && !(!picturedCollections && !picturedMatter && (((picturedLead && picturedManyInTeams) || picturedOtherKind) || (picturedLead && !picturedManyInTeams && !situationOrder))) && <YourTeamPersonByPerson groundId={id} team={(b as any).yourTeam} />}
         {picturedCollections && b.collections && (
           <TheCollectionsBoard
             board={b.collections}
+            b={b}
             onRecordTheDecision={viewerRunsThisCheckIn ? () => navigate(`/grounds/${id}/end`) : undefined}
             onAnswer={viewerRunsThisCheckIn ? (route) => answerOnTheCollectionsBoard.mutate(route) : undefined}
             answering={answerOnTheCollectionsBoard.isPending}
           />
         )}
-        {picturedMatter && b.matter && <TheMatterBoard board={b.matter} />}
+        {picturedMatter && b.matter && (
+          <TheMatterBoard
+            board={b.matter}
+            b={b}
+            renderActions={viewerRunsThisCheckIn ? (action) => <ActionButtons groundId={id!} action={action} /> : undefined}
+            onRecordTheDecision={viewerRunsThisCheckIn ? () => navigate(`/grounds/${id}/end`) : undefined}
+          />
+        )}
         {!picturedCollections && !picturedMatter && ((picturedLead && picturedManyInTeams) || picturedOtherKind) && (
           <ThePicturedBoard
             /* Release 4: the first screen is the headline with each target and what needs you; the rest is folded under its own heading. */

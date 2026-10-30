@@ -35,7 +35,8 @@ describe('Wanjiru, the partner, reads every matter, each with one line for its f
     draw(S.matter.wanjiru)
     expect(screen.getByText('Two matters are on record in this check-in, Kasarani Foods v. Tumaini Traders and Jamii Clinics employment claim.')).toBeTruthy()
     const kasarani = document.querySelector('[data-matter="kasarani foods v tumaini traders"]') as HTMLElement
-    expect(within(kasarani).getByText('The hearing in Kasarani Foods v. Tumaini Traders is due on Thursday 12 November. Nothing is in the way that has not been cleared.')).toBeTruthy()
+    /* Who has the deadline, in the morning's own words (boards audit M3, 30 October). */
+    expect(within(kasarani).getByText('The hearing in Kasarani Foods v. Tumaini Traders is due on Thursday 12 November, and David has it. Nothing is in the way that has not been cleared.')).toBeTruthy()
     expect(within(kasarani).getByText('There are three fee notes on this matter, for KES 750,000 in all. FN-004 is paid, with proof. FN-005 fell due on 20 October, when the reply was filed. The fee note not raised yet fell due on 21 October, when the hearing date was set.')).toBeTruthy()
     expect(screen.getByText('There is one fee note on this matter, for KES 180,000. FN-007 was promised for 10 October, and the date passed.')).toBeTruthy()
   })

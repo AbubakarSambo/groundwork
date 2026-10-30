@@ -3851,7 +3851,8 @@ export class BoardService {
         const matter = await theMatterBoardFor(this.prisma, groundId, { runsIt: isInitiator || theyRunIt, participantId: me?.id ?? null, userId: requestingUserId }, now, {
           decisions: ((Array.isArray(walled.decisions) ? walled.decisions : []) as any[])
             .filter((d) => typeof d?.question === 'string' && d.question.trim())
-            .map((d) => ({ question: String(d.question), why: typeof d.why === 'string' ? d.why : null })),
+            /* With what the lead can do about it, as every board draws a decision (boards audit, M4). */
+            .map((d) => ({ question: String(d.question), why: typeof d.why === 'string' ? d.why : null, ...(d.action ? { action: d.action } : {}), ...(d.ref ? { ref: String(d.ref) } : {}) })),
         }).catch((err: any) => { this.logger.warn(`The matter board could not be read for ${groundId}: ${err?.message ?? err}`); return null; });
         if (matter) walled.matter = matter;
       }
@@ -4216,9 +4217,9 @@ export class BoardService {
             : (who === 'You' ? 'You cannot move until it comes.' : 'They cannot move until it comes.'),
           owner: !aDecision && owner === NOBODY_NAMED_TO_DECIDE ? 'Nobody has been named to provide it.' : owner,
           source: 'blocker' as const,
-          /* For what the lead can do about it (request 112 b); taken off before the board is served. */
           /* The wait it is, so the lead's morning line about the same wait is not drawn beside it (the-direct-morning, `ref`). */
           ref: `wait-${(d as any).id}`,
+          /* For what the lead can do about it (request 112 b); taken off before the board is served. */
           waitsOn: { participantId: d.onParticipantId ?? null, outside: aPartyOutside(d) ? d.onLabel!.trim() : null, what: d.what },
         };
       });

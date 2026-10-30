@@ -7,14 +7,14 @@
         {
           "key": "kasarani foods v tumaini traders",
           "name": "Kasarani Foods v. Tumaini Traders",
-          "stands": "The hearing in Kasarani Foods v. Tumaini Traders is due on Thursday 12 November. Nothing is in the way that has not been cleared.",
+          "stands": "The hearing in Kasarani Foods v. Tumaini Traders is due on Thursday 12 November, and David has it. Nothing is in the way that has not been cleared.",
           "fees": "There are three fee notes on this matter, for KES 750,000 in all. FN-004 is paid, with proof. FN-005 fell due on 20 October, when the reply was filed. The fee note not raised yet fell due on 21 October, when the hearing date was set.",
           "feeMark": "none"
         },
         {
           "key": "jamii clinics employment claim",
           "name": "Jamii Clinics employment claim",
-          "stands": "The witness statements for the Jamii Clinics employment claim are due on Friday 30 October. Aisha is waiting on Jamii Clinics for the last witness statement.",
+          "stands": "The witness statements for the Jamii Clinics employment claim are due on Friday 30 October, and Aisha has it. Aisha has been waiting on Jamii Clinics since 19 October for the last witness statement.",
           "fees": "There is one fee note on this matter, for KES 180,000. FN-007 was promised for 10 October, and the date passed.",
           "feeMark": "none"
         }
@@ -165,7 +165,7 @@
         {
           "key": "jamii clinics employment claim",
           "name": "Jamii Clinics employment claim",
-          "stands": "The witness statements for the Jamii Clinics employment claim are due on Friday 30 October. You are waiting on Jamii Clinics for the last witness statement.",
+          "stands": "The witness statements for the Jamii Clinics employment claim are due on Friday 30 October, and you have it. You have been waiting on Jamii Clinics since 19 October for the last witness statement.",
           "fees": "You follow up one fee note on this matter, for KES 180,000. FN-007 was promised for 10 October, and the date passed.",
           "feeMark": "none"
         }
@@ -216,7 +216,7 @@
         {
           "key": "kasarani foods v tumaini traders",
           "name": "Kasarani Foods v. Tumaini Traders",
-          "stands": "The hearing in Kasarani Foods v. Tumaini Traders is due on Thursday 12 November. Nothing is in your way on this matter that has not been cleared.",
+          "stands": "The hearing in Kasarani Foods v. Tumaini Traders is due on Thursday 12 November, and you have it. Nothing is in your way on this matter that has not been cleared.",
           "fees": "You do not follow up a fee note on this matter, so its fees are not shown to you.",
           "feeMark": "none"
         },
@@ -310,7 +310,19 @@
           {
             "title": "Baraka Hardware’s payment has no proof yet",
             "says": "Aisha says fee note FN-006 for Baraka Hardware is paid. A bank slip, an M-Pesa message or the accounting system’s record would show it."
+          },
+          {
+            "title": "A fee note for Kasarani Foods is not raised yet",
+            "says": "It falls due when the hearing date is set. It is for KES 250,000. Brian follows it up."
           }
+        ],
+        "refs": [
+          "bill-w-fn007",
+          "bill-w-fn005",
+          "bill-w-fn009",
+          "bill-w-fn008",
+          "bill-w-fn006",
+          "bill-w-kasarani-3"
         ],
         "empty": null,
         "toConfirm": [
@@ -665,7 +677,19 @@
           {
             "title": "Nyota Logistics disputes fee note FN-008",
             "says": "Fee note FN-008 for Nyota Logistics, KES 90,000. Brian said, “The client says the review was billed twice.” Brian follows it up."
+          },
+          {
+            "title": "Baraka Hardware’s payment has no proof yet",
+            "says": "Aisha says fee note FN-006 for Baraka Hardware is paid. A bank slip, an M-Pesa message or the accounting system’s record would show it."
           }
+        ],
+        "refs": [
+          "bill-w-fn007",
+          "bill-w-fn005",
+          "bill-w-fn009",
+          "bill-w-kasarani-3",
+          "bill-w-fn008",
+          "bill-w-fn006"
         ],
         "empty": null
       },

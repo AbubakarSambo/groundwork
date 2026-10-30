@@ -101,7 +101,7 @@ describe('Release 3: raising invoices on time, as each reader reads it', () => {
       type: 'invoices or fee notes', billWord: 'fee note', rows: [fn4, fn5, jamii, upendo].map(asRow),
       people: [{ id: 'wanjiru', firstName: 'Wanjiru', isTheLead: true }, { id: 'njeri', firstName: 'Njeri', isTheLead: false }],
       lastCheckIn: {}, now: new Date(`${today}T08:00:00Z`), zone: 'Africa/Nairobi', reader: { runsIt: true, participantId: 'wanjiru' }, stallRuleSet: false,
-      raising: { raiser: 'Njeri', pattern: theRaisingPattern(history, 'Njeri', 'fee note'), lateLines: theInvoicesToRaise([fn4, fn5, jamii, upendo], today).map((i) => whatIsLateToRaise(i, 'fee note', 'Njeri')) },
+      raising: { raiser: 'Njeri', pattern: theRaisingPattern(history, 'Njeri', 'fee note'), lateLines: theInvoicesToRaise([fn4, fn5, jamii, upendo], today).map((i) => ({ billId: i.billId, says: whatIsLateToRaise(i, 'fee note', 'Njeri') })) },
     });
     expect(board.needsYou.rows[0]).toEqual({
       title: 'A fee note for Jamii Clinics is 10 days late to raise',
@@ -109,7 +109,8 @@ describe('Release 3: raising invoices on time, as each reader reads it', () => {
     });
     expect(board.needsYou.rows[1].title).toBe('A fee note for Kasarani Foods is 5 days late to raise');
     /* The morning's lines are the same sentences Today and the summary use. */
-    expect(board.needsYou.lateToRaise?.[0]).toBe('Jamii Clinics’ fee note for KES 90,000 is 10 days late to raise. It was due to go out on Friday 9 October. Njeri has not said it is raised.');
+    /* Each served with the bill's row it is, so the lead's morning says it once (boards audit C1, 30 October). */
+    expect(board.needsYou.lateToRaise?.[0]?.says).toBe('Jamii Clinics’ fee note for KES 90,000 is 10 days late to raise. It was due to go out on Friday 9 October. Njeri has not said it is raised.');
     expect(board.patterns.rows[0]).toMatchObject({ title: 'Njeri raised 3 of the last 4 fee notes more than 5 days after they fell due.', tag: 'Raised late' });
     expect(board.stand.groups.find((g) => g.group === 'not-raised')?.count).toBe(3);
   });

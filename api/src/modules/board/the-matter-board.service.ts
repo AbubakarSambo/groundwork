@@ -29,7 +29,7 @@ export async function theMatterBoardFor(
   groundId: string,
   reader: AMatterReader,
   now: Date = new Date(),
-  extras: { decisions?: { question: string; why: string | null }[] | null } = {},
+  extras: { decisions?: { question: string; why: string | null; action?: unknown; ref?: string }[] | null } = {},
 ): Promise<TheMatterBoard | null> {
   const picked = await aMatterCheckIn(prisma, groundId);
   if (!picked) return null;
@@ -60,10 +60,10 @@ export async function theMatterBoardFor(
   })).catch(() => [])) ?? []) as any[]).filter((d) => mayRead(d.ownerParticipantId ?? null));
   const waits = (((await Promise.resolve(prisma?.groundDependency?.findMany?.({
     where: { groundId, status: { not: 'CLEARED' } },
-    select: { id: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true },
+    select: { id: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true },
   })).catch(() => [])) ?? []) as any[])
     .filter((w) => w.status !== 'CLEARED' && mayRead(w.fromParticipantId ?? null))
-    .map((w) => ({ id: w.id, fromParticipantId: w.fromParticipantId ?? null, on: w.onLabel ?? (people.find((p) => p.id === w.onParticipantId)?.firstName ?? null), what: String(w.what ?? '') }));
+    .map((w) => ({ id: w.id, fromParticipantId: w.fromParticipantId ?? null, on: w.onLabel ?? (people.find((p) => p.id === w.onParticipantId)?.firstName ?? null), what: String(w.what ?? ''), since: w.createdAt ?? null }));
 
   /* Every line and deadline of the check-in names a matter or not, for whoever reads it: read once, unwalled, only to know which matters are this check-in's. */
   const everyWord = [

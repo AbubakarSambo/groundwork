@@ -34,6 +34,13 @@
       "says": "It falls due when the hearing date is set. It is for KES 250,000. Brian follows it up."
      }
     ],
+    "refs": [
+     "bill-w-fn007",
+     "bill-w-fn009",
+     "bill-w-fn008",
+     "bill-w-fn006",
+     "bill-w-kasarani-3"
+    ],
     "empty": null
    },
    "stand": {
@@ -632,6 +639,9 @@
       "title": "Peter has not checked in since 21 September",
       "says": "Peter’s loan, KES 12,000, fell due on 28 September. No check-in and no repayment are on record since."
      }
+    ],
+    "refs": [
+     "bill-w-loan-peter"
     ],
     "empty": null
    },
