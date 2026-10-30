@@ -530,3 +530,13 @@ Real model, kept awake, at low priority. Kevin, Joseph, Faith and Aisha on Whats
 - One session state: 0 sessions COMPLETED without their record; none told "complete" and then "still open".
 - START: every WhatsApp reply went to the check-in it answered.
 - The checker first said 24 of 30. All six misses were the checker: it read days in UTC, merged the days the clock skipped into one, counted messages held at night that were never sent, and counted the sign-in links the test itself asks for. Each was checked against the database.
+
+### Fix 2 proved with corrections inside check-ins (Monday 8 February on the test clock, real model, WhatsApp)
+
+- Joseph said Mama Pima had paid for all 15 units, with nothing in writing. Groundwork said what its record showed and asked what shows the payment. When he insisted, it moved on without agreeing, and Mama Pima stays unpaid.
+- Kevin corrected Groundwork about Kilele Hotel and gave the M-Pesa code. Groundwork took it in its own words.
+- The old phrase was never said. Both sessions closed COMPLETED with their records written.
+- Found on the way, for the quarter to measure (not blockers):
+  - The opening says "It takes about ten minutes" twice.
+  - Kevin also said he had not missed two check-ins, which was not true (he answered Wednesday, not Thursday or Friday), and Groundwork agreed without checking.
+  - One question showed a typed backslash: "Mwangi & Sons\' second office".

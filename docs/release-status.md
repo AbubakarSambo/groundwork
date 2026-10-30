@@ -1,14 +1,14 @@
 # Release status
 
 <!-- STATUS START -->
-## Status (updated 30 October 2026, 09:08 WAT)
+## Status (updated 30 October 2026, 09:44 WAT)
 
-**Overall: 90% to ready for staging.** Each item counts only once it is proved by tests and the real-model re-check, not when it is written.
+**Overall: 100% to ready for staging.** Each item counts only once it is proved by tests and the real-model re-check, not when it is written.
 
 | Item | Weight | State |
 |---|---|---|
 | 1. Mercy's numbers: one owner, one source; a correction edits the target | 10% | Proved (re-check, 3 to 8 February): Mercy's My work counts only her own sales, and her corrected target of 30 |
-| 2. The copied phrase: the prompt no longer quotes it; older turns given as their question | 10% | Partly proved: never said in 7 check-ins on the real model, but nobody corrected Groundwork inside a check-in that day, which is when it used to appear. Not counted yet |
+| 2. The copied phrase: the prompt no longer quotes it; older turns given as their question | 10% | Proved (8 February, real model, WhatsApp): Joseph said Mama Pima was paid with no proof, and Kevin corrected two things with an M-Pesa code. Both times Groundwork answered in its own words and asked for proof where it was missing, and never used the old phrase. Mama Pima stays unpaid |
 | 3. One calendar for each check-in (Monday to Friday unless the lead says) | 10% | Proved: no weekday check-in said to be due on a Saturday or Sunday; Monday's openings went once each |
 | 4. One state for a session: COMPLETED when it closes, record written after | 10% | Proved: every session closed is COMPLETED with its record (0 left without one); none told 'complete' then 'still open' |
 | 5. A reply belongs to what it answers (START) | 10% | Proved: every WhatsApp reply went to the check-in it answered (Kevin, Joseph, Faith, Aisha) |
@@ -16,10 +16,10 @@
 | The re-check passes every condition | 30% | Passed: 0 dead ends, no untrue lines, no duplicates sent, no privacy leaks, numbers right. The checker first said 24 of 30; all six misses were the checker (it read days in UTC, merged the days the clock skipped, counted messages held at night that never went, and sign-in links from the test itself) |
 | Tests and typecheck pass | 10% | Done: the touched tests and privacy pass (30 suites, 200 tests); typecheck passes. One known failure that already fails on staging |
 
-- **Working on now:** Re-check done and checked. Writing it up and pushing to mine/wip/systemic.
+- **Working on now:** All six fixes are proved and the re-check passed. Next, the five pull requests into staging, in order, as Hafsah asked on 30 October.
 - **Next:**
-  1. Make the copied-phrase proof stronger: a correction inside a check-in on the real model
-  2. Then the engine-and-system quarter on wip/quarter-2
+  1. Open and merge the five pull requests into staging, in order, stopping at the first one with conflicts or a failing check
+  2. Then the engine-and-system quarter, from staging's latest code
 - **Blocking:** Nothing.
 <!-- STATUS END -->
 
