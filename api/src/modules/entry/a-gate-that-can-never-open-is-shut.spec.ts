@@ -89,7 +89,8 @@ describe('and so the gate opens', () => {
   it('even though extraction never got everything', () => {
     /* The field gate stays exactly as strict as it was. What changed is that it is no longer the
        only way through, because on its own it is not always answerable. */
-    expect(onboardingIsReady({ mode: 'something_new', initial: 'a co-founder joining' })).toBe(false);
+    /* Why now no longer holds the gate (31 October 2026), so the thin case is a situation with nothing said about it. */
+    expect(onboardingIsReady({ mode: 'something_new' })).toBe(false);
     /* The gate is called through `theGate` now and takes the situation, because three situations
        have no aim by design - see a-check-in-with-no-aim-has-nothing-to-read-against. What this
        file is about is the `|| stoppedAsking`, which is unchanged: a gate that can never open is
