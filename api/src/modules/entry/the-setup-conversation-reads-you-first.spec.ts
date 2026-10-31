@@ -87,18 +87,21 @@ describe('the first question fits the situation, and the context tab exists', ()
 describe('the check-in after setup does not start again', () => {
   it('treats everything setup settled as answered', () => {
     expect(SRC).toMatch(/# Setup is finished, and everything in it is answered/);
-    expect(SRC).toMatch(/Never for something already on the card/);
+    expect(SRC).toMatch(/Not\s+one of those may be asked for again/);
   });
 
-  it('carries the reason and the example there too, where the conversation actually is', () => {
-    expect(SRC).toMatch(/# A question carries its reason, and an abstract one carries an example/);
-    expect(SRC).toMatch(/A distributor list, a photo from a shop visit, an invoice/);
-    expect(SRC).toMatch(/pipeline, conversion and sign-ups mean nothing to/);
+  /* Hafsah, 30 October 2026 (the first experience): the rule stays, and its quoted examples went, because the model said them
+     back word for word ("watching how it lands", a "migration" asked of a trucking company). It says what to do, never what to say. */
+  it('carries the reason and the examples there too, where the conversation actually is, and quotes no example to repeat', () => {
+    expect(SRC).toMatch(/# A question carries its reason, and an abstract one carries examples/);
+    expect(SRC).toMatch(/two or three concrete options from their own world, never from another kind of business/);
+    expect(SRC).not.toMatch(/A distributor list, a photo from a shop visit, an invoice/);
+    expect(SRC).not.toMatch(/are you running it, doing some of it, or\s+watching/);
   });
 
   it('and stops asking after two I-do-not-knows', () => {
     /* Read live: three versions of the same unanswerable question in a row. */
     expect(SRC).toMatch(/# Twice is enough/);
-    expect(SRC).toMatch(/A third version of the\nsame question is the product arguing with a person about their own work/);
+    expect(SRC).toMatch(/Never ask a third version of the same question/);
   });
 });
