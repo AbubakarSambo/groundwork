@@ -19,7 +19,7 @@ import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFini
 import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
-import { useAfterAWhile, GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
+import { useAfterAWhile, GETTING_YOUR_FIRST_QUESTION_READY, STILL_READING_WHAT_YOU_WROTE } from '@/lib/opening-is-slow'
 import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { Bubble } from '@/components/gw/ui/Bubble'
@@ -1684,7 +1684,7 @@ export function ChatPage() {
                   <GroundworkIsWriting wrap={false} />
                   {waitedAWhile && (
                     <span role="status" className="gwui-ci-dot-note">
-                      Still reading what you wrote. Nothing was lost, you do not need to send it again.
+                      {STILL_READING_WHAT_YOU_WROTE}
                     </span>
                   )}
                 </>
@@ -1770,7 +1770,7 @@ export function ChatPage() {
                 before it answers - scoring the account, then pulling the record entries out of it -
                 so the wait says what is happening.
               */
-              whileFinishing={<SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. Nothing is lost if you wait." />}
+              whileFinishing={<SlowStep steps={CLOSING_STEPS} />}
               onFinish={() => complete.mutate(false)}
               onChange={() => { setDone(false); taRef.current?.focus() }}
             />

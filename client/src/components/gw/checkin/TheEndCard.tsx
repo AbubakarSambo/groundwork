@@ -71,7 +71,7 @@ export function TheEndCard({
    */
   whoReadsIt?: string | null
   finishing: boolean
-  /** What to show while finishing, which takes about half a minute. */
+  /** What to show while finishing. */
   whileFinishing?: React.ReactNode
   onFinish: () => void
   onChange: () => void

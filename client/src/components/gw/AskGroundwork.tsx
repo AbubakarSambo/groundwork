@@ -14,6 +14,7 @@ import { Mark } from './kit'
 import { Composer } from './ui/Composer'
 import { GroundworkIsWriting } from './ui/GroundworkIsWriting'
 import { PRIVATE_LINE } from './what-ask-groundwork-says'
+import { STILL_READING_WHAT_YOU_WROTE } from '@/lib/opening-is-slow'
 
 /** What the Context page already says while a document's read has not landed yet (AddADocument.tsx). */
 const STILL_READING = 'Reading it now.'
@@ -618,7 +619,7 @@ export function AskGroundwork({
             {waitedAWhile && (
               <p className={bubble(false)}>
                 <span role="status" className="t-tiny mut">
-                  Still reading what you wrote. Nothing was lost, you do not need to send it again.
+                  {STILL_READING_WHAT_YOU_WROTE}
                 </span>
               </p>
             )}

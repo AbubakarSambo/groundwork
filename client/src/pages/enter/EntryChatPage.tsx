@@ -4963,7 +4963,7 @@ export function EntryChatPage() {
             */}
             {generatingReport && !sessionReport && (
               <div className="gwui-ec-savecard-status" role="status" aria-live="polite">
-                <SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. It is the only slow step." />
+                <SlowStep steps={CLOSING_STEPS} />
               </div>
             )}
 
