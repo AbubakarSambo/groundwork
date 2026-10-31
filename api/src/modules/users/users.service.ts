@@ -430,6 +430,12 @@ export class UsersService {
       try {
         /* The role chosen on the page, and the name typed beside the address (U.4). */
         await this.auth.teamInvite(orgName, row.email, organizationId, { role, name: names.get(row.email) ?? null });
+        /* Their phone number, typed on the same line, saved the one way a number is saved on People (Hafsah, 30 October 2026). A
+           number that does not save leaves the invitation as it went, and says so on the row. */
+        if (row.phone) {
+          const who = await this.prisma.user.findFirst({ where: { email: row.email, deletedAt: null }, select: { id: true } });
+          if (who) await this.update(who.id, organizationId, { phoneNumber: row.phone } as any, '').catch(() => { row.phone = undefined; });
+        }
         sent.push(row);
       } catch {
         /* Almost always the seat gate closing mid-run. Named as what the admin has to act on. */
