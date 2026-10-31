@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
+import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
 import { toast } from 'sonner'
 
 /**
@@ -21,6 +22,7 @@ import { toast } from 'sonner'
 vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn().mockResolvedValue({ draftToken: 'd-token' }) } }))
 vi.mock('@/api/entry', () => ({
   entryApi: {
+    peopleOnLines: vi.fn(async (t: string) => (await import('./a-team-read-in-a-spec')).readLikeTheServer(t)),
     opener: vi.fn().mockResolvedValue({ reply: '' }),
     chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn(),
     patchDraft: vi.fn().mockResolvedValue({ ok: true }),
@@ -51,17 +53,16 @@ function seedClosedAnchorSession() {
   }))
 }
 
+/* UPDATED (Hafsah, 31 October 2026): people are added through the one team box; there is no per-person "Add person" step. */
 async function addOnePerson(email: string) {
-  fireEvent.change(await screen.findByPlaceholderText('name@company.com'), { target: { value: email } })
-  fireEvent.click(screen.getByText('Add'))
-  await screen.findByText('What do they do, and why are they part of this?')
-  fireEvent.click(screen.getByText('Skip'))
-  await waitFor(() => expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull())
+  await screen.findByLabelText('Your team, one per line')
+  addThroughTheTeamBox(email)
+  await waitFor(() => expect(screen.getByText(`✓ ${email}.`)).toBeTruthy())
 }
 
 const LIMIT_SENTENCE = 'This one-month Groundwork holds up to 20 people besides you.'
 
-describe('the people step keeps the limit sentence on screen, and disables Add person', () => {
+describe('the people step keeps the limit sentence on screen, and adds nobody past it', () => {
   beforeEach(() => { localStorage.clear(); vi.clearAllMocks() })
 
   it('says nothing about the limit before it is reached', async () => {
@@ -82,17 +83,15 @@ describe('the people step keeps the limit sentence on screen, and disables Add p
     await waitFor(() => expect(screen.getByText(LIMIT_SENTENCE)).toBeTruthy())
   })
 
-  it('disables "Add person" once the limit is reached, instead of it silently doing nothing', async () => {
+  it('once the limit is reached, the box adds nobody more, and the limit stays said on screen', async () => {
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
     await addOnePerson('person0@example.test')
     await addOnePerson('person1@example.test')
-
-    fireEvent.change(await screen.findByPlaceholderText('name@company.com'), { target: { value: 'person2@example.test' } })
-    fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do, and why are they part of this?')
-    expect(screen.getByText('Add person').closest('button')).toBeDisabled()
-    expect(toast.error).not.toHaveBeenCalled()
+    addThroughTheTeamBox('person2@example.test')
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(LIMIT_SENTENCE))
+    expect(screen.queryByText('✓ person2@example.test.')).toBeNull()
+    expect(screen.getByText(LIMIT_SENTENCE)).toBeTruthy()
   })
 })

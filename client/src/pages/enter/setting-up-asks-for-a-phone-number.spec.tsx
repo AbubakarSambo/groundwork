@@ -11,7 +11,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 let whatsappOn = false
 vi.mock('@/lib/whatsapp-is-on', () => ({ useWhatsAppIsOn: () => whatsappOn }))
 vi.mock('@/api/entry', () => ({
-  entryApi: { opener: vi.fn().mockResolvedValue({ reply: '' }), chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn() },
+  entryApi: { opener: vi.fn().mockResolvedValue({ reply: '' }), chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn(),
+    peopleOnLines: vi.fn(async (t: string) => (await import('./a-team-read-in-a-spec')).readLikeTheServer(t)) },
 }))
 vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn().mockResolvedValue({ draftToken: 'draft-phone' }) } }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: null, isAuthenticated: false }) }))
@@ -40,23 +41,22 @@ const renderPage = () => render(
 describe('the people step of the setup', () => {
   beforeEach(() => { localStorage.clear(); vi.clearAllMocks() })
 
-  it('shows "Phone number" with WhatsApp off, saying nothing about WhatsApp beside it', async () => {
+  /* UPDATED (Hafsah, 31 October 2026: one team box): the number is asked on each person's line, "a name, an email and a phone number". */
+  it('asks for a phone number on each line with WhatsApp off, saying nothing about WhatsApp', async () => {
     whatsappOn = false
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
-    const field = screen.getByLabelText('Phone number') as HTMLInputElement
-    expect(field.placeholder).toBe('+254 712 345 678')
-    expect(screen.getByText('Optional.')).toBeTruthy()
+    expect(screen.getByText(/One per line: a name, an email and a phone number\./)).toBeTruthy()
+    expect(screen.queryByText(/With a phone number, their check-ins can also reach them on WhatsApp/)).toBeNull()
   })
 
-  it('shows the same field with WhatsApp on, with its sentence about WhatsApp', async () => {
+  it('says what a phone number does with WhatsApp on', async () => {
     whatsappOn = true
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
-    expect(screen.getByLabelText('Phone number')).toBeTruthy()
-    expect(screen.getByText('Optional. With it, their check-ins can also reach them on WhatsApp.')).toBeTruthy()
+    expect(screen.getByText(/With a phone number, their check-ins can also reach them on WhatsApp\./)).toBeTruthy()
   })
 })
 

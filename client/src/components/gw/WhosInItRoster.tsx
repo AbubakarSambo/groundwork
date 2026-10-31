@@ -1,14 +1,13 @@
 import { useQuery as useWhatsAppQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
+import { TheTeamBox, aLineFor, type APersonOnALine } from '@/components/gw/TheTeamBox'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { ThisAddsASeat, useTheNextSeat } from '@/components/gw/this-adds-a-seat'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { PeopleTable, PersonRow, Tag, Button, TextField, Stack, type TagTone } from '@/components/gw/ui'
 import { groundsApi } from '@/api/grounds'
 import { aPersonsSentenceForAServerError } from '@/lib/a-persons-sentence-for-a-server-error'
-import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { ShareSection } from '@/pages/grounds/ShareSection'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { atTheStart, firstNameOrLabel, nameWithoutGuessing } from '@/lib/utils'
@@ -45,10 +44,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * tested on its own (nobody-is-late-before-it-opens.spec.tsx).
  */
 export function WhosInItRoster({
-  ground, isInitiator, isOrgAdmin, colleagues, addingMany, addManyParticipants,
-  newParticipantEmail, setNewParticipantEmail, newParticipantName = '', setNewParticipantName = () => undefined, newParticipantNote, setNewParticipantNote,
-  newParticipantDepartment, setNewParticipantDepartment, addParticipantMut,
-  queuedToAdd, setQueuedToAdd, inviteTheQueue, lastInvitedEmail, whyItWaits, lastInviteWaits,
+  ground, isInitiator, isOrgAdmin, colleagues, addManyParticipants,
   billingStatus, onShareCode, fixingEmailId, setFixingEmailId, fixingEmailValue,
   setFixingEmailValue, fixEmail, resendInvite, showAdd, showLink,
   sessionParties, peersHidden, notOpenYet, viewerIsParty, leadName, viewerIsTheLead,
@@ -57,23 +53,7 @@ export function WhosInItRoster({
   isInitiator: boolean
   isOrgAdmin: boolean
   colleagues?: { id: string; name: string; role?: string; team?: string | null }[]
-  addingMany: boolean
-  addManyParticipants: (picked: { id: string; name: string }[]) => void
-  newParticipantEmail: string
-  setNewParticipantEmail: (v: string) => void
-  newParticipantName?: string
-  setNewParticipantName?: (v: string) => void
-  newParticipantNote: string
-  setNewParticipantNote: (v: string) => void
-  newParticipantDepartment: string
-  setNewParticipantDepartment: (v: string) => void
-  addParticipantMut: { mutate: () => void; isPending: boolean }
-  queuedToAdd: { email: string; note: string }[]
-  setQueuedToAdd: (q: { email: string; note: string }[]) => void
-  inviteTheQueue: { mutate: () => void; isPending: boolean }
-  lastInvitedEmail: string | null
-  whyItWaits: string | null
-  lastInviteWaits: boolean
+  addManyParticipants: (picked: { id: string; name: string }[]) => Promise<void> | void
   billingStatus: any
   navigate: (to: string) => void
   onShareCode: () => void
@@ -136,13 +116,7 @@ export function WhosInItRoster({
       {isInitiator && showAdd && (
         <AddPeopleForm
           isOrgAdmin={isOrgAdmin} colleagues={colleagues} participants={participants} seats={seats} seatsFull={seatsFull}
-          addingMany={addingMany} addManyParticipants={addManyParticipants}
-          newParticipantEmail={newParticipantEmail} setNewParticipantEmail={setNewParticipantEmail} newParticipantName={newParticipantName} setNewParticipantName={setNewParticipantName}
-          newParticipantNote={newParticipantNote} setNewParticipantNote={setNewParticipantNote}
-          newParticipantDepartment={newParticipantDepartment} setNewParticipantDepartment={setNewParticipantDepartment}
-          addParticipantMut={addParticipantMut} queuedToAdd={queuedToAdd} setQueuedToAdd={setQueuedToAdd}
-          inviteTheQueue={inviteTheQueue} lastInvitedEmail={lastInvitedEmail} whyItWaits={whyItWaits} lastInviteWaits={lastInviteWaits}
-          onShareCode={onShareCode}
+          addManyParticipants={addManyParticipants} onShareCode={onShareCode}
         />
       )}
 
@@ -395,69 +369,74 @@ export function whereThisPersonIs(p: any, c: {
   return { name, when, statusText, tone, sessionLine, help }
 }
 
-/** "Add a person to this check-in": today's form, unchanged, so the new People and setup opens the very same one. */
-export function AddPeopleForm({
-  isOrgAdmin, colleagues, participants, seats, seatsFull, addingMany, addManyParticipants,
-  newParticipantEmail, setNewParticipantEmail, newParticipantName = '', setNewParticipantName = () => undefined, newParticipantNote, setNewParticipantNote,
-  newParticipantDepartment, setNewParticipantDepartment, addParticipantMut,
-  queuedToAdd, setQueuedToAdd, inviteTheQueue, lastInvitedEmail, whyItWaits, lastInviteWaits, onShareCode,
-}: {
+/**
+ * ADD PEOPLE, AS ONE BOX (Hafsah, 31 October 2026: "Make adding a team the top pattern ... Judge it by how fast a lead can get their
+ * whole team in, with phone numbers, without repeating themselves"). This was a name field, an email field, a note, a department and a
+ * phone number, one person at a time, each with its own press. It is now the one team box every place uses (TheTeamBox.tsx): one person
+ * per line, everyone on in one press, each with their phone number. It comes filled with anybody from the organisation who is not on
+ * the check-in yet, so somebody invited on People is one press away here, and a colleague is recognised by name and needs no email.
+ * Their role is added after, in the table below.
+ */
+export function AddPeopleForm({ isOrgAdmin, colleagues, participants, seats, seatsFull, addManyParticipants, onShareCode }: {
   isOrgAdmin: boolean
-  colleagues?: { id: string; name: string; role?: string; team?: string | null }[]
+  colleagues?: { id: string; name: string; role?: string; team?: string | null; email?: string | null }[]
   participants: any[]
   seats: any
   seatsFull: boolean
-  addingMany: boolean
-  addManyParticipants: (picked: { id: string; name: string }[]) => void
-  newParticipantEmail: string
-  setNewParticipantEmail: (v: string) => void
-  newParticipantName?: string
-  setNewParticipantName?: (v: string) => void
-  newParticipantNote: string
-  setNewParticipantNote: (v: string) => void
-  newParticipantDepartment: string
-  setNewParticipantDepartment: (v: string) => void
-  addParticipantMut: { mutate: () => void; isPending: boolean }
-  queuedToAdd: { email: string; note: string }[]
-  setQueuedToAdd: (q: { email: string; note: string }[]) => void
-  inviteTheQueue: { mutate: () => void; isPending: boolean }
-  lastInvitedEmail: string | null
-  whyItWaits: string | null
-  lastInviteWaits: boolean
-  onShareCode: () => void
+  addManyParticipants: (picked: { id: string; name: string }[]) => Promise<void> | void
+  onShareCode?: () => void
 }) {
-  /*
-   * A PHONE NUMBER, ALWAYS ASKED (Hafsah, 30 October 2026; this replaces decision 106 item 6, "Leads cannot add numbers when
-   * inviting"). The add itself carries no number (api a-lead-cannot-add-a-number-when-inviting.spec.ts): once the person is on the
-   * check-in, their number goes through the one writer for a lead's number, PATCH .../participants/:id/whatsapp-number
-   * (the-lead-adds-a-whatsapp-number.ts). Each number waits here beside its address until that person is on the list below.
-   * One that does not save says so, and the add stands.
-   */
   const { id: groundId } = useParams()
+  const qc = useQueryClient()
   const whatsappOn = useWhatsAppIsOn()
-  const [phone, setPhone] = useState('')
-  const [numbersToSave, setNumbersToSave] = useState<Record<string, string>>({})
-  const keepTheNumber = () => {
-    const email = newParticipantEmail.trim().toLowerCase()
-    if (phone.trim() && looksLikeAnAddress(email)) setNumbersToSave((prev) => ({ ...prev, [email]: phone.trim() }))
-    setPhone('')
-  }
-  useEffect(() => {
-    if (!groundId) return
-    for (const [email, number] of Object.entries(numbersToSave)) {
-      const p = participants.find((x: any) => String(x?.email ?? '').trim().toLowerCase() === email)
-      if (!p?.id) continue
-      setNumbersToSave((prev) => { const { [email]: _saved, ...rest } = prev; return rest })
-      const who = firstNameOrLabel(p) || email
-      groundsApi.addTheirWhatsAppNumber(groundId, p.id, number)
-        .then(() => toast.success(`${who}’s phone number is saved.`))
-        /* The server's sentence names WhatsApp, so it is said only while WhatsApp is on (Hafsah's rule of 26 September). */
-        .catch((e: any) => toast.error(whatsappOn && e?.response?.data?.message ? e.response.data.message : `${who}’s phone number did not save, but ${who} is on the check-in. Check that it has its country code and try again.`))
+  const [adding, setAdding] = useState(false)
+  const inIt = new Set(participants.map((m) => m.userId).filter(Boolean))
+  const notOnItYet = (colleagues ?? []).filter((c) => !inIt.has(c.id))
+  const sameName = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase()
+
+  async function onAdd(people: APersonOnALine[]): Promise<APersonOnALine[]> {
+    if (!groundId) return people
+    setAdding(true)
+    const left: APersonOnALine[] = []
+    const fromTheOrganisation: { id: string; name: string }[] = []
+    let added = 0
+    try {
+      for (const p of people) {
+        const colleague = (colleagues ?? []).find((c) => sameName(c.name, p.name) || (!!p.email && sameName(c.email, p.email)))
+        if (colleague && !inIt.has(colleague.id)) { fromTheOrganisation.push(colleague); continue }
+        if (colleague) continue
+        if (!p.email) { left.push(p); continue }
+        try {
+          const row: any = await groundsApi.addParticipant(groundId, { email: p.email, ...(p.name ? { displayName: p.name } : {}) })
+          added += 1
+          const who = p.name ?? p.email
+          /* What happened to their invitation, said as the row says it (an invite that waits says so; added-but-waiting-for-a-seat.ts). */
+          if (row?.notInvitedBecause === 'mail_failed') toast.error(`The invitation to ${p.email} did not send. They are on the check-in; send it again from their row.`)
+          else if (row?.saying) toast.info(`${who} is on the check-in. ${row.saying}`)
+          else if (row && !row.invitedAt) toast.info(`${who} is on the check-in. Their invitation goes out on the start date.`)
+          const id = row?.id ?? row?.data?.id
+          if (p.phone && id) {
+            await groundsApi.addTheirWhatsAppNumber(groundId, id, p.phone).catch((e: any) => {
+              const who = p.name ?? p.email
+              toast.error(whatsappOn && e?.response?.data?.message ? e.response.data.message : `${who}’s phone number did not save, but ${who} is on the check-in. Check that it has its country code and try again.`)
+            })
+          }
+        } catch (e: any) {
+          left.push(p)
+          toast.error(aPersonsSentenceForAServerError(e, `${p.name ?? p.email} could not be added. Check the email and try again.`))
+        }
+      }
+      if (fromTheOrganisation.length) { await addManyParticipants(fromTheOrganisation); added += fromTheOrganisation.length }
+      if (added) toast.success(added === 1 ? 'One person is on the check-in.' : `${added} people are on the check-in.`)
+      await qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(groundId) })
+    } finally {
+      setAdding(false)
     }
-  }, [participants, numbersToSave, groundId, whatsappOn])
+    return left
+  }
+
   return (
       <div className="panel pad">
-        <p className="gwui-switch-row-title">Add a person to this check-in</p>
         <ThisAddsASeat />
         {seatsFull && (
           <div className="gwui-note gwui-note-error" role="alert">
@@ -467,109 +446,18 @@ export function AddPeopleForm({
             <Link className="gwui-open-link" to="/billing">View plans</Link>
           </div>
         )}
-        {/*
-          FAULT 5 (live walk, 6 October 2026): PLAIN SENTENCES, NOT JARGON OR A DASH JOIN. "Until
-          the report releases" used the filing-cabinet word for sharing a report with people; "is
-          the approval - there is no queue" joined two pieces with a dash instead of saying each
-          as its own sentence.
-        */}
+        {/* FAULT 5 (live walk, 6 October 2026): plain sentences, not jargon or a dash join. */}
         <p className="gwui-note">
           They give their own version of the same work. You cannot see what they write until you
           share the report.
         </p>
+        <TheTeamBox heading="Add people to this check-in" prefilled={notOnItYet.map((c) => aLineFor({ name: c.name, email: c.email }))} onAdd={onAdd} adding={adding} />
         <p className="gwui-note">
           {isOrgAdmin
             ? 'Anybody you add can check in straight away. Somebody from outside your organisation also appears on your People page, where you can take them off again.'
             : 'Somebody from outside your organisation is invited straight away, and an admin here has to let them in before they can check in. They are told the same thing, and you can see it beside their name below.'}
         </p>
-        <PeoplePicker
-          people={colleagues ?? []}
-          alreadyIn={participants.map((m) => m.userId ?? '').filter(Boolean)}
-          adding={addingMany}
-          onAdd={(picked) => addManyParticipants(picked)}
-        />
-        <input
-          type="text" placeholder="Their name, e.g. Samuel Otieno" aria-label="Their name"
-          value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)}
-          className="gwui-input"
-        />
-        <input
-          type="email" placeholder="name@company.com" aria-label="Their email address"
-          value={newParticipantEmail} onChange={(e) => setNewParticipantEmail(e.target.value)}
-          className="gwui-input"
-        />
-        <input
-          type="text" placeholder="What do you want them to cover? (optional)" aria-label="What they are accountable for"
-          value={newParticipantNote} onChange={(e) => setNewParticipantNote(e.target.value)}
-          className="gwui-input"
-        />
-        <input
-          type="text" placeholder="Their department (optional)" aria-label="Their department"
-          value={newParticipantDepartment} onChange={(e) => setNewParticipantDepartment(e.target.value)}
-          className="gwui-input"
-        />
-        <PhoneNumberField id="add-person-phone" value={phone} onChange={setPhone} whose="theirs" whatsappOn={whatsappOn} />
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          <Button
-            onClick={() => { keepTheNumber(); addParticipantMut.mutate() }}
-            disabled={!looksLikeAnAddress(newParticipantEmail) || addParticipantMut.isPending}
-          >
-            {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
-          </Button>
-          <Button
-            kind="secondary"
-            onClick={() => {
-              const email = newParticipantEmail.trim().toLowerCase()
-              if (!looksLikeAnAddress(email)) return
-              if (queuedToAdd.some((q) => q.email === email)) return
-              keepTheNumber()
-              setQueuedToAdd([...queuedToAdd, { email, note: newParticipantNote.trim() }])
-              setNewParticipantEmail('')
-              setNewParticipantNote('')
-            }}
-            disabled={!looksLikeAnAddress(newParticipantEmail)}
-          >
-            + Add another
-          </Button>
-        </div>
-
-        {queuedToAdd.length > 0 && (
-          <div className="panel">
-            {queuedToAdd.map((q) => (
-              <div key={q.email} className="gwui-field-row">
-                <div className="gwui-field-row-value">
-                  {q.email}
-                  <div className="gwui-switch-row-detail">
-                    {/* FAULT 5 (live walk, 6 October 2026): a plain sentence, not two pieces joined by a dash. */}
-                    {q.note || 'There is no note. They will be asked the general questions for this situation.'}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setQueuedToAdd(queuedToAdd.filter((x) => x.email !== q.email))}
-                  aria-label={`Remove ${q.email}`}
-                  className="btn quiet sm"
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-            <Button onClick={() => inviteTheQueue.mutate()} disabled={inviteTheQueue.isPending}>
-              {inviteTheQueue.isPending
-                ? 'Inviting…'
-                : `Invite ${queuedToAdd.length} ${queuedToAdd.length === 1 ? 'person' : 'people'}`}
-            </Button>
-          </div>
-        )}
-        {lastInvitedEmail && (
-          <p className="gwui-note">
-            {whyItWaits
-              ? `${lastInvitedEmail} is on the check-in. ${whyItWaits}`
-              : lastInviteWaits
-                ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
-                : `Invite sent to ${lastInvitedEmail}`}
-          </p>
-        )}
-        <Button kind="quiet" onClick={onShareCode}>Or share an access code instead</Button>
+        {onShareCode && <Button kind="quiet" onClick={onShareCode}>Or share an access code instead</Button>}
       </div>
   )
 }

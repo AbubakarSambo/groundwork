@@ -327,15 +327,7 @@ function TodaysPeopleAndSetup(props: PeopleAndSetupProps) {
           isInitiator={isInitiator}
           isOrgAdmin={isOrgAdmin}
           colleagues={props.colleagues}
-          addingMany={props.addingMany}
           addManyParticipants={props.addManyParticipants}
-          newParticipantEmail={props.newParticipantEmail} setNewParticipantEmail={props.setNewParticipantEmail} newParticipantName={props.newParticipantName} setNewParticipantName={props.setNewParticipantName}
-          newParticipantNote={props.newParticipantNote} setNewParticipantNote={props.setNewParticipantNote}
-          newParticipantDepartment={props.newParticipantDepartment} setNewParticipantDepartment={props.setNewParticipantDepartment}
-          addParticipantMut={props.addParticipantMut}
-          queuedToAdd={props.queuedToAdd} setQueuedToAdd={props.setQueuedToAdd}
-          inviteTheQueue={props.inviteTheQueue}
-          lastInvitedEmail={props.lastInvitedEmail} whyItWaits={props.whyItWaits} lastInviteWaits={props.lastInviteWaits}
           billingStatus={props.billingStatus}
           navigate={navigate}
           onShareCode={props.onShareCode}

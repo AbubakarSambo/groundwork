@@ -354,13 +354,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
           {isInitiator && showAdd && (
             <AddPeopleForm
               isOrgAdmin={isOrgAdmin} colleagues={props.colleagues} participants={participants} seats={seats} seatsFull={seatsFull}
-              addingMany={props.addingMany} addManyParticipants={props.addManyParticipants}
-              newParticipantEmail={props.newParticipantEmail} setNewParticipantEmail={props.setNewParticipantEmail} newParticipantName={(props as any).newParticipantName} setNewParticipantName={(props as any).setNewParticipantName}
-              newParticipantNote={props.newParticipantNote} setNewParticipantNote={props.setNewParticipantNote}
-              newParticipantDepartment={props.newParticipantDepartment} setNewParticipantDepartment={props.setNewParticipantDepartment}
-              addParticipantMut={props.addParticipantMut} queuedToAdd={props.queuedToAdd} setQueuedToAdd={props.setQueuedToAdd}
-              inviteTheQueue={props.inviteTheQueue} lastInvitedEmail={props.lastInvitedEmail} whyItWaits={props.whyItWaits} lastInviteWaits={props.lastInviteWaits}
-              onShareCode={props.onShareCode}
+              addManyParticipants={props.addManyParticipants} onShareCode={props.onShareCode}
             />
           )}
           <PeopleTable>

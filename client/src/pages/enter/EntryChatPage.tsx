@@ -49,7 +49,7 @@ import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
 import { groundsApi } from '@/api/grounds'
-import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
+import { TheTeamBox, aLineFor, type APersonOnALine } from '@/components/gw/TheTeamBox'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import {
   COLLECT_WHATS_OWED, COLLECT_WHATS_OWED_CARD, COLLECT_WHATS_OWED_GROUP, COLLECT_WHATS_OWED_OPENER, COLLECT_WHATS_OWED_FOR_EXAMPLE,
@@ -1870,13 +1870,6 @@ export function EntryChatPage() {
 
   /* The honeypot the API has always accepted and no form has ever rendered. */
   const trap = useTheTrap()
-  const [inviteEmail, setInviteEmail] = useState('')
-  /**
-   * "Name + email" (section 13), anchor draft only. Asked first, beside the email, in the one row
-   * that adds a person by hand - optional, kept by email address until that person is actually
-   * added, then sent on commit as `displayName`.
-   */
-  const [inviteDisplayName, setInviteDisplayName] = useState('')
   const [pendingDisplayName, setPendingDisplayName] = useState('')
   const [displayNames, setDisplayNames] = useState<Record<string, string>>({})
   /*
@@ -1885,7 +1878,6 @@ export function EntryChatPage() {
    * are on it (theNumbersGivenInTheSetup).
    */
   const whatsappOn = useWhatsAppIsOn()
-  const [invitePhone, setInvitePhone] = useState('')
   const [pendingPhone, setPendingPhone] = useState('')
   const [phones, setPhones] = useState<Record<string, string>>({})
   const [inviteNote, setInviteNote] = useState('')
@@ -1958,8 +1950,6 @@ export function EntryChatPage() {
   const [workingDays, setWorkingDays] = useState<number[]>([])
   /* True while the days on the summary are that default and not anything she said or chose. */
   const daysAreTheDailyDefault = useRef(false)
-  const [bulkInviteMode, setBulkInviteMode] = useState(false)
-  const [bulkInviteText, setBulkInviteText] = useState('')
   const [bulkQueue, setBulkQueue] = useState<string[]>([])
 
   // Stable invite token - generated once and stored in entryStorage
@@ -3441,20 +3431,6 @@ export function EntryChatPage() {
     }
   }
 
-  function addInviteEmail() {
-    const e = inviteEmail.trim()
-    if (!looksLikeAnAddress(e)) return
-    setInviteEmail('')
-    /* The name typed beside this email (anchor draft only) travels with it into the context step,
-       so it is still there to keep once the person is actually added - Skip included. */
-    setPendingDisplayName(inviteDisplayName.trim())
-    setInviteDisplayName('')
-    setPendingPhone(invitePhone.trim())
-    setInvitePhone('')
-    setInviteContextFor(e)
-    setInviteContext('')
-  }
-
   /** Keeps `pendingDisplayName` against this email, once the person is actually added. A no-op off the anchor path (nothing was ever typed there). */
   function keepPendingDisplayName(email: string) {
     const name = pendingDisplayName.trim()
@@ -3468,7 +3444,7 @@ export function EntryChatPage() {
 
   // Queues a recommended addition / mentioned person straight into the
   // contributor list, carrying their role/reason or name/context as the note -
-  // the same shape addInviteEmail/submitInviteContext build by hand.
+  // the same shape submitInviteContext builds by hand.
   /**
    * A HALF-TYPED ADDRESS IS NOT A DECISION TO INVITE NOBODY.
    *
@@ -3758,6 +3734,44 @@ export function EntryChatPage() {
     )
   }
 
+  /*
+   * THE TEAM, ADDED ONCE, ON THE SAVE CARD (Hafsah, 31 October 2026: "Judge it by how fast a lead can get their whole team in, with
+   * phone numbers, without repeating themselves"). A founder named his four people with their numbers in the conversation, then typed
+   * them again, an email and a "What do they do" each, far below a long report. The team box sits where "add your team below" points,
+   * open, filled with everybody named in the conversation and the number and email they gave: the lead types only the missing emails
+   * and presses once. Somebody already in the organisation is recognised by name and needs no email.
+   */
+  function theTeamNamedInTheSetup(): string[] {
+    const onTheList = new Set(inviteAdded.map((e) => shownAs(e.split(' - ')[0]).trim().toLowerCase()))
+    return (onboardingSelections.peopleNamed ?? []).map((n) => n.trim()).filter(Boolean)
+      .filter((n) => !onTheList.has(n.toLowerCase()) && !onTheList.has((colleagueNamed(n)?.name ?? '').toLowerCase()))
+      .map((n) => aLineFor({ name: n, email: onboardingSelections.peopleEmails?.[n] ?? null, phone: onboardingSelections.peoplePhones?.[n] ?? null }))
+  }
+  function addTheTeam(people: APersonOnALine[]): APersonOnALine[] {
+    const needAnEmail: APersonOnALine[] = []
+    const entries: string[] = []
+    const names: Record<string, string> = {}
+    const numbers: Record<string, string> = {}
+    let room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : Number.POSITIVE_INFINITY
+    let overTheLimit = false
+    for (const p of people) {
+      const colleague = p.name ? colleagueNamed(p.name) : null
+      if (!colleague && !p.email) { needAnEmail.push(p); continue }
+      if (room <= 0) { overTheLimit = true; continue }
+      room -= 1
+      if (colleague) { entries.push(`${A_COLLEAGUE}${colleague.id}`); continue }
+      entries.push(p.email!)
+      if (p.name) names[p.email!] = p.name
+      if (p.phone) numbers[p.email!] = p.phone
+    }
+    setInviteAdded((prev) => [...prev, ...entries.filter((e) => !prev.some((x) => x === e || x.startsWith(`${e} - `)))])
+    setDisplayNames((prev) => ({ ...prev, ...names }))
+    setPhones((prev) => ({ ...prev, ...numbers }))
+    if (entries.length) toast.success(entries.length === 1 ? 'One person is on the list. Invites go out when you save.' : `${entries.length} people are on the list. Invites go out when you save.`)
+    if (overTheLimit) toast.error(thePeopleStepRules.limitSentence)
+    return needAnEmail
+  }
+
   function renderPeopleStep(insideTheSetup = false) {
     const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || pickedSituation || ''
     // Matches scenario keys AND card labels (pickedSituation stores the
@@ -3802,11 +3816,17 @@ export function EntryChatPage() {
       <div className="gwui-ec-savecard-invite-subtext">
         {inviteSubtext}
       </div>
+      {/* The one team box (TheTeamBox.tsx), open and filled with everybody named in the conversation (Hafsah, 31 October 2026). */}
+      <div data-testid="the-team-on-the-save-card">
+        <TheTeamBox prefilled={theTeamNamedInTheSetup()} onAdd={addTheTeam} />
+        {/* FAULT 8 (live walk, 6 October 2026): a lasting Note once the limit is reached, not only a passing toast. */}
+        {peopleLimitReached && <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>}
+      </div>
       <div className="gwui-ec-savecard-invite-banner">
         {/* Piece 3a: a signed-in lead has no email to confirm, so she is not told to confirm one. */}
         {user
-          ? 'Add them here now. Anyone you added from the report above is already on this list. Nobody is invited before you save this check-in.'
-          : 'Add them here now. Anyone you added from the report above is already on this list. Nobody is invited before you save this check-in and confirm your email.'}
+          ? 'Everyone you added in Your team above is on this list. Nobody is invited before you save this check-in.'
+          : 'Everyone you added in Your team above is on this list. Nobody is invited before you save this check-in and confirm your email.'}
         {!isAnchor && (
           <>
             {' '}
@@ -3869,7 +3889,7 @@ export function EntryChatPage() {
       )}
 
       {/* Colleagues, picked the way a group chat picks them: search, tick, one button. Each goes on the list without a note; notes can be added on Setup. */}
-      {!inviteContextFor && !bulkInviteMode && (
+      {!inviteContextFor && (
         <PeoplePicker
           people={colleagues.filter((c) => c.id !== user?.id)}
           alreadyIn={inviteAdded.map((e) => e.split(' - ')[0]).filter((h) => h.startsWith(A_COLLEAGUE)).map((h) => h.slice(A_COLLEAGUE.length))}
@@ -3931,84 +3951,10 @@ export function EntryChatPage() {
             <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>
           )}
         </div>
-      ) : bulkInviteMode ? (
-        <div>
-          <TextArea
-            autoFocus
-            placeholder="Paste emails separated by commas or line breaks&#10;e.g. alice@co.com, bob@co.com"
-            value={bulkInviteText}
-            onChange={e => setBulkInviteText(e.target.value)}
-            className="gwui-ec-savecard-field"
-          />
-          <div className="gwui-ec-savecard-row-gap8 gwui-ec-savecard-row-gap8-grow-last">
-            <Button kind="secondary" size="small" onClick={() => { setBulkInviteMode(false); setBulkInviteText('') }}>Cancel</Button>
-            <Button
-              kind="secondary" size="small"
-              onClick={() => {
-                const allEmails = bulkInviteText
-                  .split(/[\n,]+/)
-                  .map(e => e.trim().toLowerCase())
-                  /* Not validation: this filters model-extracted mentions down to the ones that are addresses at all. Kept as is. */
-                  .filter(e => e.includes('@') && !inviteAdded.some(a => a.startsWith(e)))
-                const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : allEmails.length
-                const emails = allEmails.slice(0, room)
-                if (allEmails.length > emails.length) toast.error(thePeopleStepRules.limitSentence)
-                if (emails.length === 0) return
-                setBulkInviteText('')
-                setBulkInviteMode(false)
-                // Queue all emails through the per-contributor context prompt
-                const [first, ...rest] = emails
-                setBulkQueue(rest)
-                setInviteContextFor(first)
-                setInviteContext('')
-              }}
-            >
-              Add all
-            </Button>
-          </div>
-          {/* FAULT 8: the toast above still says so the moment a paste goes over - this is the
-              lasting version, here whenever the limit was already reached before pasting at all. */}
-          {peopleLimitReached && <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>}
-        </div>
       ) : (
         <>
-          {/*
-            "Name + email" (section 13): the name is asked first, beside the email, before the
-            optional "What do they do" context that follows once Add is pressed.
-            FAULT 5(a) (live walk, 6 October 2026): THIS USED TO BE ANCHOR-DRAFT ONLY, SO AN
-            ORDINARY SETUP HAD NO WAY TO GIVE A NAME WHEN ADDING SOMEBODY BY EMAIL - even when the
-            conversation already had one. Walked live, setting up a new hire: Imani Wekesa was
-            named in the chat, then added by her address alone, and the roster read
-            "imani@walk2.test has not checked in…" with no name anywhere, although Groundwork knew
-            it. `displayNames`/`asSomeoneToInvite` already carry a typed name through to the
-            commit's `displayName` for every situation, not only an anchor draft - only the field to
-            type one into was gated. Opened to every situation now; nothing here is anchor-specific.
-          */}
-          <TextField type="text" aria-label="Name" placeholder="Name (optional)" value={inviteDisplayName}
-            onChange={e => setInviteDisplayName(e.target.value)}
-            className="gwui-ec-savecard-field"
-          />
-          <PhoneNumberField id="setup-person-phone" value={invitePhone} onChange={setInvitePhone} whose="theirs" whatsappOn={whatsappOn} />
-          <div className="gwui-ec-savecard-invite-add-row">
-            <TextField type="email" placeholder="name@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addInviteEmail()}
-            />
-            <Button kind="secondary" size="small" onClick={addInviteEmail}>Add</Button>
-          </div>
-          {/*
-           * FAULT 8 (live walk, 6 October 2026): A LASTING NOTE UNDER THE ADD ROW, NOT A PASSING
-           * TOAST, ONCE THE LIMIT IS REACHED.
-           *
-           * The row itself still opens the context step either way (asking what somebody does is
-           * not itself adding them, the same design the limit test above already pins) - it is
-           * "Add person" there that actually adds somebody, and that is where it is now disabled.
-           * This Note means the lead already knows why, instead of finding out only once they
-           * reach that further step.
-           */}
-          {peopleLimitReached && <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>}
-          <button type="button" className="gwui-plain-link" onClick={() => setBulkInviteMode(true)}>
-            Paste multiple emails
-          </button>
+          {/* One way to add a team (TheTeamBox, above the report, Hafsah, 31 October 2026): the name, email and phone fields, the
+              "Paste multiple emails" toggle and its "What do they do" step for each person are gone from here. The link stays. */}
           <div className="gwui-ec-savecard-link-row">
             <div className="gwui-ec-savecard-link-box">
               {window.location.origin}/invite?token={inviteToken}
@@ -4990,157 +4936,6 @@ export function EntryChatPage() {
               </div>
             )}
 
-            {/* Structured report */}
-            {sessionReport && (
-              <div className="gwui-ec-savecard-section">
-              <TheReportYouSawAtTheEnd
-                report={sessionReport}
-                correctedNote={reportWasCorrected && !generatingReport}
-                /* U.6 review: no "One thing this check-in still needs" here. It asked "When does this
-                   start?" and said no start date was set after the lead had chosen "Now". The setup
-                   right below (TheSetup) asks when it starts and how often, once. */
-                onRecordLine={
-                  uploadedDoc
-                    ? `Built from what you said today, and ${uploadedDoc.name}. Nobody else has attached anything yet.`
-                    : 'Built from what you said today. Nothing attached yet.'
-                }
-                renderAdd={(key, label) =>
-                  queuedFromSuggestion.has(key) ? (
-                    <div className="gwui-ec-savecard-add-pending">✓ Added to invite list</div>
-                  ) : addingContributorFor === key ? (
-                    <>
-                      <div className="gwui-ec-savecard-add-row">
-                        <TextField
-                          type="email" autoFocus placeholder="their@email.com"
-                          value={addingContributorEmail} onChange={e => { setAddingContributorEmail(e.target.value); setAddingContributorError('') }}
-                          onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, label)}
-                        />
-                        <Button kind="secondary" size="small" onClick={() => queueSuggestedContributor(key, label)}>Add</Button>
-                      </div>
-                      {addingContributorError && (
-                        <div className="gwui-ec-savecard-add-error">{addingContributorError}</div>
-                      )}
-                    </>
-                  ) : colleagueNamed(label) ? (
-                    /* Already in the organisation: one click, no address to type. */
-                    <button type="button" className="gwui-plain-link" onClick={() => queueColleague(colleagueNamed(label)!, label, key)}>
-                      Add {colleagueNamed(label)!.name}{colleagueNamed(label)!.team ? ` (${colleagueNamed(label)!.team})` : ''}
-                    </button>
-                  ) : (
-                    <button
-                      type="button" className="gwui-plain-link"
-                      onClick={() => {
-                        const known = onboardingSelections.peopleEmails?.[label.split(' - ')[0].trim()]
-                        if (known && looksLikeAnAddress(known)) { queueSuggestedContributor(key, label, known); return }
-                        setAddingContributorFor(key); setAddingContributorEmail(known ?? ''); setAddingContributorLabel(label); setAddingContributorError('')
-                      }}
-                    >
-                      Add them
-                    </button>
-                  )
-                }
-                /* Every open item can say it is wrong, from where it is wrong. It opens the same
-                   correction conversation as the summary does; nothing separate to maintain. */
-                renderCorrect={(about) => (!showCorrection ? (
-                  <button
-                    type="button" className="gwui-plain-link"
-                    onClick={() => { setCorrectionText(`"${about}" is not right: `); setShowCorrection(true) }}
-                    disabled={generatingReport}
-                  >
-                    This isn't right, correct it
-                  </button>
-                ) : null)}
-                correctionSlot={
-                  <>
-                          {/* Anonymous correction: routed through the live engine (/entry/chat),
-                              not a one-shot patch. See the comment block above buildCorrectionTurn. */}
-                          {/*
-                            FAULT 6 (LIVE RE-WALK): DARK BLUE ON NAVY. `gwui-plain-link`'s default
-                            ink is `var(--gw-navy)`, right for every other quiet link in this
-                            product - but this one sits inside TheReportYouSawAtTheEnd's own dark
-                            summary card (`.gw-head`, `background: var(--gw-dark)`), the one place
-                            that ink is unreadable against its own ground. Fixed in the shared
-                            stylesheet both reports already draw from (CLOSE_SHEET, `.gw-close
-                            .gw-head .gwui-plain-link`), not here - a rebuilt page like this one may
-                            carry no inline colour and no new one-off class, and the colour only
-                            ever needs to differ inside that one dark card.
-                          */}
-                          {!showCorrection ? (
-                            <button
-                              type="button" className="gwui-plain-link"
-                              onClick={() => setShowCorrection(true)}
-                              disabled={generatingReport}
-                            >
-                              This isn't right, correct it
-                            </button>
-                          ) : (
-                            <div>
-                              <div className="gwui-ec-correction-intro">
-                                {/*
-                                  W8. "We may ask a follow-up" reads like a warning that
-                                  something might go wrong, and next to a button marked
-                                  "Send correction" it reads as one-shot - which is what
-                                  it looked like to Hafsah, on a flow where the follow-up
-                                  loop is in fact wired. Saying plainly that this is a
-                                  conversation is the difference between "the deadline is
-                                  wrong" and a correction the record can act on.
-                                */}
-                                What did we get wrong? Say it plainly. This is a conversation, not a form, and we will usually ask one thing back before the report changes, because "the deadline is wrong" does not say what the deadline is.
-                              </div>
-                              {correctionExchange.length > 0 && (
-                                <div className="gwui-ec-correction-thread">
-                                  {correctionExchange.map((m, i) => (
-                                    <div
-                                      key={i}
-                                      className={`gwui-ec-correction-bubble ${m.role === 'user' ? 'gwui-ec-correction-bubble-user' : 'gwui-ec-correction-bubble-assistant'}`}
-                                    >
-                                      {m.role === 'user' && m.content.startsWith(CORRECTION_PREFIX)
-                                        ? m.content.slice(CORRECTION_PREFIX.length).trim()
-                                        : nothingInternalReachesTheBubble(m.content)}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              <textarea
-                                autoFocus
-                                value={correctionText}
-                                onChange={e => setCorrectionText(e.target.value)}
-                                placeholder="e.g. The deadline is not May - it is March 1."
-                                className="gwui-ec-correction-field"
-                              />
-                              <div className="gwui-ec-correction-actions">
-                                <Button
-                                  kind="secondary" size="small"
-                                  onClick={submitReportCorrection}
-                                  disabled={!correctionText.trim() || correctionLoading || generatingReport}
-                                >
-                                  {generatingReport ? 'Redoing your report...' : correctionLoading ? 'Sending...' : correctionExchange.length > 0 ? 'Send' : 'Start'}
-                                </Button>
-                                {correctionExchange.length > 0 && (
-                                  <Button
-                                    kind="secondary" size="small"
-                                    onClick={finishCorrection}
-                                    disabled={correctionLoading || generatingReport}
-                                  >
-                                    I'm done, redo my report
-                                  </Button>
-                                )}
-                                <button
-                                  type="button" className="gwui-plain-link"
-                                  onClick={() => { setShowCorrection(false); setCorrectionText(''); setCorrectionStartIndex(null) }}
-                                  disabled={correctionLoading || generatingReport}
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                  </>
-                }
-              />
-              </div>
-            )}
-
             {/* What happens next - shown after report is ready, before signup */}
             {(sessionReport || (!generatingReport && closed)) && !emailSent && (
               <>
@@ -5448,6 +5243,162 @@ export function EntryChatPage() {
 
             </div>
             )}
+
+            {/*
+              THE REPORT AFTER THE TEAM (Hafsah, 31 October 2026). The closer says "Next, add your team below", and the team step sat
+              under this long report, so "below" read as a dead end. The setup and its team come first; the report follows them.
+            */}
+            {/* Structured report */}
+            {sessionReport && (
+              <div className="gwui-ec-savecard-section">
+              <TheReportYouSawAtTheEnd
+                report={sessionReport}
+                correctedNote={reportWasCorrected && !generatingReport}
+                /* U.6 review: no "One thing this check-in still needs" here. It asked "When does this
+                   start?" and said no start date was set after the lead had chosen "Now". The setup
+                   right below (TheSetup) asks when it starts and how often, once. */
+                onRecordLine={
+                  uploadedDoc
+                    ? `Built from what you said today, and ${uploadedDoc.name}. Nobody else has attached anything yet.`
+                    : 'Built from what you said today. Nothing attached yet.'
+                }
+                renderAdd={(key, label) =>
+                  queuedFromSuggestion.has(key) ? (
+                    <div className="gwui-ec-savecard-add-pending">✓ Added to invite list</div>
+                  ) : addingContributorFor === key ? (
+                    <>
+                      <div className="gwui-ec-savecard-add-row">
+                        <TextField
+                          type="email" autoFocus placeholder="their@email.com"
+                          value={addingContributorEmail} onChange={e => { setAddingContributorEmail(e.target.value); setAddingContributorError('') }}
+                          onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, label)}
+                        />
+                        <Button kind="secondary" size="small" onClick={() => queueSuggestedContributor(key, label)}>Add</Button>
+                      </div>
+                      {addingContributorError && (
+                        <div className="gwui-ec-savecard-add-error">{addingContributorError}</div>
+                      )}
+                    </>
+                  ) : colleagueNamed(label) ? (
+                    /* Already in the organisation: one click, no address to type. */
+                    <button type="button" className="gwui-plain-link" onClick={() => queueColleague(colleagueNamed(label)!, label, key)}>
+                      Add {colleagueNamed(label)!.name}{colleagueNamed(label)!.team ? ` (${colleagueNamed(label)!.team})` : ''}
+                    </button>
+                  ) : (
+                    <button
+                      type="button" className="gwui-plain-link"
+                      onClick={() => {
+                        const known = onboardingSelections.peopleEmails?.[label.split(' - ')[0].trim()]
+                        if (known && looksLikeAnAddress(known)) { queueSuggestedContributor(key, label, known); return }
+                        setAddingContributorFor(key); setAddingContributorEmail(known ?? ''); setAddingContributorLabel(label); setAddingContributorError('')
+                      }}
+                    >
+                      Add them
+                    </button>
+                  )
+                }
+                /* Every open item can say it is wrong, from where it is wrong. It opens the same
+                   correction conversation as the summary does; nothing separate to maintain. */
+                renderCorrect={(about) => (!showCorrection ? (
+                  <button
+                    type="button" className="gwui-plain-link"
+                    onClick={() => { setCorrectionText(`"${about}" is not right: `); setShowCorrection(true) }}
+                    disabled={generatingReport}
+                  >
+                    This isn't right, correct it
+                  </button>
+                ) : null)}
+                correctionSlot={
+                  <>
+                          {/* Anonymous correction: routed through the live engine (/entry/chat),
+                              not a one-shot patch. See the comment block above buildCorrectionTurn. */}
+                          {/*
+                            FAULT 6 (LIVE RE-WALK): DARK BLUE ON NAVY. `gwui-plain-link`'s default
+                            ink is `var(--gw-navy)`, right for every other quiet link in this
+                            product - but this one sits inside TheReportYouSawAtTheEnd's own dark
+                            summary card (`.gw-head`, `background: var(--gw-dark)`), the one place
+                            that ink is unreadable against its own ground. Fixed in the shared
+                            stylesheet both reports already draw from (CLOSE_SHEET, `.gw-close
+                            .gw-head .gwui-plain-link`), not here - a rebuilt page like this one may
+                            carry no inline colour and no new one-off class, and the colour only
+                            ever needs to differ inside that one dark card.
+                          */}
+                          {!showCorrection ? (
+                            <button
+                              type="button" className="gwui-plain-link"
+                              onClick={() => setShowCorrection(true)}
+                              disabled={generatingReport}
+                            >
+                              This isn't right, correct it
+                            </button>
+                          ) : (
+                            <div>
+                              <div className="gwui-ec-correction-intro">
+                                {/*
+                                  W8. "We may ask a follow-up" reads like a warning that
+                                  something might go wrong, and next to a button marked
+                                  "Send correction" it reads as one-shot - which is what
+                                  it looked like to Hafsah, on a flow where the follow-up
+                                  loop is in fact wired. Saying plainly that this is a
+                                  conversation is the difference between "the deadline is
+                                  wrong" and a correction the record can act on.
+                                */}
+                                What did we get wrong? Say it plainly. This is a conversation, not a form, and we will usually ask one thing back before the report changes, because "the deadline is wrong" does not say what the deadline is.
+                              </div>
+                              {correctionExchange.length > 0 && (
+                                <div className="gwui-ec-correction-thread">
+                                  {correctionExchange.map((m, i) => (
+                                    <div
+                                      key={i}
+                                      className={`gwui-ec-correction-bubble ${m.role === 'user' ? 'gwui-ec-correction-bubble-user' : 'gwui-ec-correction-bubble-assistant'}`}
+                                    >
+                                      {m.role === 'user' && m.content.startsWith(CORRECTION_PREFIX)
+                                        ? m.content.slice(CORRECTION_PREFIX.length).trim()
+                                        : nothingInternalReachesTheBubble(m.content)}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <textarea
+                                autoFocus
+                                value={correctionText}
+                                onChange={e => setCorrectionText(e.target.value)}
+                                placeholder="e.g. The deadline is not May - it is March 1."
+                                className="gwui-ec-correction-field"
+                              />
+                              <div className="gwui-ec-correction-actions">
+                                <Button
+                                  kind="secondary" size="small"
+                                  onClick={submitReportCorrection}
+                                  disabled={!correctionText.trim() || correctionLoading || generatingReport}
+                                >
+                                  {generatingReport ? 'Redoing your report...' : correctionLoading ? 'Sending...' : correctionExchange.length > 0 ? 'Send' : 'Start'}
+                                </Button>
+                                {correctionExchange.length > 0 && (
+                                  <Button
+                                    kind="secondary" size="small"
+                                    onClick={finishCorrection}
+                                    disabled={correctionLoading || generatingReport}
+                                  >
+                                    I'm done, redo my report
+                                  </Button>
+                                )}
+                                <button
+                                  type="button" className="gwui-plain-link"
+                                  onClick={() => { setShowCorrection(false); setCorrectionText(''); setCorrectionStartIndex(null) }}
+                                  disabled={correctionLoading || generatingReport}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                  </>
+                }
+              />
+              </div>
+            )}
+
 
             {/*
               "Done" is only offered once the email has actually been sent.

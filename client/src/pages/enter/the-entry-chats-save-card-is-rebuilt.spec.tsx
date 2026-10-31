@@ -5,6 +5,7 @@ import { render, screen, waitFor, fireEvent, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
+import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
 import { visiblePrimaryButtons } from './the-entry-chats-own-test-helpers'
 import {
   stripComments, oldClassesUsed, bannedInlineStyleProps, bannedStyleReferenceProps, tooSmallFontSizes,
@@ -50,6 +51,7 @@ describe('4d-3: the source this piece rebuilt carries no old class or banned inl
 
 vi.mock('@/api/entry', () => ({
   entryApi: {
+    peopleOnLines: vi.fn(async (t: string) => (await import('./a-team-read-in-a-spec')).readLikeTheServer(t)),
     opener: vi.fn().mockResolvedValue({ reply: '' }),
     chat: vi.fn(),
     report: vi.fn(),
@@ -247,26 +249,23 @@ describe('the save card, already signed in', () => {
    * no error shown. Both are named the moment "Add all" is pressed, so saving before either focus
    * note is answered must still invite both.
    */
-  it('saving while the per-person focus step is still open does not drop the people just "Add all"-ed', async () => {
+  /* UPDATED (Hafsah, 31 October 2026): the paste and its per-person focus step are the one team box, one press. The point stands: the
+     people just added are on the check-in when it is saved. */
+  it('saving straight after "Add everyone" invites everybody just added', async () => {
     authedUser = { id: 'u1', email: 'amina@suites.test' }
     const { entryApi } = await import('@/api/entry')
     seedClosedSession()
     renderPage()
     fireEvent.click(await screen.findByText(/Invite and finish/))
-    fireEvent.click(await screen.findByText('Paste multiple emails'))
-    fireEvent.change(screen.getByPlaceholderText(/Paste emails separated by commas/), {
-      target: { value: 'priya@suites.test, tomas@suites.test' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Add all' }))
-
-    /* Priya's own focus-note step is now open, unanswered, and Tomas is still queued behind it. */
-    await screen.findByText('What do you want them to focus on or cover?')
+    addThroughTheTeamBox('Priya Shah, priya@suites.test\nTomas Berg, tomas@suites.test')
+    await waitFor(() => expect(screen.getByText(/Tomas Berg/)).toBeTruthy())
+    expect(screen.queryByText('What do you want them to focus on or cover?')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
 
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
-    expect(payload.contributors).toContainEqual(expect.objectContaining({ email: 'priya@suites.test' }))
-    expect(payload.contributors).toContainEqual(expect.objectContaining({ email: 'tomas@suites.test' }))
+    expect(payload.contributors).toContainEqual(expect.objectContaining({ email: 'priya@suites.test', displayName: 'Priya Shah' }))
+    expect(payload.contributors).toContainEqual(expect.objectContaining({ email: 'tomas@suites.test', displayName: 'Tomas Berg' }))
   })
 
   /*

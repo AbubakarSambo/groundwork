@@ -198,6 +198,9 @@ export interface OnboardResult {
 // ── Entry API ─────────────────────────────────────────────────────────────────
 
 export const entryApi = {
+  /** A team typed one per line, read by the server's one reader (POST /entry/people-on-lines). Nothing is stored. */
+  peopleOnLines: (pasted: string): Promise<{ name: string | null; email: string | null; phone: string | null }[]> =>
+    apiClient.post('/entry/people-on-lines', { pasted }).then((r) => (r.data?.data ?? r.data)?.people ?? []),
   /**
    * `POST /entry/opener`: `reply` is the opening words, as before. `source` and `thePeopleStep`
    * ride on the same call for a scenario that has its own (today the anchor's, with its switch on)

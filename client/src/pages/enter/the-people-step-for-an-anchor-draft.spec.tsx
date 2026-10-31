@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
+import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
 import { authApi } from '@/api/auth'
 import { toast } from 'sonner'
 
@@ -31,6 +32,7 @@ import { toast } from 'sonner'
 vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn().mockResolvedValue({ draftToken: 'd-token' }) } }))
 vi.mock('@/api/entry', () => ({
   entryApi: {
+    peopleOnLines: vi.fn(async (t: string) => (await import('./a-team-read-in-a-spec')).readLikeTheServer(t)),
     opener: vi.fn().mockResolvedValue({ reply: '' }),
     chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn(),
     patchDraft: vi.fn().mockResolvedValue({ ok: true }),
@@ -153,24 +155,16 @@ describe('the people step, for an anchor draft', () => {
     expect(screen.queryByText('Who needs to be part of this?')).toBeNull()
   })
 
+  /* UPDATED (Hafsah, 31 October 2026): people are added through the one team box, in one press, with no per-person step. */
   it('adds up to the shrunk mayAdd of 2, then refuses the next one with the engine’s own sentence', async () => {
     await openInviteBlock(true)
-    for (let i = 0; i < 2; i++) {
-      fireEvent.change(await screen.findByPlaceholderText('name@company.com'), { target: { value: `person${i}@example.test` } })
-      fireEvent.click(screen.getByText('Add'))
-      await screen.findByText('What do they do, and why are they part of this?')
-      fireEvent.click(screen.getByText('Skip'))
-      await waitFor(() => expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull())
-    }
+    await screen.findByLabelText('Your team, one per line')
+    addThroughTheTeamBox('person0@example.test\nperson1@example.test')
+    await waitFor(() => expect(screen.getByText('✓ person1@example.test.')).toBeTruthy())
     expect(toast.error).not.toHaveBeenCalled()
-    // A third other person reaches the same context prompt (asking what somebody does is not
-    // itself adding them), but "Skip" refuses to add them: the limit is enforced the moment
-    // somebody is actually added, with the engine's own sentence.
-    fireEvent.change(await screen.findByPlaceholderText('name@company.com'), { target: { value: 'person2@example.test' } })
-    fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do, and why are they part of this?')
-    fireEvent.click(screen.getByText('Skip'))
-    expect(toast.error).toHaveBeenCalledWith('This one-month Groundwork holds up to 20 people besides you.')
+    addThroughTheTeamBox('person2@example.test')
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('This one-month Groundwork holds up to 20 people besides you.'))
+    expect(screen.queryByText('✓ person2@example.test.')).toBeNull()
   })
 })
 
@@ -200,8 +194,9 @@ describe('the limit is enforced at every place a contributor is actually added',
     expect(src).toContain('if (inviteAdded.includes(inviteContextFor) || mayAddOneMorePerson()) {')
   })
 
-  it('the pasted-list "Add all" button slices to the room actually left', () => {
-    expect(src).toContain('const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : allEmails.length')
+  /* The pasted list's "Add all" is the one team box now (Hafsah, 31 October 2026); it counts the room left the same way. */
+  it('the team box slices to the room actually left', () => {
+    expect(src).toContain('let room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : Number.POSITIVE_INFINITY')
   })
 })
 

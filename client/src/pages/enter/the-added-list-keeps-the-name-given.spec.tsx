@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
+import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
 
 /**
  * FAULT 3 (WALK ITEM 3, PART 1): NAMES ARE DROPPED AFTER THE PEOPLE STEP.
@@ -19,7 +20,8 @@ import { EntryChatPage } from './EntryChatPage'
  */
 
 vi.mock('@/api/entry', () => ({
-  entryApi: { opener: vi.fn().mockResolvedValue({ reply: '' }), chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn() },
+  entryApi: { opener: vi.fn().mockResolvedValue({ reply: '' }), chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn(),
+    peopleOnLines: vi.fn(async (t: string) => (await import('./a-team-read-in-a-spec')).readLikeTheServer(t)) },
 }))
 vi.mock('@/api/auth', () => ({
   authApi: { entrySave: vi.fn().mockResolvedValue({ draftToken: 'draft-anchor-names' }) },
@@ -51,36 +53,16 @@ describe('the added list and the waiting sentence keep the name given', () => {
   beforeEach(() => { localStorage.clear(); vi.clearAllMocks() })
 
   /*
-   * SCREEN FAULT 6(a) (live walk, 6 October 2026): THE CONTEXT BOX'S OWN HEADING, TOO. It is
-   * headed by `inviteContextFor` (the address, this step's own key) rather than the name just
-   * typed beside it - the one place on this whole step a lead could read "musa@anchor.test" where
-   * every other place already reads "Musa Bello".
+   * UPDATED (Hafsah, 31 October 2026: one team box, one press, no "What do they do" step per person). The name is given on the same
+   * line as the email, in the team box, and every place the address is listed reads it.
    */
-  it('heads the context box with the name given, not the email', async () => {
+  it('asks nobody "What do they do" while adding, and the name given heads the chip', async () => {
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
-
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Musa Bello' } })
-    fireEvent.change(screen.getByPlaceholderText('name@company.com'), { target: { value: 'musa@anchor.test' } })
-    fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do, and why are they part of this?')
-    expect(screen.getByText('Musa Bello')).toBeTruthy()
-    expect(screen.queryByText('musa@anchor.test')).toBeNull()
-  })
-
-  it('shows "Name (email)" on the added chip, not the email alone', async () => {
-    seedClosedAnchorSession()
-    renderPage()
-    await screen.findByText('Who needs to be part of this?')
-
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Musa Bello' } })
-    fireEvent.change(screen.getByPlaceholderText('name@company.com'), { target: { value: 'musa@anchor.test' } })
-    fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do, and why are they part of this?')
-    fireEvent.click(screen.getByText('Skip'))
-
+    addThroughTheTeamBox('Musa Bello, musa@anchor.test')
     await waitFor(() => expect(screen.getByText('✓ Musa Bello (musa@anchor.test).')).toBeTruthy())
+    expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull()
     expect(screen.queryByText('✓ musa@anchor.test.')).toBeNull()
   })
 
@@ -88,13 +70,8 @@ describe('the added list and the waiting sentence keep the name given', () => {
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
-
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Musa Bello' } })
-    fireEvent.change(screen.getByPlaceholderText('name@company.com'), { target: { value: 'musa@anchor.test' } })
-    fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do, and why are they part of this?')
-    fireEvent.click(screen.getByText('Skip'))
-    await waitFor(() => expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull())
+    addThroughTheTeamBox('Musa Bello, musa@anchor.test')
+    await waitFor(() => expect(screen.getByText('✓ Musa Bello (musa@anchor.test).')).toBeTruthy())
 
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
@@ -109,12 +86,7 @@ describe('the added list and the waiting sentence keep the name given', () => {
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
-
-    fireEvent.change(screen.getByPlaceholderText('name@company.com'), { target: { value: 'bello@example.test' } })
-    fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do, and why are they part of this?')
-    fireEvent.click(screen.getByText('Skip'))
-
+    addThroughTheTeamBox('bello@example.test')
     await waitFor(() => expect(screen.getByText('✓ bello@example.test.')).toBeTruthy())
   })
 
@@ -147,11 +119,9 @@ describe('the added list and the waiting sentence keep the name given', () => {
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
     await screen.findByText('Invite people')
 
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Imani Wekesa' } })
-    fireEvent.change(screen.getByPlaceholderText('name@company.com'), { target: { value: 'imani@walk2.test' } })
-    fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('Skip')
-    fireEvent.click(screen.getByText('Skip'))
+    /* The team box is filled with Imani, named in the conversation; the lead adds her email on her line. */
+    expect((screen.getByLabelText('Your team, one per line') as HTMLTextAreaElement).value).toBe('Imani')
+    addThroughTheTeamBox('Imani Wekesa, imani@walk2.test')
 
     await waitFor(() => expect(screen.getByText('✓ Imani Wekesa (imani@walk2.test).')).toBeTruthy())
     expect(screen.queryByText('✓ imani@walk2.test.')).toBeNull()
