@@ -2,7 +2,6 @@ import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
 import { TheSessionsSoFar, theSessionsSoFar } from '@/components/gw/TheSessionsSoFar'
 import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
 import { TheLeadsNote } from '@/components/gw/TheLeadsNote'
-import { howManyCheckedInSentence } from '@/lib/how-many-checked-in'
 import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
 import { scrollToId } from '@/lib/scroll-to'
 import { whenItRunsOut, sayHowLongIsLeft } from '@/lib/when-it-runs-out'
@@ -54,7 +53,7 @@ import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { SendTheReportToEveryone } from '@/components/gw/SendTheReportToEveryone'
-import { howManyHaveNotAnsweredYet, numberUpToTenInWords, andWhoIsNotCountedYet } from '@/lib/a-number-up-to-ten-in-words'
+import { howManyHaveNotAnsweredYet, numberUpToTenInWords } from '@/lib/a-number-up-to-ten-in-words'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -1310,6 +1309,12 @@ export function GroundAdminPage() {
    * The count is the server's one count (answeredBySession), which counts only the people the session counts.
    */
   const clockRoundDone = theCountOf(ground, clockRound)?.answered.length ?? 0
+   * WHO IS IN THIS SESSION AND WHO HAS ANSWERED IT, FROM THE SERVER'S ONE COUNT (Hafsah, 30 October 2026, first-experience round 1).
+   * This page counted on the screen (`whoIsInRound`) while the board and Ask counted their own way, and a field lead read three
+   * different counts of one session. `ground.thisSession` is the board's own count for the clock's session (api this-sessions-count.ts),
+   * with who it leaves out said beside it. Null where this reader is not shown the others.
+   */
+  const thisSession = (ground as any).thisSession as { answered: number; ofPeople: number; everyoneIn: boolean; says: string } | null | undefined
   /**
    * WHY THE SESSION NUMBER JUST WENT DOWN.
    *
@@ -1397,7 +1402,7 @@ export function GroundAdminPage() {
    */
   /* B-053: named against `clockRound`, the same session `ground.sessionClock.says` (when sent) is about -
      see the comment beside `clockRound`'s own declaration. */
-  const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.sessionNumber === clockRound)
+  const everyoneIn = !!thisSession?.everyoneIn
   /*
    * NOTHING IS BEING WRITTEN UNTIL SOMEBODY HAS CHECKED IN. Hafsah, 21 Sep 2026, on her own ground: "0 of
    * 1 checked in for session 1 · report being written", after the setup conversation and before any
@@ -1436,7 +1441,7 @@ export function GroundAdminPage() {
              stayed on for good while the others had not checked in. It is ready to read so far, and fills in as they do.
              With nobody in this session yet, nothing is added: the count beside it already says "Nobody has checked in yet.",
              and "Waiting for the first session" was said over session 2 (Hafsah, 30 October 2026, clinic lead). */
-          ? (everyoneIn ? 'everyone is in, report on its way' : clockRoundDone > 0 ? 'the report so far is ready to read, and it fills in as the others check in' : 'no report yet')
+          ? (everyoneIn ? 'everyone is in, report on its way' : (thisSession?.answered ?? 0) > 0 ? 'the report so far is ready to read, and it fills in as the others check in' : 'no report yet')
           : 'no report yet'
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   /**
@@ -1724,7 +1729,7 @@ export function GroundAdminPage() {
             /* U.9 re-review, item B: a sentence, not a label and a fraction. Screen fault 4
                (final walk): "1 of the 3 have not answered yet." is now said in words, with the
                right verb for one person left over - "One of the three has not answered yet." */
-            : a.kind === 'waiting' ? { t: howManyHaveNotAnsweredYet(a.total - a.done, a.total) + andWhoIsNotCountedYet(a.notLetIn) }
+            : a.kind === 'waiting' ? { t: [howManyHaveNotAnsweredYet(a.total - a.done, a.total), a.notCountedSays].filter(Boolean).join(' ') }
             : null
           return say ? <Note tone={say.tone}>{say.t}</Note> : null
         })()}
@@ -1860,36 +1865,12 @@ export function GroundAdminPage() {
               the session it counts costs three words and removes the question. SESSION, NOT ROUND:
               "session" appears in 159 visible strings and "round" in 25.
             */
-            if ((ground.participants ?? []).length > 0) {
-              /*
-               * B-053: COUNTED AGAINST `clockRound`, NOT `openRound` - the same session
-               * `ground.sessionClock.says` just named. Counting this page's own open round instead
-               * read "Session 1 of 12. ... Nobody has checked in yet. Waiting for the first
-               * check-in." over a session everybody had already finished, because `says` and this
-               * count were two different sessions' worth of true. See `clockRound`'s own comment.
-               */
-              const total = theCountOf(ground, clockRound)?.onTheCheckIn.length ?? 0
-              /*
-               * REQUEST 174, ITEM 2 (report tab, fault b): "0 of 1 people have checked in" is not a
-               * sentence anybody writes - nobody says "zero people" where "nobody" is the plain
-               * word, and "1 people" is simply wrong. Zero says so plainly; one person is a person,
-               * not a one-member "people".
-               *
-               * B-148: NOT SAID TWICE. When the lead takes part herself, has already answered, and
-               * is only waiting on others, the attention Note just above already says exactly this
-               * ("One of the three has not answered yet."), from `railAttention`'s own count.
-               * Saying it again here, in different words, read as the product repeating itself -
-               * the audit's own complaint. Left out only in that one case: `viewerChecksIn` keeps
-               * this sentence for a lead who only manages (an anchor check-in), whose own "waiting"
-               * state has no Note above it to duplicate, and for the lead's own turn or anybody
-               * who is not the initiator, none of which this guard touches.
-               */
-              if (!(isInitiator && viewerChecksIn && attention.kind === 'waiting')) {
-                parts.push(
-                  howManyCheckedInSentence(clockRoundDone, total, clockRound),
-                )
-              }
-            }
+            /*
+             * B-148: NOT SAID TWICE. When the lead takes part herself, has already answered, and is only waiting on others, the
+             * attention Note just above already says it, from the same served count. Said here in every other case, as the server
+             * says it ("Three of the five people have answered session 2." and who it leaves out).
+             */
+            if (thisSession?.says && !(isInitiator && viewerChecksIn && attention.kind === 'waiting')) parts.push(thisSession.says)
             if (roundWentBack) parts.push(`It went back to session ${openRound}, because somebody new was added. Nothing anybody wrote is lost.`)
           }
           /* Report state only while there is something to say about it. */

@@ -218,9 +218,9 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   else if (iRunIt && !allDone && !isEvaluationScenario(g.scenario) && g.cadence && g.cadence !== 'ONE_TIME' && round > 0 && aSessionReportToShare(g, round)) needs = { text: g.cadence === 'DAILY' ? 'Today’s report ready' : 'This session’s report is ready', tone: 'proven' }
   else if (a.kind === 'waiting' && iRunIt) {
     const byId = new Map((g.participants ?? []).map(p => [p.id, p]))
-    const missing = sessionsOf(g).filter(c => c.sessionNumber === round && c.status !== 'COMPLETED').map(c => byId.get(c.participantId))
+    /* Who the server's one count still waits on (api this-sessions-count.ts), never a count of the rows on the screen (Hafsah, 30 October 2026). */
+    const missing = ((g as any).glance?.progress?.waitingOn ?? []).map((id: string) => byId.get(id))
     const name = missing.length === 1 ? firstName(missing[0]) : null
-    /* Counted from the session's own rows: a lead who does not answer is not someone it waits on. */
     const count = missing.length
     if (count > 0) needs = { text: name ? `Waiting on ${name}` : count === 1 ? 'Waiting on 1 person' : `Waiting on ${count} people`, tone: 'plain' }
   }

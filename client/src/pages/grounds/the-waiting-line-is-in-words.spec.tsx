@@ -42,6 +42,8 @@ function ground() {
       { id: 'c3', sessionNumber: 1, status: 'NOT_STARTED', participantId: 'p-b' },
     ],
     roundCompletions: [],
+    /* The server's one count for the session (api this-sessions-count.ts; Hafsah, 30 October 2026): the lead answered, so she counts. */
+    thisSession: { session: 1, answered: 2, ofPeople: 3, everyoneIn: false, notCountedSays: null, says: 'Two of the three people have answered session 1.' },
     boardRenders: true,
     answeredBySession: aServedCount({ 1: { on: ['p-lead', 'p-a', 'p-b'], answered: ['p-lead', 'p-a'] } }),
   }
@@ -81,6 +83,6 @@ describe('the lead’s attention line, when one of the team has not answered yet
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
     await screen.findAllByText('One of the three has not answered yet.')
-    expect(screen.queryByText(/have checked in for session 1/)).toBeNull()
+    expect(screen.queryByText(/have answered session 1/)).toBeNull()
   })
 })

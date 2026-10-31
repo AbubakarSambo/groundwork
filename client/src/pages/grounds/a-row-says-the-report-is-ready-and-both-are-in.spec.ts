@@ -18,7 +18,9 @@ const SALES: ListRow = {
   ],
   roundsDone: 37,
   report: { releasedSessions: Array.from({ length: 37 }, (_, i) => i + 1) },
-}
+  /* The server's one count, as the list serves it (api this-sessions-count.ts; Hafsah, 30 October 2026). */
+  glance: { progress: { answeredThisRound: 1, ofPeople: 2, waitingOn: ['p-o'] } },
+} as ListRow
 
 it('Wairimu reads that today’s report is ready, not who it waits on', () => {
   expect(howARowReads(SALES, 'u-w', NOW).needs).toEqual({ text: 'Today’s report ready', tone: 'proven' })

@@ -30,8 +30,11 @@ describe('the confirm walk’s three sentences', () => {
        session `ground.sessionClock.says` names, not the page's own `openRound` - see
        GroundAdminPage.oneSessionNamedOnce.spec.tsx for why (the two used to count different
        sessions). The shared sentence itself, and its wording, are unchanged. */
+    /* UPDATED (Hafsah, 30 October 2026): the page no longer counts. It says the server's one sentence for the session
+       (`thisSession.says`, api this-sessions-count.ts, whose spec pins "Three of the five people have answered session 1."). */
     const src = read('GroundAdminPage.tsx')
-    expect(src).toContain('howManyCheckedInSentence(clockRoundDone, total, clockRound)')
+    expect(src).toContain('parts.push(thisSession.says)')
+    expect(src).not.toContain('howManyCheckedInSentence(')
     expect(howManyCheckedInSentence(2, 3, 1)).toBe('Two of the three people have checked in for session 1.')
     expect(src).not.toMatch(/\$\{roundDone\} of \$\{total\} \$\{roundDone === 1 \? 'person has'/)
   })

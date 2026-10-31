@@ -101,3 +101,51 @@ describe('People and setup, on the session the header names', () => {
   })
 })
 
+
+/*
+ * WHO IS IN THE SESSION AND WHO ANSWERED IT, FROM THE SERVER'S ONE COUNT (Hafsah, 30 October 2026, first-experience round 1). A field
+ * lead read "all three people have checked in" in Ask, "3 of 5 people have answered this session" on the board, and another count here.
+ * The page now counts nothing itself: the header says `thisSession.says`, and "Everyone is in" reads `thisSession.everyoneIn`, so they
+ * cannot say something the board and Ask (the same count, api this-sessions-count.spec.ts) do not. The rows on the page here would
+ * count differently on purpose (only the lead has a row), and the page still says the served count.
+ */
+function served(thisSession: any, extra: any = {}) {
+  return { ...sessionTwo(), label: 'Field officers', sessionClock: { currentSession: 1, plannedSessions: 12, says: 'Session 1 of 12.', whileOpen: null },
+    checkIns: [{ id: 'c1', sessionNumber: 1, status: 'COMPLETED', participantId: 'p-lead', completedAt: '2027-02-08' }], roundCompletions: [], thisSession, ...extra }
+}
+async function headerOf(g: any) {
+  ;(groundsApi.get as any).mockResolvedValue(g)
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const { container } = render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={['/grounds/g1']}>
+        <Routes><Route path="/grounds/:id" element={<GroundAdminPage />} /></Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+  await waitFor(() => expect(container.textContent).toMatch(/Session 1 of 12\./))
+  return container.textContent ?? ''
+}
+
+describe('the check-in page says the server\'s one count', () => {
+  it('says the served sentence, with who it leaves out, and no count of its own', async () => {
+    const says = 'Three of the five people have answered session 1. One more person is not counted yet, because they were invited and have not joined yet.'
+    const text = await headerOf(served({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false, notCountedSays: 'One more person is not counted yet, because they were invited and have not joined yet.', says }))
+    /* The lead has answered, so the line at the top says it once (B-148), from the same count: two of the five still out. */
+    expect(text).toContain('Two of the five have not answered yet. One more person is not counted yet, because they were invited and have not joined yet.')
+    expect(text).not.toContain(says)
+    expect(text).not.toMatch(/The one person in it|checked in for session 1/)
+    expect(text).not.toMatch(/Everyone is in/)
+  })
+
+  it('says "Everyone is in" only when the served count says everybody counted has answered', async () => {
+    const all = await headerOf(served({ session: 1, answered: 5, ofPeople: 5, everyoneIn: true, notCountedSays: null, says: 'All five people have answered session 1.' }))
+    expect(all).toContain('All five people have answered session 1.')
+    expect(all).toContain('Everyone is in, report on its way.')
+  })
+
+  it('and never from a round the server recorded as done while its count says people are still out', async () => {
+    const text = await headerOf(served({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false, notCountedSays: null, says: 'Three of the five people have answered session 1.' }, { roundCompletions: [{ sessionNumber: 1 }] }))
+    expect(text).not.toMatch(/Everyone is in/)
+  })
+})
