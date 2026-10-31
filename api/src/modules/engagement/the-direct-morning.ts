@@ -1,3 +1,4 @@
+import { withoutTheOldEnding } from '../reports/what-people-said-differently-about';
 import { workingDaysOf } from '../grounds/which-days-this-team-works';
 import { isASalesKind } from '../board/the-kind-of-work';
 import { theTeamsTargetsSaid } from '../board/release-4-teams';
@@ -384,7 +385,7 @@ export function theNeedsYouLines(input: TheSalesMorningInput, name: (pid: string
   }
   /* Then a difference people said that is hers to settle, as the board lists it. */
   for (const d of ((input.board?.decisions ?? []) as any[]).filter((x) => x?.source === 'divergence' && /^you$/i.test(String(x?.owner ?? '')))) {
-    const m = /^People in this check-in said different things about (.+?), so it needs settling\.?$/i.exec(String(d.question ?? '').trim());
+    const m = /^People in this check-in said different things about (.+?)\.?$/i.exec(withoutTheOldEnding(d.question));
     if (m) lines.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 6, ref: String(d.question), row: { title: `Settle ${m[1]}`, detail: 'People said different things about it.' } });
   }
   return { lines, first };
@@ -793,7 +794,7 @@ export function theMatterDirectMorning(input: { groundId: string; label: string;
     }
   }
   for (const d of ((input.board?.decisions ?? []) as any[]).filter((x) => x?.source === 'divergence' && /^you$/i.test(String(x?.owner ?? '')))) {
-    const m = /^People in this check-in said different things about (.+?), so it needs settling\.?$/i.exec(String(d.question ?? '').trim());
+    const m = /^People in this check-in said different things about (.+?)\.?$/i.exec(withoutTheOldEnding(d.question));
     /* Never about "this" or "it": a line with no thing in it tells her nothing to settle (final real-model check, item 9). */
     if (m && !/^(?:this|that|it|them|these|those|the same thing)$/i.test(m[1].trim())) needs.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 5, ref: String(d.question) });
   }

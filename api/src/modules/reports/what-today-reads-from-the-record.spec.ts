@@ -114,6 +114,22 @@ describe('week 16: the report’s open differences reach the lead’s list, and 
     return { report: (svc as ReportsService).get('g-sales', requestingUserId, 'org-1') as Promise<any>, writes };
   }
 
+  /* Hafsah, 30 October 2026, first-experience round 1: Today read "Settle the difference between what you and Kwame Nkosi said." beside
+     the board's own sentence for the same difference. With nothing on record to settle it, Today now says the board's one sentence. */
+  it('with nothing on record to settle it, the lead reads the board\'s own sentence, never "Settle the difference"', async () => {
+    const saved = structuredClone(DIVERGENCES);
+    DIVERGENCES[0] = { ...DIVERGENCES[0], topic: 'whether a price range counts as a budget', settledBy: undefined as any, atStake: undefined as any };
+    try {
+      const { report } = withDifferences('u-wairimu');
+      const item = ((await report).forTheLead as any[]).find((x) => x.id === 'difference-1');
+      expect(item).toEqual({
+        id: 'difference-1',
+        decide: 'Brian Otieno and Miriam Wanjiku said different things about whether a price range counts as a budget.',
+        why: 'What people said about this does not match, so nobody can assume it is agreed.',
+      });
+    } finally { DIVERGENCES.splice(0, 1, saved[0]); }
+  });
+
   it('the lead reads one item per open difference, in plain sentences with names', async () => {
     const { report, writes } = withDifferences('u-wairimu');
     const r = await report;

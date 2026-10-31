@@ -13,6 +13,7 @@ const report = { ...A_RELEASED_REPORT, divergences: [{ topic: TOPIC, atStake: nu
 const setup = { checkIns: [answered('p-rukia', 1), answered('p-baraka', 1)], report };
 const SAID = `People said different things. ${TOPIC}.`;
 
+/* Expectations updated (Hafsah, 30 October 2026: plain language for an impatient first-time lead; a difference is said as what people said, with no "needs settling".) */
 describe('a difference that is a whole sentence, as each reader reads it', () => {
   it.each([['Amina, who runs it', AMINA], ['Rukia, who checks in, once it is shared', RUKIA], ['Juma, an admin', JUMA]])('%s reads it on the tile as its own sentence', async (_w, reader) => {
     const t = ((await boardAs(setup as any, ...(reader as readonly [string, string]))).quickRead ?? []).find((x: any) => x.label === 'Differences');
@@ -20,6 +21,6 @@ describe('a difference that is a whole sentence, as each reader reads it', () =>
   });
   it('Amina reads it the same way among what needs deciding', async () => {
     const d = ((await boardAs(setup as any, ...AMINA)).decisions ?? []).find((x: any) => x.source === 'divergence');
-    expect(d.question).toBe(`People in this check-in said different things. ${TOPIC}. This needs settling.`);
+    expect(d.question).toBe(`People in this check-in said different things. ${TOPIC}.`);
   });
 });

@@ -231,7 +231,7 @@ function whatNeedsDeciding(i: WhatTheKindsBoardIsBuiltFrom): { question: string;
   const open = ((i.board.divergence?.stillOpen ?? []) as unknown[]).filter((t): t is string => typeof t === 'string' && !!t.trim());
   const lead = i.people.find((p) => p.isLead);
   return open.map((t) => ({
-    question: `${peopleSaidDifferentThingsAbout(t)} This needs settling.`,
+    question: peopleSaidDifferentThingsAbout(t),
     why: 'What people said about this does not match, so nobody can assume it is agreed.',
     owner: i.readerIsTheLead ? 'You' : (lead?.name ?? null),
   }));

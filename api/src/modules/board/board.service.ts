@@ -20,7 +20,7 @@ import { theConfirmedWaits } from '../grounds/a-wait-is-the-speakers-account';
 import { wholeDaysTo, theDayItBegan, theRecordsClock } from './a-wait-is-dated-not-counted';
 import { aFindingThatDoesNotSayTheWaitAgain } from './where-each-person-is-against-their-number';
 import { eachRepeatedSentenceSaidOnce } from './each-repeated-sentence-said-once';
-import { isAWholeSentence } from '../reports/what-people-said-differently-about';
+import { peopleSaidDifferentThingsAbout } from '../reports/what-people-said-differently-about';
 import { theGlanceInASentence } from './the-glance-in-a-sentence';
 import { aPartyOutside, aWaitOnOneself, theWaitsAsABoardReadsThem } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
@@ -4175,13 +4175,8 @@ export class BoardService {
          each person said, never as "the accounts differ" (29 Sep 2026). A topic that is a whole
          sentence is said as its own sentence, never after "about" (request 107 b). */
       const who = whoSaidDifferentThings(d, nameForLabel);
-      const topic = String(d.topic ?? '').trim().replace(/[.!?]+$/, '');
       return {
-        question: !topic
-          ? `${who} said different things about this, so it needs settling.`
-          : isAWholeSentence(topic)
-            ? `${who} said different things. ${topic.charAt(0).toUpperCase()}${topic.slice(1)}. This needs settling.`
-            : `${who} said different things about ${inASentence(topic)}, so it needs settling.`,
+        question: peopleSaidDifferentThingsAbout(String(d.topic ?? ''), who),
         why: 'What people said about this does not match, so nobody can assume it is agreed.',
         owner: theLeadOwns,
         source: 'divergence' as const,

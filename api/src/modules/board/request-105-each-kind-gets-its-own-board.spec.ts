@@ -46,6 +46,7 @@ const GOV: Setup = {
   items: [item('w-1', 'county', 'Enugu', { ownerParticipantId: 'p-ngozi' }), item('w-2', 'project', 'Receipts on the new system', { fields: { County: 'Enugu' } })],
 };
 
+/* Expectations updated (Hafsah, 30 October 2026: plain language for an impatient first-time lead; a difference is said as what people said, with no "needs settling".) */
 describe('a government programme', () => {
   it('Stephen, who runs it, reads what each level understood, in their own words, after the aim he set', async () => {
     const b = await boardAs(GOV, ...LEAD);
@@ -169,7 +170,7 @@ describe('a law firm matter', () => {
       says: ['The reply to the supplier is due on 2 October.', 'Nothing is in the way that has not been cleared.', '1 thing is waiting for a decision.'],
     });
     expect(b.whatYouNeedToDecide.heading).toBe('What you need to decide');
-    expect(b.whatYouNeedToDecide.items).toEqual([expect.objectContaining({ question: 'People in this check-in said different things about what the service agreement means, so it needs settling.', owner: 'You' })]);
+    expect(b.whatYouNeedToDecide.items).toEqual([expect.objectContaining({ question: 'People in this check-in said different things about what the service agreement means.', owner: 'You' })]);
     expect(b.whatChangedThisWeek).toEqual({
       heading: 'What changed this week, and what it changed',
       state: 'filled',

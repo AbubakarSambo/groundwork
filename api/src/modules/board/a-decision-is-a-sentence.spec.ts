@@ -5,6 +5,7 @@ import { BoardService } from './board.service';
  *
  * Built by the one function the board's decisions list comes from.
  */
+/* Expectations updated (Hafsah, 30 October 2026: plain language for an impatient first-time lead; a difference is said as what people said, with no "needs settling".) */
 describe('a decision on the board is a sentence', () => {
   const derive = (divergences: any[], deps: any[]) =>
     (BoardService.prototype as any).deriveDecisions.call({}, divergences, deps, (id: string) => (id === 'p-juma' ? 'Juma Otieno' : null), []);
@@ -22,7 +23,7 @@ describe('a decision on the board is a sentence', () => {
       [{ topic: 'Whether the order is signed', positions: [{ participantLabel: 'Participant A' }, { participantLabel: 'Participant B' }] }],
       [], () => null, [], (l: string) => names[l],
     );
-    expect(d.question).toBe('Brian Mwangi and Miriam Achieng said different things about whether the order is signed, so it needs settling.');
+    expect(d.question).toBe('Brian Mwangi and Miriam Achieng said different things about whether the order is signed.');
     expect(d.why).toBe('What people said about this does not match, so nobody can assume it is agreed.');
   });
 
@@ -32,7 +33,7 @@ describe('a decision on the board is a sentence', () => {
       [{ topic: 'The main obstacle to signing new shops', positions: [{ participantLabel: 'Participant A' }, { participantLabel: 'Participant B' }] }],
       [], () => null, [], (l: string) => (l === 'Participant A' ? 'Brian Mwangi' : undefined),
     );
-    expect(d.question).toBe('People in this check-in said different things about the main obstacle to signing new shops, so it needs settling.');
+    expect(d.question).toBe('People in this check-in said different things about the main obstacle to signing new shops.');
     expect(d.question).not.toContain('Brian');
   });
 

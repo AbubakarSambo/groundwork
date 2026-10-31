@@ -3,7 +3,7 @@
   "sent": [
    {
     "phone": "+254700500001",
-    "text": "Good morning Grace. Here is what is outstanding today.\n\nNeeds you\nPeter is waiting on you for a specific area to focus on since Thursday 15 October.\nThere is a difference in how sales are being counted towards the goal, and people said different things about it, so it needs settling.\n\nDue today and tomorrow\nTomorrow, Ngong Road Minimart takes delivery and pays.\n\nRisks\n45 more units are needed to reach the target of 120 units. Even if all six open deals close, that is 40 units, 5 short. Sunrise Primary School and Upper Hill Offices have no number of units yet.\nYou are waiting on the reps for details on what happened to the 60 units, which was due on Monday 19 October and is one day late.\n\nYou can see everything here http://localhost:5220/today",
+    "text": "Good morning Grace. Here is what is outstanding today.\n\nNeeds you\nPeter is waiting on you for a specific area to focus on since Thursday 15 October.\nPeople in this check-in said different things. There is a difference in how sales are being counted towards the goal.\n\nDue today and tomorrow\nTomorrow, Ngong Road Minimart takes delivery and pays.\n\nRisks\n45 more units are needed to reach the target of 120 units. Even if all six open deals close, that is 40 units, 5 short. Sunrise Primary School and Upper Hill Offices have no number of units yet.\nYou are waiting on the reps for details on what happened to the 60 units, which was due on Monday 19 October and is one day late.\n\nYou can see everything here http://localhost:5220/today",
     "ctx": {
      "kind": "lead-summary",
      "params": [
@@ -20,7 +20,7 @@
   "sent": [
    {
     "phone": "+254700500001",
-    "text": "Good morning Grace. Here is what is outstanding today.\n\nNeeds you\nPeter is waiting on you for a specific area to focus on since Thursday 15 October.\nThere is a difference in how sales are being counted towards the goal, and people said different things about it, so it needs settling.\n\nDue today and tomorrow\nTomorrow, Ngong Road Minimart takes delivery and pays.\n\nRisks\n45 more units are needed to reach the target of 120 units. Even if all six open deals close, that is 40 units, 5 short. Sunrise Primary School and Upper Hill Offices have no number of units yet.\nYou are waiting on the reps for details on what happened to the 60 units, which was due on Monday 19 October and is one day late.\n\nYou can see everything here http://localhost:5220/today",
+    "text": "Good morning Grace. Here is what is outstanding today.\n\nNeeds you\nPeter is waiting on you for a specific area to focus on since Thursday 15 October.\nPeople in this check-in said different things. There is a difference in how sales are being counted towards the goal.\n\nDue today and tomorrow\nTomorrow, Ngong Road Minimart takes delivery and pays.\n\nRisks\n45 more units are needed to reach the target of 120 units. Even if all six open deals close, that is 40 units, 5 short. Sunrise Primary School and Upper Hill Offices have no number of units yet.\nYou are waiting on the reps for details on what happened to the 60 units, which was due on Monday 19 October and is one day late.\n\nYou can see everything here http://localhost:5220/today",
     "ctx": {
      "kind": "lead-summary",
      "params": [
@@ -40,7 +40,7 @@
      {
       "needsYou": [
        "Peter is waiting on you for a specific area to focus on since Thursday 15 October.",
-       "There is a difference in how sales are being counted towards the goal, and people said different things about it, so it needs settling."
+       "People in this check-in said different things. There is a difference in how sales are being counted towards the goal."
       ],
       "overdueOnYourTeam": [],
       "risks": [
@@ -59,7 +59,7 @@
   "sent": [
    {
     "phone": "+254700500001",
-    "text": "Good morning Grace. Here is what is outstanding today.\n\nNeeds you\nPeter is waiting on you for a specific area to focus on since Thursday 15 October.\nThere is a difference in how sales are being counted towards the goal, and people said different things about it, so it needs settling.\n\nDue today and tomorrow\nTomorrow, Ngong Road Minimart takes delivery and pays.\n\nRisks\n45 more units are needed to reach the target of 120 units. Even if all six open deals close, that is 40 units, 5 short. Sunrise Primary School and Upper Hill Offices have no number of units yet.\nYou are waiting on the reps for details on what happened to the 60 units, which was due on Monday 19 October and is one day late.\n\nYou can see everything here http://localhost:5220/today",
+    "text": "Good morning Grace. Here is what is outstanding today.\n\nNeeds you\nPeter is waiting on you for a specific area to focus on since Thursday 15 October.\nPeople in this check-in said different things. There is a difference in how sales are being counted towards the goal.\n\nDue today and tomorrow\nTomorrow, Ngong Road Minimart takes delivery and pays.\n\nRisks\n45 more units are needed to reach the target of 120 units. Even if all six open deals close, that is 40 units, 5 short. Sunrise Primary School and Upper Hill Offices have no number of units yet.\nYou are waiting on the reps for details on what happened to the 60 units, which was due on Monday 19 October and is one day late.\n\nYou can see everything here http://localhost:5220/today",
     "ctx": {
      "kind": "lead-summary",
      "params": [
@@ -76,7 +76,7 @@
   "sent": [
    {
     "phone": "+254700500001",
-    "text": "Good morning Grace. Here is what is outstanding today.\n\nNeeds you\nPeter is waiting on you for a specific area to focus on since Thursday 15 October.\nThere is a difference in how sales are being counted towards the goal, and people said different things about it, so it needs settling.\n\nDue today and tomorrow\nTomorrow, Ngong Road Minimart takes delivery and pays.\n\nRisks\n45 more units are needed to reach the target of 120 units. Even if all six open deals close, that is 40 units, 5 short. Sunrise Primary School and Upper Hill Offices have no number of units yet.\nYou are waiting on the reps for details on what happened to the 60 units, which was due on Monday 19 October and is one day late.\n\nYou can see everything here http://localhost:5220/today",
+    "text": "Good morning Grace. Here is what is outstanding today.\n\nNeeds you\nPeter is waiting on you for a specific area to focus on since Thursday 15 October.\nPeople in this check-in said different things. There is a difference in how sales are being counted towards the goal.\n\nDue today and tomorrow\nTomorrow, Ngong Road Minimart takes delivery and pays.\n\nRisks\n45 more units are needed to reach the target of 120 units. Even if all six open deals close, that is 40 units, 5 short. Sunrise Primary School and Upper Hill Offices have no number of units yet.\nYou are waiting on the reps for details on what happened to the 60 units, which was due on Monday 19 October and is one day late.\n\nYou can see everything here http://localhost:5220/today",
     "ctx": {
      "kind": "lead-summary",
      "params": [
@@ -96,7 +96,7 @@
      {
       "needsYou": [
        "Peter is waiting on you for a specific area to focus on since Thursday 15 October.",
-       "There is a difference in how sales are being counted towards the goal, and people said different things about it, so it needs settling."
+       "People in this check-in said different things. There is a difference in how sales are being counted towards the goal."
       ],
       "overdueOnYourTeam": [],
       "risks": [
@@ -131,12 +131,12 @@
   "sent": [
    {
     "phone": "+254700600001",
-    "text": "Good morning Wanjiru. Here is what is outstanding today.\n\nNeeds you\nBrian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October.\nPeople in this check-in said different things about who is assigned to the Jamii Clinics employment claim, so it needs settling.\nTwo more are not listed here.\n\nYou can see everything here http://localhost:5220/today",
+    "text": "Good morning Wanjiru. Here is what is outstanding today.\n\nNeeds you\nBrian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October.\nPeople in this check-in said different things about who is assigned to the Jamii Clinics employment claim.\nTwo more are not listed here.\n\nYou can see everything here http://localhost:5220/today",
     "ctx": {
      "kind": "lead-summary",
      "params": [
       "Wanjiru",
-      "These need you. Brian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October. People in this check-in said different things about who is assigned to the Jamii Clinics employment claim, so it needs settling. There is more, and the link shows all of it.",
+      "These need you. Brian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October. People in this check-in said different things about who is assigned to the Jamii Clinics employment claim. There is more, and the link shows all of it.",
       "http://localhost:5220/grounds/64e7c239-36a2-4235-a3f3-1d50ab60d3e7/board"
      ]
     }
@@ -148,12 +148,12 @@
   "sent": [
    {
     "phone": "+254700600001",
-    "text": "Good morning Wanjiru. Here is what is outstanding today.\n\nNeeds you\nBrian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October.\nPeople in this check-in said different things about who is assigned to the Jamii Clinics employment claim, so it needs settling.\nTwo more are not listed here.\n\nYou can see everything here http://localhost:5220/today",
+    "text": "Good morning Wanjiru. Here is what is outstanding today.\n\nNeeds you\nBrian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October.\nPeople in this check-in said different things about who is assigned to the Jamii Clinics employment claim.\nTwo more are not listed here.\n\nYou can see everything here http://localhost:5220/today",
     "ctx": {
      "kind": "lead-summary",
      "params": [
       "Wanjiru",
-      "These need you. Brian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October. People in this check-in said different things about who is assigned to the Jamii Clinics employment claim, so it needs settling. There is more, and the link shows all of it.",
+      "These need you. Brian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October. People in this check-in said different things about who is assigned to the Jamii Clinics employment claim. There is more, and the link shows all of it.",
       "http://localhost:5220/grounds/64e7c239-36a2-4235-a3f3-1d50ab60d3e7/board"
      ]
     }
@@ -168,7 +168,7 @@
      {
       "needsYou": [
        "Brian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October.",
-       "People in this check-in said different things about who is assigned to the Jamii Clinics employment claim, so it needs settling.",
+       "People in this check-in said different things about who is assigned to the Jamii Clinics employment claim.",
        "Two more are not listed here."
       ],
       "overdueOnYourTeam": [],
@@ -185,12 +185,12 @@
   "sent": [
    {
     "phone": "+254700600001",
-    "text": "Good morning Wanjiru. Here is what is outstanding today.\n\nNeeds you\nBrian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October.\nPeople in this check-in said different things about who is assigned to the Jamii Clinics employment claim, so it needs settling.\nTwo more are not listed here.\n\nYou can see everything here http://localhost:5220/today",
+    "text": "Good morning Wanjiru. Here is what is outstanding today.\n\nNeeds you\nBrian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October.\nPeople in this check-in said different things about who is assigned to the Jamii Clinics employment claim.\nTwo more are not listed here.\n\nYou can see everything here http://localhost:5220/today",
     "ctx": {
      "kind": "lead-summary",
      "params": [
       "Wanjiru",
-      "These need you. Brian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October. People in this check-in said different things about who is assigned to the Jamii Clinics employment claim, so it needs settling. There is more, and the link shows all of it.",
+      "These need you. Brian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October. People in this check-in said different things about who is assigned to the Jamii Clinics employment claim. There is more, and the link shows all of it.",
       "http://localhost:5220/grounds/64e7c239-36a2-4235-a3f3-1d50ab60d3e7/board"
      ]
     }
@@ -202,12 +202,12 @@
   "sent": [
    {
     "phone": "+254700600001",
-    "text": "Good morning Wanjiru. Here is what is outstanding today.\n\nNeeds you\nBrian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October.\nPeople in this check-in said different things about who is assigned to the Jamii Clinics employment claim, so it needs settling.\nTwo more are not listed here.\n\nYou can see everything here http://localhost:5220/today",
+    "text": "Good morning Wanjiru. Here is what is outstanding today.\n\nNeeds you\nBrian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October.\nPeople in this check-in said different things about who is assigned to the Jamii Clinics employment claim.\nTwo more are not listed here.\n\nYou can see everything here http://localhost:5220/today",
     "ctx": {
      "kind": "lead-summary",
      "params": [
       "Wanjiru",
-      "These need you. Brian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October. People in this check-in said different things about who is assigned to the Jamii Clinics employment claim, so it needs settling. There is more, and the link shows all of it.",
+      "These need you. Brian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October. People in this check-in said different things about who is assigned to the Jamii Clinics employment claim. There is more, and the link shows all of it.",
       "http://localhost:5220/grounds/64e7c239-36a2-4235-a3f3-1d50ab60d3e7/board"
      ]
     }
@@ -222,7 +222,7 @@
      {
       "needsYou": [
        "Brian is waiting on you for the Nyota Logistics fee dispute since Thursday 15 October.",
-       "People in this check-in said different things about who is assigned to the Jamii Clinics employment claim, so it needs settling.",
+       "People in this check-in said different things about who is assigned to the Jamii Clinics employment claim.",
        "Two more are not listed here."
       ],
       "overdueOnYourTeam": [],

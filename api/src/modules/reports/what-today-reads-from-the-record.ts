@@ -2,6 +2,7 @@ import { notABlockerTheyRaised } from '../board/not-a-blocker-they-raised';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { dedupeDependencies } from '../board/reads';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+import { peopleSaidDifferentThingsAbout } from './what-people-said-differently-about';
 import { theDifferencesThatAreOnlyATargetSaidAgain } from '../board/a-target-said-again-is-that-target';
 import { theCorrectionsOnTheCheckIn, isOnlyACorrection, whoIsBehindALabel } from './a-correction-is-their-latest-word';
 import { isASalesKind } from '../board/the-kind-of-work';
@@ -463,10 +464,12 @@ export async function whereWhatPeopleSaidDiffers(
     const atStake = named(d?.atStake);
     out.push({
       id: `difference-${i + 1}`,
-      decide: settledBy
-        ? sentence(settledBy)
-        : knowsWho ? `Settle the difference between what ${andList(who)} said.` : 'Settle the difference between what people said.',
-      why: `${topic ? `${sentence(topic)} ` : ''}${whoSaid} said different things about this, so nobody can assume it is agreed.`,
+      /* The one sentence the board says for a difference (Hafsah, 30 October 2026: "Settle the difference between what you and
+         Kwame said" sat beside the board's own sentence for the same thing). */
+      decide: settledBy ? sentence(settledBy) : peopleSaidDifferentThingsAbout(topic, whoSaid),
+      why: settledBy
+        ? `${topic ? `${sentence(topic)} ` : ''}${whoSaid} said different things about this, so nobody can assume it is agreed.`
+        : 'What people said about this does not match, so nobody can assume it is agreed.',
       ...(atStake ? { changes: sentence(atStake) } : {}),
       ...(sameTarget.has(d) ? { onlyATargetSaidAgain: true as const } : {}),
     });
