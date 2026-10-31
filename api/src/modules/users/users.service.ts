@@ -434,7 +434,7 @@ export class UsersService {
            number that does not save leaves the invitation as it went, and says so on the row. */
         if (row.phone) {
           const who = await this.prisma.user.findFirst({ where: { email: row.email, deletedAt: null }, select: { id: true } });
-          if (who) await this.update(who.id, organizationId, { phoneNumber: row.phone } as any, '').catch(() => { row.phone = undefined; });
+          if (who) await this.update(who.id, organizationId, { phoneNumber: row.phone } as any, '').catch((e: any) => { row.phoneNotSaved = String(e?.response?.message ?? e?.message ?? 'That number did not save.'); });
         }
         sent.push(row);
       } catch {

@@ -27,7 +27,7 @@ export type RowResult =
   | 'not an email' /* Kept out here rather than failing at the send. */
   | 'no seat';     /* The plan has no room. The whole reason a preview exists. */
 
-export interface Row { email: string; result: RowResult; /** The name typed beside the address, so the preview can show what was read. */ name?: string; /** The phone number typed on the same line (Hafsah, 30 October 2026). */ phone?: string }
+export interface Row { email: string; result: RowResult; /** The name typed beside the address, so the preview can show what was read. */ name?: string; /** The phone number typed on the same line (Hafsah, 30 October 2026). */ phone?: string; /** Why that number was not saved, in the refusal's own words, when it was not. */ phoneNotSaved?: string }
 
 /**
  * How many addresses one paste may carry.
