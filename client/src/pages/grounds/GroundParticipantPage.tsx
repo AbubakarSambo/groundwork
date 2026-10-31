@@ -17,7 +17,7 @@ import { Page } from '@/components/gw/ui/Page'
 import { Note, Empty, Button, Stack, SubHeading, Callout, Section } from '@/components/gw/ui'
 import { cadenceLabel } from '@/lib/cadence'
 import { peopleLabels, atTheStart } from '@/lib/utils'
-import { whoRunsThis, whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { useOpenSession } from '@/hooks/useOpenSession'
 import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
 import { YourWork } from '@/components/gw/checkin/YourWork'
@@ -879,7 +879,7 @@ export function GroundParticipantPage() {
           ) : (
             <BetweenCheckIns
               groundLabel={ground.label}
-              nextOpensSaying={whenTheNextOneOpens(myCheckIns, null)}
+              myCheckIns={myCheckIns}
               groundId={id!}
               canChangeTheRhythm={isInitiator}
               onGoToSetup={() => goTab('settings')}

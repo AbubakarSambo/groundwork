@@ -10,6 +10,7 @@ import { GroundworkIsWriting } from './ui/GroundworkIsWriting'
 import { QuickReplies } from './ui/QuickReplies'
 import { Composer } from './ui/Composer'
 import { Button } from './ui/Button'
+import { theNextOne } from '@/lib/what-the-end-of-a-check-in-can-say'
 
 /**
  * BETWEEN CHECK-INS (B3, docs/prototype/screens/B3-the-check-in/between-check-ins.jpg/.txt).
@@ -78,11 +79,13 @@ function linesOf(reply: AskReply): string[] {
 
 type Exchange = { mine: boolean; text: string }
 
-export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canChangeTheRhythm, onGoToSetup }: {
+export function BetweenCheckIns({ groundLabel, myCheckIns, groundId, canChangeTheRhythm, onGoToSetup }: {
   groundLabel: string
-  /** "Your next check-in opens tomorrow at 4pm." - from whenTheNextOneOpens(), or null when
-      nothing is scheduled yet. */
-  nextOpensSaying: string | null
+  /**
+   * The reader's own check-ins. The header and the sentence under it both read `theNextOne` from these (Hafsah, 30 October
+   * 2026): the header used to be fixed words, "No check-in open right now", over "Your next check-in is open now."
+   */
+  myCheckIns: { id: string; sessionNumber: number; status: string; availableFrom?: string | null }[] | null | undefined
   groundId: string
   canChangeTheRhythm?: boolean
   onGoToSetup?: () => void
@@ -95,6 +98,7 @@ export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canCha
   const [asking, setAsking] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const qc = useQueryClient()
+  const next = theNextOne(myCheckIns, null)
 
   const { data: notes = [] } = useQuery({
     queryKey: ['my-notes', groundId],
@@ -156,7 +160,7 @@ export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canCha
     <div style={{ height: '100%', minHeight: 420, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ flex: 1, minHeight: 0 }}>
         <ConversationCard
-          header={<TheCheckInHeader title={groundLabel} underTitle="No check-in open right now" mayPause={false} />}
+          header={<TheCheckInHeader title={groundLabel} underTitle={next.openId ? 'Your next check-in is open' : 'No check-in open right now'} mayPause={false} />}
           footer={
             <Composer
               value={draft}
@@ -171,7 +175,7 @@ export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canCha
           }
         >
           <Bubble mine={false}>
-            {nextOpensSaying ? `${nextOpensSaying} ` : ''}Anything I can help with in the meantime?
+            {next.openId ? 'Anything I can help with before you start?' : `${next.says ? `${next.says} ` : ''}Anything I can help with in the meantime?`}
           </Bubble>
           <QuickReplies
             label="Anything I can help with in the meantime?"

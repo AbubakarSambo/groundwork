@@ -17,7 +17,7 @@ import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { THE_FIVE, wasItThere } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
-import { whenTheNextOneOpens, theNextOpenCheckInId, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { theNextOne, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
 
 /**
  * THE DONE PAGE (B3, docs/prototype/screens/B3-the-check-in/done.txt).
@@ -178,7 +178,7 @@ export function TheDonePage({
   /* The direct morning (lib/the-direct-morning.tsx): from the page that holds this one, or from the check-in read here. */
   const direct = useTheDirectMorning() || isTheDirectMorningOn(g)
   const leadName = direct ? null : whoElseAnswers(g)
-  const next = whenTheNextOneOpens(mine.data?.checkIns, checkInId, new Date(), mine.data)
+  const { says: next, openId: nextOpenId } = theNextOne(mine.data?.checkIns, checkInId, new Date(), mine.data)
   /*
    * RE-REVIEW: "YOUR NEXT CHECK-IN IS OPEN NOW." NEEDS A DOOR TO WALK THROUGH.
    * This showed with no link at all - and, before `whenTheNextOneOpens` learned to treat an
@@ -186,7 +186,6 @@ export function TheDonePage({
    * Sunday" about a session already running. Both are fixed together: the sentence and the
    * link agree on the same rule, in what-the-end-of-a-check-in-can-say.ts.
    */
-  const nextOpenId = theNextOpenCheckInId(mine.data?.checkIns, checkInId)
   /*
    * A PLAIN YES/NO FROM THE SERVER, NOT A COUNT OF `g.participants` (U.8 fifth review). That array
    * is reduced to this reader's own row alone on a check-in that hides peers from each other, so

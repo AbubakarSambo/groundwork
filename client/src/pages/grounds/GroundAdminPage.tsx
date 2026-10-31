@@ -42,7 +42,6 @@ import { waitsForItsStart } from '@/lib/the-leads-note'
 import { useOpenSession } from '@/hooks/useOpenSession'
 import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
 import { BetweenCheckIns } from '@/components/gw/BetweenCheckIns'
-import { whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
@@ -2061,7 +2060,7 @@ export function GroundAdminPage() {
                 <>
                   <BetweenCheckIns
                     groundLabel={(ground as any)?.label}
-                    nextOpensSaying={whenTheNextOneOpens(((myParticipant as any)?.checkIns ?? []) as any[], null)}
+                    myCheckIns={((myParticipant as any)?.checkIns ?? []) as any[]}
                     groundId={id!}
                     canChangeTheRhythm={isInitiator}
                     onGoToSetup={() => goTab('settings')}
