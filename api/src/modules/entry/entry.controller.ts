@@ -10,6 +10,7 @@ import { A_ROOM_MAY_START_PER_MINUTE, A_PERSON_MAY_SAY_PER_MINUTE } from '../../
 import { HOW_MANY_PEOPLE_ONE_CHECK_IN_HOLDS } from './how-many-people-one-check-in-holds';
 import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject, Min, Max, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
+import { peopleOnLines, MOST_IN_ONE_PASTE } from '../users/putting-a-whole-company-on';
 
 /**
  * THE POSTURE OF THIS CONTROLLER, STATED ONCE. Every handler here is anonymous. Each one therefore
@@ -464,6 +465,13 @@ export class EntryCommitDto {
   contributors: ContributorDto[];
 }
 
+/** A team typed one per line: name, email, phone number. */
+export class PeopleOnLinesDto {
+  @IsString()
+  @MaxLength(50000)
+  pasted!: string;
+}
+
 @Controller('entry')
 export class EntryController {
   private readonly logger = new Logger(EntryController.name);
@@ -628,6 +636,18 @@ export class EntryController {
   async faq(@Body() dto: EntryFaqDto) {
     const reply = await this.service.faq(dto.question);
     return { reply };
+  }
+
+  /*
+   * A TEAM TYPED ONE PER LINE, READ BY THE ONE READER (users/putting-a-whole-company-on.ts peopleOnLines; Hafsah, 31 October 2026). The
+   * setup's save card and a check-in's People and setup ask this, so the organisation's invite box and they read a line the same way.
+   * It only reads: nothing is stored and nobody is invited.
+   */
+  @Public()
+  @Post('people-on-lines')
+  @Throttle({ global: { limit: 60, ttl: 60000 } })
+  peopleOnLines(@Body() dto: PeopleOnLinesDto) {
+    return { people: peopleOnLines(dto.pasted).slice(0, MOST_IN_ONE_PASTE) };
   }
 
   @Public()
