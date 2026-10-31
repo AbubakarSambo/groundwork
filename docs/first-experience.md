@@ -85,6 +85,48 @@ Across the first seven: 24 complaints that it felt like AI, 23 confusing moments
    - Evidence: "all three people have checked in" with five on the team. "I did not find the number 'three'."
    - Cause: Ask counts on its own. Being fixed with pattern 5.
 
+
+## Round 2 (31 October, 02:50 to 07:00): average 1.9, lowest 1
+
+Fresh people for each kind. This round ran on the first fixes:
+- setup no longer audits the lead;
+- a team is invited with names, emails and phone numbers in one go;
+- a new sales team sees the pictured board;
+- the screens' jargon, waiting lines and contradictions are fixed;
+- one count of who answered.
+
+It did not yet have the fixes made during it.
+
+| Kind | Role | Score | In their words |
+|---|---|---|---|
+| Sales team | Lead | 1 | "Asks me the same thing four times, and then shows me a useless report of my own words." |
+| Law firm | Lead | 2 | "It took a simple problem, made it complicated, created a fake disagreement with my staff." |
+| Clinic group | Admin | 3 | "The one good thing was the final report, which was surprisingly clear, but getting to it was too painful." |
+| Field programme | Lead | 2 | "It got the number of people in my team wrong on every screen." |
+| Startup | Lead | 2 | "Gets stuck in loops, and makes me enter the same information three times." |
+| Family business | Admin | 2 | "It told me I agreed to things I never did." |
+| Mobile cinema | Lead | 1 | "Reading useless reports that sound like a consultant telling me what I already know." |
+| Charity | Lead | 2 | "It can't even answer a simple question about my own data." |
+
+**What round 2 found, and the fixes made during it** (in round 3):
+- **"What makes this the right time" asked four times.** The setup gate waited for a why-now the extraction would not accept. Why now no longer holds the gate, and the instructions ask it once.
+- **"Thanks", "No problem".** The setup conversation's own no-apology rule now covers all filler.
+- **The situation's name changed every turn.** It is now classified once.
+- **"Created a fake disagreement".** A plan and one person's part in it were reported as a difference. The report now defines a difference as two accounts of the same fact that cannot both be true.
+- **"The numbers are wrong".** "2 of 3" was said beside "Two more people are not counted". The second sentence now says "Two more were invited and have not joined yet."
+- **The same people entered three times.** People named in the conversation with their address are added in one press, with the phone number typed beside their name.
+- **A closer described a screen that is not there.** The wrap-up instructions no longer describe screens.
+- **A number refused on an invite looked like lost data.** The row now says why.
+
+**Found and not fixed yet:**
+- **An untrue line about a team member's words.** Asked what would show a plan was done, Juma answered "A rollout schedule agreed with Aisha". The report then wrote "Juma also said that a rollout schedule was agreed with Aisha", as if it had happened.
+- **Ask could not answer questions about the lead's own data.** It answered with "I cannot answer that one yet. Here is what I can do with…".
+- **The first report repeats the lead's own words** ("What you told us"). Two leads called it pointless; one called it clear.
+- **The lead's own check-in after setup is still slow to open.**
+- **Empty sections on a new board** ("What keeps coming up", "Where this is heading") read as consultant talk.
+
+**The engine's acknowledgement in check-ins is left as it is.** Hafsah's conversation standard keeps a short "Thank you" in its right-hand example, so the no-thanks rule stays in setup only.
+
 ## The plan to 8.5
 
 1. **Round 2** on the fixes above, with fresh people for every kind of organisation and the harness's memory fix: each person now remembers everything they typed. In round 1 one admin accused Groundwork of inventing a roof she had typed twice.
