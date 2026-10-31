@@ -22,7 +22,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * Carries over, unchanged in meaning, every old "Who is in it" fold on the Setup tab
  * (GroundAdminPage.tsx, ~2543-2748: the seat warning, the approval note, the add-person queue, the
  * access code and share link) plus a roster row per person - name, when they joined, a status tag,
- * and for anyone who needs something before they can start, one sentence and one button underneath.
+ * and for anyone who cannot check in yet, one sentence and one button underneath.
  *
  * THE SESSION-BY-SESSION GRID STAYS ON SESSIONS. That grid (one cell per session, GW's own roster on
  * the Sessions tab) answers "where has each person got to on THIS run" and belongs there; this
@@ -99,8 +99,6 @@ export function WhosInItRoster({
   const leavesOutTheManager = ground.scenario === 'HELP_TEAM_UNDERSTAND'
   const isNotCounted = (p: any) => leavesOutTheManager && p.managingOnly === true
   const counted = participants.filter((p) => !isNotCounted(p))
-  const checkingIn = counted.filter((p) => p.userId && !p.notJoinedYet && p.inviteDeliveryStatus !== 'BOUNCED' && !p.awaitingSeat && !p.user?.awaitingOrgApproval).length
-  const needSomething = counted.length - checkingIn
 
   const seats = billingStatus?.people
   /* Fix list item 6: on a plan that adds seats, a full plan is an extra seat, said before it sends, not a refusal. */
@@ -110,10 +108,7 @@ export function WhosInItRoster({
   return (
     <div>
       <p className="gwui-panel-text" style={{ fontWeight: 700 }}>
-        {counted.length} {counted.length === 1 ? 'person' : 'people'}.
-        {/* FAULT H (reviewer, third round): a semicolon joined two separate counts into one
-            clipped clause. Two plain sentences instead. */}
-        {' '}{checkingIn} {checkingIn === 1 ? 'is' : 'are'} checking in.{needSomething > 0 ? ` ${needSomething} ${needSomething === 1 ? 'needs' : 'need'} something before they can start.` : ''}
+        {whosInItSays(counted)}
       </p>
 
       {/* WHAT THE PILLS SAID THAT WAS NOT PER-PERSON: whether peers can see each other here, and what
@@ -190,6 +185,41 @@ export function WhosInItRoster({
 }
 
 /**
+ * WHAT STOPS ONE PERSON CHECKING IN, the one owner of it. Each row's status tag and the count
+ * above the roster both read this, so the count can never say something the rows do not.
+ */
+export type WhatStopsThem = 'bounced' | 'seat' | 'notLetIn' | 'admin' | 'notJoined' | null
+export function whatStopsThem(p: any): WhatStopsThem {
+  if (!p.userId && p.inviteDeliveryStatus === 'BOUNCED') return 'bounced'
+  if (p.awaitingSeat) return 'seat'
+  if (p.notLetIn) return 'notLetIn'
+  if (p.userId && p.user?.awaitingOrgApproval) return 'admin'
+  if (!p.userId || p.notJoinedYet) return 'notJoined'
+  return null
+}
+
+/**
+ * THE LINE ABOVE THE ROSTER. The prototype says "2 need something before they can start"; an
+ * impatient lead in round 1 could not tell what they needed (Hafsah, 30 October 2026), so each
+ * reason is said as its own sentence, counted from the same `whatStopsThem` the rows read.
+ */
+export function whosInItSays(counted: any[]): string {
+  const by = (r: WhatStopsThem) => counted.filter((p) => whatStopsThem(p) === r).length
+  const n = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`
+  const checkingIn = by(null)
+  const lines = [
+    `${n(counted.length, 'person', 'people')}.`,
+    `${n(checkingIn, 'is', 'are')} checking in.`,
+  ]
+  const notJoined = by('notJoined'); if (notJoined) lines.push(`${n(notJoined, 'has', 'have')} not joined yet.`)
+  const admin = by('admin'); if (admin) lines.push(`${n(admin, 'is', 'are')} waiting for an admin to let them in.`)
+  const seat = by('seat'); if (seat) lines.push(`${n(seat, 'is', 'are')} waiting for a seat on your plan.`)
+  const bounced = by('bounced'); if (bounced) lines.push(`${n(bounced, 'did', 'did')} not get the invitation, because the email bounced.`)
+  const notLetIn = by('notLetIn'); if (notLetIn) lines.push(`${n(notLetIn, 'was', 'were')} not let in.`)
+  return lines.join(' ')
+}
+
+/**
  * ONE PERSON'S ROW, IN TODAY'S WORDS: their status word, the line about when they joined, whether they have checked in for
  * this session, and the one sentence and button for anyone who needs something before they can start. Lifted out of the
  * roster unchanged, so the new People and setup (Release 1B) shows the same status words and the same fixes.
@@ -210,10 +240,11 @@ export function whereThisPersonIs(p: any, c: {
 }): { name: string; when: string; statusText: string; tone: TagTone; sessionLine: string | null; help?: { tone: 'look' | 'concern'; text: string; action?: React.ReactNode } } {
   const { ground, isInitiator, isOrgAdmin, isNotCounted, sessionParties, notOpenYet, fixingEmailId, setFixingEmailId, fixingEmailValue, setFixingEmailValue, fixEmail, resendInvite } = c
   const { name, inASentence, nameless } = nameWithoutGuessing(p)
-  const bounced = !p.userId && p.inviteDeliveryStatus === 'BOUNCED'
-  const waitingForSeat = !!p.awaitingSeat
-  const notLetIn = !!p.notLetIn
-  const waitingForAdmin = !!p.userId && !!p.user?.awaitingOrgApproval && !notLetIn
+  const stopsThem = whatStopsThem(p)
+  const bounced = stopsThem === 'bounced'
+  const waitingForSeat = stopsThem === 'seat'
+  const notLetIn = stopsThem === 'notLetIn'
+  const waitingForAdmin = stopsThem === 'admin'
   /* EVERYONE GETS A "WHEN" LINE, THE LEAD INCLUDED. The lead has no `invitedAt` (nobody
      invited them - they created the check-in), which used to leave their own row reading
      "Checking in" twice over (once as the date line, once as the status tag) while everyone
@@ -242,14 +273,15 @@ export function whereThisPersonIs(p: any, c: {
       ? 'Not invited yet, because there is no seat for them.'
       : (p.invitedAt ? `Invited ${whenItWas(p.invitedAt, 'dayAndMonthLong')}` : 'Invited')
 
+  const stops = isNotCounted(p) ? null : stopsThem
   let statusText = 'Checking in'
   let tone: TagTone = 'proven'
   if (isNotCounted(p)) { statusText = 'Runs it'; tone = 'plain' }
-  else if (bounced) { statusText = 'The email bounced'; tone = 'concern' }
-  else if (waitingForSeat) { statusText = 'Waiting for a seat'; tone = 'attention' }
-  else if (notLetIn) { statusText = 'Not let in'; tone = 'concern' }
-  else if (waitingForAdmin) { statusText = 'Waiting for an admin'; tone = 'attention' }
-  else if (!p.userId || (p as any).notJoinedYet) { statusText = waitsForItsStart(p) ? 'Invited' : 'Not joined yet'; tone = 'plain' }
+  else if (stops === 'bounced') { statusText = 'The email bounced'; tone = 'concern' }
+  else if (stops === 'seat') { statusText = 'Waiting for a seat'; tone = 'attention' }
+  else if (stops === 'notLetIn') { statusText = 'Not let in'; tone = 'concern' }
+  else if (stops === 'admin') { statusText = 'Waiting for an admin'; tone = 'attention' }
+  else if (stops === 'notJoined') { statusText = waitsForItsStart(p) ? 'Invited' : 'Not joined yet'; tone = 'plain' }
 
   /* WHETHER THEY HAVE CHECKED IN FOR THIS SESSION - what the old "Who is in this" pills said
      and this roster did not. Silent, exactly as the pills were, while the next session has
@@ -447,7 +479,7 @@ export function AddPeopleForm({
         </p>
         <p className="gwui-note">
           {isOrgAdmin
-            ? 'You are an admin here, so adding someone here is all the approval they need. Nobody waits in a queue. Anybody from outside your organisation gets a login here and appears on your People page, where you can take them off again.'
+            ? 'Anybody you add can check in straight away. Somebody from outside your organisation also appears on your People page, where you can take them off again.'
             : 'Somebody from outside your organisation is invited straight away, and an admin here has to let them in before they can check in. They are told the same thing, and you can see it beside their name below.'}
         </p>
         <PeoplePicker

@@ -8,7 +8,7 @@ import {
   Section, Panel, FieldRows, FieldRow, SwitchRow, FieldLabel, TextField, Select, Button, Note, Stack, FlexRow,
   PeopleTable, PeopleTableHead, PersonRow, Tag, Text, Folded,
 } from '@/components/gw/ui'
-import { AddPeopleForm, whereThisPersonIs } from '@/components/gw/WhosInItRoster'
+import { AddPeopleForm, whereThisPersonIs, whosInItSays } from '@/components/gw/WhosInItRoster'
 import { useTheNextSeat } from '@/components/gw/this-adds-a-seat'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { WhichDaysTheyWork, WEEKDAYS } from '@/components/gw/WhichDaysTheyWork'
@@ -220,8 +220,6 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const leavesOutTheManager = g?.scenario === 'HELP_TEAM_UNDERSTAND'
   const isNotCounted = (p: any) => leavesOutTheManager && p.managingOnly === true
   const counted = participants.filter((p) => !isNotCounted(p))
-  const checkingIn = counted.filter((p) => p.userId && !p.notJoinedYet && p.inviteDeliveryStatus !== 'BOUNCED' && !p.awaitingSeat && !p.user?.awaitingOrgApproval).length
-  const needSomething = counted.length - checkingIn
   const nextSeat = useTheNextSeat()
   const seats = props.billingStatus?.people
   const seatsFull = !nextSeat.data?.addsASeat && seats?.cap != null && seats?.count != null && seats.count >= seats.cap
@@ -341,7 +339,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
       {/* 3. WHO'S IN IT */}
       <Section
         heading="Who's in it"
-        note={`${counted.length} ${counted.length === 1 ? 'person' : 'people'}. ${checkingIn} ${checkingIn === 1 ? 'is' : 'are'} checking in.${needSomething > 0 ? ` ${needSomething} ${needSomething === 1 ? 'needs' : 'need'} something before they can start.` : ''}`}
+        note={whosInItSays(counted)}
         action={isInitiator ? (
           <FlexRow gap={8} wrap>
             {g?.joinToken && <Button kind="secondary" size="small" onClick={() => setShowLink((v) => !v)}>Join link and QR code</Button>}

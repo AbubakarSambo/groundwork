@@ -139,7 +139,9 @@ describe('Grace, who runs the sales check-in, reads the whole page in the pictur
     expect(screen.getAllByRole('button', { name: 'Add a number' }).length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Add their role' })).toBeTruthy()
     expect(screen.getByText('The scenario and kind of work decide the board, the reports, and what each check-in asks about.')).toBeTruthy()
-    expect(screen.getByText('5 people. 4 are checking in. 1 needs something before they can start.')).toBeTruthy()
+    /* Says what Peter needs, read from the same reason his row reads (Hafsah, 30 October 2026:
+       plain language for an impatient first-time lead; "1 needs something" said nothing). */
+    expect(screen.getByText('5 people. 4 are checking in. 1 did not get the invitation, because the email bounced.')).toBeTruthy()
     expect(screen.getByText('5 of 15 sessions done. Sessions already done are never removed.')).toBeTruthy()
     expect(screen.getByText('Never more than one reminder a day. Quiet hours end at 7am. At the last session, everyone is asked how this should close.')).toBeTruthy()
     expect(screen.getByText('Coming back')).toBeTruthy()
