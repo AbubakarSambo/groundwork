@@ -4,8 +4,7 @@ import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { Link } from 'react-router-dom'
 import { Button, Tag } from '@/components/gw/ui'
-import { askNameFor, aRealOrganisationName } from '@/lib/ask-name'
-import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-cannot-read-without-access'
+import { aRealOrganisationName } from '@/lib/ask-name'
 
 /**
  * WHAT A NEW ORGANISATION'S ADMIN SEES FIRST (A3 and C1, U.3): the welcome card and the prototype's
@@ -27,8 +26,16 @@ import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-ca
  * anyone's own report, or a lead's private notes, and never a performance plan, promotion or renewal
  * unless given access to that check-in."
  *
+ * TAKEN OFF THE FIRST SCREEN (Hafsah, 30 October 2026, first-experience round 1). Four of four
+ * impatient admins called that paragraph a waste: it explained the product before they had done
+ * anything, and the prototype's Today (C1 today-admin) has no such line. The sentence is unchanged
+ * and still reachable where the prototype puts it, in the guide for leads and admins
+ * (pages/org/LeadsGuidePage.tsx, F3 guide) and on a person's own page (OnePersonPage.tsx).
+ *
  * WHAT IS OURS. The prototype's code has a line under each step and a "Do it" button; no screen
- * shows them, so only the step names, "Do it" and "Done" are used. "Connect WhatsApp (optional)" is
+ * shows them. Two "Do it" buttons side by side told an impatient admin nothing (Hafsah, 30 October
+ * 2026, first-experience round 1), so each button now says what it does: "Invite people", "Add an
+ * admin", "Start a check-in". "Connect WhatsApp (optional)" is
  * shown only while WhatsApp is switched on in Groundwork: while it is off, nothing mentions it.
  *
  * EVERY TICK IS A FACT FROM THE SERVER (GET /users/rollout): more people than the admin, a second
@@ -54,7 +61,7 @@ interface RolloutFacts {
   welcomeCardSeen?: boolean
 }
 
-interface Step { key: string; title: string; to: string; done: boolean }
+interface Step { key: string; title: string; button: string; to: string; done: boolean }
 
 function fetchRollout(): Promise<RolloutFacts> {
   return apiClient.get('/users/rollout').then(r => r.data.data ?? r.data)
@@ -70,9 +77,9 @@ function fetchRollout(): Promise<RolloutFacts> {
  */
 export function getItGoing(f: RolloutFacts): Step[] {
   return [
-    { key: 'invite', title: 'Invite your team', to: '/org/members', done: f.people > 1 },
-    { key: 'admin', title: 'Add a second admin', to: '/org/members', done: f.admins > 1 },
-    { key: 'checkin', title: 'Start your first check-in', to: '/start', done: f.checkIns > 0 },
+    { key: 'invite', title: 'Invite your team', button: 'Invite people', to: '/org/members', done: f.people > 1 },
+    { key: 'admin', title: 'Add a second admin', button: 'Add an admin', to: '/org/members', done: f.admins > 1 },
+    { key: 'checkin', title: 'Start your first check-in', button: 'Start a check-in', to: '/start', done: f.checkIns > 0 },
   ]
 }
 
@@ -137,11 +144,6 @@ export function AdminFirstRun() {
           <div className="gwui-welcome-card-head">
             <h2>You’re an admin at {orgName}</h2>
           </div>
-          <p className="gwui-welcome-card-line">
-            You can see every board and report, including what people said in them. You never see anyone’s
-            questions to {askNameFor(realOrgName)}, anyone’s own report, or a lead’s private notes, and never
-            {' '}{WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS} unless given access to that check-in.
-          </p>
           <ul className="gwui-welcome-doors">
             {doorsFor(data).map(d => (
               <li key={d.to}>
@@ -167,7 +169,7 @@ export function AdminFirstRun() {
             {steps.map(s => (
               <li key={s.key}>
                 <span className="gwui-get-going-title">{s.title}</span>
-                {s.done ? <Tag tone="proven">Done</Tag> : <Button kind="secondary" size="small" to={s.to}>Do it</Button>}
+                {s.done ? <Tag tone="proven">Done</Tag> : <Button kind="secondary" size="small" to={s.to}>{s.button}</Button>}
               </li>
             ))}
           </ul>
