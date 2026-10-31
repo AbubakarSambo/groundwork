@@ -68,7 +68,7 @@ describe("the anchor lead's first screen", () => {
     renderPage()
     expect(await screen.findByText(/Session 1 of 4\./)).toBeTruthy()
     expect(screen.queryByText(/of the zero people/)).toBeNull()
-    expect(screen.queryByText(/answered session 1|checked in for session 1/)).toBeNull()
+    expect(screen.queryByText(/checked in for session 1/)).toBeNull()
   })
 
   it('counts her team, not her, once two of them are in and one has answered', async () => {
@@ -78,10 +78,10 @@ describe("the anchor lead's first screen", () => {
     ]
     ;(groundsApi.get as any).mockResolvedValue(anAnchor(team, [
       { id: 'c-juma', sessionNumber: 1, status: 'COMPLETED', participantId: 'p-juma', completedAt: '2026-10-09' },
-    ], { session: 1, answered: 1, ofPeople: 2, everyoneIn: false, notCountedSays: null, says: 'One of the two people has answered session 1.' }))
+    ], { session: 1, answered: 1, ofPeople: 2, everyoneIn: false, notCountedSays: null, says: 'One of the two people has checked in for session 1.' }))
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Help my team understand/i).length).toBeGreaterThan(0))
-    expect(await screen.findByText(/One of the two people has answered session 1\./)).toBeTruthy()
+    expect(await screen.findByText(/One of the two people has checked in for session 1\./)).toBeTruthy()
     expect(screen.queryByText(/Two of the two people/)).toBeNull()
   })
 })

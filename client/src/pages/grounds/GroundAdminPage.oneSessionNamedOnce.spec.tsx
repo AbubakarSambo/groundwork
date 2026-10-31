@@ -61,7 +61,7 @@ describe('B-053: the header names one session, and counts who has checked in for
          produced the bug. */
       sessionClock: { currentSession: 1, plannedSessions: 12, says: 'Session 1 of 12.', whileOpen: null },
       /* The count for that same session, from the server's one count (api this-sessions-count.ts; Hafsah, 30 October 2026). */
-      thisSession: { session: 1, answered: 1, ofPeople: 1, everyoneIn: true, notCountedSays: null, says: 'The one person in it has answered session 1.' },
+      thisSession: { session: 1, answered: 1, ofPeople: 1, everyoneIn: true, notCountedSays: null, says: 'The one person in it has checked in for session 1.' },
       boardRenders: true,
       answeredBySession: aServedCount({ 1: { on: ['p-lead'], answered: ['p-lead'] }, 2: { on: [], answered: [] } }),
     }
@@ -71,7 +71,7 @@ describe('B-053: the header names one session, and counts who has checked in for
 
     expect(await screen.findByText(/Session 1 of 12\./)).toBeTruthy()
     // One session, one true statement: the session just named has been checked into.
-    expect(await screen.findByText(/has answered session 1\./)).toBeTruthy()
+    expect(await screen.findByText(/has checked in for session 1\./)).toBeTruthy()
     expect(screen.queryByText(/Nobody has checked in yet/)).toBeNull()
     expect(screen.queryByText(/Waiting for the first check-in/)).toBeNull()
   })

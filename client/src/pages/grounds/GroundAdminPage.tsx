@@ -1868,7 +1868,7 @@ export function GroundAdminPage() {
             /*
              * B-148: NOT SAID TWICE. When the lead takes part herself, has already answered, and is only waiting on others, the
              * attention Note just above already says it, from the same served count. Said here in every other case, as the server
-             * says it ("Three of the five people have answered session 2." and who it leaves out).
+             * says it ("Three of the five people have checked in for session 2." and who it leaves out).
              */
             if (thisSession?.says && !(isInitiator && viewerChecksIn && attention.kind === 'waiting')) parts.push(thisSession.says)
             if (roundWentBack) parts.push(`It went back to session ${openRound}, because somebody new was added. Nothing anybody wrote is lost.`)

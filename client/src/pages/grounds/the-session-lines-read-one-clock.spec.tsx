@@ -129,7 +129,7 @@ async function headerOf(g: any) {
 
 describe('the check-in page says the server\'s one count', () => {
   it('says the served sentence, with who it leaves out, and no count of its own', async () => {
-    const says = 'Three of the five people have answered session 1. One of them was invited and has not joined yet.'
+    const says = 'Three of the five people have checked in for session 1. One of them was invited and has not joined yet.'
     const text = await headerOf(served({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false, notCountedSays: 'One of them was invited and has not joined yet.', says }))
     /* The lead has answered, so the line at the top says it once (B-148), from the same count: two of the five still out. */
     expect(text).toContain('Two of the five have not answered yet. One of them was invited and has not joined yet.')
@@ -139,13 +139,13 @@ describe('the check-in page says the server\'s one count', () => {
   })
 
   it('says "Everyone is in" only when the served count says everybody counted has answered', async () => {
-    const all = await headerOf(served({ session: 1, answered: 5, ofPeople: 5, everyoneIn: true, notCountedSays: null, says: 'All five people have answered session 1.' }))
-    expect(all).toContain('All five people have answered session 1.')
+    const all = await headerOf(served({ session: 1, answered: 5, ofPeople: 5, everyoneIn: true, notCountedSays: null, says: 'All five people have checked in for session 1.' }))
+    expect(all).toContain('All five people have checked in for session 1.')
     expect(all).toContain('Everyone is in, report on its way.')
   })
 
   it('and never from a round the server recorded as done while its count says people are still out', async () => {
-    const text = await headerOf(served({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false, notCountedSays: null, says: 'Three of the five people have answered session 1.' }, { roundCompletions: [{ sessionNumber: 1 }] }))
+    const text = await headerOf(served({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false, notCountedSays: null, says: 'Three of the five people have checked in for session 1.' }, { roundCompletions: [{ sessionNumber: 1 }] }))
     expect(text).not.toMatch(/Everyone is in/)
   })
 })

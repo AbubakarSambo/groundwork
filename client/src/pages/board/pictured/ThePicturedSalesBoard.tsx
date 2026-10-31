@@ -734,6 +734,8 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
   }
   return (
     <Section heading="The team today" note="Each person’s line, their last 10 check-ins, and what keeps coming up">
+      {/* Who has answered this session, the one count Today, the check-in's page and Ask say (api this-sessions-count.ts). */}
+      {b.thisSession?.says && <p className="pb-foot" data-testid="the-team-today-count">{b.thisSession.says}</p>}
       <div className="pb-rows">
         {rows.map((r) => {
           /*
@@ -746,7 +748,8 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
           /* What they said today is said in full beside them, so the tag is about the work only, never the reason said short. */
           const says = saysOf.get(r.participantId) ?? null
           const tag = r.lastIn ? { word: `Last in ${r.lastIn}`, tone: 'plain' as const } : aTagForTheWork(says ? '' : reason, dealsOf(r.participantId), today, r.workTag)
-          const more = [theirTarget(r.participantId, firstName(r.who)), says, ...morning.filter((l) => l.participantId === r.participantId).map((l) => l.text)].filter(Boolean) as string[]
+          /* Each sentence once: the person's line already is what the board says of them, so it is not said again under it (round 3: every row read its line twice). */
+          const more = [...new Set([theirTarget(r.participantId, firstName(r.who)), says, ...morning.filter((l) => l.participantId === r.participantId).map((l) => l.text)].filter(Boolean) as string[])].filter((x) => x !== r.line)
           return (
             <div className="pb-row pb-row-team" key={r.participantId}>
               <Link className="pb-row-name pb-name-link" to={`/grounds/${groundId}/person/${r.participantId}`}>{firstName(r.who)}</Link>
