@@ -33,7 +33,7 @@ import { Section, Panel, Stack, TextArea, Select, Button, Note, Tag } from '@/co
  * address so the admin sees what was actually read, since the invitation itself begins with it
  * ("Hi Дмитрий,").
  */
-interface PastedRow { email: string; result: string; name?: string | null; phone?: string | null }
+interface PastedRow { email: string; result: string; name?: string | null; phone?: string | null; phoneNotSaved?: string | null }
 interface PasteAnswer { preview: boolean; seatsLeft: number | null; rows: PastedRow[]; summary: string }
 
 /*
@@ -154,7 +154,7 @@ export function InvitePeople() {
               const tone = how.tone === 'good' ? 'proven' : how.tone === 'bad' ? 'concern' : 'plain'
               return (
                 <div key={`${r.email}-${i}`} className="gwui-invite-row">
-                  <span className="gwui-panel-text">{[r.name?.trim(), r.email, r.phone?.trim()].filter(Boolean).join(', ')}</span>
+                  <span className="gwui-panel-text">{[r.name?.trim(), r.email, r.phone?.trim()].filter(Boolean).join(', ')}{r.phoneNotSaved ? ` ${r.phoneNotSaved} Their invitation went out; add their number on People.` : ''}</span>
                   <Tag tone={tone}>{answer.preview ? how.says : (how.sent ?? how.says)}</Tag>
                 </div>
               )

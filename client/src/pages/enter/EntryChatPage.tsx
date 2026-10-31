@@ -138,6 +138,8 @@ interface OnboardingSelections {
   peopleNamed?: string[]
   /** An address the lead typed beside a name, kept with that name. */
   peopleEmails?: Record<string, string>
+  /** Each named person's phone number, where they typed one in the conversation (server peoplePhones). */
+  peoplePhones?: Record<string, string>
   goals?: string[]
   checkinTiming?: string
   timeframe?: string
@@ -2624,6 +2626,7 @@ export function EntryChatPage() {
           ...(res.extracted.whoInvolved ? { whoInvolved: res.extracted.whoInvolved! } : {}),
           ...(res.extracted.peopleNamed?.length ? { peopleNamed: res.extracted.peopleNamed! } : {}),
           ...(res.extracted.peopleEmails ? { peopleEmails: res.extracted.peopleEmails } : {}),
+          ...((res.extracted as any).peoplePhones ? { peoplePhones: (res.extracted as any).peoplePhones } : {}),
           ...(res.extracted.decision ? { decision: res.extracted.decision! } : {}),
           ...(res.extracted.goals ? { goals: res.extracted.goals! } : {}),
           ...(res.extracted.brief !== undefined ? { brief: res.extracted.brief! } : {}),
@@ -2717,7 +2720,10 @@ export function EntryChatPage() {
         }
         // Background classify intent when we have initial
         /* Nor is Collect what's owed (Release 2): the classifier does not know it, so any answer it gave would be wrong. */
-        if (res.extracted.initial && !isAnchorDraft() && pickedScenario !== 'COLLECTIONS' && scenarioNow !== 'COLLECTIONS') {
+        /* ONCE. The situation is read from what they first said and then stays: asked again every turn, it came back different each
+           time ("Get a project back on track", then "Keep a read on live work", then "Build a workplan and budget"), and a sales lead
+           called the changing name jargon (first experience, round 2, 31 October 2026). "It's something else" is how they change it. */
+        if (res.extracted.initial && !onboardingSelections.classifiedScenario && !isAnchorDraft() && pickedScenario !== 'COLLECTIONS' && scenarioNow !== 'COLLECTIONS') {
           /*
            * FAULT 1(a): AN ANCHOR DRAFT IS NEVER RECLASSIFIED.
            *
@@ -2732,7 +2738,7 @@ export function EntryChatPage() {
           entryApi.classifyIntent(res.extracted.initial, res.extracted.mode).then(r => {
             /* A low-confidence answer comes back as null and the card they picked stands. */
             const sure = r.scenario
-            if (sure) setOnboardingSelections(prev => ({ ...prev, classifiedScenario: sure }))
+            if (sure) setOnboardingSelections(prev => (prev.classifiedScenario ? prev : { ...prev, classifiedScenario: sure }))
           }).catch(() => { /* non-critical */ })
         }
       }
@@ -3474,8 +3480,10 @@ export function EntryChatPage() {
    * Two faults, both here. Queueing needed a separate press of Add that Save knew nothing about,
    * and a refusal was a silent `return` - so a typo produced exactly the same nothing as success.
    */
-  function queueSuggestedContributor(key: string, note: string): boolean {
-    const email = addingContributorEmail.trim()
+  /* `given`: the address they already typed in the conversation, so somebody named with it is added in one press (first experience,
+     round 2, 31 October 2026: a lead entered the same people three times, in the chat, on this card and on People). */
+  function queueSuggestedContributor(key: string, note: string, given?: string): boolean {
+    const email = (given ?? addingContributorEmail).trim()
     if (!looksLikeAnAddress(email)) {
       setAddingContributorError(email ? NOT_AN_ADDRESS : 'Add their email address, or close this to leave them out.')
       return false
@@ -3497,6 +3505,9 @@ export function EntryChatPage() {
     if (key.startsWith('men-')) {
       const name = note.split(' - ')[0].trim()
       if (name) setDisplayNames(prev => ({ ...prev, [email.toLowerCase()]: name }))
+      /* And the phone number they typed beside the name in the conversation, saved with the rest once the check-in exists. */
+      const said = name ? onboardingSelections.peoplePhones?.[name] : undefined
+      if (said) setPhones(prev => ({ ...prev, [email.toLowerCase()]: said }))
     }
     setAddingContributorFor(null)
     setAddingContributorEmail('')
@@ -5018,7 +5029,11 @@ export function EntryChatPage() {
                   ) : (
                     <button
                       type="button" className="gwui-plain-link"
-                      onClick={() => { setAddingContributorFor(key); setAddingContributorEmail(onboardingSelections.peopleEmails?.[label.split(' - ')[0].trim()] ?? ''); setAddingContributorLabel(label); setAddingContributorError('') }}
+                      onClick={() => {
+                        const known = onboardingSelections.peopleEmails?.[label.split(' - ')[0].trim()]
+                        if (known && looksLikeAnAddress(known)) { queueSuggestedContributor(key, label, known); return }
+                        setAddingContributorFor(key); setAddingContributorEmail(known ?? ''); setAddingContributorLabel(label); setAddingContributorError('')
+                      }}
                     >
                       Add them
                     </button>
