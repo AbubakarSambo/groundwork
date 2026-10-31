@@ -1433,8 +1433,10 @@ export function GroundAdminPage() {
         ? 'the report is ready. It has not been shared yet'
         : (ground as any).report
           /* A report row is a report written from whoever has answered (staging test, 15 October): "report being written"
-             stayed on for good while the others had not checked in. It is ready to read so far, and fills in as they do. */
-          ? (everyoneIn ? 'everyone is in, report on its way' : clockRoundDone > 0 ? 'the report so far is ready to read, and it fills in as the others check in' : 'waiting for the first session')
+             stayed on for good while the others had not checked in. It is ready to read so far, and fills in as they do.
+             With nobody in this session yet, nothing is added: the count beside it already says "Nobody has checked in yet.",
+             and "Waiting for the first session" was said over session 2 (Hafsah, 30 October 2026, clinic lead). */
+          ? (everyoneIn ? 'everyone is in, report on its way' : clockRoundDone > 0 ? 'the report so far is ready to read, and it fills in as the others check in' : 'no report yet')
           : 'no report yet'
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   /**
@@ -1537,7 +1539,9 @@ export function GroundAdminPage() {
   const whoIsInThisParties = (ground.participants ?? [])
     .filter((p: any) => !p.managingOnly)
     .map((p: any) => {
-      const current = plannedSessions && plannedSessions > 0 ? Math.min(openRound, plannedSessions) : openRound
+      /* The session the header names and counts (`clockRound`, the server's own clock), so a row never says "You have not
+         checked in for this session yet" about a different session than the header's count (Hafsah, 30 October 2026). */
+      const current = clockRound
       const theirs = ((ground.checkIns ?? []) as any[]).filter((c) => c.participantId === p.id)
       return {
         /* Carried for both readers: WhoIsInThis (still used and tested on its own) reads `name`;
