@@ -982,6 +982,14 @@ export class BoardService {
         })().catch(() => [] as string[])
       : [];
 
+    /* The session and its one count (this-sessions-count.ts): the board's glance counts this session, and whoever runs it reads its sentence. */
+    const theLeave = await leaveOfThePeopleOn(this.prisma as any, [groundId]);
+    const theOneCount = theSessionAndItsCount({
+      participants: ground.participants as any[], checkIns: (ground as any).checkIns ?? [], scenario: (ground as any).scenario ?? null,
+      timelineDays: (ground as any).runsUntilEnded ? null : (ground as any).timelineDays ?? null, cadence: (ground as any).cadence ?? null,
+      cadenceDays: (ground as any).cadenceDays ?? null,
+      runsUntilEnded: !!(ground as any).runsUntilEnded,
+    }, { now, handOn: releaseOne, leave: theLeave });
     const out: Record<string, any> = {
       groundId,
       renders: true,
@@ -1020,14 +1028,12 @@ export class BoardService {
        * Computed by how-a-check-in-is-going.ts, the same function the list calls, so the two cannot
        * disagree about one week. Not a new read: the same summary, the same two facts.
        */
+      /* Who is in this session and who has answered it, to whoever runs it or an admin here: the same count Today and the page say. */
+      thisSession: isInitiator || isSetupAdmin || adminHere || theyRunIt ? theOneCount.count : null,
       howItIsGoing: howACheckInIsGoing({
         /* The session the check-in's clock names, the same one the page and Ask count (this-sessions-count.ts). */
-        round: theSessionAndItsCount({
-          participants: ground.participants as any[], checkIns: (ground as any).checkIns ?? [], scenario: (ground as any).scenario ?? null,
-          timelineDays: (ground as any).runsUntilEnded ? null : (ground as any).timelineDays ?? null, cadence: (ground as any).cadence ?? null,
-          cadenceDays: (ground as any).cadenceDays ?? null, runsUntilEnded: !!(ground as any).runsUntilEnded,
-        }, { now, handOn: releaseOne }).clock.currentSession,
-        leave: await leaveOfThePeopleOn(this.prisma as any, [groundId]),
+        round: theOneCount.clock.currentSession,
+        leave: theLeave,
         checkIns: (ground as any).checkIns ?? [],
         participants: ground.participants ?? [],
         dependencies: (ground as any).dependencies ?? [],
@@ -1868,6 +1874,7 @@ export class BoardService {
             notLetIn: p.userId && notLetInByUser.has(p.userId)
               ? { by: notLetInByUser.get(p.userId)!.by, at: notLetInByUser.get(p.userId)!.at, declined: true }
               : (heldBack.has(p.id) ? { by: null, at: null, declined: false } : undefined),
+            notJoinedYet: (p as any).notJoinedYet === true,
             target: theirs?.target ?? null,
             count: theirs?.count ?? 0,
             /*

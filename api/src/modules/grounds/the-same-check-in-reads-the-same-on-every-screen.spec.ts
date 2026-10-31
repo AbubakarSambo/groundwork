@@ -73,7 +73,8 @@ describe('(a) one round, from one place', () => {
   it('Today counts that round for the lead, and names it as the board does', async () => {
     const r = await listAs(LEAD, 'MEMBER');
     const t = whatNeedsYou([r as ListedCheckIn], { userId: LEAD, role: 'MEMBER', organizationId: 'org1' }, [], NOW);
-    expect(t.line).toBe('In Sales team, Q3, 1 of 2 have checked in for the second check-in. Omar has not checked in yet.');
+    /* The one count's own sentence (this-sessions-count.ts; Hafsah, 30 October 2026, first-experience round 3), as the board and the page say it. */
+    expect(t.line).toBe('In Sales team, Q3, one of the two people has checked in for session 2. Omar has not checked in yet.');
   });
 
   it('Coming up is the team\'s next check-in to the lead, and is Amani\'s own to Amani, and both are the third', async () => {
@@ -118,7 +119,7 @@ describe('a check-in the clock closed with nothing said stays in the lead\'s cou
   it('Rukia reads "1 of 2 have checked in" with Omar named, and nothing about herself', async () => {
     const r = await listAs(LEAD, 'MEMBER', { checkIns: omarMissed().checkIns });
     const t = whatNeedsYou([r as ListedCheckIn], { userId: LEAD, role: 'MEMBER', organizationId: 'org1' }, [], NOW);
-    expect(t.line).toBe('In Sales team, Q3, 1 of 2 have checked in for the second check-in. Omar did not check in before it closed.');
+    expect(t.line).toBe('In Sales team, Q3, one of the two people has checked in for session 2. Omar did not check in before it closed.');
     expect(t.line).not.toMatch(/Rukia|2 of 2|All/);
   });
 });

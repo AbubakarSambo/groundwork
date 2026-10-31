@@ -37,7 +37,7 @@ export interface ThisSession {
   notCountedSays: string | null;
   /** Who of them was invited and has not joined yet, or null: they are counted (Hafsah, 1 November), and said so: "One of them was invited and has not joined yet." */
   notJoinedSays: string | null;
-  /** "Three of the five people have answered session 2.", then `notJoinedSays`, then `notCountedSays`. */
+  /** "Three of the five people have checked in for session 2.", then `notJoinedSays`, then `notCountedSays`. */
   says: string;
 }
 
@@ -52,16 +52,16 @@ export interface WhatTheCountReads {
   runsUntilEnded?: boolean | null;
 }
 
-/** "Three of the five people have answered session 2.", in words up to ten. */
+/** "Three of the five people have checked in for session 2.", in words up to ten. */
 export function theCountSaid(session: number, answered: number, ofPeople: number): string {
   /* Nobody in the session yet (an anchor lead alone, before her team is in): there is no count to say, never "one of zero". */
   if (ofPeople <= 0) return '';
-  if (answered <= 0) return `Nobody has answered session ${session} yet.`;
+  if (answered <= 0) return `Nobody has checked in for session ${session} yet.`;
   if (answered >= ofPeople) {
-    return ofPeople === 1 ? `The one person in it has answered session ${session}.` : `All ${aNumberInWords(ofPeople)} people have answered session ${session}.`;
+    return ofPeople === 1 ? `The one person in it has checked in for session ${session}.` : `All ${aNumberInWords(ofPeople)} people have checked in for session ${session}.`;
   }
   const a = aNumberInWords(answered);
-  return `${a.charAt(0).toUpperCase()}${a.slice(1)} of the ${aNumberInWords(ofPeople)} people ${answered === 1 ? 'has' : 'have'} answered session ${session}.`;
+  return `${a.charAt(0).toUpperCase()}${a.slice(1)} of the ${aNumberInWords(ofPeople)} people ${answered === 1 ? 'has' : 'have'} checked in for session ${session}.`;
 }
 
 /**

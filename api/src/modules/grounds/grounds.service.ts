@@ -40,7 +40,7 @@ import { whenTheirNextCheckInWouldOpen } from './when-their-next-check-in-opens'
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, whyAJoinLinkRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT, wasAQuietClose } from './an-answer-includes-a-refusal';
-import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-an-admin-did-not-let-in';
+import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine, markedNotLetIn } from './who-an-admin-did-not-let-in';
 import { whoHasNotJoinedYet, theNotJoinedYetLine } from './invited-not-joined-yet';
 import { theSessionAndItsCount, withWhoHasNotJoinedMarked } from './this-sessions-count';
 import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
@@ -1671,15 +1671,19 @@ export class GroundsService {
          * disagree about one week. See how-a-check-in-is-going.ts - the arithmetic there is this
          * code, moved, not rewritten.
          */
+        /* The session and its one count (this-sessions-count.ts), served on the row as `thisSession` to whoever may read counts. */
+        /* Who is held at the door marked as GET and the board mark them (withWhoHasNotJoinedMarked); who has not joined is marked above. */
+        const listedPeople = markedNotLetIn(((rest as any).participants ?? []) as any[], notLetInOnTheList.get((rest as any).id) ?? new Map())
+        const listedCount = theSessionAndItsCount({
+          participants: listedPeople, checkIns: checkIns as any, scenario: (rest as any).scenario ?? null,
+          timelineDays: (rest as any).timelineDays ?? null, cadence: (rest as any).cadence ?? null, cadenceDays: (rest as any).cadenceDays ?? null, runsUntilEnded: !!(rest as any).runsUntilEnded,
+        }, { handOn: handsOnIn.get((rest as any).organizationId) === true, leave: leaveOnTheList });
         const going = howACheckInIsGoing({
           /* The session the check-in's clock names, the one the board, the page and Ask count (this-sessions-count.ts). The people
              here are already marked for who has not joined and who is not let in, above. */
-          round: theSessionAndItsCount({
-            participants: (rest as any).participants ?? [], checkIns: checkIns as any, scenario: (rest as any).scenario ?? null,
-            timelineDays: (rest as any).timelineDays ?? null, cadence: (rest as any).cadence ?? null, cadenceDays: (rest as any).cadenceDays ?? null, runsUntilEnded: !!(rest as any).runsUntilEnded,
-          }, { handOn: handsOnIn.get((rest as any).organizationId) === true }).clock.currentSession,
+          round: listedCount.clock.currentSession,
           checkIns: checkIns as any,
-          participants: (rest as any).participants ?? [],
+          participants: listedPeople,
           dependencies: ((rest as any).dependencies ?? []) as any,
           timelineDays: (rest as any).runsUntilEnded ? null : (rest as any).timelineDays ?? null,
           cadence: (rest as any).cadence ?? null,
@@ -1880,6 +1884,8 @@ export class GroundsService {
           hasBoard,
           /* No count of other people either, where they are not named to this reader: not how many
              answered, nor what is holding them up. Their own turn still shows from their own rows. */
+          /* Who is in this session and who has answered it, the one count (this-sessions-count.ts), to whoever is shown the others. */
+          thisSession: hidePeers ? null : listedCount.count,
           glance: (() => {
             const { oldestOnParticipantId, ...inTheWay } = (glance.inTheWay ?? {}) as any;
             /*

@@ -116,20 +116,20 @@ export async function theOpenSession(prisma: any, groundId: string, leadUserId: 
   });
   if (!rows.length) return null;
   /* What the clock needs of the check-in itself; a reader without it counts with no planned end, as before. */
-  const ground: any = await Promise.resolve(prisma.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, scenario: true, timelineDays: true, cadence: true, runsUntilEnded: true } })).catch(() => null);
+  const ground: any = await Promise.resolve(prisma.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, scenario: true, timelineDays: true, cadence: true, cadenceDays: true, runsUntilEnded: true } })).catch(() => null);
   /* Everybody on it has a row for each session, so the people are read off the rows; each keeps an id even where a reader did not select one. */
   const idOf = (p: any) => p?.id ?? (p?.userId ? `u:${p.userId}` : null);
   const everybody = [...new Map(rows.filter((r) => r.participant).map((r) => [idOf(r.participant), { ...r.participant, id: idOf(r.participant) }])).values()];
   const g = {
     organizationId: ground?.organizationId ?? null, scenario: ground?.scenario ?? null, timelineDays: ground?.timelineDays ?? null,
-    cadence: ground?.cadence ?? null, runsUntilEnded: ground?.runsUntilEnded ?? false, participants: everybody,
+    cadence: ground?.cadence ?? null, cadenceDays: ground?.cadenceDays ?? null, runsUntilEnded: ground?.runsUntilEnded ?? false, participants: everybody,
     checkIns: rows.map(({ participant, ...r }) => ({ ...r, participantId: idOf(participant) })),
   };
   const marked = await withWhoHasNotJoinedMarked(prisma, g.participants ?? []);
   /* The joined rule's own sessions ride on the row; the count reads every row of the session, so they are taken off here. */
   const people = marked.map(({ checkIns: _own, ...p }: any) => p);
   const { count } = theSessionAndItsCount(
-    { participants: people, checkIns: g.checkIns, scenario: g.scenario, timelineDays: g.timelineDays, cadence: g.cadence, runsUntilEnded: g.runsUntilEnded },
+    { participants: people, checkIns: g.checkIns, scenario: g.scenario, timelineDays: g.timelineDays, cadence: g.cadence, cadenceDays: g.cadenceDays, runsUntilEnded: g.runsUntilEnded },
     { handOn: g.organizationId ? await theReleaseOneSalesBoardIsOn(prisma, g.organizationId).catch(() => true) : true },
   );
   if (!count.ofPeople) return null;

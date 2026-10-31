@@ -4643,7 +4643,7 @@
     "byArea": "Nothing on record says where each piece of work belongs yet",
     "landing": "Nothing is leaking out or piling in",
     "teamToday": "2 nothing to do; 1 waiting on someone",
-    "whoCheckedIn": "Today: 3 of 3 checked in",
+    "whoCheckedIn": "All three people have checked in for session 3.",
     "commitments": "What each person agreed, and how it’s going",
     "workPlan": "18 open, 3 done",
     "blockers": "2 blocking. The biggest: the samples for Tuskys Westgate, raised 3 times",
@@ -4658,7 +4658,7 @@
     ],
     "team": [
      "2 nothing to do; 1 waiting on someone",
-     "Today: 3 of 3 checked in"
+     "All three people have checked in for session 3."
     ],
     "plan": [
      "18 open, 3 done",

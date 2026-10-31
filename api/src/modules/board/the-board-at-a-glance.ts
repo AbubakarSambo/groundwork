@@ -109,7 +109,9 @@ export function theBoardAtAGlance(b: any, opts: { readerCheckedInThisRound: bool
   const patterns = Array.isArray(b.patterns) ? b.patterns : [];
   if (patterns.length) lines.patterns = `${plural(patterns.length, 'pattern')} about how the work is going`;
   const progress = b.howItIsGoing?.glance?.progress;
-  if (progress && typeof progress.answeredThisRound === 'number' && typeof progress.ofPeople === 'number') {
+  /* The one count's own sentence where it is served (this-sessions-count.ts), never a count of its own beside it (round 3). */
+  if (b.thisSession?.says) lines.whoCheckedIn = b.thisSession.says;
+  else if (progress && typeof progress.answeredThisRound === 'number' && typeof progress.ofPeople === 'number') {
     lines.whoCheckedIn = `Today: ${progress.answeredThisRound} of ${progress.ofPeople} checked in`;
   }
   const help = first<string>(b.helpNobodyMentioned?.lines);

@@ -49,7 +49,7 @@ describe('one session, one count, whoever reads it', () => {
     expect(clock.currentSession).toBe(1);
     expect(count).toMatchObject({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false });
     expect(count.waitingOn.sort()).toEqual(['adwoa', 'kofi']);
-    expect(count.says).toBe('Three of the five people have answered session 1. One of them was invited and has not joined yet.');
+    expect(count.says).toBe('Three of the five people have checked in for session 1. One of them was invited and has not joined yet.');
   });
 
   it('the board reads the same numbers for the same session', () => {
@@ -67,9 +67,9 @@ describe('one session, one count, whoever reads it', () => {
   });
 
   it('says everybody only when everybody counted has answered', () => {
-    expect(theCountSaid(2, 0, 4)).toBe('Nobody has answered session 2 yet.');
-    expect(theCountSaid(2, 4, 4)).toBe('All four people have answered session 2.');
-    expect(theCountSaid(2, 1, 1)).toBe('The one person in it has answered session 2.');
+    expect(theCountSaid(2, 0, 4)).toBe('Nobody has checked in for session 2 yet.');
+    expect(theCountSaid(2, 4, 4)).toBe('All four people have checked in for session 2.');
+    expect(theCountSaid(2, 1, 1)).toBe('The one person in it has checked in for session 2.');
   });
 });
 
@@ -85,7 +85,7 @@ describe('who the one count counts', () => {
     const rows = [{ ...row('baraka', 'COMPLETED'), isSetup: true }, row('kito', 'NOT_STARTED'), row('lerato', 'NOT_STARTED')];
     const { count } = theSessionAndItsCount({ participants: anchor(), checkIns: rows, ...GROUND, scenario: 'HELP_TEAM_UNDERSTAND' }, { now: NOW });
     expect([count.answered, count.ofPeople]).toEqual([0, 2]);
-    expect(count.says).toBe('Nobody has answered session 1 yet.');
+    expect(count.says).toBe('Nobody has checked in for session 1 yet.');
   });
 
   it('an anchor lead alone has no count to say, never "one of zero"', () => {
@@ -107,6 +107,40 @@ describe('who the one count counts', () => {
     const { clock, count } = theSessionAndItsCount({ participants: people, checkIns: rows, ...GROUND, scenario: 'NEW_PROJECT' }, { now: NOW });
     expect(clock.currentSession).toBe(1);
     expect([count.answered, count.ofPeople]).toEqual([1, 3]);
-    expect(count.says).toBe('One of the three people has answered session 1. Three more people are not counted yet, because an admin has not let them in.');
+    expect(count.says).toBe('One of the three people has checked in for session 1. Three more people are not counted yet, because an admin has not let them in.');
+  });
+});
+
+/*
+ * THE SERVER'S OTHER READERS OF THE SAME COUNT (Hafsah, 30 October 2026, first-experience round 3): Today's line, the board's
+ * at-a-glance line, and The team today's row for somebody who has not joined. A sales lead read "1 of 3" on Today, "Today: 1 of 3
+ * checked in" on the board, and Fatuma and James, who never joined, as "has not checked in for this session yet".
+ */
+import { whatNeedsYou, type ListedCheckIn } from './what-needs-you';
+import { theBoardAtAGlance } from '../board/the-board-at-a-glance';
+import { whyThisRow, whatHappened } from '../board/where-each-person-is-against-their-number';
+
+describe('the one count, as Today and the board say it', () => {
+  const { count } = theSessionAndItsCount({ participants: MARKED, checkIns: ROWS, ...GROUND }, { now: NOW });
+
+  it("Today's line is the count's own sentence, with who it waits on by name", () => {
+    const listed = {
+      id: 'g', label: 'the Weekly Sales Check-in', status: 'ACTIVE', organizationId: 'org', initiatorId: 'u-akua', cadence: 'WEEKLY', timelineDays: 84,
+      participants: MARKED, checkIns: ROWS.map((r, i) => ({ ...r, id: `c${i}` })), thisSession: count,
+      glance: { progress: { roundsDone: 0, roundsPlanned: 12, answeredThisRound: count.answered, ofPeople: count.ofPeople, waitingOn: count.waitingOn } },
+    } as unknown as ListedCheckIn;
+    const t = whatNeedsYou([listed], { userId: 'u-akua', role: 'MEMBER', organizationId: 'org' }, [], NOW);
+    expect(t.line).toBe(`In the Weekly Sales Check-in, ${count.says.charAt(0).toLowerCase()}${count.says.slice(1)} Adwoa and Kofi have not checked in yet.`);
+  });
+
+  it("the board's at-a-glance line is the same sentence", () => {
+    expect(theBoardAtAGlance({ thisSession: count, howItIsGoing: { glance: { progress: { answeredThisRound: 3, ofPeople: 5 } } } }, { readerCheckedInThisRound: true, readerIsTheLead: true }).lines.whoCheckedIn).toBe(count.says);
+  });
+
+  it('The team today says somebody who has not joined was invited and has not joined, never that they have not checked in', () => {
+    const row: any = { participantId: 'yaw', who: 'Yaw', notJoinedYet: true, answeredThisRound: false, inTheWay: [], target: null, count: 0 };
+    const reason = whyThisRow(row, 12);
+    expect(reason).toBe('not joined');
+    expect(whatHappened(row, reason, 12)).toMatch(/was invited and has not joined yet\.$/);
   });
 });
