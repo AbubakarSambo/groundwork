@@ -801,6 +801,8 @@ export class EntryService {
       name?: string;
       /** An address the lead typed beside a name, kept with that name. */
       peopleEmails?: Record<string, string>;
+      /** Each named person's phone number, where they typed one, by the name on the list. */
+      peoplePhones?: Record<string, string>;
     } & TheSevenItems;
     ready: boolean;
     /** Party path only: setup can finish, but nobody has been named yet and they are told so. */
@@ -1267,6 +1269,8 @@ Fields:
   by their role where you do not ("Priya", "Tom", "the finance lead"). A team, a company, a client or a
   department is NOT an entry: "my team" is zero people, not one. Leave it out entirely if no individual
   has been identified - an empty list is an honest answer and is handled.
+- peoplePhones: for each person in peopleNamed whose phone number they typed, that person's name exactly as
+  in peopleNamed and the number exactly as they typed it. Only numbers they typed; leave it out if none.
 - decision: what prompted this, why now.
   NOT A RESTATEMENT OF WHAT THIS IS ABOUT, AND THIS IS THE COMMON FAILURE. Read live: About said
   "Setting goals for 40 shops in Kano stocking tea by end of Q4" and Why said "setting goals for the
@@ -1320,6 +1324,9 @@ from finishing at all.`;
            * rule is what "My team" walked past.
            */
           peopleNamed: { type: 'array', items: { type: 'string' } },
+          /* Each person's phone number, where the person setting this up typed one beside their name (Hafsah, 30 October 2026: the
+             team is added with their numbers). The model reads whose number is whose; only a number they typed is kept. */
+          peoplePhones: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, phone: { type: 'string' } }, required: ['name', 'phone'] } },
           decision: { type: 'string' },
           goals: { type: 'array', items: { type: 'string' } },
           brief: { type: 'string' },
@@ -1394,6 +1401,15 @@ from finishing at all.`;
         extracted.peopleNamed = withoutThePersonSettingItUp(extracted.peopleNamed, me);
         const theirAddresses = theAddressesTheyGave(extracted.peopleNamed, messages.filter((m) => m.role === 'user').map((m) => m.content));
         if (Object.keys(theirAddresses).length) (extracted as any).peopleEmails = theirAddresses;
+        /* A number is kept only when its digits are in what they typed, and only for somebody on the list: nothing invented reaches the card. */
+        const typed = messages.filter((m) => m.role === 'user').map((m) => m.content ?? '').join(' ').replace(/\D/g, '');
+        const theirNumbers: Record<string, string> = {};
+        for (const x of ((extracted as any).peoplePhones ?? []) as { name?: string; phone?: string }[]) {
+          const digits = String(x.phone ?? '').replace(/\D/g, '');
+          const who = extracted.peopleNamed.find((p) => p.trim().toLowerCase() === String(x.name ?? '').trim().toLowerCase());
+          if (who && digits.length >= 7 && typed.includes(digits)) theirNumbers[who] = String(x.phone).trim();
+        }
+        if (Object.keys(theirNumbers).length) (extracted as any).peoplePhones = theirNumbers; else delete (extracted as any).peoplePhones;
       }
     }
     /*
