@@ -451,8 +451,10 @@ export const REPORT_SCHEMA = {
              model skips without ever weighing whether it should. '' is how it declines. */
           required: ['topic', 'positions', 'atStake', 'settledBy'],
         },
+        /* First experience, round 2 (31 October 2026): a law firm's lead read "You and David Kimani describe the immediate work to be done
+           in different terms" when she had given the firm's plan and David his first task in it, and called it a fake disagreement. */
         description:
-          "The gap. For each topic, where each person stands - never framed as one side being right.\n\nORDER MATTERS: put the gap that matters most FIRST, and order the rest after it. Significance is about the WORK: how much of the ground's purpose is exposed if the gap holds, how many people it reaches, and whether it undermines something the other agreements depend on. It is never about who is more at fault - you are ranking gaps, not people.",
+          "The gap. For each topic, where each person stands - never framed as one side being right. A gap is only where two accounts of the same fact cannot both be true (rule 14a): a plan and one person's part in it, or the same work said in more or less detail, agree and are not a gap. Leave it empty when nobody contradicts anybody.\n\nORDER MATTERS: put the gap that matters most FIRST, and order the rest after it. Significance is about the WORK: how much of the ground's purpose is exposed if the gap holds, how many people it reaches, and whether it undermines something the other agreements depend on. It is never about who is more at fault - you are ranking gaps, not people.",
       },
       centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
       inferences: {
