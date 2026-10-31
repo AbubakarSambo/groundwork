@@ -127,6 +127,24 @@ It did not yet have the fixes made during it.
 
 **The engine's acknowledgement in check-ins is left as it is.** Hafsah's conversation standard keeps a short "Thank you" in its right-hand example, so the no-thanks rule stays in setup only.
 
+
+## Round 3 (31 October, 07:10 to 10:20): average 1.1, lowest 1
+
+This round ran on every fix up to round 2's: why now asked once, no filler in setup, the situation read once, a difference only where accounts conflict, and plainer counts.
+
+Scores: sales 1, law firm 1, clinic group 1, field programme 1, startup 2, family business 1, mobile cinema 1, charity 1.
+
+**What makes people give up, counted per round (rounds 1, 2 and 3):**
+- **Adding the team:** 4, 15, 18. The startup's founder named his four people with their numbers in the conversation, then entered them three more times: on People, on the save card and in People and setup.
+- **Setup stalling:** 4, 6, 9. "Saving…" and "Loading…" stayed on screen, the team step was out of sight below the report, and leaving setup halfway lost it.
+- **The first board, report and Ask:** 5, 13, 16.
+- **Being asked again:** 3, 3, 6.
+- **The numbers:** 3, 3, 5.
+
+The wording fixes did not move the score. Hafsah's call (31 October): adding the team is the top pattern for round 4, judged by how fast a lead gets the whole team in, with phone numbers, without repeating themselves.
+
+**The harness, again:** the model invents the same phone numbers every round. A number someone on the bed already has is rightly refused, which read as lost data. Each run's numbers are unique from round 4.
+
 ## The plan to 8.5
 
 1. **Round 2** on the fixes above, with fresh people for every kind of organisation and the harness's memory fix: each person now remembers everything they typed. In round 1 one admin accused Groundwork of inventing a roof she had typed twice.
