@@ -1642,11 +1642,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * (pictured/ThePicturedSalesBoard.tsx), not the folded light board. The light board stays for an admin
    * who only reads (the summary first), until its own screen (A4 read-only-view) is matched.
    */
-  /* Only where deals are on record: a sales organisation's goals board with none (salesorg-board.jpg) has its own picture, matched on its own. */
+  /* From the first day, before any deal is on record (first experience, 30 October 2026: a new sales lead was shown the old light board,
+     "None of the 38 sessions is done yet", "The quick read", "It is all from memory", and called it a wall of text). The pictured board
+     says "No deals have come up yet" in its own words. A sales organisation's goals board keeps its own picture when it has no deals
+     (sales-first.md section 3, salesorg-board.jpg). */
   /* "See every other part of this board": the whole board as it was, with nothing drawn as pictured. */
   const theWholeBoard = searchParams.get('whole') === '1'
+  const hasDeals = (b.workRecords ?? []).some((s: any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: any) => r.kind === 'deal'))
   const picturedLead = !theWholeBoard && isSalesOrg && viewerRunsThisCheckIn && !isParticipantView && !groundId
-    && (b.workRecords ?? []).some((s: any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: any) => r.kind === 'deal'))
+    && (hasDeals || (b as any).kindOfWork !== 'sales org')
   /* A sales check-in of many people in teams (salesorg-board.jpg): every sale in one table, and the work by team. */
   const picturedManyInTeams = picturedLead && (b.participants ?? []).filter((p: any) => !p.managingOnly).length > 10
   /*
