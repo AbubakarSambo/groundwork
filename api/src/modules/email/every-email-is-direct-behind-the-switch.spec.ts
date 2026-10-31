@@ -187,7 +187,7 @@ describe('with the direct morning off, every email reads word for word as the ni
 
   it('David, the reminder', () => {
     expect(m.nudge!.text).toBe([
-      'Your check-in for Litigation team daily is still open. About ten minutes now puts your view into the shared picture, and you read it too.',
+      'Your check-in for Litigation team daily is still open. It takes about ten minutes, and your answers go into the report everyone reads.',
       'They have already shared their side. Yours is the last one we are waiting for.',
       'Check in',
       'Would you rather we stopped reminding you? Stop the reminders. Your invitation keeps working, and nothing is recorded either way.',
