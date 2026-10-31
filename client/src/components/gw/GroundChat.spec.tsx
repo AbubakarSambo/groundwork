@@ -198,7 +198,8 @@ describe('reading a past check-in', () => {
     // The summary is not a duplicate of the turns above it - it is what was
     // EXTRACTED, which is the thing somebody wants to check: did it hear me right.
     renderChat()
-    await waitFor(() => expect(screen.getAllByRole('button', { name: /What we heard from you/ }).length).toBe(2))
+    /* Named as the prototype names it (Hafsah, 30 October 2026: plain language for an impatient first-time lead). */
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /What you told us/ }).length).toBe(2))
   })
 
   it('and an unfinished session does not, because nothing has been written yet', async () => {
@@ -207,7 +208,7 @@ describe('reading a past check-in', () => {
     })
     renderChat()
     await waitFor(() => expect(screen.getByText('mid sentence')).toBeTruthy())
-    expect(screen.queryByRole('button', { name: /What we heard from you/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /What you told us/ })).toBeNull()
   })
 })
 

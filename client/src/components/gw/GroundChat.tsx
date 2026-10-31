@@ -143,7 +143,7 @@ export function SessionSummary({ checkInId, groundId, sessionNumber }: {
           onClick={() => setOpen(o => !o)}
           style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 700 }}
         >
-          {open ? 'Hide what we heard' : 'What we heard from you'}
+          {open ? 'Hide what you told us' : 'What you told us'}
         </button>
         <button
           onClick={() => correct.mutate()}

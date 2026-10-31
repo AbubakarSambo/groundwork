@@ -60,7 +60,7 @@ export interface TheReportYouSawAtTheEndProps {
   correctedNote?: boolean
   /** Renders the invite control against a suggested party or a mentioned person, when there is one. */
   renderAdd?: (key: string, label: string) => ReactNode
-  /** The line under "Where this leaves you" saying what is on record. */
+  /** The line under "What happens next" saying what is on record. */
   onRecordLine?: ReactNode
   /**
    * WHAT THE CHECK-IN STILL NEEDS FROM THE PERSON WHO SET IT UP.
@@ -183,11 +183,17 @@ export function TheReportYouSawAtTheEnd({
     <div className="gw-close gw-entry-report" style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
         <style>{CLOSE_SHEET}</style>
         <style>{SIZES}</style>
-        {/* What we heard from you */}
+        {/*
+          THE PROTOTYPE'S OWN HEADINGS (Hafsah, 30 October 2026, first-experience round 1). Impatient
+          leads read "What we heard from you", "What we noticed", "Why it matters" and "Where this
+          leaves you" as a consultant's report. The prototype's own report and end card
+          (B4 own-report, B3 check-in-end-card) say "What you told us" and "What happens next", with
+          no caption over each sentence, so this says the same.
+        */}
         <div className="gw-head"><div style={{ background: 'var(--gw-dark)', borderRadius: 10, padding: 'var(--er-box-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 'var(--er-gap-sm)' }}>
             {/* U.9 RE-REVIEW, ITEM A: a plain heading, not a shout. */}
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-b)' }}>What we heard from you</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-b)' }}>What you told us</div>
             {correctedNote && (
               <div style={{ fontSize: 'var(--er-label)', color: 'rgba(255,255,255,.55)', fontStyle: 'normal' }}>Updated after your correction</div>
             )}
@@ -205,13 +211,12 @@ export function TheReportYouSawAtTheEnd({
             note were "01 WHAT'S STILL OPEN" over a lower-case sub-line; they are now one plain
             sentence, and each field caption inside the card is no longer shouted in capitals. */}
         {report.areasRequiringAlignment.length > 0 && (
-          <Block n={next()} label="What's still open, and what to do about it">
+          <Block n={next()} label="What is still open">
             {report.areasRequiringAlignment.map((a, i) => (
               <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-amber-b)', borderRadius: 10, padding: 'var(--er-box)', marginBottom: 'var(--er-gap-sm)' }}>
                 {/* A title the server judged unusable as a heading is absent; the card stands without it. */}
                 {a.title && <div style={{ fontSize: 'var(--er-lead)', fontWeight: 700, marginBottom: 7 }}>{a.title}</div>}
-                <div style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>{a.observation}</div>
-                <div style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Why it matters</span>{a.whyItMatters}</div>
+                <p style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, margin: '0 0 5px' }}>{[a.observation, a.whyItMatters].filter(Boolean).join(' ')}</p>
                 {renderCorrect?.(a.title)}
                 <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: 'var(--er-box-sm)', fontSize: 'var(--er-body)', color: 'var(--gw-green-t)', lineHeight: 1.5 }}><span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
               </div>
@@ -357,13 +362,13 @@ export function TheReportYouSawAtTheEnd({
         */}
         {/* FAULT 12 (live review): same fix - "Where this leaves you" is the whole heading; what is
             settled and what is still open is what the rows underneath already say. */}
-        <Block n={next()} label="Where this leaves you">
+        <Block n={next()} label="What happens next">
           {((stands?.settled?.length ?? 0) || (stands?.open?.length ?? 0))
             ? <div style={{ display: 'grid', gap: 6 }}>
                 {(stands?.settled ?? []).map((t, i) => <div key={`s${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}>{`Everyone agrees that ${lowerFirst(t)}`}</div>)}
                 {(stands?.open ?? []).map((t, i) => <div key={`o${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}>{`This is still open. ${capitalize(t)}`}</div>)}
               </div>
-            : <div style={{ fontSize: 'var(--er-lead)', color: 'var(--gw-sub)', lineHeight: 1.5 }}>Nothing is settled or unsettled yet. That comes once more than one person has checked in.</div>}
+            : <div style={{ fontSize: 'var(--er-lead)', color: 'var(--gw-sub)', lineHeight: 1.5 }}>Once someone else checks in, you will see where you agree and where you see things differently.</div>}
           <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-muted)', marginTop: 8 }}>
             {onRecordLine}
           </div>
