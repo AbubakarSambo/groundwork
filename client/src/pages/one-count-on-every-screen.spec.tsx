@@ -22,8 +22,8 @@ import { howManyHaveNotAnsweredYet } from '@/lib/a-number-up-to-ten-in-words'
 const THIS_SESSION = {
   session: 1, answered: 1, ofPeople: 3, everyoneIn: false,
   waitingOn: ['p-sarah', 'p-david'], notAnswered: ['p-sarah', 'p-david'],
-  notCountedSays: 'Two more people are not counted yet, because they were invited and have not joined yet.',
-  says: 'One of the three people has checked in for session 1. Two more people are not counted yet, because they were invited and have not joined yet.',
+  notCountedSays: 'Two more were invited and have not joined yet.',
+  says: 'One of the three people has checked in for session 1. Two more were invited and have not joined yet.',
 }
 const PEOPLE = [
   { id: 'p-aisha', userId: 'u-aisha', partyType: 'INITIATOR', user: { firstName: 'Aisha', lastName: 'Muthoni' } },
