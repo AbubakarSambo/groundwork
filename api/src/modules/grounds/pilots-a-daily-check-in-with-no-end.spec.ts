@@ -1,3 +1,4 @@
+import { theSessionAndItsCount } from './this-sessions-count';
 import { aDailyCheckInWithNoEndSaid } from './grounds.service';
 import { openingLine } from './the-context-chat';
 import { theSessionClock } from '../board/one-count-for-the-sessions';
@@ -33,7 +34,8 @@ describe('a daily check-in with no end said', () => {
     expect(says).not.toMatch(/of 365/);
     const src = withoutComments(readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8'));
     expect(src).toContain('const endsOn = noEnd ? null : deadlineOf(ground as any);');
-    /* Changed 2 November 2026 (twice a week): the count also takes the weekdays it meets on. */
-    expect(src).toContain('noEnd ? null : totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,');
+    /* The clock now comes from the one count (this-sessions-count.ts, 30 October 2026), told the check-in runs until it is ended, so it plans no last session. */
+    expect(src).toContain('runsUntilEnded: noEnd,');
+    expect(theSessionAndItsCount({ participants: [{ id: 'p1', userId: 'u1', partyType: 'PARTICIPANT' }], checkIns: [{ participantId: 'p1', sessionNumber: 3, status: 'IN_PROGRESS' }], cadence: 'DAILY', timelineDays: 365, runsUntilEnded: true }).clock.says).not.toMatch(/of 365/);
   });
 });

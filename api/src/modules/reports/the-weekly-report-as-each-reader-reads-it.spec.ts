@@ -632,3 +632,41 @@ describe('a check-in the clock closed with nothing said is due and not made, as 
     expect(JSON.stringify(r)).not.toMatch(/All 3 check-ins|Wairimu has not checked in|You have not checked in/);
   });
 });
+
+/*
+ * THE WEEK'S "CHECK-INS MADE" READS THE ONE COUNT (Hafsah, 31 October 2026: "The weekly 'check-ins made this week' tile stays (my 18
+ * October decision). Make it read the one server count like every other count."). A sales lead read "100% of check-ins made this
+ * week" beside "1 of 3" on Today, the board and the check-in's page. The tile's due and made are now theCountOfASession for each of
+ * the week's sessions, the rule the open session's count (the board, Today, the page, Ask) reads, so the two cannot disagree.
+ */
+import { theSessionAndItsCount } from '../grounds/this-sessions-count';
+
+describe('the check-ins made this week, and the one count', () => {
+  it('say the same people and the same number for the session this week', async () => {
+    const { r } = await served(LEAD);
+    const { count } = theSessionAndItsCount({ participants: PARTIES, checkIns: CHECK_INS, scenario: 'SALES_TEAM_CHECK', cadence: 'WEEKLY', timelineDays: null }, { now: AT });
+    expect(count.session).toBe(5);
+    expect([count.answered, count.ofPeople]).toEqual([2, 3]);
+    expect(count.says).toBe('Two of the three people have checked in for session 5.');
+    expect(r.inNumbers![0]).toEqual({ figure: '67%', of: 'of check-ins made this week', says: '2 of the 3 check-ins due this week were made.' });
+  });
+
+  it('counts somebody whose session has not opened for them yet, as the one count does, never "100%" over one', async () => {
+    /* Round 3: Aisha (the lead) answered on Saturday; Sarah's and David's session opens on Monday. */
+    const sat = new Date('2026-09-26T08:00:00Z');
+    const rows = [
+      { id: 'r1', participantId: 'p-lead', sessionNumber: 1, status: 'COMPLETED', completedAt: sat, availableFrom: sat, createdAt: sat, isSetup: false },
+      { id: 'r2', participantId: 'p-aisha', sessionNumber: 1, status: 'NOT_STARTED', completedAt: null, availableFrom: new Date('2026-09-28T06:00:00Z'), createdAt: sat, isSetup: false },
+      { id: 'r3', participantId: 'p-baraka', sessionNumber: 1, status: 'NOT_STARTED', completedAt: null, availableFrom: new Date('2026-09-28T06:00:00Z'), createdAt: sat, isSetup: false },
+    ];
+    const people = PARTIES.filter((p) => p.id !== 'p-chidi');
+    const c = aCheckIn();
+    c.prisma.checkIn.findMany = jest.fn(async () => rows);
+    c.prisma.ground.findUnique = jest.fn(async () => ({ ...(await (aCheckIn().prisma.ground.findUnique())), participants: people }));
+    await c.svc.build('g1', new Date('2026-09-26T10:00:00Z'));
+    const week = await c.svc.read('g1', LEAD, new Date('2026-09-26T10:00:00Z'));
+    const { count } = theSessionAndItsCount({ participants: people, checkIns: rows, scenario: 'SALES_TEAM_CHECK', cadence: 'WEEKLY', timelineDays: null }, { now: new Date('2026-09-26T10:00:00Z') });
+    expect([count.answered, count.ofPeople]).toEqual([1, 3]);
+    expect(week.inNumbers![0]).toEqual({ figure: '33%', of: 'of check-ins made this week', says: '1 of the 3 check-ins due this week was made.' });
+  });
+});

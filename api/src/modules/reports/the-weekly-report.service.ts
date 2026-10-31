@@ -6,6 +6,7 @@ import { aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in'
 import { anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { theCountOfASession } from '../grounds/this-sessions-count';
 import { whoIsNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { whoHasNotJoinedYet, WHAT_SAYS_SOMEBODY_JOINED } from '../grounds/invited-not-joined-yet';
 import { asADirection } from '../board/an-aim-or-a-limit';

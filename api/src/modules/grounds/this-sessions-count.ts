@@ -74,6 +74,24 @@ export async function withWhoHasNotJoinedMarked<T extends { id: string }>(prisma
   return markedNotLetIn((people ?? []).map((p) => (notJoined.has(p.id) ? { ...p, notJoinedYet: true } : p)), notLetIn);
 }
 
+/**
+ * WHO ONE SESSION COUNTS, AND WHO OF THEM HAS ANSWERED IT: the one rule (whoHasAnswered, reports/how-many-have-answered.ts), over people already marked
+ * (`withWhoHasNotJoinedMarked`) and that session's rows. The open session's count and the week's "check-ins made" both read this
+ * (Hafsah, 31 October 2026: the weekly tile reads the one count like every other count).
+ */
+export function theCountOfASession(
+  people: any[], rows: any[], session: number, scenario: string | null | undefined, leave: Map<string, Stretch[]> | undefined, now: Date,
+): { counted: string[]; answered: number; ofPeople: number; notAnswered: string[] } {
+  const withTheirRows = (people ?? []).map((p) => ({
+    ...p, awayUntil: awayUntilOn(leave?.get(p.id), now),
+    checkIns: (rows ?? []).filter((c) => !c.isSetup && c.participantId === p.id && (c.sessionNumber ?? 1) === session),
+  }));
+  const c = whoHasAnswered(withTheirRows, session, scenario ?? null);
+  const counted = c.onTheCheckIn;
+  const notAnswered = counted.filter((id) => !c.answered.includes(id));
+  return { counted, answered: counted.length - notAnswered.length, ofPeople: counted.length, notAnswered };
+}
+
 /** The clock and the count, from rows already marked (`withWhoHasNotJoinedMarked`). Pure: the board, the page and Ask all call this. */
 export function theSessionAndItsCount(
   g: WhatTheCountReads,
@@ -98,20 +116,17 @@ export function theSessionAndItsCount(
     round: clock.currentSession,
   }, now).glance.progress;
   const notCountedSays = progress.notCountedSays ?? null;
+  const one = theCountOfASession(participants, rows, clock.currentSession, g.scenario, opts.leave, now);
   const count: ThisSession = {
     session: clock.currentSession,
-    answered: progress.answeredThisRound,
-    ofPeople: progress.ofPeople,
+    answered: one.answered,
+    ofPeople: one.ofPeople,
     waitingOn: progress.waitingOn ?? [],
-    /* The one count (whoHasAnswered), asked for the ids: counted, and not answered. */
-    notAnswered: ((c) => c.onTheCheckIn.filter((pid) => !c.answered.includes(pid)))(whoHasAnswered(
-      participants.map((p) => ({ ...p, awayUntil: awayUntilOn(opts.leave?.get(p.id), now), checkIns: rows.filter((c) => c.participantId === p.id && (c.sessionNumber ?? 1) === clock.currentSession) })),
-      clock.currentSession, g.scenario ?? null,
-    )),
-    everyoneIn: progress.ofPeople > 0 && progress.answeredThisRound >= progress.ofPeople,
+    notAnswered: one.notAnswered,
+    everyoneIn: one.ofPeople > 0 && one.answered >= one.ofPeople,
     notCountedSays,
     notJoinedSays: progress.notJoinedSays ?? null,
-    says: [theCountSaid(clock.currentSession, progress.answeredThisRound, progress.ofPeople), progress.notJoinedSays, notCountedSays].filter(Boolean).join(' '),
+    says: [theCountSaid(clock.currentSession, one.answered, one.ofPeople), progress.notJoinedSays, notCountedSays].filter(Boolean).join(' '),
   };
   return { clock, count };
 }
