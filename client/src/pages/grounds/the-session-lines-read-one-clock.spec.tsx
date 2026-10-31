@@ -129,10 +129,10 @@ async function headerOf(g: any) {
 
 describe('the check-in page says the server\'s one count', () => {
   it('says the served sentence, with who it leaves out, and no count of its own', async () => {
-    const says = 'Three of the five people have answered session 1. One more person is not counted yet, because they were invited and have not joined yet.'
-    const text = await headerOf(served({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false, notCountedSays: 'One more person is not counted yet, because they were invited and have not joined yet.', says }))
+    const says = 'Three of the five people have answered session 1. One of them was invited and has not joined yet.'
+    const text = await headerOf(served({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false, notCountedSays: 'One of them was invited and has not joined yet.', says }))
     /* The lead has answered, so the line at the top says it once (B-148), from the same count: two of the five still out. */
-    expect(text).toContain('Two of the five have not answered yet. One more person is not counted yet, because they were invited and have not joined yet.')
+    expect(text).toContain('Two of the five have not answered yet. One of them was invited and has not joined yet.')
     expect(text).not.toContain(says)
     expect(text).not.toMatch(/The one person in it|checked in for session 1/)
     expect(text).not.toMatch(/Everyone is in/)

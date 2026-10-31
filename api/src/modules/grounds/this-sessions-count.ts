@@ -33,9 +33,11 @@ export interface ThisSession {
   notAnswered: string[];
   /** Everybody counted has answered, and somebody is counted. "Everyone is in" reads this. */
   everyoneIn: boolean;
-  /** Who is not counted and why, or null: "Two more people are not counted yet, because they were invited and have not joined yet." */
+  /** Who is not counted and why, or null: "One more person is not counted yet, because an admin has not let them in." */
   notCountedSays: string | null;
-  /** "Three of the five people have answered session 2." and then `notCountedSays`. */
+  /** Who of them was invited and has not joined yet, or null: they are counted (Hafsah, 1 November), and said so: "One of them was invited and has not joined yet." */
+  notJoinedSays: string | null;
+  /** "Three of the five people have answered session 2.", then `notJoinedSays`, then `notCountedSays`. */
   says: string;
 }
 
@@ -108,7 +110,8 @@ export function theSessionAndItsCount(
     )),
     everyoneIn: progress.ofPeople > 0 && progress.answeredThisRound >= progress.ofPeople,
     notCountedSays,
-    says: [theCountSaid(clock.currentSession, progress.answeredThisRound, progress.ofPeople), notCountedSays].filter(Boolean).join(' '),
+    notJoinedSays: progress.notJoinedSays ?? null,
+    says: [theCountSaid(clock.currentSession, progress.answeredThisRound, progress.ofPeople), progress.notJoinedSays, notCountedSays].filter(Boolean).join(' '),
   };
   return { clock, count };
 }

@@ -49,7 +49,7 @@ describe('one session, one count, whoever reads it', () => {
     expect(clock.currentSession).toBe(1);
     expect(count).toMatchObject({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false });
     expect(count.waitingOn.sort()).toEqual(['adwoa', 'kofi']);
-    expect(count.says).toBe('Three of the five people have answered session 1. One more person is not counted yet, because they were invited and have not joined yet.');
+    expect(count.says).toBe('Three of the five people have answered session 1. One of them was invited and has not joined yet.');
   });
 
   it('the board reads the same numbers for the same session', () => {
@@ -62,7 +62,7 @@ describe('one session, one count, whoever reads it', () => {
     expect(asked).toMatchObject({ answered: count.answered, ofHowMany: count.ofPeople, round: count.session, notCountedSays: count.notCountedSays });
     const said = whereOneStands({ ...asked!, label: 'Farmer Training' });
     expect(said).toContain('three of five people have checked in');
-    expect(said).toContain('One more person is not counted yet, because they were invited and have not joined yet.');
+    expect(said).toContain('One of them was invited and has not joined yet.');
     expect(said).not.toMatch(/all three people/);
   });
 
