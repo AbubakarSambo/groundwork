@@ -1,14 +1,13 @@
 import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
-import { whoHasNotJoinedYet, WHAT_SAYS_SOMEBODY_JOINED } from '../grounds/invited-not-joined-yet';
-import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
-import { CheckInStatus, GroundStatus } from '@prisma/client';
+import { WHAT_SAYS_SOMEBODY_JOINED } from '../grounds/invited-not-joined-yet';
+import { GroundStatus } from '@prisma/client';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
-import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { isAlreadyHeld } from './a-message-sent-once';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
-import { theRoundACountIsAbout } from '../board/which-round-is-open';
+import { theSessionAndItsCount, withWhoHasNotJoinedMarked } from '../grounds/this-sessions-count';
+import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { theCheckIn } from '../grounds/which-check-in-it-is';
 import { aNumberInWords } from './a-number-in-words';
 import { nameToCall, aNameToList } from './a-name-to-call-them';
@@ -28,7 +27,7 @@ export const WHATS_NEW_SENDER = 'sendHeresWhatIsNew';
 
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
-export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean; /** Set only when another listed check-in has the same name: when this one was started, as the lead reads a date ("3 September"). */ startedOn?: string; groundId?: string; /** Which round the count is about. */ round?: number }
+export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Who the count leaves out and why, said after it (this-sessions-count.ts). */ notCountedSays?: string | null; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean; /** Set only when another listed check-in has the same name: when this one was started, as the lead reads a date ("3 September"). */ startedOn?: string; groundId?: string; /** Which round the count is about. */ round?: number }
 
 /**
  * WHETHER THIS CHECK-IN HAS A SESSION STILL TO COME. The follow-up (a person's own promise, said back to them) is sent for a session that begins after
@@ -50,6 +49,11 @@ const calledBy = (c: AnExistingCheckIn) => (c.startedOn ? `"${c.label}", which y
 
 /** One check-in, in one sentence, from the count alone. */
 export function whereOneStands(c: AnExistingCheckIn): string {
+  const line = whereTheCountStands(c);
+  return c.notCountedSays ? `${line} ${c.notCountedSays}` : line;
+}
+
+function whereTheCountStands(c: AnExistingCheckIn): string {
   const In = `In ${calledBy(c)}`;
   /* Which round the count is about, said the way Today and the board say it. */
   const forIt = c.round ? ` for ${theCheckIn(c.round)}` : '';
@@ -96,29 +100,49 @@ export function theWhatIsNewWords(firstName: string | null | undefined, checkIns
   return { subject, lines, linkLabel: 'See your check-ins' };
 }
 
+/*
+ * WHERE ONE CHECK-IN STANDS, FROM THE ONE COUNT (this-sessions-count.ts, Hafsah, 30 October 2026). This counted the rows of a round it
+ * chose itself, so Ask told a field lead with five people "all three people have checked in" while her board said "3 of 5". It now reads
+ * the session and the count the board and the check-in's page read, and carries who is not counted, so the count is never said without them.
+ */
 export async function theOpenSession(prisma: any, groundId: string, leadUserId: string): Promise<AnExistingCheckIn | null> {
   const rows: any[] = await prisma.checkIn.findMany({
     where: { groundId },
-    select: { status: true, sessionNumber: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } }, participant: { select: { id: true, ...WHAT_SAYS_SOMEBODY_JOINED, userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } } },
+    select: {
+      status: true, sessionNumber: true, isSetup: true, availableFrom: true, startedAt: true, completedAt: true, closedReason: true,
+      turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } },
+      participant: { select: { id: true, ...WHAT_SAYS_SOMEBODY_JOINED, userId: true, managingOnly: true, nameGiven: true, invitedAt: true, inviteTokenExpiresAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
+    },
   });
   if (!rows.length) return null;
-  /* Invited, not joined yet: left out of the count like somebody not let in (decision 8 redone, night run 3). */
-  const notJoined = await whoHasNotJoinedYet(prisma, [...new Map(rows.map((r: any) => [r.participant?.id, r.participant])).values()].filter(Boolean)).catch(() => new Set<string>());
-  for (const r of rows) if (r.participant && notJoined.has(r.participant.id)) r.participant = { ...r.participant, notJoinedYet: true };
-  /* A session the clock closed with nothing said is not an answer. */
-  const answeredIt = (r: any) => r.status === CheckInStatus.COMPLETED && !wasAQuietClose(r);
-  /* The round the board and Today call open, not whichever is newest: rows for the next round are written ahead. */
-  const latest = theRoundACountIsAbout(rows.map((r) => ({ sessionNumber: r.sessionNumber ?? 0, status: r.status })));
-  const counted = rows.filter((r) => (r.sessionNumber ?? 0) === latest && !r.participant?.managingOnly && !isNotLetInYet(r.participant));
-  if (!counted.length) return null;
+  /* What the clock needs of the check-in itself; a reader without it counts with no planned end, as before. */
+  const ground: any = await Promise.resolve(prisma.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, scenario: true, timelineDays: true, cadence: true, runsUntilEnded: true } })).catch(() => null);
+  /* Everybody on it has a row for each session, so the people are read off the rows; each keeps an id even where a reader did not select one. */
+  const idOf = (p: any) => p?.id ?? (p?.userId ? `u:${p.userId}` : null);
+  const everybody = [...new Map(rows.filter((r) => r.participant).map((r) => [idOf(r.participant), { ...r.participant, id: idOf(r.participant) }])).values()];
+  const g = {
+    organizationId: ground?.organizationId ?? null, scenario: ground?.scenario ?? null, timelineDays: ground?.timelineDays ?? null,
+    cadence: ground?.cadence ?? null, runsUntilEnded: ground?.runsUntilEnded ?? false, participants: everybody,
+    checkIns: rows.map(({ participant, ...r }) => ({ ...r, participantId: idOf(participant) })),
+  };
+  const marked = await withWhoHasNotJoinedMarked(prisma, g.participants ?? []);
+  /* The joined rule's own sessions ride on the row; the count reads every row of the session, so they are taken off here. */
+  const people = marked.map(({ checkIns: _own, ...p }: any) => p);
+  const { count } = theSessionAndItsCount(
+    { participants: people, checkIns: g.checkIns, scenario: g.scenario, timelineDays: g.timelineDays, cadence: g.cadence, runsUntilEnded: g.runsUntilEnded },
+    { handOn: g.organizationId ? await theReleaseOneSalesBoardIsOn(prisma, g.organizationId).catch(() => true) : true },
+  );
+  if (!count.ofPeople) return null;
+  const byId = new Map(people.map((p: any) => [p.id, p]));
+  const counted = [...count.notAnswered];
   /* A check-in where only the lead is in it has nothing to say about anybody else (decision 109 review). */
-  if (!counted.some((r) => r.participant?.userId !== leadUserId)) return null;
-  const answered = counted.filter(answeredIt).length;
-  const notYet = counted.filter((r) => !answeredIt(r))
-    .map((r) => (r.participant?.userId === leadUserId ? 'you' : nameToCall(r.participant)))
+  if (!people.some((p: any) => p.userId !== leadUserId && !p.notJoinedYet && !p.notLetIn)) return null;
+  const notYet = counted
+    .map((id) => byId.get(id))
+    .map((p: any) => (p?.userId === leadUserId ? 'you' : nameToCall(p)))
     .filter(aNameToList)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
-  return { label: '', ofHowMany: counted.length, answered, notYet, round: latest };
+  return { label: '', ofHowMany: count.ofPeople, answered: count.answered, notYet, round: count.session, notCountedSays: count.notCountedSays };
 }
 
 /** The sweep. Returns how many were tried; the sender decides whether each may go. */

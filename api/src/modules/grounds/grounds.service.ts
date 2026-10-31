@@ -42,6 +42,7 @@ import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, hasEnded, hasStalled, 
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT, wasAQuietClose } from './an-answer-includes-a-refusal';
 import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-an-admin-did-not-let-in';
 import { whoHasNotJoinedYet, theNotJoinedYetLine } from './invited-not-joined-yet';
+import { theSessionAndItsCount, withWhoHasNotJoinedMarked } from './this-sessions-count';
 import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
 import { whoASessionCounts } from './the-lead-checks-in-when-they-choose';
 import { openTheLeadsCheckIn } from './check-in-yourself';
@@ -91,7 +92,6 @@ import { totalSessionsFor } from './session-count';
 import { readPeopleAndSetup } from './people-and-setup';
 import { readReferencesAndResources, readTheEvidence, aLineToKeep, aKeyFactFrom, referencesSaidDirectly, type EvidenceQuery } from './references-and-resources';
 import { theRelease1bTabsAreOn } from './release-1b-tabs';
-import { holdsTheClock, theSessionClock } from '../board/one-count-for-the-sessions';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
@@ -1591,6 +1591,11 @@ export class GroundsService {
       const found = await Promise.resolve((this.prisma as any).user?.findMany?.({ where: { id: { in: [...adminLeadIds] } }, select: { id: true, isActive: true, firstName: true, lastName: true } })).catch(() => []);
       for (const l of found ?? []) leadAccounts.set(l.id, l);
     }
+    /* Whether each organisation reads Release 1's clock (a finished round hands the count on), as the board and the page read it. One read per organisation. */
+    const handsOnIn = new Map<string, boolean>();
+    for (const orgId of new Set([...orgGrounds, ...participantGrounds].map((g: any) => g.organizationId).filter(Boolean))) {
+      handsOnIn.set(orgId as string, await theReleaseOneSalesBoardIsOn(this.prisma, orgId as string));
+    }
     const setupFor = (g: any) => {
       if (userId && g.initiatorId === userId) return { leadHasLeft: false, mayChangeSetup: true };
       const lead = g.initiatorId && g.organizationId === organizationId && mayAdminHere(g) ? leadAccounts.get(g.initiatorId) : null;
@@ -1667,6 +1672,12 @@ export class GroundsService {
          * code, moved, not rewritten.
          */
         const going = howACheckInIsGoing({
+          /* The session the check-in's clock names, the one the board, the page and Ask count (this-sessions-count.ts). The people
+             here are already marked for who has not joined and who is not let in, above. */
+          round: theSessionAndItsCount({
+            participants: (rest as any).participants ?? [], checkIns: checkIns as any, scenario: (rest as any).scenario ?? null,
+            timelineDays: (rest as any).timelineDays ?? null, cadence: (rest as any).cadence ?? null, cadenceDays: (rest as any).cadenceDays ?? null, runsUntilEnded: !!(rest as any).runsUntilEnded,
+          }, { handOn: handsOnIn.get((rest as any).organizationId) === true }).clock.currentSession,
           checkIns: checkIns as any,
           participants: (rest as any).participants ?? [],
           dependencies: ((rest as any).dependencies ?? []) as any,
@@ -2086,14 +2097,25 @@ export class GroundsService {
      * reader's wall, because it names and counts nobody: the open round among the people who check in,
      * capped at the last planned session, as the board's header and the list count it.
      */
-    const sessionClock = theSessionClock(
-      (((ground as any).checkIns ?? []) as any[]).filter((c) => !c.isSetup),
-      /* Nobody an admin has not let in yet holds the clock back (decision 77). */
-      new Set((((ground as any).participants ?? []) as any[]).filter((p) => holdsTheClock(p, isNotLetInYet)).map((p) => p.id)),
-      noEnd ? null : totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
-      new Date(),
-      /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
-      await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId),
+    /*
+     * AND WHO IS IN THAT SESSION AND WHO HAS ANSWERED IT, FROM THE SAME ONE PLACE THE BOARD AND ASK READ (this-sessions-count.ts,
+     * Hafsah, 30 October 2026). The page used to count on the screen, and its clock counted the lead while the board's did not.
+     */
+    const { clock: sessionClock, count: thisSessionsCount } = theSessionAndItsCount(
+      {
+        participants: await withWhoHasNotJoinedMarked(this.prisma, (((ground as any).participants ?? []) as any[])),
+        checkIns: ((ground as any).checkIns ?? []) as any[],
+        scenario: (ground as any).scenario ?? null,
+        timelineDays: (ground as any).timelineDays ?? null,
+        cadence: (ground as any).cadence ?? null,
+        cadenceDays: (ground as any).cadenceDays ?? null,
+        runsUntilEnded: noEnd,
+      },
+      {
+        /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
+        handOn: await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId),
+        leave: await leaveOfThePeopleOn(this.prisma as any, [id]).catch(() => undefined),
+      },
     );
 
     /*
@@ -3051,6 +3073,9 @@ export class GroundsService {
       /* The header's count, from the board's own clock: "Session 1 of 12.", and the line for a later session
          somebody has started. Every reader gets the same sentences (request 101 f). */
       sessionClock,
+      /* Who is in this session and who has answered it, the board's own count (this-sessions-count.ts). Not served where this reader
+         does not see the others: no count of people they are not shown. */
+      thisSession: hidePeers ? null : thisSessionsCount,
       /*
        * WHO IS WAITING TO BE LET IN, APART FROM THE COUNT (decision 77): "Faraji Odhiambo is waiting to be
        * let in." To whoever runs it and an admin, every such person, by name or as a count where no name is

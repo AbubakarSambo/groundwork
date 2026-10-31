@@ -54,6 +54,13 @@ export interface WhatItTakes {
    * "active" line cannot disagree for the minutes the next report takes to write (decision 7: nothing is rebuilt on opening; this is arithmetic on the record).
    */
   storyRound?: number | null;
+  /**
+   * The session to count, when the caller holds the check-in's clock (this-sessions-count.ts). The board, the check-in's page and Ask
+   * all pass the clock's session, so the count and the session it names are the same one. Left out, the team's open round as before.
+   */
+  round?: number | null;
+  /** The days a twice-a-week check-in meets on, so its planned sessions are counted from them. */
+  cadenceDays?: number[] | null;
 }
 
 export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): HowItIsGoing {
@@ -130,11 +137,11 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
    * This is the fourth copy of this rule to get it wrong, and the third today. It is one function
    * now and this asks it. See which-round-is-open.ts.
    */
-  const roundsPlanned = totalSessionsFor(it.timelineDays as any, it.cadence as any, (it as any).cadenceDays) ?? null;
+  const roundsPlanned = totalSessionsFor(it.timelineDays as any, it.cadence as any, it.cadenceDays) ?? null;
   /* There is no round after the last planned one: a stray session-2 row on a one-session run made the board
      read "0 of 2 answered this round" to somebody who had just answered (21 Sep 2026). */
   const openRoundRaw = sessions.length ? theTeamsOpenRound(sessions as any, (it.participants ?? []) as any) : 1;
-  const openRound = roundsPlanned && roundsPlanned > 0 ? Math.min(openRoundRaw, roundsPlanned) : openRoundRaw;
+  const openRound = it.round ?? (roundsPlanned && roundsPlanned > 0 ? Math.min(openRoundRaw, roundsPlanned) : openRoundRaw);
   const glance = atAGlance(
     {
       roundsDone,

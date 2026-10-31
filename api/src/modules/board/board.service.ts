@@ -185,6 +185,7 @@ import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { whoHasNotJoinedYet, theNotJoinedYetLine } from '../grounds/invited-not-joined-yet';
+import { theSessionAndItsCount, withWhoHasNotJoinedMarked } from '../grounds/this-sessions-count';
 import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 /** The person's first turn on a check-in, if any: with `closedReason`, enough to tell a session the clock closed with nothing said (wasAQuietClose). */
 const SAID = { where: { role: 'PERSON' as any }, take: 1, select: { id: true } };
@@ -456,6 +457,8 @@ export class BoardService {
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* Somebody already here, added by their address, is named by their membership (user journeys, F-7). */
     await withTheirNamesFromTheOrganisation(this.prisma as any, (ground as any).organizationId, (ground.participants ?? []) as any);
+    /* Who has not joined yet, marked once, so the clock and the count read them as the check-in's page and Ask do (this-sessions-count.ts). */
+    (ground as any).participants = await withWhoHasNotJoinedMarked(this.prisma, (ground.participants ?? []) as any[]);
     /* A wait on oneself is not a wait, a wait on "the lead" is a wait on the lead, and one wait said four ways is one (request 111 e, request 123 items 4 and 5). */
     (ground as any).dependencies = theWaitsAsABoardReadsThem((ground as any).dependencies ?? [], ground.participants.find((p) => !!ground.initiatorId && p.userId === ground.initiatorId)?.id);
     /*
@@ -806,7 +809,7 @@ export class BoardService {
        round with nothing in it. The rule now lives in one function and both callers ask it. */
     /* Nobody an admin has not let in yet holds the round open (decision 77). */
     /* Decision 133: the round's clock is the team's; the lead checks in when they choose. */
-    const givers = new Set(ground.participants.filter((p: any) => owesThisSession(p) && holdsTheClock(p, isNotLetInYet)).map((p: any) => p.id));
+    const givers = new Set(ground.participants.filter((p: any) => owesThisSession(p) && holdsTheClock(p, isNotLetInYet) && p.notJoinedYet !== true).map((p: any) => p.id));
     const mine = checkIns.filter((c) => givers.has(c.participantId));
     const openRound = mine.length ? whichRoundIsOpen(mine as any) : maxSession;
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
@@ -1018,6 +1021,12 @@ export class BoardService {
        * disagree about one week. Not a new read: the same summary, the same two facts.
        */
       howItIsGoing: howACheckInIsGoing({
+        /* The session the check-in's clock names, the same one the page and Ask count (this-sessions-count.ts). */
+        round: theSessionAndItsCount({
+          participants: ground.participants as any[], checkIns: (ground as any).checkIns ?? [], scenario: (ground as any).scenario ?? null,
+          timelineDays: (ground as any).runsUntilEnded ? null : (ground as any).timelineDays ?? null, cadence: (ground as any).cadence ?? null,
+          cadenceDays: (ground as any).cadenceDays ?? null, runsUntilEnded: !!(ground as any).runsUntilEnded,
+        }, { now, handOn: releaseOne }).clock.currentSession,
         leave: await leaveOfThePeopleOn(this.prisma as any, [groundId]),
         checkIns: (ground as any).checkIns ?? [],
         participants: ground.participants ?? [],
