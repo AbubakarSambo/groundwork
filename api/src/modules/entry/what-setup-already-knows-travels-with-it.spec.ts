@@ -33,16 +33,26 @@ describe('the settled block', () => {
     expect(whatIsSettledAndWhatIsNot(soFar)).toMatch(/Do not ask for any of it again/i);
   });
 
-  /* The fault this exists for: setup ended with an empty why-now because nothing was counting. */
-  it('names what is still missing, and why now is on that list', () => {
-    const block = whatIsSettledAndWhatIsNot(soFar);
-    expect(block).toContain('STILL MISSING');
-    expect(block).toContain('What makes now the right time');
+  /*
+   * REWRITTEN (round 5, 1 November 2026). This pinned why now on a list headed "STILL MISSING", with "setup is not finished while any
+   * of them is missing". Why now left the gate in e36ba61be and stayed on this list, and the list is a reading that keeps only what it
+   * is sure of, so round 5's leads were asked again for what they had said in other words (their part, their team, why now, what
+   * would tell them it worked). The list now says what the reading has not found yet, and the model reads the conversation to decide.
+   */
+  it('says what the reading has not found yet, and that an answer in any words is an answer', () => {
+    const block = whatIsSettledAndWhatIsNot({ initial: 'Fintech payments SDK migration', peopleNamed: ['Tunde'] });
+    expect(block).toContain('NOT READ FROM THEIR WORDS YET: Who else is in it; What they want out of it.');
+    expect(block).toContain('If they have already answered one, in any');
+    expect(block).not.toMatch(/not finished while|none of them is optional/i);
+  });
+
+  it('never lists why now as missing: it is asked once, not chased', () => {
+    expect(whatIsSettledAndWhatIsNot({ initial: 'Fintech payments SDK migration' })).not.toContain('What makes now the right time');
   });
 
   it('and tells it to stop asking once nothing is missing', () => {
-    const block = whatIsSettledAndWhatIsNot({ ...soFar, decision: 'The cutover is 30 November' });
-    expect(block).not.toContain('STILL MISSING');
+    const block = whatIsSettledAndWhatIsNot(soFar);
+    expect(block).not.toContain('NOT READ FROM THEIR WORDS YET');
     expect(block).toMatch(/stop asking/i);
   });
 
@@ -51,7 +61,7 @@ describe('the settled block', () => {
      names one of them by the same words. So it reads only the settled half. */
   it('never claims something empty is settled', () => {
     const block = whatIsSettledAndWhatIsNot({ initial: 'A migration', goals: [], brief: '   ' });
-    const settledHalf = block.split('STILL MISSING')[0];
+    const settledHalf = block.split('NOT READ FROM THEIR WORDS YET')[0];
     expect(settledHalf).toContain('What this is about: A migration');
     expect(settledHalf).not.toContain('What they want out of it');
     expect(settledHalf).not.toContain('What they want the questions to focus on');

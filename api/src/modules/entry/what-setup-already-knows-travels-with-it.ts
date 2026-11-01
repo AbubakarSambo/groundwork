@@ -61,12 +61,14 @@ const WHAT_EACH_ONE_IS: { key: keyof WhatSetupHasSoFar; said: string }[] = [
 ];
 
 /**
- * The four that setup exists to get. Anything else is welcome and none of it is chased.
+ * What setup exists to get. Anything else is welcome and none of it is chased.
  *
- * `decision` is on this list because of the run above: it is the one that quietly never gets asked,
- * and the one the summary card then has no row for.
+ * WHY NOW IS NOT ON THIS LIST ANY MORE (first experience, round 2, 31 October 2026, e36ba61be). It was taken out of the gate and out
+ * of what setup never got, and left here, so this block still told the model every turn that it was missing whenever the reading of
+ * the conversation took the answer for a restatement: round 5's clinic answered "Things get lost and people wait too long. That is
+ * why." and was asked again. Setup's own instructions ask it once; its answer is kept when given.
  */
-const WHAT_SETUP_IS_FOR: (keyof WhatSetupHasSoFar)[] = ['initial', 'whoInvolved', 'decision', 'goals'];
+const WHAT_SETUP_IS_FOR: (keyof WhatSetupHasSoFar)[] = ['initial', 'whoInvolved', 'goals'];
 
 function itIsThere(value: unknown): boolean {
   if (value === undefined || value === null) return false;
@@ -103,28 +105,20 @@ export function whatIsSettledAndWhatIsNot(soFar?: WhatSetupHasSoFar | null): str
   }
 
   if (missing.length) {
+    /*
+     * NOT READ YET IS NOT THE SAME AS NOT ANSWERED (round 5, 1 November 2026). This said "STILL MISSING", "setup is not finished while
+     * any of them is missing" and "none of them is optional", and the list is a reading of the conversation that runs a turn behind and
+     * keeps only what it is sure of. So whatever the reading missed was asked again, however plainly it had been said: the mobile cinema
+     * lead was asked what she does after "I'm in charge of planning", and who everyone was after listing them; the clinic was asked what
+     * would tell her it worked, six times. The model reads the conversation itself and decides; this only says what the reading has not
+     * found yet.
+     */
     lines.push(
       '',
-      `STILL MISSING: ${missing.join('; ')}.`,
-      'One of those is the next question, unless they have just raised something that matters more.',
-      'AND SETUP IS NOT FINISHED WHILE ANY OF THEM IS MISSING. Do not wrap up, do not say you have',
-      'what you need, and do not hand them to the next screen. Read live on the first day this block',
-      'existed: knowing what was missing made the conversation shorter rather than more complete - it',
-      'closed after four turns having never asked what they wanted out of it.',
-      '',
-      /*
-       * THIS HELD A PARAGRAPH ABOUT THE AIM AND IT MADE THE CONVERSATION MONOMANIACAL.
-       *
-       * Measured 18 September 2026 across all 22 situations: told loudly that the aim was the one
-       * thing it could not skip, setup hammered the aim, never reached why-now at all, and captured
-       * FEWER aims than before - what-makes-now-the-right-time went from ten out of twenty-two to
-       * zero, and the aim stayed at zero. Adding weight to an overweight prompt takes something out
-       * somewhere else, and you do not get to choose where.
-       *
-       * The aim is still in the gate, where it belongs and costs nothing to say. The prompt has to
-       * lose weight before it can be told one more thing.
-       */
-      'None of them is optional and none of them is more important than the others.',
+      `NOT READ FROM THEIR WORDS YET: ${missing.join('; ')}.`,
+      'Read the conversation before you ask for any of these. If they have already answered one, in any',
+      'words, or said they do not know, or said it does not apply, it is answered: build on what they said',
+      'and do not ask it again in other words. Ask for one only when nothing they have said answers it.',
     );
   } else {
     lines.push('', 'NOTHING IS MISSING. Setup has what it needs - stop asking and wrap it up.');
