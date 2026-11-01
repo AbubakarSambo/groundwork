@@ -1,4 +1,5 @@
 import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
+import { theFactsOnRecord } from '../conversation/the-facts-on-record';
 import { nameToCall } from '../engagement/a-name-to-call-them';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { whoIsLeftToCheckIn } from '../email/who-has-not-checked-in-yet';
@@ -50,7 +51,9 @@ export class ReportsListener {
     try {
       const row = await this.prisma.checkIn.findUnique({ where: { id: event.checkInId }, select: { isSetup: true } });
       if (!row?.isSetup) return false;
-      return (await this.prisma.recordEntry.count({ where: { participant: { groundId: event.groundId } } })) === 0;
+      /* Nothing on the record is no line and nothing in anybody's assessment (the one reader, 1 November 2026). */
+      if ((await this.prisma.recordEntry.count({ where: { participant: { groundId: event.groundId } } })) > 0) return false;
+      return (await theFactsOnRecord(this.prisma, { groundId: event.groundId, reader: { kind: 'everybody in the check-in' } })).length === 0;
     } catch {
       return false;
     }

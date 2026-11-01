@@ -42,6 +42,8 @@ export interface AFact {
   detail: string | null;
   /** Whether it has proof behind it, where the item says. */
   proved: boolean;
+  /** True where their words were found word for word in what they typed, so a report may quote them. */
+  saidWordForWord: boolean;
 }
 
 /* What judges a person: read only by the lead, and only while the switch is on. */
@@ -109,6 +111,7 @@ export function theFactsIn(a: TheAssessment, reader: TheReader): AFact[] {
       groundId: a.about.groundId, checkInId: a.about.checkInId, participantId: a.about.participantId, who: a.about.who,
       isTheLead: a.about.isTheLead, sessionNumber: a.about.sessionNumber, on: a.about.endedAt, section, words, detail,
       proved: item.proof === 'proved',
+      saidWordForWord: !corrected && item.saidWordForWord === true,
     });
   }
   return out;

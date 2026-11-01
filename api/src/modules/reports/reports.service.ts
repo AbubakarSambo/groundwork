@@ -1,6 +1,7 @@
 import { theSessionsHeld } from './the-sessions-held';
 import { notABlockerTheyRaised } from '../board/not-a-blocker-they-raised';
 import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
+import { theFactsOnRecord, type AFact } from '../conversation/the-facts-on-record';
 import { theDirectMorningIsOnFor, theDirectMorningIsOn as theOrganisationsDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { withTheDirectMorning, whichDirectBlockRan, THE_DIRECT_TEAM_REPORT, THE_DIRECT_JUDGEMENT, THE_DIRECT_OWN_REPORT } from './the-direct-morning-is-written-straight';
 import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
@@ -1288,9 +1289,21 @@ Close the report by framing - neutrally, without recommending one - the choice n
       where: { groundId },
       select: { text: true, whenSaid: true, saidWordForWord: true, whenSaidWordForWord: true },
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    /*
+     * AND WHAT EACH PERSON SAID, FROM THEIR ASSESSMENTS (the one reader, 1 November 2026). On the assessment test the lead's record lines
+     * were lost to one failed write, and Brian's KES 380,000 fee note reached no report, while the assessments held both. What everybody
+     * in the check-in may read of them is given to the synthesis beside the record's lines, with names as labels like every line here;
+     * a fact the record's lines already hold in the same words is not given twice.
+     */
+    const squashed = (t: string) => String(t ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const theirLinesSaid = new Map<string, string>();
+    for (const r of theRecordAsItIs as any[]) theirLinesSaid.set(r.participant.id, `${theirLinesSaid.get(r.participant.id) ?? ''}\n${squashed(r.text)}`);
+    const factsFromTheAssessments = (await theFactsOnRecord(this.prisma, { groundId, reader: { kind: 'everybody in the check-in' } }).catch(() => [] as AFact[]))
+      .filter((f) => labelById.has(f.participantId) && !(theirLinesSaid.get(f.participantId) ?? '').includes(squashed(f.words)));
     const whatAQuoteMayBe = theLinesAQuoteMayComeFrom(
       [
         ...(theRecordAsItIs as any[]),
+        ...factsFromTheAssessments.map((f) => ({ text: f.words, saidWordForWord: f.saidWordForWord })),
         ...(theirPromises as any[]).map((c) => ({ text: c.text, saidWordForWord: c.saidWordForWord === true })),
         ...(theirPromises as any[]).map((c) => ({ text: c.whenSaid, saidWordForWord: c.whenSaidWordForWord === true })),
       ],
@@ -1642,7 +1655,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
         const week = `, week of ${theWeekItWasSaidIn(new Date((r.checkIn as any)?.completedAt ?? r.createdAt))}`;
         /* A file only its owner can open is not named in what everybody reads. See a-private-file-is-not-named. */
         return `[${label}${session}${week}] (${r.type}) ${withoutPrivateFileNames(r.text, privateFileNames)}`;
-      }).join('\n');
+      }).join('\n') +
+      (factsFromTheAssessments.length
+        ? `\n\nWHAT EACH PERSON SAID, AS THEIR CONVERSATION'S ASSESSMENT HOLDS IT (their own words, for what the lines above do not already hold):\n` +
+          factsFromTheAssessments.map((f) => {
+            const label = labelById.get(f.participantId) ?? 'a party';
+            const week = f.on ? `, week of ${theWeekItWasSaidIn(new Date(f.on))}` : '';
+            const words = aNameInTheirWordsIsTheLabel(withoutPrivateFileNames(f.words, privateFileNames), namesInThisCheckIn);
+            const detail = f.detail ? ` (${aNameInTheirWordsIsTheLabel(withoutPrivateFileNames(f.detail, privateFileNames), namesInThisCheckIn)})` : '';
+            return `[${label} session ${f.sessionNumber}${week}] (${f.section}${f.proved ? ', proven' : ''}) ${words}${detail}`;
+          }).join('\n')
+        : '');
 
     const NEW_STARTING_SCENARIOS: GroundScenario[] = [
       GroundScenario.NEW_HIRE,
@@ -1791,7 +1814,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       (ground as any)?.label ?? '',
       ...parties.map((p: any) => `${p.nameGiven ?? ''} ${p.organisationGiven ?? ''} ${p.roleAsDescribed ?? ''}`),
     ].join('\n');
-    const corpusText = records.map((r) => r.text).join('\n');
+    const corpusText = [...records.map((r) => r.text), ...factsFromTheAssessments.flatMap((f) => [f.words, f.detail ?? ''])].join('\n');
     const everythingSaid = `${corpusText}\n${whatThisCheckInIsAbout}`;
     const corpusDigits = new Set(everythingSaid.match(/\d+/g) ?? []);
     const knownWords = new Set(
