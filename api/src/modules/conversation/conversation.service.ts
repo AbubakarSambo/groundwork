@@ -10,6 +10,7 @@ import { situationInWords } from './setup-already-asked-this';
 import { aNameAPersonGave, aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
 import { HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
 import { checksInOnlyWhenTheyChoose } from '../grounds/the-lead-checks-in-when-they-choose';
+import { openTheLeadsCheckIn } from '../grounds/check-in-yourself';
 import { whenThisSessionsRoundClosed } from '../grounds/a-session-nobody-opened';
 import { theirOwnDealsAndWhatIsOnFile } from './their-own-deals-and-what-is-on-file';
 import { theManagingBlockFor, theTurnManaged } from './groundwork-manages-the-check-in';
@@ -2212,13 +2213,24 @@ export class ConversationService {
   async addSomething(groundId: string, userId: string, text: string): Promise<{ checkInId: string; reply: string }> {
     const said = String(text ?? '').trim();
     if (!said) throw new BadRequestException(ADD_SOMETHING_REFUSED.empty);
-    const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId }, select: { id: true } });
+    const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId }, select: { id: true, partyType: true, managingOnly: true } });
     if (!participant) throw new ForbiddenException(ADD_SOMETHING_REFUSED.notInIt);
-    const theirs = await this.prisma.checkIn.findMany({
+    const theirOpenOrNext = () => this.prisma.checkIn.findMany({
       where: { groundId, participantId: participant.id, status: { in: [CheckInStatus.IN_PROGRESS, CheckInStatus.NOT_STARTED] }, isSetup: false, isSelfCorrection: false },
       select: { id: true, status: true, sessionNumber: true },
     });
-    const target = theCheckInToAddTo(theirs as any[]);
+    let target = theCheckInToAddTo((await theirOpenOrNext()) as any[]);
+    /*
+     * A LEAD BETWEEN SESSIONS ADDS THROUGH HER OWN CHECK-IN, OPENED NOW (round 7, the mobile cinema lead). After her first session she
+     * pressed "Add something", typed next week's schedule, and was told "This check-in has no session open or coming up to add to",
+     * under the button that offered it, seventeen times. A lead checks in when she chooses (decision 133), so nothing is scheduled for
+     * her and there was never a next session to add to. Her next check-in opens now, the same way "Check in yourself" opens it.
+     */
+    if (!target && checksInOnlyWhenTheyChoose(participant as any)) {
+      const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } });
+      await openTheLeadsCheckIn(this.prisma, groundId, ground?.organizationId ?? null, userId);
+      target = theCheckInToAddTo((await theirOpenOrNext()) as any[]);
+    }
     if (!target) throw new BadRequestException(ADD_SOMETHING_REFUSED.nothingToAddTo);
     if (target.status === CheckInStatus.NOT_STARTED) {
       await this.prisma.checkIn.update({ where: { id: target.id }, data: { availableFrom: new Date() } });
