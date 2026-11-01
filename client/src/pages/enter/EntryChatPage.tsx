@@ -49,7 +49,7 @@ import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
 import { groundsApi } from '@/api/grounds'
-import { TheTeamBox, aLineFor, addAnEmailFor, linesInTheBox, readTheLines, type APersonOnALine } from '@/components/gw/TheTeamBox'
+import { TheTeamBox, aLineFor, addAnEmailFor, linesInTheBox, readTheLines, withTheNamedAdded, type APersonOnALine } from '@/components/gw/TheTeamBox'
 import {
   COLLECT_WHATS_OWED, COLLECT_WHATS_OWED_CARD, COLLECT_WHATS_OWED_GROUP, COLLECT_WHATS_OWED_OPENER, COLLECT_WHATS_OWED_FOR_EXAMPLE,
   soundsLikeCollectingWhatsOwed,
@@ -1792,11 +1792,6 @@ export function EntryChatPage() {
     return true
   }
 
-  function queueColleague(c: { id: string; name: string }) {
-    if (!mayAddOneMorePerson()) return
-    const head = `${A_COLLEAGUE}${c.id}`
-    setInviteAdded(prev => (prev.some(e => e === head || e.startsWith(`${head} - `)) ? prev : [...prev, head]))
-  }
   // Anonymous correction: inline "what did we get wrong?" box on the report.
   const [showCorrection, setShowCorrection] = useState(false)
   const [correctionText, setCorrectionText] = useState('')
@@ -3964,15 +3959,17 @@ export function EntryChatPage() {
       {!inviteContextFor && (
         <PeoplePicker
           people={colleagues.filter((c) => c.id !== user?.id)}
-          alreadyIn={inviteAdded.map((e) => e.split(' - ')[0]).filter((h) => h.startsWith(A_COLLEAGUE)).map((h) => h.slice(A_COLLEAGUE.length))}
+          alreadyIn={teamText.split('\n').map((l) => colleagueNamed(l.split(',')[0])?.id).filter((id): id is string => !!id)}
           onAdd={(picked) => {
-            /* A multi-select can ask for several at once, so the limit is checked against
-               how many are really left, not once per item against a count that has not
-               yet updated (queueColleague's own check is still right for every other
-               path, which adds one at a time). */
-            const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : picked.length
+            /*
+             * INTO THE ONE TEAM BOX (round 6: the family business and clinic admins added people on People first, and the setup's
+             * team was a second list). A colleague picked goes into the box as a line with their name, recognised as a colleague on
+             * save, so the box is the one list that is kept and saved. A multi-select can ask for several at once, so the anchor's
+             * limit is checked against how many are really left.
+             */
+            const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - peopleOnTheList) : picked.length
             const fit = picked.slice(0, room)
-            for (const c of fit) queueColleague(c)
+            if (fit.length) writeTheTeam(withTheNamedAdded(teamText, fit.map((c) => c.name)))
             if (fit.length < picked.length) toast.error(thePeopleStepRules.limitSentence)
             if (fit.length) toast.success(fit.length === 1 ? `${fit[0].name} is on the list.` : `${fit.length} people are on the list. Invites go out when you save.`)
           }}

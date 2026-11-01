@@ -186,12 +186,11 @@ describe('the limit is enforced at every place a contributor is actually added',
    */
   const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'EntryChatPage.tsx'), 'utf8')
 
-  it('queueColleague (the colleague picker, one at a time) checks the limit first', () => {
-    expect(src).toMatch(/function queueColleague\([^)]*\) \{\s*\n\s*if \(!mayAddOneMorePerson\(\)\) return/)
-  })
-
-  it('the colleague picker\'s multi-select slices to the room actually left, not once per item', () => {
-    expect(src).toContain('const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : picked.length')
+  /* REWRITTEN (round 6): the colleague picker writes into the one team box, so queueColleague is gone. The picker still takes only the
+     room actually left, counted as everybody on the list and in the box; and a box over the limit stops the save (readTheTeamBox). */
+  it('the colleague picker takes only the room actually left, counting the box too', () => {
+    expect(src).toContain('const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - peopleOnTheList) : picked.length')
+    expect(src).not.toMatch(/function queueColleague/)
   })
 
   it('submitInviteContext (the "Add person" button) checks the limit first', () => {

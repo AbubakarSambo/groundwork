@@ -11,7 +11,7 @@ import { waitNoLongerThan, HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS } from './
 import { withoutTheUserLabel } from './the-lead-is-never-the-user';
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
 import { tooManyForTheAnchor, THE_PEOPLE_STEP_RULES } from './the-anchor-people-step';
-import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
+import { theAddressOfAColleague, NOT_SOMEONE_HERE, colleaguesOf, type AColleague } from '../../common/colleagues';
 import { theyJustPastedSomething, withoutAskingForWhatTheyGave } from './they-just-gave-you-that';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { sessionClaims } from '../auth/a-session-token';
@@ -79,7 +79,7 @@ import { theThingsThatCannotBeMissed } from '../conversation/the-last-thing-it-r
 import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-already-knows-travels-with-it';
 import { whatTheyAskedFor } from './what-they-asked-for-in-so-many-words';
 import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
-import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
+import { whatTheyAlreadyHave, thePeopleAlreadyHere, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
 import { whatIsAnswered, whatItAsksAgain, doNotAskAgain, withoutAskingAgain, theQuestionAskedBefore, doNotAskThatAgain, withoutTheSameQuestion } from './setup-never-asks-twice';
 import { THE_FIRST_UPDATE_TOO, SETUP_IS_DONE, whereSetupEnds, whatToSayAboutTheEndOfSetup, withoutTalkOfTheNextScreen } from './setup-is-the-first-check-in';
@@ -744,8 +744,10 @@ export class EntryService {
   private async whatThisLeadAlreadyHas(askedBy?: { userId: string; organizationId: string } | null) {
     if (!askedBy?.userId) return null;
     try {
-      const [user, grounds] = await Promise.all([
+      const [user, people, grounds] = await Promise.all([
         this.prisma.user.findUnique({ where: { id: askedBy.userId }, select: { jobTitle: true } }),
+        /* The people already here, from the one reader of colleagues: name, role and team, never an address. */
+        colleaguesOf(this.prisma as any, askedBy.organizationId, askedBy.userId).catch((): AColleague[] => []),
         this.prisma.ground.findMany({
           where: { initiatorId: askedBy.userId, organizationId: askedBy.organizationId },
           select: { label: true, brief: true },
@@ -758,6 +760,7 @@ export class EntryService {
       return {
         jobTitle: user?.jobTitle ?? null,
         theirCheckIns: grounds.map((g) => ({ label: g.label, about: g.brief })),
+        people: people.filter((p) => p.id !== askedBy.userId).map((p) => ({ name: p.name, role: p.role, team: p.team })),
       };
     } catch (err: any) {
       this.logger.warn(`Setup could not read what this lead already has: ${err?.message}`);
@@ -1206,7 +1209,10 @@ Rules:
       this.logger.log(`Setup: read "${theirWords.slice(0, 60)}" as ${scenarioForTheQuestion}, asking that situation's own first question.`);
     }
     const settled = whatIsSettledAndWhatIsNot(soFar);
-    const theyAreKnownHere = whatTheyAlreadyHave(await this.whatThisLeadAlreadyHas(askedBy));
+    const whatTheLeadHas = await this.whatThisLeadAlreadyHas(askedBy);
+    const theyAreKnownHere = whatTheyAlreadyHave(whatTheLeadHas);
+    /* The reading of the conversation knows them too, so "my team" or "the four I just added" puts those people in peopleNamed. */
+    const peopleHereForTheReading = thePeopleAlreadyHere(whatTheLeadHas);
     /*
      * WHERE THE END OF SETUP STANDS, FROM ITS OWN TURNS. The board's needs are read from what the last turn already worked out (`soFar`),
      * because this turn's own reading runs beside the reply. Once they answer "Anything else I should know?" with nothing, the product
@@ -1357,7 +1363,9 @@ from finishing at all.`;
     let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; cadenceDays?: number[]; timelineDays?: number; runsUntilEnded?: boolean; yourRole?: string } = {};
     /* Kept out of the try so a failed reply still fails the turn; a failed extraction is logged below. */
     const extractionInFlight: Promise<typeof extracted | null | Error> = (async () =>
-      this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, messages, EXTRACT_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true }))()
+      this.anthropic.extract<typeof extracted>(
+        peopleHereForTheReading ? `${EXTRACT_SYSTEM}\n\n${peopleHereForTheReading}\nFor peopleNamed: when they mean people on this list, give each one by the name shown.` : EXTRACT_SYSTEM,
+        messages, EXTRACT_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true }))()
       .catch((err: Error) => err);
     const firstReply = await replyInFlight;
     try {
