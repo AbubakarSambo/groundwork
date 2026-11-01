@@ -1,3 +1,4 @@
+import { SEE_WHAT_EACH_PERSON_SAID } from '@/lib/see-what-each-person-said'
 import { AddSomething } from '@/components/gw/AddSomething'
 import { RELEASE_4_ORDERS, whereItFolds, theRelease4Order } from './release-4-orders'
 import { hasEnded, howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
@@ -3194,6 +3195,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {(b as any).howItIsGoing?.glance && !((b as any).headline && !(b as any).headline.answer) && (
           <div className="gwui-mt-16">
             <HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} theCountSays={(b as any).thisSession?.says ?? null} />
+            {/* The way to what each person said, once somebody else has answered this session (round 6; GroundAdminPage says the same). */}
+            {(b as any).thisSession?.othersHaveAnswered && (b as any).thisSession?.session != null && (
+              <Note>
+                <Link className="gwui-plain-link" to={`/grounds/${id}/session/${(b as any).thisSession.session}`}>{SEE_WHAT_EACH_PERSON_SAID}</Link>
+              </Note>
+            )}
           </div>
         )}
 

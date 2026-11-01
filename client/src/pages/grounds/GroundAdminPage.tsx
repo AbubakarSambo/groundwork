@@ -1,3 +1,4 @@
+import { SEE_WHAT_EACH_PERSON_SAID } from '@/lib/see-what-each-person-said'
 import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
 import { TheSessionsSoFar, theSessionsSoFar } from '@/components/gw/TheSessionsSoFar'
 import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
@@ -1314,7 +1315,7 @@ export function GroundAdminPage() {
    * different counts of one session. `ground.thisSession` is the board's own count for the clock's session (api this-sessions-count.ts),
    * with who it leaves out said beside it. Null where this reader is not shown the others.
    */
-  const thisSession = (ground as any).thisSession as { answered: number; ofPeople: number; everyoneIn: boolean; says: string } | null | undefined
+  const thisSession = (ground as any).thisSession as { session?: number; answered: number; ofPeople: number; everyoneIn: boolean; says: string; othersHaveAnswered?: boolean | null } | null | undefined
   /**
    * WHY THE SESSION NUMBER JUST WENT DOWN.
    *
@@ -1729,7 +1730,8 @@ export function GroundAdminPage() {
             /* U.9 re-review, item B: a sentence, not a label and a fraction. Screen fault 4
                (final walk): "1 of the 3 have not answered yet." is now said in words, with the
                right verb for one person left over - "One of the three has not answered yet." */
-            : a.kind === 'waiting' ? { t: [howManyHaveNotAnsweredYet(a.total - a.done, a.total), a.notCountedSays].filter(Boolean).join(' ') }
+            /* And who, by name, from the same served count (round 6: "Two of the three have not answered yet" named nobody). */
+            : a.kind === 'waiting' ? { t: [howManyHaveNotAnsweredYet(a.total - a.done, a.total), (thisSession as any)?.whoSays, a.notCountedSays].filter(Boolean).join(' ') }
             : null
           return say ? <Note tone={say.tone}>{say.t}</Note> : null
         })()}
@@ -1884,6 +1886,16 @@ export function GroundAdminPage() {
           return (
             <>
               <Note tone={tone}>{parts.join(' ')}</Note>
+              {/*
+                THE WAY TO WHAT EACH PERSON SAID (round 6: three leads went round the board, this page and the report looking for "the
+                actual check-ins from my team"). Once somebody else has answered this session, the session's report holds what each
+                person said, and this says where, in the prototype's words (one-session.txt).
+              */}
+              {thisSession?.othersHaveAnswered && thisSession.session != null && (
+                <Note>
+                  <Link className="gwui-plain-link" to={`/grounds/${ground.id}/session/${thisSession.session}`}>{SEE_WHAT_EACH_PERSON_SAID}</Link>
+                </Note>
+              )}
               {/*
                 GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 12: A LINK IS NOT THE LAST WORD OF A
                 SENTENCE. "...Nothing anybody wrote is lost. How to run one" ran the link straight

@@ -31,6 +31,17 @@ describe('the one count, by name', () => {
     expect(count.says).toContain(count.whoSays!);
     const named = (count.whoSays!.match(/\b(You|Aisha|David|Neema)\b/g) ?? []).length;
     expect(named).toBe(count.ofPeople);
+    /* Aisha has answered, so there is somebody else's account to read in this session. */
+    expect(count.othersHaveAnswered).toBe(true);
+  });
+
+  it('with only the reader in, there is nobody else to read yet', () => {
+    const onlyJuma = ROWS.map((r) => (r.participantId === 'p-aisha' ? { ...r, status: 'IN_PROGRESS', completedAt: undefined } : r));
+    const { count } = theSessionAndItsCount(
+      { participants: PEOPLE, checkIns: onlyJuma, scenario: 'NEW_PROJECT', cadence: 'DAILY', runsUntilEnded: true },
+      { now: new Date('2026-11-01T12:00:00Z'), names: { readerUserId: 'u-juma' } },
+    );
+    expect(count.othersHaveAnswered).toBe(false);
   });
 
   it('names nobody where names were not asked for', () => {

@@ -144,6 +144,20 @@ describe('the check-in page says the server\'s one count', () => {
     expect(all).toContain('Everyone is in, report on its way.')
   })
 
+  /* Round 6: "Two of the three have not answered yet" named nobody, and three leads could not find what their team said. */
+  it('says who, from the served count, and the way to what each person said once somebody else has answered', async () => {
+    const whoSays = 'You and Aisha have checked in. David has started and not finished yet. Neema has not started yet.'
+    const text = await headerOf(served({ session: 1, answered: 2, ofPeople: 4, everyoneIn: false, notCountedSays: null, whoSays, othersHaveAnswered: true, says: `Two of the four people have checked in for session 1. ${whoSays}` }))
+    expect(text).toContain(`Two of the four have not answered yet. ${whoSays}`)
+    const link = screen.getByRole('link', { name: 'See what each person said, in their own words' })
+    expect(link.getAttribute('href')).toBe('/grounds/g1/session/1')
+  })
+
+  it('with nobody else in yet, there is no way to something that is not there', async () => {
+    await headerOf(served({ session: 1, answered: 1, ofPeople: 3, everyoneIn: false, notCountedSays: null, whoSays: 'You have checked in. Aisha and David have started and not finished yet.', othersHaveAnswered: false, says: 'One of the three people has checked in for session 1.' }))
+    expect(screen.queryByRole('link', { name: 'See what each person said, in their own words' })).toBeNull()
+  })
+
   it('and never from a round the server recorded as done while its count says people are still out', async () => {
     const text = await headerOf(served({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false, notCountedSays: null, says: 'Three of the five people have checked in for session 1.' }, { roundCompletions: [{ sessionNumber: 1 }] }))
     expect(text).not.toMatch(/Everyone is in/)

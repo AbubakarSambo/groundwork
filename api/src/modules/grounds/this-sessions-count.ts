@@ -47,6 +47,11 @@ export interface ThisSession {
    * not finished yet. Neema has not started yet." Given only where the reader may read who has answered (`names` asked for).
    */
   whoSays: string | null;
+  /**
+   * Somebody other than the reader has answered this session, so there is something of theirs to read in it (round 6: three leads
+   * looked everywhere for "the actual check-ins from my team"). Null where names were not asked for.
+   */
+  othersHaveAnswered: boolean | null;
 }
 
 export interface WhatTheCountReads {
@@ -153,6 +158,8 @@ export function theSessionAndItsCount(
   const notCountedSays = progress.notCountedSays ?? null;
   const one = theCountOfASession(participants, rows, clock.currentSession, g.scenario, opts.leave, now);
   const whoSays = opts.names && one.ofPeople > 0 ? whoSaid(participants, rows, clock.currentSession, one.counted, one.notAnswered, opts.names.readerUserId) || null : null;
+  const readerIs = (id: string) => !!opts.names?.readerUserId && participants.find((p) => p.id === id)?.userId === opts.names.readerUserId;
+  const othersHaveAnswered = opts.names ? one.counted.some((id) => !one.notAnswered.includes(id) && !readerIs(id)) : null;
   const count: ThisSession = {
     session: clock.currentSession,
     answered: one.answered,
@@ -165,6 +172,7 @@ export function theSessionAndItsCount(
     /* Each person once: where they are named, who has not joined is named among them, so the count's own not-joined sentence is not said too. */
     says: [theCountSaid(clock.currentSession, one.answered, one.ofPeople), whoSays ?? progress.notJoinedSays, notCountedSays].filter(Boolean).join(' '),
     whoSays,
+    othersHaveAnswered,
   };
   return { clock, count };
 }
