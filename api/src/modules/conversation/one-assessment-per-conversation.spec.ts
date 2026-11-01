@@ -246,3 +246,38 @@ describe('a correction is kept on the earlier item, as its history', () => {
     ]);
   });
 });
+
+describe('every path that ends a conversation is assessed, and none waits for it', () => {
+  const { readFileSync } = require('fs');
+  const { join } = require('path');
+  const service = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const entry = readFileSync(join(__dirname, '..', 'entry', 'entry.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const body = (src: string, from: string, to: string) => src.slice(src.indexOf(from), src.indexOf(to, src.indexOf(from) + from.length));
+
+  it('the person finishing and the clock: after the one winning write, not awaited', () => {
+    const finish = body(service, 'private async finishTheSession(', 'private async whatChangedOnTheirDealsToday(');
+    const won = finish.indexOf('if (won.count === 0)');
+    const at = finish.indexOf("this.assessAndThenRead(checkIn, { howItEnded: by === 'the clock' ? 'closed by the clock' : 'finished by the person'");
+    expect(won).toBeGreaterThan(-1);
+    expect(at).toBeGreaterThan(won);
+    expect(finish.slice(at - 20, at)).not.toMatch(/await\s*$/);
+    /* The waits and the promises no longer run before the assessment, from calls of their own. */
+    expect(finish).not.toContain('this.extractDependencies(');
+    expect(finish).not.toContain('this.writeWhatTheyPromised(');
+  });
+
+  it('a decline, a session closed as missed, and setup\'s commit', () => {
+    expect(body(service, 'async decline(checkInId', 'private async closeTheRoundIfThisWasTheLastAnswer(')).toContain("this.assessAndThenRead(checkIn, { howItEnded: 'declined'");
+    expect(body(service, 'async closeAsMissed(', 'private async finishTheSession(')).toContain("{ howItEnded: 'missed', closedAt }");
+    const commit = entry.slice(entry.indexOf('this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED'));
+    expect(commit).toMatch(/theRecordIsWritten\s*\.then\(\(\) => this\.conversation\?\.assessAndThenRead\?\.\(/);
+    expect(commit).toContain("howItEnded: 'setup saved'");
+  });
+
+  it('the board\'s records and the patterns wait for the assessment, not the completion', () => {
+    const board = readFileSync(join(__dirname, '..', 'board', 'board.listener.ts'), 'utf8');
+    expect(board).toMatch(/@OnEvent\(GroundworkEvents\.ASSESSMENT_READY\)\s*async onCheckInCompleted\(/);
+    const patterns = readFileSync(join(__dirname, '..', 'patterns', 'patterns.listener.ts'), 'utf8');
+    expect(patterns).toMatch(/@OnEvent\(GroundworkEvents\.ASSESSMENT_READY\)\s*async onCheckInCompleted\(/);
+  });
+});
