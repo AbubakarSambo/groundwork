@@ -232,14 +232,6 @@ export function leadReturnsToSaveCard(saved: { closed?: boolean; flowPath?: stri
 export function leadNeedsTheirFirstCheckIn(saved: { flowPath?: string; history?: unknown[]; onboardingStep?: number }, steps: number): boolean {
   return saved.flowPath === 'lead' && (saved.history?.length ?? 0) === 0 && (saved.onboardingStep ?? 0) >= steps
 }
-export function hasPendingEntry(): boolean {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return false
-    const p = JSON.parse(raw)
-    return !!(p?.history?.length)
-  } catch { return false }
-}
 
 const ONBOARDING_STEPS = 7
 

@@ -73,6 +73,26 @@ export function loadEntryHandover(): any | null {
   }
 }
 
+/**
+ * A SETUP STARTED ON THIS DEVICE AND NOT SAVED (Hafsah's blocker, 31 October 2026: "nothing anyone says in setup is ever lost").
+ * Round 3's clinic, family business and field programme leads each told the setup about their team, left it before saving, and came
+ * back to Today, which had nothing to finish: the setup was still here, under the key /start restores from, and nothing led back to
+ * it. This reads the same record /start restores, so Today can lead back to it. `theirWords` is how they began it, in their words.
+ */
+export function anUnfinishedSetup(): { theirWords: string | null } | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    if (!raw) return null
+    const s = JSON.parse(raw)
+    const theySaid = (turns: unknown) => Array.isArray(turns) && turns.some((t: any) => t?.role === 'user' && String(t?.content ?? '').trim())
+    const initial = typeof s?.onboardingSelections?.initial === 'string' ? s.onboardingSelections.initial.trim() : ''
+    if (!theySaid(s?.onboardingHistory) && !theySaid(s?.history) && !initial) return null
+    return { theirWords: initial ? initial.replace(/[.!?\s]+$/, '') : null }
+  } catch {
+    return null
+  }
+}
+
 /** Called only once a ground exists. Before that, every one of these is the only copy. */
 export function clearEntryHandover() {
   for (const k of [COMMIT_KEY, SESSION_KEY, GOOGLE_KEY, 'gw_draft_token', SETUP_KEY]) {

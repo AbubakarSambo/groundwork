@@ -24,6 +24,7 @@ import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 import { useEffect } from 'react'
 import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-needs-you-does-not'
+import { anUnfinishedSetup } from '@/pages/auth/entry-handover'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -178,7 +179,13 @@ export function TodayPage() {
     }),
     ...[...outstandingNeedsYou, ...overdueOnYourTeam, ...risks].map((sentence) => ({ key: sentence, kind: 'look' as const, ...aSentenceAsARow(sentence) })),
   ].filter(once)
-  const allNeeds = needs.length + moreRows.length
+  /*
+   * A SETUP LEFT UNFINISHED IS THE FIRST THING THAT NEEDS YOU (Hafsah's blocker, 31 October 2026). Three leads in round 3 told the
+   * setup about their team, left before saving, and came back here to "Nothing needs you right now". The setup this device keeps
+   * (the one /start restores) is read here, so the way back is first, and it is drawn whether or not the rest has loaded.
+   */
+  const unfinished = user ? anUnfinishedSetup() : null
+  const allNeeds = needs.length + moreRows.length + (unfinished ? 1 : 0)
   const lineNudge = data?.lineNudge ?? null
   const nudge = useMutation({
     mutationFn: () => boardApi.nudge(lineNudge!.groundId, lineNudge!.participantId),
@@ -216,16 +223,19 @@ export function TodayPage() {
           {/* ONE LIST, AS THE PROTOTYPE: what the lead's nudge adds (needs you, overdue on the team, risks) are rows in
               "What needs you", most important first, never sections of their own. */}
           <Section heading="What needs you" note={allNeeds > 1 ? `${allNeeds} things, most important first` : undefined}>
-            {isLoading && <Note>Loading…</Note>}
-            {isError && (
-              <div>
-                <Note tone="error">What needs you didn’t load. Try again.</Note>
-                <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
-              </div>
-            )}
             {data && allNeeds === 0 && <Empty>Nothing needs you right now.</Empty>}
             {allNeeds > 0 && (
               <EdgeList label="What needs you">
+                {unfinished && (
+                  <EdgeRow
+                    key="unfinished-setup"
+                    kind="decide"
+                    title={unfinished.theirWords ? `Finish setting up “${unfinished.theirWords}”` : 'Finish setting up your check-in'}
+                    detail="Everything you said is kept, and it opens where you left off."
+                    to="/start"
+                    actions={<Button kind="primary" size="small" to="/start">Carry on</Button>}
+                  />
+                )}
                 {/* ONE NAVY BUTTON (Hafsah, 30 September): the prototype's own Today draws every "Start it"
                     navy, but with two check-ins open that is two navy buttons at once. Only the first,
                     the most important, is navy; the rest are white. */}
@@ -238,7 +248,7 @@ export function TodayPage() {
                     detail={aSentenceAsARow(n.title, n.detail).detail}
                     to={whereItGoes(n)}
                     actions={<>
-                      <Button kind={n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={whereItGoes(n)}>{n.action.label}</Button>
+                      <Button kind={!unfinished && n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={whereItGoes(n)}>{n.action.label}</Button>
                       {n.missedReason && <TheReasonYouMissed checkInId={n.missedReason.checkInId} given={n.missedReason.given} />}
                     </>}
                   />
@@ -248,6 +258,13 @@ export function TodayPage() {
                     actions={r.action ? <Button kind="secondary" size="small" to={r.action.to}>{r.action.label}</Button> : undefined} />
                 ))}
               </EdgeList>
+            )}
+            {isLoading && <Note>Loading…</Note>}
+            {isError && (
+              <div>
+                <Note tone="error">What needs you didn’t load. Try again.</Note>
+                <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
+              </div>
             )}
             {/* Under what needs you, when one of those is a check-in to answer (fix list, item 5). The server decides. */}
             {data?.checkInOnWhatsApp && (
