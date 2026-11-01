@@ -9357,8 +9357,14 @@ ${told}` : '';
   /** THE SCHEDULED PASS RUNS AN OWED WRITE AGAIN, from the record and what was kept with it. Owed again if it fails again. */
   async writeWhatIsOwed(checkIn: { id: string; participantId: string; groundId: string; sessionNumber: number }, write: AnOwedWrite): Promise<void> {
     const input = (write.input ?? {}) as any;
-    if (write.step === 'the record') { await this.extractRecordEntries(checkIn.id, checkIn.participantId); return; }
-    if (write.step === 'the aims and expectations') { await this.extractExpectations(checkIn.id, checkIn.participantId, checkIn.groundId, input.spokenElsewhere); return; }
+    /* What landed is new to the board and the report, so they are told, as when an assessment is ready (they rebuild from the record). */
+    const told = async (landed: boolean) => {
+      if (!landed) return;
+      const howItEnded = (await theAssessmentOf(this.prisma, checkIn.id).catch(() => null))?.about.howItEnded ?? 'finished by the person';
+      theAssessmentIsReady({ events: this.events }, { checkInId: checkIn.id, groundId: checkIn.groundId, participantId: checkIn.participantId, sessionNumber: checkIn.sessionNumber, howItEnded });
+    };
+    if (write.step === 'the record') { await told(await this.extractRecordEntries(checkIn.id, checkIn.participantId)); return; }
+    if (write.step === 'the aims and expectations') { await told(await this.extractExpectations(checkIn.id, checkIn.participantId, checkIn.groundId, input.spokenElsewhere)); return; }
     if (write.step === 'the assessment') {
       const how = input.how ?? { howItEnded: 'finished by the person' };
       await this.assessAndThenRead(checkIn, { ...how, closedAt: how.closedAt ? new Date(how.closedAt) : new Date() });
