@@ -179,6 +179,35 @@ Sales 1, law firm 1, clinic group 2, field programme 1, startup 1, family busine
 
 Round 6 proves it with the same check. Ask, the empty board and the report come after.
 
+## Round 6 (1 November): average 1.6, lowest 1
+
+Sales 1, law firm 1, clinic group 1, field programme 3, startup 2, family business 2, mobile cinema 1, charity 2. This round ran on the setup fix (bb97cc1b9 to ba61620b7):
+- the team box and Save appear when setup ends;
+- an unfinished setup is kept on the server, and Today and Check-ins lead back to it;
+- setup reads what was said before it asks;
+- a person's number is found by their sign-in.
+
+| Lead | Check-ins | Named people who reached one |
+|---|---|---|
+| Sales | 1 | 4 of 4 |
+| Law firm | 1 | 4 of 4 |
+| Clinic group | 1 | 3 of 4 |
+| Field programme | 1 | 4 of 4 |
+| Startup | 1 | 4 of 4 |
+| Family business | 1 | 2 of 4 |
+| Mobile cinema | 1 | 4 of 4 |
+| Charity | 1 | 4 of 4 |
+
+29 of 32 reached a check-in, up from 18 of 32 in round 5. Every lead made a check-in, where three made none in round 5.
+
+**The 3 lost:** the clinic and family business admins added their team on People first. Setup knew only the people named again in the conversation, so the rest were left off. Fixed for round 7 (9c1a0b51c): setup knows who is already in the organisation, by name and team, from the colleagues reader, and the picker writes into the one box.
+
+**What still pulled the scores down, with the causes found:**
+- **"Add your team below" with nothing below.** The prompt told the model to write its own closer, while the product owns the last line (SETUP_IS_DONE, written only when setup has ended). That is two owners for one message. 8990ad46d: the product is the only owner.
+- **"My team has those details" was not an answer.** THE_FIRST_UPDATE_TOO and THE_BOARD_IS_COVERED pressed for each open item, and the prompt said the team could only be added afterwards ("I can't add them right now"). The law firm lead pressed Start over three times. 7903448da: what the lead knows is their answer. c78861988 and 3d6044954: the one team box sits in the side panel while they talk, and at the top of the conversation on a phone.
+- **A save that stopped said nothing.** It now says why, next to Save (c78861988). A correction typed while saving was lost; it is now saved with the setup.
+- **Day one contradicts itself** (round 7's next work). For one check-in, Ask said "Two of your team have now checked in", Check-ins said "1 of 3 answered", and the board said "One of the three". The family business board said Caleb was both "partway through" and "did not answer". Three leads could not find their team's own check-ins and kept landing on the setup conversation. Ask answered about the lead's own check-in when asked about Aisha's.
+
 ## The plan to 8.5
 
 1. **Round 2** on the fixes above, with fresh people for every kind of organisation and the harness's memory fix: each person now remembers everything they typed. In round 1 one admin accused Groundwork of inventing a roof she had typed twice.
