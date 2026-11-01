@@ -2121,6 +2121,8 @@ export class GroundsService {
         /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
         handOn: await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId),
         leave: await leaveOfThePeopleOn(this.prisma as any, [id]).catch(() => undefined),
+        /* By name, for the reader the count is served to (thisSession is withheld from a reader walled from the others). */
+        names: { readerUserId: requestingUserId ?? null },
       },
     );
 

@@ -6971,6 +6971,8 @@ happened, and what is in the way.`;
           participantId: p.id,
           role: p.roleAsDescribed ?? null,
           answeredThisSession: answered,
+          /* The same state the board's grid reads ("partway through"), from the same rows. */
+          startedThisSession: !answered && ((ground.checkIns ?? []) as any[]).some((c: any) => c.participantId === p.id && c.sessionNumber === thisRound && c.status === 'IN_PROGRESS'),
           /* What the lead may read of this person's, and nothing sooner. See patterns/who-reads-a-pattern. */
           /*
            * THE PLAIN NAME, NEVER THE LIBRARY'S OWN SIGNAL. `patternCatalogue().get(d.code)?.signal`

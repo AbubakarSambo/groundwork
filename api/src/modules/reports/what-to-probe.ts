@@ -34,6 +34,8 @@ export interface ProbeInput {
   participantId: string;
   role: string | null;
   answeredThisSession: boolean;
+  /** Started this session and not finished it: said as that, never as "has not answered" beside a grid that says "partway through" (round 6). */
+  startedThisSession?: boolean;
   /** Surfaced patterns for this person. Recurrence is carried, because it is the finding. */
   patterns: { code: string; periodsObserved: number; signal: string; probe?: string }[];
   /** What they say they are waiting on. */
@@ -144,7 +146,9 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
   const has = you ? 'have' : 'has';
 
   if (!i.answeredThisSession) {
-    probe.push(`${He} ${has} not answered this session, so nothing below is from this round.`);
+    probe.push(i.startedThisSession
+      ? `${He} ${has} started this session and not finished it yet, so nothing below is from this round.`
+      : `${He} ${has} not answered this session, so nothing below is from this round.`);
   }
 
   /*

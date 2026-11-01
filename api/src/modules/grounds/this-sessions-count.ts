@@ -7,6 +7,8 @@ import { totalSessionsFor } from './session-count';
 import { aNumberInWords } from '../engagement/a-number-in-words';
 import { whoHasAnswered } from '../reports/how-many-have-answered';
 import { awayUntilOn, type Stretch } from '../suites/who-is-away';
+import { nameToCall } from '../engagement/a-name-to-call-them';
+import { andList } from '../reports/each-wait-under-whoever-holds-it';
 
 /**
  * THE SESSION, AND WHO IS IN IT AND WHO HAS ANSWERED IT, ONCE (Hafsah, 30 October 2026, first-experience round 1).
@@ -37,8 +39,14 @@ export interface ThisSession {
   notCountedSays: string | null;
   /** Who of them was invited and has not joined yet, or null: they are counted (Hafsah, 1 November), and said so: "One of them was invited and has not joined yet." */
   notJoinedSays: string | null;
-  /** "Three of the five people have checked in for session 2.", then `notJoinedSays`, then `notCountedSays`. */
+  /** "Three of the five people have checked in for session 2.", then who (`whoSays`, for a reader who may read names, or else `notJoinedSays`), then `notCountedSays`. */
   says: string;
+  /**
+   * WHO, BY NAME (round 6, 1 November 2026: "1 of 2 answered" with nobody named, and a board that said Aisha was "partway through"
+   * beside "Aisha has not answered"). Each person counted, once, in one state: "You and Aisha have checked in. David has started and
+   * not finished yet. Neema has not started yet." Given only where the reader may read who has answered (`names` asked for).
+   */
+  whoSays: string | null;
 }
 
 export interface WhatTheCountReads {
@@ -93,9 +101,36 @@ export function theCountOfASession(
 }
 
 /** The clock and the count, from rows already marked (`withWhoHasNotJoinedMarked`). Pure: the board, the page and Ask all call this. */
+/**
+ * Each person the session counts, in one state each, by name: checked in, started and not finished, or not started. The reader is "you".
+ * Read from the same rows and the same people the count reads, so the names and the number are one fact.
+ */
+export function whoSaid(people: any[], rows: any[], session: number, counted: string[], notAnswered: string[], readerUserId?: string | null): string {
+  const byId = new Map((people ?? []).map((p) => [p.id, p]));
+  const nameOf = (id: string) => {
+    const p = byId.get(id);
+    return p?.userId && readerUserId && p.userId === readerUserId ? 'you' : nameToCall(p);
+  };
+  const waiting = new Set(notAnswered);
+  const startedIt = (id: string) => (rows ?? []).some((c) => !c.isSetup && c.participantId === id && (c.sessionNumber ?? 1) === session && c.status === 'IN_PROGRESS');
+  const done = counted.filter((id) => !waiting.has(id)).map(nameOf).sort((a, b) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
+  const started = notAnswered.filter(startedIt).map(nameOf);
+  /* Somebody invited and not joined is counted (Hafsah, 1 November) and said as what happened, never "has not started". */
+  const notJoined = notAnswered.filter((id) => !startedIt(id) && byId.get(id)?.notJoinedYet === true).map(nameOf);
+  const notStarted = notAnswered.filter((id) => !startedIt(id) && byId.get(id)?.notJoinedYet !== true).map(nameOf);
+  const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+  const one = (xs: string[]) => xs.length === 1 && xs[0] !== 'you';
+  const out: string[] = [];
+  if (done.length) out.push(`${cap(andList(done))} ${one(done) ? 'has' : 'have'} checked in.`);
+  if (started.length) out.push(`${cap(andList(started))} ${one(started) ? 'has' : 'have'} started and not finished yet.`);
+  if (notStarted.length) out.push(`${cap(andList(notStarted))} ${one(notStarted) ? 'has' : 'have'} not started yet.`);
+  if (notJoined.length) out.push(`${cap(andList(notJoined))} ${notJoined.length === 1 ? 'was' : 'were'} invited and ${notJoined.length === 1 ? 'has' : 'have'} not joined yet.`);
+  return out.join(' ');
+}
+
 export function theSessionAndItsCount(
   g: WhatTheCountReads,
-  opts: { now?: Date; handOn?: boolean; leave?: Map<string, Stretch[]> } = {},
+  opts: { now?: Date; handOn?: boolean; leave?: Map<string, Stretch[]>; names?: { readerUserId?: string | null } } = {},
 ): { clock: TheSessionClock; count: ThisSession } {
   const now = opts.now ?? new Date();
   const participants = (g.participants ?? []) as any[];
@@ -117,6 +152,7 @@ export function theSessionAndItsCount(
   }, now).glance.progress;
   const notCountedSays = progress.notCountedSays ?? null;
   const one = theCountOfASession(participants, rows, clock.currentSession, g.scenario, opts.leave, now);
+  const whoSays = opts.names && one.ofPeople > 0 ? whoSaid(participants, rows, clock.currentSession, one.counted, one.notAnswered, opts.names.readerUserId) || null : null;
   const count: ThisSession = {
     session: clock.currentSession,
     answered: one.answered,
@@ -126,7 +162,9 @@ export function theSessionAndItsCount(
     everyoneIn: one.ofPeople > 0 && one.answered >= one.ofPeople,
     notCountedSays,
     notJoinedSays: progress.notJoinedSays ?? null,
-    says: [theCountSaid(clock.currentSession, one.answered, one.ofPeople), progress.notJoinedSays, notCountedSays].filter(Boolean).join(' '),
+    /* Each person once: where they are named, who has not joined is named among them, so the count's own not-joined sentence is not said too. */
+    says: [theCountSaid(clock.currentSession, one.answered, one.ofPeople), whoSays ?? progress.notJoinedSays, notCountedSays].filter(Boolean).join(' '),
+    whoSays,
   };
   return { clock, count };
 }

@@ -989,7 +989,8 @@ export class BoardService {
       timelineDays: (ground as any).runsUntilEnded ? null : (ground as any).timelineDays ?? null, cadence: (ground as any).cadence ?? null,
       cadenceDays: (ground as any).cadenceDays ?? null,
       runsUntilEnded: !!(ground as any).runsUntilEnded,
-    }, { now, handOn: releaseOne, leave: theLeave });
+    /* By name for whoever is served the count (thisSession, below): "You and Aisha have checked in. David has started and not finished yet." */
+    }, { now, handOn: releaseOne, leave: theLeave, names: { readerUserId: requestingUserId } });
     const out: Record<string, any> = {
       groundId,
       renders: true,
