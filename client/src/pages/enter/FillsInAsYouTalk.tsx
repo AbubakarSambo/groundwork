@@ -1,3 +1,4 @@
+import type React from 'react'
 import type { Cadence } from '@/components/gw/when-the-check-ins-land'
 import { workingDaysOf } from '@/components/gw/when-the-check-ins-land'
 import { HOW_OFTEN } from './TheSetup'
@@ -12,8 +13,12 @@ import { Panel, SubHeading, Tag, Note, RowList, Row, Stack } from '@/components/
  * row that is not known yet shows its name with an empty mark and no value.
  *
  * Not here: the prototype's "Change" buttons (the name is changed in the header, and the rest on the
- * save card) and "Add their emails in the chat" (people's addresses are added on the save card, not
- * in the chat). See item 17 of docs/morning-report-ui.md.
+ * save card). See item 17 of docs/morning-report-ui.md.
+ *
+ * THE TEAM GOES IN HERE, WHILE THEY TALK (round 6, the law firm lead, 1 November 2026). The prototype's row "Let Daniel share his
+ * side / His email, once you’re ready" (start-chat.txt) takes the person during the conversation. Ours only said "You mentioned ...",
+ * so the lead said "let me add my team" eleven times, was told it could not be done yet, and started over three times. The page now
+ * hands in its one team box (`team`): the same box, the same kept lines, as the save card, so there is still one way to add people.
  *
  * FOR AN ANCHOR DRAFT ONLY, THIS PANEL DRAWS SEVEN ITEMS INSTEAD (plan piece 3,
  * docs/anchor-scenario-plan.md section 5 row 2; docs/anchor-scenario.md section 7, "Understand the
@@ -46,6 +51,8 @@ export const FILLS_IN = {
   howOften: 'How often',
   whenItRuns: 'When it runs',
   whoIsIn: 'Who’s in it',
+  /* The prototype's "His email, once you’re ready" (start-chat.txt), for everybody named. */
+  theirEmails: 'Their emails, once you’re ready. You can add them now or at the end.',
 } as const
 
 /**
@@ -102,6 +109,8 @@ export type WhatSetupKnows = {
    * the panel draws the seven items of anchor-scenario.md section 7 instead of the four rows below.
    */
   anchorItems?: WhatTheAnchorConversationKnows
+  /** The page's one team box, drawn under "Who’s in it" while the conversation is on screen. */
+  team?: React.ReactNode
 }
 
 /** People mentioned in the conversation who are not on the list yet. */
@@ -175,6 +184,12 @@ export function FillsInAsYouTalk(k: WhatSetupKnows) {
                 <span>
                   <span className="gwui-setrow-label">{r.label}</span>
                   {r.value && <span className="gwui-setrow-value">{r.value}</span>}
+                  {!isAnchor && r.label === FILLS_IN.whoIsIn && k.team && (
+                    <>
+                      <span className="gwui-setrow-value">{FILLS_IN.theirEmails}</span>
+                      {k.team}
+                    </>
+                  )}
                   {!isAnchor && r.label === FILLS_IN.whoIsIn && k.added.length > 0 && (
                     <>
                       {k.added.map((a) => <span key={a} className="gwui-setrow-value gwui-setrow-value-name">{a}</span>)}

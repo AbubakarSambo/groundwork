@@ -1849,6 +1849,12 @@ export function EntryChatPage() {
    */
   const [teamText, setTeamText] = useState('')
   /*
+   * WHY A PRESS OF SAVE DID NOT SAVE, NEXT TO THE BUTTON (round 6, the law firm lead: "The save button did not work and there was no
+   * message to say why"). Every stop said its reason under the team box, which on a phone is out of view of the Save pinned at the
+   * foot of the card, and one (the anchor's limit) said nothing at all. Each stop now also says it here, beside the button pressed.
+   */
+  const [whyItWasNotSaved, setWhyItWasNotSaved] = useState('')
+  /*
    * THE TEAM AS WRITTEN IS KEPT WITH THE SETUP (round 5, the startup lead). He typed his team's emails, left before saving, and came back
    * to a box asking for every email again. The box's lines go into the kept setup as they are written, and come back with it.
    */
@@ -2072,7 +2078,7 @@ export function EntryChatPage() {
    */
   function restoreTheSavedSetup(saved: EntrySession) {
       setHistory(saved.history)
-      if (saved.report) { try { setSessionReport(JSON.parse(saved.report)) } catch { /* legacy plain text - discard */ } }
+      if (saved.report) { try { setSessionReport(JSON.parse(saved.report)); setReportMadeFrom(saved.history.length) } catch { /* legacy plain text - discard */ } }
       /* "Others check in, I read what comes back" survives a reload. There are no lead details to
          restore any more - a saved session from before that answer was removed still carries them,
          and they are simply not read: the ground it commits to has no lead to invite. */
@@ -2407,6 +2413,8 @@ export function EntryChatPage() {
   })
 
   const [reportTurnsForRetry, setReportTurnsForRetry] = useState<Turn[] | null>(null)
+  /* How many turns of the conversation the report on screen was made from. */
+  const [reportMadeFrom, setReportMadeFrom] = useState<number | null>(null)
 
   /**
    * ONE NAME FOR THE FAILURE STATE.
@@ -2424,6 +2432,7 @@ export function EntryChatPage() {
 
   async function generateSessionReport(turns: Turn[]) {
     setGeneratingReport(true)
+    setReportMadeFrom(null)
     setReportTurnsForRetry(turns)
     try {
       /* The anchor's seven items go with the report too (request 166), so the lead's reveal says
@@ -2431,6 +2440,7 @@ export function EntryChatPage() {
       const res = await entryApi.report(turns, scenario || undefined, groundName || undefined, onboardingSelections.peopleNamed, isAnchorDraft() ? onboardingSelections.anchorItems : undefined, theirOwnSetupWords(onboardingHistory))
       if (!thePageIsOpen.current) return
       setSessionReport(res.report)
+      setReportMadeFrom(turns.length)
       setReportTurnsForRetry(null)
       persistCheckin(turns, true, res.report ? JSON.stringify(res.report) : '')
     } catch {
@@ -3116,9 +3126,12 @@ export function EntryChatPage() {
         runsUntilEnded: runsUntilEnded || undefined,
         lastCheckInBy: runsUntilEnded ? undefined : (lastCheckInBy.trim() || undefined),
         /* The WHOLE report they read, not two fields of it: what is sent here is what CheckIn.sessionReport keeps. */
-        reportSummary: sessionReport ?? undefined,
+        /* ONLY A REPORT THAT COVERS THE WHOLE CONVERSATION (round 6, the law firm lead). A correction made on this card ("Esther is my
+           finance officer in charge of billing") goes into the setup's conversation, so it is saved with it; a report made before
+           the correction does not hold it, so it is not sent, and the server makes the report from the whole conversation instead. */
+        reportSummary: sessionReport && reportMadeFrom === history.length ? sessionReport : undefined,
         // The setter's own part in this, as the interview extracted it. Lands on their participant row.
-        roleAsDescribed: sessionReport?.yourRole?.trim() || undefined,
+        roleAsDescribed: (reportMadeFrom === history.length ? sessionReport?.yourRole?.trim() : undefined) || undefined,
         inviteNote: inviteNote.trim() || undefined,
         // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
@@ -3329,11 +3342,9 @@ export function EntryChatPage() {
        */
       const status = err?.response?.status
       const said = err?.response?.data?.message
-      toast.error(
-        status >= 400 && status < 500 && typeof said === 'string' && said
-          ? said
-          : 'Could not save this. Try again.',
-      )
+      const why = status >= 400 && status < 500 && typeof said === 'string' && said ? said : 'Could not save this. Try again.'
+      toast.error(why)
+      setWhyItWasNotSaved(why)
     }
   }
 
@@ -3762,18 +3773,25 @@ export function EntryChatPage() {
     return { read, needAnEmail }
   }
   async function readTheTeamBox(): Promise<TheBoxRead | null> {
+    setWhyItWasNotSaved('')
     if (!teamText.trim()) { setTeamSaid(''); return NOBODY_IN_THE_BOX }
     let people: APersonOnALine[]
     try { people = await readTheLines(teamText) } catch {
       setTeamSaid('Your team could not be read just now, and nothing was saved. Press save again.')
+      setWhyItWasNotSaved('This was not saved, because your team could not be read just now. Press save again.')
       return null
     }
     const { read, needAnEmail } = theBoxAsRead(people)
-    if (needAnEmail.length) { setTeamSaid(addAnEmailFor(needAnEmail)); return null }
+    if (needAnEmail.length) {
+      setTeamSaid(addAnEmailFor(needAnEmail))
+      setWhyItWasNotSaved(`This was not saved. ${addAnEmailFor(needAnEmail)}`)
+      return null
+    }
     const onTheList = (e: string) => inviteAdded.some((x) => x === e || x.startsWith(`${e} - `))
     /* Over the anchor's limit the save stops; the limit sentence already stands under the box (peopleLimitReached). */
     if (isAnchorDraft() && inviteAdded.length + read.entries.filter((e) => !onTheList(e)).length > thePeopleStepRules.mayAdd) {
       setTeamSaid('')
+      setWhyItWasNotSaved(`This was not saved. ${thePeopleStepRules.limitSentence}`)
       return null
     }
     setTeamSaid('')
@@ -4662,6 +4680,8 @@ export function EntryChatPage() {
                  * moment it is handed an (even empty) `anchorItems` object, rather than the usual four.
                  */
                 anchorItems={isAnchorDraft() ? (onboardingSelections.anchorItems ?? {}) : undefined}
+                /* The one team box, while the conversation is on screen; once setup ends it is on the save card, with the same lines. */
+                team={!closed ? <TheTeamBox prefilled={theTeamNamedInTheSetup()} text={teamText} onText={writeTheTeam} said={teamSaid} /> : undefined}
               />
             </div>
           )}
@@ -5096,6 +5116,7 @@ export function EntryChatPage() {
                 <Button kind="primary" wide onClick={saveAsSignedInUser} disabled={savingAsUser}>
                   {savingAsUser ? 'Saving…' : 'Save this'}
                 </Button>
+                {whyItWasNotSaved && <Note tone="error">{whyItWasNotSaved}</Note>}
                 <div className="gwui-ec-savecard-helper">
                   {/* FAULT E (reviewer, third round): "Saving to amina@suites.test. No confirmation
                       needed, you are already signed in." read like a log line, not a sentence a
@@ -5164,6 +5185,7 @@ export function EntryChatPage() {
                   {!isAnchorDraft() && <>{saving ? 'Saving…' : 'Save my check-in'}</>}
                 </Button>
                 </form>
+                {whyItWasNotSaved && <Note tone="error">{whyItWasNotSaved}</Note>}
                 <div className="gwui-ec-savecard-helper">
                   {/* U.6 review: it promised the invites went out on opening the link, which a later start (or a
                       seat, or an admin who must accept it) makes untrue. The same sentences as after saving. */}
@@ -5310,7 +5332,7 @@ export function EntryChatPage() {
                   <button
                     type="button" className="gwui-plain-link"
                     onClick={() => { setCorrectionText(`"${about}" is not right: `); setShowCorrection(true) }}
-                    disabled={generatingReport}
+                    disabled={generatingReport || savingAsUser || saving}
                   >
                     This isn't right, correct it
                   </button>
@@ -5377,7 +5399,7 @@ export function EntryChatPage() {
                                 <Button
                                   kind="secondary" size="small"
                                   onClick={submitReportCorrection}
-                                  disabled={!correctionText.trim() || correctionLoading || generatingReport}
+                                  disabled={!correctionText.trim() || correctionLoading || generatingReport || savingAsUser || saving}
                                 >
                                   {generatingReport ? 'Redoing your report...' : correctionLoading ? 'Sending...' : correctionExchange.length > 0 ? 'Send' : 'Start'}
                                 </Button>
