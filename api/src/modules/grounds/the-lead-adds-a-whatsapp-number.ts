@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import { tidyANumberFor } from '../whatsapp/the-organisations-country';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
 import { whereTheyAreOnWhatsApp, WHERE_ON_WHATSAPP_SAYS, type WhereOnWhatsApp } from '../whatsapp/where-they-are-on-whatsapp';
-import { refuseANumberOnSomebodyElse, aSignInsNumberChanged, everyRosterEntryTakesTheNumber, theNumberOnRecord } from '../whatsapp/one-number-for-a-person';
+import { refuseANumberOnSomebodyElse, aSignInsNumberChanged, everyRosterEntryTakesTheNumber, theNumberOnRecord, theSignInFor } from '../whatsapp/one-number-for-a-person';
 import { formsOfTheSameNumber, WRITE_THE_FULL_NUMBER } from '../whatsapp/a-number-whatsapp-can-reach';
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
 
@@ -53,12 +53,15 @@ export async function theLeadAddsAWhatsAppNumber(
   if (!p?.email) throw new NotFoundException('That person is not in this check-in, so check the name and try again.');
   const name = (p.user?.firstName || p.nameGiven || 'This person').toString().trim();
 
+  /* Their sign-in, found from their address when they have not opened this invitation yet (theSignInFor): their own number is never
+     somebody else's, and it is kept where every reader looks. */
+  const signIn = await theSignInFor(prisma, { userId: p.userId ?? null, email: p.email });
   /* Never a number that is already somebody else's sign-in. Said with the colleague's name when they are in this organisation. */
-  await refuseANumberOnSomebodyElse(prisma, phone, p.userId ?? null, input.organizationId, p.email);
+  await refuseANumberOnSomebodyElse(prisma, phone, signIn, input.organizationId, p.email);
 
   /* EVERY ROSTER ENTRY THAT IS THIS PERSON takes it, not the first one found (Drop Access, 21 October): with two entries, the number
      was saved on one and the screen and the sender could read the other. */
-  const entries = await everyRosterEntryTakesTheNumber(prisma, input.organizationId, { userId: p.userId ?? null, email: p.email }, phone);
+  const entries = await everyRosterEntryTakesTheNumber(prisma, input.organizationId, { userId: signIn, email: p.email }, phone);
   if (!entries && phone) {
     await prisma.person.create({
       data: {
@@ -71,20 +74,20 @@ export async function theLeadAddsAWhatsAppNumber(
         familyName: p.user?.lastName || null,
         email: p.email,
         phone,
-        linkedUserId: p.userId ?? null,
+        linkedUserId: signIn,
         active: true,
       },
     });
   }
   /* One number for a person: their sign-in holds the same number, so the opening and inbound routing read one thing. */
-  if (p.userId) {
+  if (signIn) {
     /* Never silently: a sign-in that could not take the number says so, and the screen shows it (Drop Access, 21 October). */
     try {
-      await prisma.user.update({ where: { id: p.userId }, data: { phoneNumber: phone } });
+      await prisma.user.update({ where: { id: signIn }, data: { phoneNumber: phone } });
     } catch {
       throw new BadRequestException(`${name}'s WhatsApp number could not be saved on their sign-in, so Groundwork would not reach them there. Try again, and if it happens again, contact Groundwork.`);
     }
-    await aSignInsNumberChanged(prisma, p.userId, phone, input.organizationId).catch(() => undefined);
+    await aSignInsNumberChanged(prisma, signIn, phone, input.organizationId).catch(() => undefined);
   }
   return { said: phone ? THE_NUMBER_IS_KEPT(name) : THE_NUMBER_IS_REMOVED(name), phone };
 }

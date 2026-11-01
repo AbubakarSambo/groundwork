@@ -25,7 +25,7 @@ describe('the lead adds a WhatsApp number', () => {
         create: jest.fn(async (a: any) => { made.push(a.data); return { id: 'person-brian' }; }),
         update: jest.fn(async (a: any) => { updated.push(a); return {}; }),
       },
-      user: { update: jest.fn(async () => ({})), findMany: jest.fn(async () => []), findFirst: jest.fn(async () => (taken ? { id: 'u-someone', firstName: 'Kevin' } : null)), findUnique: jest.fn(async () => null) },
+      user: { update: jest.fn(async () => ({})), findMany: jest.fn(async () => []), findFirst: jest.fn(async (q: any) => (taken && q?.where?.phoneNumber ? { id: 'u-someone', firstName: 'Kevin' } : null)), findUnique: jest.fn(async () => null) },
     };
     return { prisma, made, updated };
   }
