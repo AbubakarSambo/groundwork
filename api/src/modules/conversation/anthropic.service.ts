@@ -58,7 +58,13 @@ export function worthWaitingOut(err: any): boolean {
    * A slow call and a busy one are the same fact from our side, and the same answer works for both:
    * stop waiting, ask again. The retry is ours, not theirs - they typed once.
    */
-  return /resource[ _]exhausted|rate limit|too many requests|overloaded|unavailable|timed out|did not open|stalled/i.test(said);
+  /*
+   * AND A LINE THAT DROPPED IS THE SAME (assessment test, 1 November 2026). One network blip at a setup's save failed the record and
+   * the promise read with "fetch failed" within a second, and neither was asked again: 21 of the run's failures came from it. A
+   * connection that dropped, reset or could not be found is not a bad request, so it is waited out like a busy one.
+   */
+  if (/^(ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE|UND_ERR_\w+)$/.test(String(err?.code ?? err?.cause?.code ?? ''))) return true;
+  return /resource[ _]exhausted|rate limit|too many requests|overloaded|unavailable|timed out|did not open|stalled|fetch failed|network|socket hang up|connection (?:reset|closed|refused)/i.test(said);
 }
 
 /** Short, and short enough that nobody is left staring at a composer. */

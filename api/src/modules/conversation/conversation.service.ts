@@ -351,6 +351,7 @@ import { wordTheAreaOfAGoal, areaOfGoalOrFallback } from '../grounds/the-area-of
 import { saysWhatAnUntoldGoalWithholds, IT_NAMED_THE_UNTOLD_NUMBER, type AnUntoldGoal } from './an-untold-goals-number-is-not-said';
 import { aTeamMembersOpeningFor, theOneThingTodayBlock, type ATeamMembersOpening } from './the-one-thing-today';
 import { onTimeForThemselves } from '../engagement/who-answers-and-when';
+import { writeOrOwe, type AnOwedWrite } from './a-write-is-owed-until-it-lands';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -7615,13 +7616,18 @@ ${told}` : '';
    */
   async assessAndThenRead(
     checkIn: { id: string; participantId: string; groundId: string; sessionNumber: number },
-    how: { howItEnded: 'finished by the person' | 'closed by the clock' | 'declined' | 'setup saved'; closedAt: Date; setup?: TheSetupGiven | null },
+    how: { howItEnded: 'finished by the person' | 'closed by the clock' | 'declined' | 'setup saved'; closedAt: Date; setup?: TheSetupGiven | null; channel?: any },
   ): Promise<void> {
     try {
       const doors = theDoorsTheirTurnsCameThrough(this, checkIn.id);
       const channel = how.howItEnded === 'setup saved' ? 'setup' : doors.has('whatsapp') ? 'WhatsApp' : doors.has('web') ? 'the app' : doors.has('api') ? 'the API' : 'not known';
       theDoorsTheirTurnsCameThrough(this, null).delete(checkIn.id);
-      await assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger }, checkIn.id, { ...how, channel });
+      /* A read the model could not give is owed, and written again by the scheduled pass; meanwhile the assessment keeps every
+         message whole, so nothing said is lost (a-write-is-owed-until-it-lands.ts). */
+      await writeOrOwe(this.prisma as any, checkIn.id, 'the assessment', async () => {
+        const a = await assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger }, checkIn.id, { ...how, channel: how.channel ?? channel });
+        if (!a || a.measure.modelFailed) throw new Error('the model could not read the conversation');
+      }, { checkIn, how: { ...how, channel: how.channel ?? channel, closedAt: how.closedAt.toISOString() } }, this.logger);
       await Promise.all([
         /* The waits: what this person is waiting on, from the assessment's blockers, then every wait the record now shows is over. */
         this.extractDependencies(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
@@ -7712,10 +7718,10 @@ ${told}` : '';
     /* Not for the clock, or a door that cannot hold a reply that long (WhatsApp's webhook). */
     if (how.waitForTheCard) await this.waitForTheCardBeingBuilt(checkIn.id);
     /* The lines the end card showed, if nothing was said after it (task 2.7). See writeTheRecordAtTheEnd. */
-    const endCard: EndCard | null = await this.writeTheRecordAtTheEnd(checkIn).catch((err) => {
-      this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`);
-      return null;
-    });
+    /* A record that could not be written is owed, and the scheduled pass writes it again (a-write-is-owed-until-it-lands.ts). */
+    const written = { card: null as EndCard | null };
+    await writeOrOwe(this.prisma as any, checkIn.id, 'the record', async () => { written.card = await this.writeTheRecordAtTheEnd(checkIn); }, undefined, this.logger);
+    const endCard = written.card;
     this.logger.log(`Check-in ${checkIn.id}: took the record out of it in ${Date.now() - closingStartedAt}ms.`);
 
     /* The waits are read from the conversation's assessment now, once it is written: see assessAndThenRead. */
@@ -9348,7 +9354,26 @@ ${told}` : '';
       .catch((err: any) => this.logger?.warn?.(`Could not store the notes on ${checkInId}: ${err?.message}`));
   }
 
-  async extractRecordEntries(checkInId: string, participantId: string) {
+  /** THE SCHEDULED PASS RUNS AN OWED WRITE AGAIN, from the record and what was kept with it. Owed again if it fails again. */
+  async writeWhatIsOwed(checkIn: { id: string; participantId: string; groundId: string; sessionNumber: number }, write: AnOwedWrite): Promise<void> {
+    const input = (write.input ?? {}) as any;
+    if (write.step === 'the record') { await this.extractRecordEntries(checkIn.id, checkIn.participantId); return; }
+    if (write.step === 'the aims and expectations') { await this.extractExpectations(checkIn.id, checkIn.participantId, checkIn.groundId, input.spokenElsewhere); return; }
+    if (write.step === 'the assessment') {
+      const how = input.how ?? { howItEnded: 'finished by the person' };
+      await this.assessAndThenRead(checkIn, { ...how, closedAt: how.closedAt ? new Date(how.closedAt) : new Date() });
+    }
+  }
+
+  /**
+   * THE RECORD OF A FINISHED CONVERSATION, WRITTEN OR OWED. Every caller (setup's save, a decline, the scheduled pass) comes here, so a
+   * model call that fails is kept on the check-in and written again later, never only logged (a-write-is-owed-until-it-lands.ts).
+   */
+  extractRecordEntries(checkInId: string, participantId: string): Promise<boolean> {
+    return writeOrOwe(this.prisma as any, checkInId, 'the record', () => this.writeTheRecordFromTheConversation(checkInId, participantId), undefined, this.logger);
+  }
+
+  private async writeTheRecordFromTheConversation(checkInId: string, participantId: string) {
     const rows = await this.readTheRecord(checkInId, participantId);
     if (!rows.length) return;
     const on = await this.whenTheSessionWas(checkInId);
@@ -10781,7 +10806,16 @@ ${told}` : '';
    * The targets were never her ACCOUNT of the work. They are what she said the check-in is for,
    * which is exactly what setup is, so they still come from there.
    */
-  async extractExpectations(checkInId: string, participantId: string, groundId: string, spokenElsewhere?: { role: string; content: string }[]) {
+  /**
+   * THE AIMS AND WHAT IS EXPECTED OF EACH PERSON, WRITTEN OR OWED. Setup's conversation, which is not on the record, is kept with what is
+   * owed, so the scheduled pass can read it again (a-write-is-owed-until-it-lands.ts).
+   */
+  extractExpectations(checkInId: string, participantId: string, groundId: string, spokenElsewhere?: { role: string; content: string }[]): Promise<boolean> {
+    return writeOrOwe(this.prisma as any, checkInId, 'the aims and expectations', () => this.readTheAimsAndExpectations(checkInId, participantId, groundId, spokenElsewhere),
+      spokenElsewhere?.length ? { spokenElsewhere } : undefined, this.logger);
+  }
+
+  private async readTheAimsAndExpectations(checkInId: string, participantId: string, groundId: string, spokenElsewhere?: { role: string; content: string }[]) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {

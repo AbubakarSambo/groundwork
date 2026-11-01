@@ -1796,6 +1796,10 @@ model CheckIn {
   openedAnnouncedAt           DateTime?     @map("opened_announced_at") // one-shot: checkin.opened went to the organisation's webhooks
   patternsAnalyzedAt          DateTime?     @map("patterns_analyzed_at") // pattern sweep has processed this period
   closedReason                String?       @map("closed_reason") // "declined" or "auto_closed"; null when the person completed it
+  /// THE WRITES TO THE RECORD THIS CHECK-IN STILL OWES (1 November 2026). A model call that writes the record or the assessment and
+  /// still fails after its own tries is kept here (step, tries, last error, next try), never only logged, and the scheduled pass writes
+  /// it again until it lands. Null when nothing is owed. See conversation/a-write-is-owed-until-it-lands.ts.
+  writesOwed                  Json?         @map("writes_owed")
   /// One of managed | vague | directional | specific, worst first - enforced by a CHECK constraint in
   /// the database and ordered in one place (conversation/how-checkable-a-session-was.ts). The map that
   /// ranked "managed" above "directional" is gone.
