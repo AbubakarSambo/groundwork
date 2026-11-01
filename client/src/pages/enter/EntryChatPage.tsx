@@ -504,6 +504,28 @@ export function composeLeadBrief(
  * ONLY WHAT IS SENT. The transcript on screen is untouched - a person still sees the sentence their
  * click posted, because that is what it looked like when they clicked it.
  */
+/**
+ * PAGE HELP IS NOT PART OF THE CONVERSATION (round 7, the field programme lead, 1 November 2026).
+ *
+ * The page opens setup with its own line, THE_OPENING_QUESTION, which carries a worked example ("I am setting a goal for my team to
+ * procure 300 organic chickens from Kaduna by 31 March ..."). It sat in the history as the first assistant turn, so it went to the
+ * model with every setup turn and was saved with the setup as the first session's record, and the save's readers took the example as
+ * said: her check-in's goal and her weekly report read "The team is aiming to procure 300 organic chickens from Kaduna by 31 March".
+ *
+ * The line stays on the page, which is where it belongs, and it is taken out here, the one place the history leaves the page, so the
+ * model never reads it as something it asked and no reader of the record can take it as something said. A situation card's sentence,
+ * which the page posts on the person's behalf when they click a card, is page text too: the model is told which card was clicked
+ * (withoutPickedOpener) and the record keeps only what the person typed.
+ */
+export function withoutTheOpeningLine<T extends { role: string; content: string }>(history: T[]): T[] {
+  return history.filter((t) => !(t.role === 'assistant' && t.content === THE_OPENING_QUESTION))
+}
+
+/** The setup's record: what the person typed and what Groundwork asked, never the page's own help. */
+export function whatWasSaid<T extends { role: string; content: string }>(history: T[]): T[] {
+  return withoutTheOpeningLine(history).filter((t) => !(t.role === 'user' && SITUATION_CARDS.some((c) => c.message === t.content)))
+}
+
 export function withoutPickedOpener(
   history: { role: string; content: string }[],
 ): { role: string; content: string }[] {
@@ -2093,7 +2115,8 @@ export function EntryChatPage() {
    * The setup only came back after reloading /start. Both ways in now use this.
    */
   function restoreTheSavedSetup(saved: EntrySession) {
-      setHistory(saved.history)
+      /* A setup kept before the page's own lines were left out of the record is read without them too (whatWasSaid). */
+      setHistory(whatWasSaid(saved.history))
       if (saved.report) { try { setSessionReport(JSON.parse(saved.report)); setReportMadeFrom(saved.history.length) } catch { /* legacy plain text - discard */ } }
       /* "Others check in, I read what comes back" survives a reload. There are no lead details to
          restore any more - a saved session from before that answer was removed still carries them,
@@ -2477,7 +2500,9 @@ export function EntryChatPage() {
    * End session during setup used to leave for Today with a toast. Round 5's field lead had just been told "You can add your team below",
    * pressed it, and never saw a box: he typed his four field officers again on People.
    */
-  function endTheSetup(said: Turn[]) {
+  function endTheSetup(theConversation: Turn[]) {
+    /* The record is what was said, never the page's own help (whatWasSaid). */
+    const said = whatWasSaid(theConversation)
     if (!isAnchorDraft()) {
       setFlowPath('self')
       setOnboardingStep(ONBOARDING_STEPS + 1)
@@ -2628,7 +2653,7 @@ export function EntryChatPage() {
        * never shown; a sent message is already not lost either way (persisted just above).
        */
       const entryStreamPromise = entryApi.onboardStream(
-        withoutPickedOpener(newHistory) as Turn[],
+        withoutPickedOpener(withoutTheOpeningLine(newHistory)) as Turn[],
         isAnchorDraft() ? 'HELP_TEAM_UNDERSTAND' : (onboardingSelections.classifiedScenario || (scenarioNow === undefined ? pickedScenario : scenarioNow) || scenario || undefined),
         onboardingSelections.mode === 'something_new' ? 'STARTING' : undefined,
         (text) => { gotAnyDelta = true; draft += text; setOnboardingDraft(draft) },
