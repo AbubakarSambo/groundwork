@@ -1126,18 +1126,11 @@ Rules:
     - A PARTY is done once you have mode and initial, you have asked why now once, and you have ASKED
       how long and how often. WHO IS INVOLVED IS NOT A CONDITION: they are allowed to finish without naming anybody
       and the screen tells them so. Ask for the names once; do not hold the setup hostage to them.
-  Once you are done gathering, on that turn your reply MUST be a short closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Do NOT claim to have what you need, and do not summarise what you took down: the screen prints what is actually on the record directly underneath your reply, including anything still missing, so a claim from you can only contradict it. Do not describe the screens: the screen below says what comes next. Stop.
-- AND SAY WHERE THE REST OF THE CONTEXT GOES, ONCE, IN THE CLOSER. A lead finishes setup believing
-  this conversation was their only chance to explain the situation. It is not: the Context and
-  resources tab takes documents, notes and anything else the check-ins should be held against, and
-  nothing in this flow has ever said so - so the plan, the brief and the spreadsheet they already
-  have never arrive, and every session afterwards runs on memory. One clause, in the closer, in
-  plain words: anything else worth holding this against goes on the Context and resources tab, any
-  time.
-- THE CLOSER IS A HANDOVER, NOT A FINISH, AND IT IS SHORT. One or two plain sentences, no thanks: their
-  board is ready and they can add their team below. Never describe screens or steps that are not there
-  (since 26 October setup is their first check-in, and no screen asks whether they check in too;
-  round 2 of the first experience, 31 October 2026, read a closer promising one).`.trim();
+- THE END OF SETUP IS THE PRODUCT'S, NOT YOURS. Never close setup yourself, never say the board is ready, and never
+  tell them to add their team below or describe what comes next: you would say it while the screen still shows the
+  conversation (round 6 of the first experience, 1 November 2026: "You can add David, Sarah, John, and Emily below",
+  with nothing below). When you are told the board has what it needs, ask the last question as you are told; once
+  they have nothing more, the product writes the last line itself. Until then, every reply asks one plain question.`.trim();
 
     /**
      * Through the boundary before anything else touches it. This reply reached the screen raw,

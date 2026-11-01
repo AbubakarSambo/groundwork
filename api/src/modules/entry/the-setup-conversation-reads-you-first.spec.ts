@@ -1,3 +1,4 @@
+import { SETUP_IS_DONE } from './setup-is-the-first-check-in';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -74,10 +75,16 @@ describe('the first question fits the situation, and the context tab exists', ()
     expect(SRC).toMatch(/const firstTurn = \(messages as \{ role: string \}\[\]\)\.filter\(\(m\) => m\.role === 'user'\)\.length <= 1/);
   });
 
-  it('the closer says where documents and further context go', () => {
-    expect(SRC).toMatch(/SAY WHERE THE REST OF THE CONTEXT GOES/);
+  /*
+   * The last line of setup has one owner, the product (SETUP_IS_DONE), and it says where documents and further context go. The prompt
+   * used to tell the model to write its own closer too; in round 6 of the first experience (1 November 2026) the model said "You can
+   * add David, Sarah, John, and Emily below" while the conversation was still on screen, and the lead found nothing below.
+   */
+  it('the product writes the last line, and it says where documents and further context go', () => {
     /* Decision 51: renamed to "Context and resources" (29 September). */
-    expect(SRC).toMatch(/goes on the Context and resources tab, any\s+time/);
+    expect(SETUP_IS_DONE).toMatch(/Context and resources tab at any time/);
+    expect(SRC).toMatch(/THE END OF SETUP IS THE PRODUCT'S, NOT YOURS/);
+    expect(SRC).not.toMatch(/their\s+board is ready and they can add their team below/);
   });
 });
 

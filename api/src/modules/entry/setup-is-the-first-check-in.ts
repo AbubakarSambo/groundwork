@@ -21,7 +21,7 @@ export const THE_BOARD_IS_COVERED = `THE BOARD HAS WHAT IT NEEDS. If they have n
 export const THEY_ADDED_SOMETHING_IN_SETUP = `They answered "${ANYTHING_ELSE}" with something new. Take it as said and say in a few words where it goes. Ask at most ${FOLLOW_UPS_ON_WHAT_THEY_ADDED} follow-up questions about it, and only for what the board needs.`;
 
 /** The last line of setup, written by the product. */
-export const SETUP_IS_DONE = 'Done: your board is ready with today’s picture. Next, add your team below and choose when their first check-in opens.';
+export const SETUP_IS_DONE = 'Done: your board is ready with today’s picture. Next, add your team below and choose when their first check-in opens. Anything else worth holding it against can go on its Context and resources tab at any time.';
 
 /**
  * Where the end of setup stands, from its own turns. `close` is true once they said there is nothing more after "Anything else I should
