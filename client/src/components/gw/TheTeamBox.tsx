@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { entryApi } from '@/api/entry'
 import { Button, TextArea, Note } from '@/components/gw/ui'
@@ -77,6 +77,27 @@ export function TheTeamBox({ prefilled, onAdd, adding, heading, text: textGiven,
   textRef.current = text
   const setText = (t: string) => { textRef.current = t; if (onText) onText(t); else setTextHeld(t) }
   const [needEmail, setNeedEmail] = useState<string[]>([])
+  /*
+   * EVERY LINE TYPED IS READABLE (round 7, the law firm lead at 390px: "the list of people I just put in is still cut off"). The box was
+   * as many rows as there were lines, and on a narrow screen each line of a name, an email and a number wraps onto two or three, so
+   * most of what she typed sat behind a scroll inside a small box. It is now as tall as what is in it, at any width, and it follows the
+   * width when the panel or the card it is in changes size.
+   */
+  const boxRef = useRef<HTMLTextAreaElement>(null)
+  const fitTheLines = () => {
+    const el = boxRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    if (el.scrollHeight > 0) el.style.height = `${el.scrollHeight + 2}px`
+  }
+  useLayoutEffect(fitTheLines, [text])
+  useEffect(() => {
+    const around = boxRef.current?.parentElement
+    if (!around || typeof ResizeObserver === 'undefined') return
+    const watching = new ResizeObserver(() => fitTheLines())
+    watching.observe(around)
+    return () => watching.disconnect()
+  }, [])
   const [reading, setReading] = useState(false)
   const whatsappOn = useWhatsAppIsOn()
   /* Somebody named later (a new name in the setup, a colleague invited meanwhile) is added to the box, never over what was typed. */
@@ -112,13 +133,14 @@ export function TheTeamBox({ prefilled, onAdd, adding, heading, text: textGiven,
         {whatsappOn ? ' With a phone number, their check-ins can also reach them on WhatsApp.' : ''}
       </label>
       <TextArea
+        ref={boxRef}
         id="the-team-box"
         aria-label="Your team, one per line"
         placeholder={'Sarah Chebet, sarah@company.com, +254 712 345 678\nDavid Kariuki, david@company.com, +254 722 111 222'}
         value={text}
         onChange={(e) => setText(e.target.value)}
         disabled={disabled || busy}
-        rows={Math.min(10, Math.max(3, text.split('\n').length + 1))}
+        rows={Math.max(3, text.split('\n').length + 1)}
       />
       {needEmail.length > 0 && (
         <Note tone="muted">{`Add an email for ${andList(needEmail)}, then press Add everyone again.`}</Note>
