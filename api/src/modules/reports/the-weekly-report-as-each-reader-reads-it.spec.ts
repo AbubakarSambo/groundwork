@@ -562,8 +562,12 @@ describe('somebody an admin has not let in yet, as the lead reads the week', () 
     expect(JSON.stringify(r)).not.toMatch(/Chidi has not checked in/);
   });
 
-  /* Night quality run 3 (decision 8 redone): invited and never joined is the same as not let in for the count, never "due" and never absent. */
-  it('invited and never joined (never accepted, nothing opened): not due, and nothing about him not checking in', async () => {
+  /*
+   * Night quality run 3 (decision 8 redone) left somebody invited and never joined out of the count. CHANGED 1 NOVEMBER 2026: Hafsah
+   * approved counting everyone on the check-in, as the prototype does ("5 of 6 have checked in today; Omar hasn't yet"), and the week
+   * reads the one count (how-many-have-answered.ts). So his check-in is due; he is still never written up as absent.
+   */
+  it('invited and never joined (never accepted, nothing opened): counted as due, and nothing about him not checking in', async () => {
     const c = aCheckIn();
     /* Joined means accepted the invitation (13 October): the week page reads that from its own read of the people, as the database returns it. A sign-in is not joining. */
     const ground = await c.prisma.ground.findUnique();
@@ -572,7 +576,7 @@ describe('somebody an admin has not let in yet, as the lead reads the week', () 
     c.prisma.emailVerificationToken = { findMany: jest.fn(async () => []) };
     await c.svc.build('g1', AT);
     const r = await c.svc.read('g1', LEAD, AT);
-    expect(r.inNumbers?.[0]?.says).toBe('Both check-ins due this week were made.');
+    expect(r.inNumbers?.[0]?.says).toBe('2 of the 3 check-ins due this week were made.');
     expect(JSON.stringify(r)).not.toMatch(/Chidi has not checked in/);
   });
 

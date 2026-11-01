@@ -12,8 +12,10 @@ const team = [
 ];
 
 describe('who answers a check-in is counted once', () => {
-  it('leaves out the lead and anybody invited who has not joined, as a round does', () => {
-    expect(whoAnswersThisCheckIn(team, 'PULSE_CHECK').map((p) => p.id)).toEqual(['kevin', 'joseph', 'mercy', 'peter', 'faith']);
+  /* CHANGED 1 NOVEMBER 2026: everyone on the check-in is counted, as the prototype does (Hafsah's approval), so Samuel, invited and not
+     joined, is counted on every page alike; the lead still counts only in a session she answered (decision 133). */
+  it('leaves out the lead, and counts somebody invited who has not joined, as a round does', () => {
+    expect(whoAnswersThisCheckIn(team, 'PULSE_CHECK').map((p) => p.id)).toEqual(['samuel', 'kevin', 'joseph', 'mercy', 'peter', 'faith']);
   });
 
   it('is the number a round with nobody away counts', () => {

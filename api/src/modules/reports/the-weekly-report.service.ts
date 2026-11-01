@@ -1,6 +1,6 @@
 import { theDaysAnOpenDailySessionWasMissed } from '../board/the-persons-record';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
-import { NOT_A_QUIET_CLOSE, wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
+import { NOT_A_QUIET_CLOSE } from '../grounds/an-answer-includes-a-refusal';
 import { theConfirmedWaits, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
 import { aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
 import { anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
@@ -20,7 +20,8 @@ import { labelsForParties, namesVisibleTo, viewerLabelOf, withNames } from './pa
 import { peersAreNamedOn } from './peers-are-named';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
 import { theSentenceAbout, theSentenceIsSafe, theWeekOf, type AWeeksLine } from './the-weekly-sentence-about-each-person';
-import { awayUntilOn, fallsInLeave, leaveOfThePeopleOn, type Stretch } from '../suites/who-is-away';
+import { leaveOfThePeopleOn, type Stretch } from '../suites/who-is-away';
+import { whoHasAnswered } from './how-many-have-answered';
 import { howSolid } from './a-figure-nobody-can-check-says-so';
 import { theFactsOnRecord } from '../conversation/the-facts-on-record';
 import { whatMoreThanOnePersonNamed } from './what-more-than-one-person-named';
@@ -182,7 +183,7 @@ export class TheWeeklyReportService {
     const ground: any = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        initiatorId: true, cadence: true, workingDays: true, kindOfWork: true, workStages: true, organizationId: true,
+        initiatorId: true, cadence: true, workingDays: true, kindOfWork: true, workStages: true, organizationId: true, scenario: true,
         participants: { select: { id: true, userId: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, ...WHAT_SAYS_SOMEBODY_JOINED, user: { select: { firstName: true, lastName: true, email: true } } } },
         objectives: { select: { id: true, name: true, target: true, count: true, direction: true, ownerParticipantId: true, setByParticipantId: true, isADecisionAboutAPerson: true } },
       } as any,
@@ -215,7 +216,8 @@ export class TheWeeklyReportService {
     /* Somebody an admin has not let in yet cannot check in, so is neither due nor written up as absent (decision 77). */
     const notLetIn = await whoIsNotLetInYet(this.prisma, parties);
     /* Nor somebody invited who has not joined yet: not due, not absent, never missed (decision 8 redone, night run 3). */
-    for (const id of await whoHasNotJoinedYet(this.prisma, parties).catch(() => new Set<string>())) if (!notLetIn.has(id)) notLetIn.set(id, { declined: false, decidedByUserId: null, decidedAt: null });
+    const notJoinedIds = await whoHasNotJoinedYet(this.prisma, parties).catch(() => new Set<string>());
+    for (const id of notJoinedIds) if (!notLetIn.has(id)) notLetIn.set(id, { declined: false, decidedByUserId: null, decidedAt: null });
 
     /* THE SENTENCE ABOUT EACH PERSON. */
     const eachPerson: { participantId: string; says: string }[] = [];
@@ -240,22 +242,32 @@ export class TheWeeklyReportService {
       select: { participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, createdAt: true, isSetup: true, isClarification: true, isSelfCorrection: true, optional: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } } },
     } as any) as Promise<any[]>).catch(() => [])) ?? []) as any[];
     const inTheWeek = (d: any) => !!d && new Date(d).getTime() >= start.getTime() && new Date(d).getTime() <= at.getTime();
-    /*
-     * A CHECK-IN STILL WAITING THAT OPENED ON THE NIGHT BEFORE THE WEEK BEGAN IS DUE THIS WEEK (night quality run 2). Amina's fourth
-     * check-in opened at midnight on Sunday in Nairobi, two hours before Monday began in Lagos, so it was not counted as due, and Esther
-     * read "All 3 check-ins due this week were made." and "100%" while Amina was being reminded. A day of slack covers any time zone.
-     */
+    /* A session opened on the night before the week began is this week's (night quality run 2): a day of slack covers any time zone. */
     const openedForThisWeek = (d: any) => !!d && new Date(d).getTime() >= start.getTime() - 86_400_000 && new Date(d).getTime() <= at.getTime();
-    const due = all.filter((c) => c && !c.isSetup && !c.isClarification && !c.isSelfCorrection && c.status !== undefined)
+    const sessions = all.filter((c) => c && !c.isSetup && !c.isClarification && !c.isSelfCorrection);
+    const thisWeeksSessions = [...new Set(sessions
       .filter((c) => (c.status === CheckInStatus.COMPLETED && inTheWeek(c.completedAt)) || (c.status !== CheckInStatus.COMPLETED && openedForThisWeek(c.availableFrom ?? c.createdAt)))
-      /* Not one that opened while its person was away, nor one that waits for somebody away now. */
-      .filter((c) => c.status === CheckInStatus.COMPLETED
-        || !(fallsInLeave(new Date(c.availableFrom ?? c.createdAt), leave.get(c.participantId) ?? []) || awayUntilOn(leave.get(c.participantId), at)))
-      /* Nor one that waits for somebody an admin has not let in yet, who cannot make it (decision 77). */
-      .filter((c) => c.status === CheckInStatus.COMPLETED || !notLetIn.has(c.participantId))
-      /* The lead's own optional row is due only when they answered it (decision 133). */
-      .filter((c) => !c.optional || (c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c)));
-    const made = due.filter((c) => c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c)).length;
+      .map((c) => c.sessionNumber as number))];
+    /*
+     * EACH OF THE WEEK'S SESSIONS, BY THE ONE COUNT (how-many-have-answered.ts, 1 November 2026): due is everybody each session counts,
+     * made is who answered it. The week read "100% of check-ins made" from its own count of rows, beside the board's "2 of 4 people have
+     * answered this session" on the same day. Somebody away this week, or not let in, is not due, as the one count says.
+     */
+    let dueCount = 0;
+    let made = 0;
+    for (const n of thisWeeksSessions) {
+      const people = parties.map((p) => ({
+        ...p,
+        notLetIn: notLetIn.has(p.id) && !notJoinedIds.has(p.id),
+        notJoinedYet: notJoinedIds.has(p.id),
+        awayUntil: awayThisWeek(p.id) ? 'this week' : null,
+        checkIns: sessions.filter((c) => c.participantId === p.id && c.sessionNumber === n),
+      }));
+      const c = whoHasAnswered(people, n, ground.scenario);
+      dueCount += c.onTheCheckIn.length;
+      made += c.answered.length;
+    }
+    const due = sessions.filter((c) => thisWeeksSessions.includes(c.sessionNumber));
 
     /* WHAT WAS SAID, AND HOW MUCH OF IT HAS SOMETHING BEHIND IT. Never the rating of an answer. */
     const said = saidThisWeek.map((f) => ({ participantId: f.participantId, text: f.words, proved: f.proved }));
@@ -450,7 +462,7 @@ export class TheWeeklyReportService {
       periods,
       eachPerson,
       /* A daily session left open is due once for each working day of the week it stayed open (final real-model check, item 14). */
-      checkIns: { due: due.length + (await this.theDaysLeftOpenThisWeek(ground, due, start, at)), made },
+      checkIns: { due: dueCount + (await this.theDaysLeftOpenThisWeek(ground, due, start, at)), made },
       counts,
       targets,
       namedByMoreThanOne,
