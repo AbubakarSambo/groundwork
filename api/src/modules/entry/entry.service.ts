@@ -806,6 +806,8 @@ export class EntryService {
       peopleEmails?: Record<string, string>;
       /** Each named person's phone number, where they typed one, by the name on the list. */
       peoplePhones?: Record<string, string>;
+      /** What each named person does, as the lead described them, by the name on the list. */
+      peopleRoles?: Record<string, string>;
     } & TheSevenItems;
     ready: boolean;
     /** Party path only: setup can finish, but nobody has been named yet and they are told so. */
@@ -1273,6 +1275,9 @@ Fields:
   has been identified - an empty list is an honest answer and is handled.
 - peoplePhones: for each person in peopleNamed whose phone number they typed, that person's name exactly as
   in peopleNamed and the number exactly as they typed it. Only numbers they typed; leave it out if none.
+- peopleRoles: for each person in peopleNamed whose job or part in this they described, that person's name
+  exactly as in peopleNamed and what they do, in a few of their own words ("clinic manager, runs check-in at
+  her clinic"). Only what they said; leave it out if they did not say.
 - decision: what prompted this, why now.
   NOT A RESTATEMENT OF WHAT THIS IS ABOUT, AND THIS IS THE COMMON FAILURE. Read live: About said
   "Setting goals for 40 shops in Kano stocking tea by end of Q4" and Why said "setting goals for the
@@ -1329,6 +1334,8 @@ from finishing at all.`;
           /* Each person's phone number, where the person setting this up typed one beside their name (Hafsah, 30 October 2026: the
              team is added with their numbers). The model reads whose number is whose; only a number they typed is kept. */
           peoplePhones: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, phone: { type: 'string' } }, required: ['name', 'phone'] } },
+          /* What each named person does, as the lead described it (round 7, the clinic: four roles said in setup, each set again by hand). */
+          peopleRoles: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, role: { type: 'string' } }, required: ['name', 'role'] } },
           decision: { type: 'string' },
           goals: { type: 'array', items: { type: 'string' } },
           brief: { type: 'string' },
@@ -1414,6 +1421,14 @@ from finishing at all.`;
           if (who && digits.length >= 7 && typed.includes(digits)) theirNumbers[who] = String(x.phone).trim();
         }
         if (Object.keys(theirNumbers).length) (extracted as any).peoplePhones = theirNumbers; else delete (extracted as any).peoplePhones;
+        /* And what each does, for somebody on the list only, by the name on the list: it becomes their "what they do" on the check-in. */
+        const theirRoles: Record<string, string> = {};
+        for (const x of ((extracted as any).peopleRoles ?? []) as { name?: string; role?: string }[]) {
+          const who = extracted.peopleNamed.find((p) => p.trim().toLowerCase() === String(x.name ?? '').trim().toLowerCase());
+          const role = String(x.role ?? '').trim().slice(0, 200);
+          if (who && role) theirRoles[who] = role;
+        }
+        if (Object.keys(theirRoles).length) (extracted as any).peopleRoles = theirRoles; else delete (extracted as any).peopleRoles;
       }
     }
     /*

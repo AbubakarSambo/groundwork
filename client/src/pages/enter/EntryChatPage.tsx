@@ -146,6 +146,8 @@ interface OnboardingSelections {
   peopleEmails?: Record<string, string>
   /** Each named person's phone number, where they typed one in the conversation (server peoplePhones). */
   peoplePhones?: Record<string, string>
+  /** What each named person does, as the lead described them in the conversation (server peopleRoles). */
+  peopleRoles?: Record<string, string>
   goals?: string[]
   checkinTiming?: string
   timeframe?: string
@@ -1866,6 +1868,8 @@ export function EntryChatPage() {
    * foot of the card, and one (the anchor's limit) said nothing at all. Each stop now also says it here, beside the button pressed.
    */
   const [whyItWasNotSaved, setWhyItWasNotSaved] = useState('')
+  /* The people named in setup and left out of the box that the last press already said, so the next press saves without them. */
+  const askedAboutWhoIsLeftOff = useRef('')
   /*
    * THE TEAM AS WRITTEN IS KEPT WITH THE SETUP (round 5, the startup lead). He typed his team's emails, left before saving, and came back
    * to a box asking for every email again. The box's lines go into the kept setup as they are written, and come back with it.
@@ -2671,6 +2675,7 @@ export function EntryChatPage() {
           ...(res.extracted.peopleNamed?.length ? { peopleNamed: res.extracted.peopleNamed! } : {}),
           ...(res.extracted.peopleEmails ? { peopleEmails: res.extracted.peopleEmails } : {}),
           ...((res.extracted as any).peoplePhones ? { peoplePhones: (res.extracted as any).peoplePhones } : {}),
+          ...((res.extracted as any).peopleRoles ? { peopleRoles: (res.extracted as any).peopleRoles } : {}),
           ...(res.extracted.decision ? { decision: res.extracted.decision! } : {}),
           ...(res.extracted.goals ? { goals: res.extracted.goals! } : {}),
           ...(res.extracted.brief !== undefined ? { brief: res.extracted.brief! } : {}),
@@ -3786,13 +3791,36 @@ export function EntryChatPage() {
   }
   async function readTheTeamBox(): Promise<TheBoxRead | null> {
     setWhyItWasNotSaved('')
-    if (!teamText.trim()) { setTeamSaid(''); return NOBODY_IN_THE_BOX }
-    let people: APersonOnALine[]
-    try { people = await readTheLines(teamText) } catch {
-      setTeamSaid('Your team could not be read just now, and nothing was saved. Press save again.')
-      setWhyItWasNotSaved('This was not saved, because your team could not be read just now. Press save again.')
+    let people: APersonOnALine[] = []
+    if (teamText.trim()) {
+      try { people = await readTheLines(teamText) } catch {
+        setTeamSaid('Your team could not be read just now, and nothing was saved. Press save again.')
+        setWhyItWasNotSaved('This was not saved, because your team could not be read just now. Press save again.')
+        return null
+      }
+    }
+    /*
+     * SOMEBODY NAMED IN SETUP IS NEVER DROPPED WITHOUT A WORD (round 7, the clinic admin). She named Emeka Nnamdi in the conversation,
+     * then wrote her three managers' full lines over the box, so the line the box held for him went, and the save invited three. Invitations
+     * are sent, so this is a fixed rule (five rules, 4): the first press that would leave out somebody she named says who, and saves
+     * nothing; a second press saves without them, as she chose.
+     */
+    /* By whole name, or by first name where the box writes only that ("Aisha, aisha@clinic.test"). */
+    const inTheBox = new Set(people.flatMap((p) => { const n = (p.name ?? '').trim().toLowerCase(); return n ? [n, n.split(/\s+/)[0]] : [] }))
+    const alreadyAdded = new Set(inviteAdded.map((e) => shownAs(e.split(' - ')[0]).trim().toLowerCase()))
+    const leftOff = (onboardingSelections.peopleNamed ?? []).map((n) => n.trim()).filter((n) => n && !inTheBox.has(n.toLowerCase()) && !inTheBox.has(n.toLowerCase().split(/\s+/)[0]) && !alreadyAdded.has(n.toLowerCase()))
+    const leftOffKey = leftOff.join('|')
+    /* Only where the box has been shown to her: before an email is given, a visitor has no box yet. */
+    const theBoxWasShown = theSetupHoldsTheNameAndPeople || emailSent
+    if (theBoxWasShown && leftOff.length && askedAboutWhoIsLeftOff.current !== leftOffKey) {
+      askedAboutWhoIsLeftOff.current = leftOffKey
+      const named = leftOff.length === 1 ? leftOff[0] : `${leftOff.slice(0, -1).join(', ')} and ${leftOff[leftOff.length - 1]}`
+      const said = `You named ${named} in the conversation, but they are not in the box. Add them with an email, or press save again to save without them.`
+      setTeamSaid(said)
+      setWhyItWasNotSaved(`This was not saved. ${said}`)
       return null
     }
+    if (!people.length) { setTeamSaid(''); return NOBODY_IN_THE_BOX }
     const { read, needAnEmail } = theBoxAsRead(people)
     if (needAnEmail.length) {
       setTeamSaid(addAnEmailFor(needAnEmail))
@@ -3816,7 +3844,24 @@ export function EntryChatPage() {
     const entries = [...named, ...box.entries.filter((e) => !onTheList(e))]
     const names = namesFromTheirSetupWords(entries, theirOwnSetupWords(onboardingHistory), { ...displayNames, ...box.names })
     const numbers = { ...phones, ...box.numbers }
-    return entries.map((e) => asSomeoneToInvite(e, names, numbers))
+    /*
+     * AND WHAT EACH DOES, AS THE LEAD SAID IN SETUP (round 7, the clinic admin: she described her four managers' roles, and after saving
+     * each read "Nobody has described it yet" until she set them by hand). The save writes it as what they do on the check-in.
+     */
+    const roles = onboardingSelections.peopleRoles ?? {}
+    const roleOf = (name: string | undefined) => {
+      const n = (name ?? '').trim().toLowerCase()
+      if (!n) return undefined
+      const hit = Object.keys(roles).find((k) => k.trim().toLowerCase() === n || k.trim().toLowerCase().split(/\s+/)[0] === n.split(/\s+/)[0])
+      return hit ? roles[hit] : undefined
+    }
+    return entries.map((e) => {
+      const person = asSomeoneToInvite(e, names, numbers)
+      if (person.context) return person
+      const name = person.displayName ?? (person.colleagueId ? colleagues.find((c) => c.id === person.colleagueId)?.name : undefined)
+      const role = roleOf(name)
+      return role ? { ...person, context: role } : person
+    })
   }
   /** Once a save has taken the box, its people are on the list the page shows and keeps in step, and the box is empty for anybody more. */
   function takeTheBoxIntoTheList(box: TheBoxRead) {

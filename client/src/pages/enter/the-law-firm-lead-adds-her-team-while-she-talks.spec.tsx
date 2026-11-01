@@ -114,6 +114,9 @@ describe('the law firm lead on the save card', () => {
 
     fireEvent.change(screen.getByLabelText('Your team, one per line'), { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    /* Her four are named and the box is empty: the first press says so (round 7), and the second saves without them, as she chose. */
+    expect(await screen.findByText(/This was not saved\. You named David Ochieng, Fatima Kariuki, Joseph Muthama and Esther Wanjiru in the conversation, but they are not in the box\./)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0] as any
     expect(payload.history.map((t: any) => t.content).join(' ')).toContain('Esther is my finance officer in charge of billing.')
