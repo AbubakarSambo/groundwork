@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, BadRequestException, Res, Req, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Put, Body, Query, UnauthorizedException, BadRequestException, Res, Req, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public, OptionalAuth, CurrentUser, CurrentUserData } from '../../common';
@@ -174,6 +174,10 @@ class EntryClassifyDto {
 class EntryDraftPatchDto {
   @IsString() @IsNotEmpty() @MaxLength(200) draftToken: string;
   @IsObject() payload: Record<string, any>;
+}
+
+class KeepTheUnfinishedSetupDto {
+  @IsOptional() @IsObject() setup?: Record<string, unknown> | null;
 }
 
 class EntryJoinAcceptDto {
@@ -723,6 +727,21 @@ export class EntryCommitController {
       if (ifThereIsOne && err instanceof BadRequestException && (err.getResponse() as { code?: string })?.code === 'NO_ENTRY_SESSION') return { nothing: true as const };
       throw err;
     }
+  }
+
+  /**
+   * THE SETUP THIS LEAD HAS NOT SAVED YET (Hafsah's blocker, 31 October 2026). Their own, and nobody else's: read and written by the
+   * signed-in lead it belongs to, so Today and Check-ins lead back to it on any device. `setup: null` throws it away.
+   */
+  @Get('unfinished')
+  async unfinished(@CurrentUser() user: CurrentUserData) {
+    return { setup: await this.service.theUnfinishedSetup(user.id) };
+  }
+
+  @Put('unfinished')
+  async keepUnfinished(@CurrentUser() user: CurrentUserData, @Body() dto: KeepTheUnfinishedSetupDto) {
+    await this.service.keepTheUnfinishedSetup(user.id, dto.setup ?? null);
+    return { ok: true as const };
   }
 
   /**

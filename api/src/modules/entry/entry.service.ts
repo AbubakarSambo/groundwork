@@ -23,7 +23,7 @@ import {
 } from './a-join-link-is-not-a-password';
 import { Injectable, Optional, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType } from '@prisma/client';
+import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType, Prisma } from '@prisma/client';
 import { namesWithoutPossessives } from './a-name-is-not-a-possessive';
 import { withHeadingsThatReadAsHeadings } from './a-heading-is-a-noun-phrase';
 import { splitMentions } from './a-client-is-not-a-colleague';
@@ -2039,7 +2039,14 @@ from finishing at all.`;
     return out;
   }
 
-  async commit(
+  /** Saves the setup as a check-in; once it is one, it is no longer kept as a setup waiting to be finished, on any device. */
+  async commit(organizationId: string, initiatorId: string, dto: Parameters<EntryService['commitTheSetup']>[2]): ReturnType<EntryService['commitTheSetup']> {
+    const made = await this.commitTheSetup(organizationId, initiatorId, dto);
+    await this.keepTheUnfinishedSetup(initiatorId, null).catch(() => undefined);
+    return made;
+  }
+
+  private async commitTheSetup(
     organizationId: string,
     initiatorId: string,
     dto: {
@@ -2294,7 +2301,7 @@ from finishing at all.`;
   private async commitInner(
     organizationId: string,
     initiatorId: string,
-    dto: Parameters<EntryService['commit']>[2],
+    dto: Parameters<EntryService['commitTheSetup']>[2],
   ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; numbersNotKept?: { email: string; because: string }[] }> {
     /* Colleagues picked by id get their addresses here, after the draft is laid over the body, so the
        list of colleagues never carried an address (U.4). */
@@ -2759,11 +2766,21 @@ from finishing at all.`;
      * Reported four times as "the report looks nothing like what I got at the end". It looked
      * nothing like it because it was not the same object.
      */
+    /*
+     * AND A SAVE MADE BEFORE THE REPORT WAS READY HAS ITS REPORT MADE HERE (Hafsah's blocker, 31 October 2026: "nothing anyone says in
+     * setup is ever lost"). The save card opens the moment setup ends, and the report takes about thirty-five seconds; a lead who saves
+     * before then has read no report, so the same report is made from the same conversation, after the save has answered, and kept in
+     * the same place. A report made by the page is never made twice.
+     */
     if (dto.report) {
       await this.prisma.checkIn.update({
         where: { id: checkIn.id },
         data: { sessionReport: dto.report as object },
       });
+    } else if (dto.history?.length) {
+      void this.report(dto.history, dto.scenario, dto.groundLabel, undefined, undefined, dto.leadsOwnWords)
+        .then((made) => made && this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionReport: made as object } }))
+        .catch((err: Error) => this.logger.warn(`The report for a setup saved before its report was ready was not made: ${err?.message ?? err}`));
     }
 
     /**
@@ -2960,6 +2977,30 @@ from finishing at all.`;
 
     const joinToken = (await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { joinToken: true } }))?.joinToken ?? null;
     return { groundId: ground.id, joinToken, contributors: inviteResults, failedInvites, whyInvitesFailed, numbersNotKept };
+  }
+
+  /**
+   * A SETUP A SIGNED-IN LEAD HAS NOT SAVED YET (Hafsah's blocker, 31 October 2026: "nothing anyone says in setup is ever lost").
+   *
+   * Round 5: a lead who left a setup unfinished and came back on another device, or on a device somebody else had used, found a new
+   * setup that asked everything again, and Check-ins said "No check-ins yet". The page kept the setup only on the device. It keeps it
+   * here too now, on the lead's own draft row (the row that already holds a setup on its way to becoming a check-in), as the same
+   * record /start restores. Only the lead it belongs to reads or writes it. A save, or "Start over", empties it.
+   */
+  async theUnfinishedSetup(userId: string): Promise<unknown> {
+    const d = await this.prisma.entryDraft.findUnique({ where: { userId }, select: { unfinishedSetup: true } });
+    return d?.unfinishedSetup ?? null;
+  }
+
+  async keepTheUnfinishedSetup(userId: string, setup: Record<string, unknown> | null): Promise<void> {
+    const kept = setup ? (setup as Prisma.InputJsonValue) : Prisma.DbNull;
+    /* A lead with no draft row yet gets one with nothing in it to save from (consumedAt set): the save makes the check-in from what the
+       page sends, as a new setup, and the nightly sweep of abandoned anonymous drafts leaves it alone. */
+    await this.prisma.entryDraft.upsert({
+      where: { userId },
+      update: { unfinishedSetup: kept },
+      create: { userId, draftToken: crypto.randomBytes(24).toString('hex'), payload: {}, history: [], consumedAt: new Date(), unfinishedSetup: kept },
+    });
   }
 
   /** Pre-auth draft update, authorized by the bearer draftToken (same pattern

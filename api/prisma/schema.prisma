@@ -910,6 +910,11 @@ model EntryDraft {
   history    Json
   consumedAt DateTime? @map("consumed_at")
   groundId   String?   @map("ground_id")
+  /// A SETUP A SIGNED-IN LEAD HAS NOT SAVED YET, AS THE PAGE KEEPS IT (Hafsah's blocker, 31 October 2026: "nothing anyone says in
+  /// setup is ever lost"). The same record /start restores, kept here as well as on the device, so the lead finds it from Today or
+  /// Check-ins on any device. Read and written only by the lead it belongs to (GET and PUT /entry/unfinished); emptied when the
+  /// setup is saved or thrown away.
+  unfinishedSetup Json? @map("unfinished_setup")
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
