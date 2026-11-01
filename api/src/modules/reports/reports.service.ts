@@ -114,7 +114,7 @@ import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
 import { whatDoesNotAddUpPerPerson, withoutUncountedAlls } from './the-picture-gets-what-the-conversation-gets';
 import { factsAbout, type PersonFacts } from './the-facts-about-a-person';
 import {
-  thePictureInstruction, THE_PICTURE_SCHEMA, factsAsLines, whenThePictureCannotBeWritten, theCountSaidRight,
+  thePictureInstruction, THE_PICTURE_SCHEMA, factsAsLines, whenThePictureCannotBeWritten, theCountSaidRight, withoutAStoredCount,
   type ThePicture,
 } from './the-picture-in-plain-sentences';
 import { howTheNumbersSit } from './do-the-parts-add-up-to-the-whole';
@@ -2648,8 +2648,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
     if (praiseHeldBack.length) {
       this.logger.warn(`Report for ground ${groundId}: held back ${praiseHeldBack.length} sentence(s) of the picture that call a figure a success the record does not support: ${praiseHeldBack.map((x) => `"${x}"`).join(', ')}`);
     }
-    /* THE BOARD READS THIS, NOT THE FIRST PARAGRAPH OF THE REPORT. See how-a-check-in-is-going. */
-    (result as any).theOpening = picture.opening || null;
+    /* THE BOARD READS THIS, NOT THE FIRST PARAGRAPH OF THE REPORT. See how-a-check-in-is-going.
+       NO FROZEN COUNT (1 November 2026): "One person has answered." was kept in the stored opening and shown beside the live count
+       ("2 of 4"). The count is never stored; every page that says it reads the one count when it is served (how-many-have-answered.ts). */
+    (result as any).theOpening = withoutAStoredCount(picture.opening || '') || null;
 
     /*
      * AND THE JUDGEMENT OVER EVERY ANSWER: CLASSIFY, ASSESS, THEN RECOMMEND, IN THAT ORDER.
