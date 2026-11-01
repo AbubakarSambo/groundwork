@@ -365,6 +365,12 @@ export const entryApi = {
   // still mirrors the same data for the same-browser case).
   patchDraft: (draftToken: string, payload: Record<string, unknown>) =>
     apiClient.patch<{ ok: true }>('/entry/draft', { draftToken, payload }).then(r => r.data),
+
+  /* The setup a signed-in lead has not saved yet, kept on the server so any device leads back to it (Hafsah's blocker, 31 October 2026).
+     The same record /start restores; `null` throws it away. */
+  unfinished: () => apiClient.get<{ setup: Record<string, unknown> | null }>('/entry/unfinished').then(r => r.data.setup),
+  keepUnfinished: (setup: Record<string, unknown> | null) =>
+    apiClient.put<{ ok: true }>('/entry/unfinished', { setup }).then(r => r.data),
 }
 
 /**

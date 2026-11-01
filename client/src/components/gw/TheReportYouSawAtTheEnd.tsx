@@ -58,8 +58,6 @@ export interface TheReportYouSawAtTheEndProps {
   renderCorrect?: (about: string) => ReactNode
   /** True to note that the reader has already corrected this once. */
   correctedNote?: boolean
-  /** Renders the invite control against a suggested party or a mentioned person, when there is one. */
-  renderAdd?: (key: string, label: string) => ReactNode
   /** The line under "What happens next" saying what is on record. */
   onRecordLine?: ReactNode
   /**
@@ -76,7 +74,7 @@ export interface TheReportYouSawAtTheEndProps {
    *
    * The end of a first session is the one moment where somebody has just been thinking about the
    * work and has not yet been handed a dashboard. A slot rather than markup, because what is missing
-   * differs by caller and only the caller can answer it - the same reason `renderAdd` is a slot.
+   * differs by caller and only the caller can answer it.
    */
   stillNeeded?: ReactNode
   /**
@@ -169,7 +167,6 @@ export function TheReportYouSawAtTheEnd({
   correctionSlot,
   renderCorrect,
   correctedNote,
-  renderAdd,
   onRecordLine,
   stillNeeded,
   stands,
@@ -255,13 +252,11 @@ export function TheReportYouSawAtTheEnd({
                 Based on this check-in, these roles would strengthen the check-in. What they say would change or confirm what is currently on record from one side only.
               </div>
               {report.suggestedParties.map((p, i) => {
-                const key = `sug-${i}-${p.role}`
                 return (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-blue-bg)' : undefined }}>
                   <div style={{ flex: 1 }}>
                     <CardTitle>{p.role}</CardTitle>
                     <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.reason}</div>
-                    {renderAdd?.(key, p.reason)}
                   </div>
                 </div>
                 )
@@ -307,18 +302,17 @@ export function TheReportYouSawAtTheEnd({
                   same thing as adding them in the invite step below, so reworded to say that
                   instead of describing a list that may not be on screen.
                 */}
-                {renderAdd
-                  ? 'You named these people while you were talking. Add anyone who should answer for this themselves, and they will be invited when you save. Adding them here does the same thing as adding them below, so nobody is invited twice.'
-                  : 'You named these people while you were talking. Adding somebody to this check-in is done on its Setup tab.'}
+                {/* ONE WAY TO ADD A TEAM (Hafsah, 31 October 2026; round 5's startup lead). Each name here had its own "Add them" and its
+                    own email field, beside the team box that already held everybody named; he added five people one at a time and
+                    typed each email. The team box in the setup is the one way now, and this says where it is, wherever it is read. */}
+                You named these people while you were talking. You choose who is on this check-in in its setup.
               </div>
               {report.mentionedPeople.map((p, i) => {
-                const key = `men-${i}-${p.name}`
                 return (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
                   <div style={{ flex: 1 }}>
                     <CardTitle>{p.name}</CardTitle>
                     <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
-                    {renderAdd?.(key, `${p.name} - ${p.context}`)}
                   </div>
                 </div>
                 )

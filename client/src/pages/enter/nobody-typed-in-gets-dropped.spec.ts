@@ -66,6 +66,7 @@ describe('the closing line that promises the sends', () => {
     // people had been named - and the one it left out was the one at risk.
     const line = SRC.slice(SRC.indexOf('Nothing else to do here'), SRC.indexOf('You can reopen this any time'))
     expect(line).toMatch(/inviteContextFor/)
-    expect(line).toMatch(/inviteAdded\.length \+ pending/)
+    /* peopleOnTheList is inviteAdded.length and the lines in the team box (94f2fff6a), so the box's people are counted too. */
+    expect(line).toMatch(/peopleOnTheList \+ pending/)
   })
 })

@@ -16,11 +16,14 @@ import { useAuthStore } from '@/stores/auth'
  */
 vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn(), everywhere: vi.fn(), outstanding: vi.fn().mockResolvedValue(null) } }))
 import { todayApi } from '@/api/today'
+/* The setup is kept on the server (GET /entry/unfinished), the one copy Today and Check-ins read, on any device (round 5). */
+vi.mock('@/api/entry', () => ({ entryApi: { unfinished: vi.fn() } }))
+import { entryApi } from '@/api/entry'
 
 const KOFI = { id: 'u-kofi', firstName: 'Kofi', role: 'ADMIN', organizationName: 'Mensah farmer training' }
 
 function keepTheSetupHeLeft(over: Record<string, unknown> = {}) {
-  localStorage.setItem('gw_entry_session', JSON.stringify({
+  vi.mocked(entryApi.unfinished).mockResolvedValue(({
     scenario: '', closed: false, onboardingStep: 2, history: [],
     onboardingSelections: { mode: 'new', initial: 'Get weekly reports from my field officers.' },
     onboardingHistory: [
@@ -30,7 +33,7 @@ function keepTheSetupHeLeft(over: Record<string, unknown> = {}) {
       { role: 'user', content: 'My field officers are Adwoa Nsiah (024 456 7890), Kwame Asante (027 123 4567), Ama Serwaa and Yaw Boateng.' },
     ],
     ...over,
-  }))
+  }) as any)
 }
 
 function open(read: Promise<unknown>) {
@@ -48,7 +51,7 @@ const rows = () => [...document.querySelectorAll('.item')].map((li) => ({
 }))
 
 describe('Today, for a lead who left a setup unfinished', () => {
-  beforeEach(() => { localStorage.clear(); vi.restoreAllMocks() })
+  beforeEach(() => { localStorage.clear(); vi.restoreAllMocks(); vi.mocked(entryApi.unfinished).mockResolvedValue(null) })
 
   it('shows the way back first, in his own words, before the rest has loaded', async () => {
     keepTheSetupHeLeft()
@@ -76,6 +79,22 @@ describe('Today, for a lead who left a setup unfinished', () => {
 
   it('a setup with nothing said in it yet is not something to finish', async () => {
     keepTheSetupHeLeft({ onboardingSelections: { mode: 'new' }, onboardingHistory: [{ role: 'assistant', content: 'What do you want your team to check in about?' }] })
+    open(Promise.resolve({ count: 0, line: null, needs: [], comingUp: [] }))
+    expect(await screen.findByText('Nothing needs you right now.')).toBeTruthy()
+    expect(screen.queryByText(/Finish setting up/)).toBeNull()
+  })
+
+  it('on a device that never had it, the setup kept on the server is put back on this device, so Carry on opens it as he left it', async () => {
+    keepTheSetupHeLeft()
+    expect(localStorage.getItem('gw_entry_session')).toBeNull()
+    open(Promise.resolve({ count: 0, line: null, needs: [], comingUp: [] }))
+    await waitFor(() => expect(rows()[0]?.title).toBe('Finish setting up “Get weekly reports from my field officers”'))
+    const onThisDevice = JSON.parse(localStorage.getItem('gw_entry_session')!)
+    expect(onThisDevice.onboardingHistory.map((t: any) => t.content)).toContain('My field officers are Adwoa Nsiah (024 456 7890), Kwame Asante (027 123 4567), Ama Serwaa and Yaw Boateng.')
+  })
+
+  it('a setup somebody else left on this device is not his: only the server copy is read', async () => {
+    localStorage.setItem('gw_entry_session', JSON.stringify({ onboardingSelections: { initial: 'Who did you train this week and on what topics?' }, onboardingHistory: [{ role: 'user', content: 'Who did you train this week and on what topics?' }] }))
     open(Promise.resolve({ count: 0, line: null, needs: [], comingUp: [] }))
     expect(await screen.findByText('Nothing needs you right now.')).toBeTruthy()
     expect(screen.queryByText(/Finish setting up/)).toBeNull()

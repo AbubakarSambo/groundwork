@@ -24,7 +24,8 @@ import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 import { useEffect } from 'react'
 import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-needs-you-does-not'
-import { anUnfinishedSetup } from '@/pages/auth/entry-handover'
+import { useAnUnfinishedSetup } from '@/pages/auth/entry-handover'
+import { TheSetupNotSavedYet } from '@/components/gw/TheSetupNotSavedYet'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -181,10 +182,10 @@ export function TodayPage() {
   ].filter(once)
   /*
    * A SETUP LEFT UNFINISHED IS THE FIRST THING THAT NEEDS YOU (Hafsah's blocker, 31 October 2026). Three leads in round 3 told the
-   * setup about their team, left before saving, and came back here to "Nothing needs you right now". The setup this device keeps
-   * (the one /start restores) is read here, so the way back is first, and it is drawn whether or not the rest has loaded.
+   * setup about their team, left before saving, and came back here to "Nothing needs you right now". The lead's setup, kept on the
+   * server and read by the one reader Check-ins also uses, is first, with the way back, on any device.
    */
-  const unfinished = user ? anUnfinishedSetup() : null
+  const unfinished = useAnUnfinishedSetup()
   const allNeeds = needs.length + moreRows.length + (unfinished ? 1 : 0)
   const lineNudge = data?.lineNudge ?? null
   const nudge = useMutation({
@@ -226,16 +227,7 @@ export function TodayPage() {
             {data && allNeeds === 0 && <Empty>Nothing needs you right now.</Empty>}
             {allNeeds > 0 && (
               <EdgeList label="What needs you">
-                {unfinished && (
-                  <EdgeRow
-                    key="unfinished-setup"
-                    kind="decide"
-                    title={unfinished.theirWords ? `Finish setting up “${unfinished.theirWords}”` : 'Finish setting up your check-in'}
-                    detail="Everything you said is kept, and it opens where you left off."
-                    to="/start"
-                    actions={<Button kind="primary" size="small" to="/start">Carry on</Button>}
-                  />
-                )}
+                {unfinished && <TheSetupNotSavedYet unfinished={unfinished} primary />}
                 {/* ONE NAVY BUTTON (Hafsah, 30 September): the prototype's own Today draws every "Start it"
                     navy, but with two check-ins open that is two navy buttons at once. Only the first,
                     the most important, is navy; the rest are white. */}

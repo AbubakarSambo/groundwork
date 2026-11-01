@@ -480,14 +480,15 @@ describe('changing how many sessions a check-in runs (fault 2, live walk, 6 Octo
 
 /*
  * FAULT 9 (live review): SOMEBODY ADDED FROM A NAMED "PEOPLE MENTIONED" ROW GOT NO NAME FIELD.
- * Her row then read "wanjiru@suites.test is waiting for a seat on your plan.", with no name
- * anywhere, though the report had just named her two lines above the "Add them" button. The name
- * on that row (`p.name`) is now carried into `displayNames` when the address is typed
- * (`queueSuggestedContributor`, EntryChatPage.tsx), the same map `asSomeoneToInvite` already reads
- * to send `displayName` to the server - proven here by the patch this page sends the draft with.
+ * Her row then read "wanjiru@suites.test is waiting for a seat on your plan.", with no name.
+ *
+ * REWRITTEN (round 5, the one team box): the report's own "Add them" row is gone, because it was a second way to add people beside
+ * the team box and round 5's startup lead added five people through it one at a time. What this proved still holds through the box:
+ * a person written on a line with her name and address goes to the draft with her name, after the email is given, when there is no
+ * press left to save.
  */
-describe('a mentioned person keeps her name when added by typed address (fault 9, live review)', () => {
-  it('sends the address with the mentioned name as displayName, not the address alone', async () => {
+describe('a mentioned person keeps her name when added after the email is given (fault 9, live review)', () => {
+  it('sends the address with the name written beside it as displayName, not the address alone', async () => {
     authedUser = null
     const { entryApi } = await import('@/api/entry')
     const { authApi } = await import('@/api/auth')
@@ -502,17 +503,13 @@ describe('a mentioned person keeps her name when added by typed address (fault 9
     renderPage()
     fireEvent.click(await screen.findByText(/Invite and finish/))
     const emailInput = screen.getByPlaceholderText('your@email.com')
-    /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
     fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
     fireEvent.submit(emailInput.closest('form')!)
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
 
-    fireEvent.click(await screen.findByText('Add them'))
-    const addressField = screen.getByPlaceholderText('their@email.com')
-    fireEvent.change(addressField, { target: { value: 'wanjiru@suites.test' } })
-    const addRow = addressField.closest('.gwui-ec-savecard-add-row') as HTMLElement
-    fireEvent.click(within(addRow).getByRole('button', { name: 'Add' }))
+    expect(screen.queryByText('Add them')).toBeNull()
+    addThroughTheTeamBox('Wanjiru Kamau, wanjiru@suites.test')
 
     await waitFor(() => {
       const calls = vi.mocked(entryApi.patchDraft).mock.calls

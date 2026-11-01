@@ -6,8 +6,10 @@ import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { useHelpStore } from '@/stores/help'
 import {
-  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, TextArea, TextField, CheckInsTable, CheckInRow,
+  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, TextArea, TextField, CheckInsTable, CheckInRow, EdgeList,
 } from '@/components/gw/ui'
+import { useAnUnfinishedSetup } from '@/pages/auth/entry-handover'
+import { TheSetupNotSavedYet } from '@/components/gw/TheSetupNotSavedYet'
 import { cadenceLabel } from '@/lib/cadence'
 import { howARowReads, isFinished, type ListRow } from './how-a-row-reads'
 import { YouAreIn } from '@/pages/today/YouAreIn'
@@ -72,6 +74,9 @@ export function GroundsListPage() {
   const qc = useQueryClient()
   const [searchParams] = useSearchParams()
   const user = useAuthStore(s => s.user)
+  /* THE SETUP NOT SAVED YET, FROM THE SAME READER AS TODAY (round 5: Today said "Finish setting up" while this page said "No check-ins
+     yet", and the field lead believed his check-in had vanished). */
+  const unfinished = useAnUnfinishedSetup()
   const isAdmin = user?.role === 'ADMIN'
   const justSetUp = searchParams.get('welcome') === '1'
   const orgName = user?.organizationName ?? 'your organisation'
@@ -207,7 +212,13 @@ export function GroundsListPage() {
         </Empty>
       )}
 
-      {!isLoading && !isError && grounds.length === 0 && (
+      {unfinished && (
+        <Section heading="Not saved yet">
+          <EdgeList label="Not saved yet"><TheSetupNotSavedYet unfinished={unfinished} /></EdgeList>
+        </Section>
+      )}
+
+      {!isLoading && !isError && grounds.length === 0 && !unfinished && (
         <>
           {/*
            * TWO EMPTY STATES, FROM THE PROTOTYPE (F4-small-states/states.txt, "No check-ins yet,

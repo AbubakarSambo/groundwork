@@ -42,7 +42,7 @@ import { EverySituation } from './EverySituation'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
-import { clearEntryHandover, theSetupKey, SETUP_KEY } from '@/pages/auth/entry-handover'
+import { clearEntryHandover, theSetupKey, SETUP_KEY, keepTheSetup, theSetupIsKept, throwTheSetupAway, useAnUnfinishedSetup } from '@/pages/auth/entry-handover'
 import { rememberWhoWasNotInvited } from '@/pages/grounds/who-was-not-invited'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
@@ -185,8 +185,9 @@ function Rule() {
   return <div className="gwui-ec-rule" />
 }
 
+/* Kept on this device and, for a signed-in lead, on the server (entry-handover.ts keepTheSetup). */
 function saveSession(s: EntrySession) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)) } catch { /* */ }
+  keepTheSetup(s as unknown as Record<string, unknown>)
 }
 function loadSession(): EntrySession | null {
   try {
@@ -1625,8 +1626,9 @@ export function EntryChatPage() {
   const [pendingNewScenario, setPendingNewScenario] = useState<{ sels: OnboardingSelections } | null>(null)
 
   function handleClearSession() {
-    clearEntrySession()
-    window.location.reload()
+    throwTheSetupAway()
+    /* The page opens fresh once the setup is thrown away on the server too, so nothing brings the old one back. */
+    theSetupIsKept().then(() => window.location.reload())
   }
 
 
@@ -1658,14 +1660,6 @@ export function EntryChatPage() {
   })
   const [sessionReport, setSessionReport] = useState<import('@/api/entry').EntryReport | null>(null)
   const [generatingReport, setGeneratingReport] = useState(false)
-  // Recommended additions / mentioned people (#1a): the viewer here is always
-  // the ground's future initiator (this page only ever runs pre-ground, and
-  // whoever commits becomes initiatorId - see entry.service.ts commitInner),
-  // so these get a real "Add them" affordance rather than a passive list.
-  // No ground exists yet at this point, so "adding" means queuing them into
-  // the same inviteAdded contributor queue used below - they go out for real
-  // once the ground is created at save time.
-  const [addingContributorFor, setAddingContributorFor] = useState<string | null>(null)
   /*
    * THE PEOPLE ALREADY HERE. A lead had to type every colleague's address in full, for people the
    * organisation already knows. Read once when signed in; empty for a stranger, who has nobody yet.
@@ -1781,20 +1775,11 @@ export function EntryChatPage() {
     return true
   }
 
-  function queueColleague(c: { id: string; name: string }, note?: string, key?: string) {
+  function queueColleague(c: { id: string; name: string }) {
     if (!mayAddOneMorePerson()) return
     const head = `${A_COLLEAGUE}${c.id}`
-    const entry = note ? `${head} - ${note}` : head
-    setInviteAdded(prev => (prev.some(e => e === head || e.startsWith(`${head} - `)) ? prev : [...prev, entry]))
-    if (key) setQueuedFromSuggestion(prev => new Set(prev).add(key))
+    setInviteAdded(prev => (prev.some(e => e === head || e.startsWith(`${head} - `)) ? prev : [...prev, head]))
   }
-  /* The note that travels with a queued address, remembered when the field opens so Save can
-     queue it too. `renderAdd` hands the label to the button, not to the save handler. */
-  const [addingContributorLabel, setAddingContributorLabel] = useState('')
-  /* Why it refused, beside the field. A silent return read as success. */
-  const [addingContributorError, setAddingContributorError] = useState('')
-  const [addingContributorEmail, setAddingContributorEmail] = useState('')
-  const [queuedFromSuggestion, setQueuedFromSuggestion] = useState<Set<string>>(new Set())
   // Anonymous correction: inline "what did we get wrong?" box on the report.
   const [showCorrection, setShowCorrection] = useState(false)
   const [correctionText, setCorrectionText] = useState('')
@@ -1863,6 +1848,20 @@ export function EntryChatPage() {
    * (readTheTeamBox), so what is in the box when the lead saves is who is invited, and `teamSaid` says what a line still needs.
    */
   const [teamText, setTeamText] = useState('')
+  /*
+   * THE TEAM AS WRITTEN IS KEPT WITH THE SETUP (round 5, the startup lead). He typed his team's emails, left before saving, and came back
+   * to a box asking for every email again. The box's lines go into the kept setup as they are written, and come back with it.
+   */
+  const teamTextNow = useRef('')
+  teamTextNow.current = teamText
+  function writeTheTeam(text: string) {
+    setTeamText(text)
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      saveSession({ ...JSON.parse(raw), teamText: text })
+    } catch { /* best effort, like every other save on this page */ }
+  }
   const [teamSaid, setTeamSaid] = useState('')
   /** How many people this save invites: those on the list and those in the box (the box's lines are the team, not a draft of it). */
   const peopleOnTheList = inviteAdded.length + linesInTheBox(teamText)
@@ -2106,6 +2105,7 @@ export function EntryChatPage() {
       if ((saved as any).anchorGroundLabel) {
         setAnchorGroundLabel((saved as any).anchorGroundLabel)
       }
+      if (typeof (saved as any).teamText === 'string') setTeamText((saved as any).teamText)
       // A closed session stays closed across reloads - "this session's answers
       // then lock" must survive a refresh. (closed was saved but never restored,
       // so ended sessions reopened editable.)
@@ -2191,6 +2191,27 @@ export function EntryChatPage() {
     }
   }, [])
 
+  /*
+   * A SETUP LEFT ON ANOTHER DEVICE (Hafsah's blocker, 31 October 2026). When this device had nothing kept, the signed-in lead's own setup
+   * is read from the server (the same reader as Today and Check-ins, which puts it on this device), and the page opens it the way it
+   * opens one kept here: as it was left, or by asking first when they came to start a new one. Nothing they type here can then write over
+   * a setup they have not seen.
+   */
+  const nothingWasOnThisDevice = useRef(loadSession() === null)
+  const leftElsewhere = useAnUnfinishedSetup()
+  useEffect(() => {
+    if (!leftElsewhere || !nothingWasOnThisDevice.current) return
+    nothingWasOnThisDevice.current = false
+    const saved = loadSession()
+    if (!saved) return
+    if (wantsANewOne || scenario || urlInitial) {
+      setPendingNewScenario({ sels: { mode: urlMode || 'new', initial: urlInitial || scenario || '' } })
+      setShowNewScenarioConflict(true)
+    } else {
+      restoreTheSavedSetup(saved)
+    }
+  }, [leftElsewhere])
+
   /**
    * SENT ONCE, AFTER THE FIRST PAINT, RATHER THAN INSIDE THE EFFECT ABOVE.
    *
@@ -2235,12 +2256,12 @@ export function EntryChatPage() {
       if (!raw) return
       const kept = JSON.parse(raw)
       kept.schedule = { ...(kept.schedule ?? theScheduleSoFar()), ...patch, daysChanged: daysChangedOnTheSummary.current, endChanged: endChangedOnTheSummary.current }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(kept))
+      saveSession(kept)
     } catch { /* best effort, like every other save on this page */ }
   }
 
   function persistOnboarding(h: Turn[], sels: OnboardingSelections, step: number, obHistory?: Turn[], obReady?: boolean) {
-    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar(), ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
+    saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar(), teamText: teamTextNow.current, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
   }
 
   /*
@@ -2252,7 +2273,7 @@ export function EntryChatPage() {
    * came back as "1 session planned" after a reload, with the conversation intact above it.
    */
   function persistCheckin(h: Turn[], cl = false, rep = '') {
-    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar() } as any)
+    saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections, sessions, cadence, cadenceChosen, groundName, plannedFrom, thePeopleStep: thePeopleStepRules, anchorGroundLabel, schedule: theScheduleSoFar(), teamText: teamTextNow.current } as any)
   }
 
   /*
@@ -2396,6 +2417,11 @@ export function EntryChatPage() {
    */
   const reportFailed = !generatingReport && !sessionReport && closed && !!reportTurnsForRetry
 
+  /* Whether this page is still open. A report that lands after the lead saved and left is not written back: the setup it belonged to is a
+     check-in now, and keeping it again would bring "Finish setting up" back to Today for a setup that is saved. */
+  const thePageIsOpen = useRef(true)
+  useEffect(() => { thePageIsOpen.current = true; return () => { thePageIsOpen.current = false } }, [])
+
   async function generateSessionReport(turns: Turn[]) {
     setGeneratingReport(true)
     setReportTurnsForRetry(turns)
@@ -2403,16 +2429,38 @@ export function EntryChatPage() {
       /* The anchor's seven items go with the report too (request 166), so the lead's reveal says
          what she said rather than "not written down yet". Every other draft sends nothing here. */
       const res = await entryApi.report(turns, scenario || undefined, groundName || undefined, onboardingSelections.peopleNamed, isAnchorDraft() ? onboardingSelections.anchorItems : undefined, theirOwnSetupWords(onboardingHistory))
+      if (!thePageIsOpen.current) return
       setSessionReport(res.report)
       setReportTurnsForRetry(null)
       persistCheckin(turns, true, res.report ? JSON.stringify(res.report) : '')
     } catch {
+      if (!thePageIsOpen.current) return
       setSessionReport(null)
       persistCheckin(turns, true, '')
       toast.error('We could not generate your session report. Your responses are saved.')
     } finally {
       setGeneratingReport(false)
     }
+  }
+
+  /**
+   * THE SETUP ENDS, AND THE SAVE CARD OPENS WITH ITS TEAM BOX (Hafsah's blocker, 31 October 2026). One way for the setup to end, whether
+   * the conversation reached its close or the lead pressed End session. Its conversation is the first session's record, so it is kept as
+   * a closed session at once, before the report: somebody who leaves while the report is being written comes back to this card.
+   *
+   * End session during setup used to leave for Today with a toast. Round 5's field lead had just been told "You can add your team below",
+   * pressed it, and never saw a box: he typed his four field officers again on People.
+   */
+  function endTheSetup(said: Turn[]) {
+    if (!isAnchorDraft()) {
+      setFlowPath('self')
+      setOnboardingStep(ONBOARDING_STEPS + 1)
+    }
+    setHistory(said)
+    setClosed(true)
+    setShowSave(true)
+    persistCheckin(said, true, '')
+    generateSessionReport(said)
   }
 
   function handleEndSession() {
@@ -2731,16 +2779,7 @@ export function EntryChatPage() {
        * AND NOW FOR EVERY LEAD (Hafsah, 26 October 2026): setup is the lead's first check-in. It gathered the lead's own first update and
        * ended with "Anything else I should know?", so its transcript is the first session's record and no second conversation opens.
        */
-      if (res.ready) {
-        if (!isAnchorDraft()) {
-          setFlowPath('self')
-          setOnboardingStep(ONBOARDING_STEPS + 1)
-        }
-        setHistory(updatedHistory)
-        setClosed(true)
-        setShowSave(true)
-        generateSessionReport(updatedHistory)
-      }
+      if (res.ready) endTheSetup(updatedHistory)
       setTimeout(() => {
         if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
       }, 50)
@@ -3248,6 +3287,8 @@ export function EntryChatPage() {
     }
     /* Saving starts here, so the box is closed to typing while it is read and sent: nothing typed now can miss the save. */
     setSavingAsUser(true)
+    /* Every copy of this setup sent to the server lands first, so none lands after the save and keeps it as unfinished. */
+    await theSetupIsKept()
     const box = await readTheTeamBox()
     if (!box) { setSavingAsUser(false); return }
     try {
@@ -3308,18 +3349,6 @@ export function EntryChatPage() {
   }
 
   async function handleSaveInner() {
-    /*
-     * WHATEVER IS STILL IN THE OPEN "ADD THEM" FIELD COUNTS AS ADDED.
-     *
-     * Somebody who has typed a colleague's address into the box beside that colleague's name and
-     * then pressed the big Save button has said what they want. Requiring a second, smaller press
-     * first is a rule the screen never states, and the cost of getting it wrong is an invitation
-     * that silently never happens. So Save queues it, and a bad address stops the save with the
-     * reason next to the field rather than being thrown away.
-     */
-    if (addingContributorFor && addingContributorEmail.trim()) {
-      if (!queueSuggestedContributor(addingContributorFor, addingContributorLabel)) return
-    }
     /* THE NAME SHE GIVES, ASKED ONCE (local test of staging, 15 October). Hafsah saved from here with nothing asking, and
        her invitations went out as "Hjumare would like your take on Sales check-in", a piece of her address. */
     const name = yourName.replace(/\s+/g, ' ').trim()
@@ -3369,9 +3398,22 @@ export function EntryChatPage() {
   // sync to the server-side draft, best-effort and debounced. Before this they
   // lived only in localStorage and were lost when the magic link was opened in
   // a different browser. localStorage stays as the same-browser mirror.
+  /*
+   * AND THE BOX IS READ HERE TOO (round 5, the one way to add a team). After the email is given there is no press left that saves: the
+   * draft is what the sign-in link saves. So the lines in the box go to the draft as they are written, the same way the save reads them,
+   * and a line that still needs an email says so under the box.
+   */
   useEffect(() => {
     if (!emailSent || !draftToken) return
-    const t = setTimeout(() => {
+    const t = setTimeout(async () => {
+      let box = NOBODY_IN_THE_BOX
+      if (teamText.trim()) {
+        try {
+          const { read, needAnEmail } = theBoxAsRead(await readTheLines(teamText))
+          box = read
+          setTeamSaid(needAnEmail.length ? addAnEmailFor(needAnEmail) : '')
+        } catch { /* the box is read again on the next change */ }
+      }
       const patch = {
         /* SCREEN FAULT 2: same rule as `buildCommitPayload` above - the served label, not the aim. */
         groundLabel: isAnchorDraft()
@@ -3390,7 +3432,7 @@ export function EntryChatPage() {
         runsUntilEnded: runsUntilEnded || undefined,
         lastCheckInBy: runsUntilEnded ? undefined : (lastCheckInBy.trim() || undefined),
         inviteNote: inviteNote.trim() || undefined,
-        contributors: theTeamWith(NOBODY_IN_THE_BOX),
+        contributors: theTeamWith(box),
       }
       entryApi.patchDraft(draftToken, patch).catch(() => { /* best-effort: localStorage still mirrors this */ })
       // Keep the local commit body (gw_commit_payload) in sync with these
@@ -3418,7 +3460,7 @@ export function EntryChatPage() {
       } catch { /* */ }
     }, 800)
     return () => clearTimeout(t)
-  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, cadenceDays, workingDays, checkInBy, lastCheckInBy, runsUntilEnded, inviteNote, inviteAdded, inviteContextFor, bulkQueue, displayNames, phones])
+  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, cadenceDays, workingDays, checkInBy, lastCheckInBy, runsUntilEnded, inviteNote, inviteAdded, inviteContextFor, bulkQueue, displayNames, phones, teamText])
 
   async function copyInviteLink() {
     const link = `${window.location.origin}/invite?token=${inviteToken}`
@@ -3441,53 +3483,6 @@ export function EntryChatPage() {
     setPendingPhone('')
   }
 
-  // Queues a recommended addition / mentioned person straight into the
-  // contributor list, carrying their role/reason or name/context as the note -
-  // the same shape submitInviteContext builds by hand.
-  /**
-   * A HALF-TYPED ADDRESS IS NOT A DECISION TO INVITE NOBODY.
-   *
-   * Walked as a real lead. Zainab was named in the conversation, "+ Add them" was pressed, her
-   * address was typed into the field beside her name, and then Save was pressed. The panel
-   * answered "No one added yet. You can invite people whenever you're ready." and the board said
-   * one participant. The address was accepted, nothing was said, and the invitation was gone.
-   *
-   * Two faults, both here. Queueing needed a separate press of Add that Save knew nothing about,
-   * and a refusal was a silent `return` - so a typo produced exactly the same nothing as success.
-   */
-  /* `given`: the address they already typed in the conversation, so somebody named with it is added in one press (first experience,
-     round 2, 31 October 2026: a lead entered the same people three times, in the chat, on this card and on People). */
-  function queueSuggestedContributor(key: string, note: string, given?: string): boolean {
-    const email = (given ?? addingContributorEmail).trim()
-    if (!looksLikeAnAddress(email)) {
-      setAddingContributorError(email ? NOT_AN_ADDRESS : 'Add their email address, or close this to leave them out.')
-      return false
-    }
-    setAddingContributorError('')
-    const entry = note ? `${email} - ${note}` : email
-    setInviteAdded(prev => (prev.some(e => e === email || e.startsWith(`${email} - `)) ? prev : [...prev, entry]))
-    setQueuedFromSuggestion(prev => new Set(prev).add(key))
-    /*
-     * FAULT 9 (live review): SOMEBODY ADDED FROM A NAMED "PEOPLE MENTIONED" ROW GOT NO NAME FIELD,
-     * AND THE RESULT READ "wanjiru@suites.test IS WAITING FOR A SEAT" - with no name, though the
-     * name was right there on the row she was added from. `TheReportYouSawAtTheEnd.tsx` keys that
-     * row `men-<i>-<name>` and passes `"<name> - <context>"` as this `note`; a suggested-party row
-     * (`sug-<i>-<role>`) passes only a reason, with no name to carry. Only the first is a name, so
-     * only `men-` keys feed it to `displayNames` - the same map `shownAs` already reads for the
-     * "Add Daniel Park" colleague path and the people step's own Name field, so every path a name
-     * reaches this list through ends up in the same place.
-     */
-    if (key.startsWith('men-')) {
-      const name = note.split(' - ')[0].trim()
-      if (name) setDisplayNames(prev => ({ ...prev, [email.toLowerCase()]: name }))
-      /* And the phone number they typed beside the name in the conversation, saved with the rest once the check-in exists. */
-      const said = name ? onboardingSelections.peoplePhones?.[name] : undefined
-      if (said) setPhones(prev => ({ ...prev, [email.toLowerCase()]: said }))
-    }
-    setAddingContributorFor(null)
-    setAddingContributorEmail('')
-    return true
-  }
 
   function submitInviteContext() {
     if (!inviteContextFor) return
@@ -3752,13 +3747,8 @@ export function EntryChatPage() {
    * stops the save with one sentence naming who needs it, and so does a team over the anchor's limit, so nobody is dropped without a
    * word and nothing is saved half-way. `null` means the save stops here.
    */
-  async function readTheTeamBox(): Promise<TheBoxRead | null> {
-    if (!teamText.trim()) { setTeamSaid(''); return NOBODY_IN_THE_BOX }
-    let people: APersonOnALine[]
-    try { people = await readTheLines(teamText) } catch {
-      setTeamSaid('Your team could not be read just now, and nothing was saved. Press save again.')
-      return null
-    }
+  /** The box's lines, as the people they are: a colleague by name, anybody else by email, and who still needs an email. */
+  function theBoxAsRead(people: APersonOnALine[]): { read: TheBoxRead; needAnEmail: APersonOnALine[] } {
     const needAnEmail: APersonOnALine[] = []
     const read: TheBoxRead = { entries: [], names: {}, numbers: {} }
     for (const p of people) {
@@ -3769,6 +3759,16 @@ export function EntryChatPage() {
       if (!colleague && p.name) read.names[head] = p.name
       if (p.phone) read.numbers[head] = p.phone
     }
+    return { read, needAnEmail }
+  }
+  async function readTheTeamBox(): Promise<TheBoxRead | null> {
+    if (!teamText.trim()) { setTeamSaid(''); return NOBODY_IN_THE_BOX }
+    let people: APersonOnALine[]
+    try { people = await readTheLines(teamText) } catch {
+      setTeamSaid('Your team could not be read just now, and nothing was saved. Press save again.')
+      return null
+    }
+    const { read, needAnEmail } = theBoxAsRead(people)
     if (needAnEmail.length) { setTeamSaid(addAnEmailFor(needAnEmail)); return null }
     const onTheList = (e: string) => inviteAdded.some((x) => x === e || x.startsWith(`${e} - `))
     /* Over the anchor's limit the save stops; the limit sentence already stands under the box (peopleLimitReached). */
@@ -3843,7 +3843,7 @@ export function EntryChatPage() {
       </div>
       {/* The one team box (TheTeamBox.tsx), open and filled with everybody named in the conversation (Hafsah, 31 October 2026). */}
       <div data-testid="the-team-on-the-save-card">
-        <TheTeamBox prefilled={theTeamNamedInTheSetup()} text={teamText} onText={setTeamText} said={teamSaid} disabled={savingAsUser || saving} />
+        <TheTeamBox prefilled={theTeamNamedInTheSetup()} text={teamText} onText={writeTheTeam} said={teamSaid} disabled={savingAsUser || saving} />
         {/* FAULT 8 (live walk, 6 October 2026): a lasting Note once the limit is reached, not only a passing toast. */}
         {peopleLimitReached && <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>}
       </div>
@@ -4586,10 +4586,11 @@ export function EntryChatPage() {
                       rows={2}
                       autoFocus
                     />
-                    {/* END SESSION DURING SETUP TOO (Hafsah, 26 October 2026). What she said is kept as a draft, and setting up again picks up where she stopped. */}
+                    {/* END SESSION DURING SETUP TOO (Hafsah, 26 October 2026). It ends the setup where it is and opens the save card (endTheSetup);
+                        what was said is kept, so a lead who leaves the card finishes it later from Today. */}
                     {onboardingHistory.some((t) => t.role === 'user') && (
                       <div className="gwui-ec-quick-actions-end">
-                        <button type="button" className="gwui-ec-quick-action gwui-ec-quick-action-navy" onClick={() => { toast.success('Saved. Start a check-in again to pick up where you stopped.'); navigate('/today') }} disabled={onboardingLoading}>
+                        <button type="button" className="gwui-ec-quick-action gwui-ec-quick-action-navy" onClick={() => endTheSetup(onboardingHistory)} disabled={onboardingLoading}>
                           End session
                         </button>
                       </div>
@@ -4962,7 +4963,11 @@ export function EntryChatPage() {
             )}
 
             {/* What happens next - shown after report is ready, before signup */}
-            {(sessionReport || (!generatingReport && closed)) && !emailSent && (
+            {/* THE SETUP AND ITS TEAM THE MOMENT THE SETUP ENDS (Hafsah's blocker, 31 October 2026: "nothing anyone says in setup is ever
+                lost"). They waited for the report, about thirty-five seconds, and round 5's impatient leads left before then with their team
+                never added. The report fills in below them when it is ready, and a save made before it is ready has its report made by the
+                server from the same conversation. */}
+            {(sessionReport || closed) && !emailSent && (
               <>
               {/*
                 SENDING NOW WAS THE ONLY OPTION, AND SAVING WAS THE TRIGGER.
@@ -5076,7 +5081,7 @@ export function EntryChatPage() {
               */}
             {user && !emailSent ? (
               <div className="gwui-ec-savecard-section">
-                <Button kind="primary" wide onClick={saveAsSignedInUser} disabled={savingAsUser || (generatingReport && !sessionReport)}>
+                <Button kind="primary" wide onClick={saveAsSignedInUser} disabled={savingAsUser}>
                   {savingAsUser ? 'Saving…' : 'Save this'}
                 </Button>
                 <div className="gwui-ec-savecard-helper">
@@ -5141,7 +5146,7 @@ export function EntryChatPage() {
                   className={`gwui-ec-savecard-field ${emailError ? 'gwui-ec-savecard-field-error' : ''}`}
                 />
                 {emailError && <div className="gwui-ec-savecard-error">{emailError}</div>}
-                <Button kind="primary" wide type="submit" disabled={saving || (generatingReport && !sessionReport)}>
+                <Button kind="primary" wide type="submit" disabled={saving}>
                   {/* The anchor label replaces the ordinary one; "Saving…" is shared either way. */}
                   {isAnchorDraft() ? <>{saving ? 'Saving…' : thePeopleStepRules.button}</> : null}
                   {!isAnchorDraft() && <>{saving ? 'Saving…' : 'Save my check-in'}</>}
@@ -5286,41 +5291,6 @@ export function EntryChatPage() {
                   uploadedDoc
                     ? `Built from what you said today, and ${uploadedDoc.name}. Nobody else has attached anything yet.`
                     : 'Built from what you said today. Nothing attached yet.'
-                }
-                renderAdd={(key, label) =>
-                  queuedFromSuggestion.has(key) ? (
-                    <div className="gwui-ec-savecard-add-pending">✓ Added to invite list</div>
-                  ) : addingContributorFor === key ? (
-                    <>
-                      <div className="gwui-ec-savecard-add-row">
-                        <TextField
-                          type="email" autoFocus placeholder="their@email.com"
-                          value={addingContributorEmail} onChange={e => { setAddingContributorEmail(e.target.value); setAddingContributorError('') }}
-                          onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, label)}
-                        />
-                        <Button kind="secondary" size="small" onClick={() => queueSuggestedContributor(key, label)}>Add</Button>
-                      </div>
-                      {addingContributorError && (
-                        <div className="gwui-ec-savecard-add-error">{addingContributorError}</div>
-                      )}
-                    </>
-                  ) : colleagueNamed(label) ? (
-                    /* Already in the organisation: one click, no address to type. */
-                    <button type="button" className="gwui-plain-link" onClick={() => queueColleague(colleagueNamed(label)!, label, key)}>
-                      Add {colleagueNamed(label)!.name}{colleagueNamed(label)!.team ? ` (${colleagueNamed(label)!.team})` : ''}
-                    </button>
-                  ) : (
-                    <button
-                      type="button" className="gwui-plain-link"
-                      onClick={() => {
-                        const known = onboardingSelections.peopleEmails?.[label.split(' - ')[0].trim()]
-                        if (known && looksLikeAnAddress(known)) { queueSuggestedContributor(key, label, known); return }
-                        setAddingContributorFor(key); setAddingContributorEmail(known ?? ''); setAddingContributorLabel(label); setAddingContributorError('')
-                      }}
-                    >
-                      Add them
-                    </button>
-                  )
                 }
                 /* Every open item can say it is wrong, from where it is wrong. It opens the same
                    correction conversation as the summary does; nothing separate to maintain. */
@@ -5530,7 +5500,7 @@ export function EntryChatPage() {
                 kind="danger"
                 onClick={() => {
                   if (pendingNewScenario) {
-                    clearEntrySession()
+                    throwTheSetupAway()
                     setOnboardingSelections(pendingNewScenario.sels)
                     /*
                      * THE OPENER, WHICH THIS SET TO AN EMPTY LIST AND LEFT THERE.
