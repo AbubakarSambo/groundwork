@@ -239,6 +239,8 @@ class ContributorDto {
   @IsOptional() @IsString() context?: string;
   /* "Name + email" (anchor section 13): what the lead calls this person, kept beside the address. */
   @IsOptional() @IsString() @MaxLength(120) displayName?: string;
+  /* The phone number the lead gave beside them in the setup, kept once they are on the check-in (Hafsah's blocker of 31 October 2026). */
+  @IsOptional() @IsString() @MaxLength(40) phone?: string;
   @IsOptional() @IsString() inviteToken?: string;
   @IsOptional() @IsString() note?: string;
 }

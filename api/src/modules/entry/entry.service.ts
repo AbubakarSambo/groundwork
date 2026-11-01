@@ -2073,9 +2073,9 @@ from finishing at all.`;
       /** The setter's own part in this, from the report's yourRole or typed by them. */
       roleAsDescribed?: string;
       /** `colleagueId` instead of `email` for a colleague picked from the list (U.4); resolved in commitInner. */
-      contributors: { email: string; colleagueId?: string; context?: string; displayName?: string; inviteToken?: string; note?: string }[];
+      contributors: { email: string; colleagueId?: string; context?: string; displayName?: string; phone?: string; inviteToken?: string; note?: string }[];
     },
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; numbersNotKept?: { email: string; because: string }[] }> {
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
     dto = withoutBankDetailsAnywhere(dto);
     // ---- Server-side draft (written at entry-save, the ISSUE-17 consent
@@ -2217,7 +2217,7 @@ from finishing at all.`;
    * its ground, briefly waiting out an in-flight winner. */
   private async awaitConsumedDraftGround(
     userId: string,
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; numbersNotKept?: { email: string; because: string }[] }> {
     for (let attempt = 0; attempt < 10; attempt++) {
       const d = await this.prisma.entryDraft.findUnique({ where: { userId } });
       if (d?.groundId) {
@@ -2295,7 +2295,7 @@ from finishing at all.`;
     organizationId: string,
     initiatorId: string,
     dto: Parameters<EntryService['commit']>[2],
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; numbersNotKept?: { email: string; because: string }[] }> {
     /* Colleagues picked by id get their addresses here, after the draft is laid over the body, so the
        list of colleagues never carried an address (U.4). */
     dto = { ...dto, contributors: await this.withColleaguesAddressed(organizationId, (dto.contributors ?? []) as any[]) };
@@ -2835,6 +2835,8 @@ from finishing at all.`;
      * to an email address one line after it arrived.
      */
     const whyInvitesFailed: { email: string; because: string }[] = [];
+    /* A number given in the setup that the writer refused, said to the lead with its reason; the person is on the check-in either way. */
+    const numbersNotKept: { email: string; because: string }[] = [];
     for (const c of dto.contributors) {
       try {
         const result = await this.grounds.addParticipant(ground.id, organizationId, initiatorId, {
@@ -2864,6 +2866,22 @@ from finishing at all.`;
           ...((result as any)?.notInvitedBecause ? { waitingBecause: (result as any).notInvitedBecause } : {}),
           ...((result as any)?.saying ? { saying: (result as any).saying } : {}),
         });
+        /*
+         * THE NUMBER THE LEAD GAVE BESIDE THEM, KEPT WITH THEM (Hafsah's blocker of 31 October 2026: "nothing anyone says in setup
+         * is ever lost"). It went through a second request the page made after the save, so a save finished from the email link, on
+         * another browser or with Google never kept it. The one writer for a lead's number keeps it here, where they are put on the
+         * check-in; the lead who is saving runs it, which is the writer's own rule. A number that does not keep leaves them on it.
+         */
+        const participantId = (result as { id?: string })?.id;
+        if (c.phone?.trim() && participantId) {
+          try {
+            await this.grounds.addTheirWhatsAppNumber({ groundId: ground.id, participantId, organizationId, userId: initiatorId, role: '', phone: c.phone });
+          } catch (err: any) {
+            this.logger.warn(`entry commit: the number given for ${c.email} was not kept: ${err?.message}`);
+            const why = typeof err?.message === 'string' && err.message ? ` ${err.message}` : '';
+            numbersNotKept.push({ email: c.email, because: `The phone number for ${c.displayName?.trim() || c.email} did not save, but they are on the check-in.${why}` });
+          }
+        }
       } catch (err: any) {
         this.logger.error(`entry commit: failed to invite ${c.email}: ${err.message}`);
         failedInvites.push(c.email);
@@ -2941,7 +2959,7 @@ from finishing at all.`;
     }
 
     const joinToken = (await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { joinToken: true } }))?.joinToken ?? null;
-    return { groundId: ground.id, joinToken, contributors: inviteResults, failedInvites, whyInvitesFailed };
+    return { groundId: ground.id, joinToken, contributors: inviteResults, failedInvites, whyInvitesFailed, numbersNotKept };
   }
 
   /** Pre-auth draft update, authorized by the bearer draftToken (same pattern
