@@ -91,7 +91,8 @@ describe('the line before saving (U.6 review)', () => {
     const { join } = await import('path')
     const src = readFileSync(join(__dirname, '..', 'enter', 'EntryChatPage.tsx'), 'utf8')
     expect(src).not.toContain('your invites go out the moment you open it')
-    expect(src).toContain("{`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(inviteAdded.length, startsLater ? checkInBy : null)}`}")
+    /* UPDATED (Hafsah's blocker, 31 October 2026): the count includes the people in the team box, which the save takes. */
+    expect(src).toContain("{`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(peopleOnTheList, startsLater ? checkInBy : null)}`}")
     expect(`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(1, '2026-10-05')}`)
       .toBe("We'll email you a confirmation link. Opening it saves your check-in. Then you see who was invited and who has to wait. Nobody is invited before Monday 5 October.")
   })

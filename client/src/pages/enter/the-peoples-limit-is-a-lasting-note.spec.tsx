@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
-import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
+import { addThroughTheTeamBox, saveWithMyEmail } from './a-team-read-in-a-spec'
 import { toast } from 'sonner'
 
 /**
@@ -53,12 +53,6 @@ function seedClosedAnchorSession() {
   }))
 }
 
-/* UPDATED (Hafsah, 31 October 2026): people are added through the one team box; there is no per-person "Add person" step. */
-async function addOnePerson(email: string) {
-  await screen.findByLabelText('Your team, one per line')
-  addThroughTheTeamBox(email)
-  await waitFor(() => expect(screen.getByText(`✓ ${email}.`)).toBeTruthy())
-}
 
 const LIMIT_SENTENCE = 'This one-month Groundwork holds up to 20 people besides you.'
 
@@ -72,26 +66,32 @@ describe('the people step keeps the limit sentence on screen, and adds nobody pa
     expect(screen.queryByText(LIMIT_SENTENCE)).toBeNull()
   })
 
+  /* UPDATED (Hafsah's blocker, 31 October 2026): the box's lines are the team, so the limit is counted on them as they are typed. */
   it('keeps the limit sentence on screen as a Note once mayAdd is reached, not only a toast', async () => {
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
-    await addOnePerson('person0@example.test')
-    await addOnePerson('person1@example.test')
+    addThroughTheTeamBox('person0@example.test')
+    expect(screen.queryByText(LIMIT_SENTENCE)).toBeNull()
+    addThroughTheTeamBox('person0@example.test\nperson1@example.test')
     expect(await screen.findByText(LIMIT_SENTENCE)).toBeTruthy()
     // It really is lasting, not a toast that already dismissed itself.
     await waitFor(() => expect(screen.getByText(LIMIT_SENTENCE)).toBeTruthy())
   })
 
-  it('once the limit is reached, the box adds nobody more, and the limit stays said on screen', async () => {
+  /* UPDATED (Hafsah's blocker, 31 October 2026): past the limit the save stops, said on screen, and nobody is dropped half-way. */
+  it('past the limit, the save stops and saves nobody, and the limit stays said on screen', async () => {
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
-    await addOnePerson('person0@example.test')
-    await addOnePerson('person1@example.test')
-    addThroughTheTeamBox('person2@example.test')
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(LIMIT_SENTENCE))
-    expect(screen.queryByText('✓ person2@example.test.')).toBeNull()
+    addThroughTheTeamBox('person0@example.test\nperson1@example.test\nperson2@example.test')
+    saveWithMyEmail()
+    const { authApi } = await import('@/api/auth')
+    const { entryApi } = await import('@/api/entry')
+    await waitFor(() => expect(entryApi.peopleOnLines).toHaveBeenCalled())
+    await new Promise((r) => setTimeout(r, 0))
+    expect(authApi.entrySave).not.toHaveBeenCalled()
     expect(screen.getByText(LIMIT_SENTENCE)).toBeTruthy()
+    expect(toast.error).not.toHaveBeenCalled()
   })
 })

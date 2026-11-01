@@ -251,14 +251,14 @@ describe('the save card, already signed in', () => {
    */
   /* UPDATED (Hafsah, 31 October 2026): the paste and its per-person focus step are the one team box, one press. The point stands: the
      people just added are on the check-in when it is saved. */
-  it('saving straight after "Add everyone" invites everybody just added', async () => {
+  /* UPDATED again (Hafsah's blocker, 31 October 2026): there is no "Add everyone" before saving; the lines in the box are the team. */
+  it('saving with people typed in the team box invites every one of them', async () => {
     authedUser = { id: 'u1', email: 'amina@suites.test' }
     const { entryApi } = await import('@/api/entry')
     seedClosedSession()
     renderPage()
     fireEvent.click(await screen.findByText(/Invite and finish/))
     addThroughTheTeamBox('Priya Shah, priya@suites.test\nTomas Berg, tomas@suites.test')
-    await waitFor(() => expect(screen.getByText(/Tomas Berg/)).toBeTruthy())
     expect(screen.queryByText('What do you want them to focus on or cover?')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
 

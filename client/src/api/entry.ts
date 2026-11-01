@@ -330,6 +330,8 @@ export const entryApi = {
       note?: string
       /** "Name + email" (anchor section 13): what the lead calls this person, asked beside their email. Anchor draft only. */
       displayName?: string
+      /** The phone number given beside them in the setup; the server keeps it once they are on the check-in. */
+      phone?: string
     }[]
     // Coordinator/lead path: the committer sets the ground up for someone else
     // to run. The lead is invited to confirm and becomes the initiator; the
@@ -354,6 +356,8 @@ export const entryApi = {
       failedInvites?: string[]
       /* Why each one failed, in the API's own words. See entry.service.ts. */
       whyInvitesFailed?: { email: string; because: string }[]
+      /* A number given in the setup that did not keep, with why; the person is on the check-in either way. */
+      numbersNotKept?: { email: string; because: string }[]
     }>(opts?.ifThereIsOne ? '/entry/commit?ifThereIsOne=1' : '/entry/commit', payload).then(r => r.data),
 
   // Pre-auth update of the server-side draft, authorized by the draftToken

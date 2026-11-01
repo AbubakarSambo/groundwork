@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
-import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
+import { addThroughTheTeamBox, saveWithMyEmail } from './a-team-read-in-a-spec'
 import { authApi } from '@/api/auth'
 import { toast } from 'sonner'
 
@@ -156,15 +156,23 @@ describe('the people step, for an anchor draft', () => {
   })
 
   /* UPDATED (Hafsah, 31 October 2026): people are added through the one team box, in one press, with no per-person step. */
-  it('adds up to the shrunk mayAdd of 2, then refuses the next one with the engine’s own sentence', async () => {
+  /* UPDATED again (Hafsah's blocker, 31 October 2026): a third person stops the save with the engine's own sentence, and nobody is
+     dropped: the save goes nowhere until the box holds no more than the room. */
+  it('saves up to the shrunk mayAdd of 2, and stops a save of three with the engine’s own sentence', async () => {
     await openInviteBlock(true)
     await screen.findByLabelText('Your team, one per line')
-    addThroughTheTeamBox('person0@example.test\nperson1@example.test')
-    await waitFor(() => expect(screen.getByText('✓ person1@example.test.')).toBeTruthy())
+    addThroughTheTeamBox('person0@example.test\nperson1@example.test\nperson2@example.test')
+    expect(screen.getByText('This one-month Groundwork holds up to 20 people besides you.')).toBeTruthy()
+    saveWithMyEmail()
+    await waitFor(() => expect(screen.getByText('This one-month Groundwork holds up to 20 people besides you.')).toBeTruthy())
+    expect(authApi.entrySave).not.toHaveBeenCalled()
+    /* Said on the page, where it stays, not in a passing toast. */
     expect(toast.error).not.toHaveBeenCalled()
-    addThroughTheTeamBox('person2@example.test')
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('This one-month Groundwork holds up to 20 people besides you.'))
-    expect(screen.queryByText('✓ person2@example.test.')).toBeNull()
+    addThroughTheTeamBox('person0@example.test\nperson1@example.test')
+    saveWithMyEmail()
+    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
+    const [, body] = vi.mocked(authApi.entrySave).mock.calls[0] as any[]
+    expect(body.payload.contributors.map((c: any) => c.email)).toEqual(['person0@example.test', 'person1@example.test'])
   })
 })
 
@@ -195,8 +203,9 @@ describe('the limit is enforced at every place a contributor is actually added',
   })
 
   /* The pasted list's "Add all" is the one team box now (Hafsah, 31 October 2026); it counts the room left the same way. */
-  it('the team box slices to the room actually left', () => {
-    expect(src).toContain('let room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : Number.POSITIVE_INFINITY')
+  /* UPDATED (Hafsah's blocker, 31 October 2026): the box is read by the save, which stops rather than dropping anybody past the room. */
+  it('the team box is counted against the room actually left before anything is saved', () => {
+    expect(src).toContain('if (isAnchorDraft() && inviteAdded.length + read.entries.filter((e) => !onTheList(e)).length > thePeopleStepRules.mayAdd) {')
   })
 })
 

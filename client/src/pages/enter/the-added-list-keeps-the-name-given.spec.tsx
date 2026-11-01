@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
-import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
+import { addThroughTheTeamBox, saveWithMyEmail } from './a-team-read-in-a-spec'
 
 /**
  * FAULT 3 (WALK ITEM 3, PART 1): NAMES ARE DROPPED AFTER THE PEOPLE STEP.
@@ -21,6 +21,7 @@ import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
 
 vi.mock('@/api/entry', () => ({
   entryApi: { opener: vi.fn().mockResolvedValue({ reply: '' }), chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn(),
+    patchDraft: vi.fn().mockResolvedValue({ ok: true }),
     peopleOnLines: vi.fn(async (t: string) => (await import('./a-team-read-in-a-spec')).readLikeTheServer(t)) },
 }))
 vi.mock('@/api/auth', () => ({
@@ -56,14 +57,18 @@ describe('the added list and the waiting sentence keep the name given', () => {
    * UPDATED (Hafsah, 31 October 2026: one team box, one press, no "What do they do" step per person). The name is given on the same
    * line as the email, in the team box, and every place the address is listed reads it.
    */
-  it('asks nobody "What do they do" while adding, and the name given heads the chip', async () => {
+  /* UPDATED again (Hafsah's blocker, 31 October 2026): the save takes the box's lines, so the name given travels with the save. */
+  it('asks nobody "What do they do" while adding, and the name given goes with the save', async () => {
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
     addThroughTheTeamBox('Musa Bello, musa@anchor.test')
-    await waitFor(() => expect(screen.getByText('✓ Musa Bello (musa@anchor.test).')).toBeTruthy())
+    saveWithMyEmail()
+    const { authApi } = await import('@/api/auth')
+    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
+    const [, body] = vi.mocked(authApi.entrySave).mock.calls[0] as any[]
+    expect(body.payload.contributors).toEqual([expect.objectContaining({ email: 'musa@anchor.test', displayName: 'Musa Bello' })])
     expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull()
-    expect(screen.queryByText('✓ musa@anchor.test.')).toBeNull()
   })
 
   it('names the person, not just the address, in "is waiting to be invited"', async () => {
@@ -71,12 +76,7 @@ describe('the added list and the waiting sentence keep the name given', () => {
     renderPage()
     await screen.findByText('Who needs to be part of this?')
     addThroughTheTeamBox('Musa Bello, musa@anchor.test')
-    await waitFor(() => expect(screen.getByText('✓ Musa Bello (musa@anchor.test).')).toBeTruthy())
-
-    /* The save step asks "Your name" now (local test of staging, 15 October). */
-    { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
-    fireEvent.change(screen.getByPlaceholderText('your@email.com'), { target: { value: 'lead@example.test' } })
-    fireEvent.submit(screen.getByPlaceholderText('your@email.com').closest('form')!)
+    saveWithMyEmail()
 
     await screen.findByText('Check your email')
     expect(screen.getByText(/Musa Bello \(musa@anchor\.test\) is waiting to be invited\./)).toBeTruthy()
@@ -87,7 +87,9 @@ describe('the added list and the waiting sentence keep the name given', () => {
     renderPage()
     await screen.findByText('Who needs to be part of this?')
     addThroughTheTeamBox('bello@example.test')
-    await waitFor(() => expect(screen.getByText('✓ bello@example.test.')).toBeTruthy())
+    saveWithMyEmail()
+    await screen.findByText('Check your email')
+    expect(screen.getByText(/^bello@example\.test is waiting to be invited\./)).toBeTruthy()
   })
 
   /*
@@ -121,7 +123,9 @@ describe('the added list and the waiting sentence keep the name given', () => {
 
     /* The team box is filled with Imani, named in the conversation; the lead adds her email on her line. */
     expect((screen.getByLabelText('Your team, one per line') as HTMLTextAreaElement).value).toBe('Imani')
+    /* UPDATED again (Hafsah's blocker, 31 October 2026): after the email is sent, "Done" takes the box's lines onto the list. */
     addThroughTheTeamBox('Imani Wekesa, imani@walk2.test')
+    fireEvent.click(screen.getByText('Done'))
 
     await waitFor(() => expect(screen.getByText('✓ Imani Wekesa (imani@walk2.test).')).toBeTruthy())
     expect(screen.queryByText('✓ imani@walk2.test.')).toBeNull()

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { entryApi } from '@/api/entry'
 import { Button, TextArea, Note } from '@/components/gw/ui'
@@ -16,9 +16,11 @@ import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
  * everyone goes on in one press. The box comes filled with the people already named, with the numbers already given, so the lead
  * types only what is missing. Their role is added after, on People and setup; nobody is asked "What do they do" here.
  *
- * Each place says what adding means there through `onAdd`: the save card puts them on the list it saves, People and setup adds them
- * to the check-in. `onAdd` gives back the lines it could not add (somebody with no email who is not in the organisation yet), and
- * those stay in the box with one sentence saying what they need.
+ * Each place says what adding means there. People and setup adds them to the check-in through `onAdd`, and gives back the lines it
+ * could not add (somebody with no email who is not in the organisation yet), which stay in the box with one sentence saying what they
+ * need. The setup's save card has no button of its own (Hafsah's blocker of 31 October 2026, "nothing anyone says in setup is ever
+ * lost"): the lines in the box ARE the team, and the press that saves the check-in takes them, so the page holds the box's words
+ * (`text`, `onText`) and says what a line still needs (`said`).
  */
 export interface APersonOnALine { name: string | null; email: string | null; phone: string | null }
 
@@ -36,31 +38,57 @@ function andList(names: string[]): string {
   return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }
 
-export function TheTeamBox({ prefilled, onAdd, adding, heading }: {
+/** The box's words with anybody named since added on a line of their own, never over what was typed. Matched by the name before the first comma. */
+export function withTheNamedAdded(now: string, prefilled: string[]): string {
+  const have = new Set(now.split('\n').map((l) => l.split(',')[0].trim().toLowerCase()).filter(Boolean))
+  const more = prefilled.filter((l) => !have.has(l.split(',')[0].trim().toLowerCase()))
+  return [now.trim(), ...more].filter(Boolean).join('\n')
+}
+
+/** How many people the box holds now: one per line with something on it. */
+export function linesInTheBox(text: string): number {
+  return text.split('\n').filter((l) => l.trim()).length
+}
+
+/** The sentence for the lines a save cannot take yet: "Add an email for Brian Kiprop, or take them off the list." */
+export function addAnEmailFor(people: APersonOnALine[]): string {
+  const names = people.map((p) => p.name ?? p.phone ?? '').filter(Boolean)
+  return names.length ? `Add an email for ${andList(names)}, or take them off the list.` : 'Add an email on every line, or take that line off the list.'
+}
+
+export function TheTeamBox({ prefilled, onAdd, adding, heading, text: textGiven, onText, said, disabled }: {
   /** One line per person already named, with what is known of them. */
   prefilled: string[]
-  /** Adds everyone it can; gives back the people it could not add because they need an email. */
-  onAdd: (people: APersonOnALine[]) => Promise<APersonOnALine[]> | APersonOnALine[]
+  /** Adds everyone it can; gives back the people it could not add because they need an email. Without it the box has no button. */
+  onAdd?: (people: APersonOnALine[]) => Promise<APersonOnALine[]> | APersonOnALine[]
   adding?: boolean
   heading?: string
+  /** The box's words, when the page holds them (the setup's save card). */
+  text?: string
+  onText?: (text: string) => void
+  /** What a line still needs, said by the page that holds the words. */
+  said?: string
+  /** While the check-in is being saved, nothing more can be typed into a list that is already on its way. */
+  disabled?: boolean
 }) {
-  const [text, setText] = useState(prefilled.join('\n'))
+  const [textHeld, setTextHeld] = useState(prefilled.join('\n'))
+  const text = textGiven ?? textHeld
+  const textRef = useRef(text)
+  textRef.current = text
+  const setText = (t: string) => { textRef.current = t; if (onText) onText(t); else setTextHeld(t) }
   const [needEmail, setNeedEmail] = useState<string[]>([])
   const [reading, setReading] = useState(false)
   const whatsappOn = useWhatsAppIsOn()
   /* Somebody named later (a new name in the setup, a colleague invited meanwhile) is added to the box, never over what was typed. */
   const prefilledKey = prefilled.join('\n')
   useEffect(() => {
-    setText((now) => {
-      const have = new Set(now.split('\n').map((l) => l.split(',')[0].trim().toLowerCase()).filter(Boolean))
-      const more = prefilled.filter((l) => !have.has(l.split(',')[0].trim().toLowerCase()))
-      return [now.trim(), ...more].filter(Boolean).join('\n')
-    })
+    const next = withTheNamedAdded(textRef.current, prefilled)
+    if (next !== textRef.current) setText(next)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefilledKey])
 
   async function addEveryone() {
-    if (!text.trim()) return
+    if (!onAdd || !text.trim()) return
     setReading(true)
     try {
       const people = await readTheLines(text)
@@ -89,14 +117,18 @@ export function TheTeamBox({ prefilled, onAdd, adding, heading }: {
         placeholder={'Sarah Chebet, sarah@company.com, +254 712 345 678\nDavid Kariuki, david@company.com, +254 722 111 222'}
         value={text}
         onChange={(e) => setText(e.target.value)}
+        disabled={disabled || busy}
         rows={Math.min(10, Math.max(3, text.split('\n').length + 1))}
       />
       {needEmail.length > 0 && (
         <Note tone="muted">{`Add an email for ${andList(needEmail)}, then press Add everyone again.`}</Note>
       )}
-      <div>
-        <Button kind="secondary" onClick={addEveryone} disabled={busy || !text.trim()}>{busy ? 'Adding…' : 'Add everyone'}</Button>
-      </div>
+      {said && <Note tone="muted">{said}</Note>}
+      {onAdd && (
+        <div>
+          <Button kind="secondary" onClick={addEveryone} disabled={busy || !text.trim()}>{busy ? 'Adding…' : 'Add everyone'}</Button>
+        </div>
+      )}
     </div>
   )
 }

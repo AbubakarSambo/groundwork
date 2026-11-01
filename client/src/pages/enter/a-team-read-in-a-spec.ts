@@ -15,10 +15,19 @@ export function readLikeTheServer(pasted: string): { name: string | null; email:
   })
 }
 
-/** Types the team into the box, in place of what it was filled with, and presses "Add everyone". */
+/**
+ * Types the team into the setup's box, in place of what it was filled with. There is nothing more to press: the lines in the box are
+ * the team, and the press that saves the check-in takes them (Hafsah's blocker of 31 October 2026, "nothing anyone says in setup is
+ * ever lost"). People and setup's own box still has its "Add everyone"; its specs press it themselves.
+ */
 export function addThroughTheTeamBox(lines: string) {
   fireEvent.change(screen.getByLabelText('Your team, one per line'), { target: { value: lines } })
-  /* By its text, as the other save-card specs press their buttons: this harness renders the save card closed (out of the
-     accessibility tree), the state the overlay's own visibility class leaves it in until it opens. */
-  fireEvent.click(screen.getByText('Add everyone'))
+}
+
+/** Gives the save step a name and an address and presses its button, as a lead who is not signed in does. */
+export function saveWithMyEmail(address = 'lead@example.test') {
+  const yourName = screen.queryByPlaceholderText('Your name')
+  if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } })
+  fireEvent.change(screen.getByPlaceholderText('your@email.com'), { target: { value: address } })
+  fireEvent.submit(screen.getByPlaceholderText('your@email.com').closest('form')!)
 }

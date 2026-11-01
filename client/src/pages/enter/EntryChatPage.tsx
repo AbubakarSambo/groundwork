@@ -49,8 +49,7 @@ import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
 import { groundsApi } from '@/api/grounds'
-import { TheTeamBox, aLineFor, type APersonOnALine } from '@/components/gw/TheTeamBox'
-import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
+import { TheTeamBox, aLineFor, addAnEmailFor, linesInTheBox, readTheLines, type APersonOnALine } from '@/components/gw/TheTeamBox'
 import {
   COLLECT_WHATS_OWED, COLLECT_WHATS_OWED_CARD, COLLECT_WHATS_OWED_GROUP, COLLECT_WHATS_OWED_OPENER, COLLECT_WHATS_OWED_FOR_EXAMPLE,
   soundsLikeCollectingWhatsOwed,
@@ -91,14 +90,21 @@ export function namesFromTheirSetupWords(entries: string[], theirWords: string[]
   return out
 }
 
-function asSomeoneToInvite(entry: string, displayNames?: Record<string, string>): { email?: string; colleagueId?: string; context?: string; displayName?: string } {
+/* Their phone number travels with them to the save, by the same key as their name (an address, or "colleague:<id>"), and the server
+   keeps it once they are on the check-in (Hafsah's blocker of 31 October 2026: every way into the save keeps names and numbers). */
+function asSomeoneToInvite(entry: string, displayNames?: Record<string, string>, phones?: Record<string, string>): { email?: string; colleagueId?: string; context?: string; displayName?: string; phone?: string } {
   const dash = entry.indexOf(' - ')
   const head = dash === -1 ? entry : entry.slice(0, dash)
   const context = dash === -1 ? undefined : entry.slice(dash + 3)
   const who = head.startsWith(A_COLLEAGUE) ? { colleagueId: head.slice(A_COLLEAGUE.length) } : { email: head }
   const name = !head.startsWith(A_COLLEAGUE) ? displayNames?.[head.trim().toLowerCase()] : undefined
-  return { ...who, ...(context !== undefined ? { context } : {}), ...(name ? { displayName: name } : {}) }
+  const phone = phones?.[head.trim().toLowerCase()]?.trim()
+  return { ...who, ...(context !== undefined ? { context } : {}), ...(name ? { displayName: name } : {}), ...(phone ? { phone } : {}) }
 }
+
+/** The team box, read: each person's key (an address, or "colleague:<id>"), and the name and number given beside it. */
+type TheBoxRead = { entries: string[]; names: Record<string, string>; numbers: Record<string, string> }
+const NOBODY_IN_THE_BOX: TheBoxRead = { entries: [], names: {}, numbers: {} }
 
 /** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
 const A_MESSAGE_MAX = 8000
@@ -1428,28 +1434,6 @@ export function effectiveFallbackGroundName(
  *   coexist with the save card's own hidden primary (see the-entry-chats-own-test-helpers.ts for
  *   why that one is hidden from a person regardless), nobody ever sees two navy buttons at once.
  */
-/**
- * THE NUMBERS GIVEN IN THE SETUP, SAVED ONCE THE CHECK-IN IS SAVED (Hafsah, 30 October 2026). The save does not say which place each
- * person has, so the check-in is read once for them, and each number goes through the one writer for a lead's number
- * (PATCH /grounds/:id/participants/:participantId/whatsapp-number). One that does not save says so; the check-in and the person stay.
- */
-export async function theNumbersGivenInTheSetup(groundId: string, phones: Record<string, string>, whatsappOn: boolean): Promise<void> {
-  const given = Object.entries(phones).filter(([, n]) => n.trim())
-  if (!given.length) return
-  let people: { id: string; email: string | null }[] = []
-  try { people = ((await groundsApi.get(groundId)) as any)?.participants ?? [] } catch { people = [] }
-  for (const [email, number] of given) {
-    const p = people.find(x => String(x.email ?? '').trim().toLowerCase() === email)
-    try {
-      if (!p) throw new Error('not on it')
-      await groundsApi.addTheirWhatsAppNumber(groundId, p.id, number)
-    } catch (e: any) {
-      /* The server's sentence names WhatsApp, so it is said only while WhatsApp is on (Hafsah's rule of 26 September). */
-      toast.error(whatsappOn && e?.response?.data?.message ? e.response.data.message : `The phone number for ${email} did not save. The check-in is saved, and they are on it.`)
-    }
-  }
-}
-
 export function EntryChatPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -1874,14 +1858,22 @@ export function EntryChatPage() {
   const [displayNames, setDisplayNames] = useState<Record<string, string>>({})
   /*
    * A PHONE NUMBER BESIDE EACH PERSON ADDED (Hafsah, 30 October 2026: always asked, whether WhatsApp is on or off). Kept by address,
-   * the way their name is, and saved to each of them through the one writer for a lead's number once the check-in is saved and they
-   * are on it (theNumbersGivenInTheSetup).
+   * the way their name is, and sent with them in the save, which keeps it through the one writer for a lead's number.
    */
-  const whatsappOn = useWhatsAppIsOn()
   const [pendingPhone, setPendingPhone] = useState('')
   const [phones, setPhones] = useState<Record<string, string>>({})
   const [inviteNote, setInviteNote] = useState('')
   const [inviteAdded, setInviteAdded] = useState<string[]>([])
+  /*
+   * THE TEAM BOX'S WORDS, HELD HERE BECAUSE THEY ARE THE TEAM (Hafsah's blocker of 31 October 2026: "nothing anyone says in setup is
+   * ever lost"). The law firm's lead named four people, pressed Save, and typed all four into the box while the save ran; the save had
+   * sent only the people already moved out of the box, so none of them was on the check-in. Every press that saves reads these lines
+   * (readTheTeamBox), so what is in the box when the lead saves is who is invited, and `teamSaid` says what a line still needs.
+   */
+  const [teamText, setTeamText] = useState('')
+  const [teamSaid, setTeamSaid] = useState('')
+  /** How many people this save invites: those on the list and those in the box (the box's lines are the team, not a draft of it). */
+  const peopleOnTheList = inviteAdded.length + linesInTheBox(teamText)
   const [inviteContextFor, setInviteContextFor] = useState<string | null>(null)
   const [inviteContext, setInviteContext] = useState('')
   const [copiedLink, setCopiedLink] = useState(false)
@@ -2880,6 +2872,9 @@ export function EntryChatPage() {
     if (anchorSetUp.aim && (!groundName || groundName === 'Entry session')) setGroundName(anchorSetUp.aim)
     if (anchorSetUp.people?.length) {
       setInviteAdded(prev => (prev.length ? prev : anchorSetUp.people!.map(c => c.email)))
+      /* And the name each one came with, which the list and the save read by address (Hafsah's blocker of 31 October 2026: the
+         people a recommendation carried in reached the save with their addresses alone). */
+      setDisplayNames(prev => ({ ...Object.fromEntries(anchorSetUp.people!.filter(c => c.displayName?.trim()).map(c => [c.email.trim().toLowerCase(), c.displayName!.trim()])), ...prev }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
@@ -3048,7 +3043,7 @@ export function EntryChatPage() {
    * payload has to be reachable from a click that leaves the page immediately.
    * Duplicating it would guarantee the two paths drift.
    */
-  function buildCommitPayload() {
+  function buildCommitPayload(box: TheBoxRead = NOBODY_IN_THE_BOX) {
     return {
         /* Which setup this is, so a retried save is the same check-in and a new setup is a new one (U.6 review). */
         setupKey: theSetupKey(),
@@ -3097,7 +3092,7 @@ export function EntryChatPage() {
         // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
         // on the second contributor and silently drop them.
-        contributors: everyoneNamedSoFar().map(e => asSomeoneToInvite(e, namesFromTheirSetupWords(everyoneNamedSoFar(), theirOwnSetupWords(onboardingHistory), displayNames))),
+        contributors: theTeamWith(box),
         /**
          * THE DOCUMENT SURVIVES AS A DOCUMENT, not just as words in the chat.
          *
@@ -3170,10 +3165,12 @@ export function EntryChatPage() {
    * and commits - same browser, so nothing needs to survive on the server, and
    * nothing is persisted anywhere until the person has actually signed in.
    */
-  function continueWithGoogle() {
+  async function continueWithGoogle() {
+    const box = await readTheTeamBox()
+    if (!box) return
     try {
       localStorage.setItem('gw_entry_pending_commit', JSON.stringify({
-        payload: buildCommitPayload(),
+        payload: buildCommitPayload(box),
         history,
       }))
     } catch {
@@ -3227,7 +3224,9 @@ export function EntryChatPage() {
     contributors?: { email: string; waiting?: boolean }[]
     whyInvitesFailed?: { email: string; because: string }[]
     failedInvites?: string[]
+    numbersNotKept?: { email: string; because: string }[]
   }) {
+    for (const n of res.numbersNotKept ?? []) toast.error(n.because)
     const refused =
       res.whyInvitesFailed?.length
         ? res.whyInvitesFailed
@@ -3255,16 +3254,18 @@ export function EntryChatPage() {
       startCheckin.mutate()
       return
     }
+    /* Saving starts here, so the box is closed to typing while it is read and sent: nothing typed now can miss the save. */
     setSavingAsUser(true)
+    const box = await readTheTeamBox()
+    if (!box) { setSavingAsUser(false); return }
     try {
-      const res = await entryApi.commit({ ...buildCommitPayload(), history })
+      const res = await entryApi.commit({ ...buildCommitPayload(box), history })
       /** The rail caches the grounds list, so it has to be told the ground exists. GW-019. */
       queryClient.invalidateQueries({ queryKey: ['grounds'] })
       clearEntryHandover()
       sayWhoWasNotInvited(res)
       rememberTheFirstCheckInClosing(res.groundId)
       navigate(`/grounds/${res.groundId}`, { replace: true })
-      void theNumbersGivenInTheSetup(res.groundId, phones, whatsappOn)
       /*
        * WHERE THE PANEL THAT JUST VANISHED WENT.
        *
@@ -3347,9 +3348,12 @@ export function EntryChatPage() {
     // is what makes the post-verification commit work no matter which browser
     // opens the magic link; the localStorage copies below are only the
     // same-browser mirror (and the legacy path for old links).
-    const commitPayload = buildCommitPayload()
+    const box = await readTheTeamBox()
+    if (!box) return
+    const commitPayload = buildCommitPayload(box)
       try {
       const res = await authApi.entrySave(trimmed, { payload: { ...commitPayload, firstName: name }, history }, trap.filled)
+      takeTheBoxIntoTheList(box)
       setEmailSent(true)
       if (res.draftToken) {
         setDraftToken(res.draftToken)
@@ -3394,7 +3398,7 @@ export function EntryChatPage() {
         runsUntilEnded: runsUntilEnded || undefined,
         lastCheckInBy: runsUntilEnded ? undefined : (lastCheckInBy.trim() || undefined),
         inviteNote: inviteNote.trim() || undefined,
-        contributors: everyoneNamedSoFar().map(e => asSomeoneToInvite(e, namesFromTheirSetupWords(everyoneNamedSoFar(), theirOwnSetupWords(onboardingHistory), displayNames))),
+        contributors: theTeamWith(NOBODY_IN_THE_BOX),
       }
       entryApi.patchDraft(draftToken, patch).catch(() => { /* best-effort: localStorage still mirrors this */ })
       // Keep the local commit body (gw_commit_payload) in sync with these
@@ -3414,12 +3418,15 @@ export function EntryChatPage() {
           if (patch.lastCheckInBy !== undefined) payload.lastCheckInBy = patch.lastCheckInBy
           payload.runsUntilEnded = patch.runsUntilEnded
           if (patch.runsUntilEnded) delete payload.lastCheckInBy
+          /* And who is on it: this body's list wins over the draft's at commit (overlayDraftOntoBody), so a stale one here dropped
+             everybody added after the email was given. */
+          payload.contributors = patch.contributors
           localStorage.setItem('gw_commit_payload', JSON.stringify(payload))
         }
       } catch { /* */ }
     }, 800)
     return () => clearTimeout(t)
-  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, cadenceDays, workingDays, checkInBy, lastCheckInBy, runsUntilEnded, inviteNote, inviteAdded, inviteContextFor, bulkQueue, displayNames])
+  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, cadenceDays, workingDays, checkInBy, lastCheckInBy, runsUntilEnded, inviteNote, inviteAdded, inviteContextFor, bulkQueue, displayNames, phones])
 
   async function copyInviteLink() {
     const link = `${window.location.origin}/invite?token=${inviteToken}`
@@ -3519,7 +3526,7 @@ export function EntryChatPage() {
       const raw = localStorage.getItem('gw_commit_payload')
       if (raw) {
         const payload = JSON.parse(raw)
-        payload.contributors = newAdded.map(e => asSomeoneToInvite(e, newNames))
+        payload.contributors = newAdded.map(e => asSomeoneToInvite(e, newNames, phones))
         localStorage.setItem('gw_commit_payload', JSON.stringify(payload))
       }
     } catch { /* */ }
@@ -3726,7 +3733,7 @@ export function EntryChatPage() {
                      the setup always has one. */
                   startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : new Date(),
                   workingDays,
-                  peopleAdded: inviteAdded.length,
+                  peopleAdded: peopleOnTheList,
                 })}
               </div>
               )}
@@ -3747,29 +3754,55 @@ export function EntryChatPage() {
       .filter((n) => !onTheList.has(n.toLowerCase()) && !onTheList.has((colleagueNamed(n)?.name ?? '').toLowerCase()))
       .map((n) => aLineFor({ name: n, email: onboardingSelections.peopleEmails?.[n] ?? null, phone: onboardingSelections.peoplePhones?.[n] ?? null }))
   }
-  function addTheTeam(people: APersonOnALine[]): APersonOnALine[] {
+  /**
+   * THE TEAM IN THE BOX, READ BY EVERY PRESS THAT SAVES (Hafsah's blocker of 31 October 2026). The lines are read by the one team reader
+   * (POST /entry/people-on-lines). A colleague is recognised by name and needs no email; anybody else needs one. A line with no email
+   * stops the save with one sentence naming who needs it, and so does a team over the anchor's limit, so nobody is dropped without a
+   * word and nothing is saved half-way. `null` means the save stops here.
+   */
+  async function readTheTeamBox(): Promise<TheBoxRead | null> {
+    if (!teamText.trim()) { setTeamSaid(''); return NOBODY_IN_THE_BOX }
+    let people: APersonOnALine[]
+    try { people = await readTheLines(teamText) } catch {
+      setTeamSaid('Your team could not be read just now, and nothing was saved. Press save again.')
+      return null
+    }
     const needAnEmail: APersonOnALine[] = []
-    const entries: string[] = []
-    const names: Record<string, string> = {}
-    const numbers: Record<string, string> = {}
-    let room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : Number.POSITIVE_INFINITY
-    let overTheLimit = false
+    const read: TheBoxRead = { entries: [], names: {}, numbers: {} }
     for (const p of people) {
       const colleague = p.name ? colleagueNamed(p.name) : null
       if (!colleague && !p.email) { needAnEmail.push(p); continue }
-      if (room <= 0) { overTheLimit = true; continue }
-      room -= 1
-      if (colleague) { entries.push(`${A_COLLEAGUE}${colleague.id}`); continue }
-      entries.push(p.email!)
-      if (p.name) names[p.email!] = p.name
-      if (p.phone) numbers[p.email!] = p.phone
+      const head = colleague ? `${A_COLLEAGUE}${colleague.id}` : p.email!.trim().toLowerCase()
+      read.entries.push(head)
+      if (!colleague && p.name) read.names[head] = p.name
+      if (p.phone) read.numbers[head] = p.phone
     }
-    setInviteAdded((prev) => [...prev, ...entries.filter((e) => !prev.some((x) => x === e || x.startsWith(`${e} - `)))])
-    setDisplayNames((prev) => ({ ...prev, ...names }))
-    setPhones((prev) => ({ ...prev, ...numbers }))
-    if (entries.length) toast.success(entries.length === 1 ? 'One person is on the list. Invites go out when you save.' : `${entries.length} people are on the list. Invites go out when you save.`)
-    if (overTheLimit) toast.error(thePeopleStepRules.limitSentence)
-    return needAnEmail
+    if (needAnEmail.length) { setTeamSaid(addAnEmailFor(needAnEmail)); return null }
+    const onTheList = (e: string) => inviteAdded.some((x) => x === e || x.startsWith(`${e} - `))
+    /* Over the anchor's limit the save stops; the limit sentence already stands under the box (peopleLimitReached). */
+    if (isAnchorDraft() && inviteAdded.length + read.entries.filter((e) => !onTheList(e)).length > thePeopleStepRules.mayAdd) {
+      setTeamSaid('')
+      return null
+    }
+    setTeamSaid('')
+    return read
+  }
+  /** Everybody this save invites: whoever is on the list, then whoever is in the box, once each, with their names and numbers. */
+  function theTeamWith(box: TheBoxRead) {
+    const named = everyoneNamedSoFar()
+    const onTheList = (e: string) => named.some((x) => x === e || x.startsWith(`${e} - `))
+    const entries = [...named, ...box.entries.filter((e) => !onTheList(e))]
+    const names = namesFromTheirSetupWords(entries, theirOwnSetupWords(onboardingHistory), { ...displayNames, ...box.names })
+    const numbers = { ...phones, ...box.numbers }
+    return entries.map((e) => asSomeoneToInvite(e, names, numbers))
+  }
+  /** Once a save has taken the box, its people are on the list the page shows and keeps in step, and the box is empty for anybody more. */
+  function takeTheBoxIntoTheList(box: TheBoxRead) {
+    if (!box.entries.length) return
+    setInviteAdded((prev) => [...prev, ...box.entries.filter((e) => !prev.some((x) => x === e || x.startsWith(`${e} - `)))])
+    setDisplayNames((prev) => ({ ...prev, ...box.names }))
+    setPhones((prev) => ({ ...prev, ...box.numbers }))
+    setTeamText('')
   }
 
   function renderPeopleStep(insideTheSetup = false) {
@@ -3802,7 +3835,7 @@ export function EntryChatPage() {
      * limit (decision 96 item 3); this is the same check `mayAddOneMorePerson` already makes,
      * read here too so the add row itself can show a lasting Note and disable its own buttons.
      */
-    const peopleLimitReached = isAnchor && inviteAdded.length >= thePeopleStepRules.mayAdd
+    const peopleLimitReached = isAnchor && peopleOnTheList >= thePeopleStepRules.mayAdd
     const inviteHeading = isAnchor ? thePeopleStepRules.heading : isSensitive ? 'Let them share their side' : 'Invite people'
     const inviteSubtext = isAnchor
       ? thePeopleStepRules.intro
@@ -3818,15 +3851,15 @@ export function EntryChatPage() {
       </div>
       {/* The one team box (TheTeamBox.tsx), open and filled with everybody named in the conversation (Hafsah, 31 October 2026). */}
       <div data-testid="the-team-on-the-save-card">
-        <TheTeamBox prefilled={theTeamNamedInTheSetup()} onAdd={addTheTeam} />
+        <TheTeamBox prefilled={theTeamNamedInTheSetup()} text={teamText} onText={setTeamText} said={teamSaid} disabled={savingAsUser || saving} />
         {/* FAULT 8 (live walk, 6 October 2026): a lasting Note once the limit is reached, not only a passing toast. */}
         {peopleLimitReached && <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>}
       </div>
       <div className="gwui-ec-savecard-invite-banner">
         {/* Piece 3a: a signed-in lead has no email to confirm, so she is not told to confirm one. */}
         {user
-          ? 'Everyone you added in Your team above is on this list. Nobody is invited before you save this check-in.'
-          : 'Everyone you added in Your team above is on this list. Nobody is invited before you save this check-in and confirm your email.'}
+          ? 'Everyone in the box above is on the check-in when you save it. Nobody is invited before you save this check-in.'
+          : 'Everyone in the box above is on the check-in when you save it. Nobody is invited before you save this check-in and confirm your email.'}
         {!isAnchor && (
           <>
             {' '}
@@ -5009,7 +5042,7 @@ export function EntryChatPage() {
                   onRunsUntilEnded={(until) => { endChangedOnTheSummary.current = true; setEndChosen(true); setRunsUntilEnded(until); keepTheSchedule({ runsUntilEnded: until, endChosen: true }) }}
                   nameField={theSetupHoldsTheNameAndPeople && !isAnchorDraft() ? renderTheName(false, false) : undefined}
                   /* Setup page review: "You have not added anybody else yet" is about the people, so it is said there. */
-                  peopleNote={theSetupHoldsTheNameAndPeople && !isAnchorDraft() && inviteAdded.length === 0 ? 'You have not added anybody else yet. A check-in with one person still works, and it stays a note to yourself until somebody joins it.' : undefined}
+                  peopleNote={theSetupHoldsTheNameAndPeople && !isAnchorDraft() && peopleOnTheList === 0 ? 'You have not added anybody else yet. A check-in with one person still works, and it stays a note to yourself until somebody joins it.' : undefined}
                   people={isAnchorDraft() || theSetupHoldsTheNameAndPeople ? renderPeopleStep(true) : undefined}
                 />
               </Section>
@@ -5125,7 +5158,7 @@ export function EntryChatPage() {
                 <div className="gwui-ec-savecard-helper">
                   {/* U.6 review: it promised the invites went out on opening the link, which a later start (or a
                       seat, or an admin who must accept it) makes untrue. The same sentences as after saving. */}
-                  {`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(inviteAdded.length, startsLater ? checkInBy : null)}`}
+                  {`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(peopleOnTheList, startsLater ? checkInBy : null)}`}
                 </div>
 
                 {/* SIGNING UP WITH GOOGLE, AT THE MOMENT SIGNING UP HAPPENS.
@@ -5435,7 +5468,14 @@ export function EntryChatPage() {
                   second click is a convenience for adding several people, not a
                   consent gate - the consent was typing the address.
                 */}
-                <Button kind="primary" onClick={() => { if (inviteContextFor) submitInviteContext(); setShowSave(false) }}>
+                <Button kind="primary" onClick={async () => {
+                  if (inviteContextFor) submitInviteContext()
+                  /* The box's lines go on the list before the panel closes; a line that still needs an email keeps it open, said. */
+                  const box = await readTheTeamBox()
+                  if (!box) return
+                  takeTheBoxIntoTheList(box)
+                  setShowSave(false)
+                }}>
                   Done
                 </Button>
                 {/*
@@ -5454,7 +5494,7 @@ export function EntryChatPage() {
                   */}
                   Nothing else to do here. The link is in your inbox at <strong>{email}</strong>. {(() => {
                     const pending = inviteContextFor && !inviteAdded.some(e => e === inviteContextFor || e.startsWith(`${inviteContextFor} - `)) ? 1 : 0
-                    const n = inviteAdded.length + pending
+                    const n = peopleOnTheList + pending
                     return whatOpeningTheLinkDoes(n, startsLater ? checkInBy : null)
                   })()} You can reopen this any time from the bar below.
                 </div>

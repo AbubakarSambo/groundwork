@@ -28,7 +28,8 @@ describe('somebody who is already signed in', () => {
 
   it('gets a save that commits straight to their account', () => {
     expect(CODE).toMatch(/function saveAsSignedInUser/)
-    expect(CODE).toMatch(/entryApi\.commit\(\{ \.\.\.buildCommitPayload\(\), history \}\)/)
+    /* UPDATED (Hafsah's blocker, 31 October 2026): the save reads the team box first and commits with it. */
+    expect(CODE).toMatch(/entryApi\.commit\(\{ \.\.\.buildCommitPayload\(box\), history \}\)/)
   })
 
   it('and is told it is saved for them, by their own first name, not an address', () => {

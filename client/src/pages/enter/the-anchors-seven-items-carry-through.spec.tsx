@@ -245,8 +245,8 @@ describe('the people step’s Name field, for an anchor draft', () => {
     await screen.findByText('Who needs to be part of this?')
 
     /* UPDATED (Hafsah, 31 October 2026): the name is given on the same line as the email, in the one team box. */
+    /* UPDATED (Hafsah's blocker, 31 October 2026): nothing to press before saving; the save takes the box's lines. */
     addThroughTheTeamBox('Ada, ada@example.test')
-    await waitFor(() => expect(screen.getByText('✓ Ada (ada@example.test).')).toBeTruthy())
 
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
@@ -265,7 +265,6 @@ describe('the people step’s Name field, for an anchor draft', () => {
     await screen.findByText('Who needs to be part of this?')
 
     addThroughTheTeamBox('bello@example.test')
-    await waitFor(() => expect(screen.getByText('✓ bello@example.test.')).toBeTruthy())
 
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
