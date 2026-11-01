@@ -1,6 +1,8 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { theSettlements, thePrompt, READ_WHAT_HAPPENED, itHappenedInTheirWords } from './what-happened-to-what-they-said';
+import { theSettlements, READ_WHAT_HAPPENED, itHappenedInTheirWords } from './what-happened-to-what-they-said';
+import { theMaterialAsText, THE_ASSESSMENT_PROMPT } from './the-assessment';
+import { anAssessmentHolding } from './an-assessment-for-a-spec';
 import { ConversationService } from './conversation.service';
 
 /** WHAT HAPPENED TO WHAT THEY SAID THEY WOULD DO (week 9). See what-happened-to-what-they-said.ts. */
@@ -81,20 +83,25 @@ describe('what the model is told', () => {
     expect(READ_WHAT_HAPPENED).toContain('When in doubt, OPEN.');
     expect(READ_WHAT_HAPPENED).toContain("Use only this person's own words.");
   });
-  it('their commitments, numbered, and their own words only', () => {
-    expect(thePrompt(OPEN.slice(0, 2), ['I sent the quote on Tuesday.'])).toBe(
-      'WHAT THEY SAID THEY WOULD DO:\n1. Send Green Mart the quote (by Friday)\n2. Call the buyer at Lakeside\n\nWHAT THEY SAID IN THIS CHECK-IN, in order:\n1. I sent the quote on Tuesday.',
-    );
+  /* Changed 1 November 2026: the read is part of the conversation's assessment now, so its open promises are given by id in the assessment's material, and these rules are quoted whole in its instructions. */
+  it('their commitments, by id, beside their own words, and the rules quoted whole', () => {
+    const text = theMaterialAsText({ who: 'Amani', isTheLead: false, checkIn: null, givenRole: null, priorities: [], turns: [{ role: 'person', content: 'I sent the quote on Tuesday.', n: 1 }], setup: null, draft: { claims: [], lines: [] }, previous: null, openPromises: OPEN.slice(0, 2) });
+    expect(text).toContain('  [c:c1] Send Green Mart the quote (by Friday)\n  [c:c2] Call the buyer at Lakeside');
+    expect(text).toContain('[1] THE PERSON: I sent the quote on Tuesday.');
+    expect(THE_ASSESSMENT_PROMPT).toContain(READ_WHAT_HAPPENED);
   });
 });
 
 describe('after a check-in', () => {
+  /* Changed 1 November 2026: what happened to each promise comes from the conversation's assessment (its promisesDue, by the record's id), not a call of its own. Same outcomes, given through it. */
   function aService(outcomes: any[]) {
+    const assessment: any = anAssessmentHolding();
+    assessment.comparedWithLastTime.promisesDue = outcomes.map((o, i) => ({ id: `d${i}`, words: o.words ?? '', from: [1], whoMaySee: 'the people in this check-in', saidWordForWord: false, previousItem: `c:${OPEN[o.item - 1]?.id}`, happened: o.happened }));
     const prisma: any = {
-      checkIn: { findUnique: jest.fn(async () => ({ groundId: 'g1', participantId: 'p1', startedAt: new Date('2026-09-29T09:00:00Z'), turns: [{ content: 'I sent the quote on Tuesday.' }, { content: 'I did not get to Westgate.' }] })) },
+      checkIn: { findUnique: jest.fn(async () => ({ groundId: 'g1', participantId: 'p1', startedAt: new Date('2026-09-29T09:00:00Z'), sessionReport: assessment, turns: [{ content: 'I sent the quote on Tuesday.' }, { content: 'I did not get to Westgate.' }] })) },
       groundCommitment: { findMany: jest.fn(async () => OPEN), updateMany: jest.fn(async () => ({ count: 1 })) },
     };
-    const anthropic: any = { extract: jest.fn(async () => ({ outcomes })) };
+    const anthropic: any = { extract: jest.fn(async () => { throw new Error('what happened is read from the assessment, never a call of its own'); }) };
     const nothing: any = { get: () => undefined, emit: jest.fn(() => Promise.resolve()) };
     return { svc: new ConversationService(prisma, {} as any, anthropic, {} as any, nothing, nothing, nothing, nothing, nothing, nothing) as any, prisma, anthropic };
   }

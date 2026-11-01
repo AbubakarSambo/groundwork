@@ -140,10 +140,10 @@ describe('the assessment of a check-in', () => {
     expect(stored.calls[0].system).toBe('STORED WORDS');
   });
 
-  it('is announced when ready, and announced even when the model cannot be reached, with every message kept whole', async () => {
+  it('keeps every message whole when the model cannot be reached, and leaves the announcing to the caller', async () => {
     const w = aWorld({ answers: [], fail: true });
     const a = (await assessTheConversation(w.deps, 'ci-2', { howItEnded: 'closed by the clock', closedAt: new Date() }))!;
-    expect(w.emitted).toEqual([{ e: GroundworkEvents.ASSESSMENT_READY, p: { checkInId: 'ci-2', groundId: 'g', participantId: 'p-amani', sessionNumber: 2, howItEnded: 'closed by the clock' } }]);
+    expect(w.emitted).toEqual([]);
     expect(a.measure.modelFailed).toBe(true);
     expect(a.everythingElse.map((i) => i.words)).toEqual(TURNS.filter((t) => t.role === 'PERSON').map((t) => t.content));
   });
@@ -153,7 +153,6 @@ describe('the assessment of a check-in', () => {
     const a = (await assessTheConversation(w.deps, 'ci-2', { howItEnded: 'missed', closedAt: new Date() }))!;
     expect(w.anthropic.extract).not.toHaveBeenCalled();
     expect(a.measure.modelCalls).toBe(0);
-    expect(w.emitted).toHaveLength(1);
   });
 });
 
@@ -233,17 +232,38 @@ describe('the instructions', () => {
 
 describe('a correction is kept on the earlier item, as its history', () => {
   it('names the item, what it said and what it says now', async () => {
-    const earlierAssessment = { kind: 'assessment', version: 1, promises: [{ id: 'r1.promises.0', words: 'I will send the Kilele proof on Monday', from: [1] }], interventions: [] } as any;
+    const earlierAssessment = { kind: 'assessment', version: 1, claims: [{ id: 'r1.claims.0', words: 'I have not sent the Kilele proof', from: [1], claim: 'The Kilele proof is not sent', proof: 'said' }], interventions: [] } as any;
     const w = aWorld({
-      answers: [{ ...FIRST, corrections: [{ words: 'I sent the Kilele proof on Monday', from: [1], recordSaid: 'not sent', shouldSay: 'sent on Monday', backed: true, correctsItem: 'r1.promises.0' }] }, SECOND],
+      answers: [{ ...FIRST, corrections: [{ words: 'I sent the Kilele proof on Monday', from: [1], recordSaid: 'not sent', shouldSay: 'sent on Monday', backed: true, correctsItem: 'r1.claims.0' }] }, SECOND],
       earlier: [{ id: 'ci-1', sessionNumber: 1, completedAt: new Date('2026-10-26'), sessionReport: earlierAssessment }],
+      /* (Changed 1 November: their own promises are compared against the record's open promises, so the earlier item corrected here is a claim.) */
     });
     await assessTheConversation(w.deps, 'ci-2', { howItEnded: 'finished by the person', closedAt: new Date() });
-    expect(w.calls[0].content).toContain('[r1.promises.0] Promise: I will send the Kilele proof on Monday');
+    expect(w.calls[0].content).toContain('[r1.claims.0] Claim (said): The Kilele proof is not sent');
     const earlierWrite = w.writes.find((x) => x.where.id === 'ci-1');
-    expect(theAssessmentIn(earlierWrite.data.sessionReport)!.promises[0].history).toEqual([
+    expect(theAssessmentIn(earlierWrite.data.sessionReport)!.claims[0].history).toEqual([
       expect.objectContaining({ inCheckInId: 'ci-2', said: 'not sent', nowSays: 'sent on Monday', backed: true }),
     ]);
+  });
+});
+
+describe('ASSESSMENT_READY is said once, after the readers, on every path', () => {
+  it('after the waits and the promises are written, and even when the assessment could not be written', async () => {
+    const order: string[] = [];
+    const svc: any = Object.create(require('./conversation.service').ConversationService.prototype);
+    Object.assign(svc, {
+      prisma: { checkIn: { findUnique: async () => { throw new Error('the database is away'); } } },
+      anthropic: { extract: async () => null }, prompts: null,
+      events: { emit: (e: string, p: unknown) => order.push(`${e} ${JSON.stringify(p)}`) },
+      logger: { log: () => undefined, warn: () => undefined },
+      extractDependencies: async () => { order.push('waits'); },
+      settleWhatTheySaidTheyWouldDo: async () => { order.push('settle'); return 0; },
+      writeWhatTheyPromised: async () => { order.push('promises'); },
+    });
+    await svc.assessAndThenRead({ id: 'ci-9', participantId: 'p', groundId: 'g', sessionNumber: 4 }, { howItEnded: 'declined', closedAt: new Date() });
+    expect(order[order.length - 1]).toBe(`${GroundworkEvents.ASSESSMENT_READY} {"checkInId":"ci-9","groundId":"g","participantId":"p","sessionNumber":4,"howItEnded":"declined"}`);
+    expect(order.filter((x) => x.startsWith(GroundworkEvents.ASSESSMENT_READY))).toHaveLength(1);
+    expect(order.indexOf('promises')).toBeLessThan(order.length - 1);
   });
 });
 
@@ -268,7 +288,9 @@ describe('every path that ends a conversation is assessed, and none waits for it
 
   it('a decline, a session closed as missed, and setup\'s commit', () => {
     expect(body(service, 'async decline(checkInId', 'private async closeTheRoundIfThisWasTheLastAnswer(')).toContain("this.assessAndThenRead(checkIn, { howItEnded: 'declined'");
-    expect(body(service, 'async closeAsMissed(', 'private async finishTheSession(')).toContain("{ howItEnded: 'missed', closedAt }");
+    const missed = body(service, 'async closeAsMissed(', 'private async finishTheSession(');
+    expect(missed).toContain("{ howItEnded: 'missed', closedAt }");
+    expect(missed).toContain("theAssessmentIsReady({ events: this.events }, { checkInId: row.id");
     const commit = entry.slice(entry.indexOf('this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED'));
     expect(commit).toMatch(/theRecordIsWritten\s*\.then\(\(\) => this\.conversation\?\.assessAndThenRead\?\.\(/);
     expect(commit).toContain("howItEnded: 'setup saved'");

@@ -124,7 +124,7 @@ export function thePatternsAcrossTheAssessments(
     perAssessment(seen, (a) => {
       const due = a.comparedWithLastTime?.promisesDue ?? [];
       const kept = due.filter((p) => p.outcome === 'kept');
-      const slipped = due.some((p) => p.outcome !== 'kept');
+      const slipped = due.some((p) => p.outcome === 'not kept' || p.outcome === 'not mentioned');
       const proved = (a.claims ?? []).filter((c) => c.proof === 'proved');
       return !slipped && (kept.length || proved.length) ? [...kept, ...proved] : null;
     })));

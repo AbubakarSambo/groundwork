@@ -27,6 +27,7 @@
 import { createHash } from 'crypto';
 import { READ_WHAT_THEY_PROMISED } from './what-they-said-they-would-do-next';
 import { DEPENDENCY_EXTRACTION_PROMPT } from './prompt-library';
+import { READ_WHAT_HAPPENED } from './what-happened-to-what-they-said';
 
 export const THE_ASSESSMENT_KIND = 'assessment' as const;
 export const THE_ASSESSMENT_VERSION = 1 as const;
@@ -253,13 +254,16 @@ export const THE_ASSESSMENT_PROMPT = [
   '  - roleAgainstGiven: from this conversation only, the role they are actually playing, and whether it fits the role they were given ("cannot tell" when the conversation does not show it).',
   '  - areas: each item tagged with the area of work it belongs to (a client, a product, a project, admin and so on), and whether it fits one of the team\'s priorities, where they are given.',
   '  - observations: what you noticed, as facts and never as judgements: a vague answer, a question they avoided, signs of overload. Quote their words.',
-  '  - comparedWithLastTime (only when a previous assessment is given; facts only): its promises now due (kept, not kept, or not mentioned), figures that changed with both values and the date of the earlier one, work that moved or did not, blockers new, still there or cleared, anything repeated and how many times, and where what they said disagrees with the record or with someone else. Use the previous item\'s id in `previousItem` where there is one.',
+  '  - comparedWithLastTime (only when a previous assessment or open promises are given; facts only): promisesDue has one item for EACH open promise on the record, with its id in `previousItem`, saying what happened to it (kept, not kept, not mentioned, or still open with a new date or in progress) and `happened` by the rules below; figures that changed with both values and the date of the earlier one, work that moved or did not, blockers new, still there or cleared, anything repeated and how many times, and where what they said disagrees with the record or with someone else. Use the previous item\'s id in `previousItem` where there is one.',
   '  - stillOpen: what is still open, to ask next time.',
   '  - everythingElse: everything else they said, so nothing falls through.',
   '',
   'RULES FOR THIS PERSON\'S OWN PROMISES (the same rules Groundwork has always read promises by):',
   READ_WHAT_THEY_PROMISED,
   'In a promise item, `action` follows these rules, `clear`, `outcome` and `when` too, and `whatItMeans` is what "it" or "that" means where they were asked.',
+  '',
+  'RULES FOR WHAT HAPPENED TO EACH OPEN PROMISE (`happened` in promisesDue; the same rules Groundwork has always read them by; `words` are the words that say what happened):',
+  READ_WHAT_HAPPENED,
   '',
   'RULES FOR BLOCKERS AND WAITS (the same rules Groundwork has always read waits by):',
   DEPENDENCY_EXTRACTION_PROMPT,
@@ -333,7 +337,7 @@ export const THE_ASSESSMENT_SCHEMA = {
       comparedWithLastTime: {
         type: 'object',
         properties: {
-          promisesDue: anItem({ promise: S('The promise.'), previousItem: S('Its id.'), outcome: { type: 'string', enum: ['kept', 'not kept', 'not mentioned'] } }),
+          promisesDue: anItem({ promise: S('The promise.'), previousItem: S('Its id, as given.'), outcome: { type: 'string', enum: ['kept', 'not kept', 'not mentioned', 'still open'] }, happened: { type: 'string', enum: ['DONE', 'NOT_DONE', 'OPEN'] } }),
           figuresChanged: anItem({ what: S('What it measures.'), before: S('The earlier value.'), beforeOn: S('The date of the earlier value.'), now: S('The value now.'), previousItem: S('Its id.') }),
           workMoved: anItem({ work: S('The work.'), moved: { type: 'boolean' }, how: S('How it moved.'), previousItem: S('Its id.') }),
           blockers: anItem({ what: S('The blocker.'), state: { type: 'string', enum: ['new', 'still there', 'cleared'] }, previousItem: S('Its id.') }),
@@ -367,7 +371,12 @@ export interface TheMaterial {
   draft: { claims: string[]; lines: string[] };
   /** The previous assessment's items, with their ids, to compare against. */
   previous: { checkInId: string; on: string | null; items: { id: string; text: string }[] } | null;
+  /** The promises open on the record from before this check-in (GroundCommitment, the owner of a promise's state), with their ids. */
+  openPromises: { id: string; text: string; whenSaid: string | null }[];
 }
+
+/** How an open promise on the record is named to the read, and read back. */
+export const aPromisesId = (commitmentId: string) => `c:${commitmentId}`;
 
 export function theMaterialAsText(m: TheMaterial): string {
   const out: string[] = [];
@@ -386,6 +395,10 @@ export function theMaterialAsText(m: TheMaterial): string {
     out.push('', 'THE DRAFT (noted during the conversation and on the end card; check it against their words):');
     for (const c of m.draft.claims) out.push(`  - ${c}`);
     for (const l of m.draft.lines) out.push(`  - ${l}`);
+  }
+  if (m.openPromises.length) {
+    out.push('', 'THEIR PROMISES STILL OPEN ON THE RECORD, made before this check-in (say in comparedWithLastTime.promisesDue what happened to each):');
+    for (const c of m.openPromises) out.push(`  [${aPromisesId(c.id)}] ${c.text}${c.whenSaid ? ` (${c.whenSaid})` : ''}`);
   }
   if (m.previous) {
     out.push('', `THIS PERSON'S PREVIOUS ASSESSMENT${m.previous.on ? `, ${m.previous.on.slice(0, 10)}` : ''}:`);
@@ -446,7 +459,7 @@ export function everyItemIn(a: Pick<TheAssessment, AnItemSection | 'setup' | 'co
 /** The parts of the assessment the model fills, read from one answer. */
 export type TheReadParts = Pick<TheAssessment, AnItemSection | 'setup' | 'comparedWithLastTime' | 'summary' | 'roleAgainstGiven' | 'nothingToRecord'>;
 
-export function thePartsFrom(answer: any, said: Map<number, string>, opts: { hasSetup: boolean; previous: { checkInId: string; on: string | null } | null; givenRole: string | null; read: number }): TheReadParts {
+export function thePartsFrom(answer: any, said: Map<number, string>, opts: { hasSetup: boolean; previous: { checkInId: string; on: string | null } | null; givenRole: string | null; read: number; compares?: boolean }): TheReadParts {
   const a = answer && typeof answer === 'object' ? answer : {};
   const p = (s: string) => `r${opts.read}.${s}`;
   const parts: any = {
@@ -460,7 +473,7 @@ export function thePartsFrom(answer: any, said: Map<number, string>, opts: { has
   parts.comparedWithLastTime = {
     previousCheckInId: opts.previous?.checkInId ?? null,
     previousOn: opts.previous?.on ?? null,
-    ...Object.fromEntries(THE_COMPARED_SECTIONS.map((s) => [s, opts.previous ? theItems(a.comparedWithLastTime?.[s], `compared.${s}`, p(`compared.${s}`), said) : []])),
+    ...Object.fromEntries(THE_COMPARED_SECTIONS.map((s) => [s, opts.previous || opts.compares ? theItems(a.comparedWithLastTime?.[s], `compared.${s}`, p(`compared.${s}`), said) : []])),
   };
   const r = a.roleAgainstGiven;
   parts.roleAgainstGiven = r && typeof r === 'object' && (r.playing || r.fits)
@@ -506,8 +519,8 @@ export function withWhatIsLeftKeptWhole(parts: TheReadParts, left: number[], sai
  * THE PREVIOUS ASSESSMENT, AS THE NEXT READ IS GIVEN IT, AND ITS HISTORY WHEN A LATER ONE CORRECTS IT.
  * ------------------------------------------------------------------------------------------------------------------- */
 
+/* Their own promises are not here: the record (GroundCommitment) owns a promise's state, and the read is given the open ones from it. */
 const COMPARABLE: { section: string; text: (i: AnItem) => string }[] = [
-  { section: 'promises', text: (i) => `Promise${i.byThePerson === false ? ` by ${i.who ?? 'somebody else'}` : ''}: ${i.action ?? i.words}${i.when ? `, ${i.when}` : ''}` },
   { section: 'numbers', text: (i) => `Figure: ${i.figure ?? i.words}${i.measures ? ` (${i.measures})` : ''}` },
   { section: 'workUpdates', text: (i) => `Work: ${i.work ?? i.words}${i.stage ? `, at ${i.stage}` : ''}${i.nextStep ? `, next ${i.nextStep}` : ''}` },
   { section: 'blockers', text: (i) => `Waiting for ${i.what ?? i.words}${i.status ? ` (${String(i.status).toLowerCase()})` : ''}` },
@@ -559,4 +572,15 @@ export function whatTheyPromisedThemselves(a: TheAssessment | null): { action: s
     .filter((p) => p.byThePerson === true)
     .map((p) => ({ action: text(p.action) ?? text(p.words) ?? '', clear: text(p.clear), outcome: text(p.outcome), when: text(p.when) }))
     .filter((p) => p.action);
+}
+
+/** What happened to each open promise on the record, as the settling of promises takes it: the record's id, and their words. */
+export function whatHappenedToTheirOpenPromises(a: TheAssessment | null): { commitmentId: string; happened: 'DONE' | 'NOT_DONE' | 'OPEN'; words: string }[] {
+  return (a?.comparedWithLastTime?.promisesDue ?? [])
+    .filter((p) => typeof p.previousItem === 'string' && p.previousItem.startsWith('c:'))
+    .map((p) => ({
+      commitmentId: String(p.previousItem).slice(2),
+      happened: (['DONE', 'NOT_DONE', 'OPEN'].includes(String(p.happened)) ? p.happened : 'OPEN') as 'DONE' | 'NOT_DONE' | 'OPEN',
+      words: String(p.words ?? ''),
+    }));
 }

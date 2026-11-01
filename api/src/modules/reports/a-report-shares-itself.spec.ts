@@ -1,6 +1,7 @@
 import { serviceFor, theSessionReportAs, everyString, at } from './__fixtures__/sales-team-q3-two-sessions';
 import { ReportsListener } from './reports.listener';
 import { asTheClockSaysIt, theTimeItSharesItself, whenItSharesItself } from './a-report-shares-itself';
+/* Changed 1 November 2026: the report is written when the check-in's assessment is ready (onTheAssessmentReady), not on the completion itself; the same release logic, checked the same way. */
 
 /**
  * A REPORT SHARES ITSELF AT ITS SET TIME, UNLESS THE LEAD HOLDS IT (Hafsah's answers 1 and 5, 16 October 2026).
@@ -142,13 +143,13 @@ describe('everyone checking in no longer shares a repeating check-in’s report 
 
   it('a weekly check-in waits for its set time', async () => {
     const { l, reports } = listener('WEEKLY');
-    await l.onCheckInCompleted({ groundId: 'g', sessionNumber: 2 } as any);
+    await l.onTheAssessmentReady({ groundId: 'g', sessionNumber: 2 } as any);
     expect(reports.release).not.toHaveBeenCalled();
   });
 
   it('a one-time check-in shares once everyone is in, as before', async () => {
     const { l, reports } = listener('ONE_TIME');
-    await l.onCheckInCompleted({ groundId: 'g', sessionNumber: 1 } as any);
+    await l.onTheAssessmentReady({ groundId: 'g', sessionNumber: 1 } as any);
     expect(reports.release).toHaveBeenCalled();
   });
 });
@@ -196,7 +197,7 @@ describe('an existing check-in keeps sharing as it always did (Hafsah, 18 Octobe
     const grounds: any = { isSessionReadyForReport: jest.fn(async () => true) };
     const reports: any = { synthesize: jest.fn(), release: jest.fn(), tellThemTheReportIsReady: jest.fn(async () => ({ attempted: 0, failed: 0 })), wordTheReadsFor: jest.fn(async () => []) };
     const l = new ReportsListener(prisma, grounds, reports, {} as any, { get: () => undefined } as any);
-    await l.onCheckInCompleted({ groundId: 'g', sessionNumber: 2 } as any);
+    await l.onTheAssessmentReady({ groundId: 'g', sessionNumber: 2 } as any);
     expect(reports.release).toHaveBeenCalled();
   });
 });

@@ -2820,7 +2820,7 @@ from finishing at all.`;
       };
       const closedAt = new Date();
       theRecordIsWritten
-        .then(() => this.conversation?.assessAndThenRead?.({ id: checkIn.id, participantId: participant.id, groundId: ground.id }, { howItEnded: 'setup saved', closedAt, setup: setupGiven }))
+        .then(() => this.conversation?.assessAndThenRead?.({ id: checkIn.id, participantId: participant.id, groundId: ground.id, sessionNumber: 1 }, { howItEnded: 'setup saved', closedAt, setup: setupGiven }))
         .catch((err: any) => this.logger.warn(`entry commit: the assessment of ${ground.id}'s setup could not be written: ${err?.message ?? err}`));
     }
 

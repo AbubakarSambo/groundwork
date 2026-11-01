@@ -89,10 +89,10 @@ import { endingOnTheClose, endsOnTheClose, type Door } from './the-close-says-wh
 import { whatChangedOnTheirDeals } from './what-changed-on-their-deals';
 import { oneOfTheKinds, isASalesKind } from '../board/the-kind-of-work';
 import { theEndCard, theCardStillStanding, whatTheyWereAskedToShow, type EndCard, type ALineForTheCard } from './the-end-card';
-import { assessTheConversation, theAssessmentOf, type TheSetupGiven } from './assess-the-conversation';
-import { whatTheyAreWaitingOn, whatTheyPromisedThemselves, theAssessmentIn, theReportTheyRead } from './the-assessment';
+import { assessTheConversation, theAssessmentOf, theAssessmentIsReady, type TheSetupGiven } from './assess-the-conversation';
+import { whatTheyAreWaitingOn, whatTheyPromisedThemselves, whatHappenedToTheirOpenPromises, theAssessmentIn, theReportTheyRead } from './the-assessment';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
-import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt, aCommitmentKey, oneOfEach, theySaidItDidNotHappen, type AnAnswer } from './what-happened-to-what-they-said';
+import { theSettlements, aCommitmentKey, oneOfEach, theySaidItDidNotHappen, type AnAnswer } from './what-happened-to-what-they-said';
 import { theProofSettlements, thePrompt as theProofPrompt, WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT, WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA, whatThisLineProves, mayBeSettledByProof } from './settled-by-proof';
 import { whoAddedEachBackingDocument } from '../reports/how-a-line-is-known';
 import { aWaitThatConfirms, theLineToConfirm, thePrompt as theDeliveredPrompt, WHICH_LINE_WAS_DELIVERED_PROMPT, WHICH_LINE_WAS_DELIVERED_SCHEMA } from './confirmed-by-who-received-it';
@@ -7568,7 +7568,8 @@ ${told}` : '';
     if (won.count === 0) return false;
     /* Its assessment too, so every conversation that ended has one: nothing was said, so no model call is made. */
     assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger }, row.id, { howItEnded: 'missed', closedAt })
-      .catch((err: any) => this.logger.warn(`The assessment of the missed check-in ${row.id} failed: ${err?.message ?? err}`));
+      .catch((err: any) => this.logger.warn(`The assessment of the missed check-in ${row.id} failed: ${err?.message ?? err}`))
+      .finally(() => theAssessmentIsReady({ events: this.events }, { checkInId: row.id, groundId: row.groundId, participantId: row.participantId, sessionNumber: row.sessionNumber, howItEnded: 'missed' }));
     await this.ensureNextSession(row.groundId, row.participantId, row.sessionNumber);
     this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {
       checkInId: row.id,
@@ -7590,40 +7591,45 @@ ${told}` : '';
    * has been read, and never before it is there. Nothing here is awaited by the close.
    */
   async assessAndThenRead(
-    checkIn: { id: string; participantId: string; groundId: string },
+    checkIn: { id: string; participantId: string; groundId: string; sessionNumber: number },
     how: { howItEnded: 'finished by the person' | 'closed by the clock' | 'declined' | 'setup saved'; closedAt: Date; setup?: TheSetupGiven | null },
   ): Promise<void> {
-    await assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger }, checkIn.id, how);
-    await Promise.all([
-      /* The waits: what this person is waiting on, from the assessment's blockers, then every wait the record now shows is over. */
-      this.extractDependencies(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
-        this.logger.warn(`Dependency extraction failed for check-in ${checkIn.id}: ${err.message}`),
-      )
-        /* Then every open wait on this check-in that either side has now said is done is cleared, on the day it was said
-           (Hafsah's point 14, Release 1). After both, so it reads this check-in's lines and its newest waits. */
-        /* A wait for somebody's check-in was never a wait on their work: any recorded before the rule is removed (final check, item 1). */
-        .then(() => removeTheWaitsForACheckIn(this.prisma, checkIn.groundId))
-        .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: removed ${n} wait(s) that were only for somebody's check-in.`); })
-        /* Then every open wait in the organisation the record now shows is over, read by the model from what the lines mean, not their
-           words (Hafsah, 29 October; FN-007). See a-wait-is-over-from-what-it-means.ts. Only when the model cannot be reached do the
-           word rules run instead (a-wait-said-done-is-cleared.ts, a-wait-is-over-across-the-organisation.ts). */
-        .then(() => clearTheWaitsTheRecordEnds(this.prisma, this.anthropic as any, this.prompts as any, checkIn.groundId))
-        .then(async (over) => {
-          if (over) { if (over.length) this.logger.log(`Check-in ${checkIn.id}: cleared ${over.length} wait(s) the record shows are over.`); return; }
-          const n = (await clearTheWaitsSaidDone(this.prisma, checkIn.groundId)) + (await clearTheWaitsAnEventEnded(this.prisma, checkIn.groundId))
-            + (await clearTheWaitsOverAcrossTheOrganisation(this.prisma, checkIn.groundId));
-          if (n) this.logger.log(`Check-in ${checkIn.id}: the model could not be reached; the word rules cleared ${n} wait(s).`);
-        })
-        /* And every open promise its maker, or the person it was for, has now said is done is kept (Drop Access run 1, item 13). */
-        .then(() => keepThePromisesSaidDone(this.prisma, checkIn.groundId))
-        .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: kept ${n} promise(s) somebody said were done.`); })
-        .catch((err) => this.logger.warn(`Could not clear the waits said done after ${checkIn.id}: ${err?.message ?? err}`)),
-      /* The promises: what happened to the open ones, then the new ones, from the assessment. */
-      this.settleWhatTheySaidTheyWouldDo(checkIn.id)
-        .catch((err: any) => this.logger.warn(`Could not settle what they said they would do on ${checkIn.id}: ${err?.message}`))
-        .then(() => this.writeWhatTheyPromised(checkIn.id))
-        .catch((err: any) => this.logger.warn(`Could not write what they promised on ${checkIn.id}: ${err?.message}`)),
-    ]);
+    try {
+      await assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger }, checkIn.id, how);
+      await Promise.all([
+        /* The waits: what this person is waiting on, from the assessment's blockers, then every wait the record now shows is over. */
+        this.extractDependencies(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+          this.logger.warn(`Dependency extraction failed for check-in ${checkIn.id}: ${err.message}`),
+        )
+          /* Then every open wait on this check-in that either side has now said is done is cleared, on the day it was said
+             (Hafsah's point 14, Release 1). After both, so it reads this check-in's lines and its newest waits. */
+          /* A wait for somebody's check-in was never a wait on their work: any recorded before the rule is removed (final check, item 1). */
+          .then(() => removeTheWaitsForACheckIn(this.prisma, checkIn.groundId))
+          .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: removed ${n} wait(s) that were only for somebody's check-in.`); })
+          /* Then every open wait in the organisation the record now shows is over, read by the model from what the lines mean, not their
+             words (Hafsah, 29 October; FN-007). See a-wait-is-over-from-what-it-means.ts. Only when the model cannot be reached do the
+             word rules run instead (a-wait-said-done-is-cleared.ts, a-wait-is-over-across-the-organisation.ts). */
+          .then(() => clearTheWaitsTheRecordEnds(this.prisma, this.anthropic as any, this.prompts as any, checkIn.groundId))
+          .then(async (over) => {
+            if (over) { if (over.length) this.logger.log(`Check-in ${checkIn.id}: cleared ${over.length} wait(s) the record shows are over.`); return; }
+            const n = (await clearTheWaitsSaidDone(this.prisma, checkIn.groundId)) + (await clearTheWaitsAnEventEnded(this.prisma, checkIn.groundId))
+              + (await clearTheWaitsOverAcrossTheOrganisation(this.prisma, checkIn.groundId));
+            if (n) this.logger.log(`Check-in ${checkIn.id}: the model could not be reached; the word rules cleared ${n} wait(s).`);
+          })
+          /* And every open promise its maker, or the person it was for, has now said is done is kept (Drop Access run 1, item 13). */
+          .then(() => keepThePromisesSaidDone(this.prisma, checkIn.groundId))
+          .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: kept ${n} promise(s) somebody said were done.`); })
+          .catch((err) => this.logger.warn(`Could not clear the waits said done after ${checkIn.id}: ${err?.message ?? err}`)),
+        /* The promises: what happened to the open ones, then the new ones, from the assessment. */
+        this.settleWhatTheySaidTheyWouldDo(checkIn.id)
+          .catch((err: any) => this.logger.warn(`Could not settle what they said they would do on ${checkIn.id}: ${err?.message}`))
+          .then(() => this.writeWhatTheyPromised(checkIn.id))
+          .catch((err: any) => this.logger.warn(`Could not write what they promised on ${checkIn.id}: ${err?.message}`)),
+      ]);
+    } finally {
+      /* Ready only now, with the waits and the promises read from it written, so the report and the board read them. */
+      theAssessmentIsReady({ events: this.events }, { checkInId: checkIn.id, groundId: checkIn.groundId, participantId: checkIn.participantId, sessionNumber: checkIn.sessionNumber, howItEnded: how.howItEnded });
+    }
   }
 
   /**
@@ -8664,7 +8670,7 @@ ${told}` : '';
     const row = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
       select: {
-        groundId: true, participantId: true, startedAt: true,
+        groundId: true, participantId: true, startedAt: true, sessionReport: true,
         /* Both sides, so each answer carries the question it answered. "I haven't done anything further.
            He didn't reply." means nothing on its own; after "What have you done to get an answer from
            Mr. Adebayo?" it plainly says the follow-up was not done (review, 29 September). */
@@ -8693,13 +8699,20 @@ ${told}` : '';
     if (!open.length) return 0;
     /* The same promise written twice is put once, and what they said about it settles both rows. */
     const once = oneOfEach(open);
-    const read = await this.anthropic.extract<{ outcomes: { item: number; happened: string }[] }>(
-      READ_WHAT_HAPPENED,
-      [{ role: 'user', content: theHappenedPrompt(once, said) }],
-      WHAT_HAPPENED_SCHEMA as any,
-      { fast: true, thinkingBudget: 0 },
-    );
-    const settled = theSettlements(once, read?.outcomes, said).flatMap((s) => {
+    /*
+     * READ FROM THE CONVERSATION'S ASSESSMENT, NOT A CALL OF ITS OWN (one source, 1 November 2026). The assessment was given
+     * these same open promises, by id, and read what happened to each by the same rules this call used (READ_WHAT_HAPPENED is
+     * quoted whole in its instructions). A promise it read for a row written twice settles both, as before.
+     */
+    const theOneFor = (id: string) => {
+      const row = open.find((o) => o.id === id);
+      const key = row ? aCommitmentKey(row.text ?? '', row.whenSaid) : '';
+      return once.findIndex((o) => o.id === id || (!!key && aCommitmentKey(o.text ?? '', o.whenSaid) === key));
+    };
+    const outcomes = whatHappenedToTheirOpenPromises(theAssessmentIn((row as any).sessionReport))
+      .map((h) => ({ item: theOneFor(h.commitmentId) + 1, happened: h.happened, words: h.words }))
+      .filter((o) => o.item > 0);
+    const settled = theSettlements(once, outcomes, said).flatMap((s) => {
       const key = aCommitmentKey(once.find((o) => o.id === s.id)?.text ?? '', once.find((o) => o.id === s.id)?.whenSaid);
       return open.filter((o) => o.id === s.id || (key && aCommitmentKey(o.text, o.whenSaid) === key)).map((o) => ({ id: o.id, status: s.status }));
     });

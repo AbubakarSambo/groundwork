@@ -35,37 +35,11 @@ export const READ_WHAT_HAPPENED = [
   '  - When in doubt, OPEN.',
 ].join('\n');
 
-export const WHAT_HAPPENED_SCHEMA = {
-  name: 'what_happened_to_what_they_said',
-  description: 'For each numbered commitment, whether this person said it was done, not done, or neither.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      outcomes: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            item: { type: 'integer', description: 'The number of the commitment, as given.' },
-            happened: { type: 'string', enum: ['DONE', 'NOT_DONE', 'OPEN'] },
-            words: { type: 'string', description: 'For DONE only: their own words that say it already happened, copied exactly.' },
-          },
-          required: ['item', 'happened'],
-        },
-      },
-    },
-    required: ['outcomes'],
-  },
-} as const;
+/* The read's own schema is gone: these rules are part of the conversation's assessment now (the-assessment.ts), which is given the open promises by id. */
 
 /** One thing they said, with the question it answered where there was one. */
 export type AnAnswer = string | { asked?: string | null; said: string };
 
-export function thePrompt(open: readonly { text: string; whenSaid?: string | null }[], said: readonly AnAnswer[]): string {
-  const things = open.map((c, i) => `${i + 1}. ${c.text}${c.whenSaid ? ` (${c.whenSaid})` : ''}`).join('\n');
-  const answer = (a: AnAnswer) => (typeof a === 'string' ? a : a.asked ? `(Asked: "${a.asked}") ${a.said}` : a.said);
-  return `WHAT THEY SAID THEY WOULD DO:\n${things}\n\nWHAT THEY SAID IN THIS CHECK-IN, in order:\n${said.map((x, n) => `${n + 1}. ${answer(x)}`).join('\n')}`;
-}
 
 /**
  * THE SAME COMMITMENT, WRITTEN TWICE. Ngozi's "I will follow up with Mr. Adebayo again" and "I will

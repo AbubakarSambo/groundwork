@@ -7,8 +7,8 @@
  *
  * One model call fills every part. The completeness check then matches every message the person sent to items; a second
  * call reads only what the first left unmatched, and anything still unmatched is kept whole. Then the assessment is stored,
- * marked ready, and ASSESSMENT_READY is emitted, which is what the readers that moved onto it wait for. The event is emitted
- * even when the read failed, so no reader waits for ever.
+ * marked ready. ASSESSMENT_READY is emitted by the caller once the readers that read from it have written
+ * (theAssessmentIsReady), even when the read failed, so no listener waits for ever.
  *
  * MEASURED. Each assessment logs one line, "assessment-measure", with the model calls it made and the milliseconds from the
  * close to ready, and keeps both on the assessment, so the with-against-without test can read them.
@@ -20,6 +20,7 @@ import {
   theItemsToCompareAgainst, thePreviousWithItsCorrections, theAssessmentIn, theColumnWith,
   type AMessage, type HowItEnded, type TheAssessment, type TheMaterial, type TheReadParts,
 } from './the-assessment';
+import { oneOfEach } from './what-happened-to-what-they-said';
 import { thePatternsAcrossTheAssessments, type AnAssessmentSeen } from '../patterns/patterns-across-the-assessments';
 import { theInterventionsAfter, type AnIntervention } from '../patterns/the-next-step-for-each-pattern';
 
@@ -108,6 +109,13 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     const priorities = (((await deps.prisma.groundObjective?.findMany?.({ where: { groundId: row.groundId }, select: { name: true } })?.catch?.(() => [])) ?? []) as any[])
       .map((o) => String(o.name ?? '').trim()).filter(Boolean);
     const closing = ((row.turns ?? []) as any[]).filter((t) => Array.isArray(t.recordDraft)).pop();
+    /* Their promises open on the record from before this conversation began: the read says what happened to each, and the settling reads that. */
+    const openPromises = (((await deps.prisma.groundCommitment?.findMany?.({
+      where: { groundId: row.groundId, participantId: row.participantId, status: 'UNKNOWN', createdAt: { lt: row.startedAt ?? how.closedAt } },
+      select: { id: true, text: true, whenSaid: true }, orderBy: { createdAt: 'asc' }, take: 20,
+    })?.catch?.(() => [])) ?? []) as any[]).map((c) => ({ id: String(c.id), text: String(c.text ?? ''), whenSaid: c.whenSaid ?? null })).filter((c) => c.text);
+    /* The same promise written twice is put once; what is read about it settles both rows. */
+    const openOnce = oneOfEach(openPromises);
     const material: TheMaterial = {
       who, isTheLead, checkIn: row.ground?.label ?? null, givenRole, priorities, turns, setup,
       draft: {
@@ -115,12 +123,13 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
         lines: ((closing?.recordDraft ?? []) as any[]).map((l) => String(l?.text ?? '').trim()).filter(Boolean),
       },
       previous: previous ? { checkInId: previous.checkInId, on: previous.on, items: theItemsToCompareAgainst(previous.assessment) } : null,
+      openPromises: openOnce,
     };
 
     /* Which instructions run: a stored version wins over the file, as with every prompt, and the one that ran is recorded. */
     const stored = deps.prompts?.getActive ? await deps.prompts.getActive(ASSESSMENT_PROMPT_KEY).catch(() => null) : null;
     const instructions = stored?.content ?? THE_ASSESSMENT_PROMPT;
-    const opts = { hasSetup: !!setup, previous: previous ? { checkInId: previous.checkInId, on: previous.on } : null, givenRole };
+    const opts = { hasSetup: !!setup, previous: previous ? { checkInId: previous.checkInId, on: previous.on } : null, givenRole, compares: openOnce.length > 0 };
 
     let parts: TheReadParts = thePartsFrom(null, said, { ...opts, read: 1 });
     let matchedFirst = 0;
@@ -188,13 +197,16 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
   } catch (err: any) {
     log.warn(`Assessment of ${checkInId} could not be written: ${err?.message ?? err}`);
     return null;
-  } finally {
-    if (row) {
-      deps.events?.emit(GroundworkEvents.ASSESSMENT_READY, {
-        checkInId, groundId: row.groundId, participantId: row.participantId, sessionNumber: row.sessionNumber, howItEnded: how.howItEnded,
-      } satisfies AssessmentReadyEvent);
-    }
   }
+}
+
+/**
+ * THE ASSESSMENT AND WHAT WAS READ FROM IT ARE READY: said once, after the readers that read from it (the waits and the promises)
+ * have written, so whatever listens (the board's records, the patterns, the report) never reads before them. Said on every path,
+ * whether or not the assessment could be written, so no listener waits for ever.
+ */
+export function theAssessmentIsReady(deps: Pick<AssessmentDeps, 'events'>, e: AssessmentReadyEvent): void {
+  deps.events?.emit(GroundworkEvents.ASSESSMENT_READY, e satisfies AssessmentReadyEvent);
 }
 
 /** The other people's assessments in this check-in, for the lead's bias. Read only when the person assessed is the lead. */
