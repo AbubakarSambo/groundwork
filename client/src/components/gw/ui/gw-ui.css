@@ -1978,7 +1978,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-savecard-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50; overflow-y: auto; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px 48px; transition: opacity .3s, visibility .3s; }
 .gwui-ec-savecard-overlay-hidden { opacity: 0; pointer-events: none; visibility: hidden; }
 .gwui-ec-savecard-overlay-shown { opacity: 1; pointer-events: auto; visibility: visible; }
-.gwui-ec-savecard { width: 100%; max-width: 640px; background: white; border-radius: var(--gw-radius-pop); overflow: hidden; box-shadow: var(--gw-shadow-modal); }
+.gwui-ec-savecard { width: 100%; max-width: 640px; background: white; border-radius: var(--gw-radius-pop); overflow: clip; box-shadow: var(--gw-shadow-modal); }
 .gwui-ec-savecard-header { background: var(--gw-dark); color: white; padding: 20px 22px 16px; }
 .gwui-ec-savecard-eyebrow { font-size: 13px; color: var(--gw-green-b); font-weight: 700; margin-bottom: 6px; line-height: 20px;}
 .gwui-ec-savecard-title { font-size: 18px; font-weight: 700; letter-spacing: -.01em; line-height: 22px; }
@@ -2006,6 +2006,10 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-savecard-whatnext-num { width: 22px; height: 22px; border-radius: 50%; background: var(--gw-navy); color: white; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; line-height: 20px;}
 .gwui-ec-savecard-whatnext-text { font-size: 13px; color: var(--gw-text); line-height: 20px; }
 .gwui-ec-savecard-section { margin-bottom: 20px; }
+/* SAVE STAYS IN VIEW (round 5: at phone width the signed-in lead's Save was far below the team box, and impatient leads left without
+   finding it). The section that holds it, the one with "Start over instead", is pinned to the foot of the card while the setup above it
+   scrolls. The card clips rather than hides its overflow, so it is not a scroller of its own and the pin follows the page's scroll. */
+.gwui-ec-savecard-section:has(> .gwui-ec-savecard-clear-row) { position: sticky; bottom: 0; z-index: 1; background: white; margin: 0 -20px 20px; padding: 12px 20px; border-top: 1px solid var(--gw-border); }
 .gwui-ec-savecard-helper { font-size: 13px; color: var(--gw-muted); line-height: 20px; text-align: center; padding-top: 8px; }
 .gwui-ec-savecard-clear-row { text-align: center; padding-top: 6px; font-size: 13px; color: var(--gw-muted); line-height: 20px;}
 .gwui-ec-savecard-clear-confirm { display: inline-flex; gap: 10px; align-items: center; }

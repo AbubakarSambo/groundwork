@@ -3797,6 +3797,17 @@ export function EntryChatPage() {
     setTeamText('')
   }
 
+  /*
+   * THE TEAM BOX IN VIEW WHEN THE CARD OPENS (round 5, at 375 and 390 wide). On a phone the box sat below the header, the report's
+   * progress and five setup blocks, and Save below it, so neither was on screen when the card opened. The card now opens scrolled to
+   * the box, and Save stays pinned at the foot of the card (gw-ui.css), so both are in view. Where the box is already in view nothing
+   * moves.
+   */
+  const theTeamOnTheCard = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (showSave) scrollTo(theTeamOnTheCard.current, { block: 'nearest' })
+  }, [showSave])
+
   function renderPeopleStep(insideTheSetup = false) {
     const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || pickedSituation || ''
     // Matches scenario keys AND card labels (pickedSituation stores the
@@ -3842,7 +3853,8 @@ export function EntryChatPage() {
         {inviteSubtext}
       </div>
       {/* The one team box (TheTeamBox.tsx), open and filled with everybody named in the conversation (Hafsah, 31 October 2026). */}
-      <div data-testid="the-team-on-the-save-card">
+      {/* Kept clear of the Save pinned at the foot of the card, when it is scrolled to. */}
+      <div data-testid="the-team-on-the-save-card" ref={theTeamOnTheCard} style={{ scrollMarginBottom: 140 }}>
         <TheTeamBox prefilled={theTeamNamedInTheSetup()} text={teamText} onText={writeTheTeam} said={teamSaid} disabled={savingAsUser || saving} />
         {/* FAULT 8 (live walk, 6 October 2026): a lasting Note once the limit is reached, not only a passing toast. */}
         {peopleLimitReached && <Note tone="muted">{thePeopleStepRules.limitSentence}</Note>}
