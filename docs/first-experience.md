@@ -208,6 +208,33 @@ Sales 1, law firm 1, clinic group 1, field programme 3, startup 2, family busine
 - **A save that stopped said nothing.** It now says why, next to Save (c78861988). A correction typed while saving was lost; it is now saved with the setup.
 - **Day one contradicts itself** (round 7's next work). For one check-in, Ask said "Two of your team have now checked in", Check-ins said "1 of 3 answered", and the board said "One of the three". The family business board said Caleb was both "partway through" and "did not answer". Three leads could not find their team's own check-ins and kept landing on the setup conversation. Ask answered about the lead's own check-in when asked about Aisha's.
 
+## Round 7 (1 November): average 2.6, lowest 1
+
+Sales 2, law firm 2, clinic group 2, field programme 2, startup 6, family business 2, mobile cinema 1, charity 4. 31 of 32 named people reached a check-in, and every lead made one.
+
+This round ran on these fixes:
+- one owner for setup's last line;
+- "my team has those details" taken as an answer;
+- the team box during the conversation, on a phone too;
+- setup knowing who is already in the organisation;
+- the count naming who has answered;
+- Ask reading the check-in's count.
+
+**The best score yet:** the startup gave a 6. "The final report was useful. It showed me my lead developer and I are not on the same page." His complaint was the time it took to get there.
+
+**What pulled the scores down, with the causes (all fixed for round 8 on wip/no-loss-2):**
+- **The check-in said things the lead never said.** For the field programme and the family business, the goal read "procure 300 organic chickens from Kaduna". That is the setup page's own worked example. The page added its opening line to the conversation as Groundwork's first turn, so the save's readers took it as said. 963380482: the page's help and a situation card's sentence never enter the history.
+- **What the lead said in setup did not reach the check-in.** "What doing well looks like" and "where this stood at the start" said "Nothing stated yet", because the save wrote only the people, the schedule and the targets. 7e35ac9ac: at the save, what setup heard goes through the context writer. The report is made with who is actually on the check-in. The roles each person was given are now kept too (7bc5c5b67).
+- **The clinic lost Emeka again.** The model's summary left him out, then the lead typed over the box. 7bc5c5b67: a Save that would leave out somebody named in the conversation says so and saves nothing; a second press saves without them.
+- **The team box cut off the lines,** and after saving nobody was named as invited (98ebea849, a44f9466a).
+- **"Add something" refused between sessions,** under the button that offered it. The mobile cinema lead pressed around for 17 steps. 18f618b4b: it opens the lead's next check-in with what they typed.
+
+**For Hafsah:**
+- "2 of 3 checked in" for a team of four is read as the wrong team size, every round. The count is her 13 October rule, kept.
+- A correction holds in the conversation but changes nothing on the record. That is her corrections plan for after the quarter run.
+- Two leads called the setup form better than the conversation.
+- The board never says when the next session opens.
+
 ## The plan to 8.5
 
 1. **Round 2** on the fixes above, with fresh people for every kind of organisation and the harness's memory fix: each person now remembers everything they typed. In round 1 one admin accused Groundwork of inventing a roof she had typed twice.
