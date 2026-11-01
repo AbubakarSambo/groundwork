@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildSessionRows } from './session-rows'
 import { checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
+import { aServedCount } from './a-served-count-for-a-spec'
 
 /**
  * NIGHT QUALITY RUN 1, PROBLEM 4. Esther's report tab read "Session 1, Mon 12 Oct, 5 of 5 checked in" and "Session 2, 4 of 4
@@ -28,7 +29,9 @@ describe('a missed check-in stays in the count, and the lead\'s own row never da
     answered('c-a2', 'p-amina', 2, '2026-10-26T08:34:07.292Z'),
     { ...answered('c-j2', 'p-jared', 2, '2026-10-30T16:30:00.020Z'), closedReason: 'auto_closed', turns: [] },
   ]
-  const rows = buildSessionRows({ participants, checkIns, roundCompletions: [{ sessionNumber: 1 }, { sessionNumber: 2 }], scenario: 'SALES_TEAM_CHECK' }, 'u-esther', (p) => p.name)
+  const rows = buildSessionRows({ participants, checkIns, roundCompletions: [{ sessionNumber: 1 }, { sessionNumber: 2 }], scenario: 'SALES_TEAM_CHECK',
+    /* As the server counts these rows: Jared's quiet closes are not answers; Esther is in session 1, which she answered, not session 2. */
+    answeredBySession: aServedCount({ 1: { on: ['p-esther', 'p-collins', 'p-hassan', 'p-amina', 'p-jared'], answered: ['p-esther', 'p-collins', 'p-hassan', 'p-amina'] }, 2: { on: ['p-collins', 'p-hassan', 'p-amina', 'p-jared'], answered: ['p-collins', 'p-hassan', 'p-amina'] } }) }, 'u-esther', (p) => p.name)
   const row = (n: number) => rows.find((r) => r.sessionNumber === n)!
 
   it('session 1 reads 4 of 5 and names Jared, and is dated the team\'s first day, 19 October', () => {

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { railAttention } from '@/lib/rail-attention'
+import { aServedCount } from '@/lib/a-served-count-for-a-spec'
 
 /**
  * THE ONE GLANCEABLE THING ON A CARD SAID NOTHING ABOUT WHETHER IT WANTED YOU.
@@ -63,7 +64,7 @@ describe('a card says what it wants', () => {
 
   it('mine done and theirs not reads as waiting on them', () => {
     const a = railAttention(
-      ground({ checkIns: [doneFor('p-me'), openFor('p-them')] }) as any, 'u-me',
+      ground({ checkIns: [doneFor('p-me'), openFor('p-them')], answeredBySession: aServedCount({ 1: { on: ['p-me', 'p-them'], answered: ['p-me'] } }) }) as any, 'u-me',
     )
     expect(a.kind).toBe('waiting')
     if (a.kind === 'waiting') expect(a.total - a.done).toBe(1)

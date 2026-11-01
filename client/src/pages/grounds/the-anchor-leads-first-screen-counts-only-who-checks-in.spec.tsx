@@ -1,3 +1,4 @@
+import { aServedCount } from '@/lib/a-served-count-for-a-spec'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -51,6 +52,11 @@ const anAnchor = (people: any[], checkIns: any[]) => ({
   ],
   sessionClock: { currentSession: 1, plannedSessions: 4, says: 'Session 1 of 4.', whileOpen: null },
   boardRenders: true,
+  /* As the server counts it: the anchor's managing lead is never in a round; her team is, and a finished session is an answer. */
+  answeredBySession: aServedCount({ 1: {
+    on: people.map((p) => p.id),
+    answered: checkIns.filter((c) => c.status === 'COMPLETED').map((c) => c.participantId),
+  } }),
 })
 
 describe("the anchor lead's first screen", () => {

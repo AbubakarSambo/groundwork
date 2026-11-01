@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { groundsApi } from '@/api/grounds'
 import { isASalesKind } from '@/lib/a-sales-kind'
-import { whoIsInRound } from '@/lib/who-is-in-this-round'
+import { theCountOf } from '@/lib/the-one-count'
 import { useAuthStore } from '@/stores/auth'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
@@ -28,7 +28,7 @@ export default function RoundReportPage() {
   const n = Number(sessionNumber)
   /*
    * U.9 REVIEW FIX 6: THE SAME COUNT AS THE CHECK-IN HEADER.
-   * The header on GroundAdminPage counts who is in this round with `whoIsInRound`; the session
+   * The header on GroundAdminPage reads who is in this round from the served one count; the session
    * report's own count can disagree with it (engine request 56). This reader has no session of
    * their own, so their only count is this one - it should still be the product's one count.
    */
@@ -121,7 +121,7 @@ export default function RoundReportPage() {
             groundId={id}
             sessionNumber={n}
             light={isASalesKind((ground as any)?.kindOfWork)}
-            totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), n, (ground as any).scenario, (ground as any).checkIns ?? []).length : null}
+            totalInThisRound={ground ? theCountOf(ground, n)?.onTheCheckIn.length ?? null : null}
           />
         )}
       </div>

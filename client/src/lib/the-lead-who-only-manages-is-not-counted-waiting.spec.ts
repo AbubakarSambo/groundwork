@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { railAttention } from './rail-attention'
 import { howManyHaveNotAnsweredYet } from './a-number-up-to-ten-in-words'
+import { aServedCount } from './a-served-count-for-a-spec'
 
 /**
  * Release check, 9 October. Baraka set up an anchor check-in for Kito and Lerato. His page read "Two of the three have not answered
@@ -21,6 +22,8 @@ const ground = {
     { participantId: 'p-kito', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: null, isSetup: false },
     { participantId: 'p-lerato', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: null, isSetup: false },
   ],
+  /* As the server counts it: the anchor's managing lead is never in a round. */
+  answeredBySession: aServedCount({ 1: { on: ['p-kito', 'p-lerato'], answered: [] } }),
 }
 
 describe('the lead who only manages, and her set-up conversation, are not counted', () => {

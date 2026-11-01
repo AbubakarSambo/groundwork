@@ -1,3 +1,4 @@
+import { aServedCount } from '@/lib/a-served-count-for-a-spec'
 import type { ReactElement } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
@@ -60,6 +61,8 @@ function groundFor(reader: 'lead' | 'participant') {
     checkIns: participants.map((p) => ({ id: `c-${p.id}`, participantId: p.id, sessionNumber: 1, status: p.id === 'b' ? 'COMPLETED' : 'NOT_STARTED', completedAt: p.id === 'b' ? at(5) : null, createdAt: at(4) })),
     commitments: [{ id: 'k1', participantId: 'c', text: 'Send the price list.', explicit: true }],
     signals: [],
+    /* As the server counts session 1: the lead did not answer it, so she is not in it. */
+    answeredBySession: aServedCount({ 1: { on: ['a', 'b', 'c'], answered: ['b'] } }),
   }
 }
 

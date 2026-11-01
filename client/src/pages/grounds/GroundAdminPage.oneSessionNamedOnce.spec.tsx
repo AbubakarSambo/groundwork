@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GroundAdminPage } from './GroundAdminPage'
+import { aServedCount } from '@/lib/a-served-count-for-a-spec'
 import { groundsApi } from '@/api/grounds'
 
 /**
@@ -60,6 +61,7 @@ describe('B-053: the header names one session, and counts who has checked in for
          produced the bug. */
       sessionClock: { currentSession: 1, plannedSessions: 12, says: 'Session 1 of 12.', whileOpen: null },
       boardRenders: true,
+      answeredBySession: aServedCount({ 1: { on: ['p-lead'], answered: ['p-lead'] }, 2: { on: [], answered: [] } }),
     }
     ;(groundsApi.get as any).mockResolvedValue(g)
     renderPage()

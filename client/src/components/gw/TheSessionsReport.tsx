@@ -563,7 +563,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
    * live: "4 of 5" here beside "4 of 6" on the check-in's own header, because the session report's
    * count and the rest of the product count differently). That is the server's read to fix; on
    * this screen, when the host page already knows the true total (the same figure the check-in's
-   * header uses, via `whoIsInRound`), it is passed in here and used instead of `counting.length`
+   * header uses, the served one count), it is passed in here and used instead of `counting.length`
    * whenever the two disagree, so a reader is never shown two different totals for one check-in.
    */
   totalInThisRound?: number | null

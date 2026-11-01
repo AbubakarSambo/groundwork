@@ -49,7 +49,7 @@ import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Page } from '@/components/gw/ui/Page'
 import { billingApi } from '@/api/billing'
 import { CheckInPeopleAndSetup, sessionsDoneBy } from './CheckInPeopleAndSetup'
-import { whoIsInRound } from '@/lib/who-is-in-this-round'
+import { theCountOf } from '@/lib/the-one-count'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
@@ -1227,7 +1227,7 @@ export function GroundAdminPage() {
    * REQUEST 174, ITEM 2 (report tab, fault d): "Session 1 of 12" STUCK WHILE SESSION 2 WAS BEING
    * ANSWERED. This fed every row of `ground.participants` into the rule unfiltered, including
    * somebody held at the organisation's door (`notLetInYet`) - decision 77, the same rule
-   * `whoIsInRound` already applies for the roster and the counter just below. Someone not let in
+   * the server's one count already applies for the roster and the counter just below. Someone not let in
    * yet never has a completed session and never will, so their row is permanently empty, which
    * permanently caps "the lowest number anybody has finished" at zero and the header at "Session
    * 1" - whatever everybody actually let in has done. Left out here the same way they are left out
@@ -1307,14 +1307,9 @@ export function GroundAdminPage() {
    * COUNTED AMONG THE PEOPLE IN THE SESSION, THE SAME PEOPLE THE TOTAL COUNTS (release check, 8 October 2026). The anchor's
    * lead does not check in (her row is managing only), but her set-up conversation is stored as a finished check-in for
    * session 1. Counted here, her first screen read "One of the zero people has checked in for session 1." A finished
-   * check-in counts only when its person is one of `whoIsInRound`; one with no person on it is counted as before.
+   * The count is the server's one count (answeredBySession), which counts only the people the session counts.
    */
-  const inClockRound = new Set(
-    whoIsInRound((ground.participants ?? []) as any[], clockRound, (ground as any).scenario, (ground.checkIns ?? []) as any[]).map((p: any) => p.id),
-  )
-  const clockRoundDone = (ground.checkIns ?? []).filter(
-    (c: any) => c.sessionNumber === clockRound && c.status === 'COMPLETED' && (c.participantId == null || inClockRound.has(c.participantId)),
-  ).length
+  const clockRoundDone = theCountOf(ground, clockRound)?.answered.length ?? 0
   /**
    * WHY THE SESSION NUMBER JUST WENT DOWN.
    *
@@ -1869,7 +1864,7 @@ export function GroundAdminPage() {
                * check-in." over a session everybody had already finished, because `says` and this
                * count were two different sessions' worth of true. See `clockRound`'s own comment.
                */
-              const total = whoIsInRound((ground.participants ?? []) as any[], clockRound, (ground as any).scenario, (ground.checkIns ?? []) as any[]).length
+              const total = theCountOf(ground, clockRound)?.onTheCheckIn.length ?? 0
               /*
                * REQUEST 174, ITEM 2 (report tab, fault b): "0 of 1 people have checked in" is not a
                * sentence anybody writes - nobody says "zero people" where "nobody" is the plain
@@ -2971,7 +2966,8 @@ export function GroundAdminPage() {
         {tab === 'report' && (
           <Stack gap={18}>
             {/* A shared report needs two people; a check-in with one on it says so here rather than "forming" for ever (B17). */}
-            {whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length < 2 && (
+            {/* Read from the server's `atLeastTwoInThisRound`, as the participant's page reads it. */}
+            {!(ground as any).atLeastTwoInThisRound && (
               <Callout tone="warning" role="status">
                 The shared report compares two accounts. Add somebody and this will build.{' '}
                 <button type="button" className="gwui-plain-link" onClick={() => setTab('checkins')}>Add a person</button>
