@@ -173,3 +173,40 @@ export function whoAnswersThisCheckIn<T extends { managingOnly?: boolean | null;
   const on = new Set(whoHasAnswered(asARound, Number.MAX_SAFE_INTEGER, scenario).onTheCheckIn);
   return (people ?? []).filter((_, i) => on.has(String(i)));
 }
+
+/**
+ * THE ONE COUNT FOR EVERY SESSION OF A CHECK-IN, IN ONE READ, as the pages are served it (the check-in page, the session rows, the
+ * reports' headers and the list's attention line read this, never a rule of their own; client/src/lib/the-one-count.ts). `onlyThese`
+ * keeps it to the people the reader may see, as the served roster is.
+ */
+export async function whoHasAnsweredInEachSession(prisma: any, groundId: string, onlyThese?: ReadonlySet<string> | null): Promise<Record<number, WhoHasAnswered>> {
+  const ground = await Promise.resolve(prisma.ground?.findUnique?.({ where: { id: groundId }, select: { scenario: true } })).catch(() => null);
+  const away = await whoOnACheckInIsAway(prisma, groundId).catch(() => new Map<string, string>());
+  const rows = ((await Promise.resolve(prisma.groundParticipant?.findMany?.({
+    where: { groundId },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      id: true, userId: true, partyType: true, managingOnly: true, cameThroughTheLink: true, acceptedAt: true,
+      user: { select: { awaitingOrgApproval: true } },
+      checkIns: { select: { status: true, sessionNumber: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } } } },
+    },
+  })).catch(() => [])) ?? []) as any[];
+  const notJoined = await whoHasNotJoinedYet(prisma, rows).catch(() => new Set<string>());
+  const notLetIn = await whoIsNotLetInYet(prisma, rows).catch(() => new Map());
+  const people: SomebodyWhoMightAnswer[] = rows
+    .filter((p) => !onlyThese || onlyThese.has(p.id))
+    .map((p) => ({ ...p, notLetIn: notLetIn.has(p.id), notJoinedYet: notJoined.has(p.id), awayUntil: away.get(p.id) ?? null }));
+  /* Every session so far, and the next, so a page asking about a round nobody has a row for yet reads it too. */
+  const last = Math.max(0, ...rows.flatMap((p) => (p.checkIns ?? []).map((c: any) => Number(c.sessionNumber) || 0)));
+  const sessions = Array.from({ length: last + 1 }, (_, i) => i + 1);
+  return Object.fromEntries(sessions.map((n) => [n, whoHasAnswered(people, n, ground?.scenario)]));
+}
+
+/** The one count of each session kept to the people a reader may see: the same as counting only them, since each person counts alone. */
+export function forThesePeople(counts: Record<number, WhoHasAnswered> | undefined, ids: ReadonlySet<string>): Record<number, WhoHasAnswered> {
+  const keep = (xs: string[]) => xs.filter((x) => ids.has(x));
+  return Object.fromEntries(Object.entries(counts ?? {}).map(([n, c]) => [n, {
+    ...c, onTheCheckIn: keep(c.onTheCheckIn), answered: keep(c.answered), notYet: keep(c.notYet), notJoined: keep(c.notJoined), declined: keep(c.declined),
+    notLetIn: keep(c.notLetIn), away: Object.fromEntries(Object.entries(c.away).filter(([k]) => ids.has(k))),
+  }]));
+}

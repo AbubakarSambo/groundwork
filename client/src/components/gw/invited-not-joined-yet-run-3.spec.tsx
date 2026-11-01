@@ -26,8 +26,9 @@ describe('invited, not joined yet, on the check-in page', () => {
     expect(screen.getAllByText('Jared Okoth has not checked in yet.').length).toBeGreaterThan(0)
   })
 
-  it('she is not in the count', () => {
-    expect(whoIsInRound(people, 4, null).map((p) => p.id)).toEqual(['p-jared', 'p-hassan'])
-    expect(whoIsInRound(people, 4, null, [{ participantId: 'p-hassan', sessionNumber: 4, status: 'COMPLETED' }]).map((p) => p.id)).toEqual(['p-jared', 'p-hassan'])
+  /* CHANGED 1 NOVEMBER 2026: everyone on the check-in is counted, as the prototype does (Hafsah approved), and as the server's one count does. */
+  it('she is in the count, and the roster names her as not joined', () => {
+    expect(whoIsInRound(people, 4, null).map((p) => p.id)).toEqual(['p-amina', 'p-jared', 'p-hassan'])
+    expect(whoIsInRound(people, 4, null, [{ participantId: 'p-hassan', sessionNumber: 4, status: 'COMPLETED' }]).map((p) => p.id)).toEqual(['p-amina', 'p-jared', 'p-hassan'])
   })
 })

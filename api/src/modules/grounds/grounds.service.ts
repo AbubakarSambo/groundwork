@@ -129,7 +129,7 @@ import { adminsThisOrg, askedToApproveIt, readsAsAnAdmin, readsTheLeadsPeopleNot
 import { EVALUATION_SCENARIOS, isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, briefChangedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
-import { howManyHaveAnswered } from '../reports/how-many-have-answered';
+import { howManyHaveAnswered, whoHasAnsweredInEachSession, forThesePeople } from '../reports/how-many-have-answered';
 import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, theDatesToKeep, theSameWords, theNumberAsWritten, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExactQuestion, theLeadsOwnQuestionIfAddressedToThem, THE_EXACT_QUESTION_PROMPT, THE_EXACT_QUESTION_TOOL, whatGroundworkWillAsk, type AQuestionForAPerson } from './a-question-asked-word-for-word';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
@@ -1598,6 +1598,10 @@ export class GroundsService {
         mayChangeSetup: whoMayConfirmSetup(userId, g, { lead: leadState, confirmer: { role: userRole, organizationId } as any, organizationId: g.organizationId ?? null }).allowed,
       };
     };
+    /* Who has answered each session, by the one count, for every check-in on the list (reports/how-many-have-answered.ts). */
+    const countsOnTheList = new Map<string, Record<number, any>>(await Promise.all([...orgGrounds, ...participantGrounds]
+      .filter((g: any) => !heldForASeat.has(g.id))
+      .map(async (g: any) => [g.id, await whoHasAnsweredInEachSession(this.prisma, g.id).catch(() => ({}))] as [string, Record<number, any>])));
     return [...orgGrounds, ...participantGrounds]
       .filter((g: any) => !heldForASeat.has(g.id))
       .map(g => {
@@ -1822,6 +1826,8 @@ export class GroundsService {
               }
             : {}),
           checkIns: checkInsShown,
+          /* Who has answered each session, by the one count, over the people this reader may see (how-many-have-answered.ts). */
+          answeredBySession: hidePeers ? forThesePeople(countsOnTheList.get(g.id), shown) : countsOnTheList.get(g.id) ?? {},
           dependencies: dependenciesShown,
           peersVisibleEffective,
           /* Decision 17, said plainly: on a check-in about one person the switch never reaches them. */
@@ -2975,6 +2981,12 @@ export class GroundsService {
       aTeamReportComes,
       /** Whether this round already has two people counted in it - a yes/no. See the note above. */
       atLeastTwoInThisRound,
+      /**
+       * WHO HAS ANSWERED EACH SESSION, BY THE ONE COUNT (reports/how-many-have-answered.ts, 1 November 2026). The check-in page, its
+       * session rows and the reports' headers read this instead of a copy of the rule in the browser. Over the people this reader may
+       * see: on a check-in whose people do not see each other, a participant's own row alone, as the roster above.
+       */
+      answeredBySession: await whoHasAnsweredInEachSession(this.prisma, ground.id, hidePeers ? new Set(participantsWithCheckIns.map((p: any) => p.id)) : null),
       /**
        * WHAT THE PEER RULE IS ACTUALLY DOING, not what is stored. W14-4.
        *

@@ -1,6 +1,10 @@
 /**
  * WHO IS IN A ROUND, THE SAME ANSWER THE SERVER GIVES.
  *
+ * 1 November 2026: the server counts in one function now (api reports/how-many-have-answered.ts, whoHasAnswered) and serves it on
+ * every check-in as `answeredBySession`. This copy is kept, with the same rule, until the pages read that instead (not done yet:
+ * the page specs build check-ins without the served count).
+ *
  * Hafsah's own ground, 21 Sep 2026: she set it up saying she just sets the targets, which made her
  * managing-only. The server's rule (api: the-lead-who-only-asks.ts, isSessionReadyForReport) is that
  * a managing-only lead still gives session 1 and is waited on for it, and is not a party from
@@ -25,8 +29,8 @@ export function countsInRound(
   scenario: string | null | undefined,
 ): boolean {
   if (p.notLetInYet) return false
-  /* Invited, not joined yet (decision 8 redone): not in the count, and never missed. */
-  if (p.notJoinedYet) return false
+  /* Invited, not joined yet: counted, as everyone on the check-in is (Hafsah, 1 November 2026; the server's one count,
+     api reports/how-many-have-answered.ts, whoHasAnswered), and named as not joined, never as missed. */
   if (!p.managingOnly) return true
   if (THE_LEAD_ONLY_ASKS.includes(scenario ?? '')) return false
   return (sessionNumber ?? 1) <= 1
@@ -51,7 +55,6 @@ export function whoIsInRound<T extends { id?: string; partyType?: string | null;
     .map((c) => c.participantId))
   return (participants ?? []).filter((p) => {
     if (p.notLetInYet) return false
-    if (p.notJoinedYet && !answered.has(p.id)) return false
     /* The anchor's own rule, unchanged: where the lead only asks, a managing lead is never in a round. */
     if (p.managingOnly && THE_LEAD_ONLY_ASKS.includes(scenario ?? '')) return false
     const choosesWhen = p.partyType === 'INITIATOR' || !!p.managingOnly
