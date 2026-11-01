@@ -98,3 +98,22 @@ describe('what was said reaches the session report from the assessments', () => 
     expect(read).not.toMatch(/\[(Wanjiru|Brian)/);
   });
 });
+
+/*
+ * "NOBODY HAS SAID WHAT SUCCESS LOOKS LIKE" WAS UNTRUE (assessment test, A1): the lead said it in setup, and her record's lines were
+ * lost. What success looks like, as she said it, is read from her assessment too, behind the same wall as the lines.
+ */
+describe('what success looks like, as it was said, from the assessments', () => {
+  const svc = Object.create(ReportsService.prototype) as any;
+  svc.prisma = { checkIn: { findMany: jest.fn(async ({ where }: any) => ASSESSMENTS.filter((a) => !where.participantId || where.participantId.in.includes(a.sessionReport.about.participantId))) } };
+
+  it('the lead reads her own target as said, though no line holds it', async () => {
+    const got = await svc.whatSuccessWasSaid('g', ['pid-lead', 'pid-brian'], true, []);
+    expect(got).toEqual([{ type: 'SUCCESS_DEFINITION', text: 'We must collect KES 2,400,000 by the end of the year', participantId: 'pid-lead' }]);
+  });
+
+  it('is not given twice when a line already holds it, and never to a reader not allowed that person', async () => {
+    expect(await svc.whatSuccessWasSaid('g', ['pid-lead'], true, [{ text: 'We must collect KES 2,400,000 by the end of the year.' }])).toEqual([]);
+    expect(await svc.whatSuccessWasSaid('g', ['pid-brian'], false, [])).toEqual([]);
+  });
+});

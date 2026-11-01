@@ -1065,6 +1065,22 @@ export class ReportsService {
      fallback below so a service made without its constructor still reads "not being written". */
   private readonly synthesesOut = new Syntheses();
 
+  /**
+   * WHAT SUCCESS LOOKS LIKE, AS IT WAS SAID, FROM THE ASSESSMENTS (the one reader, 1 November 2026). On the assessment test the lead
+   * said her targets and what success looks like in setup, her record's lines were lost to a failed write, and the page read "Nobody
+   * has said what success looks like yet." What she said is read from her assessment too, through the same wall as the lines: only
+   * the people this reader may read, and as everybody in the check-in may read it unless the reader runs it. Words the record's lines
+   * already hold are not given twice.
+   */
+  private async whatSuccessWasSaid(groundId: string, readable: string[], readerIsTheLead: boolean, lines: { text: string }[], uptoSession?: number, mayRead: (f: AFact) => boolean = () => true): Promise<{ type: RecordEntryType; text: string; participantId: string }[]> {
+    const facts = await theFactsOnRecord(this.prisma, { groundId, participantIds: readable, reader: readerIsTheLead ? { kind: 'the lead', judgements: false } : { kind: 'everybody in the check-in' } }).catch(() => [] as AFact[]);
+    const held = lines.map((l) => String(l.text ?? '').toLowerCase()).join('\n');
+    return facts
+      .filter((f) => ['setup.success', 'setup.targets', 'setup.objective'].includes(f.section) && (uptoSession == null || f.sessionNumber <= uptoSession) && mayRead(f))
+      .filter((f) => !held.includes(f.words.toLowerCase()))
+      .map((f) => ({ type: RecordEntryType.SUCCESS_DEFINITION, text: f.words, participantId: f.participantId }));
+  }
+
   async synthesize(groundId: string) {
     const waiting = this.synthesisWaiting.get(groundId);
     if (waiting) return waiting;
@@ -3273,7 +3289,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
         where: { disputedAt: null, ...whoseLines } as any,
         orderBy: { createdAt: 'asc' },
         select: { type: true, text: true, participantId: true },
-      }),
+      }).then(async (lines) => [...lines, ...(await this.whatSuccessWasSaid(groundId, readableParticipantIds, isInitiator, lines, undefined,
+        /* The same wall as the lines: a colleague's only from a released session. */
+        (f) => releasedSessions === null || !me || f.participantId === me.id || (releasedSessions as number[]).includes(f.sessionNumber)))]),
     ]);
 
     return whereYouAreAgainstWhatYouNamed({
@@ -3858,7 +3876,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: { lte: sessionNumber } } },
       orderBy: { createdAt: 'asc' },
       select: { type: true, text: true, participantId: true },
-    });
+    }).then(async (lines) => [...lines, ...(await this.whatSuccessWasSaid((ground as any).id, readableParticipantIds, isInitiator, lines, sessionNumber))]);
     /* A team target the lead set is what success looks like, said as a number (request 132 g): "No standard is set. You have not
        said what success looks like" was read by a lead who had set 6,000. Only to the lead, who may read every target. */
     const theTargetTheLeadSet = !(baseline?.successLooksLike ?? '').trim() && isInitiator
