@@ -27,7 +27,7 @@ export const WHATS_NEW_SENDER = 'sendHeresWhatIsNew';
 
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
-export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Who the count leaves out and why, said after it (this-sessions-count.ts). */ notCountedSays?: string | null; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean; /** Set only when another listed check-in has the same name: when this one was started, as the lead reads a date ("3 September"). */ startedOn?: string; groundId?: string; /** Which round the count is about. */ round?: number }
+export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Who the count leaves out and why, said after it (this-sessions-count.ts). */ notCountedSays?: string | null; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean; /** Set only when another listed check-in has the same name: when this one was started, as the lead reads a date ("3 September"). */ startedOn?: string; groundId?: string; /** Which round the count is about. */ round?: number; /** The one count's own sentence, by name, as the board and the check-in's page say it. */ says?: string }
 
 /**
  * WHETHER THIS CHECK-IN HAS A SESSION STILL TO COME. The follow-up (a person's own promise, said back to them) is sent for a session that begins after
@@ -130,7 +130,7 @@ export async function theOpenSession(prisma: any, groundId: string, leadUserId: 
   const people = marked.map(({ checkIns: _own, ...p }: any) => p);
   const { count } = theSessionAndItsCount(
     { participants: people, checkIns: g.checkIns, scenario: g.scenario, timelineDays: g.timelineDays, cadence: g.cadence, cadenceDays: g.cadenceDays, runsUntilEnded: g.runsUntilEnded },
-    { handOn: g.organizationId ? await theReleaseOneSalesBoardIsOn(prisma, g.organizationId).catch(() => true) : true },
+    { handOn: g.organizationId ? await theReleaseOneSalesBoardIsOn(prisma, g.organizationId).catch(() => true) : true, names: { readerUserId: leadUserId } },
   );
   if (!count.ofPeople) return null;
   const byId = new Map(people.map((p: any) => [p.id, p]));
@@ -142,7 +142,7 @@ export async function theOpenSession(prisma: any, groundId: string, leadUserId: 
     .map((p: any) => (p?.userId === leadUserId ? 'you' : nameToCall(p)))
     .filter(aNameToList)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
-  return { label: '', ofHowMany: count.ofPeople, answered: count.answered, notYet, round: count.session, notCountedSays: count.notCountedSays };
+  return { label: '', ofHowMany: count.ofPeople, answered: count.answered, notYet, round: count.session, notCountedSays: count.notCountedSays, says: count.says };
 }
 
 /** The sweep. Returns how many were tried; the sender decides whether each may go. */

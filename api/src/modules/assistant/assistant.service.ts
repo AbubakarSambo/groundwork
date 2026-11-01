@@ -37,7 +37,7 @@ import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-the
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { whatThisReaderCallsEachLabel, noStandInLabelAnywhereIn } from '../reports/a-stand-in-label-never-reaches-a-reader';
 import { howManyAnsweredInWords } from '../reports/the-picture-in-plain-sentences';
-import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds } from './what-they-said-that-you-may-read';
+import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds, I_CANNOT_SHOW_YOU_THAT } from './what-they-said-that-you-may-read';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { theOneToDoFirst, whatMustSurviveIn } from './what-to-do-next';
 import { aReportSource, YOUR_TO_DOS_SOURCE, YOUR_COMMITMENTS_SOURCE, WHAT_NEEDS_YOU_SOURCE } from './a-source-says-where-it-came-from';
@@ -799,7 +799,7 @@ export class AssistantService {
   /** Their own record, as the correction check reads it: their promises, their lines, and the numbers shown them with how each was counted. */
   private async whatTheRecordHoldsFor(organizationId: string, userId: string): Promise<WhatTheRecordHolds> {
     const db = this.prisma as any;
-    const places = ((await Promise.resolve(db.groundParticipant?.findMany?.({ where: { userId, ground: { organizationId } }, select: { id: true, groundId: true, ground: { select: { id: true, label: true, organizationId: true, kindOfWork: true, workStages: true } } } })).catch(() => [])) ?? []) as any[];
+    const places = ((await Promise.resolve(db.groundParticipant?.findMany?.({ where: { userId, ground: { organizationId } }, select: { id: true, groundId: true, ground: { select: { id: true, label: true, organizationId: true, kindOfWork: true, workStages: true, initiatorId: true } } } })).catch(() => [])) ?? []) as any[];
     const label = new Map<string, string>(places.map((p) => [p.groundId, String(p.ground?.label ?? 'a check-in')]));
     const ids = places.map((p) => p.id);
     const day = (d: any) => (d ? aDaySaidInFull(new Date(d)) : '');
@@ -820,6 +820,16 @@ export class AssistantService {
       const done = due.filter((c) => c.status === 'COMPLETED');
       const specific = done.filter((c) => c.specificityLevel === 'specific');
       if (due.length) numbers.push({ name: `Check-ins in ${label.get(p.groundId)}`, says: `${done.length} of ${due.length} check-ins done, ${specific.length} of the ${done.length} done were specific.`, howItIsCounted: 'every session of this check-in that has opened for you, done where you finished it, and specific where you named the item, what changed and the day.' });
+    }
+    /*
+     * AND, FOR A CHECK-IN THEY RUN, WHO HAS CHECKED IN, FROM THE ONE COUNT (round 6, 1 November 2026). The mobile cinema lead said "You
+     * told me they have checked in" about Aisha and David, and this record held only his own check-ins, so he was answered about his own.
+     * The count the board and the check-in's page say, by name, is part of what he was shown, so it is here to be checked against.
+     */
+    for (const p of places) {
+      if (p.ground?.initiatorId !== userId) continue;
+      const stood = await theOpenSessionOfACheckIn(db, p.groundId, userId).catch(() => null);
+      if (stood?.says) numbers.push({ name: `Who has checked in to ${label.get(p.groundId)}`, says: stood.says, howItIsCounted: 'the session the board counts: everybody on the check-in who has joined, who has checked in, who has started and not finished, and who has not started.' });
     }
     for (const p of places) {
       const aims = ((await Promise.resolve(db.groundObjective?.findMany?.({ where: { groundId: p.groundId, ownerParticipantId: p.id }, select: { id: true, name: true, target: true, count: true, ownerParticipantId: true } })).catch(() => [])) ?? []) as any[];
@@ -1475,6 +1485,22 @@ export class AssistantService {
       message,
     );
     const first = reply.blocks[0];
+    /*
+     * NOTHING TO READ BECAUSE THEY HAVE NOT FINISHED, SAID AS THAT (round 6, 1 November 2026). The mobile cinema lead asked where Aisha's and
+     * David's check-ins were and read "I cannot show you that. I have nothing from Aisha and David's check-ins", which sounds like a wall:
+     * they had started session 1 and not finished it. For a check-in this lead runs with them on it, the one count says where they are,
+     * by name, as the board and the check-in's page say it.
+     */
+    if (userId && first?.type === 'text' && first.body.startsWith(I_CANNOT_SHOW_YOU_THAT) && subject) {
+      const asked = subject.split(/\s*(?:,|\band\b|&)\s*/i).map((n) => (n.trim().split(/\s+/)[0] ?? '').replace(/['’]s$/i, '')).filter((n) => n.length > 1);
+      const theirs = await this.prisma.ground.findMany({ where: { organizationId, initiatorId: userId }, select: { id: true }, orderBy: { createdAt: 'desc' }, take: 20 }).catch(() => [] as { id: string }[]);
+      for (const g of theirs) {
+        const stood = await theOpenSessionOfACheckIn(this.prisma, g.id, userId).catch(() => null);
+        if (stood?.says && asked.length && asked.every((n) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(stood.says!))) {
+          return rules('what_did_they_say', text(`There is nothing of theirs to read yet, because they have not finished a check-in. ${stood.says}`));
+        }
+      }
+    }
     const keep = first && first.type === 'text'
       ? first.body.split('\n').filter((l) => l.startsWith('- "')).map((l) => l.slice(2))
       : [];
