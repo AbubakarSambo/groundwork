@@ -13,6 +13,7 @@
  * MEASURED. Each assessment logs one line, "assessment-measure", with the model calls it made and the milliseconds from the
  * close to ready, and keeps both on the assessment, so the with-against-without test can read them.
  */
+import { theSpeakerLine } from './the-person-speaking';
 import { GroundworkEvents, type AssessmentReadyEvent } from '../../common/events';
 import {
   ASSESSMENT_PROMPT_KEY, THE_ASSESSMENT_PROMPT, THE_ASSESSMENT_SCHEMA, THE_ASSESSMENT_KIND, THE_ASSESSMENT_VERSION,
@@ -119,7 +120,7 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     /* The same promise written twice is put once; what is read about it settles both rows. */
     const openOnce = oneOfEach(openPromises);
     const material: TheMaterial = {
-      who, isTheLead, checkIn: row.ground?.label ?? null, givenRole, priorities, turns, setup,
+      who, speaking: theSpeakerLine(row.participant), isTheLead, checkIn: row.ground?.label ?? null, givenRole, priorities, turns, setup,
       draft: {
         claims: (((row.whatWeHave as any)?.claims ?? []) as any[]).map((c) => [c.said, c.number && `(${c.number}${c.measure ? ` ${c.measure}` : ''})`, c.date && `by ${c.date}`].filter(Boolean).join(' ')).filter(Boolean),
         lines: ((closing?.recordDraft ?? []) as any[]).map((l) => String(l?.text ?? '').trim()).filter(Boolean),

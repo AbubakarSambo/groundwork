@@ -91,7 +91,7 @@ import { oneOfTheKinds, isASalesKind } from '../board/the-kind-of-work';
 import { theEndCard, theCardStillStanding, whatTheyWereAskedToShow, type EndCard, type ALineForTheCard } from './the-end-card';
 import { assessTheConversation, theAssessmentOf, theAssessmentIsReady, type TheSetupGiven } from './assess-the-conversation';
 import { theSmallStepForThePerson } from '../patterns/the-next-step-for-each-pattern';
-import { whatTheyAreWaitingOn, whatTheyPromisedThemselves, whatHappenedToTheirOpenPromises, theAssessmentIn, theReportTheyRead } from './the-assessment';
+import { whatTheyAreWaitingOn, whatTheyPromisedThemselves, whatHappenedToTheirOpenPromises, theAssessmentIn, theReportTheyRead, type TheAssessment } from './the-assessment';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { theSettlements, aCommitmentKey, oneOfEach, theySaidItDidNotHappen, type AnAnswer } from './what-happened-to-what-they-said';
 import { theProofSettlements, thePrompt as theProofPrompt, WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT, WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA, whatThisLineProves, mayBeSettledByProof } from './settled-by-proof';
@@ -7624,9 +7624,11 @@ ${told}` : '';
       theDoorsTheirTurnsCameThrough(this, null).delete(checkIn.id);
       /* A read the model could not give is owed, and written again by the scheduled pass; meanwhile the assessment keeps every
          message whole, so nothing said is lost (a-write-is-owed-until-it-lands.ts). */
+      let assessed: TheAssessment | null = null;
       await writeOrOwe(this.prisma as any, checkIn.id, 'the assessment', async () => {
         const a = await assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger }, checkIn.id, { ...how, channel: how.channel ?? channel });
         if (!a || a.measure.modelFailed) throw new Error('the model could not read the conversation');
+        assessed = a;
       }, { checkIn, how: { ...how, channel: how.channel ?? channel, closedAt: how.closedAt.toISOString() } }, this.logger);
       await Promise.all([
         /* The waits: what this person is waiting on, from the assessment's blockers, then every wait the record now shows is over. */
@@ -7652,6 +7654,9 @@ ${told}` : '';
           .then(() => keepThePromisesSaidDone(this.prisma, checkIn.groundId))
           .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: kept ${n} promise(s) somebody said were done.`); })
           .catch((err) => this.logger.warn(`Could not clear the waits said done after ${checkIn.id}: ${err?.message ?? err}`)),
+        /* The team's aims, from the lead's assessment. */
+        this.keepTheAimsTheLeadSaid(checkIn, assessed, how.setup)
+          .catch((err: any) => this.logger.warn(`Could not keep the aims from ${checkIn.id}'s assessment: ${err?.message}`)),
         /* The promises: what happened to the open ones, then the new ones, from the assessment. */
         this.settleWhatTheySaidTheyWouldDo(checkIn.id)
           .catch((err: any) => this.logger.warn(`Could not settle what they said they would do on ${checkIn.id}: ${err?.message}`))
@@ -10874,44 +10879,13 @@ ${told}` : '';
           orderBy: { createdAt: 'asc' },
         });
     if (turns.length === 0) return;
-    /* Every number in the person's own turns, at every scale it could be read at. See the aims filter below. */
-    /*
-     * WHAT THEY ATTACHED IS WHAT THEY SAID. A lead who put the team's numbers in a sheet has given them
-     * to us as surely as if they had typed them (Hafsah, 22 Sep 2026), and this read the transcript only
-     * - so the sheet's targets had nowhere to land and the aims filter below would have stripped them
-     * as numbers nobody said. Their own attachments, labelled as attachments, and their numbers count
-     * as theirs. Capped, because this is an extraction input and a plan is not a sheet.
-     */
-    /* Optional-chained the way the rest of this file reaches a model a test double may not carry. */
-    const theirDocuments = await (this.prisma.groundDocument?.findMany?.({
-      where: { groundId, participantId },
-      orderBy: { createdAt: 'asc' },
-      select: { fileName: true, content: true, visibility: true },
-    }) ?? Promise.resolve([])).catch(() => [] as { fileName: string; content: string | null; visibility?: string | null }[]);
-    /*
-     * A PRIVATE DOCUMENT KEEPS ITS AUDIENCE (pilots, 13 October 2026, problem 3). What the lead's
-     * reading writes reaches other people - the team's aims, what she expects of each person - so only
-     * the documents everybody on the check-in may open go into it. See a-private-documents-numbers-stay-with-it.
-     */
-    const forOthers = me.partyType === PartyType.INITIATOR;
-    const readable = forOthers ? theirDocuments.filter((d) => everybodyMayOpen(d as any)) : theirDocuments;
     const theirOwnTurns = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
-    const privateFigures = forOthers
-      ? figuresOnlyInPrivateDocuments(theirDocuments as any, [...theirOwnTurns, ...readable.map((d) => d.content ?? '')])
-      : new Set<number>();
-    const attachedFrom = (docs: typeof theirDocuments) => docs
+    const forOthers = me.partyType === PartyType.INITIATOR;
+    const { readable, privateFigures, numbersInTheirWords, sumsOnlyARequestSaid } = await this.whatTheySaidAndGave(groundId, participantId, theirOwnTurns, forOthers);
+    const attached = readable
       .filter((d) => (d.content ?? '').trim())
       .map((d) => `THEY ATTACHED "${d.fileName}":\n${(d.content ?? '').slice(0, MOST_OF_A_DOCUMENT_WE_READ)}`)
       .join('\n\n');
-    const attached = attachedFrom(readable);
-    const numbersInTheirWords = new Set<number>(
-      theirOwnTurns
-        .concat(readable.map((d) => d.content ?? ''))
-        .flatMap((text) => numbersInAClaim(text))
-        .flatMap((n) => [n, Math.round(n)]),
-    );
-    const theirWordsAsText = [...theirOwnTurns, ...readable.map((d) => d.content ?? '')].join('\n');
-    const sumsOnlyARequestSaid = theSumsOnlyARequestSaid(theirOwnTurns);
     const spoken = turns
       .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
       .join('\n');
@@ -10949,7 +10923,6 @@ ${told}` : '';
     /* The speaker's own targets, by id, so a new number for one of them edits it rather than making a second (Mercy, 29 October). */
     const theirTargetsOnRecord = ((await Promise.resolve(this.prisma.groundObjective.findMany({ where: { groundId, ownerParticipantId: participantId }, select: { id: true, name: true, target: true } })).catch(() => [])) ?? []) as { id: string; name: string; target: number | null }[];
     const result = await this.anthropic.extract<{
-      groundAims: { name: string; target?: number | null; by?: string | null }[];
       theirOwnTarget?: { name: string; target: number; corrects?: string | null } | null;
       expectations: {
         personName: string;
@@ -11168,6 +11141,66 @@ ${told}` : '';
       }
     }
 
+    /*
+     * AND A NUMBER SAID ABOUT ONE PERSON IS THAT PERSON'S.
+     *
+     * "150 each" about three people is three targets with three owners, not one target of 150 sitting
+     * on the ground with nobody against it. `ownerParticipantId` has been on the model the whole time
+     * and `where-each-person-is-against-their-number.ts` already renders progress per person; nothing
+     * was writing the rows.
+     *
+     * Same rules as the aims above: matched by name and owner so restating does not duplicate, and a
+     * number already on the board is never overwritten from here.
+     */
+    /*
+     * AND THE SPEAKER'S OWN NUMBER, WHICH HAD NOWHERE TO GO.
+     *
+     * "150 each and i have a target of 50" was read live: the three 150s landed on the three people
+     * and the 50 did not land anywhere. Everything above this is about OTHER people, so a lead's own
+     * target was the one number on the board that went missing, and the lead is the person who set
+     * the whole thing up.
+     *
+     * Found by running her transcript through the real extraction and reading the rows, not by
+     * reading the code. Nothing in the tests would have caught it.
+     */
+    const own = result.theirOwnTarget;
+    /*
+     * A CORRECTION EDITS THE TARGET ITSELF (one owner, one source; 29 October 2026). Mercy said "My target is actually 30 units, not
+     * 10", and a second target was written beside the first, so My work went on saying "17 over your target of 10". A new number for a
+     * target of theirs on record changes that target; the old number, who changed it, when and in what words go to the check-in's log.
+     */
+    const corrected = own?.corrects ? theirTargetsOnRecord.find((t) => t.id === own.corrects) : null;
+    if (corrected && Number.isFinite(own!.target) && own!.target > 0 && numbersInTheirWords.has(Math.round(own!.target))) {
+      if (corrected.target !== Math.round(own!.target)) {
+        await this.prisma.groundObjective.update({ where: { id: corrected.id }, data: { target: Math.round(own!.target) } });
+        await this.keepTheChangeOfATarget(groundId, { objectiveId: corrected.id, from: corrected.target, to: Math.round(own!.target), byParticipantId: participantId, said: theirOwnTurns[theirOwnTurns.length - 1] ?? null });
+        this.logger.log(`Ground ${groundId}: a target of ${participantId} changed from ${corrected.target} to ${Math.round(own!.target)}, in their words.`);
+      }
+    } else if (own?.name?.trim() && Number.isFinite(own.target) && own.target > 0) {
+      theirOwnNumbers.push({ participantId, name: own.name.trim(), target: Math.round(own.target) });
+    }
+
+    /* A sum said only to ask for it is the request's, never somebody's goal (user journeys, F-9). */
+    await this.putOwnedTargetsOnTheRecord(groundId, theirOwnNumbers.filter((t) => !sumsOnlyARequestSaid.has(t.target)), participantId,
+      (await this.theLeadsTargetsWaitForHerYes(groundId)) ? { holdFor: theirOwnTurns, people: ground.participants as any[] } : undefined);
+  }
+
+  /**
+   * THE TEAM'S AIMS, KEPT FROM THE LEAD'S ASSESSMENT (one source; Hafsah, 1 November 2026). The aims used to be read by a model call of
+   * their own (EXPECTATION_PROMPT's groundAims), which waited behind the promise read: when that failed on the assessment test's setup,
+   * the board said "No targets set yet" about the targets she had just given. They are read once now, by the conversation's assessment,
+   * under the same rules (READ_THE_AIMS), and kept here by every rule they were always kept by: one aim per thing, a sentence about
+   * whoever holds it, a number only from their own words, no figure only a private document holds, and on a sales check-in the lead's
+   * targets wait for her yes.
+   */
+  async keepTheTeamsAims(groundId: string, participantId: string, said: { name: string; target?: number | null }[], theirOwnTurns: string[]): Promise<void> {
+    if (!said.length) return;
+    const ground: any = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { peopleWorkTogether: true, participants: { select: { id: true, partyType: true } } } });
+    const me = ground?.participants?.find((p: any) => p.id === participantId);
+    if (!me) return;
+    /* Whose aim an aim is: see WHOSE AIM IS AN AIM SAID IN A CHECK-IN in readTheAimsAndExpectations. */
+    const aimsAreShared = me.partyType === PartyType.INITIATOR && ground.peopleWorkTogether !== false;
+    const { privateFigures, numbersInTheirWords, theirWordsAsText, sumsOnlyARequestSaid } = await this.whatTheySaidAndGave(groundId, participantId, theirOwnTurns, me.partyType === PartyType.INITIATOR);
     /**
      * The check-in's own aims, which have also always been empty. Only written when there are none
      * yet: a lead restating the aim in session 4 should not silently duplicate the list, and merging
@@ -11190,8 +11223,8 @@ ${told}` : '';
      * it alone. The board already has the honest shape for that case - "the record shows 40 for
      * this, not 0, press to accept" - and `suggestedCount` is where a conflict belongs, not here.
      */
-    const onASalesCheckIn = !!(result.groundAims ?? []).length && !!(await this.theCustomersOnRecordIfSales(groundId).catch(() => null));
-    const aims = (result.groundAims ?? [])
+    const onASalesCheckIn = !!(await this.theCustomersOnRecordIfSales(groundId).catch(() => null));
+    const aims = said
       /* An aim everybody reads never carries a figure only a private document holds (problem 3). */
       .filter((a) => !carriesAPrivateFigure({ name: a?.name, target: a?.target ?? null }, privateFigures))
       /* A sum said only to ask for it is the request's, never an aim (user journeys, F-9). */
@@ -11252,48 +11285,57 @@ ${told}` : '';
       }
     }
 
-    /*
-     * AND A NUMBER SAID ABOUT ONE PERSON IS THAT PERSON'S.
-     *
-     * "150 each" about three people is three targets with three owners, not one target of 150 sitting
-     * on the ground with nobody against it. `ownerParticipantId` has been on the model the whole time
-     * and `where-each-person-is-against-their-number.ts` already renders progress per person; nothing
-     * was writing the rows.
-     *
-     * Same rules as the aims above: matched by name and owner so restating does not duplicate, and a
-     * number already on the board is never overwritten from here.
-     */
-    /*
-     * AND THE SPEAKER'S OWN NUMBER, WHICH HAD NOWHERE TO GO.
-     *
-     * "150 each and i have a target of 50" was read live: the three 150s landed on the three people
-     * and the 50 did not land anywhere. Everything above this is about OTHER people, so a lead's own
-     * target was the one number on the board that went missing, and the lead is the person who set
-     * the whole thing up.
-     *
-     * Found by running her transcript through the real extraction and reading the rows, not by
-     * reading the code. Nothing in the tests would have caught it.
-     */
-    const own = result.theirOwnTarget;
-    /*
-     * A CORRECTION EDITS THE TARGET ITSELF (one owner, one source; 29 October 2026). Mercy said "My target is actually 30 units, not
-     * 10", and a second target was written beside the first, so My work went on saying "17 over your target of 10". A new number for a
-     * target of theirs on record changes that target; the old number, who changed it, when and in what words go to the check-in's log.
-     */
-    const corrected = own?.corrects ? theirTargetsOnRecord.find((t) => t.id === own.corrects) : null;
-    if (corrected && Number.isFinite(own!.target) && own!.target > 0 && numbersInTheirWords.has(Math.round(own!.target))) {
-      if (corrected.target !== Math.round(own!.target)) {
-        await this.prisma.groundObjective.update({ where: { id: corrected.id }, data: { target: Math.round(own!.target) } });
-        await this.keepTheChangeOfATarget(groundId, { objectiveId: corrected.id, from: corrected.target, to: Math.round(own!.target), byParticipantId: participantId, said: theirOwnTurns[theirOwnTurns.length - 1] ?? null });
-        this.logger.log(`Ground ${groundId}: a target of ${participantId} changed from ${corrected.target} to ${Math.round(own!.target)}, in their words.`);
-      }
-    } else if (own?.name?.trim() && Number.isFinite(own.target) && own.target > 0) {
-      theirOwnNumbers.push({ participantId, name: own.name.trim(), target: Math.round(own.target) });
-    }
+  }
 
-    /* A sum said only to ask for it is the request's, never somebody's goal (user journeys, F-9). */
-    await this.putOwnedTargetsOnTheRecord(groundId, theirOwnNumbers.filter((t) => !sumsOnlyARequestSaid.has(t.target)), participantId,
-      (await this.theLeadsTargetsWaitForHerYes(groundId)) ? { holdFor: theirOwnTurns, people: ground.participants as any[] } : undefined);
+  /** The aims a lead's assessment heard, kept as the team's aims, read against her own words in it (setup's words, or her turns). */
+  private async keepTheAimsTheLeadSaid(checkIn: { id: string; participantId: string; groundId: string }, a: TheAssessment | null, setup?: TheSetupGiven | null): Promise<void> {
+    if (!a?.about.isTheLead) return;
+    const aims = (a.targets ?? [])
+      .map((t) => ({ name: String(t.aim ?? t.words ?? '').trim(), target: typeof t.target === 'number' ? t.target : null }))
+      .filter((t) => t.name);
+    if (!aims.length) return;
+    const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } });
+    await this.keepTheTeamsAims(checkIn.groundId, checkIn.participantId, aims, [...(setup?.words ?? []), ...turns.map((t) => t.content ?? '')]);
+  }
+
+  /**
+   * WHAT A PERSON SAID AND GAVE, as the aims and expectations read it: their own words, the documents everybody on the check-in may
+   * open when what is read reaches others, the figures only a private document holds, every number they said at every scale, and the
+   * sums they said only to ask for them. One reading, for the expectations read and for the team's aims kept from the assessment.
+   */
+  private async whatTheySaidAndGave(groundId: string, participantId: string, theirOwnTurns: string[], forOthers: boolean) {
+    /* Every number in the person's own turns, at every scale it could be read at. See the aims filter below. */
+    /*
+     * WHAT THEY ATTACHED IS WHAT THEY SAID. A lead who put the team's numbers in a sheet has given them
+     * to us as surely as if they had typed them (Hafsah, 22 Sep 2026), and this read the transcript only
+     * - so the sheet's targets had nowhere to land and the aims filter below would have stripped them
+     * as numbers nobody said. Their own attachments, labelled as attachments, and their numbers count
+     * as theirs. Capped, because this is an extraction input and a plan is not a sheet.
+     */
+    /* Optional-chained the way the rest of this file reaches a model a test double may not carry. */
+    const theirDocuments = await (this.prisma.groundDocument?.findMany?.({
+      where: { groundId, participantId },
+      orderBy: { createdAt: 'asc' },
+      select: { fileName: true, content: true, visibility: true },
+    }) ?? Promise.resolve([])).catch(() => [] as { fileName: string; content: string | null; visibility?: string | null }[]);
+    /*
+     * A PRIVATE DOCUMENT KEEPS ITS AUDIENCE (pilots, 13 October 2026, problem 3). What the lead's
+     * reading writes reaches other people - the team's aims, what she expects of each person - so only
+     * the documents everybody on the check-in may open go into it. See a-private-documents-numbers-stay-with-it.
+     */
+    const readable = forOthers ? theirDocuments.filter((d) => everybodyMayOpen(d as any)) : theirDocuments;
+    const privateFigures = forOthers
+      ? figuresOnlyInPrivateDocuments(theirDocuments as any, [...theirOwnTurns, ...readable.map((d) => d.content ?? '')])
+      : new Set<number>();
+    const numbersInTheirWords = new Set<number>(
+      theirOwnTurns
+        .concat(readable.map((d) => d.content ?? ''))
+        .flatMap((text) => numbersInAClaim(text))
+        .flatMap((n) => [n, Math.round(n)]),
+    );
+    const theirWordsAsText = [...theirOwnTurns, ...readable.map((d) => d.content ?? '')].join('\n');
+    const sumsOnlyARequestSaid = theSumsOnlyARequestSaid(theirOwnTurns);
+    return { readable, privateFigures, numbersInTheirWords, theirWordsAsText, sumsOnlyARequestSaid };
   }
 
   /** A target's number changed in somebody's words: kept in the check-in's log, beside what was there, so its history stays. */

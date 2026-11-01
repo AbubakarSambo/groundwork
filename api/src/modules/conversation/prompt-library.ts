@@ -2002,17 +2002,15 @@ export const ALIGNMENT_SCHEMA = {
  * remark is worse than a missing one: it becomes a thing somebody is measured against that nobody
  * actually said.
  */
-export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING this check-in, capture two things.
+/**
+ * HOW AN AIM IS READ: one plain sentence about whoever holds it, the number only where they said one, one aim per thing they are after.
+ * One home for the rules: the conversation's assessment reads the aims by them (THE_ASSESSMENT_PROMPT's `targets`).
+ */
+export const READ_THE_AIMS = `   One item per aim, keeping what they said it is for.
 
-Anything under THEY ATTACHED "filename" is a document they gave us, and it counts as theirs the same as a sentence they typed. A sheet of names and numbers is where a manager usually keeps the targets, so read it for them.
+   - aim: the aim as one plain, full sentence about whoever holds it, by name. It is read on its own beside the other aims, by the speaker and by everybody else on the check-in, so somebody who reads only this sentence should know who is aiming at what. "Bisi is aiming for 40 approved facilities this quarter", "The team is aiming for 500 trucks sold by the end of the year". Not "Sales objective", not "Sell 500 trucks" and not "approved facilities".
 
-The first line, THE PERSON SPEAKING, gives the name of the person who said all of this.
-
-1. groundAims: what this check-in as a whole is aiming at, keeping what they said it is for. One entry per aim.
-
-   - name: the aim as one plain, full sentence about whoever holds it, by name. It is read on its own beside the other aims, by the speaker and by everybody else on the check-in, so somebody who reads only this sentence should know who is aiming at what. "Bisi is aiming for 40 approved facilities this quarter", "The team is aiming for 500 trucks sold by the end of the year". Not "Sales objective", not "Sell 500 trucks" and not "approved facilities".
-
-     Never "I", "we", "my", "the person" or "the speaker": the speaker is called by their first name, from THE PERSON SPEAKING. "I stop being invited to every single call" is "Nadia stops being invited to every single call". Where the aim is the whole team's, say "The team".
+     Never "I", "we", "my", "the person" or "the speaker": the speaker is called by their first name, as the first line gives it. "I stop being invited to every single call" is "Nadia stops being invited to every single call". Where the aim is the whole team's, say "The team".
 
      Write every number the way a person reads it: "120 million naira", not "N120m" or "120000000"; "254,000", not "254k".
 
@@ -2035,11 +2033,18 @@ The first line, THE PERSON SPEAKING, gives the name of the person who said all o
    are genuinely different stay as two.
 
    Only what they actually said it is for. If they never said, return an empty list.
+`;
 
-2. theirOwnTarget: the number the SPEAKER said they themselves are aiming at, where they said one for themselves.
+export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING this check-in, capture two things. What the check-in as a whole is aiming at is read by the conversation's assessment, not here.
+
+Anything under THEY ATTACHED "filename" is a document they gave us, and it counts as theirs the same as a sentence they typed. A sheet of names and numbers is where a manager usually keeps the targets, so read it for them.
+
+The first line, THE PERSON SPEAKING, gives the name of the person who said all of this.
+
+1. theirOwnTarget: the number the SPEAKER said they themselves are aiming at, where they said one for themselves.
 
    "150 each and i have a target of 50" is 150 for each of the others and 50 for the speaker. That
-   line was read live and the 50 was dropped: the whole of section 3 below is about other people, so
+   line was read live and the 50 was dropped: the whole of section 2 below is about other people, so
    a lead's own number had nowhere to go and was the only one on the board that went missing.
 
    - name: one plain, full sentence about the speaker by their first name, saying what the number is for. "Bisi is aiming for 50 contracts", not "Contracts".
@@ -2052,7 +2057,7 @@ The first line, THE PERSON SPEAKING, gives the name of the person who said all o
      them ("My target is actually 30 units, not 10", or a target they changed), the id of that one.
      Leave it out when it is a target of a different thing.
 
-3. expectations: for each OTHER person they named, what they said they expect of that person.
+2. expectations: for each OTHER person they named, what they said they expect of that person.
    - personName: the other person's name exactly as the speaker said it.
    - expectation: what they expect of that person, as a STANDALONE STATEMENT OF THE WORK. Keep their
      wording - concrete where they were concrete, and never paraphrased into something sharper than
@@ -2066,8 +2071,8 @@ The first line, THE PERSON SPEAKING, gives the name of the person who said all o
      group. A lead said exactly that - "150 each and i have a target of 50" - and what was stored was
      one aim with no numbers at all. Split it. Their own number goes on their own name.
 
-     Leave it out where no number was said for that person. A total for the whole group belongs in
-     groundAims, not here.
+     Leave it out where no number was said for that person. A total for the whole group is the
+     team's aim, not one person's, and does not go here.
 
    - awareness: whether that person has been told, on the speaker's own account.
        TOLD - the speaker says they have told them, and can say roughly when or how.
@@ -2355,22 +2360,10 @@ export const OWN_PROMISE_SCHEMA = {
 
 export const EXPECTATION_SCHEMA = {
   name: 'emit_expectations',
-  description: "Emit what the lead said this check-in is aiming at, and what they expect of each named person.",
+  description: "Emit the lead's own number and what they expect of each named person.",
   input_schema: {
     type: 'object',
     properties: {
-      groundAims: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            name: { type: 'string', description: 'The aim as one plain, full sentence about whoever holds it, by first name, or "The team". Never "I", "we", "the person" or "the speaker", never a heading and never a fragment. Numbers as a person reads them: "120 million naira", "254,000".' },
-            target: { type: 'number', description: 'The number they are aiming at. Omit where no number was said.' },
-            by: { type: 'string', description: 'When it should be true by, in their words. Omit where not said.' },
-          },
-          required: ['name'],
-        },
-      },
       theirOwnTarget: {
         type: 'object',
         description: "The number the speaker said they themselves are aiming at. Omit where they gave themselves none.",
@@ -2463,7 +2456,7 @@ export const EXPECTATION_SCHEMA = {
         },
       },
     },
-    required: ['groundAims', 'expectations'],
+    required: ['expectations'],
   },
 };
 

@@ -5,15 +5,16 @@
  */
 import { THE_ASSESSMENT_KIND, THE_ASSESSMENT_VERSION, type TheAssessment } from './the-assessment';
 
-export function anAssessmentHolding(parts: { promises?: any[]; blockers?: any[] } = {}): TheAssessment {
+export function anAssessmentHolding(parts: { promises?: any[]; blockers?: any[]; targets?: any[]; isTheLead?: boolean } = {}): TheAssessment {
   const items = (xs: any[] | undefined, section: string, words: (x: any) => string, extra: (x: any) => object = () => ({})) =>
     (xs ?? []).map((x, i) => ({ ...x, ...extra(x), id: `r1.${section}.${i}`, words: words(x), from: [1], whoMaySee: 'the people in this check-in' as const, saidWordForWord: false }));
   return {
     kind: THE_ASSESSMENT_KIND, version: THE_ASSESSMENT_VERSION,
-    about: { checkInId: 'ci', groundId: 'g', participantId: 'p', who: 'Somebody', isTheLead: false, checkIn: null, sessionNumber: 1, startedAt: null, endedAt: null, channel: 'the app', howItEnded: 'finished by the person' },
+    about: { checkInId: 'ci', groundId: 'g', participantId: 'p', who: 'Somebody', isTheLead: !!parts.isTheLead, checkIn: null, sessionNumber: 1, startedAt: null, endedAt: null, channel: 'the app', howItEnded: 'finished by the person' },
     summary: '',
     workUpdates: [], claims: [], numbers: [], people: [], dates: [], decisions: [], corrections: [], documents: [], setup: null,
     roleSignals: [], roleAgainstGiven: null, areas: [], observations: [], stillOpen: [], everythingElse: [],
+    targets: items(parts.targets, 'targets', (t) => String(t.words ?? t.aim ?? '')),
     promises: items(parts.promises, 'promises', (p) => String(p.action ?? ''), (p) => ({ byThePerson: p.byThePerson ?? true })),
     blockers: items(parts.blockers, 'blockers', (b) => String(b.what ?? '')),
     comparedWithLastTime: { previousCheckInId: null, previousOn: null, promisesDue: [], figuresChanged: [], workMoved: [], blockers: [], repeated: [], disagreements: [] },

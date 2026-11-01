@@ -67,7 +67,7 @@ export function thingsNamedIn(raw: string): string[] {
 /* The parts of an assessment, most telling first: a figure, a promise and what became of one, a wait, the work, a claim. */
 const MOST_TELLING_FIRST = [
   'numbers', 'promises', 'compared.promisesDue', 'blockers', 'workUpdates', 'compared.figuresChanged', 'claims', 'decisions', 'dates',
-  'corrections', 'documents', 'setup.targets', 'setup.objective', 'setup.success', 'setup.timing', 'setup.rules',
+  'corrections', 'documents', 'targets', 'setup.objective', 'setup.success', 'setup.timing', 'setup.rules',
 ];
 const rankOf = (type: string) => { const i = MOST_TELLING_FIRST.indexOf(type); return i === -1 ? MOST_TELLING_FIRST.length : i; };
 

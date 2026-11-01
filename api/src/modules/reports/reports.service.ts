@@ -1076,7 +1076,7 @@ export class ReportsService {
     const facts = await theFactsOnRecord(this.prisma, { groundId, participantIds: readable, reader: readerIsTheLead ? { kind: 'the lead', judgements: false } : { kind: 'everybody in the check-in' } }).catch(() => [] as AFact[]);
     const held = lines.map((l) => String(l.text ?? '').toLowerCase()).join('\n');
     return facts
-      .filter((f) => ['setup.success', 'setup.targets', 'setup.objective'].includes(f.section) && (uptoSession == null || f.sessionNumber <= uptoSession) && mayRead(f))
+      .filter((f) => ['setup.success', 'targets', 'setup.objective'].includes(f.section) && (uptoSession == null || f.sessionNumber <= uptoSession) && mayRead(f))
       .filter((f) => !held.includes(f.words.toLowerCase()))
       .map((f) => ({ type: RecordEntryType.SUCCESS_DEFINITION, text: f.words, participantId: f.participantId }));
   }

@@ -34,7 +34,7 @@ export interface AFact {
   sessionNumber: number;
   /** When the conversation ended. */
   on: string | null;
-  /** Where in the assessment it sits: 'numbers', 'promises', 'setup.targets', 'compared.promisesDue' and so on. */
+  /** Where in the assessment it sits: 'numbers', 'promises', 'targets', 'compared.promisesDue' and so on. */
   section: string;
   /** Their own words, as the item now says (a backed correction replaces them). */
   words: string;
@@ -71,7 +71,7 @@ function theDetailOf(section: string, i: AnItem): string | null {
       case 'dates': return [text(i.when), text(i.what)];
       case 'decisions': return [text(i.decision), text(i.state), text(i.whoDecides) && `decided by ${text(i.whoDecides)}`];
       case 'claims': return [text(i.claim), text(i.proofIs) && `proof ${text(i.proofIs)}`];
-      case 'setup.targets': return [text(i.target), text(i.unit), text(i.by) && `by ${text(i.by)}`];
+      case 'targets': return [text(i.aim)?.replace(/[.\s]+$/, '') ?? null, typeof i.target === 'number' ? String(i.target) : text(i.target), text(i.unit), text(i.by) && `by ${text(i.by)}`];
       case 'setup.team': return [text(i.name), text(i.role)];
       case 'setup.privateNotes': return [text(i.about) && `about ${text(i.about)}`];
       case 'compared.promisesDue': return [text(i.promise), text(i.outcome)];

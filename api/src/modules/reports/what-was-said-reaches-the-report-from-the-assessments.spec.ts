@@ -20,9 +20,10 @@ const ASSESSMENTS = [
   { sessionReport: {
     kind: 'assessment', version: 1, summary: '', comparedWithLastTime: {},
     about: { checkInId: 'c-lead', groundId: 'g', participantId: 'pid-lead', who: 'Wanjiru Kamau', isTheLead: true, sessionNumber: 1, endedAt: '2026-11-04T08:00:00Z' },
+    /* Aims are their own section of every assessment since 2 November (the aims are read once, there). */
+    targets: [item('We must collect KES 2,400,000 by the end of the year', { aim: 'The team is aiming to collect 2,400,000 Kenyan shillings by the end of the year.', target: 2400000, unit: 'KES', by: 'the end of the year', whose: 'The team' })],
     setup: {
       objective: [], success: [], team: [], timing: [], rules: [], risks: [],
-      targets: [item('We must collect KES 2,400,000 by the end of the year', { target: '2400000', unit: 'KES', by: 'the end of the year' })],
       privateNotes: [item('Brian is slow to send fee notes.', { about: 'Brian' }, 'the lead only')],
     },
   } },
@@ -86,7 +87,7 @@ describe('what was said reaches the session report from the assessments', () => 
   });
 
   it('reads the lead’s target, said in setup, though the target writer wrote nothing', () => {
-    expect(read).toContain('(setup.targets) We must collect KES 2,400,000 by the end of the year (2400000, KES, by the end of the year)');
+    expect(read).toContain('(targets) We must collect KES 2,400,000 by the end of the year (The team is aiming to collect 2,400,000 Kenyan shillings by the end of the year, 2400000, KES, by the end of the year)');
   });
 
   it('never reads an item kept for the lead alone: her private note, or what was noticed about Brian', () => {

@@ -26,7 +26,7 @@
  */
 import { createHash } from 'crypto';
 import { READ_WHAT_THEY_PROMISED } from './what-they-said-they-would-do-next';
-import { DEPENDENCY_EXTRACTION_PROMPT } from './prompt-library';
+import { DEPENDENCY_EXTRACTION_PROMPT, READ_THE_AIMS } from './prompt-library';
 import { READ_WHAT_HAPPENED } from './what-happened-to-what-they-said';
 
 export const THE_ASSESSMENT_KIND = 'assessment' as const;
@@ -86,7 +86,6 @@ export interface AnItem {
 export interface TheSetupPart {
   objective: AnItem[];
   success: AnItem[];
-  targets: AnItem[];
   team: AnItem[];
   timing: AnItem[];
   rules: AnItem[];
@@ -109,10 +108,10 @@ export interface ComparedWithLastTime {
 /** The sections that are lists of items, in the order of Hafsah's list. */
 export const THE_ITEM_SECTIONS = [
   'workUpdates', 'claims', 'promises', 'numbers', 'people', 'dates', 'decisions', 'blockers', 'corrections', 'documents',
-  'roleSignals', 'areas', 'observations', 'stillOpen', 'everythingElse',
+  'roleSignals', 'areas', 'observations', 'stillOpen', 'everythingElse', 'targets',
 ] as const;
 export type AnItemSection = typeof THE_ITEM_SECTIONS[number];
-export const THE_SETUP_SECTIONS = ['objective', 'success', 'targets', 'team', 'timing', 'rules', 'risks', 'privateNotes'] as const;
+export const THE_SETUP_SECTIONS = ['objective', 'success', 'team', 'timing', 'rules', 'risks', 'privateNotes'] as const;
 export const THE_COMPARED_SECTIONS = ['promisesDue', 'figuresChanged', 'workMoved', 'blockers', 'repeated', 'disagreements'] as const;
 
 export interface TheAssessment {
@@ -153,6 +152,8 @@ export interface TheAssessment {
   comparedWithLastTime: ComparedWithLastTime;
   stillOpen: AnItem[];
   everythingElse: AnItem[];
+  /** What the check-in as a whole, and each person in it, is aiming at, read by the rules for aims (READ_THE_AIMS). */
+  targets: AnItem[];
   /** The messages, numbered, and which were marked "nothing to record". */
   messages: AMessage[];
   nothingToRecord: number[];
@@ -249,7 +250,8 @@ export const THE_ASSESSMENT_PROMPT = [
   '  - blockers: each thing this person is waiting on or blocked by. The rules below apply. `since` is when it started, as they said it.',
   '  - corrections: anything they said the record, the board or Groundwork has wrong: what it said, what it should say, and whether they backed it. Where it corrects an item of the previous assessment, `correctsItem` is that item\'s id.',
   '  - documents: each document or photo they added or pointed to: what it says, what it proves, and where it belongs.',
-  '  - setup (only when setup material is given): the objective, what success looks like, targets with units and dates, the team and their roles, working days and timing, rules and definitions, risks, and the lead\'s private notes on each person.',
+  '  - targets: what the check-in as a whole is aiming at, and each number somebody is aiming at, by the rules for aims below. In every conversation, setup or check-in.',
+  '  - setup (only when setup material is given): the objective, what success looks like, the team and their roles, working days and timing, rules and definitions, risks, and the lead\'s private notes on each person.',
   '  - roleSignals: what the person actually did or talked about doing: tasks, decisions, who they dealt with, what they owned.',
   '  - roleAgainstGiven: from this conversation only, the role they are actually playing, and whether it fits the role they were given ("cannot tell" when the conversation does not show it).',
   '  - areas: each item tagged with the area of work it belongs to (a client, a product, a project, admin and so on), and whether it fits one of the team\'s priorities, where they are given.',
@@ -264,6 +266,10 @@ export const THE_ASSESSMENT_PROMPT = [
   '',
   'RULES FOR WHAT HAPPENED TO EACH OPEN PROMISE (`happened` in promisesDue; the same rules Groundwork has always read them by; `words` are the words that say what happened):',
   READ_WHAT_HAPPENED,
+  '',
+  'RULES FOR AIMS (`targets`; the same rules Groundwork has always read aims by; `words` are the words that hold the aim and its number):',
+  READ_THE_AIMS,
+  'In a target item, `target` is the number only, `unit` what it counts, `by` when, in their words, and `whose` the first name of whoever holds it, or "The team".',
   '',
   'RULES FOR BLOCKERS AND WAITS (the same rules Groundwork has always read waits by):',
   DEPENDENCY_EXTRACTION_PROMPT,
@@ -322,7 +328,6 @@ export const THE_ASSESSMENT_SCHEMA = {
         properties: {
           objective: anItem({ objective: S('The objective.') }),
           success: anItem({ success: S('What success looks like.') }),
-          targets: anItem({ target: S('The target.'), unit: S('Its unit.'), by: S('By when.') }),
           team: anItem({ name: S('The person.'), role: S('Their role.') }),
           timing: anItem({ timing: S('Working days, times and how often.') }),
           rules: anItem({ rule: S('A rule or definition.') }),
@@ -345,6 +350,7 @@ export const THE_ASSESSMENT_SCHEMA = {
           disagreements: anItem({ what: S('What they said.'), otherSays: S('What the record or someone else says.') }),
         },
       },
+      targets: anItem({ aim: S('The aim as one plain, full sentence about whoever holds it, by first name, or "The team".'), target: { type: ['number', 'null'], description: 'The number aimed at, only where they said one.' }, unit: S('What it counts.'), by: S('By when, in their words.'), whose: S('Whose aim: a first name, or "The team".') }),
       stillOpen: anItem({ question: S('What to ask next time.') }),
       everythingElse: anItem({ what: S('What it is about.') }),
       nothingToRecord: { type: 'array', items: { type: 'integer' }, description: 'Message numbers with nothing to record.' },
@@ -360,6 +366,8 @@ export const THE_ASSESSMENT_SCHEMA = {
 export interface TheMaterial {
   who: string;
   isTheLead: boolean;
+  /** THE PERSON SPEAKING, by first name (the-person-speaking.ts), so an aim is a sentence about them by name. */
+  speaking?: string;
   checkIn: string | null;
   givenRole: string | null;
   priorities: string[];
@@ -380,6 +388,7 @@ export const aPromisesId = (commitmentId: string) => `c:${commitmentId}`;
 
 export function theMaterialAsText(m: TheMaterial): string {
   const out: string[] = [];
+  if (m.speaking) out.push(m.speaking);
   out.push(`The person: ${m.who}${m.isTheLead ? ', who leads this check-in' : ''}.`);
   if (m.checkIn) out.push(`The check-in: ${m.checkIn}.`);
   out.push(`The role they were given: ${m.givenRole ?? 'not known'}.`);
