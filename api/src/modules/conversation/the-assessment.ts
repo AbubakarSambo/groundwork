@@ -375,6 +375,8 @@ export interface TheMaterial {
   turns: { role: 'person' | 'groundwork'; content: string; n?: number }[];
   /** Setup's words, numbered first, and what setup was given beside them (the lead's notes on each person, the timing). */
   setup: { words: { n: number; content: string }[]; given: string[] } | null;
+  /** The lead's documents that everybody on the check-in may open, read with her words (never a private one). */
+  documents?: { name: string; content: string }[];
   /** The per-turn note's claims and the end card's lines, as a draft. */
   draft: { claims: string[]; lines: string[] };
   /** The previous assessment's items, with their ids, to compare against. */
@@ -397,6 +399,10 @@ export function theMaterialAsText(m: TheMaterial): string {
     out.push('', 'SETUP MATERIAL (the lead setting this check-in up):');
     for (const w of m.setup.words) out.push(`[${w.n}] THE LEAD, IN SETUP: ${w.content}`);
     if (m.setup.given.length) out.push('What the lead gave in setup beside the conversation:', ...m.setup.given.map((g) => `  - ${g}`));
+  }
+  if (m.documents?.length) {
+    out.push('', 'WHAT THE LEAD ATTACHED, WHICH EVERYBODY ON THE CHECK-IN MAY OPEN (hers as surely as her words; read it for the targets and the setup, citing no message):');
+    for (const d of m.documents) out.push(`[Document: "${d.name}"]`, d.content);
   }
   out.push('', 'THE CONVERSATION:');
   for (const t of m.turns) out.push(t.role === 'person' ? `[${t.n}] THE PERSON: ${t.content}` : `GROUNDWORK: ${t.content}`);

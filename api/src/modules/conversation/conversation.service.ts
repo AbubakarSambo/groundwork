@@ -7591,7 +7591,7 @@ ${told}` : '';
     });
     if (won.count === 0) return false;
     /* Its assessment too, so every conversation that ended has one: nothing was said, so no model call is made. */
-    assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger }, row.id, { howItEnded: 'missed', closedAt })
+    assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger, contextEnabled: this.config?.get?.<boolean>('app.contextEnabled') !== false }, row.id, { howItEnded: 'missed', closedAt })
       .catch((err: any) => this.logger.warn(`The assessment of the missed check-in ${row.id} failed: ${err?.message ?? err}`))
       .finally(() => theAssessmentIsReady({ events: this.events }, { checkInId: row.id, groundId: row.groundId, participantId: row.participantId, sessionNumber: row.sessionNumber, howItEnded: 'missed' }));
     await this.ensureNextSession(row.groundId, row.participantId, row.sessionNumber);
@@ -7626,7 +7626,7 @@ ${told}` : '';
          message whole, so nothing said is lost (a-write-is-owed-until-it-lands.ts). */
       let assessed: TheAssessment | null = null;
       await writeOrOwe(this.prisma as any, checkIn.id, 'the assessment', async () => {
-        const a = await assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger }, checkIn.id, { ...how, channel: how.channel ?? channel });
+        const a = await assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger, contextEnabled: this.config?.get?.<boolean>('app.contextEnabled') !== false }, checkIn.id, { ...how, channel: how.channel ?? channel });
         if (!a || a.measure.modelFailed) throw new Error('the model could not read the conversation');
         assessed = a;
       }, { checkIn, how: { ...how, channel: how.channel ?? channel, closedAt: how.closedAt.toISOString() } }, this.logger);
@@ -11323,7 +11323,7 @@ ${told}` : '';
      * reading writes reaches other people - the team's aims, what she expects of each person - so only
      * the documents everybody on the check-in may open go into it. See a-private-documents-numbers-stay-with-it.
      */
-    const readable = forOthers ? theirDocuments.filter((d) => everybodyMayOpen(d as any)) : theirDocuments;
+    const readable = forOthers ? theirDocuments.filter((d) => everybodyMayOpen(d as any, this.config?.get?.<boolean>('app.contextEnabled') !== false)) : theirDocuments;
     const privateFigures = forOthers
       ? figuresOnlyInPrivateDocuments(theirDocuments as any, [...theirOwnTurns, ...readable.map((d) => d.content ?? '')])
       : new Set<number>();

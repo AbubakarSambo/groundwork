@@ -14,6 +14,7 @@
  * close to ready, and keeps both on the assessment, so the with-against-without test can read them.
  */
 import { theSpeakerLine } from './the-person-speaking';
+import { everybodyMayOpen } from './a-private-documents-numbers-stay-with-it';
 import { GroundworkEvents, type AssessmentReadyEvent } from '../../common/events';
 import {
   ASSESSMENT_PROMPT_KEY, THE_ASSESSMENT_PROMPT, THE_ASSESSMENT_SCHEMA, THE_ASSESSMENT_KIND, THE_ASSESSMENT_VERSION,
@@ -31,6 +32,8 @@ export interface AssessmentDeps {
   prompts?: { getActive?: (key: string) => Promise<{ id: string; content: string }> } | null;
   events?: { emit: (event: string, payload: unknown) => unknown } | null;
   logger?: { log: (m: string) => void; warn: (m: string) => void };
+  /** The CONTEXT_ENABLED flag: off, every document is its uploader's alone (who-can-see-a-document.ts). On unless said. */
+  contextEnabled?: boolean;
 }
 
 /** What setup gives beside the conversation: the lead's setup messages, and what she typed in the form (her notes on each person, the timing). */
@@ -117,10 +120,26 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
       where: { groundId: row.groundId, participantId: row.participantId, status: 'UNKNOWN', createdAt: { lt: row.startedAt ?? how.closedAt } },
       select: { id: true, text: true, whenSaid: true }, orderBy: { createdAt: 'asc' }, take: 20,
     })?.catch?.(() => [])) ?? []) as any[]).map((c) => ({ id: String(c.id), text: String(c.text ?? ''), whenSaid: c.whenSaid ?? null })).filter((c) => c.text);
+    /*
+     * WHAT THE LEAD ATTACHED, WHICH EVERYBODY ON THE CHECK-IN MAY OPEN. A lead who puts the team's numbers in a sheet has given
+     * them as surely as if she had typed them (Hafsah, 22 September), and what her assessment reads reaches everybody: the team's
+     * aims. So her documents everybody may open are read with her words, and one marked "Only you" or "Only the lead" is not
+     * (a-private-documents-numbers-stay-with-it.ts). A document she attached in setup is not among setup's words, so this is
+     * the only way its numbers reach the aims.
+     */
+    const documents = isTheLead
+      ? ((((await deps.prisma.groundDocument?.findMany?.({
+          where: { groundId: row.groundId, participantId: row.participantId },
+          orderBy: { createdAt: 'asc' },
+          select: { fileName: true, content: true, visibility: true },
+        })?.catch?.(() => [])) ?? []) as any[])
+          .filter((d) => everybodyMayOpen(d, deps.contextEnabled !== false) && String(d.content ?? '').trim())
+          .map((d) => ({ name: String(d.fileName ?? 'A document'), content: String(d.content).trim().slice(0, 12_000) })))
+      : [];
     /* The same promise written twice is put once; what is read about it settles both rows. */
     const openOnce = oneOfEach(openPromises);
     const material: TheMaterial = {
-      who, speaking: theSpeakerLine(row.participant), isTheLead, checkIn: row.ground?.label ?? null, givenRole, priorities, turns, setup,
+      who, speaking: theSpeakerLine(row.participant), isTheLead, checkIn: row.ground?.label ?? null, givenRole, priorities, turns, setup, documents,
       draft: {
         claims: (((row.whatWeHave as any)?.claims ?? []) as any[]).map((c) => [c.said, c.number && `(${c.number}${c.measure ? ` ${c.measure}` : ''})`, c.date && `by ${c.date}`].filter(Boolean).join(' ')).filter(Boolean),
         lines: ((closing?.recordDraft ?? []) as any[]).map((l) => String(l?.text ?? '').trim()).filter(Boolean),
