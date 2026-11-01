@@ -161,12 +161,17 @@ describe('the coach runs after the role is read and any confirmation is stamped'
       { emit: jest.fn(() => Promise.resolve()) } as any, { get: jest.fn(() => true) } as any,
     );
     /* (1 November 2026: the coach now also waits for the conversation's assessment, stubbed here like the other readers.) */
-    for (const m of ['extractRecordEntries', 'buildSoloArtifact', 'ensureNextSession', 'extractDependencies', 'extractWorkMentions', 'assessAndThenRead']) {
+    for (const m of ['theEndCardAtTheEnd', 'buildSoloArtifact', 'ensureNextSession', 'extractDependencies', 'extractWorkMentions']) {
       jest.spyOn(service as any, m).mockResolvedValue(undefined);
     }
     const order: string[] = [];
     const later = (name: string, ms: number) => () => new Promise<void>((r) => setTimeout(() => { order.push(name); r(); }, ms));
     jest.spyOn(service as any, 'reviseDetectedFunction').mockImplementation(later('role read', 20));
+    /* The role is read from their lines, so it runs inside the assessment's readers once the record is written from it (one source,
+       part 2; readTheLinesJustWritten). The assessment is stubbed to run it there, as it does. */
+    jest.spyOn(service as any, 'assessAndThenRead').mockImplementation(async () => { await (service as any).reviseDetectedFunction('p1'); });
+    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8');
+    expect(src.slice(src.indexOf('private async readTheLinesJustWritten('), src.indexOf('ONE SESSION FINISHES ONCE.'))).toMatch(/this\.reviseDetectedFunction\(checkIn\.participantId\)/);
     jest.spyOn(service as any, 'extractRoleConfirmation').mockImplementation(later('confirmation stamped', 40));
     const coached = new Promise<void>((resolve) => {
       jest.spyOn(service as any, 'observeForCoaching').mockImplementation(async () => { order.push('coach'); resolve(); });

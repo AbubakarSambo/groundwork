@@ -3,6 +3,7 @@ import { join } from 'path';
 import { TurnRole } from '@prisma/client';
 import { theEndCard, theCardStillStanding, theLinesLeftOut, HOW, WHAT_WOULD_MAKE_IT_PROVEN, AT_MOST } from './the-end-card';
 import { ConversationService } from './conversation.service';
+import { anAssessmentHolding } from './an-assessment-for-a-spec';
 
 /**
  * THE END CARD (task 2.7, screens request 7b). What a person reads before they finish: each line now
@@ -254,42 +255,48 @@ describe('when anchoring the record to documents fails at the close', () => {
   });
 });
 
+/*
+ * Changed for one source, part 2 (2 November 2026): the close writes nothing to the record any more. The card is what the person
+ * sees, exactly as before; its lines go to the conversation's assessment as its draft, and the record is written from the
+ * assessment by one writer (the-record-is-written-from-the-assessment.spec.ts). Each test keeps what it checked of the card, and
+ * now also checks that nothing reaches the record at the close.
+ */
 describe('when they finish', () => {
   const closing = { id: 'turn-9', createdAt: new Date('2026-09-29T10:00:00Z'), recordDraft: ROWS };
 
-  it('writes exactly the lines the card showed, with no second read', async () => {
+  it('returns exactly the card and the lines it showed, with no second read, and writes nothing to the record', async () => {
     const prisma: any = {
-      conversationTurn: { findFirst: jest.fn(async () => closing), count: jest.fn(async () => 0) },
+      conversationTurn: { findFirst: jest.fn(async () => ({ ...closing, endCard: { inYourRecord: [] } })), count: jest.fn(async () => 0) },
       recordEntry: { createMany: jest.fn(async () => ({ count: 2 })) },
     };
     const service = aService(prisma);
-    service.extractRecordEntries = jest.fn();
-    await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
-    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: ROWS.map((r) => ({ ...r, createdAt: expect.any(Date) })) });
-    expect(service.extractRecordEntries).not.toHaveBeenCalled();
+    service.readTheRecord = jest.fn();
+    const ended = await service.theEndCardAtTheEnd({ id: 'ci1', participantId: 'p1' });
+    expect(ended).toEqual({ card: { inYourRecord: [] }, lines: ROWS });
+    expect(prisma.recordEntry.createMany).not.toHaveBeenCalled();
+    expect(service.readTheRecord).not.toHaveBeenCalled();
     expect(prisma.conversationTurn.count.mock.calls[0][0].where).toMatchObject({ checkInId: 'ci1', role: TurnRole.PERSON });
   });
 
-  /* Changed with the reviewer's read (task 2.7): the second read is now the same read and write that
-     extractRecordEntries did, done here so the card can be replaced with what was written. */
   /* Night quality run 2: every deal read "On 12 October", the day the rows were written, for sessions held from 19 October. */
-  it('dates every line it writes as the session it was said in, not the moment it is written', async () => {
+  it('dates every line the record writer writes as the session it was said in, not the moment it is written', async () => {
     const finished = new Date('2026-10-19T15:00:00Z');
-    for (const saidMore of [0, 1]) {
-      const prisma: any = {
-        conversationTurn: { findFirst: jest.fn(async () => closing), count: jest.fn(async () => saidMore), update: jest.fn(async () => ({})) },
-        checkIn: { findUnique: jest.fn(async () => ({ completedAt: finished })) },
-        recordEntry: { createMany: jest.fn(async () => ({ count: 2 })) },
-      };
-      const service = aService(prisma);
-      service.readTheRecord = jest.fn(async () => ROWS.map((r) => ({ ...r })));
-      await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
-      const written = prisma.recordEntry.createMany.mock.calls[0][0].data;
-      expect(written.map((r: any) => r.createdAt.toISOString())).toEqual([finished.toISOString(), finished.toISOString()]);
-    }
+    const prisma: any = {
+      conversationTurn: { findMany: jest.fn(async () => [{ content: 'Green Mart will buy in January, they told me on the phone.' }]) },
+      checkIn: { findUnique: jest.fn(async () => ({ completedAt: finished })) },
+      groundParticipant: { findMany: jest.fn(async () => []) },
+      groundDocument: { findMany: jest.fn(async () => []) },
+      recordEntry: { findMany: jest.fn(async () => []), createMany: jest.fn(async () => ({ count: 1 })), updateMany: jest.fn(async () => ({ count: 0 })) },
+    };
+    const service = aService(prisma);
+    const a: any = anAssessmentHolding();
+    a.claims = [{ id: 'r1.claims.0', words: 'Green Mart will buy in January', from: [1], whoMaySee: 'the people in this check-in', saidWordForWord: true }];
+    await service.writeTheRecordFromTheAssessment({ id: 'ci1', participantId: 'p1', groundId: 'g1' }, a);
+    const written = prisma.recordEntry.createMany.mock.calls[0][0].data;
+    expect(written.map((r: any) => r.createdAt.toISOString())).toEqual([finished.toISOString()]);
   });
 
-  it('reads the record again when they said more after the card, and the card then says what was written', async () => {
+  it('reads the lines again when they said more after the card, and the card then says what they said last, writing nothing to the record', async () => {
     const prisma: any = {
       conversationTurn: { findFirst: jest.fn(async () => closing), count: jest.fn(async () => 1), update: jest.fn(async () => ({})) },
       recordEntry: { createMany: jest.fn() },
@@ -297,24 +304,25 @@ describe('when they finish', () => {
     const service = aService(prisma);
     const reread = [{ ...ROWS[1] }];
     service.readTheRecord = jest.fn(async () => reread);
-    const card = await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
+    const { card, lines } = await service.theEndCardAtTheEnd({ id: 'ci1', participantId: 'p1' });
     expect(service.readTheRecord).toHaveBeenCalledWith('ci1', 'p1');
-    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: reread.map((r) => ({ ...r, createdAt: expect.any(Date) })) });
+    expect(prisma.recordEntry.createMany).not.toHaveBeenCalled();
+    expect(lines).toEqual(reread);
     const replaced = prisma.conversationTurn.update.mock.calls[0][0];
     expect(replaced.where).toEqual({ id: 'turn-9' });
     expect(replaced.data.endCard.inYourRecord.map((l: any) => l.says)).toEqual(["I'll visit Westgate Deli on Friday."]);
     expect(card).toEqual(replaced.data.endCard);
   });
 
-  it('reads the record as before when there was no card, and stores the card of what was written', async () => {
+  it('reads the lines as before when there was no card, and stores the card of what was read', async () => {
     const prisma: any = {
       conversationTurn: { findFirst: jest.fn(async () => ({ ...closing, recordDraft: null })), count: jest.fn(), update: jest.fn(async () => ({})) },
       recordEntry: { createMany: jest.fn() },
     };
     const service = aService(prisma);
     service.readTheRecord = jest.fn(async () => ROWS.map((r) => ({ ...r })));
-    const card = await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
-    expect(prisma.recordEntry.createMany).toHaveBeenCalledTimes(1);
+    const { card } = await service.theEndCardAtTheEnd({ id: 'ci1', participantId: 'p1' });
+    expect(prisma.recordEntry.createMany).not.toHaveBeenCalled();
     expect(card.inYourRecord).toHaveLength(2);
     expect(prisma.conversationTurn.update.mock.calls[0][0].data.endCard).toEqual(card);
   });
@@ -344,20 +352,19 @@ describe('the transcript', () => {
   });
 });
 
-describe('the read and the write are the same as before', () => {
-  it('extractRecordEntries is the read and then one write of what it read', async () => {
-    const prisma: any = { recordEntry: { createMany: jest.fn(async () => ({ count: 2 })) } };
-    const service = aService(prisma);
-    service.readTheRecord = jest.fn(async () => ROWS);
-    await service.extractRecordEntries('ci1', 'p1');
-    expect(prisma.recordEntry.createMany).toHaveBeenCalledTimes(1);
-    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: ROWS.map((r) => ({ ...r, createdAt: expect.any(Date) })) });
+/* Changed for one source, part 2: the end card's read never writes; the record has one writer, from the assessment. */
+describe('the end card\'s read and the record\'s one writer', () => {
+  it('the card\'s read writes nothing; the record is written only by the writer that reads the assessment', () => {
+    const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    expect(SRC.match(/recordEntry\.createMany\(/g)).toHaveLength(1);
+    const writer = SRC.slice(SRC.indexOf('async writeTheRecordFromTheAssessment('), SRC.indexOf('A PHOTO, DOCUMENT OR PIN BACKS THE LINE IT NAMES'));
+    expect(writer).toContain('recordEntry.createMany(');
+    expect(writer).toContain('theRecordLinesIn(a,');
   });
-  it('and writes nothing when the read finds nothing', async () => {
-    const prisma: any = { recordEntry: { createMany: jest.fn() } };
+  it('and writes nothing when there is no assessment to write from', async () => {
+    const prisma: any = { checkIn: { findUnique: jest.fn(async () => null) }, recordEntry: { createMany: jest.fn() } };
     const service = aService(prisma);
-    service.readTheRecord = jest.fn(async () => []);
-    await service.extractRecordEntries('ci1', 'p1');
+    expect(await service.writeTheRecordFromTheAssessment({ id: 'ci1', participantId: 'p1', groundId: 'g1' }, null)).toBe(0);
     expect(prisma.recordEntry.createMany).not.toHaveBeenCalled();
   });
 });
@@ -403,7 +410,7 @@ describe('a photo that backs a line, as the person reads it', () => {
 
   it('the card rebuilt from the written record asks who added each backing document', () => {
     const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
-    const rewrite = SRC.slice(SRC.indexOf('private async writeTheRecordAtTheEnd('), SRC.indexOf('private async readTheRecord('));
+    const rewrite = SRC.slice(SRC.indexOf('private async theEndCardAtTheEnd('), SRC.indexOf('private async readTheRecord('));
     expect(rewrite).toContain('whoAddedEachBackingDocument(this.prisma, rows');
     expect(rewrite).toContain('documentIsTheirOwn: whoAdded.get(doc) === checkIn.participantId');
   });

@@ -1364,7 +1364,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // never inferred (decision: generate when everyone who accepted is done;
     // note no-shows).
     // A participant counts as a contributor if they have any record entries OR
-    // completed a check-in (extractRecordEntries may occasionally produce zero
+    // completed a check-in (the record written from the assessment may occasionally hold zero
     // entries for a valid session - we still credit the session as contributed).
     const completedCheckInParticipantIds = await this.prisma.checkIn.findMany({
       where: { participant: { groundId }, status: CheckInStatus.COMPLETED },

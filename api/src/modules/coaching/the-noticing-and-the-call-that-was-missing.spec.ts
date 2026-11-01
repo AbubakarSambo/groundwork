@@ -308,7 +308,7 @@ describe('and complete() calls it, which is the part that was missing', () => {
       { emit: jest.fn(() => Promise.resolve()) } as any, { get: jest.fn(() => true) } as any,
     );
     /* (1 November 2026: the coach now also waits for the conversation's assessment, stubbed here like the other readers.) */
-    for (const m of ['extractRecordEntries', 'buildSoloArtifact', 'ensureNextSession', 'extractDependencies', 'extractWorkMentions', 'assessAndThenRead', 'reviseDetectedFunction']) {
+    for (const m of ['theEndCardAtTheEnd', 'buildSoloArtifact', 'ensureNextSession', 'extractDependencies', 'extractWorkMentions', 'assessAndThenRead', 'reviseDetectedFunction']) {
       jest.spyOn(service as any, m).mockResolvedValue(undefined);
     }
     const spy = jest.spyOn(service as any, 'observeForCoaching').mockResolvedValue(undefined);

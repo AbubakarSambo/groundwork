@@ -268,6 +268,7 @@ import { notTheSameAsLastTime } from './the-same-sentence-five-times';
 import { notTheSameQuestionTwiceInARow, notAQuestionAlreadyAnswered } from './the-same-question-never-twice-in-a-row';
 import { aDealsFigure, aCountOfPlacesVisited } from '../board/a-deals-units-are-not-a-target';
 import { aCustomerIsNotAPerson } from './no-guessed-pronoun-for-a-named-person';
+import { theRecordLinesIn } from './the-record-from-the-assessment';
 import { theWorkTheySaid, notARemarkAboutUs, ANSWER_THE_REMARK, aboutTheToolNotTheWork } from './a-remark-about-the-tool-is-not-the-work';
 import { nothingYet, withThisTurn, whatToAskAbout, type WhatWeHave, type Claim } from './what-we-have-so-far';
 import {
@@ -424,6 +425,52 @@ export function countCheckableSpecifics(text: string): number {
     total += (clause.match(/\b(signed|shipped|closed|delivered|launched|agreed|blocked|paid|hired|sent|booked|onboarded)\b/gi) ?? []).length;
   }
   return total;
+}
+
+// A NON-ANSWER IS NOT A RECORD ENTRY.
+//
+// In a live run the extractor faithfully recorded "Nothing new to add for
+// session 3" and "just a lot going on" as entries. Because the contribution
+// card counted entries, the person who stopped working for ten weeks scored
+// 43 and the person who delivered all quarter scored 45. Saying nothing was
+// being counted as contributing.
+const NON_ANSWER = /^(nothing (new|much|else)|no( real)? (update|change|progress)|same as (before|last|above)|not (really |much )?(sure|applicable)|n\/?a|none|tbd|as (before|discussed))\b/i;
+
+/**
+ * SOME ENTRY TYPES ARE NOT SUPPOSED TO CONTAIN NUMBERS.
+ *
+ * The checkable-specifics test asks "is there a name, number, date or
+ * outcome in here" - the right question for a claim about DELIVERY, and the
+ * wrong one for a statement of meaning.
+ *
+ *   SUCCESS_DEFINITION  "doing well means clearing the queue each week"
+ *   INTENT              "nobody has told me I own a client; I assumed that
+ *                        came later, once I had proved I could deliver"
+ *
+ * Neither has a number in it. Both are exactly what this product exists to
+ * capture - the second IS the gap on a new-hire ground, the difference
+ * between throughput and ownership. Requiring a metric of them dropped the
+ * substance and kept the arithmetic.
+ *
+ * So evidence-shaped types are still held to evidence. Meaning-shaped types
+ * are held to being a real answer: long enough to say something, and not one
+ * of the stock non-answers.
+ */
+const EVIDENCE_TYPES = new Set(['COMMITMENT', 'TIMEFRAME']);
+
+export function isANonAnswer(text: string, type?: string): boolean {
+  // Strip the model's own [INFERRED: ...] commentary before judging. The
+  // extractor appends its reasoning to thin answers ("just a lot going on
+  // [INFERRED: is making it harder to close these deals]"), which made an
+  // empty answer look like a substantive entry.
+  const t = text.replace(/\[INFERRED:[^\]]*\]/gi, '').trim().replace(/[.!]+$/, '');
+  if (t.length < 12) return true;                 // "ok", "fine", "yes"
+  if (NON_ANSWER.test(t)) return true;
+  // Only a claim about delivery has to be checkable. A definition or an
+  // assumption is judged on whether it actually says something.
+  if (type && !EVIDENCE_TYPES.has(type)) return false;
+  // Nothing checkable in it at all - no name, number, date or outcome.
+  return countCheckableSpecifics(t) === 0;
 }
 
 
@@ -7630,7 +7677,14 @@ ${told}` : '';
         if (!a || a.measure.modelFailed) throw new Error('the model could not read the conversation');
         assessed = a;
       }, { checkIn, how: { ...how, channel: how.channel ?? channel, closedAt: how.closedAt.toISOString() } }, this.logger);
+      /* THE RECORD, from the assessment, before anything that reads this check-in's lines (one source, part 2). */
+      const theRecord = assessed
+        ? await writeOrOwe(this.prisma as any, checkIn.id, 'the record', async () => { await this.writeTheRecordFromTheAssessment(checkIn, assessed); }, undefined, this.logger)
+        : false;
+      /* The readers of a finished check-in's lines, which ran at the close when the close wrote them; they run once the lines are there. */
+      const finished = how.howItEnded === 'finished by the person' || how.howItEnded === 'closed by the clock';
       await Promise.all([
+        ...(theRecord && finished ? [this.readTheLinesJustWritten(checkIn)] : []),
         /* The waits: what this person is waiting on, from the assessment's blockers, then every wait the record now shows is over. */
         this.extractDependencies(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
           this.logger.warn(`Dependency extraction failed for check-in ${checkIn.id}: ${err.message}`),
@@ -7670,6 +7724,40 @@ ${told}` : '';
   }
 
   /**
+   * WHAT READS A FINISHED CHECK-IN'S LINES, ONCE THEY ARE WRITTEN FROM ITS ASSESSMENT (one source, part 2). These ran at the close,
+   * after the close wrote the record. The record is written from the assessment now, so they run after it, and before the report
+   * and the board are told the assessment is ready, so they read what these wrote.
+   *
+   * - The lines are read against the documents this person can see, before the report reads recallBased; and the gaps for this
+   *   round are settled from the record (answered ones closed, unanswered ones recorded), which, read before the lines were
+   *   there, recorded as a gap a goal said in this very session.
+   * - Whether what they say good looks like matches what is expected of them (SUCCESS_DEFINITION lines).
+   * - What they said about their job in a first check-in, then which function map fits them, from their own lines.
+   * - The single-party view of their own session (the solo artifact), from their lines.
+   */
+  private async readTheLinesJustWritten(checkIn: { id: string; participantId: string; groundId: string }): Promise<void> {
+    const started = Date.now();
+    await Promise.all([
+      this.anchorRecordToDocuments(checkIn.participantId, checkIn.groundId).catch((err) =>
+        this.logger.warn(`Document anchoring failed for participant ${checkIn.participantId}: ${err.message}`)),
+      this.settleTheGaps(checkIn).catch((err) =>
+        this.logger.warn(`Check-in ${checkIn.id}: could not settle the gaps: ${err?.message}`)),
+      this.extractAlignment(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+        this.logger.warn(`Alignment read failed for check-in ${checkIn.id}: ${err.message}`)),
+      /* What they said about their job in a first check-in is taken out first (decision 129), so the function read can use it. */
+      Promise.resolve()
+        .then(() => keepWhatTheySaidAboutTheirJob({ prisma: this.prisma as any, anthropic: this.anthropic as any, prompts: this.prompts as any }, { id: checkIn.id, participantId: checkIn.participantId }, this.logger))
+        .catch((err) => this.logger.warn(`Reading what they said about their job failed for check-in ${checkIn.id}: ${err?.message}`))
+        .then(() => this.reviseDetectedFunction(checkIn.participantId))
+        .catch((err) => this.logger.warn(`Function detection failed for participant ${checkIn.participantId}: ${err.message}`)),
+    ]);
+    this.buildSoloArtifact(checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.error(`Solo artifact failed for participant ${checkIn.participantId}: ${err.message}`),
+    );
+    this.logger.log(`Check-in ${checkIn.id}: read the lines just written (anchored, gaps settled, alignment, role) in ${Date.now() - started}ms.`);
+  }
+
+  /**
    * ONE SESSION FINISHES ONCE.
    *
    * Everything that happens when a session ends, after the gates: scoring, extraction, the status
@@ -7685,12 +7773,13 @@ ${told}` : '';
    * winner emits, schedules the next session and closes the round. The loser returns the same
    * completed response, because from the person's side it did complete.
    *
-   * ISSUE 6 STANDS: the extractors still run BEFORE the write, so the record is populated before
-   * the status change races past it - the other party's completion can trigger a round check that
-   * reads this check-in as COMPLETED, and it must find the entries there. The cost of keeping that
-   * order is that a true same-instant double press can still run the awaited extractors twice; the
-   * event and the round are protected, the record may gain duplicate lines, and that is the cheaper
-   * of the two failures. Closing it fully needs a claim column, which is its own change.
+   * ISSUE 6, MOVED ONTO THE ASSESSMENT (one source, part 2). The record was written here, before the
+   * status flipped, so that whatever a completion or a round's close triggered found this check-in's
+   * lines there. The lines are written from the conversation's assessment now, after the close, and
+   * everything that reads them waits for ASSESSMENT_READY instead: the report, the board's records,
+   * the people's records and the board's warm-up; and a round already closed when a check-in's
+   * assessment lands is read again (BoardListener). A second press writes no line twice, because the
+   * writer never writes a line already on the check-in's record.
    */
   private async finishTheSession(
     checkIn: any,
@@ -7706,10 +7795,6 @@ ${told}` : '';
       return null;
     });
 
-    // ISSUE 6: extractRecordEntries runs BEFORE the status flips to COMPLETED so
-    // the record is populated before the status change races past it. buildSoloArtifact
-    // is still fire-and-forget. Both are best-effort.
-
     /*
      * WHAT SOMEBODY WAITS FOR AT THE END OF A CHECK-IN, TIMED AND THEN NARROWED.
      *
@@ -7722,12 +7807,14 @@ ${told}` : '';
     /* The card still being built is waited for, so what is written is what the card says. */
     /* Not for the clock, or a door that cannot hold a reply that long (WhatsApp's webhook). */
     if (how.waitForTheCard) await this.waitForTheCardBeingBuilt(checkIn.id);
-    /* The lines the end card showed, if nothing was said after it (task 2.7). See writeTheRecordAtTheEnd. */
-    /* A record that could not be written is owed, and the scheduled pass writes it again (a-write-is-owed-until-it-lands.ts). */
-    const written = { card: null as EndCard | null };
-    await writeOrOwe(this.prisma as any, checkIn.id, 'the record', async () => { written.card = await this.writeTheRecordAtTheEnd(checkIn); }, undefined, this.logger);
-    const endCard = written.card;
-    this.logger.log(`Check-in ${checkIn.id}: took the record out of it in ${Date.now() - closingStartedAt}ms.`);
+    /* The end card, exactly as they see it today (task 2.7). See theEndCardAtTheEnd. The record is written from the assessment. */
+    const ended = await this.theEndCardAtTheEnd(checkIn).catch((err: any) => {
+      this.logger.warn(`Check-in ${checkIn.id}: no end card at the close (${err?.message ?? err}).`);
+      return null;
+    });
+    const endCard = ended?.card ?? null;
+    const theCardsLines = ended?.lines ?? [];
+    this.logger.log(`Check-in ${checkIn.id}: the end card was ready in ${Date.now() - closingStartedAt}ms.`);
 
     /* The waits are read from the conversation's assessment now, once it is written: see assessAndThenRead. */
 
@@ -7736,30 +7823,7 @@ ${told}` : '';
     this.extractStatedFigures(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
       this.logger.warn(`Could not take the figures from ${checkIn.id}: ${err?.message}`));
 
-    /*
-     * AND THE GAPS ARE SETTLED FOR THIS ROUND: answered ones closed, unanswered ones recorded.
-     *
-     * AFTER EXTRACTION AND NOT BEFORE, which is where I first put it against my own comment saying
-     * otherwise. Whether a slot was answered is a question about the record, and extraction is what
-     * writes the record: run first, it reads a round that has not been extracted yet, so somebody
-     * who gave a clear goal in this very session has it recorded as a gap. Watched happen - "the
-     * goal or target that fits their own role", against a person who had just said 1,200 qualified
-     * leads against 1,000 last quarter.
-     *
-     * A gap closes permanently the moment it is answered, in this round or any later one: a fact
-     * does not stop being on the record because a new round began.
-     */
-    /* The two that read what extraction just wrote, together: neither reads the other. */
-    const afterExtractionAt = Date.now();
-    await Promise.all([
-      /* The lines just taken are read against the documents this person can see, before the report
-         reads recallBased. */
-      this.anchorRecordToDocuments(checkIn.participantId, checkIn.groundId).catch((err) =>
-        this.logger.warn(`Document anchoring failed for participant ${checkIn.participantId}: ${err.message}`)),
-      this.settleTheGaps(checkIn).catch((err) =>
-        this.logger.warn(`Check-in ${checkIn.id}: could not settle the gaps: ${err?.message}`)),
-    ]);
-    this.logger.log(`Check-in ${checkIn.id}: anchored the record and settled the gaps in ${Date.now() - afterExtractionAt}ms; the whole close took ${Date.now() - closingStartedAt}ms.`);
+    /* The gaps are settled and the lines anchored once the record is written from the assessment: see readTheLinesJustWritten. */
     this.extractWorkMentions(checkIn.id, checkIn.participantId, checkIn.groundId, checkIn.sessionNumber).catch((err) =>
       this.logger.warn(`Work-mention extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
@@ -7773,14 +7837,7 @@ ${told}` : '';
       this.logger.warn(`Expectation extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
 
-    /**
-     * GW-EXP-3. Runs on every completion and returns immediately unless this person both has an
-     * expectation and has said what doing well looks like. Re-read each session on purpose: their own
-     * view develops, and a stale alignment is worse than none.
-     */
-    this.extractAlignment(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
-      this.logger.warn(`Alignment read failed for check-in ${checkIn.id}: ${err.message}`),
-    );
+    /* GW-EXP-3, the alignment, reads their SUCCESS_DEFINITION lines, so it runs once they are written: see readTheLinesJustWritten. */
 
     /**
      * GW-EXP-7. Fire-and-forget beside the others: an objection somebody raised must never be the
@@ -7802,12 +7859,7 @@ ${told}` : '';
       this.logger.warn(`Objection read failed for check-in ${checkIn.id}: ${err.message}`),
     );
 
-    /* What they said about their job in a first check-in is taken out first (decision 129), so the function read below can use it. */
-    const theFunctionRead = Promise.resolve()
-      .then(() => keepWhatTheySaidAboutTheirJob({ prisma: this.prisma as any, anthropic: this.anthropic as any, prompts: this.prompts as any }, { id: checkIn.id, participantId: checkIn.participantId }, this.logger))
-      .catch((err) => this.logger.warn(`Reading what they said about their job failed for check-in ${checkIn.id}: ${err?.message}`))
-      .then(() => this.reviseDetectedFunction(checkIn.participantId))
-      .catch((err) => this.logger.warn(`Function detection failed for participant ${checkIn.participantId}: ${err.message}`));
+    /* What they said about their job, and the function read from their lines, run once the lines are written: see readTheLinesJustWritten. */
 
     const theRoleConfirmation = this.extractRoleConfirmation({ id: checkIn.id, participantId: checkIn.participantId }).catch((err) =>
       this.logger.warn(`Role-confirmation read failed for check-in ${checkIn.id}: ${err.message}`),
@@ -7829,8 +7881,8 @@ ${told}` : '';
      * already swallow their own failures, so waiting on them can never stop the coach running, and
      * none of this delays the session completing.
      */
-    /* The coach runs after these and after the conversation's assessment (below), so its one step may be the assessment's small step. */
-    const theReadsTheCoachWaitsFor = Promise.allSettled([theFunctionRead, theRoleConfirmation]);
+    /* The coach runs after this and after the conversation's assessment (below), which holds the function read, so its one step may be the assessment's small step. */
+    const theReadsTheCoachWaitsFor = Promise.allSettled([theRoleConfirmation]);
 
     /* The record is written: completedAt is stamped once, which is what the round, the report and the event wait for. */
     const won = await this.prisma.checkIn.updateMany({
@@ -7936,11 +7988,7 @@ ${told}` : '';
     // nothing, and awaited so the next ground has it.
     await this.rememberStyle(checkIn);
 
-    // Build a single-party artifact (B2) so the person has standalone value from
-    // this session without waiting on anyone else. Fire-and-forget.
-    this.buildSoloArtifact(checkIn.participantId, checkIn.groundId).catch((err) =>
-      this.logger.error(`Solo artifact failed for participant ${checkIn.participantId}: ${err.message}`),
-    );
+    /* The single-party artifact (B2) reads their lines, so it is built once they are written: see readTheLinesJustWritten. */
 
     // Open the next session for this party so they have somewhere to return to.
     await this.ensureNextSession(checkIn.groundId, checkIn.participantId, checkIn.sessionNumber);
@@ -7968,8 +8016,8 @@ ${told}` : '';
     /* Only where there is something true to say. An empty block on the screen after somebody has
        just finished is worse than no block, and a session with nothing in its notes has nothing to
        tell anybody about their own answers. */
-    /* What changed on their own deals, read from the lines just written (sales-first.md, section 5). */
-    const whatChanged = await this.whatChangedOnTheirDealsToday(checkIn);
+    /* What changed on their own deals, read from the lines the end card showed (sales-first.md, section 5). */
+    const whatChanged = await this.whatChangedOnTheirDealsToday(checkIn, theCardsLines);
     /* The card, with exactly the lines just written, so the screen shows it even if it never saw it arrive. */
     return { status: 'completed', groundId: checkIn.groundId, ...(endCard ? { endCard } : {}), ...(whatYouGave.saying ? { whatYouGave } : {}), ...(whatChanged ? { whatChanged } : {}) };
   }
@@ -7979,7 +8027,7 @@ ${told}` : '';
    * records and their own lines from this check-in only. Null when nothing changed, or on any failure:
    * the done page then leaves the part out, as it always has.
    */
-  private async whatChangedOnTheirDealsToday(checkIn: { id: string; participantId: string; groundId: string }) {
+  private async whatChangedOnTheirDealsToday(checkIn: { id: string; participantId: string; groundId: string }, theCardsLines: Prisma.RecordEntryCreateManyInput[]) {
     try {
       const ground = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { kindOfWork: true, workStages: true } as any });
       const kind = oneOfTheKinds((ground as any)?.kindOfWork);
@@ -7992,8 +8040,12 @@ ${told}` : '';
         }),
       ]);
       /* Only their own documents prove their lines (how-a-line-is-known), as everywhere else. */
-      const whoAdded = await whoAddedEachBackingDocument(this.prisma, lines as any[]);
-      const all = lines.map((l) => ({
+      /* This check-in's lines are the ones its end card showed: its record is written from the assessment, after the close. */
+      const theirs = [...lines.filter((l) => l.checkInId !== checkIn.id), ...theCardsLines.map((l: any) => ({
+        checkInId: checkIn.id, type: l.type, text: String(l.text ?? ''), recallBased: l.recallBased ?? true, anchoredDocumentId: l.anchoredDocumentId ?? null, anchoredOrigin: l.anchoredOrigin ?? null,
+      }))];
+      const whoAdded = await whoAddedEachBackingDocument(this.prisma, theirs as any[]);
+      const all = theirs.map((l) => ({
         ...l, type: String(l.type),
         ...(l.anchoredDocumentId && whoAdded.has(l.anchoredDocumentId) ? { documentIsTheirOwn: whoAdded.get(l.anchoredDocumentId) === checkIn.participantId } : {}),
       }));
@@ -9368,7 +9420,8 @@ ${told}` : '';
       const howItEnded = (await theAssessmentOf(this.prisma, checkIn.id).catch(() => null))?.about.howItEnded ?? 'finished by the person';
       theAssessmentIsReady({ events: this.events }, { checkInId: checkIn.id, groundId: checkIn.groundId, participantId: checkIn.participantId, sessionNumber: checkIn.sessionNumber, howItEnded });
     };
-    if (write.step === 'the record') { await told(await this.extractRecordEntries(checkIn.id, checkIn.participantId)); return; }
+    /* A record owed from before the record was read from the assessment is written from it now. */
+    if (write.step === 'the record') { await told((await this.writeTheRecordFromTheAssessment(checkIn)) > 0); return; }
     if (write.step === 'the aims and expectations') { await told(await this.extractExpectations(checkIn.id, checkIn.participantId, checkIn.groundId, input.spokenElsewhere)); return; }
     if (write.step === 'the assessment') {
       const how = input.how ?? { howItEnded: 'finished by the person' };
@@ -9377,20 +9430,43 @@ ${told}` : '';
   }
 
   /**
-   * THE RECORD OF A FINISHED CONVERSATION, WRITTEN OR OWED. Every caller (setup's save, a decline, the scheduled pass) comes here, so a
-   * model call that fails is kept on the check-in and written again later, never only logged (a-write-is-owed-until-it-lands.ts).
+   * THE RECORD OF A FINISHED CONVERSATION, FROM ITS ASSESSMENT, BY ONE WRITER (one source, part 2; the-record-from-the-assessment.ts).
+   *
+   * The record had a model call of its own at the close, beside the assessment reading the same conversation. Every path that
+   * ends a conversation now writes its lines here, from the assessment, inside assessAndThenRead: the person finishing, the
+   * clock, a decline and setup's save. The filters every line was always held to stay: a remark about Groundwork is not the work,
+   * a non-answer is not a line, a line is in their words and names nobody they did not, their quotation marks are theirs, and a
+   * reference they typed backs its line. Written once: a line already on this check-in's record is not written again, so a
+   * retry, or a second press of Complete, adds nothing twice.
    */
-  extractRecordEntries(checkInId: string, participantId: string): Promise<boolean> {
-    return writeOrOwe(this.prisma as any, checkInId, 'the record', () => this.writeTheRecordFromTheConversation(checkInId, participantId), undefined, this.logger);
-  }
-
-  private async writeTheRecordFromTheConversation(checkInId: string, participantId: string) {
-    const rows = await this.readTheRecord(checkInId, participantId);
-    if (!rows.length) return;
-    const on = await this.whenTheSessionWas(checkInId);
-    await this.prisma.recordEntry.createMany({ data: rows.map((r) => ({ ...r, createdAt: on })) });
-    await this.backTheLinesTheirSessionDocumentsWereSentFor(checkInId, participantId);
-    await this.backTheLinesTheirDocumentsName(participantId);
+  async writeTheRecordFromTheAssessment(checkIn: { id: string; participantId: string; groundId: string }, assessed?: TheAssessment | null): Promise<number> {
+    const a = assessed ?? (await theAssessmentOf(this.prisma, checkIn.id));
+    if (!a) return 0;
+    const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } });
+    const whatTheyTyped = theWorkTheySaid(turns).map((t) => String(t.content ?? ''));
+    if (!whatTheyTyped.length) return 0;
+    const whatTheySaid = whatTheyTyped.join('\n');
+    const roster: string[] = await Promise.resolve(this.prisma.groundParticipant?.findMany?.({ where: { groundId: checkIn.groundId }, select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } } as any))
+      .then((rows: any[] | undefined) => (rows ?? []).flatMap((r) => [r.user?.firstName ?? r.nameGiven ?? '', r.user?.lastName ?? '']).filter(Boolean))
+      .catch(() => [] as string[]);
+    const lines = notARemarkAboutUs(theRecordLinesIn(a, (t) => countCheckableSpecifics(t) > 0))
+      .filter((l) => !isANonAnswer(l.text, l.type) && isTheirs(l.text, whatTheySaid) && !aNameNobodyTyped(l.text, whatTheySaid, roster).length);
+    const already = new Set(((await this.prisma.recordEntry.findMany({ where: { checkInId: checkIn.id }, select: { text: true } }).catch(() => [])) ?? []).map((r: any) => String(r.text ?? '').trim()));
+    const rows = aTypedReferenceBacksItsLine(lines.map((l) => {
+      const text = theirQuotationMarksBack(theLineWithoutItsDanglingJoin(l.text), whatTheyTyped);
+      return {
+        participantId: checkIn.participantId, checkInId: checkIn.id, type: l.type as RecordEntryType, verifiability: l.verifiability as any,
+        text, saidWordForWord: saidWordForWord(text, whatTheyTyped), dimensionThreadKey: l.dimensionThreadKey,
+      };
+    }), whatTheyTyped).filter((r) => !already.has(r.text.trim()));
+    if (rows.length) {
+      const on = await this.whenTheSessionWas(checkIn.id);
+      await this.prisma.recordEntry.createMany({ data: rows.map((r) => ({ ...r, createdAt: on })) });
+    }
+    await this.backTheLinesTheirSessionDocumentsWereSentFor(checkIn.id, checkIn.participantId);
+    await this.backTheLinesTheirDocumentsName(checkIn.participantId);
+    this.logger.log(`Check-in ${checkIn.id}: wrote ${rows.length} line(s) to the record from its assessment.`);
+    return rows.length;
   }
 
   /**
@@ -9633,10 +9709,12 @@ ${told}` : '';
   }
 
   /**
-   * WHAT FINISHING WRITES. The lines the end card showed, when nothing was said after it; otherwise
-   * the record is read again, as it always was.
+   * THE END CARD AT THE CLOSE, EXACTLY AS IT WAS (task 2.7). The card shown, when nothing was said after it; otherwise the lines
+   * are read again and the card on the closing turn is replaced with them, so it is always what they read last. Nothing is
+   * written to the record here: the record is written from the conversation's assessment (writeTheRecordFromTheAssessment), and
+   * the card's lines go to the assessment as its draft. Returns the card and its lines, for the done page's "what changed".
    */
-  private async writeTheRecordAtTheEnd(checkIn: { id: string; participantId: string; groundId?: string }): Promise<EndCard | null> {
+  private async theEndCardAtTheEnd(checkIn: { id: string; participantId: string; groundId?: string }): Promise<{ card: EndCard | null; lines: Prisma.RecordEntryCreateManyInput[] }> {
     const closing = await this.prisma.conversationTurn.findFirst({
       where: { checkInId: checkIn.id, role: TurnRole.AI },
       orderBy: { createdAt: 'desc' },
@@ -9646,28 +9724,12 @@ ${told}` : '';
     const saidSince = draft
       ? await this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id, role: TurnRole.PERSON, createdAt: { gt: closing!.createdAt } } })
       : 0;
-    if (draft && saidSince === 0) {
-      if (draft.length) {
-        const on = await this.whenTheSessionWas(checkIn.id);
-        await this.prisma.recordEntry.createMany({ data: draft.map((r) => ({ ...r, checkInId: checkIn.id, participantId: checkIn.participantId, createdAt: on })) });
-      }
-      await this.backTheLinesTheirSessionDocumentsWereSentFor(checkIn.id, checkIn.participantId);
-      await this.backTheLinesTheirDocumentsName(checkIn.participantId);
-      this.logger.log(`Check-in ${checkIn.id}: wrote the ${draft.length} line(s) the end card showed.`);
-      return ((closing as any).endCard as EndCard | null) ?? null;
-    }
-    if (draft) this.logger.log(`Check-in ${checkIn.id}: they said more after the end card, so the record is read again.`);
+    if (draft && saidSince === 0) return { card: ((closing as any).endCard as EndCard | null) ?? null, lines: draft };
+    if (draft) this.logger.log(`Check-in ${checkIn.id}: they said more after the end card, so its lines are read again.`);
     const rows = await this.readTheRecord(checkIn.id, checkIn.participantId);
-    if (rows.length) {
-      const on = await this.whenTheSessionWas(checkIn.id);
-      await this.prisma.recordEntry.createMany({ data: rows.map((r) => ({ ...r, createdAt: on })) });
-    }
-    await this.backTheLinesTheirSessionDocumentsWereSentFor(checkIn.id, checkIn.participantId);
-    await this.backTheLinesTheirDocumentsName(checkIn.participantId);
     /*
-     * AND THE CARD SAYS WHAT WAS WRITTEN. Read again, the record can differ from the card that was
-     * shown (the reviewer saw it), so the card on the closing turn is replaced with the lines just
-     * written. "What is now in your record" is then always true.
+     * AND THE CARD SAYS WHAT THEY SAID LAST. Read again, the lines can differ from the card that was shown (the reviewer saw
+     * it), so the card on the closing turn is replaced with the lines just read.
      */
     /* Who added each backing document, as the first card knew: somebody else's plan proves nothing of theirs. */
     const whoAdded = await whoAddedEachBackingDocument(this.prisma, rows as any[]);
@@ -9680,18 +9742,17 @@ ${told}` : '';
     }), checkIn.groundId ? await this.usesSimplerWords(checkIn.groundId) : false, await this.whatTheyWereAskedToShowAndDidNot(checkIn));
     if (closing?.id) {
       await this.prisma.conversationTurn.update({ where: { id: closing.id }, data: { endCard: (card ?? Prisma.DbNull) as any, recordDraft: rows as any } })
-        .catch((err: any) => this.logger.warn(`Check-in ${checkIn.id}: could not replace the end card with what was written (${err?.message})`));
+        .catch((err: any) => this.logger.warn(`Check-in ${checkIn.id}: could not replace the end card with what was read (${err?.message})`));
     }
-    return card;
+    return { card, lines: rows };
   }
 
   /**
    * THE LINES THE RECORD READER TAKES OUT OF A CONVERSATION, WITHOUT WRITING THEM.
    *
-   * Split from extractRecordEntries so the end card (task 2.7) can show a person what is going into
-   * their record before they finish, while nothing reaches record_entries until they do: forty-nine
-   * readers of that table do not wait for a check-in to finish. Same filters, same stamps, same
-   * logs as before; extractRecordEntries is this and then the write.
+   * The end card's own read (task 2.7): what the card shows a person before they finish. Nothing it
+   * reads reaches record_entries: the record is written from the conversation's assessment
+   * (writeTheRecordFromTheAssessment), which reads these lines as its draft.
    */
   private async readTheRecord(checkInId: string, participantId: string): Promise<Prisma.RecordEntryCreateManyInput[]> {
     const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
@@ -9733,51 +9794,6 @@ ${told}` : '';
 
     const VALID_VERIFIABILITY = ['HIGH', 'MEDIUM', 'LOW'];
 
-    // A NON-ANSWER IS NOT A RECORD ENTRY.
-    //
-    // In a live run the extractor faithfully recorded "Nothing new to add for
-    // session 3" and "just a lot going on" as entries. Because the contribution
-    // card counted entries, the person who stopped working for ten weeks scored
-    // 43 and the person who delivered all quarter scored 45. Saying nothing was
-    // being counted as contributing.
-    const NON_ANSWER = /^(nothing (new|much|else)|no( real)? (update|change|progress)|same as (before|last|above)|not (really |much )?(sure|applicable)|n\/?a|none|tbd|as (before|discussed))\b/i;
-
-    /**
-     * SOME ENTRY TYPES ARE NOT SUPPOSED TO CONTAIN NUMBERS.
-     *
-     * The checkable-specifics test asks "is there a name, number, date or
-     * outcome in here" - the right question for a claim about DELIVERY, and the
-     * wrong one for a statement of meaning.
-     *
-     *   SUCCESS_DEFINITION  "doing well means clearing the queue each week"
-     *   INTENT              "nobody has told me I own a client; I assumed that
-     *                        came later, once I had proved I could deliver"
-     *
-     * Neither has a number in it. Both are exactly what this product exists to
-     * capture - the second IS the gap on a new-hire ground, the difference
-     * between throughput and ownership. Requiring a metric of them dropped the
-     * substance and kept the arithmetic.
-     *
-     * So evidence-shaped types are still held to evidence. Meaning-shaped types
-     * are held to being a real answer: long enough to say something, and not one
-     * of the stock non-answers.
-     */
-    const EVIDENCE_TYPES = new Set(['COMMITMENT', 'TIMEFRAME']);
-
-    const isNonAnswer = (text: string, type?: string) => {
-      // Strip the model's own [INFERRED: ...] commentary before judging. The
-      // extractor appends its reasoning to thin answers ("just a lot going on
-      // [INFERRED: is making it harder to close these deals]"), which made an
-      // empty answer look like a substantive entry.
-      const t = text.replace(/\[INFERRED:[^\]]*\]/gi, '').trim().replace(/[.!]+$/, '');
-      if (t.length < 12) return true;                 // "ok", "fine", "yes"
-      if (NON_ANSWER.test(t)) return true;
-      // Only a claim about delivery has to be checkable. A definition or an
-      // assumption is judged on whether it actually says something.
-      if (type && !EVIDENCE_TYPES.has(type)) return false;
-      // Nothing checkable in it at all - no name, number, date or outcome.
-      return countCheckableSpecifics(t) === 0;
-    };
 
     /* Release 1's switch, for the line that is somebody else's promise (below). */
     let releaseOne = false;
@@ -9796,7 +9812,7 @@ ${told}` : '';
       (e) =>
         e.text?.trim() &&
         (Object.values(RecordEntryType) as string[]).includes(e.type) &&
-        !isNonAnswer(e.text, e.type) &&
+        !isANonAnswer(e.text, e.type) &&
         /*
          * AND IT HAS TO BE TRACEABLE TO WORDS THEY USED.
          *
@@ -12376,17 +12392,11 @@ ${told}` : '';
     /** The already-complete and already-declined refusals both live in the loader now. */
     const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
     /*
-     * WHAT THEY ALREADY SAID IS THEIRS. The loader permits IN_PROGRESS, so somebody can decline
-     * partway through - and this wrote DECLINED and nothing else, losing every turn they had given
-     * from their private record. The extraction complete() runs is run here first, best-effort, so
-     * their own words reach their own record before the session closes. And the reason is written,
-     * so a reader can tell a decline from a close.
+     * WHAT THEY ALREADY SAID IS THEIRS. The loader permits IN_PROGRESS, so somebody can decline partway through, and this once
+     * wrote DECLINED and nothing else, losing every turn they had given from their private record. Their conversation is assessed
+     * (below) and its record written from the assessment, like any conversation that ended. And the reason is written, so a
+     * reader can tell a decline from a close.
      */
-    if (checkIn.status === CheckInStatus.IN_PROGRESS) {
-      await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
-        this.logger.warn(`Record extraction before a decline failed for check-in ${checkIn.id}: ${err.message}`),
-      );
-    }
     await this.prisma.checkIn.update({
       where: { id: checkIn.id },
       data: { status: CheckInStatus.DECLINED, closedReason: DECLINED_TO_TAKE_PART },

@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { ConversationService } from './conversation.service';
+import { anAssessmentHolding } from './an-assessment-for-a-spec';
 import { RECORD_EXTRACTION_PROMPT } from './prompt-library';
 import { READ_WHAT_THEY_PROMISED } from './what-they-said-they-would-do-next';
 import { theirQuotationMarksBack } from './their-quotation-marks-are-theirs';
@@ -73,30 +74,21 @@ describe('the extractor keeps their marks, told and checked', () => {
     expect(src).not.toMatch(/getActive\(\s*'record/);
   });
 
+  /* Changed for one source, part 2: the lines reach the record from the conversation's assessment, by its one writer, which keeps
+     the same marks rule; the assessment's words are fed in here the way the record reader's text was. */
   it('stores Yemi\'s and Amina\'s lines in their own marks, stamped as their words', async () => {
     const stored: any[] = [];
     const svc = Object.create(ConversationService.prototype) as any;
     svc.logger = { log: () => undefined, warn: () => undefined };
     svc.prisma = {
-      conversationTurn: {
-        findMany: async () => [
-          { id: 't1', role: 'AI', content: 'What did "on track" mean for you?' },
-          { id: 't2', role: 'PERSON', content: YEMI_TYPED },
-          { id: 't3', role: 'AI', content: 'Have you told him?' },
-          { id: 't4', role: 'PERSON', content: AMINA_TYPED },
-        ],
-      },
-      recordEntry: { createMany: async ({ data }: any) => { stored.push(...data); return { count: data.length }; } },
+      conversationTurn: { findMany: async () => [{ id: 't2', role: 'PERSON', content: YEMI_TYPED }, { id: 't4', role: 'PERSON', content: AMINA_TYPED }] },
+      recordEntry: { findMany: async () => [], createMany: async ({ data }: any) => { stored.push(...data); return { count: data.length }; } },
     };
-    svc.anthropic = {
-      extract: async () => ({
-        entries: [
-          { type: 'SUCCESS_DEFINITION', text: YEMI_AS_THE_READER_WROTE_IT, verifiability: 'LOW' },
-          { type: 'TENSION', text: AMINA_AS_THE_READER_WROTE_IT, verifiability: 'LOW' },
-        ],
-      }),
-    };
-    await svc.extractRecordEntries('c1', 'p1');
+    const a: any = anAssessmentHolding();
+    a.messages = [{ n: 1, turnId: 't2', where: 'check-in', at: null }, { n: 2, turnId: 't4', where: 'check-in', at: null }];
+    a.targets = [{ id: 'r1.targets.0', words: YEMI_AS_THE_READER_WROTE_IT, from: [1], whoMaySee: 'the people in this check-in', saidWordForWord: false }];
+    a.claims = [{ id: 'r1.claims.0', words: AMINA_AS_THE_READER_WROTE_IT, from: [2], whoMaySee: 'the people in this check-in', saidWordForWord: false }];
+    await svc.writeTheRecordFromTheAssessment({ id: 'c1', participantId: 'p1', groundId: 'g1' }, a);
     expect(stored.map((r) => [r.text, r.saidWordForWord])).toEqual([
       [YEMIS_WORDS, true],
       [AMINA_TYPED, true],

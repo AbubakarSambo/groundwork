@@ -79,6 +79,14 @@ export class BoardListener {
   async onCheckInCompleted(e: CheckInCompletedEvent | AssessmentReadyEvent) {
     await this.readTheRecordsFrom(e);
     /*
+     * A ROUND THAT CLOSED BEFORE THIS CHECK-IN'S LINES WERE THERE IS READ AGAIN (one source, part 2). A check-in's lines are
+     * written from its assessment, after the close, so the round its close completed was read (what the room is about, the
+     * numbers on the record against each aim) without them. Read again now, from the whole round.
+     */
+    if (typeof e.sessionNumber === 'number' && (await this.theRoundIsClosed(e.groundId, e.sessionNumber))) {
+      await this.onRoundCompleted({ groundId: e.groundId, sessionNumber: e.sessionNumber });
+    }
+    /*
      * ON A MATTER CHECK-IN WITH RELEASE 2 ON, A FEE NOTE WAITING FOR AN EVENT THIS CHECK-IN REPORTS FALLS DUE THAT DAY
      * (a-fee-note-due-on-an-event). No model; never a guess: a line that only comes close is kept for the lead to confirm.
      * Anywhere else this returns null at once and writes nothing.
@@ -96,6 +104,11 @@ export class BoardListener {
     await aMilestoneAcceptedIsAnInvoiceToRaise(this.prisma, e.groundId).catch(() => 0);
   }
 
+
+  private async theRoundIsClosed(groundId: string, sessionNumber: number): Promise<boolean> {
+    const row = await Promise.resolve((this.prisma as any).roundCompletion?.findFirst?.({ where: { groundId, sessionNumber }, select: { id: true } })).catch(() => null);
+    return !!row;
+  }
 
   /**
    * THE KIND OF WORK ARRIVED AFTER THE SESSION (local test of staging, 15 October). Hafsah set up Drop Access's "Sales
@@ -427,7 +440,7 @@ export class BoardListener {
   }
 
   @OnEvent(GroundworkEvents.ROUND_COMPLETED)
-  async onRoundCompleted(e: RoundCompletedEvent) {
+  async onRoundCompleted(e: Pick<RoundCompletedEvent, 'groundId' | 'sessionNumber'>) {
     await this.readWhatTheRoomIsAbout(e);
     /* An aim the deals count is counted from them, never read off what was said (Hafsah's answer of 17 October). */
     const fromTheDeals = await this.countTheAimsFromTheDeals(e.groundId, e.sessionNumber);
@@ -525,7 +538,7 @@ export class BoardListener {
    * BEST EFFORT. If this fails the board shows the rest of itself and says this part has not been
    * read yet.
    */
-  private async readWhatTheRoomIsAbout(e: RoundCompletedEvent) {
+  private async readWhatTheRoomIsAbout(e: Pick<RoundCompletedEvent, 'groundId' | 'sessionNumber'>) {
     try {
       const said = await this.prisma.recordEntry.findMany({
         where: {

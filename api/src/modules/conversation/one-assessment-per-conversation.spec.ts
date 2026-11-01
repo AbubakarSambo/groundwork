@@ -292,7 +292,9 @@ describe('every path that ends a conversation is assessed, and none waits for it
     expect(missed).toContain("{ howItEnded: 'missed', closedAt }");
     expect(missed).toContain("theAssessmentIsReady({ events: this.events }, { checkInId: row.id");
     const commit = entry.slice(entry.indexOf('this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED'));
-    expect(commit).toMatch(/theRecordIsWritten\s*\.then\(\(\) => this\.conversation\?\.assessAndThenRead\?\.\(/);
+    /* Changed for one source, part 2: setup's commit no longer writes her record first; the assessment writes it. */
+    expect(commit).toMatch(/Promise\.resolve\(this\.conversation\?\.assessAndThenRead\?\.\(/);
+    expect(commit).not.toMatch(/extractRecordEntries/);
     expect(commit).toContain("howItEnded: 'setup saved'");
   });
 
