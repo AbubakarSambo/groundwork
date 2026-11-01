@@ -75,7 +75,7 @@ describe('the rules the three writes used to carry', () => {
    */
   const EXTRACT = (() => {
     const all = readFileSync(join(__dirname, '../conversation/conversation.service.ts'), 'utf8');
-    const from = all.indexOf('async extractExpectations(');
+    const from = all.indexOf('private async readTheAimsAndExpectations(');
     expect(from).toBeGreaterThan(-1);
     const to = all.indexOf('\n  async ', from + 10);
     expect(to).toBeGreaterThan(from);

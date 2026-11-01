@@ -10690,21 +10690,6 @@ ${told}` : '';
     }>(OWN_PROMISE_PROMPT, [{ role: 'user', content: transcript }], OWN_PROMISE_SCHEMA);
     if (!result?.promises?.length) return counted;
 
-    /* Same resolver as everywhere else: a name matching nobody is dropped, never guessed. */
-    const others = participants.filter((p) => p.id !== participantId && !p.managingOnly);
-    const resolve = (name: string): string | null => {
-      const n = (name ?? '').trim().toLowerCase();
-      if (!n) return null;
-      const hit = others.find((p) => {
-        const first = (p.user?.firstName ?? '').toLowerCase();
-        const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').toLowerCase();
-        const emailLocal = (p.email ?? '').split('@')[0].toLowerCase();
-        const role = (p.roleAsDescribed ?? '').toLowerCase();
-        return (!!full && full === n) || (!!first && first === n) || (!!emailLocal && emailLocal === n) || (!!role && role === n);
-      });
-      return hit?.id ?? null;
-    };
-
     const KINDS = ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'];
     const CHECKS = ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'];
     /* In a sales check-in a number about one customer's deal is the deal's, never their target (Drop Access, item 27; a-deals-units-are-not-a-target). */
@@ -10718,13 +10703,18 @@ ${told}` : '';
       /* Theirs, in their own words, never a sentence of Groundwork's (a-promise-is-theirs-not-ours.ts). */
       if (!itIsTheirs(text, transcript)) continue;
       const kind = KINDS.includes(p.kind ?? '') ? (p.kind as any) : 'TODO';
+      /*
+       * ONE PROMISE, ONE OWNER (Hafsah, 1 November 2026). Something they said they would do is kept once, as a GroundCommitment written
+       * from the conversation's assessment (writeWhatTheyPromised). It was also written here, as a PersonObjective, with a day this read
+       * worked out on its own: Brian's "by Monday 9 November", said on 13 November, became 9 November 2027 here while the commitment kept
+       * his words. Only an aim of their own is kept here now.
+       */
+      if (kind !== 'TARGET' && kind !== 'GOAL') continue;
       /* A figure they reported is what happened, not an aim (fix plan, pattern 5; Njeri's "November collections KES 720,000" became "You have 0 of 720,000"). */
       if (kind === 'TARGET' && !p.dueSaid && A_PERIOD_REPORTED.test(text) && !AN_AIM_IN_WORDS.test(text)) continue;
       const check = CHECKS.includes(p.check ?? '') ? (p.check as any) : 'NOT_CHECKABLE';
       const dueKind = DUES.includes(p.dueKind ?? '') ? (p.dueKind as any) : 'NOT_SAID';
       const dueSaid = (p.dueSaid ?? '').trim() || null;
-      /* A commitment with nobody waiting is a to-do, whatever the model called it. */
-      const owedTo = kind === 'COMMITMENT' ? resolve(p.owedTo ?? '') : null;
 
       /* Only where they stated a number. A promise nobody counted does not become one here. */
       const target = (p.target ?? '').trim() || null;
@@ -10735,12 +10725,12 @@ ${told}` : '';
         target: target && measure ? target : null,
         measure: target && measure ? measure : null,
         authoredBy: 'self',
-        kind: (kind === 'COMMITMENT' && !owedTo ? 'TODO' : kind) as any,
+        kind: kind as any,
         check,
         dueKind,
         dueSaid,
         dueDate: whenTheyMeant(dueSaid, saidOn),
-        owedToParticipantId: owedTo,
+        owedToParticipantId: null,
         seenBySubject: true,
       };
 
@@ -10920,9 +10910,6 @@ ${told}` : '';
       .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
       .join('\n');
     const transcript = spoken + (attached ? `\n\n${attached}` : '');
-    /* Her own promises are hers alone, so everything she attached, private or not, is still read for them. */
-    const allAttached = attachedFrom(theirDocuments);
-    const transcriptForHerOwn = spoken + (allAttached ? `\n\n${allAttached}` : '');
 
     /*
      * A PARTICIPANT'S OWN PROMISES GO DOWN A DIFFERENT PROMPT.
@@ -10948,23 +10935,10 @@ ${told}` : '';
     }
 
     /*
-     * THE LEAD'S OWN PROMISES, WHICH NOTHING WROTE DOWN.
-     *
-     * This branched: a participant's session went to `writeTheirOwnPromises`, a lead's went to
-     * `EXPECTATION_PROMPT` - and that prompt's rules forbid the speaker writing anything about
-     * themselves, correctly, because its job is what they expect OF OTHERS.
-     *
-     * So the one person whose own next step nobody recorded was the person running the check-in.
-     * Read back from a real session: the lead said "I have not told him, and that is on me", the
-     * conversation agreed it was the most important fact established, and it went into the record as
-     * an observation about the situation rather than as anything he owed. Session two had nothing of
-     * his to test.
-     *
-     * BOTH NOW, NOT INSTEAD. Expectations of others and promises of your own are different things
-     * about different people, they are stored differently, and a lead has both. The two prompts do
-     * not overlap: one is explicitly barred from self-statements and the other reads nothing else.
+     * THE LEAD'S OWN PROMISES ARE THE ASSESSMENT'S (one promise, one owner; 1 November 2026). They are read from her conversation's
+     * assessment and kept as GroundCommitments (writeWhatTheyPromised), and her own number is `theirOwnTarget` below. Her promises were
+     * also read here first, and when that read failed (a dropped line at the assessment test's setup), the targets below were never read.
      */
-    await this.writeTheirOwnPromises(participantId, groundId, transcriptForHerOwn, saidOn, ground.participants as any);
 
     /* The speaker's own targets, by id, so a new number for one of them edits it rather than making a second (Mercy, 29 October). */
     const theirTargetsOnRecord = ((await Promise.resolve(this.prisma.groundObjective.findMany({ where: { groundId, ownerParticipantId: participantId }, select: { id: true, name: true, target: true } })).catch(() => [])) ?? []) as { id: string; name: string; target: number | null }[];

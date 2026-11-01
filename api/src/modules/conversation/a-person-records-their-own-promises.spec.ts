@@ -54,7 +54,7 @@ describe('a promise somebody made about their own work', () => {
   it('and leaves the date empty when the words do not carry one', async () => {
     /* "Soon" is a real answer. A guess here becomes a missed deadline they never agreed to. */
     const { svc, written } = makeService([
-      { promise: 'Sort out the pipeline', kind: 'TODO', check: 'A_JUDGEMENT', dueKind: 'NOT_SAID', dueSaid: 'soon' },
+      { promise: 'Sort out the pipeline', kind: 'GOAL', check: 'A_JUDGEMENT', dueKind: 'NOT_SAID', dueSaid: 'soon' },
     ]);
     await run(svc);
     expect(written[0].dueSaid).toBe('soon');
@@ -64,30 +64,23 @@ describe('a promise somebody made about their own work', () => {
   it('counts as seen, because they said it themselves', async () => {
     /* `seenBySubject` stops somebody being read against an expectation they never saw. That risk
        is real for something a lead wrote about them and a nonsense for their own sentence. */
-    const { svc, written } = makeService([{ promise: 'Ship the deck', kind: 'TODO', check: 'DONE_OR_NOT', dueKind: 'NOT_SAID' }]);
+    const { svc, written } = makeService([{ promise: 'Ship three decks', kind: 'TARGET', check: 'A_NUMBER', dueKind: 'NOT_SAID' }]);
     await run(svc);
     expect(written[0].seenBySubject).toBe(true);
   });
 });
 
 describe('what it refuses', () => {
-  it('demotes a commitment with nobody waiting to a to-do', async () => {
-    /* Somebody waiting is the whole difference between the two. */
-    const { svc, written } = makeService([
-      { promise: 'Send the pricing', kind: 'COMMITMENT', check: 'DONE_OR_NOT', dueKind: 'NOT_SAID', owedTo: 'Nobody Here' },
-    ]);
-    await run(svc, []);
-    expect(written[0].kind).toBe('TODO');
-    expect(written[0].owedToParticipantId).toBeNull();
-  });
-
-  it('keeps it a commitment when the person waiting is really here', async () => {
+  /* One promise, one owner (Hafsah, 1 November 2026): a to-do or a commitment of their own is kept once, as a GroundCommitment read
+     from the conversation's assessment. This writer kept a second copy with a day of its own (9 November 2027 against "Monday 9
+     November"), so it now keeps only their own aims. */
+  it('keeps no copy of a to-do or a commitment of their own: the assessment owns those', async () => {
     const { svc, written } = makeService([
       { promise: 'Send the pricing', kind: 'COMMITMENT', check: 'DONE_OR_NOT', dueKind: 'A_DATE', dueSaid: 'Friday', owedTo: 'Hafsah' },
-    ], [{ id: 'ceo', managingOnly: false, email: 'h@x.test', roleAsDescribed: null, user: { firstName: 'Hafsah', lastName: null } }]);
+      { promise: 'Ship the deck', kind: 'TODO', check: 'DONE_OR_NOT', dueKind: 'NOT_SAID' },
+    ]);
     await run(svc, [{ id: 'ceo', managingOnly: false, email: 'h@x.test', roleAsDescribed: null, user: { firstName: 'Hafsah', lastName: null } }]);
-    expect(written[0].kind).toBe('COMMITMENT');
-    expect(written[0].owedToParticipantId).toBe('ceo');
+    expect(written).toHaveLength(0);
   });
 
   it('writes nothing at all when there is nothing to write', async () => {

@@ -68,14 +68,19 @@ describe('something the next session can test', () => {
 });
 
 describe('and the answer is actually kept', () => {
-  it('writes the lead’s own promises, not only a participant’s', () => {
+  it('writes the lead’s own promises, not only a participant’s, from the assessment', () => {
     /*
      * THE STRUCTURAL HALF. Without this the prompt asks a good question and the answer lands
      * nowhere - which is the failure mode this codebase has watched several times: a rule that
      * exists, is followed, and is then dropped by the thing downstream of it.
+     *
+     * One promise, one owner (1 November 2026): everybody's promises, the lead's included, are read
+     * from their conversation's assessment and kept once (writeWhatTheyPromised, after every close).
+     * The second read of the lead's promises before her targets is gone; only a participant's own
+     * aims are still read by writeTheirOwnPromises.
      */
-    const calls = SERVICE.match(/await this\.writeTheirOwnPromises\(/g) ?? [];
-    expect(calls.length).toBe(2);
+    expect(SERVICE.match(/await this\.writeTheirOwnPromises\(/g) ?? []).toHaveLength(1);
+    expect(SERVICE).toMatch(/this\.writeWhatTheyPromised\(checkIn\.id\)/);
   });
 
   it('and still keeps expectations of others separate from promises of your own', () => {
