@@ -5,7 +5,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AnthropicService } from '../conversation/anthropic.service';
-import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent, type KindOfWorkReadEvent } from '../../common/events';
+import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent, type KindOfWorkReadEvent, type AssessmentReadyEvent } from '../../common/events';
 import { theReleaseOneSalesBoardIsOn } from './release-one-sales-board';
 import { theBuyingDateTheySaid, BUYING_DATE } from './a-deals-value-and-buying-date';
 import { withTheCriteriaSaid, thePriceRangeAnswer, theLeadsRangeAnswerIn, THE_RANGE_QUESTION } from './a-deals-four-criteria';
@@ -69,9 +69,14 @@ export class BoardListener {
    * keeps a record only when its name is in the words of the line it points at, so nothing is
    * invented. A record already on the board under the same name is moved on (its stage, date and
    * details), never written twice. Best effort: if this fails the check-in is still complete.
+   *
+   * WHEN THE CONVERSATION'S ASSESSMENT IS READY, NOT WHEN IT COMPLETES (one source, 1 November 2026). The assessment is written
+   * after the record, on every path that ends a conversation, so the board never reads a check-in before its lines are there.
+   * Setup's commit announced the lead's first check-in before her record was taken out of it, and this read an empty record:
+   * her team's deals never reached the board. A decline, which announced nothing, now reaches it too.
    */
-  @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
-  async onCheckInCompleted(e: CheckInCompletedEvent) {
+  @OnEvent(GroundworkEvents.ASSESSMENT_READY)
+  async onCheckInCompleted(e: CheckInCompletedEvent | AssessmentReadyEvent) {
     await this.readTheRecordsFrom(e);
     /*
      * ON A MATTER CHECK-IN WITH RELEASE 2 ON, A FEE NOTE WAITING FOR AN EVENT THIS CHECK-IN REPORTS FALLS DUE THAT DAY

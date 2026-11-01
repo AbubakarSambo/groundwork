@@ -2668,6 +2668,7 @@ from finishing at all.`;
      * Before this, session 1 was left NOT_STARTED, the ground page opened it again, and it read
      * "Nobody has checked in yet" and "Your turn" to a lead who had just checked in.
      */
+    let theRecordIsWritten: Promise<unknown> = Promise.resolve();
     const theirCheckIn = (dto.history ?? []).filter((t: any) => t && typeof t.content === 'string' && t.content.trim());
     const theyAnswered = theirCheckIn.some((t: any) => t.role === 'user');
     if (!theAnchorIsOn && theyAnswered) {
@@ -2690,8 +2691,9 @@ from finishing at all.`;
         where: { id: checkIn.id },
         data: { status: CheckInStatus.COMPLETED, completedAt: new Date(), optional: true },
       });
-      /* What she said is her record, on the same extractor anybody's finished check-in runs. */
-      this.conversation?.extractRecordEntries?.(checkIn.id, participant.id)?.catch?.((err: any) =>
+      /* What she said is her record, on the same extractor anybody's finished check-in runs. Kept in hand, so her assessment is
+         written only once her record is (below), and the board, which now waits for the assessment, never reads an empty record. */
+      theRecordIsWritten = Promise.resolve(this.conversation?.extractRecordEntries?.(checkIn.id, participant.id))?.catch?.((err: any) =>
         this.logger.warn(`entry commit: the lead's first check-in record could not be read on ${ground.id}: ${err?.message}`));
     } else if (dto.history.length > 0) {
       this.logger.log(`Ground ${ground.id}: no answer of the lead's in the conversation; session 1 stays open for the lead to answer.`);
@@ -2799,6 +2801,28 @@ from finishing at all.`;
       participantId: participant.id,
       sessionNumber: 1,
     } satisfies CheckInCompletedEvent);
+
+    /*
+     * AND HER CONVERSATION IS ASSESSED, setup and her first check-in together (Hafsah's brief, 31 October; the-assessment.ts).
+     * Setup's own words and what she typed beside them (her notes on each person, the timing) are part of it, so the objective,
+     * the team, the rules and her private notes are read once, from her words, rather than by about two readers out of twenty.
+     * After her record is written, and never waited for: the save answers as quickly as before.
+     */
+    if (theirOwnWords || theyAnswered || theAnchorIsOn) {
+      const setupGiven = {
+        words: (dto.leadsOwnWords ?? []).map((t) => (typeof t === 'string' ? t.trim() : '')).filter((t) => t && !t.startsWith('[Document:') && !t.startsWith('[Situation picked')),
+        given: [
+          ...(dto.contributors ?? []).map((c) => `${c.displayName?.trim() || c.email || 'Somebody'}${c.context?.trim() ? `: ${c.context.trim()}` : ''}${c.note?.trim() ? ` (note: ${c.note.trim()})` : ''}`),
+          ...(dto.cadence ? [`How often: ${dto.cadence}`] : []),
+          ...(dto.workingDays?.length ? [`Working days (0 is Sunday): ${dto.workingDays.join(', ')}`] : []),
+          ...(dto.brief?.trim() ? [`The brief: ${dto.brief.trim()}`] : []),
+        ],
+      };
+      const closedAt = new Date();
+      theRecordIsWritten
+        .then(() => this.conversation?.assessAndThenRead?.({ id: checkIn.id, participantId: participant.id, groundId: ground.id }, { howItEnded: 'setup saved', closedAt, setup: setupGiven }))
+        .catch((err: any) => this.logger.warn(`entry commit: the assessment of ${ground.id}'s setup could not be written: ${err?.message ?? err}`));
+    }
 
     // Invite each contributor. addParticipant generates a fresh token per participant.
     // Do NOT pass a shared client-side inviteToken here - it would collide on the unique constraint

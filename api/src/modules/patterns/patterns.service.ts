@@ -1,3 +1,5 @@
+import { theAssessmentIn } from '../conversation/the-assessment';
+import { thePatternsAsTheDetectorReadsThem, type APatternAcrossAssessments } from './patterns-across-the-assessments';
 import { restsOnARecordNobodyHolds, whatTheRecordRuleTookOut, aLineForWhatTheRecordRuleTookOut } from './a-pattern-does-not-rest-on-a-record-nobody-holds';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { Injectable, Optional, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
@@ -128,7 +130,7 @@ export class PatternsService {
       where: { id: checkInId },
       select: {
         id: true, groundId: true, participantId: true, sessionNumber: true,
-        patternsAnalyzedAt: true, specificityDimensions: true,
+        patternsAnalyzedAt: true, specificityDimensions: true, sessionReport: true,
         completedAt: true, startedAt: true, createdAt: true,
         ground: { select: { cadence: true } },
       },
@@ -176,7 +178,10 @@ export class PatternsService {
     ];
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     const recordText = records.map((r) => `(${r.type}) ${r.text}`).join('\n');
-    const content = `PERIOD ${period}\n\nTRANSCRIPT:\n${transcript}\n\nEXTRACTED RECORD:\n${recordText}${whatTheySaidThisWasFor(statedGoals)}${theirOwnEarlierRecord(earlierLines as any, period)}`;
+    /* And what their assessments show over time (layer 2): each pattern with the check-ins, dates and words it rests on, counted
+       across their conversations and never from this one alone. The detector reads it beside the transcript; it decides nothing. */
+    const acrossTime = (theAssessmentIn((checkIn as any).sessionReport)?.acrossTime ?? []) as APatternAcrossAssessments[];
+    const content = `PERIOD ${period}\n\nTRANSCRIPT:\n${transcript}\n\nEXTRACTED RECORD:\n${recordText}${whatTheySaidThisWasFor(statedGoals)}${theirOwnEarlierRecord(earlierLines as any, period)}${thePatternsAsTheDetectorReadsThem(acrossTime)}`;
 
     // --- R3 positive signal (rule-based, no AI extraction needed) ---
     const allPriorText = records.map((r) => r.text);

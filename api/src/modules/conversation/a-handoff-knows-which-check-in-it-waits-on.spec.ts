@@ -1,6 +1,7 @@
 import { DependencyStatus } from '@prisma/client';
 import { ConversationService } from './conversation.service';
 import { theCheckInItWaitsOn } from './which-check-in-it-waits-on';
+import { anAssessmentHolding } from './an-assessment-for-a-spec';
 
 /**
  * REQUEST 18 (a) AND THE FIRST HALF OF (b): A HANDOFF NAMES THE OTHER CHECK-IN IT WAITS ON ONLY WHEN
@@ -47,6 +48,8 @@ describe('the handoff the conversation records', () => {
   const scaffold = (said: { dependencies: any[] }, others = [sales, finance, ops], transcript = 'PERSON: I am waiting on Finance for credit terms for Westgate Deli. They said by Friday.') => {
     const created: any[] = [];
     const prisma: any = {
+      /* The waits come from the conversation's assessment now (one source, 1 November 2026), not a call of the writer's own. */
+      checkIn: { findUnique: async () => ({ sessionReport: anAssessmentHolding({ blockers: said.dependencies }) }) },
       ground: {
         findUnique: async () => ({ mode: 'SHARED', scenario: 'OKR_ALIGNMENT', organizationId: 'org-baridi', participants: [{ id: 'p-miriam', email: 'miriam@baridi.test', user: { firstName: 'Miriam', lastName: 'Wanjiku' } }] }),
         findMany: async () => others,
@@ -63,7 +66,7 @@ describe('the handoff the conversation records', () => {
     };
     const svc = Object.create(ConversationService.prototype) as any;
     svc.prisma = prisma;
-    svc.anthropic = { extract: async () => said };
+    svc.anthropic = { extract: async () => { throw new Error('the waits are read from the assessment, never a call of their own'); } };
     svc.events = { emit: () => {} };
     svc.logger = { log: () => {}, warn: () => {} };
     svc.prompts = { getActive: async () => { throw new Error('none'); } };

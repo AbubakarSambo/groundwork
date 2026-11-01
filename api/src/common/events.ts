@@ -5,6 +5,10 @@
  */
 export const GroundworkEvents = {
   CHECK_IN_COMPLETED: 'checkin.completed',
+  /* THE CONVERSATION'S ASSESSMENT IS WRITTEN (conversation/assess-the-conversation.ts). Emitted just after a setup or a check-in
+     ends, once its one assessment is ready (or could not be written), on every path that ends one. The readers that moved onto
+     the assessment wait for this rather than for the completion, so they never read a conversation before it is assessed. */
+  ASSESSMENT_READY: 'assessment.ready',
   /* THE TEAM IS TOLD. Three things the back office wants to hear about the moment they happen: a
      new organisation, a request for the API, a request for a call or coaching. Listened to in
      back-office/the-team-is-told.service.ts. */
@@ -87,6 +91,14 @@ export interface CheckInCompletedEvent {
   sessionNumber: number;
   /** Absent when a person completed it. The sweep says 'auto-close'; the backstop re-emitting a lost event says 'repair', so a listener can tell news from a retry. */
   source?: 'auto-close' | 'repair';
+}
+
+export interface AssessmentReadyEvent {
+  checkInId: string;
+  groundId: string;
+  participantId: string;
+  sessionNumber: number;
+  howItEnded: 'finished by the person' | 'closed by the clock' | 'declined' | 'setup saved' | 'missed';
 }
 
 export interface CheckInOpenedEvent {

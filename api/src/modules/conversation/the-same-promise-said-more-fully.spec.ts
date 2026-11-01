@@ -1,5 +1,6 @@
 import { ConversationService } from './conversation.service';
 import { theFullerPromise, datesIn } from './the-same-promise-said-more-fully';
+import { anAssessmentHolding } from './an-assessment-for-a-spec';
 
 const SHORT = { action: 'I will deliver the Tuskys cookers', when: 'on 9 October', outcome: null };
 const WHOLE = { action: 'I will deliver the Tuskys cookers on 9 October and ask for the signed order form that day.', when: '9 October', outcome: null };
@@ -10,14 +11,15 @@ async function run(stored: any[], extracted: any[], said: string[]) {
   const updated: any[] = [];
   const fake: any = {
     prisma: {
-      checkIn: { findUnique: async () => ({ groundId: 'g', sessionNumber: 1, participantId: 'p', turns: said.map((content) => ({ content })) }) },
+      /* The promises come from the conversation's assessment now (one source, 1 November 2026), not a call of the writer's own. */
+      checkIn: { findUnique: async () => ({ groundId: 'g', sessionNumber: 1, participantId: 'p', sessionReport: anAssessmentHolding({ promises: extracted }), turns: said.map((content) => ({ content })) }) },
       groundCommitment: {
         create: async ({ data }: any) => { created.push(data); return { id: `n${created.length}` }; },
         findMany: async () => rows,
         update: async (a: any) => { updated.push(a); return {}; },
       },
     },
-    anthropic: { extract: async () => ({ commitments: extracted }) },
+    anthropic: { extract: async () => { throw new Error('the promises are read from the assessment, never a call of their own'); } },
     logger: { log() {}, warn() {} },
   };
   await (ConversationService.prototype as any).writeWhatTheyPromised.call(fake, 'ci');

@@ -1,0 +1,212 @@
+/**
+ * WRITING THE ASSESSMENT, JUST AFTER THE CONVERSATION IS FINISHED (layer 1; the shape and the rules are in the-assessment.ts).
+ *
+ * Called on every path that ends a conversation: finishTheSession (the person, and the clock), setup's commit (the lead's
+ * first check-in), decline, and a session nobody opened, closed as missed (no words, so no model call). Never awaited by the
+ * close itself: the session is finished the moment Groundwork says so, and this runs after.
+ *
+ * One model call fills every part. The completeness check then matches every message the person sent to items; a second
+ * call reads only what the first left unmatched, and anything still unmatched is kept whole. Then the assessment is stored,
+ * marked ready, and ASSESSMENT_READY is emitted, which is what the readers that moved onto it wait for. The event is emitted
+ * even when the read failed, so no reader waits for ever.
+ *
+ * MEASURED. Each assessment logs one line, "assessment-measure", with the model calls it made and the milliseconds from the
+ * close to ready, and keeps both on the assessment, so the with-against-without test can read them.
+ */
+import { GroundworkEvents, type AssessmentReadyEvent } from '../../common/events';
+import {
+  ASSESSMENT_PROMPT_KEY, THE_ASSESSMENT_PROMPT, THE_ASSESSMENT_SCHEMA, THE_ASSESSMENT_KIND, THE_ASSESSMENT_VERSION,
+  theFilesPromptVersion, theMaterialAsText, theUnmatchedAsText, thePartsFrom, theUnmatched, withTheSecondRead, withWhatIsLeftKeptWhole,
+  theItemsToCompareAgainst, thePreviousWithItsCorrections, theAssessmentIn, theColumnWith,
+  type AMessage, type HowItEnded, type TheAssessment, type TheMaterial, type TheReadParts,
+} from './the-assessment';
+import { thePatternsAcrossTheAssessments, type AnAssessmentSeen } from '../patterns/patterns-across-the-assessments';
+import { theInterventionsAfter, type AnIntervention } from '../patterns/the-next-step-for-each-pattern';
+
+export interface AssessmentDeps {
+  prisma: any;
+  anthropic: { extract: <T>(system: string, history: { role: string; content: string }[], tool: any, options?: any) => Promise<T | null> };
+  prompts?: { getActive?: (key: string) => Promise<{ id: string; content: string }> } | null;
+  events?: { emit: (event: string, payload: unknown) => unknown } | null;
+  logger?: { log: (m: string) => void; warn: (m: string) => void };
+}
+
+/** What setup gives beside the conversation: the lead's setup messages, and what she typed in the form (her notes on each person, the timing). */
+export interface TheSetupGiven {
+  words: string[];
+  given: string[];
+}
+
+export interface HowToAssess {
+  howItEnded: HowItEnded;
+  /** When the conversation was closed, for the time from close to ready. */
+  closedAt: Date;
+  setup?: TheSetupGiven | null;
+}
+
+const isoOf = (d: unknown): string | null => (d ? new Date(d as any).toISOString() : null);
+const fullName = (u: any, given?: string | null) => [u?.firstName, u?.lastName].filter(Boolean).join(' ').trim() || (given ?? '').trim() || 'This person';
+
+/** The assessment of one check-in, read from its column, or null. */
+export async function theAssessmentOf(prisma: any, checkInId: string): Promise<TheAssessment | null> {
+  const row = await prisma.checkIn.findUnique({ where: { id: checkInId }, select: { sessionReport: true } }).catch(() => null);
+  return theAssessmentIn(row?.sessionReport);
+}
+
+/** This person's assessments before this session, oldest first. */
+async function theirEarlierAssessments(prisma: any, participantId: string, beforeSession: number): Promise<AnAssessmentSeen[]> {
+  const rows = ((await prisma.checkIn.findMany({
+    where: { participantId, sessionNumber: { lt: beforeSession } },
+    orderBy: { sessionNumber: 'asc' },
+    select: { id: true, sessionNumber: true, completedAt: true, sessionReport: true },
+  }).catch(() => [])) ?? []) as any[];
+  return rows.map((r) => ({ checkInId: r.id, sessionNumber: r.sessionNumber, on: isoOf(r.completedAt), assessment: theAssessmentIn(r.sessionReport) as TheAssessment }))
+    .filter((s) => !!s.assessment);
+}
+
+export async function assessTheConversation(deps: AssessmentDeps, checkInId: string, how: HowToAssess): Promise<TheAssessment | null> {
+  const log = deps.logger ?? { log: () => undefined, warn: () => undefined };
+  let modelCalls = 0;
+  let modelFailed = false;
+  let row: any = null;
+  try {
+    row = await deps.prisma.checkIn.findUnique({
+      where: { id: checkInId },
+      select: {
+        id: true, groundId: true, participantId: true, sessionNumber: true, startedAt: true, completedAt: true, whatWeHave: true, sessionReport: true,
+        turns: { orderBy: { createdAt: 'asc' }, select: { id: true, role: true, content: true, createdAt: true, recordDraft: true } },
+        participant: { select: { partyType: true, nameGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, jobTitle: true } } } },
+        ground: { select: { label: true } },
+      },
+    });
+    if (!row) return null;
+
+    /* The messages, numbered: setup's words first, then each thing the person said in the check-in. */
+    const messages: AMessage[] = [];
+    const said = new Map<number, string>();
+    const setupWords = (how.setup?.words ?? []).map((w) => String(w ?? '').trim()).filter(Boolean);
+    const setup = how.setup ? { words: setupWords.map((content, i) => ({ n: i + 1, content })), given: how.setup.given.filter(Boolean) } : null;
+    for (const w of setup?.words ?? []) { messages.push({ n: w.n, turnId: null, where: 'setup', at: null }); said.set(w.n, w.content); }
+    const turns: TheMaterial['turns'] = [];
+    for (const t of (row.turns ?? []) as any[]) {
+      const content = String(t.content ?? '').trim();
+      if (!content) continue;
+      if (t.role === 'PERSON') {
+        const n = messages.length + 1;
+        messages.push({ n, turnId: t.id, where: 'check-in', at: isoOf(t.createdAt) });
+        said.set(n, content);
+        turns.push({ role: 'person', content, n });
+      } else turns.push({ role: 'groundwork', content });
+    }
+
+    const isTheLead = row.participant?.partyType === 'INITIATOR';
+    const who = fullName(row.participant?.user, row.participant?.nameGiven);
+    /* The role they were given: their own title; the lead's own description of herself. Never the lead's words about somebody else (decision 30). */
+    const givenRole = row.participant?.user?.jobTitle ?? (isTheLead ? row.participant?.roleAsDescribed ?? null : null);
+    const earlier = await theirEarlierAssessments(deps.prisma, row.participantId, row.sessionNumber);
+    const previous = earlier[earlier.length - 1] ?? null;
+    const priorities = (((await deps.prisma.groundObjective?.findMany?.({ where: { groundId: row.groundId }, select: { name: true } })?.catch?.(() => [])) ?? []) as any[])
+      .map((o) => String(o.name ?? '').trim()).filter(Boolean);
+    const closing = ((row.turns ?? []) as any[]).filter((t) => Array.isArray(t.recordDraft)).pop();
+    const material: TheMaterial = {
+      who, isTheLead, checkIn: row.ground?.label ?? null, givenRole, priorities, turns, setup,
+      draft: {
+        claims: (((row.whatWeHave as any)?.claims ?? []) as any[]).map((c) => [c.said, c.number && `(${c.number}${c.measure ? ` ${c.measure}` : ''})`, c.date && `by ${c.date}`].filter(Boolean).join(' ')).filter(Boolean),
+        lines: ((closing?.recordDraft ?? []) as any[]).map((l) => String(l?.text ?? '').trim()).filter(Boolean),
+      },
+      previous: previous ? { checkInId: previous.checkInId, on: previous.on, items: theItemsToCompareAgainst(previous.assessment) } : null,
+    };
+
+    /* Which instructions run: a stored version wins over the file, as with every prompt, and the one that ran is recorded. */
+    const stored = deps.prompts?.getActive ? await deps.prompts.getActive(ASSESSMENT_PROMPT_KEY).catch(() => null) : null;
+    const instructions = stored?.content ?? THE_ASSESSMENT_PROMPT;
+    const opts = { hasSetup: !!setup, previous: previous ? { checkInId: previous.checkInId, on: previous.on } : null, givenRole };
+
+    let parts: TheReadParts = thePartsFrom(null, said, { ...opts, read: 1 });
+    let matchedFirst = 0;
+    let addedSecond = 0;
+    let keptWhole = 0;
+    if (messages.length) {
+      modelCalls += 1;
+      const first = await deps.anthropic.extract<any>(instructions, [{ role: 'user', content: theMaterialAsText(material) }], THE_ASSESSMENT_SCHEMA as any, { patient: true })
+        .catch((err: any) => { modelFailed = true; log.warn(`Assessment of ${checkInId}: the first read failed: ${err?.message ?? err}`); return null; });
+      if (!first) modelFailed = true;
+      parts = thePartsFrom(first, said, { ...opts, read: 1 });
+      let unmatched = theUnmatched(parts, messages);
+      matchedFirst = messages.length - unmatched.length;
+      /* THE COMPLETENESS CHECK: a second read only for what the first left unmatched. */
+      if (unmatched.length && first) {
+        modelCalls += 1;
+        const second = await deps.anthropic.extract<any>(instructions, [{ role: 'user', content: theUnmatchedAsText(material, unmatched) }], THE_ASSESSMENT_SCHEMA as any, { patient: true })
+          .catch((err: any) => { log.warn(`Assessment of ${checkInId}: the second read failed: ${err?.message ?? err}`); return null; });
+        if (second) {
+          parts = withTheSecondRead(parts, thePartsFrom(second, said, { ...opts, read: 2 }));
+          const still = theUnmatched(parts, messages);
+          addedSecond = unmatched.length - still.length;
+          unmatched = still;
+        }
+      }
+      keptWhole = unmatched.length;
+      parts = withWhatIsLeftKeptWhole(parts, unmatched, said);
+    }
+
+    const readyAt = new Date();
+    const assessment: TheAssessment = {
+      kind: THE_ASSESSMENT_KIND,
+      version: THE_ASSESSMENT_VERSION,
+      about: {
+        checkInId, groundId: row.groundId, participantId: row.participantId, who, isTheLead, checkIn: row.ground?.label ?? null,
+        sessionNumber: row.sessionNumber, startedAt: isoOf(row.startedAt), endedAt: isoOf(row.completedAt ?? how.closedAt),
+        channel: how.howItEnded === 'setup saved' ? 'setup' : 'the app', howItEnded: how.howItEnded,
+      },
+      ...parts,
+      messages,
+      completeness: { messages: messages.length, matchedByTheFirstRead: matchedFirst, addedByTheSecondRead: addedSecond, keptWhole, ready: true },
+      promptVersionId: stored?.id ?? null,
+      promptFromFile: stored ? null : theFilesPromptVersion(),
+      measure: { modelCalls, msFromCloseToReady: readyAt.getTime() - how.closedAt.getTime(), readyAt: readyAt.toISOString(), modelFailed },
+    };
+
+    /* LAYERS 2 AND 3: the patterns across this person's assessments, and the next step for each, carried from the last one. */
+    const seen: AnAssessmentSeen[] = [...earlier, { checkInId, sessionNumber: row.sessionNumber, on: assessment.about.endedAt, assessment }];
+    const team = isTheLead ? await theTeamsAssessments(deps.prisma, row.groundId, row.participantId) : [];
+    const patterns = thePatternsAcrossTheAssessments(row.participantId, seen, team);
+    assessment.acrossTime = patterns;
+    assessment.interventions = theInterventionsAfter(((previous?.assessment.interventions ?? []) as AnIntervention[]), patterns, { checkInId, sessionNumber: row.sessionNumber });
+
+    await deps.prisma.checkIn.update({ where: { id: checkInId }, data: { sessionReport: theColumnWith(assessment, row.sessionReport) as any } });
+    /* A correction of an earlier item is kept on that item, as its history (once fixed, it stays fixed). */
+    if (previous) {
+      const corrected = thePreviousWithItsCorrections(previous.assessment, assessment.corrections, checkInId, readyAt);
+      if (corrected) {
+        const before = await deps.prisma.checkIn.findUnique({ where: { id: previous.checkInId }, select: { sessionReport: true } }).catch(() => null);
+        await deps.prisma.checkIn.update({ where: { id: previous.checkInId }, data: { sessionReport: theColumnWith(corrected, before?.sessionReport) as any } }).catch(() => undefined);
+      }
+    }
+    log.log(`assessment-measure checkIn=${checkInId} ended="${how.howItEnded}" calls=${modelCalls} msFromClose=${assessment.measure.msFromCloseToReady} messages=${messages.length} matchedFirst=${matchedFirst} addedSecond=${addedSecond} keptWhole=${keptWhole} patterns=${patterns.length} prompt=${assessment.promptVersionId ?? assessment.promptFromFile}`);
+    return assessment;
+  } catch (err: any) {
+    log.warn(`Assessment of ${checkInId} could not be written: ${err?.message ?? err}`);
+    return null;
+  } finally {
+    if (row) {
+      deps.events?.emit(GroundworkEvents.ASSESSMENT_READY, {
+        checkInId, groundId: row.groundId, participantId: row.participantId, sessionNumber: row.sessionNumber, howItEnded: how.howItEnded,
+      } satisfies AssessmentReadyEvent);
+    }
+  }
+}
+
+/** The other people's assessments in this check-in, for the lead's bias. Read only when the person assessed is the lead. */
+async function theTeamsAssessments(prisma: any, groundId: string, leadParticipantId: string): Promise<{ participantId: string; name: string; seen: AnAssessmentSeen[] }[]> {
+  const people = ((await prisma.groundParticipant.findMany({
+    where: { groundId, id: { not: leadParticipantId } },
+    select: { id: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
+  }).catch(() => [])) ?? []) as any[];
+  const out: { participantId: string; name: string; seen: AnAssessmentSeen[] }[] = [];
+  for (const p of people) {
+    const seen = await theirEarlierAssessments(prisma, p.id, 2_147_483_647);
+    if (seen.length) out.push({ participantId: p.id, name: fullName(p.user, p.nameGiven), seen });
+  }
+  return out;
+}
