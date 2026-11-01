@@ -608,10 +608,9 @@ export class AssistantService {
       return rules('how_to_ask_for_leave_or_spending', text(howToAskForLeaveOrSpending({ leave: suites.has('leave'), spend: suites.has('spend') })));
     }
 
+    /* Where the rules place nothing, a question is answered from the record and the documents below, never sent to a lane's own
+       lookup by the model (ask-understands-with-the-model.ts, 1 November 2026). */
     let routedByRules = route(message);
-    /* Where the rules place nothing, the lane the model read it as, which is only ever one that reads (ask-understands-with-the-model.ts). */
-    /* Only for something asked: a statement the model took for a question was sent to "There is nothing on your to-do list" (two-week check, Kevin). */
-    if (routedByRules.lane === 'unplaced' && understood?.lane && (isAQuestion(message) || /^\s*(?:tell|show|list|give)\b/i.test(message))) routedByRules = understood.about ? { lane: understood.lane as any, subject: understood.about } : { lane: understood.lane as any };
     /* The company by its own name: the router cannot know it, so it is asked here (B-134). */
     if (routedByRules.lane === 'unplaced' && /\bworking\s+on\b/i.test(message)) {
       const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }).catch(() => null);
