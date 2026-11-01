@@ -22,6 +22,7 @@ import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-la
 import { theSentenceAbout, theSentenceIsSafe, theWeekOf, type AWeeksLine } from './the-weekly-sentence-about-each-person';
 import { awayUntilOn, fallsInLeave, leaveOfThePeopleOn, type Stretch } from '../suites/who-is-away';
 import { howSolid } from './a-figure-nobody-can-check-says-so';
+import { theFactsOnRecord } from '../conversation/the-facts-on-record';
 import { whatMoreThanOnePersonNamed } from './what-more-than-one-person-named';
 import { isASalesKind } from '../board/the-kind-of-work';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
@@ -196,11 +197,10 @@ export class TheWeeklyReportService {
       select: { participantId: true, sessionNumber: true, completedAt: true, isSetup: true },
     } as any);
     const checkedIn = new Set(done.map((c) => c.participantId));
-    const rows: any[] = await this.prisma.recordEntry.findMany({
-      where: { participant: { groundId }, createdAt: { gte: start }, disputedAt: null },
-      select: { participantId: true, type: true, text: true, anchoredDocumentId: true, recallBased: true },
-    } as any);
-    if (!checkedIn.size && !rows.length) return null;
+    /* WHAT EACH PERSON SAID THIS WEEK, from their conversations' assessments through the one reader, as everybody in the check-in may
+       read it (never a lead-only item): the record they build, not a summary of counts and names (1 November 2026). */
+    const saidThisWeek = await theFactsOnRecord(this.prisma, { groundId, reader: { kind: 'everybody in the check-in' }, since: start, until: at });
+    if (!checkedIn.size && !saidThisWeek.length) return null;
 
     /*
      * WHO WAS ON LEAVE THIS WEEK (week 23): approved leave, by its dates only. Somebody away is not
@@ -222,15 +222,16 @@ export class TheWeeklyReportService {
     for (const p of parties) {
       const label = labels.get(p.id);
       if (!label) continue;
-      const lines: AWeeksLine[] = rows
-        .filter((r) => r.participantId === p.id)
-        .map((r) => ({ text: String(r.text ?? ''), type: String(r.type), documented: !!r.anchoredDocumentId }));
+      const lines: AWeeksLine[] = saidThisWeek
+        .filter((f) => f.participantId === p.id)
+        .map((f) => ({ text: f.words, type: f.section, documented: f.proved }));
       const here = checkedIn.has(p.id);
       /* The lead who ran it and did not check in this week is not someone the week is about. */
       if (p.partyType === PartyType.INITIATOR && !here && !lines.length) continue;
       if (notLetIn.has(p.id) && !here && !lines.length) continue;
+      /* Kept without names: a name inside their words is put back as that person's label, and swapped in again when served. */
       const says = theSentenceAbout({ label, checkedIn: here, lines, onLeave: awayThisWeek(p.id) });
-      if (says && theSentenceIsSafe(says, { label, lines })) eachPerson.push({ participantId: p.id, says });
+      if (says && theSentenceIsSafe(says, { label, lines })) eachPerson.push({ participantId: p.id, says: namesOff(says) });
     }
 
     /* THE CHECK-INS DUE AND MADE: every check-in opened this week, and every one made this week. */
@@ -257,14 +258,14 @@ export class TheWeeklyReportService {
     const made = due.filter((c) => c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c)).length;
 
     /* WHAT WAS SAID, AND HOW MUCH OF IT HAS SOMETHING BEHIND IT. Never the rating of an answer. */
-    const said = rows.filter((r) => String(r.type) !== 'SUCCESS_DEFINITION');
+    const said = saidThisWeek.map((f) => ({ participantId: f.participantId, text: f.words, proved: f.proved }));
     const counts: AWeeksCount[] = parties.filter((p) => labels.get(p.id)).map((p) => {
       const mine = said.filter((r) => r.participantId === p.id);
-      const how = mine.map((r) => howSolid({ text: String(r.text ?? ''), recallBased: r.recallBased !== false && !r.anchoredDocumentId }));
+      const how = mine.map((r) => howSolid({ text: r.text, recallBased: !r.proved }));
       return {
         participantId: p.id,
         said: mine.length,
-        documented: mine.filter((r) => !!r.anchoredDocumentId).length,
+        documented: mine.filter((r) => r.proved).length,
         estimated: how.filter((h) => h === 'estimated').length,
         fromMemory: how.filter((h) => h === 'from-memory').length,
       };
@@ -376,7 +377,7 @@ export class TheWeeklyReportService {
     const collections: TheCollectionsWeek | null = await theCollectionsWeekFor(this.prisma, groundId, start, at).catch(() => null);
 
     /* WHAT MORE THAN ONE PERSON NAMED, by label. Names of people in the check-in are never a "thing". */
-    const people = parties.filter((p) => labels.get(p.id)).map((p) => ({ who: labels.get(p.id)!, texts: said.filter((r) => r.participantId === p.id).map((r) => String(r.text ?? '')) }));
+    const people = parties.filter((p) => labels.get(p.id)).map((p) => ({ who: labels.get(p.id)!, texts: said.filter((r) => r.participantId === p.id).map((r) => r.text) }));
     const theirNames = parties.flatMap((p) => [fullNameOf(p), p.user?.firstName, p.user?.lastName, p.nameGiven].filter(Boolean) as string[]);
     const namedByMoreThanOne = whatMoreThanOnePersonNamed(people, theirNames).map((s) => ({ name: namesOff(s.name), who: s.who }));
 

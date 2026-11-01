@@ -32,9 +32,6 @@ export const THE_DIRECT_MORNINGS_WORDS: ARewrite[] = [
   /* A difference the report's writer named before the direct block, as stored: "The status of the deal is described differently by two people." */
   { find: /\bThe ([^.]*?) (is|are) described differently(?: by (?:two|three|four|five|six|different|several|more than one) people)?\./g, put: (_all: string, thing: string, verb: string) => `The ${thing} ${verb} not agreed.` },
   { find: /\bThe ([^.]*?) (?:is|are) described in (two|three|four|five|six) different ways\./g, put: (_all: string, thing: string, n: string) => `There are ${n} different accounts of the ${thing}.` },
-  /* reports/the-weekly-sentence-about-each-person.ts */
-  { find: /, but gave no next step or date, so it is not yet clear what happens next\./g, put: ', and gave no next step or date.' },
-  { find: /, but named no ([^.,]+), so it is not yet clear who it is for\./g, put: ', and named no $1.' },
   /* reports/a-read-needs-a-run.ts */
   { find: /It is too early to read ([^.]+)\. That needs more than one round to mean anything, and this is the first\./g, put: 'This is the first round, and $1 is read from the second round on.' },
   /* reports/the-weekly-report.ts */

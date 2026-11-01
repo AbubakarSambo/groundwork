@@ -137,8 +137,9 @@ describe('every sentence the code writes for these places is one the direct morn
     expect(saidTheDirectWay(theCountsInASentence(0, 1))).toBe('People differ on one thing.');
     expect(saidTheDirectWay(theCountsInASentence(2, 0))).toBe('People agree on two things, and differ on nothing.');
     const named = theSentenceAbout({ label: 'Joseph Kariuki', checkedIn: true, lines: [{ type: 'PROGRESS', text: 'Visited Mama Pima Stores.' }] } as any)!;
-    expect(named).toMatch(/so it is not yet clear what happens next\.$/);
-    expect(saidTheDirectWay(named)).toBe(named.replace(', but gave no next step or date, so it is not yet clear what happens next.', ', and gave no next step or date.'));
+    /* The weekly sentence quotes what they said now (1 November 2026): it was already direct, so nothing is rewritten. */
+    expect(named).toBe('This week Joseph Kariuki said “Visited Mama Pima Stores”.');
+    expect(saidTheDirectWay(named)).toBe(named);
   });
 
   it('boards', () => {

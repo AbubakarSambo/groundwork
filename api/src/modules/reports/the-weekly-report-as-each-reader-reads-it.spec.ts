@@ -35,6 +35,26 @@ const ROWS = [
   { participantId: 'p-baraka', type: 'PROGRESS', text: 'Green Mart asked about the price, maybe 30 units.', anchoredDocumentId: null, recallBased: true },
   { participantId: 'p-baraka', type: 'PROGRESS', text: 'We sold 5 units at the market.', anchoredDocumentId: null, recallBased: true },
 ];
+/* The same five things, as the people's assessments hold them: what each person said reaches the week through the one reader of the
+   assessments (conversation/the-facts-on-record.ts, 1 November 2026). An item noted for the lead never does. */
+const said = (words: string, extra: Record<string, unknown> = {}, whoMaySee = 'the people in this check-in') => ({ id: words.slice(0, 6), words, from: [1], whoMaySee, saidWordForWord: true, ...extra });
+const anAssessment = (participantId: string, who: string, endedAt: string, parts: Record<string, unknown>) => ({
+  kind: 'assessment', version: 1,
+  about: { checkInId: `c-${participantId}`, groundId: 'g1', participantId, who, isTheLead: false, sessionNumber: 5, endedAt },
+  summary: '', setup: null, comparedWithLastTime: {}, ...parts,
+});
+const ASSESSED: Record<string, unknown> = {
+  'c-a5': anAssessment('p-aisha', 'Aisha', '2026-09-22T09:00:00Z', {
+    workUpdates: [said('I met Green Mart and they want a quote.')],
+    claims: [said('Nyama Choma Palace bought 12 freezers.', { proof: 'proved' })],
+    promises: [said('I will send the quote on Friday.')],
+    observations: [said('I think the week went fine.', {}, 'the lead only')],
+  }),
+  'c-b5': anAssessment('p-baraka', 'Baraka', '2026-09-23T08:00:00Z', {
+    numbers: [said('Green Mart asked about the price, maybe 30 units.')],
+    claims: [said('We sold 5 units at the market.', { proof: 'said' })],
+  }),
+};
 const OBJECTIVES = [
   { id: 'o-sold', name: 'Freezers sold', target: 40, count: 17, prevCount: 12, direction: 'AIM', ownerParticipantId: null, setByParticipantId: null, sortOrder: 0, isADecisionAboutAPerson: false },
   { id: 'o-spend', name: 'Spending this quarter', target: 180000, count: 254000, prevCount: 200000, direction: 'LIMIT', ownerParticipantId: null, setByParticipantId: null, sortOrder: 1, isADecisionAboutAPerson: false },
@@ -79,8 +99,10 @@ function aCheckIn(scenario = 'SALES_TEAM_CHECK', leave: { userId: string; starts
   const prisma: any = {
     ground: { findUnique: jest.fn(async () => ground) },
     checkIn: {
-      findMany: jest.fn(async ({ where }: any) =>
-        where?.status === 'COMPLETED' && where?.completedAt
+      findMany: jest.fn(async ({ where, select }: any) =>
+        select?.sessionReport
+          ? CHECK_INS.filter((c) => c.completedAt && c.completedAt >= where.completedAt.gte && c.completedAt <= where.completedAt.lte).map((c) => ({ sessionReport: ASSESSED[c.id] ?? null }))
+          : where?.status === 'COMPLETED' && where?.completedAt
           ? CHECK_INS.filter((c) => c.status === 'COMPLETED' && c.completedAt! >= where.completedAt.gte)
           : CHECK_INS),
     },
@@ -124,6 +146,7 @@ describe('what is kept when a check-in comes in', () => {
     const json = JSON.stringify(stored().eachPerson);
     for (const n of ['Wairimu', 'Aisha', 'Baraka', 'Chidi']) expect(json).not.toContain(n);
     for (const call of prisma.recordEntry.findMany.mock.calls) expect(JSON.stringify(call[0])).not.toMatch(/verifiab|specificity/i);
+    expect(json).not.toContain('I think the week went fine');
   });
 
   it('opening the page builds nothing and reads no record line', async () => {
@@ -161,8 +184,8 @@ describe('the lead reads the whole week', () => {
   it('reads each person, and what came up across the team, by name', async () => {
     const { r } = await served(LEAD);
     expect(r.eachPerson.map((e) => `${e.who}. ${e.says}`)).toEqual([
-      'Aisha. Aisha named Green Mart and Nyama Choma Palace this week, and gave a next step and a date. One of them has a document behind it.',
-      "Baraka. Baraka named Green Mart this week, but gave no next step or date, so it is not yet clear what happens next.",
+      'Aisha. This week Aisha said “I will send the quote on Friday” and “I met Green Mart and they want a quote”. One more thing Aisha said is on the record. One thing Aisha said has proof behind it.',
+      'Baraka. This week Baraka said “Green Mart asked about the price, maybe 30 units” and “We sold 5 units at the market”.',
       'Chidi. Chidi has not checked in this week, so there is nothing here yet about what Chidi is working on.',
     ]);
     expect(r.acrossTheTeam).toEqual(['Green Mart came up in what Aisha and Baraka said this week.']);
@@ -239,7 +262,7 @@ describe('a check-in still waiting is counted as due, from the record (night qua
 describe('a person reads only what is about them, and the team\'s own counts', () => {
   it('Baraka reads his own sentence, his own patterns first, and nothing of Aisha\'s', async () => {
     const { r } = await served(BARAKA);
-    expect(r.eachPerson).toEqual([{ who: 'You', isYou: true, says: 'You named Green Mart this week, but gave no next step or date, so it is not yet clear what happens next.' }]);
+    expect(r.eachPerson).toEqual([{ who: 'You', isYou: true, says: 'This week you said “Green Mart asked about the price, maybe 30 units” and “We sold 5 units at the market”.' }]);
     expect(r.inNumbers).toEqual([
       { figure: '67%', of: 'of check-ins made this week', says: '2 of the 3 check-ins due this week were made.' },
       { figure: '0', of: 'things you said this week with a photo or document behind them', says: 'None of the 2 things you said this week have a photo or document behind them yet.' },
@@ -322,10 +345,10 @@ describe('the parts on their own', () => {
     expect(theWeeksHeading('2026-09-21', '2026-09-21T08:00:00Z', new Date('2026-09-23T10:00:00Z'))).toBe('This week, 21 to 23 Sep, so far');
   });
 
-  it('does not read "maybe 30 units" as a date', () => {
+  it('says "maybe 30 units" as they said it, never as a date or a count of its own', () => {
     const { theSentenceAbout } = jest.requireActual('./the-weekly-sentence-about-each-person');
-    expect(theSentenceAbout({ label: 'Participant A', checkedIn: true, lines: [{ text: 'Green Mart wants maybe 30 units.', type: 'PROGRESS', documented: false }] }))
-      .toBe('Participant A named Green Mart this week, but gave no next step or date, so it is not yet clear what happens next.');
+    expect(theSentenceAbout({ label: 'Participant A', checkedIn: true, lines: [{ text: 'Green Mart wants maybe 30 units.', type: 'numbers', documented: false }] }))
+      .toBe('This week Participant A said “Green Mart wants maybe 30 units”.');
   });
 
   it('reads a target with no direction set by the words of its name (decision 69)', () => {
@@ -373,8 +396,19 @@ describe('aims and limits follow the check-in\'s setting, for a person in it (de
 });
 
 describe('every earlier week stays readable, and a new week never overwrites an old one (decision 73)', () => {
+  const NEXT_WEEK = new Date(AT.getTime() + 7 * 24 * 3600 * 1000);
   function withEveryWeekKept() {
     const c = aCheckIn();
+    /* Baraka also checks in next week, so next week has something said in it (the week is built from what was said). */
+    const thisWeeks = c.prisma.checkIn.findMany;
+    c.prisma.checkIn.findMany = jest.fn(async (a: any) => {
+      const got = await thisWeeks(a);
+      const nextWeek = a?.where?.completedAt?.gte && a.where.completedAt.gte > AT;
+      if (!nextWeek) return got;
+      return a.select?.sessionReport
+        ? [{ sessionReport: anAssessment('p-baraka', 'Baraka', NEXT_WEEK.toISOString(), { claims: [said('We sold 3 more units.')] }) }]
+        : [{ participantId: 'p-baraka', sessionNumber: 6, completedAt: NEXT_WEEK, isSetup: false }];
+    });
     const rows = new Map<string, any>();
     c.prisma.weeklyReport = {
       upsert: jest.fn(async ({ where, create, update }: any) => {
@@ -388,7 +422,6 @@ describe('every earlier week stays readable, and a new week never overwrites an 
     };
     return { ...c, rows };
   }
-  const NEXT_WEEK = new Date(AT.getTime() + 7 * 24 * 3600 * 1000);
 
   it('building next week adds a row and leaves this week\'s exactly as it was', async () => {
     const c = withEveryWeekKept();
