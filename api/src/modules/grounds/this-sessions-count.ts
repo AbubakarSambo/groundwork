@@ -7,7 +7,10 @@ import { totalSessionsFor } from './session-count';
 import { aNumberInWords } from '../engagement/a-number-in-words';
 import { whoHasAnswered } from '../reports/how-many-have-answered';
 import { awayUntilOn, type Stretch } from '../suites/who-is-away';
-import { nameToCall } from '../engagement/a-name-to-call-them';
+import { nameToCall, SOMEONE } from '../engagement/a-name-to-call-them';
+import { theNotJoinedYetLine } from './invited-not-joined-yet';
+import { whoIsNotCountedYet } from './what-a-manager-needs-at-a-glance';
+import { isHeldAtTheDoor } from './who-an-admin-did-not-let-in';
 import { andList } from '../reports/each-wait-under-whoever-holds-it';
 
 /**
@@ -155,9 +158,19 @@ export function theSessionAndItsCount(
     leave: opts.leave,
     round: clock.currentSession,
   }, now).glance.progress;
-  const notCountedSays = progress.notCountedSays ?? null;
+  /*
+   * AND WHO WAS INVITED, BY NAME, WHERE NAMES ARE ASKED FOR (round 7, the law firm lead: after the save she did not know her four had
+   * been invited, invited them again on People and pressed resend; the page said "Four more were invited and have not joined yet").
+   * The same people the count leaves out, said by name: "Kwame, Fatuma, David and Grace were invited and have not joined yet."
+   */
+  /* Somebody with no name is counted in the sentence ("1 other person"), never called "Someone"; with no names at all, it is said as before. */
+  const notJoinedNames = opts.names ? participants.filter((p) => p.notJoinedYet === true && !isHeldAtTheDoor(p) && !p.managingOnly).map((p) => { const n = nameToCall(p); return n === SOMEONE ? null : n; }) : [];
+  const notCountedSays = notJoinedNames.some(Boolean)
+    ? [whoIsNotCountedYet(progress.notLetIn ?? 0), theNotJoinedYetLine(notJoinedNames)].filter(Boolean).join(' ') || null
+    : progress.notCountedSays ?? null;
   const one = theCountOfASession(participants, rows, clock.currentSession, g.scenario, opts.leave, now);
-  const whoSays = opts.names && one.ofPeople > 0 ? whoSaid(participants, rows, clock.currentSession, one.counted, one.notAnswered, opts.names.readerUserId) || null : null;
+  /* With only one person counted, the count already says it of them; their name is not said twice. */
+  const whoSays = opts.names && one.ofPeople > 1 ? whoSaid(participants, rows, clock.currentSession, one.counted, one.notAnswered, opts.names.readerUserId) || null : null;
   const readerIs = (id: string) => !!opts.names?.readerUserId && participants.find((p) => p.id === id)?.userId === opts.names.readerUserId;
   const othersHaveAnswered = opts.names ? one.counted.some((id) => !one.notAnswered.includes(id) && !readerIs(id)) : null;
   const count: ThisSession = {

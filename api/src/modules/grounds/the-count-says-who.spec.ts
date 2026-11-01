@@ -60,3 +60,19 @@ describe('the probe list, in the grid’s own state', () => {
     expect(whatToProbe(base).probe[0]).toBe('David has not answered this session, so nothing below is from this round.');
   });
 });
+
+/* Round 7, the law firm lead: after the save she read "Four more were invited and have not joined yet", did not know her team had
+   been invited, and invited them again. Who was invited is said by name, and her own name is not said twice. */
+describe('right after the save, who was invited, by name', () => {
+  it('names the four invited and not joined, and says the lead once', () => {
+    const lead = p('p-akinyi', 'u-akinyi', 'Akinyi', 'INITIATOR');
+    const invited = ['Kwame', 'Fatuma', 'David', 'Grace'].map((n) => ({ ...p(`p-${n.toLowerCase()}`, null as any, n), notJoinedYet: true }));
+    const rows = [{ participantId: 'p-akinyi', sessionNumber: 1, status: 'COMPLETED', completedAt: new Date('2026-11-01T09:00:00Z'), availableFrom: new Date('2026-11-01T06:00:00Z') }];
+    const { count } = theSessionAndItsCount(
+      { participants: [lead, ...invited], checkIns: rows, scenario: 'NEW_PROJECT', cadence: 'WEEKLY', runsUntilEnded: true },
+      { now: new Date('2026-11-01T12:00:00Z'), names: { readerUserId: 'u-akinyi' } },
+    );
+    expect(count.says).toContain('Kwame, Fatuma, David and Grace were invited and have not joined yet.');
+    expect(count.says).not.toContain('You have checked in.');
+  });
+});
