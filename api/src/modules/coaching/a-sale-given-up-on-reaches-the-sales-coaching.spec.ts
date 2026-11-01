@@ -160,7 +160,8 @@ describe('the coach runs after the role is read and any confirmation is stamped'
       { emit: jest.fn() } as any, {} as any, { canStartSession: jest.fn() } as any, {} as any,
       { emit: jest.fn(() => Promise.resolve()) } as any, { get: jest.fn(() => true) } as any,
     );
-    for (const m of ['extractRecordEntries', 'buildSoloArtifact', 'ensureNextSession', 'extractDependencies', 'extractWorkMentions']) {
+    /* (1 November 2026: the coach now also waits for the conversation's assessment, stubbed here like the other readers.) */
+    for (const m of ['extractRecordEntries', 'buildSoloArtifact', 'ensureNextSession', 'extractDependencies', 'extractWorkMentions', 'assessAndThenRead']) {
       jest.spyOn(service as any, m).mockResolvedValue(undefined);
     }
     const order: string[] = [];

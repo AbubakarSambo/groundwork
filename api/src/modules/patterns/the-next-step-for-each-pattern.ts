@@ -84,6 +84,8 @@ export interface AnIntervention {
   forWhom: 'the person' | 'the lead';
   theLeadDecides: boolean;
   says: string;
+  /** What it rests on: the pattern, and the check-ins and words it was seen in. */
+  because: string;
   /** Where it stands: open and happening on its own, waiting for the lead, worked, or at the end of its ladder. */
   state: 'open' | 'waiting for the lead' | 'worked' | 'ended';
   startedIn: { checkInId: string; sessionNumber: number };
@@ -104,6 +106,7 @@ function atRung(p: APatternAcrossAssessments, rung: number, startedIn: AnInterve
   return {
     key: p.key, participantId: p.participantId, ...(p.aboutWhom ? { aboutWhom: p.aboutWhom } : {}), ladder: ladder.name, rung, step,
     forWhom: how.forWhom, theLeadDecides: how.theLeadDecides, says: whatTheStepSays(step, p),
+    because: `${p.saying} Seen in ${p.instances.length} check-ins: ${p.instances.map((i) => `session ${i.sessionNumber}${i.words[0] ? `, "${i.words[0]}"` : ''}`).join('; ')}.`,
     state: how.theLeadDecides ? 'waiting for the lead' : 'open', startedIn, followedUp,
   };
 }
@@ -146,4 +149,17 @@ export function theInterventionsAfter(
     out.push(atRung(p, 0, now, []));
   }
   return out;
+}
+
+/**
+ * THE SMALL STEP FOR THE PERSON, FROM THIS CHECK-IN'S ASSESSMENT, AS THE COACH OFFERS IT (observeForCoaching, CoachingState's one
+ * writer). Only a step for the person that happens on its own, open, and started or moved on in this very check-in; a step the
+ * lead decides is never returned. Null when there is none.
+ */
+export function theSmallStepForThePerson(interventions: unknown, checkInId: string): { key: string; step: AStep; noticed: string; lookingLike: string; reason: string } | null {
+  const steps = (Array.isArray(interventions) ? interventions : []) as AnIntervention[];
+  const now = steps.find((i) => i.forWhom === 'the person' && !i.theLeadDecides && i.state === 'open'
+    && (i.startedIn?.checkInId === checkInId || i.followedUp?.[i.followedUp.length - 1]?.checkInId === checkInId));
+  if (!now) return null;
+  return { key: now.key, step: now.step, noticed: String(now.because ?? now.says).split(' Seen in ')[0], lookingLike: now.says, reason: now.because ?? now.says };
 }

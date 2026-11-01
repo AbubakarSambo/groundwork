@@ -90,6 +90,7 @@ import { whatChangedOnTheirDeals } from './what-changed-on-their-deals';
 import { oneOfTheKinds, isASalesKind } from '../board/the-kind-of-work';
 import { theEndCard, theCardStillStanding, whatTheyWereAskedToShow, type EndCard, type ALineForTheCard } from './the-end-card';
 import { assessTheConversation, theAssessmentOf, theAssessmentIsReady, type TheSetupGiven } from './assess-the-conversation';
+import { theSmallStepForThePerson } from '../patterns/the-next-step-for-each-pattern';
 import { whatTheyAreWaitingOn, whatTheyPromisedThemselves, whatHappenedToTheirOpenPromises, theAssessmentIn, theReportTheyRead } from './the-assessment';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { theSettlements, aCommitmentKey, oneOfEach, theySaidItDidNotHappen, type AnAnswer } from './what-happened-to-what-they-said';
@@ -552,6 +553,18 @@ export function aNumberTheySaid(said: string | null | undefined): number | null 
   const times = /^k|thousand/i.test(m[2] ?? '') ? 1_000 : /^m/i.test(m[2] ?? '') ? 1_000_000 : 1;
   const v = Math.round(n * times);
   return Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/**
+ * WHERE EACH CHECK-IN'S TURNS ARRIVED IN THIS PROCESS (the app, WhatsApp or the API), kept until its assessment is written. Not
+ * stored: a turn's row has no place for it, and the assessment is the one thing that reads it. After a restart mid-conversation
+ * the channel is "not known", which is what the assessment then says.
+ */
+function theDoorsTheirTurnsCameThrough(svc: any, checkInId: string | null): any {
+  svc._doorsOfCheckIns ??= new Map<string, Set<string>>();
+  if (checkInId === null) return svc._doorsOfCheckIns;
+  if (!svc._doorsOfCheckIns.has(checkInId)) svc._doorsOfCheckIns.set(checkInId, new Set<string>());
+  return svc._doorsOfCheckIns.get(checkInId);
 }
 
 @Injectable()
@@ -2316,6 +2329,8 @@ export class ConversationService {
     const personTurn = await this.prisma.conversationTurn.create({
       data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message, ...(answersTheOfferShowing ? { stage: ANSWERED_THE_IDEA_OFFER } : saysWhatItIs ? { stage: SAID_WHAT_IT_IS } : {}) },
     });
+    /* Where this turn arrived (the app, WhatsApp or the API), so the conversation's assessment can say which channel it came by. */
+    theDoorsTheirTurnsCameThrough(this, checkIn.id).add(how.door ?? 'web');
     await this.keepTheDocumentDescription(checkIn.id, personTurn.id, message).catch((err) =>
       this.logger.warn(`Could not keep a document description on ${checkIn.id}: ${err?.message}`),
     );
@@ -7097,14 +7112,21 @@ ${told}` : '';
     if (read && inverted) this.logger.log(`Coaching: not offering "${read.lookingLike}" to ${participantId}, they asked for it themselves.`);
     if (read && !recurring) this.logger.log(`Coaching: "${read.noticed}" seen once for ${participantId}, waiting for recurrence.`);
     const offerable = read && !isGenericStep(read.lookingLike) && recurring && !inverted;
+    /*
+     * WHERE THE COACH'S OWN READ OFFERS NOTHING, THE ASSESSMENTS' SMALL STEP (layer 3). A pattern seen in three of their
+     * assessments, with a step for the person that happens on its own (a coaching question or a clear expectation), is offered
+     * here, through the same machine and the same switches. The lead's steps are never offered here: they wait for her.
+     */
+    const fromTheAssessments = offerable ? null : theSmallStepForThePerson((await theAssessmentOf(this.prisma, checkInId).catch(() => null))?.interventions, checkInId);
+    if (fromTheAssessments) this.logger.log(`Coaching: offering the assessments' ${fromTheAssessments.step} for ${fromTheAssessments.key} to ${participantId}.`);
 
     await this.recordCoachingStep(
       participantId,
       sessionNumber,
       {
-        noticed: offerable ? read!.noticed : null,
-        lookingLike: offerable ? read!.lookingLike : null,
-        reason: offerable ? read!.reason : null,
+        noticed: offerable ? read!.noticed : fromTheAssessments?.noticed ?? null,
+        lookingLike: offerable ? read!.lookingLike : fromTheAssessments?.lookingLike ?? null,
+        reason: offerable ? read!.reason : fromTheAssessments?.reason ?? null,
         observed: read ? { noticed: read.noticed, reason: read.reason, recurring, inverted, modelSaidTheyAsked } : null,
         observations,
         /* Which floor this step came off. A step read from the account rather than the role has to
@@ -7113,7 +7135,8 @@ ${told}` : '';
         why: whyTheFloor ?? undefined,
         // The same substance test the completion gate uses, rather than a second
         // definition of "said something real".
-        hadSubstance: personSaid.some((t) => countCheckableSpecifics(t) > 0),
+        /* A step from the assessments rests on three of their conversations, which is the substance. */
+        hadSubstance: personSaid.some((t) => countCheckableSpecifics(t) > 0) || !!fromTheAssessments,
         /* A step off the universal floor is about how the account reads, so a thin session is the
            evidence for it rather than a reason to withhold it. See nextMove. */
         aboutTheAccount: readFromTheAccount,
@@ -7595,7 +7618,10 @@ ${told}` : '';
     how: { howItEnded: 'finished by the person' | 'closed by the clock' | 'declined' | 'setup saved'; closedAt: Date; setup?: TheSetupGiven | null },
   ): Promise<void> {
     try {
-      await assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger }, checkIn.id, how);
+      const doors = theDoorsTheirTurnsCameThrough(this, checkIn.id);
+      const channel = how.howItEnded === 'setup saved' ? 'setup' : doors.has('whatsapp') ? 'WhatsApp' : doors.has('web') ? 'the app' : doors.has('api') ? 'the API' : 'not known';
+      theDoorsTheirTurnsCameThrough(this, null).delete(checkIn.id);
+      await assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger }, checkIn.id, { ...how, channel });
       await Promise.all([
         /* The waits: what this person is waiting on, from the assessment's blockers, then every wait the record now shows is over. */
         this.extractDependencies(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
@@ -7792,9 +7818,8 @@ ${told}` : '';
      * already swallow their own failures, so waiting on them can never stop the coach running, and
      * none of this delays the session completing.
      */
-    Promise.allSettled([theFunctionRead, theRoleConfirmation])
-      .then(() => this.observeForCoaching(checkIn.id, checkIn.participantId, checkIn.sessionNumber))
-      .catch((err) => this.logger.warn(`Coaching observation failed for check-in ${checkIn.id}: ${err.message}`));
+    /* The coach runs after these and after the conversation's assessment (below), so its one step may be the assessment's small step. */
+    const theReadsTheCoachWaitsFor = Promise.allSettled([theFunctionRead, theRoleConfirmation]);
 
     /* The record is written: completedAt is stamped once, which is what the round, the report and the event wait for. */
     const won = await this.prisma.checkIn.updateMany({
@@ -7819,8 +7844,16 @@ ${told}` : '';
      * session is finished the moment this method returns; the one assessment of the conversation is written after, and the
      * readers that moved onto it (the waits and the promises) run once it is ready.
      */
-    this.assessAndThenRead(checkIn, { howItEnded: by === 'the clock' ? 'closed by the clock' : 'finished by the person', closedAt: new Date() })
+    const assessed = this.assessAndThenRead(checkIn, { howItEnded: by === 'the clock' ? 'closed by the clock' : 'finished by the person', closedAt: new Date() })
       .catch((err: any) => this.logger.warn(`The assessment of ${checkIn.id} and its readers failed: ${err?.message ?? err}`));
+    /*
+     * THE COACH, AFTER THE ROLE READS AND THE ASSESSMENT (layer 3, 1 November 2026). CoachingState keeps one writer: the coach's
+     * own read offers a step as before, and where it offers none, the small step the assessments found for a pattern (a
+     * coaching question, then a clear expectation) is offered through the same path, behind the same switches.
+     */
+    Promise.allSettled([theReadsTheCoachWaitsFor, assessed])
+      .then(() => this.observeForCoaching(checkIn.id, checkIn.participantId, checkIn.sessionNumber))
+      .catch((err) => this.logger.warn(`Coaching observation failed for check-in ${checkIn.id}: ${err.message}`));
 
     /*
      * AND WHAT THEY GAVE US, SAID BACK TO THEM.

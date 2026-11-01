@@ -129,7 +129,7 @@ export interface TheAssessment {
     sessionNumber: number;
     startedAt: string | null;
     endedAt: string | null;
-    channel: 'the app' | 'WhatsApp' | 'setup';
+    channel: 'the app' | 'WhatsApp' | 'the API' | 'setup' | 'not known';
     howItEnded: HowItEnded;
   };
   /** Two or three plain sentences. */

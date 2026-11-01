@@ -43,6 +43,8 @@ export interface HowToAssess {
   /** When the conversation was closed, for the time from close to ready. */
   closedAt: Date;
   setup?: TheSetupGiven | null;
+  /** Where the person's turns arrived, when the caller knows it. */
+  channel?: TheAssessment['about']['channel'];
 }
 
 const isoOf = (d: unknown): string | null => (d ? new Date(d as any).toISOString() : null);
@@ -166,7 +168,7 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
       about: {
         checkInId, groundId: row.groundId, participantId: row.participantId, who, isTheLead, checkIn: row.ground?.label ?? null,
         sessionNumber: row.sessionNumber, startedAt: isoOf(row.startedAt), endedAt: isoOf(row.completedAt ?? how.closedAt),
-        channel: how.howItEnded === 'setup saved' ? 'setup' : 'the app', howItEnded: how.howItEnded,
+        channel: how.channel ?? (how.howItEnded === 'setup saved' ? 'setup' : 'not known'), howItEnded: how.howItEnded,
       },
       ...parts,
       messages,
