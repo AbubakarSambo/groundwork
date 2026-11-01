@@ -2677,6 +2677,8 @@ from finishing at all.`;
      * Before this, session 1 was left NOT_STARTED, the ground page opened it again, and it read
      * "Nobody has checked in yet" and "Your turn" to a lead who had just checked in.
      */
+    /* The lead's first session's record, once written; nothing to wait for where there is none. */
+    let theLeadsRecordIsRead: Promise<unknown> = Promise.resolve();
     const theirCheckIn = (dto.history ?? []).filter((t: any) => t && typeof t.content === 'string' && t.content.trim());
     const theyAnswered = theirCheckIn.some((t: any) => t.role === 'user');
     if (!theAnchorIsOn && theyAnswered) {
@@ -2770,21 +2772,12 @@ from finishing at all.`;
      * Reported four times as "the report looks nothing like what I got at the end". It looked
      * nothing like it because it was not the same object.
      */
-    /*
-     * AND A SAVE MADE BEFORE THE REPORT WAS READY HAS ITS REPORT MADE HERE (Hafsah's blocker, 31 October 2026: "nothing anyone says in
-     * setup is ever lost"). The save card opens the moment setup ends, and the report takes about thirty-five seconds; a lead who saves
-     * before then has read no report, so the same report is made from the same conversation, after the save has answered, and kept in
-     * the same place. A report made by the page is never made twice.
-     */
+    /* The report the lead read is kept at once; it is made again below from the conversation and who is on the saved check-in. */
     if (dto.report) {
       await this.prisma.checkIn.update({
         where: { id: checkIn.id },
         data: { sessionReport: dto.report as object },
       });
-    } else if (dto.history?.length) {
-      void this.report(dto.history, dto.scenario, dto.groundLabel, undefined, undefined, dto.leadsOwnWords)
-        .then((made) => made && this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionReport: made as object } }))
-        .catch((err: Error) => this.logger.warn(`The report for a setup saved before its report was ready was not made: ${err?.message ?? err}`));
     }
 
     /**
@@ -2834,7 +2827,8 @@ from finishing at all.`;
         ],
       };
       const closedAt = new Date();
-      Promise.resolve(this.conversation?.assessAndThenRead?.({ id: checkIn.id, participantId: participant.id, groundId: ground.id, sessionNumber: 1 }, { howItEnded: 'setup saved', closedAt, setup: setupGiven }))
+      /* Kept as a promise: where this stood at the start is read from her record once the assessment has written it (keepWhatSetupGave, below). */
+      theLeadsRecordIsRead = Promise.resolve(this.conversation?.assessAndThenRead?.({ id: checkIn.id, participantId: participant.id, groundId: ground.id, sessionNumber: 1 }, { howItEnded: 'setup saved', closedAt, setup: setupGiven }))
         .catch((err: any) => this.logger.warn(`entry commit: the assessment of ${ground.id}'s setup could not be written: ${err?.message ?? err}`));
     }
 
@@ -2974,6 +2968,25 @@ from finishing at all.`;
              of the work, so setup is still the right place to read them from. */
           .extractExpectations(checkIn.id, participant.id, ground.id, dto.history)
           .catch((err) => this.logger.error(`commit: aims and targets failed for initiator: ${err.message}`));
+        /* And everything else the lead said in setup, where each part lives (GroundsService.keepWhatSetupGave), after the targets and
+           once the first session's record is written, so nothing is written twice. */
+        await theLeadsRecordIsRead;
+        await this.grounds.keepWhatSetupGave(ground.id, initiatorId, (dto.history ?? []).filter((t: any) => t?.role === 'user').map((t: any) => t.content))
+          .catch((err: any) => this.logger.error(`commit: what setup gave could not be kept on ${ground.id}: ${err?.message}`));
+        /*
+         * THE REPORT KNOWS WHO IS ON THE CHECK-IN (round 7, the sales lead). It was made from the conversation alone, so a team given in the
+         * team box and never typed in the conversation read "The members of the sales team have not been named". It is made here, once the
+         * people are on the saved check-in, from the conversation and their names, and kept where the report lives (Hafsah's blocker,
+         * 31 October 2026: a save made before the page's report was ready has its report made here too).
+         */
+        const onIt = await this.prisma.groundParticipant.findMany({
+          where: { groundId: ground.id, partyType: { not: PartyType.INITIATOR } },
+          select: { nameGiven: true, email: true, user: { select: { firstName: true, lastName: true } } },
+        }).catch(() => [] as any[]);
+        const theTeam = (onIt ?? []).map((p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim()).filter(Boolean);
+        const made = await this.report(dto.history, dto.scenario, dto.groundLabel, undefined, theTeam.length ? theTeam : undefined, dto.leadsOwnWords)
+          .catch((err: Error) => { this.logger.warn(`The setup's report could not be made with its team on ${ground.id}: ${err?.message ?? err}`); return null; });
+        if (made) await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionReport: made as object } }).catch(() => undefined);
       })();
       const waited = await waitNoLongerThan(reading, HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS);
       if (!waited.finished) this.logger.warn(`Ground ${ground.id}: the aims were still being read after ${HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS / 1000} seconds, so the save answered and the reading finishes on its own.`);

@@ -4924,6 +4924,37 @@ export class GroundsService {
   /** `confirmedByAdminNote` (decision 63): the plain sentence naming the admin who confirmed this
    *  paste in the lead's place, or null when the lead confirmed it themselves. Recorded on the rows
    *  a participant may go on to read: the baseline and the context lines it writes below. */
+  /**
+   * WHAT THE LEAD SAID IN SETUP IS KEPT WHERE EACH PART LIVES, WHEN THE SETUP BECOMES A CHECK-IN (round 7, 1 November 2026; Hafsah's
+   * blocker, "nothing anyone says in setup is ever lost").
+   *
+   * The sales lead said in setup what a good week looks like, that the target is revenue, and how long and how often. After saving,
+   * the check-in said "What doing well looks like: Nothing stated yet" and "Where this stood at the start: Nothing recorded yet". The
+   * save wrote the people, the schedule and the targets, and nothing else he said: what doing well looks like, ways of working and the
+   * rest of what the context page holds are written only by the context conversation's writer, after a yes, and the starting point
+   * only when the lead picks lines from his first session. Setup is the lead's first session and saving it is his yes.
+   *
+   * So the save reads the lead's own setup words the way the context conversation reads a paste (whatAPasteGives) and writes them
+   * through the same writer (writeWhatThePasteGave), and his first session's own lines become where this stood at the start through
+   * the same writer as the page's (recordBaselineEntries). The numbers are left to the save's own reading of targets
+   * (extractExpectations), which ran first, so no target is written twice. Nothing already held is written again.
+   */
+  async keepWhatSetupGave(groundId: string, leadUserId: string, theirWords: string[]): Promise<void> {
+    const words = theirWords.map((w) => String(w ?? '').trim()).filter(Boolean).join('\n\n');
+    if (words) {
+      const read = await this.whatAPasteGives(groundId, words).catch(() => null);
+      if (read) {
+        await this.writeWhatThePasteGave(groundId, {
+          ...read,
+          /* The targets, each person's numbers and expectations, and what they will do are the save's other readers' to write. */
+          teamTargets: [], forPeople: [], commitments: [], questionsForPeople: [], toldToParticipants: null,
+        });
+      }
+    }
+    const { candidates, alreadyRecorded } = await this.baselineEntryCandidates(groundId, leadUserId);
+    if (!alreadyRecorded.length && candidates.length) await this.recordBaselineEntries(groundId, leadUserId, candidates.map((c) => c.text));
+  }
+
   private async writeWhatThePasteGave(groundId: string, got: WhatAPasteGives, confirmedByAdminNote: string | null = null): Promise<boolean> {
     let wrote = false;
     if (got.success) {
