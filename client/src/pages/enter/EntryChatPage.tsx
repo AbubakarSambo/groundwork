@@ -186,6 +186,21 @@ function Rule() {
 }
 
 /* Kept on this device and, for a signed-in lead, on the server (entry-handover.ts keepTheSetup). */
+/** Whether the side panel fits beside the conversation: the same 1000px index.css uses for .gw-fills-in. Wide where it cannot tell. */
+const THE_PANEL_FITS_BESIDE = '(min-width: 1000px)'
+function useThePanelFitsBeside(): boolean {
+  const read = () => typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia(THE_PANEL_FITS_BESIDE).matches
+  const [fits, setFits] = useState(read)
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const m = window.matchMedia(THE_PANEL_FITS_BESIDE)
+    const changed = () => setFits(m.matches)
+    m.addEventListener?.('change', changed)
+    return () => m.removeEventListener?.('change', changed)
+  }, [])
+  return fits
+}
+
 function saveSession(s: EntrySession) {
   keepTheSetup(s as unknown as Record<string, unknown>)
 }
@@ -1498,6 +1513,8 @@ export function EntryChatPage() {
 
   const user = useAuthStore(s => s.user)
   const queryClient = useQueryClient()
+  /* Before any early return, like every hook here: where the panel that fills in as you talk is drawn (see thePanel). */
+  const thePanelFitsBeside = useThePanelFitsBeside()
   const { groundName, setGroundName, sessions, setSessions } = useEntryStore()
   const [renamingGround, setRenamingGround] = useState(false)
   const [renameInput, setRenameInput] = useState('')
@@ -4027,6 +4044,63 @@ export function EntryChatPage() {
     )
   }
 
+  /*
+   * THE PANEL THAT FILLS IN AS YOU TALK, ONE OF IT (round 7: on a phone it was hidden, so a lead talking at 390px could not reach the team
+   * box while she talked). Drawn beside the conversation where it fits (1000px, the width index.css gives .gw-fills-in), and at the top
+   * of the conversation where it does not: the same panel, the same box, the same kept lines.
+   */
+  const thePanel = atTheDoor ? null : (
+    <FillsInAsYouTalk
+      /*
+       * FAULT 4 (live walk, 6 October 2026): "A NAME" STAYED UNTICKED THOUGH THE PERSON
+       * HAD ALREADY BEEN NAMED. For a new hire, the conversation knows a name before the
+       * lead has typed anything into "Name this situation" - the same name faults 4 and
+       * 6 use to default the saved check-in's own name. Offered here too, so the row
+       * ticks the moment Groundwork has a name to offer, not only once the lead has
+       * retyped it herself. Every other situation is unaffected: with no new-hire name to
+       * offer, this is simply `groundName` as before, and the row stays unset until the
+       * lead gives one.
+       */
+      name={groundName.trim() || (
+        (theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario) === 'NEW_HIRE'
+          ? newHireGroundNameFallback(
+              onboardingSelections.peopleNamed,
+              newHireDays(`${onboardingSelections.initial ?? ''} ${onboardingSelections.brief ?? ''}`),
+            ) ?? ''
+          : ''
+      )}
+      situation={(() => {
+        /*
+         * FAULT 2: THE PANEL'S SITUATION LINE, FOR AN ANCHOR DRAFT, IS THE ENGINE'S OWN
+         * `groundLabel` ("Help my team understand") - not `SCENARIO_LABELS`' entry for
+         * `HELP_TEAM_UNDERSTAND`, which is missing its "my".
+         */
+        if (isAnchorDraft()) return anchorGroundLabel
+        const chosen = onboardingSelections.classifiedScenario || pickedScenario || scenario
+        return chosen ? sentenceCase(scenarioLabel(chosen, onboardingSelections.brief)) : ''
+      })()}
+      cadence={cadence}
+      cadenceChosen={cadenceChosen}
+      workingDays={workingDays}
+      startsOn={checkInBy}
+      endsOn={lastCheckInBy}
+      endSaid={endChosen}
+      runsUntilEnded={runsUntilEnded}
+      mentioned={onboardingSelections.peopleNamed ?? []}
+      added={inviteAdded.map((e) => shownAs(e.split(' - ')[0]))}
+      /*
+       * FAULT 2: THE ANCHOR'S SEVEN ITEMS, NOT THE USUAL FOUR.
+       *
+       * Not served yet (docs/answers-from-engine.md, "Request 144 (2) and (3)"), so this is
+       * `{}` for now - FillsInAsYouTalk already draws all seven headings, "0 of 7 set", the
+       * moment it is handed an (even empty) `anchorItems` object, rather than the usual four.
+       */
+      anchorItems={isAnchorDraft() ? (onboardingSelections.anchorItems ?? {}) : undefined}
+      /* The one team box, while the conversation is on screen; once setup ends it is on the save card, with the same lines. */
+      team={!closed ? <TheTeamBox prefilled={theTeamNamedInTheSetup()} text={teamText} onText={writeTheTeam} said={teamSaid} /> : undefined}
+    />
+  )
+
   return (
     /* The viewport less the nav strip pinned over it, and dvh so a phone's address bar sliding away
        does not leave the composer under the fold. See --gw-bottom-nav in AppShell. */
@@ -4438,6 +4512,7 @@ export function EntryChatPage() {
               // for (fault 1): it goes straight to the narrow, conversational column.
               className={`gwui-ec-messages ${onboardingHistory.length === 1 && !pickedSituation && !anchorConversationOpensDirectly() && phase === 'onboarding' ? 'gwui-ec-messages-wide' : 'gwui-ec-messages-narrow'}`}
             >
+              {!thePanelFitsBeside && thePanel}
               {(() => { const firstShown = onboardingHistory.findIndex((t, j) => t.role === 'assistant' && !(j === 0 && t.content === THE_OPENING_QUESTION)); return onboardingHistory.map((m, i) => {
                 /*
                  * THE OPENER IS NOT DRAWN WHILE THE PICKER IS, because the picker says it better.
@@ -4632,59 +4707,8 @@ export function EntryChatPage() {
           </div>
           {/* U.6: the panel that fills in as you talk (new.txt), beside the conversation on a wide
               screen. Built only from what this page already holds from the conversation. */}
-          {!atTheDoor && (
-            <div className="gw-fills-in gwui-ec-fills-in">
-              <FillsInAsYouTalk
-                /*
-                 * FAULT 4 (live walk, 6 October 2026): "A NAME" STAYED UNTICKED THOUGH THE PERSON
-                 * HAD ALREADY BEEN NAMED. For a new hire, the conversation knows a name before the
-                 * lead has typed anything into "Name this situation" - the same name faults 4 and
-                 * 6 use to default the saved check-in's own name. Offered here too, so the row
-                 * ticks the moment Groundwork has a name to offer, not only once the lead has
-                 * retyped it herself. Every other situation is unaffected: with no new-hire name to
-                 * offer, this is simply `groundName` as before, and the row stays unset until the
-                 * lead gives one.
-                 */
-                name={groundName.trim() || (
-                  (theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario) === 'NEW_HIRE'
-                    ? newHireGroundNameFallback(
-                        onboardingSelections.peopleNamed,
-                        newHireDays(`${onboardingSelections.initial ?? ''} ${onboardingSelections.brief ?? ''}`),
-                      ) ?? ''
-                    : ''
-                )}
-                situation={(() => {
-                  /*
-                   * FAULT 2: THE PANEL'S SITUATION LINE, FOR AN ANCHOR DRAFT, IS THE ENGINE'S OWN
-                   * `groundLabel` ("Help my team understand") - not `SCENARIO_LABELS`' entry for
-                   * `HELP_TEAM_UNDERSTAND`, which is missing its "my".
-                   */
-                  if (isAnchorDraft()) return anchorGroundLabel
-                  const chosen = onboardingSelections.classifiedScenario || pickedScenario || scenario
-                  return chosen ? sentenceCase(scenarioLabel(chosen, onboardingSelections.brief)) : ''
-                })()}
-                cadence={cadence}
-                cadenceChosen={cadenceChosen}
-                workingDays={workingDays}
-                startsOn={checkInBy}
-                endsOn={lastCheckInBy}
-                endSaid={endChosen}
-                runsUntilEnded={runsUntilEnded}
-                mentioned={onboardingSelections.peopleNamed ?? []}
-                added={inviteAdded.map((e) => shownAs(e.split(' - ')[0]))}
-                /*
-                 * FAULT 2: THE ANCHOR'S SEVEN ITEMS, NOT THE USUAL FOUR.
-                 *
-                 * Not served yet (docs/answers-from-engine.md, "Request 144 (2) and (3)"), so this is
-                 * `{}` for now - FillsInAsYouTalk already draws all seven headings, "0 of 7 set", the
-                 * moment it is handed an (even empty) `anchorItems` object, rather than the usual four.
-                 */
-                anchorItems={isAnchorDraft() ? (onboardingSelections.anchorItems ?? {}) : undefined}
-                /* The one team box, while the conversation is on screen; once setup ends it is on the save card, with the same lines. */
-                team={!closed ? <TheTeamBox prefilled={theTeamNamedInTheSetup()} text={teamText} onText={writeTheTeam} said={teamSaid} /> : undefined}
-              />
-            </div>
-          )}
+          {/* Beside the conversation where it fits; on a narrower screen it is at the top of the conversation instead (below). */}
+          {thePanelFitsBeside && thePanel && <div className="gw-fills-in gwui-ec-fills-in">{thePanel}</div>}
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -118,5 +118,38 @@ describe('the law firm lead on the save card', () => {
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0] as any
     expect(payload.history.map((t: any) => t.content).join(' ')).toContain('Esther is my finance officer in charge of billing.')
     expect(payload.reportSummary).toBeUndefined()
+  })
+})
+
+/*
+ * ROUND 7: ON A PHONE (375 wide), WHILE SHE TALKS. The panel was hidden below 1000px, so a lead on a phone could not reach the team box
+ * until setup ended. The same panel now sits at the top of the conversation where it does not fit beside it: one panel, one box.
+ */
+describe('the law firm lead on a phone, 375px wide, while she is still talking', () => {
+  const wide = window.matchMedia
+  beforeEach(() => {
+    localStorage.clear(); vi.clearAllMocks()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 })
+    window.matchMedia = ((q: string) => ({ matches: /min-width:\s*(\d+)px/.test(q) ? 375 >= Number(q.match(/min-width:\s*(\d+)px/)![1]) : false, media: q, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })) as any
+  })
+  afterEach(() => { window.matchMedia = wide })
+
+  it('reaches the one team box in the conversation, filled with her four, and can type into it', async () => {
+    seedHerSetup()
+    open()
+    const boxes = await screen.findAllByLabelText('Your team, one per line')
+    expect(boxes).toHaveLength(1)
+    const box = boxes[0] as HTMLTextAreaElement
+    expect(box.closest('.gwui-ec-messages')).toBeTruthy()
+    expect(document.querySelector('.gw-fills-in')).toBeNull()
+    expect(box.value.split('\n')).toEqual(NAMED)
+    expect(screen.getByText('Their emails, once you’re ready. You can add them now or at the end.')).toBeTruthy()
+
+    const lines = NAMED.map((n) => `${n}, ${n.split(' ')[0].toLowerCase()}@law.test`).join('\n')
+    fireEvent.change(box, { target: { value: lines } })
+    expect(box.value).toBe(lines)
+    expect(JSON.parse(localStorage.getItem('gw_entry_session')!).teamText).toBe(lines)
+    /* The conversation goes on below it. */
+    expect(screen.getByPlaceholderText('Type your response, or add a document.')).toBeTruthy()
   })
 })
