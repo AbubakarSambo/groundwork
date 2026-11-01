@@ -15,9 +15,9 @@
  * them ("KES 12,400", "16%", "KES 466,450.00"). An answer that carries a figure no document holds is not said.
  */
 import { documentWhereFor } from '../documents/who-can-see-a-document';
-import { cleanText } from '../reports/what-the-record-actually-holds';
 import { aDaySaidInFull } from '../board/a-day-said-in-full';
-import { theMarkOf, whoAddedEachBackingDocument } from '../reports/how-a-line-is-known';
+import { theFactsOnRecord, aFactAsALine, type TheReader } from '../conversation/the-facts-on-record';
+import { thePersonJudgementsAreOn, NOT_SHOWN_IN_THIS_ORGANISATION } from '../organisation/person-judgements';
 import { isASalesKind } from '../board/the-kind-of-work';
 import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, theSalesAnswer, theUnitsOf, theMoneyOf, whatWasSold, type ADealOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
 import { aDepositSaid } from '../board/a-deals-proof-is-about-that-deal';
@@ -55,6 +55,7 @@ const ANSWER_SCHEMA = {
     properties: {
       found: { type: 'boolean', description: 'True only when the documents answer the question.' },
       answer: { type: 'string', description: 'The answer in plain full sentences, with every figure exactly as written in the document.' },
+      judgesAPerson: { type: 'boolean', description: 'True when the question asks how well or badly a named person is doing, or who does best or worst.' },
     },
     required: ['found', 'answer'],
   },
@@ -113,9 +114,14 @@ export async function theDocumentsTheyMayOpen(
  * in the documents you can open" each time, while the answers were on her own board. A lead may read what a manager would see in a
  * staff assessment: what each person in their check-ins said, on which day, what is proven, their deals and the proof filed on them.
  * Anybody else reads only their own. It is given to the same answer as one more document, and the same figure check applies.
+ *
+ * FROM THE ASSESSMENTS, THROUGH THE ONE READER (1 November 2026). What each person said is read from their conversations' assessments
+ * (theFactsOnRecord), which the board and the reports read too, not from the record's lines alone: on the assessment test the lead's
+ * record lines were lost to one failed write while her assessment held every word, and Ask answered from the empty store. What judges
+ * a person reaches a lead only while the organisation's person-judgements switch is on (thePersonJudgementsAreOn).
  */
 const DAY_SAID = (d: Date) => aDaySaidInFull(new Date(d));
-const MOST_LINES_FOR_ONE = 20;
+const MOST_FACTS_FOR_ONE = 40;
 
 export async function theRecordTheyMayRead(
   prisma: any,
@@ -132,6 +138,7 @@ export async function theRecordTheyMayRead(
   })).catch(() => [])) ?? []) as { id: string; label: string; initiatorId: string | null; kindOfWork?: unknown; workStages?: unknown }[];
   const out: ADocumentToAnswerFrom[] = [];
   const since = new Date(now.getTime() - 45 * 86_400_000);
+  const judgements = await thePersonJudgementsAreOn(prisma, input.organizationId);
   for (const g of grounds) {
     const isLead = g.initiatorId === input.userId;
     const people = ((await Promise.resolve(prisma.groundParticipant?.findMany?.({
@@ -144,22 +151,16 @@ export async function theRecordTheyMayRead(
     })).catch(() => [])) ?? []) as any[];
     for (const p of people) if (!p.user) p.user = users.find((u) => u.id === p.userId) ?? null;
     const nameOf = (p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || String(p.email ?? '').split('@')[0];
+    const reader: TheReader = isLead ? { kind: 'the lead', judgements } : { kind: 'the person', participantId: people[0].id };
+    const facts = await theFactsOnRecord(prisma, { groundId: g.id, reader, participantIds: people.map((p) => p.id), since });
     const lines: string[] = [];
     /* The team first and the reader's own last, so a long record of their own never pushes the team out. */
     people.sort((a, b) => Number(a.userId === input.userId) - Number(b.userId === input.userId));
     for (const p of people) {
-      const entries = ((await Promise.resolve(prisma.recordEntry?.findMany?.({
-        where: { participantId: p.id, disputedAt: null, createdAt: { gte: since } },
-        orderBy: { createdAt: 'desc' }, take: MOST_LINES_FOR_ONE,
-        select: { text: true, type: true, createdAt: true, anchoredDocumentId: true, participantId: true, recallBased: true, anchoredOrigin: true, confirmedAt: true },
-      })).catch(() => [])) ?? []) as any[];
-      const who = p.userId === input.userId ? `${nameOf(p)} (you)` : nameOf(p);
-      lines.push(`PERSON: ${who}`);
-      const whoAdded = await whoAddedEachBackingDocument(prisma, entries).catch(() => new Map<string, string | null>());
-      for (const e of entries.reverse()) {
-        lines.push(`- ${DAY_SAID(e.createdAt)}, ${String(e.type).toLowerCase().replace(/_/g, ' ')}, ${howItIsKnown(e, whoAdded)}: ${cleanText(String(e.text ?? '')).replace(/\s+/g, ' ').trim()}`);
-      }
-      if (!entries.length) lines.push('- Nothing on record in the last six weeks.');
+      const theirs = facts.filter((f) => f.participantId === p.id).slice(-MOST_FACTS_FOR_ONE);
+      lines.push(`PERSON: ${p.userId === input.userId ? `${nameOf(p)} (you)` : nameOf(p)}`);
+      for (const f of theirs) lines.push(aFactAsALine(f, DAY_SAID));
+      if (!theirs.length) lines.push('- Nothing on record in the last six weeks.');
     }
     const items = ((await Promise.resolve(prisma.workItem?.findMany?.({
       where: { groundId: g.id, ...(isLead ? {} : { ownerParticipantId: { in: people.map((p) => p.id) } }) },
@@ -186,22 +187,6 @@ export async function theRecordTheyMayRead(
     out.push({ fileName: `the record of ${g.label}`, content: content.slice(0, MOST_WE_READ_FROM_ONE) });
   }
   return out;
-}
-
-/*
- * HOW A LINE IS KNOWN, AS THE BOARD MARKS IT (polish round 15, U3). Joseph's "M-Pesa code TGH5K2M9QX." and Kevin's "The M-Pesa code is
- * SFK2P8LQ4C" were given to Ask as "their word", so Ask told Grace the only sale with proof was Kilele's. A code typed in full is proof.
- */
-function howItIsKnown(e: { text?: string | null; anchoredDocumentId?: string | null; recallBased?: boolean | null; anchoredOrigin?: string | null; confirmedAt?: Date | null; type?: string | null; participantId?: string | null }, whoAdded: Map<string, string | null>): string {
-  /* A document somebody else added does not prove their line (U28: Peter's line read "proven by a document" from Kevin's M-Pesa message). */
-  if (e.anchoredDocumentId) {
-    const by = whoAdded.get(e.anchoredDocumentId);
-    if (by === undefined || by === null || by === e.participantId) return 'proven by a document';
-  }
-  const mark = theMarkOf({ ...e, text: cleanText(String(e.text ?? '')) } as any, whoAdded);
-  if (mark === 'proven' && !e.anchoredDocumentId) return /\b(?=[A-Z0-9]{10}\b)(?=[A-Z0-9]*\d)(?=(?:[0-9]*[A-Z]){2})[A-Z0-9]{10}\b/.test(String(e.text ?? '')) ? 'proven by the M-Pesa code they typed' : 'proven by a reference they typed';
-  if (mark === 'confirmed') return 'confirmed by a colleague';
-  return 'their word';
 }
 
 /**
@@ -275,6 +260,9 @@ export async function answerFromTheDocuments(
     [{ role: 'user', content: `${given.map((d) => `DOCUMENT "${d.fileName}":\n${d.content}`).join('\n\n')}\n\nQUESTION: ${input.question.trim()}` }],
     ANSWER_SCHEMA,
   ).catch(() => null);
+  /* A judgement of a named person is not given where the organisation turned those off (person-judgements.ts): the model says what
+     the question asks, and the switch decides, here, whatever the answer says. */
+  if (read?.judgesAPerson === true && !(await thePersonJudgementsAreOn(deps.prisma, input.organizationId))) return NOT_SHOWN_IN_THIS_ORGANISATION;
   const answer = String(read?.answer ?? '').replace(/\s+/g, ' ').trim();
   if (!read?.found || !answer) return NOT_IN_THE_DOCUMENTS;
   /* A figure no document holds is not said: the person would take it as the document's. */
