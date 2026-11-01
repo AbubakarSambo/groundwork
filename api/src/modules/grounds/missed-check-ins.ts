@@ -169,7 +169,7 @@ export async function whoHasMissedCheckIns(prisma: any, groundIds: string[], now
       id: true, groundId: true, userId: true, partyType: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true,
       user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
       /* Whether it opens each working day: a quiet session on a day they answered another is then no miss (board/a-day-they-checked-in.ts). */
-      ground: { select: { cadence: true } },
+      ground: { select: { cadence: true, cadenceDays: true } },
       checkIns: {
         select: {
           id: true, sessionNumber: true, status: true, isSetup: true, optional: true, closedReason: true, availableFrom: true,
@@ -228,7 +228,7 @@ export async function whoMissedTheCheckInsJustBefore(prisma: any, groundId: stri
     select: {
       id: true, groundId: true, userId: true, partyType: true, managingOnly: true, cameThroughTheLink: true,
       user: { select: { awaitingOrgApproval: true } },
-      ground: { select: { cadence: true } },
+      ground: { select: { cadence: true, cadenceDays: true } },
       checkIns: {
         select: {
           id: true, sessionNumber: true, status: true, isSetup: true, optional: true, closedReason: true, availableFrom: true,

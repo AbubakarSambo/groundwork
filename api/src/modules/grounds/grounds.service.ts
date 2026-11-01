@@ -1,3 +1,4 @@
+import { theWeekdaysItMeets } from './the-check-ins-own-schedule';
 import { ConversationService as ConversationServiceForReopening } from '../conversation/conversation.service';
 import { theEndingSaid } from '../resolution/end-states';
 import { withTheDirectMorningSaid } from '../organisation/the-screen-is-told-the-direct-morning';
@@ -696,10 +697,10 @@ export class GroundsService {
     const people = await this.prisma.groundParticipant.findMany({ where: { groundId }, select: { user: { select: { firstName: true, lastName: true } } } });
     const otherNames = people.flatMap((p) => [p.user?.firstName ?? '', p.user?.lastName ?? '']).filter((n) => n.trim().length >= 3);
     /* The subject as the lead named it, so the rewrite can be checked for naming it - see theTellingHolds. */
-    const named = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { label: true, timelineDays: true, cadence: true } as any }).catch(() => null);
+    const named = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { label: true, timelineDays: true, cadence: true, cadenceDays: true } as any }).catch(() => null);
     const label = (named as any)?.label ?? '';
     /* One round or many, so the telling cannot promise a person a habit they were never signed up to. */
-    const rounds = totalSessionsFor((named as any)?.timelineDays, (named as any)?.cadence) ?? null;
+    const rounds = totalSessionsFor((named as any)?.timelineDays, (named as any)?.cadence, (named as any)?.cadenceDays) ?? null;
     const raw = await Promise.race([
       this.anthropic.respond(THE_TELLING_PROMPT, [{ role: 'user', content: `What this check-in is called: ${label || 'not named'}\nHow many times these people will be asked: ${rounds == null ? 'not set' : rounds <= 1 ? 'once, and only once' : `${rounds} times`}\n\nWhat the person who set this up wrote:\n\n${text}` }] as any),
       new Promise<string>((_, reject) => setTimeout(() => reject(new Error('the telling took too long')), 12_000)),
@@ -789,6 +790,7 @@ export class GroundsService {
         /* A new check-in starts with its scenario's default for sharing its report by itself (Hafsah, 18 October 2026). */
         reportSharesAt: theShareTimeANewCheckInStartsWith(dto.scenario, dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario]),
         cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
+        cadenceDays: theWeekdaysItMeets({ cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario], days: dto.cadenceDays }),
         workingDays: workingDaysOf(dto.workingDays),
         startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
         endsAt: dto.endsAt && dto.runsUntilEnded !== true ? new Date(dto.endsAt) : null,
@@ -1008,6 +1010,7 @@ export class GroundsService {
           /* A new check-in starts with its scenario's default for sharing its report by itself (Hafsah, 18 October 2026). */
           reportSharesAt: theShareTimeANewCheckInStartsWith(dto.scenario, dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario]),
           cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
+          cadenceDays: theWeekdaysItMeets({ cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario], days: dto.cadenceDays }),
           workingDays: workingDaysOf(dto.workingDays),
           startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
           endsAt: dto.endsAt && dto.runsUntilEnded !== true ? new Date(dto.endsAt) : null,
@@ -1353,7 +1356,7 @@ export class GroundsService {
       where: this.whatAnAdminMayList(organizationId, requestingUserId) as any,
       orderBy: { createdAt: 'desc' },
       select: {
-        id: true, label: true, scenario: true, status: true, cadence: true, cadenceStated: true, timelineStated: true,
+        id: true, label: true, scenario: true, status: true, cadence: true, cadenceDays: true, cadenceStated: true, timelineStated: true,
         createdByUserId: true, createdAt: true,
         initiator: { select: { id: true, firstName: true, lastName: true, email: true } },
         participants: {
@@ -2087,7 +2090,7 @@ export class GroundsService {
       (((ground as any).checkIns ?? []) as any[]).filter((c) => !c.isSetup),
       /* Nobody an admin has not let in yet holds the clock back (decision 77). */
       new Set((((ground as any).participants ?? []) as any[]).filter((p) => holdsTheClock(p, isNotLetInYet)).map((p) => p.id)),
-      noEnd ? null : totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+      noEnd ? null : totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
       new Date(),
       /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
       await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId),
@@ -3264,7 +3267,7 @@ export class GroundsService {
       where: { id: groundId },
       select: {
         id: true, label: true, scenario: true, initiatorId: true, timelineDays: true, runsUntilEnded: true,
-        cadence: true, brief: true, timelineStated: true, cadenceStated: true, endsAt: true, workingDays: true,
+        cadence: true, cadenceDays: true, brief: true, timelineStated: true, cadenceStated: true, endsAt: true, workingDays: true,
         organizationId: true, createdByUserId: true,
         participants: { select: { id: true, managingOnly: true, userId: true } },
         objectives: { select: { id: true } },
@@ -4450,7 +4453,7 @@ export class GroundsService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        id: true, initiatorId: true, timelineDays: true, runsUntilEnded: true, cadence: true, brief: true, scenario: true,
+        id: true, initiatorId: true, timelineDays: true, runsUntilEnded: true, cadence: true, cadenceDays: true, brief: true, scenario: true,
         timelineStated: true, cadenceStated: true, endsAt: true, organizationId: true,
         participants: { select: { id: true, managingOnly: true, userId: true } },
         objectives: { select: { id: true } },
@@ -5847,7 +5850,7 @@ export class GroundsService {
   async setReportSharesAt(groundId: string, requestingUserId: string, time: string | null) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true, cadence: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
+      select: { initiatorId: true, organizationId: true, cadence: true, cadenceDays: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     await this.mayConfirmSetupOn(ground, requestingUserId);
@@ -7140,6 +7143,7 @@ export class GroundsService {
         cadence: cadenceNow,
         workingDays: dto.workingDays ?? (ground as any).workingDays ?? null,
         anchorDay: dto.cadenceAnchorDay !== undefined ? dto.cadenceAnchorDay : (ground as any).cadenceAnchorDay ?? null,
+        cadenceDays: (dto as any).cadenceDays !== undefined ? (dto as any).cadenceDays : (ground as any).cadenceDays ?? null,
         now: ground.createdAt,
       })
       : dto.timelineDays ?? (dto.timelineWeeks !== undefined ? dto.timelineWeeks * 7 : undefined);
@@ -7691,7 +7695,7 @@ export class GroundsService {
       where: { ...(this.whatAnAdminMayList(organizationId, adminUserId) as any), status: GroundStatus.AWAITING_APPROVAL },
       orderBy: { createdAt: 'asc' },
       select: {
-        id: true, label: true, scenario: true, createdAt: true, timelineDays: true, cadence: true, cadenceStated: true, timelineStated: true,
+        id: true, label: true, scenario: true, createdAt: true, timelineDays: true, cadence: true, cadenceDays: true, cadenceStated: true, timelineStated: true,
         initiator: { select: { firstName: true, lastName: true, email: true } },
       },
     });
@@ -8309,7 +8313,7 @@ export class GroundsService {
     try {
       const ground = await this.prisma.ground.findUnique({
         where: { id: groundId },
-        select: { organizationId: true, status: true, cadence: true, cadenceAnchorDay: true, workingDays: true, startsAt: true, createdAt: true, endsAt: true, timelineDays: true },
+        select: { organizationId: true, status: true, cadence: true, cadenceDays: true, cadenceAnchorDay: true, workingDays: true, startsAt: true, createdAt: true, endsAt: true, timelineDays: true },
       });
       zone = (ground?.organizationId ? await theOrganisationsZone(this.prisma as any, ground.organizationId) : null) ?? THE_PRODUCTS_OWN_ZONE;
       if (latest && (latest.status === 'IN_PROGRESS' || latest.status === 'COMPLETED')) {
@@ -8738,7 +8742,7 @@ export class GroundsService {
           orderBy: { lastSeenAt: 'desc' },
         },
         /* For the one sentence that says who else reads it: the lead's first name. */
-        ground: { select: { initiatorId: true, cadence: true, participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } },
+        ground: { select: { initiatorId: true, cadence: true, cadenceDays: true, participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } },
         checkIns: {
           select: { sessionNumber: true, completedAt: true, status: true },
           orderBy: { sessionNumber: 'asc' },
@@ -8912,7 +8916,7 @@ export function aDailyCheckInWithNoEndSaid(g: { cadence?: string | null; runsUnt
   return !g.timelineDays || (theDefault != null && g.timelineDays === theDefault);
 }
 
-function howLongItRuns(dto: { runsUntilEnded?: boolean; timelineDays?: number; endsAt?: string | Date | null; startsAt?: string | Date | null; cadence?: any; scenario: any; workingDays?: number[] | null; cadenceAnchorDay?: number | null }): number {
+function howLongItRuns(dto: { runsUntilEnded?: boolean; timelineDays?: number; endsAt?: string | Date | null; startsAt?: string | Date | null; cadence?: any; scenario: any; workingDays?: number[] | null; cadenceAnchorDay?: number | null; cadenceDays?: number[] | null }): number {
   /* No planned length. Zero is what every reader of the length already reads as "no end". */
   if (dto.runsUntilEnded === true) return 0;
   if (dto.timelineDays != null) return dto.timelineDays;
@@ -8923,6 +8927,7 @@ function howLongItRuns(dto: { runsUntilEnded?: boolean; timelineDays?: number; e
       cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario as keyof typeof RECOMMENDED_CADENCE],
       workingDays: dto.workingDays ?? null,
       anchorDay: dto.cadenceAnchorDay ?? null,
+      cadenceDays: dto.cadenceDays ?? null,
     });
   }
   return DEFAULT_TIMELINE_DAYS[dto.scenario as keyof typeof DEFAULT_TIMELINE_DAYS];

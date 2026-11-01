@@ -975,7 +975,7 @@ export function AppSidebar() {
        when it started - is said after the name; a label that is already unique is left alone. */
     const apart = whatTellsItApart(inRail, g)
     const nameRead = apart ? `${g.label}, ${apart}` : g.label
-    const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions ?? (g as any).totalSessions)
+    const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions ?? (g as any).totalSessions, (g as any)?.cadenceDays)
     const mine = attention.kind === 'yours' || attention.kind === 'overdue'
     /* The room the row's buttons need when they show over its right, and whether the row must keep it
        (a badge is wider than the buttons and hides while they show, so a row with one already has it). */

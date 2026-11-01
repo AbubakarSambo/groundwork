@@ -367,7 +367,7 @@ export class WhatNeedsYouService {
        latest report reads (no model, nothing written). Only for the person who runs it. */
     /* Behind the direct morning, so an organisation with it off reads Today as before. */
     if (directMorning && told.lineGroundId) {
-      const g = await (this.prisma as any).ground.findUnique({ where: { id: told.lineGroundId }, select: { initiatorId: true, cadence: true } }).catch(() => null);
+      const g = await (this.prisma as any).ground.findUnique({ where: { id: told.lineGroundId }, select: { initiatorId: true, cadence: true, cadenceDays: true } }).catch(() => null);
       if (g?.initiatorId === userId) {
         const read = await whatTodayReads(this.prisma as any, told.lineGroundId, { userId, isAdmin: false }).catch(() => ({} as any));
         if (read?.sinceLast?.says) told.sinceYesterday = { heading: g.cadence === 'DAILY' ? 'Since yesterday' : 'Since the last check-in', says: read.sinceLast.says, also: read.sinceLast.also ?? null };

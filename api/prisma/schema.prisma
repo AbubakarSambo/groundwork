@@ -1101,6 +1101,10 @@ model Ground {
   timelineWeeks    Int?    @map("timeline_weeks")
   cadence          Cadence @default(FORTNIGHTLY)
   cadenceAnchorDay Int?    @map("cadence_anchor_day") // weekly: 0=Sun..6=Sat ("every Monday"); monthly: 1-31 (day of month)
+  /// TWICE OR MORE A WEEK (2 November 2026): the weekdays a weekly check-in meets on, 0=Sun..6=Sat, when it meets on more than one
+  /// ("Twice a week, on Monday and Thursday."). Empty means once a week, on cadenceAnchorDay. Read by the schedule
+  /// (grounds/the-check-ins-own-schedule.ts), the session count (grounds/session-count.ts) and every sentence that says how often.
+  cadenceDays      Int[]   @default([]) @map("cadence_days")
   /// THE TIME OF DAY EACH SESSION'S TEAM REPORT SHARES ITSELF, "HH:MM" in the organisation's own day (Hafsah's answer 5, 16 October 2026:
   /// "Reports share themselves at their set time unless the lead holds them"). Null means the product's default, 18:30, for a check-in that
   /// repeats; a one-time check-in shares when everyone has checked in, as before. See reports/a-report-shares-itself.ts.

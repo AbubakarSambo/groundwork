@@ -126,6 +126,7 @@ export class ParticipantsService {
       schedule: whenItAsks({
         cadence: ground.cadence,
         cadenceAnchorDay: ground.cadenceAnchorDay,
+        cadenceDays: (ground as any).cadenceDays,
         workingDays: ground.workingDays,
         leadFirstName: leadFirst,
       }),

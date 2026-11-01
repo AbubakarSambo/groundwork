@@ -1301,6 +1301,7 @@ Fields:
 - goals: array of what they need from this
 - brief: anything specific to focus on or probe
 - cadence: how often they check in, IF they said. One of "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "ONE_TIME". Map their own words: "daily", "every day", "every working day" or "each day" -> DAILY; "weekly" or "every week" -> WEEKLY; "every two weeks", "fortnightly", "every other week" -> FORTNIGHTLY; "monthly" or "once a month" -> MONTHLY; "just once", "a single check-in" -> ONE_TIME. Only words about how often THIS CHECK-IN happens count: "I own the weekly review" or "our monthly target" names another meeting or a number, not the check-in's rhythm, and never changes a rhythm they already gave. Omit it entirely if they did not say.
+- cadenceDays: ONLY when they said the check-in happens more than once a week on days they named ("twice a week, on Monday and Thursday", "Mondays and Thursdays"): those weekdays as numbers, 0 is Sunday and 6 is Saturday, with cadence "WEEKLY". Omit it for once a week, or when they named no days.
 - runsUntilEnded: true ONLY if they said it runs until they end it themselves ("when I end it", "until I stop it", "no end date"). Then leave timelineDays out.
 - timelineDays: how long the whole period runs, in days, IF they said. "90 days" or "three months" -> 90; "60 days" -> 60; "a quarter" -> 90; "two weeks" -> 14; "three weeks" -> 21; "a month" -> 30. Omit if they did not say.
 
@@ -1353,6 +1354,7 @@ from finishing at all.`;
           // brief and then dropped on the way to the enum.
           cadence: { type: 'string', enum: ['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ONE_TIME'] },
           timelineDays: { type: 'number' },
+          cadenceDays: { type: 'array', items: { type: 'integer', minimum: 0, maximum: 6 } },
           runsUntilEnded: { type: 'boolean' },
         },
         /**
@@ -1373,7 +1375,7 @@ from finishing at all.`;
       },
     };
 
-    let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; timelineDays?: number; runsUntilEnded?: boolean; yourRole?: string } = {};
+    let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; cadenceDays?: number[]; timelineDays?: number; runsUntilEnded?: boolean; yourRole?: string } = {};
     /* Kept out of the try so a failed reply still fails the turn; a failed extraction is logged below. */
     const extractionInFlight: Promise<typeof extracted | null | Error> = (async () =>
       this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, messages, EXTRACT_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true }))()
@@ -2059,6 +2061,8 @@ from finishing at all.`;
       /** Runs until the lead ends it (request 37). */
       runsUntilEnded?: boolean;
       cadenceAnchorDay?: number;
+      /** Twice or more a week: the weekdays it meets on (Ground.cadenceDays). */
+      cadenceDays?: number[];
       workingDays?: number[];
       checkInBy?: string;
       lastCheckInBy?: string;
@@ -2430,6 +2434,7 @@ from finishing at all.`;
         ...(howLongTheyAsked ? { timelineDays: howLongTheyAsked } : {}),
         runsUntilEnded: dto.runsUntilEnded === true ? true : undefined,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
+        cadenceDays: chosenCadence === Cadence.WEEKLY ? dto.cadenceDays ?? undefined : undefined,
         workingDays: dto.workingDays ?? undefined,
         // Mirrors the self path a few lines below (dto.checkInBy/lastCheckInBy
         // -> startsAt/endsAt) - the admin's chosen dates were previously
@@ -2537,6 +2542,7 @@ from finishing at all.`;
       cadence: theAnchorIsOn ? Cadence.WEEKLY : chosenCadence,
       runsUntilEnded: theAnchorIsOn ? undefined : dto.runsUntilEnded === true ? true : undefined,
       cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
+      cadenceDays: !theAnchorIsOn && chosenCadence === Cadence.WEEKLY ? dto.cadenceDays ?? undefined : undefined,
       workingDays: dto.workingDays ?? undefined,
       startsAt: dto.checkInBy || undefined,
       endsAt: theAnchorIsOn ? theEndSheChose ?? theMonthEnds : dto.lastCheckInBy || undefined,

@@ -102,7 +102,7 @@ export async function theEndingPageFor(deps: Deps, groundId: string, userId: str
   const ground: any = await prisma.ground.findUnique({
     where: { id: groundId },
     select: {
-      id: true, organizationId: true, initiatorId: true, createdByUserId: true, cadence: true,
+      id: true, organizationId: true, initiatorId: true, createdByUserId: true, cadence: true, cadenceDays: true,
       participants: {
         where: { managingOnly: false },
         select: {

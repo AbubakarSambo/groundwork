@@ -163,6 +163,8 @@ export interface OnboardResult {
       goals?: string[]; brief?: string;
       /** The name the lead gave in so many words ("Call it ..."). Absent when they did not. */
       name?: string;
+      /** Twice or more a week: the weekdays she named ("Monday and Thursday"), 0 = Sunday. Absent when she named none. */
+      cadenceDays?: number[];
       /** An address the lead typed beside a name, kept with that name. */
       peopleEmails?: Record<string, string>;
       // What they actually said about rhythm and length. Absent when they did
@@ -312,6 +314,8 @@ export const entryApi = {
     /** RESTORED (nothing-removed-screens.md item 2): the day check-ins land on - a weekday (0 =
         Sunday) for WEEKLY/FORTNIGHTLY, a day of the month for MONTHLY. Omit to leave it unset. */
     cadenceAnchorDay?: number
+    /** Twice or more a week: the weekdays it meets on, as setup's reading heard them. */
+    cadenceDays?: number[]
     history: ChatTurn[]
     report?: EntryReport | null
     /** A colleague picked from the list is sent by `colleagueId`, never by address (U.4). */

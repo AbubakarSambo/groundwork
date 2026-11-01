@@ -1352,7 +1352,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const theSituation = whatSituationThisIsAbout(
       (ground as any).scenario,
       roundNow,
-      totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+      totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
     );
     /* The direct morning (the-direct-morning-is-written-straight): for a switched-on organisation the code's block goes LAST, after the
        stored version and every code block, so it runs whatever version is stored. Off, the prompt is exactly as it was. */
@@ -3341,7 +3341,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         report: { select: { agreements: true, divergences: true, centralQuestion: true, releasedAt: true, releasedSessions: true, findings: true, direction: true, engagement: true } },
         brief: true,
         /* A one-time listening session is drafted differently from a run of work. See PictureInput.oneTime. */
-        cadence: true, scenario: true, id: true,
+        cadence: true, cadenceDays: true, scenario: true, id: true,
         /* The run's length, for "session N of M": with the rhythm it gives plannedSessions below.
            Left out of this select, plannedSessions was null on every read (request 55). */
         timelineDays: true,
@@ -3618,7 +3618,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
          otherwise the length over the rhythm. Null where either is unset, so the header omits the
          position rather than inventing a denominator. Worked out inline it had no step for a one-time
          check-in, so the report read "Session 1." while the board read "of 1" (12 October). */
-      plannedSessions: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+      plannedSessions: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
       closed: !!snapshot,
       /* The wall is the release, not whether the round has closed (user journeys, F-12). */
       othersWordsAreNotYetOpen: !(released || viewerIsLead),
@@ -4322,7 +4322,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           /* How many this run holds, from the length and the rhythm - the same arithmetic the
              chat composer does when it says "session 3 of 6", by the one rule in session-count.ts. Null where either is unset, which
              makes the read fall silent rather than guess at a last session. */
-          plannedSessions: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+          plannedSessions: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
           thereIsALater: ONE_SITTING_ONLY.has((ground as any).scenario)
             ? false
             : ALREADY_IN_THE_OPEN.has((ground as any).scenario)
@@ -5334,7 +5334,7 @@ happened, and what is in the way.`;
    * one the report holds now; a session already shared cannot be held back. See a-report-shares-itself.ts.
    */
   async holdAsTheLead(groundId: string, userId: string, organizationId: string): Promise<{ sessionNumber: number; held: boolean; says: string }> {
-    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { initiatorId: true, cadence: true, reportSharesAt: true, report: { select: { releasedAt: true, releasedSessions: true, heldSessions: true } } } as any }) as any;
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { initiatorId: true, cadence: true, cadenceDays: true, reportSharesAt: true, report: { select: { releasedAt: true, releasedSessions: true, heldSessions: true } } } as any }) as any;
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (ground.initiatorId !== userId) throw new ForbiddenException('Only the person who runs this check-in can hold its report.');
     if (!ground.report) throw new NotFoundException('This report is not written yet, so check again once somebody has checked in.');
@@ -5354,7 +5354,7 @@ happened, and what is in the way.`;
   async howTodaysReportIsShared(groundId: string, requestingUserId: string, requestingUserOrgId?: string): Promise<HowItIsShared | null> {
     const ground = await (this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true, createdByUserId: true, cadence: true, reportSharesAt: true, participants: { select: { userId: true, partyType: true, user: { select: { firstName: true } } } }, report: { select: { releasedAt: true, releasedSessions: true, heldSessions: true } } } as any,
+      select: { initiatorId: true, organizationId: true, createdByUserId: true, cadence: true, cadenceDays: true, reportSharesAt: true, participants: { select: { userId: true, partyType: true, user: { select: { firstName: true } } } }, report: { select: { releasedAt: true, releasedSessions: true, heldSessions: true } } } as any,
     }) as Promise<any>).catch(() => null);
     if (!ground?.report) return null;
     const isLead = ground.initiatorId === requestingUserId;
@@ -5379,7 +5379,7 @@ happened, and what is in the way.`;
   async shareTheReportsWhoseTimeHasCome(now: Date = new Date()): Promise<{ shared: number }> {
     const grounds = await (this.prisma.ground.findMany({
       where: { cadence: { not: 'ONE_TIME' }, status: { in: ['OPEN', 'AWAITING_PARTIES', 'ACTIVE'] as any }, report: { isNot: null } } as any,
-      select: { id: true, organizationId: true, cadence: true, reportSharesAt: true, report: { select: { releasedAt: true, releasedSessions: true, heldSessions: true } } } as any,
+      select: { id: true, organizationId: true, cadence: true, cadenceDays: true, reportSharesAt: true, report: { select: { releasedAt: true, releasedSessions: true, heldSessions: true } } } as any,
     }) as Promise<any[]>).catch(() => [] as any[]);
     let shared = 0;
     for (const g of grounds) {
@@ -6575,7 +6575,7 @@ happened, and what is in the way.`;
       select: { participantId: true, sessionNumber: true, status: true, isSetup: true, availableFrom: true, startedAt: true, completedAt: true },
     }) ?? Promise.resolve([] as any[]))?.catch?.(() => [] as any[])) ?? []) as any[];
     const givers = new Set(((ground?.participants ?? []) as any[]).filter((p) => holdsTheClock(p, isNotLetInYet)).map((p) => p.id));
-    const planned = totalSessionsFor(ground?.timelineDays, ground?.cadence) ?? null;
+    const planned = totalSessionsFor(ground?.timelineDays, ground?.cadence, ground?.cadenceDays) ?? null;
     /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
     const handOn = await theReleaseOneSalesBoardIsOn(this.prisma, ground?.organizationId ?? null).catch(() => false);
     const clock = theSessionClock(rows.filter((c) => !c.isSetup) as any, givers, planned, new Date(), handOn);
@@ -8431,14 +8431,14 @@ happened, and what is in the way.`;
       const g = await this.prisma.ground.findUnique({
         where: { id: report.groundId },
         select: {
-          status: true, timelineDays: true, cadence: true,
+          status: true, timelineDays: true, cadence: true, cadenceDays: true,
           checkIns: { select: { sessionNumber: true, isFinal: true, status: true } },
         },
       }).catch(() => null);
       if (!g) return false;
       if (hasEnded(g.status as any)) return true;
       if ((g.checkIns ?? []).some((c: any) => c.isFinal && c.status === CheckInStatus.COMPLETED)) return true;
-      const planned = totalSessionsFor((g as any).timelineDays, (g as any).cadence) ?? null;
+      const planned = totalSessionsFor((g as any).timelineDays, (g as any).cadence, (g as any).cadenceDays) ?? null;
       const held = Math.max(0, ...(g.checkIns ?? []).map((c: any) => c.sessionNumber ?? 0));
       return planned !== null && held >= planned;
     })().catch(() => false);

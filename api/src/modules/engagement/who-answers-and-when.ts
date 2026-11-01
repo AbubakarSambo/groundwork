@@ -276,7 +276,7 @@ export async function onTimeForThemselves(prisma: any, groundId: string | null |
   try {
     if (!groundId) return null;
     if (!(await theDirectMorningIsOnFor(prisma, groundId))) return null;
-    const g = await prisma?.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, cadence: true, workingDays: true } });
+    const g = await prisma?.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, cadence: true, cadenceDays: true, workingDays: true } });
     const zone = (g?.organizationId ? await theOrganisationsZone(prisma, g.organizationId).catch(() => null) : null) ?? THE_PRODUCTS_OWN_ZONE;
     const sessions: ASessionOnRecord[] = (await prisma?.checkIn?.findMany?.({
       where: { groundId, participantId },

@@ -935,7 +935,7 @@ export class WhatsAppForAnOrganisationService {
         OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
       },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, status: true, sessionNumber: true, availableFrom: true, createdAt: true, ground: { select: { label: true, createdAt: true, startsAt: true, cadenceAnchorDay: true, workingDays: true, organizationId: true, initiator: { select: { firstName: true } }, overWhatsApp: true, cadence: true, simplerWords: true } } },
+      select: { id: true, status: true, sessionNumber: true, availableFrom: true, createdAt: true, ground: { select: { label: true, createdAt: true, startsAt: true, cadenceAnchorDay: true, workingDays: true, organizationId: true, initiator: { select: { firstName: true } }, overWhatsApp: true, cadence: true, cadenceDays: true, simplerWords: true } } },
     }));
     /* Two of the same name are told apart by when each started (or who runs it), so "You have two check-ins open" can be answered. */
     const said = namesTheyCanTellApart(rows.map((r) => ({ id: r.id, label: r.ground.label, startedAt: r.ground.createdAt, leadName: r.ground.initiator?.firstName })));

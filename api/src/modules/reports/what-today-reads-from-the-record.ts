@@ -110,7 +110,7 @@ async function load(prisma: any, groundId: string) {
       kindOfWork: true,
       whoSeesTargets: true,
       peersVisibleToEachOther: true,
-      cadence: true,
+      cadence: true, cadenceDays: true,
       participants: {
         select: {
           id: true, email: true, userId: true, partyType: true, createdAt: true, roleAsDescribed: true,

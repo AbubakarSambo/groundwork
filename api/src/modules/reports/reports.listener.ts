@@ -147,7 +147,7 @@ export class ReportsListener {
       // Once everyone is through, this is the real moment: mutual reveal,
       // billing activation, "your report is ready" notifications.
       this.logger.log(`All parties through session ${sessionNumber}. Releasing report and activating ground ${event.groundId}.`);
-      const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true, cadence: true, reportSharesAt: true } as any }) as any;
+      const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true, cadence: true, cadenceDays: true, reportSharesAt: true } as any }) as any;
       if (g) {
         /*
          * A REPORT SHARES ITSELF AT ITS SET TIME, NOT THE MOMENT EVERYONE IS IN (Hafsah's answers 1 and 5, 16 October 2026).

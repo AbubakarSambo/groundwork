@@ -914,7 +914,7 @@ export async function theDirectMorningFor(
   const now = opts.now ?? new Date();
   const ground = await Promise.resolve(prisma?.ground?.findUnique?.({
     where: { id: opts.groundId },
-    select: { id: true, label: true, organizationId: true, initiatorId: true, kindOfWork: true, scenario: true, workingDays: true, overWhatsApp: true, cadence: true,
+    select: { id: true, label: true, organizationId: true, initiatorId: true, kindOfWork: true, scenario: true, workingDays: true, overWhatsApp: true, cadence: true, cadenceDays: true,
       participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, user: { select: { firstName: true, lastName: true } } } } },
   })).catch(() => null) as any;
   if (!ground || ground.initiatorId !== opts.leadUserId) return null;

@@ -623,7 +623,7 @@ export class AdminService implements OnApplicationBootstrap {
         scenario: true,
         moment: true,
         status: true,
-        cadence: true,
+        cadence: true, cadenceDays: true,
         timelineDays: true,
         runsUntilEnded: true,
         startsAt: true,

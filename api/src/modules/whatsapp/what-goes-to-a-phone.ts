@@ -82,6 +82,7 @@ export function whenItIsDue(
     const closes = whenTheRoundCloses({
       cadence: ground.cadence as Cadence,
       anchorDay: ground.cadenceAnchorDay ?? null,
+      days: (ground as any).cadenceDays ?? null,
       workingDays: ground.workingDays ?? [],
       startedAt: new Date(ground.startsAt ?? ground.createdAt ?? openedAt),
       startsNow: !ground.startsAt,

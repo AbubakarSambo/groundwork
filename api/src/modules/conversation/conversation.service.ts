@@ -3261,7 +3261,7 @@ export class ConversationService {
       }
 
       /* AND NO HOMEWORK IN A ONE-TIME SESSION. See withoutTheHomework. */
-      const cadenceHere = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { cadence: true } }).catch(() => null);
+      const cadenceHere = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { cadence: true, cadenceDays: true } }).catch(() => null);
       if (cadenceHere?.cadence === Cadence.ONE_TIME) {
         const noHomework = withoutTheHomework(screened.text);
         if (noHomework.cut) {
@@ -3514,7 +3514,7 @@ export class ConversationService {
       const saidNothing = nothingRealWasSaid(theirTurns.length ? theirTurns : [message]);
       if (close.ready || saidNothing) {
         leavingEarlyHandled = true;
-        const theirCadence = (checkIn as any).ground?.cadence ?? (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { cadence: true } })?.catch?.(() => null))?.cadence ?? null;
+        const theirCadence = (checkIn as any).ground?.cadence ?? (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { cadence: true, cadenceDays: true } })?.catch?.(() => null))?.cadence ?? null;
         aiTurn = await this.prisma.conversationTurn.update({
           where: { id: aiTurn.id },
           data: { content: close.ready ? WHAT_YOU_SAID_IS_KEPT(theirCadence) : NOTHING_KEPT_YET_COME_BACK },
@@ -3832,7 +3832,7 @@ export class ConversationService {
 
   private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string; sayFirst?: string; nextStep?: { isLead: boolean; personSaid: string[] } }> {
     const [row, turns] = await Promise.all([
-      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true, isClarification: true, sessionNumber: true, participant: { select: { partyType: true } }, ground: { select: { cadence: true, scenario: true, startedFrom: true } } } }),
+      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true, isClarification: true, sessionNumber: true, participant: { select: { partyType: true } }, ground: { select: { cadence: true, cadenceDays: true, scenario: true, startedFrom: true } } } }),
       this.prisma.conversationTurn.findMany({
         where: { checkInId },
         orderBy: { createdAt: 'asc' },
@@ -4820,7 +4820,7 @@ export class ConversationService {
           ...rows,
           ...turnsThisSession.filter((t) => t.role === 'PERSON').map((t) => ({ text: t.content, type: 'PROGRESS', session: checkIn.sessionNumber ?? 1 })),
         ];
-        const planned = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null;
+        const planned = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null;
         return sayWhatDoesNotAddUp({
           said,
           thisSession: checkIn.sessionNumber ?? 1,
@@ -4901,7 +4901,7 @@ export class ConversationService {
       const stage = stageOf(
         checkIn.sessionNumber ?? 1,
         /* Derived from the timeline and the cadence, which is where a planned length lives. */
-        totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+        totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
         !!(checkIn as any).isFinal,
       );
       const still = whatIsStillOwed(owedForThis, this.roleOfTheReaderFor(ground as any, checkIn as any), stage, {
@@ -5012,7 +5012,7 @@ export class ConversationService {
        */
       /* Zero days for a check-in that runs until the lead ends it, which gives no total. */
       /* A daily check-in nobody gave an end runs until the lead ends it, so no "session 2 of 365" is said (E2). */
-      totalSessions: aDailyCheckInWithNoEndSaid(ground as any) ? undefined : totalSessionsFor(ground.timelineDays, ground.cadence) ?? undefined,
+      totalSessions: aDailyCheckInWithNoEndSaid(ground as any) ? undefined : totalSessionsFor(ground.timelineDays, ground.cadence, ground.cadenceDays) ?? undefined,
       runsUntilEnded: !!(ground as any).runsUntilEnded || aDailyCheckInWithNoEndSaid(ground as any),
       /* Their own words for their part only: for anybody the lead invited it is the lead's sentence about them. */
       roleAsDescribed: aRoleInTheirOwnWords(checkIn.participant as any),
@@ -5530,7 +5530,7 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
     const askedWhenThisEnds = theyAskedWhenThisIsOver(latestMessage) ? THE_RUN_IS_WHAT_THEY_ASKED_ABOUT : '';
     const howLongThisRuns = whenThisIsOver({
       sessionNumber: checkIn.sessionNumber ?? 1,
-      roundsPlanned: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+      roundsPlanned: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
       endsOn: deadlineOf(ground as any),
       runsUntilEnded: !!(ground as any).runsUntilEnded,
     });
@@ -7140,7 +7140,7 @@ ${told}` : '';
        by seenInEnoughSessions as the period number, so what is stored here already is one. */
     const checkInForPeriod = await (this.prisma.checkIn?.findUnique?.({
       where: { id: checkInId },
-      select: { completedAt: true, startedAt: true, createdAt: true, ground: { select: { cadence: true } } },
+      select: { completedAt: true, startedAt: true, createdAt: true, ground: { select: { cadence: true, cadenceDays: true } } },
     }) ?? Promise.resolve(null)).catch(() => null);
     const period = checkInForPeriod
       ? periodOf(
@@ -8084,7 +8084,7 @@ ${told}` : '';
     if (checksInOnlyWhenTheyChoose(me)) return;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { cadence: true, cadenceAnchorDay: true, endsAt: true, status: true, workingDays: true, timelineDays: true, startsAt: true, createdAt: true, organizationId: true },
+      select: { cadence: true, cadenceDays: true, cadenceAnchorDay: true, endsAt: true, status: true, workingDays: true, timelineDays: true, startsAt: true, createdAt: true, organizationId: true },
     });
 
     /*
@@ -8128,7 +8128,7 @@ ${told}` : '';
      * (Hafsah, 21 Sep 2026). The planned count is the same arithmetic the header uses; a session past
      * it, or opening on or after the end, is not made.
      */
-    const planned = totalSessionsFor((ground as any)?.timelineDays ?? null, cadence);
+    const planned = totalSessionsFor((ground as any)?.timelineDays ?? null, cadence, (ground as any)?.cadenceDays);
     if (planned != null && sessionNumber >= planned) {
       this.logger.log(`No next session for ${participantId}: session ${sessionNumber} of ${planned} was the last planned.`);
       return;
@@ -8182,7 +8182,7 @@ ${told}` : '';
     // explicit "Begin the closing session".)
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { timelineDays: true, cadence: true, runsUntilEnded: true },
+      select: { timelineDays: true, cadence: true, cadenceDays: true, runsUntilEnded: true },
     });
     // ONE_TIME never reaches this function - ensureNextSession's early return
     // above (and the SEQUENTIAL-only guard on the other caller) mean
@@ -8272,6 +8272,7 @@ ${told}` : '';
       {
         cadence,
         anchorDay: ground?.cadenceAnchorDay ?? null,
+        days: (ground as any)?.cadenceDays ?? null,
         workingDays: ground?.workingDays ?? [],
         startedAt: ground?.startsAt ?? ground?.createdAt ?? lastOpenedAt,
         startsNow: !ground?.startsAt,
@@ -8372,7 +8373,7 @@ ${told}` : '';
       const patterns = judged ? patterns0 : [];
       const coaching = judged ? coaching0 : null;
       const codeOf = (code: string) => [...POSITIVE_CODES, ...CARRYING_CODES, ...BAD_FAITH_CODES].find((c) => c.code === code);
-      const planned = totalSessionsFor(ground.timelineDays, ground.cadence) ?? null;
+      const planned = totalSessionsFor(ground.timelineDays, ground.cadence, ground.cadenceDays) ?? null;
       const brief = theBriefForThePlanner({
         /* The situation in words, never its key (Naomi read "NEW_PROJECT" back in a reply). */
         scenarioLabel: `${situationInWords(ground.scenario) ?? 'a check-in'}${aNameAPersonGave(ground.label) ? `, called "${aNameAPersonGave(ground.label)}"` : ''}`,
@@ -8481,7 +8482,7 @@ ${told}` : '';
     if (!checkIn) return null;
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
-      select: { scenario: true, brief: true, initiatorId: true, timelineDays: true, cadence: true } as any,
+      select: { scenario: true, brief: true, initiatorId: true, timelineDays: true, cadence: true, cadenceDays: true } as any,
     });
     const owed = this.whichOwedListFor((ground as any)?.scenario, (ground as any)?.brief ?? null);
     if (!owed) return null;
@@ -8490,7 +8491,7 @@ ${told}` : '';
       this.prisma.checkInGap.findMany({ where: { participantId: checkIn.participantId }, select: { slug: true, asked: true, answeredAt: true } }),
       this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' }, select: { role: true, content: true } }),
     ]);
-    const stage = stageOf(checkIn.sessionNumber ?? 1, totalSessionsFor((ground as any)?.timelineDays, (ground as any)?.cadence) ?? null, !!checkIn.isFinal);
+    const stage = stageOf(checkIn.sessionNumber ?? 1, totalSessionsFor((ground as any)?.timelineDays, (ground as any)?.cadence, (ground as any)?.cadenceDays) ?? null, !!checkIn.isFinal);
     const role = this.roleOfTheReaderFor(ground as any, { participant: checkIn.participant } as any);
     const still = whatIsStillOwed(owed, role, stage, {
       types: types.map((t) => t.type),
@@ -8517,7 +8518,7 @@ ${told}` : '';
       where: { id: checkIn.groundId },
       /* No totalSessions on a ground: the planned length is derived from the timeline and the
          cadence, which is what session-count exists for. Selecting it threw the whole settle. */
-      select: { scenario: true, brief: true, initiatorId: true, timelineDays: true, cadence: true } as any,
+      select: { scenario: true, brief: true, initiatorId: true, timelineDays: true, cadence: true, cadenceDays: true } as any,
     });
     const owed = this.whichOwedListFor((ground as any)?.scenario, (ground as any)?.brief ?? null);
     if (!owed) return;
@@ -8536,7 +8537,7 @@ ${told}` : '';
 
     const stage = stageOf(
       checkIn.sessionNumber ?? 1,
-      totalSessionsFor((ground as any)?.timelineDays, (ground as any)?.cadence) ?? null,
+      totalSessionsFor((ground as any)?.timelineDays, (ground as any)?.cadence, (ground as any)?.cadenceDays) ?? null,
       !!checkIn.isFinal,
     );
     const role = this.roleOfTheReaderFor(ground as any, { participant } as any);

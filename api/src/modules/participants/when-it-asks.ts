@@ -1,3 +1,4 @@
+import { timesAWeekInWords } from '../grounds/the-check-ins-own-schedule';
 /**
  * HOW OFTEN A CHECK-IN ASKS, IN ONE PLAIN SENTENCE, for the invitation (A3, #/join/invite).
  *
@@ -26,6 +27,7 @@ function theDays(workingDays: number[] | null | undefined): string | null {
 export function whenItAsks(g: {
   cadence: ACadence | string;
   cadenceAnchorDay?: number | null;
+  cadenceDays?: number[] | null;
   workingDays?: number[] | null;
   leadFirstName?: string | null;
 }): string {
@@ -38,6 +40,8 @@ export function whenItAsks(g: {
       return `A short check-in on ${days}.`;
     }
     case 'WEEKLY': {
+      const often = timesAWeekInWords({ cadence: g.cadence, days: g.cadenceDays });
+      if (often) return `A short check-in ${often}.`;
       const d = g.cadenceAnchorDay;
       return Number.isInteger(d) && d! >= 0 && d! <= 6 ? `A short check-in every week, on ${DAY_NAMES[d!]}.` : 'A short check-in every week.';
     }

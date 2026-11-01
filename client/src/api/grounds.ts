@@ -73,6 +73,8 @@ export interface CreateGroundBody {
   timelineDays?: number
   cadence?: GroundCadence
   cadenceAnchorDay?: number
+  /** Twice or more a week: the weekdays a weekly check-in meets on, 0 = Sunday. */
+  cadenceDays?: number[]
   /** Rounds where every party has completed their check-in. W13-6. */
   roundsDone?: number
   startsAt?: string

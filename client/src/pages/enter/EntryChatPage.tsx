@@ -1949,6 +1949,8 @@ export function EntryChatPage() {
      "On which day of the month?"); this was fixed at null with no setter until `TheSetup`'s own
      picker was restored below. */
   const [cadenceAnchorDay, setCadenceAnchorDay] = useState<number | null>(null)
+  /* Twice or more a week: the weekdays she named, as setup's reading heard them (Ground.cadenceDays). */
+  const [cadenceDays, setCadenceDays] = useState<number[]>([])
   /* Which days this team works. Empty means any day. A daily check-in nobody gave days for is Monday to Friday
      (Hafsah, 15 October): "Every day" made 90 check-ins with every weekend in them. See theDaysADailyCheckInTakes. */
   const [workingDays, setWorkingDays] = useState<number[]>([])
@@ -2691,6 +2693,7 @@ export function EntryChatPage() {
         /* The name they gave in so many words ("Call it ..."), unless they have already typed one in the header (user journeys, F-3). */
         if (res.extracted.name && (!groundName.trim() || groundName === 'Entry session')) setGroundName(res.extracted.name)
         if (res.extracted.cadence) { setCadence(res.extracted.cadence); setCadenceChosen(true) }
+        if (Array.isArray(res.extracted.cadenceDays) && res.extracted.cadenceDays.length >= 2) setCadenceDays(res.extracted.cadenceDays)
         /* "When I end it", as the engine heard it (piece 3a), unless she already set an end on the summary. */
         if (res.extracted.runsUntilEnded === true && !endChangedOnTheSummary.current) { setRunsUntilEnded(true); setEndChosen(true); keepTheSchedule({ runsUntilEnded: true, endChosen: true }) }
         /* Walk fault 5: the day she named for the check-ins ("every Monday"), unless she already chose
@@ -2709,7 +2712,7 @@ export function EntryChatPage() {
            * and the server then created two, so the first thing the ground did
            * was contradict the number the person had just agreed to.
            */
-          const planned = plannedSessionsFor(res.extracted.timelineDays, res.extracted.cadence ?? cadence)
+          const planned = plannedSessionsFor(res.extracted.timelineDays, res.extracted.cadence ?? cadence, undefined, res.extracted?.cadenceDays)
           if (planned != null) { setSessions(planned); setPlannedFrom({ timelineDays: res.extracted.timelineDays, cadence: res.extracted.cadence ?? cadence }); setSessionsTypedByLead(false) }
         }
         // Background classify intent when we have initial
@@ -3084,6 +3087,7 @@ export function EntryChatPage() {
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
         cadenceChosen,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
+        cadenceDays: cadence === 'WEEKLY' && cadenceDays.length >= 2 ? cadenceDays : undefined,
         workingDays: theDaysToSave(cadence, workingDays, daysChangedOnTheSummary.current),
         checkInBy: checkInBy.trim() || undefined,
         /* "When I end it": no last date, and the engine keeps no length (piece 3a). */
@@ -3387,6 +3391,7 @@ export function EntryChatPage() {
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
         cadenceChosen,
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
+        cadenceDays: cadence === 'WEEKLY' && cadenceDays.length >= 2 ? cadenceDays : undefined,
         workingDays: theDaysToSave(cadence, workingDays, daysChangedOnTheSummary.current),
         checkInBy: checkInBy.trim() || undefined,
         /* "When I end it": no last date, and the engine keeps no length (piece 3a). */
@@ -3418,7 +3423,7 @@ export function EntryChatPage() {
       } catch { /* */ }
     }, 800)
     return () => clearTimeout(t)
-  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, workingDays, checkInBy, lastCheckInBy, runsUntilEnded, inviteNote, inviteAdded, inviteContextFor, bulkQueue, displayNames])
+  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, cadenceDays, workingDays, checkInBy, lastCheckInBy, runsUntilEnded, inviteNote, inviteAdded, inviteContextFor, bulkQueue, displayNames])
 
   async function copyInviteLink() {
     const link = `${window.location.origin}/invite?token=${inviteToken}`

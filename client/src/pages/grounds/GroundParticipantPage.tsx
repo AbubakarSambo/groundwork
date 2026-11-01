@@ -483,7 +483,7 @@ export function GroundParticipantPage() {
   // number). Unknown is null: the header prints the session with no total, and
   // the gate stays closed rather than guessed open.
   const totalSessions: number | null =
-    plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions) ?? null
+    plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions, (ground as any)?.cadenceDays) ?? null
 
 
   /**

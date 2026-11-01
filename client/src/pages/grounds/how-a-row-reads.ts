@@ -1,6 +1,7 @@
 import { railAttention, openRound } from '@/lib/rail-attention'
 import { hasEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor } from '@/lib/sessionCount'
+import { timesAWeek } from '@/lib/cadence'
 import { scenarioLabel, isEvaluationScenario } from '@/lib/scenario-catalog'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whenItRunsOut } from '@/lib/when-it-runs-out'
@@ -31,6 +32,8 @@ export interface ListRow {
   brief?: string | null
   cadence?: string | null
   cadenceAnchorDay?: number | null
+  /** Twice or more a week: the weekdays it meets on. */
+  cadenceDays?: number[] | null
   workingDays?: number[] | null
   timelineDays?: number | null
   maxSessions?: number | null
@@ -97,6 +100,8 @@ export function howOften(g: ListRow): string | null {
   if (!c) return null
   if (c === 'ONE_TIME') return 'One time.'
   if (c === 'SEQUENTIAL') return 'When the lead checks in.'
+  const often = timesAWeek(c, g.cadenceDays)
+  if (often) return `${often[0].toUpperCase()}${often.slice(1)}.`
   const base = ({ DAILY: 'Daily', WEEKLY: 'Weekly', FORTNIGHTLY: 'Every 2 weeks', MONTHLY: 'Monthly' } as Record<string, string>)[c]
   if (!base) return null
   const days = [...(g.workingDays ?? [])].sort().join(',')
@@ -144,7 +149,7 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   const forWhat = g.scenario ? sentenceCase(scenarioLabel(g.scenario, g.brief)) : ''
   const iRunIt = !!me && g.initiatorId === me
   const planned = g.glance?.progress?.roundsPlanned
-    ?? plannedSessionsFor(g.timelineDays ?? null, g.cadence as never, g.maxSessions ?? g.totalSessions ?? null)
+    ?? plannedSessionsFor(g.timelineDays ?? null, g.cadence as never, g.maxSessions ?? g.totalSessions ?? null, g?.cadenceDays)
   const done = g.glance?.progress?.roundsDone ?? g.roundsDone ?? 0
   /*
    * SCREEN FAULT 9: "SESSION 2 OF 12" HERE, "SESSION 1 OF 12" ON THE BOARD, FOR THE SAME CHECK-IN

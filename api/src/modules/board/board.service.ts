@@ -652,7 +652,7 @@ export class BoardService {
      */
     /* Judgements of a person off for this organisation: no pattern section, no pattern questions, no coaching about a person (organisation/person-judgements.ts). */
     const judged = await thePersonJudgementsAreOn(this.prisma, (ground as any).organizationId ?? null);
-    const sections = sectionsForARunOf(ground.scenario, totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null)
+    const sections = sectionsForARunOf(ground.scenario, totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null)
       .filter((s) => (PATTERNS_ARE_SERVED && judged) || s !== 'patterns');
     const has = (s: BoardSection) => sections.includes(s);
     const family = familyFor(ground.scenario);
@@ -1275,7 +1275,7 @@ export class BoardService {
        * and Today are (request 97 a), so "Session 1 of 12" never sits beside "Session 2 opened on ...".
        * See one-count-for-the-sessions.
        */
-      const planned = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null;
+      const planned = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null;
       /* A finished round hands the count to the next one that has come (theRoundThatHasCome), by the board's own clock. */
       const theRound = theRoundCappedAtThePlan(openRound, planned, mine as any[], now, releaseOne);
       const roundNumbers = Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b);
@@ -3479,7 +3479,7 @@ export class BoardService {
           return { id: o.id, about: String(o.name ?? ''), target: typeof o.target === 'number' ? o.target : null, ownerParticipantId: o.ownerParticipantId ?? null, direction: asADirection(row.direction) ?? whatTheWordsSuggest(row.name, row.target) };
         });
         const counts = await (this.prisma.groundObjectiveSnapshot.findMany({ where: { groundId }, select: { objectiveId: true, sessionNumber: true, count: true } }) as Promise<any[]>).catch(() => [] as any[]);
-        const forecast = theForecast(served, (counts ?? []) as any[], totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null)
+        const forecast = theForecast(served, (counts ?? []) as any[], totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null)
           /*
            * NO PACE FROM TOO LITTLE (Hafsah's quality pass, 18 October, B-26): "about 215 by session 15" was carried forward from two
            * orders in three sessions. On Release 1's sales board, an aim counted from the deals is carried forward only from four
@@ -3499,7 +3499,7 @@ export class BoardService {
          * target and its number. A word only on a team target: on somebody's own target it would be a label on them.
          * See the-headline-and-where-each-target-stands.
          */
-        const totalSessions = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null;
+        const totalSessions = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null;
         const countsOf = (id: string) => ((counts ?? []) as any[]).filter((c) => c.objectiveId === id && typeof c.sessionNumber === 'number');
         const aims: ATeamAim[] = [];
         /* What the deals under "Likely" hold, for an aim counted from the deals: the prototype's "and 2 more are likely". From the same rows and groups as the deal grid. */

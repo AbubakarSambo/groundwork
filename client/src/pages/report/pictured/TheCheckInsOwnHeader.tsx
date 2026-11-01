@@ -11,7 +11,7 @@ type Any = any
  */
 export function TheCheckInsOwnHeader({ groundId, ground, sessionNumber, label }: { groundId: string; ground: Any; sessionNumber?: number | null; label: string }) {
   const people = (ground?.participants ?? []).length
-  const planned = plannedSessionsFor(ground?.timelineDays, ground?.cadence, ground?.plannedSessions)
+  const planned = plannedSessionsFor(ground?.timelineDays, ground?.cadence, ground?.plannedSessions, ground?.cadenceDays)
   const now = sessionNumber ?? null
   return (
     <CheckInHeader

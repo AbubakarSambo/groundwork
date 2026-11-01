@@ -183,7 +183,7 @@ export class TheWeeklyReportService {
     const ground: any = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        initiatorId: true, cadence: true, workingDays: true, kindOfWork: true, workStages: true, organizationId: true, scenario: true,
+        initiatorId: true, cadence: true, cadenceDays: true, workingDays: true, kindOfWork: true, workStages: true, organizationId: true, scenario: true,
         participants: { select: { id: true, userId: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, ...WHAT_SAYS_SOMEBODY_JOINED, user: { select: { firstName: true, lastName: true, email: true } } } },
         objectives: { select: { id: true, name: true, target: true, count: true, direction: true, ownerParticipantId: true, setByParticipantId: true, isADecisionAboutAPerson: true } },
       } as any,
@@ -500,7 +500,7 @@ export class TheWeeklyReportService {
     const ground: any = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, startedFrom: true, peersVisibleToEachOther: true, whoSeesTargets: true, cadence: true,
+        organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, startedFrom: true, peersVisibleToEachOther: true, whoSeesTargets: true, cadence: true, cadenceDays: true,
         /* Decision 75, item 2: the admin asked to approve an evaluation check-in reads it. */
         status: true, approvedById: true,
         participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, email: true } } } },

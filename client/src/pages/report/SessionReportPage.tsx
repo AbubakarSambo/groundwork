@@ -236,7 +236,7 @@ export default function SessionReportPage() {
     onError: () => toast.error('Could not download that record. Please try again.'),
   })
 
-  const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
+  const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions, (ground as any)?.cadenceDays) : null
   const contextEnabled = (ground as any)?.contextEnabled === true
 
   /**

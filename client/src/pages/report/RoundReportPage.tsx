@@ -64,7 +64,7 @@ export default function RoundReportPage() {
   const contextEnabled = (ground as any)?.contextEnabled === true
   /* The direct morning (lib/the-direct-morning.tsx), from the check-in this page already reads, said once for what it draws. */
   const direct = isTheDirectMorningOn(ground)
-  const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
+  const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions, (ground as any)?.cadenceDays) : null
 
   /*
    * SCREEN MATCH, 16 OCTOBER: THE TEAM'S REPORT AS PICTURED, FOR WHOEVER RUNS THE CHECK-IN (team-report.jpg). The whole

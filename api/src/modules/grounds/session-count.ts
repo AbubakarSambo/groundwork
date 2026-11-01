@@ -1,5 +1,5 @@
 import { Cadence } from '@prisma/client';
-import { howManyRoundsUpTo } from './the-check-ins-own-schedule';
+import { howManyRoundsUpTo, theWeekdaysItMeets } from './the-check-ins-own-schedule';
 
 /**
  * How many check-ins a ground actually holds.
@@ -21,9 +21,15 @@ const DAYS_BETWEEN: Partial<Record<Cadence, number>> = {
   [Cadence.MONTHLY]: 30,
 };
 
-export function totalSessionsFor(timelineDays: number | null | undefined, cadence: Cadence | null | undefined): number | null {
+/** Days between check-ins: twice a week is every 3.5 days (7 over the days it meets), so a week holds two. */
+function daysBetween(cadence: Cadence | null | undefined, cadenceDays?: number[] | null): number | undefined {
+  const chosen = theWeekdaysItMeets({ cadence, days: cadenceDays });
+  return chosen.length ? 7 / chosen.length : cadence ? DAYS_BETWEEN[cadence] : undefined;
+}
+
+export function totalSessionsFor(timelineDays: number | null | undefined, cadence: Cadence | null | undefined, cadenceDays?: number[] | null): number | null {
   if (cadence === Cadence.ONE_TIME) return 1;
-  const gap = cadence ? DAYS_BETWEEN[cadence] : undefined;
+  const gap = daysBetween(cadence, cadenceDays);
   if (!gap || !timelineDays || timelineDays <= 0) return null;
   // At least one: a two-week ground on a monthly cadence still holds a check-in,
   // and telling someone they have zero would read as broken.
@@ -47,21 +53,24 @@ export function timelineDaysForAChosenEnd(a: {
   workingDays?: number[] | null;
   /** Weekly and fortnightly: the weekday, 0 to 6. Monthly: the day of the month, 1 to 31. */
   anchorDay?: number | null;
+  /** Weekly, twice or more a week: the weekdays it meets on. */
+  cadenceDays?: number[] | null;
   now?: Date;
 }): number {
   const dayOf = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
   const from = dayOf(a.startsAt ?? a.now ?? new Date());
   const end = dayOf(a.endsAt);
   const inclusiveDays = Math.max(1, Math.round((end - from) / 86_400_000) + 1);
-  const gap = DAYS_BETWEEN[a.cadence];
+  const gap = daysBetween(a.cadence, a.cadenceDays);
   if (!gap) return inclusiveDays;
   /* The schedule's own rounds (the-check-ins-own-schedule.ts), so the count saved is the count the
      setup listed and the count of sessions that will really open: the set day, and "Now" keeping the
      first one open until the next set day at least half a cycle away, are both counted. */
   const count = howManyRoundsUpTo(
-    { cadence: a.cadence, anchorDay: a.anchorDay ?? null, workingDays: a.workingDays ?? null, startsNow: a.startsAt == null },
+    { cadence: a.cadence, anchorDay: a.anchorDay ?? null, days: a.cadenceDays ?? null, workingDays: a.workingDays ?? null, startsNow: a.startsAt == null },
     from,
     end,
   );
-  return Math.max(1, count) * gap;
+  /* Rounded up, so totalSessionsFor's floor gives back exactly the count (3.5 days a session, twice a week). */
+  return Math.ceil(Math.max(1, count) * gap);
 }

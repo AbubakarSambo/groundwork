@@ -33,7 +33,8 @@ describe('the session count reaches the prompt', () => {
   });
 
   it('and derives it from the same timeline and cadence the header uses', () => {
-    expect(SERVICE).toMatch(/totalSessionsFor\(\s*ground\.timelineDays,\s*ground\.cadence\s*\)/);
+    /* Changed 2 November 2026 (twice a week): the count also takes the weekdays it meets on. */
+    expect(SERVICE).toMatch(/totalSessionsFor\(\s*ground\.timelineDays,\s*ground\.cadence,\s*ground\.cadenceDays\s*\)/);
   });
 });
 

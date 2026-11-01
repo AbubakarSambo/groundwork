@@ -130,7 +130,7 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
    * This is the fourth copy of this rule to get it wrong, and the third today. It is one function
    * now and this asks it. See which-round-is-open.ts.
    */
-  const roundsPlanned = totalSessionsFor(it.timelineDays as any, it.cadence as any) ?? null;
+  const roundsPlanned = totalSessionsFor(it.timelineDays as any, it.cadence as any, (it as any).cadenceDays) ?? null;
   /* There is no round after the last planned one: a stray session-2 row on a one-session run made the board
      read "0 of 2 answered this round" to somebody who had just answered (21 Sep 2026). */
   const openRoundRaw = sessions.length ? theTeamsOpenRound(sessions as any, (it.participants ?? []) as any) : 1;

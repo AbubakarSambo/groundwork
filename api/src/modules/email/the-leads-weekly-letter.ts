@@ -452,7 +452,7 @@ export async function sendTheLeadsWeeklyLetters(
   const kind = every ? (every.anchorIsOn ? {} : WHERE_A_GROUND_IS_NOT_THE_ANCHORS) : WHERE_A_GROUND_IS_THE_ANCHORS;
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
     where: { ...kind, status: { notIn: TERMINAL } },
-    select: { id: true, label: true, initiatorId: true, organizationId: true, cadence: true, ...(every ? { scenario: true } : {}) },
+    select: { id: true, label: true, initiatorId: true, organizationId: true, cadence: true, cadenceDays: true, ...(every ? { scenario: true } : {}) },
     ...page,
   }), 1000);
   const byLead = new Map<string, { id: string; label: string; initiatorId: string; organizationId?: string; scenario?: string | null }[]>();

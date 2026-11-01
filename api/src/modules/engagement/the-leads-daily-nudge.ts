@@ -342,7 +342,7 @@ async function leaveOutWhatIsLongOverdueOnOldCheckIns(prisma: any, o: WhatIsOuts
 
 export async function whatIsOutstandingFor(
   prisma: any,
-  lead: { userId: string; organizationId: string; grounds: { id: string; label: string; scenario: any; overWhatsApp: boolean | null; timelineDays: number | null; cadence: any }[] },
+  lead: { userId: string; organizationId: string; grounds: { id: string; label: string; scenario: any; overWhatsApp: boolean | null; timelineDays: number | null; cadence: any; cadenceDays?: number[] | null }[] },
   deps: { boards: TheBoards; release: Date | null },
   now: Date,
 ): Promise<WhatIsOutstanding> {
@@ -508,7 +508,7 @@ export async function whatIsOutstandingFor(
     const objectives: any[] = await prisma.groundObjective.findMany({ where: { groundId: g.id, ownerParticipantId: null, isADecisionAboutAPerson: false }, select: { id: true, name: true, target: true, count: true, direction: true, dueOn: true } }).catch(() => []);
     if (!objectives.length) continue;
     const snaps: any[] = await prisma.groundObjectiveSnapshot.findMany({ where: { groundId: g.id }, select: { objectiveId: true, sessionNumber: true, count: true } }).catch(() => []);
-    const planned = totalSessionsFor(g.timelineDays, g.cadence) ?? null;
+    const planned = totalSessionsFor(g.timelineDays, g.cadence, g.cadenceDays) ?? null;
     for (const o of objectives) {
       if (typeof o.target !== 'number' || !o.name?.trim()) continue;
       const counts = snaps.filter((s) => s.objectiveId === o.id && typeof s.sessionNumber === 'number');
@@ -653,7 +653,7 @@ export async function everythingOutstandingFor(
 ): Promise<{ needsYou: string[]; overdueOnYourTeam: string[]; risks: string[]; about: { needsYou: TheAbout[]; overdueOnYourTeam: TheAbout[]; risks: TheAbout[] } } | null> {
   const grounds: any[] = await prisma.ground.findMany({
     where: { initiatorId: reader.userId, organizationId: reader.organizationId, status: { notIn: [...TERMINAL, ...HELD, GroundStatus.AWAITING_APPROVAL] } },
-    select: { id: true, label: true, scenario: true, organizationId: true, overWhatsApp: true, initiatorId: true, timelineDays: true, cadence: true, workStages: true, endsAt: true, createdAt: true, startsAt: true, runsUntilEnded: true },
+    select: { id: true, label: true, scenario: true, organizationId: true, overWhatsApp: true, initiatorId: true, timelineDays: true, cadence: true, cadenceDays: true, workStages: true, endsAt: true, createdAt: true, startsAt: true, runsUntilEnded: true },
   });
   if (!grounds.length) return null;
   const release = await theEngagementMoment(prisma, now).catch(() => null);
@@ -670,7 +670,7 @@ export async function everythingOutstandingFor(
 async function theLeadsAndTheirCheckIns(prisma: any) {
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
     where: { status: { notIn: [...TERMINAL, ...HELD, GroundStatus.AWAITING_APPROVAL] } },
-    select: { id: true, label: true, scenario: true, organizationId: true, overWhatsApp: true, initiatorId: true, timelineDays: true, cadence: true, workingDays: true, workStages: true, endsAt: true, createdAt: true, startsAt: true, runsUntilEnded: true },
+    select: { id: true, label: true, scenario: true, organizationId: true, overWhatsApp: true, initiatorId: true, timelineDays: true, cadence: true, cadenceDays: true, workingDays: true, workStages: true, endsAt: true, createdAt: true, startsAt: true, runsUntilEnded: true },
     orderBy: { id: 'asc' },
     ...page,
   }), 1000);

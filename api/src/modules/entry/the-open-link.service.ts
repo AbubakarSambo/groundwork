@@ -37,7 +37,7 @@ export class TheOpenLinkService {
   async whatThisIs(joinToken: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken },
-      select: { id: true, label: true, brief: true, scenario: true, status: true, cadence: true, cadenceAnchorDay: true, workingDays: true, endsAt: true, initiator: { select: { firstName: true } } },
+      select: { id: true, label: true, brief: true, scenario: true, status: true, cadence: true, cadenceDays: true, cadenceAnchorDay: true, workingDays: true, endsAt: true, initiator: { select: { firstName: true } } },
     });
     if (!ground) throw new NotFoundException('That link does not open anything.');
     if (['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'].includes(ground.status)) {
@@ -68,7 +68,7 @@ export class TheOpenLinkService {
        */
       theQuestion: ground.scenario === 'TEAM_UPDATES' ? (ground.brief?.trim() || null) : null,
       /* And when it runs, as the invitation says it. */
-      schedule: whenItAsks({ cadence: ground.cadence, cadenceAnchorDay: ground.cadenceAnchorDay, workingDays: ground.workingDays, leadFirstName: ground.initiator?.firstName ?? null }),
+      schedule: whenItAsks({ cadence: ground.cadence, cadenceAnchorDay: ground.cadenceAnchorDay, cadenceDays: (ground as any).cadenceDays, workingDays: ground.workingDays, leadFirstName: ground.initiator?.firstName ?? null }),
       endsAt: ground.endsAt ? ground.endsAt.toISOString() : null,
       askedBy: ground.initiator?.firstName ?? null,
       scenario: ground.scenario,

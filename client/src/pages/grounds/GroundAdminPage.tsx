@@ -690,6 +690,7 @@ export function GroundAdminPage() {
     ground?.timelineDays,
     (ground as any)?.cadence,
     (ground as any)?.maxSessions ?? (ground as any)?.totalSessions,
+    (ground as any)?.cadenceDays,
   )
   // Sent with the ground, because the client cannot read an environment variable
   // and a screen that guesses whether a feature is on renders half of it.

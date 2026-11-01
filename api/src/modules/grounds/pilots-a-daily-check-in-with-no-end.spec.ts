@@ -33,6 +33,7 @@ describe('a daily check-in with no end said', () => {
     expect(says).not.toMatch(/of 365/);
     const src = withoutComments(readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8'));
     expect(src).toContain('const endsOn = noEnd ? null : deadlineOf(ground as any);');
-    expect(src).toContain('noEnd ? null : totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,');
+    /* Changed 2 November 2026 (twice a week): the count also takes the weekdays it meets on. */
+    expect(src).toContain('noEnd ? null : totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,');
   });
 });

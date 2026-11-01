@@ -94,6 +94,6 @@ export const earlierRecordQuery = (participantId: string, sessionNumber: number)
   take: 120,
   select: {
     type: true, text: true, createdAt: true,
-    checkIn: { select: { sessionNumber: true, completedAt: true, startedAt: true, createdAt: true, ground: { select: { cadence: true } } } },
+    checkIn: { select: { sessionNumber: true, completedAt: true, startedAt: true, createdAt: true, ground: { select: { cadence: true, cadenceDays: true } } } },
   },
 });

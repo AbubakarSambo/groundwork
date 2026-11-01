@@ -132,7 +132,7 @@ export class PatternsService {
         id: true, groundId: true, participantId: true, sessionNumber: true,
         patternsAnalyzedAt: true, specificityDimensions: true, sessionReport: true,
         completedAt: true, startedAt: true, createdAt: true,
-        ground: { select: { cadence: true } },
+        ground: { select: { cadence: true, cadenceDays: true } },
       },
     });
     if (!checkIn || checkIn.patternsAnalyzedAt) return;
@@ -689,7 +689,7 @@ export class PatternsService {
     const latest = await this.prisma.checkIn.findFirst({
       where: { groundId },
       orderBy: { sessionNumber: 'desc' },
-      select: { sessionNumber: true, completedAt: true, startedAt: true, createdAt: true, ground: { select: { cadence: true } } },
+      select: { sessionNumber: true, completedAt: true, startedAt: true, createdAt: true, ground: { select: { cadence: true, cadenceDays: true } } },
     });
     const currentPeriod = latest
       ? periodOf({ sessionNumber: latest.sessionNumber, when: latest.completedAt ?? latest.startedAt ?? latest.createdAt }, latest.ground)
@@ -1022,7 +1022,7 @@ export class PatternsService {
     const [participant, checkIns] = await Promise.all([
       this.prisma.groundParticipant.findUnique({
         where: { id: participantId },
-        select: { roleAsDescribed: true, ground: { select: { cadence: true } } },
+        select: { roleAsDescribed: true, ground: { select: { cadence: true, cadenceDays: true } } },
       }),
       this.prisma.checkIn.findMany({
         where: { participantId, status: CheckInStatus.COMPLETED },

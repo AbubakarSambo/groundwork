@@ -348,7 +348,7 @@ const HOW_TO_READ_KEY = 'gw-board-how-to-read'
  */
 function whereTheRunIs(data: any, ground: any): { nearTheEnd: boolean; lastSessionDone: boolean } {
   const sessions = (data?.phaseSpine?.sessions ?? []) as { state: string }[]
-  const planned = plannedSessionsFor(ground?.timelineDays, ground?.cadence, ground?.plannedSessions)
+  const planned = plannedSessionsFor(ground?.timelineDays, ground?.cadence, ground?.plannedSessions, ground?.cadenceDays)
   const done = sessions.filter((x) => x.state === 'done').length
   if (planned == null || planned <= 0) return { nearTheEnd: false, lastSessionDone: false }
   return { nearTheEnd: done >= planned - 1, lastSessionDone: done >= planned }
@@ -1164,7 +1164,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* Where the run is, read once, so the top and the foot of the board gate the ending panel on the
      same answer (the-exit-belongs-at-the-exit). */
   const { nearTheEnd, lastSessionDone } = whereTheRunIs(data, groundForSignals)
-  const plannedSessions = plannedSessionsFor((groundForSignals as any)?.timelineDays, (groundForSignals as any)?.cadence, (groundForSignals as any)?.plannedSessions)
+  const plannedSessions = plannedSessionsFor((groundForSignals as any)?.timelineDays, (groundForSignals as any)?.cadence, (groundForSignals as any)?.plannedSessions, (groundForSignals as any)?.cadenceDays)
 
   const [newObjName, setNewObjName] = useState('')
   const [newObjTarget, setNewObjTarget] = useState('')

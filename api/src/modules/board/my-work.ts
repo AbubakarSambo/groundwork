@@ -678,7 +678,7 @@ const GROUND_SELECT = {
   id: true, label: true, organizationId: true, initiatorId: true, scenario: true, kindOfWork: true, peersVisibleToEachOther: true,
   initiator: { select: { firstName: true, lastName: true } },
   organization: { select: { timeZone: true } },
-  cadence: true, workingDays: true, workStages: true,
+  cadence: true, cadenceDays: true, workingDays: true, workStages: true,
   participants: {
     select: {
       id: true, userId: true, email: true, nameGiven: true, partyType: true, managingOnly: true, createdAt: true,
