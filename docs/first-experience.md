@@ -145,6 +145,40 @@ The wording fixes did not move the score. Hafsah's call (31 October): adding the
 
 **The harness, again:** the model invents the same phone numbers every round. A number someone on the bed already has is rightly refused, which read as lost data. Each run's numbers are unique from round 4.
 
+## Round 4 (31 October): average 1.4, lowest 1
+
+Sales 2, law firm 1, clinic group 1, field programme 2, startup 2, family business 1, mobile cinema 1, charity 1. This round ran on the one team box and the weekly tile reading the one count. The law firm lead rated it 1 because what she said in setup was lost. Hafsah made that the blocker, so the no-loss fix (2323bd56a, d46100679, fd78c6e7e) and the no-loss check in the harness came next.
+
+## Round 5 (1 November): average 1.25, lowest 1
+
+Sales 1, law firm 1, clinic group 2, field programme 1, startup 1, family business 1, mobile cinema 1, charity 2. This was the first round with the no-loss check: after each lead, it counts how many of the people they named in setup reached a check-in.
+
+| Lead | Check-ins | Named people who reached one |
+|---|---|---|
+| Sales | 1 | 4 of 4 |
+| Law firm | 0 | 0 of 4 |
+| Clinic group | 1 | 2 of 4 |
+| Field programme | 0 | 0 of 4 |
+| Startup | 1 | 4 of 4 |
+| Family business | 1 | 4 of 4 |
+| Mobile cinema | 0 | 0 of 4 |
+| Charity | 1 | 4 of 4 |
+
+**So the first no-loss fix was not enough.** What the screens show, with the causes:
+- **The team box comes too late.** Setup ends with "Your board is ready. You can add your team below", but the box and its Save appear only after the setup report is written. Five of the eight leads looked for the box, then left to type everyone in again on People, one by one.
+- **An unfinished setup comes back empty.** Today says "Everything you said is kept, and it opens where you left off". But Carry on opens setup at its first question, because the conversation was kept only in that browser. Meanwhile Check-ins says "No check-ins yet". The field programme lead went in circles for 20 steps.
+- **Setup asks again for what it was told.** Six of the eight leads said it asked the same thing again, and setup does not read what has been said before it asks. The mobile cinema lead was asked "what do you do" right after "I'm in charge of planning", and "who is everyone" after listing the team.
+- **A phone number is refused for its own person.** The family business admin typed Juma's number again, because the row did not show the number given in setup. Saving it was refused: "This number is already saved for Juma ..., so it cannot be saved for somebody else too". There are two stores for one number.
+- **Day one gives nothing back.** The startup's board was empty. The report repeats the lead's words. Ask told the family business owner "No role is recorded for you here, so there is nothing set up for you to work through" three times, when he asked where stock and deliveries stand.
+
+**The fix (in progress on wip/no-loss-2), each at its cause:**
+- The team box and Save appear the moment setup ends, already filled with everyone named.
+- The unfinished setup is kept on the server and read by both Today and Check-ins.
+- Setup reads what was already said before it asks.
+- One store owns a person's phone number.
+
+Round 6 proves it with the same check. Ask, the empty board and the report come after.
+
 ## The plan to 8.5
 
 1. **Round 2** on the fixes above, with fresh people for every kind of organisation and the harness's memory fix: each person now remembers everything they typed. In round 1 one admin accused Groundwork of inventing a roof she had typed twice.
