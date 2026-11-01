@@ -235,6 +235,13 @@ This round ran on these fixes:
 - Two leads called the setup form better than the conversation.
 - The board never says when the next session opens.
 
+## A change of approach (Hafsah, 1 November)
+
+The rounds stopped after round 7. Fixing round by round was not moving the score enough. Instead:
+1. Today's first experience is mapped for the sales team, the law firm and the field programme, on the web and a phone. Every screen, question, answer and button is shown in order with its screenshot, and every complaint is marked (repeated itself, sounded like a machine, lost something, blocked adding the team, contradicted itself, could not find a check-in). The map is at ~/Desktop/first-experience/today-map.html. In these six walks nothing named was lost (24 of 24 reached a check-in). The ratings were 1 or 2.
+2. The target journey is written screen by screen beside today's, with why, from the prototype and the judges' words. It is at ~/Desktop/first-experience/target-journey.html and https://claude.ai/artifact/DeHFyXrtWLCABrYq7MHcnM, for Hafsah's approval. Nothing is built until she approves.
+3. After approval: the assessment test first, then the approved journey, scored on Hafsah's own scale.
+
 ## The plan to 8.5
 
 1. **Round 2** on the fixes above, with fresh people for every kind of organisation and the harness's memory fix: each person now remembers everything they typed. In round 1 one admin accused Groundwork of inventing a roof she had typed twice.
