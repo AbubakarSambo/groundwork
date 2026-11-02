@@ -78,8 +78,11 @@ describe('a promise is kept only from what is confirmed (Hafsah, 12 October, nig
 });
 
 describe('what the model is told', () => {
-  it('a new date or work in progress is open, never a miss, and doubt is open', () => {
-    expect(READ_WHAT_HAPPENED).toContain('A new date or a new plan for the same thing is OPEN, never NOT_DONE.');
+  /* Changed 2 November 2026 (assessment test): a new date is open only while the promise's day has not passed. Once it has, the
+     promise slipped, so a re-promise is NOT_DONE and what they promise now is a new promise. */
+  it('a new date before the day is open, a new date after it is a miss, work in progress is open, and doubt is open', () => {
+    expect(READ_WHAT_HAPPENED).toContain('A new date for the same thing is OPEN while its day has not passed. A new date is NOT_DONE once its day has passed.');
+    expect(READ_WHAT_HAPPENED).toContain('they said it is in progress or partly done');
     expect(READ_WHAT_HAPPENED).toContain('When in doubt, OPEN.');
     expect(READ_WHAT_HAPPENED).toContain("Use only this person's own words.");
   });

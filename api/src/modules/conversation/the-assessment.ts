@@ -256,7 +256,7 @@ export const THE_ASSESSMENT_PROMPT = [
   '  - roleAgainstGiven: from this conversation only, the role they are actually playing, and whether it fits the role they were given ("cannot tell" when the conversation does not show it).',
   '  - areas: each item tagged with the area of work it belongs to (a client, a product, a project, admin and so on), and whether it fits one of the team\'s priorities, where they are given.',
   '  - observations: what you noticed, as facts and never as judgements: a vague answer, a question they avoided, signs of overload. Quote their words.',
-  '  - comparedWithLastTime (only when a previous assessment or open promises are given; facts only): promisesDue has one item for EACH open promise on the record, with its id in `previousItem`, saying what happened to it (kept, not kept, not mentioned, or still open with a new date or in progress) and `happened` by the rules below; figures that changed with both values and the date of the earlier one, work that moved or did not, blockers new, still there or cleared, anything repeated and how many times, and where what they said disagrees with the record or with someone else. Use the previous item\'s id in `previousItem` where there is one.',
+  '  - comparedWithLastTime (only when a previous assessment or open promises are given; facts only): promisesDue has one item for EACH open promise on the record, with its id in `previousItem`, saying what happened to it (kept; not kept, which includes a promise whose day has passed that they now promise again for later; not mentioned; or still open, in progress or given a new date before its day passed) and `happened` by the rules below; figures that changed with both values and the date of the earlier one, work that moved or did not, blockers new, still there or cleared, anything repeated and how many times, and where what they said disagrees with the record or with someone else. Use the previous item\'s id in `previousItem` where there is one.',
   '  - stillOpen: what is still open, to ask next time.',
   '  - everythingElse: everything else they said, so nothing falls through.',
   '',
@@ -384,7 +384,7 @@ export interface TheMaterial {
   /** The previous assessment's items, with their ids, to compare against. */
   previous: { checkInId: string; on: string | null; items: { id: string; text: string }[] } | null;
   /** The promises open on the record from before this check-in (GroundCommitment, the owner of a promise's state), with their ids. */
-  openPromises: { id: string; text: string; whenSaid: string | null }[];
+  openPromises: { id: string; text: string; whenSaid: string | null; saidOn?: string | null }[];
 }
 
 /** How an open promise on the record is named to the read, and read back. */
@@ -416,7 +416,7 @@ export function theMaterialAsText(m: TheMaterial): string {
   }
   if (m.openPromises.length) {
     out.push('', 'THEIR PROMISES STILL OPEN ON THE RECORD, made before this check-in (say in comparedWithLastTime.promisesDue what happened to each):');
-    for (const c of m.openPromises) out.push(`  [${aPromisesId(c.id)}] ${c.text}${c.whenSaid ? ` (${c.whenSaid})` : ''}`);
+    for (const c of m.openPromises) out.push(`  [${aPromisesId(c.id)}] ${c.text}${c.saidOn || c.whenSaid ? ` (${[c.saidOn && `said on ${c.saidOn}`, c.whenSaid].filter(Boolean).join(', ')})` : ''}`);
   }
   if (m.previous) {
     out.push('', `THIS PERSON'S PREVIOUS ASSESSMENT${m.previous.on ? `, ${m.previous.on.slice(0, 10)}` : ''}:`);

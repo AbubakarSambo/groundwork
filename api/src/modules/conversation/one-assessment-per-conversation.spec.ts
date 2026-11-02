@@ -12,6 +12,7 @@
  *   - a later correction is kept on the earlier item as its history.
  */
 import { assessTheConversation } from './assess-the-conversation';
+import { anAssessmentHolding } from './an-assessment-for-a-spec';
 import {
   THE_ASSESSMENT_PROMPT, theReportTheyRead, theAssessmentIn, theColumnWith, theUnmatched, thePartsFrom, whoMaySee, theFilesPromptVersion,
   whatTheyPromisedThemselves, whatTheyAreWaitingOn, type TheAssessment,
@@ -117,6 +118,26 @@ describe('the assessment of a check-in', () => {
     expect(stored).toMatchObject({ kind: 'assessment', version: 1, about: { who: 'Amani Wekesa', sessionNumber: 2, howItEnded: 'finished by the person' } });
     expect(whatTheyPromisedThemselves(stored)).toEqual([{ action: 'I will call Westgate on Friday', clear: null, outcome: null, when: 'on Friday' }]);
     expect(whatTheyAreWaitingOn(stored)).toEqual([{ what: 'the price list', onName: 'Grace', onLabel: null, status: 'WAITING', then: null, triedSaid: null, dueSaid: null, sinceDay: null, namedTheThing: true }]);
+  });
+
+  /* Assessment test, 2 November: every second session was a missed Thursday, so "last time" was an empty assessment and no run of
+     assessments ever formed; and a promise past its day, promised again, was read as still open. */
+  it('compares with the last conversation they had, not a missed session, and gives the days a promise and this conversation were on', async () => {
+    const answered: any = anAssessmentHolding({ promises: [{ action: 'I will send the two attendance sheets by Monday' }] });
+    answered.about = { ...answered.about, checkInId: 'ci-0', sessionNumber: 0, endedAt: '2026-10-26T09:00:00Z' };
+    const missed: any = anAssessmentHolding();
+    missed.about = { ...missed.about, checkInId: 'ci-1', sessionNumber: 1, howItEnded: 'missed', endedAt: '2026-10-29T21:00:00Z' };
+    const w = aWorld({ answers: [FIRST, SECOND], earlier: [
+      { id: 'ci-0', sessionNumber: 0, completedAt: new Date('2026-10-26T09:00:00Z'), sessionReport: answered },
+      { id: 'ci-1', sessionNumber: 1, completedAt: new Date('2026-10-29T21:00:00Z'), sessionReport: missed },
+    ] });
+    w.deps.prisma.groundCommitment = { findMany: jest.fn(async () => [{ id: 'k1', text: 'I will send the two attendance sheets', whenSaid: 'by Monday', createdAt: new Date('2026-10-26T09:00:00Z') }]) };
+    await assessTheConversation(w.deps, 'ci-2', { howItEnded: 'finished by the person', closedAt: new Date() });
+    const material = w.calls[0].content;
+    expect(material).toContain("THIS PERSON'S PREVIOUS ASSESSMENT, 2026-10-26");
+    expect(material).toContain('The day of the conversation: 2026-11-02.');
+    expect(material).toContain('[c:k1] I will send the two attendance sheets (said on 2026-10-26, by Monday)');
+    expect(w.calls[0].system).toContain('It is also NOT_DONE when its day has passed and they promise it again for a later day.');
   });
 
   it('never gives the model the lead\'s words about a person: the role given is their own job title', async () => {

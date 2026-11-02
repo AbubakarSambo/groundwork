@@ -60,7 +60,11 @@ export async function theAssessmentOf(prisma: any, checkInId: string): Promise<T
   return theAssessmentIn(row?.sessionReport);
 }
 
-/** This person's assessments before this session, oldest first. */
+/**
+ * This person's assessments before this session, oldest first, the missed ones left out (assessment test, 2 November): a session
+ * nobody answered holds nothing to compare against, so "last time" is the last conversation they had, and a missed Thursday between
+ * two answered Mondays no longer breaks the run that patterns and next steps are counted across.
+ */
 async function theirEarlierAssessments(prisma: any, participantId: string, beforeSession: number): Promise<AnAssessmentSeen[]> {
   const rows = ((await prisma.checkIn.findMany({
     where: { participantId, sessionNumber: { lt: beforeSession } },
@@ -68,7 +72,7 @@ async function theirEarlierAssessments(prisma: any, participantId: string, befor
     select: { id: true, sessionNumber: true, completedAt: true, sessionReport: true },
   }).catch(() => [])) ?? []) as any[];
   return rows.map((r) => ({ checkInId: r.id, sessionNumber: r.sessionNumber, on: isoOf(r.completedAt), assessment: theAssessmentIn(r.sessionReport) as TheAssessment }))
-    .filter((s) => !!s.assessment);
+    .filter((s) => !!s.assessment && s.assessment.about?.howItEnded !== 'missed');
 }
 
 export async function assessTheConversation(deps: AssessmentDeps, checkInId: string, how: HowToAssess): Promise<TheAssessment | null> {
@@ -118,8 +122,8 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     /* Their promises open on the record from before this conversation began: the read says what happened to each, and the settling reads that. */
     const openPromises = (((await deps.prisma.groundCommitment?.findMany?.({
       where: { groundId: row.groundId, participantId: row.participantId, status: 'UNKNOWN', createdAt: { lt: row.startedAt ?? how.closedAt } },
-      select: { id: true, text: true, whenSaid: true }, orderBy: { createdAt: 'asc' }, take: 20,
-    })?.catch?.(() => [])) ?? []) as any[]).map((c) => ({ id: String(c.id), text: String(c.text ?? ''), whenSaid: c.whenSaid ?? null })).filter((c) => c.text);
+      select: { id: true, text: true, whenSaid: true, createdAt: true }, orderBy: { createdAt: 'asc' }, take: 20,
+    })?.catch?.(() => [])) ?? []) as any[]).map((c) => ({ id: String(c.id), text: String(c.text ?? ''), whenSaid: c.whenSaid ?? null, saidOn: isoOf(c.createdAt)?.slice(0, 10) ?? null })).filter((c) => c.text);
     /*
      * WHAT THE LEAD ATTACHED, WHICH EVERYBODY ON THE CHECK-IN MAY OPEN. A lead who puts the team's numbers in a sheet has given
      * them as surely as if she had typed them (Hafsah, 22 September), and what her assessment reads reaches everybody: the team's
