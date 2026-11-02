@@ -74,9 +74,13 @@ describe('every gate that stops somebody', () => {
       const src = readFileSync(join(SRC, rel), 'utf8');
       const at = src.indexOf('isCovered(');
       expect(at).toBeGreaterThan(-1);
-      /* The nearest organisation select above it carries freeUntil and freePlan. */
+      /* The nearest organisation select above it carries freeUntil and freePlan: written out, or through the one shared list of
+         what a cover read needs (2 November 2026, the four weeks after a free trial need the trial's own two dates too). */
       const before = src.slice(Math.max(0, at - 1200), at);
-      expect(before).toMatch(/freeUntil: true, freePlan: true/);
+      expect(before).toMatch(/freeUntil: true, freePlan: true|WHAT_COVER_READS/);
     }
+    const shared = readFileSync(join(SRC, 'common/subscription.ts'), 'utf8');
+    const list = shared.slice(shared.indexOf('export const WHAT_COVER_READS'), shared.indexOf('} as const;', shared.indexOf('export const WHAT_COVER_READS')));
+    for (const field of ['subscriptionPlan: true', 'subscriptionStatus: true', 'freeUntil: true', 'freePlan: true', 'freeTrialStartedAt: true', 'freeMonthOfReleaseAt: true']) expect(list).toContain(field);
   });
 });

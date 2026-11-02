@@ -21,7 +21,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { theCheckInForAnEmail } from './the-check-in-for-an-email';
 import { STOP_LINE } from '../conversation/ignoring-it-should-be-enough';
 import { ROUTINE_EMAILS, THEY_HAD_ONE_TODAY, theirRoutineMessagesToday, THE_SUMMARY_SENDERS, justAfterTheSummary, whoTheyAre, theyRunACheckIn } from '../engagement/one-routine-message-a-day';
-import { NOT_SENT_WHILE_AWAY, whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
+import { NOT_SENT_WHILE_AWAY, aPauseStops, whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
+import { GROUNDWORK_IS_PAUSED_THERE, thisOrganisationIsPaused } from '../billing/the-trial-grace';
 import { whoIsAwayOn } from '../suites/who-is-away';
 import { inQuietHours, nextAllowedMoment } from './nothing-lands-at-3am';
 import { Resend } from 'resend';
@@ -29,7 +30,7 @@ import * as nodemailer from 'nodemailer';
 import { greeting } from './a-greeting-with-no-name';
 import { howLongInWords } from '../auth/how-long-a-link-lasts';
 import { shouldSayWhatGroundworkIs, withWhatGroundworkIs } from './what-groundwork-is';
-import { markedAsDirect, theDirectMarkOn, theDirectMorningForAMail, withoutTheDirectMark } from './a-direct-email';
+import { markedAsDirect, theDirectMarkOn, theDirectMorningForAMail, theOrganisationAMailIsAbout, withoutTheDirectMark } from './a-direct-email';
 import { whatTheyReported } from '../engagement/what-they-reported';
 import { somebodyCheckedInDirectly, theInvitationDirectly, theReportIsStillWaitingDirectly, theReportReadyDirectly } from './the-direct-words';
 import { haveNotCheckedInSaid, type WhoIsLeft } from './who-has-not-checked-in-yet';
@@ -199,6 +200,11 @@ export class EmailService implements OnModuleInit {
   private async wouldTheyRatherNot(to: string, sender: string, context?: DeliveryContext): Promise<string | null> {
     const kind = whatThisMailIs(sender);
     if (kind === 'the way back in' || kind === 'operational') return null;
+    /* GROUNDWORK IS PAUSED THERE (2 November 2026): four weeks after its free month ended, with no plan chosen. Nothing about the work
+       goes until it pays; getting in and paying always do. Asked here, once, for every mail, sent now or held for later. */
+    if (aPauseStops(kind) && (await thisOrganisationIsPaused(this.prisma, await theOrganisationAMailIsAbout(this.prisma, to, context)))) {
+      return GROUNDWORK_IS_PAUSED_THERE;
+    }
 
     const address = to.trim().toLowerCase();
     /*
@@ -503,7 +509,7 @@ export class EmailService implements OnModuleInit {
     }
     /* Every mail but the way back in and the running of the product (release plan Part 0, Drop Access run 1 item 12): "Joseph Kariuki has
        checked in" was an asked-for mail and went at half past two in the morning in Nairobi. Quiet hours hold it until seven. */
-    if (sender && (whatThisMailIs(sender) === 'we decided to send it' || whatThisMailIs(sender) === 'asked for')) {
+    if (sender && (whatThisMailIs(sender) === 'we decided to send it' || whatThisMailIs(sender) === 'asked for' || whatThisMailIs(sender) === 'about paying')) {
       const held = await this.holdForTheMorning(options, context, sender);
       if (held) { if (context) context.outcome = 'held'; return undefined; }
     }
@@ -1301,9 +1307,10 @@ export class EmailService implements OnModuleInit {
     return context.outcome ?? 'sent';
   }
 
-  async sendFreeMonthEnded(email: string, subject: string, lines: string[], linkLabel: string): Promise<'sent' | 'held' | 'suppressed'> {
+  /** The four weeks after the free month (2 November 2026): one a week, then one a day counting down. To admins and leads only. */
+  async sendGroundworkPausesSoon(email: string, subject: string, lines: string[], linkLabel: string): Promise<'sent' | 'held' | 'suppressed'> {
     const context: DeliveryContext = { kind: 'OTHER' };
-    await this.sendEmail({ to: email, subject, html: this.theFreeMonthsHtml(lines, linkLabel) }, context, 'sendFreeMonthEnded');
+    await this.sendEmail({ to: email, subject, html: this.theFreeMonthsHtml(lines, linkLabel) }, context, 'sendGroundworkPausesSoon');
     return context.outcome ?? 'sent';
   }
 
