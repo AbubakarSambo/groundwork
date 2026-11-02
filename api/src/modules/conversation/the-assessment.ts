@@ -174,7 +174,7 @@ export interface TheAssessment {
   /** The cost and the time, for the with-against-without test. */
   measure: { modelCalls: number; msFromCloseToReady: number; readyAt: string; modelFailed: boolean };
   /** Layer 2: patterns across this person's assessments, computed when this one was written. Never decided inside one. */
-  acrossTime?: unknown[];
+  acrossTime?: unknown;
   /** Layer 3: the next step for each pattern, tracked from assessment to assessment. */
   interventions?: unknown[];
 }
@@ -244,22 +244,22 @@ export const THE_ASSESSMENT_PROMPT = [
   'THE SECTIONS:',
   '  - summary: two or three plain sentences on what this conversation established.',
   '  - workUpdates: each piece of work mentioned, with its stage, value, dates, the next step, the day of the next step and who owns it, as far as they said.',
-  '  - claims: each thing they say is true or done. `proof` is "proved" only when they gave or pointed to proof (a document, a photo, a number someone else confirmed); otherwise "said". `proofIs` says what the proof is.',
+  '  - claims: each thing they say is true or done. `proof` is "proved" only when they gave or pointed to proof (a document, a photo, a number someone else confirmed); otherwise "said". `proofIs` says what the proof is. `needsProof` is true when they say something is done, sent, sold, paid, signed or true that a document, a photo or another person could show; it is false for something not done, a plan, a feeling or "on track". `proofAsked` is true when Groundwork asked them to show it, or they said they would send the proof. Where it is the same claim as one in their previous assessment, `previousItem` is that item\'s id.',
   '  - promises: each thing somebody said they would do. `byThePerson` is true only for this person\'s own promises. For this person\'s own, the rules below apply.',
   '  - numbers: each figure, what it measures, its unit, and where it came from.',
   '  - people: each person and organisation mentioned, with their role, and how the speaker spoke of them (praise, criticism or neutral), only from their words. For a person on the check-in, `theirWork` says how the speaker spoke of that person\'s work: "credited" when the speaker says they did or moved something, or unblocked the speaker; "covered for" when the speaker did or picked up work that belongs to them; otherwise "none". A mention with no work attached ("I spoke to Dana") is "none".',
   '  - dates: each date or deadline, as they said it.',
   '  - decisions: each decision made or waiting, and who decides.',
-  '  - blockers: each thing this person is waiting on or blocked by. The rules below apply. `since` is when it started, as they said it, and `sinceDay` is that day as a date (YYYY-MM-DD), worked out from their words and the day of the conversation; null when they did not say when it started.',
+  '  - blockers: each thing this person is waiting on or blocked by. The rules below apply. `since` is when it started, as they said it, and `sinceDay` is that day as a date (YYYY-MM-DD), worked out from their words and the day of the conversation; null when they did not say when it started. Where it is the same wait as one in their previous assessment, `previousItem` is that item\'s id.',
   '  - corrections: anything they said the record, the board or Groundwork has wrong: what it said, what it should say, and whether they backed it. Where it corrects an item of the previous assessment, `correctsItem` is that item\'s id.',
-  '  - documents: each document or photo they added or pointed to: what it says, what it proves, and where it belongs.',
+  '  - documents: each document or photo they added or pointed to: what it says, what it proves, and where it belongs. Where it proves a claim in their previous assessment, `provesItem` is that claim\'s id.',
   '  - targets: what the check-in as a whole is aiming at, and each number somebody is aiming at, by the rules for aims below. In every conversation, setup or check-in.',
-  '  - setup (only when setup material is given): the objective, what success looks like, the team and their roles, working days and timing, rules and definitions, risks, and the lead\'s private notes on each person.',
+  '  - setup (only when setup material is given): the objective, what success looks like, the team and their roles, working days and timing, rules and definitions, risks, and the lead\'s private notes on each person. For each person on the team and each private note, `spokenOf` says how the lead spoke of that person (praise, criticism or neutral), only from her words.',
   '  - roleSignals: what the person actually did or talked about doing: tasks, decisions, who they dealt with, what they owned. Also each thing they said about their own job, with its `part`: "the name of their job" (a few words such as "sales representative", only if they said it), "what they are responsible for" (in their job, over this one piece of work), "what doing well looks like" (in their job), "who they depend on" (and who depends on them), or "what gets in their way". Anything else they did is "something they did". `words` are copied from ONE of their answers, exactly, never joined from two. A worry about a customer or a deal is not part of their job.',
   '  - roleAgainstGiven: from this conversation only, the role they are actually playing, and whether it fits the role they were given ("cannot tell" when the conversation does not show it).',
   '  - areas: each item tagged with the area of work it belongs to (a client, a product, a project, admin and so on), and whether it fits one of the team\'s priorities, where they are given.',
   '  - observations: what you noticed, as facts and never as judgements: a vague answer, a question they avoided, signs of overload. Quote their words.',
-  '  - comparedWithLastTime (only when a previous assessment or open promises are given; facts only): promisesDue has one item for EACH open promise on the record, with its id in `previousItem`, saying what happened to it (kept; not kept, which includes a promise whose day has passed that they now promise again for later; not mentioned; or still open, in progress or given a new date before its day passed) and `happened` by the rules below; figures that changed with both values and the date of the earlier one, work that moved or did not, blockers new, still there or cleared, anything repeated and how many times, and where what they said disagrees with the record or with someone else. Use the previous item\'s id in `previousItem` where there is one.',
+  '  - comparedWithLastTime (only when a previous assessment or open promises are given; facts only): promisesDue has one item for EACH open promise on the record, with its id in `previousItem`, saying what happened to it (kept; not kept, only when their own words say it was not done, which includes a promise whose day has passed that they now promise again for later; not mentioned, which includes "I have nothing more on that" and anything that does not say what happened; or still open, in progress or given a new date before its day passed) and `happened` by the rules below; `dayPassed` is true when the day they gave for it is before the day of this conversation; figures that changed with both values and the date of the earlier one, work that moved or did not, blockers new, still there or cleared, anything repeated and how many times, and where what they said disagrees with the record or with someone else. Use the previous item\'s id in `previousItem` where there is one.',
   '  - stillOpen: what is still open, to ask next time.',
   '  - everythingElse: everything else they said, so nothing falls through.',
   '',
@@ -309,7 +309,7 @@ export const THE_ASSESSMENT_SCHEMA = {
     properties: {
       summary: { type: 'string', description: 'Two or three plain sentences.' },
       workUpdates: anItem({ work: S('The piece of work.'), area: S('Its area.'), stage: S('Its stage.'), value: S('Its value, with the unit.'), dates: S('Its dates, as said.'), nextStep: S('The next step.'), nextStepDay: S('The day of the next step, as said.'), nextStepOwner: S('Who owns the next step.') }),
-      claims: anItem({ claim: S('What they say is true or done.'), proof: { type: 'string', enum: ['proved', 'said'] }, proofIs: S('What the proof is.') }),
+      claims: anItem({ claim: S('What they say is true or done.'), proof: { type: 'string', enum: ['proved', 'said'] }, proofIs: S('What the proof is.'), needsProof: { type: 'boolean', description: 'True when it is something done or true that proof could show; false for something not done, a plan or a feeling.' }, proofAsked: { type: 'boolean', description: 'True when Groundwork asked for proof of it, or they said they would send it.' }, previousItem: S('The id of the same claim in their previous assessment.') }),
       promises: anItem({
         byThePerson: { type: 'boolean', description: 'True only when this person promised it themselves.' },
         who: S('Who promised it.'), action: S('The action, their words.'), clear: S('The same promise as one clear action.'),
@@ -322,20 +322,20 @@ export const THE_ASSESSMENT_SCHEMA = {
       blockers: anItem({
         what: S('What they wait for, reading after the word "for".'), namedTheThing: { type: 'boolean' }, onName: S('The person waited on.'),
         onLabel: S('What is waited on when not a person.'), status: { type: 'string', enum: ['BLOCKING', 'WAITING', 'CLEARED'] },
-        then: S('What happens once it clears.'), triedSaid: S('What they said they already did, their words.'), dueSaid: S('When it is due, their words.'), since: S('Since when, as said.'), sinceDay: S('The day it started, YYYY-MM-DD, from their words and the day of the conversation.'),
+        then: S('What happens once it clears.'), previousItem: S('The id of the same wait in their previous assessment.'), triedSaid: S('What they said they already did, their words.'), dueSaid: S('When it is due, their words.'), since: S('Since when, as said.'), sinceDay: S('The day it started, YYYY-MM-DD, from their words and the day of the conversation.'),
       }),
       corrections: anItem({ recordSaid: S('What the record said.'), shouldSay: S('What it should say.'), backed: { type: 'boolean' }, correctsItem: S('The id of the previous assessment\'s item it corrects.') }),
-      documents: anItem({ name: S('The document or photo.'), says: S('What it says.'), proves: S('What it proves.'), filedOn: S('Where it belongs.') }),
+      documents: anItem({ name: S('The document or photo.'), says: S('What it says.'), proves: S('What it proves.'), filedOn: S('Where it belongs.'), provesItem: S('The id of the claim in their previous assessment it proves.') }),
       setup: {
         type: 'object',
         properties: {
           objective: anItem({ objective: S('The objective.') }),
           success: anItem({ success: S('What success looks like.') }),
-          team: anItem({ name: S('The person.'), role: S('Their role.') }),
+          team: anItem({ name: S('The person.'), role: S('Their role.'), spokenOf: { type: 'string', enum: ['praise', 'criticism', 'neutral'] } }),
           timing: anItem({ timing: S('Working days, times and how often.') }),
           rules: anItem({ rule: S('A rule or definition.') }),
           risks: anItem({ risk: S('A risk.') }),
-          privateNotes: anItem({ about: S('Who the note is about.'), note: S('The lead\'s note.') }),
+          privateNotes: anItem({ about: S('Who the note is about.'), note: S('The lead\'s note.'), spokenOf: { type: 'string', enum: ['praise', 'criticism', 'neutral'] } }),
         },
       },
       roleSignals: anItem({ did: S('What they did or owned.'), part: { type: 'string', enum: [...THE_PARTS_OF_A_JOB, 'something they did'] } }),
@@ -345,7 +345,7 @@ export const THE_ASSESSMENT_SCHEMA = {
       comparedWithLastTime: {
         type: 'object',
         properties: {
-          promisesDue: anItem({ promise: S('The promise.'), previousItem: S('Its id, as given.'), outcome: { type: 'string', enum: ['kept', 'not kept', 'not mentioned', 'still open'] }, happened: { type: 'string', enum: ['DONE', 'NOT_DONE', 'OPEN'] } }),
+          promisesDue: anItem({ promise: S('The promise.'), previousItem: S('Its id, as given.'), outcome: { type: 'string', enum: ['kept', 'not kept', 'not mentioned', 'still open'] }, happened: { type: 'string', enum: ['DONE', 'NOT_DONE', 'OPEN'] }, dayPassed: { type: 'boolean', description: 'True when the day given for it is before the day of this conversation.' } }),
           figuresChanged: anItem({ what: S('What it measures.'), before: S('The earlier value.'), beforeOn: S('The date of the earlier value.'), now: S('The value now.'), previousItem: S('Its id.') }),
           workMoved: anItem({ work: S('The work.'), moved: { type: 'boolean' }, how: S('How it moved.'), previousItem: S('Its id.') }),
           blockers: anItem({ what: S('The blocker.'), state: { type: 'string', enum: ['new', 'still there', 'cleared'] }, previousItem: S('Its id.') }),

@@ -38,6 +38,10 @@ export const THE_LADDER_FOR_WORK: AStep[] = ['a coaching question', 'a clear exp
 export const THE_LADDER_FOR_A_STRENGTH: AStep[] = ['praise'];
 /* The lead's bias is about the lead herself: it is put to her as a question and an expectation, never escalated past that. */
 export const THE_LADDER_FOR_THE_LEAD: AStep[] = ['a coaching question', 'a clear expectation'];
+/* Too much on, a role that differs and effort away from the priorities are about the work given, never grounds for firing:
+ * they stop at a conversation with the lead. */
+export const THE_LADDER_FOR_THE_LOAD: AStep[] = ['a coaching question', 'a conversation'];
+export const THE_LADDER_FOR_THE_ROLE: AStep[] = ['a coaching question', 'a clear expectation', 'a conversation'];
 
 /** What each step says, by pattern, in plain sentences. The words describe the behaviour, never the person. */
 const THE_QUESTION: Record<APatternKey, string> = {
@@ -78,7 +82,7 @@ export interface AnIntervention {
   key: APatternKey;
   participantId: string;
   aboutWhom?: string;
-  ladder: 'work' | 'strength' | 'the lead';
+  ladder: 'work' | 'strength' | 'the lead' | 'the load' | 'the role';
   rung: number;
   step: AStep;
   forWhom: 'the person' | 'the lead';
@@ -96,20 +100,29 @@ export interface AnIntervention {
 function theLadder(p: APatternAcrossAssessments): { name: AnIntervention['ladder']; steps: AStep[] } {
   if (p.key === 'the-leads-bias') return { name: 'the lead', steps: THE_LADDER_FOR_THE_LEAD };
   if (p.kind === 'strength') return { name: 'strength', steps: THE_LADDER_FOR_A_STRENGTH };
+  if (p.kind === 'too much on') return { name: 'the load', steps: THE_LADDER_FOR_THE_LOAD };
+  if (p.key === 'role-differs-from-given' || p.key === 'focus-away-from-the-priorities') return { name: 'the role', steps: THE_LADDER_FOR_THE_ROLE };
   return { name: 'work', steps: THE_LADDER_FOR_WORK };
 }
 
 function atRung(p: APatternAcrossAssessments, rung: number, startedIn: AnIntervention['startedIn'], followedUp: AnIntervention['followedUp']): AnIntervention {
   const ladder = theLadder(p);
   const step = ladder.steps[Math.min(rung, ladder.steps.length - 1)];
-  const how = THE_STEPS[step];
+  /* The lead's bias is put to the lead, never to the person it is about. */
+  const how = p.key === 'the-leads-bias' ? { forWhom: 'the lead' as const, theLeadDecides: false } : THE_STEPS[step];
   return {
     key: p.key, participantId: p.participantId, ...(p.aboutWhom ? { aboutWhom: p.aboutWhom } : {}), ladder: ladder.name, rung, step,
     forWhom: how.forWhom, theLeadDecides: how.theLeadDecides, says: whatTheStepSays(step, p),
-    because: `${p.saying} Seen in ${p.instances.length} check-ins: ${p.instances.map((i) => `session ${i.sessionNumber}${i.words[0] ? `, "${i.words[0]}"` : ''}`).join('; ')}.`,
+    because: `${p.saying} ${theInstancesAsSentences(p)}`,
     state: how.theLeadDecides ? 'waiting for the lead' : 'open', startedIn, followedUp,
   };
 }
+
+/** Each instance as a plain sentence: the day, and their words. */
+export function theInstancesAsSentences(p: Pick<APatternAcrossAssessments, 'instances'>): string {
+  return p.instances.map((i) => `${i.on ? `On ${theDay(i.on)}` : `In check-in ${i.sessionNumber}`}, ${i.words[0] ? `the words were "${i.words[0].replace(/^"+|"+$/g, '')}"` : `it was about ${i.item}`}.`).join(' ');
+}
+const theDay = (on: string) => new Date(`${on.slice(0, 10)}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
 
 const sameOne = (a: { key: string; participantId: string; aboutWhom?: string }, b: { key: string; participantId: string; aboutWhom?: string }) =>
   a.key === b.key && a.participantId === b.participantId && (a.aboutWhom ?? '') === (b.aboutWhom ?? '');
@@ -127,8 +140,10 @@ export function theInterventionsAfter(
   now: { checkInId: string; sessionNumber: number },
 ): AnIntervention[] {
   const out: AnIntervention[] = [];
-  const seenNow = (i: { key: string; participantId: string; aboutWhom?: string }) =>
-    patterns.find((p) => sameOne(p, i) && p.instances.some((x) => x.checkInId === now.checkInId));
+  /* A pattern is seen now when this check-in added an instance to it. The lead's bias rests on her setup words and the person's
+     whole record, so it is seen for as long as it holds. */
+  const isNow = (p: APatternAcrossAssessments) => p.key === 'the-leads-bias' || p.instances.some((x) => x.checkInId === now.checkInId);
+  const seenNow = (i: { key: string; participantId: string; aboutWhom?: string }) => patterns.find((p) => sameOne(p, i) && isNow(p));
   for (const i of carried) {
     if (i.state === 'worked' || i.state === 'ended' || i.startedIn.checkInId === now.checkInId) { out.push(i); continue; }
     if (i.state === 'waiting for the lead') { out.push(i); continue; }
@@ -141,7 +156,7 @@ export function theInterventionsAfter(
   }
   for (const p of patterns) {
     /* Only a pattern that holds and is seen in this very assessment: one that has stopped needs nothing new. */
-    if (p.state !== 'holds' || !p.instances.some((x) => x.checkInId === now.checkInId)) continue;
+    if (p.state !== 'holds' || !isNow(p)) continue;
     if (out.some((i) => sameOne(i, p) && (i.state === 'open' || i.state === 'waiting for the lead'))) continue;
     if (out.some((i) => sameOne(i, p) && i.startedIn.checkInId === now.checkInId)) continue;
     /* A strength already praised is not praised again for the same pattern. */
@@ -156,10 +171,10 @@ export function theInterventionsAfter(
  * writer). Only a step for the person that happens on its own, open, and started or moved on in this very check-in; a step the
  * lead decides is never returned. Null when there is none.
  */
-export function theSmallStepForThePerson(interventions: unknown, checkInId: string): { key: string; step: AStep; noticed: string; lookingLike: string; reason: string } | null {
+export function theSmallStepForThePerson(interventions: unknown, checkInId: string, participantId?: string): { key: string; step: AStep; noticed: string; lookingLike: string; reason: string } | null {
   const steps = (Array.isArray(interventions) ? interventions : []) as AnIntervention[];
-  const now = steps.find((i) => i.forWhom === 'the person' && !i.theLeadDecides && i.state === 'open'
+  const now = steps.find((i) => i.forWhom === 'the person' && !i.theLeadDecides && i.state === 'open' && (!participantId || i.participantId === participantId)
     && (i.startedIn?.checkInId === checkInId || i.followedUp?.[i.followedUp.length - 1]?.checkInId === checkInId));
   if (!now) return null;
-  return { key: now.key, step: now.step, noticed: String(now.because ?? now.says).split(' Seen in ')[0], lookingLike: now.says, reason: now.because ?? now.says };
+  return { key: now.key, step: now.step, noticed: now.says, lookingLike: now.says, reason: now.says };
 }

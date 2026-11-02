@@ -23,7 +23,7 @@ import {
   type AMessage, type HowItEnded, type TheAssessment, type TheMaterial, type TheReadParts,
 } from './the-assessment';
 import { oneOfEach } from './what-happened-to-what-they-said';
-import { thePatternsAcrossTheAssessments, type AnAssessmentSeen } from '../patterns/patterns-across-the-assessments';
+import { theRecordAcrossTime, theLeadsViewOf, type AnAssessmentSeen } from '../patterns/patterns-across-the-assessments';
 import { theInterventionsAfter, type AnIntervention } from '../patterns/the-next-step-for-each-pattern';
 
 export interface AssessmentDeps {
@@ -203,11 +203,12 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
       measure: { modelCalls, msFromCloseToReady: readyAt.getTime() - how.closedAt.getTime(), readyAt: readyAt.toISOString(), modelFailed },
     };
 
-    /* LAYERS 2 AND 3: the patterns across this person's assessments, and the next step for each, carried from the last one. */
+    /* LAYERS 2 AND 3: what this person's record shows over time, and the next step for each pattern, carried from the last one. */
     const seen: AnAssessmentSeen[] = [...earlier, { checkInId, sessionNumber: row.sessionNumber, on: assessment.about.endedAt, assessment }];
-    const team = isTheLead ? await theTeamsAssessments(deps.prisma, row.groundId, row.participantId) : [];
-    const patterns = thePatternsAcrossTheAssessments(row.participantId, seen, team);
-    assessment.acrossTime = patterns;
+    const leadsView = isTheLead ? null : await theLeadsSetupViewOf(deps.prisma, row.groundId, who);
+    const acrossTime = theRecordAcrossTime(row.participantId, seen, leadsView);
+    const patterns = acrossTime.patterns;
+    assessment.acrossTime = acrossTime;
     assessment.interventions = theInterventionsAfter(((previous?.assessment.interventions ?? []) as AnIntervention[]), patterns, { checkInId, sessionNumber: row.sessionNumber });
 
     await deps.prisma.checkIn.update({ where: { id: checkInId }, data: { sessionReport: theColumnWith(assessment, row.sessionReport) as any } });
@@ -236,16 +237,22 @@ export function theAssessmentIsReady(deps: Pick<AssessmentDeps, 'events'>, e: As
   deps.events?.emit(GroundworkEvents.ASSESSMENT_READY, e satisfies AssessmentReadyEvent);
 }
 
-/** The other people's assessments in this check-in, for the lead's bias. Read only when the person assessed is the lead. */
-async function theTeamsAssessments(prisma: any, groundId: string, leadParticipantId: string): Promise<{ participantId: string; name: string; seen: AnAssessmentSeen[] }[]> {
-  const people = ((await prisma.groundParticipant.findMany({
-    where: { groundId, id: { not: leadParticipantId } },
+/**
+ * THE LEAD'S VIEW OF THIS PERSON, for the bias check (Hafsah, 2 November 2026: "the lead's own words about people in setup as her
+ * view"): her setup assessment's words about them. Read only for a participant's assessment, and kept on it for the lead alone.
+ */
+async function theLeadsSetupViewOf(prisma: any, groundId: string, who: string) {
+  const lead = await prisma.groundParticipant?.findFirst?.({
+    where: { groundId, partyType: 'INITIATOR' },
     select: { id: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
+  })?.catch?.(() => null);
+  if (!lead) return null;
+  const rows = ((await prisma.checkIn.findMany({
+    where: { participantId: lead.id },
+    orderBy: { sessionNumber: 'asc' },
+    select: { id: true, sessionNumber: true, completedAt: true, sessionReport: true },
   }).catch(() => [])) ?? []) as any[];
-  const out: { participantId: string; name: string; seen: AnAssessmentSeen[] }[] = [];
-  for (const p of people) {
-    const seen = await theirEarlierAssessments(prisma, p.id, 2_147_483_647);
-    if (seen.length) out.push({ participantId: p.id, name: fullName(p.user, p.nameGiven), seen });
-  }
-  return out;
+  const setup = rows.map((r) => ({ checkInId: r.id, sessionNumber: r.sessionNumber, on: isoOf(r.completedAt), assessment: theAssessmentIn(r.sessionReport) as TheAssessment }))
+    .find((s) => !!s.assessment?.setup) ?? null;
+  return theLeadsViewOf(who, setup, fullName(lead.user, lead.nameGiven));
 }
