@@ -139,7 +139,8 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     /* The same promise written twice is put once; what is read about it settles both rows. */
     const openOnce = oneOfEach(openPromises);
     const material: TheMaterial = {
-      who, speaking: theSpeakerLine(row.participant), isTheLead, checkIn: row.ground?.label ?? null, givenRole, priorities, turns, setup, documents,
+      who, speaking: theSpeakerLine(row.participant), isTheLead, checkIn: row.ground?.label ?? null,
+      on: isoOf(row.startedAt ?? row.completedAt ?? how.closedAt)?.slice(0, 10) ?? null, givenRole, priorities, turns, setup, documents,
       draft: {
         claims: (((row.whatWeHave as any)?.claims ?? []) as any[]).map((c) => [c.said, c.number && `(${c.number}${c.measure ? ` ${c.measure}` : ''})`, c.date && `by ${c.date}`].filter(Boolean).join(' ')).filter(Boolean),
         lines: ((closing?.recordDraft ?? []) as any[]).map((l) => String(l?.text ?? '').trim()).filter(Boolean),

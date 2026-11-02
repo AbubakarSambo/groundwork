@@ -49,7 +49,7 @@ describe('the handoff the conversation records', () => {
     const created: any[] = [];
     const prisma: any = {
       /* The waits come from the conversation's assessment now (one source, 1 November 2026), not a call of the writer's own. */
-      checkIn: { findUnique: async () => ({ sessionReport: anAssessmentHolding({ blockers: said.dependencies }) }) },
+      checkIn: { findUnique: async () => ({ completedAt: new Date('2026-11-16T09:00:00Z'), sessionReport: anAssessmentHolding({ blockers: said.dependencies }) }) },
       ground: {
         findUnique: async () => ({ mode: 'SHARED', scenario: 'OKR_ALIGNMENT', organizationId: 'org-baridi', participants: [{ id: 'p-miriam', email: 'miriam@baridi.test', user: { firstName: 'Miriam', lastName: 'Wanjiku' } }] }),
         findMany: async () => others,
@@ -127,5 +127,23 @@ describe('the handoff the conversation records', () => {
     await svc.extractDependencies('c1', 'p-other', 'sales');
     expect(created[0].onParticipantId).toBe('p-miriam');
     expect(created[0].onLabel).toBeNull();
+  });
+
+  /*
+   * A WAIT IS DATED FROM THEIR OWN "SINCE" (assessment test, 2 November). Aisha said on 16 November that she asked Wanjiru for the
+   * write-off sign-off on 5 November, and the board said "waiting since 16 November", the day of the session.
+   */
+  it('is dated from the day they said it started, and from the session only when they did not say', async () => {
+    const since = scaffold({ dependencies: [{ ...finance18, since: 'on 5 November', sinceDay: '2026-11-05' }] });
+    await since.svc.extractDependencies('c1', 'p-miriam', 'sales');
+    expect(since.created[0].createdAt.toISOString().slice(0, 10)).toBe('2026-11-05');
+
+    const unsaid = scaffold({ dependencies: [finance18] });
+    await unsaid.svc.extractDependencies('c1', 'p-miriam', 'sales');
+    expect(unsaid.created[0].createdAt.toISOString().slice(0, 10)).toBe('2026-11-16');
+
+    const later = scaffold({ dependencies: [{ ...finance18, sinceDay: '2026-11-20' }] });
+    await later.svc.extractDependencies('c1', 'p-miriam', 'sales');
+    expect(later.created[0].createdAt.toISOString().slice(0, 10)).toBe('2026-11-16');
   });
 });

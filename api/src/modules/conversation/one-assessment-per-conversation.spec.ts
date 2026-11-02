@@ -116,7 +116,7 @@ describe('the assessment of a check-in', () => {
     const stored = theAssessmentIn(w.writes[0].data.sessionReport)!;
     expect(stored).toMatchObject({ kind: 'assessment', version: 1, about: { who: 'Amani Wekesa', sessionNumber: 2, howItEnded: 'finished by the person' } });
     expect(whatTheyPromisedThemselves(stored)).toEqual([{ action: 'I will call Westgate on Friday', clear: null, outcome: null, when: 'on Friday' }]);
-    expect(whatTheyAreWaitingOn(stored)).toEqual([{ what: 'the price list', onName: 'Grace', onLabel: null, status: 'WAITING', then: null, triedSaid: null, dueSaid: null, namedTheThing: true }]);
+    expect(whatTheyAreWaitingOn(stored)).toEqual([{ what: 'the price list', onName: 'Grace', onLabel: null, status: 'WAITING', then: null, triedSaid: null, dueSaid: null, sinceDay: null, namedTheThing: true }]);
   });
 
   it('never gives the model the lead\'s words about a person: the role given is their own job title', async () => {

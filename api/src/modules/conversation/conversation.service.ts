@@ -11937,8 +11937,10 @@ ${told}` : '';
           namedTheThing: typeof d.namedTheThing === 'boolean' ? d.namedTheThing : null,
           status,
           sourceCheckInId: checkInId,
-          /* Dated as the session it was said in, not the moment the row was written (whenTheSessionWas). */
-          createdAt: await this.whenTheSessionWas(checkInId),
+          /* Dated from the day they said it started (the assessment's sinceDay, assessment test, 2 November: Aisha asked on
+             5 November and the board said "waiting since 16 November", the session's day); where they did not say, the session
+             it was said in, not the moment the row was written. A day after the session is not a since. */
+          createdAt: await this.whenTheSessionWas(checkInId).then((on) => (d.sinceDay && new Date(d.sinceDay) <= on ? new Date(`${d.sinceDay}T12:00:00Z`) : on)),
           clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
           /* Their own words for when, word for word, and the day they name if they name one. */
           dueSaid: dueSaidBy(d),
