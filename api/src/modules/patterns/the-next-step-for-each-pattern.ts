@@ -167,9 +167,9 @@ export function theInterventionsAfter(
 }
 
 /**
- * THE SMALL STEP FOR THE PERSON, FROM THIS CHECK-IN'S ASSESSMENT, AS THE COACH OFFERS IT (observeForCoaching, CoachingState's one
- * writer). Only a step for the person that happens on its own, open, and started or moved on in this very check-in; a step the
- * lead decides is never returned. Null when there is none.
+ * THE SMALL STEP FOR THE PERSON, FROM THIS CHECK-IN'S ASSESSMENT, AS THE COACH OFFERS IT (observeForCoaching delivers it into
+ * CoachingState, the one path a step takes into the next check-in). Only a step for the person that happens on its own, open, and
+ * started or moved on in this very check-in; a step the lead decides is never returned. Null when there is none.
  */
 export function theSmallStepForThePerson(interventions: unknown, checkInId: string, participantId?: string): { key: string; step: AStep; noticed: string; lookingLike: string; reason: string } | null {
   const steps = (Array.isArray(interventions) ? interventions : []) as AnIntervention[];
@@ -177,4 +177,18 @@ export function theSmallStepForThePerson(interventions: unknown, checkInId: stri
     && (i.startedIn?.checkInId === checkInId || i.followedUp?.[i.followedUp.length - 1]?.checkInId === checkInId));
   if (!now) return null;
   return { key: now.key, step: now.step, noticed: now.says, lookingLike: now.says, reason: now.says };
+}
+
+/**
+ * WHAT BECAME OF THE PERSON'S LAST STEP, AS THIS CHECK-IN'S ASSESSMENT FOLLOWED IT UP: done when its pattern was not seen again,
+ * not done when it was. Null when no step of theirs was followed up in this check-in.
+ */
+export function whatBecameOfTheLastStep(interventions: unknown, checkInId: string, participantId: string): 'done' | 'not done' | null {
+  const steps = (Array.isArray(interventions) ? interventions : []) as AnIntervention[];
+  for (const i of steps) {
+    if (i.forWhom !== 'the person' || i.participantId !== participantId) continue;
+    const last = i.followedUp?.[i.followedUp.length - 1];
+    if (last?.checkInId === checkInId) return last.worked ? 'done' : 'not done';
+  }
+  return null;
 }

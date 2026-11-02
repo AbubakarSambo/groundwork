@@ -5065,69 +5065,6 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
 ];
 
 /**
- * WHAT THIS SESSION SHOWED, AGAINST THIS PERSON'S OWN ROLE MAP. (G42)
- *
- * The coaching machine can hold state, offer one step and shrink it when it does
- * not land, and none of that is worth anything without an honest answer to "did
- * this session actually show one of these behaviours". This is that answer, and it
- * is a model call for the same reason record extraction is: the question is about
- * meaning, and a regex over a transcript cannot tell "I did the demo myself
- * because they were not ready" from "I did the demo myself again".
- *
- * THE DEFAULT IS NONE, and the prompt says so three times, because a model asked
- * to pick from a list will pick from the list. Most sessions show nothing, and a
- * coach that finds something every week is a product with an opinion about you
- * every week.
- *
- * THE REASON IS QUOTED FROM THE TRANSCRIPT, in the person's own terms. Without it
- * the step arrives as a verdict, and the machine refuses to offer a step with no
- * reason precisely so this cannot be skipped.
- */
-export const COACHING_OBSERVATION_PROMPT = `You are reading ONE person's check-in transcript against a list of behaviours for their kind of work.
-
-Your job is to say whether the transcript SHOWS one of the listed behaviours, and if so which one and why.
-
-RULES.
-1. The normal answer is none. Most check-ins show none of these. Answer none unless the transcript plainly shows one.
-2. Never pick the closest match. If nothing plainly fits, answer none.
-3. The reason must come from what the person actually said, in their own terms, in one sentence. No reason means answer none.
-4. You are describing what a session showed, never what a person is. Do not write anything about their character, attitude or ability.
-5. If the transcript shows the person doing the opposite - handling the thing well - answer none. This list is only used to offer help, and there is nothing to help with.
-6. If the person is describing a step they were asked to try last session, say what became of it: done, not done, did more, or sideways (they addressed it a different way). Otherwise leave that empty.
-7. If the person is ASKING FOR the very thing the paired success behaviour describes, or says they want it, or is already trying it, set theyAskedForThisThemselves true. Somebody who says "I want Eli to review my PRs again" must not be told to bring reviewers in.
-
-Return JSON only.`;
-
-export const COACHING_OBSERVATION_SCHEMA = {
-  name: 'emit_coaching_observation',
-  description: 'Which behaviour from the supplied list the transcript shows, if any, with the reason in the person\'s own terms, and what became of the last step.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      index: {
-        type: ['integer', 'null'],
-        description: 'Zero-based position in the supplied behaviour list, or null for none. Null is the normal answer.',
-      },
-      reason: {
-        type: ['string', 'null'],
-        description: "One sentence from what the person said, in their own terms. Null if index is null.",
-      },
-      theyAskedForThisThemselves: {
-        type: 'boolean',
-        description: 'True if the person themselves asked for, wants, or is already trying to do the paired success behaviour. A step must never tell somebody to do the thing they just asked for.',
-      },
-      lastStepOutcome: {
-        type: ['string', 'null'],
-        enum: ['done', 'not done', 'did more', 'sideways', null],
-        description: 'Only when the transcript says what became of a step they were asked to try. Otherwise null.',
-      },
-    },
-    required: ['index', 'reason', 'lastStepOutcome'],
-  },
-} as const;
-
-
-/**
  * A DOCUMENT HAS TO CHANGE SOMETHING.
  *
  * 26 uploads on 22 grounds and not one record line was document-backed: the file was stored, the

@@ -81,7 +81,7 @@ import { theCheckInItWaitsOn } from './which-check-in-it-waits-on';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { BLOCKER_TRACE_PROMPT, BLOCKER_TRACE_PROMPT_KEY, BLOCKER_TRACE_SCHEMA, theChainFrom, theInputKey, theRecordForTheModel, theTraceTheRecordSupports, type TheModelsTrace } from './where-the-blocker-started';
-import { buildScenarioPackForParty, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
+import { buildScenarioPackForParty, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent, CommitmentsSettledEvent } from '../../common';
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
@@ -91,7 +91,7 @@ import { whatChangedOnTheirDeals } from './what-changed-on-their-deals';
 import { oneOfTheKinds, isASalesKind } from '../board/the-kind-of-work';
 import { theEndCard, theCardStillStanding, whatTheyWereAskedToShow, type EndCard, type ALineForTheCard } from './the-end-card';
 import { assessTheConversation, theAssessmentOf, theAssessmentIsReady, type TheSetupGiven } from './assess-the-conversation';
-import { theSmallStepForThePerson } from '../patterns/the-next-step-for-each-pattern';
+import { theSmallStepForThePerson, whatBecameOfTheLastStep } from '../patterns/the-next-step-for-each-pattern';
 import { whatTheyAreWaitingOn, theWorkTheyMentioned, whatTheyPromisedThemselves, whatHappenedToTheirOpenPromises, theAssessmentIn, theReportTheyRead, type TheAssessment } from './the-assessment';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { theSettlements, aCommitmentKey, oneOfEach, type AnAnswer } from './what-happened-to-what-they-said';
@@ -129,7 +129,7 @@ import { theCurrentDirection, theRelease6DirectionIsOn } from '../direction/dire
 import { theTemplate, theTemplateBlock } from '../board/the-thirteen-templates';
 import { theRelease4TeamsIsOn } from '../board/release-4-teams';
 import { whatThisPersonShouldRaise } from '../board/raising-invoices-on-time';
-import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE, UniversalMode } from '../board/role-maps';
+import { buildRoleProbeBlock, roleMapFor, MIN_COACHING_CONFIDENCE, UniversalMode } from '../board/role-maps';
 import { STARTING_SCENARIOS, WHO_ARE_YOU_IN_THIS } from './prompt-library';
 import { PLAIN_WORDS } from './plain-words';
 import {
@@ -167,8 +167,6 @@ import { buildDeliveriesBlock } from './what-they-say-they-delivered';
 import { buildNotesBlock } from './between-session-notes';
 import { closeReadiness, askedToFinish, isTheWordFinish, tooFewAnswersToFinish, NOT_ENOUGH_YET_TO_FINISH_HERE } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance, simplerWordsGuidance } from './person-style';
-import { readOutcome, isGenericStep } from './coaching-step';
-import { theBehavioursAnybodyCanBeRead, universalSignalRead } from '../board/a-role-nobody-mapped-is-still-a-person';
 import { WHAT_KIND_OF_WORK_PROMPT, WHAT_KIND_OF_WORK_SCHEMA, theJobTheyDescribed } from '../board/a-job-is-read-from-what-they-do';
 import { FIGURE_PROMPT, FIGURE_SCHEMA, theFiguresTheyStated, theDayThisWasSaid } from './a-figure-is-not-a-figure-until-somebody-says-so';
 import { familyFor, BoardFamily } from '../board/board-families';
@@ -209,7 +207,6 @@ import { aNameNobodyTyped } from './a-record-line-with-a-name-nobody-typed';
 import { commitmentsTheyNeverMade } from './a-commitment-is-read-back-from-a-commitment';
 import { withoutAThingTheLeadListedAsTheirs } from './a-thing-the-lead-listed-is-not-theirs';
 import { aCutThatLeavesAFragment, afterTheCut } from './a-cut-never-leaves-a-fragment';
-import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
 
 /** The coaching block reaches a live prompt only when this platform setting is true. See coachingIsLive(). */
@@ -251,7 +248,6 @@ import { sayWhatDoesNotAddUp } from './what-does-not-add-up';
 import { probeSourcesOffered } from '../learning/how-signals-are-counted';
 import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_PROMPT, PLAN_TOOL } from './the-plan-for-this-session';
 import { POSITIVE_CODES, CARRYING_CODES, BAD_FAITH_CODES } from '../patterns/pattern-library';
-import { periodOf } from '../patterns/period-of';
 import { withoutTheClaimsTheNumbersDoNotSupport, numbersIn as numbersInAClaim } from './a-claim-the-numbers-do-not-support';
 import { everybodyMayOpen, figuresOnlyInPrivateDocuments, carriesAPrivateFigure } from './a-private-documents-numbers-stay-with-it';
 import { recordAndMoveOn, NOTHING_HERE_HAS_A_NUMBER, NO_DECISION_YET } from './a-refusal-is-an-answer';
@@ -6933,278 +6929,49 @@ ${told}` : '';
   }
 
   /**
-   * Read this session against this person's own role map, and let the machine
-   * decide what to do about it.
+   * THE COACH OFFERS LAYER 3'S SMALL STEP, AND NOTHING ELSE (F2, Hafsah's decisions of 2 November 2026).
    *
-   * A MODEL CALL, for the same reason record extraction is one: the question is
-   * about meaning. A regex cannot tell "I did the demo myself because they were
-   * not ready" from "I did the demo myself again", and the difference is the whole
-   * read.
+   * Coaching and interventions have one owner: the next step for each pattern (the-next-step-for-each-pattern.ts), read from
+   * this check-in's assessment, which counts distinct items across the person's whole record. This used to read every finished
+   * transcript again with its own model call against the role map's list, keep its own count of what it had seen, and steer
+   * itself with the stored patterns, a second judge of the same person in the same round. It now only delivers: CoachingState
+   * stays the one path a step takes into the next check-in, and coachingBlock reads it as before.
    *
-   * WHAT IT WILL NOT DO.
+   * Whether the last step worked is the assessment's reading too: layer 3 follows each step up in the next assessment, and a
+   * step whose pattern was not seen again worked.
    *
-   * It never runs on a low-confidence function. A step chosen from a guess about
-   * what somebody's job is lands as a stranger's advice, and the same threshold
-   * already governs the role probes.
-   *
-   * It never invents the reason. The prompt takes it from what the person said,
-   * and the machine refuses a step without one - so a model that returns an index
-   * with no reason produces nothing rather than a verdict.
-   *
-   * It never decides whether they managed their last step. That comes back only if
-   * the transcript says so, in their words. Inferring it from a better-looking week
-   * would make the step a target.
+   * Never while they are away or after they have gone, never on a setup, and never where the organisation keeps judgements of
+   * a person off.
    */
   private async observeForCoaching(checkInId: string, participantId: string, sessionNumber: number): Promise<void> {
     if (!this.coachingEnabled()) return;
-    /* Judgements of a person off for this organisation: nobody is read for coaching (organisation/person-judgements.ts). */
-    const at = await (this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { groundId: true } }) ?? Promise.resolve(null)).catch(() => null);
+    const at = await (this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { groundId: true, isSetup: true } }) ?? Promise.resolve(null)).catch(() => null);
     if (!(await thePersonJudgementsAreOnFor(this.prisma, (at as any)?.groundId ?? null))) return;
-
-    /* A set-up conversation is not a check-in, so it is never read for coaching. */
-    const thisOne = await (this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { isSetup: true } }) ?? Promise.resolve(null)).catch(() => null);
-    if ((thisOne as any)?.isSetup) return;
+    if ((at as any)?.isSetup) return;
 
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
-      select: {
-        detectedFunction: true, detectedFunctionConfidence: true, detectedFunctionConfirmedAt: true,
-        joinedAt: true, leftAt: true, leavePeriods: true,
-      },
+      select: { joinedAt: true, leftAt: true, leavePeriods: true, userId: true, ground: { select: { organizationId: true } } },
     });
-
-    /**
-     * NOBODY IS COACHED WHILE THEY ARE AWAY, OR AFTER THEY HAVE GONE.
-     *
-     * participation-timeline.ts has said this since it was written, and nothing
-     * had ever called it - so the coaching path I built an hour ago would happily
-     * have offered a step to somebody on parental leave, or to somebody who had
-     * left the company. Its own comment names both: the first is the tone-deaf
-     * thing that ends trust in a product permanently, and the second is absurd.
-     *
-     * Found by the unwired-module rule, in code I had just written.
-     */
     const leaves = Array.isArray(participant?.leavePeriods)
       ? (participant!.leavePeriods as any[])
           .map((l) => ({ from: new Date(l?.from), to: l?.to ? new Date(l.to) : null }))
           .filter((l) => !isNaN(l.from.getTime()))
       : [];
-    /* And the approved leave itself, by dates (week 23): nothing wrote leavePeriods, so this read the
-       field and found it empty for everybody. */
-    const asked = await this.prisma.groundParticipant.findUnique({ where: { id: participantId }, select: { userId: true, ground: { select: { organizationId: true } } } }).catch(() => null);
-    if (asked?.userId) {
-      for (const l of await theirApprovedLeave(this.prisma as any, asked.userId, asked.ground?.organizationId ?? null)) leaves.push({ from: l.from, to: l.to });
+    if ((participant as any)?.userId) {
+      for (const l of await theirApprovedLeave(this.prisma as any, (participant as any).userId, (participant as any).ground?.organizationId ?? null)) leaves.push({ from: l.from, to: l.to });
     }
-    if (!mayCoach(new Date(), {
-      joinedAt: participant?.joinedAt ?? null,
-      leftAt: participant?.leftAt ?? null,
-      leaves,
-    })) {
-      return;
-    }
+    if (!mayCoach(new Date(), { joinedAt: participant?.joinedAt ?? null, leftAt: participant?.leftAt ?? null, leaves })) return;
 
-    const map = roleMapFor(participant?.detectedFunction);
-    /* Confident, or confirmed by the person or their lead (decision 57, item 5): a confirmed role is
-       not a guess, so its own behaviours are read. See aFunctionThatMayBeUsed. */
-    const confident = aFunctionThatMayBeUsed(
-      { fn: participant?.detectedFunction as any, confidence: participant?.detectedFunctionConfidence ?? 0 },
-      (participant as any)?.detectedFunctionConfirmedAt ?? null,
-    );
-    /**
-     * A ROLE NOBODY MAPPED IS STILL A PERSON.
-     *
-     * This returned here, before reading a word of the transcript, whenever there was no role map
-     * or the function sat below the confidence floor. Both exits are RIGHT about the role - a map
-     * chosen from a guess coaches somebody out of the wrong one - and both were wrong about the
-     * person: 477 people on record, 32 clearing this gate, so 93% could never be coached about
-     * anything, not because nothing was noticed but because nothing was ever looked at.
-     *
-     * So the role gate now selects WHICH behaviours are read rather than whether anybody is read at
-     * all. With a confident map, the function's own failure signals, as before. Without one, the
-     * universal floor - which is deliberately weaker and says so: every line of it is about the
-     * ACCOUNT, not about the work, because the work is the part that cannot be read without
-     * knowing the job.
-     */
-    const readFromTheAccount = !map?.failureSignals?.length || !confident;
-    const whyTheFloor = readFromTheAccount
-      ? (!map?.failureSignals?.length
-        ? `no role map for function ${participant?.detectedFunction ?? 'none'}`
-        : `function ${participant?.detectedFunction} at confidence ${participant?.detectedFunctionConfidence ?? 0}, below ${MIN_COACHING_CONFIDENCE} and not confirmed`)
-      : null;
-
-    const turns = await this.prisma.conversationTurn.findMany({
-      where: { checkInId },
-      orderBy: { createdAt: 'asc' },
-      select: { role: true, content: true },
-    });
-    if (!turns.length) return;
-
-    const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
-    const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
-    const behaviours = (readFromTheAccount ? theBehavioursAnybodyCanBeRead() : map!.failureSignals!)
-      .map((b, i) => `${i}. ${b}`).join('\n');
-
-    /*
-     * NO STEER FROM THE LEAD'S PRIVATE NOTES ABOUT THIS PERSON. Decision 32, 27 September 2026.
-     *
-     * This read every note the lead had written about this person - every one of them the lead's
-     * only, because a note about one named person is never shared - and handed it to the model
-     * reading this person's own session, with an instruction that it only said where to look. That
-     * is the lead's private words in the model's hands in this person's session, kept from them by an
-     * instruction, which is what the decision rules out. The coach reads what this person said, the
-     * behaviours for their kind of work, and what has already been seen across their own sessions.
-     */
-    /*
-     * WHAT HAS ALREADY BEEN SEEN ABOUT THIS PERSON, ACROSS SESSIONS.
-     *
-     * The behavioural engine has held these all along - a code, a plain-language observation, and a
-     * count of consecutive periods before anything surfaces - and the coach could not see any of
-     * it. So the coach met somebody fresh every session while the product had been watching a
-     * pattern build for three.
-     *
-     * SURFACED ONLY. A candidate is one or two periods of something that may be nothing, and
-     * coaching somebody on it would be reading a fortnight as a trait. Three consecutive periods
-     * is the bar the engine already sets and this does not lower it.
-     *
-     * IT STEERS WHICH BEHAVIOUR TO LOOK AT, NEVER WHAT THE ANSWER IS. If the transcript does not
-     * show it, the answer is still none, because a pattern is a place to look, not a finding to
-     * confirm.
-     */
-    const surfaced = await (this.prisma.patternDetection?.findMany({
-      where: { participantId, status: 'SURFACED' as any },
-      select: { observationText: true, periodsObserved: true },
-      orderBy: { lastSeenAt: 'desc' },
-      take: 3,
-      /*
-       * Optional chaining AND a catch: `.catch()` alone does nothing when the accessor itself is
-       * missing - that is a synchronous TypeError, not a rejected promise. A steer must never be the
-       * reason nobody gets coached.
-       */
-    }) ?? Promise.resolve([] as { observationText: string | null; periodsObserved: number }[]))
-      .catch(() => [] as { observationText: string | null; periodsObserved: number }[]);
-
-    const alreadySeen = surfaced.filter((p2) => p2.observationText?.trim()).length
-      ? '\n\nWHAT HAS ALREADY BEEN SEEN ACROSS SESSIONS. Use this ONLY to decide which behaviour '
-        + 'above to look at first. It is not evidence about this session, it is never the reason, and '
-        + 'if this transcript does not show it then the answer is still none. Never repeat it back to '
-        + 'them as a description of who they are:\n'
-        + surfaced
-          .filter((p2) => p2.observationText?.trim())
-          .map((p2) => `- ${p2.observationText!.trim()} (seen across ${p2.periodsObserved} periods)`)
-          .join('\n')
-      : '';
-
-    const observed = await this.anthropic.extract<{
-      index: number | null;
-      reason: string | null;
-      theyAskedForThisThemselves?: boolean;
-      lastStepOutcome: string | null;
-    }>(
-      COACHING_OBSERVATION_PROMPT,
-      [{ role: 'user', content: `BEHAVIOURS FOR THIS KIND OF WORK:\n${behaviours}${alreadySeen}\n\nTRANSCRIPT:\n${transcript}` }],
-      COACHING_OBSERVATION_SCHEMA,
-    );
-
-    // signalRead applies the guards that matter - an index off the end, an empty
-    // reason - and returns null rather than something to hand a person.
-    const read = readFromTheAccount
-      ? universalSignalRead(observed?.index ?? -1, observed?.reason ?? '')
-      : signalRead(participant?.detectedFunction, observed?.index ?? -1, observed?.reason ?? '');
-
-    /**
-     * TWO VOCABULARIES FOR THE SAME FOUR OUTCOMES, RECONCILED AT THE BOUNDARY.
-     *
-     * coaching-step.ts already read these from a person's own words - written
-     * before my state machine and never wired to anything, so I built a second set
-     * spelled with spaces where its are spelled with underscores. Both are right;
-     * having two is not. The existing reader is the fallback here, because a regex
-     * over what somebody actually typed is better evidence than a model asked to
-     * classify it, and its spelling is mapped to the machine's at this one point.
-     */
-    const FROM_READER: Record<string, StepOutcome> = {
-      done: 'done', did_more: 'did more', not_done: 'not done', sideways: 'sideways',
-    };
-    const OUTCOMES = ['done', 'not done', 'did more', 'sideways'];
-    let outcome: StepOutcome | null = OUTCOMES.includes(String(observed?.lastStepOutcome))
-      ? (observed!.lastStepOutcome as StepOutcome)
-      : null;
-
-    // The model said nothing about the last step. Read their own words instead,
-    // which is what coaching-step.ts is for. 'unclear' stays null - guessing an
-    // outcome puts a fact in the record nobody said.
-    if (!outcome) {
-      const fromWords = readOutcome(personSaid.join(' '));
-      outcome = FROM_READER[fromWords] ?? null;
-    }
-
-    // A step that could have gone to anybody is not coaching, it is a slogan.
-    // Every step here comes from a role map so this should never fire, which is
-    // exactly why it is cheap to keep: if a map entry is ever edited into
-    // something generic, nothing offers it.
-    /*
-     * TWO CHECKS BEFORE ANYTHING IS OFFERED, both from the first batch that was ever read.
-     * Recurrence: this session's observation is kept, and a step is offered only when the same thing
-     * was seen in two distinct sessions (SESSIONS_BEFORE_A_STEP). Inversion: never a step the person
-     * asked for themselves, by their own words and by the model's own field.
-     */
-    const prior = await this.prisma.coachingState.findUnique({ where: { participantId }, select: { observations: true } }).catch(() => null);
-    const observations: Observation[] = Array.isArray((prior as any)?.observations) ? ((prior as any).observations as Observation[]) : [];
-    /* Two DISTINCT PERIODS, not two sessions (decision 57, item 1). On a weekly-or-slower ground
-       these are the same thing, as they always were; on a daily ground several sessions in one
-       calendar week must not look like recurrence on their own. Observation.sessionNumber is read
-       by seenInEnoughSessions as the period number, so what is stored here already is one. */
-    const checkInForPeriod = await (this.prisma.checkIn?.findUnique?.({
-      where: { id: checkInId },
-      select: { completedAt: true, startedAt: true, createdAt: true, ground: { select: { cadence: true, cadenceDays: true } } },
-    }) ?? Promise.resolve(null)).catch(() => null);
-    const period = checkInForPeriod
-      ? periodOf(
-        { sessionNumber, when: checkInForPeriod.completedAt ?? checkInForPeriod.startedAt ?? checkInForPeriod.createdAt },
-        checkInForPeriod.ground,
-      )
-      : sessionNumber;
-    if (read?.noticed && read.reason?.trim() && !observations.some((o) => o.sessionNumber === period && o.noticed === read.noticed)) {
-      observations.push({ sessionNumber: period, noticed: read.noticed, reason: read.reason.trim() });
-    }
-    const recurring = seenInEnoughSessions(observations, read?.noticed ?? null);
-    /* The word check decides. The model's own field said "they asked for it" on six cases the word
-       check rejected, including an unanswered email with no ask in it; zero cases where both agreed.
-       The field is kept on the row for reading, and it no longer suppresses anything. */
-    const inverted = !!read && theyAskedForItThemselves(read.lookingLike, personSaid);
-    const modelSaidTheyAsked = observed?.theyAskedForThisThemselves === true;
-    if (read && inverted) this.logger.log(`Coaching: not offering "${read.lookingLike}" to ${participantId}, they asked for it themselves.`);
-    if (read && !recurring) this.logger.log(`Coaching: "${read.noticed}" seen once for ${participantId}, waiting for recurrence.`);
-    const offerable = read && !isGenericStep(read.lookingLike) && recurring && !inverted;
-    /*
-     * WHERE THE COACH'S OWN READ OFFERS NOTHING, THE ASSESSMENTS' SMALL STEP (layer 3). A pattern seen in three of their
-     * assessments, with a step for the person that happens on its own (a coaching question or a clear expectation), is offered
-     * here, through the same machine and the same switches. The lead's steps are never offered here: they wait for her.
-     */
-    const fromTheAssessments = offerable ? null : theSmallStepForThePerson((await theAssessmentOf(this.prisma, checkInId).catch(() => null))?.interventions, checkInId);
-    if (fromTheAssessments) this.logger.log(`Coaching: offering the assessments' ${fromTheAssessments.step} for ${fromTheAssessments.key} to ${participantId}.`);
-
+    const interventions = (await theAssessmentOf(this.prisma, checkInId).catch(() => null))?.interventions;
+    const step = theSmallStepForThePerson(interventions, checkInId, participantId);
+    if (step) this.logger.log(`Coaching: offering the assessments' ${step.step} for ${step.key} to ${participantId}.`);
     await this.recordCoachingStep(
       participantId,
       sessionNumber,
-      {
-        noticed: offerable ? read!.noticed : fromTheAssessments?.noticed ?? null,
-        lookingLike: offerable ? read!.lookingLike : fromTheAssessments?.lookingLike ?? null,
-        reason: offerable ? read!.reason : fromTheAssessments?.reason ?? null,
-        observed: read ? { noticed: read.noticed, reason: read.reason, recurring, inverted, modelSaidTheyAsked } : null,
-        observations,
-        /* Which floor this step came off. A step read from the account rather than the role has to
-           be traceable as one - it is weaker by construction, and a row that does not say so would
-           be indistinguishable later from a role-mapped read. */
-        why: whyTheFloor ?? undefined,
-        // The same substance test the completion gate uses, rather than a second
-        // definition of "said something real".
-        /* A step from the assessments rests on three of their conversations, which is the substance. */
-        hadSubstance: personSaid.some((t) => countCheckableSpecifics(t) > 0) || !!fromTheAssessments,
-        /* A step off the universal floor is about how the account reads, so a thin session is the
-           evidence for it rather than a reason to withhold it. See nextMove. */
-        aboutTheAccount: readFromTheAccount,
-      },
-      outcome,
+      /* A step rests on the distinct items of its pattern across the record, which is the substance. */
+      { noticed: step?.noticed ?? null, lookingLike: step?.lookingLike ?? null, reason: step?.reason ?? null, hadSubstance: !!step },
+      whatBecameOfTheLastStep(interventions, checkInId, participantId),
     );
   }
 
@@ -7227,13 +6994,6 @@ ${told}` : '';
     sessionNumber: number,
     read: {
       noticed: string | null; lookingLike: string | null; reason: string | null; hadSubstance: boolean;
-      /** Whether the step is about how they give their account rather than about the work. */
-      aboutTheAccount?: boolean;
-      /** What this session showed before the recurrence and inversion checks, for the reader at /admin/coaching. */
-      observed?: { noticed: string; reason: string; recurring: boolean; inverted: boolean; modelSaidTheyAsked?: boolean } | null;
-      observations?: Observation[];
-      /** Why nothing could be read this session, when that is the case. */
-      why?: string;
     },
     outcomeOfLastStep?: StepOutcome | null,
   ): Promise<{ offered: string | null }> {
@@ -7252,7 +7012,7 @@ ${told}` : '';
 
       if (outcomeOfLastStep && state.currentStep) state = afterOutcome(state, outcomeOfLastStep);
 
-      const { observed, observations, why, ...forTheMove } = read;
+      const forTheMove = read;
       const move = nextMove(state, { ...forTheMove, sessionNumber });
       let offered: string | null = null;
       if (move.move === 'offer') {
@@ -7261,7 +7021,7 @@ ${told}` : '';
       }
 
       /* The read that produced this, kept beside it: the first outputs are to be read against their input. */
-      const lastInput = { ...forTheMove, observed: observed ?? null, why: why ?? null, sessionNumber, outcomeOfLastStep: outcomeOfLastStep ?? null, move: move.move, offered, at: new Date().toISOString() } as any;
+      const lastInput = { ...forTheMove, sessionNumber, outcomeOfLastStep: outcomeOfLastStep ?? null, move: move.move, offered, at: new Date().toISOString() } as any;
       await this.prisma.coachingState.upsert({
         where: { participantId },
         create: {
@@ -7272,7 +7032,6 @@ ${told}` : '';
           staircasePosition: state.staircasePosition,
           history: state.history as any,
           lastInput,
-          observations: (observations ?? []) as any,
         },
         update: {
           currentStep: state.currentStep,
@@ -7281,7 +7040,6 @@ ${told}` : '';
           staircasePosition: state.staircasePosition,
           history: state.history as any,
           lastInput,
-          ...(observations ? { observations: observations as any } : {}),
         },
       });
       return { offered };
@@ -7872,28 +7630,9 @@ ${told}` : '';
 
     /* What they said about their job, and the function read from their lines, run once the lines are written: see readTheLinesJustWritten. */
 
-    const theRoleConfirmation = this.extractRoleConfirmation({ id: checkIn.id, participantId: checkIn.participantId }).catch((err) =>
+    this.extractRoleConfirmation({ id: checkIn.id, participantId: checkIn.participantId }).catch((err) =>
       this.logger.warn(`Role-confirmation read failed for check-in ${checkIn.id}: ${err.message}`),
     );
-
-    /**
-     * G42. THE NOTICING, and the call that stops recordCoachingStep from being a
-     * method nobody invokes - which is what it was an hour after being written,
-     * in the same session I committed a note about exactly that failure.
-     *
-     * Best-effort and last, like the others: nothing about coaching may delay or
-     * block a session completing.
-     */
-    /*
-     * AFTER THE ROLE IS READ AND ANY CONFIRMATION IS STAMPED, never beside them (production check-in,
-     * 15 October 2026). The three ran at once, so which behaviours the coach read this session against
-     * depended on which finished first: a person who confirmed "yes, my work is sales" in this very
-     * check-in could still be read against the floor because the stamp landed a moment later. Both
-     * already swallow their own failures, so waiting on them can never stop the coach running, and
-     * none of this delays the session completing.
-     */
-    /* The coach runs after this and after the conversation's assessment (below), which holds the function read, so its one step may be the assessment's small step. */
-    const theReadsTheCoachWaitsFor = Promise.allSettled([theRoleConfirmation]);
 
     /* The record is written: completedAt is stamped once, which is what the round, the report and the event wait for. */
     const won = await this.prisma.checkIn.updateMany({
@@ -7921,11 +7660,10 @@ ${told}` : '';
     const assessed = this.assessAndThenRead(checkIn, { howItEnded: by === 'the clock' ? 'closed by the clock' : 'finished by the person', closedAt: new Date() })
       .catch((err: any) => this.logger.warn(`The assessment of ${checkIn.id} and its readers failed: ${err?.message ?? err}`));
     /*
-     * THE COACH, AFTER THE ROLE READS AND THE ASSESSMENT (layer 3, 1 November 2026). CoachingState keeps one writer: the coach's
-     * own read offers a step as before, and where it offers none, the small step the assessments found for a pattern (a
-     * coaching question, then a clear expectation) is offered through the same path, behind the same switches.
+     * THE COACH, AFTER THE ASSESSMENT (layer 3; F2, 2 November 2026). Its one step is the assessment's small step for a pattern
+     * (a coaching question, then a clear expectation), delivered through CoachingState, behind the same switches.
      */
-    Promise.allSettled([theReadsTheCoachWaitsFor, assessed])
+    assessed
       .then(() => this.observeForCoaching(checkIn.id, checkIn.participantId, checkIn.sessionNumber))
       .catch((err) => this.logger.warn(`Coaching observation failed for check-in ${checkIn.id}: ${err.message}`));
 

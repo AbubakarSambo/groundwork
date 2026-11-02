@@ -3,7 +3,8 @@
  *
  * Hafsah's brief says small steps "happen on their own". A pattern seen across three of a person's assessments gets a coaching
  * question, then a clear expectation. That step is offered by the coach's one writer (observeForCoaching, then recordCoachingStep
- * into CoachingState), only where the coach's own read offers nothing, and behind the same switches as any coaching step. It
+ * into CoachingState), as the coach's only step (2 November 2026: the coach's own transcript read is removed), and behind the
+ * same switches as any coaching step. It
  * reaches the next check-in through coachingBlock. The lead's steps (a conversation, a deadline, a plan, firing) are never offered.
  */
 import { ConversationService } from '../conversation/conversation.service';
@@ -24,8 +25,7 @@ function aService(o: { interventions: AnIntervention[]; judgementsOn?: boolean; 
     checkIn: {
       findUnique: jest.fn(async (a: any) => {
         if (a?.select?.sessionReport) return { sessionReport: { kind: 'assessment', version: 1, interventions: o.interventions } };
-        if (a?.select?.isSetup) return { isSetup: false };
-        if (a?.select?.groundId) return { groundId: 'g1' };
+        if (a?.select?.groundId || a?.select?.isSetup) return { groundId: 'g1', isSetup: false };
         return { completedAt: new Date('2026-11-03T09:00:00Z'), startedAt: null, createdAt: new Date(), ground: { cadence: 'WEEKLY' } };
       }),
     },
@@ -44,7 +44,6 @@ function aService(o: { interventions: AnIntervention[]; judgementsOn?: boolean; 
     },
     platformSetting: { findUnique: jest.fn(async () => (o.coachingLive === false ? { value: false } : null)) },
   };
-  /* The coach's own read notices nothing this time. */
   const anthropic: any = { extract: jest.fn(async () => null) };
   const service = new ConversationService(
     prisma, {} as any, anthropic, {} as any,
@@ -55,7 +54,7 @@ function aService(o: { interventions: AnIntervention[]; judgementsOn?: boolean; 
 }
 
 describe('the assessments\' small step', () => {
-  it('is the coach\'s one step when the coach\'s own read offers nothing, and reaches the next check-in', async () => {
+  it('is the coach\'s one step, and reaches the next check-in', async () => {
     const w = aService({ interventions: [aStep()] });
     await (w.service as any).observeForCoaching('ci3', 'p1', 3);
     expect(w.prisma.coachingState.upsert).toHaveBeenCalledTimes(1);
@@ -85,7 +84,7 @@ describe('the assessments\' small step', () => {
 
   it('the coach runs after the conversation\'s assessment, not beside it', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8');
-    expect(src).toMatch(/Promise\.allSettled\(\[theReadsTheCoachWaitsFor, assessed\]\)\s*\.then\(\(\) => this\.observeForCoaching\(/);
+    expect(src).toMatch(/assessed\s*\.then\(\(\) => this\.observeForCoaching\(/);
   });
 });
 
