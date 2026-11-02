@@ -1,3 +1,4 @@
+import { whatTheRecordShowsTheLead } from '../patterns/what-the-record-shows-the-lead';
 import { theWeekdaysItMeets } from './the-check-ins-own-schedule';
 import { ConversationService as ConversationServiceForReopening } from '../conversation/conversation.service';
 import { theEndingSaid } from '../resolution/end-states';
@@ -2166,11 +2167,8 @@ export class GroundsService {
     const signals = PATTERNS_ARE_SERVED && !heldButAnswered && (await thePersonJudgementsAreOn(this.prisma, (ground as any).organizationId ?? organizationId))
       ? await (async () => {
           const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
-          const served = servedPatterns(
-            ground.patternDetections as any,
-            await this.patternReaderOf(ground as any, requestingUserId),
-            namesForPatterns,
-          );
+          const reader = await this.patternReaderOf(ground as any, requestingUserId);
+          const served = servedPatterns(ground.patternDetections as any, reader, namesForPatterns);
           /* Opening a page never asks the model (decision 7): kept wording only, from the same
              cache the warm-up (ReportsService.wordTheReadsFor, BoardService.get) fills. */
           const worded = await wordPatternEvidence(
@@ -2178,7 +2176,8 @@ export class GroundsService {
             namesForPatterns.firstNameOf ?? (() => null),
             rememberedCompose(this.prisma, async () => null, false),
           ).catch(() => served);
-          return worded.map((p) => ({ ...p, groundId: id }));
+          /* The reader's own stored patterns, and for whoever runs it, what the record shows about each person (layer 2), already in plain sentences. */
+          return [...worded, ...(await whatTheRecordShowsTheLead(this.prisma, id, reader))].map((p) => ({ ...p, groundId: id }));
         })()
       : [];
     /* The person reading their own for the first time starts the clock on when the lead may read it. */

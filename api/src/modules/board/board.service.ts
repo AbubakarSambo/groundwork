@@ -1,3 +1,4 @@
+import { whatTheRecordShowsTheLead } from '../patterns/what-the-record-shows-the-lead';
 import { theSituationBoard, theRelease8SituationsIsOn } from './release-8-situations';
 import { whereTheTimeWent } from './the-switchboards-own-sections';
 import { theRelease4TeamsIsOn, theUnitOfATarget } from './release-4-teams';
@@ -974,10 +975,11 @@ export class BoardService {
             orderBy: { lastSeenAt: 'desc' },
             take: 60,
           });
-          const served = servedPatterns(rows as any, { participantId: me?.id ?? null, runsIt: true }, {
-            ...whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence),
-            now,
-          });
+          const reader = { participantId: me?.id ?? null, runsIt: true };
+          const served = [
+            ...servedPatterns(rows as any, reader, { ...whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence), now }),
+            ...(await whatTheRecordShowsTheLead(this.prisma, groundId, reader)),
+          ];
           return patternQuestionsToSettleFirst(served, (pid) => nameOf(pid));
         })().catch(() => [] as string[])
       : [];
@@ -2511,7 +2513,7 @@ export class BoardService {
       const patternReader = { participantId: me?.id ?? null, runsIt: runsItForAPattern(ground as any, requestingUserId) };
       const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
       const served = withTheEarlierRead(servedPatterns(detections as any, patternReader, { ...namesForPatterns, now }), detections as any, (ground as any).report?.overTime?.patterns, patternReader);
-      out.patterns = await wordPatternEvidence(
+      const worded = await wordPatternEvidence(
         served,
         namesForPatterns.firstNameOf ?? (() => null),
         rememberedCompose(this.prisma, opts.mayWordNewLines
@@ -2519,6 +2521,9 @@ export class BoardService {
           /* Kept lines only: nothing new is worded, and nothing is written, by opening. */
           : async () => null, !!opts.mayWordNewLines),
       ).catch(() => served);
+      /* The reader's own stored patterns, and for whoever runs it, what the record shows about each person (layer 2), already in
+         plain sentences with their days and words, so nothing rewords them. */
+      out.patterns = [...worded, ...(await whatTheRecordShowsTheLead(this.prisma, groundId, patternReader))];
       /* The person reading their own for the first time starts the clock on when the lead may read it. */
       await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(detections as any, out.patterns as any));
     }

@@ -41,7 +41,7 @@ const FEMI_SAID = 'Femi described the Harbor Foods deal as his own although Ngoz
 const AMAKA_SAID = 'The delivery schedule was called final and the warehouse changed it twice afterwards.';
 
 /*
- * pd1: Ngozi's, three periods, answered: the lead reads it with her words.
+ * pd1: Ngozi's, three periods, answered: only Ngozi reads it, with her words (the lead no longer reads stored patterns).
  * pd2: Femi's, three periods, ready today and never shown: only Femi reads it.
  * pd3: Femi's good news, one period: nobody.  pd4: Ngozi's, two periods: nobody.
  * pd5: Ngozi's E4, never named to a person: nobody.  pd6: the guest's, shown yesterday: only her.
@@ -155,7 +155,7 @@ async function everyPageAs(mods: any, userId: string, ground: any, rows: any[] =
 }
 
 
-/* Femi's B3 is answered, so the lead reads it too. Ngozi's B11 is answered already. Amaka's D1 is a guest's own. */
+/* Femi's B3 is answered too, so under the old rule the lead would have read it. Ngozi's B11 is answered already. Amaka's D1 is a guest's own. */
 const MORE_ROWS = () => ROWS().map((r) => (r.id === 'pd2' ? { ...r, shownToPersonAt: ago(9), personAnswer: 'Ngozi did the pricing and I put the deal together.', personAnsweredAt: ago(9) } : r));
 
 const GROUNDS_TO_READ: [string, { peersVisibleToEachOther: boolean; sharedAs: string | null }][] = [
@@ -164,21 +164,16 @@ const GROUNDS_TO_READ: [string, { peersVisibleToEachOther: boolean; sharedAs: st
 ];
 
 describe.each(GROUNDS_TO_READ)('the lead reads the good version beside every pattern (%s)', (_name, shape) => {
-  it('serves each pattern with the part it belongs in, what to coach towards and one step', async () => {
+  it('serves the lead no stored pattern and none of the coaching that once sat beside one', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const served = await everyPageAs(withTheSwitch(true), 'u-tunde', groundWith(shape), MORE_ROWS());
-    const byId = Object.fromEntries((served.board.patterns as any[]).map((p) => [p.id, p]));
-    /* B11 is about the work. B3 is what is said against what happened. */
-    expect(byId.pd1.about).toBe('the work');
-    expect(byId.pd1.coachTowards).toBe('Coach them towards naming what the team itself can change when something goes wrong.');
-    expect(byId.pd1.oneStep).toBe("One step they could take this week is to name one thing in the team's own hands the next time a problem comes up.");
-    expect(byId.pd2.about).toBe('what is said against what happened');
-    expect(byId.pd2.coachTowards).toBe('Coach them towards saying clearly who did each piece of the work.');
-    expect(byId.pd2.oneStep).toBe('One step they could take this week is to name who did each piece of work in the next report.');
-    /* The check-in's own page carries the same for the lead. */
-    expect((served.page.signals as any[]).find((p) => p.id === 'pd2').coachTowards).toBe(byId.pd2.coachTowards);
-    /* No name is in any of it, and nothing in it is a verdict. */
-    const said = JSON.stringify([byId.pd1, byId.pd2].map((p) => [p.coachTowards, p.oneStep]));
-    expect(said).not.toMatch(/Ngozi|Femi|Tunde|PIP|at risk|score|verdict|exit/i);
+    expect(served.board.patterns ?? []).toEqual([]);
+    expect(served.page.signals ?? []).toEqual([]);
+    const text = JSON.stringify(served);
+    for (const said of [NGOZI_SAID, NGOZI_ANSWERED, FEMI_SAID, 'Ngozi did the pricing and I put the deal together.']) expect(text).not.toContain(said);
+    expect(text).not.toContain('Coach them towards naming what the team itself can change when something goes wrong.');
+    expect(text).not.toContain('Coach them towards saying clearly who did each piece of the work.');
+    expect(text).not.toContain('One step they could take');
   });
 
   it('the person a pattern is about reads their own, with the part it belongs in and none of the lead\'s coaching', async () => {
@@ -209,10 +204,13 @@ describe.each(GROUNDS_TO_READ)('the lead reads the good version beside every pat
     expect(JSON.stringify(served)).not.toContain('Coach them towards');
   });
 
-  it('the admin who set the check-in up reads what the lead reads', async () => {
+  it('the admin who set the check-in up reads what the lead reads: no stored pattern and none of the coaching', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     USERS['u-setup-admin'] = { role: 'ADMIN', organizationId: 'org-1' };
     const served = await everyPageAs(withTheSwitch(true), 'u-setup-admin', { ...groundWith(shape), createdByUserId: 'u-setup-admin' }, MORE_ROWS());
-    expect((served.board.patterns as any[]).every((p) => !!p.coachTowards && !!p.oneStep)).toBe(true);
+    expect(served.board.patterns ?? []).toEqual([]);
+    expect(JSON.stringify(served)).not.toContain('Coach them towards');
+    expect(JSON.stringify(served)).not.toContain(NGOZI_ANSWERED);
   });
 });
 
@@ -234,19 +232,21 @@ describe('a role can say the good version better, from its own map', () => {
  * lead and the admin who set the check-in up read each pattern with its coaching, after the person's
  * turn, and Femi reads his own without the coaching, told Tunde reads it too.
  */
-describe.each(GROUNDS_TO_READ)('with no setting at all, the lead reads the coaching beside each pattern (%s) (decision 86)', (_name, shape) => {
-  it('the lead reads both patterns, each with its coaching, since both people answered', async () => {
+describe.each(GROUNDS_TO_READ)('with no setting at all, the lead reads no stored pattern or its coaching (%s) (decision 86, then Hafsah, 2 November 2026)', (_name, shape) => {
+  it('the lead reads neither pattern nor its coaching, though both people answered', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const served = await everyPageAs(withTheSwitch(true), 'u-tunde', groundWith(shape), MORE_ROWS());
-    expect((served.board.patterns as any[]).map((p) => p.id).sort()).toEqual(['pd1', 'pd2']);
-    expect(JSON.stringify(served)).toContain('Coach them towards');
-    expect(JSON.stringify(served)).toContain('One step they could take');
+    expect(served.board.patterns ?? []).toEqual([]);
+    expect(JSON.stringify(served)).not.toContain('Coach them towards');
+    expect(JSON.stringify(served)).not.toContain('One step they could take');
   });
 
-  it('the admin who set the check-in up reads them too', async () => {
+  it('the admin who set the check-in up reads none of it either', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     USERS['u-setup-admin'] = { role: 'ADMIN', organizationId: 'org-1' };
     const served = await everyPageAs(withTheSwitch(true), 'u-setup-admin', { ...groundWith(shape), createdByUserId: 'u-setup-admin' }, MORE_ROWS());
-    expect((served.board.patterns as any[]).length).toBeGreaterThan(0);
-    expect(JSON.stringify(served)).toContain('Coach them towards');
+    expect(served.board.patterns ?? []).toEqual([]);
+    expect(JSON.stringify(served)).not.toContain('Coach them towards');
   });
 
   it('Femi reads his own, with the part it belongs in, none of the coaching, and is told Tunde reads it too', async () => {
@@ -255,6 +255,6 @@ describe.each(GROUNDS_TO_READ)('with no setting at all, the lead reads the coach
     expect(own.map((p) => p.id)).toEqual(['pd2']);
     expect(own[0].about).toBe('what is said against what happened');
     expect(own[0].coachTowards).toBeNull();
-    expect(own[0].whoSeesIt).toBe('Tunde can see this too, with anything you say about it. Nothing is decided from it.');
+    expect(own[0].whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
   });
 });

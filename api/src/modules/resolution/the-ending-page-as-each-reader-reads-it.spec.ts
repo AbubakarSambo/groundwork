@@ -137,18 +137,22 @@ describe('Wairimu, who runs the check-in, reads the suggestion, the signals and 
     expect(served(page)).not.toMatch(RATINGS);
   });
 
-  it('reads the signal behind it as a plain sentence, with what Kwame said beside it', async () => {
+  it('reads no stored signal about Kwame; Kwame reads his own as a plain sentence, with his own words beside it', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const w = world();
     await withASuggestion(w);
     const page = (await w.resolution.get('g1', WAIRIMU) as any).theEndingPage;
-    expect(page.signals).toHaveLength(1);
-    expect(page.signals[0]).toMatchObject({
-      participantId: 'p-kwame', yours: false, heading: 'Steps in to stop things failing',
+    expect(page.signals ?? []).toEqual([]);
+    expect(served(page.signals ?? [])).not.toContain('Stock problems were raised late, three times.');
+    expect(served(page.signals ?? [])).not.toContain('Steps in to stop things failing');
+    const his = (await w.resolution.get('g1', KWAME) as any).theEndingPage;
+    expect(his.signals).toHaveLength(1);
+    expect(his.signals[0]).toMatchObject({
+      participantId: 'p-kwame', yours: true, heading: 'Steps in to stop things failing',
       whatHappened: 'Stock problems were raised late, three times.', theirWords: 'Onboarding stock took three weeks.',
     });
-    expect(page.signals[0].whoSeesIt).toBe('Kwame saw this first and said what is behind it.');
     /* A pattern is never joined to a name in one string. */
-    expect(page.signals[0].heading).not.toMatch(/Kwame/);
+    expect(his.signals[0].heading).not.toMatch(/Kwame/);
   });
 
   it('reads the questions to ask, in plain full sentences', async () => {
@@ -204,7 +208,7 @@ describe('Kwame, the person it is about, reads his own facts and the decision wi
     expect(page.aboutYou[0].decision).toMatchObject({ says: 'Extra support for the next six weeks', reasons: 'The stock delay was not his doing.' });
     expect(page.signals).toHaveLength(1);
     expect(page.signals[0].yours).toBe(true);
-    expect(page.signals[0].whoSeesIt).toBe('Wairimu can see this too, with anything you say about it. Nothing is decided from it.');
+    expect(page.signals[0].whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
   });
 });
 
@@ -241,12 +245,14 @@ describe('Grace, an admin who is not in the check-in', () => {
     await expect(w.resolution.get('g1', GRACE)).rejects.toThrow('You are not part of this check-in.');
   });
 
-  it('reads the signals and no suggestion when she set the check-in up and handed it to Wairimu', async () => {
+  it('reads no stored signal and no suggestion when she set the check-in up and handed it to Wairimu', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const w = world({ scenario: GroundScenario.PIP, createdByUserId: GRACE });
     await withASuggestion(w);
     const page = (await w.resolution.get('g1', GRACE) as any).theEndingPage;
     expect(page.suggestions).toEqual([]);
-    expect(page.signals).toHaveLength(1);
+    expect(page.signals ?? []).toEqual([]);
+    expect(served(page)).not.toContain('Stock problems were raised late, three times.');
   });
 });
 
@@ -303,30 +309,34 @@ describe("on Kwame's first 90 days, which is an evaluation check-in", () => {
  * Grace, who set the check-in up, read the signal after Kwame's turn, and Kwame is told Wairimu sees it.
  * Aisha, a colleague, still reads none.
  */
-describe('with no setting at all, Wairimu reads the signal about Kwame after his turn (decision 86)', () => {
-  it('Wairimu reads the suggestion and the signal, with what Kwame said beside it', async () => {
+describe('with no setting at all, only Kwame reads the stored signal about Kwame, even after his turn (decision 86, then Hafsah, 2 November 2026)', () => {
+  it('Wairimu reads the suggestion, and no stored signal or what Kwame said beside it', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const w = world();
     await withASuggestion(w);
     const page = (await w.resolution.get('g1', WAIRIMU) as any).theEndingPage;
     expect(page.suggestions).toHaveLength(1);
-    expect(page.signals).toHaveLength(1);
-    expect(page.signals[0].whoSeesIt).toBe('Kwame saw this first and said what is behind it.');
+    expect(page.signals ?? []).toEqual([]);
+    expect(served(page.signals ?? [])).not.toContain('Kwame saw this first');
   });
 
-  it('Kwame reads his own signal, and is never told only he sees it', async () => {
+  it('Kwame reads his own signal, and is told only he sees it, which is now true', async () => {
+    /* Hafsah, 2 November 2026: only the person reads a stored pattern now, so they are told only they see it. */
+
     const w = world();
     await withASuggestion(w, true);
     const page = (await w.resolution.get('g1', KWAME) as any).theEndingPage;
     expect(page.signals).toHaveLength(1);
     expect(page.signals[0].yours).toBe(true);
-    expect(page.signals[0].whoSeesIt).not.toBe('Only you see this. Nothing is decided from it.');
+    expect(page.signals[0].whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
   });
 
-  it('Grace, who set the check-in up, reads the signal', async () => {
+  it('Grace, who set the check-in up, reads no stored signal', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const w = world({ scenario: GroundScenario.PIP, createdByUserId: GRACE });
     await withASuggestion(w);
     const page = (await w.resolution.get('g1', GRACE) as any).theEndingPage;
-    expect(page.signals).toHaveLength(1);
+    expect(page.signals ?? []).toEqual([]);
   });
 
   it('Aisha, a colleague, reads no signal', async () => {

@@ -198,14 +198,13 @@ describe('week 16 / decision 57 item 3: the pattern nudge in Today', () => {
     return { report: (svc as ReportsService).get('g-sales', requestingUserId, 'org-1') as Promise<any>, writes };
   }
 
-  it('nudges the lead once, naming Brian and quoting what he said', async () => {
+  it('never nudges the lead about Brian’s stored pattern, though he answered it', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const r = await withPattern(PATTERN_ROW).report;
-    const item = (r.forTheLead as any[]).find((x) => x.id === 'pattern-talk-pd-brian-b3');
-    expect(item).toEqual({
-      id: 'pattern-talk-pd-brian-b3',
-      decide: 'Talk with Brian about “Others describe doing work they described as theirs”.',
-      why: 'Brian has seen it. Brian said, “I ran the call, Miriam built the numbers.”',
-    });
+    const items = (r.forTheLead as any[]) ?? [];
+    expect(items.filter((x) => String(x.id).startsWith('pattern-talk-'))).toEqual([]);
+    expect(JSON.stringify(items)).not.toContain('Talk with Brian about');
+    expect(JSON.stringify(items)).not.toContain('I ran the call, Miriam built the numbers.');
   });
 
   it('goes away once the lead has marked they talked about it', async () => {
@@ -229,14 +228,16 @@ describe('week 16 / decision 57 item 3: the pattern nudge in Today', () => {
   /* Decision 86 reverses decision 74, item 2. This block was "with the person-only reach, the
      lead's Today has no nudge". There is no such reach now, and nothing is put in force in this file,
      so the nudge above is what the lead reads by default. This pins that Brian's own words are in it. */
-  describe('with no setting at all (decision 86)', () => {
-    it('the lead’s Today has the nudge, the plain heading and Brian’s own words', async () => {
+  describe('with no setting at all (decision 86, then Hafsah, 2 November 2026)', () => {
+    it('the lead’s Today has no nudge, no plain heading and none of Brian’s own words', async () => {
+      /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
       const r = await withPattern(PATTERN_ROW).report;
       const ids = ((r.forTheLead as any[]) ?? []).map((x) => x.id);
-      expect(ids).toContain('pattern-talk-pd-brian-b3');
+      expect(ids).not.toContain('pattern-talk-pd-brian-b3');
       const all = JSON.stringify(r);
-      expect(all).toContain('Others describe doing work they described as theirs');
-      expect(all).toContain('I ran the call, Miriam built the numbers.');
+      expect(all).not.toContain('Others describe doing work they described as theirs');
+      expect(all).not.toContain('I ran the call, Miriam built the numbers.');
+      expect(all).not.toContain('Brian described the Kito Foods deal as his own');
     });
   });
 });

@@ -88,11 +88,14 @@ const INTERNAL = [...POSITIVE_CODES, ...CARRYING_CODES, ...BAD_FAITH_CODES];
 const b3 = INTERNAL.find((c) => c.code === 'B3')!;
 
 describe('the probe list, decision 52', () => {
-  it('reads the plain name, and never the internal name or the detector’s own signal', async () => {
+  it('carries no line from Femi’s stored pattern for the lead, not its plain name, internal name, signal or code', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const report: any = await reportsFor('MEMBER').get('g-atlas', 'u-tunde', 'org-1');
+    expect(report).toBeTruthy();
     const probeLines: string[] = (report.probes ?? []).flatMap((p: any) => p.probe ?? []);
     const joined = probeLines.join(' ');
-    expect(joined).toContain('Others describe doing work they described as theirs');
+    expect(joined).not.toContain('Others describe doing work they described as theirs');
+    expect(joined).not.toContain(FEMI_SAID);
     expect(joined).not.toContain(b3.signal);
     expect(joined).not.toContain(b3.name);
     expect(joined).not.toMatch(/\bB3\b/);
@@ -109,11 +112,14 @@ describe('the probe list, decision 52', () => {
  * report carries no pattern line". There is no such reach now: with nothing put in force, the lead's
  * probe list carries Femi's pattern, in its plain name, after his turn.
  */
-describe('with no setting at all, the lead’s report carries the pattern line (decision 86)', () => {
-  it('the lead’s probe list holds Femi’s pattern in plain words, and never the internal name', async () => {
+describe('with no setting at all, the lead’s report carries no stored pattern line (decision 86, then Hafsah, 2 November 2026)', () => {
+  /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+  it('the lead’s probe list holds nothing of Femi’s stored pattern, even after his turn', async () => {
     const report: any = await reportsFor('MEMBER').get('g-atlas', 'u-tunde', 'org-1');
+    expect(report).toBeTruthy();
     const all = JSON.stringify(report.probes ?? []);
-    expect(all).toContain('Others describe doing work they described as theirs');
+    expect(all).not.toContain('Others describe doing work they described as theirs');
+    expect(all).not.toContain(FEMI_SAID);
     expect(all).not.toContain(b3.signal);
     expect(all).not.toContain(b3.name);
   });

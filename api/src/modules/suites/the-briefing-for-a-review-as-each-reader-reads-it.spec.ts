@@ -51,22 +51,16 @@ async function started() {
 }
 
 describe('Wairimu, who writes the review, reads her briefing', () => {
-  it('with the counts from the check-in she runs, Aisha’s answered pattern, what changed after earlier conversations, and that she decides', async () => {
+  it('with the counts from the check-in she runs, the earlier decision and that she decides, and none of Aisha’s stored patterns', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const { svc, as, id } = await started();
     const r: any = await svc.one(as('u-wairimu'), id);
     expect(r.briefing).toEqual({
       heading: 'Your briefing for Aisha’s review',
       counts: 'In the check-ins you are in with Aisha, Aisha made 5 commitments between 6 April 2026 and 28 September 2026. Aisha kept 2 of them, 1 was not done, 1 was dropped and 1 was still open when this review started. Of them, 2 took longer than first said, because they were not done, or Aisha said them again in a later check-in.',
-      patterns: [{
-        heading: 'Problems are mostly put down to things outside the team',
-        whatHappened: 'Aisha put the missed orders down to the stock arriving late.',
-        howOften: 'This came up in 3 check-ins, in sessions 2, 3 and 4.',
-        checkIn: 'Sales team, Q3',
-        theirAnswer: 'Aisha’s answer: “The stock came three weeks late, so I could not sell.”',
-      }],
-      patternsNote: 'These only appear after three check-ins. Aisha sees them first and can answer, and they never go anywhere on their own.',
+      patterns: [],
+      patternsNote: null,
       changedAfterEarlierConversations: [
-        'You talked with Aisha about “Problems are mostly put down to things outside the team” on 25 September 2026. It came up again in 1 check-in after that.',
         'You decided Aisha’s review on 15 March 2026. The decision was “Aisha leads the butchery accounts.” The reason given was “She closed every butchery sale she was given.”',
       ],
       corrections: [],
@@ -74,16 +68,16 @@ describe('Wairimu, who writes the review, reads her briefing', () => {
     });
     /* "Groundwork suggests recognising" stays behind its setting, which is off. */
     expect(r.recognise).toBeNull();
+    expect(JSON.stringify(r.briefing)).not.toMatch(/Aisha put the missed orders|The stock came three weeks late|Problems are mostly put down/);
   });
 
-  it('reads a pattern Aisha has not answered once her three days are over, saying she has not answered', async () => {
+  it('reads none of Aisha’s stored patterns, answered or not, even once her three days are over', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const { svc, as, id } = await started();
     jest.setSystemTime(new Date('2026-10-03T12:00:00Z'));
     const r: any = await svc.one(as('u-wairimu'), id);
-    expect(r.briefing.patterns.map((p: any) => [p.heading, p.theirAnswer])).toEqual([
-      ['Problems are mostly put down to things outside the team', 'Aisha’s answer: “The stock came three weeks late, so I could not sell.”'],
-      ['Delivers what was agreed, with proof', 'Aisha hasn’t answered this yet.'],
-    ]);
+    expect(r.briefing.patterns).toEqual([]);
+    expect(JSON.stringify(r.briefing)).not.toMatch(/Delivers what was agreed|Aisha sent the proof|hasn’t answered this yet|The stock came three weeks late/);
   });
 
   it('reads Aisha’s corrections beside the line they correct, and never one about a check-in she is not in', async () => {

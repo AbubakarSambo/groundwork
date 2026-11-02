@@ -331,35 +331,23 @@ export function patternRowsThisReaderMayRead<T extends APatternRow>(
   opts: { on?: boolean; now?: Date } = {},
 ): T[] {
   if (!(opts.on ?? PATTERNS_ARE_SERVED)) return [];
-  const now = opts.now ?? new Date();
   return (rows ?? []).filter((row) => {
     if (!row?.participantId || ALIGNMENT_FEED_ONLY_CODES.has(row.code)) return false;
     if (!plainNameOf(row.code)) return false;
     if (!hasBeenSeenInThreePeriods(row)) return false;
-    const yours = !!reader.participantId && row.participantId === reader.participantId;
-    if (yours) return true;
-    /* A participant reads their own and nobody else's; whoever runs it, only after the person's turn. */
-    return reader.runsIt && thePersonHasHadTheirTurn(row, now);
+    /*
+     * A STORED PATTERN IS READ BY THE PERSON IT IS ABOUT, AND BY NOBODY ELSE (Hafsah, 2 November 2026: "yes to replacing
+     * PatternDetection's lead-facing patterns with the assessment's single pattern layer"). Whoever runs the check-in reads what
+     * the record shows about each person from layer 2 instead (what-the-record-shows-the-lead.ts), counted from distinct items
+     * across the whole record. A participant reads their own and nobody else's, as before.
+     */
+    return !!reader.participantId && row.participantId === reader.participantId;
   });
 }
 
-function whoSeesIt(row: APatternRow, yours: boolean, names: WhoIsWho, now: Date): string {
-  if (yours) {
-    /* Hafsah, 29 September 2026: when the person it is about is the lead themselves, the sentence
-       must not name the lead as if they were someone else reading it back to them. */
-    const isTheLeadsOwn = !!names.leadParticipantId && row.participantId === names.leadParticipantId;
-    if (isTheLeadsOwn) return 'Only you see this. Nothing is decided from it.';
-    const lead = names.leadName?.trim() || 'The person who runs this check-in';
-    return thePersonHasHadTheirTurn(row, now)
-      ? `${lead} can see this too, with anything you say about it. Nothing is decided from it.`
-      : `You are seeing this first. ${lead} will see it too, with anything you say about it. Nothing is decided from it.`;
-  }
-  const first = names.firstNameOf?.(row.participantId)?.trim() || 'The person it is about';
-  if ((row.personAnswer ?? '').trim()) return `${first} saw this first and said what is behind it.`;
-  /* Hafsah, 28 September 2026: when the lead sees a pattern the person has not answered, it says
-     plainly that they have not answered yet. */
-  if (at(row.shownToPersonAt) !== null) return `${first} saw this first and has not answered yet.`;
-  return `${first} has not seen this yet, and has not answered yet. It is shown to you because a week has passed since it came up for the third time.`;
+/** Only the person it is about reads a stored pattern (Hafsah, 2 November 2026), so that is what they are told. */
+function whoSeesIt(): string {
+  return 'Only you see this. Nothing is decided from it.';
 }
 
 /** The patterns this reader may read, in the form they may read them. */
@@ -387,7 +375,7 @@ export function servedPatterns(
         askThem: yours ? null : whatToAskAbout(row.code),
         theirWords: (row.personAnswer ?? '').trim() || null,
         canAnswer: yours,
-        whoSeesIt: whoSeesIt(row, yours, opts, now),
+        whoSeesIt: whoSeesIt(),
         leadMark: yours ? null : (row.leadMark ?? null),
         talkedAbout: !!row.talkedAboutAt,
         secondReadNote: !yours && row.evidenceSource === 'both' ? TWO_SEPARATE_READS_NOTE : null,

@@ -37,7 +37,7 @@ const FEMI_SAID = 'Femi described the Harbor Foods deal as his own although Ngoz
 const AMAKA_SAID = 'The delivery schedule was called final and the warehouse changed it twice afterwards.';
 
 /*
- * pd1: Ngozi's, three periods, answered: the lead reads it with her words.
+ * pd1: Ngozi's, three periods, answered: only Ngozi reads it, with her words (the lead no longer reads stored patterns).
  * pd2: Femi's, three periods, ready today and never shown: only Femi reads it.
  * pd3: Femi's good news, one period: nobody.  pd4: Ngozi's, two periods: nobody.
  * pd5: Ngozi's E4, never named to a person: nobody.  pd6: the guest's, shown yesterday: only her.
@@ -179,7 +179,8 @@ const GROUNDS: [string, { peersVisibleToEachOther: boolean; sharedAs: string | n
 
 /* What each reader may read, and nothing else, on every page. */
 const EXPECTED: [string, string, { board: string[]; page: string[]; record: string[] | null }][] = [
-  ['the lead', 'u-tunde', { board: ['pd1'], page: ['pd1'], record: [] }],
+  /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+  ['the lead', 'u-tunde', { board: [], page: [], record: [] }],
   ['the person a pattern is about, who answered it', 'u-ngozi', { board: ['pd1'], page: ['pd1'], record: ['pd1'] }],
   ['a colleague, reading only his own, which only he has seen', 'u-femi', { board: ['pd2'], page: ['pd2'], record: ['pd2'] }],
   /* Decision 58 (screens request 84, 30 September 2026): an admin who does not run this check-in,
@@ -206,7 +207,7 @@ describe('with the switch on, every reader reads patterns under the rules', () =
     }
   }
 
-  it('the person reads it in plain words, is told they are seeing it first, and can answer', async () => {
+  it('the person reads it in plain words, is told only they see it, and can answer', async () => {
     const served = await everyPageAs(withTheSwitch(true), 'u-femi', groundWith(GROUNDS[0][1]));
     expect(served.record.patterns).toEqual([{
       id: 'pd2', participantId: 'p-femi', yours: true, kind: 'attention',
@@ -215,7 +216,7 @@ describe('with the switch on, every reader reads patterns under the rules', () =
       sessions: [1, 2, 3],
       howOften: 'This came up in 3 of your check-ins, in sessions 1, 2 and 3.',
       askThem: null, theirWords: null, canAnswer: true,
-      whoSeesIt: 'You are seeing this first. Tunde will see it too, with anything you say about it. Nothing is decided from it.',
+      whoSeesIt: 'Only you see this. Nothing is decided from it.',
       /* Decision 57, item 2: never shown to the person it is about, however the lead marked it. */
       leadMark: null, talkedAbout: false, secondReadNote: null,
       /* Decision 67: the coaching is the lead's alone, so the person reads none of it. */
@@ -225,27 +226,32 @@ describe('with the switch on, every reader reads patterns under the rules', () =
     expect(served.writes.some((w) => w.where.id.in.includes('pd2') && w.data.shownToPersonAt)).toBe(true);
   });
 
-  it('the lead reads it only after the person, with the person’s own words beside it and no label', async () => {
-    const served = await everyPageAs(withTheSwitch(true), 'u-tunde', groundWith(GROUNDS[0][1]));
+  it('the lead reads none of it, not even after the person answered; Ngozi reads hers with her own words and no label', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    const asLead = await everyPageAs(withTheSwitch(true), 'u-tunde', groundWith(GROUNDS[0][1]));
+    expect(asLead.board.patterns ?? []).toEqual([]);
+    expect(asLead.page.signals ?? []).toEqual([]);
+    for (const said of [NGOZI_SAID, NGOZI_ANSWERED, FEMI_SAID, AMAKA_SAID]) {
+      expect(JSON.stringify(asLead.board)).not.toContain(said);
+      expect(JSON.stringify(asLead.page)).not.toContain(said);
+    }
+    /* The lead reading is never the person being shown it. */
+    expect(asLead.writes).toEqual([]);
+    const served = await everyPageAs(withTheSwitch(true), 'u-ngozi', groundWith(GROUNDS[0][1]));
     expect(served.board.patterns).toEqual([{
-      id: 'pd1', participantId: 'p-ngozi', yours: false, kind: 'attention',
+      id: 'pd1', participantId: 'p-ngozi', yours: true, kind: 'attention',
       heading: 'Problems are mostly put down to things outside the team',
       whatHappened: NGOZI_SAID,
       sessions: [1, 2, 4],
-      howOften: 'This came up in 3 check-ins, in sessions 1, 2 and 4.',
-      askThem: 'What was within your control in this situation?',
+      howOften: 'This came up in 3 of your check-ins, in sessions 1, 2 and 4.',
+      askThem: null,
       theirWords: NGOZI_ANSWERED,
-      canAnswer: false,
-      whoSeesIt: 'Ngozi saw this first and said what is behind it.',
-      /* Decision 57, item 2: not yet marked. */
+      canAnswer: true,
+      whoSeesIt: 'Only you see this. Nothing is decided from it.',
       leadMark: null, talkedAbout: false, secondReadNote: null,
-      /* Decision 67: what the lead reads beside every pattern, from fixed text. */
-      about: 'the work',
-      coachTowards: 'Coach them towards naming what the team itself can change when something goes wrong.',
-      oneStep: 'One step they could take this week is to name one thing in the team\'s own hands the next time a problem comes up.',
+      /* Decision 67: the coaching was the lead's alone, so the person reads none of it. */
+      about: 'the work', coachTowards: null, oneStep: null,
     }]);
-    /* The lead reading is never the person being shown it. */
-    expect(served.writes).toEqual([]);
   });
 
   /*
@@ -255,11 +261,14 @@ describe('with the switch on, every reader reads patterns under the rules', () =
    * write surfaces. She reads a pattern exactly as the lead does; the u-admin above, who did not set
    * this one up, reads none.
    */
-  it('the admin who set this check-in up for its lead reads a pattern as the lead does', async () => {
+  it('the admin who set this check-in up for its lead reads no stored pattern, as the lead now does', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     USERS['u-setup-admin'] = { role: 'ADMIN', organizationId: 'org-1' };
     const ground = { ...groundWith(GROUNDS[0][1]), createdByUserId: 'u-setup-admin' };
     const served = await everyPageAs(withTheSwitch(true), 'u-setup-admin', ground);
-    expect(idsOn(served)).toEqual({ board: ['pd1'], page: ['pd1'], record: null });
+    expect(idsOn(served)).toEqual({ board: [], page: [], record: null });
+    expect(JSON.stringify(served.board)).not.toContain(NGOZI_ANSWERED);
+    expect(JSON.stringify(served.page)).not.toContain(NGOZI_ANSWERED);
   });
 });
 
@@ -277,29 +286,31 @@ describe('and with the switch off, none of the three pages carries one, for anyb
  * DECISION 86 REVERSES DECISION 74, ITEM 2. This block was "with the person-only reach, a pattern
  * reaches only the person it is about", where the lead read none. There is no such reach now: every
  * block above runs with nothing put in force, and this one pins that a person who has answered is
- * read by the lead, and that the person is told so, never "Only you see this".
+ * read by nobody but the person (Hafsah, 2 November 2026), and that the person is told only they see it.
  */
-describe('with no setting at all, the lead reads a pattern after the person’s turn (decision 86)', () => {
-  it('the lead reads Ngozi’s, which she answered days ago, on the board and the check-in’s page', async () => {
+describe('with no setting at all, the lead reads no stored pattern, even after the person’s turn (decision 86, then Hafsah, 2 November 2026)', () => {
+  it('the lead reads nothing of Ngozi’s, which she answered days ago, on the board or the check-in’s page', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     for (const [, shape] of GROUNDS) {
       const served = await everyPageAs(withTheSwitch(true), 'u-tunde', groundWith(shape));
-      expect(idsOn(served)).toEqual({ board: ['pd1'], page: ['pd1'], record: [] });
-      expect(JSON.stringify(served.board)).toContain(NGOZI_ANSWERED);
+      expect(idsOn(served)).toEqual({ board: [], page: [], record: [] });
+      expect(JSON.stringify(served.board)).not.toContain(NGOZI_ANSWERED);
+      expect(JSON.stringify(served.page)).not.toContain(NGOZI_ANSWERED);
     }
   });
 
-  it('Femi reads his with the answer box, and is told Tunde will see it too', async () => {
+  it('Femi reads his with the answer box, and is told only he sees it', async () => {
     const served = await everyPageAs(withTheSwitch(true), 'u-femi', groundWith(GROUNDS[0][1]));
     const [mine] = served.record.patterns;
     expect(mine.id).toBe('pd2');
     expect(mine.canAnswer).toBe(true);
-    expect(mine.whoSeesIt).toBe('You are seeing this first. Tunde will see it too, with anything you say about it. Nothing is decided from it.');
+    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
   });
 
   it('Ngozi, who answered, reads her own words beside it, and that Tunde can see it', async () => {
     const served = await everyPageAs(withTheSwitch(true), 'u-ngozi', groundWith(GROUNDS[0][1]));
     const [mine] = served.record.patterns;
     expect(mine.theirWords).toBe(NGOZI_ANSWERED);
-    expect(mine.whoSeesIt).toBe('Tunde can see this too, with anything you say about it. Nothing is decided from it.');
+    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
   });
 });

@@ -191,12 +191,11 @@ describe('the lead reads the whole week', () => {
     expect(r.acrossTheTeam).toEqual(['Green Mart came up in what Aisha and Baraka said this week.']);
   });
 
-  it('reads only the pattern whose person has had their turn, said as what happened', async () => {
+  it('reads no stored pattern about anybody, even one whose person has had their turn', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const { r } = await served(LEAD);
-    expect(r.threeInARow).toEqual([
-      { who: 'Baraka', isYou: false, says: 'The work stops until there is another call. This came up in 3 check-ins, in sessions 3, 4 and 5.' },
-    ]);
-    expect(JSON.stringify(r.threeInARow)).not.toMatch(/RIGHT|Two separate reads|A lot of communicating/);
+    expect(r.threeInARow).toEqual([]);
+    expect(JSON.stringify(r)).not.toMatch(/The work stops until there is another call|RIGHT|Two separate reads|A lot of communicating/);
   });
 
   it('reads what was said and what the proof shows, as totals', async () => {
@@ -221,19 +220,21 @@ describe('the lead reads the whole week', () => {
     ]);
   });
 
-  it('reads what to do next week, each with where it comes from', async () => {
+  it('reads what to do next week, each with where it comes from, and nothing from a stored pattern', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const { r } = await served(LEAD);
-    expect(r.forNextWeek).toEqual(expect.arrayContaining([
+    expect(r.forNextWeek).toEqual([
       { do: 'Decide whether a price range counts as a budget.', why: 'Aisha is waiting on you for it.', comesFrom: 'This comes from a blocker.' },
-      { do: 'Talk with Baraka about “The work stops until there is another call”.', why: 'Baraka has seen this and has not answered yet.', comesFrom: 'From a pattern' },
       { do: 'Decide whether to hire a second driver.', why: 'You wrote this down as still to decide.', comesFrom: 'Decision needed' },
-    ]));
+    ]);
   });
 
-  it('is never nudged about a pattern the person has not had their turn on', async () => {
+  it('is never nudged about a stored pattern, whether or not the person has had their turn on it', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const { r } = await served(LEAD);
-    expect(r.forNextWeek).toHaveLength(3);
+    expect((r.forNextWeek ?? []).filter((f: any) => f.comesFrom === 'From a pattern')).toEqual([]);
     expect(JSON.stringify(r)).not.toContain('A lot of communicating');
+    expect(JSON.stringify(r)).not.toContain('Talk with Baraka about');
   });
 
   it('never carries a label, a rating word, or a report label', async () => {
@@ -516,11 +517,12 @@ describe('the check-ins made, said the way a person says a count', () => {
  * report carries a pattern only to the person it is about". There is no such reach now: with nothing
  * put in force, the lead reads Baraka's pattern once he has had his turn, and is nudged to talk it through.
  */
-describe('with no setting at all, the lead reads Baraka’s pattern in the week (decision 86)', () => {
-  it('the lead reads the pattern Baraka has had his turn on, and a nudge to talk it through', async () => {
+describe('with no setting at all, only Baraka reads Baraka’s pattern in the week (decision 86, then Hafsah, 2 November 2026)', () => {
+  it('the lead reads neither the pattern Baraka has had his turn on nor a nudge to talk it through', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const { r } = await served(LEAD);
-    expect(JSON.stringify(r.threeInARow)).toContain('The work stops until there is another call');
-    expect((r.forNextWeek ?? []).filter((f: any) => f.comesFrom === 'From a pattern').length).toBeGreaterThan(0);
+    expect(JSON.stringify(r)).not.toContain('The work stops until there is another call');
+    expect((r.forNextWeek ?? []).filter((f: any) => f.comesFrom === 'From a pattern')).toEqual([]);
   });
 
   it('an admin who does not run the check-in reads none', async () => {

@@ -34,14 +34,12 @@ const patterns = [
 const setup = { checkIns, report, patterns };
 
 describe('decision 86: what keeps coming up, in the lead\'s "what to settle first", as each reader reads it', () => {
-  it('Amina, who runs it, reads each pattern the person has had their turn on, with the answer beside it where there is one', async () => {
+  it('Amina, who runs it, reads no question built from a stored pattern, even after the person\'s turn', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const board = await boardAs(setup as any, ...AMINA);
-    expect(board.overTime.toSettleFirst).toEqual([
-      DOCUMENT_LINE,
-      '“Steps in to stop things failing” keeps coming up in Rukia Mwangi’s check-ins. This came up in 3 check-ins, in sessions 1, 2 and 3. Rukia Mwangi said, “Nobody else was on call that week.” Ask Rukia Mwangi what has changed since then.',
-      '“The work stops until there is another call” keeps coming up in Baraka Otieno’s check-ins. This came up in 3 check-ins, in sessions 1, 2 and 3. Baraka Otieno has not answered it yet. Ask Baraka Otieno what is behind it.',
-    ]);
+    expect(board.overTime.toSettleFirst).toEqual([DOCUMENT_LINE]);
     const all = board.overTime.toSettleFirst.join(' ');
+    expect(all).not.toMatch(/Steps in to stop things failing|The work stops until there is another call|Nobody else was on call/);
     /* The one Rukia was shown an hour ago is still hers alone, and the engine's own sentence is never in the list. */
     expect(all).not.toMatch(/The same problem is raised again/);
     expect(all).not.toMatch(/Engine sentence/);

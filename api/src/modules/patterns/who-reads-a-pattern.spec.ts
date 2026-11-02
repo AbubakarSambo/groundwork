@@ -41,16 +41,22 @@ describe('who reads a pattern', () => {
     expect(servedPatterns(ROWS, STRANGER, on)).toEqual([]);
   });
 
-  it('only after three periods, counted with gaps and never from the detector’s status', () => {
+  it('the person reads their own only after three periods, counted with gaps and never from the detector’s status', () => {
     expect(periodsSeen({ seenInSessions: [1, 2, 4], periodsObserved: 1 })).toBe(3);
-    /* R3 is SURFACED after one period in the detector. It is not shown after one. */
-    expect(servedPatterns(ROWS, LEAD, on).map((p) => p.id).sort()).toEqual(['pd1', 'pd2']);
+    /* Ngozi's B11 was seen in sessions 1, 2 and 4: three periods with a gap, so she reads it. */
+    expect(servedPatterns(ROWS, NGOZI, on).map((p) => p.id)).toEqual(['pd1']);
+    /* R3 is SURFACED after one period in the detector. It is not shown to Femi after one. */
+    expect(servedPatterns(ROWS, FEMI, on).map((p) => p.id)).toEqual(['pd2']);
   });
 
-  it('never E4, F5 or a code the library does not know', () => {
-    const ids = servedPatterns(ROWS, ADMIN, on).map((p) => p.id);
-    expect(ids).not.toContain('pd5');
-    expect(ids).not.toContain('pd6');
+  it('never E4, F5 or a code the library does not know, even to the person it is about', () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    /* E4 and k5 are Ngozi's own rows, so she is the only reader who could reach them at all. */
+    for (const r of [NGOZI, ADMIN]) {
+      const ids = servedPatterns(ROWS, r, on).map((p) => p.id);
+      expect(ids).not.toContain('pd5');
+      expect(ids).not.toContain('pd6');
+    }
   });
 
   it('in plain words, with no label, code or name joined to it', () => {
@@ -67,7 +73,7 @@ describe('who reads a pattern', () => {
       askThem: null,
       theirWords: 'The committee only meets on the last Friday of the month.',
       canAnswer: true,
-      whoSeesIt: 'Tunde can see this too, with anything you say about it. Nothing is decided from it.',
+      whoSeesIt: 'Only you see this. Nothing is decided from it.',
       /* Decision 57, item 2: never shown to the person it is about, however the lead marked it. */
       leadMark: null,
       talkedAbout: false,
@@ -78,11 +84,13 @@ describe('who reads a pattern', () => {
       coachTowards: null,
       oneStep: null,
     });
-    const served = JSON.stringify(servedPatterns(ROWS, LEAD, on));
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    expect(servedPatterns(ROWS, LEAD, on)).toEqual([]);
+    const served = JSON.stringify([...servedPatterns(ROWS, NGOZI, on), ...servedPatterns(ROWS, FEMI, on)]);
     for (const name of EVERY_INTERNAL_NAME) expect(served).not.toContain(name);
     expect(served).not.toMatch(/"(?:code|label|who|name)"|"B11"|"B3"/);
-    expect(servedPatterns(ROWS, LEAD, on).find((p) => p.id === 'pd1')?.askThem).toBe('What was within your control in this situation?');
-    expect(servedPatterns(ROWS, LEAD, on).find((p) => p.id === 'pd2')?.howOften).toBe('This came up in 3 check-ins, in sessions 1, 2 and 3.');
+    expect(servedPatterns(ROWS, FEMI, on).find((p) => p.id === 'pd2')?.howOften).toBe('This came up in 3 of your check-ins, in sessions 1, 2 and 3.');
+    expect(servedPatterns(ROWS, FEMI, on).find((p) => p.id === 'pd2')?.askThem).toBeNull();
   });
 
   it('the engine’s sentence is dropped whole when it holds an internal name or a code', () => {
@@ -103,7 +111,7 @@ describe('the person sees it first, and can answer, before the lead reads it', (
     const fresh = row({ readyAt: daysAgo(0) });
     const [mine] = servedPatterns([fresh], FEMI, on);
     expect(mine.canAnswer).toBe(true);
-    expect(mine.whoSeesIt).toBe('You are seeing this first. Tunde will see it too, with anything you say about it. Nothing is decided from it.');
+    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
     expect(theOnesTheyAreSeeingFirst([fresh], [mine])).toEqual(['x']);
   });
 
@@ -115,24 +123,31 @@ describe('the person sees it first, and can answer, before the lead reads it', (
     expect(servedPatterns([row({})], ADMIN, on)).toEqual([]);
   });
 
-  it('the lead reads it at once when the person has answered, with their words beside it', () => {
-    const [read] = servedPatterns([row({ readyAt: daysAgo(0), shownToPersonAt: daysAgo(0), personAnswer: 'Ops asked for a change after sign-off.', personAnsweredAt: daysAgo(0) })], LEAD, on);
-    expect(read.theirWords).toBe('Ops asked for a change after sign-off.');
-    expect(read.canAnswer).toBe(false);
-    expect(read.whoSeesIt).toBe('Femi saw this first and said what is behind it.');
+  it('the lead never reads it, even once the person has answered; the person reads it with their own words beside it', () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    const answered = row({ readyAt: daysAgo(0), shownToPersonAt: daysAgo(0), personAnswer: 'Ops asked for a change after sign-off.', personAnsweredAt: daysAgo(0) });
+    expect(servedPatterns([answered], LEAD, on)).toEqual([]);
+    expect(servedPatterns([answered], ADMIN, on)).toEqual([]);
+    const [mine] = servedPatterns([answered], FEMI, on);
+    expect(mine.theirWords).toBe('Ops asked for a change after sign-off.');
+    expect(mine.canAnswer).toBe(true);
   });
 
-  it('three days after the person saw it without answering, the lead reads it and is told so', () => {
-    const [read] = servedPatterns([row({ readyAt: daysAgo(3), shownToPersonAt: daysAgo(3) })], LEAD, on);
-    /* Hafsah, 28 September 2026: it says plainly that the person has not answered yet. */
-    expect(read.whoSeesIt).toBe('Femi saw this first and has not answered yet.');
-    expect(read.theirWords).toBeNull();
+  it('the lead never reads it three days after the person saw it without answering', () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    const seen = row({ readyAt: daysAgo(3), shownToPersonAt: daysAgo(3) });
+    expect(servedPatterns([seen], LEAD, on)).toEqual([]);
+    expect(servedPatterns([seen], ADMIN, on)).toEqual([]);
+    expect(servedPatterns([seen], FEMI, on).map((p) => p.id)).toEqual(['x']);
   });
 
-  it('a week after it was ready, the lead reads it even if the person never opened it', () => {
-    const [read] = servedPatterns([row({ readyAt: daysAgo(7) })], LEAD, on);
-    expect(read.whoSeesIt).toBe('Femi has not seen this yet, and has not answered yet. It is shown to you because a week has passed since it came up for the third time.');
-    expect(thePersonHasHadTheirTurn(row({ readyAt: daysAgo(7) }), NOW)).toBe(true);
+  it('the lead never reads it a week after it was ready, even if the person never opened it', () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    const unopened = row({ readyAt: daysAgo(7) });
+    expect(servedPatterns([unopened], LEAD, on)).toEqual([]);
+    expect(servedPatterns([unopened], ADMIN, on)).toEqual([]);
+    expect(thePersonHasHadTheirTurn(unopened, NOW)).toBe(true);
+    expect(servedPatterns([unopened], FEMI, on).map((p) => p.id)).toEqual(['x']);
   });
 
   it('a colleague never reads it, answered or not', () => {
@@ -202,9 +217,11 @@ describe('a session report shows only what had reached three periods by that ses
 });
 
 describe('the second-read note (decision 57, item 4): only whoever runs the check-in, and only when both agree', () => {
-  it('is told to the lead when the model and the rule both backed the pattern', () => {
-    const lead = servedPatterns(ROWS, LEAD, on).find((p) => p.id === 'pd2');
-    expect(lead?.secondReadNote).toBe('Two separate reads of the record found this.');
+  it('never reaches the lead, even when the model and the rule both backed the pattern', () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    const forTheLead = JSON.stringify([...servedPatterns(ROWS, LEAD, on), ...servedPatterns(ROWS, ADMIN, on)]);
+    expect(forTheLead).not.toContain('Two separate reads of the record found this.');
+    expect(forTheLead).not.toContain('Harbor Foods');
   });
 
   it('is never told to the person it is about, whatever backed it', () => {
@@ -212,9 +229,10 @@ describe('the second-read note (decision 57, item 4): only whoever runs the chec
     expect(femi?.secondReadNote).toBeNull();
   });
 
-  it('says nothing when only the model backed it, or nobody said', () => {
-    const lead = servedPatterns(ROWS, LEAD, on).find((p) => p.id === 'pd1');
-    expect(lead?.secondReadNote).toBeNull();
+  it('says nothing to the person when only the model backed it, or nobody said', () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    const ngozi = servedPatterns(ROWS, NGOZI, on).find((p) => p.id === 'pd1');
+    expect(ngozi?.secondReadNote).toBeNull();
   });
 });
 
@@ -261,26 +279,30 @@ describe('the lead reads a pattern after the person, with no setting to hold the
     }
   });
 
-  it('each person reads their own; the lead and the admin who set it up read both after each person’s turn; a stranger reads none', () => {
+  it('each person reads their own; the lead, the admin who set it up and a stranger read none of anybody else’s', () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     expect(servedPatterns(ROWS, NGOZI, on).map((p) => p.id)).toEqual(['pd1']);
     expect(servedPatterns(ROWS, FEMI, on).map((p) => p.id)).toEqual(['pd2']);
     for (const r of [LEAD, ADMIN]) {
-      expect(servedPatterns(ROWS, r, on).map((p) => p.id).sort()).toEqual(['pd1', 'pd2']);
-      expect(patternRowsThisReaderMayRead(ROWS, r, on).map((p: APatternRow) => p.id).sort()).toEqual(['pd1', 'pd2']);
+      expect(servedPatterns(ROWS, r, on)).toEqual([]);
+      expect(patternRowsThisReaderMayRead(ROWS, r, on)).toEqual([]);
     }
     expect(servedPatterns(ROWS, STRANGER, on)).toEqual([]);
   });
 
-  it('the lead reads Ngozi’s with her answer, and is told she saw it first', () => {
-    const ngozis = servedPatterns(ROWS, LEAD, on).find((p) => p.id === 'pd1')!;
-    expect(ngozis.whoSeesIt).toBe('Ngozi saw this first and said what is behind it.');
+  it('the lead never reads Ngozi’s or her answer; Ngozi reads hers with her own answer beside it', () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    expect(JSON.stringify(servedPatterns(ROWS, LEAD, on))).not.toContain('The committee only meets on the last Friday of the month.');
+    const ngozis = servedPatterns(ROWS, NGOZI, on).find((p) => p.id === 'pd1')!;
     expect(ngozis.theirWords).toBe('The committee only meets on the last Friday of the month.');
+    expect(ngozis.canAnswer).toBe(true);
   });
 
-  it('the person is told that Tunde will see it too, never that only they see it, and can still answer it', () => {
+  it('the person is told only they see it, since nobody else reads it now, and can still answer it', () => {
+    /* Hafsah, 2 November 2026: only the person reads a stored pattern now, so they are told only they see it. */
     const [mine] = servedPatterns(ROWS, FEMI, on);
-    expect(mine.whoSeesIt).toBe('Tunde can see this too, with anything you say about it. Nothing is decided from it.');
-    expect(mine.whoSeesIt).not.toContain('Only you see this');
+    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    expect(mine.whoSeesIt).not.toMatch(/Tunde/);
     expect(mine.canAnswer).toBe(true);
     expect(mine.secondReadNote).toBeNull();
     expect(mine.coachTowards).toBeNull();
