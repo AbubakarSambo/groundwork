@@ -213,7 +213,7 @@ import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CO
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { withTheEarlierRead } from '../patterns/stored-pattern-lines-through-the-wall';
 import { whatTheRecordShowsTheLead } from '../patterns/what-the-record-shows-the-lead';
-import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, patternRowAsOfSession, PATTERN_ROW_SELECT, whoIsWhoIn, runsItForAPattern, type APatternRow } from '../patterns/who-reads-a-pattern';
+import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, patternRowAsOfSession, PATTERN_ROW_SELECT, whoIsWhoIn, runsItForAPattern, type APatternRow, type AServedPattern } from '../patterns/who-reads-a-pattern';
 import { periodOf, periodsTheRecordHolds, aTruePeriodCount } from '../patterns/period-of';
 import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
@@ -5017,13 +5017,11 @@ happened, and what is in the way.`;
         where: { groundId, status: 'UNKNOWN' },
         select: { text: true, participantId: true, whenSaid: true, whenSaidWordForWord: true },
       }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
-      /* Only what the lead may already read, in plain words: see patterns/who-reads-a-pattern. None, and no read, while patterns are not served. */
-      const seen = PATTERNS_ARE_SERVED
-        ? servedPatterns(await (this.prisma.patternDetection?.findMany?.({
-          where: { groundId },
-          select: PATTERN_ROW_SELECT,
-        }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]) as any, { participantId: null, runsIt: true })
-        : [];
+      /*
+       * What the record shows about each person, as the lead reads it: layer 2 of the assessments (what-the-record-shows-the-lead), the
+       * one owner of a lead-facing pattern since F2 (Hafsah, 2 November 2026). None where the organisation keeps judgements of a person off.
+       */
+      const seen = await whatTheRecordShowsTheLead(this.prisma, groundId, { participantId: null, runsIt: true }).catch(() => [] as AServedPattern[]);
       const sessions = Math.max(0, ...rows.map((r: any) => r.sessionNumber ?? 0));
       /*
        * AND WHAT MORE THAN ONE PERSON'S RECORD NAMES, WHICH NOBODY IN THE CHECK-IN CAN SEE.
@@ -5076,8 +5074,7 @@ happened, and what is in the way.`;
            * judgement started running on grounds that used to return early. It was true on every
            * ground that already had a frame; the change only made it visible.
            */
-          /* None while patterns are not served: the lead reads the judgement on the board, and the
-             model wrote the names it was given into it. See patterns/patterns-are-served. */
+          /* Layer 2's patterns for this person, with the check-ins they rest on: the lead reads the judgement on the board. */
           patterns: seen
             .filter((x) => x.participantId === p.participantId && !!x.whatHappened)
             .map((x) => ({ name: x.heading, observation: x.whatHappened as string, seenInSessions: x.sessions })),

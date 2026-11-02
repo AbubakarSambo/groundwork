@@ -1,9 +1,7 @@
-import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { Injectable } from '@nestjs/common';
 import { whatMightHelp, NOT_A_STANDARD } from '../detectors/what-worked-for-somebody-else';
 import { PrismaService } from '../prisma/prisma.service';
 import { runIntake, trustFrom, COMPLETION_WORDS, PROBLEM_WORDS } from './intake';
-import { hasBeenSeenInThreePeriods } from '../patterns/who-reads-a-pattern';
 import { CheckInStatus, RecordEntryType } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
@@ -363,15 +361,8 @@ export class ConversationContextService {
       }
     }
 
-    /* Escalate contradictions to tier 3 if a pattern has genuinely reached three periods for this
-       party (decision 57, item 8) - not merely SURFACED, which a good-news code reaches after one. */
-    const surfacedForEscalation = (await thePersonJudgementsAreOnFor(this.prisma, groundId)) ? await this.prisma.patternDetection.findMany({
-      where: { participantId, status: 'SURFACED' },
-      select: { periodsObserved: true, seenInSessions: true },
-    }) : [];
-    if (surfacedForEscalation.some((p) => hasBeenSeenInThreePeriods(p))) {
-      injections.forEach((i) => { if (i.type === 'CONTRADICTION') i.tier = 3; });
-    }
+    /* A contradiction stays at its own tier. It was raised to tier 3 from a stored pattern on this person; a pattern is layer 2's now
+       and the lead's to read (F2, Hafsah, 2 November 2026), so it never steers this person's own check-in. */
 
     // -------------------------------------------------------------------------
     // Degree 3: org-wide name mentions - invisible labour detection.
