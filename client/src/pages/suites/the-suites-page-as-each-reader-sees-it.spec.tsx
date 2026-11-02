@@ -23,6 +23,12 @@ const reviewsBoard: any = vi.fn(() => Promise.resolve({ every: null as string | 
 vi.mock('@/api/suites', () => ({
   suitesApi: { get: vi.fn(), switch: vi.fn(), mine: vi.fn(async () => ({ leave: true, spend: true, time: true, reviews: true, any: true, says: '' })) },
   reviewsApi: { board: () => reviewsBoard() },
+  /* The spending card says the whole route in the server's words (Hafsah's plan of 2 November, step 0). */
+  spendRulesApi: { get: vi.fn(async () => ({ rules: {}, people: [], said: [
+    'Up to KES 10,000, the person’s manager approves, or else an admin.',
+    'Over KES 10,000, Wanjiru approves.',
+    'Once it is approved, Omar in finance checks it, notes the receipt or quote, and records it paid.',
+  ] })) },
   yourRequestsApi: {
     leave: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
     spending: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
@@ -451,6 +457,9 @@ describe('Omar, a member who looks after finance, reads the Suites page', () => 
     expect(screen.getAllByRole('heading', { level: 3 }).map(h => h.textContent)).toEqual(['Spending and budgets', 'Time sheets'])
     const door = within(card('Spending and budgets')).getByRole('link', { name: 'Open the requests for finance' })
     expect(door).toHaveAttribute('href', '/suite/spend/finance')
+    /* The card says the whole route, with finance's part after the last approval. */
+    expect(await within(card('Spending and budgets')).findByText('Over KES 10,000, Wanjiru approves.')).toBeInTheDocument()
+    expect(within(card('Spending and budgets')).getByText('Once it is approved, Omar in finance checks it, notes the receipt or quote, and records it paid.')).toBeInTheDocument()
   })
 })
 
