@@ -108,7 +108,8 @@ export interface TheRecordAcrossTime {
   patterns: APatternAcrossAssessments[];
   role: TheRoleTheyPlay | null;
   focus: WhereTheirEffortGoes | null;
-  /** What the record cannot settle, put to this person as the next check-in's questions. Their own items only, never a judgement. */
+  /** What the next check-in carries for this person, and the one owner of it: what the record cannot settle, and what they said
+   *  last time to confirm (each wait still open, each promise of their own). Their own items only, never a judgement. */
   toAskNextTime: string[];
 }
 
@@ -354,6 +355,15 @@ function whatToAskNextTime(name: string, seen: AnAssessmentSeen[]): string[] {
   for (const r of promises.notMentioned) out.push(`You said you would ${thePromise(r.due).replace(/^I will /i, '').replace(/\.$/, '')}. What happened with it?`);
   for (const r of claims.notAskedYet) out.push(`You said ${quote(text(r.claim.words) || theClaim(r.claim))} Can you share something that shows it, such as a document, a photo or a slip?`);
   const latest = answered(seen).slice(-1)[0];
+  /* What they said last time that matters, put back to them to confirm (Hafsah's corrections, change 2c): each wait still open and
+     each promise of their own. Where it was recorded wrong, their answer corrects it, like any claim. */
+  for (const b of ((latest?.assessment.blockers ?? []) as AnItem[])) {
+    if (b.status !== 'CLEARED' && text(b.words)) out.push(`Last time you said ${quote(text(b.words))} Is that still where it stands?`);
+  }
+  for (const p of ((latest?.assessment.promises ?? []) as AnItem[]).filter((x) => x.byThePerson === true)) {
+    const what = (text(p.clear) || text(p.action)).replace(/^I will /i, '').replace(/\.$/, '');
+    if (what) out.push(`Last time you said you would ${lowerFirst(what)}. Did it happen?`);
+  }
   for (const q of ((latest?.assessment.stillOpen ?? []) as AnItem[])) { const t = text(q.question); if (t) out.push(/[.?!]$/.test(t) ? t : `${t}?`); }
   return [...new Set(out)].slice(0, 8);
 }

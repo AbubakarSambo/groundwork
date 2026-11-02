@@ -118,7 +118,7 @@ import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
-import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind , ContextNoteAudience, PatternStatus } from '@prisma/client';
+import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageEventType, PartyType, GroundMode, DependencyStatus, WorkMentionKind , ContextNoteAudience } from '@prisma/client';
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { whatThisSalesCheckInGathers } from './what-a-sales-check-in-gathers';
@@ -170,7 +170,7 @@ import { observeStyle, mergeStyle, styleGuidance, simplerWordsGuidance } from '.
 import { WHAT_KIND_OF_WORK_PROMPT, WHAT_KIND_OF_WORK_SCHEMA, theJobTheyDescribed } from '../board/a-job-is-read-from-what-they-do';
 import { FIGURE_PROMPT, FIGURE_SCHEMA, theFiguresTheyStated, theDayThisWasSaid } from './a-figure-is-not-a-figure-until-somebody-says-so';
 import { familyFor, BoardFamily } from '../board/board-families';
-import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
+import { whatToAskThemThisTime, whatToAskThisTimeBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture, anAnswerToTheIdeaOffer, ANSWERED_THE_IDEA_OFFER } from './ideas-from-the-team';
@@ -5807,18 +5807,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const managingBlock = await theManagingBlockFor(this.prisma, checkIn as any, judgedHere).catch(() => '');
 
     /*
-     * WHAT KEEPS HAPPENING, AS A QUESTION.
-     *
-     * The pattern library has carried a `probe` on every code from the start - the ordinary
-     * question to ask about the work when that thing keeps coming up - and it reached exactly one
-     * caller: the board, as a suggestion to a LEAD. So the person it is about was never asked
-     * anything, and the one surface that could ask naturally, in the moment, with their own words
-     * still on the screen, was the one surface that never saw it.
-     *
-     * Same failure mode as the coaching block above: a chain that runs in full and says nothing to
-     * anybody. Gated on SURFACED and two periods, one question at most, and never named.
+     * WHAT THE RECORD CANNOT SETTLE, AND WHAT THEY SAID LAST TIME, AS QUESTIONS (F2, 2 November 2026). Layer 2's questions for
+     * this person: their own items, never a judgement, so they are asked whatever the judgements switch says. Last in the prompt.
      */
-    const patternProbeBlock = judgedHere ? await this.whatKeepsHappeningBlock(checkIn.participantId) : '';
+    const patternProbeBlock = await this.whatKeepsHappeningBlock(checkIn.participantId, checkIn.sessionNumber);
     /*
      * WHAT A SALES CHECK-IN GATHERS (Hafsah, 16 October 2026). In a sales check-in the conversation is told what the board needs
      * about every customer (stage, value, last contact, next step, proof), every lead and who does what by when, and is given the
@@ -6158,8 +6150,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    const [seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed] = await Promise.all([
-      judgedHere ? this.whatHasBeenSeenAcrossTheirSessions(checkIn.participantId) : Promise.resolve(''),
+    /* (No stored pattern steers the question here any more: layer 2's questions reach the check-in once, as patternProbeBlock.) */
+    const [closeHeldLine, documentReadsDifferently, documentNotAsDescribed] = await Promise.all([
       this.prisma.recordEntry
         .findMany({
           where: { participantId: checkIn.participantId, documentSays: { not: null }, disputedAt: null },
@@ -6228,7 +6220,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
       ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['salesGathers', salesGathersBlock], ['references', referencesBlock], ['feeNotesWait', feeNotesWaitBlock], ['invoicesToRaise', invoicesToRaiseBlock], ['teamTemplate', templateBlock], ['direction', directionBlock], ['theirJob', theJob], ['roleConfirm', roleConfirmationBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
       ['floorGiveBack', theFloorGiveBack], ['whoCarries', numbersAndOwners.whoCarries], ['whereItStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
-      ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
+      ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem], ['whereItIs', whereItIs],
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
@@ -6374,7 +6366,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['patternProbeBlock', patternProbeBlock], ['theHole', theHole], ['theOneThingToday', theOneThingToday], ['theOneThingBack', theOneThingBack],
       ['theFloorGiveBack', theFloorGiveBack], ['whoCarriesWhichPart', numbersAndOwners.whoCarries], ['whereTheNumberStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['oneThingToDoBetter', oneThingToDoBetter],
-      ['seenBefore', seenBefore], ['closeHeldLine', closeHeldLine],
+      ['closeHeldLine', closeHeldLine],
       ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed],
       ['rhythmNow', rhythmNow], ['dynamicContext', dynamicContext], ['docContext', docContext],
       ['docPromptHint', docPromptHint], ['notesBlock', notesBlock], ['deliveriesBlock', deliveriesBlock],
@@ -6464,7 +6456,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return [THE_LEAN_CORE, theirLanguage, intakeBlock, recordAlreadyHolds, managingBlock, alreadyGiven, owedBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, finalSessionContext, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, directionBlock, theJob, theJobThisTurn, roleConfirmationBlock, coachingBlock, patternProbeBlock, dynamicContext, docContext, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday]
         .filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theLeanRules, calledHere));
     }
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, managingBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, directionBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, managingBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, directionBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
   }
 
   /**
@@ -6710,13 +6702,6 @@ ${told}` : '';
    * something to say about you.
    */
   /**
-   * The one recurring thing worth a question this session, or nothing.
-   *
-   * SURFACED only, never CANDIDATE - see the module next door for why. Reads the detections for
-   * this person on this ground; `theOneWorthAsking` applies the period floor, drops the codes that
-   * exist for the alignment feed only, and picks at most one.
-   */
-  /**
    * One true thing off the shared board, worth saying back in the turn they said it.
    *
    * Best effort in the strictest sense: a give-back must never be the reason somebody cannot get a
@@ -6838,16 +6823,12 @@ ${told}` : '';
     }
   }
 
-  private async whatKeepsHappeningBlock(participantId: string): Promise<string> {
+  private async whatKeepsHappeningBlock(participantId: string, sessionNumber: number): Promise<string> {
     try {
-      const rows = await this.prisma.patternDetection.findMany({
-        where: { participantId, status: PatternStatus.SURFACED },
-        select: { code: true, periodsObserved: true, seenInSessions: true, accuracyRating: true },
-      });
-      return askAboutItBlockFor(theOneWorthAsking(rows));
+      return whatToAskThisTimeBlockFor(await whatToAskThemThisTime(this.prisma, participantId, sessionNumber));
     } catch (err) {
-      // A probe must never be the reason somebody cannot start a check-in.
-      this.logger.warn(`Could not build the pattern probe for ${participantId}: ${(err as Error)?.message}`);
+      // A question must never be the reason somebody cannot start a check-in.
+      this.logger.warn(`Could not build the questions from the record for ${participantId}: ${(err as Error)?.message}`);
       return '';
     }
   }
@@ -9733,30 +9714,6 @@ ${told}` : '';
     if (recentlyAsked && sessionNumber - (recentlyAsked.checkIn?.sessionNumber ?? 0) < ROLE_CONFIRM_COOLDOWN_PERIODS) return '';
 
     return `CONFIRM THE ROLE, ONCE (decision 57, item 5): somewhere natural in this turn, ask plainly - "${roleConfirmationQuestion(fn as RoleFunction)}" Their answer is their own statement of their role, not a score. If they have already answered a version of this earlier in this check-in, do not ask again.`;
-  }
-
-  /**
-   * WHAT HAS ALREADY BEEN SEEN ACROSS THIS PERSON'S SESSIONS, framed as offerWhatWorked frames it:
-   * a place to look, not a finding. SURFACED only; a CANDIDATE never reaches a conversation. The
-   * query is on THIS participantId, so nothing another person said can arrive through it.
-   */
-  private async whatHasBeenSeenAcrossTheirSessions(participantId: string): Promise<string> {
-    const surfaced = await (this.prisma.patternDetection?.findMany({
-      where: { participantId, status: 'SURFACED' as any },
-      select: { observationText: true, periodsObserved: true },
-      orderBy: { lastSeenAt: 'desc' },
-      take: 3,
-    }) ?? Promise.resolve([] as { observationText: string | null; periodsObserved: number }[]))
-      .catch(() => [] as { observationText: string | null; periodsObserved: number }[]);
-    const rows = surfaced.filter((p) => p.observationText?.trim());
-    if (!rows.length) return '';
-    return (
-      'WHAT HAS ALREADY BEEN SEEN ACROSS THIS PERSON\'S OWN SESSIONS. Use this ONLY to decide which one question '
-      + 'matters most right now. It is a place to look, not a finding: it is not evidence about this session, it is '
-      + 'never the reason for anything you say, and if this conversation does not show it then it is not here. Never '
-      + 'repeat it back to them, never describe them with it, never ask about it by name. Ask about the work.\n'
-      + rows.map((p) => `- ${p.observationText!.trim()} (seen across ${p.periodsObserved} periods)`).join('\n')
-    );
   }
 
   /**
