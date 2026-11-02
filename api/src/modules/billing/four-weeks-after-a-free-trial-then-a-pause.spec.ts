@@ -4,6 +4,7 @@ import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { BillingService, PAUSED_UNTIL_THEY_SUBSCRIBE, NO_PLAN_TO_OPEN } from './billing.service';
 import { PricingService } from './pricing.service';
+import { shouldSayWhatGroundworkIs } from '../email/what-groundwork-is';
 
 /**
  * FOUR WEEKS AFTER A FREE TRIAL, THEN GROUNDWORK PAUSES UNTIL THEY PAY (Hafsah, 2 November 2026).
@@ -93,6 +94,15 @@ describe('the organisations the opener leaves alone', () => {
     expect(await theOrganisationsPausedNow(prisma, new Date('2026-11-20T09:00:00Z'))).toEqual(['kimya']);
     settings['pricing.freeTrial'] = { on: false };
     expect(await theOrganisationsPausedNow(prisma, new Date('2026-11-20T09:00:00Z'))).toEqual([]);
+  });
+});
+
+describe('the emails about paying', () => {
+  /* Found on the test bed (2 November): the countdown went out with "The people in this check-in, including your manager, can see what you
+     say in it." under it, which is about a check-in's answers and not true of a mail about paying. */
+  it('carry no paragraph about who sees what somebody says in a check-in', () => {
+    for (const sender of ['sendGroundworkPausesSoon', 'sendFreeMonthEndsSoon', 'sendPaymentFailed', 'sendSubscriptionConfirmed']) expect(shouldSayWhatGroundworkIs(sender)).toBe(false);
+    expect(shouldSayWhatGroundworkIs('sendNudge')).toBe(true);
   });
 });
 
