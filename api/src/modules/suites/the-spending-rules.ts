@@ -290,10 +290,12 @@ export function theRouteSaid(rules: SpendRules, currency: string | null, names: 
 
 /**
  * THE SETTINGS CARD'S ANSWERS, READ FROM THE STEPS BY AMOUNT. "What is the most a manager may approve on their own?" is the lowest
- * amount, and "Who approves anything above that?" the person its first step names. Kept nowhere else.
+ * amount above nothing, and "Who approves anything above that?" the person its first step names. Kept nowhere else. A row at nothing
+ * (steps for any amount, set by talking or on the board) is not the card's, unless it names one person, which is a limit of nothing.
  */
+const theCardsRow = (rules: SpendRules) => (rules.thresholds ?? []).find((t) => t.above > 0 || (t.steps.length === 1 && typeof t.steps[0][0] === 'object'));
 export function theCardsAnswers(rules: SpendRules): { limit: number | null; above: string | null } {
-  const lowest = rules.thresholds?.[0];
+  const lowest = theCardsRow(rules);
   const named = lowest?.steps[0]?.find((r): r is { named: string } => typeof r === 'object');
   return { limit: lowest?.above ?? null, above: named?.named ?? null };
 }
@@ -307,7 +309,8 @@ export function withTheCardsAnswers(rules: SpendRules, given: { limit?: unknown;
   const limit = typeof given.limit === 'number' && given.limit >= 0 ? given.limit : null;
   const above = typeof given.above === 'string' && given.above.trim() ? given.above.trim() : null;
   if (limit === now.limit && above === now.above) return rules;
-  const rest = (rules.thresholds ?? []).slice(1).filter((x) => x.above !== limit);
+  const card = theCardsRow(rules);
+  const rest = (rules.thresholds ?? []).filter((x) => x !== card && x.above !== limit);
   const thresholds = [...rest, ...(limit !== null ? [{ above: limit, steps: [[above ? { named: above } : 'admin']] as Step[] }] : [])].sort((a, b) => a.above - b.above);
   const next: SpendRules = { ...rules };
   if (thresholds.length) next.thresholds = thresholds; else delete next.thresholds;

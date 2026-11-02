@@ -104,7 +104,9 @@ export async function loadTheSuites(url: string) {
      */
     const suites: { suite: string; answers: Record<string, unknown> }[] = [
       { suite: 'leave', answers: { approver: users.amina.id, workflow: 'one_approver', daysAYear: 21 } },
-      { suite: 'spend', answers: { approver: users.amina.id, workflow: 'one_approver', limit: 50000, above: users.amina.id, categories: ['Fuel', 'Travel', 'Equipment'] } },
+      { suite: 'spend', answers: { approver: users.amina.id, workflow: 'one_approver', categories: ['Fuel', 'Travel', 'Equipment'] } },
+      /* The limit and the person above it are kept as the lowest of the steps by amount, the one place that says who approves (Hafsah's plan of 2 November, step 0). */
+      { suite: 'spendRules', answers: { thresholds: [{ above: 50000, steps: [[{ named: users.amina.id }]] }] } },
       { suite: 'reviews', answers: { approver: users.amina.id, workflow: 'one_approver' } },
     ];
     for (const s of suites) {

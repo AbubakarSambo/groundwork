@@ -320,7 +320,9 @@ export async function loadTheCompany(url: string) {
     /* The suites, on, with Naomi approving, and a little waiting in each. */
     for (const s of [
       { suite: 'leave', answers: { approver: users.naomi.id, workflow: 'one_approver', daysAYear: 21 } },
-      { suite: 'spend', answers: { approver: users.naomi.id, workflow: 'one_approver', limit: 100000, above: users.naomi.id, categories: ['Fuel', 'Labels', 'Travel'] } },
+      { suite: 'spend', answers: { approver: users.naomi.id, workflow: 'one_approver', categories: ['Fuel', 'Labels', 'Travel'] } },
+      /* The limit and the person above it are kept as the lowest of the steps by amount, the one place that says who approves (Hafsah's plan of 2 November, step 0). */
+      { suite: 'spendRules', answers: { thresholds: [{ above: 100000, steps: [[{ named: users.naomi.id }]] }] } },
       { suite: 'reviews', answers: { approver: users.naomi.id, workflow: 'one_approver' } },
     ]) {
       await db.organizationSuite.upsert({

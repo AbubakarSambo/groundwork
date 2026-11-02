@@ -10,12 +10,18 @@
 import { PrismaClient } from '@prisma/client';
 import { spendRulesFrom, SPEND_RULES_ROW } from '../src/modules/suites/the-spending-rules';
 import { stepsFrom } from '../src/modules/suites/the-approval-steps';
+import { answersUnderTheQuestionsOwnIds, theOldNamesOf } from '../src/modules/suites/the-answers-under-the-questions-own-ids';
+import { suiteOf } from '../src/modules/suites/the-ten-suites';
 const prisma = new PrismaClient();
 const yes = process.argv.includes('--yes');
 (async () => {
   const spends = await prisma.organizationSuite.findMany({ where: { suite: 'spend' }, select: { organizationId: true, answers: true } });
   for (const s of spends) {
     const a = { ...((s.answers ?? {}) as Record<string, any>) };
+    /* An older row keeps them under older names ("managerLimit", "approver"): read them under the questions' own ids. */
+    const read = answersUnderTheQuestionsOwnIds(suiteOf('spend')!, s.answers, new Set()) as Record<string, any>;
+    if (typeof read.limit === 'number') a.limit = read.limit;
+    if (typeof read.above === 'string') a.above = read.above;
     const wfRow = await prisma.organizationSuite.findUnique({ where: { organizationId_suite: { organizationId: s.organizationId, suite: 'workflows' } }, select: { answers: true } });
     const wf = { ...((wfRow?.answers ?? {}) as Record<string, any>) };
     const old = (wf.spend ?? {}) as Record<string, any>;
@@ -38,6 +44,7 @@ const yes = process.argv.includes('--yes');
       update: { answers: next },
     });
     delete a.limit; delete a.above;
+    for (const old of theOldNamesOf('spend')) delete a[old];
     await prisma.organizationSuite.update({ where: { organizationId_suite: { organizationId: s.organizationId, suite: 'spend' } }, data: { answers: a } });
     if (wfRow && wf.spend) {
       wf.spend = old.escalateAfter ? { escalateAfter: old.escalateAfter } : undefined;

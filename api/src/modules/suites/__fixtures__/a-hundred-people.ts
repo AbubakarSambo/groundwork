@@ -93,13 +93,20 @@ export function aHundredPeople(opts: Options = {}) {
   const suites: Record<string, { organizationId: string; suite: string; isOn: boolean; answers: any }> = {};
   const set = (suite: string, isOn: boolean, answers: unknown) => { suites[suite] = { organizationId: ORG, suite, isOn, answers }; };
   set('leave', true, { days: 21, approver: 'Their manager' });
-  set('spend', true, { currency: 'KES', limit: 50_000, above: idOf('finance.m1') });
+  set('spend', true, { currency: 'KES' });
   set('duties', false, duties);
   set('workflows', false, opts.workflows ?? {
     leave: { steps: [['manager', 'departmentHead', 'admin']], escalateAfter: 2 },
-    spend: { steps: [['manager', 'admin'], ['finance', 'admin']], stepsAbove: [['manager', 'admin'], ['departmentHead', 'admin'], ['finance', 'admin']], escalateAfter: 2 },
+    spend: { escalateAfter: 2 },
   });
-  set('spendRules', false, { categories: ['Fuel', 'Travel', 'Equipment'].map((name) => ({ name })) });
+  /* Who approves spending is its steps by amount alone (Hafsah's plan of 2 November, step 0): the manager then finance for any amount, and over 50,000 the manager, the head, then finance. */
+  set('spendRules', false, {
+    categories: ['Fuel', 'Travel', 'Equipment'].map((name) => ({ name })),
+    thresholds: [
+      { above: 0, steps: [['manager', 'admin'], ['finance', 'admin']] },
+      { above: 50_000, steps: [['manager', 'admin'], ['departmentHead', 'admin'], ['finance', 'admin']] },
+    ],
+  });
 
   let seq = 0;
   const leave: any[] = [];
