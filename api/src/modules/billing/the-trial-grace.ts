@@ -188,3 +188,21 @@ export async function theNoteAboutPaying(prisma: any, organizationId: string, re
     pauseDay: where.pausesAt ? whenItWas(where.pausesAt, 'dayAndMonthLong', zone) : null,
   });
 }
+
+/**
+ * EVERY ORGANISATION PAUSED NOW, for the one job that opens check-ins (grounds.cron.ts, sendSessionReadyNotifications). The doors
+ * already stop a paused organisation's mail and WhatsApp; this is so the opening is not marked as told while it could not be told,
+ * and is told on its usual schedule the moment the organisation pays, as approved leave is (week 23). Empty while nothing is in force.
+ */
+export async function theOrganisationsPausedNow(prisma: any, now: Date = new Date()): Promise<string[]> {
+  const grace = await theGraceInForce(prisma).catch(() => null);
+  if (!grace) return [];
+  const rows: any[] = await Promise.resolve(prisma?.organization?.findMany?.({
+    where: {
+      freeUntil: { lt: now }, subscriptionStatus: null,
+      OR: [{ freeTrialStartedAt: { not: null } }, { freeMonthOfReleaseAt: { not: null } }],
+    },
+    select: { id: true, ...WHAT_COVER_READS },
+  })).catch(() => []);
+  return (rows ?? []).filter((o) => whereTheTrialStands(o, grace, now).stands === 'paused').map((o) => o.id);
+}

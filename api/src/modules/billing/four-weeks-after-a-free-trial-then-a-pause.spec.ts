@@ -1,5 +1,5 @@
 import { whereTheTrialStands, whatCoversThem, type TheGrace } from '../../common/subscription';
-import { theGraceInForce, theGraceSettingFrom, thisOrganisationIsPaused, DEFAULT_GRACE_WORDS } from './the-trial-grace';
+import { theGraceInForce, theGraceSettingFrom, thisOrganisationIsPaused, theOrganisationsPausedNow, DEFAULT_GRACE_WORDS } from './the-trial-grace';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { BillingService, PAUSED_UNTIL_THEY_SUBSCRIBE, NO_PLAN_TO_OPEN } from './billing.service';
@@ -74,6 +74,25 @@ describe('where an organisation stands, every case the brief names', () => {
 
   it('a longer setting moves the day for everybody at once: six weeks pause on 29 November', () => {
     expect(whereTheTrialStands(trialOrg(), { ...GRACE, weeks: 6 }, new Date('2026-11-20T09:00:00Z')).pausesAt).toEqual(new Date('2026-11-29T22:30:00Z'));
+  });
+});
+
+describe('the organisations the opener leaves alone', () => {
+  it('are the paused ones only: not those in their weeks, in their trial, paying or never on a trial', async () => {
+    const orgs = [
+      { id: 'kimya', ...trialOrg() },
+      { id: 'pwani', ...trialOrg({ freeUntil: new Date('2026-11-10T00:00:00Z') }) },
+      { id: 'tayari', ...trialOrg({ subscriptionPlan: 'SMALL_TEAM', subscriptionStatus: 'active' }) },
+      { id: 'byhand', ...trialOrg({ freeTrialStartedAt: null }) },
+    ];
+    const settings: Record<string, unknown> = { 'pricing.freeTrial': { on: true, onSince: '2026-10-15T00:00:00Z' }, 'pricing.trialGrace': { weeks: 4, onSince: '2026-10-15T00:00:00Z' } };
+    const prisma = {
+      platformSetting: { findUnique: async ({ where }: any) => (where.key in settings ? { value: settings[where.key] } : null) },
+      organization: { findMany: async () => orgs },
+    };
+    expect(await theOrganisationsPausedNow(prisma, new Date('2026-11-20T09:00:00Z'))).toEqual(['kimya']);
+    settings['pricing.freeTrial'] = { on: false };
+    expect(await theOrganisationsPausedNow(prisma, new Date('2026-11-20T09:00:00Z'))).toEqual([]);
   });
 });
 

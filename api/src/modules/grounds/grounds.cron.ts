@@ -5,6 +5,7 @@ import { isHeldForTheNight } from '../whatsapp/quiet-hours-are-the-organisations
 import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
 import { theEmailOpeningShould, whatBecameOfIt, THE_WHATSAPP_OPENING_MAY_TAKE_MS } from './an-opening-goes-on-one-channel';
 import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
+import { theOrganisationsPausedNow } from '../billing/the-trial-grace';
 import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
 import { owesThisSession } from './the-lead-checks-in-when-they-choose';
 import { THE_MOST_REPORT_READY_REMINDERS, howManyReportReadyRemindersWereSent } from '../email/the-report-is-ready-reminder';
@@ -783,8 +784,11 @@ export class GroundsCron implements OnApplicationBootstrap {
   private async sendSessionReadyNotificationsInner() {
     const now = new Date();
     const nameFor = theNamesOfReadersCheckIns(this.prisma);
-    await this.announceOpenedSessions(now);
-    await this.openTheCheckInOnWhatsAppForTheInvited(now).catch((err) => this.logger.warn(`WhatsApp opening for invited people failed: ${err?.message}`));
+    /* A PAUSED ORGANISATION'S CHECK-INS DO NOT OPEN (2 November 2026). Left unannounced and unstamped, like somebody on leave, so they
+       open on their usual schedule the moment it pays (billing/the-trial-grace.ts). */
+    const paused = await theOrganisationsPausedNow(this.prisma, now).catch(() => [] as string[]);
+    await this.announceOpenedSessions(now, paused);
+    await this.openTheCheckInOnWhatsAppForTheInvited(now, paused).catch((err) => this.logger.warn(`WhatsApp opening for invited people failed: ${err?.message}`));
     const frontend = this.config.get<string>('resend.frontendUrl') || '';
 
     const newlyOpen = await this.prisma.checkIn.findMany({
@@ -793,7 +797,7 @@ export class GroundsCron implements OnApplicationBootstrap {
         status: CheckInStatus.NOT_STARTED,
         sessionReadyNotifiedAt: null,
         availableFrom: { lte: now },
-        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT } } },
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT }, organizationId: { notIn: paused } } },
       },
       select: {
         id: true,
@@ -1363,12 +1367,13 @@ export class GroundsCron implements OnApplicationBootstrap {
    * (whatsapp-for-an-organisation, joinFromTheNumberTheCompanyAdded). Never where the check-in is kept in the app, where
    * WhatsApp is not on, or to somebody waiting for a seat.
    */
-  async openTheCheckInOnWhatsAppForTheInvited(now: Date = new Date()): Promise<{ sent: number }> {
+  async openTheCheckInOnWhatsAppForTheInvited(now: Date = new Date(), paused?: string[]): Promise<{ sent: number }> {
+    const notPaused = paused ?? (await theOrganisationsPausedNow(this.prisma, now).catch(() => [] as string[]));
     const waiting: any[] = await this.prisma.checkIn.findMany({
       where: {
         status: CheckInStatus.NOT_STARTED,
         OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
-        participant: { userId: null, acceptedAt: null, invitedAt: { not: null }, inviteToken: { not: null }, awaitingSeat: false, leftAt: null, ground: { status: { notIn: [...TERMINAL, ...HELD] } } },
+        participant: { userId: null, acceptedAt: null, invitedAt: { not: null }, inviteToken: { not: null }, awaitingSeat: false, leftAt: null, ground: { status: { notIn: [...TERMINAL, ...HELD] }, organizationId: { notIn: notPaused } } },
       },
       select: { id: true, groundId: true, participant: { select: { email: true, ground: { select: { label: true, organizationId: true, overWhatsApp: true, simplerWords: true } } } } },
       take: 200,
@@ -1402,13 +1407,13 @@ export class GroundsCron implements OnApplicationBootstrap {
     return { sent };
   }
 
-  private async announceOpenedSessions(now: Date) {
+  private async announceOpenedSessions(now: Date, paused: string[] = []) {
     const opened = await this.prisma.checkIn.findMany({
       where: {
         status: CheckInStatus.NOT_STARTED,
         openedAnnouncedAt: null,
         OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
-        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT } } },
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT }, organizationId: { notIn: paused } } },
       },
       select: {
         id: true,
