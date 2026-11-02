@@ -211,7 +211,7 @@ describe('the lead reads the whole week', () => {
       /* Settled on her word alone, so it is her claim (night quality run 1, problem 3). */
       'Aisha committed to call Mama Fresh by Thursday, and says it is done. Nothing has been shown to back it yet.',
       /* Change 4: Baraka's wait on the lead is his account; the lead never promised the price list (night quality run 1, problem 2). */
-      'Baraka said the work was waiting on you for the price list, and it is no longer waiting. Not backed: no attempt to unblock mentioned. Baraka could have messaged you or asked again.',
+      'Baraka said the work was waiting on you for the price list, and it is no longer waiting.',
     ]);
     expect(r.whatChanged!.dropped).toEqual(['Baraka committed to visit Kwik Stores, and it has been dropped.']);
     expect(r.whatChanged!.result).toEqual([
@@ -279,7 +279,7 @@ describe('a person reads only what is about them, and the team\'s own counts', (
       'This week, you said 2 things in your check-ins. None of them has a photo or document behind it yet. 1 number was given as an estimate, and 1 number was given from memory with nothing attached, so they cannot be checked yet. It is worth confirming them before acting on them.',
     );
     expect(r.whatChanged).toEqual({
-      moved: ['You said the work was waiting on Wairimu for the price list, and it is no longer waiting. Not backed: no attempt to unblock mentioned. You could have messaged Wairimu or asked again.'],
+      moved: ['You said the work was waiting on Wairimu for the price list, and it is no longer waiting.'],
       dropped: ['You committed to visit Kwik Stores, and it has been dropped.'],
       result: [
         "The team's freezers sold went from 12 to 17 this week.",

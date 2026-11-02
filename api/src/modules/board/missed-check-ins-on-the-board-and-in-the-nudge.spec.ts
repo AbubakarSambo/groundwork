@@ -124,7 +124,8 @@ describe('with the direct morning on', () => {
     expect(off.risks[0]).toBe(RUKIA_READS.replace('check-ins.', 'check-ins on "Sales team, Q3".'));
     const onWait = on.risks.find((r) => r.includes('stock count'));
     const offWait = off.risks.find((r) => r.includes('stock count'));
-    expect(offWait).toMatch(/Not backed/);
+    /* Changed 3 November (Hafsah, F2: silence is never a finding): "Not backed: no attempt to unblock mentioned" is gone everywhere, switch on or off. */
+    expect(offWait).toBe('Amani says the work is waiting on Brian for the stock count for Kisumu.');
     expect(onWait).toBe('Amani says the work is waiting on Brian for the stock count for Kisumu.');
   });
 });

@@ -7,7 +7,7 @@ import { withWhatTheBoardsSay, type TheLeadsBoard, type TheRecordBesideTheBoard 
 import { DependencyStatus, GroundStatus } from '@prisma/client';
 import { whichOfThesePromisesAreDone, whoThesePromisesAreAbout } from '../conversation/a-promise-said-done-is-kept';
 import { theDealsThatHaveStalled } from '../board/the-deals-that-have-stalled';
-import { theConfirmedWaits, whatTheyTriedInFull, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
+import { theConfirmedWaits, whatTheyTriedInFull } from '../grounds/a-wait-is-the-speakers-account';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
@@ -348,7 +348,7 @@ export async function whatIsOutstandingFor(
 ): Promise<WhatIsOutstanding> {
   /* What Release 1 adds to the summary is read only where its switch is on for her organisation (release-one-sales-board). */
   const releaseOne = await theReleaseOneSalesBoardIsOn(prisma, lead.organizationId).catch(() => false);
-  /* With the direct morning on, a missed check-in is the fact, the reason and what to do, and a wait carries what they tried in full rather than "Not backed". */
+  /* With the direct morning on, a missed check-in is the fact, the reason and what to do, */
   const direct = await theDirectMorningIsOn(prisma, lead.organizationId).catch(() => false);
   const out: WhatIsOutstanding = { needsYou: [], overdueOnYourTeam: [], risks: [], ...(releaseOne ? { releaseOne: true } : {}) };
   const today = theDayIn('Africa/Lagos', now);
@@ -447,13 +447,12 @@ export async function whatIsOutstandingFor(
   };
   /* A wait on one of her people is late against them only when they said it is theirs to give (decision 137). */
   const confirmedWaits = await theConfirmedWaits(prisma, real.filter((w) => !hers.has(w.onParticipantId)));
-  /* "Kofi says the work is waiting on Omar for the stock count. Not backed: no attempt to unblock mentioned." */
+  /* "Kofi says the work is waiting on Omar for the stock count.", with what Kofi said he tried, where he said anything. */
   const theirAccountOfAWait = (w: any, since?: string): string => {
     const from = hers.has(w.fromParticipantId) ? 'You' : nameToCall(w.fromParticipant);
     const on = w.onParticipant ? nameToCall(w.onParticipant) : aHolderSaidWithWhose((w.onLabel ?? '').trim(), from === 'You' ? null : from, from === 'You');
-    /* What they said they tried, in full with its day, or nothing beside the claim (Drop Access run 1, item 18), where Release 1's switch
-       is on; off, the note beside the claim as before. */
-    const tried = releaseOne || direct ? whatTheyTriedInFull(w, from) : theNoteBesideTheClaim(w, { by: from, on, lead: 'you' });
+    /* What they said they tried, in full with its day, or nothing beside the claim (Drop Access run 1, item 18). */
+    const tried = whatTheyTriedInFull(w, from);
     return `${from} ${from === 'You' ? 'say' : 'says'} the work ${since ? 'has been' : 'is'} waiting on ${on} for ${String(w.what ?? '').trim().replace(/[.\s]+$/, '')}${THE_PLACE_MARK}${since ? ` since ${since}` : ''}.${tried ? ` ${tried}` : ''}`;
   };
   const counted = new Set<string>();

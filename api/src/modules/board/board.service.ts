@@ -1777,14 +1777,15 @@ export class BoardService {
       /* And never set by the lead's own extra check-in (journey test, 12 October): theTeamsOpenRound. */
       const openRound = theTeamsOpenRound((roundRows.length ? roundRows : checkIns) as any, ground.participants as any);
       /*
-       * WHAT THIS ROUND PUT ON THE RECORD, so the board can say whether it holds anything to count.
+       * WHAT EACH CHECK-IN PUT ON THE RECORD, so the board can say whether anything a person has said can be checked. The whole
+       * record, not this round alone (Hafsah, 2 November 2026: silence is never a finding): proof from any check-in counts.
        * The record, not the rating: the lead may read what was written down, and never how anybody's
        * answers were scored. A line somebody disputed has stopped counting, here as everywhere.
        */
-      const thisRoundsCheckIns = checkIns.filter((c) => c.sessionNumber === openRound).map((c) => c.id);
-      const thisRoundsLines = thisRoundsCheckIns.length
+      const everyCheckIn = checkIns.filter((c) => c.status === CheckInStatus.COMPLETED).map((c) => c.id);
+      const theRecordsLines = everyCheckIn.length
         ? ((await this.prisma.recordEntry?.findMany?.({
-            where: { checkInId: { in: thisRoundsCheckIns }, disputedAt: null },
+            where: { checkInId: { in: everyCheckIn }, disputedAt: null },
             select: { checkInId: true, text: true, anchoredDocumentId: true, documentSays: true },
           })?.catch(() => [])) ?? []) as any[]
         : [];
@@ -1799,10 +1800,10 @@ export class BoardService {
        * (pilots after fixes, A5). Brian sent his draft as a PDF and a photo, and Aisha her registry receipt, and the board
        * still read "Nothing ... can be checked yet ... Ask ... for a photo", because the model had read the session as vague.
        */
-      const backedByADocument = new Set(thisRoundsLines.filter((e: any) => !!e.anchoredDocumentId).map((e: any) => e.checkInId));
+      const backedByADocument = new Set(theRecordsLines.filter((e: any) => !!e.anchoredDocumentId).map((e: any) => e.checkInId));
       const checkableRead = (c: any, recordHasSomething: boolean): boolean => aRoundCanBeChecked(c, recordHasSomething, backedByADocument.has(c?.id));
       const somethingToCount = new Set(
-        thisRoundsLines
+        theRecordsLines
           .filter((e) => hasANumberADateOrADocument({ text: cleanText(e.text ?? ''), anchoredDocumentId: e.anchoredDocumentId, documentSays: e.documentSays }))
           .map((e) => e.checkInId),
       );
@@ -1905,16 +1906,10 @@ export class BoardService {
                 /* Read off their own words. Nobody has said is 'nothing', which is the truth. */
                 tried: whatTheyTried(d.triedSaid ?? ''),
               })),
-            /* The check-in's own read where there is one; the record of it where it has not been read yet. */
-            saidAnythingCheckable: !!thisRound && checkableRead(thisRound, somethingToCount.has(thisRound.id)),
-            nothingCheckableInARow: (() => {
-              let n = 0;
-              for (const c of [...mine].filter((c) => c.status === CheckInStatus.COMPLETED && c.sessionNumber <= (thisRound?.sessionNumber ?? 0)).sort((a, b) => b.sessionNumber - a.sessionNumber)) {
-                if (checkableRead(c, c.id === thisRound?.id ? somethingToCount.has(c.id) : true)) break;
-                n += 1;
-              }
-              return n;
-            })(),
+            /* Anything in their whole record that can be checked: each check-in's own read where there is one, the record of it where
+               it has not been read yet, and a document from any check-in. Only where nothing anywhere can be checked is it said. */
+            saidAnythingCheckable: mine.some((c) => c.status === CheckInStatus.COMPLETED && checkableRead(c, somethingToCount.has(c.id))),
+            nothingCheckableInARow: mine.filter((c) => c.status === CheckInStatus.COMPLETED && c.sessionNumber <= (thisRound?.sessionNumber ?? 0)).length,
             noProof: !!thisRound && ((thisRound as any).specificityDimensions as any)?.evidence != null
               && (thisRound as any).specificityDimensions.evidence !== 'specific',
             roundIsA: (ground as any).cadence === 'WEEKLY' ? 'week' : (ground as any).cadence === 'FORTNIGHTLY' ? 'fortnight' : (ground as any).cadence === 'MONTHLY' ? 'month' : 'check-in',

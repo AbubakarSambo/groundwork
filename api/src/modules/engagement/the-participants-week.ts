@@ -1,7 +1,6 @@
 import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { GroundStatus } from '@prisma/client';
-import { theConfirmedWaits, whatTheyTriedInFull, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
-import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
+import { theConfirmedWaits, whatTheyTriedInFull } from '../grounds/a-wait-is-the-speakers-account';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { nameToCall, aNameToList } from './a-name-to-call-them';
 import { aNumberInWords } from './a-number-in-words';
@@ -280,7 +279,6 @@ export async function sendTheParticipantsWeeks(
       const onlyClaimed = new Map((Array.isArray(onThem) ? onThem : []).filter((d) => !confirmed.has(d.id)).map((d) => [`${d.ground?.label ?? ''}|${(d.what ?? '').trim().toLowerCase()}`, d] as [string, any]));
       const isOnlyClaimed = (i: { what: string; checkIn: string }) => onlyClaimed.has(`${i.checkIn}|${(i.what ?? '').trim().toLowerCase()}`);
       const askedOfThem = own.askedOfYou.filter((i) => inOpen(i.checkIn));
-      const releaseOne = await theReleaseOneSalesBoardIsOn(prisma, user.organizationId).catch(() => false);
       const direct = await theDirectMorningIsOn(prisma, user.organizationId);
       const week: TheirWeek = {
         kept: theOwnKept(Array.isArray(commitments) ? commitments : [], now),
@@ -293,11 +291,10 @@ export async function sendTheParticipantsWeeks(
           from: d.onLabel?.trim() || (d.ground?.peersVisibleToEachOther !== false ? (d.onParticipant && aNameToList(nameToCall(d.onParticipant)) ? nameToCall(d.onParticipant) : null) : null),
         })),
         waitingOnYou: askedOfThem.filter((i) => !isOnlyClaimed(i)),
-        /* What was tried, said in full with its day or not at all (Drop Access run 1, item 18), where Release 1's switch is on for their
-           organisation; off, the note beside the claim as before. */
+        /* What was tried, said in full with its day or not at all (Drop Access run 1, item 18). */
         saidToWaitOnYou: askedOfThem.filter(isOnlyClaimed).map((i) => {
           const claim = onlyClaimed.get(`${i.checkIn}|${(i.what ?? '').trim().toLowerCase()}`);
-          return { ...i, note: releaseOne || direct ? whatTheyTriedInFull(claim ?? {}, i.who) : theNoteBesideTheClaim(claim, { by: i.who, on: 'you' }) };
+          return { ...i, note: whatTheyTriedInFull(claim ?? {}, i.who) };
         }),
         reportsReady: [...mine.reportsReady],
         theirOwnWords: (Array.isArray(ownLines) ? ownLines : []).map((l) => String(l?.text ?? '')).filter(Boolean),

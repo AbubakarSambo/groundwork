@@ -1,7 +1,7 @@
 import { theDaysAnOpenDailySessionWasMissed } from '../board/the-persons-record';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { NOT_A_QUIET_CLOSE } from '../grounds/an-answer-includes-a-refusal';
-import { theConfirmedWaits, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
+import { theConfirmedWaits, whatTheyTriedInFull } from '../grounds/a-wait-is-the-speakers-account';
 import { aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
 import { anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
@@ -408,7 +408,7 @@ export class TheWeeklyReportService {
 
     /* WHAT STOPPED BEING IN SOMEBODY'S WAY THIS WEEK. */
     const deps: any[] = ((await ((this.prisma as any).groundDependency?.findMany?.({
-      where: { groundId, status: 'CLEARED' }, select: { id: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, triedSaid: true, clearedAt: true },
+      where: { groundId, status: 'CLEARED' }, select: { id: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, triedSaid: true, clearedAt: true, createdAt: true },
     }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[];
     const clearedThisWeek = deps.filter((d) => inTheWeek(d.clearedAt) && (d.what ?? '').trim()).map((d, i) => ({ ...d, id: d.id ?? `w-${i}`, groundId }));
     /* Change 4 (decision 137): a wait on a colleague is the speaker's account until the colleague's own promise confirms it. */
@@ -427,15 +427,13 @@ export class TheWeeklyReportService {
       const p = pid ? parties.find((x) => x.id === pid) : null;
       return p ? fullNameOf(p) || String(p.nameGiven ?? '').trim() || null : null;
     };
-    const theLeadsRow = parties.find((x) => x.partyType === 'INITIATOR');
-    const theNamesOf = (d: any) => ({ by: nameOfParty(d.fromParticipantId), on: nameOfParty(d.onParticipantId), lead: nameOfParty(theLeadsRow?.id) });
     const cleared = clearedThisWeek.map((d) => {
       const confirmed = !d.onParticipantId || confirmedWaits.has(d.id);
       const theirSide = confirmed ? null : theirSideOfIt(namesOfParty(d.fromParticipantId), (Array.isArray(theirLines) ? theirLines : []).filter((l) => l.participantId === d.onParticipantId));
       return {
         fromParticipantId: d.fromParticipantId, onParticipantId: d.onParticipantId ?? null, onLabel: d.onLabel ? namesOff(d.onLabel) : null, what: namesOff(d.what),
         confirmed,
-        ...(confirmed ? {} : { note: namesOff(theNoteBesideTheClaim(d, theNamesOf(d))), ...(theirSide ? { theirSide: namesOff(theirSide) } : {}) }),
+        ...(confirmed ? {} : { note: namesOff(whatTheyTriedInFull(d, nameOfParty(d.fromParticipantId))), ...(theirSide ? { theirSide: namesOff(theirSide) } : {}) }),
       };
     });
 

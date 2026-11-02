@@ -192,11 +192,11 @@ describe('what Fatuma reads when Kevin says he is waiting on her', () => {
     expect(w.sent[0].lines).toEqual([
       'Hello Fatuma. Here is your week in Groundwork. Only you can read this.',
       'Imani Hassan is waiting for "the purchase request for the phone" from you in "Duka pilot".',
-      'Kevin Odhiambo says the work is waiting for "the final prices" from you in "Duka pilot". That is what Kevin Odhiambo said, and you have not said it yourself. Say in your check-in whether it is yours to give. Not backed: no attempt to unblock mentioned. Kevin Odhiambo could have messaged you, asked again, or raised it with the lead.',
+      'Kevin Odhiambo says the work is waiting for "the final prices" from you in "Duka pilot". That is what Kevin Odhiambo said, and you have not said it yourself. Say in your check-in whether it is yours to give.',
     ]);
     expect(w.sent[0].lines.join(' ')).not.toMatch(/Kevin Odhiambo is waiting/);
-    /* The note's colon is Hafsah's own format; no other colon. */
-    expect(w.sent[0].lines.join(' ').replace('Not backed: ', '')).not.toMatch(/:/);
+    /* No colon anywhere: the note beside a claim is a full sentence or nothing (changed 3 November, F2). */
+    expect(w.sent[0].lines.join(' ')).not.toMatch(/:/);
   });
 
   it('once she says the prices are hers to send, it is a request waiting on her', async () => {
