@@ -11,6 +11,14 @@ export interface RosterAccount {
   organizationId: string;
 }
 
+/** The roster's connected accounts: every active person on the back-office roster, by their own account and every account connected to them. */
+export async function theBackOfficeRoster(prisma: any): Promise<RosterAccount[]> {
+  const people = await prisma.opsPerson.findMany({ where: { active: true }, select: { userId: true, accounts: { select: { userId: true } } } });
+  const userIds = people.flatMap((p: any) => [p.userId, ...p.accounts.map((a: any) => a.userId)]).filter((id: unknown): id is string => !!id);
+  if (!userIds.length) return [];
+  return prisma.user.findMany({ where: { id: { in: userIds }, isActive: true }, select: { email: true, organizationId: true } });
+}
+
 export function isOneOfUs(org: { id: string; adminEmail?: string | null }, roster: RosterAccount[]): boolean {
   const admin = org.adminEmail?.toLowerCase() ?? null;
   return roster.some((r) => r.organizationId === org.id || (admin !== null && r.email.toLowerCase() === admin));

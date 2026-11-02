@@ -176,6 +176,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendTeamAlert: 'operational',
   /* Groundwork's own morning list of what did not go out yesterday, to the one platform address set for it (engagement/the-daily-delivery-alert.ts). */
   sendTheDailyDeliveryAlert: 'operational',
+  /* Groundwork's own daily usage summary, to the back-office team (back-office/the-daily-usage-summary.ts). */
+  sendTheDailyUsageSummary: 'operational',
 
   /* They took part; this is the outcome. */
   sendReportReady: 'asked for',

@@ -384,6 +384,18 @@ export class AdminController {
     return this.adminService.setDeliveryAlert(body?.email ?? '', userId);
   }
 
+  @Get('daily-usage')
+  @ApiOperation({ summary: 'Whether the daily usage summary goes, at which hour in Lagos, and who it goes to (the back-office roster)' })
+  getDailyUsage() {
+    return this.adminService.getDailyUsage();
+  }
+
+  @Patch('daily-usage')
+  @ApiOperation({ summary: 'Turn the daily usage summary on or off, or change its hour (0 to 23, Lagos time)' })
+  setDailyUsage(@CurrentUser('id') userId: string, @Body() body: { on?: boolean; hour?: number }) {
+    return this.adminService.setDailyUsage(body ?? {}, userId);
+  }
+
   @Get('correction-window')
   @ApiOperation({ summary: 'How many days somebody has to correct their own record after a report is released' })
   getCorrectionWindow() {
