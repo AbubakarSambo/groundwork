@@ -69,7 +69,7 @@ import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldT
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting, askedOnceAndNeverTwiceInOneReply } from './the-context-chat';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
-import { leaveOfThePeopleOn, theAwayLinesFor, awayUntilAsServed, isFromOutside, whoOnACheckInIsAway } from '../suites/who-is-away';
+import { leaveOfThePeopleOn, theAwayLinesFor, theRoundAsServed, isFromOutside, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { LEAVE_NOTHING_WAITING, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
 import { offerToKeep, keepWhatWasOffered, dropWhatWasOffered, offeredBefore } from '../knowledge/organisation-memory';
 import { keepable, soundsCompanyWide, MEMORY_PROMPT, MEMORY_TOOL, NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
@@ -2725,12 +2725,10 @@ export class GroundsService {
     const requestingParticipant = requestingUserId
       ? (ground.participants ?? []).find((p: any) => p.userId === requestingUserId)
       : null;
-    const readerIsFromOutside = sessionProgress && Object.keys(sessionProgress.awayUntil ?? {}).length
-      ? await isFromOutside(this.prisma, requestingUserId, ground.organizationId)
-      : false;
-    const requestingUserIsMissing = !!(
-      sessionProgress && requestingParticipant && sessionProgress.missingParticipantIds.includes(requestingParticipant.id)
-    );
+    /* The round as this reader is served it: a guest from another organisation is told nobody's leave but their own (who-is-away.ts). */
+    const theRoundServed = await theRoundAsServed(this.prisma, sessionProgress, {
+      userId: requestingUserId, organizationId: ground.organizationId, myParticipantId: requestingParticipant?.id ?? null,
+    });
     /**
      * WHETHER THIS ROUND ALREADY HAS TWO PEOPLE COUNTED IN IT - A YES/NO, NOT A COUNT (U.8 fifth
      * review). GroundParticipantPage's Report tab says "The shared report compares two accounts...
@@ -3142,17 +3140,15 @@ export class GroundsService {
       org: org ?? null,
       /* A guest from another organisation is not told anybody's days away but their own (1 October 2026);
          the count still leaves the person out, without saying why. */
-      sessionProgress: sessionProgress
-        ? { ...sessionProgress, awayUntil: awayUntilAsServed(sessionProgress.awayUntil ?? {}, { fromOutside: readerIsFromOutside, myParticipantId: requestingParticipant?.id ?? null }), requestingUserIsMissing }
-        : null,
+      sessionProgress: theRoundServed,
       /* WHO IS AWAY, AND THAT THIS ROUND DOES NOT WAIT FOR THEM (week 23). Dates only, never a reason or
          a kind of leave. The lead reads it for each person; a colleague reads only that the person is
          away, and only for a person this reader is already shown by name; a person reads their own.
          Somebody from outside the organisation (a guest, decision 36) reads nobody's but their own. */
       whoIsAway: theAwayLinesFor(
-        sessionProgress?.awayUntil ?? {},
+        theRoundServed?.awayUntil ?? {},
         participantsWithCheckIns as any[],
-        { viewerRunsThisGround, myParticipantId: requestingParticipant?.id ?? null, fromOutside: readerIsFromOutside },
+        { viewerRunsThisGround, myParticipantId: requestingParticipant?.id ?? null },
       ),
       /**
        * The context flag, sent with the ground because that is where the tab

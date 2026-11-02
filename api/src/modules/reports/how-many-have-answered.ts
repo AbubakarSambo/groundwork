@@ -175,11 +175,20 @@ export function whoAnswersThisCheckIn<T extends { managingOnly?: boolean | null;
 }
 
 /**
+ * THE ONE COUNT AS IT IS SERVED: who is counted and who has answered, and nothing of anybody's leave. Somebody on leave is simply not
+ * counted, with no reason given. Who is away, and until when, is served once, shaped for each reader (awayUntilAsServed,
+ * suites/who-is-away.ts): a guest from another organisation is never told anybody's leave but their own (1 October 2026), and the
+ * count carried every date to every reader until 2 November 2026.
+ */
+export type TheServedCount = Omit<WhoHasAnswered, 'away'>;
+const asServed = ({ away: _leaveIsNotServedHere, ...c }: WhoHasAnswered): TheServedCount => c;
+
+/**
  * THE ONE COUNT FOR EVERY SESSION OF A CHECK-IN, IN ONE READ, as the pages are served it (the check-in page, the session rows, the
  * reports' headers and the list's attention line read this, never a rule of their own; client/src/lib/the-one-count.ts). `onlyThese`
  * keeps it to the people the reader may see, as the served roster is.
  */
-export async function whoHasAnsweredInEachSession(prisma: any, groundId: string, onlyThese?: ReadonlySet<string> | null): Promise<Record<number, WhoHasAnswered>> {
+export async function whoHasAnsweredInEachSession(prisma: any, groundId: string, onlyThese?: ReadonlySet<string> | null): Promise<Record<number, TheServedCount>> {
   const ground = await Promise.resolve(prisma.ground?.findUnique?.({ where: { id: groundId }, select: { scenario: true } })).catch(() => null);
   const away = await whoOnACheckInIsAway(prisma, groundId).catch(() => new Map<string, string>());
   const rows = ((await Promise.resolve(prisma.groundParticipant?.findMany?.({
@@ -199,14 +208,14 @@ export async function whoHasAnsweredInEachSession(prisma: any, groundId: string,
   /* Every session so far, and the next, so a page asking about a round nobody has a row for yet reads it too. */
   const last = Math.max(0, ...rows.flatMap((p) => (p.checkIns ?? []).map((c: any) => Number(c.sessionNumber) || 0)));
   const sessions = Array.from({ length: last + 1 }, (_, i) => i + 1);
-  return Object.fromEntries(sessions.map((n) => [n, whoHasAnswered(people, n, ground?.scenario)]));
+  return Object.fromEntries(sessions.map((n) => [n, asServed(whoHasAnswered(people, n, ground?.scenario))]));
 }
 
 /** The one count of each session kept to the people a reader may see: the same as counting only them, since each person counts alone. */
-export function forThesePeople(counts: Record<number, WhoHasAnswered> | undefined, ids: ReadonlySet<string>): Record<number, WhoHasAnswered> {
+export function forThesePeople(counts: Record<number, TheServedCount> | undefined, ids: ReadonlySet<string>): Record<number, TheServedCount> {
   const keep = (xs: string[]) => xs.filter((x) => ids.has(x));
   return Object.fromEntries(Object.entries(counts ?? {}).map(([n, c]) => [n, {
     ...c, onTheCheckIn: keep(c.onTheCheckIn), answered: keep(c.answered), notYet: keep(c.notYet), notJoined: keep(c.notJoined), declined: keep(c.declined),
-    notLetIn: keep(c.notLetIn), away: Object.fromEntries(Object.entries(c.away).filter(([k]) => ids.has(k))),
+    notLetIn: keep(c.notLetIn),
   }]));
 }

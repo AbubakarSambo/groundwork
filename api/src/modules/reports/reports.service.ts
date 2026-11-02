@@ -41,7 +41,7 @@ import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-ope
 import { whoIsInTheRound } from './how-many-have-answered';
 import { whoHasNotJoinedYet } from '../grounds/invited-not-joined-yet';
 import { whoIsNotLetInYet, theWaitingToBeLetInLine } from '../grounds/who-an-admin-did-not-let-in';
-import { isFromOutside, whoOnACheckInIsAway } from '../suites/who-is-away';
+import { isFromOutside, theRoundAsServed, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { AsyncLocalStorage } from 'async_hooks';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
@@ -7757,7 +7757,7 @@ happened, and what is in the way.`;
           /* Their own rows, which do not wait on a release: see theirOwnRows. */
           myRows: await this.theirOwnRows(participant?.id),
           couldTry: quotesChecked(await this.whatTheyCouldTryNext(groundId, participant?.id), 'what they could try'),
-          sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+          sessionProgress: await theRoundAsServed(this.prisma, sessionProgress, { userId: requestingUserId, organizationId: (ground as any).organizationId, myParticipantId: participant?.id ?? null }),
           declined: await this.declinedThisRound(groundId, ground.participants as any),
         } as any;
       }
@@ -7818,7 +7818,7 @@ happened, and what is in the way.`;
           /* Their own rows, which do not wait on a release: see theirOwnRows. */
           myRows: await this.theirOwnRows(participant?.id),
           couldTry: quotesChecked(await this.whatTheyCouldTryNext(groundId, participant?.id), 'what they could try'),
-          sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+          sessionProgress: await theRoundAsServed(this.prisma, sessionProgress, { userId: requestingUserId, organizationId: (ground as any).organizationId, myParticipantId: participant?.id ?? null }),
           declined: await this.declinedThisRound(groundId, ground.participants as any),
         };
       }
@@ -7886,7 +7886,7 @@ happened, and what is in the way.`;
         soloArtifact,
         myRows: await this.theirOwnRows(participant?.id),
         couldTry: quotesChecked(await this.whatTheyCouldTryNext(groundId, participant?.id), 'what they could try'),
-        sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+        sessionProgress: await theRoundAsServed(this.prisma, sessionProgress, { userId: requestingUserId, organizationId: (ground as any).organizationId, myParticipantId: participant?.id ?? null }),
         declined: await this.declinedThisRound(groundId, ground.participants as any),
         /* AND WHAT IT RESTS ON. Sixteen documents were attached across an audit run and one report of
            a hundred and forty-five mentioned a document at all — the synthesis prompt is handed a count

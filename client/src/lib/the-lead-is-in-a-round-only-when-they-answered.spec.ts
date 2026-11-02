@@ -11,7 +11,7 @@ const people = [
   { id: 'p-aisha', partyType: 'PARTICIPANT' },
 ]
 const served = (onTheCheckIn: string[], answered: string[]) => ({
-  answeredBySession: { 3: { sessionNumber: 3, onTheCheckIn, answered, notYet: onTheCheckIn.filter((id) => !answered.includes(id)), notJoined: [], declined: [], away: {}, notLetIn: [] } },
+  answeredBySession: { 3: { sessionNumber: 3, onTheCheckIn, answered, notYet: onTheCheckIn.filter((id) => !answered.includes(id)), notJoined: [], declined: [], notLetIn: [] } },
 })
 
 describe('who is in a round, as the server counted it', () => {

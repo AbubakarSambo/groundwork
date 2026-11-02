@@ -3,7 +3,8 @@
  * every page reads it").
  *
  * The server counts in one function (api reports/how-many-have-answered.ts, whoHasAnswered) and serves it on every check-in as
- * `answeredBySession`, over the people the reader may see. Every page reads it from here and counts nothing itself: the page's own
+ * `answeredBySession`, over the people the reader may see. Nobody's leave is in it: somebody on leave is simply not counted, and who
+ * is away is served once, shaped for each reader (api suites/who-is-away.ts). Every page reads it from here and counts nothing itself: the page's own
  * copy of the rule (who-is-in-this-round.ts) is gone. A session the server served no count for has nobody counted on it.
  */
 export interface WhoHasAnswered {
@@ -18,8 +19,6 @@ export interface WhoHasAnswered {
   notJoined: string[]
   /** Of them, who answered by declining. */
   declined: string[]
-  /** Not counted: on approved leave and not answered, with the last day of it. */
-  away: Record<string, string>
   /** Not counted: an admin has not let them in, and they have not answered. */
   notLetIn: string[]
 }

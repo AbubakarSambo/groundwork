@@ -1,4 +1,5 @@
 import { whoHasAnswered, forThesePeople, whoHasAnsweredInEachSession } from './how-many-have-answered';
+import { theRoundAsServed } from '../suites/who-is-away';
 
 /**
  * WHO HAS ANSWERED, COUNTED IN ONE PLACE (Hafsah, 1 November 2026). The check-in page kept its own copy of this rule in the browser
@@ -62,5 +63,42 @@ describe('the one count, as each reader is served it', () => {
     const each = await whoHasAnsweredInEachSession(prisma, 'g');
     expect(Object.keys(each)).toEqual(['1', '2', '3']);
     expect(each[2]).toMatchObject({ onTheCheckIn: ['a', 'b'], answered: ['a'], notYet: ['b'] });
+  });
+});
+
+/*
+ * NOBODY'S LEAVE RIDES ON THE SERVED COUNT (2 November 2026). The count went out with `away` and Amani's last day of leave to every
+ * reader, a guest from another organisation included (a-guest-is-not-told-anybodys-leave.spec.ts). Somebody on leave is simply not
+ * counted, with no reason given; who is away is served once, shaped for each reader, and the report serves the round the same way.
+ */
+describe('the one count, as a guest and the lead are served it while somebody is on leave', () => {
+  const NOW = new Date('2026-10-01T09:00:00Z');
+  beforeAll(() => { jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] }); jest.setSystemTime(NOW); });
+  afterAll(() => jest.useRealTimers());
+  const roles: Record<string, string> = { uWairimu: 'LEAD', uChidi: 'MEMBER', uPeter: 'GUEST' };
+  const prisma: any = {
+    ground: { findUnique: jest.fn(async () => ({ scenario: 'OKR_ALIGNMENT' })) },
+    groundParticipant: { findMany: jest.fn(async () => [
+      { id: 'pA', userId: 'uAmani', partyType: 'PARTICIPANT', ground: { organizationId: 'baridi' }, checkIns: [] },
+      { id: 'pC', userId: 'uChidi', partyType: 'PARTICIPANT', ground: { organizationId: 'baridi' }, checkIns: [] },
+      { id: 'pP', userId: 'uPeter', partyType: 'PARTICIPANT', ground: { organizationId: 'baridi' }, checkIns: [] },
+    ]) },
+    leaveRequest: { findMany: async () => [{ userId: 'uAmani', organizationId: 'baridi', startsOn: new Date('2026-09-29T00:00:00Z'), endsOn: new Date('2026-10-02T00:00:00Z') }] },
+    organizationMembership: { findUnique: async ({ where }: any) => (roles[where.userId_organizationId.userId] ? { role: roles[where.userId_organizationId.userId] } : null) },
+  };
+
+  it('the served count leaves Amani out without saying why, for everybody', async () => {
+    const each = await whoHasAnsweredInEachSession(prisma, 'g1');
+    expect(each[1]).toEqual({ sessionNumber: 1, onTheCheckIn: ['pC', 'pP'], answered: [], notYet: ['pC', 'pP'], notJoined: [], declined: [], notLetIn: [] });
+    expect(JSON.stringify(each)).not.toMatch(/2026-10-02|away/);
+  });
+
+  it('the round the report serves: Peter, a guest, reads no dates; Wairimu, the lead, reads Amani\'s', async () => {
+    const round = { sessionNumber: 1, total: 2, completed: 0, missingParticipantIds: ['pC', 'pP'], declinedParticipantIds: [], awayUntil: { pA: '2026-10-02' } };
+    const peter = await theRoundAsServed(prisma, round, { userId: 'uPeter', organizationId: 'baridi', myParticipantId: 'pP' });
+    expect(peter).toMatchObject({ awayUntil: {}, requestingUserIsMissing: true });
+    expect(JSON.stringify(peter)).not.toMatch(/2026-10-02/);
+    expect(await theRoundAsServed(prisma, round, { userId: 'uWairimu', organizationId: 'baridi', myParticipantId: null })).toMatchObject({ awayUntil: { pA: '2026-10-02' }, requestingUserIsMissing: false });
+    expect((await theRoundAsServed(prisma, round, { userId: 'uChidi', organizationId: 'baridi', myParticipantId: 'pC' }))?.awayUntil).toEqual({ pA: '2026-10-02' });
   });
 });
