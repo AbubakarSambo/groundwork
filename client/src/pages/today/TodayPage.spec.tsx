@@ -104,19 +104,22 @@ describe('Today, as the lead', () => {
     ])
   })
 
-  /* Live walk at a hundred people, fault 2: an approval item used to send the approver straight to
-     the whole organisation's board (`/suite/leave`, `/suite/spend`), never filtered to this one
-     thing. It now goes to the approver's own queue, filtered by `?suite=`. */
-  it('sends an approval item to the queue, filtered to its suite, not straight to the whole board', async () => {
+  /* Live walk at a hundred people, fault 2, and the use-case walk of 2 November: each item's link is the server's `to`, unchanged.
+     The server sends an approval to the approver's own queue (`/suite/queue?suite=`) and finance's item to the requests for finance.
+     The page used to rewrite every `/suite/spend` to the approvals queue, so Njeri's finance item opened an empty queue. */
+  it('opens each item where the server says: an approval in the queue, and finance’s item in the requests for finance', async () => {
     open(WAIRIMU, {
       ...LEAD_READ,
       needs: [
-        { key: 'approve-leave-0', kind: 'decide', title: 'Aisha asked for leave from Monday 12 October to Friday 16 October.', detail: 'It is waiting for you to approve.', action: { label: 'Look at it', to: '/suite/leave' }, groundId: '', organizationId: 'o' },
-        { key: 'approve-spend-0', kind: 'decide', title: 'Kamau asked to spend KES 18,000 on fuel.', detail: 'It is waiting for you to approve.', action: { label: 'Look at it', to: '/suite/spend' }, groundId: '', organizationId: 'o' },
+        { key: 'approve-leave-0', kind: 'decide', title: 'Aisha asked for leave from Monday 12 October to Friday 16 October.', detail: 'It is waiting for you to approve.', action: { label: 'Look at it', to: '/suite/queue?suite=leave' }, groundId: '', organizationId: 'o' },
+        { key: 'approve-spend-0', kind: 'decide', title: 'Kamau asked to spend KES 18,000 on fuel.', detail: 'It is waiting for you to approve.', action: { label: 'Look at it', to: '/suite/queue?suite=spend' }, groundId: '', organizationId: 'o' },
+        { key: 'spend-finance', kind: 'decide', title: 'One approved request to spend is waiting for you in finance.', detail: 'It has not been checked yet.', action: { label: 'Open them', to: '/suite/spend/finance' }, groundId: '', organizationId: 'o' },
       ],
     })
     const links = await screen.findAllByRole('link', { name: 'Look at it' })
     expect(links.map(a => a.getAttribute('href'))).toEqual(['/suite/queue?suite=leave', '/suite/queue?suite=spend'])
+    expect(screen.getByText('One approved request to spend is waiting for you in finance.')).toBeInTheDocument()
+    expect((await screen.findAllByRole('link', { name: 'Open them' })).map(a => a.getAttribute('href'))).toEqual(['/suite/spend/finance'])
   })
 
   it('says what is coming up, in her own time', async () => {

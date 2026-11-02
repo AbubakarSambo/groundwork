@@ -179,7 +179,7 @@ export class WhatNeedsYouService {
       kind: 'decide' as const,
       title: all === 1 ? 'One approved request to spend is waiting for you in finance.' : `${Word(all)} approved requests to spend are waiting for you in finance.`,
       detail,
-      action: { label: 'Open them', to: '/suite/spend' },
+      action: { label: 'Open them', to: '/suite/spend/finance' },
       groundId: '',
       organizationId,
     }];

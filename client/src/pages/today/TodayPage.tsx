@@ -136,15 +136,8 @@ export function TodayPage() {
   /* Screen fault 4 (final walk): never claim "You have not checked in yet." beside "Nothing needs
      you right now." - see the-greeting-line-does-not-claim-what-needs-you-does-not.ts. */
   const greetingLine = todayGreetingLine(data?.line, needs.length)
-  /* A SUITE ITEM GOES TO THE QUEUE, NOT STRAIGHT TO THE BOARD (live walk at a hundred people, fault
-     2): with a hundred people waiting on one approver, the board behind "/suite/leave" or
-     "/suite/spend" is the whole organisation's, not filtered to this one thing. The queue
-     (`/suite/queue`) is filtered to what waits for this reader, so "Look at it"/"Look at them" on an
-     approval item goes there instead, with `?suite=` set so the right tab opens. */
-  const whereItGoes = (n: Need) =>
-    n.action.to === '/suite/leave' ? '/suite/queue?suite=leave'
-      : n.action.to === '/suite/spend' ? '/suite/queue?suite=spend'
-        : n.action.to
+  /* Where each item goes is the server's `to` alone (waiting-for-you-to-approve.ts, what-needs-you.service.ts): an approval opens the
+     queue filtered to this reader, and finance's item opens the requests for finance. */
   const comingUp = data?.comingUp ?? []
 
   /* The lead's daily nudge's own link (decision 120). Every sentence is already worded by the
@@ -238,9 +231,9 @@ export function TodayPage() {
                     /* One line of title: a second sentence goes to the detail line when there is none (Hafsah, 25 October). */
                     title={aSentenceAsARow(n.title, n.detail).title}
                     detail={aSentenceAsARow(n.title, n.detail).detail}
-                    to={whereItGoes(n)}
+                    to={n.action.to}
                     actions={<>
-                      <Button kind={!unfinished && n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={whereItGoes(n)}>{n.action.label}</Button>
+                      <Button kind={!unfinished && n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={n.action.to}>{n.action.label}</Button>
                       {n.missedReason && <TheReasonYouMissed checkInId={n.missedReason.checkInId} given={n.missedReason.given} />}
                     </>}
                   />
