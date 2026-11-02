@@ -18,7 +18,7 @@ import { AnthropicService } from '../conversation/anthropic.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { originFromTheFile, looksGeneratedByAModel, type DocumentOrigin } from './what-kind-of-thing-a-document-is';
 import { DOCUMENT_ORIGIN_PROMPT, DOCUMENT_ORIGIN_SCHEMA, DESCRIPTION_CHECK_PROMPT, DESCRIPTION_CHECK_SCHEMA } from '../conversation/prompt-library';
-import { DocumentVisibility, RecordEntryType } from '@prisma/client';
+import { CheckInStatus, DocumentVisibility, RecordEntryType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
 import { aReceiptOrAnInvoice } from './a-receipt-is-not-a-conversation';
@@ -206,10 +206,16 @@ export class DocumentsService {
    * AN UPLOAD HAS TO CHANGE SOMETHING. The person's record lines are read against what they just
    * attached, so a line the document backs stops being recall. Best effort, after the row exists.
    */
+  /*
+   * ONCE, NOT TWICE (2 November 2026). An upload while their check-in is open is read at that check-in's close, which reads every
+   * line against every document once the check-in's own lines exist (readTheLinesJustWritten), so it is not read here as well.
+   * An upload with no check-in open, such as on the Context tab, is read now.
+   */
   private anchorAfterUpload(participantId: string, groundId: string) {
-    this.conversation.anchorRecordToDocuments(participantId, groundId).catch((err) =>
-      this.logger.warn(`Anchoring after upload failed for participant ${participantId}: ${err?.message}`),
-    );
+    Promise.resolve(this.prisma.checkIn?.findFirst?.({ where: { participantId, status: CheckInStatus.IN_PROGRESS }, select: { id: true } }))
+      .catch(() => null)
+      .then((open) => (open ? undefined : this.conversation.anchorRecordToDocuments(participantId, groundId)))
+      .catch((err) => this.logger.warn(`Anchoring after upload failed for participant ${participantId}: ${err?.message}`));
   }
 
   /**
