@@ -6,7 +6,6 @@ import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hos
 import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LEARNING_SIGNAL } from '../learning/learning-signal';
-import { shouldThisCodeBeAboutThem } from './a-chaser-is-not-the-blocker';
 import { theirOwnEarlierRecord, earlierRecordQuery } from './the-detector-reads-their-own-earlier-record';
 import {
   theReadsWereSplit,
@@ -218,24 +217,6 @@ export class PatternsService {
       .catch(() => [] as { code: string; observationText: string | null; lastPeriodNumber: number | null }[]);
     const recogniseBlock = lastPeriodBlockFor(whatWasSeenLastPeriod(lastPeriod, period), period);
 
-    /*
-     * WHO THIS PERSON IS WAITING ON, BY NAME, INSIDE THIS CHECK-IN.
-     *
-     * Read before anything is written, because three of the codes are reads about carrying your own
-     * work and must not land on the person doing the chasing. See a-chaser-is-not-the-blocker.
-     */
-    const theirDependencies = await (this.prisma.groundDependency?.findMany?.({
-      where: { groundId: checkIn.groundId, fromParticipantId: checkIn.participantId },
-      select: { onParticipantId: true, status: true, what: true, groundId: true, triedSaid: true },
-    }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
-    /* And what those colleagues promised in their own check-ins: only a colleague's own word confirms a wait (decision 137). */
-    const theirColleaguesIds = [...new Set((theirDependencies as any[]).map((d) => d?.onParticipantId).filter(Boolean))] as string[];
-    const theColleaguesOwnPromises: any[] = theirColleaguesIds.length
-      ? await Promise.resolve(this.prisma.groundCommitment?.findMany?.({
-          where: { groundId: checkIn.groundId, participantId: { in: theirColleaguesIds } },
-          select: { groundId: true, participantId: true, text: true },
-        }) ?? []).catch(() => [] as any[])
-      : [];
 
     /*
      * THE NUMBER-BASED RULES ARE A SECOND SOURCE OF EVIDENCE (decision 57, item 4), wherever one
@@ -276,7 +257,7 @@ export class PatternsService {
       Array.from({ length: READS_PER_CHECK_IN }, () => {
         const leftOut: { code: string; observation: string }[] = [];
         leftOutForARecord.push(leftOut);
-        return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, theColleaguesOwnPromises, getDetectionInput, whatThePersonSaid, leftOut, detector.content);
+        return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, getDetectionInput, whatThePersonSaid, leftOut, detector.content);
       }),
     );
 
@@ -337,7 +318,7 @@ export class PatternsService {
         Array.from({ length: MORE_READS_WHEN_SPLIT }, () => {
           const leftOut: { code: string; observation: string }[] = [];
           leftOutForARecord.push(leftOut);
-          return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, theColleaguesOwnPromises, getDetectionInput, whatThePersonSaid, leftOut, detector.content);
+          return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, getDetectionInput, whatThePersonSaid, leftOut, detector.content);
         }),
       );
       moreAttempts.forEach((attempt, i) => {
@@ -387,7 +368,7 @@ export class PatternsService {
    * One extraction call at the steady setting, then the same filters in the same order this method
    * always ran, when it ran once: the borrowed-evidence check, the positive-code short road (M1
    * against a stated goal, then "does this say something checkable"), carrying codes (no
-   * confirmation), the chaser guard, and the F1
+   * confirmation) and the F1
    * composite gate. Five calls to this, run in parallel, are how analyzeCheckIn reads a check-in
    * five times; a code is only written once at least three of the five keep it.
    */
@@ -397,8 +378,6 @@ export class PatternsService {
     recogniseBlock: string,
     lastPeriod: { code: string; observationText: string | null; lastPeriodNumber: number | null }[],
     statedGoals: string[],
-    theirDependencies: any[],
-    theColleaguesOwnPromises: any[],
     getDetectionInput: () => Promise<DetectionInput>,
     whatThePersonSaid: string[] = [],
     leftOutForARecord: { code: string; observation: string }[] = [],
@@ -474,17 +453,6 @@ export class PatternsService {
         continue;
       }
       if (!isBadFaithCode(d.code)) continue;
-      /*
-       * AND NOT ABOUT THE PERSON WAITING. B5, B11 and K3 read one transcript for "a lot of talking
-       * and it has not moved", which is exactly the shape a lead produces when the person they
-       * hired is not delivering - it surfaced on the client, not the consultant, and her coaching
-       * then told her to communicate better. See a-chaser-is-not-the-blocker.
-       */
-      const mine = shouldThisCodeBeAboutThem(d.code, theirDependencies as any[], theColleaguesOwnPromises as any[]);
-      if (!mine.keep) {
-        this.logger.log(`Check-in ${checkInId}: ${d.code} not written about this person; ${mine.because}.`);
-        continue;
-      }
       /* The confirming call is not made here: a code is confirmed once per check-in, across all the
          reads (analyzeCheckIn, confirmEachCodeOnce), not once in every read that kept it. */
 
