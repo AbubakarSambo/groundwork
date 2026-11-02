@@ -93,7 +93,7 @@ import { assessTheConversation, theAssessmentOf, theAssessmentIsReady, type TheS
 import { theSmallStepForThePerson } from '../patterns/the-next-step-for-each-pattern';
 import { whatTheyAreWaitingOn, whatTheyPromisedThemselves, whatHappenedToTheirOpenPromises, theAssessmentIn, theReportTheyRead, type TheAssessment } from './the-assessment';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
-import { theSettlements, aCommitmentKey, oneOfEach, theySaidItDidNotHappen, type AnAnswer } from './what-happened-to-what-they-said';
+import { theSettlements, aCommitmentKey, oneOfEach, type AnAnswer } from './what-happened-to-what-they-said';
 import { theProofSettlements, thePrompt as theProofPrompt, WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT, WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA, whatThisLineProves, mayBeSettledByProof } from './settled-by-proof';
 import { whoAddedEachBackingDocument } from '../reports/how-a-line-is-known';
 import { aWaitThatConfirms, theLineToConfirm, thePrompt as theDeliveredPrompt, WHICH_LINE_WAS_DELIVERED_PROMPT, WHICH_LINE_WAS_DELIVERED_SCHEMA } from './confirmed-by-who-received-it';
@@ -8787,7 +8787,6 @@ ${told}` : '';
       orderBy: { createdAt: 'asc' },
       take: 20,
     });
-    await this.whatTheyNowSayDidNotHappen(checkInId, row as any, said).catch(() => undefined);
     if (!open.length) return 0;
     /* The same promise written twice is put once, and what they said about it settles both rows. */
     const once = oneOfEach(open);
@@ -8823,19 +8822,6 @@ ${told}` : '';
       this.events?.emit?.(GroundworkEvents.COMMITMENTS_SETTLED, { groundId: row.groundId, participantId: row.participantId } satisfies CommitmentsSettledEvent);
     }
     return settled.length;
-  }
-
-  /** Read as done from what they said, and now they say it did not happen: not done (messages test, fourth run). See theySaidItDidNotHappen. */
-  private async whatTheyNowSayDidNotHappen(checkInId: string, row: { groundId: string; participantId: string; startedAt: Date | null }, said: AnAnswer[]): Promise<void> {
-    const readAsDone: any[] = await Promise.resolve(this.prisma.groundCommitment.findMany({
-      where: { groundId: row.groundId, participantId: row.participantId, status: 'DONE', settledBy: 'SAID', settledInCheckInId: { not: checkInId }, createdAt: { lt: row.startedAt ?? new Date() } },
-      select: { id: true, text: true, status: true, settledBy: true },
-    })).catch(() => []);
-    for (const c of (Array.isArray(readAsDone) ? readAsDone : []).filter((x) => x.status === 'DONE' && x.settledBy === 'SAID')) {
-      if (!theySaidItDidNotHappen(String(c.text ?? ''), said)) continue;
-      await this.prisma.groundCommitment.updateMany({ where: { id: c.id, status: 'DONE', settledBy: 'SAID' }, data: { status: 'NOT_DONE', settledAt: new Date(), settledInCheckInId: checkInId, settledBy: 'SAID' } });
-      this.logger.log(`Check-in ${checkInId}: commitment ${c.id} was read as done, and they now say it did not happen.`);
-    }
   }
 
   async writeWhatTheyPromised(checkInId: string): Promise<void> {
