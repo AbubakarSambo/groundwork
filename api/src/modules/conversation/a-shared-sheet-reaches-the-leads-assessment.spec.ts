@@ -72,7 +72,7 @@ describe('the lead\'s documents in her assessment', () => {
       },
     });
     const svc = new ConversationService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any) as any;
-    await svc.keepTheAimsTheLeadSaid({ id: 'ci-1', participantId: 'p-grace', groundId: 'g' }, anAssessmentHolding({
+    await svc.keepTheAimsTheySaid({ id: 'ci-1', participantId: 'p-grace', groundId: 'g' }, anAssessmentHolding({
       isTheLead: true,
       targets: [
         { words: 'Team target: 900 units sold by 31 December.', aim: 'The team is aiming to sell 900 units by 31 December.', target: 900, whose: 'The team' },

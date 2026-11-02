@@ -114,8 +114,8 @@ describe('the rules the three writes used to carry', () => {
      * expectations ABOUT other people only ever runs for the lead. A person's own promises take a
      * different route and land on themselves.
      */
-    expect(EXTRACT).toMatch(/if \(me\.partyType !== PartyType\.INITIATOR\) \{/);
-    expect(EXTRACT).toMatch(/writeTheirOwnPromises\(/);
+    /* Since 2 November 2026 a person's own aims are kept from their assessment (keepTheAimsTheySetThemselves), so this read returns. */
+    expect(EXTRACT).toMatch(/if \(me\.partyType !== PartyType\.INITIATOR\) return;/);
   });
 
   /**

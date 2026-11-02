@@ -76,17 +76,19 @@ describe('and the answer is actually kept', () => {
      *
      * One promise, one owner (1 November 2026): everybody's promises, the lead's included, are read
      * from their conversation's assessment and kept once (writeWhatTheyPromised, after every close).
-     * The second read of the lead's promises before her targets is gone; only a participant's own
-     * aims are still read by writeTheirOwnPromises.
+     * The second read of the lead's promises before her targets is gone. Since 2 November 2026 a participant's own aims are
+     * kept from the assessment too (keepTheirOwnAims, from the assessment's targets), with no read of their own.
      */
-    expect(SERVICE.match(/await this\.writeTheirOwnPromises\(/g) ?? []).toHaveLength(1);
+    expect(SERVICE.match(/await this\.keepTheirOwnAims\(/g) ?? []).toHaveLength(1);
+    expect(SERVICE).not.toMatch(/writeTheirOwnPromises/);
     expect(SERVICE).toMatch(/this\.writeWhatTheyPromised\(checkIn\.id\)/);
   });
 
   it('and still keeps expectations of others separate from promises of your own', () => {
     /* Different things about different people, stored differently. A lead has both. */
     expect(SERVICE).toMatch(/EXPECTATION_PROMPT/);
-    expect(SERVICE).toMatch(/OWN_PROMISE_PROMPT/);
+    /* A person's own aims are their assessment's items now (2 November 2026), kept on their own rows. */
+    expect(SERVICE).toMatch(/authoredBy: 'self'/);
   });
 
   it('on a scenario pack that already asks for the person’s own part', () => {

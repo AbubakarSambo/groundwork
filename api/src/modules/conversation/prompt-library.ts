@@ -2299,66 +2299,6 @@ export const PROGRESS_SCHEMA = {
   },
 } as const;
 
-export const OWN_PROMISE_PROMPT = `You are reading one person's check-in and writing down the promises they made about their OWN work.
-
-Return only things THIS PERSON said THEY would do. Their words, not a tidier version of them.
-
-For each one:
-   - promise: what they said they would do, in their own words, one sentence.
-   - kind:
-       TODO - something they will do, done or not.
-       COMMITMENT - a to-do a NAMED OTHER PERSON on this check-in is waiting on. Put that person in owedTo.
-       TARGET - a number has to cross a line. "Three proposals", "£150k of pipeline".
-       GOAL - a direction judged rather than counted, over a period.
-   - check: how anybody would know it had happened.
-       DONE_OR_NOT, A_NUMBER, A_JUDGEMENT, or NOT_CHECKABLE.
-   - dueKind: A_DATE if they named a day or deadline, A_CYCLE for a quarter or sprint, STANDING if
-     it has no end, NOT_SAID if they did not say.
-   - dueSaid: their own words for the deadline - "Thursday", "end of October". Empty otherwise.
-   - owedTo: for COMMITMENT only, the name of the person waiting on it. Empty otherwise.
-   - target and measure: ONLY when the promise is checked by a number and that number is
-     unambiguous. "Three proposals" is target 3, measure "proposals". "£150k of pipeline" is target
-     "150k", measure "pipeline". Leave BOTH empty for anything judged rather than counted, and for
-     a number you had to work out - a promise nobody stated as a number does not become one here.
-
-RULES.
-Only what they said about their own work. Never what they expect of somebody else - that is not theirs to set.
-Never sharpen a vague promise. "I will get on top of the pipeline" is what it says, and its check is A_JUDGEMENT.
-NOT_CHECKABLE IS A REAL ANSWER. If nothing they said could be checked, say so rather than inventing a measure.
-A wish is not a promise. "It would be good to have three proposals out" is not "I will produce three proposals".
-An aim they set for their own number IS a promise, and it is a TARGET: "I am aiming for 3 shops in Kilimani" is target 3, measure "shops in Kilimani".
-Something they said they had ALREADY done is not a promise. It belongs to the record of what happened, not to this.
-Do not turn a worry or a complaint into a commitment.
-Be conservative. An empty list is usually correct.`;
-
-export const OWN_PROMISE_SCHEMA = {
-  name: 'emit_own_promises',
-  description: 'What the person said they themselves will do.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      promises: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            promise: { type: 'string' },
-            kind: { type: 'string', enum: ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'] },
-            check: { type: 'string', enum: ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'] },
-            dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
-            dueSaid: { type: 'string' },
-            owedTo: { type: 'string' },
-            target: { type: 'string' },
-            measure: { type: 'string' },
-          },
-          required: ['promise', 'kind', 'check', 'dueKind'],
-        },
-      },
-    },
-    required: ['promises'],
-  },
-} as const;
-
 export const EXPECTATION_SCHEMA = {
   name: 'emit_expectations',
   description: "Emit the lead's own number and what they expect of each named person.",

@@ -44,7 +44,7 @@ const HER_ASSESSMENT = (isTheLead: boolean) => anAssessmentHolding({
 describe('the team\'s aims, kept from the lead\'s assessment', () => {
   it('her setup\'s targets reach the board, each a sentence about the team, with the number only where she said it', async () => {
     const { svc, board } = theService();
-    await svc.keepTheAimsTheLeadSaid({ id: 'c1', participantId: 'p-w', groundId: 'g1' }, HER_ASSESSMENT(true), { words: [WANJIRU_SAID], given: [] });
+    await svc.keepTheAimsTheySaid({ id: 'c1', participantId: 'p-w', groundId: 'g1' }, HER_ASSESSMENT(true), { words: [WANJIRU_SAID], given: [] });
     expect(board.map((b) => [b.name, b.target, b.ownerParticipantId])).toEqual([
       ['The team is aiming to collect 2,400,000 Kenyan shillings by the end of the year.', 2400000, null],
       ['The team is aiming to miss no court filing deadlines this quarter.', null, null],
@@ -54,14 +54,14 @@ describe('the team\'s aims, kept from the lead\'s assessment', () => {
 
   it('a member\'s assessment sets no team aim', async () => {
     const { svc, board } = theService(PartyType.PARTICIPANT);
-    await svc.keepTheAimsTheLeadSaid({ id: 'c1', participantId: 'p-w', groundId: 'g1' }, HER_ASSESSMENT(false), null);
+    await svc.keepTheAimsTheySaid({ id: 'c1', participantId: 'p-w', groundId: 'g1' }, HER_ASSESSMENT(false), null);
     expect(board).toEqual([]);
   });
 
   it('runs after every lead\'s assessment, on every path that ends a conversation, and the aims read of its own is gone', () => {
     const service = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
     const after = service.slice(service.indexOf('async assessAndThenRead('), service.indexOf('ONE SESSION FINISHES ONCE.'));
-    expect(after).toMatch(/this\.keepTheAimsTheLeadSaid\(checkIn, assessed, how\.setup\)/);
+    expect(after).toMatch(/this\.keepTheAimsTheySaid\(checkIn, assessed, how\.setup\)/);
     expect(service).not.toMatch(/result\.groundAims/);
   });
 });

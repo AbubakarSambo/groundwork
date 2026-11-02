@@ -225,7 +225,7 @@ import {
 import { evidenceBlock } from '../public-api/what-the-numbers-show';
 import { describePending, PENDING_RULE } from '../public-api/six-is-still-the-target';
 import { whenTheyMeant } from './when-words-mean-a-date';
-import { OWN_PROMISE_PROMPT, OWN_PROMISE_SCHEMA, OPERATING_DIFFERENCE_PROMPT, OPERATING_DIFFERENCE_SCHEMA, PROGRESS_PROMPT, PROGRESS_SCHEMA, THEY_SAY_HAPPENED_PROMPT, THEY_SAY_HAPPENED_SCHEMA } from './prompt-library';
+import { OPERATING_DIFFERENCE_PROMPT, OPERATING_DIFFERENCE_SCHEMA, PROGRESS_PROMPT, PROGRESS_SCHEMA, THEY_SAY_HAPPENED_PROMPT, THEY_SAY_HAPPENED_SCHEMA } from './prompt-library';
 import { TheySay, worthRecording, WHEN_THEY_SAY_IT_IS_MISSING } from './what-they-say-happened';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { keptForTheOrganisation, MOST_KEPT_IN_A_PROMPT } from '../knowledge/organisation-memory';
@@ -7724,7 +7724,7 @@ ${told}` : '';
           .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: kept ${n} promise(s) somebody said were done.`); })
           .catch((err) => this.logger.warn(`Could not clear the waits said done after ${checkIn.id}: ${err?.message ?? err}`)),
         /* The team's aims, from the lead's assessment. */
-        this.keepTheAimsTheLeadSaid(checkIn, assessed, how.setup)
+        this.keepTheAimsTheySaid(checkIn, assessed, how.setup)
           .catch((err: any) => this.logger.warn(`Could not keep the aims from ${checkIn.id}'s assessment: ${err?.message}`)),
         /* The promises: what happened to the open ones, then the new ones, from the assessment. */
         this.settleWhatTheySaidTheyWouldDo(checkIn.id)
@@ -10700,60 +10700,51 @@ ${told}` : '';
     return [...new Set(rows.map((r) => String(r.name ?? '').trim()).filter(Boolean))];
   }
 
-  private async writeTheirOwnPromises(
+  /**
+   * A PERSON'S OWN AIMS, FROM THEIR CONVERSATION'S ASSESSMENT (2 November 2026). The assessment's `targets` holds every aim by
+   * whoever holds it, under the same rules for aims (READ_THE_AIMS), so the separate read of a participant's own aims
+   * (OWN_PROMISE_PROMPT) is gone and these are the speaker's own items from it. Each is kept as their own aim, in their words, and
+   * a counted one is returned so it is put on the board as theirs (request 107 c).
+   */
+  private async keepTheirOwnAims(
     participantId: string,
     groundId: string,
+    aims: { words: string; target: number | null; unit: string | null; by: string | null }[],
     transcript: string,
     saidOn: Date,
     participants: { id: string; managingOnly: boolean; email: string | null; roleAsDescribed: string | null; user: { firstName: string | null; lastName: string | null } | null }[],
   ): Promise<{ participantId: string; name: string; target: number }[]> {
-    /* Their own counted aims, returned so a participant's can be put on the board as theirs (request 107 c). */
     const counted: { participantId: string; name: string; target: number }[] = [];
-    const result = await this.anthropic.extract<{
-      promises: { promise: string; kind?: string; check?: string; dueKind?: string; dueSaid?: string; owedTo?: string; target?: string; measure?: string }[];
-    }>(OWN_PROMISE_PROMPT, [{ role: 'user', content: transcript }], OWN_PROMISE_SCHEMA);
-    if (!result?.promises?.length) return counted;
-
-    const KINDS = ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'];
-    const CHECKS = ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'];
+    if (!aims.length) return counted;
     /* In a sales check-in a number about one customer's deal is the deal's, never their target (Drop Access, item 27; a-deals-units-are-not-a-target). */
     const theCustomers = await this.theCustomersOnRecordIfSales(groundId);
     const thePeople = participants.map((p) => p.user?.firstName ?? '').filter(Boolean);
-    const DUES = ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'];
 
-    for (const p of result.promises) {
-      const text = (p.promise ?? '').trim();
+    for (const aim of aims) {
+      const text = (aim.words ?? '').trim();
       if (!text) continue;
       /* Theirs, in their own words, never a sentence of Groundwork's (a-promise-is-theirs-not-ours.ts). */
       if (!itIsTheirs(text, transcript)) continue;
-      const kind = KINDS.includes(p.kind ?? '') ? (p.kind as any) : 'TODO';
       /*
        * ONE PROMISE, ONE OWNER (Hafsah, 1 November 2026). Something they said they would do is kept once, as a GroundCommitment written
-       * from the conversation's assessment (writeWhatTheyPromised). It was also written here, as a PersonObjective, with a day this read
-       * worked out on its own: Brian's "by Monday 9 November", said on 13 November, became 9 November 2027 here while the commitment kept
-       * his words. Only an aim of their own is kept here now.
+       * from the conversation's assessment (writeWhatTheyPromised). Only an aim of their own is kept here.
        */
-      if (kind !== 'TARGET' && kind !== 'GOAL') continue;
+      const counts = typeof aim.target === 'number' && Number.isFinite(aim.target);
+      const dueSaid = (aim.by ?? '').trim() || null;
       /* A figure they reported is what happened, not an aim (fix plan, pattern 5; Njeri's "November collections KES 720,000" became "You have 0 of 720,000"). */
-      if (kind === 'TARGET' && !p.dueSaid && A_PERIOD_REPORTED.test(text) && !AN_AIM_IN_WORDS.test(text)) continue;
-      const check = CHECKS.includes(p.check ?? '') ? (p.check as any) : 'NOT_CHECKABLE';
-      const dueKind = DUES.includes(p.dueKind ?? '') ? (p.dueKind as any) : 'NOT_SAID';
-      const dueSaid = (p.dueSaid ?? '').trim() || null;
-
-      /* Only where they stated a number. A promise nobody counted does not become one here. */
-      const target = (p.target ?? '').trim() || null;
-      const measure = (p.measure ?? '').trim() || null;
-
+      if (counts && !dueSaid && A_PERIOD_REPORTED.test(text) && !AN_AIM_IN_WORDS.test(text)) continue;
+      const measure = (aim.unit ?? '').trim() || null;
+      const dueDate = whenTheyMeant(dueSaid, saidOn);
       const data = {
         text,
-        target: target && measure ? target : null,
-        measure: target && measure ? measure : null,
+        target: counts && measure ? String(aim.target) : null,
+        measure: counts && measure ? measure : null,
         authoredBy: 'self',
-        kind: kind as any,
-        check,
-        dueKind,
+        kind: (counts ? 'TARGET' : 'GOAL') as any,
+        check: (counts ? 'A_NUMBER' : 'A_JUDGEMENT') as any,
+        dueKind: (dueDate ? 'A_DATE' : 'NOT_SAID') as any,
         dueSaid,
-        dueDate: whenTheyMeant(dueSaid, saidOn),
+        dueDate,
         owedToParticipantId: null,
         seenBySubject: true,
       };
@@ -10904,28 +10895,8 @@ ${told}` : '';
       .join('\n');
     const transcript = spoken + (attached ? `\n\n${attached}` : '');
 
-    /*
-     * A PARTICIPANT'S OWN PROMISES GO DOWN A DIFFERENT PROMPT.
-     *
-     * `EXPECTATION_PROMPT` reads a lead's session and its rules forbid the speaker writing anything
-     * about themselves, which is correct for what it does. Pointing it at a participant would have
-     * captured what the new hire expects of the CEO - the opposite of what is needed. So their own
-     * promises have their own prompt, their own schema, and one target: themselves.
-     */
-    if (me.partyType !== PartyType.INITIATOR) {
-      const theirAims = await this.writeTheirOwnPromises(participantId, groundId, transcript, saidOn, ground.participants as any);
-      /*
-       * AND A NUMBER THEY SET FOR THEMSELVES IS A TARGET ON THE BOARD, AS THEIRS (request 107 c).
-       *
-       * "I am aiming for 3 shops in Kilimani" was kept as a promise of Amani's and went nowhere else:
-       * this branch returned before the only path that puts an owned target on the board, which
-       * read the lead's session alone. It is now hers, set by her, in her own words, and read like
-       * every owned target: by her and the person running it, or by everybody where the lead chose
-       * that. A number already on the board for her is never overwritten from here.
-       */
-      if (theirAims.length) await this.putOwnedTargetsOnTheRecord(groundId, theirAims, participantId);
-      return;
-    }
+    /* A participant's own aims are kept from their conversation's assessment (keepTheAimsTheySaid), so there is nothing to read here. */
+    if (me.partyType !== PartyType.INITIATOR) return;
 
     /*
      * THE LEAD'S OWN PROMISES ARE THE ASSESSMENT'S (one promise, one owner; 1 November 2026). They are read from her conversation's
@@ -11300,15 +11271,44 @@ ${told}` : '';
 
   }
 
-  /** The aims a lead's assessment heard, kept as the team's aims, read against her own words in it (setup's words, or her turns). */
-  private async keepTheAimsTheLeadSaid(checkIn: { id: string; participantId: string; groundId: string }, a: TheAssessment | null, setup?: TheSetupGiven | null): Promise<void> {
-    if (!a?.about.isTheLead) return;
+  /**
+   * The aims an assessment heard. A lead's are kept as the team's aims, read against her own words in it (setup's words, or her
+   * turns). Anybody else's are their own aims, the speaker's own items in it, kept as theirs and put on the board as theirs.
+   */
+  private async keepTheAimsTheySaid(checkIn: { id: string; participantId: string; groundId: string }, a: TheAssessment | null, setup?: TheSetupGiven | null): Promise<void> {
+    if (!a) return;
+    if (!a.about.isTheLead) return this.keepTheAimsTheySetThemselves(checkIn, a);
     const aims = (a.targets ?? [])
       .map((t) => ({ name: String(t.aim ?? t.words ?? '').trim(), target: typeof t.target === 'number' ? t.target : null }))
       .filter((t) => t.name);
     if (!aims.length) return;
     const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } });
     await this.keepTheTeamsAims(checkIn.groundId, checkIn.participantId, aims, [...(setup?.words ?? []), ...turns.map((t) => t.content ?? '')]);
+  }
+
+  /**
+   * A NUMBER THEY SET FOR THEMSELVES IS A TARGET ON THE BOARD, AS THEIRS (request 107 c). "I am aiming for 3 shops in Kilimani" is
+   * hers, set by her, in her own words, and read like every owned target: by her and the person running it, or by everybody where
+   * the lead chose that. A number already on the board for her is never overwritten from here. Only the items whose holder is the
+   * speaker are theirs; a colleague's number or the team's is not set by them.
+   */
+  private async keepTheAimsTheySetThemselves(checkIn: { id: string; participantId: string; groundId: string }, a: TheAssessment): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: checkIn.groundId },
+      select: { participants: { select: { id: true, managingOnly: true, email: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } } },
+    });
+    const me = ground?.participants.find((p) => p.id === checkIn.participantId);
+    if (!ground || !me) return;
+    const first = (me.user?.firstName ?? a.about.who ?? '').trim().split(/\s+/)[0]?.toLowerCase() ?? '';
+    const theirs = (a.targets ?? [])
+      .filter((t) => first && String(t.whose ?? '').trim().split(/\s+/)[0]?.toLowerCase() === first)
+      .map((t) => ({ words: String(t.words ?? '').trim(), target: typeof t.target === 'number' ? t.target : null, unit: typeof t.unit === 'string' ? t.unit : null, by: typeof t.by === 'string' ? t.by : null }))
+      .filter((t) => t.words);
+    if (!theirs.length) return;
+    const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' }, select: { role: true, content: true } });
+    const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
+    const counted = await this.keepTheirOwnAims(checkIn.participantId, checkIn.groundId, theirs, transcript, new Date(a.about.endedAt ?? Date.now()), ground.participants as any);
+    if (counted.length) await this.putOwnedTargetsOnTheRecord(checkIn.groundId, counted, checkIn.participantId);
   }
 
   /**

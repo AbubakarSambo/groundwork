@@ -317,7 +317,7 @@ export class AdminService implements OnApplicationBootstrap {
       { table: 'deliveries', writer: 'progress extractor, and the person\'s own board' },
       { table: 'proposed_changes', writer: 'a change asked for against an objective', needs: 'a customer system asking for a change against an objective, through the API' },
       { table: 'interactions', writer: 'what-they-say-happened extractor, and the API', needs: 'the what-they-say-happened extractor, or the API' },
-      { table: 'person_objectives', writer: 'own-promise extractor, and objective setup' },
+      { table: 'person_objectives', writer: "a person's own aims from their assessment, and objective setup" },
       { table: 'ground_documents', writer: 'uploads' },
       { table: 'participant_notes', writer: 'between-session notes' },
       { table: 'lead_context_notes', writer: 'the lead\'s context chat' },
