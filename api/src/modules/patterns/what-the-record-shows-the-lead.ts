@@ -118,9 +118,6 @@ export function theRecordAsServedPatterns(people: TheNewestRecordOfAPerson[]): A
         whoSeesIt: 'Only you see this. Nothing is decided from it.',
         leadMark: marked.mark ?? null,
         talkedAbout: !!marked.talkedAboutAt,
-        secondReadNote: null,
-        coachTowards: null,
-        oneStep: null,
         about: p.key === 'claims-rarely-proved' ? 'what is said against what happened' : 'the work',
       });
     }

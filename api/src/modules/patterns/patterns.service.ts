@@ -24,6 +24,7 @@ import { plainVoice } from './plain-voice';
 import { PERIODS_BEFORE_A_PATTERN_IS_SHOWN, PATTERN_ROW_SELECT, patternRowsThisReaderMayRead, servedPatterns, periodsSeen, type AServedPattern, type ALeadPatternMark } from './who-reads-a-pattern';
 import { periodOf } from './period-of';
 import { PATTERNS_ARE_SERVED } from './patterns-are-served';
+import { theLeadMarksAPatternAcrossTime } from './the-leads-mark-on-a-pattern';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 import { isAgainstAGoalTheyStated, whatTheySaidThisWasFor } from './against-the-goal-they-stated';
@@ -113,9 +114,6 @@ export class PatternsService {
     return stored ? { content: stored.content, id: stored.id } : { content: PATTERN_DETECTION_PROMPT, id: null };
   }
 
-  private learnFrom(detectionId: string): void {
-    try { this.events?.emit(LEARNING_SIGNAL, { detectionId }); } catch { /* counting must never break a mark */ }
-  }
 
   /**
    * Analyse one completed check-in (one period for one party). Extracts pattern
@@ -1128,7 +1126,7 @@ export class PatternsService {
     const now = new Date();
     const saved = await this.prisma.patternDetection.update({
       where: { id: row.id },
-      data: { personAnswer: words, personAnsweredAt: now, ...(row.shownToPersonAt ? {} : { shownToPersonAt: now }) },
+      data: { personAnswer: words, personAnsweredAt: now },
       select: PATTERN_ROW_SELECT,
     });
     const ground = row.participant.ground;
@@ -1137,74 +1135,18 @@ export class PatternsService {
   }
 
   /**
-   * The row plus the lead's identity, loaded the same way for both routes below: `markAsTheLead`
-   * and `markTalkedAbout`. "The person who runs the check-in" is the ground's own lead
-   * (`initiatorId`), the same identity `forTheLeadFrom` gates its nudge on - not the wider `runsIt`
-   * class (which also lets an org admin read a pattern) and never the person it is about or a
-   * colleague. Both routes answer 403 for anybody else, so nobody outside that one identity can even
-   * learn whether the pattern exists.
+   * "AFTER TALKING A PATTERN THROUGH, THE LEAD MARKS IT RIGHT, WRONG OR NOT SURE" (decision 57, item 2), and "AND CAN MARK 'WE
+   * TALKED ABOUT IT'" (item 3). The lead reads what the record shows about each person (layer 2) and marks that: see
+   * the-leads-mark-on-a-pattern.ts. A stored pattern is read only by the person it is about, so nobody else marks one.
    */
-  private async loadForTheLeadToMark(detectionId: string, userId: string) {
-    const forbidden = () => new ForbiddenException('Only the person who runs this check-in can do that.');
-    if (!PATTERNS_ARE_SERVED) throw forbidden();
-    const row = await this.prisma.patternDetection.findUnique({
-      where: { id: detectionId },
-      select: {
-        ...PATTERN_ROW_SELECT,
-        participant: {
-          select: {
-            ground: { select: { initiatorId: true, participants: { select: { id: true, userId: true } } } },
-          },
-        },
-      },
-    });
-    if (!row) throw forbidden();
-    const ground = row.participant.ground;
-    if (ground.initiatorId !== userId) throw forbidden();
-    const lead = ground.participants.find((p) => p.userId === userId);
-    const reader = { participantId: lead?.id ?? null, runsIt: true };
-    /* Decision 39's timing: allowed only once the lead may already read the pattern. */
-    if (!patternRowsThisReaderMayRead([row], reader).length) throw forbidden();
-    return { row, reader };
+  async markAsTheLead(id: string, userId: string, mark: ALeadPatternMark): Promise<AServedPattern> {
+    if (!PATTERNS_ARE_SERVED) throw new ForbiddenException('Only the person who runs this check-in can do that.');
+    return theLeadMarksAPatternAcrossTime(this.prisma, id, userId, { mark });
   }
 
-  /**
-   * "AFTER TALKING A PATTERN THROUGH, THE LEAD MARKS IT RIGHT, WRONG OR NOT SURE" (decision 57, item
-   * 2). Only the person who runs the check-in, and only once they may already read the pattern
-   * (decision 39's timing). The mark is stored beside `personAnswer`, the person's own answer, which
-   * already counts as evidence; it is never served back to the person or to a colleague - see
-   * `servedPatterns`, which nulls it out for anybody but this reader.
-   */
-  async markAsTheLead(detectionId: string, userId: string, mark: ALeadPatternMark): Promise<AServedPattern> {
-    const { row, reader } = await this.loadForTheLeadToMark(detectionId, userId);
-    const now = new Date();
-    const saved = await this.prisma.patternDetection.update({
-      where: { id: row.id },
-      data: { leadMark: mark, leadMarkedAt: now, leadMarkedBy: userId },
-      select: PATTERN_ROW_SELECT,
-    });
-    this.learnFrom(row.id);
-    return servedPatterns([saved], reader, { now })[0];
-  }
-
-  /**
-   * "AND CAN MARK 'WE TALKED ABOUT IT'" (decision 57, item 3). Same identity, same timing as the mark
-   * above. Sets `talkedAboutAt` once - a second call is a no-op, not an error, since the nudge that
-   * leads here goes away the moment this is set and there is nothing left for a repeat call to change.
-   * `talkedAboutAtPeriod` is the anchor `seenAgainAfterTalk` derives "did it come up again" from.
-   */
-  async markTalkedAbout(detectionId: string, userId: string): Promise<AServedPattern> {
-    const { row, reader } = await this.loadForTheLeadToMark(detectionId, userId);
-    const now = new Date();
-    const saved = row.talkedAboutAt
-      ? row
-      : await this.prisma.patternDetection.update({
-          where: { id: row.id },
-          data: { talkedAboutAt: now, talkedAboutBy: userId, talkedAboutAtPeriod: periodsSeen(row) },
-          select: PATTERN_ROW_SELECT,
-        });
-    if (!row.talkedAboutAt) this.learnFrom(row.id);
-    return servedPatterns([saved], reader, { now })[0];
+  async markTalkedAbout(id: string, userId: string): Promise<AServedPattern> {
+    if (!PATTERNS_ARE_SERVED) throw new ForbiddenException('Only the person who runs this check-in can do that.');
+    return theLeadMarksAPatternAcrossTime(this.prisma, id, userId, { talkedAbout: true });
   }
 
   /**

@@ -25,7 +25,7 @@ import { askedOfYou, type AskedOfYou } from './asked-of-you';
 import { theDayIn } from './when-a-handoff-is-due';
 import { thePromisesAsTheRecordKeepsThem } from './a-promise-said-done-is-read-the-same-everywhere';
 import {
-  PATTERN_ROW_SELECT, servedPatterns, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson,
+  PATTERN_ROW_SELECT, servedPatterns, whoIsWhoIn,
   type APatternRow,
 } from '../patterns/who-reads-a-pattern';
 
@@ -283,16 +283,12 @@ export class YourBoardService {
     }
 
     const list: YourPattern[] = [];
-    const shownIds: string[] = [];
     for (const g of byGround.values()) {
       const participantId = g.rows[0]?.participantId;
       if (!participantId) continue;
       const served = servedPatterns(g.rows, { participantId, runsIt: false }, whoIsWhoIn(g.participants, g.initiatorId));
-      shownIds.push(...theOnesTheyAreSeeingFirst(g.rows, served));
       for (const p of served) list.push({ ...p, checkIn: g.label });
     }
-    /* The person reading their own for the first time starts the clock on when the lead may read it. */
-    await markShownToThePerson(this.prisma as any, shownIds);
     return list;
   }
 

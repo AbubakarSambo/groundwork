@@ -113,24 +113,7 @@ export function PatternPanel({
         <p className="gwui-panel-text-muted">{pattern.whoSeesIt}</p>
       </Stack>
 
-      {/*
-        REQUEST 82: COACHING BESIDE A PATTERN, FOR WHOEVER RUNS THE CHECK-IN ONLY. The server sends
-        `coachTowards` and `oneStep` only to that reader (null for the person it is about), so there
-        is nothing to gate here beyond their presence.
-      */}
-      {(pattern.coachTowards || pattern.oneStep) && (
-        <div className="gwui-fs-13 gwui-ink-text gwui-mt-8" style={{ lineHeight: '20px' }}>
-          {pattern.coachTowards && <div>{pattern.coachTowards}</div>}
-          {pattern.oneStep && <div className="gwui-mt-4">{pattern.oneStep}</div>}
-        </div>
-      )}
-
       <Stack gap={6}>
-        {/* "Two separate reads of the record found this." For whoever runs the check-in only. */}
-        {pattern.secondReadNote && (
-          <p className="gwui-panel-text-muted" style={{ fontStyle: 'italic' }}>{pattern.secondReadNote}</p>
-        )}
-
         {/*
           Whether whoever runs the check-in has said they talked it through, a plain fact both
           readers may see. Board review, 1 October, item 4: "Your lead has said..." named nobody,
@@ -220,7 +203,8 @@ export function PatternPanel({
 
       {pattern.askThem && (
         <div className="gwui-mt-8">
-          <Callout title={`A question you could ask ${name ?? 'them'}, to hear their side.`}>{pattern.askThem}</Callout>
+          {/* The next step for this (layer 3): the lead's own, or the question Groundwork will put in the next check-in (F2, 2 November 2026). */}
+          <Callout title="Here is the next step.">{pattern.askThem}</Callout>
         </div>
       )}
 

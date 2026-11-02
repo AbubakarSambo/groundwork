@@ -218,12 +218,12 @@ describe('with the switch on, every reader reads patterns under the rules', () =
       askThem: null, theirWords: null, canAnswer: true,
       whoSeesIt: 'Only you see this. Nothing is decided from it.',
       /* Decision 57, item 2: never shown to the person it is about, however the lead marked it. */
-      leadMark: null, talkedAbout: false, secondReadNote: null,
+      leadMark: null, talkedAbout: false,
       /* Decision 67: the coaching is the lead's alone, so the person reads none of it. */
-      about: 'what is said against what happened', coachTowards: null, oneStep: null,
+      about: 'what is said against what happened',
     }]);
-    /* And being shown it starts the clock on when Tunde may read it. */
-    expect(served.writes.some((w) => w.where.id.in.includes('pd2') && w.data.shownToPersonAt)).toBe(true);
+    /* (2 November 2026: Tunde never reads it, so being shown it starts no clock for him; nothing is written.) */
+    expect(served.writes.some((w) => w.where.id.in.includes('pd2') && w.data.shownToPersonAt)).toBe(false);
   });
 
   it('the lead reads none of it, not even after the person answered; Ngozi reads hers with her own words and no label', async () => {
@@ -248,9 +248,9 @@ describe('with the switch on, every reader reads patterns under the rules', () =
       theirWords: NGOZI_ANSWERED,
       canAnswer: true,
       whoSeesIt: 'Only you see this. Nothing is decided from it.',
-      leadMark: null, talkedAbout: false, secondReadNote: null,
+      leadMark: null, talkedAbout: false,
       /* Decision 67: the coaching was the lead's alone, so the person reads none of it. */
-      about: 'the work', coachTowards: null, oneStep: null,
+      about: 'the work',
     }]);
   });
 

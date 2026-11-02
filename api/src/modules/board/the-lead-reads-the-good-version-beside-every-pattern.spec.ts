@@ -181,11 +181,11 @@ describe.each(GROUNDS_TO_READ)('the lead reads the good version beside every pat
     const own = (served.board.patterns as any[]);
     expect(own.map((p) => p.id)).toEqual(['pd2']);
     expect(own[0].about).toBe('what is said against what happened');
-    expect(own[0].coachTowards).toBeNull();
-    expect(own[0].oneStep).toBeNull();
+    expect(own[0]).not.toHaveProperty('coachTowards');
+    expect(own[0]).not.toHaveProperty('oneStep');
     for (const p of [...(served.page.signals ?? []), ...(served.record?.patterns ?? [])]) {
-      expect(p.coachTowards).toBeNull();
-      expect(p.oneStep).toBeNull();
+      expect(p).not.toHaveProperty('coachTowards');
+      expect(p).not.toHaveProperty('oneStep');
     }
     expect(JSON.stringify(served)).not.toContain('Coach them towards');
     expect(JSON.stringify(served)).not.toContain('One step they could take');
@@ -214,17 +214,8 @@ describe.each(GROUNDS_TO_READ)('the lead reads the good version beside every pat
   });
 });
 
-describe('a role can say the good version better, from its own map', () => {
-  const { coachingForAPattern } = require('../patterns/what-to-coach-towards');
-  it('in sales, K1 reads the sales map\'s own good version', () => {
-    expect(coachingForAPattern('K1', { fn: 'SALES', confidence: 0.9 }).coachTowards)
-      .toBe('In sales and expansion, the good version is someone who spends the week in front of buyers, and does the admin around it.');
-  });
-  it('with a low confidence, or no pairing, the pattern\'s own sentence stands', () => {
-    expect(coachingForAPattern('K1', { fn: 'SALES', confidence: 0.2 }).coachTowards).toBe('Coach them towards speaking with named buyers directly, and not only sending decks and proposals.');
-    expect(coachingForAPattern('D1', { fn: 'SALES', confidence: 0.9 }).coachTowards).toBe('Coach them towards saying something is finished only when the team who receives it has confirmed it works.');
-  });
-});
+/* (2 November 2026, F2: the lead's coaching lines beside a stored pattern, and the module that wrote them, are gone: the lead reads
+   layer 2's next step instead. The tests below keep asserting that none of it reaches anybody.) */
 
 /*
  * DECISION 86 REVERSES DECISION 74, ITEM 2. This block was "with the person-only reach, nobody reads
@@ -254,7 +245,7 @@ describe.each(GROUNDS_TO_READ)('with no setting at all, the lead reads no stored
     const own = served.board.patterns as any[];
     expect(own.map((p) => p.id)).toEqual(['pd2']);
     expect(own[0].about).toBe('what is said against what happened');
-    expect(own[0].coachTowards).toBeNull();
+    expect(own[0]).not.toHaveProperty('coachTowards');
     expect(own[0].whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
   });
 });

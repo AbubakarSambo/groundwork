@@ -177,6 +177,8 @@ export interface TheAssessment {
   acrossTime?: unknown;
   /** Layer 3: the next step for each pattern, tracked from assessment to assessment. */
   interventions?: unknown[];
+  /** The lead's marks on its layer-2 patterns, by the pattern's id (the-leads-mark-on-a-pattern.ts), carried to the next one. */
+  theLeadsMarks?: unknown;
 }
 
 /* ---------------------------------------------------------------------------------------------------------------------

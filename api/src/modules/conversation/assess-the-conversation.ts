@@ -25,6 +25,7 @@ import {
 import { oneOfEach } from './what-happened-to-what-they-said';
 import { theRecordAcrossTime, theLeadsViewOf, type AnAssessmentSeen } from '../patterns/patterns-across-the-assessments';
 import { theInterventionsAfter, type AnIntervention } from '../patterns/the-next-step-for-each-pattern';
+import { theIdReadBack, theLeadsMarksOn } from '../patterns/what-the-record-shows-the-lead';
 
 export interface AssessmentDeps {
   prisma: any;
@@ -209,7 +210,12 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     const acrossTime = theRecordAcrossTime(row.participantId, seen, leadsView);
     const patterns = acrossTime.patterns;
     assessment.acrossTime = acrossTime;
-    assessment.interventions = theInterventionsAfter(((previous?.assessment.interventions ?? []) as AnIntervention[]), patterns, { checkInId, sessionNumber: row.sessionNumber });
+    /* The lead's marks are carried; a pattern she said was wrong stays corrected: its steps end and no new one starts (the first principle). */
+    const marks = theLeadsMarksOn(previous?.assessment);
+    if (Object.keys(marks).length) assessment.theLeadsMarks = marks;
+    const wrong = new Set(Object.entries(marks).filter(([, m]) => m?.mark === 'WRONG').map(([id]) => theIdReadBack(id)?.key).filter(Boolean));
+    const carried = ((previous?.assessment.interventions ?? []) as AnIntervention[]).map((i) => (wrong.has(i.key) && (i.state === 'open' || i.state === 'waiting for the lead') ? { ...i, state: 'ended' as const } : i));
+    assessment.interventions = theInterventionsAfter(carried, patterns.filter((p) => !wrong.has(p.key)), { checkInId, sessionNumber: row.sessionNumber });
 
     await deps.prisma.checkIn.update({ where: { id: checkInId }, data: { sessionReport: theColumnWith(assessment, row.sessionReport) as any } });
     /* A correction of an earlier item is kept on that item, as its history (once fixed, it stays fixed). */

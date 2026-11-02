@@ -1,5 +1,5 @@
 import { BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES } from './pattern-library';
-import { servedPatterns, whatHappenedIn, periodsSeen, thePersonHasHadTheirTurn, theOnesTheyAreSeeingFirst, whoIsWhoIn, patternRowAsOfSession, runsItForAPattern, type APatternRow } from './who-reads-a-pattern';
+import { servedPatterns, whatHappenedIn, periodsSeen, whoIsWhoIn, patternRowAsOfSession, runsItForAPattern, type APatternRow } from './who-reads-a-pattern';
 
 /**
  * THE RULES FOR SERVING A PATTERN, READ AS EACH READER. See who-reads-a-pattern.
@@ -78,11 +78,8 @@ describe('who reads a pattern', () => {
       leadMark: null,
       talkedAbout: false,
       /* Decision 57, item 4: never shown to the person it is about, only whoever runs the check-in. */
-      secondReadNote: null,
       /* Decision 67: the section it belongs in is the same for every reader; the coaching is the lead's alone. */
       about: 'the work',
-      coachTowards: null,
-      oneStep: null,
     });
     /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     expect(servedPatterns(ROWS, LEAD, on)).toEqual([]);
@@ -107,12 +104,11 @@ describe('the person sees it first, and can answer, before the lead reads it', (
     seenInSessions: [1, 2, 3], periodsObserved: 3, ...o,
   });
 
-  it('the person reads it the moment it has three periods, and is told they are seeing it first', () => {
+  it('the person reads it the moment it has three periods, and is told only they see it', () => {
     const fresh = row({ readyAt: daysAgo(0) });
     const [mine] = servedPatterns([fresh], FEMI, on);
     expect(mine.canAnswer).toBe(true);
     expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
-    expect(theOnesTheyAreSeeingFirst([fresh], [mine])).toEqual(['x']);
   });
 
   it('the lead does not read it before the person has been shown it, answered it, or a week has passed', () => {
@@ -146,7 +142,6 @@ describe('the person sees it first, and can answer, before the lead reads it', (
     const unopened = row({ readyAt: daysAgo(7) });
     expect(servedPatterns([unopened], LEAD, on)).toEqual([]);
     expect(servedPatterns([unopened], ADMIN, on)).toEqual([]);
-    expect(thePersonHasHadTheirTurn(unopened, NOW)).toBe(true);
     expect(servedPatterns([unopened], FEMI, on).map((p) => p.id)).toEqual(['x']);
   });
 
@@ -226,13 +221,14 @@ describe('the second-read note (decision 57, item 4): only whoever runs the chec
 
   it('is never told to the person it is about, whatever backed it', () => {
     const femi = servedPatterns(ROWS, FEMI, on).find((p) => p.id === 'pd2');
-    expect(femi?.secondReadNote).toBeNull();
+    /* (2 November 2026: the note is gone from the served shape; nothing of how it was backed reaches the person.) */
+    expect(JSON.stringify(femi)).not.toContain('Two separate reads');
   });
 
   it('says nothing to the person when only the model backed it, or nobody said', () => {
     /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const ngozi = servedPatterns(ROWS, NGOZI, on).find((p) => p.id === 'pd1');
-    expect(ngozi?.secondReadNote).toBeNull();
+    expect(JSON.stringify(ngozi ?? null)).not.toContain('Two separate reads');
   });
 });
 
@@ -304,8 +300,9 @@ describe('the lead reads a pattern after the person, with no setting to hold the
     expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
     expect(mine.whoSeesIt).not.toMatch(/Tunde/);
     expect(mine.canAnswer).toBe(true);
-    expect(mine.secondReadNote).toBeNull();
-    expect(mine.coachTowards).toBeNull();
+    /* (2 November 2026: no coaching line or second-read note is in the served shape at all.) */
+    expect(mine).not.toHaveProperty('secondReadNote');
+    expect(mine).not.toHaveProperty('coachTowards');
   });
 
   it('still not before the person’s turn: a pattern shown yesterday and not answered stays with the person', () => {

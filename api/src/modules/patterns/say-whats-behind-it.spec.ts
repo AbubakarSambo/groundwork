@@ -37,7 +37,8 @@ describe('the person a pattern is about says what is behind it', () => {
     const data = update.mock.calls[0][0].data;
     expect(data.personAnswer).toBe('I built the deck and Ngozi did the pricing. I said "we" on the call.');
     expect(data.personAnsweredAt).toBeInstanceOf(Date);
-    expect(data.shownToPersonAt).toBeInstanceOf(Date);
+    /* (2 November 2026: nobody else reads it, so no "shown to the person" clock is kept for the lead.) */
+    expect(data.shownToPersonAt).toBeUndefined();
     expect(served.heading).toBe('Others describe doing work they described as theirs');
     expect(served.theirWords).toBe('I built the deck and Ngozi did the pricing. I said "we" on the call.');
     expect(served.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');

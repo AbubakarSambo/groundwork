@@ -10,7 +10,7 @@
  * and which "seen again after the talk" is derived from.
  */
 
-import { seenAgainAfterTalk, patternTalkNudge, servedPatterns, type ALeadPatternMark } from './who-reads-a-pattern';
+import { seenAgainAfterTalk, servedPatterns, type ALeadPatternMark } from './who-reads-a-pattern';
 
 const NOW = Date.now();
 
@@ -157,11 +157,6 @@ describe('no nudge to talk a stored pattern through reaches the lead (decision 5
     expect(mine.canAnswer).toBe(true);
   });
 
-  it('the nudge’s own wording is unchanged for any pattern it is still handed', () => {
-    /* patternTalkNudge is a pure sentence builder; with nothing served to the lead it is handed nothing. */
-    const nudge = patternTalkNudge({ id: 'pd2', heading: 'Others describe doing work they described as theirs', theirWords: 'I built the deck, Ngozi did the pricing' }, 'Femi');
-    expect(nudge.why).toBe('Femi has seen it. Femi said, “I built the deck, Ngozi did the pricing”.');
-  });
 });
 
 /*

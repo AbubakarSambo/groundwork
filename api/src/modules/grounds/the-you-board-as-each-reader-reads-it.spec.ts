@@ -235,10 +235,11 @@ describe('something that keeps coming up, on the You board', () => {
     expect(p.theirWords).toBeNull();
   });
 
-  it('marks it as shown to her, the first time she reads it', async () => {
+  /* 2 November 2026 (F2): nobody but Miriam reads it, so the "shown to the person" clock that let the lead read it later is not kept. */
+  it('keeps no "shown to her" clock when she reads it, since nobody else ever reads it', async () => {
     const { read, prisma } = setup([miriamsPattern]);
     await read('miriam');
-    expect(prisma.patternDetection.updateMany).toHaveBeenCalled();
+    expect(prisma.patternDetection.updateMany).not.toHaveBeenCalled();
   });
 
   it('is never on Wairimu’s own board, though she runs the check-in it is about', async () => {
