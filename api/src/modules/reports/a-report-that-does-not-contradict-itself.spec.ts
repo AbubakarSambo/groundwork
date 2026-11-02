@@ -94,7 +94,7 @@ describe('what somebody said they did about what is in their way is on record', 
 
   it('the lead\'s probe for Ngozi says she escalated, and not "with no escalation on record"', () => {
     const probe = whatToProbe({
-      who: 'Ngozi Eze', participantId: 'p-ngozi', role: null, answeredThisSession: true, patterns: [],
+      who: 'Ngozi Eze', participantId: 'p-ngozi', role: null, answeredThisSession: true,
       waitingOn: [{ what: 'review and approval for their eleven files', who: null, daysOld: 3, escalated: itWasTakenFurther({ escalatedAt: null, triedSaid: NGOZI_TRIED }) }],
       holdingUp: [], concrete: [], documentsAttached: 0, sessionNumber: 3, totalSessions: 12, scenario: null,
     });

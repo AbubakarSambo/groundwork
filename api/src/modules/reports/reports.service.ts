@@ -6959,27 +6959,6 @@ happened, and what is in the way.`;
           /* The same state the board's grid reads ("partway through"), from the same rows. */
           startedThisSession: !answered && ((ground.checkIns ?? []) as any[]).some((c: any) => c.participantId === p.id && c.sessionNumber === thisRound && c.status === 'IN_PROGRESS'),
           /* What the lead may read of this person's, and nothing sooner. See patterns/who-reads-a-pattern. */
-          /*
-           * THE PLAIN NAME, NEVER THE LIBRARY'S OWN SIGNAL. `patternCatalogue().get(d.code)?.signal`
-           * is the detector's internal description ("Ownership claimed for work others delivered."),
-           * written for whoever reads the detector, not for a lead. This printed straight onto the
-           * probe list until decision 52: the same rule that keeps an internal name off a board kept
-           * it off this list, so it reads the plain name from plain-pattern-names.ts, the one place
-           * every other reader's pattern is named from. `patternRowsThisReaderMayRead` already
-           * guarantees a plain name exists for every row it returns.
-           */
-          patterns: (opts.withPatterns ? patternRowsThisReaderMayRead(held.detections, { participantId: null, runsIt: true }) : [])
-            .filter((d) => d.participantId === p.id)
-            .map((d) => {
-              const lib = patternCatalogue().get(d.code);
-              return {
-                code: d.code,
-                periodsObserved: periodsSeen(d),
-                signal: plainPatternNameOf(d.code)?.name ?? lib?.signal ?? d.code,
-                probe: lib?.probe,
-              };
-            })
-            .filter((x) => !ALIGNMENT_FEED_ONLY_CODES.has(x.code)),
           waitingOn: held.dependencies
             .filter((d) => d.fromParticipantId === p.id)
             .map((d) => ({
@@ -7011,7 +6990,6 @@ happened, and what is in the way.`;
             .filter((e) => (e.type === RecordEntryType.SUCCESS_DEFINITION || !e.recallBased) && (e as any).saidWordForWord === true)
             .map((e) => cleanText(e.text)),
           documentsAttached: held.docs.filter((d) => d.participantId === p.id).length,
-          worries: mine.filter((e) => e.type === RecordEntryType.WORRY || e.type === RecordEntryType.TENSION).length,
           sessionNumber: thisRound,
           totalSessions: planned > 0 ? planned : null,
           scenario: ground.scenario ?? null,
