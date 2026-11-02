@@ -12,7 +12,7 @@ import { whatThisCheckInIsFor, whichStage, THE_SCENARIO_TABLE, type Stage } from
 import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
 import { SALES_CHECK_IN_GATHERS_KEY, SALES_CHECK_IN_GATHERS_PROMPT } from './what-a-sales-check-in-gathers';
-import { FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_KEY, ROLE_READING_PROMPT } from './their-role-in-the-first-check-in';
+import { FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT } from './their-role-in-the-first-check-in';
 import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_PROMPT_KEY } from '../patterns/pattern-library';
 import { whereInTheRun } from './where-in-the-run';
 import { timesAWeekInWords } from '../grounds/the-check-ins-own-schedule';
@@ -5102,9 +5102,8 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: IDEA_SPOTTING_KEY, content: THE_IDEA_SPOTTING_PROMPT },
   /* What reads a check-in for patterns (decision 128): the version stored here is the one that runs, and each pattern records which one read it. */
   { key: PATTERN_DETECTION_PROMPT_KEY, content: PATTERN_DETECTION_PROMPT },
-  /* A person's first check-in also learns their job (decision 129): what the conversation is told, and what reads their words afterwards. The version stored is the one that runs. */
+  /* A person's first check-in also learns their job (decision 129): what the conversation is told. What they said is read from the conversation's assessment. The version stored is the one that runs. */
   { key: FIRST_CHECK_IN_ROLE_KEY, content: FIRST_CHECK_IN_ROLE_PROMPT },
-  { key: ROLE_READING_KEY, content: ROLE_READING_PROMPT },
   /* The judgement over a check-in's people (change 4): seeded, so the version stored is the one that runs and the judgement's promptVersionId names it. Filled with fillTheJudgement, as the code text is. */
   { key: THE_JUDGEMENT_ROOM_KEY, content: theRoomJudgementTemplate() },
   /* What a sales check-in gathers for the board (Hafsah, 16 October 2026): the version stored here is the one that runs, and the turn hands its id back. */

@@ -2779,7 +2779,7 @@ model RoleInterviewAnswer {
   sharedAt         DateTime? @map("shared_at")
   /// The first check-in a 'first_check_in' row was read from.
   checkInId        String?  @map("check_in_id")
-  /// The stored version of the prompt that read the person's words (role_reading).
+  /// The stored version of the instructions that read the person's words: the conversation's assessment's promptVersionId (null when the file's words ran).
   promptVersionId  String?  @map("prompt_version_id")
   /// The stored version of the prompt that told the conversation to learn the role (first_check_in_role).
   askedWithPromptVersionId String? @map("asked_with_prompt_version_id")

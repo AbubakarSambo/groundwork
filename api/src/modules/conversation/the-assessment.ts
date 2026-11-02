@@ -34,6 +34,9 @@ export const THE_ASSESSMENT_VERSION = 1 as const;
 /** The PromptVersion key a stored version of the assessment's instructions would use. None is seeded, so the file's words run. */
 export const ASSESSMENT_PROMPT_KEY = 'assessment';
 
+/** What a person can say about their own job, as a role signal's `part`: what their first check-in keeps about their job (their-role-in-the-first-check-in.ts). */
+export const THE_PARTS_OF_A_JOB = ['the name of their job', 'what they are responsible for', 'what doing well looks like', 'who they depend on', 'what gets in their way'] as const;
+
 /** How the conversation ended. */
 export type HowItEnded = 'finished by the person' | 'closed by the clock' | 'declined' | 'setup saved' | 'missed';
 
@@ -252,7 +255,7 @@ export const THE_ASSESSMENT_PROMPT = [
   '  - documents: each document or photo they added or pointed to: what it says, what it proves, and where it belongs.',
   '  - targets: what the check-in as a whole is aiming at, and each number somebody is aiming at, by the rules for aims below. In every conversation, setup or check-in.',
   '  - setup (only when setup material is given): the objective, what success looks like, the team and their roles, working days and timing, rules and definitions, risks, and the lead\'s private notes on each person.',
-  '  - roleSignals: what the person actually did or talked about doing: tasks, decisions, who they dealt with, what they owned.',
+  '  - roleSignals: what the person actually did or talked about doing: tasks, decisions, who they dealt with, what they owned. Also each thing they said about their own job, with its `part`: "the name of their job" (a few words such as "sales representative", only if they said it), "what they are responsible for" (in their job, over this one piece of work), "what doing well looks like" (in their job), "who they depend on" (and who depends on them), or "what gets in their way". Anything else they did is "something they did". `words` are copied from ONE of their answers, exactly, never joined from two. A worry about a customer or a deal is not part of their job.',
   '  - roleAgainstGiven: from this conversation only, the role they are actually playing, and whether it fits the role they were given ("cannot tell" when the conversation does not show it).',
   '  - areas: each item tagged with the area of work it belongs to (a client, a product, a project, admin and so on), and whether it fits one of the team\'s priorities, where they are given.',
   '  - observations: what you noticed, as facts and never as judgements: a vague answer, a question they avoided, signs of overload. Quote their words.',
@@ -335,7 +338,7 @@ export const THE_ASSESSMENT_SCHEMA = {
           privateNotes: anItem({ about: S('Who the note is about.'), note: S('The lead\'s note.') }),
         },
       },
-      roleSignals: anItem({ did: S('What they did or owned.') }),
+      roleSignals: anItem({ did: S('What they did or owned.'), part: { type: 'string', enum: [...THE_PARTS_OF_A_JOB, 'something they did'] } }),
       roleAgainstGiven: { type: 'object', properties: { playing: S('The role they are actually playing.'), fits: { type: 'string', enum: ['fits', 'differs', 'cannot tell'] } } },
       areas: anItem({ item: S('The item.'), area: S('Its area.'), fitsAPriority: { type: 'string', enum: ['yes', 'no', 'unclear'] } }),
       observations: anItem({ observed: { type: 'string', enum: ['vague answer', 'avoided question', 'overload', 'other'] }, what: S('What was noticed, as a fact.') }),

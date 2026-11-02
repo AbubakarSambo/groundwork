@@ -7699,7 +7699,7 @@ ${told}` : '';
       /* The readers of a finished check-in's lines, which ran at the close when the close wrote them; they run once the lines are there. */
       const finished = how.howItEnded === 'finished by the person' || how.howItEnded === 'closed by the clock';
       await Promise.all([
-        ...(theRecord && finished ? [this.readTheLinesJustWritten(checkIn)] : []),
+        ...(theRecord && finished ? [this.readTheLinesJustWritten(checkIn, assessed)] : []),
         /* The waits: what this person is waiting on, from the assessment's blockers, then every wait the record now shows is over. */
         this.extractDependencies(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
           this.logger.warn(`Dependency extraction failed for check-in ${checkIn.id}: ${err.message}`),
@@ -7750,7 +7750,7 @@ ${told}` : '';
    * - What they said about their job in a first check-in, then which function map fits them, from their own lines.
    * - The single-party view of their own session (the solo artifact), from their lines.
    */
-  private async readTheLinesJustWritten(checkIn: { id: string; participantId: string; groundId: string }): Promise<void> {
+  private async readTheLinesJustWritten(checkIn: { id: string; participantId: string; groundId: string }, assessed: TheAssessment | null = null): Promise<void> {
     const started = Date.now();
     await Promise.all([
       this.anchorRecordToDocuments(checkIn.participantId, checkIn.groundId).catch((err) =>
@@ -7761,7 +7761,7 @@ ${told}` : '';
         this.logger.warn(`Alignment read failed for check-in ${checkIn.id}: ${err.message}`)),
       /* What they said about their job in a first check-in is taken out first (decision 129), so the function read can use it. */
       Promise.resolve()
-        .then(() => keepWhatTheySaidAboutTheirJob({ prisma: this.prisma as any, anthropic: this.anthropic as any, prompts: this.prompts as any }, { id: checkIn.id, participantId: checkIn.participantId }, this.logger))
+        .then(() => keepWhatTheySaidAboutTheirJob({ prisma: this.prisma as any, anthropic: this.anthropic as any, prompts: this.prompts as any }, { id: checkIn.id, participantId: checkIn.participantId }, assessed, this.logger))
         .catch((err) => this.logger.warn(`Reading what they said about their job failed for check-in ${checkIn.id}: ${err?.message}`))
         .then(() => this.reviseDetectedFunction(checkIn.participantId))
         .catch((err) => this.logger.warn(`Function detection failed for participant ${checkIn.participantId}: ${err.message}`)),
