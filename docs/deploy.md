@@ -564,6 +564,8 @@ Never write `pricing.freeTrial` as a bare `{"on": true}`. Without `onSince`, eve
 
 **To change the 4 weeks, the timing or the words:** Admin, System, Pricing, "After the free trial" (or `PATCH /api/v1/admin/pricing/trial-grace`). A change applies to every organisation at once, by arithmetic; nothing is rewritten.
 
+**Run on the local test bed, 2 November** (database `gw_trial_grace_28`, the clock moved from 3 November to 8 December 2026 with the real scheduled jobs, mail to the local catcher only, no model and no Stripe key). Seven organisations, each with an admin, two leads and five team members: one in its trial, one whose trial had just ended, one in its third week, one in its last week, one paused, one paused that then paid, and one that already pays. Admins and leads got one email at the start of each of weeks 1 to 3 and one a day in the last week, down to "Groundwork pauses tomorrow"; team members got none. The paused organisations sent nothing about the work (every reminder, opening and summary written down as held), refused a new check-in and the opening of a session, and lost no row. The one that paid had its morning summaries back the next day and its session's opening sent at 7 in the morning, its usual time. The organisation that already pays was untouched.
+
 **To undo it without a code rollback:** `UPDATE platform_settings SET value = jsonb_set(value, '{weeks}', '12') WHERE key = 'pricing.trialGrace';` gives everybody 12 weeks, the longest the setting allows; switching the free trial off stops the emails and the pause together (and the rest of billing with them). A paused organisation starts again the moment either is done. Rolling the code back leaves the row, which the old code does not read.
 
 ## Organisations over their plan
