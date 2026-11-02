@@ -302,6 +302,20 @@ export class PatternsService {
       return;
     }
 
+    /*
+     * EACH BAD-FAITH CODE IS CONFIRMED ONCE, NOT ONCE PER READ (2 November 2026). The confirming
+     * call used to run inside every read for every candidate, so one code was confirmed up to ten
+     * times in a check-in on slightly different wordings of the same observation (13.8 calls a
+     * check-in). Now each distinct code that at least two reads kept, the least that could ever be
+     * split or counted, is confirmed once on the first observation that kept it, and a code the
+     * verifier rejects leaves every read. The vote, the split and the settle then run on exactly
+     * the codes they did before.
+     */
+    const verdicts = await this.confirmEachCodeOnce(checkInId, succeeded);
+    const confirmedOnly = (reads: { code: string; observation: string }[][]) =>
+      reads.map((read) => read.filter((d) => !isBadFaithCode(d.code) || verdicts.get(d.code) === true));
+    succeeded.splice(0, succeeded.length, ...confirmedOnly(succeeded));
+
     /* Count how many of the successful reads kept each code (one vote per read), keeping the
        observation from the first of the five, in order, that kept it. */
     const firstVotes = votesOf(succeeded);
@@ -332,7 +346,7 @@ export class PatternsService {
         }),
       );
       moreAttempts.forEach((attempt, i) => {
-        if (attempt.status === 'fulfilled') more.push(attempt.value);
+        if (attempt.status === 'fulfilled') more.push(...confirmedOnly([attempt.value]));
         else this.logger.warn(`Pattern extraction failed for check-in ${checkInId}, extra read ${i + 1} of ${MORE_READS_WHEN_SPLIT}: ${attempt.reason?.message}`);
       });
     }
@@ -378,7 +392,7 @@ export class PatternsService {
    * One extraction call at the steady setting, then the same filters in the same order this method
    * always ran, when it ran once: the borrowed-evidence check, the positive-code short road (M1
    * against a stated goal, then "does this say something checkable"), carrying codes (no
-   * confirmation), the chaser guard, the confirming call (also at the steady setting), and the F1
+   * confirmation), the chaser guard, and the F1
    * composite gate. Five calls to this, run in parallel, are how analyzeCheckIn reads a check-in
    * five times; a code is only written once at least three of the five keep it.
    */
@@ -476,14 +490,8 @@ export class PatternsService {
         this.logger.log(`Check-in ${checkInId}: ${d.code} not written about this person; ${mine.because}.`);
         continue;
       }
-      // AI confirmation gate: each candidate pattern is confirmed by a
-      // second AI call before being written to the record. This prevents
-      // false positives from the batch extraction step.
-      const confirmed = await this.confirmDetection(d.code, d.observation.trim(), PATTERN_DETECTION_STEADY_OPTIONS).catch((err) => {
-        this.logger.warn(`Pattern confirmation skipped for ${d.code}: ${err.message}`);
-        return false;
-      });
-      if (!confirmed) continue;
+      /* The confirming call is not made here: a code is confirmed once per check-in, across all the
+         reads (analyzeCheckIn, confirmEachCodeOnce), not once in every read that kept it. */
 
       // Gap #30 - F1 composite gate: F1 (Insight Without Operation) requires
       // ALL four conditions (high thinking-language, low output-language,
@@ -1089,6 +1097,24 @@ export class PatternsService {
    * The excerpt is the observation text produced by the batch extraction step -
    * a plain-language description of what the record shows, never a verdict.
    */
+  /**
+   * One confirming call for each distinct bad-faith code that at least two reads kept, on the first
+   * observation that kept it. A code fewer reads kept can never be split or counted, so it is not
+   * asked about and leaves the reads with the rejected ones. An error counts as a NO, as it always has.
+   */
+  private async confirmEachCodeOnce(checkInId: string, reads: { code: string; observation: string }[][]): Promise<Map<string, boolean>> {
+    const asked = [...votesOf(reads)].filter(([code, { count }]) => isBadFaithCode(code) && count >= READS_THAT_MUST_AGREE - 1);
+    const answers = await Promise.all(
+      asked.map(([code, { observation }]) =>
+        this.confirmDetection(code, observation, PATTERN_DETECTION_STEADY_OPTIONS).catch((err) => {
+          this.logger.warn(`Check-in ${checkInId}: pattern confirmation skipped for ${code}: ${err.message}`);
+          return false;
+        }),
+      ),
+    );
+    return new Map(asked.map(([code], i) => [code, answers[i]]));
+  }
+
   private async confirmDetection(code: string, excerpt: string, options: { temperature?: number; seed?: number } = {}): Promise<boolean> {
     const description = CODE_DESCRIPTIONS.get(code) ?? code;
     const systemPrompt =
