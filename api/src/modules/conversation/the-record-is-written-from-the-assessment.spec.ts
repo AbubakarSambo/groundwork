@@ -103,6 +103,30 @@ describe('the record, written from the conversation\'s assessment', () => {
     expect(w.written.map((r) => r.type)).toEqual(['INTENT', 'PROGRESS']);
   });
 
+  it('carries a document, what they said about their work and the people in it, and anything else they said (assessment test, 2 November)', () => {
+    /* Brian's role, Aisha's attached letter and Ruth's asides were in the assessment and never reached the record, so the session
+       report, which reads the record, never saw them. */
+    const a: any = anAssessmentHolding();
+    a.messages = [{ n: 1, turnId: 't1', where: 'check-in', at: null }, { n: 2, turnId: 't2', where: 'check-in', at: null }, { n: 3, turnId: 't3', where: 'check-in', at: null }];
+    a.claims = [item('claims', 0, { words: 'The draft is 80 percent done' })];
+    a.documents = [item('documents', 1, { words: 'I attached the signed engagement letter from Kilele Holdings' })];
+    a.people = [item('people', 2, { words: 'Wanjiru signs off every write-off' })];
+    a.everythingElse = [
+      item('everythingElse', 2, { words: "My main role in the Kasarani Foods case is drafting the written submissions" }),
+      /* A message kept whole holds the short line already read out of it: it is that line, not a second one. */
+      item('everythingElse', 0, { words: 'The draft is 80 percent done and I will finish it this week' }),
+    ];
+    /* Lead-only parts never become lines, whatever words they hold. */
+    a.roleSignals = [{ ...item('roleSignals', 0, { words: 'Chasing pending items as well as drafting' }), whoMaySee: 'the lead only' }];
+    a.observations = [{ ...item('observations', 0, { words: 'Avoided the question about the lawyer' }), whoMaySee: 'the lead only' }];
+    expect(theRecordLinesIn(a, () => true).map((l) => [l.type, l.text])).toEqual([
+      ['PROGRESS', 'The draft is 80 percent done'],
+      ['PROGRESS', 'I attached the signed engagement letter from Kilele Holdings'],
+      ['PROGRESS', 'Wanjiru signs off every write-off'],
+      ['PROGRESS', 'My main role in the Kasarani Foods case is drafting the written submissions'],
+    ]);
+  });
+
   it('keeps the old filters: a non-answer and words the person never said are not lines', () => {
     const a: any = anAssessmentHolding();
     a.workUpdates = [item('workUpdates', 0, { words: 'Nothing new to add' }), item('workUpdates', 0, { words: 'Signed 12 shops in Nairobi' })];
