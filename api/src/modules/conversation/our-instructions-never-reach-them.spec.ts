@@ -136,8 +136,8 @@ describe('a reply asked for again is read against the instruction it was asked a
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '');
     expect(src).not.toMatch(/\.respond\(`\$\{fullSystem\}/);
-    /* 20 since 13 October 2026: the job question asked again (E6) and a correction taken (Hafsah's principle) are retries too, and go through the leak check. */
-    expect((src.match(/\.respond\(this\.keptForTheLeakCheck\(/g) ?? []).length).toBe(20);
+    /* 3 since 2 November 2026: the eighteen re-asks after a reply are one re-ask carrying every failing instruction; with the opener's and the invention note's, three retries, all through the leak check. (20 from 13 October.) */
+    expect((src.match(/\.respond\(this\.keptForTheLeakCheck\(/g) ?? []).length).toBe(3);
   });
 });
 

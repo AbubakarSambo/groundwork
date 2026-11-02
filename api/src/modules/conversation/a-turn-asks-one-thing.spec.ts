@@ -151,6 +151,7 @@ describe('and every path a turn is saved by keeps one question', () => {
 
   it('the reply path asks once more, with the rule named, before it trims', () => {
     expect(src).toMatch(/wouldLeaveAQuestionOut\(screened\.text\)/);
-    expect(src).toMatch(/\$\{ASK_ONE_THING\}/);
+    /* Changed 2 November 2026: every check hands its instruction to one re-ask (ask), which carries every failing instruction at once. */
+    expect(src).toMatch(/ask\(ASK_ONE_THING\)/);
   });
 });

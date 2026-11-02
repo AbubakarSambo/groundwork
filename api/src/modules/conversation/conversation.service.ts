@@ -2602,634 +2602,633 @@ export class ConversationService {
        * same question again. Seen in a first setup conversation, three turns running.
        */
       const earlierAsks = turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '');
-      if (alreadyAskedTwice(screened.text, earlierAsks)) {
-        this.logger.warn(`Check-in ${checkIn.id}: the same question a third time; asking again.`);
-        const moved = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${ASKED_IT_TWICE_ALREADY}`), history)
-          .catch(() => '');
-        const second = moved.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && !alreadyAskedTwice(second.text, earlierAsks)) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try moved on.`);
-        } else {
-          /*
-           * THE FOURTH ASK DOES NOT SHIP. Keeping the first is the fallback everywhere else here,
-           * and everywhere else it costs a clumsy sentence. Here it costs the person the same
-           * question for the fourth time, which is the fault. The question comes out and whatever
-           * else the reply said stands. See withoutTheQuestionAskedAgain.
-           */
-          const withoutIt = withoutTheQuestionAskedAgain(screened.text, earlierAsks);
-          /* A fragment left behind counts as nothing else in it. See a-cut-never-leaves-a-fragment. */
-          if (withoutIt.trim() && withoutIt !== screened.text && !aCutThatLeavesAFragment(screened.text, withoutIt)) {
-            screened = { ...screened, text: withoutIt };
-            this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question was taken out.`);
-          } else {
-            /* Nothing else in it, so the product records the absence and moves on itself. See a-refusal-is-an-answer. */
-            const how = await this.howToMoveOn(checkIn.id, earlierAsks[earlierAsks.length - 1] ?? '');
-            /* Asked three times is not declined: they answered, just not with what the model wanted. "Then it
-               goes on this record as not given: what has moved since last time" went to Bola after she had
-               said what moved (run 8, 21 Sep 2026). The answer stands as given; only a refusal is an absence. */
-            screened = { ...screened, text: recordAndMoveOn(null, how, await theDirectMorningIsOnFor(this.prisma, checkIn.groundId)), hits: [] };
-            this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again and there was nothing else in it; recorded the absence and moved on to ${JSON.stringify(how.question ?? how.owed ?? 'nothing')}.`);
-          }
-        }
-      }
-
       /*
-       * ASKED AGAIN AFTER A REAL ANSWER. The two guards above catch a third ask and a refusal. Run 10 (21
-       * Sep 2026): "repeated question" 18 times among participants, most of them a second ask about a
-       * thing the person had answered. The coverage read knows which owed things this session has
-       * answered, and what was said; a reply that asks about one of them is told so once, and if it
-       * asks again the question comes out. See what-this-session-has-covered.
-       */
-      if (earlierAsks.length) {
-        const answeredHere = await this.whatThisSessionHasAnswered(checkIn.id).catch(() => [] as { thing: AThingToCover; answer: string }[]);
-        const askedAgain = answeredHere.find((a) => askedAbout(a.thing, screened.text) && /\?/.test(screened.text));
-        if (askedAgain) {
-          this.logger.warn(`Check-in ${checkIn.id}: asked again about ${JSON.stringify(askedAgain.thing.what)} after it was answered; asking for another turn.`);
-          const moved = await this.anthropic
-            .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${theyAlreadyAnsweredThat(askedAgain.thing.what, askedAgain.answer)}`), history)
-            .catch(() => '');
-          const second = moved.trim()
-            ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
-            : null;
-          if (second?.text && !second.hits.length && !askedAbout(askedAgain.thing, second.text)) {
-            screened = second;
-          } else {
-            const withoutIt = withoutTheQuestionAskedAgain(screened.text, [askedAgain.thing.what]);
-            if (withoutIt.trim() && withoutIt !== screened.text && !aCutThatLeavesAFragment(screened.text, withoutIt)) {
-              screened = { ...screened, text: withoutIt };
-              this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question came out.`);
-            }
-          }
-        }
-      }
-
-      /*
-       * AND THE SAME QUESTION STRAIGHT BACK, AFTER A REAL ANSWER TO IT, whether or not the thing was on
-       * an owed list. The guard above knows the owed things; this one knows the last ask. "What are you
-       * doing to keep them healthy" - "Vaccinating them" - "what are you doing to keep your 260 hens
-       * healthy" (run 11). Once more with the answer named; if it asks again, the question comes out.
-       * See asksItAgainAfterTheAnswer.
+       * EVERY CHECK BELOW ASKS FOR ONE INSTRUCTION, AND THE MODEL IS ASKED AGAIN ONCE FOR ALL OF THEM (2 November 2026).
        *
-       * AND ANY EARLIER QUESTION THEY ANSWERED, word for word. Hana was asked "What just happened with
-       * Meridian, as you understand it?" again two turns after she answered it (run 9, shock). See
-       * anAnsweredQuestionAskedAgain.
-       */
-      {
-        const aRealAnswer = (said: string) => !theyDeclined(said) && !theyPushedBackOnTheQuestions(said) && (said ?? '').trim().length >= 3;
-        const soFar = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'AI' as const : 'PERSON' as const, content: t.content ?? '' }));
-        const again = anAnsweredQuestionAskedAgain(soFar, screened.text, aRealAnswer);
-        if (again) {
-          const lastAskHere = again.ask;
-          const askedSentence = lastAskHere.split(/(?<=[.!?])\s+/).find((x) => /\?\s*$/.test(x)) ?? lastAskHere;
-          this.logger.warn(`Check-in ${checkIn.id}: asked a question again after it was answered; asking for another turn.`);
-          const moved = await this.anthropic
-            .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${theyAlreadyAnsweredThat(`this - ${JSON.stringify(askedSentence.slice(0, 160))}`, again.answer)}`), history)
-            .catch(() => '');
-          const second = moved.trim()
-            ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
-            : null;
-          if (second?.text && !second.hits.length && !anAnsweredQuestionAskedAgain(soFar, second.text, aRealAnswer)) {
-            screened = second;
-          } else {
-            const withoutIt = withoutTheQuestionAskedAgain(screened.text, [lastAskHere]);
-            if (withoutIt.trim() && withoutIt !== screened.text && !aCutThatLeavesAFragment(screened.text, withoutIt)) {
-              screened = { ...screened, text: withoutIt };
-              this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question came out.`);
-            }
-          }
-        }
-      }
-
-      /*
-       * AND IT DOES NOT DECIDE WHAT KIND OF PROBLEM SOMEBODY ELSE'S BEHAVIOUR IS.
-       *
-       * Read off a real check-in: "You've raised this with Marketing twice, and nothing has changed.
-       * That stops being a communication problem somewhere around the second time." Nobody in
-       * Marketing is in that conversation, they cannot answer it, and they will read the board it
-       * feeds. The prompt carries three and a half thousand characters on exactly this and it did
-       * not hold. See a-verdict-is-not-a-question.
-       */
-      if (isAVerdictAboutSomebodyElse(message, screened.text)) {
-        this.logger.warn(`Check-in ${checkIn.id}: a verdict about somebody not in the room; asking again.`);
-        const hers = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${HERS_TO_DRAW}`), history)
-          .catch(() => '');
-        const second = hers.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(hers), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && !isAVerdictAboutSomebodyElse(message, second.text)) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try left the conclusion to them.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try reached a verdict too; the first stands.`);
-        }
-      }
-
-      /*
-       * DECISION 56, ITEM 2, SECOND LAYER. `composeSystemPrompt` already gives the model only the
-       * area of a goal the lead has not told this person about - no number, no date - and tells it
-       * never to say a goal has been set. This is the check: a reply is read for the number that
-       * goal is measured by, or for saying outright that a goal, target or expectation exists, and
-       * if either slipped through, the model is asked again once. See
-       * an-untold-goals-number-is-not-said.ts.
-       */
-      const untoldGoalsHere: AnUntoldGoal[] = await (this.prisma.personObjective?.findMany?.({
-        where: { groundId: checkIn.groundId, participantId: checkIn.participantId, awareness: 'NOT_TOLD' },
-        select: { text: true, target: true, authoredBy: true, awareness: true },
-      }) ?? Promise.resolve([] as any[]))
-        .catch(() => [] as any[])
-        .then((rows: any[]) => rows.filter(notToldYet).map((o) => ({ text: o.text as string, target: o.target ?? null })));
-      if (untoldGoalsHere.length && saysWhatAnUntoldGoalWithholds(screened.text, untoldGoalsHere)) {
-        this.logger.warn(`Check-in ${checkIn.id}: a reply named a number or a goal the lead has not told them about; asking again.`);
-        const withheld = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${IT_NAMED_THE_UNTOLD_NUMBER}`), history)
-          .catch(() => '');
-        const second = withheld.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(withheld), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && !saysWhatAnUntoldGoalWithholds(second.text, untoldGoalsHere)) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try withheld it.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try named it too; the first stands.`);
-        }
-      }
-
-      /*
-       * AND A DECLINE IS AN ANSWER. "I don't focus on a weekly number" was followed by a question about
-       * the weekly number; "we don't share that" by the same ask reworded (adversarial run 2, 20 Sep
-       * 2026, the judge's "badgering", ten times). Same guard as the pushback, same retry, different
-       * instruction: nobody objected to the questions, they answered one with no.
-       */
-      /*
-       * THEY CORRECTED US, SO THE THING THEY CORRECTED IS NOT ASKED ABOUT AGAIN (Hafsah's principle, 13 October 2026). David:
-       * "I told you, the title search came back yesterday. It is not blocked." The reply is asked again once with the
-       * correction as the record; if it still asks about it, that question comes out and the rest stands.
-       */
-      const theAskTheyCorrected = [...turns].reverse().find((t) => t.role === TurnRole.AI)?.content ?? null;
-      if (theyCorrectedUs(message) && asksAboutWhatTheyCorrected(message, screened.text, theAskTheyCorrected)) {
-        this.logger.warn(`Check-in ${checkIn.id}: they corrected us and the reply asked about it again; asking again.`);
-        const heard = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${THEY_CORRECTED_YOU}`), history)
-          .catch(() => '');
-        const second = heard.trim() ? screen(withoutQuotesTheyDidNotSay(forHumans(heard), theirWords), known, readerName, conversationSoFar) : null;
-        if (second?.text && !second.hits.length && !asksAboutWhatTheyCorrected(message, second.text, theAskTheyCorrected)) {
-          screened = second;
-        } else {
-          const kept = screened.text.split(/(?<=[.!?])\s+/).filter((x) => !(/\?\s*$/.test(x) && asksAboutWhatTheyCorrected(message, x, theAskTheyCorrected))).join(' ').trim();
-          if (kept && kept !== screened.text) screened = { ...screened, text: withAQuestion(kept, { closing: false, asked: turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '') }) };
-        }
-      }
-      /*
-       * NEVER THE QUESTION JUST ASKED, AGAIN (reviewer, 14 October). Mercy was asked the same question twice in a row. Answered or
-       * not, the question that was the last turn is not the next one: it comes out, and where nothing else asks, the product asks
-       * what else they want to say.
-       */
-      {
-        const lastAskHere = [...turns].reverse().find((t) => t.role === TurnRole.AI)?.content ?? '';
-        if (lastAskHere && (repeatsTheLastAskWordForWord(screened.text, lastAskHere) || asksItAgainAfterTheAnswer(lastAskHere, screened.text))) {
-          const without = withoutTheQuestionAskedAgain(screened.text, [lastAskHere]);
-          if (without !== screened.text) {
-            this.logger.warn(`Check-in ${checkIn.id}: the reply asked the last question again; it came out.`);
-            screened = { ...screened, text: withAQuestion(without, { closing: false, asked: turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '') }) };
-          }
-        }
-      }
-      const declined = !theyPushedBackOnTheQuestions(message) && theyDeclined(message);
-      if (theyPushedBackOnTheQuestions(message) || declined) {
-        const lastAsk = [...turns].reverse().find((t) => t.role === TurnRole.AI)?.content ?? '';
-        if (lastAsk && asksTheSameThingAgain(lastAsk, screened.text)) {
-          this.logger.warn(`Check-in ${checkIn.id}: they ${declined ? 'declined it' : 'said the questions were wrong'} and the reply asked it again; asking again.`);
-          const heard = await this.anthropic
-            .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${declined ? THEY_DECLINED_IT : THEY_ALREADY_SAID_NO}`), history)
-            .catch(() => '');
-          const second = heard.trim()
-            ? screen(withoutQuotesTheyDidNotSay(forHumans(heard), theirWords), known, readerName, conversationSoFar)
-            : null;
-          if (second?.text && !second.hits.length && !asksTheSameThingAgain(lastAsk, second.text)) {
-            screened = second;
-            this.logger.log(`Check-in ${checkIn.id}: the second try let it go.`);
-          } else if (declined) {
-            /* They said no twice over and the model would ask a third time. The product records the absence
-               and moves on; a third ask is the badgering the judge counted. See a-refusal-is-an-answer. */
-            const how = await this.howToMoveOn(checkIn.id, lastAsk);
-            screened = { ...screened, text: recordAndMoveOn(how.declinedWhat, how, await theDirectMorningIsOnFor(this.prisma, checkIn.groundId)), hits: [] };
-            this.logger.warn(`Check-in ${checkIn.id}: declined twice and the model asked again; recorded the absence and moved on.`);
-          } else {
-            this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again too; the first stands.`);
-          }
-        }
-      }
-
-      /*
-       * AND IT DOES NOT OPEN BY SAYING THEIR OWN ANSWER BACK TO THEM.
-       *
-       * Fifth retry, same shape as the four above. This is the one that made a real check-in read as
-       * "repeat and going around in circles": nothing was wrong with any single reply, and half of
-       * every one of them was the person's own last message. See asked-twice-and-told-no-twice.
-       */
-      /* In the team baseline, a sentence that offers an example answer comes off: nothing is put in their mouth. */
-      if (this.anchorWeekForThisTurn.get(checkIn.id)?.isTheBaseline) {
-        const withoutExamples = withoutAnExampleAnswer(screened.text);
-        if (withoutExamples.cut.length && withoutExamples.text) {
-          this.logger.warn(`Check-in ${checkIn.id}: the baseline's reply offered an example answer; ${withoutExamples.cut.length} sentence(s) came off.`);
-          screened = { ...screened, text: withoutExamples.text };
-        }
-      }
-      /* An offer to write their words down quotes those words on purpose: that is the offer, so it is not "saying it back". Only in the anchor's weekly check-in. */
-      const anOfferIsBeingMade = !!this.anchorWeekForThisTurn.get(checkIn.id) && isAnOfferToWriteItDown(screened.text);
-      if (!anOfferIsBeingMade && opensByRepeatingThem(message, screened.text)) {
-        this.logger.warn(`Check-in ${checkIn.id}: the reply opened by repeating them; asking again.`);
-        /* The offending sentence goes back with the instruction. Asking for "no restatement" in the
-           abstract lost 58 times out of 75 across nineteen live check-ins. */
-        const straight = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${doNotSayItBack(message, screened.text)}`), history)
-          .catch(() => '');
-        const second = straight.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(straight), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && !opensByRepeatingThem(message, second.text)) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try got on with it.`);
-        } else {
-          /*
-           * AND IF IT SAYS IT BACK TWICE, THE SENTENCE COMES OFF.
-           *
-           * Everything else here keeps the first reply when the retry fails, because a flat reply
-           * beats no reply and text surgery usually takes something real with it. This one fault is
-           * the exception, and it is the exception because of what it is: an opening sentence that
-           * carries NOTHING the person did not just say. Removing it removes nothing.
-           *
-           * Narrow on purpose. Only when there is another sentence behind it, only when what is
-           * left still asks them something, and only after the model has been asked and failed.
-           * Otherwise the first reply stands exactly as before.
-           */
-          const better = second?.text && !second.hits.length ? second : screened;
-          const trimmed = withoutTheSentenceThatSaysItBack(message, better.text);
-          if (trimmed && !aCutThatLeavesAFragment(better.text, trimmed)) {
-            screened = { ...better, text: trimmed };
-            this.logger.warn(`Check-in ${checkIn.id}: said it back twice; the opening sentence was dropped.`);
-          } else {
-            this.logger.warn(`Check-in ${checkIn.id}: the second try repeated them too; the first stands.`);
-          }
-        }
-      }
-
-      /*
-       * THE LAST WORD ON A REPEATED QUESTION, AFTER EVERY RETRY. Run 11 (21 Sep 2026): "What is stopping
-       * you from doing that now?" went to Adamu eight times, word for word. The third-ask guard runs
-       * above and caught nothing to cut because the whole reply was the question; then the
-       * restatement retry below it asked the model again and got the same question back, after
-       * the guard had had its turn. Whatever the retries produced, a reply that repeats the last
-       * question word for word, or asks a thing already asked twice, does not ship: the record line
-       * and the next thing this check-in is for go instead.
-       */
-      if (earlierAsks.length && alreadyAskedTwice(screened.text, earlierAsks)) {
-        const how = await this.howToMoveOn(checkIn.id, earlierAsks[earlierAsks.length - 1] ?? '');
-        screened = { ...screened, text: recordAndMoveOn(null, how, await theDirectMorningIsOnFor(this.prisma, checkIn.groundId)), hits: [] };
-        this.logger.warn(`Check-in ${checkIn.id}: the reply still repeated a question after every retry; recorded and moved on to ${JSON.stringify(how.question ?? how.owed ?? 'nothing')}.`);
-      }
-
-      /*
-       * LENGTH IS JUDGED AFTER THE RESTATEMENT HAS GONE, NOT BEFORE.
-       *
-       * This ran three guards earlier. Reading every reply that shipped over the bar in nineteen
-       * live check-ins: all of them were long for the same reason, which is that they summarised
-       * the person back before asking. Three in four were flagged as restating outright and the
-       * fourth was a paraphrase close enough to slip that check.
-       *
-       * So length was being measured on text that was about to lose its opening sentence anyway. A
-       * 66-word reply whose first sentence is their own answer handed back is a 25-word reply once
-       * the guard above has finished with it, and asking the model for "shorter" in between was
-       * asking it to fix the symptom while the cause was still sitting in the text.
-       */
-      /*
-       * AND IT IS NOT AN ESSAY. Nothing in this product constrained length: a hundred and thirty-six
-       * rules about what to ask and not one about how much to say. See a-reply-is-not-an-essay.
-       */
-      /*
-       * AND A TURN THAT IS STILL ASKING IS NOT A CLOSE, WHATEVER MARKER IT CARRIES.
-       *
-       * The hundred and forty words a close may run to are for the one turn that names what now
-       * exists, with the figures and the people in it. A reply that carries the marker AND ends on
-       * a question is not that turn: the product already knows this and refuses to complete the
-       * session on it, a few hundred lines down, because marking it complete put a finish button
-       * under a question nobody had answered.
-       *
-       * Both readings were using the same flag, so a turn that asked one more thing inherited the
-       * close's allowance and could run to a hundred and forty. Read live on a second check-in: a
-       * hundred and twenty seven words of restating, a compliment about her flexibility, then the
-       * question. Sixty is the bar for anything still asking.
-       */
-      const thisIsTheClosingTurn = closingNow && !stillAsking(screened.text);
-      if (isAnEssay(screened.text, thisIsTheClosingTurn)) {
-        /* Counts, never the words themselves. no-log-line-carries-what-somebody-wrote reads the
-           interpolation and not what it evaluates to, and it is right to: a guard that has to
-           reason about what a call returns is a guard that will miss the next one. */
-        const wasThisLong = howManyWords(screened.text);
-        this.logger.warn(`Check-in ${checkIn.id}: ${wasThisLong} words; asking for shorter.`);
-        /* A close that ran long is not a long reply, it is a close that read the record back. Ask
-           for what a close is FOR, or the retry trims a paragraph that should not exist at all. */
-        const askFor = thisIsTheClosingTurn ? A_CLOSE_IS_THREE_SENTENCES : SAY_IT_SHORTER;
-        const shorter = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${askFor}`), history)
-          .catch(() => '');
-        const second = shorter.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(shorter), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow)) {
-          screened = second;
-          const nowThisLong = howManyWords(second.text);
-          this.logger.log(`Check-in ${checkIn.id}: the second try was ${nowThisLong} words.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try was no shorter; the first stands.`);
-        }
-      }
-
-      /*
-       * AND IT SAID THE DATE, WHICH THE INSTRUCTION ALONE DID NOT ACHIEVE.
-       *
-       * Where they named a period, the prompt was told to come back with the date it reads as. Run
-       * live twice, it asked something else both times - reasonable questions with no date in them.
-       * The same shape as every other rule that lost today, and there is already a note here saying
-       * the prompt-wording route is exhausted for dates. So it is checked. See a-period-is-not-a-day.
+       * Each check used to ask the model again on its own, so a reply that failed two checks cost two more calls, and
+       * 143 of 239 replies were asked again at least once. Now the checks run once on the first reply with `ask`
+       * only collecting each failing instruction and answering nothing, so every check takes its own fallback, as it
+       * did when its retry failed. If any instruction was collected, the model is asked once with every one of them.
+       * The checks then run on that second reply; if it passes every one of them, it is what ships (after the same
+       * cuts), and otherwise the first reply stands with its fallbacks, as each check did before.
        */
       const dateItHadToSay = inTheBaseline ? null : theDateItHadToSay(message, new Date(), repliesInThisCheckIn);
-      if (dateItHadToSay && didNotSayTheDate(screened.text, dateItHadToSay)) {
-        const period = thePeriodTheyNamed(message)!;
-        this.logger.warn(`Check-in ${checkIn.id}: the reply left the date out; asking again.`);
-        const theInstruction = SAY_THE_DATE(period, dateItHadToSay);
-        const withTheDate = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${theInstruction}`), history)
-          .catch(() => '');
-        const second = withTheDate.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(withTheDate), theirWords), known, readerName, conversationSoFar)
-          : null;
-        /* And never our own instruction handed to them as a reply: Jide read one (fix6-2). */
-        if (
-          second?.text && !second.hits.length && !didNotSayTheDate(second.text, dateItHadToSay)
-          && !isADeadEnd(second.text, closingNow) && !repeatsTheInstruction(second.text, theInstruction)
-        ) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try said the date.`);
-        } else {
-          /*
-           * THE PRODUCT ASKS IT. Two attempts and no date, which is where the decision on quoting
-           * dates already points: the product writes the line, the model asks the questions.
-           */
-          const ours = theQuestionTheProductAsks(period, dateItHadToSay);
-          screened = { ...screened, text: ours };
-          this.logger.warn(`Check-in ${checkIn.id}: it would not say the date; the product asked instead.`);
-        }
-      }
-
-      /*
-       * AND IT PUT BOTH NUMBERS IN FRONT OF THEM.
-       *
-       * Same shape as the date: the instruction is checkable, so it is checked, and where two goes
-       * fail the product asks the question itself rather than letting the gap pass a second time.
-       */
-      if (numbersGap && !saidBothNumbers(screened.text, numbersGap)) {
-        this.logger.warn(`Check-in ${checkIn.id}: the reply left the numbers out; asking again.`);
-        const withBoth = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${askWhichItIs(numbersGap)}`), history)
-          .catch(() => '');
-        const second = withBoth.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(withBoth), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && saidBothNumbers(second.text, numbersGap) && !isADeadEnd(second.text, closingNow)) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try named both numbers.`);
-        } else {
-          screened = { ...screened, text: theQuestionAboutTheNumbers(numbersGap) };
-          this.logger.warn(`Check-in ${checkIn.id}: it would not name them; the product asked instead.`);
-        }
-      }
-
-      /*
-       * AND A QUESTION THAT ASKS THEM TO INVENT A SHAPE SHOWS ONE.
-       *
-       * "It doesn't give examples of the responses it expects." Read off a live check-in: "When
-       * you say 10,000 units are sold, what would tell you, or anyone else looking, that this goal
-       * has been met?" - a fair question and a hard one cold.
-       *
-       * The prompt has asked for examples on exactly these questions for months, in one paragraph
-       * of eighteen thousand words, and it loses the same way the restating rule lost. The examples
-       * themselves are judgement and stay with the model; what is checkable is whether it gave any.
-       *
-       * After the restating guard, because a reply that both restates and asks bare should lose the
-       * restatement first - and before the ban list, which is last on purpose.
-       */
-      if (asksForAShapeWithoutShowingOne(screened.text)) {
-        this.logger.warn(`Check-in ${checkIn.id}: asked for a shape without showing one; asking again.`);
-        const withOne = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${SHOW_WHAT_ONE_LOOKS_LIKE}`), history)
-          .catch(() => '');
-        const second = withOne.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(withOne), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (
-          second?.text && !second.hits.length &&
-          !asksForAShapeWithoutShowingOne(second.text) &&
-          !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow) &&
-          !opensByRepeatingThem(message, second.text)
-        ) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try showed what an answer looks like.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try showed nothing either; the first stands.`);
-        }
-      }
-
-      /*
-       * AND IT DOES NOT USE THE WORDS THIS PRODUCT DOES NOT USE.
-       *
-       * The prompt bans a list of phrases and words outright and got 237 of them through in 8,317
-       * turns. A literal string is a shape, so it is checked here. Their own word handed back to
-       * them is not the fault - the fault is the product reaching for it - so what they have said
-       * so far is passed in. See words-we-do-not-use.
-       *
-       * LAST OF THE GUARDS, AND IT USED TO BE FOURTH. Three guards below it can REPLACE the reply,
-       * and a replacement was never checked against this list. Measured across nineteen live
-       * check-ins: banned phrases went from two to eight the moment the restating guard started
-       * succeeding more often, because its rewrites were reaching people unchecked. Running last
-       * means whatever actually ships is what got read.
-       */
-      /*
-       * AND ONE QUESTION. Where the reply asks two real questions, it is asked for once more with the
-       * rule named, because only the model can say which one it meant. An example written as a
-       * question is not asked for again: the save point says it as an example, which loses nothing.
-       * If the second try asks two as well, the first stands and the save point keeps its first
-       * question. See a-turn-asks-one-thing.
-       */
-      if (wouldLeaveAQuestionOut(screened.text)) {
-        this.logger.warn(`Check-in ${checkIn.id}: the reply asked more than one question; asking again.`);
-        const once = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${ASK_ONE_THING}`), history)
-          .catch(() => '');
-        const second = once.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(once), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (
-          second?.text && !second.hits.length && !asksMoreThanOneThing(second.text) &&
-          !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow) &&
-          !opensByRepeatingThem(message, second.text) && !alreadyAskedTwice(second.text, earlierAsks)
-        ) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try asked one question.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try asked more than one too; the first question stands.`);
-        }
-      }
-
-      /*
-       * THE JOB IS ASKED ON THE TURN THAT WAS GIVEN TO IT (decision 129). The model works through the check-in's own questions and, told in
-       * the prompt alone, asked about the job on about half the turns it was told to. This runs after the guards that can replace a reply with the
-       * product's own line (a first live walk, 10 October 2026, showed those lines taking the turn back), and before the two vocabulary checks, so a reply asked for
-       * again is read for the words we do not use like any other, and those stay the last guards. When the turn was meant to and the reply did not, it is
-       * asked again once with the one line, and the second is kept only if it does. Never on a reply that closes, and never blocks the turn.
-       */
-      /* A reply that asks for proof is never asked again for the job question (decision 132): the job waits for a later turn, proof does not. */
-      const inTheirFirst = this.aboutTheirJobThisTurn.get(checkIn.id) ?? null;
-      const jobThing = inTheirFirst?.thing ?? null;
-      const saysWhichCheckInThisIs = !!inTheirFirst && SAYS_WHICH_CHECK_IN_THIS_IS.test(screened.text);
-      if (inTheirFirst && !closingNow && ((jobThing && !asksAboutTheirJob(jobThing, screened.text) && !ASKS_FOR_PROOF.test(screened.text)) || saysWhichCheckInThisIs)) {
-        this.logger.warn(`Check-in ${checkIn.id}: ${saysWhichCheckInThisIs ? 'the reply said what kind of check-in this is' : 'this turn was for a question about their job and the reply did not ask it'}; asking again.`);
-        const moved = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${saysWhichCheckInThisIs ? NEVER_SAY_WHICH_CHECK_IN_THIS_IS : THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(jobThing!.what)}`), history)
-          .catch(() => '');
-        const second = moved.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (second?.text && !second.hits.length && !SAYS_WHICH_CHECK_IN_THIS_IS.test(second.text) && (!jobThing || saysWhichCheckInThisIs || asksAboutTheirJob(jobThing, second.text))) screened = second;
-      }
-
-      /*
-       * THE JOB IS ASKED ONCE PER PERSON (decision 129; pilots, E6). A reply that asks about their job when it has been asked
-       * before, in this check-in or an earlier one of theirs, is asked again once without it; if the second asks it too, the
-       * job question comes out and the rest of the reply stands.
-       */
-      if (!closingNow && !jobThing) {
-        const earlierHere = turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '');
-        const earlierElsewhere = asksAboutTheirJobAgain(screened.text, earlierHere) ? [] : await this.theirEarlierAiTurns(checkIn as any).catch(() => [] as string[]);
-        const earlierAi = [...earlierHere, ...earlierElsewhere];
-        if (asksAboutTheirJobAgain(screened.text, earlierAi)) {
-          this.logger.warn(`Check-in ${checkIn.id}: the reply asked about their job again; asking again.`);
-          const moved = await this.anthropic
-            .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${THEIR_JOB_WAS_ASKED_ALREADY}`), history)
-            .catch(() => '');
-          const second = moved.trim() ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar) : null;
-          if (second?.text && !second.hits.length && !asksAboutTheirJobAgain(second.text, earlierAi) && /\?/.test(second.text)) {
+      const theChecks = async (start: typeof screened, ask: (instruction: string) => Promise<string>): Promise<typeof screened> => {
+        let screened = start;
+        if (alreadyAskedTwice(screened.text, earlierAsks)) {
+          this.logger.warn(`Check-in ${checkIn.id}: the same question a third time; asking again.`);
+          const moved = await ask(ASKED_IT_TWICE_ALREADY);
+          const second = moved.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (second?.text && !second.hits.length && !alreadyAskedTwice(second.text, earlierAsks)) {
             screened = second;
+            this.logger.log(`Check-in ${checkIn.id}: the second try moved on.`);
           } else {
-            const without = withoutTheJobQuestion(screened.text);
-            if (without && without !== screened.text && !aCutThatLeavesAFragment(screened.text, without)) screened = { ...screened, text: withAQuestion(without, { closing: false, asked: earlierHere }) };
+            /*
+             * THE FOURTH ASK DOES NOT SHIP. Keeping the first is the fallback everywhere else here,
+             * and everywhere else it costs a clumsy sentence. Here it costs the person the same
+             * question for the fourth time, which is the fault. The question comes out and whatever
+             * else the reply said stands. See withoutTheQuestionAskedAgain.
+             */
+            const withoutIt = withoutTheQuestionAskedAgain(screened.text, earlierAsks);
+            /* A fragment left behind counts as nothing else in it. See a-cut-never-leaves-a-fragment. */
+            if (withoutIt.trim() && withoutIt !== screened.text && !aCutThatLeavesAFragment(screened.text, withoutIt)) {
+              screened = { ...screened, text: withoutIt };
+              this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question was taken out.`);
+            } else {
+              /* Nothing else in it, so the product records the absence and moves on itself. See a-refusal-is-an-answer. */
+              const how = await this.howToMoveOn(checkIn.id, earlierAsks[earlierAsks.length - 1] ?? '');
+              /* Asked three times is not declined: they answered, just not with what the model wanted. "Then it
+                 goes on this record as not given: what has moved since last time" went to Bola after she had
+                 said what moved (run 8, 21 Sep 2026). The answer stands as given; only a refusal is an absence. */
+              screened = { ...screened, text: recordAndMoveOn(null, how, await theDirectMorningIsOnFor(this.prisma, checkIn.groundId)), hits: [] };
+              this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again and there was nothing else in it; recorded the absence and moved on to ${JSON.stringify(how.question ?? how.owed ?? 'nothing')}.`);
+            }
           }
         }
-      }
 
-      /*
-       * AND NO MANAGEMENT WORD THEY DID NOT USE FIRST. Task 2.3, week 3: "pipeline", "escalate",
-       * "deliverable" and the rest, when Groundwork reached for them itself. Asked again once, with
-       * the sentence quoted and a plain way offered; if the second try is no better, the first
-       * stands. See management-words. It runs before the word guard below, which stays last so it
-       * reads whatever ships, this one's rewrite included.
-       */
-      const jargonHere = managementWordsIn(screened.text, theirWords);
-      if (jargonHere.length) {
-        this.logger.warn(`Check-in ${checkIn.id}: ${jargonHere.length} management word(s) they did not use; asking again.`);
-        const plain = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${sayItInPlainWords(jargonHere, screened.text)}`), history)
-          .catch(() => '');
-        const second = plain.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(plain), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (
-          second?.text && !second.hits.length &&
-          !managementWordsIn(second.text, theirWords).length &&
-          !wordsWeDoNotUse(second.text, theirWords).length &&
-          !asksMoreThanOneThing(second.text) &&
-          !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow) &&
-          !opensByRepeatingThem(message, second.text)
-        ) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try said it plainly.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try was no plainer; the first stands.`);
+        /*
+         * ASKED AGAIN AFTER A REAL ANSWER. The two guards above catch a third ask and a refusal. Run 10 (21
+         * Sep 2026): "repeated question" 18 times among participants, most of them a second ask about a
+         * thing the person had answered. The coverage read knows which owed things this session has
+         * answered, and what was said; a reply that asks about one of them is told so once, and if it
+         * asks again the question comes out. See what-this-session-has-covered.
+         */
+        if (earlierAsks.length) {
+          const answeredHere = await this.whatThisSessionHasAnswered(checkIn.id).catch(() => [] as { thing: AThingToCover; answer: string }[]);
+          const askedAgain = answeredHere.find((a) => askedAbout(a.thing, screened.text) && /\?/.test(screened.text));
+          if (askedAgain) {
+            this.logger.warn(`Check-in ${checkIn.id}: asked again about ${JSON.stringify(askedAgain.thing.what)} after it was answered; asking for another turn.`);
+            const moved = await ask(theyAlreadyAnsweredThat(askedAgain.thing.what, askedAgain.answer));
+            const second = moved.trim()
+              ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
+              : null;
+            if (second?.text && !second.hits.length && !askedAbout(askedAgain.thing, second.text)) {
+              screened = second;
+            } else {
+              const withoutIt = withoutTheQuestionAskedAgain(screened.text, [askedAgain.thing.what]);
+              if (withoutIt.trim() && withoutIt !== screened.text && !aCutThatLeavesAFragment(screened.text, withoutIt)) {
+                screened = { ...screened, text: withoutIt };
+                this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question came out.`);
+              }
+            }
+          }
         }
-      }
 
-      const notOurWords = wordsWeDoNotUse(screened.text, theirWords);
-      if (notOurWords.length) {
-        this.logger.warn(`Check-in ${checkIn.id}: ${notOurWords.length} word(s) we do not use; asking again.`);
-        const ours = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${sayItWithoutThose(notOurWords, screened.text)}`), history)
-          .catch(() => '');
-        const second = ours.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(ours), theirWords), known, readerName, conversationSoFar)
-          : null;
-        if (
-          second?.text && !second.hits.length &&
-          !wordsWeDoNotUse(second.text, theirWords).length &&
-          !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow) &&
-          /* Running last means this one can undo the guard above it, so it checks that too. */
-          !opensByRepeatingThem(message, second.text)
-        ) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try used none of them.`);
-        } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try used them too; the first stands.`);
+        /*
+         * AND THE SAME QUESTION STRAIGHT BACK, AFTER A REAL ANSWER TO IT, whether or not the thing was on
+         * an owed list. The guard above knows the owed things; this one knows the last ask. "What are you
+         * doing to keep them healthy" - "Vaccinating them" - "what are you doing to keep your 260 hens
+         * healthy" (run 11). Once more with the answer named; if it asks again, the question comes out.
+         * See asksItAgainAfterTheAnswer.
+         *
+         * AND ANY EARLIER QUESTION THEY ANSWERED, word for word. Hana was asked "What just happened with
+         * Meridian, as you understand it?" again two turns after she answered it (run 9, shock). See
+         * anAnsweredQuestionAskedAgain.
+         */
+        {
+          const aRealAnswer = (said: string) => !theyDeclined(said) && !theyPushedBackOnTheQuestions(said) && (said ?? '').trim().length >= 3;
+          const soFar = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'AI' as const : 'PERSON' as const, content: t.content ?? '' }));
+          const again = anAnsweredQuestionAskedAgain(soFar, screened.text, aRealAnswer);
+          if (again) {
+            const lastAskHere = again.ask;
+            const askedSentence = lastAskHere.split(/(?<=[.!?])\s+/).find((x) => /\?\s*$/.test(x)) ?? lastAskHere;
+            this.logger.warn(`Check-in ${checkIn.id}: asked a question again after it was answered; asking for another turn.`);
+            const moved = await ask(theyAlreadyAnsweredThat(`this - ${JSON.stringify(askedSentence.slice(0, 160))}`, again.answer));
+            const second = moved.trim()
+              ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
+              : null;
+            if (second?.text && !second.hits.length && !anAnsweredQuestionAskedAgain(soFar, second.text, aRealAnswer)) {
+              screened = second;
+            } else {
+              const withoutIt = withoutTheQuestionAskedAgain(screened.text, [lastAskHere]);
+              if (withoutIt.trim() && withoutIt !== screened.text && !aCutThatLeavesAFragment(screened.text, withoutIt)) {
+                screened = { ...screened, text: withoutIt };
+                this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again; the question came out.`);
+              }
+            }
+          }
         }
-      }
+
+        /*
+         * AND IT DOES NOT DECIDE WHAT KIND OF PROBLEM SOMEBODY ELSE'S BEHAVIOUR IS.
+         *
+         * Read off a real check-in: "You've raised this with Marketing twice, and nothing has changed.
+         * That stops being a communication problem somewhere around the second time." Nobody in
+         * Marketing is in that conversation, they cannot answer it, and they will read the board it
+         * feeds. The prompt carries three and a half thousand characters on exactly this and it did
+         * not hold. See a-verdict-is-not-a-question.
+         */
+        if (isAVerdictAboutSomebodyElse(message, screened.text)) {
+          this.logger.warn(`Check-in ${checkIn.id}: a verdict about somebody not in the room; asking again.`);
+          const hers = await ask(HERS_TO_DRAW);
+          const second = hers.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(hers), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (second?.text && !second.hits.length && !isAVerdictAboutSomebodyElse(message, second.text)) {
+            screened = second;
+            this.logger.log(`Check-in ${checkIn.id}: the second try left the conclusion to them.`);
+          } else {
+            this.logger.warn(`Check-in ${checkIn.id}: the second try reached a verdict too; the first stands.`);
+          }
+        }
+
+        /*
+         * DECISION 56, ITEM 2, SECOND LAYER. `composeSystemPrompt` already gives the model only the
+         * area of a goal the lead has not told this person about - no number, no date - and tells it
+         * never to say a goal has been set. This is the check: a reply is read for the number that
+         * goal is measured by, or for saying outright that a goal, target or expectation exists, and
+         * if either slipped through, the model is asked again once. See
+         * an-untold-goals-number-is-not-said.ts.
+         */
+        const untoldGoalsHere: AnUntoldGoal[] = await (this.prisma.personObjective?.findMany?.({
+          where: { groundId: checkIn.groundId, participantId: checkIn.participantId, awareness: 'NOT_TOLD' },
+          select: { text: true, target: true, authoredBy: true, awareness: true },
+        }) ?? Promise.resolve([] as any[]))
+          .catch(() => [] as any[])
+          .then((rows: any[]) => rows.filter(notToldYet).map((o) => ({ text: o.text as string, target: o.target ?? null })));
+        if (untoldGoalsHere.length && saysWhatAnUntoldGoalWithholds(screened.text, untoldGoalsHere)) {
+          this.logger.warn(`Check-in ${checkIn.id}: a reply named a number or a goal the lead has not told them about; asking again.`);
+          const withheld = await ask(IT_NAMED_THE_UNTOLD_NUMBER);
+          const second = withheld.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(withheld), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (second?.text && !second.hits.length && !saysWhatAnUntoldGoalWithholds(second.text, untoldGoalsHere)) {
+            screened = second;
+            this.logger.log(`Check-in ${checkIn.id}: the second try withheld it.`);
+          } else {
+            this.logger.warn(`Check-in ${checkIn.id}: the second try named it too; the first stands.`);
+          }
+        }
+
+        /*
+         * AND A DECLINE IS AN ANSWER. "I don't focus on a weekly number" was followed by a question about
+         * the weekly number; "we don't share that" by the same ask reworded (adversarial run 2, 20 Sep
+         * 2026, the judge's "badgering", ten times). Same guard as the pushback, same retry, different
+         * instruction: nobody objected to the questions, they answered one with no.
+         */
+        /*
+         * THEY CORRECTED US, SO THE THING THEY CORRECTED IS NOT ASKED ABOUT AGAIN (Hafsah's principle, 13 October 2026). David:
+         * "I told you, the title search came back yesterday. It is not blocked." The reply is asked again once with the
+         * correction as the record; if it still asks about it, that question comes out and the rest stands.
+         */
+        const theAskTheyCorrected = [...turns].reverse().find((t) => t.role === TurnRole.AI)?.content ?? null;
+        if (theyCorrectedUs(message) && asksAboutWhatTheyCorrected(message, screened.text, theAskTheyCorrected)) {
+          this.logger.warn(`Check-in ${checkIn.id}: they corrected us and the reply asked about it again; asking again.`);
+          const heard = await ask(THEY_CORRECTED_YOU);
+          const second = heard.trim() ? screen(withoutQuotesTheyDidNotSay(forHumans(heard), theirWords), known, readerName, conversationSoFar) : null;
+          if (second?.text && !second.hits.length && !asksAboutWhatTheyCorrected(message, second.text, theAskTheyCorrected)) {
+            screened = second;
+          } else {
+            const kept = screened.text.split(/(?<=[.!?])\s+/).filter((x) => !(/\?\s*$/.test(x) && asksAboutWhatTheyCorrected(message, x, theAskTheyCorrected))).join(' ').trim();
+            if (kept && kept !== screened.text) screened = { ...screened, text: withAQuestion(kept, { closing: false, asked: turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '') }) };
+          }
+        }
+        /*
+         * NEVER THE QUESTION JUST ASKED, AGAIN (reviewer, 14 October). Mercy was asked the same question twice in a row. Answered or
+         * not, the question that was the last turn is not the next one: it comes out, and where nothing else asks, the product asks
+         * what else they want to say.
+         */
+        {
+          const lastAskHere = [...turns].reverse().find((t) => t.role === TurnRole.AI)?.content ?? '';
+          if (lastAskHere && (repeatsTheLastAskWordForWord(screened.text, lastAskHere) || asksItAgainAfterTheAnswer(lastAskHere, screened.text))) {
+            const without = withoutTheQuestionAskedAgain(screened.text, [lastAskHere]);
+            if (without !== screened.text) {
+              this.logger.warn(`Check-in ${checkIn.id}: the reply asked the last question again; it came out.`);
+              screened = { ...screened, text: withAQuestion(without, { closing: false, asked: turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '') }) };
+            }
+          }
+        }
+        const declined = !theyPushedBackOnTheQuestions(message) && theyDeclined(message);
+        if (theyPushedBackOnTheQuestions(message) || declined) {
+          const lastAsk = [...turns].reverse().find((t) => t.role === TurnRole.AI)?.content ?? '';
+          if (lastAsk && asksTheSameThingAgain(lastAsk, screened.text)) {
+            this.logger.warn(`Check-in ${checkIn.id}: they ${declined ? 'declined it' : 'said the questions were wrong'} and the reply asked it again; asking again.`);
+            const heard = await ask(declined ? THEY_DECLINED_IT : THEY_ALREADY_SAID_NO);
+            const second = heard.trim()
+              ? screen(withoutQuotesTheyDidNotSay(forHumans(heard), theirWords), known, readerName, conversationSoFar)
+              : null;
+            if (second?.text && !second.hits.length && !asksTheSameThingAgain(lastAsk, second.text)) {
+              screened = second;
+              this.logger.log(`Check-in ${checkIn.id}: the second try let it go.`);
+            } else if (declined) {
+              /* They said no twice over and the model would ask a third time. The product records the absence
+                 and moves on; a third ask is the badgering the judge counted. See a-refusal-is-an-answer. */
+              const how = await this.howToMoveOn(checkIn.id, lastAsk);
+              screened = { ...screened, text: recordAndMoveOn(how.declinedWhat, how, await theDirectMorningIsOnFor(this.prisma, checkIn.groundId)), hits: [] };
+              this.logger.warn(`Check-in ${checkIn.id}: declined twice and the model asked again; recorded the absence and moved on.`);
+            } else {
+              this.logger.warn(`Check-in ${checkIn.id}: the second try asked it again too; the first stands.`);
+            }
+          }
+        }
+
+        /*
+         * AND IT DOES NOT OPEN BY SAYING THEIR OWN ANSWER BACK TO THEM.
+         *
+         * Fifth retry, same shape as the four above. This is the one that made a real check-in read as
+         * "repeat and going around in circles": nothing was wrong with any single reply, and half of
+         * every one of them was the person's own last message. See asked-twice-and-told-no-twice.
+         */
+        /* In the team baseline, a sentence that offers an example answer comes off: nothing is put in their mouth. */
+        if (this.anchorWeekForThisTurn.get(checkIn.id)?.isTheBaseline) {
+          const withoutExamples = withoutAnExampleAnswer(screened.text);
+          if (withoutExamples.cut.length && withoutExamples.text) {
+            this.logger.warn(`Check-in ${checkIn.id}: the baseline's reply offered an example answer; ${withoutExamples.cut.length} sentence(s) came off.`);
+            screened = { ...screened, text: withoutExamples.text };
+          }
+        }
+        /* An offer to write their words down quotes those words on purpose: that is the offer, so it is not "saying it back". Only in the anchor's weekly check-in. */
+        const anOfferIsBeingMade = !!this.anchorWeekForThisTurn.get(checkIn.id) && isAnOfferToWriteItDown(screened.text);
+        if (!anOfferIsBeingMade && opensByRepeatingThem(message, screened.text)) {
+          this.logger.warn(`Check-in ${checkIn.id}: the reply opened by repeating them; asking again.`);
+          /* The offending sentence goes back with the instruction. Asking for "no restatement" in the
+             abstract lost 58 times out of 75 across nineteen live check-ins. */
+          const straight = await ask(doNotSayItBack(message, screened.text));
+          const second = straight.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(straight), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (second?.text && !second.hits.length && !opensByRepeatingThem(message, second.text)) {
+            screened = second;
+            this.logger.log(`Check-in ${checkIn.id}: the second try got on with it.`);
+          } else {
+            /*
+             * AND IF IT SAYS IT BACK TWICE, THE SENTENCE COMES OFF.
+             *
+             * Everything else here keeps the first reply when the retry fails, because a flat reply
+             * beats no reply and text surgery usually takes something real with it. This one fault is
+             * the exception, and it is the exception because of what it is: an opening sentence that
+             * carries NOTHING the person did not just say. Removing it removes nothing.
+             *
+             * Narrow on purpose. Only when there is another sentence behind it, only when what is
+             * left still asks them something, and only after the model has been asked and failed.
+             * Otherwise the first reply stands exactly as before.
+             */
+            const better = second?.text && !second.hits.length ? second : screened;
+            const trimmed = withoutTheSentenceThatSaysItBack(message, better.text);
+            if (trimmed && !aCutThatLeavesAFragment(better.text, trimmed)) {
+              screened = { ...better, text: trimmed };
+              this.logger.warn(`Check-in ${checkIn.id}: said it back twice; the opening sentence was dropped.`);
+            } else {
+              this.logger.warn(`Check-in ${checkIn.id}: the second try repeated them too; the first stands.`);
+            }
+          }
+        }
+
+        /*
+         * THE LAST WORD ON A REPEATED QUESTION, AFTER EVERY RETRY. Run 11 (21 Sep 2026): "What is stopping
+         * you from doing that now?" went to Adamu eight times, word for word. The third-ask guard runs
+         * above and caught nothing to cut because the whole reply was the question; then the
+         * restatement retry below it asked the model again and got the same question back, after
+         * the guard had had its turn. Whatever the retries produced, a reply that repeats the last
+         * question word for word, or asks a thing already asked twice, does not ship: the record line
+         * and the next thing this check-in is for go instead.
+         */
+        if (earlierAsks.length && alreadyAskedTwice(screened.text, earlierAsks)) {
+          const how = await this.howToMoveOn(checkIn.id, earlierAsks[earlierAsks.length - 1] ?? '');
+          screened = { ...screened, text: recordAndMoveOn(null, how, await theDirectMorningIsOnFor(this.prisma, checkIn.groundId)), hits: [] };
+          this.logger.warn(`Check-in ${checkIn.id}: the reply still repeated a question after every retry; recorded and moved on to ${JSON.stringify(how.question ?? how.owed ?? 'nothing')}.`);
+        }
+
+        /*
+         * LENGTH IS JUDGED AFTER THE RESTATEMENT HAS GONE, NOT BEFORE.
+         *
+         * This ran three guards earlier. Reading every reply that shipped over the bar in nineteen
+         * live check-ins: all of them were long for the same reason, which is that they summarised
+         * the person back before asking. Three in four were flagged as restating outright and the
+         * fourth was a paraphrase close enough to slip that check.
+         *
+         * So length was being measured on text that was about to lose its opening sentence anyway. A
+         * 66-word reply whose first sentence is their own answer handed back is a 25-word reply once
+         * the guard above has finished with it, and asking the model for "shorter" in between was
+         * asking it to fix the symptom while the cause was still sitting in the text.
+         */
+        /*
+         * AND IT IS NOT AN ESSAY. Nothing in this product constrained length: a hundred and thirty-six
+         * rules about what to ask and not one about how much to say. See a-reply-is-not-an-essay.
+         */
+        /*
+         * AND A TURN THAT IS STILL ASKING IS NOT A CLOSE, WHATEVER MARKER IT CARRIES.
+         *
+         * The hundred and forty words a close may run to are for the one turn that names what now
+         * exists, with the figures and the people in it. A reply that carries the marker AND ends on
+         * a question is not that turn: the product already knows this and refuses to complete the
+         * session on it, a few hundred lines down, because marking it complete put a finish button
+         * under a question nobody had answered.
+         *
+         * Both readings were using the same flag, so a turn that asked one more thing inherited the
+         * close's allowance and could run to a hundred and forty. Read live on a second check-in: a
+         * hundred and twenty seven words of restating, a compliment about her flexibility, then the
+         * question. Sixty is the bar for anything still asking.
+         */
+        const thisIsTheClosingTurn = closingNow && !stillAsking(screened.text);
+        if (isAnEssay(screened.text, thisIsTheClosingTurn)) {
+          /* Counts, never the words themselves. no-log-line-carries-what-somebody-wrote reads the
+             interpolation and not what it evaluates to, and it is right to: a guard that has to
+             reason about what a call returns is a guard that will miss the next one. */
+          const wasThisLong = howManyWords(screened.text);
+          this.logger.warn(`Check-in ${checkIn.id}: ${wasThisLong} words; asking for shorter.`);
+          /* A close that ran long is not a long reply, it is a close that read the record back. Ask
+             for what a close is FOR, or the retry trims a paragraph that should not exist at all. */
+          const askFor = thisIsTheClosingTurn ? A_CLOSE_IS_THREE_SENTENCES : SAY_IT_SHORTER;
+          const shorter = await ask(askFor);
+          const second = shorter.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(shorter), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (second?.text && !second.hits.length && !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow)) {
+            screened = second;
+            const nowThisLong = howManyWords(second.text);
+            this.logger.log(`Check-in ${checkIn.id}: the second try was ${nowThisLong} words.`);
+          } else {
+            this.logger.warn(`Check-in ${checkIn.id}: the second try was no shorter; the first stands.`);
+          }
+        }
+
+        /*
+         * AND IT SAID THE DATE, WHICH THE INSTRUCTION ALONE DID NOT ACHIEVE.
+         *
+         * Where they named a period, the prompt was told to come back with the date it reads as. Run
+         * live twice, it asked something else both times - reasonable questions with no date in them.
+         * The same shape as every other rule that lost today, and there is already a note here saying
+         * the prompt-wording route is exhausted for dates. So it is checked. See a-period-is-not-a-day.
+         */
+        if (dateItHadToSay && didNotSayTheDate(screened.text, dateItHadToSay)) {
+          const period = thePeriodTheyNamed(message)!;
+          this.logger.warn(`Check-in ${checkIn.id}: the reply left the date out; asking again.`);
+          const theInstruction = SAY_THE_DATE(period, dateItHadToSay);
+          const withTheDate = await ask(theInstruction);
+          const second = withTheDate.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(withTheDate), theirWords), known, readerName, conversationSoFar)
+            : null;
+          /* And never our own instruction handed to them as a reply: Jide read one (fix6-2). */
+          if (
+            second?.text && !second.hits.length && !didNotSayTheDate(second.text, dateItHadToSay)
+            && !isADeadEnd(second.text, closingNow) && !repeatsTheInstruction(second.text, theInstruction)
+          ) {
+            screened = second;
+            this.logger.log(`Check-in ${checkIn.id}: the second try said the date.`);
+          } else {
+            /*
+             * THE PRODUCT ASKS IT. Two attempts and no date, which is where the decision on quoting
+             * dates already points: the product writes the line, the model asks the questions.
+             */
+            const ours = theQuestionTheProductAsks(period, dateItHadToSay);
+            screened = { ...screened, text: ours };
+            this.logger.warn(`Check-in ${checkIn.id}: it would not say the date; the product asked instead.`);
+          }
+        }
+
+        /*
+         * AND IT PUT BOTH NUMBERS IN FRONT OF THEM.
+         *
+         * Same shape as the date: the instruction is checkable, so it is checked, and where two goes
+         * fail the product asks the question itself rather than letting the gap pass a second time.
+         */
+        if (numbersGap && !saidBothNumbers(screened.text, numbersGap)) {
+          this.logger.warn(`Check-in ${checkIn.id}: the reply left the numbers out; asking again.`);
+          const withBoth = await ask(askWhichItIs(numbersGap));
+          const second = withBoth.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(withBoth), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (second?.text && !second.hits.length && saidBothNumbers(second.text, numbersGap) && !isADeadEnd(second.text, closingNow)) {
+            screened = second;
+            this.logger.log(`Check-in ${checkIn.id}: the second try named both numbers.`);
+          } else {
+            screened = { ...screened, text: theQuestionAboutTheNumbers(numbersGap) };
+            this.logger.warn(`Check-in ${checkIn.id}: it would not name them; the product asked instead.`);
+          }
+        }
+
+        /*
+         * AND A QUESTION THAT ASKS THEM TO INVENT A SHAPE SHOWS ONE.
+         *
+         * "It doesn't give examples of the responses it expects." Read off a live check-in: "When
+         * you say 10,000 units are sold, what would tell you, or anyone else looking, that this goal
+         * has been met?" - a fair question and a hard one cold.
+         *
+         * The prompt has asked for examples on exactly these questions for months, in one paragraph
+         * of eighteen thousand words, and it loses the same way the restating rule lost. The examples
+         * themselves are judgement and stay with the model; what is checkable is whether it gave any.
+         *
+         * After the restating guard, because a reply that both restates and asks bare should lose the
+         * restatement first - and before the ban list, which is last on purpose.
+         */
+        if (asksForAShapeWithoutShowingOne(screened.text)) {
+          this.logger.warn(`Check-in ${checkIn.id}: asked for a shape without showing one; asking again.`);
+          const withOne = await ask(SHOW_WHAT_ONE_LOOKS_LIKE);
+          const second = withOne.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(withOne), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (
+            second?.text && !second.hits.length &&
+            !asksForAShapeWithoutShowingOne(second.text) &&
+            !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow) &&
+            !opensByRepeatingThem(message, second.text)
+          ) {
+            screened = second;
+            this.logger.log(`Check-in ${checkIn.id}: the second try showed what an answer looks like.`);
+          } else {
+            this.logger.warn(`Check-in ${checkIn.id}: the second try showed nothing either; the first stands.`);
+          }
+        }
+
+        /*
+         * AND IT DOES NOT USE THE WORDS THIS PRODUCT DOES NOT USE.
+         *
+         * The prompt bans a list of phrases and words outright and got 237 of them through in 8,317
+         * turns. A literal string is a shape, so it is checked here. Their own word handed back to
+         * them is not the fault - the fault is the product reaching for it - so what they have said
+         * so far is passed in. See words-we-do-not-use.
+         *
+         * LAST OF THE GUARDS, AND IT USED TO BE FOURTH. Three guards below it can REPLACE the reply,
+         * and a replacement was never checked against this list. Measured across nineteen live
+         * check-ins: banned phrases went from two to eight the moment the restating guard started
+         * succeeding more often, because its rewrites were reaching people unchecked. Running last
+         * means whatever actually ships is what got read.
+         */
+        /*
+         * AND ONE QUESTION. Where the reply asks two real questions, it is asked for once more with the
+         * rule named, because only the model can say which one it meant. An example written as a
+         * question is not asked for again: the save point says it as an example, which loses nothing.
+         * If the second try asks two as well, the first stands and the save point keeps its first
+         * question. See a-turn-asks-one-thing.
+         */
+        if (wouldLeaveAQuestionOut(screened.text)) {
+          this.logger.warn(`Check-in ${checkIn.id}: the reply asked more than one question; asking again.`);
+          const once = await ask(ASK_ONE_THING);
+          const second = once.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(once), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (
+            second?.text && !second.hits.length && !asksMoreThanOneThing(second.text) &&
+            !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow) &&
+            !opensByRepeatingThem(message, second.text) && !alreadyAskedTwice(second.text, earlierAsks)
+          ) {
+            screened = second;
+            this.logger.log(`Check-in ${checkIn.id}: the second try asked one question.`);
+          } else {
+            this.logger.warn(`Check-in ${checkIn.id}: the second try asked more than one too; the first question stands.`);
+          }
+        }
+
+        /*
+         * THE JOB IS ASKED ON THE TURN THAT WAS GIVEN TO IT (decision 129). The model works through the check-in's own questions and, told in
+         * the prompt alone, asked about the job on about half the turns it was told to. This runs after the guards that can replace a reply with the
+         * product's own line (a first live walk, 10 October 2026, showed those lines taking the turn back), and before the two vocabulary checks, so a reply asked for
+         * again is read for the words we do not use like any other, and those stay the last guards. When the turn was meant to and the reply did not, it is
+         * asked again once with the one line, and the second is kept only if it does. Never on a reply that closes, and never blocks the turn.
+         */
+        /* A reply that asks for proof is never asked again for the job question (decision 132): the job waits for a later turn, proof does not. */
+        const inTheirFirst = this.aboutTheirJobThisTurn.get(checkIn.id) ?? null;
+        const jobThing = inTheirFirst?.thing ?? null;
+        const saysWhichCheckInThisIs = !!inTheirFirst && SAYS_WHICH_CHECK_IN_THIS_IS.test(screened.text);
+        if (inTheirFirst && !closingNow && ((jobThing && !asksAboutTheirJob(jobThing, screened.text) && !ASKS_FOR_PROOF.test(screened.text)) || saysWhichCheckInThisIs)) {
+          this.logger.warn(`Check-in ${checkIn.id}: ${saysWhichCheckInThisIs ? 'the reply said what kind of check-in this is' : 'this turn was for a question about their job and the reply did not ask it'}; asking again.`);
+          const moved = await ask(saysWhichCheckInThisIs ? NEVER_SAY_WHICH_CHECK_IN_THIS_IS : THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB(jobThing!.what));
+          const second = moved.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (second?.text && !second.hits.length && !SAYS_WHICH_CHECK_IN_THIS_IS.test(second.text) && (!jobThing || saysWhichCheckInThisIs || asksAboutTheirJob(jobThing, second.text))) screened = second;
+        }
+
+        /*
+         * THE JOB IS ASKED ONCE PER PERSON (decision 129; pilots, E6). A reply that asks about their job when it has been asked
+         * before, in this check-in or an earlier one of theirs, is asked again once without it; if the second asks it too, the
+         * job question comes out and the rest of the reply stands.
+         */
+        if (!closingNow && !jobThing) {
+          const earlierHere = turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '');
+          const earlierElsewhere = asksAboutTheirJobAgain(screened.text, earlierHere) ? [] : await this.theirEarlierAiTurns(checkIn as any).catch(() => [] as string[]);
+          const earlierAi = [...earlierHere, ...earlierElsewhere];
+          if (asksAboutTheirJobAgain(screened.text, earlierAi)) {
+            this.logger.warn(`Check-in ${checkIn.id}: the reply asked about their job again; asking again.`);
+            const moved = await ask(THEIR_JOB_WAS_ASKED_ALREADY);
+            const second = moved.trim() ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar) : null;
+            if (second?.text && !second.hits.length && !asksAboutTheirJobAgain(second.text, earlierAi) && /\?/.test(second.text)) {
+              screened = second;
+            } else {
+              const without = withoutTheJobQuestion(screened.text);
+              if (without && without !== screened.text && !aCutThatLeavesAFragment(screened.text, without)) screened = { ...screened, text: withAQuestion(without, { closing: false, asked: earlierHere }) };
+            }
+          }
+        }
+
+        /*
+         * AND NO MANAGEMENT WORD THEY DID NOT USE FIRST. Task 2.3, week 3: "pipeline", "escalate",
+         * "deliverable" and the rest, when Groundwork reached for them itself. Asked again once, with
+         * the sentence quoted and a plain way offered; if the second try is no better, the first
+         * stands. See management-words. It runs before the word guard below, which stays last so it
+         * reads whatever ships, this one's rewrite included.
+         */
+        const jargonHere = managementWordsIn(screened.text, theirWords);
+        if (jargonHere.length) {
+          this.logger.warn(`Check-in ${checkIn.id}: ${jargonHere.length} management word(s) they did not use; asking again.`);
+          const plain = await ask(sayItInPlainWords(jargonHere, screened.text));
+          const second = plain.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(plain), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (
+            second?.text && !second.hits.length &&
+            !managementWordsIn(second.text, theirWords).length &&
+            !wordsWeDoNotUse(second.text, theirWords).length &&
+            !asksMoreThanOneThing(second.text) &&
+            !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow) &&
+            !opensByRepeatingThem(message, second.text)
+          ) {
+            screened = second;
+            this.logger.log(`Check-in ${checkIn.id}: the second try said it plainly.`);
+          } else {
+            this.logger.warn(`Check-in ${checkIn.id}: the second try was no plainer; the first stands.`);
+          }
+        }
+
+        const notOurWords = wordsWeDoNotUse(screened.text, theirWords);
+        if (notOurWords.length) {
+          this.logger.warn(`Check-in ${checkIn.id}: ${notOurWords.length} word(s) we do not use; asking again.`);
+          const ours = await ask(sayItWithoutThose(notOurWords, screened.text));
+          const second = ours.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(ours), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (
+            second?.text && !second.hits.length &&
+            !wordsWeDoNotUse(second.text, theirWords).length &&
+            !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow) &&
+            /* Running last means this one can undo the guard above it, so it checks that too. */
+            !opensByRepeatingThem(message, second.text)
+          ) {
+            screened = second;
+            this.logger.log(`Check-in ${checkIn.id}: the second try used none of them.`);
+          } else {
+            this.logger.warn(`Check-in ${checkIn.id}: the second try used them too; the first stands.`);
+          }
+        }
 
 
-      /*
-       * AND SAY SO WHENEVER A LONG ONE SHIPS, NOT ONLY WHEN THE GUARD TRIPS.
-       *
-       * A hundred and twenty seven word reply reached somebody and the log could not say which of
-       * two things had happened: the guard never fired because a close marker had lifted the bar,
-       * or it fired twice and the second try was no better. Different faults, different fixes, and
-       * no way to tell them apart afterwards. One line, at the point of shipping, so the next one
-       * answers that question by itself.
-       */
-      /*
-       * AND IT DOES NOT MOVE THEIR TARGET TO WHERE THEY ARE STANDING.
-       *
-       * Read in a browser: she said "my 3000 is short, I am at about 900" and got back "your
-       * 3000-unit target is now 900". Both figures are hers, so nothing else here objects, and a
-       * target quietly rewritten down to match progress means nothing is ever behind.
-       *
-       * Asked again, once, with both numbers named. See where-you-are-is-not-what-you-aim-at.
-       */
-      const standingNow = saysWhereItStands(message ?? '') ? theNumbersIn(message ?? '') : [];
-      const theirOwnTarget = standingNow.length
-        ? await (this.prisma.groundObjective?.findFirst?.({
-            where: { groundId: checkIn.groundId, ownerParticipantId: checkIn.participantId },
-            select: { target: true },
-          }) ?? Promise.resolve(null)).catch(() => null)
-        : null;
-      const target = typeof theirOwnTarget?.target === 'number' ? theirOwnTarget.target : null;
-      const standsAt = standingNow.length ? Math.max(...standingNow) : null;
-      const movedIt = movedTheirTargetToWhereTheyAre(screened.text, standsAt, target);
-      if (movedIt && standsAt != null && target != null) {
-        this.logger.warn(`Check-in ${checkIn.id}: the reply moved a target to where they stand; asking again.`);
+        /*
+         * AND SAY SO WHENEVER A LONG ONE SHIPS, NOT ONLY WHEN THE GUARD TRIPS.
+         *
+         * A hundred and twenty seven word reply reached somebody and the log could not say which of
+         * two things had happened: the guard never fired because a close marker had lifted the bar,
+         * or it fired twice and the second try was no better. Different faults, different fixes, and
+         * no way to tell them apart afterwards. One line, at the point of shipping, so the next one
+         * answers that question by itself.
+         */
+        /*
+         * AND IT DOES NOT MOVE THEIR TARGET TO WHERE THEY ARE STANDING.
+         *
+         * Read in a browser: she said "my 3000 is short, I am at about 900" and got back "your
+         * 3000-unit target is now 900". Both figures are hers, so nothing else here objects, and a
+         * target quietly rewritten down to match progress means nothing is ever behind.
+         *
+         * Asked again, once, with both numbers named. See where-you-are-is-not-what-you-aim-at.
+         */
+        const standingNow = saysWhereItStands(message ?? '') ? theNumbersIn(message ?? '') : [];
+        const theirOwnTarget = standingNow.length
+          ? await (this.prisma.groundObjective?.findFirst?.({
+              where: { groundId: checkIn.groundId, ownerParticipantId: checkIn.participantId },
+              select: { target: true },
+            }) ?? Promise.resolve(null)).catch(() => null)
+          : null;
+        const target = typeof theirOwnTarget?.target === 'number' ? theirOwnTarget.target : null;
+        const standsAt = standingNow.length ? Math.max(...standingNow) : null;
+        const movedIt = movedTheirTargetToWhereTheyAre(screened.text, standsAt, target);
+        if (movedIt && standsAt != null && target != null) {
+          this.logger.warn(`Check-in ${checkIn.id}: the reply moved a target to where they stand; asking again.`);
+          const again = await ask(A_STANDING_IS_NOT_A_TARGET(standsAt, target));
+          const second = again.trim()
+            ? screen(withoutQuotesTheyDidNotSay(forHumans(again), theirWords), known, readerName, conversationSoFar)
+            : null;
+          if (second?.text && !second.hits.length && !movedTheirTargetToWhereTheyAre(second.text, standsAt, target)) {
+            screened = second;
+            this.logger.log(`Check-in ${checkIn.id}: the second try left the target where it was.`);
+          } else {
+            this.logger.warn(`Check-in ${checkIn.id}: the second try moved it too; the first stands.`);
+          }
+        }
+        return screened;
+      };
+      const failedInstructions: string[] = [];
+      const firstReply = await theChecks(screened, async (instruction) => { if (!this.theLeanVersionDropsIt(instruction)) failedInstructions.push(instruction); return ''; });
+      screened = firstReply;
+      if (failedInstructions.length) {
+        this.logger.warn(`Check-in ${checkIn.id}: ${failedInstructions.length} check(s) failed on the reply; asking again once with all of them.`);
         const again = await this.anthropic
-          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${A_STANDING_IS_NOT_A_TARGET(standsAt, target)}`), history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${failedInstructions.join('\n\n')}`), history)
           .catch(() => '');
-        const second = again.trim()
-          ? screen(withoutQuotesTheyDidNotSay(forHumans(again), theirWords), known, readerName, conversationSoFar)
+        const second = again.trim() ? screen(withoutQuotesTheyDidNotSay(forHumans(again), theirWords), known, readerName, conversationSoFar) : null;
+        let stillFails = false;
+        const secondReply = second?.text && !second.hits.length && !isADeadEnd(second.text, closingNow) && !failedInstructions.some((i) => repeatsTheInstruction(second.text, i))
+          ? await theChecks(second, async () => { stillFails = true; return ''; })
           : null;
-        if (second?.text && !second.hits.length && !movedTheirTargetToWhereTheyAre(second.text, standsAt, target)) {
-          screened = second;
-          this.logger.log(`Check-in ${checkIn.id}: the second try left the target where it was.`);
+        if (secondReply && !stillFails) {
+          screened = secondReply;
+          this.logger.log(`Check-in ${checkIn.id}: the second try passed every check.`);
         } else {
-          this.logger.warn(`Check-in ${checkIn.id}: the second try moved it too; the first stands.`);
+          this.logger.warn(`Check-in ${checkIn.id}: the second try failed a check too; the first stands.`);
         }
       }
+      const thisIsTheClosingTurn = closingNow && !stillAsking(screened.text);
 
       /*
        * AND IT DOES NOT TELL THEM THEY PROMISED SOMETHING THEY NEVER MENTIONED.
@@ -4255,9 +4254,12 @@ export class ConversationService {
     const base = this.promptForThisTurn.get(checkInId) ?? '';
     const added = (base && system.startsWith(base) ? system.slice(base.length) : system).trim();
     if (added) this.retryInstructionsForThisTurn.set(checkInId, [...(this.retryInstructionsForThisTurn.get(checkInId) ?? []), added]);
-    /* THE LEAN CONVERSATION (replays on this computer only): no second try for style; the four that guard a hard limit stay. See the-lean-conversation.ts. */
-    if (leanIsOnForThisProcess() && !aSecondTryTheLeanVersionKeeps(added, [HERS_TO_DRAW, IT_NAMED_THE_UNTOLD_NUMBER, SAY_THE_DATE('', ''), A_STANDING_IS_NOT_A_TARGET(0, 0)])) return NO_SECOND_TRY;
+    if (this.theLeanVersionDropsIt(added)) return NO_SECOND_TRY;
     return system;
+  }
+  /* THE LEAN CONVERSATION (replays on this computer only): no second try for style; the four that guard a hard limit stay. See the-lean-conversation.ts. */
+  private theLeanVersionDropsIt(instruction: string): boolean {
+    return leanIsOnForThisProcess() && !aSecondTryTheLeanVersionKeeps(instruction, [HERS_TO_DRAW, IT_NAMED_THE_UNTOLD_NUMBER, SAY_THE_DATE('', ''), A_STANDING_IS_NOT_A_TARGET(0, 0)]);
   }
   private _retryInstructionsForThisTurn?: Map<string, string[]>;
   private get retryInstructionsForThisTurn(): Map<string, string[]> {
