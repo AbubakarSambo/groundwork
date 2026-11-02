@@ -38,13 +38,17 @@ describe('run 3: only people who joined are counted, and a silent close is not a
     expect(text).not.toContain('Amina');
   });
 
-  it('the "what is new" count: Jared not answered, Amina not counted', async () => {
+  /* Changed on wip/plan: this count now reads the one count (this-sessions-count.ts), and wip/assessment's one count counts somebody
+     invited and not joined (Hafsah, 1 November 2026), so Amina is counted, and said once, as not joined, not as somebody who has not
+     checked in. */
+  it('the "what is new" count: Jared not answered, Amina counted and said as not joined', async () => {
     const rows = [...sessions, { participantId: 'amina', sessionNumber: 7, status: 'NOT_STARTED', closedReason: null, turns: [] }]
       .map((s) => ({ ...s, participant: people.find((p) => p.id === s.participantId) }));
     const prisma: any = { user: users, emailVerificationToken: { findMany: async () => [] }, checkIn: { findMany: async ({ where }: any) => (where?.participant ? [] : rows) } };
     const open: any = await theOpenSession(prisma, 'g1', 'u-esther');
-    expect(open.ofHowMany).toBe(3);
+    expect(open.ofHowMany).toBe(4);
     expect(open.answered).toBe(2);
     expect(open.notYet).toEqual(['Jared']);
+    expect(open.notJoinedSays).toBe('One of them was invited and has not joined yet.');
   });
 });

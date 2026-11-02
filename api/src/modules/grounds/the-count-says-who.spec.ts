@@ -72,7 +72,8 @@ describe('right after the save, who was invited, by name', () => {
       { participants: [lead, ...invited], checkIns: rows, scenario: 'NEW_PROJECT', cadence: 'WEEKLY', runsUntilEnded: true },
       { now: new Date('2026-11-01T12:00:00Z'), names: { readerUserId: 'u-akinyi' } },
     );
-    expect(count.says).toContain('Kwame, Fatuma, David and Grace were invited and have not joined yet.');
-    expect(count.says).not.toContain('You have checked in.');
+    /* Changed on wip/plan: the four invited are counted now (wip/assessment's one count, Hafsah, 1 November 2026), so the count is
+       "one of the five", and the lead is said once, as "you", among the people it names; the four are said once, as not joined. */
+    expect(count.says).toBe('One of the five people has checked in for session 1. You have checked in. Kwame, Fatuma, David and Grace were invited and have not joined yet.');
   });
 });

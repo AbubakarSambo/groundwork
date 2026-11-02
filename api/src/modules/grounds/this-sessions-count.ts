@@ -9,8 +9,6 @@ import { whoHasAnswered } from '../reports/how-many-have-answered';
 import { awayUntilOn, type Stretch } from '../suites/who-is-away';
 import { nameToCall, SOMEONE } from '../engagement/a-name-to-call-them';
 import { theNotJoinedYetLine } from './invited-not-joined-yet';
-import { whoIsNotCountedYet } from './what-a-manager-needs-at-a-glance';
-import { isHeldAtTheDoor } from './who-an-admin-did-not-let-in';
 import { andList } from '../reports/each-wait-under-whoever-holds-it';
 
 /**
@@ -124,7 +122,8 @@ export function whoSaid(people: any[], rows: any[], session: number, counted: st
   const done = counted.filter((id) => !waiting.has(id)).map(nameOf).sort((a, b) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
   const started = notAnswered.filter(startedIt).map(nameOf);
   /* Somebody invited and not joined is counted (Hafsah, 1 November) and said as what happened, never "has not started". */
-  const notJoined = notAnswered.filter((id) => !startedIt(id) && byId.get(id)?.notJoinedYet === true).map(nameOf);
+  /* Somebody with no name is counted in the sentence ("1 other person"), never called "Someone" (theNotJoinedYetLine). */
+  const notJoined = notAnswered.filter((id) => !startedIt(id) && byId.get(id)?.notJoinedYet === true).map(nameOf).map((n) => (n === SOMEONE ? null : n));
   const notStarted = notAnswered.filter((id) => !startedIt(id) && byId.get(id)?.notJoinedYet !== true).map(nameOf);
   const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
   const one = (xs: string[]) => xs.length === 1 && xs[0] !== 'you';
@@ -132,7 +131,8 @@ export function whoSaid(people: any[], rows: any[], session: number, counted: st
   if (done.length) out.push(`${cap(andList(done))} ${one(done) ? 'has' : 'have'} checked in.`);
   if (started.length) out.push(`${cap(andList(started))} ${one(started) ? 'has' : 'have'} started and not finished yet.`);
   if (notStarted.length) out.push(`${cap(andList(notStarted))} ${one(notStarted) ? 'has' : 'have'} not started yet.`);
-  if (notJoined.length) out.push(`${cap(andList(notJoined))} ${notJoined.length === 1 ? 'was' : 'were'} invited and ${notJoined.length === 1 ? 'has' : 'have'} not joined yet.`);
+  const notJoinedLine = theNotJoinedYetLine(notJoined);
+  if (notJoinedLine) out.push(notJoinedLine);
   return out.join(' ');
 }
 
@@ -159,15 +159,11 @@ export function theSessionAndItsCount(
     round: clock.currentSession,
   }, now).glance.progress;
   /*
-   * AND WHO WAS INVITED, BY NAME, WHERE NAMES ARE ASKED FOR (round 7, the law firm lead: after the save she did not know her four had
-   * been invited, invited them again on People and pressed resend; the page said "Four more were invited and have not joined yet").
-   * The same people the count leaves out, said by name: "Kwame, Fatuma, David and Grace were invited and have not joined yet."
+   * WHO WAS INVITED, BY NAME, WHERE NAMES ARE ASKED FOR (round 7, the law firm lead: after the save she did not know her four had been
+   * invited). They are counted now (Hafsah, 1 November), so whoSaid names them among everybody counted: "Kwame, Fatuma, David and
+   * Grace were invited and have not joined yet." This sentence is only who is truly not counted: not let in yet.
    */
-  /* Somebody with no name is counted in the sentence ("1 other person"), never called "Someone"; with no names at all, it is said as before. */
-  const notJoinedNames = opts.names ? participants.filter((p) => p.notJoinedYet === true && !isHeldAtTheDoor(p) && !p.managingOnly).map((p) => { const n = nameToCall(p); return n === SOMEONE ? null : n; }) : [];
-  const notCountedSays = notJoinedNames.some(Boolean)
-    ? [whoIsNotCountedYet(progress.notLetIn ?? 0), theNotJoinedYetLine(notJoinedNames)].filter(Boolean).join(' ') || null
-    : progress.notCountedSays ?? null;
+  const notCountedSays = progress.notCountedSays ?? null;
   const one = theCountOfASession(participants, rows, clock.currentSession, g.scenario, opts.leave, now);
   /* With only one person counted, the count already says it of them; their name is not said twice. */
   const whoSays = opts.names && one.ofPeople > 1 ? whoSaid(participants, rows, clock.currentSession, one.counted, one.notAnswered, opts.names.readerUserId) || null : null;

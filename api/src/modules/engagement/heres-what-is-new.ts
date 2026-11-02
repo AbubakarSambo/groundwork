@@ -27,7 +27,7 @@ export const WHATS_NEW_SENDER = 'sendHeresWhatIsNew';
 
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
-export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Who the count leaves out and why, said after it (this-sessions-count.ts). */ notCountedSays?: string | null; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean; /** Set only when another listed check-in has the same name: when this one was started, as the lead reads a date ("3 September"). */ startedOn?: string; groundId?: string; /** Which round the count is about. */ round?: number; /** The one count's own sentence, by name, as the board and the check-in's page say it. */ says?: string }
+export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Who the count leaves out and why, said after it (this-sessions-count.ts). */ notCountedSays?: string | null; /** Who of them was invited and has not joined yet, said after the count: they are counted (Hafsah, 1 November), and said there, not in `notYet`. */ notJoinedSays?: string | null; notJoined?: number; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean; /** Set only when another listed check-in has the same name: when this one was started, as the lead reads a date ("3 September"). */ startedOn?: string; groundId?: string; /** Which round the count is about. */ round?: number; /** The one count's own sentence, by name, as the board and the check-in's page say it. */ says?: string }
 
 /**
  * WHETHER THIS CHECK-IN HAS A SESSION STILL TO COME. The follow-up (a person's own promise, said back to them) is sent for a session that begins after
@@ -50,7 +50,7 @@ const calledBy = (c: AnExistingCheckIn) => (c.startedOn ? `"${c.label}", which y
 /** One check-in, in one sentence, from the count alone. */
 export function whereOneStands(c: AnExistingCheckIn): string {
   const line = whereTheCountStands(c);
-  return c.notCountedSays ? `${line} ${c.notCountedSays}` : line;
+  return [line, c.notJoinedSays, c.notCountedSays].filter(Boolean).join(' ');
 }
 
 function whereTheCountStands(c: AnExistingCheckIn): string {
@@ -60,8 +60,8 @@ function whereTheCountStands(c: AnExistingCheckIn): string {
   if (c.answered <= 0) return `${In}, nobody has checked in${forIt} yet, out of ${people(c.ofHowMany)}.`;
   if (c.answered >= c.ofHowMany) return `${In}, ${c.ofHowMany === 1 ? 'the one person who can answer has' : c.ofHowMany === 2 ? 'both people have' : `all ${aNumberInWords(c.ofHowMany)} people have`} checked in${forIt}.`;
   const named = c.notYet.slice(0, 3);
-  const others = c.ofHowMany - c.answered - named.length;
-  const who = named.length ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumberInWords(others)} others`] : named)} ${c.ofHowMany - c.answered === 1 && !named.includes('you') ? 'has' : 'have'} not yet` : '';
+  const others = c.ofHowMany - c.answered - named.length - (c.notJoined ?? 0);
+  const who = named.length ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumberInWords(others)} others`] : named)} ${named.length + Math.max(others, 0) === 1 && !named.includes('you') ? 'has' : 'have'} not yet` : '';
   return `${In}, ${aNumberInWords(c.answered)} of ${aNumberInWords(c.ofHowMany)} people ${c.answered === 1 ? 'has' : 'have'} checked in${forIt}${who}.`;
 }
 
@@ -134,7 +134,8 @@ export async function theOpenSession(prisma: any, groundId: string, leadUserId: 
   );
   if (!count.ofPeople) return null;
   const byId = new Map(people.map((p: any) => [p.id, p]));
-  const counted = [...count.notAnswered];
+  /* Who has not joined yet is said by the count's own sentence (notJoinedSays), so each person is said once. */
+  const counted = count.notAnswered.filter((id) => byId.get(id)?.notJoinedYet !== true);
   /* A check-in where only the lead is in it has nothing to say about anybody else (decision 109 review). */
   if (!people.some((p: any) => p.userId !== leadUserId && !p.notJoinedYet && !p.notLetIn)) return null;
   const notYet = counted
@@ -142,7 +143,7 @@ export async function theOpenSession(prisma: any, groundId: string, leadUserId: 
     .map((p: any) => (p?.userId === leadUserId ? 'you' : nameToCall(p)))
     .filter(aNameToList)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
-  return { label: '', ofHowMany: count.ofPeople, answered: count.answered, notYet, round: count.session, notCountedSays: count.notCountedSays, says: count.says };
+  return { label: '', ofHowMany: count.ofPeople, answered: count.answered, notYet, round: count.session, notJoinedSays: count.notJoinedSays, notJoined: count.notAnswered.length - counted.length, notCountedSays: count.notCountedSays, says: count.says };
 }
 
 /** The sweep. Returns how many were tried; the sender decides whether each may go. */

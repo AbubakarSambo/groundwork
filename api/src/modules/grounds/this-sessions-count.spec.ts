@@ -45,11 +45,13 @@ function aPrismaFor() {
 describe('one session, one count, whoever reads it', () => {
   const { clock, count } = theSessionAndItsCount({ participants: MARKED, checkIns: ROWS, ...GROUND }, { now: NOW });
 
-  it('is the session the clock names, counted without the person who has not joined, who is said beside it', () => {
+  /* Changed on wip/plan: the person who has not joined is counted now, named as not joined (wip/assessment's one count, Hafsah,
+     1 November 2026: "everybody on the check-in is counted"), so the five who joined and the one invited make six. */
+  it('is the session the clock names, counting the person who has not joined, who is said beside it', () => {
     expect(clock.currentSession).toBe(1);
-    expect(count).toMatchObject({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false });
-    expect(count.waitingOn.sort()).toEqual(['adwoa', 'kofi']);
-    expect(count.says).toBe('Three of the five people have checked in for session 1. One of them was invited and has not joined yet.');
+    expect(count).toMatchObject({ session: 1, answered: 3, ofPeople: 6, everyoneIn: false });
+    expect(count.waitingOn.sort()).toEqual(['adwoa', 'kofi', 'yaw']);
+    expect(count.says).toBe('Three of the six people have checked in for session 1. One of them was invited and has not joined yet.');
   });
 
   it('the board reads the same numbers for the same session', () => {
@@ -61,7 +63,7 @@ describe('one session, one count, whoever reads it', () => {
     const asked = await theOpenSession(aPrismaFor(), 'g', 'u-akua');
     expect(asked).toMatchObject({ answered: count.answered, ofHowMany: count.ofPeople, round: count.session, notCountedSays: count.notCountedSays });
     const said = whereOneStands({ ...asked!, label: 'Farmer Training' });
-    expect(said).toContain('three of five people have checked in');
+    expect(said).toContain('three of six people have checked in');
     expect(said).toContain('One of them was invited and has not joined yet.');
     expect(said).not.toMatch(/all three people/);
   });
