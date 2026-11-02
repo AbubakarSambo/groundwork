@@ -48,13 +48,12 @@ import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Page } from '@/components/gw/ui/Page'
 import { billingApi } from '@/api/billing'
 import { CheckInPeopleAndSetup, sessionsDoneBy } from './CheckInPeopleAndSetup'
-import { theCountOf } from '@/lib/the-one-count'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { SendTheReportToEveryone } from '@/components/gw/SendTheReportToEveryone'
-import { howManyHaveNotAnsweredYet, numberUpToTenInWords } from '@/lib/a-number-up-to-ten-in-words'
+import { howManyHaveNotAnsweredYet, numberUpToTenInWords, andWhoIsNotCountedYet } from '@/lib/a-number-up-to-ten-in-words'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -1304,12 +1303,6 @@ export function GroundAdminPage() {
    */
   const clockRound = ground.sessionClock?.currentSession ?? openRound
   /*
-   * COUNTED AMONG THE PEOPLE IN THE SESSION, THE SAME PEOPLE THE TOTAL COUNTS (release check, 8 October 2026). The anchor's
-   * lead does not check in (her row is managing only), but her set-up conversation is stored as a finished check-in for
-   * session 1. Counted here, her first screen read "One of the zero people has checked in for session 1." A finished
-   * The count is the server's one count (answeredBySession), which counts only the people the session counts.
-   */
-  const clockRoundDone = theCountOf(ground, clockRound)?.answered.length ?? 0
    * WHO IS IN THIS SESSION AND WHO HAS ANSWERED IT, FROM THE SERVER'S ONE COUNT (Hafsah, 30 October 2026, first-experience round 1).
    * This page counted on the screen (`whoIsInRound`) while the board and Ask counted their own way, and a field lead read three
    * different counts of one session. `ground.thisSession` is the board's own count for the clock's session (api this-sessions-count.ts),
@@ -1731,7 +1724,7 @@ export function GroundAdminPage() {
                (final walk): "1 of the 3 have not answered yet." is now said in words, with the
                right verb for one person left over - "One of the three has not answered yet." */
             /* And who, by name, from the same served count (round 6: "Two of the three have not answered yet" named nobody). */
-            : a.kind === 'waiting' ? { t: [howManyHaveNotAnsweredYet(a.total - a.done, a.total), (thisSession as any)?.whoSays, a.notCountedSays].filter(Boolean).join(' ') }
+            : a.kind === 'waiting' ? { t: [howManyHaveNotAnsweredYet(a.total - a.done, a.total), (thisSession as any)?.whoSays, andWhoIsNotCountedYet(a.notLetIn).trim()].filter(Boolean).join(' ') }
             : null
           return say ? <Note tone={say.tone}>{say.t}</Note> : null
         })()}
