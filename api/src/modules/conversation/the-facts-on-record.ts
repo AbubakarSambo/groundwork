@@ -44,6 +44,8 @@ export interface AFact {
   proved: boolean;
   /** True where their words were found word for word in what they typed, so a report may quote them. */
   saidWordForWord: boolean;
+  /** True where it was said while setting the check-in up, not in a check-in. */
+  inSetup: boolean;
 }
 
 /* What judges a person: read only by the lead, and only while the switch is on. */
@@ -95,6 +97,7 @@ function everyItemWithItsSection(a: TheAssessment): { section: string; item: AnI
 /** The facts in one assessment that this reader may read. Pure, so every page reads them the same way. */
 export function theFactsIn(a: TheAssessment, reader: TheReader): AFact[] {
   const seen = new Set<string>();
+  const inSetup = new Set((a.messages ?? []).filter((m) => m.where === 'setup').map((m) => m.n));
   const out: AFact[] = [];
   for (const { section, item } of everyItemWithItsSection(a)) {
     if (NOT_A_FACT.has(section)) continue;
@@ -112,6 +115,7 @@ export function theFactsIn(a: TheAssessment, reader: TheReader): AFact[] {
       isTheLead: a.about.isTheLead, sessionNumber: a.about.sessionNumber, on: a.about.endedAt, section, words, detail,
       proved: item.proof === 'proved',
       saidWordForWord: !corrected && item.saidWordForWord === true,
+      inSetup: (item.from ?? []).length > 0 && (item.from ?? []).every((n) => inSetup.has(n)),
     });
   }
   return out;
@@ -141,8 +145,13 @@ export async function theFactsOnRecord(
   });
 }
 
-/** A fact as one line of material for a model to read: the day, the kind of thing, how it is known, their words and the detail. */
-export function aFactAsALine(f: AFact, day: (d: Date) => string): string {
+/**
+ * A fact as one line of material for a model to read: the day, who said it and where, the kind of thing, how it is known, their words
+ * and the detail. Who said it is on every line (assessment test, 2 November: Ruth was told "you said you had spent most of last week
+ * building a dashboard", which Sarah said, because the line carried no name and only the heading above it did). `who` is the name, or
+ * "you" for the person reading.
+ */
+export function aFactAsALine(f: AFact, day: (d: Date) => string, who: string = f.who): string {
   const kind = f.section.replace(/^setup\./, 'setup, ').replace(/^compared\./, 'since last time, ').replace(/([A-Z])/g, ' $1').toLowerCase();
-  return `- ${f.on ? day(new Date(f.on)) : 'undated'}, ${kind}, ${f.proved ? 'proven' : 'their word'}: ${f.words}${f.detail ? ` (${f.detail})` : ''}`;
+  return `- ${f.on ? day(new Date(f.on)) : 'undated'}, ${who} said${f.inSetup ? ' in setup' : ''}, ${kind}, ${f.proved ? 'proven' : 'their word'}: ${f.words}${f.detail ? ` (${f.detail})` : ''}`;
 }

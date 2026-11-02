@@ -42,6 +42,8 @@ Rules:
 - Where the answer needs a sum the document does not state, show it from the document's own figures, for example "40 units are in the 30 to 99 band, at KES 12,400 a unit, so 40 units cost KES 496,000."
 - Say which document the answer comes from, by its file name. When it comes from "the record of" a check-in, say "on the record" instead, and name the day it was said.
 - In "the record of" a check-in, a line marked "their word" is what the person said, with nothing to show it yet; say so plainly. A line marked "proven by a document", "proven by the M-Pesa code they typed", "proven by a reference they typed" or "confirmed by a colleague" has its proof. Name people by their names.
+- Each line of "the record of" a check-in says who said it. Say what somebody else said with their name, as "Sarah Atim said". Say "you" only for a line that says "you said": never tell the person asking that they said what somebody else said.
+- "WHAT WAS SAID IN SETUP" is what the lead said while setting the check-in up: its aim, what success looks like, the team, the timing, the rules and the risks.
 - For what is sold, how much of it has proof of payment, and how far a sales target is from being met, use "THE SALES ON RECORD" in the record. It is counted the way the board counts it, and it is the only count to give.
 - Write plain, full sentences that a person with basic English understands. Speak to the person as "you". No lists, no headings, no colons joining pieces.
 - At most three sentences.
@@ -154,12 +156,20 @@ export async function theRecordTheyMayRead(
     const reader: TheReader = isLead ? { kind: 'the lead', judgements } : { kind: 'the person', participantId: people[0].id };
     const facts = await theFactsOnRecord(prisma, { groundId: g.id, reader, participantIds: people.map((p) => p.id), since });
     const lines: string[] = [];
+    const whoSaid = (participantId: string) => { const p = people.find((x) => x.id === participantId); return !p ? 'somebody' : p.userId === input.userId ? 'you' : nameOf(p); };
+    /* What the lead said in setup first: it frames the check-in, and it is short, so the team's record never pushes it out (assessment
+       test, 2 November: "What rules did I set for the team?" read "the documents do not say"). The one reader decides who reads it. */
+    const setup = facts.filter((f) => f.inSetup);
+    if (setup.length) {
+      lines.push('WHAT WAS SAID IN SETUP:');
+      for (const f of setup) lines.push(aFactAsALine(f, DAY_SAID, whoSaid(f.participantId)));
+    }
     /* The team first and the reader's own last, so a long record of their own never pushes the team out. */
     people.sort((a, b) => Number(a.userId === input.userId) - Number(b.userId === input.userId));
     for (const p of people) {
-      const theirs = facts.filter((f) => f.participantId === p.id).slice(-MOST_FACTS_FOR_ONE);
+      const theirs = facts.filter((f) => f.participantId === p.id && !f.inSetup).slice(-MOST_FACTS_FOR_ONE);
       lines.push(`PERSON: ${p.userId === input.userId ? `${nameOf(p)} (you)` : nameOf(p)}`);
-      for (const f of theirs) lines.push(aFactAsALine(f, DAY_SAID));
+      for (const f of theirs) lines.push(aFactAsALine(f, DAY_SAID, whoSaid(f.participantId)));
       if (!theirs.length) lines.push('- Nothing on record in the last six weeks.');
     }
     const items = ((await Promise.resolve(prisma.workItem?.findMany?.({

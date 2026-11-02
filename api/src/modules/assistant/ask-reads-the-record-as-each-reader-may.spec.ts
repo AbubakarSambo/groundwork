@@ -11,8 +11,9 @@ const NOW = new Date('2026-10-19T09:00:00+03:00');
 const people = [
   { id: 'p-kevin', groundId: 'g', userId: 'u-kevin', email: 'kevin@x.test', nameGiven: null },
   { id: 'p-joseph', groundId: 'g', userId: 'u-joseph', email: 'joseph@x.test', nameGiven: null },
+  { id: 'p-grace', groundId: 'g', userId: 'u-grace', email: 'grace@x.test', nameGiven: null },
 ];
-const users = [{ id: 'u-kevin', firstName: 'Kevin', lastName: 'Omondi' }, { id: 'u-joseph', firstName: 'Joseph', lastName: 'Kariuki' }];
+const users = [{ id: 'u-kevin', firstName: 'Kevin', lastName: 'Omondi' }, { id: 'u-joseph', firstName: 'Joseph', lastName: 'Kariuki' }, { id: 'u-grace', firstName: 'Grace', lastName: 'Wambui' }];
 const item = (words: string, extra: Record<string, unknown> = {}, whoMaySee = 'the people in this check-in') => ({ id: words.slice(0, 8), words, from: [1], whoMaySee, saidWordForWord: true, ...extra });
 const anAssessment = (participantId: string, who: string, endedAt: string, parts: Record<string, unknown>) => ({
   kind: 'assessment', version: 1,
@@ -26,6 +27,16 @@ const checkIns = [
   }) },
   { participantId: 'p-joseph', completedAt: new Date('2026-10-13T11:00:00Z'), sessionReport: anAssessment('p-joseph', 'Joseph Kariuki', '2026-10-13T11:00:00Z', {
     claims: [item('Mama Pima is a done deal, 15 units.', { proof: 'said' })],
+  }) },
+  /* Grace's setup: her words are message 1, said in setup; her first check-in's are message 2. */
+  { participantId: 'p-grace', completedAt: new Date('2026-10-05T08:00:00Z'), sessionReport: anAssessment('p-grace', 'Grace Wambui', '2026-10-05T08:00:00Z', {
+    messages: [{ n: 1, turnId: null, where: 'setup', at: null }, { n: 2, turnId: 't2', where: 'check-in', at: null }],
+    setup: {
+      objective: [item('Sell 120 water filters to offices by 15 December.')], success: [], team: [], timing: [], risks: [],
+      rules: [item('A sale counts only when it is paid.')],
+      privateNotes: [item('Kevin oversells, check his proof.', {}, 'the lead only')],
+    },
+    workUpdates: [{ ...item('I met the Bidco buyer myself.'), from: [2] }],
   }) },
 ];
 function aPrisma(judgementsOn = true): any {
@@ -48,15 +59,35 @@ describe('Ask reads the record as each reader may', () => {
     const [doc] = await theRecordTheyMayRead(aPrisma(), { organizationId: 'o', userId: 'u-grace' }, NOW);
     expect(doc.fileName).toBe('the record of Sales team, Q4');
     expect(doc.content).toContain('PERSON: Kevin Omondi');
-    expect(doc.content).toContain('Monday 12 October, claims, proven: Kilele Hotel paid for 40 units. (proof the M-Pesa message)');
-    expect(doc.content).toContain('Tuesday 13 October, claims, their word: Mama Pima is a done deal, 15 units.');
+    expect(doc.content).toContain('Monday 12 October, Kevin Omondi said, claims, proven: Kilele Hotel paid for 40 units. (proof the M-Pesa message)');
+    expect(doc.content).toContain('Tuesday 13 October, Joseph Kariuki said, claims, their word: Mama Pima is a done deal, 15 units.');
     expect(doc.content).toContain("- Kilele Hotel, Kevin Omondi's. Units 40. Proof on file: a payment.");
     expect(doc.content).toContain("- Mama Pima, Joseph Kariuki's. Units 15. No proof on file.");
   });
-  it('Kevin reads only his own, never Joseph\'s', async () => {
+  it('Kevin reads only his own, never Joseph\'s, and his own lines say "you said"', async () => {
     const [doc] = await theRecordTheyMayRead(aPrisma(), { organizationId: 'o', userId: 'u-kevin' }, NOW);
     expect(doc.content).toContain('PERSON: Kevin Omondi (you)');
+    expect(doc.content).toContain('Monday 12 October, you said, claims, proven: Kilele Hotel paid for 40 units.');
     expect(doc.content).not.toMatch(/Joseph|Mama Pima/);
+  });
+  /* Assessment test, 2 November: Ruth was told "you said you had spent most of last week building a dashboard", which Sarah said. */
+  it('Grace never reads a member\'s words as her own: every line names who said it, and only her own say "you said"', async () => {
+    const [doc] = await theRecordTheyMayRead(aPrisma(), { organizationId: 'o', userId: 'u-grace' }, NOW);
+    const lines = doc.content.split('\n').filter((l) => l.startsWith('- ') && / said/.test(l));
+    expect(lines.filter((l) => / you said/.test(l))).toEqual(lines.filter((l) => /I met the Bidco buyer|120 water filters|paid\.$|check his proof/.test(l)));
+    expect(doc.content).not.toMatch(/you said[^\n]*(Kilele|Mama Pima)/);
+  });
+  it('Grace reads what she said in setup first, her private note included, and no member ever reads it', async () => {
+    const [grace] = await theRecordTheyMayRead(aPrisma(), { organizationId: 'o', userId: 'u-grace' }, NOW);
+    const setup = grace.content.slice(grace.content.indexOf('WHAT WAS SAID IN SETUP:'), grace.content.indexOf('PERSON:'));
+    expect(setup).toContain('Monday 5 October, you said in setup, setup, objective, their word: Sell 120 water filters to offices by 15 December.');
+    expect(setup).toContain('you said in setup, setup, rules, their word: A sale counts only when it is paid.');
+    expect(setup).toContain('Kevin oversells, check his proof.');
+    expect(setup).not.toContain('I met the Bidco buyer myself.');
+    for (const member of ['u-kevin', 'u-joseph']) {
+      const [doc] = await theRecordTheyMayRead(aPrisma(), { organizationId: 'o', userId: member }, NOW);
+      expect(doc.content).not.toMatch(/SET ?UP|water filters|counts only when|oversells/i);
+    }
   });
   it('Kevin never reads what was noted about him for the lead', async () => {
     const [doc] = await theRecordTheyMayRead(aPrisma(), { organizationId: 'o', userId: 'u-kevin' }, NOW);
