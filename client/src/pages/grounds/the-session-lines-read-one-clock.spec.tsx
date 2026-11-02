@@ -4,6 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GroundAdminPage } from './GroundAdminPage'
 import { groundsApi } from '@/api/grounds'
+import { aServedCount } from '@/lib/a-served-count-for-a-spec'
 
 /**
  * ONE CLOCK FOR THE SESSION ON THE CHECK-IN'S PAGE (Hafsah, 30 October 2026, first-experience round 1). A clinic lead read
@@ -110,8 +111,11 @@ describe('People and setup, on the session the header names', () => {
  * count differently on purpose (only the lead has a row), and the page still says the served count.
  */
 function served(thisSession: any, extra: any = {}) {
+  /* The per-session count the page's waiting line reads, served from the same one count as `thisSession` (wip/assessment's answeredBySession). */
+  const on = Array.from({ length: thisSession.ofPeople }, (_, i) => (i === 0 ? 'p-lead' : `p-${i}`))
   return { ...sessionTwo(), label: 'Field officers', sessionClock: { currentSession: 1, plannedSessions: 12, says: 'Session 1 of 12.', whileOpen: null },
-    checkIns: [{ id: 'c1', sessionNumber: 1, status: 'COMPLETED', participantId: 'p-lead', completedAt: '2027-02-08' }], roundCompletions: [], thisSession, ...extra }
+    checkIns: [{ id: 'c1', sessionNumber: 1, status: 'COMPLETED', participantId: 'p-lead', completedAt: '2027-02-08' }], roundCompletions: [], thisSession,
+    answeredBySession: aServedCount({ 1: { on, answered: on.slice(0, thisSession.answered) } }), ...extra }
 }
 async function headerOf(g: any) {
   ;(groundsApi.get as any).mockResolvedValue(g)
@@ -130,7 +134,7 @@ async function headerOf(g: any) {
 describe('the check-in page says the server\'s one count', () => {
   it('says the served sentence, with who it leaves out, and no count of its own', async () => {
     const says = 'Three of the five people have checked in for session 1. One of them was invited and has not joined yet.'
-    const text = await headerOf(served({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false, notCountedSays: 'One of them was invited and has not joined yet.', says }))
+    const text = await headerOf(served({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false, notCountedSays: null, notJoinedSays: 'One of them was invited and has not joined yet.', says }))
     /* The lead has answered, so the line at the top says it once (B-148), from the same count: two of the five still out. */
     expect(text).toContain('Two of the five have not answered yet. One of them was invited and has not joined yet.')
     expect(text).not.toContain(says)

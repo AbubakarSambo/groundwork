@@ -108,7 +108,9 @@ export function buildSessionRows(
       closed,
       shared: isSessionShared(report, n),
       /* The reader is "you", never their own name (the wording rule); everybody else as labelled. */
-      waitingOn: onIt.filter((id) => !answeredIds.has(id) && byId.has(id)).map((id) => byId.get(id)).map((p) => (p.userId && p.userId === userId ? 'you' : labelInASentence(p))),
+      /* Somebody invited and not joined is counted, and said as not joined where the count's sentence is said, never as somebody who has
+         not checked in (first experience, round 3: Fatuma and James, who never joined, read as "has not checked in"). */
+      waitingOn: onIt.filter((id) => !answeredIds.has(id) && !(count?.notJoined ?? []).includes(id) && byId.has(id)).map((id) => byId.get(id)).map((p) => (p.userId && p.userId === userId ? 'you' : labelInASentence(p))),
       /* WHEN THIS SESSION REALLY OPENED, for the row's "Wed, 23 Sept" (U.9).
        *
        * Board review, 1 October, item 3: this used to read `availableFrom` first - the day the

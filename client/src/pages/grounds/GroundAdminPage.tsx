@@ -1724,7 +1724,7 @@ export function GroundAdminPage() {
                (final walk): "1 of the 3 have not answered yet." is now said in words, with the
                right verb for one person left over - "One of the three has not answered yet." */
             /* And who, by name, from the same served count (round 6: "Two of the three have not answered yet" named nobody). */
-            : a.kind === 'waiting' ? { t: [howManyHaveNotAnsweredYet(a.total - a.done, a.total), (thisSession as any)?.whoSays, andWhoIsNotCountedYet(a.notLetIn).trim()].filter(Boolean).join(' ') }
+            : a.kind === 'waiting' ? { t: [howManyHaveNotAnsweredYet(a.total - a.done, a.total), (thisSession as any)?.whoSays ?? (thisSession as any)?.notJoinedSays, andWhoIsNotCountedYet(a.notLetIn).trim()].filter(Boolean).join(' ') }
             : null
           return say ? <Note tone={say.tone}>{say.t}</Note> : null
         })()}
