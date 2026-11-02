@@ -1746,37 +1746,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
     if (!result) throw new Error('Report synthesis failed to return structured output');
     this.logger?.log?.(`Ground ${groundId}: the first draft holds ${whatADraftHolds(result)}.`);
 
-    // WORD COUNT VALIDATION: if the combined text fields exceed 500 words, make
-    // one additional call asking for a shorter version. Max 2 total attempts.
-    const wordCount = Object.values(result).join(' ').split(/\s+/).filter(Boolean).length;
-    if (wordCount > 500) {
-      const brevityPrefix =
-        'The previous report was too long. Regenerate under 500 words total. Preserve all four sections and the central question. Cut explanatory language, not substance.\n\n';
-      /*
-       * A LENGTH PASS MAY NOT LOSE A REPORT THAT ALREADY SUCCEEDED.
-       *
-       * This call had no catch. The synthesis above had already worked - the substance was in
-       * hand - and a cosmetic ask for a shorter version, made to the same model that had just
-       * answered, could throw and take the whole report with it. The person's session then
-       * reported a failure for a report that existed.
-       *
-       * Long is a blemish. Nothing is a loss. So the retry is best-effort in both directions: an
-       * exception keeps the long version, and so does a retry that comes back empty.
-       */
-      const retry = await this.anthropic
-        .extract<SynthesisResult>(systemPrompt, [{ role: 'user', content: brevityPrefix + whatItReads }], activeSchema)
-        .catch((err: any) => {
-          this.logger?.warn?.(`The shorter-version pass failed; keeping the long report. ${err?.message ?? err}`);
-          return null;
-        });
-      /* Shorter, never with fewer findings. See a-second-ask-keeps-what-the-first-found. */
-      if (retry) {
-        const kept = keepWhatTheFirstFound(result, retry);
-        if (kept.putBack.length) this.logger?.warn?.(`Ground ${groundId}: the shorter version lost ${kept.putBack.join(', ')}; put back from the first draft.`);
-        result = kept.report;
-      }
-    }
-
     /*
      * TWO RULES THAT WERE ONLY EVER LOGGED, NOW ASKED FOR AGAIN.
      *
@@ -1854,8 +1823,15 @@ Close the report by framing - neutrally, without recommending one - the choice n
     /* Their words, as they were recorded, for the lift check over EVERY field - see said-in-its-own-words.ts. */
     const theirWords = records.map((r) => r.text.replace(/^\[VERIFIABILITY:\w+\] /, ''));
 
+    /*
+     * TOO LONG IS ONE MORE FAULT (2 November 2026). Over 500 words used to be its own re-ask before the faults' re-ask, so a long
+     * report with a fault cost two more calls. Now the one re-ask names every fault, length included, and is kept only if it has
+     * fewer, never with fewer findings (a-second-ask-keeps-what-the-first-found).
+     */
     const faultsIn = (r: SynthesisResult) => {
       const faults: string[] = [];
+      const wordCount = Object.values(r).join(' ').split(/\s+/).filter(Boolean).length;
+      if (wordCount > 500) faults.push('it was too long. Write it under 500 words in total. Keep all four sections and the central question. Cut explanatory language, not substance.');
       for (const f of severeFaultsIn(String((r as any).sharedPicture ?? ''))) {
         faults.push(`${f}. Use only numbers and names that are in the records.`);
       }
