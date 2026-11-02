@@ -342,11 +342,10 @@ export class WhatNeedsYouService {
     }
     const onWhatsApp = await this.checkInOnWhatsAppFor(userId, email, organizationId, told.needs);
     if (onWhatsApp) (told as any).checkInOnWhatsApp = onWhatsApp;
-    /* An admin whose organisation is on its free trial reads one line about it (Hafsah, 12 October). */
-    if (role === 'ADMIN') {
-      const trial = await theFreeTrialLine(this.prisma as any, organizationId).catch(() => null);
-      if (trial) (told as any).freeTrial = trial;
-    }
+    /* An admin whose organisation is on its free trial reads one line about it (Hafsah, 12 October). Once the free month has ended,
+       admins and leads read the quiet note about the four weeks and the pause after them (2 November); a team member reads nothing. */
+    const trial = await theFreeTrialLine(this.prisma as any, organizationId, userId, role).catch(() => null);
+    if (trial) (told as any).freeTrial = trial;
     const weekly = this.moduleRef?.get(TheWeeklyReportService, { strict: false });
     const outstanding = await this.outstanding(userId, organizationId, told.needs).catch(() => null);
     const alreadySaid = [
