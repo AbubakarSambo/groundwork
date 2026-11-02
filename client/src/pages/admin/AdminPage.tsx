@@ -9,6 +9,7 @@ import { coachApi, type CoachRequestRow } from '@/api/coach'
 import { feedbackApi } from '@/api/feedback'
 import { formatMonthlyPrice, formatDollars, type SubscriptionPlan } from '@/api/billing'
 import { SectionFailed } from './a-section-that-failed-says-so'
+import { Button } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -820,10 +821,9 @@ export function TrialGraceRow() {
         ))}
       </div>
       {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
-      <button className="gwui-tap-target" type="button" disabled={!changed || save.isPending} onClick={() => save.mutate()}
-        style={{ marginTop: 10, fontSize: 12, fontWeight: 700, padding: '8px 14px', borderRadius: 6, border: 'none', background: changed ? 'var(--gw-navy)' : 'var(--gw-border)', color: 'white', cursor: changed ? 'pointer' : 'default' }}>
-        Save
-      </button>
+      <div style={{ marginTop: 10 }}>
+        <Button disabled={!changed || save.isPending} onClick={() => save.mutate()}>Save</Button>
+      </div>
     </div>
   )
 }

@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BillingPage } from './BillingPage'
-import { toast } from 'sonner'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
@@ -53,7 +52,6 @@ const PLANS = [
   { plan: 'SCALE', amountCents: 165000, memberCap: 500 },
   { plan: 'ENTERPRISE', amountCents: null, memberCap: null },
 ].map((p) => ({ ...p, label: p.plan, hasStripePrice: true, updatedAt: '' }))
-const TRIAL_OFF = { on: false, teamsUnder: 20, months: 3 }
 const TRIAL_ON = { on: true, teamsUnder: 20, months: 3 }
 
 function renderIt() {
