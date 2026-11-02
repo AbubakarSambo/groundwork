@@ -3,7 +3,7 @@ import { theirSignIn, theirRosterEntry } from './a-roster-entry-and-its-sign-in'
 import { readDuties, whoHolds, type Duties } from './who-holds-each-duty';
 import type { AWorkflow } from './the-approval-steps';
 import { coverToday, type Lookups } from './the-lookups';
-import { theThresholdCrossed, type AThreshold } from './the-spending-rules';
+import { theThresholdCrossed, THE_STEPS_BELOW_EVERY_AMOUNT, type AThreshold } from './the-spending-rules';
 
 /**
  * WHO MAY DECIDE A REQUEST, BY RULE: the one approval resolver (decision 85; step 3 of the build list
@@ -20,8 +20,8 @@ import { theThresholdCrossed, type AThreshold } from './the-spending-rules';
  *     requester's team in the staff directory when the request names none (who-holds-each-duty.ts).
  *   - `finance`, `hr`, `chiefExecutive`: whoever holds that duty for the whole organisation.
  *   - `admin`: any admin.
- *   - `{ named }`: one person an admin named on a suite. Only spending's older answer "Who approves
- *     anything above that?" does this; it is kept so nothing already switched on changes.
+ *   - `{ named }`: one person an admin named. Only spending's steps by amount do this, because its
+ *     settings ask "Who approves anything above that?" and name a person (Hafsah's plan of 2 November).
  * A rule that finds nobody gives null, so the next step is tried. A guest, and somebody no longer in the
  * organisation, are passed over. The requester is never returned: nobody decides their own.
  *
@@ -37,12 +37,12 @@ import { theThresholdCrossed, type AThreshold } from './the-spending-rules';
  *   - leave and time sheets: the manager, else an admin (the one answer of 1 October 2026, which does
  *     not read the admin's "Who approves?" answer);
  *   - reviews: "Their manager" is the manager, else an admin; "An admin" is an admin;
- *   - spending up to the limit: the manager, else an admin;
- *   - spending above the limit: the team's budget owner, then finance, then the person the admin
- *     named, then an admin (as b7ff00b4 decided).
- * Thresholds are laid over these: spending by amount (the-spending-rules.ts) and leave by working days
- * (the-leave-rules.ts). Leave takes its length as the third argument; with no length, or no
- * thresholds, its steps are exactly as above.
+ *   - spending: its steps by amount, and nothing else (the-spending-rules.ts). Below the lowest amount,
+ *     the manager, else an admin. The settings card's limit and "Who approves anything above that?"
+ *     are the lowest amount and its step. Finance is never an approver unless a step names it: its
+ *     part (check, note the receipt or quote, record it paid) comes after the last approval.
+ * Leave's thresholds by working days are laid over its steps (the-leave-rules.ts). Leave takes its
+ * length as the third argument; with no length, or no thresholds, its steps are exactly as above.
  */
 
 export type Rule = 'manager' | 'budgetOwner' | 'departmentHead' | 'finance' | 'hr' | 'chiefExecutive' | 'admin';
@@ -192,20 +192,24 @@ export async function whoDecidesNow(prisma: PrismaService, steps: Step[], reques
  * stands for it, and the request moves on. Applied by every suite through this one function, so leave,
  * time sheets and spending all do the same. `passed` is each step passed, with who had approved it
  * (each suite records "Omar had already approved it, so this step was passed."); `done` is true when
- * the last step was passed, so the request is approved. Any admin is never "the same person": another
- * admin may decide.
+ * the last step was passed, so the request is approved. A step is passed when somebody who already
+ * approved may decide it (`decidesIt`), so a step that falls to "an admin" is passed when an admin has
+ * already approved: nobody is asked twice for the same request (the only admin approving twice, use-case
+ * walk of 2 November).
  */
 export interface APassedStep { step: number; userId: string }
 export async function passWhatTheyAlreadyApproved(
   prisma: PrismaService, steps: Step[], request: ARequest, from: WhereItIs, approvedByIds: string[] | null | undefined, shared: Pick<Known, 'lookups' | 'on'> = {},
 ): Promise<{ now: DecidesNow; where: { step: number; escalatedTo: number }; passed: APassedStep[]; done: boolean }> {
-  const already = new Set(approvedByIds ?? []);
+  const already = [...new Set(approvedByIds ?? [])];
+  const roles = new Map<string, string | null>();
+  for (const id of already) roles.set(id, await roleIn(prisma, request.organizationId, id, shared));
   let where = { step: Math.max(0, from.step ?? 0), escalatedTo: Math.max(0, from.escalatedTo ?? 0) };
   const passed: APassedStep[] = [];
   for (let i = 0; i <= (steps.length || 1); i++) {
     const now = await whoDecidesNow(prisma, steps, request, where, shared);
-    const id = now.who.kind === 'admin' ? null : now.who.userId;
-    if (!id || !already.has(id)) return { now, where: { step: now.step, escalatedTo: where.escalatedTo }, passed, done: false };
+    const id = already.find((u) => decidesIt(now.who, { userId: u, role: roles.get(u) ?? null }, request.requesterUserId));
+    if (!id) return { now, where: { step: now.step, escalatedTo: where.escalatedTo }, passed, done: false };
     passed.push({ step: now.step, userId: id });
     if (now.last) return { now, where: { step: now.step, escalatedTo: where.escalatedTo }, passed, done: true };
     where = { step: now.step + 1, escalatedTo: 0 };
@@ -271,50 +275,25 @@ export async function couldBeNamed(prisma: PrismaService, steps: ARule[], organi
  */
 export function theStepsFor(suite: 'leave' | 'time', answers?: { workflow?: AWorkflow | null } | unknown, days?: number): Step[];
 export function theStepsFor(suite: 'reviews', answers: { writer: string | null }): Step[];
-export function theStepsFor(suite: 'spend', answers: { limit: number | null; above: string | null; workflow?: AWorkflow | null; thresholds?: AThreshold[] | null }, amount: number): Step[];
+export function theStepsFor(suite: 'spend', answers: { thresholds?: AThreshold[] | null }, amount: number): Step[];
 export function theStepsFor(suite: 'leave' | 'time' | 'reviews' | 'spend', answers?: any, amount?: number): Step[] {
   if (suite === 'reviews') return [answers?.writer === 'Their manager' ? ['manager', 'admin'] : ['admin']];
+  /* Spending: its steps by amount alone. Above one amount, its steps; above two, the higher one's; below them all, the manager, else an admin. */
+  if (suite === 'spend') return theThresholdCrossed({ thresholds: answers?.thresholds ?? undefined }, Number(amount ?? 0))?.steps ?? THE_STEPS_BELOW_EVERY_AMOUNT;
   const workflow = (answers?.workflow ?? null) as AWorkflow | null;
-  /* The spending rules' thresholds (build step 9): above one, its own steps; above two, the higher one's. None set: as before. */
-  const crossed = suite === 'spend' ? theThresholdCrossed({ thresholds: answers?.thresholds ?? undefined }, Number(amount ?? 0)) : null;
-  if (crossed) return crossed.steps;
   /* Leave by length (the-leave-rules.ts): longer than a threshold of working days, its own steps; longer than two, the higher one's. None set, or no length given: as before. */
   const longer = suite === 'leave' && amount != null ? theThresholdCrossed({ thresholds: answers?.rules?.thresholds ?? answers?.thresholds ?? undefined }, Number(amount)) : null;
   if (longer) return longer.steps;
-  if (suite === 'spend' && answers?.limit != null && Number(amount ?? 0) > answers.limit) {
-    if (workflow?.stepsAbove?.length) return workflow.stepsAbove;
-    return [['budgetOwner', 'finance', ...(answers.above ? [{ named: answers.above as string }] : []), 'admin']];
-  }
   if (workflow?.steps?.length) return workflow.steps;
   return [['manager', 'admin']];
-}
-
-/**
- * THE STEPS A SPENDING REQUEST ACTUALLY GOES THROUGH. `theStepsFor` gives the steps as the admin stored them, which is what a page
- * shows back. When the admin has set steps above the limit AND named a person for spending above it, that person still decides the
- * last step, in front of "an admin", unless the steps already name them (B-004): two answers on one page must not silently disagree.
- */
-export function theStepsADecisionFollows(answers: { limit: number | null; above: string | null; workflow?: AWorkflow | null; thresholds?: AThreshold[] | null }, amount: number): Step[] {
-  const steps = theStepsFor('spend', answers, amount);
-  const stored = answers.workflow?.stepsAbove;
-  if (!stored?.length || steps !== stored) return steps;
-  const named = typeof answers.above === 'string' && answers.above.trim() ? answers.above.trim() : null;
-  const last = stored[stored.length - 1];
-  const alreadyNamed = stored.some((step) => step.some((rule) => typeof rule === 'object' && !!rule && (rule as { named: string }).named === named));
-  return named && !alreadyNamed && last.includes('admin') ? [...stored.slice(0, -1), [{ named }, ...last]] : steps;
 }
 
 /** Every rule in these steps, in order: what a board asks `couldBeNamed`. */
 export const everyRuleIn = (steps: Step[]): ARule[] => steps.flat();
 
 /** Every rule a suite's answers could use, whatever the amount: what a board asks `couldBeNamed`. */
-export function everyStepFor(suite: 'spend', answers: { limit: number | null; above: string | null; workflow?: AWorkflow | null; thresholds?: AThreshold[] | null }): ARule[] {
-  const below = { ...answers, thresholds: null };
-  return [
-    ...everyRuleIn(theStepsFor(suite, below, 0)),
-    ...(answers.limit == null ? [] : everyRuleIn(theStepsADecisionFollows(below, answers.limit + 1))),
-    ...(answers.thresholds ?? []).flatMap((t) => everyRuleIn(t.steps)),
-  ];
+export function everyStepFor(suite: 'spend', answers: { thresholds?: AThreshold[] | null }): ARule[] {
+  return [...everyRuleIn(theStepsFor(suite, {}, 0)), ...(answers.thresholds ?? []).flatMap((t) => everyRuleIn(t.steps))];
 }
 
 // -------------------------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import type { PrismaService } from '../prisma/prisma.service';
-import type { Step } from './who-may-decide';
-import { stepsFrom, stepsSaid, MAX_STEPS } from './the-approval-steps';
+import type { ARule, Step } from './who-may-decide';
+import { stepsFrom, RULE_IN_WORDS, MAX_STEPS } from './the-approval-steps';
 
 /**
  * THE SPENDING RULES AN ADMIN SETS (decision 85, item 2; build step 9 of
@@ -15,9 +15,16 @@ import { stepsFrom, stepsSaid, MAX_STEPS } from './the-approval-steps';
  *     resolver every request uses (who-may-decide.ts). A request above a threshold takes that
  *     threshold's steps; above two, the higher one's.
  *
- * NOTHING CHANGES BY ITSELF. With nothing set, a request has no category and needs no evidence, and
- * its steps are exactly what they were: the manager up to the suite's limit, and above it the steps
- * the admin set or, with none, the budget holder, finance, the person named, then an admin. A rule
+ * THE ONE PLACE THAT SAYS WHO APPROVES A REQUEST TO SPEND (Hafsah's plan of 2 November, step 0). The
+ * steps by amount are the only owner. Below the lowest amount, the person's manager approves, or else
+ * an admin. The settings card's two answers are the lowest amount and its step: "What is the most a
+ * manager may approve on their own?" is that amount, and "Who approves anything above that?" is the
+ * person that step names (`{ named }`). So the card, the board's steps, Ask and the policy board all
+ * read and write the same rows (`theCardsAnswers`, `withTheCardsAnswers`). Finance is never an
+ * approver unless a step says so: whoever looks after finance checks, notes the receipt or quote, and
+ * records it paid after the last approval (the-spending-for-finance.service.ts).
+ *
+ * NOTHING CHANGES BY ITSELF. With nothing set, a request has no category and needs no evidence. A rule
  * about evidence never stops a request: the person is told before they send it, and so is whoever
  * decides it. Only a missing category is asked for, because the request cannot be kept under the
  * rules without it.
@@ -66,7 +73,7 @@ export const SPEND_RULES_REFUSED = {
   sameCategoryTwice: 'Two categories have the same name. Give each category its own name.',
   badEvidence: 'Say whether a receipt or a quote is needed, and above which amount, from 0 up.',
   badCalled: 'Say what a category is called in 2 to 30 letters, for example "project".',
-  badThresholds: `Give up to ${MAX_THRESHOLDS} thresholds, each with an amount above 0 that no other threshold has, and between one and ${MAX_STEPS} steps chosen from the person's manager, the head of their team, whoever holds their team's budget, finance, HR, the chief executive and an admin.`,
+  badThresholds: `Give up to ${MAX_THRESHOLDS} amounts, each 0 or more and each only once, and for each between one and ${MAX_STEPS} steps chosen from the person's manager, the head of their team, whoever holds their team's budget, finance, HR, the chief executive, an admin and a person in the organisation.`,
 };
 
 const amountIn = (x: unknown, lo = 0): number | null => (typeof x === 'number' && Number.isFinite(x) && x >= lo && x <= MAX_AMOUNT ? x : null);
@@ -95,8 +102,8 @@ function thresholdsFrom(v: unknown): AThreshold[] | null {
   const out: AThreshold[] = [];
   for (const t of v as any[]) {
     const above = amountIn(t?.above, 0);
-    const steps = stepsFrom(t?.steps);
-    if (above === null || above <= 0 || !steps || out.some((x) => x.above === above)) return null;
+    const steps = stepsFrom(t?.steps, true);
+    if (above === null || !steps || out.some((x) => x.above === above)) return null;
     out.push({ above, steps });
   }
   return out.sort((a, b) => a.above - b.above);
@@ -115,7 +122,7 @@ export function spendRulesFrom(answers: unknown): SpendRules {
   if (typeof a.categoryCalled === 'string' && a.categoryCalled.trim().length >= 2 && a.categoryCalled.trim().length <= 30) out.categoryCalled = a.categoryCalled.trim().toLowerCase();
   if (a.evidence && isEvidence(a.evidence.what) && amountIn(a.evidence.above) !== null) out.evidence = { what: a.evidence.what, above: a.evidence.above };
   if (Array.isArray(a.thresholds)) {
-    const t = thresholdsFrom(a.thresholds.filter((x: any) => amountIn(x?.above) && stepsFrom(x?.steps)));
+    const t = thresholdsFrom(a.thresholds.filter((x: any) => amountIn(x?.above) !== null && stepsFrom(x?.steps, true)));
     if (t?.length) out.thresholds = t;
   }
   return out;
@@ -240,15 +247,76 @@ export function theEvidenceSaid(needs: ReturnType<typeof theEvidenceNeeded>, cat
   return needs.map((e) => {
     const what = e.because === 'category' && category
       ? `Spending on ${category.name}${e.above ? ` over ${money(currency, e.above)}` : ''}`
-      : `Any request over ${money(currency, e.above ?? 0)}`;
+      : e.above ? `Any request over ${money(currency, e.above)}` : 'Every request';
     if (!you) return `${what} needs ${aOf(e.what)}.`;
     return e.what === 'receipt' ? `${what} needs a receipt, so please keep it for finance.` : `${what} needs a quote, so please have one ready for finance.`;
   });
 }
 
-/** The rules said back to the admin who sets them, in full sentences. */
-export function theSpendRulesSaid(rules: SpendRules, currency: string | null): string[] {
+/** Who the route names, for saying it: a named person's first name, and the first name of whoever looks after finance. */
+export interface TheRouteNames { nameOf?: (userId: string) => string | null | undefined; finance?: string | null }
+
+const ruleWords = (r: ARule, names: TheRouteNames) => (typeof r === 'object' ? names.nameOf?.(r.named) || 'the person named' : RULE_IN_WORDS[r]);
+const orElse = (s: Step, names: TheRouteNames) => s.slice(1).map((r) => `, or else ${ruleWords(r, names)}`).join('');
+
+/** "the person’s manager approves, or else an admin"; with more steps, "X approves first, and then Y approves". */
+function whoApproves(steps: Step[], names: TheRouteNames): string {
+  if (steps.length === 1) return `${ruleWords(steps[0][0], names)} approves${orElse(steps[0], names)}`;
+  return steps.map((s, i) => `${i ? 'then ' : ''}${ruleWords(s[0], names)} approves${i ? '' : ' first'}${orElse(s, names)}`).join(', and ');
+}
+
+/** The steps below the lowest amount: the person's manager, or else an admin. */
+export const THE_STEPS_BELOW_EVERY_AMOUNT: Step[] = [['manager', 'admin']];
+
+/**
+ * THE WHOLE ROUTE OF A REQUEST TO SPEND, said where it is set: who approves at each amount, and then finance's part. "Up to KES 10,000,
+ * the person’s manager approves, or else an admin. Over KES 10,000, Wanjiru approves. Once it is approved, Njeri in finance checks it,
+ * notes the receipt or quote, and records it paid."
+ */
+export function theRouteSaid(rules: SpendRules, currency: string | null, names: TheRouteNames = {}): string[] {
   const out: string[] = [];
+  const t = rules.thresholds ?? [];
+  const cap = (x: string) => `${x.charAt(0).toUpperCase()}${x.slice(1)}`;
+  if (!t.length) out.push(`For any amount, ${whoApproves(THE_STEPS_BELOW_EVERY_AMOUNT, names)}.`);
+  else if (t[0].above > 0) out.push(`Up to ${money(currency, t[0].above)}, ${whoApproves(THE_STEPS_BELOW_EVERY_AMOUNT, names)}.`);
+  for (const x of t) out.push(`${x.above > 0 ? `Over ${money(currency, x.above)}` : 'For any amount'}, ${whoApproves(x.steps, names)}.`);
+  if (t.length > 1) out.push('A request over more than one of these amounts follows the highest one.');
+  if (t.some((x) => x.steps.length > 1)) out.push('Each approval sends it to the next step, and only the last step ends it. A decline ends it at any step.');
+  out.push(names.finance
+    ? `Once it is approved, ${names.finance} in finance checks it, notes the receipt or quote, and records it paid.`
+    : 'Once it is approved, whoever looks after finance checks it, notes the receipt or quote, and records it paid. Nobody looks after finance yet, so an admin does this.');
+  return out.map(cap);
+}
+
+/**
+ * THE SETTINGS CARD'S ANSWERS, READ FROM THE STEPS BY AMOUNT. "What is the most a manager may approve on their own?" is the lowest
+ * amount, and "Who approves anything above that?" the person its first step names. Kept nowhere else.
+ */
+export function theCardsAnswers(rules: SpendRules): { limit: number | null; above: string | null } {
+  const lowest = rules.thresholds?.[0];
+  const named = lowest?.steps[0]?.find((r): r is { named: string } => typeof r === 'object');
+  return { limit: lowest?.above ?? null, above: named?.named ?? null };
+}
+
+/**
+ * The settings card saved: its two answers become the lowest amount and its step, in the same rows the board edits. When nothing
+ * the card says has changed, the rows stay as they are, so a currency saved again never undoes the board's steps.
+ */
+export function withTheCardsAnswers(rules: SpendRules, given: { limit?: unknown; above?: unknown }): SpendRules {
+  const now = theCardsAnswers(rules);
+  const limit = typeof given.limit === 'number' && given.limit >= 0 ? given.limit : null;
+  const above = typeof given.above === 'string' && given.above.trim() ? given.above.trim() : null;
+  if (limit === now.limit && above === now.above) return rules;
+  const rest = (rules.thresholds ?? []).slice(1).filter((x) => x.above !== limit);
+  const thresholds = [...rest, ...(limit !== null ? [{ above: limit, steps: [[above ? { named: above } : 'admin']] as Step[] }] : [])].sort((a, b) => a.above - b.above);
+  const next: SpendRules = { ...rules };
+  if (thresholds.length) next.thresholds = thresholds; else delete next.thresholds;
+  return next;
+}
+
+/** The rules said back to the admin who sets them, in full sentences: the route first, then categories and evidence. */
+export function theSpendRulesSaid(rules: SpendRules, currency: string | null, names: TheRouteNames = {}): string[] {
+  const out: string[] = theRouteSaid(rules, currency, names);
   const called = rules.categoryCalled ?? 'category';
   if (rules.categories?.length) {
     out.push(`Each request to spend is for one ${called}: ${listed(rules.categories.map((c) => c.name))}. When somebody does not say which, Groundwork asks “Which ${called} is this for?” before it sends anything.`);
@@ -258,11 +326,9 @@ export function theSpendRulesSaid(rules: SpendRules, currency: string | null): s
   } else {
     out.push('There are no categories set, so a request to spend is kept in the person’s own words.');
   }
-  if (rules.evidence) out.push(`Any request over ${money(currency, rules.evidence.above)} needs ${aOf(rules.evidence.what)}.`);
+  if (rules.evidence) out.push(`${rules.evidence.above ? `Any request over ${money(currency, rules.evidence.above)}` : 'Every request'} needs ${aOf(rules.evidence.what)}.`);
   if (rules.categories?.some((c) => c.evidence) || rules.evidence) {
     out.push('Groundwork keeps only that a receipt or a quote is needed and whether finance has had it. It keeps no file. A rule about evidence never stops a request: the person is told before they send it, and so is whoever decides it.');
   }
-  for (const t of rules.thresholds ?? []) out.push(`A request to spend over ${money(currency, t.above)} ${stepsSaid(t.steps)}.`);
-  if (rules.thresholds?.length) out.push('A request over more than one of these amounts follows the highest one. Below the lowest, it follows the approval steps as they are.');
   return out;
 }

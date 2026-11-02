@@ -9,7 +9,7 @@ import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sig
 import { inTheLeadsTeam } from './a-leads-team';
 import { loadLookups, type Lookups } from './the-lookups';
 import { oneAtATime } from './the-same-request-at-once';
-import { theStepsADecisionFollows, NOBODY_ELSE_CAN_DECIDE, nobodyElseCanDecide, couldBeNamed, decidesIt, everyStepFor, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
+import { NOBODY_ELSE_CAN_DECIDE, nobodyElseCanDecide, couldBeNamed, decidesIt, everyStepFor, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt, saidAsADate } from './a-request-is-recorded';
 import { claimIt, theyGotThereFirst, whereItIsNow } from './a-request-is-answered-once';
@@ -20,7 +20,7 @@ import { LEAVE_QUESTION_KIND, QUESTION_REFUSED, aQuestionSaid, aReasonSaid, word
 import { aSpendRequest, spendInWords, type AWaitingRequest, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
 import {
-  readSpendRules, theCategoryCalled, theEvidenceNeeded, theEvidenceSaid, theThresholdCrossed, type ASpendCategory, type AThreshold, type SpendRules,
+  readSpendRules, theCardsAnswers, theCategoryCalled, theEvidenceNeeded, theEvidenceSaid, theThresholdCrossed, type ASpendCategory, type AThreshold, type SpendRules,
 } from './the-spending-rules';
 
 /** The words the server says when it refuses, in plain full sentences. */
@@ -325,7 +325,7 @@ export class SpendingService {
    * passed." kept in the record for each.
    */
   private async passOnFrom(r: Row, answers: Answers, byUser: Map<string, Dir>, from: { step: number; escalatedTo: number }, approvedByIds: string[], record = true, shared: { lookups?: Lookups; on?: Date } = {}) {
-    const moved = await passWhatTheyAlreadyApproved(this.prisma, theStepsADecisionFollows(answers, n(r.amount)), {
+    const moved = await passWhatTheyAlreadyApproved(this.prisma, theStepsFor('spend', answers, n(r.amount)), {
       organizationId: r.organizationId, requesterUserId: r.userId,
       managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null,
       team: r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null,
@@ -500,7 +500,7 @@ export class SpendingService {
     const out: PassedOn[] = [];
     const toTell: { approverUserIds: string[]; request: AWaitingRequest }[] = [];
     for (const r of rows) {
-      const comes = await whoComesNext(this.prisma, theStepsADecisionFollows(answers, n(r.amount)), {
+      const comes = await whoComesNext(this.prisma, theStepsFor('spend', answers, n(r.amount)), {
         organizationId, requesterUserId: r.userId,
         managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null,
         team: r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null,
@@ -671,7 +671,7 @@ export class SpendingService {
     const person = await theirRosterEntry(this.prisma, organizationId, userId, { department: true, managerExternalId: true });
     const team = person?.department?.trim() || null;
     /* The only admin cannot decide their own request, and nobody else could: said now, not after it has waited for ever. */
-    if (await nobodyElseCanDecide(this.prisma, theStepsADecisionFollows(answers, input.amount), { organizationId, requesterUserId: userId, managerExternalId: (person as any)?.managerExternalId ?? null, team }, role)) {
+    if (await nobodyElseCanDecide(this.prisma, theStepsFor('spend', answers, input.amount), { organizationId, requesterUserId: userId, managerExternalId: (person as any)?.managerExternalId ?? null, team }, role)) {
       throw new BadRequestException(NOBODY_ELSE_CAN_DECIDE);
     }
     /* The same request while the first still waits is that request (B-147): nothing new is made and the approver hears once. */
@@ -720,7 +720,7 @@ export class SpendingService {
     organizationId: string, r: { userId: string; amount: unknown; team?: string | null; step?: number | null; escalatedTo?: number | null },
     answers: Answers, byUser: Map<string, Dir>, shared: { lookups?: Lookups; on?: Date } = {},
   ): Promise<DecidesNow> {
-    return whoDecidesNow(this.prisma, theStepsADecisionFollows(answers, n(r.amount)), {
+    return whoDecidesNow(this.prisma, theStepsFor('spend', answers, n(r.amount)), {
       organizationId, requesterUserId: r.userId,
       managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null,
       team: r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null,
@@ -823,9 +823,9 @@ export class SpendingService {
       rules,
       ...(rules.thresholds?.length ? { thresholds: rules.thresholds } : {}),
       currency: typeof a.currency === 'string' && a.currency ? a.currency : null,
-      limit: typeof a.limit === 'number' ? a.limit : null,
-      above: typeof a.above === 'string' && a.above ? a.above : null,
-      /* The steps an admin set (the-approval-steps.ts). None: one step, as before. */
+      /* The limit and the person above it are the lowest of the steps by amount, the one place that says who approves (the-spending-rules.ts). */
+      ...theCardsAnswers(rules),
+      /* Only the working days before a request is passed on (the-approval-steps.ts). Who approves is the steps by amount. */
       workflow: await readWorkflow(this.prisma, organizationId, 'spend'),
     };
   }

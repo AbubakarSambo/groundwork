@@ -2554,7 +2554,8 @@ export class AssistantService {
     }
     const suites = this.suites!;
     try {
-      await suites.switch(reader, plan.suite, { on: true, answers: w.answers });
+      await suites.switch(reader, plan.suite, { on: true, answers: w.answers }, { theStepsAreSet: !!w.spendRules });
+      if (w.spendRules) await suites.setSpendRules(reader, w.spendRules);
       if (w.duties) await suites.setDuties(reader, w.duties);
       if (w.workflows) await suites.setWorkflows(reader, w.workflows);
       if (w.leaveRules) await suites.setLeaveRules(reader, w.leaveRules);
@@ -2575,12 +2576,13 @@ export class AssistantService {
     const known = await this.whatIsKnownToSetUp(reader, suite);
     const wf = suite === 'reviews' ? null : (await suites.workflows(reader)).suites.find((s) => s.key === suite) ?? null;
     const leave = suite === 'leave' ? await suites.leaveRules(reader) : null;
+    const spend = suite === 'spend' ? await suites.spendRules(reader) : null;
     const time = suite === 'time' ? await suites.timeRules(reader) : null;
     const plan = planFromStored(suite, {
       answers: known.answers,
-      steps: wf?.steps ?? null, stepsAbove: wf?.stepsAbove ?? null, escalateAfter: wf?.escalateAfter ?? null,
+      steps: wf?.steps ?? null, escalateAfter: wf?.escalateAfter ?? null,
       tellHr: leave?.rules.tellHr ?? null,
-      thresholds: leave?.rules.thresholds ?? null,
+      thresholds: (spend ? spend.rules.thresholds : leave?.rules.thresholds) ?? null,
       hoursAWeek: time?.rules.hoursAWeek ?? null,
       cutOff: time?.rules.cutOff && typeof time.rules.cutOff.day === 'string' ? { day: time.rules.cutOff.day as Weekday, time: time.rules.cutOff.time } : null,
     });
