@@ -136,6 +136,14 @@ export function whoSaid(people: any[], rows: any[], session: number, counted: st
   return out.join(' ');
 }
 
+/**
+ * WHO HOLDS THE SESSION CLOCK, the one rule every count of the session reads (the check-in's page, the board, the reports and Ask): somebody
+ * who owes the session (the lead checks in when they choose, decision 133), has been let in (decision 77), and has joined.
+ */
+export function whoHoldsTheClock(participants: readonly any[]): Set<string> {
+  return new Set((participants ?? []).filter((p) => owesThisSession(p) && holdsTheClock(p, isNotLetInYet) && p.notJoinedYet !== true).map((p) => p.id));
+}
+
 export function theSessionAndItsCount(
   g: WhatTheCountReads,
   opts: { now?: Date; handOn?: boolean; leave?: Map<string, Stretch[]>; names?: { readerUserId?: string | null } } = {},
@@ -144,8 +152,7 @@ export function theSessionAndItsCount(
   const participants = (g.participants ?? []) as any[];
   const rows = ((g.checkIns ?? []) as any[]).filter((c) => !c.isSetup);
   const planned = g.runsUntilEnded ? null : totalSessionsFor(g.timelineDays as any, g.cadence as any, g.cadenceDays as any) ?? null;
-  const givers = new Set(participants.filter((p) => owesThisSession(p) && holdsTheClock(p, isNotLetInYet) && p.notJoinedYet !== true).map((p) => p.id));
-  const clock = theSessionClock(rows, givers, planned, now, opts.handOn ?? true);
+  const clock = theSessionClock(rows, whoHoldsTheClock(participants), planned, now, opts.handOn ?? true);
   const progress = howACheckInIsGoing({
     checkIns: g.checkIns ?? [],
     participants,

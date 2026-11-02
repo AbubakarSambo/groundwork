@@ -14,7 +14,6 @@ import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch'
 import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { aLineThatSaysItHappened } from './somebody-said-it-happened';
 import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
-import { owesThisSession } from '../grounds/the-lead-checks-in-when-they-choose';
 import { whoHasMissedCheckIns, whatTheLeadReads, theNextStepSuggested, TOLD_THE_LEAD, whoMissedTheCheckInsJustBefore } from '../grounds/missed-check-ins';
 import { SOMEONE as SOMEONE_NAMED } from '../engagement/a-name-to-call-them';
 import { theConfirmedWaits } from '../grounds/a-wait-is-the-speakers-account';
@@ -26,7 +25,7 @@ import { theGlanceInASentence } from './the-glance-in-a-sentence';
 import { aPartyOutside, aWaitOnOneself, theWaitsAsABoardReadsThem } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
 import { whoSeesThisDifferently } from './who-sees-this-differently';
-import { holdsTheClock, theRoundCappedAtThePlan, whatEachSessionSays } from './one-count-for-the-sessions';
+import { theRoundCappedAtThePlan, whatEachSessionSays } from './one-count-for-the-sessions';
 import { aWaitSaidInFull } from './a-wait-said-in-full';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
@@ -186,7 +185,7 @@ import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { whoHasNotJoinedYet, theNotJoinedYetLine } from '../grounds/invited-not-joined-yet';
-import { theSessionAndItsCount, withWhoHasNotJoinedMarked } from '../grounds/this-sessions-count';
+import { theSessionAndItsCount, withWhoHasNotJoinedMarked, whoHoldsTheClock } from '../grounds/this-sessions-count';
 import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 /** The person's first turn on a check-in, if any: with `closedReason`, enough to tell a session the clock closed with nothing said (wasAQuietClose). */
 const SAID = { where: { role: 'PERSON' as any }, take: 1, select: { id: true } };
@@ -810,7 +809,7 @@ export class BoardService {
        round with nothing in it. The rule now lives in one function and both callers ask it. */
     /* Nobody an admin has not let in yet holds the round open (decision 77). */
     /* Decision 133: the round's clock is the team's; the lead checks in when they choose. */
-    const givers = new Set(ground.participants.filter((p: any) => owesThisSession(p) && holdsTheClock(p, isNotLetInYet) && p.notJoinedYet !== true).map((p: any) => p.id));
+    const givers = whoHoldsTheClock(ground.participants as any[]);
     const mine = checkIns.filter((c) => givers.has(c.participantId));
     const openRound = mine.length ? whichRoundIsOpen(mine as any) : maxSession;
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the

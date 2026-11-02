@@ -122,8 +122,8 @@ import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
 import { whatSituationThisIsAbout } from './what-situation-this-report-is-about';
 import { totalSessionsFor } from '../grounds/session-count';
-import { holdsTheClock, theSessionClock } from '../board/one-count-for-the-sessions';
-import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
+import { theSessionClock } from '../board/one-count-for-the-sessions';
+import { whoHoldsTheClock } from '../grounds/this-sessions-count';
 import { hasEnded } from '../grounds/a-ground-that-has-ended';
 import { nobodyHasSaidWhoArrangedAnything } from '../conversation/who-secured-that-meeting';
 import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
@@ -6561,7 +6561,7 @@ happened, and what is in the way.`;
       where: { groundId },
       select: { participantId: true, sessionNumber: true, status: true, isSetup: true, availableFrom: true, startedAt: true, completedAt: true },
     }) ?? Promise.resolve([] as any[]))?.catch?.(() => [] as any[])) ?? []) as any[];
-    const givers = new Set(((ground?.participants ?? []) as any[]).filter((p) => holdsTheClock(p, isNotLetInYet)).map((p) => p.id));
+    const givers = whoHoldsTheClock((ground?.participants ?? []) as any[]);
     const planned = totalSessionsFor(ground?.timelineDays, ground?.cadence, ground?.cadenceDays) ?? null;
     /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
     const handOn = await theReleaseOneSalesBoardIsOn(this.prisma, ground?.organizationId ?? null).catch(() => false);

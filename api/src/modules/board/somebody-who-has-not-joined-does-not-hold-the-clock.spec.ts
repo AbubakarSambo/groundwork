@@ -1,4 +1,6 @@
 import { theSessionClock, holdsTheClock } from './one-count-for-the-sessions';
+import { whoHoldsTheClock } from '../grounds/this-sessions-count';
+import { owesThisSession } from '../grounds/the-lead-checks-in-when-they-choose';
 
 /**
  * SOMEBODY WHO HAS NOT JOINED DOES NOT HOLD THE SESSION CLOCK (browser test, 21 October 2026). "Sales team, Q4" was on session 7 for its
@@ -28,10 +30,21 @@ describe('somebody who has not joined does not hold the session clock', () => {
   it('a row read without the fields (an older reader) still counts, as before', () => {
     expect(holdsTheClock({ id: 'p-x', managingOnly: false }, notLetIn)).toBe(true);
   });
+  /*
+   * Changed 3 November: the rule had three copies (the check-in page's count, the board and the reports' clock, which left out the lead
+   * who checks in when they choose and anybody marked not joined), and this test read the source for the copied text. There is one owner
+   * now, whoHoldsTheClock, and every count reads it; the test reads what it says.
+   */
   it('every count of the session reads the same rule: the check-in page, the board and the reports', () => {
     const fs = require('fs'); const path = require('path');
-    for (const f of ['../grounds/grounds.service.ts', './board.service.ts', '../reports/reports.service.ts']) {
-      expect(fs.readFileSync(path.join(__dirname, f), 'utf8')).toMatch(/holdsTheClock\(p, isNotLetInYet\)/);
+    for (const f of ['../grounds/this-sessions-count.ts', './board.service.ts', '../reports/reports.service.ts']) {
+      const src = fs.readFileSync(path.join(__dirname, f), 'utf8');
+      expect(src).toMatch(/whoHoldsTheClock\(/);
+      expect(src.replace(/export function whoHoldsTheClock[\s\S]*?\n}\n/, '')).not.toMatch(/holdsTheClock\(p, isNotLetInYet\)/);
     }
+    const lead = { id: 'p-lead', userId: 'u-lead', joinedAt: '2026-10-12T09:00:00Z', partyType: 'INITIATOR', checksInWhenTheyChoose: true };
+    const held = whoHoldsTheClock([...people, { ...people[0], id: 'p-new', notJoinedYet: true }]);
+    expect([...held].sort()).toEqual(five.map((k) => `p-${k}`).sort());
+    expect(whoHoldsTheClock([lead]).has('p-lead')).toBe(holdsTheClock(lead, notLetIn) && owesThisSession(lead));
   });
 });
