@@ -15,7 +15,8 @@ import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import { AnchorDayPicker, DAY_NAMES, ordinal } from '@/components/gw/AnchorDayPicker'
 import type { GroundCadence } from '@/api/grounds'
-import { SELECTABLE_CADENCES, sessionsFor, cadenceLabel } from '@/lib/cadence'
+import { SELECTABLE_CADENCES, sessionsFor, cadenceLabel, timesAWeek } from '@/lib/cadence'
+import { plannedSessionsFor } from '@/lib/sessionCount'
 import { scenarioLabel } from '@/lib/scenario-catalog'
 import { whenItWas, theLastDay } from '@/lib/a-date-reads-the-same-everywhere'
 import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-check-ins-land'
@@ -100,8 +101,9 @@ export function chasingSentence(days: number[]): string {
  * REQUEST 194: THE DAY CHECK-INS LAND ON, IN WORDS, BESIDE "HOW OFTEN". Empty for a cadence with no
  * day to land on (daily, one-time or as-you-decide), or when no day has been chosen.
  */
-export function anchorDaySentence(cadence: GroundCadence, anchorDay: number | null | undefined): string {
-  if (anchorDay == null) return ''
+export function anchorDaySentence(cadence: GroundCadence, anchorDay: number | null | undefined, cadenceDays: number[] | null | undefined): string {
+  /* Twice or more a week, its days are already in the rhythm's own words (cadenceLabel), and one day is not where it lands. */
+  if (anchorDay == null || timesAWeek(cadence, cadenceDays)) return ''
   if (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY') return ` Lands on ${DAY_NAMES[anchorDay]}s.`
   if (cadence === 'MONTHLY') return ` Lands on the ${ordinal(anchorDay)} of the month.`
   return ''
@@ -139,8 +141,8 @@ export function settingsChangeSentence(c: { changedAt: string; by: 'you' | 'lead
     parts.push(`changed how long it runs from ${c.weeks.from != null ? weeksText(c.weeks.from) : 'not set'} to ${weeksText(c.weeks.to)}`)
   }
   if (c.cadence) {
-    const from = c.cadence.from ? cadenceLabel(c.cadence.from).toLowerCase() : 'not set'
-    const to = cadenceLabel(c.cadence.to).toLowerCase()
+    const from = c.cadence.from ? cadenceLabel(c.cadence.from, null).toLowerCase() : 'not set'
+    const to = cadenceLabel(c.cadence.to, null).toLowerCase()
     parts.push(`changed how often people check in from ${from} to ${to}`)
   }
   const action = parts.length === 2 ? `${parts[0]} and ${parts[1]}` : (parts[0] ?? 'changed a setting')
@@ -864,10 +866,11 @@ export function sessionsUpToTheEnd(p: { startsAtOnRecord?: string | null; create
 
 /** "Every day, until you end it." for a check-in with no end; otherwise how often and how many sessions, as before. */
 export function theRhythmLine(ground: { cadence?: any; timelineDays?: number | null; runsUntilItIsEnded?: boolean; cadenceAnchorDay?: number | null } & Record<string, any>): string {
-  const anchor = anchorDaySentence(ground.cadence, (ground as any).cadenceAnchorDay)
-  const n = ground.timelineDays ? sessionsFor(ground.timelineDays, ground.cadence) : null
-  if ((ground as any).runsUntilItIsEnded || n == null) return `${cadenceLabel(ground.cadence)}, until you end it.${anchor}`
-  return `${cadenceLabel(ground.cadence)}. ${n} session${n === 1 ? '' : 's'} in total.${anchor}`
+  const anchor = anchorDaySentence(ground.cadence, (ground as any).cadenceAnchorDay, (ground as any).cadenceDays)
+  /* The one count, with the days (lib/sessionCount.ts), as the server's totalSessionsFor counts. */
+  const n = plannedSessionsFor(ground.timelineDays, ground.cadence, null, (ground as any).cadenceDays)
+  if ((ground as any).runsUntilItIsEnded || n == null) return `${cadenceLabel(ground.cadence, (ground as any).cadenceDays)}, until you end it.${anchor}`
+  return `${cadenceLabel(ground.cadence, (ground as any).cadenceDays)}. ${n} session${n === 1 ? '' : 's'} in total.${anchor}`
 }
 
 export function TheReportSharesItself({ ground, canChange }: { ground: any; canChange: boolean }) {

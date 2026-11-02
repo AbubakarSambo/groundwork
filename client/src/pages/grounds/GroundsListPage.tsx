@@ -166,7 +166,7 @@ export function GroundsListPage() {
                 {/* A number the product chose is said to be one, so the admin approving it knows what
                     was decided and what was assumed (B13, P6-002). */}
                 {a.timelineDays ? ` It runs for ${a.timelineDays} days${a.timelineStated === false ? ', which Groundwork suggested' : ''}.` : ''}
-                {a.cadence ? ` ${a.cadence === 'SEQUENTIAL' ? 'People check in when the lead chooses' : `People check in ${cadenceLabel(a.cadence as never).toLowerCase()}`}${a.cadenceStated === false ? ', which Groundwork suggested' : ''}.` : ''}
+                {a.cadence ? ` ${a.cadence === 'SEQUENTIAL' ? 'People check in when the lead chooses' : `People check in ${cadenceLabel(a.cadence as never, (a as any).cadenceDays).toLowerCase()}`}${a.cadenceStated === false ? ', which Groundwork suggested' : ''}.` : ''}
               </p>
               {declining === a.id ? (
                 <div className="gwui-waiting-acts">

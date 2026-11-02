@@ -336,6 +336,7 @@ export default function SessionReportPage() {
           id={data.groundId as string}
           title={(ground as any)?.label ?? 'Check-in'}
           cadence={(ground as any)?.cadence ?? null}
+          cadenceDays={(ground as any)?.cadenceDays ?? null}
           plannedSessions={plannedSessions}
           canRunThisCheckIn={amTheInitiator}
           isAParty

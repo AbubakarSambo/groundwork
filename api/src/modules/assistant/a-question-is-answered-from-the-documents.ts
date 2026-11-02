@@ -16,6 +16,7 @@
  */
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { aDaySaidInFull } from '../board/a-day-said-in-full';
+import { theRhythmInWords } from '../grounds/people-and-setup';
 import { theFactsOnRecord, aFactAsALine, type TheReader } from '../conversation/the-facts-on-record';
 import { thePersonJudgementsAreOn, NOT_SHOWN_IN_THIS_ORGANISATION } from '../organisation/person-judgements';
 import { isASalesKind } from '../board/the-kind-of-work';
@@ -43,7 +44,7 @@ Rules:
 - Say which document the answer comes from, by its file name. When it comes from "the record of" a check-in, say "on the record" instead, and name the day it was said.
 - In "the record of" a check-in, a line marked "their word" is what the person said, with nothing to show it yet; say so plainly. A line marked "proven by a document", "proven by the M-Pesa code they typed", "proven by a reference they typed" or "confirmed by a colleague" has its proof. Name people by their names.
 - Each line of "the record of" a check-in says who said it. Say what somebody else said with their name, as "Sarah Atim said". Say "you" only for a line that says "you said": never tell the person asking that they said what somebody else said.
-- "WHAT WAS SAID IN SETUP" is what the lead said while setting the check-in up: its aim, what success looks like, the team, the timing, the rules and the risks.
+- "WHAT WAS SAID IN SETUP" holds the lead's own words from setup. They give the aim, what success looks like, the team, the timing, the rules and the risks.
 - For what is sold, how much of it has proof of payment, and how far a sales target is from being met, use "THE SALES ON RECORD" in the record. It is counted the way the board counts it, and it is the only count to give.
 - Write plain, full sentences that a person with basic English understands. Speak to the person as "you". No lists, no headings, no colons joining pieces.
 - At most three sentences.
@@ -136,8 +137,8 @@ export async function theRecordTheyMayRead(
       ...(input.groundId ? { id: input.groundId } : {}),
       OR: [{ initiatorId: input.userId }, { participants: { some: { userId: input.userId } } }],
     },
-    select: { id: true, label: true, initiatorId: true, kindOfWork: true, workStages: true },
-  })).catch(() => [])) ?? []) as { id: string; label: string; initiatorId: string | null; kindOfWork?: unknown; workStages?: unknown }[];
+    select: { id: true, label: true, initiatorId: true, kindOfWork: true, workStages: true, cadence: true, cadenceDays: true, cadenceAnchorDay: true, workingDays: true },
+  })).catch(() => [])) ?? []) as { id: string; label: string; initiatorId: string | null; kindOfWork?: unknown; workStages?: unknown; cadence?: string | null; cadenceDays?: number[] | null; cadenceAnchorDay?: number | null; workingDays?: number[] | null }[];
   const out: ADocumentToAnswerFrom[] = [];
   const since = new Date(now.getTime() - 45 * 86_400_000);
   const judgements = await thePersonJudgementsAreOn(prisma, input.organizationId);
@@ -155,7 +156,9 @@ export async function theRecordTheyMayRead(
     const nameOf = (p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || String(p.email ?? '').split('@')[0];
     const reader: TheReader = isLead ? { kind: 'the lead', judgements } : { kind: 'the person', participantId: people[0].id };
     const facts = await theFactsOnRecord(prisma, { groundId: g.id, reader, participantIds: people.map((p) => p.id), since });
-    const lines: string[] = [];
+    /* How often people check in, from the check-in itself (theRhythmInWords, the one wording), never guessed from the days things were
+       said: Ask told a lead "the team checks in every Monday" of a check-in set to Monday and Thursday (assessment test, 2 November). */
+    const lines: string[] = g.cadence ? [`HOW OFTEN PEOPLE CHECK IN: ${theRhythmInWords(g)}.`] : [];
     const whoSaid = (participantId: string) => { const p = people.find((x) => x.id === participantId); return !p ? 'somebody' : p.userId === input.userId ? 'you' : nameOf(p); };
     /* What the lead said in setup first: it frames the check-in, and it is short, so the team's record never pushes it out (assessment
        test, 2 November: "What rules did I set for the team?" read "the documents do not say"). The one reader decides who reads it. */

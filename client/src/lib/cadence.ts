@@ -62,7 +62,9 @@ export const TIMED_CADENCES = CADENCES.filter((c) => c.days !== null)
  */
 export const SELECTABLE_CADENCES = CADENCES
 
-export const cadenceLabel = (c: GroundCadence, cadenceDays?: number[] | null): string => {
+/* The days are always passed (assessment test, 2 November: the board said "Weekly, Thursdays." of a check-in that meets Monday and
+   Thursday), so no line names a rhythm without reading them. Null where nothing is chosen yet. */
+export const cadenceLabel = (c: GroundCadence, cadenceDays: number[] | null | undefined): string => {
   const often = timesAWeek(c, cadenceDays)
   return often ? `${often[0].toUpperCase()}${often.slice(1)}` : CADENCES.find((x) => x.cadence === c)?.label ?? String(c)
 }

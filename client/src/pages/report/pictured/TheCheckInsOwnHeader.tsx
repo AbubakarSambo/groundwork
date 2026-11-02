@@ -2,6 +2,7 @@ import { Button } from '@/components/gw/ui'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { theScheduleInWords } from '@/pages/board/pictured/ThePicturedSalesBoard'
 import { plannedSessionsFor } from '@/lib/sessionCount'
+import { timesAWeek } from '@/lib/cadence'
 
 type Any = any
 
@@ -19,8 +20,9 @@ export function TheCheckInsOwnHeader({ groundId, ground, sessionNumber, label }:
       title={label}
       subtitle={[
         people ? `${people} ${people === 1 ? 'person' : 'people'}.` : null,
-        theScheduleInWords(ground?.cadence, ground?.workingDays, null, ground?.cadenceAnchorDay ?? null),
-        planned && now ? `${ground?.cadence === 'WEEKLY' ? 'Week' : 'Session'} ${now} of ${planned}.` : null,
+        theScheduleInWords(ground, null),
+        /* A week holds one session only when it meets once a week; twice a week, a session is not a week. */
+        planned && now ? `${ground?.cadence === 'WEEKLY' && !timesAWeek(ground?.cadence, ground?.cadenceDays) ? 'Week' : 'Session'} ${now} of ${planned}.` : null,
       ].filter(Boolean).join(' ')}
       action={<YourCheckIn groundId={groundId} />}
       active=""

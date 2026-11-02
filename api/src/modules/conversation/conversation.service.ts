@@ -5083,6 +5083,7 @@ export class ConversationService {
       resolutionState: (ground as any).resolutionState ?? null,
       // Never reached the model before - see the comment on PromptContext.cadence.
       cadence: (ground as any).cadence ?? null,
+      cadenceDays: (ground as any).cadenceDays ?? null,
       /* The brief without a sentence giving a colleague's hidden target, in figures or in words. */
       adminBrief: this.theLeadsOwnWordsStayHers(ground, checkIn) ? null : this.theBriefThisPersonMayBeGiven(ground as any, checkIn as any),
       /* ONLY THE TARGETS THIS PERSON MAY SEE (week 0). Every target went in, so on a check-in where

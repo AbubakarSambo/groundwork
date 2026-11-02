@@ -43,6 +43,7 @@ export function TheCheckInHeader({
   id,
   title,
   cadence,
+  cadenceDays,
   plannedSessions,
   currentSession,
   endsAt,
@@ -58,6 +59,8 @@ export function TheCheckInHeader({
   id: string
   title: string
   cadence?: GroundCadence | null
+  /** The days a weekly check-in meets on, when more than one: the cadence line reads them. */
+  cadenceDays?: number[] | null
   plannedSessions?: number | null
   currentSession?: number | null
   endsAt?: string | null
@@ -112,7 +115,7 @@ export function TheCheckInHeader({
    * ("from 4pm") this product does not keep as a fact about the ground, so that part is not
    * invented - the rhythm, the session count and the end date are.
    */
-  const cadenceWords = cadence ? cadenceLabel(cadence) : null
+  const cadenceWords = cadence ? cadenceLabel(cadence, cadenceDays) : null
   const spineWords = phaseSpineSentence(
     currentSession ? { startsAt: null, endsAt: endsAt ?? null, currentSession } : null,
     plannedSessions ?? null,

@@ -93,6 +93,7 @@ export default function RoundReportPage() {
           id={id}
           title={(ground as any)?.label ?? 'Check-in'}
           cadence={(ground as any)?.cadence ?? null}
+          cadenceDays={(ground as any)?.cadenceDays ?? null}
           plannedSessions={plannedSessions}
           canRunThisCheckIn={canRunThisCheckIn}
           isAParty={isAParty}

@@ -3426,7 +3426,7 @@ export class GroundsService {
      * The first model call is made on the lead's first message.
      */
     if (history.length === 0) {
-      const opened = openingLine(theLengthWasChosen(ground as any) ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded, (ground as any).workingDays ?? null);
+      const opened = openingLine(theLengthWasChosen(ground as any) ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded, (ground as any).workingDays ?? null, (ground as any).cadenceDays ?? null);
       const ask = (gaps[0] as { ask?: string } | undefined)?.ask ?? null;
       return {
         reply: forHumans([opened, ask].filter(Boolean).join(' ')),
@@ -3762,7 +3762,7 @@ export class GroundsService {
      */
     const openedWithNothingTyped = !history.some((h) => h.role === 'user' && (h.content ?? '').trim());
     const noEndSaid = aDailyCheckInWithNoEndSaid(ground as any);
-    const openedOn = isOpeningTurn && openedWithNothingTyped ? openingLine(theLengthWasChosen(ground as any) && !noEndSaid ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded || noEndSaid, (ground as any).workingDays ?? null) : null;
+    const openedOn = isOpeningTurn && openedWithNothingTyped ? openingLine(theLengthWasChosen(ground as any) && !noEndSaid ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded || noEndSaid, (ground as any).workingDays ?? null, (ground as any).cadenceDays ?? null) : null;
     /*
      * FIX 4: NOTHING SAYS IT WILL BE RECORDED UNLESS SOMETHING IS ACTUALLY BEING PROPOSED THIS TURN.
      * "I will record this as your read of Ben" was once said with no `lead_read` or `expectation`

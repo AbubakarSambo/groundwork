@@ -144,7 +144,7 @@ export const THE_SETUP = {
 
 /* The product's one set of names for how often (lib/cadence.ts), in the prototype's order. */
 export const HOW_OFTEN: [Cadence, string][] = (['ONE_TIME', 'DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'SEQUENTIAL'] as Cadence[])
-  .map((c) => [c, cadenceLabel(c as never)])
+  .map((c) => [c, cadenceLabel(c as never, null)])
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -302,7 +302,7 @@ export function TheSetup(p: {
       </SetupBlock>
 
       <SetupBlock heading={THE_SETUP.howOften} help={THE_SETUP.twoMinutes}>
-        {!p.cadenceChosen && <Text size="14-5" ink="amber" as="p">{THE_SETUP.notChosen(cadenceLabel(p.cadence as never))}</Text>}
+        {!p.cadenceChosen && <Text size="14-5" ink="amber" as="p">{THE_SETUP.notChosen(cadenceLabel(p.cadence as never, (p as any).cadenceDays))}</Text>}
         <Choices
           label={THE_SETUP.howOften}
           options={HOW_OFTEN.map(([c, label]) => ({ key: c, label }))}

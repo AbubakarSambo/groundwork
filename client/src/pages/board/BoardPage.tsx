@@ -1337,7 +1337,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * once ended replaced by the plain fact of how it ended, rather than left to the shared
    * CheckInHeader (which other pages use with a cadence-only subtitle) to guess at.
    */
-  const cadenceWords = (groundForSignals as any)?.cadence ? cadenceLabel((groundForSignals as any).cadence) : null
+  const cadenceWords = (groundForSignals as any)?.cadence ? cadenceLabel((groundForSignals as any).cadence, (groundForSignals as any).cadenceDays) : null
   const spineWords = phaseSpineSentence(
     b.phaseSpine?.currentSession ? { startsAt: null, endsAt: b.phaseSpine?.endsAt ?? null, currentSession: b.phaseSpine.currentSession } : null,
     plannedSessions ?? null,
@@ -1716,7 +1716,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* "Daily on weekdays, from 4pm. Session 38 of 65. Runs until 30 September." (board-as-lead.txt). */
   const picturedCadenceLine = [
     picturedOnboarding ? onboardingNamesLine : picturedPlan ? planNamesLine : null,
-    theScheduleInWords((groundForSignals as any)?.cadence, (groundForSignals as any)?.workingDays, b.phaseSpine?.sessions?.[b.phaseSpine.sessions.length - 1]?.opensOn ?? null, (groundForSignals as any)?.cadenceAnchorDay ?? null),
+    theScheduleInWords(groundForSignals as any, b.phaseSpine?.sessions?.[b.phaseSpine.sessions.length - 1]?.opensOn ?? null),
     spineWords && /Session (\d+) of \1\.$/.test(spineWords) ? spineWords.replace(/\.$/, ', the last one.') : spineWords,
     /* An evaluation check-in is served no phase spine (board-families.ts keeps that family thin), so its count is read from the sessions its grid already holds. */
     !spineWords && picturedPlan ? phaseSpineSentence(
@@ -2620,7 +2620,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         <CheckInHeader
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: b.title }]}
           title={b.title}
-          subtitle={(picturedDecision ? (() => { const n = (b.participants ?? []).length; const done = (b as any).howItIsGoing?.glance?.progress?.answeredThisRound ?? null; return `${n} people answer once.${done != null ? ` ${done} of ${n} have answered.` : ''}` })() : picturedLead || picturedReader || picturedParticipant || picturedOnboarding || picturedPlan || picturedOtherKind ? picturedCadenceLine : picturedMember ? [((b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name ? `Run by ${(b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name}.` : null), theScheduleInWords((groundForSignals as any)?.cadence, (groundForSignals as any)?.workingDays, null, (groundForSignals as any)?.cadenceAnchorDay ?? null), spineWords].filter(Boolean).join(' ') : cadenceLine) || undefined}
+          subtitle={(picturedDecision ? (() => { const n = (b.participants ?? []).length; const done = (b as any).howItIsGoing?.glance?.progress?.answeredThisRound ?? null; return `${n} people answer once.${done != null ? ` ${done} of ${n} have answered.` : ''}` })() : picturedLead || picturedReader || picturedParticipant || picturedOnboarding || picturedPlan || picturedOtherKind ? picturedCadenceLine : picturedMember ? [((b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name ? `Run by ${(b.participants ?? []).find((p) => p.partyType === 'INITIATOR')?.name}.` : null), theScheduleInWords(groundForSignals as any, null), spineWords].filter(Boolean).join(' ') : cadenceLine) || undefined}
           action={(
             /*
               B-204: AT A PHONE WIDTH, THE NEXT-SESSION NOTE COULD RUN THE WHOLE PAGE SIDEWAYS.

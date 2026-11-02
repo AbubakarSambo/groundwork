@@ -1,4 +1,5 @@
 import { theZoneDatesAreIn } from '@/lib/a-date-reads-the-same-everywhere'
+import { timesAWeek } from '@/lib/cadence'
 import { ItsEvidence } from '@/components/gw/ItsEvidence'
 import { useMemo, useState, type ReactNode } from 'react'
 import { FoldTheRest } from './FoldTheRest'
@@ -59,8 +60,16 @@ export interface PicturedBoardProps {
  * HOW OFTEN, IN THE PICTURE'S WORDS ("Daily on weekdays, from 4pm."): the cadence, the days it runs and the
  * hour the latest session opened, in this reader's own time. Null where the cadence is not known.
  */
-export function theScheduleInWords(cadence: string | null | undefined, workingDays: number[] | null | undefined, opensAt: string | null | undefined, anchorDay: number | null = null): string | null {
-  const days = [...new Set(workingDays ?? [])].sort().join(',')
+export function theScheduleInWords(
+  g: { cadence?: string | null; workingDays?: number[] | null; cadenceAnchorDay?: number | null; cadenceDays?: number[] | null } | null | undefined,
+  opensAt: string | null | undefined,
+): string | null {
+  const cadence = g?.cadence
+  const anchorDay = g?.cadenceAnchorDay ?? null
+  const days = [...new Set(g?.workingDays ?? [])].sort().join(',')
+  /* Twice or more a week reads its days, the one wording every page uses (lib/cadence.ts timesAWeek). */
+  const often = timesAWeek(cadence, g?.cadenceDays)
+  if (often) return `${often[0].toUpperCase()}${often.slice(1)}.`
   /*
    * ONLY A DAILY CHECK-IN OPENS AT AN HOUR, 8 IN THE MORNING WHERE THE ORGANISATION IS (the server's theHourItOpens). Every other rhythm opens
    * at the start of its day, and its "from 10pm" was that midnight read in another zone (fix plan, pattern 4; quarter test, Faith's 90 days).

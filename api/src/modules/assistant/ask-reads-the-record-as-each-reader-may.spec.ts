@@ -42,7 +42,7 @@ const checkIns = [
 function aPrisma(judgementsOn = true): any {
   return {
     organization: { findUnique: jest.fn(async () => ({ personJudgementsOn: judgementsOn })) },
-    ground: { findMany: jest.fn(async ({ where }: any) => [{ id: 'g', label: 'Sales team, Q4', initiatorId: 'u-grace' }].filter((g) => where.OR.some((o: any) => o.initiatorId === g.initiatorId || (o.participants && people.some((p) => p.userId === o.participants.some.userId))))) },
+    ground: { findMany: jest.fn(async ({ where }: any) => [{ id: 'g', label: 'Sales team, Q4', initiatorId: 'u-grace', cadence: 'WEEKLY', cadenceDays: [1, 4], cadenceAnchorDay: 1, workingDays: [1, 2, 3, 4, 5] }].filter((g) => where.OR.some((o: any) => o.initiatorId === g.initiatorId || (o.participants && people.some((p) => p.userId === o.participants.some.userId))))) },
     groundParticipant: { findMany: jest.fn(async ({ where }: any) => people.filter((p) => !where.userId || p.userId === where.userId).map((p) => ({ ...p }))) },
     user: { findMany: jest.fn(async ({ where }: any) => users.filter((u) => where.id.in.includes(u.id))) },
     checkIn: { findMany: jest.fn(async ({ where }: any) => checkIns.filter((c) => !where.participantId?.in || where.participantId.in.includes(c.participantId))) },
@@ -88,6 +88,11 @@ describe('Ask reads the record as each reader may', () => {
       const [doc] = await theRecordTheyMayRead(aPrisma(), { organizationId: 'o', userId: member }, NOW);
       expect(doc.content).not.toMatch(/SET ?UP|water filters|counts only when|oversells/i);
     }
+  });
+  /* Assessment test, 2 November: Ask said "the team checks in every Monday" of a check-in set to Monday and Thursday. */
+  it('says how often people check in from the check-in itself, with its days', async () => {
+    const [doc] = await theRecordTheyMayRead(aPrisma(), { organizationId: 'o', userId: 'u-kevin' }, NOW);
+    expect(doc.content.split('\n')[0]).toBe('HOW OFTEN PEOPLE CHECK IN: twice a week, on Monday and Thursday.');
   });
   it('Kevin never reads what was noted about him for the lead', async () => {
     const [doc] = await theRecordTheyMayRead(aPrisma(), { organizationId: 'o', userId: 'u-kevin' }, NOW);

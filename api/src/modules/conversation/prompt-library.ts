@@ -15,6 +15,7 @@ import { SALES_CHECK_IN_GATHERS_KEY, SALES_CHECK_IN_GATHERS_PROMPT } from './wha
 import { FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_KEY, ROLE_READING_PROMPT } from './their-role-in-the-first-check-in';
 import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_PROMPT_KEY } from '../patterns/pattern-library';
 import { whereInTheRun } from './where-in-the-run';
+import { timesAWeekInWords } from '../grounds/the-check-ins-own-schedule';
 import { THE_JUDGEMENT_ROOM_KEY, theRoomJudgementTemplate } from '../reports/the-judgement-over-the-answers';
 /*
  * THE ONE WORDING RULEBOOK, IMPORTED AND NEVER RETYPED. See plain-words.ts for why there is only
@@ -3939,6 +3940,8 @@ export interface PromptContext {
   // it is asking the person to commit to - the cadence was agreed at setup and
   // the model was never told what it was.
   cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL' | null;
+  /** The weekdays a weekly check-in meets on, when more than one (Ground.cadenceDays): "twice a week, on Monday and Thursday". */
+  cadenceDays?: number[] | null;
   /**
    * How long the run is, in days. Passed so the engine can tell a fortnight from a year: without it,
    * "reaching an end" and "at the start" read identically on a two-week ground.
@@ -4256,7 +4259,10 @@ One opening block. One question. Wait for a response before asking anything else
   return withTheScenarioUnderneath(`SESSION ${sessionNumber} CONTINUITY: Open with one statement naming what is in the record and what is not. Then ask one question: "Before the report is prepared - is there anything in the record that is not fully captured yet that you want to name now?" One statement. One question.`);
 }
 
-function cadenceLabel(cadence: PromptContext['cadence']): string {
+function cadenceLabel(cadence: PromptContext['cadence'], days: number[] | null | undefined): string {
+  /* Twice or more a week, said with its days, the one wording the server uses (assessment test, 2 November). */
+  const often = timesAWeekInWords({ cadence, days });
+  if (often) return often;
   switch (cadence) {
     case 'DAILY': return 'daily';
     case 'WEEKLY': return 'weekly';
@@ -4542,7 +4548,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
       moment: ctx.moment ?? null,
       timelineDays: ctx.timelineDays ?? null,
     }),
-    `CADENCE: ${cadenceLabel(ctx.cadence)}`,
+    `CADENCE: ${cadenceLabel(ctx.cadence, ctx.cadenceDays)}`,
     `RESOLUTION_STATE: ${ctx.resolutionState ?? 'not yet defined'}`,
     /*
      * A TARGET WORDED AS A SENTENCE IS SAID AS ONE (decision 69). The check-in passes each target as a

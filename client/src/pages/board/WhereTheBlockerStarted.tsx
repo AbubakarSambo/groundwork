@@ -53,7 +53,7 @@ export function WhereTheBlockerStarted() {
     { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
   ]
   const schedule = [
-    theScheduleInWords(g?.cadence, g?.workingDays, b?.phaseSpine?.sessions?.[b.phaseSpine.sessions.length - 1]?.opensOn ?? null),
+    theScheduleInWords(g, b?.phaseSpine?.sessions?.[b.phaseSpine.sessions.length - 1]?.opensOn ?? null),
     phaseSpineSentence(b?.phaseSpine?.currentSession ? { startsAt: null, endsAt: b.phaseSpine.endsAt ?? null, currentSession: b.phaseSpine.currentSession } : null, plannedSessionsFor(g?.timelineDays, g?.cadence, g?.plannedSessions, g?.cadenceDays) ?? null),
   ].filter(Boolean).join(' ')
   const traces = data?.traces ?? []
