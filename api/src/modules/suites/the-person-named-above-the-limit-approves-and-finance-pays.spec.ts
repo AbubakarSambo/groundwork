@@ -91,3 +91,30 @@ describe('Kamau asks for KES 65,000, with no team and no manager', () => {
     expect(now.who).toEqual({ kind: 'admin', rule: 'admin' });
   });
 });
+
+describe('one place says who approves: the settings, the say-back before the yes and the routing agree at the limit', () => {
+  it('KES 9,999 and 10,000 go to an admin, as Kamau has no manager, and KES 10,001 goes to Fatuma', async () => {
+    const o = await muchemi();
+    const said = (await o.suites.spendRules(o.as('u-grace'))).said;
+    expect(said).toContain('Over KES 10,000, Fatuma approves.');
+    for (const [amount, first] of [[9999, null], [10000, null], [10001, 'Fatuma']] as const) {
+      const c = await o.svc.checkForChat(ORG, 'u-kamau', amount, TODAY);
+      expect([amount, c.approverFirstName]).toEqual([amount, first]);
+    }
+    /* Nothing about spending is read from the workflows any more. */
+    o.suiteRows.workflows = { isOn: false, answers: { spend: { steps: [['finance']], stepsAbove: [['finance']] } } };
+    expect((await o.svc.checkForChat(ORG, 'u-kamau', 65000, TODAY)).approverFirstName).toBe('Fatuma');
+  });
+});
+
+describe('the same person approves once (use-case walk: Wanjiru, the only admin, approved twice)', () => {
+  it('two steps that each name nobody fall to Grace, the only admin, and her one approval ends it', async () => {
+    const o = await muchemi();
+    await o.suites.setSpendRules(o.as('u-grace'), { thresholds: [{ above: 10000, steps: [['departmentHead'], ['manager']] }] });
+    await o.svc.ask(ORG, 'u-kamau', { amount: 65000, what: 'an expert witness report' });
+    const id = o.requests[o.requests.length - 1].id;
+    await o.svc.decide(o.as('u-grace'), id, 'approved', TODAY);
+    expect(o.requests.find((r) => r.id === id)).toMatchObject({ status: 'approved', approvedByIds: ['u-grace'] });
+    expect((await o.svc.history(o.as('u-kamau'), id)).said).toContain('Grace had already approved it, so this step was passed.');
+  });
+});

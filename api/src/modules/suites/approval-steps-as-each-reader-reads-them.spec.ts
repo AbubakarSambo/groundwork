@@ -5,6 +5,7 @@ import { SpendingService } from './the-spending.service';
 import { TimeSheetsService } from './the-time-sheets.service';
 import { SuitesService } from './suites.service';
 import { WORKFLOWS_REFUSED } from './the-approval-steps';
+import { withTheCardsAnswers } from './the-spending-rules';
 import { aDecisionDone, aLeaveRequest } from './a-request-in-words';
 
 /**
@@ -74,7 +75,9 @@ function setup(opts: { workflows?: Record<string, unknown>; duties?: Record<stri
   const suites: Record<string, any> = {
     leave: { isOn: true, answers: { days: 21, approver: 'Their manager' } },
     time: { isOn: true, answers: { clients: ['Naivas', 'Lakeside'], approver: 'Their manager' } },
-    spend: { isOn: true, answers: opts.spend ?? { currency: 'KES', limit: 20000, above: 'u-grace' } },
+    spend: { isOn: true, answers: opts.spend ?? { currency: 'KES' } },
+    /* Who approves spending is its steps by amount alone (Hafsah's plan of 2 November, step 0): the limit of 20,000 and Grace above it, and below it the steps this spec sets. */
+    spendRules: { isOn: false, answers: { thresholds: [...((opts.workflows as any)?.spend?.steps ? [{ above: 0, steps: (opts.workflows as any).spend.steps }] : []), { above: 20000, steps: [[{ named: 'u-grace' }]] }] } },
     ...(opts.duties ? { duties: { isOn: false, answers: opts.duties } } : {}),
     ...(opts.workflows ? { workflows: { isOn: false, answers: opts.workflows } } : {}),
   };
@@ -144,8 +147,10 @@ const OMAR_IN_FINANCE = { finance: 'u-omar' };
 
 function BEFORE_theStepsFor(suite: 'leave' | 'time' | 'reviews' | 'spend', answers?: any, amount?: number): ARule[] {
   if (suite === 'reviews') return answers?.writer === 'Their manager' ? ['manager', 'admin'] : ['admin'];
+  /* Above the limit, since 2 November: the person named on the settings, or else an admin (Hafsah's plan, step 0). On 3 October it was
+     the budget holder, then finance, then the person named, which sent Brian's KES 65,000 in the use-case walk to finance. */
   if (suite === 'spend' && answers?.limit != null && Number(amount ?? 0) > answers.limit) {
-    return ['budgetOwner', 'finance', ...(answers.above ? [{ named: answers.above as string }] : []), 'admin'];
+    return answers.above ? [{ named: answers.above as string }] : ['admin'];
   }
   return ['manager', 'admin'];
 }
@@ -181,7 +186,8 @@ describe('nothing already switched on changes: today’s answers are one step ea
     for (const duties of [undefined, { finance: 'u-omar', budgetOwners: { Sales: 'u-kamau' } }]) {
       it(`${label}${duties ? ', with finance and the Sales budget held' : ''}`, async () => {
         const { prisma } = setup({ duties });
-        const steps = (theStepsFor as any)(suite, answers, amount);
+        /* Spending's settings are kept as the lowest of its steps by amount. */
+        const steps = (theStepsFor as any)(suite, suite === 'spend' ? withTheCardsAnswers({}, answers) : answers, amount);
         expect(steps).toEqual([BEFORE_theStepsFor(suite, answers, amount)]);
         for (const requester of ['u-aisha', 'u-miriam', 'u-otieno', 'u-wairimu', 'u-omar']) {
           const request = { organizationId: ORG, requesterUserId: requester };
@@ -350,8 +356,8 @@ describe('the admin sets the steps, and nobody else can', () => {
         'Groundwork never passes leave requests on by itself. An admin can set a number of working days after which it does.',
       ],
     });
-    expect(before.suites.find((s) => s.key === 'spend')!.said[1])
-      .toBe('A request to spend above it goes to whoever holds their team’s budget, or else whoever looks after finance, or else the person named on the suite, or else an admin.');
+    /* Who approves spending is said where it is set, with its steps by amount (Hafsah's plan of 2 November, step 0). */
+    expect(before.suites.find((s) => s.key === 'spend')!.said[0]).toBe('Who approves a request to spend is set by amount, on the spending page.');
     const after = await suites.setWorkflows(as('u-grace'), { leave: { steps: [['manager', 'departmentHead', 'admin'], ['hr', 'admin']], escalateAfter: 2 } });
     expect(after.suites.find((s) => s.key === 'leave')).toMatchObject({
       set: true, steps: [['manager', 'departmentHead', 'admin'], ['hr', 'admin']], escalateAfter: 2,
@@ -371,7 +377,9 @@ describe('the admin sets the steps, and nobody else can', () => {
     await expect(suites.setWorkflows(as('u-grace'), { leave: { steps: [[{ named: 'u-omar' }]] } })).rejects.toThrow(new BadRequestException(WORKFLOWS_REFUSED.badSteps));
     await expect(suites.setWorkflows(as('u-grace'), { leave: { steps: [['boss']] } })).rejects.toThrow(new BadRequestException(WORKFLOWS_REFUSED.badSteps));
     await expect(suites.setWorkflows(as('u-grace'), { time: { escalateAfter: 0 } })).rejects.toThrow(new BadRequestException(WORKFLOWS_REFUSED.badDays));
-    await expect(suites.setWorkflows(as('u-grace'), { leave: { stepsAbove: [['finance']] } })).rejects.toThrow(new BadRequestException(WORKFLOWS_REFUSED.notForThisSuite));
+    await expect(suites.setWorkflows(as('u-grace'), { leave: { stepsAbove: [['finance']] } })).rejects.toThrow(new BadRequestException(WORKFLOWS_REFUSED.badSteps));
+    /* Spending's steps are set by amount only, so they can never disagree with a second store. */
+    await expect(suites.setWorkflows(as('u-grace'), { spend: { steps: [['finance']] } })).rejects.toThrow(new BadRequestException(WORKFLOWS_REFUSED.spendIsByAmount));
   });
 
   it('a lead, a member and a guest can neither read nor set the steps', async () => {

@@ -144,7 +144,8 @@ describe('everybody else who already reads the request', () => {
     const o = await withTyres();
     await o.svc.askAQuestion(o.as('u-fatuma'), o.id, QUESTION, TODAY);
     expect((await o.svc.board(o.as('u-wairimu'), TODAY)).waiting.map((w) => w.id)).not.toContain(o.id);
-    expect((await o.svc.board(o.as('u-omar'), TODAY)).waiting).toEqual([]);
+    /* Finance is no approver unless a step names it (Hafsah's plan of 2 November, step 0), so Omar, a member, is not let onto the board at all. */
+    await expect(o.svc.board(o.as('u-omar'), TODAY)).rejects.toThrow(ForbiddenException);
     await expect(o.svc.board(o.as('u-miriam'), TODAY)).rejects.toThrow(ForbiddenException);
   });
 
