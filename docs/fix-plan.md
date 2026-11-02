@@ -566,3 +566,97 @@ B is the only option that meets all six. It is built from parts Groundwork alrea
 - **Interventions (layer 3)** extend the coaching state (CoachingState) and My work's seven behaviours: the next step for the person and for the lead, tracked in later assessments; warnings, plans and firing stay the lead's decision.
 - **Readers move one at a time** onto the assessment (the board's records, the report, My work, Ask, References and resources, the setup outcome), each proven by the no-loss check before the next, and the separate extractors each reader replaces are deleted with it.
 This is built on wip/assessment and tested with against without on the same round before anything is kept.
+
+## Why each problem happens, and the strategy (2 November 2026)
+
+Sources: the traced failures on the smoke runs (why-traced.md, 82 items), the false flags and missed patterns in the baseline (false-flags.md), the maps of today's Ask (today-ask-map.md) and of how a conversation is recorded (today.md), and the baseline full run's scores (runs/without-round22/scores.json). The "with" run's numbers go beside these when it has run.
+
+## The baseline, scored with the corrected scoring (wip/regressions, 3 organisations, 9 team members, 4 check-ins each)
+
+| Measure | Baseline |
+|---|---|
+| Facts people said that show up somewhere | 93% of 148 |
+| On the board | 66% |
+| In the reports | 90% |
+| Through Ask | 13% |
+| Facts stated wrongly | 21 |
+| Untrue lines on the board or in reports | 13 |
+| Ask answers correct | 4 of 22 (what the lead said in setup: 0 of 4) |
+| Numbers that disagree between pages | 8 of 22 |
+| Planted patterns caught | 6 of 12 (6 of 7 for people who had check-ins) |
+| Honest people wrongly flagged | 2 of 3 controls |
+| Next steps offered / fitting / followed up | 16 / 16 / 5 |
+| Model calls per check-in | 65 (per setup 38) |
+| First-experience rating | 2.5 (law 3, field 2, sales not rated) |
+| Team reached the check-in at setup | law 2 of 3, sales 0 of 3, field 3 of 3 |
+
+
+## The with-and-without result, like for like (law firm and field programme, corrected scorers)
+
+| Measure | Without | With |
+|---|---|---|
+| Found somewhere the lead can see | 93% | 96% |
+| On the board | 67% | 71% |
+| In the reports | 89% | 86% |
+| Through Ask | 13% | 37% |
+| Stated wrongly | 25 | 17 |
+| Untrue lines | 15 | 12 |
+| Ask correct | 4 of 22 | 7 of 22 |
+| Pages disagreeing | 9 of 25 | 2 of 20 |
+| Patterns the lead can see | 5 of 7 | 7 of 7 |
+| Honest people flagged | 2 of 2 | 2 of 2 |
+| Model calls per check-in (all organisations) | 65 | 78 |
+
+The full report, with the causes of what got worse and the seven fixes built since: https://claude.ai/artifact/3851LMQjrHPFX8sSPvkMPB
+
+## The causes, with the numbers they explain
+
+### 1. Each page has its own route to the information (confirmed; the main cause)
+The board reads record lines, targets, waits, work items and figures, each from its own table and behind its own gate; the session report reads the record lines in about 15 places; the weekly report is written from a summary of counts and names ("Brian named Kasarani Foods, Baraka Hardware and KES"); Ask has 45 lanes, each with its own small lookup, and a documents answer that reads only record lines and targets. Whatever a route doesn't carry is missing on that page.
+- Explains: 66% on the board against 90% in the reports and 13% through Ask; the setup facts that reached no page (1 of the law lead's 18) when the separate target write failed; the weekly report's empty sentences.
+- On the "with" branch at first, the assessment held every fact but no page read it ("the assessment itself reaches nobody"), so it was one more copy and scored lower.
+
+### 2. Ask decides what a question means before it reads the record (partly as suspected)
+Fixed patterns place a question first (about 139 of them, plus about 30 word lists); when none matches, the model chooses only from a menu of 26 read lanes, and the chosen lane then blocks the record answer. Every lane answer in the smoke runs was wrong; both correct answers came from the record answer.
+- Explains: 4 of 22 correct; "When is the Kasarani Foods filing due?" answered "Nothing is due" from the lead's own to-dos; "Tell me everything Brian told you" answered with a list of what Ask can do.
+
+### 3. Model-written text is not tied to the record (real, smaller)
+A client's promise stored as the person's own commitment; a wait's label cutting off the amount owed; "Monday 9 November", said on 13 November, stored as 2027; the page's own worked example ("300 organic chickens") stored as the lead's goal.
+- Explains: part of the 21 stated wrongly and the 13 untrue lines.
+
+### 4. The same figure is counted in more than one place (confirmed)
+"Who has answered" was computed in about 35 places (the board header "2 of 4", the report index "1 of 1", the check-in page's own copy, Today's nudge "three"); the end date two ways ("19 January" and "18 January"); the weekly "100% of check-ins made" counted rows, not people.
+- Explains: 8 of 22 numbers disagreeing between pages.
+
+### 5. A failed model write is lost, not retried
+Setup's record extraction and target read failed on a network error and were only logged; that lead's whole setup reached no page.
+
+### 6. Gates drop facts
+Work items are made only when a kind of work is set; figures are kept only for agreements.
+
+### 7. The record has no place for what people say
+"Twice a week, Monday and Thursday" had no value, so pages said "Every week", "Every Thursday" and "Weekly, Thursdays".
+
+### 8. Stale copies
+The report's opening count was frozen when written; one promise sat in two tables with different days.
+
+### 9. Patterns are judged by many readers, from silence, inside a round (the false flags)
+Six separate readers judge a person, each with its own threshold, often inside one round; silence is read as a finding ("nothing on record says it was raised higher"); the quiet, precise people get thin records (leading questions, early closes) and the gaps are held against them; one standing debt counted as three periods; a client's promise counted as the person's; settled items keep counting; a regex decides whether something was "taken further".
+- Explains: 2 of 3 honest controls flagged (Aisha, Joseph); the quietly excellent person (David) told "Nothing David said this round can be checked yet"; weak catches resting on a generic line printed for everyone.
+
+## The strategy (for every scenario, not this run)
+
+1. **One source.** One assessment per conversation, checked for completeness, is the only reading of what was said. The record (record lines, targets, promises, waits, work items, figures) is written from it by one writer each. Every page, report, summary and assistant answer reads through one reader that applies who may see what. Removes: the per-page routes, the weekly summary, Ask's lane lookups, the separate target and promise reads, the duplicate promise table. Moves: facts on the board, in reports and through the assistant toward 100%; stated wrongly down.
+2. **Pages show the record; the model only words it.** Every sentence on a page rests on facts in the record and names them; a sentence that rests on nothing is not shown. Removes: model-written summaries that are not tied to facts. Moves: untrue lines to zero.
+3. **One count for each figure.** "Who has answered" and every other figure is computed once on the server and served; no page counts for itself. Removes: about 35 counts and the client's copy. Moves: pages disagreeing to zero.
+4. **No write is lost.** Every model call that writes the record or the assessment is retried, and if it still fails it is kept as owed on the conversation and written later; pages rebuild when it lands. Moves: nothing said in setup lost.
+5. **The record holds what people say.** The schedule holds days of the week; no frozen copies of figures. Moves: stated wrongly down.
+6. **A map of where each kind of fact appears.** For each kind of fact (deal, fee note, task, promise, decision, wait, date, proof, target, figure, role, risk), where it appears on the board, in the reports and through the assistant. A fact with no home is a design gap (the work items without a kind of work: a section of the existing board, approved 2 November).
+7. **Patterns have one owner.** Layer 2 of the assessment is the only thing that states anything about a person's behaviour: distinct items, each with its owner and its settlement, counted across the whole record, with proof from any check-in counting; anything "not on record" becomes the next check-in's question, never a flag; each pattern names its instances. Removes: the other readers (the waits and worries lines in what-to-probe, the TAKEN_ABOVE regex, the board's "nothing checkable" and "only asked about" reasons, per-transcript coaching, the detector's lead-facing lines and the chaser guard that patches them). Moves: honest people flagged to zero, quiet excellence shown, model calls down. Needs Hafsah: replacing PatternDetection's lead-facing patterns (a must-keep), retiring the chaser guard, the lead's setup notes as her side in the bias test.
+8. **The assistant understands with the model** and answers from the one reader (see the assistant design). Moves: the assistant's correct answers.
+9. **The test's measures are a standing check**, run on every change, with model calls per check-in reported every time (65 in the baseline) and brought down without losing quality.
+
+## Where it stands
+- Built on wip/assessment (pushed to Hafsah's copy): the one reader (theFactsOnRecord), Ask's documents answer reading it and the read-lane menu removed, the weekly and session reports reading it, the one count on the server and every screen, retries with writes owed until they land, one promise one owner, targets from the lead's assessment.
+- Being built: the record written only from the assessment; twice a week; the work-items board section (gate 1). Left as is: gate 2 (changes no page).
+- Not built yet: the patterns fix (needs Hafsah on the must-keep), the assistant, the Desk, email check-ins.
