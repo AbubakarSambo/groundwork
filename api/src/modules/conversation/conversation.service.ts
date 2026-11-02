@@ -81,7 +81,7 @@ import { theCheckInItWaitsOn } from './which-check-in-it-waits-on';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { BLOCKER_TRACE_PROMPT, BLOCKER_TRACE_PROMPT_KEY, BLOCKER_TRACE_SCHEMA, theChainFrom, theInputKey, theRecordForTheModel, theTraceTheRecordSupports, type TheModelsTrace } from './where-the-blocker-started';
-import { buildScenarioPackForParty, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
+import { buildScenarioPackForParty, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent, CommitmentsSettledEvent } from '../../common';
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
@@ -92,7 +92,7 @@ import { oneOfTheKinds, isASalesKind } from '../board/the-kind-of-work';
 import { theEndCard, theCardStillStanding, whatTheyWereAskedToShow, type EndCard, type ALineForTheCard } from './the-end-card';
 import { assessTheConversation, theAssessmentOf, theAssessmentIsReady, type TheSetupGiven } from './assess-the-conversation';
 import { theSmallStepForThePerson } from '../patterns/the-next-step-for-each-pattern';
-import { whatTheyAreWaitingOn, whatTheyPromisedThemselves, whatHappenedToTheirOpenPromises, theAssessmentIn, theReportTheyRead, type TheAssessment } from './the-assessment';
+import { whatTheyAreWaitingOn, theWorkTheyMentioned, whatTheyPromisedThemselves, whatHappenedToTheirOpenPromises, theAssessmentIn, theReportTheyRead, type TheAssessment } from './the-assessment';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { theSettlements, aCommitmentKey, oneOfEach, type AnAnswer } from './what-happened-to-what-they-said';
 import { theProofSettlements, thePrompt as theProofPrompt, WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT, WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA, whatThisLineProves, mayBeSettledByProof } from './settled-by-proof';
@@ -7723,6 +7723,9 @@ ${told}` : '';
           .then(() => keepThePromisesSaidDone(this.prisma, checkIn.groundId))
           .then((n) => { if (n) this.logger.log(`Check-in ${checkIn.id}: kept ${n} promise(s) somebody said were done.`); })
           .catch((err) => this.logger.warn(`Could not clear the waits said done after ${checkIn.id}: ${err?.message ?? err}`)),
+        /* What they said about another person's work, from the assessment. */
+        this.extractWorkMentions(checkIn.id, checkIn.participantId, checkIn.groundId, checkIn.sessionNumber, assessed)
+          .catch((err: any) => this.logger.warn(`Could not keep the work mentions from ${checkIn.id}'s assessment: ${err?.message}`)),
         /* The team's aims, from the lead's assessment. */
         this.keepTheAimsTheySaid(checkIn, assessed, how.setup)
           .catch((err: any) => this.logger.warn(`Could not keep the aims from ${checkIn.id}'s assessment: ${err?.message}`)),
@@ -7839,9 +7842,6 @@ ${told}` : '';
       this.logger.warn(`Could not take the figures from ${checkIn.id}: ${err?.message}`));
 
     /* The gaps are settled and the lines anchored once the record is written from the assessment: see readTheLinesJustWritten. */
-    this.extractWorkMentions(checkIn.id, checkIn.participantId, checkIn.groundId, checkIn.sessionNumber).catch((err) =>
-      this.logger.warn(`Work-mention extraction failed for check-in ${checkIn.id}: ${err.message}`),
-    );
 
     /**
      * GW-EXP-1b. Fire-and-forget beside the other extractors, and for the same reason: a failure here
@@ -11647,7 +11647,9 @@ ${told}` : '';
     this.logger.log(`Kept ${figures.length} stated figure(s) from ${checkInId}, unconfirmed.`);
   }
 
-  async extractWorkMentions(checkInId: string, participantId: string, groundId: string, sessionNumber: number) {
+  /** What the speaker said about another person's work, kept as work mentions, read from the conversation's assessment (2 November 2026; it had a model read of its own). */
+  async extractWorkMentions(checkInId: string, participantId: string, groundId: string, sessionNumber: number, assessed: TheAssessment | null) {
+    if (!assessed) return;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
@@ -11657,13 +11659,8 @@ ${told}` : '';
     });
     if (!ground || !boardRendersFor(ground.scenario)) return;
 
-    const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
-    if (turns.length === 0) return;
-    const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
-
-    const result = await this.anthropic.extract<{
-      mentions: { personName: string; kind: string; text: string }[];
-    }>(WORK_MENTION_PROMPT, [{ role: 'user', content: transcript }], WORK_MENTION_SCHEMA);
+    const mentions = theWorkTheyMentioned(assessed);
+    if (!mentions.length) return;
 
     const others = ground.participants.filter((p) => p.id !== participantId);
     const resolve = (name: string): string | null => {
@@ -11678,7 +11675,7 @@ ${told}` : '';
       return hit?.id ?? null;
     };
 
-    const rows = (result?.mentions ?? [])
+    const rows = mentions
       .map((m) => {
         const aboutParticipantId = resolve(m.personName);
         if (!aboutParticipantId) return null; // unresolved name: dropped, never guessed

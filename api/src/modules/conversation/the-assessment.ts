@@ -247,7 +247,7 @@ export const THE_ASSESSMENT_PROMPT = [
   '  - claims: each thing they say is true or done. `proof` is "proved" only when they gave or pointed to proof (a document, a photo, a number someone else confirmed); otherwise "said". `proofIs` says what the proof is.',
   '  - promises: each thing somebody said they would do. `byThePerson` is true only for this person\'s own promises. For this person\'s own, the rules below apply.',
   '  - numbers: each figure, what it measures, its unit, and where it came from.',
-  '  - people: each person and organisation mentioned, with their role, and how the speaker spoke of them (praise, criticism or neutral), only from their words.',
+  '  - people: each person and organisation mentioned, with their role, and how the speaker spoke of them (praise, criticism or neutral), only from their words. For a person on the check-in, `theirWork` says how the speaker spoke of that person\'s work: "credited" when the speaker says they did or moved something, or unblocked the speaker; "covered for" when the speaker did or picked up work that belongs to them; otherwise "none". A mention with no work attached ("I spoke to Dana") is "none".',
   '  - dates: each date or deadline, as they said it.',
   '  - decisions: each decision made or waiting, and who decides.',
   '  - blockers: each thing this person is waiting on or blocked by. The rules below apply. `since` is when it started, as they said it, and `sinceDay` is that day as a date (YYYY-MM-DD), worked out from their words and the day of the conversation; null when they did not say when it started.',
@@ -316,7 +316,7 @@ export const THE_ASSESSMENT_SCHEMA = {
         outcome: S('What it is for, only if they said.'), when: S('The timing, their words.'), whatItMeans: S('What "it" means, where they were asked.'),
       }),
       numbers: anItem({ figure: S('The figure.'), measures: S('What it measures.'), unit: S('Its unit.'), source: S('Where it came from.') }),
-      people: anItem({ name: S('The name.'), kind: { type: 'string', enum: ['person', 'organisation'] }, role: S('Their role.'), organisation: S('Their organisation.'), spokenOf: { type: 'string', enum: ['praise', 'criticism', 'neutral'] } }),
+      people: anItem({ name: S('The name.'), kind: { type: 'string', enum: ['person', 'organisation'] }, role: S('Their role.'), organisation: S('Their organisation.'), spokenOf: { type: 'string', enum: ['praise', 'criticism', 'neutral'] }, theirWork: { type: 'string', enum: ['credited', 'covered for', 'none'] } }),
       dates: anItem({ when: S('The date, as said.'), what: S('What it is for.') }),
       decisions: anItem({ decision: S('The decision.'), state: { type: 'string', enum: ['made', 'waiting'] }, whoDecides: S('Who decides.') }),
       blockers: anItem({
@@ -587,6 +587,26 @@ export function whatTheyAreWaitingOn(a: TheAssessment | null): { what: string; o
     sinceDay: /^\d{4}-\d{2}-\d{2}$/.test(text(b.sinceDay) ?? '') ? text(b.sinceDay) : null,
     ...(typeof b.namedTheThing === 'boolean' ? { namedTheThing: b.namedTheThing } : {}),
   })).filter((d) => d.what);
+}
+
+/**
+ * WHAT THE SPEAKER SAID ABOUT ANOTHER PERSON'S WORK, as work mentions: somebody they credited, somebody whose work they covered,
+ * and somebody they are waiting on. Read from the people and the blockers, so there is no separate read of the transcript.
+ */
+export function theWorkTheyMentioned(a: TheAssessment | null): { personName: string; kind: 'CREDIT' | 'COVERAGE' | 'BLOCKED_BY'; text: string }[] {
+  const out: { personName: string; kind: 'CREDIT' | 'COVERAGE' | 'BLOCKED_BY'; text: string }[] = [];
+  for (const p of a?.people ?? []) {
+    const kind = p.theirWork === 'credited' ? 'CREDIT' : p.theirWork === 'covered for' ? 'COVERAGE' : null;
+    const name = text(p.name);
+    const words = text(p.words);
+    if (kind && name && words && p.kind !== 'organisation') out.push({ personName: name, kind, text: words });
+  }
+  for (const b of a?.blockers ?? []) {
+    const name = text(b.onName);
+    const words = text(b.words) ?? text(b.what);
+    if (name && words && text(b.status) !== 'CLEARED') out.push({ personName: name, kind: 'BLOCKED_BY', text: words });
+  }
+  return out;
 }
 
 /** This person's own promises, in the shape the promises writer (writeWhatTheyPromised) always took. */
