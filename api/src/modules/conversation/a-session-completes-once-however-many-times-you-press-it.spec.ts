@@ -98,7 +98,7 @@ describe('behaviourally', () => {
       groundParticipant: { findMany: jest.fn(async () => []) },
     };
     const svc: any = new ConversationService(prisma, {} as any, {} as any, {} as any, { emit: jest.fn((...a: any[]) => { emitted.push(a); return true; }) } as any, {} as any, {} as any, {} as any, { emit: jest.fn(async () => undefined) } as any, { get: () => undefined } as any);
-    for (const m of ['scoreSessionSpecificity', 'theEndCardAtTheEnd', 'assessAndThenRead', 'anchorRecordToDocuments', 'extractDependencies', 'extractWorkMentions', 'extractExpectations', 'extractAlignment', 'extractWhatTheySayHappened', 'extractProgress', 'extractOperatingDifferences', 'extractObjection', 'reviseDetectedFunction', 'observeForCoaching', 'rememberStyle', 'buildSoloArtifact', 'ensureNextSession']) {
+    for (const m of ['scoreSessionSpecificity', 'theEndCardAtTheEnd', 'assessAndThenRead', 'anchorRecordToDocuments', 'extractDependencies', 'extractWorkMentions', 'extractExpectations', 'extractAlignment', 'extractWhatTheySayHappened', 'extractOperatingDifferences', 'extractObjection', 'reviseDetectedFunction', 'observeForCoaching', 'rememberStyle', 'buildSoloArtifact', 'ensureNextSession']) {
       svc[m] = jest.fn(async () => null);
     }
     const completions = () => emitted.filter((a) => a[0] === GroundworkEvents.CHECK_IN_COMPLETED);

@@ -4566,7 +4566,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
         where: { groundId, status: 'WAITING' },
         select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true, triedSaid: true, blockerKind: true },
       }).then((rows) => rows.filter((d) => !aWaitOnOneself(d))),
-      this.prisma.delivery.findMany({ where: { groundId }, select: { participantId: true, objectiveId: true, text: true } }),
+      /*
+       * WHAT THEY DID, FROM THE RECORD (2 November 2026): what they added themselves, and every line of progress their
+       * conversations' assessments put on the record (work that moved, figures that changed, what happened to a promise). A
+       * separate read used to file a check-in's progress against an aim (extractProgress); the record already holds it, from
+       * the one read every page reads.
+       */
+      Promise.all([
+        this.prisma.delivery.findMany({ where: { groundId }, select: { participantId: true, text: true } }),
+        Promise.resolve(this.prisma.recordEntry?.findMany?.({ where: { participant: { groundId }, type: 'PROGRESS' as any, disputedAt: null }, select: { participantId: true, text: true } }) ?? []).catch(() => [] as { participantId: string; text: string }[]),
+      ]).then(([added, onTheRecord]) => [...added, ...(onTheRecord ?? [])]),
       /*
        * WHAT THEY SAID ABOUT WHY, AS A CLASSIFICATION AND NEVER AS WORDS.
        *

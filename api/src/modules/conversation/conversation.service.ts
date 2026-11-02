@@ -225,7 +225,7 @@ import {
 import { evidenceBlock } from '../public-api/what-the-numbers-show';
 import { describePending, PENDING_RULE } from '../public-api/six-is-still-the-target';
 import { whenTheyMeant } from './when-words-mean-a-date';
-import { OPERATING_DIFFERENCE_PROMPT, OPERATING_DIFFERENCE_SCHEMA, PROGRESS_PROMPT, PROGRESS_SCHEMA, THEY_SAY_HAPPENED_PROMPT, THEY_SAY_HAPPENED_SCHEMA } from './prompt-library';
+import { OPERATING_DIFFERENCE_PROMPT, OPERATING_DIFFERENCE_SCHEMA, THEY_SAY_HAPPENED_PROMPT, THEY_SAY_HAPPENED_SCHEMA } from './prompt-library';
 import { TheySay, worthRecording, WHEN_THEY_SAY_IT_IS_MISSING } from './what-they-say-happened';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { keptForTheOrganisation, MOST_KEPT_IN_A_PROMPT } from '../knowledge/organisation-memory';
@@ -7862,10 +7862,6 @@ ${told}` : '';
       this.logger.warn(`Their-own-account extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
 
-    this.extractProgress(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
-      this.logger.warn(`Progress extraction failed for check-in ${checkIn.id}: ${err.message}`),
-    );
-
     this.extractOperatingDifferences(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
       this.logger.warn(`Operating-difference extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
@@ -10618,58 +10614,6 @@ ${told}` : '';
           externalId: null,
         },
       }).catch(() => undefined);
-    }
-  }
-
-  async extractProgress(checkInId: string, participantId: string, groundId: string) {
-    const mine = await this.prisma.personObjective.findMany({
-      where: { groundId, participantId, status: 'OPEN' },
-      select: { id: true, text: true },
-    });
-    if (!mine.length) return;
-
-    const turns = await this.prisma.conversationTurn.findMany({
-      where: { checkInId, role: TurnRole.PERSON },
-      orderBy: { createdAt: 'asc' },
-      select: { content: true },
-    });
-    const said = turns.map((t) => t.content).join('\n').trim();
-    if (said.length < 80) return;
-
-    const result = await this.anthropic.extract<{
-      progress: { promise: string; whatTheyDid: string; finished?: boolean }[];
-    }>(
-      PROGRESS_PROMPT,
-      [{ role: 'user', content: `THEIR PROMISES:\n${mine.map((m) => `- ${m.text}`).join('\n')}\n\nTHEIR CHECK-IN:\n${said}` }],
-      PROGRESS_SCHEMA,
-    ).catch(() => null);
-    if (!result?.progress?.length) return;
-
-    for (const p of result.progress) {
-      const did = (p.whatTheyDid ?? '').trim();
-      if (!did) continue;
-
-      /*
-       * Matched on the promise's own words, and dropped when it matches none. A piece of progress
-       * filed against the wrong promise is worse than one filed against nothing: it marks the
-       * wrong thing as moving, and quietly leaves the real one looking untouched.
-       */
-      const wanted = (p.promise ?? '').trim().toLowerCase();
-      const hit = mine.find((m) => m.text.trim().toLowerCase() === wanted)
-        ?? mine.find((m) => wanted.length > 12 && m.text.toLowerCase().includes(wanted))
-        ?? null;
-      if (!hit) continue;
-
-      await this.prisma.delivery.create({
-        data: { groundId, participantId, objectiveId: hit.id, text: did, carriedIntoCheckInId: checkInId },
-      }).catch(() => undefined);
-
-      if (p.finished === true) {
-        await this.prisma.personObjective.update({
-          where: { id: hit.id },
-          data: { status: 'MET', statusChangedAt: new Date() },
-        }).catch(() => undefined);
-      }
     }
   }
 

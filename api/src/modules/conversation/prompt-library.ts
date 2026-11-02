@@ -2258,47 +2258,6 @@ export const THEY_SAY_HAPPENED_SCHEMA = {
   },
 } as const;
 
-export const PROGRESS_PROMPT = `You are given a person's check-in and the promises already on their record.
-
-Find what they said they have DONE against those promises. Nothing else.
-
-For each one:
-   - promise: the promise it is about, copied exactly from the list you were given.
-   - whatTheyDid: what they said they did, in their own words, one sentence.
-   - finished: true ONLY if they plainly said the whole promise is complete.
-
-RULES.
-Only against a promise on the list. If it matches none of them, leave it out.
-Only what they say they DID. A plan is not progress. "I am going to" and "I will" are not this.
-Started is not finished. Half of it is not finished. "Nearly there" is not finished.
-If they described doing some of it, record that as progress with finished false. That is the common case.
-Never infer that something is finished because time has passed or because they sound positive.
-Do not turn a difficulty into progress, and do not turn progress into a difficulty.
-Be conservative. An empty list is a correct answer and usually the right one.`;
-
-export const PROGRESS_SCHEMA = {
-  name: 'emit_progress',
-  description: 'What the person says they did against their own promises.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      progress: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            promise: { type: 'string' },
-            whatTheyDid: { type: 'string' },
-            finished: { type: 'boolean' },
-          },
-          required: ['promise', 'whatTheyDid'],
-        },
-      },
-    },
-    required: ['progress'],
-  },
-} as const;
-
 export const EXPECTATION_SCHEMA = {
   name: 'emit_expectations',
   description: "Emit the lead's own number and what they expect of each named person.",
