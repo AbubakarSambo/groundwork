@@ -69,6 +69,8 @@ const subjects = [
 ];
 
 export interface Options {
+  /** Each check-in's assessment column, for layer 2 (F2, 2 November 2026): { participantId, sessionNumber, sessionReport }. */
+  assessments?: any[];
   /** Aisha's earlier review, decided. */
   earlier?: boolean;
   /** Pattern rows in check-ins Aisha is in. */
@@ -123,7 +125,7 @@ export function setup(opts: Options = {}) {
         .filter((x) => !where.ground?.OR || where.ground.OR.some((o: any) => { const g = grounds.find((y) => y.id === x.groundId)!; return (o.initiatorId && g.initiatorId === o.initiatorId) || (o.createdByUserId && g.createdByUserId === o.createdByUserId); }))
         .map((x) => ({ ...x, ground: grounds.find((g) => g.id === x.groundId) }))),
     },
-    checkIn: { findMany: jest.fn(async ({ where }: any) => checkIns.filter((x) => where.participantId.in.includes(x.participantId) && x.status === where.status && x.completedAt >= where.completedAt.gte && x.completedAt <= where.completedAt.lte)) },
+    checkIn: { findMany: jest.fn(async ({ where, select }: any) => select?.sessionReport ? (opts.assessments ?? []).filter((x) => where.participantId.in.includes(x.participantId)).map((x, n) => ({ id: `ci-a-${n}`, ...x })).sort((a, b) => b.sessionNumber - a.sessionNumber) : checkIns.filter((x) => where.participantId.in.includes(x.participantId) && x.status === where.status && x.completedAt >= where.completedAt.gte && x.completedAt <= where.completedAt.lte)) },
     groundObjective: { findMany: jest.fn(async ({ where }: any) => goals.filter((o) => where.ownerParticipantId.in.includes(o.ownerParticipantId) && o.isADecisionAboutAPerson === where.isADecisionAboutAPerson)) },
     groundCommitment: { findMany: jest.fn(async ({ where }: any) => commitments.filter((x) => where.participantId.in.includes(x.participantId) && x.explicit === where.explicit && x.source !== where.source.not && x.createdAt >= where.createdAt.gte && x.createdAt <= where.createdAt.lte)) },
     groundDependency: { findMany: jest.fn(async ({ where }: any) => waits.filter((x) => where.fromParticipantId.in.includes(x.fromParticipantId) && x.createdAt >= where.createdAt.gte && x.createdAt <= where.createdAt.lte)) },

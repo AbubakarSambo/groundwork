@@ -46,6 +46,7 @@ import { withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the
 import { periodOf } from '../patterns/period-of';
 import { theNamesOnOurSide } from '../board/a-deal-that-has-stalled';
 import { PATTERN_ROW_SELECT, servedPatterns, runsItForAPattern } from '../patterns/who-reads-a-pattern';
+import { theNewestRecordOfEachPerson, theRecordAsServedPatterns } from '../patterns/what-the-record-shows-the-lead';
 import {
   theFactsIn, asTheWeekReadBeforeReleaseOne, theSentencesIn, theWeeksHeading, whatThisReportIs, theCheckInsMade, theThingsWithProof, aTargetThisWeek,
   movedThisWeek, whatCameUpAcrossTheTeam, whatWasSaidAndWhatTheProofShows, aCommitmentThatSettled, aHandoffThatCleared, theirSideOfIt,
@@ -759,8 +760,17 @@ export class TheWeeklyReportService {
       now,
     });
     const thisWeek = new Set(facts.periods);
-    return served
-      .filter((p) => (rows.find((r) => r.id === p.id)?.seenInSessions ?? []).some((n: number) => thisWeek.has(n)))
+    /* What the record shows about each person (layer 2), for whoever runs it only (F2, 2 November 2026): each pattern that holds and
+       rests on something from a check-in of this week. */
+    const people = runsItForAPattern(ground, readerUserId) ? await theNewestRecordOfEachPerson(this.prisma, groundId) : [];
+    const acrossTime = theRecordAsServedPatterns(people.map((one) => ({
+      ...one,
+      record: { ...one.record, patterns: one.record.patterns.filter((p) => p.instances.some((i) => thisWeek.has(periodOf({ sessionNumber: i.sessionNumber, when: i.on }, ground)))) },
+    })));
+    return [
+      ...served.filter((p) => (rows.find((r) => r.id === p.id)?.seenInSessions ?? []).some((n: number) => thisWeek.has(n))),
+      ...acrossTime,
+    ]
       .filter((p) => p.yours || labels.has(p.participantId))
       .map((p) => {
         const heading = /[.!?]$/.test(p.heading) ? p.heading : `${p.heading}.`;

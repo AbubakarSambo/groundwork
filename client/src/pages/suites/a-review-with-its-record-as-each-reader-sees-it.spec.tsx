@@ -57,15 +57,16 @@ const FOR_WAIRIMU: ReviewForTheWriter = {
   briefing: {
     heading: 'Your briefing for Aisha’s review',
     counts: 'In the check-ins you are in with Aisha, Aisha made 5 commitments between 6 April 2026 and 28 September 2026. Aisha kept 2 of them, 1 was not done, 1 was dropped and 1 was still open when this review started.',
+    /* 2 November 2026 (F2): the briefing reads layer 2, what the record shows about Aisha with the days and words it rests on,
+       and the next step; the person's answer and the "sees them first" note were the stored pattern's, which no lead reads now. */
     patterns: [{
-      heading: 'Problems are mostly put down to things outside the team',
-      whatHappened: 'Aisha put the missed orders down to the stock arriving late.',
-      howOften: 'This came up in 3 check-ins, in sessions 2, 3 and 4.',
+      heading: 'Aisha has let 2 promised days pass without the work done.',
+      whatHappened: 'On 4 May, the words were "I will send the price list to Carrefour by Friday." On 18 May, the words were "I will call Naivas on Monday."',
+      howOften: 'This rests on 2 separate things from 2 check-ins.',
       checkIn: 'Sales team, Q3',
-      theirAnswer: 'Aisha’s answer: “The stock came three weeks late, so I could not sell.”',
+      nextStep: 'Talk with Aisha about it. Aisha has let 2 promised days pass without the work done.',
     }],
-    patternsNote: 'These only appear after three check-ins. Aisha sees them first and can answer, and they never go anywhere on their own.',
-    changedAfterEarlierConversations: ['You talked with Aisha about “Problems are mostly put down to things outside the team” on 25 September 2026. It came up again in 1 check-in after that.'],
+    changedAfterEarlierConversations: ['You talked with Aisha about this on 25 September 2026. Aisha has let 2 promised days pass without the work done.'],
     corrections: [{
       line: 'On 4 May 2026, in “Sales team, Q3”, Aisha committed to send the price list to Carrefour. It was marked as not done on 18 May 2026.',
       said: 'Aisha marked this as wrong on 1 October 2026, and said what is true.',
@@ -76,7 +77,7 @@ const FOR_WAIRIMU: ReviewForTheWriter = {
 }
 const FOR_GRACE: AReview = {
   ...FOR_WAIRIMU, reader: 'admin', mayWrite: false, recognise: null,
-  briefing: { heading: 'The briefing for Aisha’s review', counts: null, patterns: [], patternsNote: null, changedAfterEarlierConversations: [], corrections: [], whoDecides: 'There are no scores. Groundwork gives the evidence and the patterns, and Wairimu decides. Aisha sees the reasons.' },
+  briefing: { heading: 'The briefing for Aisha’s review', counts: null, patterns: [], changedAfterEarlierConversations: [], corrections: [], whoDecides: 'There are no scores. Groundwork gives the evidence and the patterns, and Wairimu decides. Aisha sees the reasons.' },
 }
 
 const GRACE = { id: 'u-g', firstName: 'Grace', role: 'ADMIN', organizationName: 'Baridi Appliances' }
@@ -150,10 +151,11 @@ describe('Wairimu, who writes the review', () => {
     const t = FOR_WAIRIMU.briefing!
     expect(within(b).getByText(t.counts!)).toBeInTheDocument()
     const patterns = within(b).getByRole('list', { name: 'What keeps coming up' })
-    expect(within(patterns).getByText('Problems are mostly put down to things outside the team')).toBeInTheDocument()
-    expect(within(patterns).getByText('This came up in 3 check-ins, in sessions 2, 3 and 4.')).toBeInTheDocument()
-    expect(within(patterns).getByText('Aisha’s answer: “The stock came three weeks late, so I could not sell.”')).toBeInTheDocument()
-    expect(within(b).getByText(t.patternsNote!)).toBeInTheDocument()
+    expect(within(patterns).getByText(t.patterns[0].heading)).toBeInTheDocument()
+    expect(within(patterns).getByText(t.patterns[0].whatHappened!)).toBeInTheDocument()
+    expect(within(patterns).getByText('This rests on 2 separate things from 2 check-ins.')).toBeInTheDocument()
+    expect(within(patterns).getByText(t.patterns[0].nextStep!)).toBeInTheDocument()
+    expect(within(b).queryByText(/sees them first/)).toBeNull()
     expect(within(b).getByText(t.changedAfterEarlierConversations[0])).toBeInTheDocument()
     expect(within(b).getByText(t.corrections[0].line)).toBeInTheDocument()
     expect(within(b).getByText('There are no scores. Groundwork gives you the evidence and the patterns, and you decide. Aisha sees your reasons.')).toBeInTheDocument()

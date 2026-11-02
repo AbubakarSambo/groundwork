@@ -65,15 +65,19 @@ const THE_EXPECTATION: Record<APatternKey, string> = {
   'the-leads-bias': 'Read each person\'s own check-ins and proof before you judge their work.',
 };
 
-export function whatTheStepSays(step: AStep, p: Pick<APatternAcrossAssessments, 'key' | 'saying'>): string {
+export function whatTheStepSays(step: AStep, p: Pick<APatternAcrossAssessments, 'key' | 'saying' | 'who'>): string {
+  const who = p.who?.trim() || 'them';
+  const whose = p.who?.trim() ? `${p.who.trim()}'s` : 'their';
+  /* The lead's bias is put to the lead, about the person her view is of. */
+  if (p.key === 'the-leads-bias' && step === 'a coaching question') return `What has ${who} done since last time, going by ${whose} own check-ins and proof?`;
   switch (step) {
     case 'a coaching question': return THE_QUESTION[p.key];
     case 'a clear expectation': return THE_EXPECTATION[p.key];
-    case 'praise': return `Thank them for this. ${p.saying}`;
-    case 'a conversation': return `Talk with them about it. ${p.saying}`;
-    case 'a deadline': return 'Agree a day by which this changes, and check it in their next check-in.';
-    case 'a plan': return 'Agree a written plan with them: what changes, by when, and how you will both know.';
-    case 'firing, when there are grounds': return 'The steps before this have not worked. Whether to end their work with the team is your decision, with the record in front of you.';
+    case 'praise': return `Thank ${who} for this. ${p.saying}`;
+    case 'a conversation': return `Talk with ${who} about it. ${p.saying}`;
+    case 'a deadline': return `Agree a day with ${who} by which this changes, and check it in ${whose} next check-in.`;
+    case 'a plan': return `Agree a written plan with ${who} that says what changes, by when, and how you will both know.`;
+    case 'firing, when there are grounds': return `The steps before this have not worked. Whether to end ${whose} work with the team is your decision, with the record in front of you.`;
   }
 }
 
@@ -120,7 +124,12 @@ function atRung(p: APatternAcrossAssessments, rung: number, startedIn: AnInterve
 
 /** Each instance as a plain sentence: the day, and their words. */
 export function theInstancesAsSentences(p: Pick<APatternAcrossAssessments, 'instances'>): string {
-  return p.instances.map((i) => `${i.on ? `On ${theDay(i.on)}` : `In check-in ${i.sessionNumber}`}, ${i.words[0] ? `the words were "${i.words[0].replace(/^"+|"+$/g, '')}"` : `it was about ${i.item}`}.`).join(' ');
+  return p.instances.map((i) => {
+    const when = i.on ? `On ${theDay(i.on)}` : `In check-in ${i.sessionNumber}`;
+    const w = (i.words[0] ?? '').trim().replace(/^"+|"+$/g, '');
+    /* Their own full stop ends the sentence, inside the quotation marks; none is added after it. */
+    return w ? `${when}, the words were "${/[.?!]$/.test(w) ? w : `${w}.`}"` : `${when}, it was about ${i.item}.`;
+  }).join(' ');
 }
 const theDay = (on: string) => new Date(`${on.slice(0, 10)}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
 

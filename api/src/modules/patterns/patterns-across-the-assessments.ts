@@ -69,6 +69,8 @@ export interface APatternAcrossAssessments {
   instances: AnInstance[];
   /** 'holds' when it has its distinct items from different check-ins; 'forming' when it has some, not yet enough (never shown). */
   state: 'forming' | 'holds';
+  /** The first name of the person whose record it is in, so each next step names them. */
+  who?: string;
 }
 
 /** THE ROLE EACH PERSON IS REALLY PLAYING, against the role they were given, with the evidence (lead only). */
@@ -416,6 +418,7 @@ export function theRecordAcrossTime(
   }
   const bias = isTheLead ? null : theLeadsBias({ participantId, name }, leadsView, patterns);
   if (bias) patterns.push(bias);
+  for (const p of patterns) p.who = firstNameOf(name);
   return { patterns, role, focus, toAskNextTime: isTheLead ? [] : whatToAskNextTime(name, seen) };
 }
 

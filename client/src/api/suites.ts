@@ -200,8 +200,7 @@ export interface RecogniseForThePerson { facts: string; whoDecides: string }
 export interface ABriefing {
   heading: string
   counts: string | null
-  patterns: { heading: string; whatHappened: string | null; howOften: string; checkIn: string; theirAnswer: string }[]
-  patternsNote: string | null
+  patterns: { heading: string; whatHappened: string | null; howOften: string; checkIn: string; nextStep: string | null }[]
   changedAfterEarlierConversations: string[]
   corrections: { line: string; said: string; whatIsTrue: string }[]
   whoDecides: string

@@ -157,7 +157,8 @@ describe('the next step for each pattern', () => {
     const p = record([1, 2, 3].map((n) => seen(n, (a) => { a.comparedWithLastTime.promisesDue = [due(`k-${n}`, 'kept')]; }))).patterns;
     const [step] = theInterventionsAfter([], p, { checkInId: 'ci-3', sessionNumber: 3 });
     expect(step).toMatchObject({ step: 'praise', forWhom: 'the lead', theLeadDecides: false });
-    expect(step.says).toBe('Thank them for this. Amani has kept 3 promises.');
+    /* (2 November 2026: each step names the person, never "them".) */
+    expect(step.says).toBe('Thank Amani for this. Amani has kept 3 promises.');
   });
 
   it('too much on never climbs past a conversation with the lead', () => {

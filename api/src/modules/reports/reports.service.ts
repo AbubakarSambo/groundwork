@@ -212,6 +212,7 @@ import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCH
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { withTheEarlierRead } from '../patterns/stored-pattern-lines-through-the-wall';
+import { whatTheRecordShowsTheLead } from '../patterns/what-the-record-shows-the-lead';
 import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, patternRowAsOfSession, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, type APatternRow } from '../patterns/who-reads-a-pattern';
 import { periodOf, periodsTheRecordHolds, aTruePeriodCount } from '../patterns/period-of';
 import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
@@ -4124,7 +4125,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
        * codes stay out, as they do everywhere a person reads. The wording is the library's own
        * `signal`, and who it is about follows the same naming rule as every other line here.
        */
-      patterns: patternsWithWhatWasKept,
+      /* What the record shows about each person (layer 2), as of this session, for whoever runs it only (F2, 2 November 2026). */
+      patterns: [...patternsWithWhatWasKept, ...(await whatTheRecordShowsTheLead(this.prisma, groundId, { participantId: me?.id ?? null, runsIt: patternRunsIt }, { upToSession: sessionNumber }))],
       /*
        * THIS SESSION'S OWN COACHING NOTE, PROBE LIST AND INFERENCES (request 102, 2 October 2026).
        *

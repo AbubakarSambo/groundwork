@@ -16,30 +16,78 @@ import { theAssessmentIn } from '../conversation/the-assessment';
 import { theRecordAcrossTimeIn, type APatternAcrossAssessments, type TheRecordAcrossTime } from './patterns-across-the-assessments';
 import { theInstancesAsSentences, type AnIntervention } from './the-next-step-for-each-pattern';
 import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
-import type { AServedPattern, APatternReader } from './who-reads-a-pattern';
+import type { AServedPattern, APatternReader, ALeadPatternMark } from './who-reads-a-pattern';
 import type { PlainKind } from './plain-pattern-names';
 
 const KIND: Record<APatternAcrossAssessments['kind'], PlainKind> = { strength: 'good', 'too much on': 'carrying', 'needs work': 'attention' };
 
-/** The newest assessment's record across time for each person on the check-in, with its next steps. */
-export async function theNewestRecordOfEachPerson(prisma: any, groundId: string): Promise<{ participantId: string; record: TheRecordAcrossTime; interventions: AnIntervention[] }[]> {
+/** What the lead marked on a layer-2 pattern, kept on the person's newest assessment by the pattern's id (carried to the next). */
+export interface ALeadsMarkOnAPattern {
+  mark?: ALeadPatternMark | null;
+  markedAt?: string | null;
+  talkedAboutAt?: string | null;
+  /** The user who marked it. */
+  by?: string | null;
+}
+export type TheLeadsMarks = Record<string, ALeadsMarkOnAPattern>;
+
+export interface TheNewestRecordOfAPerson {
+  participantId: string;
+  checkInId: string;
+  sessionNumber: number;
+  record: TheRecordAcrossTime;
+  interventions: AnIntervention[];
+  marks: TheLeadsMarks;
+}
+
+/** The id a layer-2 pattern is served and marked by: the person whose record it is in, and the pattern. */
+export const theIdOfAPatternAcrossTime = (participantId: string, key: string) => `across:${participantId}:${key}`;
+export function theIdReadBack(id: string): { participantId: string; key: string } | null {
+  const m = /^across:([^:]+):([a-z-]+)$/.exec(String(id ?? ''));
+  return m ? { participantId: m[1], key: m[2] } : null;
+}
+
+/** The lead's marks kept on an assessment, read back; anything else reads as none. */
+export function theLeadsMarksOn(a: unknown): TheLeadsMarks {
+  const m = (a as any)?.theLeadsMarks;
+  return m && typeof m === 'object' && !Array.isArray(m) ? (m as TheLeadsMarks) : {};
+}
+
+/**
+ * The newest assessment's record across time for each person, with its next steps and the lead's marks: on one check-in, or for
+ * the given people wherever they are; up to a session where a report is read as of that session.
+ */
+export async function theNewestRecordOfEachPerson(
+  prisma: any,
+  where: string | { groundId?: string; participantIds?: string[]; upToSession?: number },
+): Promise<TheNewestRecordOfAPerson[]> {
+  const w = typeof where === 'string' ? { groundId: where } : where;
   const rows = ((await prisma.checkIn?.findMany?.({
-    where: { groundId },
+    where: {
+      ...(w.groundId ? { groundId: w.groundId } : {}),
+      ...(w.participantIds ? { participantId: { in: w.participantIds } } : {}),
+      ...(typeof w.upToSession === 'number' ? { sessionNumber: { lte: w.upToSession } } : {}),
+    },
     orderBy: { sessionNumber: 'desc' },
-    select: { participantId: true, sessionReport: true },
+    select: { id: true, participantId: true, sessionNumber: true, sessionReport: true },
   })?.catch?.(() => [])) ?? []) as any[];
-  const out = new Map<string, { participantId: string; record: TheRecordAcrossTime; interventions: AnIntervention[] }>();
+  const out = new Map<string, TheNewestRecordOfAPerson>();
   for (const r of rows) {
     if (out.has(r.participantId)) continue;
     const a = theAssessmentIn(r.sessionReport);
     const record = theRecordAcrossTimeIn(a);
-    if (a && record) out.set(r.participantId, { participantId: r.participantId, record, interventions: (Array.isArray(a.interventions) ? a.interventions : []) as AnIntervention[] });
+    if (a && record) {
+      out.set(r.participantId, {
+        participantId: r.participantId, checkInId: r.id, sessionNumber: r.sessionNumber, record,
+        interventions: (Array.isArray(a.interventions) ? a.interventions : []) as AnIntervention[], marks: theLeadsMarksOn(a),
+      });
+    }
   }
   return [...out.values()];
 }
 
 /** The next step the lead reads for one pattern: hers to take, or the one already happening on its own. */
-function theStepFor(p: APatternAcrossAssessments, steps: AnIntervention[]): string | null {
+export function theStepFor(p: APatternAcrossAssessments, steps: AnIntervention[]): string | null {
   const s = steps.find((i) => i.key === p.key && i.participantId === p.participantId && (i.aboutWhom ?? '') === (p.aboutWhom ?? '') && (i.state === 'open' || i.state === 'waiting for the lead'));
   if (!s) return null;
   if (s.forWhom === 'the lead') return s.says;
@@ -47,13 +95,15 @@ function theStepFor(p: APatternAcrossAssessments, steps: AnIntervention[]): stri
 }
 
 /** Each pattern that holds, in the served shape, for whoever runs the check-in. */
-export function theRecordAsServedPatterns(people: { participantId: string; record: TheRecordAcrossTime; interventions: AnIntervention[] }[]): AServedPattern[] {
+export function theRecordAsServedPatterns(people: TheNewestRecordOfAPerson[]): AServedPattern[] {
   const out: AServedPattern[] = [];
   for (const person of people) {
     for (const p of person.record.patterns.filter((x) => x.state === 'holds')) {
       const sessions = [...new Set(p.instances.map((i) => i.sessionNumber))].sort((a, b) => a - b);
+      const id = theIdOfAPatternAcrossTime(person.participantId, p.key);
+      const marked = person.marks[id] ?? {};
       out.push({
-        id: `across:${person.participantId}:${p.key}${p.aboutWhom ? `:${p.aboutWhom}` : ''}`,
+        id,
         /* The lead's bias is about the lead's view of this person: it is placed under the person it is about. */
         participantId: person.participantId,
         yours: false,
@@ -66,12 +116,12 @@ export function theRecordAsServedPatterns(people: { participantId: string; recor
         theirWords: null,
         canAnswer: false,
         whoSeesIt: 'Only you see this. Nothing is decided from it.',
-        leadMark: null,
-        talkedAbout: false,
+        leadMark: marked.mark ?? null,
+        talkedAbout: !!marked.talkedAboutAt,
         secondReadNote: null,
-        about: p.key === 'claims-rarely-proved' ? 'what is said against what happened' : 'the work',
         coachTowards: null,
         oneStep: null,
+        about: p.key === 'claims-rarely-proved' ? 'what is said against what happened' : 'the work',
       });
     }
   }
@@ -79,8 +129,8 @@ export function theRecordAsServedPatterns(people: { participantId: string; recor
 }
 
 /** What the record shows about each person, for this reader: everything for whoever runs it, nothing for anybody else. */
-export async function whatTheRecordShowsTheLead(prisma: any, groundId: string, reader: APatternReader): Promise<AServedPattern[]> {
+export async function whatTheRecordShowsTheLead(prisma: any, groundId: string, reader: APatternReader, opts: { upToSession?: number } = {}): Promise<AServedPattern[]> {
   if (!reader.runsIt) return [];
   if (!(await thePersonJudgementsAreOnFor(prisma, groundId))) return [];
-  return theRecordAsServedPatterns(await theNewestRecordOfEachPerson(prisma, groundId));
+  return theRecordAsServedPatterns(await theNewestRecordOfEachPerson(prisma, { groundId, ...opts }));
 }
