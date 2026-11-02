@@ -8184,17 +8184,12 @@ ${told}` : '';
       where: { id: groundId },
       select: { timelineDays: true, cadence: true, cadenceDays: true, runsUntilEnded: true },
     });
-    // ONE_TIME never reaches this function - ensureNextSession's early return
-    // above (and the SEQUENTIAL-only guard on the other caller) mean
-    // createNextIfAbsent is never called for a ONE_TIME ground. No entry for
-    // it here: a phantom "ONE_TIME: 0" used to sit next to SEQUENTIAL, but a
-    // 0-day step still creates a session (immediately available) - the
-    // opposite of "no follow-up" - so a stray future caller falling through
-    // to that entry would have silently broken the guarantee.
-    const cadenceDays: Record<string, number> = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30, SEQUENTIAL: 0 };
-    const step = cadenceDays[ground?.cadence ?? ''] ?? 0;
-    /* A check-in that runs until the lead ends it has no planned last session, so no session is made final. */
-    const planned = step > 0 && ground && !ground.runsUntilEnded ? Math.max(1, Math.floor(ground.timelineDays / step)) : null;
+    /* ONE COUNT OF THE SESSIONS (assessment test, 2 November). This used to count its own way, a fixed
+       seven days a step whatever days the lead chose, so a twice-a-week field check-in of 46 days was
+       made final at session 6 of about 12 and two people had nothing left to open. It reads the one
+       count every header and ensureNextSession read. A check-in that runs until the lead ends it has
+       no planned last session, so no session is made final. */
+    const planned = ground && !ground.runsUntilEnded ? totalSessionsFor(ground.timelineDays, ground.cadence, ground.cadenceDays) : null;
     const isFinal = planned != null && sessionNumber >= planned;
 
     /**
