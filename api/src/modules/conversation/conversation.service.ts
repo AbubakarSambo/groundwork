@@ -4699,7 +4699,7 @@ export class ConversationService {
       this.prisma.groundDependency?.findMany({
         where: { groundId: ground.id, fromParticipantId: checkIn.participantId, status: { in: ['BLOCKING', 'WAITING'] } },
         orderBy: { createdAt: 'asc' },
-        select: { what: true, onLabel: true, onParticipantId: true, createdAt: true, triedSaid: true, then: true },
+        select: { what: true, onLabel: true, onParticipantId: true, createdAt: true, triedSaid: true, takenFurther: true, then: true },
       })?.catch(() => [] as any[]) ?? [],
       /* Their own words from the session before this one, so a promise can be followed up. */
       this.prisma.recordEntry?.findMany({
@@ -4763,7 +4763,7 @@ export class ConversationService {
          * escalated", which it put to Felix as "What happened to the four items you escalated 15 days ago?" when he had escalated nothing
          * (final evaluation, profile 2, problem 7; decision 139, must-fix 3). See what-they-said-they-did-about-it.
          */
-        escalated: itWasTakenFurther({ triedSaid: d.triedSaid ?? null }),
+        escalated: itWasTakenFurther(d),
         then: d.then,
         onAColleagueHere: !!d.onParticipantId,
         theyConfirmedIt: theWaitIsConfirmed({ onParticipantId: d.onParticipantId ?? null, what: d.what, triedSaid: d.triedSaid ?? null, groundId: ground.id }, theColleaguesOwnPromises as any[]),
@@ -11549,6 +11549,8 @@ ${told}` : '';
             /* What they said they did, this time. Undefined leaves what an earlier round heard:
                somebody who chased last week and says nothing this week still chased. */
             triedSaid: d.triedSaid?.trim() || undefined,
+            /* Taken further, as this account reads it; undefined leaves what an earlier round heard. */
+            takenFurther: d.takenFurther === true ? true : undefined,
             sourceCheckInId: checkInId,
             /* The newest account decides this too: somebody who names the thing this week has
                named it, whatever they said the first time. Undefined leaves what we had. */
@@ -11583,6 +11585,8 @@ ${told}` : '';
           /* Their own words for what they have already done about it. Null means they did not say,
              which is what "nothing said yet" on the board honestly means. */
           triedSaid: d.triedSaid?.trim() || null,
+          /* Whether they took it above the person it was with, or round them, as the assessment read their words. */
+          takenFurther: typeof d.takenFurther === 'boolean' ? d.takenFurther : null,
           /* Whether they named the thing, or only said they were stuck. Null where the model did
              not answer, which reads as "we do not know" rather than as "they did not". */
           namedTheThing: typeof d.namedTheThing === 'boolean' ? d.namedTheThing : null,

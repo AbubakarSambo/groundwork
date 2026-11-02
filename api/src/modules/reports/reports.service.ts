@@ -3966,7 +3966,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const [depRows] = await Promise.all([
       started(() => this.prisma.groundDependency.findMany({
         where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
-        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, escalatedAt: true, triedSaid: true, blockerKind: true, sourceCheckInId: true },
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, escalatedAt: true, triedSaid: true, takenFurther: true, blockerKind: true, sourceCheckInId: true },
       /* Nobody waits on themselves: a wait on oneself stored before request 111 (e) is not read as one (request 117, part 6). */
       }).then((rows: any[]) => rows.filter((d) => !aWaitOnOneself(d))), [] as any[]),
     ]);
@@ -4000,7 +4000,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       const by = (d: unknown) => !!d && new Date(d as any).getTime() <= at;
       const then = await (this.prisma.groundDependency?.findMany?.({
         where: { groundId },
-        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, clearedAt: true, escalatedAt: true, triedSaid: true, blockerKind: true, sourceCheckInId: true, namedTheThing: true } as any,
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, clearedAt: true, escalatedAt: true, triedSaid: true, takenFurther: true, blockerKind: true, sourceCheckInId: true, namedTheThing: true } as any,
       }) ?? Promise.resolve([])).catch(() => null);
       if (Array.isArray(then)) {
         currentDeps = (then as any[])
@@ -4540,7 +4540,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }),
       this.prisma.groundDependency.findMany({
         where: { groundId, status: 'WAITING' },
-        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true, triedSaid: true, blockerKind: true },
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true, triedSaid: true, takenFurther: true, blockerKind: true },
       }).then((rows) => rows.filter((d) => !aWaitOnOneself(d))),
       /*
        * WHAT THEY DID, FROM THE RECORD (2 November 2026): what they added themselves, and every line of progress their
@@ -4804,7 +4804,7 @@ happened, and what is in the way.`;
       (this.prisma.groundDependency?.findMany?.({
         where: { groundId },
         orderBy: { createdAt: 'asc' },
-        select: { what: true, fromParticipantId: true, onParticipantId: true, onLabel: true, status: true, escalatedAt: true, triedSaid: true, createdAt: true },
+        select: { what: true, fromParticipantId: true, onParticipantId: true, onLabel: true, status: true, escalatedAt: true, triedSaid: true, takenFurther: true, createdAt: true },
       }) ?? Promise.resolve([])).catch(() => [] as any[]),
       (this.prisma.patternDetection?.findMany?.({
         where: { groundId },
@@ -6403,7 +6403,7 @@ happened, and what is in the way.`;
         where: asOf ? { groundId } : { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
         select: {
           fromParticipantId: true, onParticipantId: true, onLabel: true,
-          what: true, createdAt: true, updatedAt: true, escalatedAt: true, triedSaid: true,
+          what: true, createdAt: true, updatedAt: true, escalatedAt: true, triedSaid: true, takenFurther: true,
           /* What kind of thing is in the way, and therefore who can move it. The row has carried
              this all along and both coaching surfaces said "waiting on X" without reading it. */
           blockerKind: true,
@@ -7080,7 +7080,7 @@ happened, and what is in the way.`;
        * "Amina", "finance". Where it names a team rather than a person, `waysThrough` opens with
        * "find out who owns this by name", which is exactly the right first move.
        */
-      select: { id: true, what: true, onLabel: true, onParticipantId: true, createdAt: true, triedSaid: true, escalatedAt: true },
+      select: { id: true, what: true, onLabel: true, onParticipantId: true, createdAt: true, triedSaid: true, takenFurther: true, escalatedAt: true },
     }) ?? Promise.resolve([] as any[]))?.catch?.(() => []) ?? [];
     /* Nobody waits on themselves, so nobody is told to "speak to themselves" (request 117, part 6). */
     const mineReal = (mine as any[]).filter((d) => !aWaitOnOneself({ ...d, fromParticipantId: participantId }));

@@ -250,7 +250,7 @@ export const THE_ASSESSMENT_PROMPT = [
   '  - people: each person and organisation mentioned, with their role, and how the speaker spoke of them (praise, criticism or neutral), only from their words. For a person on the check-in, `theirWork` says how the speaker spoke of that person\'s work: "credited" when the speaker says they did or moved something, or unblocked the speaker; "covered for" when the speaker did or picked up work that belongs to them; otherwise "none". A mention with no work attached ("I spoke to Dana") is "none".',
   '  - dates: each date or deadline, as they said it.',
   '  - decisions: each decision made or waiting, and who decides.',
-  '  - blockers: each thing this person is waiting on or blocked by. The rules below apply. `since` is when it started, as they said it, and `sinceDay` is that day as a date (YYYY-MM-DD), worked out from their words and the day of the conversation; null when they did not say when it started. Where it is the same wait as one in their previous assessment, `previousItem` is that item\'s id.',
+  '  - blockers: each thing this person is waiting on or blocked by. The rules below apply. `since` is when it started, as they said it, and `sinceDay` is that day as a date (YYYY-MM-DD), worked out from their words and the day of the conversation; null when they did not say when it started. Where it is the same wait as one in their previous assessment, `previousItem` is that item\'s id. `takenFurther` is true only when they say they took it above the person it was with, or round them (to that person\'s manager or someone more senior, or another way past them); asking again, chasing, or calling the same person is false.',
   '  - corrections: anything they said the record, the board or Groundwork has wrong: what it said, what it should say, and whether they backed it. Where it corrects an item of the previous assessment, `correctsItem` is that item\'s id.',
   '  - documents: each document or photo they added or pointed to: what it says, what it proves, and where it belongs. Where it proves a claim in their previous assessment, `provesItem` is that claim\'s id.',
   '  - targets: what the check-in as a whole is aiming at, and each number somebody is aiming at, by the rules for aims below. In every conversation, setup or check-in.',
@@ -322,7 +322,7 @@ export const THE_ASSESSMENT_SCHEMA = {
       blockers: anItem({
         what: S('What they wait for, reading after the word "for".'), namedTheThing: { type: 'boolean' }, onName: S('The person waited on.'),
         onLabel: S('What is waited on when not a person.'), status: { type: 'string', enum: ['BLOCKING', 'WAITING', 'CLEARED'] },
-        then: S('What happens once it clears.'), previousItem: S('The id of the same wait in their previous assessment.'), triedSaid: S('What they said they already did, their words.'), dueSaid: S('When it is due, their words.'), since: S('Since when, as said.'), sinceDay: S('The day it started, YYYY-MM-DD, from their words and the day of the conversation.'),
+        then: S('What happens once it clears.'), previousItem: S('The id of the same wait in their previous assessment.'), triedSaid: S('What they said they already did, their words.'), takenFurther: { type: 'boolean', description: 'True only when they say they took it above the person it was with, or round them. Asking again or chasing is false.' }, dueSaid: S('When it is due, their words.'), since: S('Since when, as said.'), sinceDay: S('The day it started, YYYY-MM-DD, from their words and the day of the conversation.'),
       }),
       corrections: anItem({ recordSaid: S('What the record said.'), shouldSay: S('What it should say.'), backed: { type: 'boolean' }, correctsItem: S('The id of the previous assessment\'s item it corrects.') }),
       documents: anItem({ name: S('The document or photo.'), says: S('What it says.'), proves: S('What it proves.'), filedOn: S('Where it belongs.'), provesItem: S('The id of the claim in their previous assessment it proves.') }),
@@ -577,12 +577,12 @@ export function thePreviousWithItsCorrections(previous: TheAssessment, correctio
 const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
 
 /** The waits, in the shape the waits writer (extractDependencies) always took. */
-export function whatTheyAreWaitingOn(a: TheAssessment | null): { what: string; onName: string | null; onLabel: string | null; status: string; then: string | null; triedSaid: string | null; dueSaid: string | null; sinceDay: string | null; namedTheThing?: boolean }[] {
+export function whatTheyAreWaitingOn(a: TheAssessment | null): { what: string; onName: string | null; onLabel: string | null; status: string; then: string | null; triedSaid: string | null; takenFurther: boolean | null; dueSaid: string | null; sinceDay: string | null; namedTheThing?: boolean }[] {
   return (a?.blockers ?? []).map((b) => ({
     what: text(b.what) ?? text(b.words) ?? '',
     onName: text(b.onName), onLabel: text(b.onLabel),
     status: text(b.status) ?? 'WAITING',
-    then: text(b.then), triedSaid: text(b.triedSaid), dueSaid: text(b.dueSaid),
+    then: text(b.then), triedSaid: text(b.triedSaid), takenFurther: typeof b.takenFurther === 'boolean' ? b.takenFurther : null, dueSaid: text(b.dueSaid),
     /* The day it started, from their own "since": a wait is dated from it, not from the session it was said in. */
     sinceDay: /^\d{4}-\d{2}-\d{2}$/.test(text(b.sinceDay) ?? '') ? text(b.sinceDay) : null,
     ...(typeof b.namedTheThing === 'boolean' ? { namedTheThing: b.namedTheThing } : {}),

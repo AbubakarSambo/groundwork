@@ -9,8 +9,9 @@ import { itWasTakenFurther } from '../reports/what-they-said-they-did-about-it';
  * from the record and nowhere else:
  *
  *   a reminder sent   the record of messages holds a reminder to check in, to somebody in this check-in, in the last seven days.
- *   an escalation     somebody's own words in this check-in say they took something higher: a handoff's `triedSaid`, a line of the
- *                     record, or words said in this conversation. Never the product's own overnight stamp (`escalatedAt`).
+ *   an escalation     a wait in this check-in was taken above the person it was with, or round them, as the assessment read the
+ *                     person's words (`takenFurther`). Never the product's own overnight stamp (`escalatedAt`). Not checked inside a
+ *                     live check-in, where what was just said is not on a wait yet.
  *   a target          the texts a target may be read from: the check-in's target rows, the organisation's objectives and targets, the
  *                     lead's setup (the brief, each person's role and remit as given, the lead's notes), and what people said.
  *
@@ -41,11 +42,12 @@ export async function whatTheRecordHoldsForClaims(
     } catch { /* not read, so not checked */ }
   }
 
-  if (kinds.has('an escalation')) {
+  /* Inside a live check-in, what the person has just said is not on a wait yet (the waits are written from the assessment after it
+     closes), so an escalation cannot be read there and is not checked. */
+  if (kinds.has('an escalation') && !said.length) {
     try {
-      const waits = (await prisma.groundDependency?.findMany?.({ where: { groundId }, select: { triedSaid: true } })) ?? [];
-      const words = [...waits.map((d: any) => d?.triedSaid ?? ''), ...(await theLinesOfTheRecord()), ...said];
-      held.somebodySaidTheyTookItHigher = words.some((w: string) => !!w && itWasTakenFurther({ triedSaid: w }));
+      const waits = (await prisma.groundDependency?.findMany?.({ where: { groundId }, select: { takenFurther: true } })) ?? [];
+      held.somebodySaidTheyTookItHigher = waits.some((d: any) => itWasTakenFurther(d));
     } catch { /* not read, so not checked */ }
   }
 

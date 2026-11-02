@@ -16,6 +16,8 @@ import { whatTheyTried, Effort } from '../conversation/a-blocker-is-not-a-blocke
 export interface AHandoffWithWhatWasTried {
   escalatedAt?: Date | string | null;
   triedSaid?: string | null;
+  /** Taken above the person it was with, or round them, as the assessment read their words (GroundDependency.takenFurther). */
+  takenFurther?: boolean | null;
 }
 
 /** What the person said they did, in the five tiers. `escalatedAt` is the product's, so it is not theirs. */
@@ -24,11 +26,10 @@ export function whatWasTried(d: AHandoffWithWhatWasTried): Effort {
 }
 
 /*
- * TAKEN ABOVE THE PERSON, IN THEIR WORDS. The conversation's tiers put "I called the customer" with
- * "I escalated to the Head of Credit", because speaking is a step up from writing. For "has it been
- * taken higher" only the second is true, so the words have to say so: somebody above, or the word.
+ * TAKEN ABOVE THE PERSON, BY THEIR ACCOUNT (F2, 2 November 2026). "I called the customer" is a step up from writing, and it is not
+ * taking it higher; "I escalated to the Head of Credit" is. Which one somebody said is the assessment's reading of their words
+ * (`takenFurther` on the wait), kept on the wait. It replaced a word list that read "copied in" and "head of" in any sentence.
  */
-const TAKEN_ABOVE = /escalat|went to (?:his|her|their|the)\b|raised it with|took it to|\bcc(?:'?d)?\b|copied in|\b(?:his|her|their|my|our) (?:manager|boss|director|head)\b|\bhead of\b|\bsomeone higher\b/i;
 
 /*
  * THE PRODUCT'S STAMP IS NEVER THE PERSON TAKING IT HIGHER (decision 139, must-fix 3; final evaluation, problem 4).
@@ -43,9 +44,7 @@ const TAKEN_ABOVE = /escalat|went to (?:his|her|their|the)\b|raised it with|took
 
 /** Taken above the person it was with, or round them, by their own account. Never from the product's own stamp. */
 export function itWasTakenFurther(d: AHandoffWithWhatWasTried): boolean {
-  const tried = whatWasTried(d);
-  if (tried === 'went-around') return true;
-  return tried === 'escalated' && TAKEN_ABOVE.test(String(d?.triedSaid ?? ''));
+  return d?.takenFurther === true;
 }
 
 /** They said they went back about it at all, even only by asking again. Never from the product's own stamp. */

@@ -5112,7 +5112,7 @@ export class BoardService {
          * never show the people whose wait was taken further. `escalatedAt` is the product's own overnight
          * stamp (a wait still open after ESCALATE_AFTER_DAYS); `triedSaid` is what the person said they did.
          */
-        escalatedAt: true, triedSaid: true,
+        escalatedAt: true, triedSaid: true, takenFurther: true,
         /* Who runs it and whether its people are named to each other, so each reader is told a name only where they may be. */
         ground: { select: { label: true, scenario: true, initiatorId: true, peersVisibleToEachOther: true, participants: { select: { id: true, userId: true, email: true, partyType: true, managingOnly: true, createdAt: true } } } },
         fromParticipant: { select: { email: true, userId: true, partyType: true, nameGiven: true, organisationGiven: true, user: { select: { firstName: true, lastName: true } } } },
@@ -5170,6 +5170,7 @@ export class BoardService {
         status: r.status,
         escalatedAt: r.escalatedAt ?? null,
         triedSaid: r.triedSaid ?? null,
+        takenFurther: r.takenFurther ?? null,
         createdAt: r.createdAt,
         groundId: r.groundId,
         groundLabel: r.ground?.label ?? '',
@@ -5251,7 +5252,7 @@ export class BoardService {
       const theReader = ((w.naming?.participants ?? []) as any[]).find((p) => p.key === key);
       if (isEvaluationCheckIn(w.naming?.scenario)
         && (!theReader || theSubjectOfAnEvaluationCheckIn((w.naming?.participants ?? []) as any) === theReader.id)) continue;
-      const theySaidSo = itWasTakenFurther({ triedSaid: w.triedSaid ?? null });
+      const theySaidSo = itWasTakenFurther(w);
       const groundworkRaisedIt = !!w.escalatedAt;
       if (!theySaidSo && !groundworkRaisedIt) continue;
       const Who = atTheStartOfASentence(who);

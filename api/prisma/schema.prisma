@@ -2317,6 +2317,9 @@ model GroundDependency {
   /// refused. Their sentence, kept as they said it; the tiering is read off it at the point of use
   /// so the words stay the record and the judgement stays out of the column.
   triedSaid       String?          @map("tried_said") @db.Text
+  /// TAKEN ABOVE THE PERSON IT WAS WITH, OR ROUND THEM, by their own account (F2, 2 November 2026): the assessment's reading of
+  /// their words (`takenFurther` on the wait), never a word list and never the product's own stamp. Null where it was never read.
+  takenFurther    Boolean?         @map("taken_further")
   escalatedAt     DateTime?        @map("escalated_at")
   sourceCheckInId String?          @map("source_check_in_id")
   /// THE OTHER CHECK-IN THIS HANDOFF WAITS ON (D3, U.16), when it waits on another team's check-in.
