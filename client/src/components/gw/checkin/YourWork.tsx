@@ -192,19 +192,9 @@ export function YourWork({
   })
   const myFiles = ((docsOnTheCheckIn ?? []) as any[]).filter((d) => d.participantId === myParticipant?.id || d.mine === true)
 
-  /* "Promises kept this month": of the commitments settled this calendar month, how many were
-     DONE. Undefined (not zero) while nothing has settled yet this month, so the tile does not
-     draw a false "0 of 0". */
-  const keptThisMonth = (() => {
-    const now = new Date()
-    const settled = myCommitments.filter((c) => {
-      if (!c.settledAt) return false
-      const d = new Date(c.settledAt)
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-    })
-    if (settled.length === 0) return null
-    return { kept: settled.filter((c) => c.status === 'DONE').length, of: settled.length }
-  })()
+  /* What happened to what they said they would do, as the server says it from the one count (plan round 32: "0/2 promises kept this
+     month" was a score on a person, counted here from the commitments on its own). */
+  const whatHappenedToThePromises: string | null = (myRecord as any)?.promises ?? null
 
   const patterns = (((myRecord as any)?.insightsLocked ? [] : ((myRecord as any)?.patterns ?? [])) as ServedPattern[])
     .filter((p) => p.yours !== false)
@@ -321,7 +311,7 @@ export function YourWork({
               <div className="gwui-panel-text-muted">You check in when you choose. Use Check in yourself any time.</div>
             </Panel>
           )}
-          {!myParticipant?.managingOnly && (totalSessions != null || keptThisMonth) && (
+          {!myParticipant?.managingOnly && (totalSessions != null || whatHappenedToThePromises) && (
             <Panel>
               <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
                 {totalSessions != null && (
@@ -334,12 +324,7 @@ export function YourWork({
                     <div className="gwui-panel-text-muted">sessions so far</div>
                   </div>
                 )}
-                {keptThisMonth && (
-                  <div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)' }}>{keptThisMonth.kept}/{keptThisMonth.of}</div>
-                    <div className="gwui-panel-text-muted">promises kept this month</div>
-                  </div>
-                )}
+                {whatHappenedToThePromises && <p className="gwui-panel-text" style={{ margin: 0, flexBasis: '100%' }}>{whatHappenedToThePromises}</p>}
               </div>
             </Panel>
           )}

@@ -1,3 +1,4 @@
+import { thePromisesOf, thePromisesCounted, whatHappenedToThePromises } from './the-promises-counted-once';
 import { whatTheRecordShowsTheLead } from '../patterns/what-the-record-shows-the-lead';
 import { theWeekdaysItMeets } from './the-check-ins-own-schedule';
 import { ConversationService as ConversationServiceForReopening } from '../conversation/conversation.service';
@@ -8860,6 +8861,8 @@ export class GroundsService {
     confidence: { score: number; label: string; description: string } | null;
     patterns: AServedPattern[] | null;
     insightsLocked: boolean;
+    /** What happened to what they said they would do, in one sentence, from the one count (the-promises-counted-once). */
+    promises: string;
   }> {
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId },
@@ -8886,11 +8889,14 @@ export class GroundsService {
       status: ci.status,
     }));
 
+    /* Their own promises, read and counted once, the way My work and the You page count them (plan round 32: "0/2 promises kept this month"). */
+    const promises = whatHappenedToThePromises(thePromisesCounted(await thePromisesOf(this.prisma, [participant.id], () => 'this check-in', { groundId }).catch(() => [])));
+
     // Insights unlock once the participant has at least one completed session.
     // First session per ground is always free, so no separate billing gate needed.
     const hasCompleted = sessions.some(s => s.status === 'COMPLETED');
     if (!hasCompleted) {
-      return { sessions, specificity: null, confidence: null, patterns: null, insightsLocked: true };
+      return { sessions, specificity: null, confidence: null, patterns: null, insightsLocked: true, promises };
     }
 
     // Specificity trend
@@ -8934,6 +8940,7 @@ export class GroundsService {
       confidence: { score: confScore, label: confLabel, description: confDesc },
       patterns,
       insightsLocked: false,
+      promises,
     };
   }
 

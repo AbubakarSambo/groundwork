@@ -53,7 +53,7 @@ describe('Your work', () => {
     expect(screen.queryByText(/apart from the pattern below/)).toBeNull()
   })
 
-  it('the sessions tile, but not the promises-kept tile while nothing has settled this month', async () => {
+  it('the sessions tile, and no promise score', async () => {
     mount()
     expect(await screen.findByText('1 of 12')).toBeTruthy()
     /* Changed from "check-ins of 12" (re-review): it repeated the number already shown above it -
@@ -123,19 +123,13 @@ describe('Your work', () => {
     expect(screen.queryByText('What you said you’d do')).toBeNull()
   })
 
-  it('promises kept this month, once a commitment has settled this month', async () => {
-    const now = new Date()
-    mount({
-      ground: {
-        label: 'Sales team, Q3',
-        commitments: [
-          { id: 'c1', participantId: 'p1', text: 'a', status: 'DONE', settledAt: now.toISOString() },
-          { id: 'c2', participantId: 'p1', text: 'b', status: 'NOT_DONE', settledAt: now.toISOString() },
-        ],
-      },
-    })
-    expect(await screen.findByText('1/2')).toBeTruthy()
-    expect(screen.getByText('promises kept this month')).toBeTruthy()
+  /* Changed 3 November 2026 (plan round 32): "0/2 promises kept this month" was a score on Brian, counted on this page alone. The page
+     now says what happened, in the server's sentence from the one count of promises. */
+  it('says what happened to what they said they would do, in a sentence, and no score', async () => {
+    mount({ myRecord: { insightsLocked: true, patterns: null, promises: 'You said you would do 6 things. 2 were not done and 4 are still open.' } })
+    expect(await screen.findByText('You said you would do 6 things. 2 were not done and 4 are still open.')).toBeTruthy()
+    expect(screen.queryByText(/promises kept/)).toBeNull()
+    expect(screen.queryByText(/^\d+\/\d+$/)).toBeNull()
   })
 
   it('"Your reports", one row per finished session, and not drawn when there are none', async () => {

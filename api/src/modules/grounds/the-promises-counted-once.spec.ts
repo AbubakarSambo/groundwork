@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { thePromisesOf, thePromisesCounted } from './the-promises-counted-once';
+import { thePromisesOf, thePromisesCounted, whatHappenedToThePromises } from './the-promises-counted-once';
 import { theRunningRecordFrom } from '../suites/the-running-record';
 
 /**
@@ -47,7 +47,8 @@ describe('a person’s promises are read and counted once', () => {
     const prisma = aPrisma();
     const counted = thePromisesCounted(await thePromisesOf(prisma, [P], () => 'Sales team, Q4', { groundId: G }));
     const you = await theRunningRecordFrom(prisma, [P], new Map([[G, 'Sales team, Q4']]));
-    expect(you.inShort).toBe(`You said you would do ${counted.said} things. ${counted.kept} done, ${counted.notDone} not done, ${counted.open} still open.`);
+    /* Changed 3 November 2026: the You page says the one sentence made from the one count. */
+    expect(you.inShort).toBe(whatHappenedToThePromises(counted));
   });
 
   it('no page that shows promises reads the commitment rows for itself', () => {
@@ -57,5 +58,16 @@ describe('a person’s promises are read and counted once', () => {
       const ownReads = (src.match(/groundCommitment\?*\.findMany\?*\(\{\s*where:\s*\{\s*(?:groundId:[^}]*,\s*)?participantId:\s*(?:pid|\{\s*in:\s*(?:ids|participantIds))/g) ?? []);
       expect({ file: f, ownReads }).toEqual({ file: f, ownReads: [] });
     }
+  });
+});
+
+describe('what happened to the promises, as the person reads it', () => {
+  it('Brian, two not done and four still open, in one plain sentence with no score', () => {
+    expect(whatHappenedToThePromises({ said: 6, kept: 0, notDone: 2, open: 4 })).toBe('You said you would do 6 things. 2 were not done and 4 are still open.');
+  });
+  it('one thing, done, and nothing yet', () => {
+    expect(whatHappenedToThePromises({ said: 1, kept: 1, notDone: 0, open: 0 })).toBe('You said you would do one thing. It is done.');
+    expect(whatHappenedToThePromises({ said: 3, kept: 1, notDone: 1, open: 1 })).toBe('You said you would do 3 things. 1 is done, 1 was not done and 1 is still open.');
+    expect(whatHappenedToThePromises({ said: 0, kept: 0, notDone: 0, open: 0 })).toBe('Nothing you said you would do is on record yet.');
   });
 });

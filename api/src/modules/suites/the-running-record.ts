@@ -1,4 +1,4 @@
-import { thePromisesOf, thePromisesCounted } from '../grounds/the-promises-counted-once';
+import { thePromisesOf, thePromisesCounted, whatHappenedToThePromises } from '../grounds/the-promises-counted-once';
 /**
  * RELEASE 7: EACH PERSON'S RUNNING RECORD, ON THEIR YOU BOARD (docs/release-plan.md, Release 7: "commitment → action → evidence →
  * learning → adaptation → outcome. It builds up from every check-in they're in, across all scenarios").
@@ -85,9 +85,7 @@ export function theRunningRecord(commitments: ACommitmentOnRecord[], proof: Proo
     rows,
     more: Math.max(0, sorted.length - MOST),
     adapted,
-    inShort: said
-      ? `You said you would do ${said} ${said === 1 ? 'thing' : 'things'}. ${done} done, ${notDone} not done, ${open} still open.`
-      : 'Nothing you said you would do is on record yet.',
+    inShort: whatHappenedToThePromises({ said, kept: done, notDone, open }),
   };
 }
 
