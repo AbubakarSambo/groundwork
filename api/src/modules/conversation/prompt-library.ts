@@ -274,21 +274,28 @@ export const SESSION_CLOSE_MARKER = '[[SESSION_COMPLETE]]';
 const ANY_BRACKETING_OF_THE_MARKER = /[[<({|]{1,2}\s*SESSION_COMPLETE\s*[\]>)}|]{1,2}/gi;
 
 /*
- * AND THE BRACKETS LEFT WHEN THE NAME INSIDE THEM WAS TAKEN OUT (pilots, 13 October 2026, problem 13). Njeri's first
- * check-in ended "Your report is ready now. Speak soon. [[]]": the name went and its brackets reached her screen. Empty
- * brackets of the kinds the marker is written in never mean anything to a person, so they go too.
+ * WHATEVER SITS IN DOUBLE SQUARE BRACKETS IS MACHINERY, WHATEVER IT SAYS (3 November 2026).
+ *
+ * The strips read a marker by its name: the close marker above, `[[NEEDS_REVIEW]]`-style capitals at the boundary, and the empty
+ * brackets a name left behind (Njeri's check-in ended "Speak soon. [[]]", 13 October). So the model's own note on a check-in with
+ * several sessions behind it, "[[:: M1+. Verified Delivery - ...]] That's movement, and puts you at 11 of your 15", matched none of
+ * them and reached Esther word for word, a pattern named to the person it is about. The model writes the double bracket because
+ * the close marker taught it that is where machinery goes, so the bracket is the signal, not the name inside it. An opening pair
+ * with no closing pair (the third such reply that day ran its note straight into the question) is machinery to the end: a reply
+ * left with nothing is asked for again, as an empty one always is. A last single bracket is held as the start of one, so a stream
+ * cut between the two never shows it. The other empty pairs a name can leave behind go as before.
  */
-const EMPTY_MARKER_BRACKETS = /\s*(?:\[\[\s*\]\]|<<\s*>>|\{\{\s*\}\}|\(\(\s*\)\))/g;
+const MACHINERY = /\s*(?:\[\[[\s\S]*?(?:\]\]|$)|\[$|<<\s*>>|\{\{\s*\}\}|\(\(\s*\)\))/g;
 
 export function stripCloseMarker(reply: string): { text: string; hadMarker: boolean } {
-  if (!ANY_BRACKETING_OF_THE_MARKER.test(reply)) {
-    ANY_BRACKETING_OF_THE_MARKER.lastIndex = 0;
-    return { text: EMPTY_MARKER_BRACKETS.test(reply ?? '') ? (reply ?? '').replace(EMPTY_MARKER_BRACKETS, '').trim() : reply, hadMarker: false };
-  }
+  const said = reply ?? '';
+  const hadMarker = ANY_BRACKETING_OF_THE_MARKER.test(said);
   ANY_BRACKETING_OF_THE_MARKER.lastIndex = 0;
-  const text = reply.replace(ANY_BRACKETING_OF_THE_MARKER, '').replace(/\n{3,}/g, '\n\n').trim();
+  if (!hadMarker && !MACHINERY.test(said)) { MACHINERY.lastIndex = 0; return { text: reply, hadMarker: false }; }
+  MACHINERY.lastIndex = 0;
+  const text = said.replace(ANY_BRACKETING_OF_THE_MARKER, '').replace(MACHINERY, '').replace(/\n{3,}/g, '\n\n').trim();
   ANY_BRACKETING_OF_THE_MARKER.lastIndex = 0;
-  return { text, hadMarker: true };
+  return { text, hadMarker };
 }
 
 /**

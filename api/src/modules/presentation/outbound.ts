@@ -34,8 +34,6 @@ import { notTheWordParty } from '../reports/not-the-word-party';
  * feature produced it. WHAT DOES NOT: judgement calls about wording, which belong in prompts.
  */
 
-/** A control marker the model is told to emit. Never a thing a person should read. */
-const CONTROL_MARKERS = [/\[\[[A-Z_]+\]\]/g];
 
 /**
  * MARKDOWN IS STRIPPED, NOT RENDERED, AND THAT IS A DELIBERATE CHOICE.
@@ -464,7 +462,6 @@ export function forHumans(text: string | null | undefined): string {
      "” What's the latest"), so it goes, on turns saved before the opening's own check existed too (26 October 2026). */
   out = out.replace(/(^|\n|[.!?]\s+)\s*[”]\s+/g, '$1');
   out = noFullStopInsideAName(out);
-  for (const m of CONTROL_MARKERS) out = out.replace(m, '');
   out = withoutMarkdown(out);
   /**
    * ONE ANSWER ON THE DASH, AND IT IS THE COMMA.
