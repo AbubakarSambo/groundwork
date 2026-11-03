@@ -580,6 +580,17 @@ export function withoutQuotedQuestions(text: string): string {
  * cleaning still begins with what was shown, the new part is the tail. When it does not, nothing is
  * new yet - the earlier text moved under us - and the final reply, cleaned whole, sets the record.
  */
+/**
+ * HOW MUCH OF A REPLY STILL BEING WRITTEN MAY BE CLEANED AND SHOWN (plan round 32, the law firm lead: "What makes this the right time to
+ * set up a check, i"). A word still arriving is not a word yet: "check-i" read as a dash and became "check, i", and once shown the rest of
+ * the reply no longer followed it, so the screen stopped mid-sentence. Only whole words go out, and never the room the close marker may
+ * still need. The one owner for the setup stream and the check-in stream.
+ */
+export function theFinishedPart(raw: string, holdBack: number): number {
+  const lastSpace = Math.max(raw.lastIndexOf(' '), raw.lastIndexOf('\n'));
+  return Math.max(0, Math.min(raw.length - holdBack, lastSpace));
+}
+
 export function whatIsNewSince(shownSoFar: string, cleanedNow: string): string {
   if (cleanedNow.startsWith(shownSoFar)) return cleanedNow.slice(shownSoFar.length);
   return '';

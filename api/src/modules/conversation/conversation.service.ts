@@ -51,7 +51,7 @@ import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { blockerHasSubstance } from '../board/reads';
 import { PrismaService } from '../prisma/prisma.service';
-import { forHumans, hadCloseMarker as textHadCloseMarker, whatIsNewSince } from '../presentation/outbound';
+import { forHumans, hadCloseMarker as textHadCloseMarker, whatIsNewSince, theFinishedPart } from '../presentation/outbound';
 import { languageBlock } from '../public-api/a-whatsapp-message-is-routed';
 import { withoutTheAnchorBack } from './no-anchor-back-when-they-leave';
 import { NOTHING_KEPT_YET_COME_BACK, nothingRealWasSaid } from './a-finish-too-soon-is-said-plainly';
@@ -3874,7 +3874,7 @@ export class ConversationService {
     try {
       for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
         raw += delta;
-        const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
+        const safeUpTo = theFinishedPart(raw, SESSION_CLOSE_MARKER.length);
         if (safeUpTo > emitted) {
           const cleanedSoFar = forHumans(raw.slice(0, safeUpTo));
           const fresh = whatIsNewSince(cleanShown, cleanedSoFar);

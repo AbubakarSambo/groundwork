@@ -58,7 +58,7 @@ import { theBusinessTheyNamed } from './the-business-they-named';
 import { isAMadeUpWorkspaceName } from '../assistant/ask-name';
 import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE } from '../conversation/prompt-library';
 import { PLAIN_WORDS } from '../conversation/plain-words';
-import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
+import { forHumans, hadCloseMarker, whatIsNewSince, theFinishedPart } from '../presentation/outbound';
 import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from '../conversation/a-reply-that-asks-nothing-is-a-dead-end';
 import {
   opensByRepeatingThem, theyPushedBackOnTheQuestions, asksTheSameThingAgain, alreadyAskedTwice, repeatsTheLastAskWordForWord, asksItAgainAfterTheAnswer, withoutTheQuestionAskedAgain,
@@ -1833,7 +1833,7 @@ from finishing at all.`;
     let emitted = 0;
     for await (const delta of deltas) {
       raw += delta;
-      const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
+      const safeUpTo = theFinishedPart(raw, SESSION_CLOSE_MARKER.length);
       if (safeUpTo <= emitted) continue;
       const cleanedSoFar = forHumans(raw.slice(0, safeUpTo));
       const fresh = whatIsNewSince(cleanShown, cleanedSoFar);
