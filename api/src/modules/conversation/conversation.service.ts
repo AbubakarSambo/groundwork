@@ -3439,12 +3439,35 @@ export class ConversationService {
     }
     let sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));
     /*
-     * THE READ-BACK, ONCE, BEFORE THE CLOSE (the-read-back.ts). The conversation is assessed now, and what they read back is that
-     * assessment: "Here's what I recorded. ... Is anything wrong?". The close is held for their answer; the next close lands.
+     * AND THE WORKING NOTES, AFTER THE REPLY AND NEVER IN FRONT OF IT.
+     *
+     * Fire and forget: it costs a model call and the person waiting for this answer should not pay
+     * for it, and a conversation must never fail over its own notes. The state is one turn behind
+     * when the next reply is composed, which is the right arrangement - what reads from it is a
+     * challenge about accumulated claims, not a comment on the word just typed. See
+     * what-we-have-so-far and reading-what-they-just-said. Started here, before the read-back below, which reads them.
+     */
+    /*
+     * The idea offer's own yes or no is not something they said about the work (known issue B12). Only while an offer is waiting for them: the check-in row
+     * carries no ground here, so the test read nothing and every "Yes, capture it" was noted; and a "Not now." typed to any other question is their answer
+     * and is kept (review of fd583ba5, where it was noted as a plan and read as contradicting the plan before it).
+     */
+    const answersAWaitingIdeaOffer = anAnswerToTheIdeaOffer(message)
+      && ((await (this.prisma as any).workItem?.count?.({ where: { groundId: checkIn.groundId, kind: 'idea-offered', ownerParticipantId: (checkIn as any).participantId ?? '' } })?.catch?.(() => 0)) ?? 0) > 0;
+    if (!answersAWaitingIdeaOffer) {
+      this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
+        this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
+    }
+    /*
+     * THE READ-BACK, ONCE, BEFORE THE CLOSE (the-read-back.ts): "Here's what I recorded. ... Is anything wrong?", from the conversation's
+     * own notes, their words for each thing they said, this turn's included. It no longer waits for the assessment (plan round 32: 52
+     * seconds on the full model, a 56-second reply). The close is held for their answer; the next close lands, and the assessment written
+     * then reads the whole conversation, any correction included, and is what every page reads.
      */
     if (sessionComplete && !(checkIn as any).isSelfCorrection && !(await this.prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { closeHeldAt: true } }).catch(() => null))?.closeHeldAt) {
-      const assessed = await assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: null, logger: this.logger, contextEnabled: this.config?.get?.<boolean>('app.contextEnabled') !== false }, checkIn.id, { howItEnded: 'finished by the person', closedAt: new Date() }).catch(() => null);
-      const readBack = theReadBack(assessed);
+      await this.theNoteFromTheLastTurnLands(checkIn.id);
+      const notes = await this.prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { whatWeHave: true } }).then((x: any) => (x?.whatWeHave ?? null) as WhatWeHave | null).catch(() => null);
+      const readBack = theReadBack(notes);
       if (readBack) {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { closeHeldAt: new Date() } });
         aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: [withoutTheGoodbye(aiTurn.content ?? '').trim(), readBack].filter(Boolean).join('\n\n') } });
@@ -3579,26 +3602,6 @@ export class ConversationService {
     const ourOwnWords = [contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay].filter(Boolean).join('\n\n');
     if (ourOwnWords) {
       aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: `${ourOwnWords}\n\n${aiTurn.content}` } });
-    }
-    /*
-     * AND THE WORKING NOTES, AFTER THE REPLY AND NEVER IN FRONT OF IT.
-     *
-     * Fire and forget: it costs a model call and the person waiting for this answer should not pay
-     * for it, and a conversation must never fail over its own notes. The state is one turn behind
-     * when the next reply is composed, which is the right arrangement - what reads from it is a
-     * challenge about accumulated claims, not a comment on the word just typed. See
-     * what-we-have-so-far and reading-what-they-just-said.
-     */
-    /*
-     * The idea offer's own yes or no is not something they said about the work (known issue B12). Only while an offer is waiting for them: the check-in row
-     * carries no ground here, so the test read nothing and every "Yes, capture it" was noted; and a "Not now." typed to any other question is their answer
-     * and is kept (review of fd583ba5, where it was noted as a plan and read as contradicting the plan before it).
-     */
-    const answersAWaitingIdeaOffer = anAnswerToTheIdeaOffer(message)
-      && ((await (this.prisma as any).workItem?.count?.({ where: { groundId: checkIn.groundId, kind: 'idea-offered', ownerParticipantId: (checkIn as any).participantId ?? '' } })?.catch?.(() => 0)) ?? 0) > 0;
-    if (!answersAWaitingIdeaOffer) {
-      this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
-        this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
     }
     /* No suggested answers under the question (F5, the approved journey, stage 7: "No generic suggested answers: the person types, as
        the prototype shows"). It also takes a model call off every turn. */

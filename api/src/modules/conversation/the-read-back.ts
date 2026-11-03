@@ -2,37 +2,33 @@
  * THE READ-BACK AT THE END OF A CHECK-IN (Hafsah's approval of the plan, 2 November 2026: "a read-back at the end of every setup and
  * check-in ('Here's what I recorded… Anything wrong?'), fixed in one reply").
  *
- * When the check-in reaches its close, the conversation is assessed there and then, and what the person reads back is that assessment,
- * as the person may read it (theFactsIn with 'the person': their own items, never the lead's judgement): the one source every page reads.
- * The close is held once for it (closeHeldAt). Their next reply is read by the model with THE_READ_BACK_WAS_GIVEN: a fix is a claim like
- * any other, checked against the record, proof asked for naturally when it is missing, and said back plainly; then it closes, and the
- * assessment written at the close holds the corrected fact, so every page shows it and it is never said again.
+ * When the check-in reaches its close, what the person reads back is the conversation's own notes (what-we-have-so-far): one line per thing
+ * they said, in their words as they typed them, the notes the conversation reasons with turn by turn. It used to be the full assessment,
+ * written there and then, and the person waited for it: 52 seconds on gemini-2.5-pro, a 56-second reply (plan round 32). The notes are
+ * already there. The close is held once for it (closeHeldAt). Their next reply is read by the model with THE_READ_BACK_WAS_GIVEN: a fix is
+ * a claim like any other, checked against the record, proof asked for naturally when it is missing, and said back plainly; then it closes,
+ * and the assessment written at the close reads the whole conversation, the fix included, so every page shows it and it is never said again.
  *
- * Their own words are quoted as they typed them, so nothing is reworded on the way back.
+ * Only their own words are said back to them, so nothing about them from anybody else, and no judgement, can reach it.
  */
-import type { TheAssessment } from './the-assessment';
-import { theFactsIn } from './the-facts-on-record';
-
-/* What somebody would recognise as what they told us. Who was named, and what Groundwork means to ask next time, are not things they said. */
-const SAID_BACK = new Set(['workUpdates', 'claims', 'promises', 'numbers', 'dates', 'decisions', 'blockers', 'corrections', 'documents', 'targets', 'everythingElse', 'compared.promisesDue', 'compared.figuresChanged', 'compared.workMoved']);
+import type { WhatWeHave } from './what-we-have-so-far';
 
 const quoted = (words: string): string => {
   const w = words.replace(/\s+/g, ' ').trim().replace(/^["“]|["”]$/g, '');
   return /[.!?]$/.test(w) ? `“${w}”` : `“${w}.”`;
 };
 
-/** The read-back, in full sentences, or null when the assessment holds nothing of theirs to say back. */
-export function theReadBack(a: TheAssessment | null): string | null {
-  if (!a) return null;
+/** The read-back, in full sentences, or null when the notes hold nothing of theirs to say back. */
+export function theReadBack(notes: WhatWeHave | null): string | null {
+  if (!notes) return null;
   const lines: string[] = [];
   const seen = new Set<string>();
-  for (const f of theFactsIn(a, { kind: 'the person', participantId: a.about.participantId })) {
-    if (!SAID_BACK.has(f.section) || !f.words.trim()) continue;
-    const key = f.words.trim().toLowerCase();
-    if (seen.has(key)) continue;
+  for (const c of notes.claims ?? []) {
+    const key = String(c.said ?? '').trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
     seen.add(key);
-    const lead = f.section === 'promises' ? 'You promised' : 'You said';
-    lines.push(`${lead} ${quoted(f.words)}${f.proved ? ' A document you added backs this.' : ''}`);
+    /* "You said", whatever kind of claim it is: a plan in the notes is not always a promise ("the court deadline is Friday"). */
+    lines.push(`You said ${quoted(c.said)}`);
   }
   if (!lines.length) return null;
   return [THE_READ_BACK_OPENS, ...lines, THE_READ_BACK_ASKS].join('\n');
