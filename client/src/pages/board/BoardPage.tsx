@@ -3215,6 +3215,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           the headline and the glance line, before any kind-of-work's own sections - the prototype's
           own place for the one thing a board asks the lead to settle (B5-the-board).
         */}
+        {/*
+          THE APPROVED BOARD ORDER, ON EVERY BOARD (Hafsah, 3 November 2026; release-8-situations THE_ORDER): the target's question,
+          then what needs you, then where people differ and what nobody knows yet. "What needs you" used to sit below the kind of
+          work's own sections and what the target assumes (the lead's own setup words); it now follows the headline here.
+        */}
+        {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && whatNeedsYouSection()}
+        {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && groundworkRecommendsSection()}
         {b.divergence?.centralQuestion && (
           <Placed as="What to settle together">
             <Panel>
@@ -3474,8 +3481,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {/* The light sales board: everything else in five boxes for the lead; the summary first for an admin (s58, s59). */}
         {light && (lightLead ? <TheLightBoxes /> : <TheLightSummaryFirst />)}
-        {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && whatNeedsYouSection()}
-        {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && groundworkRecommendsSection()}
+        {/* What needs you and what Groundwork recommends now sit directly under the target's question (the approved order, below the headline). */}
 
         {/*
           THE MARKETVIEW Q4 BOARD'S OWN "WHAT THE SYSTEMS SHOW" AND "WHERE WHAT PEOPLE SAID AND
