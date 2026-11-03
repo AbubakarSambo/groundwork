@@ -207,7 +207,7 @@ describe('with the switch on, every reader reads patterns under the rules', () =
     }
   }
 
-  it('the person reads it in plain words, is told only they see it, and can answer', async () => {
+  it('the person reads it in plain words, with no note under it, and can answer', async () => {
     const served = await everyPageAs(withTheSwitch(true), 'u-femi', groundWith(GROUNDS[0][1]));
     expect(served.record.patterns).toEqual([{
       id: 'pd2', participantId: 'p-femi', yours: true, kind: 'attention',
@@ -216,7 +216,7 @@ describe('with the switch on, every reader reads patterns under the rules', () =
       sessions: [1, 2, 3],
       howOften: 'This came up in 3 of your check-ins, in sessions 1, 2 and 3.',
       askThem: null, theirWords: null, canAnswer: true,
-      whoSeesIt: 'Only you see this. Nothing is decided from it.',
+      /* No note under it (23a41f190: the standards forbid privacy notes on screens); who may read it is checked above and below. */
       /* Decision 57, item 2: never shown to the person it is about, however the lead marked it. */
       leadMark: null, talkedAbout: false,
       /* Decision 67: the coaching is the lead's alone, so the person reads none of it. */
@@ -247,7 +247,7 @@ describe('with the switch on, every reader reads patterns under the rules', () =
       askThem: null,
       theirWords: NGOZI_ANSWERED,
       canAnswer: true,
-      whoSeesIt: 'Only you see this. Nothing is decided from it.',
+      /* No note under it (23a41f190: the standards forbid privacy notes on screens); who may read it is checked above and below. */
       leadMark: null, talkedAbout: false,
       /* Decision 67: the coaching was the lead's alone, so the person reads none of it. */
       about: 'the work',
@@ -299,18 +299,20 @@ describe('with no setting at all, the lead reads no stored pattern, even after t
     }
   });
 
-  it('Femi reads his with the answer box, and is told only he sees it', async () => {
+  it('Femi reads his with the answer box, and no note under it', async () => {
     const served = await everyPageAs(withTheSwitch(true), 'u-femi', groundWith(GROUNDS[0][1]));
     const [mine] = served.record.patterns;
     expect(mine.id).toBe('pd2');
     expect(mine.canAnswer).toBe(true);
-    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    /* Changed 3 November: the note was removed on purpose in 23a41f190; the field is absent. */
+    expect(mine.whoSeesIt).toBeUndefined();
   });
 
-  it('Ngozi, who answered, reads her own words beside it, and that Tunde can see it', async () => {
+  it('Ngozi, who answered, reads her own words beside it', async () => {
     const served = await everyPageAs(withTheSwitch(true), 'u-ngozi', groundWith(GROUNDS[0][1]));
     const [mine] = served.record.patterns;
     expect(mine.theirWords).toBe(NGOZI_ANSWERED);
-    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    /* Changed 3 November: the note was removed on purpose in 23a41f190; the field is absent. */
+    expect(mine.whoSeesIt).toBeUndefined();
   });
 });

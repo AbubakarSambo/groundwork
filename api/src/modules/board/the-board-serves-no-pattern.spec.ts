@@ -265,11 +265,12 @@ describe('with no setting at all, the lead’s board carries no stored pattern a
     expect(whatOfAPatternIsIn(board).filter((f) => f.startsWith('the internal name') || f.startsWith('the code'))).toEqual([]);
   });
 
-  it('Ngozi’s own board carries hers, in plain words, and says only she sees it', async () => {
+  it('Ngozi’s own board carries hers, in plain words, with no note under it', async () => {
     const board = await boardFor(real(), 'u-ngozi', 'MEMBER', groundWith(GROUNDS[0][1]));
     expect((board.patterns ?? []).map((p: any) => p.heading)).toContain('Problems are mostly put down to things outside the team');
     expect((board.patterns ?? []).every((p: any) => p.yours)).toBe(true);
 /* Hafsah, 2 November 2026: only the person reads a stored pattern now, so they are told only they see it. */
-    expect((board.patterns ?? []).every((p: any) => p.whoSeesIt === 'Only you see this. Nothing is decided from it.')).toBe(true);
+    /* Changed 3 November: the note under a person's own pattern was removed on purpose in 23a41f190; who may read it is unchanged. */
+    expect((board.patterns ?? []).every((p: any) => p.whoSeesIt === undefined)).toBe(true);
   });
 });

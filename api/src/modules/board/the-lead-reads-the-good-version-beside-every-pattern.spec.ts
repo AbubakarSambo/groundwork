@@ -240,12 +240,13 @@ describe.each(GROUNDS_TO_READ)('with no setting at all, the lead reads no stored
     expect(JSON.stringify(served)).not.toContain('Coach them towards');
   });
 
-  it('Femi reads his own, with the part it belongs in, none of the coaching, and is told Tunde reads it too', async () => {
+  it('Femi reads his own, with the part it belongs in, none of the coaching, and no note under it', async () => {
     const served = await everyPageAs(withTheSwitch(true), 'u-femi', groundWith(shape), MORE_ROWS());
     const own = served.board.patterns as any[];
     expect(own.map((p) => p.id)).toEqual(['pd2']);
     expect(own[0].about).toBe('what is said against what happened');
     expect(own[0]).not.toHaveProperty('coachTowards');
-    expect(own[0].whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    /* Changed 3 November: the note was removed on purpose in 23a41f190; who may read it is unchanged. */
+    expect(own[0].whoSeesIt).toBeUndefined();
   });
 });
