@@ -18,7 +18,7 @@ import { everybodyMayOpen } from './a-private-documents-numbers-stay-with-it';
 import { GroundworkEvents, type AssessmentReadyEvent } from '../../common/events';
 import {
   ASSESSMENT_PROMPT_KEY, THE_ASSESSMENT_PROMPT, THE_ASSESSMENT_SCHEMA, THE_ASSESSMENT_KIND, THE_ASSESSMENT_VERSION,
-  theFilesPromptVersion, theMaterialAsText, theUnmatchedAsText, thePartsFrom, theUnmatched, withTheSecondRead, withWhatIsLeftKeptWhole,
+  theFilesPromptVersion, theMaterialAsText, theUnmatchedAsText, thePartsFrom, theUnmatched, withTheSecondRead, withWhatIsLeftKeptWhole, withWhatIsAboutTheLeadSetAside,
   theItemsToCompareAgainst, thePreviousWithItsCorrections, theAssessmentIn, theColumnWith,
   type AMessage, type HowItEnded, type TheAssessment, type TheMaterial, type TheReadParts,
 } from './the-assessment';
@@ -88,7 +88,7 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
         id: true, groundId: true, participantId: true, sessionNumber: true, startedAt: true, completedAt: true, whatWeHave: true, sessionReport: true,
         turns: { orderBy: { createdAt: 'asc' }, select: { id: true, role: true, content: true, createdAt: true } },
         participant: { select: { partyType: true, nameGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, jobTitle: true } } } },
-        ground: { select: { label: true } },
+        ground: { select: { label: true, initiator: { select: { firstName: true, lastName: true } } } },
       },
     });
     if (!row) return null;
@@ -143,7 +143,7 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     /* The same promise written twice is put once; what is read about it settles both rows. */
     const openOnce = oneOfEach(openPromises);
     const material: TheMaterial = {
-      who, speaking: theSpeakerLine(row.participant), isTheLead, checkIn: row.ground?.label ?? null,
+      who, speaking: theSpeakerLine(row.participant), isTheLead, theLead: isTheLead ? null : fullName(row.ground?.initiator, null), checkIn: row.ground?.label ?? null,
       on: isoOf(row.startedAt ?? row.completedAt ?? how.closedAt)?.slice(0, 10) ?? null, givenRole, priorities, turns, setup, documents,
       draft: {
         claims: (((row.whatWeHave as any)?.claims ?? []) as any[]).map((c) => [c.said, c.number && `(${c.number}${c.measure ? ` ${c.measure}` : ''})`, c.date && `by ${c.date}`].filter(Boolean).join(' ')).filter(Boolean),
@@ -186,6 +186,9 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
       keptWhole = unmatched.length;
       parts = withWhatIsLeftKeptWhole(parts, unmatched, said);
     }
+    /* A complaint about the lead, and all read from the same messages, leaves every section before anything reads them. */
+    const setAside = withWhatIsAboutTheLeadSetAside(parts);
+    parts = setAside.parts;
 
     const readyAt = new Date();
     const assessment: TheAssessment = {
@@ -197,6 +200,7 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
         channel: how.channel ?? (how.howItEnded === 'setup saved' ? 'setup' : 'not known'), howItEnded: how.howItEnded,
       },
       ...parts,
+      ...(setAside.keptFromTheLead ? { keptFromTheLead: setAside.keptFromTheLead } : {}),
       messages,
       completeness: { messages: messages.length, matchedByTheFirstRead: matchedFirst, addedByTheSecondRead: addedSecond, keptWhole, ready: true },
       promptVersionId: stored?.id ?? null,

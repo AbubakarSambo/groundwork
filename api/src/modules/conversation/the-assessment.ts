@@ -46,8 +46,13 @@ export type HowItEnded = 'finished by the person' | 'closed by the clock' | 'dec
  *   - 'the lead only': the lead's private notes on each person, the team as the lead described it, risks the lead named,
  *     observations and role and focus reads (a participant never reads the lead's judgement).
  *   - 'the person only': nothing yet; kept for the person's own report.
+ *   - 'the person and who hears a complaint': what a team member said against the person who runs the check-in, and everything
+ *     read from the same messages (Hafsah, 3 November 2026). Never the lead; the person, and the admin or HR person who hears it
+ *     (a-complaint-about-the-lead.ts).
  */
-export type WhoMaySee = 'the people in this check-in' | 'the lead only' | 'the person only';
+export type WhoMaySee = 'the people in this check-in' | 'the lead only' | 'the person only' | 'the person and who hears a complaint';
+/** Who may see a complaint about the lead and what came with it. */
+export const KEPT_FROM_THE_LEAD: WhoMaySee = 'the person and who hears a complaint';
 
 /** One message the person sent, numbered from 1 in the order they sent it. Setup's words come first, then the check-in's. */
 export interface AMessage {
@@ -187,6 +192,12 @@ export interface TheAssessment {
   interventions?: unknown[];
   /** The lead's marks on its layer-2 patterns, by the pattern's id (the-leads-mark-on-a-pattern.ts), carried to the next one. */
   theLeadsMarks?: unknown;
+  /**
+   * WHAT IS KEPT FROM THE LEAD (Hafsah, 3 November 2026): a team member's complaint about the person who runs the check-in, and every
+   * item read from the same messages, taken out of every section above so no reader of them can serve it to the lead. `messages` are
+   * the messages it came from. Read only by the person and whoever hears a complaint (the-facts-on-record.ts).
+   */
+  keptFromTheLead?: { items: AnItem[]; messages: number[] } | null;
 }
 
 /* ---------------------------------------------------------------------------------------------------------------------
@@ -231,6 +242,7 @@ const THE_LEADS_ONLY: ReadonlySet<string> = new Set([
 ]);
 
 export function whoMaySee(section: string): WhoMaySee {
+  if (section === 'aboutTheLead') return KEPT_FROM_THE_LEAD;
   return THE_LEADS_ONLY.has(section) ? 'the lead only' : 'the people in this check-in';
 }
 
@@ -275,6 +287,7 @@ export const THE_ASSESSMENT_PROMPT = [
   '  - comparedWithLastTime (only when a previous assessment or open promises are given; facts only): promisesDue has one item for EACH open promise on the record, with its id in `previousItem`, saying what happened to it (kept; not kept, only when their own words say it was not done, which includes a promise whose day has passed that they now promise again for later; not mentioned, which includes "I have nothing more on that" and anything that does not say what happened; or still open, in progress or given a new date before its day passed) and `happened` by the rules below; `dayPassed` is true when the day they gave for it is before the day of this conversation; figures that changed with both values and the date of the earlier one, work that moved or did not, blockers new, still there or cleared, anything repeated and how many times, and where what they said disagrees with the record or with someone else. Use the previous item\'s id in `previousItem` where there is one.',
   '  - stillOpen: what is still open, to ask next time.',
   '  - everythingElse: everything else they said, so nothing falls through.',
+  '  - aboutTheLead (only when the person is not the one who leads this check-in): each thing they say against the person who leads it, about how that person treats them, leads them, speaks to them or behaves. Read it by its meaning, in any words or language, not by the words used. A wait on the lead for a piece of work, or a fair disagreement about the work, is not one. Copy their words exactly. Never mention any of it in the summary.',
   '',
   'RULES FOR THIS PERSON\'S OWN PROMISES (the same rules Groundwork has always read promises by):',
   READ_WHAT_THEY_PROMISED,
@@ -371,6 +384,7 @@ export const THE_ASSESSMENT_SCHEMA = {
       targets: anItem({ aim: S('The aim as one plain, full sentence about whoever holds it, by first name, or "The team".'), target: { type: ['number', 'null'], description: 'The number aimed at, only where they said one.' }, unit: S('What it counts.'), by: S('By when, in their words.'), whose: S('Whose aim: a first name, or "The team".') }),
       stillOpen: anItem({ question: S('What to ask next time.') }),
       everythingElse: anItem({ what: S('What it is about.') }),
+      aboutTheLead: anItem({ what: S('What they say against the person who leads this check-in, in plain words.') }),
       nothingToRecord: { type: 'array', items: { type: 'integer' }, description: 'Message numbers with nothing to record.' },
     },
     required: ['summary', 'nothingToRecord'],
@@ -384,6 +398,8 @@ export const THE_ASSESSMENT_SCHEMA = {
 export interface TheMaterial {
   who: string;
   isTheLead: boolean;
+  /** The person who leads this check-in, by name, so a complaint about them can be read (only for somebody who is not the lead). */
+  theLead?: string | null;
   /** THE PERSON SPEAKING, by first name (the-person-speaking.ts), so an aim is a sentence about them by name. */
   speaking?: string;
   checkIn: string | null;
@@ -412,6 +428,7 @@ export function theMaterialAsText(m: TheMaterial): string {
   const out: string[] = [];
   if (m.speaking) out.push(m.speaking);
   out.push(`The person: ${m.who}${m.isTheLead ? ', who leads this check-in' : ''}.`);
+  if (!m.isTheLead && m.theLead) out.push(`The person who leads this check-in: ${m.theLead}.`);
   if (m.checkIn) out.push(`The check-in: ${m.checkIn}.`);
   if (m.on) out.push(`The day of the conversation: ${m.on}.`);
   out.push(`The role they were given: ${m.givenRole ?? 'not known'}.`);
@@ -493,7 +510,10 @@ export function everyItemIn(a: Pick<TheAssessment, AnItemSection | 'setup' | 'co
 }
 
 /** The parts of the assessment the model fills, read from one answer. */
-export type TheReadParts = Pick<TheAssessment, AnItemSection | 'setup' | 'comparedWithLastTime' | 'summary' | 'roleAgainstGiven' | 'nothingToRecord'>;
+export type TheReadParts = Pick<TheAssessment, AnItemSection | 'setup' | 'comparedWithLastTime' | 'summary' | 'roleAgainstGiven' | 'nothingToRecord'> & {
+  /** What they said against the lead, as read; set aside by withWhatIsAboutTheLeadSetAside before anything is stored. */
+  aboutTheLead?: AnItem[];
+};
 
 export function thePartsFrom(answer: any, said: Map<number, string>, opts: { hasSetup: boolean; previous: { checkInId: string; on: string | null } | null; givenRole: string | null; read: number; compares?: boolean }): TheReadParts {
   const a = answer && typeof answer === 'object' ? answer : {};
@@ -503,6 +523,7 @@ export function thePartsFrom(answer: any, said: Map<number, string>, opts: { has
     nothingToRecord: Array.isArray(a.nothingToRecord) ? [...new Set(a.nothingToRecord.map(Number).filter((n: number) => said.has(n)))] : [],
   };
   for (const s of THE_ITEM_SECTIONS) parts[s] = theItems(a[s], s, p(s), said);
+  parts.aboutTheLead = theItems(a.aboutTheLead, 'aboutTheLead', p('aboutTheLead'), said);
   parts.setup = opts.hasSetup
     ? Object.fromEntries(THE_SETUP_SECTIONS.map((s) => [s, theItems(a.setup?.[s], `setup.${s}`, p(`setup.${s}`), said)]))
     : null;
@@ -525,7 +546,7 @@ export function thePartsFrom(answer: any, said: Map<number, string>, opts: { has
 /** The messages no item comes from and none marked "nothing to record". */
 export function theUnmatched(parts: TheReadParts, messages: AMessage[]): number[] {
   const matched = new Set<number>(parts.nothingToRecord ?? []);
-  for (const i of everyItemIn(parts)) for (const n of i.from) matched.add(n);
+  for (const i of [...everyItemIn(parts), ...(parts.aboutTheLead ?? [])]) for (const n of i.from) matched.add(n);
   return messages.map((m) => m.n).filter((n) => !matched.has(n));
 }
 
@@ -533,6 +554,7 @@ export function theUnmatched(parts: TheReadParts, messages: AMessage[]): number[
 export function withTheSecondRead(first: TheReadParts, second: TheReadParts): TheReadParts {
   const out: any = { ...first, nothingToRecord: [...new Set([...(first.nothingToRecord ?? []), ...(second.nothingToRecord ?? [])])] };
   for (const s of THE_ITEM_SECTIONS) out[s] = [...((first as any)[s] ?? []), ...((second as any)[s] ?? [])];
+  out.aboutTheLead = [...(first.aboutTheLead ?? []), ...(second.aboutTheLead ?? [])];
   if (first.setup || second.setup) {
     out.setup = Object.fromEntries(THE_SETUP_SECTIONS.map((s) => [s, [...((first.setup as any)?.[s] ?? []), ...((second.setup as any)?.[s] ?? [])]]));
   }
@@ -549,6 +571,30 @@ export function withWhatIsLeftKeptWhole(parts: TheReadParts, left: number[], sai
     what: 'Said, and not yet read into any other part.',
   }));
   return { ...parts, everythingElse: [...(parts.everythingElse ?? []), ...kept] };
+}
+
+/**
+ * A COMPLAINT ABOUT THE LEAD IS KEPT FROM THE LEAD (Hafsah, 3 November 2026: "A team member's complaint about their lead is never shown
+ * to that lead anywhere they read"). The read finds it by meaning (`aboutTheLead`). Here it is taken out of the assessment's sections,
+ * with every other item read from the same messages, so the record, the waits, the promises, the board, the reports, Ask and layer 2,
+ * which all read the sections, never hold it. What is set aside is kept whole for the person and whoever hears it.
+ */
+export function withWhatIsAboutTheLeadSetAside(parts: TheReadParts): { parts: TheReadParts; keptFromTheLead: TheAssessment['keptFromTheLead'] } {
+  const { aboutTheLead = [], ...rest } = parts;
+  if (!aboutTheLead.length) return { parts: rest as TheReadParts, keptFromTheLead: null };
+  const messages = new Set(aboutTheLead.flatMap((i) => i.from));
+  const kept: AnItem[] = aboutTheLead.map((i) => ({ ...i, readAs: 'aboutTheLead', whoMaySee: KEPT_FROM_THE_LEAD }));
+  const keep = (items: AnItem[] | undefined, section: string): AnItem[] => (items ?? []).filter((i) => {
+    if (!i.from.some((n) => messages.has(n))) return true;
+    kept.push({ ...i, readAs: section, whoMaySee: KEPT_FROM_THE_LEAD });
+    return false;
+  });
+  const out: any = { ...rest };
+  for (const s of THE_ITEM_SECTIONS) out[s] = keep((rest as any)[s], s);
+  if (rest.setup) out.setup = Object.fromEntries(THE_SETUP_SECTIONS.map((s) => [s, keep((rest.setup as any)[s], `setup.${s}`)]));
+  out.comparedWithLastTime = { ...rest.comparedWithLastTime };
+  for (const s of THE_COMPARED_SECTIONS) out.comparedWithLastTime[s] = keep((rest.comparedWithLastTime as any)?.[s], `compared.${s}`);
+  return { parts: out as TheReadParts, keptFromTheLead: { items: kept, messages: [...messages].sort((a, b) => a - b) } };
 }
 
 /* ---------------------------------------------------------------------------------------------------------------------

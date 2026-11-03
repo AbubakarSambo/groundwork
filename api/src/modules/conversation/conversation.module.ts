@@ -11,6 +11,7 @@ import { UsageModule } from '../usage/usage.module';
 import { EmailModule } from '../email/email.module';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { TheOwedWritesCron } from './the-owed-writes.cron';
+import { AComplaintIsToldListener } from './a-complaint-is-told.listener';
 import { WorkspaceModule } from '../workspace/workspace.module';
 
 @Module({
@@ -22,7 +23,7 @@ import { WorkspaceModule } from '../workspace/workspace.module';
    * `KnowledgeService` is a provider rather than an imported module because it has none - it is
    * registered directly wherever it is used, the same way the public API does it.
    */
-  providers: [ConversationService, AnthropicService, ConversationContextService, RemindService, KnowledgeService, TheOwedWritesCron],
+  providers: [ConversationService, AnthropicService, ConversationContextService, RemindService, KnowledgeService, TheOwedWritesCron, AComplaintIsToldListener],
   exports: [ConversationService, AnthropicService],
 })
 export class ConversationModule {}

@@ -15,14 +15,18 @@
  *     judgement), and nobody else's.
  *   - 'everybody in the check-in': what is shared with all of them (the session and weekly reports, which are served on through their
  *     own wrappers): items marked for the people in the check-in, never a lead-only one.
+ *   - 'who hears a complaint': the admin or HR person a team member's complaint about the lead goes to (a-complaint-about-the-lead.ts)
+ *     reads that complaint and what came with it, and nothing else. The lead never reads it, nor does anybody reading what is shared
+ *     with the people in the check-in; the person who said it reads it as their own (Hafsah, 3 November 2026).
  * A correction kept on an item (its history) is read as the item now says: once fixed, it stays fixed.
  */
-import { theAssessmentIn, THE_ITEM_SECTIONS, THE_SETUP_SECTIONS, THE_COMPARED_SECTIONS, type AnItem, type TheAssessment } from './the-assessment';
+import { theAssessmentIn, THE_ITEM_SECTIONS, THE_SETUP_SECTIONS, THE_COMPARED_SECTIONS, KEPT_FROM_THE_LEAD, type AnItem, type TheAssessment } from './the-assessment';
 
 export type TheReader =
   | { kind: 'the lead'; judgements: boolean }
   | { kind: 'the person'; participantId: string }
-  | { kind: 'everybody in the check-in' };
+  | { kind: 'everybody in the check-in' }
+  | { kind: 'who hears a complaint' };
 
 export interface AFact {
   groundId: string;
@@ -56,6 +60,8 @@ const WHAT_JUDGES_A_PERSON = new Set(['observations', 'roleSignals', 'areas', 'c
 const NOT_A_FACT = new Set(['people', 'stillOpen']);
 
 function mayRead(reader: TheReader, item: AnItem, section: string, participantId: string): boolean {
+  if (item.whoMaySee === KEPT_FROM_THE_LEAD) return reader.kind === 'who hears a complaint' || (reader.kind === 'the person' && reader.participantId === participantId);
+  if (reader.kind === 'who hears a complaint') return false;
   if (reader.kind === 'the lead') return !WHAT_JUDGES_A_PERSON.has(section) || reader.judgements;
   if (item.whoMaySee === 'the lead only') return false;
   if (reader.kind === 'the person') return reader.participantId === participantId;
@@ -93,6 +99,7 @@ function everyItemWithItsSection(a: TheAssessment): { section: string; item: AnI
     ...THE_ITEM_SECTIONS.flatMap((s) => ((a as any)[s] ?? []).map((item: AnItem) => ({ section: s as string, item }))),
     ...(a.setup ? THE_SETUP_SECTIONS.flatMap((s) => ((a.setup as any)[s] ?? []).map((item: AnItem) => ({ section: `setup.${s}`, item }))) : []),
     ...THE_COMPARED_SECTIONS.flatMap((s) => ((a.comparedWithLastTime as any)?.[s] ?? []).map((item: AnItem) => ({ section: `compared.${s}`, item }))),
+    ...(a.keptFromTheLead?.items ?? []).map((item) => ({ section: String(item.readAs ?? 'aboutTheLead'), item })),
   ];
 }
 
