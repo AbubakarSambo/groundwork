@@ -187,7 +187,7 @@ import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { whoHasNotJoinedYet, theNotJoinedYetLine } from '../grounds/invited-not-joined-yet';
 import { theSessionAndItsCount, withWhoHasNotJoinedMarked, whoHoldsTheClock } from '../grounds/this-sessions-count';
 import { theCountAsServed } from '../grounds/the-count-as-served';
-import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
+import { wasAQuietClose, theyHaveReplied } from '../grounds/an-answer-includes-a-refusal';
 /** The person's first turn on a check-in, if any: with `closedReason`, enough to tell a session the clock closed with nothing said (wasAQuietClose). */
 const SAID = { where: { role: 'PERSON' as any }, take: 1, select: { id: true } };
 import { isFromOutside, leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
@@ -2012,7 +2012,7 @@ export class BoardService {
               /* Closed by the clock with nothing said: missed, never "Checked in" (decision 8, night run 3). */
               if (ci.status === CheckInStatus.COMPLETED && wasAQuietClose(ci as any)) return [n, 'missed'];
               return [n, ci.status === CheckInStatus.COMPLETED ? 'done'
-                : ci.status === CheckInStatus.IN_PROGRESS ? 'in-progress'
+                : ci.status === CheckInStatus.IN_PROGRESS && theyHaveReplied(ci as any) ? 'in-progress'
                 : ci.status === CheckInStatus.DECLINED ? 'declined'
                 : 'not-started'];
             }),

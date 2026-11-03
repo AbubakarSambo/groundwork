@@ -248,7 +248,7 @@ import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
-import { NOT_A_QUIET_CLOSE, aQuietCloseWhere, AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
+import { NOT_A_QUIET_CLOSE, aQuietCloseWhere, AN_ANSWER, theyHaveReplied } from '../grounds/an-answer-includes-a-refusal';
 import { whoCheckedInForThisPicture, type SomebodyAskedThisSession } from '../email/who-checked-in-for-this-picture';
 import { theInferencesOfSession, keptWithEachSessionsOwn } from './each-sessions-inferences-are-its-own';
 import { theTimeItSharesItself, isThisSessionHeld, withThisSessionHeld, whenItSharesItself, whatTheLeadIsToldAboutSharing, whatATeamMemberIsToldAboutSharing, type HowItIsShared } from './a-report-shares-itself';
@@ -6954,7 +6954,7 @@ happened, and what is in the way.`;
           role: p.roleAsDescribed ?? null,
           answeredThisSession: answered,
           /* The same state the board's grid reads ("partway through"), from the same rows. */
-          startedThisSession: !answered && ((ground.checkIns ?? []) as any[]).some((c: any) => c.participantId === p.id && c.sessionNumber === thisRound && c.status === 'IN_PROGRESS'),
+          startedThisSession: !answered && ((ground.checkIns ?? []) as any[]).some((c: any) => c.participantId === p.id && c.sessionNumber === thisRound && c.status === 'IN_PROGRESS' && theyHaveReplied(c)),
           /* What the lead may read of this person's, and nothing sooner. See patterns/who-reads-a-pattern. */
           waitingOn: held.dependencies
             .filter((d) => d.fromParticipantId === p.id)

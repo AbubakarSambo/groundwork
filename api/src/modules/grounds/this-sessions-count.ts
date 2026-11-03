@@ -1,3 +1,4 @@
+import { theyHaveReplied } from './an-answer-includes-a-refusal';
 import { theSessionClock, holdsTheClock, type TheSessionClock } from '../board/one-count-for-the-sessions';
 import { owesThisSession } from './the-lead-checks-in-when-they-choose';
 import { isNotLetInYet, whoIsNotLetInYet, markedNotLetIn } from './who-an-admin-did-not-let-in';
@@ -117,7 +118,7 @@ export function whoSaid(people: any[], rows: any[], session: number, notAnswered
     const p = byId.get(id);
     return p?.userId && readerUserId && p.userId === readerUserId ? 'you' : nameToCall(p);
   };
-  const startedIt = (id: string) => (rows ?? []).some((c) => !c.isSetup && c.participantId === id && (c.sessionNumber ?? 1) === session && c.status === 'IN_PROGRESS');
+  const startedIt = (id: string) => (rows ?? []).some((c) => !c.isSetup && c.participantId === id && (c.sessionNumber ?? 1) === session && c.status === 'IN_PROGRESS' && theyHaveReplied(c));
   const notJoinedYet = (id: string) => byId.get(id)?.notJoinedYet === true;
   const started = notAnswered.filter((id) => !notJoinedYet(id) && startedIt(id)).map(nameOf);
   const missed = notAnswered.filter((id) => !notJoinedYet(id) && !startedIt(id) && closed.has(id)).map(nameOf);
