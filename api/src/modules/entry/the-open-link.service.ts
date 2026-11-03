@@ -68,7 +68,7 @@ export class TheOpenLinkService {
        */
       theQuestion: ground.scenario === 'TEAM_UPDATES' ? (ground.brief?.trim() || null) : null,
       /* And when it runs, as the invitation says it. */
-      schedule: whenItAsks({ cadence: ground.cadence, cadenceAnchorDay: ground.cadenceAnchorDay, cadenceDays: (ground as any).cadenceDays, workingDays: ground.workingDays, leadFirstName: ground.initiator?.firstName ?? null }),
+      schedule: whenItAsks({ cadence: ground.cadence, cadenceAnchorDay: ground.cadenceAnchorDay, cadenceDays: (ground as any).cadenceDays, workingDays: ground.workingDays, leadFirstName: ground.initiator?.firstName ?? null, label: ground.label }),
       endsAt: ground.endsAt ? ground.endsAt.toISOString() : null,
       askedBy: ground.initiator?.firstName ?? null,
       scenario: ground.scenario,

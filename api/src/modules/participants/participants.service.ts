@@ -129,6 +129,7 @@ export class ParticipantsService {
         cadenceDays: (ground as any).cadenceDays,
         workingDays: ground.workingDays,
         leadFirstName: leadFirst,
+        label: ground.label,
       }),
       /* How long a check-in takes, from its one owner, for the line under the button. */
       takes: A_CHECK_IN_TAKES,

@@ -209,6 +209,8 @@ export function whenTheNextSessionOpens(s: TheSchedule, lastOpenedAt: Date, now:
  * session: the one open now closes when the next one opens, at 8, so there are never two at once.
  */
 export const A_DAILY_CHECK_IN_OPENS_AT_HOUR = 8;
+/** The hour of the day a check-in opens, where it opens at a set hour; null where it opens at the start of its day, which is no time to say. */
+export const theHourACheckInOpens = (cadence: string): number | null => (cadence === Cadence.DAILY ? A_DAILY_CHECK_IN_OPENS_AT_HOUR : null);
 function theHourItOpens(s: Pick<TheSchedule, 'cadence'>, zone: string, day: Day): Date {
   return s.cadence === Cadence.DAILY ? theStartOfTheDayIn(zone, day + A_DAILY_CHECK_IN_OPENS_AT_HOUR * 3_600_000) : theStartOfTheDayIn(zone, day);
 }

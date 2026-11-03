@@ -47,7 +47,8 @@ describe('a live invitation', () => {
     expect(p.organisationName).toBe('Baridi Appliances');
     expect(p.leadFirstName).toBe('Wairimu');
     expect(p.endsAt).toBe('2026-09-30T00:00:00.000Z');
-    expect(p.schedule).toBe('About two minutes each weekday.');
+    /* Changed 3 November 2026 (Hafsah): the hour it opens and its name, from what setup holds. */
+    expect(p.schedule).toBe('About two minutes each weekday, from 8am, for Sales team, Q3.');
     expect(p.expired).toBeUndefined();
   });
 });
@@ -102,17 +103,23 @@ describe('"Send me a fresh link"', () => {
   });
 });
 
+/* Changed 3 November 2026 (Hafsah: "'From 4pm' and the topic in the invitation come from what setup already holds: the check-in's opening
+   time and its name or purpose. If either isn't set, leave it out; don't guess."). A daily check-in opens at 8 in the morning, so it
+   says so; every other rhythm opens at the start of its day, so no hour is said. With no name given here, no topic is said. */
 describe('how often it asks, in words', () => {
   it.each([
-    [{ cadence: 'DAILY', workingDays: [1, 2, 3, 4, 5] }, 'About two minutes each weekday.'],
-    [{ cadence: 'DAILY', workingDays: [] }, 'About two minutes each day.'],
-    [{ cadence: 'DAILY', workingDays: [1, 3, 5] }, 'About two minutes on Mondays, Wednesdays and Fridays.'],
+    [{ cadence: 'DAILY', workingDays: [1, 2, 3, 4, 5] }, 'About two minutes each weekday, from 8am.'],
+    [{ cadence: 'DAILY', workingDays: [] }, 'About two minutes each day, from 8am.'],
+    [{ cadence: 'DAILY', workingDays: [1, 3, 5] }, 'About two minutes on Mondays, Wednesdays and Fridays, from 8am.'],
     [{ cadence: 'WEEKLY', cadenceAnchorDay: 1 }, 'About two minutes every week, on Mondays.'],
     [{ cadence: 'WEEKLY' }, 'About two minutes every week.'],
     [{ cadence: 'FORTNIGHTLY' }, 'About two minutes every two weeks.'],
     [{ cadence: 'MONTHLY' }, 'About two minutes once a month.'],
     [{ cadence: 'SEQUENTIAL', leadFirstName: 'Wairimu' }, 'About two minutes each time Wairimu checks in.'],
     [{ cadence: 'ONE_TIME' }, 'One check-in, of about two minutes.'],
+    [{ cadence: 'DAILY', workingDays: [1, 2, 3, 4, 5], label: 'Deal progress' }, 'About two minutes each weekday, from 8am, for Deal progress.'],
+    [{ cadence: 'WEEKLY', cadenceAnchorDay: 1, label: 'Deal progress' }, 'About two minutes every week, on Mondays, for Deal progress.'],
+    [{ cadence: 'ONE_TIME', label: 'Deal progress' }, 'One check-in, of about two minutes, for Deal progress.'],
   ])('%j reads "%s"', (g, sentence) => {
     expect(whenItAsks(g as any)).toBe(sentence);
   });
