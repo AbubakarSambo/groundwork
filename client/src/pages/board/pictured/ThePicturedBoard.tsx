@@ -21,7 +21,7 @@ import { howARowReads, isFinished, type ListRow } from '@/pages/grounds/how-a-ro
 import {
   HeadlineAndGap, WhatTheTargetAssumes, WhatNeedsYou, EveryDealDayByDay, TheTeamToday, Blockers, WhatKeepsComingUp,
   ReportedAgainstCriteria, WhoCheckedIn, TheOpenDeal, Reports, HelpNobodyMentioned, WaitingOnOtherTeams, OpenIssues, WhereThisIsHeading,
-  AskAboutThisBoard, GroundworkRecommends, dealsByGroup, isoDay, type PicturedBoardProps,
+  GroundworkRecommends, dealsByGroup, isoDay, type PicturedBoardProps,
 } from './ThePicturedSalesBoard'
 import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 import './pictured-board.css'
@@ -38,7 +38,7 @@ type Any = any
 export type APicturedSection =
   | 'lastSession' | 'headline' | 'closing' | 'assumes' | 'needsYou' | 'deals' | 'agreedAtTheStart' | 'changeSinceLast' | 'ninetyDays'
   | 'history' | 'bothSeeIt' | 'teamToday' | 'blockers' | 'patterns' | 'reported' | 'whoCheckedIn' | 'overTime' | 'reports'
-  | 'everySession' | 'otherBoards' | 'help' | 'otherTeams' | 'openIssues' | 'heading' | 'ask' | 'recommends' | 'otherRecords' | 'kindOfWork' | 'yourTeam'
+  | 'everySession' | 'otherBoards' | 'help' | 'otherTeams' | 'openIssues' | 'heading' | 'recommends' | 'otherRecords' | 'kindOfWork' | 'yourTeam'
   | 'participantNote' | 'priorities' | 'yourPart' | 'teamReport' | 'companyBoard' | 'template'
   | 'plan' | 'money' | 'stakeholders' | 'projectComingUp' | 'offTrack'
   | 'theDecision' | 'accounts' | 'knownBelievedUnknown'
@@ -802,8 +802,6 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
   const now = useMemo(() => new Date(), [])
   const deals = (b.workRecords ?? []).find((s: Any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: Any) => r.kind === 'deal')) ?? null
   const groups = dealsByGroup(deals)
-  const nextQuarterDeal = (groups['next-quarter'] ?? [])[0]
-  const example = nextQuarterDeal ? `Why is ${nextQuarterDeal.name} next quarter?` : 'Who is waiting on whom?'
   const draw: Record<APicturedSection, () => ReactNode> = {
     lastSession: () => <TheLastSessionIsDone b={b} groundId={p.groundId} />,
     headline: () => <HeadlineAndGap b={b} deals={deals} groups={groups} />,
@@ -829,7 +827,6 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     otherTeams: () => <WaitingOnOtherTeams groundId={p.groundId} />,
     openIssues: () => <OpenIssues b={b} renderActions={p.renderActions} />,
     heading: () => <WhereThisIsHeading b={b} onRecordTheDecision={p.onRecordTheDecision} />,
-    ask: () => <AskAboutThisBoard example={example} />,
     recommends: () => <GroundworkRecommends offers={p.recommendations} onAnswer={p.onAnswerRecommendation} busy={p.recommendationBusy} />,
     otherRecords: () => p.otherRecords,
     yourTeam: () => p.yourTeam,
@@ -889,7 +886,7 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
   }
   const at = p.foldAfter ? p.order.indexOf(p.foldAfter) : -1
   if (at >= 0) {
-    const open: APicturedSection[] = ['ask', 'recommends', 'kindOfWork']
+    const open: APicturedSection[] = ['recommends', 'kindOfWork']
     const head = p.order.slice(0, at + 1)
     const rest = p.order.slice(at + 1)
     return (

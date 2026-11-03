@@ -127,7 +127,8 @@ export function AdminFirstRun() {
   const orgName = realOrgName || 'your organisation'
   const steps = getItGoing(data)
   const done = steps.filter(s => s.done).length
-  const finished = done === steps.length
+  /* F5, stage 8: the checklist moves off Today once a check-in exists ("in the way" on day one); People still adds an admin. */
+  const finished = done === steps.length || data.checkIns > 0
   const showWelcome = !data.welcomeCardSeen && !gotIt.isSuccess
 
   if (finished && !showWelcome) return null

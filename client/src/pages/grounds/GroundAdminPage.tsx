@@ -2049,13 +2049,20 @@ export function GroundAdminPage() {
                 /* REVIEW ROUND 3, ITEM 2: NOTHING OPEN RIGHT NOW - the prototype's own between-check-ins
                    card, shown here directly rather than by sending her to the participant page for it. */
                 <>
-                  <BetweenCheckIns
-                    groundLabel={(ground as any)?.label}
-                    myCheckIns={((myParticipant as any)?.checkIns ?? []) as any[]}
-                    groundId={id!}
-                    canChangeTheRhythm={isInitiator}
-                    onGoToSetup={() => goTab('settings')}
-                  />
+                  {/*
+                    F5, the approved journey, stage 11: one Ask, from the header. The lead's check-in page has no ask box of its own (it
+                    was taken for Ask in three walks, under "Anything I can help with in the meantime?"); she checks in with "Check in
+                    yourself", below. Anybody else between check-ins keeps the card, with its notes for next time.
+                  */}
+                  {!isInitiator && (
+                    <BetweenCheckIns
+                      groundLabel={(ground as any)?.label}
+                      myCheckIns={((myParticipant as any)?.checkIns ?? []) as any[]}
+                      groundId={id!}
+                      canChangeTheRhythm={false}
+                      onGoToSetup={() => goTab('settings')}
+                    />
+                  )}
                   {isInitiator && theFirstClosing && (() => {
                     const c = theClosingAfterYourFirstCheckIn(ground as any)
                     return (

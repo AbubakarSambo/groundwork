@@ -149,7 +149,7 @@ import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-acros
 import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
 import { whenTheBoardLastChanged, whenTheBoardLastChangedInShort, whenItRanOutOfTime } from './when-the-board-last-changed'
 import { TheDirectMorning, useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
-import { ThePicturedSalesBoard, theScheduleInWords, ThePicturedOwnDeals, ThePicturedAskBar, GroundworkRecommends } from './pictured/ThePicturedSalesBoard'
+import { ThePicturedSalesBoard, theScheduleInWords, ThePicturedOwnDeals, GroundworkRecommends } from './pictured/ThePicturedSalesBoard'
 import { PROJECT_ORDER, PROJECT_FOLD_AFTER } from './release-5-orders'
 import { theSituationsOrder } from './pictured/TheSituationsSections'
 import { ThePicturedBoard, TheTemplateSection } from './pictured/ThePicturedBoard'
@@ -1672,7 +1672,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     ...(situationRow.sectionsOn.includes('Deal grid') ? ['deals'] : []),
     ...(situationRow.sectionsOn.includes('Blockers') ? ['blockers'] : []),
     ...(situationRow.sectionsOn.includes('Patterns') ? ['patterns'] : []),
-    'reported', 'whoCheckedIn', 'overTime', 'reports', 'otherBoards', 'help', 'otherTeams', 'openIssues', 'heading', 'ask', 'recommends',
+    'reported', 'whoCheckedIn', 'overTime', 'reports', 'otherBoards', 'help', 'otherTeams', 'openIssues', 'heading', 'recommends',
   ] : null
   /* An engineering release, drawn the same way (eng-board.jpg), for whoever runs it. The other kinds whose example is drawn so join here as their own screens are matched. */
   /* RELEASE 8 (release-8-situations): a situation no kit picture draws, with the sections its situation switches on, for every reader the server serves it to. */
@@ -2789,8 +2789,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               : (b as any).releaseFourTeams && theRelease4Order((b as any).kindOfWork, viewerRunsThisCheckIn)
               ? theRelease4Order((b as any).kindOfWork, viewerRunsThisCheckIn)!
               : (b as any).kindOfWork === "founder's own check-in"
-              ? ['headlineTargets', 'needsYou', 'everySale', 'reported', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'ask', 'recommends']
-              : ['headlineTargets', 'needsYou', 'everySale', 'teamToday', 'reported', 'themes', 'byTeam', 'whoCheckedIn', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'ask', 'recommends'])
+              ? ['headlineTargets', 'needsYou', 'everySale', 'reported', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'recommends']
+              : ['headlineTargets', 'needsYou', 'everySale', 'teamToday', 'reported', 'themes', 'byTeam', 'whoCheckedIn', 'blockers', 'patterns', 'overTime', 'reports', 'otherBoards', 'heading', 'recommends'])
               /* With no piece of work on record yet, the kind of work's own empty table says so and offers to add one, in place of the table. */
               .flatMap((k) => (k === 'everySale' && !(b.workRecords ?? []).some((x: any) => (x.section === 'Deal grid' || x.section === 'Work plan') && (x.rows ?? []).length) ? ['kindOfWork', 'otherRecords'] : [k]))
               /* The lead's person-by-person part goes after the team today, or before where this is heading when there is no team today. */
@@ -2902,7 +2902,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             order={(b.checkInGrid?.rows ?? []).length > 0 && !(b.checkInGrid?.rows ?? []).some((r: any) => Object.values(r.cells ?? {}).includes('done'))
               ? ['fillsIn', 'agreedAndApart', 'firstSteps', 'mayBeRelevant', 'heading']
               /* Release 8: the switchboard's purple sections for a new hire, after the kit picture's own. */
-              : ['lastSession', 'agreedAtTheStart', 'changeSinceLast', 'ninetyDays', 'history', 'otherRecords', 'bothSeeIt', ...((b as any).releaseEight ? ['whereTimeWent', 'evidenceIndex', 'busyOrMoving', 'contradictions', 'questionsForTheLead'] : []), 'everySession', 'otherBoards', 'heading', 'ask', 'recommends'] as any}
+              : ['lastSession', 'agreedAtTheStart', 'changeSinceLast', 'ninetyDays', 'history', 'otherRecords', 'bothSeeIt', ...((b as any).releaseEight ? ['whereTimeWent', 'evidenceIndex', 'busyOrMoving', 'contradictions', 'questionsForTheLead'] : []), 'everySession', 'otherBoards', 'heading', 'recommends'] as any}
             line={picturedCadenceLine}
             otherRecords={(
               <WorkRecordsSections
@@ -2931,7 +2931,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
         {!picturedCollections && !picturedMatter && picturedMember && (
           <ThePicturedBoard
-            order={['participantNote', 'priorities', 'yourPart', 'teamReport', 'companyBoard', 'everySession', 'otherBoards', 'ask']}
+            order={['participantNote', 'priorities', 'yourPart', 'teamReport', 'companyBoard', 'everySession', 'otherBoards']}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
             reportHeading={`The ${String(b.title ?? '').split(',')[0].trim().toLowerCase()} report`}
             b={b}
@@ -2948,7 +2948,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
         {!picturedCollections && !picturedMatter && picturedDecision && (
           <ThePicturedBoard
-            order={['theDecision', 'accounts', 'knownBelievedUnknown', 'everySession', 'otherBoards', 'heading', 'ask', 'recommends']}
+            order={['theDecision', 'accounts', 'knownBelievedUnknown', 'everySession', 'otherBoards', 'heading', 'recommends']}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
             unknown={(((groundForSignals as any)?.contextItems ?? []) as any[]).filter((l) => l.kind === 'UNSETTLED' && !l.closedAt).map((l) => String(l.text ?? ''))}
             b={b}
@@ -2966,7 +2966,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!picturedCollections && !picturedMatter && picturedPlan && (
           <ThePicturedBoard
             /* Release 8: the switchboard's purple sections for a plan to get back on track, after the kit picture's own. */
-            order={['suggestion', 'theCase', ...((b as any).releaseEight ? ['whereTimeWent', 'evidenceIndex', 'busyOrMoving', 'contradictions', 'questionsForTheLead'] : []), 'everySession', 'otherBoards', 'heading', 'ask', 'recommends'] as any}
+            order={['suggestion', 'theCase', ...((b as any).releaseEight ? ['whereTimeWent', 'evidenceIndex', 'busyOrMoving', 'contradictions', 'questionsForTheLead'] : []), 'everySession', 'otherBoards', 'heading', 'recommends'] as any}
             personId={planPersonId}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
             b={b}
@@ -5492,20 +5492,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {kindOfWorkKey === 'MarketView where next' && !shown.checkInGrid && b.myParticipantId && everySessionLink()}
 
-        {/*
-          U.10 ITEM 8: THE ASK BAR AT THE FOOT (board-as-lead.txt: "Ask about this board, for
-          example "Why is Green Mart not quarter?"" then "Ask"). Wired to Ask Groundwork (U.14):
-          typing a question here and pressing Ask opens that panel already asking it, scoped to
-          this check-in - `showWith` sets both the panel open and the question in one step, and
-          `checkInOnThisPage` (AskGroundwork.tsx) already reads the check-in id straight off this
-          page's own address, so "about" is this board without anything extra to wire.
-
-          PICTURE-CHECK ROUND 6, ITEM G: THE EXAMPLE IS THIS BOARD'S OWN DATA, NOT THE PROTOTYPE'S
-          SAMPLE ("Green Mart" is not in this check-in). Built from the first blocker when there is
-          one ("Why is Baraka Mwangi still waiting on the discount decision?"), else the plain
-          example asked for.
-        */}
-        {picturedParticipant ? <ThePicturedAskBar b={b} /> : <AskTheBoard firstBlocker={b.dependencies?.[0] ?? null} myParticipantId={b.myParticipantId} />}
+        {/* No ask bar of the board's own (F5, the approved journey, stage 11): one Ask, from the header, which reads this check-in off the address. */}
         {/* As pictured, after the ask bar: only offers about the reader's own work (answer 5). */}
         {picturedParticipant && <GroundworkRecommends offers={myOwnRecommendedOffers as any} onAnswer={(offerId, yes) => answerRecommendation.mutate({ offerId, yes })} busy={answerRecommendation.isPending} />}
         </>)}
@@ -5523,72 +5510,4 @@ function MaybeTheLightSalesBoard({ glance, readerRunsIt, children }: { glance: N
   return <TheLightSalesBoard glance={glance} readerRunsIt={readerRunsIt}>{children}</TheLightSalesBoard>
 }
 
-/**
- * U.10 ITEM 8: A FULL-WIDTH BAR, THE PROTOTYPE'S OWN WORDS.
- * Kept as its own small component so BoardPage's already-long body does not grow another inline
- * form; it owns nothing but the draft text, which it hands to the shared Ask Groundwork panel.
- */
-function AskTheBoard({ firstBlocker, myParticipantId }: {
-  firstBlocker: { from: string | null; fromParticipantId?: string | null; what: string; on: string | null } | null
-  myParticipantId: string | null
-}) {
-  const [draft, setDraft] = useState('')
-  const showWith = useAskStore((s) => s.showWith)
-  /*
-   * BOARD FIX (sales B, item 3e): "I", NOT HER OWN NAME, WHEN THE READER IS THE ONE WAITING.
-   * `firstBlocker.from` is always the third-person name ("Amani Wekesa") - right for a colleague
-   * or the lead reading about her, wrong on Amani's own board, where "Why is Amani Wekesa still
-   * waiting on the price list?" reads as a question about a stranger rather than the one she
-   * would actually ask ("Why am I still waiting on the price list?").
-   */
-  const readerIsWaiting = !!myParticipantId && firstBlocker?.fromParticipantId === myParticipantId
-  /* `firstBlocker.what` can open with a capitalised article ("The Mwangi agency") where the same
-     string also stands as a title elsewhere; mid-sentence here, only that leading word is wrong
-     (real-user walk, Kijani Foods, fault 1). */
-  const what = firstBlocker ? midSentence(firstBlocker.what) : ''
-  const example = firstBlocker?.from
-    ? (readerIsWaiting
-      ? `Why am I still waiting on ${what}?`
-      : `Why is ${firstBlocker.from} still waiting on ${what}?`)
-    : 'Who is waiting on whom?'
-  /*
-   * PHONE CHECK, ITEM 4: THE PLACEHOLDER READ CUT OFF MID-EXAMPLE ("Ask about this board, for
-   * example "Why") at 375px. An `<input>`'s placeholder never wraps, however the box itself does,
-   * so the fix is a shorter line at phone width - the plain question itself, not the longer
-   * "for example" framing, which is exactly what the full example still offers above 640px.
-   */
-  const isAPhone = useIsAPhone()
-  const placeholder = isAPhone ? 'Ask about this board' : `Ask about this board, for example “${example}”`
-  return (
-    <FlexRow
-      as="form"
-      gap={8}
-      className="gwui-mt-22"
-      onSubmit={(e) => {
-        e.preventDefault()
-        const m = draft.trim()
-        if (!m) return
-        showWith(m)
-        setDraft('')
-      }}
-    >
-      <input
-        type="text"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        placeholder={placeholder}
-        aria-label="Ask about this board"
-        className="gwui-input" style={{flex: 1}}
-      />
-      {/*
-        Secondary, not navy: the board's one primary is "Your check-in", in the header. The
-        prototype's own board injects this "Ask" as a second navy button of its own
-        (groundwork-prototype.html, R.board's regex, `class="btn pri"`) - but Hafsah's rule (30
-        September, item 2) is "at most one primary button per screen", so this follows that rule
-        rather than the prototype's own quirk here.
-      */}
-      <UIButton kind="secondary" type="submit">Ask</UIButton>
-    </FlexRow>
-  )
-}
 

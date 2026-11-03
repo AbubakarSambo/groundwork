@@ -7,10 +7,8 @@ import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
 import { toast } from 'sonner'
-import { MessageCircle } from 'lucide-react'
 import { Section, Panel, Tag, Button, EdgeList, EdgeRow } from '@/components/gw/ui'
 import { checkInLinksApi } from '@/api/check-in-links'
-import { useAskStore } from '@/stores/ask'
 import { whenTheBoardLastChanged } from '../when-the-board-last-changed'
 import { TheDealsCanBeChanged, WhatShowsItBlock } from '../WorkRecords'
 import './pictured-board.css'
@@ -1164,18 +1162,6 @@ export function WhereThisIsHeading({ b, onRecordTheDecision, readOnly = false }:
 
 /* ------------------------------------------------------------------ ask, and what Groundwork recommends */
 
-export function AskAboutThisBoard({ example }: { example: string }) {
-  const [draft, setDraft] = useState('')
-  const showWith = useAskStore((s) => s.showWith)
-  return (
-    <form className="pb-ask" onSubmit={(e) => { e.preventDefault(); const m = draft.trim(); if (!m) return; showWith(m); setDraft('') }}>
-      <MessageCircle size={18} aria-hidden="true" />
-      <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`Ask about this board, for example “${example}”`} aria-label="Ask about this board" />
-      <Button kind="primary" type="submit">Ask</Button>
-    </form>
-  )
-}
-
 export function GroundworkRecommends({ offers, onAnswer, busy }: { offers: PicturedBoardProps['recommendations']; onAnswer: (id: string, yes: boolean) => void; busy: boolean }) {
   /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
   const direct = useTheDirectMorning()
@@ -1213,8 +1199,6 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
   const now = useMemo(() => new Date(), [])
   const deals = (b.workRecords ?? []).find((s: Any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: Any) => r.kind === 'deal')) ?? null
   const groups = dealsByGroup(deals)
-  const nextQuarterDeal = (groups['next-quarter'] ?? [])[0]
-  const example = nextQuarterDeal ? `Why is ${nextQuarterDeal.name} next quarter?` : 'Who is waiting on whom?'
   return (
     <div className="pb">
       {/* THE FIRST SCREEN, AS THE PROTOTYPE HAS IT (Hafsah, 24 October): the headline with what is closing the gap, What needs you, and the team. */}
@@ -1242,7 +1226,6 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
         <WhereThisIsHeading b={b} onRecordTheDecision={p.onRecordTheDecision} readOnly={p.readOnly} />
       </FoldTheRest>
       <Reports b={b} groundId={p.groundId} sessionRows={p.sessionRows} navigate={p.navigate} now={now} />
-      <AskAboutThisBoard example={example} />
       <GroundworkRecommends offers={p.recommendations} onAnswer={p.onAnswerRecommendation} busy={p.recommendationBusy} />
       {p.kindOfWork}
     </div>
@@ -1262,9 +1245,3 @@ export function ThePicturedOwnDeals({ b, groundId, myFirstName }: { b: Any; grou
   return <EveryDealDayByDay b={b} section={mine} now={now} groundId={groundId} heading="Your deals, day by day" note="Only yours" ownTag={myFirstName ? 'Your deal' : null} />
 }
 
-/** The board's own ask bar, with an example from this board's deals ("Why is Green Mart next quarter?"). */
-export function ThePicturedAskBar({ b }: { b: Any }) {
-  const deals = (b.workRecords ?? []).find((s: Any) => s.section === 'Deal grid') ?? null
-  const next = (deals?.rows ?? []).find((r: Any) => r.kind === 'deal' && r.group === 'next-quarter')
-  return <AskAboutThisBoard example={next ? `Why is ${next.name} next quarter?` : 'Who is waiting on whom?'} />
-}

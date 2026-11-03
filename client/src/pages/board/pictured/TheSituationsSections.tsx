@@ -23,7 +23,8 @@ export const SITUATION_TO_PICTURED: Record<ASituationKey, string> = {
 /** The order a situation's board is drawn in: the situation's own sections, then where this is heading, Ask, and what Groundwork recommends. */
 export function theSituationsOrder(situation: Any, runsIt: boolean): string[] {
   const own = ((situation?.sections ?? []) as Any[]).filter((s) => runsIt || s.key !== 'lead').map((s) => SITUATION_TO_PICTURED[s.key as ASituationKey]).filter(Boolean)
-  return ['situationNote', ...own, ...(runsIt ? ['heading', 'ask', 'recommends'] : ['ask'])]
+  /* No board Ask of its own (F5, stage 11): one Ask, from the header. */
+  return ['situationNote', ...own, ...(runsIt ? ['heading', 'recommends'] : [])]
 }
 
 const headingOf = (b: Any, key: ASituationKey, fallback: string) =>

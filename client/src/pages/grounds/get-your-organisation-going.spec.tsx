@@ -118,10 +118,16 @@ describe('the new admin', () => {
     expect(screen.queryByText('Connect WhatsApp (optional)')).toBeNull()
   })
 
+  /* Changed in F5 (the approved journey, stage 8): the checklist moves off Today once a check-in exists, so the ticks are read
+     before one does, and the list is gone after. */
   it('ticks what has happened', async () => {
-    open(ADMIN, { ...NEW, people: 3, checkIns: 1 })
+    open(ADMIN, { ...NEW, people: 3, admins: 2, checkIns: 0 })
     expect(await screen.findByText('2 of 3 done')).toBeTruthy()
     expect(screen.getAllByText('Done')).toHaveLength(2)
+  })
+  it('and once a check-in exists, the checklist is off Today', async () => {
+    open(ADMIN, { ...NEW, people: 3, checkIns: 1 })
+    await waitFor(() => expect(screen.queryByText(/Get Nyali Foods going/)).toBeNull())
   })
 
   it('"Got it" is saved on the server and the card goes', async () => {
