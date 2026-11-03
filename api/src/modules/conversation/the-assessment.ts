@@ -93,6 +93,10 @@ export interface TheSetupPart {
   timing: AnItem[];
   rules: AnItem[];
   risks: AnItem[];
+  /** How the lead means to get there. */
+  strategy: AnItem[];
+  /** Anything else she said about the work that the team should know, something between two people included. */
+  notes: AnItem[];
   privateNotes: AnItem[];
 }
 
@@ -114,7 +118,7 @@ export const THE_ITEM_SECTIONS = [
   'roleSignals', 'areas', 'observations', 'stillOpen', 'everythingElse', 'targets',
 ] as const;
 export type AnItemSection = typeof THE_ITEM_SECTIONS[number];
-export const THE_SETUP_SECTIONS = ['objective', 'success', 'team', 'timing', 'rules', 'risks', 'privateNotes'] as const;
+export const THE_SETUP_SECTIONS = ['objective', 'success', 'team', 'timing', 'rules', 'risks', 'strategy', 'notes', 'privateNotes'] as const;
 export const THE_COMPARED_SECTIONS = ['promisesDue', 'figuresChanged', 'workMoved', 'blockers', 'repeated', 'disagreements'] as const;
 
 export interface TheAssessment {
@@ -256,7 +260,7 @@ export const THE_ASSESSMENT_PROMPT = [
   '  - corrections: anything they said the record, the board or Groundwork has wrong: what it said, what it should say, and whether they backed it. Where it corrects an item of the previous assessment, `correctsItem` is that item\'s id.',
   '  - documents: each document or photo they added or pointed to: what it says, what it proves, and where it belongs. Where it proves a claim in their previous assessment, `provesItem` is that claim\'s id.',
   '  - targets: what the check-in as a whole is aiming at, and each number somebody is aiming at, by the rules for aims below. In every conversation, setup or check-in.',
-  '  - setup (only when setup material is given): the objective, what success looks like, the team and their roles, working days and timing, rules and definitions, risks, and the lead\'s private notes on each person. For each person on the team and each private note, `spokenOf` says how the lead spoke of that person (praise, criticism or neutral), only from her words.',
+  '  - setup (only when setup material is given): the objective, what success looks like, the team and their roles, working days and timing, rules and definitions, risks, the strategy (how the lead means to get there), notes (anything else about the work the team should know, something between two people included), and the lead\'s private notes on each person. Anything still to decide goes under decisions, as waiting. For each person on the team and each private note, `spokenOf` says how the lead spoke of that person (praise, criticism or neutral), only from her words.',
   '  - roleSignals: what the person actually did or talked about doing: tasks, decisions, who they dealt with, what they owned. Also each thing they said about their own job, with its `part`: "the name of their job" (a few words such as "sales representative", only if they said it), "what they are responsible for" (in their job, over this one piece of work), "what doing well looks like" (in their job), "who they depend on" (and who depends on them), or "what gets in their way". Anything else they did is "something they did". `words` are copied from ONE of their answers, exactly, never joined from two. A worry about a customer or a deal is not part of their job.',
   '  - roleAgainstGiven: from this conversation only, the role they are actually playing, and whether it fits the role they were given ("cannot tell" when the conversation does not show it).',
   '  - areas: each item tagged with the area of work it belongs to (a client, a product, a project, admin and so on), and whether it fits one of the team\'s priorities, where they are given.',
@@ -337,6 +341,8 @@ export const THE_ASSESSMENT_SCHEMA = {
           timing: anItem({ timing: S('Working days, times and how often.') }),
           rules: anItem({ rule: S('A rule or definition.') }),
           risks: anItem({ risk: S('A risk.') }),
+          strategy: anItem({ strategy: S('How the lead means to get there.') }),
+          notes: anItem({ note: S('Anything else about the work the team should know.') }),
           privateNotes: anItem({ about: S('Who the note is about.'), note: S('The lead\'s note.'), spokenOf: { type: 'string', enum: ['praise', 'criticism', 'neutral'] } }),
         },
       },

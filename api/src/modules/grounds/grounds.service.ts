@@ -136,6 +136,8 @@ import { theCountAsServed } from './the-count-as-served';
 import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, theDatesToKeep, theSameWords, theNumberAsWritten, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExactQuestion, theLeadsOwnQuestionIfAddressedToThem, THE_EXACT_QUESTION_PROMPT, THE_EXACT_QUESTION_TOOL, whatGroundworkWillAsk, type AQuestionForAPerson } from './a-question-asked-word-for-word';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
+import { theAssessmentOf } from '../conversation/assess-the-conversation';
+import type { TheAssessment } from '../conversation/the-assessment';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
 import { howCheckableIsYoursAlone } from './how-checkable-is-yours-alone';
 import { writeADocumentsNumbers } from '../documents/write-a-documents-numbers';
@@ -4924,25 +4926,47 @@ export class GroundsService {
    * rest of what the context page holds are written only by the context conversation's writer, after a yes, and the starting point
    * only when the lead picks lines from his first session. Setup is the lead's first session and saving it is his yes.
    *
-   * So the save reads the lead's own setup words the way the context conversation reads a paste (whatAPasteGives) and writes them
-   * through the same writer (writeWhatThePasteGave), and his first session's own lines become where this stood at the start through
-   * the same writer as the page's (recordBaselineEntries). The numbers are left to the save's own reading of targets
-   * (extractExpectations), which ran first, so no target is written twice. Nothing already held is written again.
+   * So the save writes what the setup's assessment read from her words (conversation/the-assessment.ts, its setup part, the one
+   * reading of setup since F1 part 2, 3 November 2026: the assessment read setup once and whatAPasteGives read the same words a
+   * second time) through the context page's writer (writeWhatThePasteGave), and her first session's own lines become where this
+   * stood at the start through the same writer as the page's (recordBaselineEntries). The numbers are left to the save's own reading
+   * of targets (extractExpectations), which ran first, so no target is written twice. Nothing already held is written again. Only
+   * what the assessment lets the people in the check-in see becomes a line they read: her risks and her notes on a person stay hers.
    */
-  async keepWhatSetupGave(groundId: string, leadUserId: string, theirWords: string[]): Promise<void> {
-    const words = theirWords.map((w) => String(w ?? '').trim()).filter(Boolean).join('\n\n');
-    if (words) {
-      const read = await this.whatAPasteGives(groundId, words).catch(() => null);
-      if (read) {
-        await this.writeWhatThePasteGave(groundId, {
-          ...read,
-          /* The targets, each person's numbers and expectations, and what they will do are the save's other readers' to write. */
-          teamTargets: [], forPeople: [], commitments: [], questionsForPeople: [], toldToParticipants: null,
-        });
-      }
-    }
+  async keepWhatSetupGave(groundId: string, leadUserId: string, setupCheckInId: string): Promise<void> {
+    const a = await theAssessmentOf(this.prisma, setupCheckInId).catch(() => null);
+    if (a?.setup) await this.writeWhatThePasteGave(groundId, await this.whatTheSetupsAssessmentGives(groundId, a));
     const { candidates, alreadyRecorded } = await this.baselineEntryCandidates(groundId, leadUserId);
     if (!alreadyRecorded.length && candidates.length) await this.recordBaselineEntries(groundId, leadUserId, candidates.map((c) => c.text));
+  }
+
+  /** The setup assessment's parts in the shape the context page's writer takes; the targets, the people's numbers and the promises are the save's other readers' to write. */
+  private async whatTheSetupsAssessmentGives(groundId: string, a: TheAssessment): Promise<WhatAPasteGives> {
+    const said = (i: any, field: string) => String(i?.[field] ?? i?.words ?? '').replace(/\s+/g, ' ').trim();
+    const forTheTeam = (items: any[] | undefined, field: string) => (items ?? []).filter((i) => i?.whoMaySee !== 'the lead only').map((i) => said(i, field)).filter(Boolean).map((t) => t.slice(0, 300));
+    const people = await this.prisma.groundParticipant.findMany({
+      where: { groundId },
+      select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } },
+    }).catch(() => [] as any[]);
+    const aboutPeople: WhatAPasteGives['aboutPeople'] = [];
+    for (const n of a.setup?.privateNotes ?? []) {
+      const who = n?.about ? whoThisNameIs(String(n.about), (people as any[]).filter((p) => !p.managingOnly) as any) : null;
+      const note = said(n, 'note');
+      if (who && note) aboutPeople.push({ who: theNameWeUseFor(who as any), participantId: who.id, observation: note.slice(0, 300) });
+    }
+    return {
+      success: forTheTeam(a.setup?.success, 'success')[0] ?? null,
+      teamTargets: [], forPeople: [], commitments: [], questionsForPeople: [], toldToParticipants: null,
+      dates: (a.dates ?? []).filter((d: any) => d?.whoMaySee !== 'the lead only').map((d: any) => ({ what: said(d, 'what'), when: String(d?.when ?? '').trim() })).filter((d) => d.what && d.when),
+      unmatched: [],
+      waysOfWorking: forTheTeam(a.setup?.rules, 'rule'),
+      strategy: forTheTeam(a.setup?.strategy, 'strategy'),
+      notes: forTheTeam(a.setup?.notes, 'note'),
+      openDecisions: forTheTeam((a.decisions ?? []).filter((d: any) => d?.state === 'waiting'), 'decision'),
+      notSettled: [],
+      aboutPeople,
+      betweenPeople: [],
+    };
   }
 
   private async writeWhatThePasteGave(groundId: string, got: WhatAPasteGives, confirmedByAdminNote: string | null = null): Promise<boolean> {

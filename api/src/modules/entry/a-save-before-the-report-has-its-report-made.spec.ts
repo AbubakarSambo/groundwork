@@ -68,12 +68,13 @@ describe('a lead saves the setup', () => {
     expect(writes[writes.length - 1]).toEqual(made);
   });
 
-  it('and keeps everything else the lead said in setup, from the lead’s own words', async () => {
+  /* Changed 3 November (F1 part 2): setup is read once, by its assessment, so what setup gave is kept from that check-in's assessment. */
+  it('and keeps everything else the lead said in setup, from the setup’s assessment', async () => {
     const { service, grounds } = makeService(jest.fn());
     jest.spyOn(service, 'report').mockResolvedValue(null);
     await save(service, null);
     await flush();
-    expect(grounds.keepWhatSetupGave).toHaveBeenCalledWith('g1', 'u-ama', ['My reps.']);
+    expect(grounds.keepWhatSetupGave).toHaveBeenCalledWith('g1', 'u-ama', 'ci1');
   });
 
   it('a report that cannot be made does not undo the save', async () => {

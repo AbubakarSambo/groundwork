@@ -2986,7 +2986,7 @@ from finishing at all.`;
         /* And everything else the lead said in setup, where each part lives (GroundsService.keepWhatSetupGave), after the targets and
            once the first session's record is written, so nothing is written twice. */
         await theLeadsRecordIsRead;
-        await this.grounds.keepWhatSetupGave(ground.id, initiatorId, (dto.history ?? []).filter((t: any) => t?.role === 'user').map((t: any) => t.content))
+        await this.grounds.keepWhatSetupGave(ground.id, initiatorId, checkIn.id)
           .catch((err: any) => this.logger.error(`commit: what setup gave could not be kept on ${ground.id}: ${err?.message}`));
         /*
          * THE REPORT KNOWS WHO IS ON THE CHECK-IN (round 7, the sales lead). It was made from the conversation alone, so a team given in the
