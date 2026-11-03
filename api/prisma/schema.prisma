@@ -1840,7 +1840,7 @@ model CheckIn {
   isClarification             Boolean       @default(false) @map("is_clarification") // true when session is correcting a flagged inference
   clarificationTarget         String?       @map("clarification_target") // inference id from report.inferences being corrected
   isSelfCorrection            Boolean       @default(false) @map("is_self_correction") // true when session is correcting the participant's OWN prior session
-  closeHeldAt                 DateTime?     @map("close_held_at") // set once, the one time the close was held for a date, a number or a document
+  closeHeldAt                 DateTime?     @map("close_held_at") // set once, when the close was held for the read-back (conversation/the-read-back.ts)
   /// The plan for this session, written by the product before the first question from everything the record
   /// holds about this person: what must be established, the questions in order, what to watch for, the coaching
   /// path, when it is done. Context for every turn, never a script. See the-plan-for-this-session.

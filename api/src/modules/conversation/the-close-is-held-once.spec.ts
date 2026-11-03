@@ -165,7 +165,7 @@ describe('the thing the session was for is one plain question, and never a held 
   });
   it('the check-in never puts "I have one more question before we finish" under a close', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
-    expect(src).not.toMatch(/ONE_MORE_QUESTION|theOneThingNeverAsked|THE_CLOSE_WAS_HELD|closeHeldAt: new Date/);
+    expect(src).not.toMatch(/ONE_MORE_QUESTION|theOneThingNeverAsked|THE_CLOSE_WAS_HELD/);
     expect(ONE_MORE_QUESTION).toBe('I have one more question before we finish.');
   });
 });

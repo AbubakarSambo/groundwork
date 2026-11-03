@@ -569,7 +569,8 @@ export function thePreviousWithItsCorrections(previous: TheAssessment, correctio
   const copy = JSON.parse(JSON.stringify(previous)) as TheAssessment;
   for (const item of everyItemIn(copy)) {
     for (const c of named.filter((x) => x.correctsItem === item.id)) {
-      item.history = [...(item.history ?? []), {
+      /* One step per check-in: the same conversation assessed again (the read-back, then the close) replaces its own step. */
+      item.history = [...(item.history ?? []).filter((h) => h.inCheckInId !== inCheckInId), {
         on: on.toISOString(), inCheckInId, said: String(c.recordSaid ?? item.words ?? ''), nowSays: String(c.shouldSay ?? c.words ?? ''), backed: c.backed === true,
       }];
       changed = true;

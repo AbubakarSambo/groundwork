@@ -91,6 +91,7 @@ import { whatChangedOnTheirDeals } from './what-changed-on-their-deals';
 import { oneOfTheKinds, isASalesKind } from '../board/the-kind-of-work';
 import { theEndCard, theCardStillStanding, whatTheyWereAskedToShow, type EndCard, type ALineForTheCard } from './the-end-card';
 import { assessTheConversation, theAssessmentOf, theAssessmentIsReady, type TheSetupGiven } from './assess-the-conversation';
+import { theReadBack, THE_READ_BACK_WAS_GIVEN } from './the-read-back';
 import { theSmallStepForThePerson, whatBecameOfTheLastStep } from '../patterns/the-next-step-for-each-pattern';
 import { whatTheyAreWaitingOn, theWorkTheyMentioned, whatTheyPromisedThemselves, whatHappenedToTheirOpenPromises, theAssessmentIn, theReportTheyRead, type TheAssessment } from './the-assessment';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
@@ -3458,6 +3459,20 @@ export class ConversationService {
       }
     }
     let sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));
+    /*
+     * THE READ-BACK, ONCE, BEFORE THE CLOSE (the-read-back.ts). The conversation is assessed now, and what they read back is that
+     * assessment: "Here's what I recorded. ... Is anything wrong?". The close is held for their answer; the next close lands.
+     */
+    if (sessionComplete && !(checkIn as any).isSelfCorrection && !(await this.prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { closeHeldAt: true } }).catch(() => null))?.closeHeldAt) {
+      const assessed = await assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: null, logger: this.logger, contextEnabled: this.config?.get?.<boolean>('app.contextEnabled') !== false }, checkIn.id, { howItEnded: 'finished by the person', closedAt: new Date() }).catch(() => null);
+      const readBack = theReadBack(assessed);
+      if (readBack) {
+        await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { closeHeldAt: new Date() } });
+        aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: [withoutTheGoodbye(aiTurn.content ?? '').trim(), readBack].filter(Boolean).join('\n\n') } });
+        sessionComplete = false;
+        this.logger.log(`Check-in ${checkIn.id}: read back what was recorded before the close.`);
+      }
+    }
     /* They said they are leaving: no "One thing before you go - ..." handing their own words back as a request, whether
        the product closes now or tells them how to finish (reviewer, 14 October). */
     if (!answeringAnOffer && askedToFinish([message])) {
@@ -3559,6 +3574,8 @@ export class ConversationService {
      * Context tab is not in the chat when it is read, so the next thing the chat says opens with what
      * we now have. See theContextNotYetSaid.
      */
+    /* The reply as written, before the product's own words go in front of it in the turn (they are put in front of the reply once, below). */
+    const theReplyItself = aiTurn.content;
     const contextNotSaid = await this.theContextNotYetSaid(checkIn as any);
     /*
      * AND A YES TO WHAT A DOCUMENT HOLDS IS THE MOMENT ITS NUMBERS ARE WRITTEN.
@@ -3644,7 +3661,7 @@ export class ConversationService {
       { groundId: checkIn.groundId, startedFrom, participantId: (checkIn as any).participantId ?? null, message, sessionComplete },
     ) : {};
     const answer: any = {
-      reply: [contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay, aiTurn.content].filter(Boolean).join('\n\n'),
+      reply: [contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay, theReplyItself].filter(Boolean).join('\n\n'),
       sessionComplete,
       ...(suggestedAnswers.length ? { suggestedAnswers } : {}),
       ...(idea.ideaOffer ? { ideaOffer: idea.ideaOffer } : {}),
@@ -5937,7 +5954,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
             + rows.map((r) => `- They said: "${r.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}". The document says: "${r.documentSays}".`).join('\n')
           : '')
         .catch(() => ''),
-      Promise.resolve(''),
+      /* After the read-back, their answer is read as a confirmation or a correction (the-read-back.ts). */
+      this.prisma.checkIn
+        .findUnique({ where: { id: checkIn.id }, select: { closeHeldAt: true } })
+        .then((r) => (r?.closeHeldAt ? THE_READ_BACK_WAS_GIVEN : ''))
+        .catch(() => ''),
       /* THE UPLOADER IS ASKED, NOT CORRECTED. A document that does not read as they described it is
          put to them once as a question; until they answer it backs nothing. */
       this.prisma.groundDocument
