@@ -1685,54 +1685,6 @@ ${PLAIN_WORDS}
 
 ${EVERY_VERB_KEEPS_ITS_SUBJECT}`;
 
-// ---------------------------------------------------------------------------
-// Record extraction - pulls structured entries from one party's transcript.
-// ---------------------------------------------------------------------------
-/*
- * WHAT SOMEBODY SAYS ANOTHER PERSON DID IS ON THE RECORD TOO (the last paragraph).
- *
- * Every type here is about the person's own work, and nothing said otherwise, so what they said
- * about somebody else's work was left off. In the recognition scenario of run 6, Joseph Mwangi said
- * "I think Victor's script was the really hard part of this whole thing. He worked over the weekend
- * of the 14th to get it done", and Amara Diallo said Victor "was responsible for the migration
- * script for existing users". Victor is a contractor, not a participant. The ground's nineteen
- * record entries named him zero times, so neither the finding per person nor
- * whatMoreThanOnePersonNamed could see him, and the judgement missed the scenario's right answer,
- * which is to name the person nobody had credited, from the others' accounts.
- *
- * The name goes in for "he" only where the person used it themselves, so the entry still passes
- * isTheirs (a-record-is-what-they-said): every word of the example is a word they said.
- */
-
-export const RECORD_EXTRACTION_PROMPT = `You are extracting structured record entries from ONE party's check-in transcript. THE RECORD IS IN ENGLISH whatever language the transcript is in: write every entry in English, keeping every name, number, date and place exactly as written. Use the person's own words wherever possible - quote, do not paraphrase.
-
-THEIR PUNCTUATION AND THEIR QUOTATION MARKS ARE PART OF THEIR WORDS. Keep every quotation mark exactly as they typed it. Never put quotation marks round words they did not put in marks, never take away the marks they used, and never change double marks to single ones or single to double. If they typed On track, for me, meant no escalations, the entry is On track, for me, meant no escalations, with no marks added. If they typed I haven't said "get me out of these meetings." the entry keeps those double marks.
-
-INFERENCE RULE: If a claim is directly stated, record it as-is. If you must make a reasonable inference to complete the picture (e.g. the person's words imply something they did not state explicitly), you MAY include it - but you MUST mark it with [INFERRED: <brief reason>] appended to the text. Example: "They took full ownership of the client relationship [INFERRED: implied by 'I handled everything on that account']". If something was not said and cannot reasonably be inferred, do not record it at all.
-
-Classify each entry as exactly one of:
-- SUCCESS_DEFINITION - what they said success / "done" would LOOK like. A standard, not an event. "We are done when every team is migrated" is this; "all forty are migrated" is not. A QUESTION IS NOT A STANDARD: "how do I know if we are done" is them asking, and it goes down as an ASK or as nothing, never as what success looks like. NOR IS A LIST OF PLACES OR THINGS: "Kano and Jigawa, grain markets" and "rice, maize, 10 tonnes" name where and what, not what good would look like - both reached a live board labelled as somebody's definition of success.
-- TIMEFRAME - the period they are measuring this against, in their own words (e.g. "90 days", "this quarter", "by year end"). Record it ONLY if the person actually stated it. Never infer or invent a period; if they never gave one, do not create a TIMEFRAME entry.
-- COMMITMENT - something they or the other party agreed to deliver, which has NOT happened yet. Once they report the work itself done, that is PROGRESS.
-- ASK - something they are requesting (a raise, equity, a resource, a decision)
-- INTENT - what they understood their role / the arrangement to be
-- TOLERANCE - what they are willing or unwilling to accept
-- WORRY - what they fear will happen
-- TENSION - a tension they predict / can already see coming
-- PROGRESS - THE WORK ITSELF MOVING FORWARD, as they reported it: something delivered, a number reached, a step finished, a blocker cleared. "All forty migrated by Friday", "we are at 180 teams through", "build shipped on the 12th", "finance signed off on the 5th".
-
-PROGRESS IS NARROW AND IS THE LAST ONE TO REACH FOR. It is not "anything that has already happened" - almost every sentence is that. Check the others first, and only use PROGRESS when none of them fits:
-  "I cannot put it live because finance have not signed off" is being stuck. WORRY.
-  "Waiting on legal to clear the migration email" is being stuck. WORRY.
-  "I asked last Tuesday and have heard nothing" is chasing something they are stuck on. WORRY.
-  "I chased finance twice" is what they did about a blocker, not the work moving. WORRY.
-  "I will chase it on Monday" is a promise. COMMITMENT.
-  "Nobody else is waiting on me" and "no other blockers I can name" say nothing happened. Record nothing at all.
-  "The build is on track for the 14th" is a forecast, not a thing done. INTENT.
-Only where the work itself actually moved is it PROGRESS.
-
-WHAT SOMEBODY ELSE DID IS ON THE RECORD TOO. When the person says what another person did or gave to the work - a colleague, a contractor, a supplier, a customer, anybody - record it. If that work was done, it is PROGRESS. Keep the other person's name exactly as the person said it. Where they said "he", "she" or "they" and the transcript makes it plain who is meant, put the name in place of that word, but only a name the person used themselves. Keep everything else in their own words. "Victor's script was the really hard part. He worked over the weekend of the 14th to get it done" is recorded as "Victor worked over the weekend of the 14th to get the script done, and it was the really hard part." Leave it out and the person who did the work is named nowhere in the report.`;
-
 /**
  * Dependency (handoff) extraction. SHARED-mode grounds only, because handoffs
  * are a board object and a private ground has no board.

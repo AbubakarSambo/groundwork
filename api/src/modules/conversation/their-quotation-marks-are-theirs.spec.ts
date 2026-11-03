@@ -2,7 +2,6 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { ConversationService } from './conversation.service';
 import { anAssessmentHolding } from './an-assessment-for-a-spec';
-import { RECORD_EXTRACTION_PROMPT } from './prompt-library';
 import { READ_WHAT_THEY_PROMISED } from './what-they-said-they-would-do-next';
 import { theirQuotationMarksBack } from './their-quotation-marks-are-theirs';
 import { saidWordForWord } from '../reports/a-quote-is-what-they-said';
@@ -61,9 +60,8 @@ describe('the marks go back to the ones they typed', () => {
 });
 
 describe('the extractor keeps their marks, told and checked', () => {
-  it('is told, in both readers that write what people said', () => {
-    expect(RECORD_EXTRACTION_PROMPT).toContain('Keep every quotation mark exactly as they typed it.');
-    expect(RECORD_EXTRACTION_PROMPT).toContain('never change double marks to single ones');
+  /* Changed 3 November 2026: the record's own extraction prompt was dead (the record is written from the assessment) and is deleted. */
+  it('is told, in the reader that writes what people promised', () => {
     expect(READ_WHAT_THEY_PROMISED).toContain('Keep their punctuation and their quotation marks exactly as they typed them');
   });
 

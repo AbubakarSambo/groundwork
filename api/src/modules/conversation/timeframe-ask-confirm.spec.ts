@@ -1,7 +1,6 @@
 import { GroundScenario, PartyType } from '@prisma/client';
 import {
   ENGINE_RULES,
-  RECORD_EXTRACTION_PROMPT,
   buildScenarioPackForParty,
 } from './prompt-library';
 
@@ -50,9 +49,4 @@ describe('duration: ask in conversation, never assume, confirm at end', () => {
     }
   });
 
-  it('the record schema can carry a stated TIMEFRAME (and only when stated)', () => {
-    expect(RECORD_EXTRACTION_PROMPT).toMatch(/- TIMEFRAME -/);
-    expect(RECORD_EXTRACTION_PROMPT).toMatch(/Record it ONLY if the person actually stated it/i);
-    expect(RECORD_EXTRACTION_PROMPT).toMatch(/Never infer or invent a period/i);
-  });
 });
