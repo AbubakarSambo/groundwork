@@ -10879,7 +10879,12 @@ ${told}` : '';
      * about different people, they are stored differently, and a lead has both. The two prompts do
      * not overlap: one is explicitly barred from self-statements and the other reads nothing else.
      */
-    await this.writeTheirOwnPromises(participantId, groundId, transcriptForHerOwn, saidOn, ground.participants as any);
+    /*
+     * AT THE SAME TIME AS THE EXPECTATIONS, NOT BEFORE THEM (3 November 2026). Her own promises are written on her own row and the
+     * expectations on everybody else's, so neither reads what the other writes; one after the other, the save waited for both.
+     */
+    const herOwnPromises = this.writeTheirOwnPromises(participantId, groundId, transcriptForHerOwn, saidOn, ground.participants as any);
+    herOwnPromises.catch(() => undefined);
 
     /* The speaker's own targets, by id, so a new number for one of them edits it rather than making a second (Mercy, 29 October). */
     const theirTargetsOnRecord = ((await Promise.resolve(this.prisma.groundObjective.findMany({ where: { groundId, ownerParticipantId: participantId }, select: { id: true, name: true, target: true } })).catch(() => [])) ?? []) as { id: string; name: string; target: number | null }[];
@@ -10902,6 +10907,7 @@ ${told}` : '';
         trackedUrl?: string;
       }[];
     }>(EXPECTATION_PROMPT, [{ role: 'user', content: `${theSpeakerLine(me)}\n\n${theirTargetsOnRecord.length ? `Their targets on record:\n${theirTargetsOnRecord.map((t) => `[${t.id}] ${t.name}${typeof t.target === 'number' ? `, ${t.target}` : ''}`).join('\n')}\n\n` : ''}${transcript}` }], EXPECTATION_SCHEMA as any);
+    await herOwnPromises;
     if (!result) return;
 
     /** The same resolver as work mentions: a name that matches nobody is dropped, never guessed. */
