@@ -202,29 +202,6 @@ export function ChatPage() {
    * quiet line, nowhere near the composer.
    */
   const [connectWhatsApp, setConnectWhatsApp] = useState<ConnectWhatsApp | null>(null)
-  /*
-   * WHEN THE SCREEN MAY OFFER TO FINISH. The server holds a check-in to a turn floor - five answers
-   * for a full check-in, three for a team update, one for a correction - and this page used to keep
-   * its own copy of that number. The copies drifted (the server's went to five on 11 September, this
-   * one stayed at three), and for ten days the page offered "Complete session" two answers before the
-   * server would honour it: "a few more exchanges are needed" as a pop-up, on the button the page had
-   * just shown. The server now says the number with the session, and this page reads it. Five until
-   * it does, which is the stricter of the two and cannot offer early.
-   *
-   * U.8 FOURTH REVIEW TRIED REMOVING THIS GATE ENTIRELY (offering from the first answer, always),
-   * because the engine's closing message and its own completion gate can disagree on the SAME
-   * session - the engine wrote "...Your report is ready now" while the gate still refused as too
-   * thin (request 47). But `one-floor-not-two.spec.ts` is the engine's own rule for exactly this: the
-   * engine, the server's refusal, and this page's offer all read ONE floor
-   * (`theFloorFor`/`mayCompleteAfter`), because a live check-in has deadlocked when the screen and
-   * the server disagreed about when finishing was allowed - the engine offers the close, the
-   * composer disables because the session reads as over, the person presses finish, and the server
-   * refuses for being one turn short with no way left to add one. Removing the gate here reintroduced
-   * exactly the two-sources-of-truth shape that rule exists to prevent, in the other direction. So
-   * this reads `mayCompleteAfter` again, as it always has; the dead end above is still real and still
-   * the engine's to close, tracked as request 47 - not something this page's gate can fix by itself.
-   */
-  const [, setMayCompleteAfter] = useState(5)
   const isInitiator: boolean  = (location.state as any)?.isInitiator ?? false
   const isFinalSession: boolean = (location.state as any)?.isFinal ?? false
 
@@ -430,7 +407,6 @@ export function ChatPage() {
       setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
       if (res.brief) setBrief(res.brief)
-      if (res.mayCompleteAfter) setMayCompleteAfter(res.mayCompleteAfter)
       setOpened(true)
       setOpenFailed(false)
     },
@@ -457,7 +433,6 @@ export function ChatPage() {
           if (turnsSoFar.length > 0) {
             setMsgs(turnsSoFar.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest })))
             if (t.brief) setBrief(t.brief)
-            if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
             if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
             setOpened(true)
             setOpenFailed(false)
@@ -470,7 +445,6 @@ export function ChatPage() {
              state, not a failure to retry. */
           if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
           if (t.brief) setBrief(t.brief)
-          if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
           if (t.checkIn?.status === 'COMPLETED') {
             setDone(true); setCompleted(true); setJustFinished(true)
             setOpened(true); setOpenFailed(false)
@@ -815,7 +789,6 @@ export function ChatPage() {
             that first closed it.
           */
           if (t.endCard) { setEndCard(t.endCard); setDone(true) }
-          if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
           /*
             AND WHICH SESSION THIS IS, FOR THE SAME REASON AS THE BAND ABOVE.
 

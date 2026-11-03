@@ -239,8 +239,6 @@ export const A_GREETING_ALONE = /^\s*((hi|hello|hey|hiya|yo)(\s+there)?|good\s+(
 export const A_NOT_NOW = /^\s*(not\s+now|later|not\s+today)\s*[.!]?\s*$/i;
 export const NOT_NOW_SAYING = 'All right. I will not write to you first again today. Your check-in is still open, and you can answer here whenever you are ready.';
 
-/** What the person reads when they write "finish" and there is not enough yet to close the check-in. */
-export const NOT_ENOUGH_YET_TO_FINISH = 'I need a little more from you before this check-in can close. Please answer one or two more questions, then write "finish" again.';
 
 /** The words that close a session. Matched before the status is looked at, so "finish" on a session not yet opened gets an honest answer. */
 /* "end" and "end session" too, as the opening line says on the phone (26 October). Never "stop", which is WhatsApp's own opt-out. */

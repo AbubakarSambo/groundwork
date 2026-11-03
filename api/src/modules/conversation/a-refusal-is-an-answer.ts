@@ -62,9 +62,3 @@ export function recordAndMoveOn(declinedWhat: string | null, next: { question?: 
   if (direct) return 'Thank you, that is noted.';
   return declinedWhat ? first : 'Understood. This record shows nothing more on that.';
 }
-
-/** The close, when nothing in the session carried a date, a number or a document: said, not chased. */
-export const NOTHING_HERE_HAS_A_NUMBER = 'Nothing said this time carries a date, a number or a document, and that is how it will read.';
-
-/** The lead closed on "I will keep monitoring": said, not chased. */
-export const NO_DECISION_YET = 'No decision from you is on this record yet, and that is how it will read.';

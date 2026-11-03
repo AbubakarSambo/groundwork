@@ -3,7 +3,6 @@ import { asksAboutTheirJobAgain, withoutTheJobQuestion } from '../conversation/t
 import { notTheLeadHerself, herSetupWordsAsATurn, howSheDescribesHerself, aLineThatDescribesNothing } from './the-lead-is-you-in-her-report';
 import { theSettersRole } from '../../common/a-role-or-nothing';
 import { askedToFinish, isTheWordFinish } from '../conversation/close-readiness';
-import { aFinishTooSoon } from '../conversation/a-finish-too-soon-is-said-plainly';
 import { endingOnTheClose } from '../conversation/the-close-says-what-comes-next';
 import { withAQuestion as withAQuestionForTheFirstCheckIn } from '../conversation/nobody-is-left-looking-at-a-paragraph';
 import { stripCloseMarker } from '../conversation/prompt-library';
@@ -82,8 +81,8 @@ import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-
 import { whatTheyAlreadyHave, thePeopleAlreadyHere, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
 import { whatIsAnswered, whatItAsksAgain, doNotAskAgain, withoutAskingAgain, theQuestionAskedBefore, doNotAskThatAgain, withoutTheSameQuestion } from './setup-never-asks-twice';
-import { THE_FIRST_UPDATE_TOO, SETUP_IS_DONE, whereSetupEnds, whatToSayAboutTheEndOfSetup, withoutTalkOfTheNextScreen } from './setup-is-the-first-check-in';
-import { ANYTHING_ELSE } from '../conversation/a-short-day';
+import { THE_FIRST_UPDATE_TOO, SETUP_IS_DONE, withoutTalkOfTheNextScreen } from './setup-is-the-first-check-in';
+import { HOW_SETUP_ENDS } from '../conversation/a-short-day';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
 import { PromptsService } from '../prompts';
 import { theAnchorGuidance, theChallengeWasUsed, theHopeWasAskedAndAnswered, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
@@ -1137,8 +1136,8 @@ Rules:
 - THE END OF SETUP IS THE PRODUCT'S, NOT YOURS. Never close setup yourself, never say the board is ready, and never
   tell them to add their team below or describe what comes next: you would say it while the screen still shows the
   conversation (round 6 of the first experience, 1 November 2026: "You can add David, Sarah, John, and Emily below",
-  with nothing below). When you are told the board has what it needs, ask the last question as you are told; once
-  they have nothing more, the product writes the last line itself. Until then, every reply asks one plain question.`.trim();
+  with nothing below). How setup ends is said last, under HOW SETUP ENDS; until then, every reply asks one plain question, and
+  the product writes the line about what comes next after your last turn.`.trim();
 
     /**
      * Through the boundary before anything else touches it. This reply reached the screen raw,
@@ -1215,19 +1214,6 @@ Rules:
     const theyAreKnownHere = whatTheyAlreadyHave(whatTheLeadHas);
     /* The reading of the conversation knows them too, so "my team" or "the four I just added" puts those people in peopleNamed. */
     const peopleHereForTheReading = thePeopleAlreadyHere(whatTheLeadHas);
-    /*
-     * WHERE THE END OF SETUP STANDS, FROM ITS OWN TURNS. The board's needs are read from what the last turn already worked out (`soFar`),
-     * because this turn's own reading runs beside the reply. Once they answer "Anything else I should know?" with nothing, the product
-     * writes the last line itself.
-     */
-    const theirLastNow = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
-    const theBoardIsCovered = !!soFar && theGate(soFar as any, scenarioForTheQuestion ?? scenarioInput ?? undefined);
-    const endOfSetup = whereSetupEnds(
-      (messages as { role: string; content: string }[]).filter((m) => m.role === 'assistant').map((m) => m.content ?? '').reverse(),
-      theirLastNow,
-      theBoardIsCovered,
-    );
-    const aboutTheEndOfSetup = whatToSayAboutTheEndOfSetup(theBoardIsCovered, endOfSetup);
     const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioForTheQuestion, momentInput)
       + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '')
       + (theyAreKnownHere ? `\n\n---\n\n${theyAreKnownHere}` : '')
@@ -1236,20 +1222,18 @@ Rules:
       + `\n\n---\n\n${THE_FIRST_UPDATE_TOO}`
       /* Last, after everything. See the-last-thing-it-reads-is-the-thing-it-must-not-miss. */
       + `\n\n---\n\n${theThingsThatCannotBeMissed(theirWords, theyPushedBackOnTheQuestions(theirWords))}`
-      /* The end of setup is read last of all, so it is not lost under the rest (26 October 2026: it was never asked from the middle). */
-      + (aboutTheEndOfSetup ? `\n\n---\n\n${aboutTheEndOfSetup}` : '');
+      /* How setup ends is read last of all, so it is not lost under the rest: offered in its own words, read back, never on a count. */
+      + `\n\n---\n\n${HOW_SETUP_ENDS}`;
     /*
      * THE REPLY AND THE EXTRACTION RUN SIDE BY SIDE. The extraction reads what the person said, and
      * they have already said it; the reply being composed at the same time is a question, and a
      * question adds no fact about their situation. In sequence the two doubled the turn.
      */
-    const replyInFlight = endOfSetup.close
-      ? Promise.resolve(SETUP_IS_DONE).then((done) => { onDelta?.(done); return done; })
-      : this.guardedReply(
-        repeating ? `${setupPrompt}\n\n---\n\n${repeating}` : setupPrompt,
-        messages,
-        onDelta,
-      );
+    const replyInFlight = this.guardedReplyWithClose(
+      repeating ? `${setupPrompt}\n\n---\n\n${repeating}` : setupPrompt,
+      messages,
+      onDelta,
+    );
 
     // Second lightweight call to extract structured fields
     const EXTRACT_SYSTEM = `You are extracting structured data from an onboarding conversation for Groundwork.
@@ -1374,7 +1358,7 @@ from finishing at all.`;
         peopleHereForTheReading ? `${EXTRACT_SYSTEM}\n\n${peopleHereForTheReading}\nFor peopleNamed: when they mean people on this list, give each one by the name shown.` : EXTRACT_SYSTEM,
         messages, EXTRACT_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true }))()
       .catch((err: Error) => err);
-    const firstReply = await replyInFlight;
+    const { reply: firstReply, closed: theModelFinished } = await replyInFlight;
     try {
       const result = await extractionInFlight;
       if (result instanceof Error) throw result;
@@ -1436,7 +1420,7 @@ from finishing at all.`;
      * without it; if it still asks, that question comes out. See setup-never-asks-twice.
      */
     let reply = firstReply;
-    if (!endOfSetup.close) {
+    {
       const answered = whatIsAnswered({ decision: soFar?.decision ?? extracted.decision, yourRole: soFar?.yourRole ?? extracted.yourRole }, theirWords);
       const again = whatItAsksAgain(reply, answered);
       if (again.length) {
@@ -1461,14 +1445,8 @@ from finishing at all.`;
      * twenty-two to two. Read that file before trying again.
      */
     const forThisSituation = scenarioForTheQuestion ?? scenarioInput ?? undefined;
-    /* Ready once setup has ended the way a check-in ends, or the assistant has stopped asking. Never the moment the gate opens: the first update comes next. */
-    /*
-     * WHEN THE MODEL STOPS ASKING, SETUP ASKS THE LAST QUESTION ITSELF (26 October 2026). Achieng's third answer was met with "The next
-     * screen will ask if you want to check in too", the two-part flow that is gone, and setup ended before "Anything else I should know?".
-     * Now that turn's talk of a next screen is taken out and the product asks "Anything else I should know?"; only a no to it ends setup.
-     */
-    const ready = endOfSetup.close;
-    const askTheLastQuestion = stoppedAsking && !endOfSetup.close;
+    /* Ready once the model has finished: it read back what it set up, the lead said it is right, and it closed (HOW_SETUP_ENDS). */
+    const ready = theModelFinished || stoppedAsking;
     if (stoppedAsking && !theGate(extracted, forThisSituation)) {
       this.logger.warn(
         `Setup finished without ${whatSetupNeverGot(extracted, forThisSituation).join(', ')} - the assistant had stopped asking.`,
@@ -1521,8 +1499,7 @@ from finishing at all.`;
       .replace(/\bwho (?:gives|should give|will give) (?:the |their |your )?accounts?\b/gi, 'whether you will check in too')
       .replace(/\bwho (?:gives|should give|will give) (?:an? )?account\b/gi, 'whether you will check in too');
     /* Whichever way setup ended, its last line says what was set up and what happens next. */
-    if (askTheLastQuestion) out = `${withoutTalkOfTheNextScreen(out)}\n\n${ANYTHING_ELSE}`.trim();
-    if (ready && !out.includes(SETUP_IS_DONE)) out = `${out.trim()}\n\n${SETUP_IS_DONE}`;
+    if (ready && !out.includes(SETUP_IS_DONE)) out = `${withoutTalkOfTheNextScreen(out).trim()}\n\n${SETUP_IS_DONE}`;
     return { reply: out, extracted, ready, needsPeople };
   }
 
@@ -1826,13 +1803,11 @@ from finishing at all.`;
       const without = withoutTheJobQuestion(withoutTheQuestionAskedAgain(best, lastAsk ? [lastAsk] : []));
       best = without && without !== best ? withAQuestionForTheFirstCheckIn(without, { closing: false, asked: asksBefore }) : best;
     }
-    if (theirLast && (askedToFinish([theirLast]) || isTheWordFinish(theirLast)) && personSaid.length >= 2) {
+    if (theirLast && (askedToFinish([theirLast]) || isTheWordFinish(theirLast)) && personSaid.length >= 1) {
       this.logger.log('entry chat: they said they are done; the conversation closes.');
       const kept = withoutTheGoodbyeOrTheirLeaving(best, theirLast);
       return { reply: endingOnTheClose(forHumans(kept), 'web'), closed: true };
     }
-    /* "finish" too soon is said plainly, never read as an answer (reviewer, 14 October). */
-    if (theirLast && isTheWordFinish(theirLast)) best = aFinishTooSoon(best, 2 - personSaid.length);
 
     return { reply: forHumans(best), closed: hadCloseMarker(best) };
   }

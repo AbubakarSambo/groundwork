@@ -43,7 +43,7 @@ import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
 import { theCheckInIsCompleteSaying } from '../grounds/what-is-sent-in-simpler-words';
 import { WHAT_WOULD_YOU_LIKE_TO_ADD } from '../conversation/add-something';
 import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, nothingToReadYet, THANKS_YOUR_ANSWER_IS_IN, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
-  NOT_ENOUGH_YET_TO_FINISH, isAnAskWord, A_BACK_WORD, A_WISH_TO_CARRY_ON_THE_CHECK_IN, isAGreetingOrARequestToStart, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
+  isAnAskWord, A_BACK_WORD, A_WISH_TO_CARRY_ON_THE_CHECK_IN, isAGreetingOrARequestToStart, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
   ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest, aReportWorthItsTemplate, THANKS_ONLY } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING, UNKNOWN_NUMBER_SAYING } from '../whatsapp/a-message-outside-the-window';
 import { keptOffThePhone, answerItInTheApp } from '../whatsapp/a-check-in-kept-off-the-phone';
@@ -644,7 +644,7 @@ export class WhatsAppForAnOrganisationService {
         await say(`${theCheckInIsCompleteSaying(current.simplerWords)}${next ? `\n\n${theNextOne(next)}` : ''}`);
       } catch (e: any) {
         /* "Not enough yet" asks for something the person can give, so it is said in the words of this door ("finish"), not the app's ("complete", "the record is still thin"). */
-        await say(e?.response?.canContinue ? NOT_ENOUGH_YET_TO_FINISH : (e?.response?.message ?? e?.message ?? 'That could not be completed yet.'));
+        await say(e?.response?.message ?? e?.message ?? 'That could not be completed yet.');
       }
       return;
     }

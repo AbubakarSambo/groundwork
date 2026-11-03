@@ -1,4 +1,3 @@
-import { YOU_CAN_END_NOW, YOU_CAN_END_NOW_ON_WHATSAPP } from './a-short-day';
 /**
  * THE OPENING LINE, IN THE CHAT ITSELF, EVERY TIME (Hafsah, 26 October 2026). Nobody was told how long a check-in takes or how to stop.
  * The first message stays exactly as it was; this line is added to it, in front. The web says "End session"; WhatsApp says "Reply END".
@@ -15,6 +14,5 @@ export function withTheOpeningLine(first: string): string {
 
 /** The same message on WhatsApp, where a person stops by replying END. */
 export function asItReadsOnWhatsApp(text: string): string {
-  /* And a long check-in's offer to end says "reply END" (a-short-day.ts). */
-  return String(text ?? '').split(THE_CHECK_IN_LINE).join(THE_CHECK_IN_LINE_ON_WHATSAPP).split(YOU_CAN_END_NOW).join(YOU_CAN_END_NOW_ON_WHATSAPP);
+  return String(text ?? '').split(THE_CHECK_IN_LINE).join(THE_CHECK_IN_LINE_ON_WHATSAPP);
 }

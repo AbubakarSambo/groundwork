@@ -121,7 +121,7 @@ export function whatIsSettledAndWhatIsNot(soFar?: WhatSetupHasSoFar | null): str
       'and do not ask it again in other words. Ask for one only when nothing they have said answers it.',
     );
   } else {
-    lines.push('', 'NOTHING IS MISSING. Setup has what it needs - stop asking and wrap it up.');
+    lines.push('', 'NOTHING IS MISSING. Setup has what it needs, so offer to wrap up in your own words (HOW SETUP ENDS, below).');
   }
 
   return lines.join('\n');

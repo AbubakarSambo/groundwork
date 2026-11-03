@@ -55,12 +55,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { forHumans, hadCloseMarker as textHadCloseMarker, whatIsNewSince } from '../presentation/outbound';
 import { languageBlock } from '../public-api/a-whatsapp-message-is-routed';
 import { withoutTheAnchorBack } from './no-anchor-back-when-they-leave';
-import { aFinishTooSoon, WHAT_YOU_SAID_IS_KEPT, NOTHING_KEPT_YET_COME_BACK, nothingRealWasSaid } from './a-finish-too-soon-is-said-plainly';
+import { NOTHING_KEPT_YET_COME_BACK, nothingRealWasSaid } from './a-finish-too-soon-is-said-plainly';
 import { endStatesFor } from '../resolution/end-states';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
-import { almostNothingHereYet, theFloorFor, theFloorForAPersonsFinish } from './how-short-a-check-in-may-be';
+import { almostNothingHereYet } from './how-short-a-check-in-may-be';
 import { withoutTheLastOne } from './a-first-session-has-no-last-one';
 import { theContextWeHave, whoThisNameIs, theNameWeUseFor, WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ, type WhatADocumentHolds } from '../documents/what-a-document-holds';
 import { isAnApology, NOTHING_TO_APOLOGISE_FOR, NOTHING_TO_APOLOGISE_FOR_DIRECTLY } from './an-apology-is-not-owed';
@@ -165,7 +165,7 @@ import {
 } from './a-colleague-in-an-interview-has-a-name';
 import { buildDeliveriesBlock } from './what-they-say-they-delivered';
 import { buildNotesBlock } from './between-session-notes';
-import { closeReadiness, askedToFinish, isTheWordFinish, tooFewAnswersToFinish, NOT_ENOUGH_YET_TO_FINISH_HERE } from './close-readiness';
+import { askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance, simplerWordsGuidance } from './person-style';
 import { WHAT_KIND_OF_WORK_PROMPT, WHAT_KIND_OF_WORK_SCHEMA, theJobTheyDescribed } from '../board/a-job-is-read-from-what-they-do';
 import { FIGURE_PROMPT, FIGURE_SCHEMA, theFiguresTheyStated, theDayThisWasSaid } from './a-figure-is-not-a-figure-until-somebody-says-so';
@@ -176,13 +176,12 @@ import { theirApprovedLeave } from '../suites/who-is-away';
 import { aNewIdeaIn, afterTheirTurn, anIdeaReadBackAsAPromise, withoutAskingWhatToCapture, anAnswerToTheIdeaOffer, ANSWERED_THE_IDEA_OFFER } from './ideas-from-the-team';
 import { askWhatItIs, askedWhatItIs, whatTheySaidItIs, SAID_WHAT_IT_IS } from './a-vague-promise-says-what-it-is';
 import { withTheOpeningLine } from './the-opening-line';
-import { A_SHORT_DAY, itIsTimeToClose, whereTheEndStands, whatToSayAboutTheEnd, itIsTimeToSayTheyCanEnd, YOU_CAN_END_NOW } from './a-short-day';
+import { A_SHORT_DAY, HOW_A_CHECK_IN_ENDS } from './a-short-day';
 import { theSumsOnlyARequestSaid, whereARequestInAnOrdinaryCheckInGoes } from './a-request-in-an-ordinary-check-in-goes-to-ask';
 import { withoutARatingOfWhatHappened } from './the-anchor-does-not-rate-what-happened';
 import { aRequestAfterTheirTurn, theyAreAnsweringAnOffer, withoutACannotApprove, withoutAPromiseToPassItOn } from './a-request-offered-in-the-check-in';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
-import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { theThingsThatCannotBeMissed } from './the-last-thing-it-reads-is-the-thing-it-must-not-miss';
 import { thePatternLine } from './whether-the-pattern-library-is-doing-anything';
@@ -191,8 +190,7 @@ import { theSetTheySpokeToPartOf, whatTheyToldWithoutWhen, askForWhatTheyLeftOut
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
-import { theNextStepIsStillOwed, theCloseQuestionFor, whereTheCheckInIs, whyTheCloseWasHeld, theyHaveJustAnsweredIt } from './what-they-will-do-is-asked-before-the-end';
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, hasAGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
+import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, withoutTheGoodbye, isAnAcknowledgement, takenAsSaidAndOn, saysGoodbye, hasAGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
 import { withoutARecordClaimNobodyHolds } from './a-record-claim-nobody-holds';
 import { itWasTakenFurther } from '../reports/what-they-said-they-did-about-it';
@@ -250,7 +248,7 @@ import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_P
 import { POSITIVE_CODES, CARRYING_CODES, BAD_FAITH_CODES } from '../patterns/pattern-library';
 import { withoutTheClaimsTheNumbersDoNotSupport, numbersIn as numbersInAClaim } from './a-claim-the-numbers-do-not-support';
 import { everybodyMayOpen, figuresOnlyInPrivateDocuments, carriesAPrivateFigure } from './a-private-documents-numbers-stay-with-it';
-import { recordAndMoveOn, NOTHING_HERE_HAS_A_NUMBER, NO_DECISION_YET } from './a-refusal-is-an-answer';
+import { recordAndMoveOn } from './a-refusal-is-an-answer';
 import { nothingSaidYetCannotBeQuoted } from './nothing-said-yet-cannot-be-quoted';
 import { theSentenceToThePerson, theSentenceToTheLead, sayTheDisagreementOnce } from './the-disagreement-said-once';
 import {
@@ -970,8 +968,6 @@ export class ConversationService {
         scenario: ground?.scenario ?? null,
       },
       brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)),
-      /* The turn floor the server will hold this to, so the screen offers to finish exactly when the server will honour it. See how-short-a-check-in-may-be. */
-      mayCompleteAfter: theFloorForAPersonsFinish(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null),
       turns: turns.map(asRead),
       /* The end card, once the conversation has closed and it is ready: on the closing turn, and only
          while nothing has been said after it (task 2.7). The screen reads it here. */
@@ -1290,7 +1286,7 @@ export class ConversationService {
       orderBy: { createdAt: 'asc' },
     });
     if (existingAiTurn) {
-      return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), mayCompleteAfter: theFloorForAPersonsFinish(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
+      return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)) };
     }
     /*
      * THE BRIEF IS READ WHILE EVERYTHING ELSE IS GATHERED, NOT AFTER IT (request 44). The opener's
@@ -1621,7 +1617,7 @@ export class ConversationService {
     const contextAtTheTop = await this.theContextNotYetSaid(checkIn as any);
     /* Suggested answers under the opening question too. */
     const suggestedAnswers = await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', null, checkIn.id);
-    return { reply: contextAtTheTop ? (personal ? `${aiTurn.content}\n\n${contextAtTheTop}` : `${contextAtTheTop}\n\n${aiTurn.content}`) : aiTurn.content, theOpener: aiTurn.content, ...(personal ? { personalOpening: true } : {}), groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), mayCompleteAfter: theFloorForAPersonsFinish(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null), ...(suggestedAnswers.length ? { suggestedAnswers } : {}), ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}) };
+    return { reply: contextAtTheTop ? (personal ? `${aiTurn.content}\n\n${contextAtTheTop}` : `${contextAtTheTop}\n\n${aiTurn.content}`) : aiTurn.content, theOpener: aiTurn.content, ...(personal ? { personalOpening: true } : {}), groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), ...(suggestedAnswers.length ? { suggestedAnswers } : {}), ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}) };
   }
 
 
@@ -2280,21 +2276,6 @@ export class ConversationService {
     const personTurnCount = await this.prisma.conversationTurn.count({
       where: { checkInId: checkIn.id, role: TurnRole.PERSON },
     });
-    if (personTurnCount >= A_CHECK_IN_TAKES_ANSWERS) {
-      /*
-       * A refusal that says their record is safe and what to do, rather than naming a limit nobody
-       * mentioned. `canContinue: false` because this one really cannot be answered by typing more —
-       * unlike the too-short refusal, where it can. See
-       * there-is-a-ceiling-and-it-is-not-a-surprise.ts.
-       */
-      throw new BadRequestException({ message: theCeilingIsReached(await theDirectMorningIsOnFor(this.prisma, checkIn.groundId)), canFinish: true });
-    }
-    /* The word "finish" on its own, before there is enough to finish with, is a command and not an answer: one plain sentence, as on WhatsApp, and nothing is kept (user journeys, F-10). */
-    if (isTheWordFinish(message)) {
-      const scenarioHere = (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { scenario: true } })?.catch?.(() => null))?.scenario ?? null;
-      if (tooFewAnswersToFinish(personTurnCount, !!(checkIn as any).isSelfCorrection, scenarioHere)) return { reply: NOT_ENOUGH_YET_TO_FINISH_HERE, sessionComplete: false };
-    }
-
     const composedBefore = await this.composeSystemPrompt(checkIn, message);
     const anchored = this.theAnchorWeekWords(checkIn.id);
     /* The team baseline learns how their work looks; it does not turn a period into a date or hold what they said against a number. */
@@ -2359,17 +2340,8 @@ export class ConversationService {
     const lastReply = await Promise.resolve((this.prisma.conversationTurn as any).findFirst?.({ where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'desc' }, select: { content: true } }))
       .catch(() => null) as { content: string | null } | null;
     const saysWhatItIs = askedWhatItIs(lastReply?.content ?? '');
-    /*
-     * No question limit and no forced close (a-short-day.ts, Hafsah after round 3): once today's needs are covered it asks "Anything else I
-     * should know?", and closes after they answer it or say there is nothing more, with at most two follow-ups on what they added.
-     */
-    const ourTurnsNewestFirst: string[] = await Promise.resolve((this.prisma.conversationTurn as any).findMany?.({
-      where: { checkInId: checkIn.id, role: TurnRole.AI }, orderBy: { createdAt: 'desc' }, take: 12, select: { content: true },
-    })).then((rows: any[]) => (Array.isArray(rows) ? rows : []).map((r) => String(r.content ?? ''))).catch(() => []);
-    const endStands = whereTheEndStands(ourTurnsNewestFirst, message);
-    const timeToClose = itIsTimeToClose(endStands, !!(checkIn as any).isSelfCorrection);
-    const aboutTheEnd = inTheBaseline ? null : whatToSayAboutTheEnd(personTurnCount + 1, endStands, !!(checkIn as any).isSelfCorrection);
-    const fullSystem = [composed, inTheBaseline ? null : A_SHORT_DAY, inTheBaseline ? null : aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null, timeToClose ? null : whatItIs, aboutTheEnd]
+    /* No question limit and no forced close: the model offers to wrap up in its own words, and closes when it has what it needs (a-short-day.ts). */
+    const fullSystem = [composed, inTheBaseline ? null : A_SHORT_DAY, inTheBaseline ? null : aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null, whatItIs, inTheBaseline || (checkIn as any).isSelfCorrection ? null : HOW_A_CHECK_IN_ENDS]
       .filter(Boolean)
       .join('\n\n')
       /* The anchor's short reminder, when it is in play, is read after everything else. */
@@ -3443,53 +3415,21 @@ export class ConversationService {
       message,
     });
     /*
-     * THEY SAID THEY ARE DONE, SO THE PRODUCT CLOSES, WHATEVER THE MODEL WROTE (pilots, 13 October 2026, problems 4 and E7).
-     * David wrote "I told you, the title search came back yesterday. It is not blocked. I am done." and got "Understood.
-     * What is the date you will have an answer by?". The close waited for the model to stop asking, and it did not. Once
-     * they have answered three times, a person saying they are done closes the check-in: the question comes out of the
-     * reply, their answers are kept, and the close says what happens next.
+     * THEY SAID THEY ARE DONE, SO IT CLOSES, WHATEVER THE MODEL WROTE (pilots, 13 October 2026, problems 4 and E7), at any point: there is
+     * no floor of answers before a person may leave (Hafsah, 2 November 2026). What they said is kept.
      */
-    const theirScenario = (checkIn as any).ground?.scenario ?? (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { scenario: true } })?.catch?.(() => null))?.scenario ?? null;
-    /*
-     * LEAVING IS HONOURED BEFORE THREE ANSWERS TOO (reviewer, 14 October). "I am done" got "You said you are done. What else
-     * should I know?" and "I have to go" got "Understood. What else should I know?". A leaving signal closes the check-in,
-     * keeping what they said, with one plain sentence. Only the bare word "finish" still asks for the rest, as before.
-     */
-    const leavingEarly = !answeringAnOffer && askedToFinish([message]) && !isTheWordFinish(message)
-      && tooFewAnswersToFinish(personTurnCount + 1, !!(checkIn as any).isSelfCorrection, theirScenario);
-    const theyAreLeaving = (!answeringAnOffer && askedToFinish([message]) && !tooFewAnswersToFinish(personTurnCount + 1, !!(checkIn as any).isSelfCorrection, theirScenario)) || leavingEarly;
+    const theyAreLeaving = !answeringAnOffer && askedToFinish([message]);
     if (theyAreLeaving && !hadCloseMarker) this.logger.log(`Check-in ${checkIn.id}: they said they are done; the product closes it.`);
-    /* "finish" before the floor: said plainly, never read as an answer about the work (reviewer, 14 October). */
-    if (!answeringAnOffer && !theyAreLeaving && isTheWordFinish(message)) {
-      const more = theFloorForAPersonsFinish(!!(checkIn as any).isSelfCorrection, theirScenario) - (personTurnCount + 1);
-      if (more > 0) aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: aFinishTooSoon(aiTurn.content ?? '', more) } });
-    }
-    const signalled = !answeringAnOffer && (hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message) || timeToClose);
-    const close: { ready: boolean; ask?: string; sayFirst?: string; nextStep?: { isLead: boolean; personSaid: string[] } } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
+    const signalled = !answeringAnOffer && (hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message));
+    const close: { ready: boolean; sayFirst?: string } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
     /* A close on an apology says, first, that none was owed. See an-apology-is-not-owed. */
-    /* WITH THE DIRECT MORNING ON (email/a-direct-email.ts): nothing about how the record will read, and an apology met in four words. */
-    const directClose = close.ready && !close.ask && (close.sayFirst === NO_DECISION_YET || close.sayFirst === NOTHING_HERE_HAS_A_NUMBER || isAnApology(message))
-      ? await theDirectMorningIsOnFor(this.prisma, checkIn.groundId) : false;
-    if (directClose && (close.sayFirst === NO_DECISION_YET || close.sayFirst === NOTHING_HERE_HAS_A_NUMBER)) delete close.sayFirst;
-    if (close.ready && !close.ask && isAnApology(message)) close.sayFirst = directClose ? NOTHING_TO_APOLOGISE_FOR_DIRECTLY : NOTHING_TO_APOLOGISE_FOR;
-    if (close.ask) {
-      /* The goodbye goes first. It was written before the product ruled on the close, and appending
-         a question underneath it told a lead the session was over and then that it was not. */
-      const earlierAi = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id, role: TurnRole.AI, id: { not: aiTurn.id } }, select: { content: true } }).then((rows) => rows.map((r) => r.content ?? '')).catch(() => [] as string[]);
-      const stillOpen = withoutWhatWasAlreadySaid(withoutTheGoodbye(aiTurn.content ?? ''), earlierAi);
-      /* And the close line is the one question: what the model left above it asking goes. See withTheOneMoreLine. */
-      aiTurn = await this.prisma.conversationTurn.update({
-        where: { id: aiTurn.id },
-        /* The next-step question is worded against what is kept above it, so it never asks about a "that" with nothing before it. */
-        data: { content: withTheOneMoreLine(stillOpen, close.nextStep ? theCloseQuestionFor(close.nextStep.isLead, close.nextStep.personSaid, stillOpen) : close.ask) },
-      });
-    } else if (!close.ready && hasAGoodbye(aiTurn.content ?? '')) {
+    /* WITH THE DIRECT MORNING ON (email/a-direct-email.ts): an apology met in four words. */
+    if (close.ready && isAnApology(message)) close.sayFirst = (await theDirectMorningIsOnFor(this.prisma, checkIn.groundId)) ? NOTHING_TO_APOLOGISE_FOR_DIRECTLY : NOTHING_TO_APOLOGISE_FOR;
+    if (!close.ready && hasAGoodbye(aiTurn.content ?? '')) {
       /*
        * NO GOODBYE IN A TURN THAT IS NOT THE LAST. Request 47, 28 September 2026: Rukia read "Your
-       * report is ready now. Speak soon." while the check-in stayed open, three times, because the
-       * product refused the close (the turn floor) with no question of its own to add, and the
-       * model's goodbye went out as it was written. The goodbye comes off; if nothing is left
-       * asking, the product's own question goes on.
+       * report is ready now. Speak soon." while the check-in stayed open. The goodbye comes off; if
+       * nothing is left asking, a question goes on.
        */
       aiTurn = await this.prisma.conversationTurn.update({
         where: { id: aiTurn.id },
@@ -3507,35 +3447,17 @@ export class ConversationService {
      * without an option to chat more, but the agent asks more questions". The signal comes again on
      * the next turn, after they have answered. Decided here, in code, and not by asking the model.
      */
-    /*
-     * WHAT A LEAVING SIGNAL BEFORE THREE ANSWERS GETS (pilot re-run, 14 October). Where the record can be kept, it closes
-     * with the plain sentence. "That is not quite enough to keep this check-in yet" is only for a check-in where nothing
-     * was said at all ("I am done" as the first message). Mercy, Kevin and Grace wrote full answers ending "That's all."
-     * and were told it was not enough: where they said something but the record's own gate (complete()) is not met yet,
-     * the conversation carries on as it did before the leaving-early change.
-     */
+    /* "I am done" as the first thing they say: nothing to keep yet, so the check-in stays open for when they come back. */
     let leavingEarlyHandled = false;
-    if (leavingEarly) {
+    if (theyAreLeaving && !close.ready) {
       const theirTurns: string[] = await Promise.resolve((this.prisma as any).conversationTurn?.findMany?.({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, select: { content: true } }) ?? [])
         .then((rows: any[]) => (Array.isArray(rows) ? rows : []).map((r) => r.content ?? '')).catch(() => [message]);
-      const saidNothing = nothingRealWasSaid(theirTurns.length ? theirTurns : [message]);
-      if (close.ready || saidNothing) {
+      if (nothingRealWasSaid(theirTurns.length ? theirTurns : [message])) {
         leavingEarlyHandled = true;
-        const theirCadence = (checkIn as any).ground?.cadence ?? (await (this.prisma as any).ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { cadence: true, cadenceDays: true } })?.catch?.(() => null))?.cadence ?? null;
-        aiTurn = await this.prisma.conversationTurn.update({
-          where: { id: aiTurn.id },
-          data: { content: close.ready ? WHAT_YOU_SAID_IS_KEPT(theirCadence) : NOTHING_KEPT_YET_COME_BACK },
-        });
+        aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: NOTHING_KEPT_YET_COME_BACK } });
       }
     }
     let sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));
-    /*
-     * A CHECK-IN THAT RUNS LONG IS OFFERED AN END, NEVER GIVEN ONE (Hafsah after round 3). Said once, after the reply, and the person decides;
-     * on WhatsApp the same line says "reply END" (the-opening-line.ts).
-     */
-    if (!sessionComplete && !answeringAnOffer && !(checkIn as any).isSelfCorrection && itIsTimeToSayTheyCanEnd(personTurnCount + 1, false, ourTurnsNewestFirst)) {
-      aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: `${String(aiTurn.content ?? '').trim()}\n\n${YOU_CAN_END_NOW}` } });
-    }
     /* They said they are leaving: no "One thing before you go - ..." handing their own words back as a request, whether
        the product closes now or tells them how to finish (reviewer, 14 October). */
     if (!answeringAnOffer && askedToFinish([message])) {
@@ -3631,8 +3553,6 @@ export class ConversationService {
       const once = withoutTheSecondTellingOfIt(aiTurn.content ?? '', (this.anchorWeekForThisTurn.get(checkIn.id)?.agreed as any)?.text ?? '');
       if (once !== (aiTurn.content ?? '')) aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: once } });
     }
-    const room = sessionComplete ? null : howMuchRoomIsLeft(personTurnCount + 1);
-    const withRoomLeft = room ? `${aiTurn.content}\n\n${room}` : aiTurn.content;
 
     /*
      * AND A DOCUMENT ATTACHED SOMEWHERE ELSE IS SAID HERE, ONCE. Somebody who puts the sheet on the
@@ -3724,7 +3644,7 @@ export class ConversationService {
       { groundId: checkIn.groundId, startedFrom, participantId: (checkIn as any).participantId ?? null, message, sessionComplete },
     ) : {};
     const answer: any = {
-      reply: [contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay, withRoomLeft].filter(Boolean).join('\n\n'),
+      reply: [contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay, aiTurn.content].filter(Boolean).join('\n\n'),
       sessionComplete,
       ...(suggestedAnswers.length ? { suggestedAnswers } : {}),
       ...(idea.ideaOffer ? { ideaOffer: idea.ideaOffer } : {}),
@@ -3806,18 +3726,6 @@ export class ConversationService {
     return { screened, hadMarker: textHadCloseMarker(second) };
   }
 
-  /**
-   * THE CLOSE BAR, AND THE ONE HOLD.
-   *
-   * The model has signalled a close. Before it is accepted, the last thing the person said is read
-   * for a number, a date, a document or an attachment. If none of those is there, and this check-in
-   * has not been held before, it is held ONCE: closeHeldAt is stamped, the product's one question
-   * goes out on the end of the reply, and the next answer closes it whatever it says.
-   *
-   * closeReadiness then runs as it always did. Its "already held back once" branch used to be fed
-   * by aiTurns > personTurns, which is true on every turn of every session (the opener is an AI
-   * turn), so the hold never held. It is fed by the stamp now.
-   */
   /** Every earlier thing this check-in said, so a fallback question is never one it has already asked. */
   private async whatThisCheckInAskedBefore(checkInId: string, notThisTurn: string): Promise<string[]> {
     return (this.prisma.conversationTurn?.findMany?.({ where: { checkInId, role: TurnRole.AI, id: { not: notThisTurn } }, select: { content: true } }) ?? Promise.resolve([]))
@@ -3837,157 +3745,31 @@ export class ConversationService {
     return (rows as { content: string | null }[]).map((r) => r.content ?? '');
   }
 
-  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string; sayFirst?: string; nextStep?: { isLead: boolean; personSaid: string[] } }> {
+  /**
+   * WHETHER A CLOSE THE MODEL OR THE PERSON SIGNALLED LANDS. It does, unless there is almost nothing to keep yet (the server's own
+   * empty-record gate, read the same way by complete(), so the two never disagree). No count of answers, no hold and no product-written
+   * question before the close (Hafsah, 2 November 2026: no question limits and no forced close). The team baseline waits only for an
+   * idea in their last answer to be offered before the goodbye.
+   */
+  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean }> {
     const [row, turns] = await Promise.all([
-      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true, isClarification: true, sessionNumber: true, participant: { select: { partyType: true } }, ground: { select: { cadence: true, cadenceDays: true, scenario: true, startedFrom: true } } } }),
-      this.prisma.conversationTurn.findMany({
-        where: { checkInId },
-        orderBy: { createdAt: 'asc' },
-        select: { role: true, content: true },
-      }),
+      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { sessionNumber: true, participant: { select: { partyType: true } }, ground: { select: { cadence: true, cadenceDays: true, scenario: true, startedFrom: true } } } }),
+      this.prisma.conversationTurn.findMany({ where: { checkInId, role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } }),
     ]);
-    const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
-    /*
-     * THEIR OWN END, WITH ANYTHING SAID (Hafsah, 26 October 2026). complete() honours a person's own request to finish with any answer
-     * given, so the close does too, by the same reading, before the thin-record hold (request 47: the two always agree).
-     */
+    const personSaid = turns.map((t) => t.content ?? '');
     if (personSaid.length > 0 && askedToFinish(personSaid)) return { ready: true };
-    /*
-     * NEVER A GOODBYE FOR A RECORD THE SERVER WILL NOT WRITE (request 47). complete() refuses an
-     * empty record whatever was said, so the close refuses it by the same reading, first.
-     */
     if (almostNothingHereYet(personSaid, isSelfCorrection)) {
       this.logger.log(`Holding the close on ${checkInId}: almost nothing in the record yet.`);
       return { ready: false };
     }
-    /*
-     * THEIR SESSION, THEIR CALL, BEFORE ANY COUNT OR HOLD. Read live, 22 Sep 2026: "That's it from me
-     * this week" was answered with "One more before this closes". closeReadiness has always let
-     * somebody out on that sentence; the floor and the holds above it in this method did not know,
-     * so the product held the door on the person walking through it.
-     */
-    if (askedToFinish(personSaid)) return { ready: true };
-    const minTurns = theFloorFor(isSelfCorrection, (row as any)?.ground?.scenario ?? null);
-    if (personSaid.length < minTurns) {
-      this.logger.log(`Holding the close on ${checkInId}: only ${personSaid.length} answer(s) so far.`);
-      return { ready: false };
-    }
-    /*
-     * THE TEAM BASELINE IS NEVER HELD AT ITS CLOSE (anchor piece 14). It learns how their work looks from where they sit; it does not ask what they
-     * will do and by when, does not ask for a date or a number, and does not go back for something the situation's list owed. Its own words decide
-     * when it is done (all nine learned), so when it closes, it closes.
-     */
     if (await this.theBaselineApplies({ sessionNumber: (row as any)?.sessionNumber ?? 1, participant: { partyType: (row as any)?.participant?.partyType } }, (row as any)?.ground)) {
-      /*
-       * AN IDEA IN THEIR LAST ANSWER IS OFFERED BEFORE THE GOODBYE. "What could the team be doing better" is the last of the nine, and it is where
-       * ideas are said; a session that closed on it would end before anybody could say yes to capturing it. So the close waits for the offer.
-       */
       const idea = await aNewIdeaIn({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any }, personSaid[personSaid.length - 1] ?? '').catch(() => null);
       if (idea) {
         this.logger.log(`The close on ${checkInId} waits: they said a concrete idea, which is offered before the goodbye.`);
         return { ready: false };
       }
-      return { ready: true };
     }
-    /*
-     * THE HOLD BUDGET IS ONE. Run 10 (21 Sep 2026) raised it to two, one per thing never asked, because
-     * "closing too early" was the commonest fault among the personas. Then a real person met it
-     * (Hafsah, 22 Sep 2026, a live team): the model wrote "One last thing before we close", the product
-     * followed with "One more before this closes: what is clear and what is not", she answered
-     * "everything is clear", and it followed with "One more before this closes: what you need from
-     * other people". Three last things in a row is a session that will not end. One hold, and the
-     * close lands whatever the record looks like; what was never asked is the report's to say.
-     */
-    if (row?.closeHeldAt) {
-      return { ready: closeReadiness(personSaid, true, minTurns).ready };
-    }
-    const justDeclined = theyDeclined(personSaid[personSaid.length - 1] ?? '');
-    const attached = row
-      ? (await this.prisma.groundDocument.count({
-          where: { participantId: row.participantId, createdAt: { gte: row.startedAt ?? new Date(0) } },
-        })) > 0
-      : false;
-    /*
-     * THE WHOLE SESSION IS READ FOR THE ONE CONCRETE THING, NOT THE LAST ANSWER. Adversarial run,
-     * 20 Sep 2026: a rep who had said "N38m" and "the invoices" two turns earlier was held for a
-     * number on "No. My numbers speak for themselves", and told "It's on the system" as the answer.
-     * The hold exists to get one checkable thing into the record; once the session holds one, the
-     * question has been answered whatever the last turn was.
-     *
-     * AND A ONE-TIME SESSION IS NEVER HELD. Nobody in a discovery or snapshot session is tracked;
-     * its brief says so, and "put a date on that" to a business owner who was asked what their year
-     * looks like is the product asking for the commitment it promised not to.
-     */
-    const oneTime = (row as any)?.ground?.cadence === Cadence.ONE_TIME;
-    /*
-     * A LEAD WHO CLOSES ON "I WILL KEEP MONITORING" HAS MADE NO DECISION, AND THE RECORD SAYS SO. Six
-     * runs: "I will continue to monitor his progress" - "Understood. The report is ready now." The
-     * lead's close is a decision or a thing put in front of somebody; when it is neither, the close
-     * stands and the fact goes in front of the goodbye.
-     */
-    const leadRow = await this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { participant: { select: { partyType: true } } } }).catch(() => null);
-    const isLead = (leadRow as any)?.participant?.partyType === PartyType.INITIATOR;
-    const lastSaid = personSaid[personSaid.length - 1] ?? '';
-    const noDecision = isLead && /\b(keep (?:monitoring|an eye|watching)|continue to (?:monitor|watch|track)|carry on as|see how it goes|we(?:'ll| will) (?:discuss|review|revisit) (?:it|this|that) (?:at|in|then)|wait and see|leave it (?:for now|with (?:him|her|them)))\b/i.test(lastSaid);
-    /*
-     * AND A SESSION DOES NOT CLOSE WITH THE THING IT WAS FOR NEVER RAISED. The hold budget is the
-     * same one: once, then the next close lands whatever happened. The product writes the line, in
-     * the owed list's own words, so the model cannot soften it into a fourth question about
-     * something else. A one-time session has no owed list to hold on.
-     */
-    /*
-     * AND NOT WITHOUT ASKING WHAT THEY WILL DO, AND BY WHEN. The prompt has said for weeks that the close
-     * is attached to this question, and nothing here checked it: six check-ins in re-c and re-d closed
-     * with no next step and no date, and the one hold went to the owed list instead. The model is told
-     * where it is from the sixth answer (whereTheCheckInIs); this is only for the close it reached
-     * without asking. It takes the one hold, so it is asked once and the next close lands. Never in a
-     * one-time session, a correction, a clarification or a team update, and never after a decline.
-     */
-    if (!justDeclined && theNextStepIsStillOwed({
-      personTurns: personSaid,
-      aiTurns: turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? ''),
-      oneTime,
-      isLead,
-      notACheckIn: isSelfCorrection || !!(row as any)?.isClarification || (row as any)?.ground?.scenario === 'TEAM_UPDATES',
-      askedToFinish: false,
-    })) {
-      await this.prisma.checkIn.update({ where: { id: checkInId }, data: { closeHeldAt: new Date() } });
-      this.logger.log(`Holding the close once on ${checkInId}: they were never asked what they will do, and by when.`);
-      return { ready: false, ask: theCloseQuestionFor(isLead, personSaid), nextStep: { isLead, personSaid } };
-    }
-    /*
-     * NOT THE LEAD, AND NOT ON TOP OF AN ANSWER THEY HAVE JUST GIVEN (re-e, 1 October 2026). Amina, who runs
-     * the check-in, was held with "What did you understand you were meant to do?": the first-session spine
-     * owes that of every role, and it is a participant's question; the lead's own close is the decision,
-     * held for above. And Kwame said he would start tomorrow and was asked "How is it actually going?" on
-     * top of it: a person who has just said what they will do, and when, has given the close its answer.
-     */
-    const aiSaid = turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '');
-    if (!oneTime && !justDeclined && !isLead && !theyHaveJustAnsweredIt(aiSaid, personSaid)) {
-      const neverAsked = await this.whatThisSessionNeverAsked(checkInId).catch(() => [] as string[]);
-      if (neverAsked.length) {
-        await this.prisma.checkIn.update({ where: { id: checkInId }, data: { closeHeldAt: new Date() } });
-        this.logger.log(`Holding the close once on ${checkInId}: never asked about ${JSON.stringify(neverAsked[0])}.`);
-        return { ready: false, ask: theOneThingNeverAsked(neverAsked[0]) };
-      }
-    }
-    const concrete = whatIsConcreteIn(personSaid.join('\n'), attached);
-    const verdict = closeReadiness(personSaid, false, minTurns);
-    /*
-     * EITHER READER LETS THEM OUT. The two readers disagreed on the rerun: "$400k" and "end of the
-     * month" satisfied whatIsConcreteIn while countCheckableSpecifics saw nothing, and the lead who
-     * had just confirmed 30 September was asked to "put a date on that". The hold's own question is
-     * for a date, a number or a document; once the session holds one, asking it is the product not
-     * having listened, whatever the other reader thinks.
-     */
-    if (oneTime || concrete.length || verdict.ready) return noDecision ? { ready: true, sayFirst: NO_DECISION_YET } : { ready: true };
-    /*
-     * THE CLOSE CHASES NOTHING. "Put a date or a number on that" went out to people who had just said
-     * "No." (six runs, 20-21 Sep 2026), and never once produced the number. The close records that
-     * nothing here carries one, in a line the person reads, and closes. See a-refusal-is-an-answer.
-     */
-    this.logger.log(`Closing ${checkInId} with nothing checkable in it; said so rather than held.`);
-    return { ready: true, sayFirst: NOTHING_HERE_HAS_A_NUMBER };
+    return { ready: true };
   }
 
   /**
@@ -5722,21 +5504,6 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
     /* Asking for proof kindly: task 2.5, week 4. Not in the opener, which has nothing of theirs yet. */
     const proofKindly = how?.forTheOpener ? '' : askForProofKindly(aClaimNothingShowsYet(turnsThisSession as any));
 
-    /*
-     * WHERE THIS CHECK-IN IS, AND WHETHER THEY HAVE BEEN ASKED WHAT THEY WILL DO. Context, never the
-     * question itself: from the sixth answer, while it is still unasked, the model is told how far in
-     * it is and that the next session can only test what is said here. See
-     * what-they-will-do-is-asked-before-the-end.
-     */
-    const whereItIs = how?.forTheOpener ? '' : whereTheCheckInIs({
-      personTurns: turnsThisSession.filter((t) => t.role === 'PERSON').map((t) => t.content),
-      aiTurns: turnsThisSession.filter((t) => t.role === 'AI').map((t) => t.content),
-      oneTime: (ground as any).cadence === Cadence.ONE_TIME,
-      isLead: isTheLead,
-      notACheckIn: !!checkIn.isSelfCorrection || !!checkIn.isClarification || ground.scenario === 'TEAM_UPDATES',
-      askedToFinish: askedToFinish(latestMessage ? [latestMessage] : []),
-    });
-
     // FINAL SESSION: same conversation, flagged closing. The block adds the
     // four closing probes and the thoroughness framing; assessment targets are
     // the pre-agreed resolutionState when set, else the party's own session-1
@@ -6169,10 +5936,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
             + rows.map((r) => `- They said: "${r.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}". The document says: "${r.documentSays}".`).join('\n')
           : '')
         .catch(() => ''),
-      this.prisma.checkIn
-        .findUnique({ where: { id: checkIn.id }, select: { closeHeldAt: true } })
-        .then((r) => (r?.closeHeldAt ? whyTheCloseWasHeld(turnsThisSession.filter((t) => t.role === 'AI').map((t) => t.content)) : ''))
-        .catch(() => ''),
+      Promise.resolve(''),
       /* THE UPLOADER IS ASKED, NOT CORRECTED. A document that does not read as they described it is
          put to them once as a question; until they answer it backs nothing. */
       this.prisma.groundDocument
@@ -6221,7 +5985,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['salesGathers', salesGathersBlock], ['references', referencesBlock], ['feeNotesWait', feeNotesWaitBlock], ['invoicesToRaise', invoicesToRaiseBlock], ['teamTemplate', templateBlock], ['direction', directionBlock], ['theirJob', theJob], ['roleConfirm', roleConfirmationBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
       ['floorGiveBack', theFloorGiveBack], ['whoCarries', numbersAndOwners.whoCarries], ['whereItStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
-      ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem], ['whereItIs', whereItIs],
+      ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
@@ -6370,7 +6134,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed],
       ['rhythmNow', rhythmNow], ['dynamicContext', dynamicContext], ['docContext', docContext],
       ['docPromptHint', docPromptHint], ['notesBlock', notesBlock], ['deliveriesBlock', deliveriesBlock],
-      ['burden', burden], ['putThisToThem', putThisToThem], ['askedWhenThisEnds', askedWhenThisEnds], ['theirHedge', theirHedge], ['heldBack', heldBack], ['whereItIs', whereItIs],
+      ['burden', burden], ['putThisToThem', putThisToThem], ['askedWhenThisEnds', askedWhenThisEnds], ['theirHedge', theirHedge], ['heldBack', heldBack],
       ['theirCommitments', theirCommitments], ['nobodyOwns', nobodyOwns], ['notSettledBlock', notSettledBlock],
       ['leadsQuestions', leadsQuestions], ['betweenBlock', betweenBlock], ['howWeWork', howWeWork],
     ].map(([name, text]) => ({ name: String(name), text: text as any }));
@@ -6456,7 +6220,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return [THE_LEAN_CORE, theirLanguage, intakeBlock, recordAlreadyHolds, managingBlock, alreadyGiven, owedBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, finalSessionContext, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, directionBlock, theJob, theJobThisTurn, roleConfirmationBlock, coachingBlock, patternProbeBlock, dynamicContext, docContext, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday]
         .filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theLeanRules, calledHere));
     }
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, managingBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, directionBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, theirDealsBlock, managingBlock, alreadyGiven, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, salesGathersBlock, referencesBlock, feeNotesWaitBlock, invoicesToRaiseBlock, templateBlock, directionBlock, theJob, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, theOneThingToday, burden, putThisToThem, askedWhenThisEnds, theJobThisTurn, theirHedge, theHole, salesGathers.last, heldBack, proofKindly, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n').replace(/^[\s\S]*$/, (all) => theRulesKeptTheRestWithoutStandInLabels(all, theRules, calledHere));
   }
 
   /**
@@ -6545,8 +6309,8 @@ ${told}` : '';
       const read = await this.whatTheBaselineHasLearnedSoFar(checkIn.id, turnsThisSession);
       const learned = read?.learned ?? null;
       const closes = !!learned && everythingIsLearned(learned);
-      /* "Finish" closes it as it closes any other check-in: once there are enough answers. Below that, the plain sentence was already given before this point. */
-      const finishes = askedToFinish([latestMessage]) && !tooFewAnswersToFinish(this.answersIn(turnsThisSession), false, ground?.scenario ?? null);
+      /* "Finish" closes it as it closes any other check-in, at any point. */
+      const finishes = askedToFinish([latestMessage]);
       /* What they just said comes first, unless it is the close. */
       const followUp = closes || finishes ? null : read?.followUp ?? null;
       if (followUp) { this.logger.log(`Check-in ${checkIn.id}: they just named ${followUp.kind === 'duty' ? 'a duty' : `a ${followUp.kind}`} (${followUp.about}); it is asked about first.`); this.followedUp(checkIn.id, followUp.about); }
@@ -6602,8 +6366,8 @@ ${told}` : '';
     const offered = hasAlreadyOffered(sofar as any[]);
     /* Owed to them, read from the record: asked after the reminder, so it is the last thing read about what to ask. Not while an offer is being answered. */
     const owed = agreed ? '' : [whatTheyJustSaidMayBeTheirOwnStep(sofar as any[], latestMessage), whatIsStillOwedToThem(sofar as any[])].filter(Boolean).join('\n\n');
-    /* "Finish" closes it as it closes any other check-in, once there are enough answers. */
-    const finishes = askedToFinish([latestMessage]) && !tooFewAnswersToFinish(this.answersIn(turnsThisSession), false, ground?.scenario ?? null);
+    /* "Finish" closes it as it closes any other check-in, at any point. */
+    const finishes = askedToFinish([latestMessage]);
     if (finishes) {
       return { text: guidance.text, block, last: THE_WEEKLY_FINISH_REMINDER, promptVersionId: guidance.promptVersionId, agreed, closing: true };
     }
@@ -7260,26 +7024,6 @@ ${told}` : '';
       orderBy: { createdAt: 'asc' },
       select: { content: true },
     });
-    /**
-     * THE TURN FLOOR HAS THE SAME ESCAPE HATCH THE ENGINE HAS.
-     *
-     * closeReadiness lets somebody out below the floor the moment they say they
-     * are done - "that's everything from me", "I need to go". That is right: it
-     * is their session and nothing should trap them in it.
-     *
-     * This end did not know about that. So the engine accepted the sentence,
-     * showed a "Complete session" button, and the server then refused the same
-     * session for being one turn short. Invited to finish, then declined, on the
-     * words that had just been honoured. It fired around forty times in one
-     * six-person run and reads as a broken product, because from the outside it
-     * is one.
-     *
-     * The record is still protected: the substance gate below is unconditional,
-     * so somebody can leave early but cannot leave nothing behind.
-     */
-    const scenarioOfThis = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { scenario: true } }).then((g) => g?.scenario ?? null).catch(() => null);
-    /* Pressing finish, or writing it, is the person's own request: three answers are enough (problem 4). */
-    const minTurns = theFloorForAPersonsFinish(!!checkIn.isSelfCorrection, scenarioOfThis);
     /*
      * ENDING EARLY KEEPS EVERYTHING SAID (Hafsah, 26 October 2026). "End session" is always there, and a person who ends it, with
      * anything said, is finished: what they said is kept and the next session picks up what is missing. With nothing said yet there
@@ -7288,15 +7032,6 @@ ${told}` : '';
     const theyEndedIt = !!how.theyAskedToFinish || askedToFinish(personTurnRows.map((t) => t.content ?? ''));
     if (theyEndedIt && personTurnRows.length === 0) {
       throw new BadRequestException({ message: 'Nothing has been said yet, so there is nothing to save. Your check-in stays open for when you come back.', canContinue: true });
-    }
-    if (personTurnRows.length < minTurns && !theyEndedIt) {
-      throw new BadRequestException({
-        message:
-          /* The same sentence the app and WhatsApp say (4 October 2026), in whole sentences, with no dash. */
-          'I need a little more from you before this check-in can close. Please answer one or two more questions, then finish again.',
-        /** See ANSWERABLE below: this refusal asks for something, so it must be possible to give it. */
-        canContinue: true,
-      });
     }
     // SUBSTANCE, NOT LENGTH. Counting characters rejected two of one person's
     // real check-ins in a live run - answers that named a buyer, a number and a

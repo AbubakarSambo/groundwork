@@ -26,8 +26,7 @@ export interface CheckInBrief {
  * engine's to write and arrive with its reply. Asked of the engine workspace in
  * docs/requests-to-engine.md, request 7; the screen draws nothing until they come.
  */
-/** `mayCompleteAfter`: the turn floor the server holds this check-in to. The screen offers to finish at that count and not before, so the offer is never refused. */
-export interface OpenCheckInResponse { reply: string; /** The session actually opened, where the one asked for had a round that had closed and today's was opened instead. */ checkInId?: string; groundId?: string; brief?: CheckInBrief | null; mayCompleteAfter?: number; suggestedAnswers?: string[]; ideaOffer?: TheIdeaOfferInTheCheckIn | null; requestOffer?: TheRequestOfferInTheCheckIn | null; openTheRequest?: TheRequestToOpen | null }
+export interface OpenCheckInResponse { reply: string; /** The session actually opened, where the one asked for had a round that had closed and today's was opened instead. */ checkInId?: string; groundId?: string; brief?: CheckInBrief | null; suggestedAnswers?: string[]; ideaOffer?: TheIdeaOfferInTheCheckIn | null; requestOffer?: TheRequestOfferInTheCheckIn | null; openTheRequest?: TheRequestToOpen | null }
 /*
  * THE END CARD'S PARTS THAT ONLY THE ENGINE CAN WRITE (B3, check-in-end-card.txt), sent with the reply
  * that closes the conversation. Asked of the engine workspace in docs/requests-to-engine.md,
@@ -49,7 +48,7 @@ export interface TheEndCard {
 export interface SendMessageResponse { reply: string; sessionComplete?: boolean; suggestedAnswers?: string[]; endCard?: TheEndCard | null; ideaOffer?: TheIdeaOfferInTheCheckIn | null; requestOffer?: TheRequestOfferInTheCheckIn | null; openTheRequest?: TheRequestToOpen | null }
 export interface TranscriptTurn { id: string; role: 'AI' | 'PERSON'; content: string; suggestedAnswers?: string[]; ideaOffer?: TheIdeaOfferInTheCheckIn | null; requestOffer?: TheRequestOfferInTheCheckIn | null; openTheRequest?: TheRequestToOpen | null }
 export interface PriorRecordEntrySession { sessionNumber: number; entries: { type: string; text: string }[] }
-export interface TranscriptResponse { checkIn: { status: string; sessionNumber: number; groundId?: string }; turns: TranscriptTurn[]; priorTurns?: TranscriptTurn[]; priorSessionNumber?: number | null; priorRecordEntries?: PriorRecordEntrySession[]; /** What the check-in is about. On every load, not only the one that opens it. */ brief?: CheckInBrief | null; mayCompleteAfter?: number; /** The end card's parts, once the conversation has closed. See TheEndCard. */ endCard?: TheEndCard | null; /** "Connect WhatsApp" for the person reading their own check-in, or null (decision 106). Owner-only read. */ connectWhatsApp?: ConnectWhatsApp | null }
+export interface TranscriptResponse { checkIn: { status: string; sessionNumber: number; groundId?: string }; turns: TranscriptTurn[]; priorTurns?: TranscriptTurn[]; priorSessionNumber?: number | null; priorRecordEntries?: PriorRecordEntrySession[]; /** What the check-in is about. On every load, not only the one that opens it. */ brief?: CheckInBrief | null; /** The end card's parts, once the conversation has closed. See TheEndCard. */ endCard?: TheEndCard | null; /** "Connect WhatsApp" for the person reading their own check-in, or null (decision 106). Owner-only read. */ connectWhatsApp?: ConnectWhatsApp | null }
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
 
