@@ -1,7 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { ConversationController, ClarificationController } from './conversation.controller';
-import { AnthropicService } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { RemindService } from './remind.service';
 import { StopRemindersController } from './stop-reminders.controller';
@@ -23,7 +22,7 @@ import { WorkspaceModule } from '../workspace/workspace.module';
    * `KnowledgeService` is a provider rather than an imported module because it has none - it is
    * registered directly wherever it is used, the same way the public API does it.
    */
-  providers: [ConversationService, AnthropicService, ConversationContextService, RemindService, KnowledgeService, TheOwedWritesCron, AComplaintIsToldListener],
-  exports: [ConversationService, AnthropicService],
+  providers: [ConversationService, ConversationContextService, RemindService, KnowledgeService, TheOwedWritesCron, AComplaintIsToldListener],
+  exports: [ConversationService],
 })
 export class ConversationModule {}
