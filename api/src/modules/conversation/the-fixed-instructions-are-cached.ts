@@ -62,7 +62,8 @@ export class TheFixedInstructions {
     if (!k && this.kept.size >= AT_MOST_THIS_MANY_KEPT) this.kept.delete(this.kept.keys().next().value as string);
     const entry: Kept = k ?? { text: fixed, name: null, expiresAt: 0, making: null, failedAt: null };
     entry.making = this.caches().create({ model: this.model(), config: { systemInstruction: fixed, ttl: `${A_CACHE_LIVES_S}s`, displayName: `groundwork-rules-${key.slice(0, 12)}` } })
-      .then((c) => { entry.name = c?.name ?? null; entry.expiresAt = c?.expireTime ? Date.parse(c.expireTime) : this.now() + A_CACHE_LIVES_S * 1000; entry.failedAt = null; })
+      .then((c) => { entry.name = c?.name ?? null; /* From this process's own clock, not Gemini's expireTime: the two clocks need not agree (a test bed moves its clock). */
+        entry.expiresAt = this.now() + A_CACHE_LIVES_S * 1000; entry.failedAt = null; })
       .catch((err: any) => { entry.failedAt = this.now(); this.warn(`The fixed instructions could not be cached (${err?.message ?? err}); replies send them whole.`); })
       .finally(() => { entry.making = null; });
     this.kept.set(key, entry);
