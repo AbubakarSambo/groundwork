@@ -186,6 +186,6 @@ describe('even after Femi’s turn, the lead neither reads nor marks Femi’s st
     expect(asFemi).toHaveLength(1);
     expect(asFemi[0].leadMark).toBeNull();
 /* Hafsah, 2 November 2026: only the person reads a stored pattern now, so they are told only they see it. */
-    expect(asFemi[0].whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    /* F5: no privacy note on the screen; who may read it is unchanged. */ expect('whoSeesIt' in asFemi[0]).toBe(false);
   });
 });

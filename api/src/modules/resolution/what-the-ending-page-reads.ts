@@ -50,7 +50,6 @@ export interface AnEndingSignal {
   howOften: string;
   /** What the person said is behind it, in their own words, once they have said it. */
   theirWords: string | null;
-  whoSeesIt: string;
 }
 
 export interface AQuestionToAsk {
@@ -90,7 +89,6 @@ const asASignal = (p: AServedPattern): AnEndingSignal => ({
   whatHappened: p.whatHappened,
   howOften: p.howOften,
   theirWords: p.theirWords,
-  whoSeesIt: p.whoSeesIt,
 });
 
 export interface Deps { prisma: PrismaService; suggestions?: SuggestionsService | null }

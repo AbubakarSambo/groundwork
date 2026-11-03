@@ -27,8 +27,6 @@ export interface ServedPattern {
   theirWords: string | null
   /** Only the person it is about can answer it. */
   canAnswer: boolean
-  /** Who else reads it, and when, as a sentence for this reader. */
-  whoSeesIt: string
   /**
    * WHICH PART OF "WHAT KEEPS COMING UP" IT BELONGS IN (request 82, decision 67): `'the work'` for
    * "About each person's work", `'what is said against what happened'` for "How what people say

@@ -163,8 +163,6 @@ export interface AServedPattern {
   theirWords: string | null;
   /** Only the person it is about can answer it. */
   canAnswer: boolean;
-  /** Who else reads it, and when, as a sentence for this reader. */
-  whoSeesIt: string;
   /**
    * After talking it through, whoever runs the check-in marks it right, wrong or not sure (decision
    * 57, item 2). Only for that reader — always null for the person it is about, so it is never shown
@@ -305,11 +303,6 @@ export function patternRowsThisReaderMayRead<T extends APatternRow>(
   });
 }
 
-/** Only the person it is about reads a stored pattern (Hafsah, 2 November 2026), so that is what they are told. */
-function whoSeesIt(): string {
-  return 'Only you see this. Nothing is decided from it.';
-}
-
 /** The patterns this reader may read, in the form they may read them. */
 export function servedPatterns(
   rows: readonly APatternRow[] | null | undefined,
@@ -335,7 +328,6 @@ export function servedPatterns(
         askThem: yours ? null : whatToAskAbout(row.code),
         theirWords: (row.personAnswer ?? '').trim() || null,
         canAnswer: yours,
-        whoSeesIt: whoSeesIt(),
         leadMark: yours ? null : (row.leadMark ?? null),
         talkedAbout: !!row.talkedAboutAt,
         about: whatAPatternIsAbout(row.code),

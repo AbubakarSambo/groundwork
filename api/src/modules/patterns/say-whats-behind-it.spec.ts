@@ -41,7 +41,7 @@ describe('the person a pattern is about says what is behind it', () => {
     expect(data.shownToPersonAt).toBeUndefined();
     expect(served.heading).toBe('Others describe doing work they described as theirs');
     expect(served.theirWords).toBe('I built the deck and Ngozi did the pricing. I said "we" on the call.');
-    expect(served.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    /* F5: no privacy note on the screen; who may read it is unchanged. */ expect('whoSeesIt' in served).toBe(false);
     expect(JSON.stringify(served)).not.toMatch(/Claimed Work Inflation|"B3"/);
   });
 
@@ -94,8 +94,7 @@ describe('with no setting at all, the person answers and is told the lead reads 
     expect(update).toHaveBeenCalledTimes(1);
     expect(served.theirWords).toBe('I built the deck and Ngozi did the pricing.');
     expect(served.canAnswer).toBe(true);
-    expect(served.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
-    expect(served.whoSeesIt).not.toMatch(/Tunde/);
+    /* F5: no privacy note on the screen; who may read it is unchanged. */ expect('whoSeesIt' in served).toBe(false);
   });
 
   it('a colleague, the lead or an admin still cannot answer it', async () => {

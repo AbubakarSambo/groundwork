@@ -390,13 +390,9 @@ export function TheOtherBoardsYouAreIn({ groundId }: { groundId: string }) {
  * the board says they saw it first: a pattern the lead reads only because a week went by is not said to
  * have been told to anybody.
  */
-function TheSuggestion({ b, groundId, personId }: { b: Any; groundId: string; personId: string | null }) {
-  const person = (b.participants ?? []).find((x: Any) => x.id === personId)
-  const first = firstName(person?.name)
-  const told = (b.patterns ?? [])
-    .filter((x: Any) => x.participantId === personId && x.whatHappened && first && String(x.whoSeesIt ?? '').startsWith(`${first} saw this first`))
-    .map((x: Any) => `${first} was also told, on ${first}’s own board: ${String(x.whatHappened).charAt(0).toLowerCase()}${String(x.whatHappened).slice(1)}`)
-  return <div className="pb-suggestion"><SuggestionsForTheLead groundId={groundId} where="board" alsoTold={told} /></div>
+function TheSuggestion({ groundId }: { b: Any; groundId: string; personId: string | null }) {
+  /* F5: the served pattern no longer carries a sentence about who sees it, so nothing here reads one. */
+  return <div className="pb-suggestion"><SuggestionsForTheLead groundId={groundId} where="board" /></div>
 }
 
 /** "Open Daniel’s case": everything this board serves the lead about the one person, on their own page. */

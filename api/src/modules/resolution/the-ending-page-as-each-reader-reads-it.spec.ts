@@ -208,7 +208,7 @@ describe('Kwame, the person it is about, reads his own facts and the decision wi
     expect(page.aboutYou[0].decision).toMatchObject({ says: 'Extra support for the next six weeks', reasons: 'The stock delay was not his doing.' });
     expect(page.signals).toHaveLength(1);
     expect(page.signals[0].yours).toBe(true);
-    expect(page.signals[0].whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    /* F5: no privacy note on the screen; who may read it is unchanged. */ expect('whoSeesIt' in page.signals[0]).toBe(false);
   });
 });
 
@@ -328,7 +328,7 @@ describe('with no setting at all, only Kwame reads the stored signal about Kwame
     const page = (await w.resolution.get('g1', KWAME) as any).theEndingPage;
     expect(page.signals).toHaveLength(1);
     expect(page.signals[0].yours).toBe(true);
-    expect(page.signals[0].whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    /* F5: no privacy note on the screen; who may read it is unchanged. */ expect('whoSeesIt' in page.signals[0]).toBe(false);
   });
 
   it('Grace, who set the check-in up, reads no stored signal', async () => {

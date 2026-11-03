@@ -43,7 +43,7 @@ describe('what the record shows the lead', () => {
     const david = lines.filter((l) => l.participantId === FIXTURE.people.David.participantId);
     const aisha = lines.filter((l) => l.participantId === FIXTURE.people.Aisha.participantId);
     expect(brian.find((l) => l.heading === 'Brian has let 4 promised days pass without the work done.')).toMatchObject({
-      kind: 'attention', yours: false, canAnswer: false, whoSeesIt: 'Only you see this. Nothing is decided from it.',
+      kind: 'attention', yours: false, canAnswer: false,
       whatHappened: expect.stringContaining('On 16 November, the words were "The Kasarani Foods submissions draft is still not sent."'),
       howOften: 'This rests on 4 separate things from 2 check-ins.',
     });

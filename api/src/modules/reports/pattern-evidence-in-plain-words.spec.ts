@@ -12,7 +12,7 @@ const RAW = 'Lack of progress is attributed to an external factor, and the plan 
 
 const pattern = (o: Partial<AServedPattern>): AServedPattern => ({
   id: 'p1', participantId: 'p-femi', yours: true, kind: 'attention', heading: 'Heading',
-  whatHappened: RAW, sessions: [1, 2, 3], howOften: 'x', askThem: null, theirWords: null, canAnswer: true, whoSeesIt: 'x',
+  whatHappened: RAW, sessions: [1, 2, 3], howOften: 'x', askThem: null, theirWords: null, canAnswer: true,
   leadMark: null, talkedAbout: false, about: 'the work',
   ...o,
 });

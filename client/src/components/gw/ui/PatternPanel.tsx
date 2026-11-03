@@ -110,7 +110,6 @@ export function PatternPanel({
             {[pattern.howOften, pattern.whatHappened].filter(Boolean).join(' ')}
           </p>
         )}
-        <p className="gwui-panel-text-muted">{pattern.whoSeesIt}</p>
       </Stack>
 
       <Stack gap={6}>

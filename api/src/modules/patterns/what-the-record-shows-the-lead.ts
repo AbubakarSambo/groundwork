@@ -115,7 +115,6 @@ export function theRecordAsServedPatterns(people: TheNewestRecordOfAPerson[]): A
         askThem: theStepFor(p, person.interventions),
         theirWords: null,
         canAnswer: false,
-        whoSeesIt: 'Only you see this. Nothing is decided from it.',
         leadMark: marked.mark ?? null,
         talkedAbout: !!marked.talkedAboutAt,
         about: p.key === 'claims-rarely-proved' ? 'what is said against what happened' : 'the work',

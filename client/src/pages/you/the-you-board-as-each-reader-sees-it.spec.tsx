@@ -211,7 +211,6 @@ describe('when the engine serves its own parts (request 14)', () => {
         askThem: null,
         theirWords: null,
         canAnswer: true,
-        whoSeesIt: 'Wairimu sees this pattern too. You can say what’s behind it; it goes next to the pattern, in your words.',
       }],
     })
     await screen.findByRole('heading', { name: 'Where you stand' })
@@ -224,7 +223,8 @@ describe('when the engine serves its own parts (request 14)', () => {
     expect(within(patternSection).getByText('About your part in the work')).toBeInTheDocument()
     expect(within(patternSection).getByText('Your qualified deals often don’t have a buying date')).toBeInTheDocument()
     expect(within(patternSection).getByText(/3 of 5, for three weeks running\./)).toBeInTheDocument()
-    expect(within(patternSection).getByText(/Wairimu sees this pattern too\./)).toBeInTheDocument()
+    /* F5: no sentence about who sees it under her own pattern (no privacy notes on screens); who may read it is unchanged. */
+    expect(within(patternSection).queryByText(/sees this pattern too|Only you see this/)).toBeNull()
     expect(within(patternSection).getByRole('button', { name: 'Say what’s behind it' })).toBeInTheDocument()
   })
 
@@ -236,7 +236,6 @@ describe('when the engine serves its own parts (request 14)', () => {
         heading: 'Something about a colleague’s work', whatHappened: null,
         howOften: '3 of 5, for three weeks running.', askThem: 'Ask them about it.',
         theirWords: null, canAnswer: false,
-        whoSeesIt: 'A colleague has not seen this yet, and has not answered yet.',
       }],
     })
     await screen.findByText('Your board')
@@ -250,7 +249,6 @@ describe('when the engine serves its own parts (request 14)', () => {
       heading: 'Your qualified deals often don’t have a buying date', whatHappened: null,
       howOften: '3 of 5, for three weeks running.', askThem: null,
       theirWords: 'The buyer keeps pushing the meeting back.', canAnswer: true,
-      whoSeesIt: 'Wairimu sees this pattern too.',
     })
     open(MIRIAM, {
       ...MIRIAMS,
@@ -259,7 +257,6 @@ describe('when the engine serves its own parts (request 14)', () => {
         heading: 'Your qualified deals often don’t have a buying date', whatHappened: null,
         howOften: '3 of 5, for three weeks running.', askThem: null,
         theirWords: null, canAnswer: true,
-        whoSeesIt: 'Wairimu sees this pattern too.',
       }],
     })
     await screen.findByRole('heading', { name: 'Something that keeps coming up' })

@@ -73,7 +73,6 @@ describe('who reads a pattern', () => {
       askThem: null,
       theirWords: 'The committee only meets on the last Friday of the month.',
       canAnswer: true,
-      whoSeesIt: 'Only you see this. Nothing is decided from it.',
       /* Decision 57, item 2: never shown to the person it is about, however the lead marked it. */
       leadMark: null,
       talkedAbout: false,
@@ -108,7 +107,7 @@ describe('the person sees it first, and can answer, before the lead reads it', (
     const fresh = row({ readyAt: daysAgo(0) });
     const [mine] = servedPatterns([fresh], FEMI, on);
     expect(mine.canAnswer).toBe(true);
-    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    /* F5: no privacy note on the screen; who may read it is unchanged. */ expect('whoSeesIt' in mine).toBe(false);
   });
 
   it('the lead does not read it before the person has been shown it, answered it, or a week has passed', () => {
@@ -179,8 +178,7 @@ describe('the person sees it first, and can answer, before the lead reads it', (
        whoever is reading. It must say who else really reads it instead. */
     const leadOnFirst = row({ participantId: 'p-lead', readyAt: daysAgo(0) });
     const [mine] = servedPatterns([leadOnFirst], { participantId: 'p-lead', runsIt: true }, { ...on, leadParticipantId: 'p-lead' });
-    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
-    expect(mine.whoSeesIt).not.toContain('Tunde');
+    /* F5: no privacy note on the screen; who may read it is unchanged. */ expect('whoSeesIt' in mine).toBe(false);
   });
 });
 
@@ -297,8 +295,7 @@ describe('the lead reads a pattern after the person, with no setting to hold the
   it('the person is told only they see it, since nobody else reads it now, and can still answer it', () => {
     /* Hafsah, 2 November 2026: only the person reads a stored pattern now, so they are told only they see it. */
     const [mine] = servedPatterns(ROWS, FEMI, on);
-    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
-    expect(mine.whoSeesIt).not.toMatch(/Tunde/);
+    /* F5: no privacy note on the screen; who may read it is unchanged. */ expect('whoSeesIt' in mine).toBe(false);
     expect(mine.canAnswer).toBe(true);
     /* (2 November 2026: no coaching line or second-read note is in the served shape at all.) */
     expect(mine).not.toHaveProperty('secondReadNote');
