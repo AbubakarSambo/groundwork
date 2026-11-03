@@ -6,7 +6,7 @@ import { askedToFinish, isTheWordFinish } from '../conversation/close-readiness'
 import { endingOnTheClose } from '../conversation/the-close-says-what-comes-next';
 import { withAQuestion as withAQuestionForTheFirstCheckIn } from '../conversation/nobody-is-left-looking-at-a-paragraph';
 import { stripCloseMarker } from '../conversation/prompt-library';
-import { waitNoLongerThan, HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS } from './a-slow-reading-does-not-hold-the-save';
+import { readUntilItLands } from './a-slow-reading-does-not-hold-the-save';
 import { withoutTheUserLabel } from './the-lead-is-never-the-user';
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
 import { tooManyForTheAnchor, THE_PEOPLE_STEP_RULES } from './the-anchor-people-step';
@@ -44,7 +44,7 @@ import { GroundsService, RECOMMENDED_MOMENT, DEFAULT_TIMELINE_DAYS } from '../gr
 import { EmailService } from '../email/email.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import { ConversationService } from '../conversation/conversation.service';
-import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
+import { GroundworkEvents, CheckInCompletedEvent, AimsReadEvent } from '../../common';
 import {
   ENGINE_RULES,
   buildScenarioPackForParty,
@@ -2904,14 +2904,15 @@ from finishing at all.`;
      * after it is a target the lead does not see where she would look for it.
      */
     if (dto.history.length > 0) {
-      /* Started now, and waited for as before, but for a while only: a slow model must not hold the save (a-slow-reading-does-not-hold-the-save). */
-      const reading = (async () => {
-        await this.conversation
-          /* From the setup conversation, which is no longer copied onto her session. See
-             extractExpectations: the targets are what she said the check-in is FOR, not her account
-             of the work, so setup is still the right place to read them from. */
-          .extractExpectations(checkIn.id, participant.id, ground.id, dto.history)
-          .catch((err) => this.logger.error(`commit: aims and targets failed for initiator: ${err.message}`));
+      /* After the save has answered (Hafsah's speed brief, 3 November 2026): nothing here holds the save. The targets are read first, tried
+         again if the reading fails, and the board is warmed again when they land (AIMS_READ); then what else setup gave, and the report. */
+      void readUntilItLands(
+        /* From the setup conversation, which is no longer copied onto her session. See extractExpectations: the targets are what she said
+           the check-in is FOR, not her account of the work, so setup is still the right place to read them from. */
+        () => this.conversation.extractExpectations(checkIn.id, participant.id, ground.id, dto.history),
+        (err, tried, willTryAgain) => this.logger.error(`commit: aims and targets failed for initiator on ${ground.id} (try ${tried}): ${err?.message}${willTryAgain ? '; trying again' : '; giving up'}`),
+      ).then(async (landed) => {
+        if (landed) this.events?.emit?.(GroundworkEvents.AIMS_READ, { groundId: ground.id } satisfies AimsReadEvent);
         /* And everything else the lead said in setup, where each part lives (GroundsService.keepWhatSetupGave), after the targets and
            once the first session's record is written, so nothing is written twice. */
         await theLeadsRecordIsRead;
@@ -2931,9 +2932,7 @@ from finishing at all.`;
         const made = await this.report(dto.history, dto.scenario, dto.groundLabel, undefined, theTeam.length ? theTeam : undefined, dto.leadsOwnWords)
           .catch((err: Error) => { this.logger.warn(`The setup's report could not be made with its team on ${ground.id}: ${err?.message ?? err}`); return null; });
         if (made) await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionReport: made as object } }).catch(() => undefined);
-      })();
-      const waited = await waitNoLongerThan(reading, HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS);
-      if (!waited.finished) this.logger.warn(`Ground ${ground.id}: the aims were still being read after ${HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS / 1000} seconds, so the save answered and the reading finishes on its own.`);
+      }).catch((err: any) => this.logger.error(`commit: what setup gave could not be read after the save on ${ground.id}: ${err?.message ?? err}`));
     }
 
     const joinToken = (await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { joinToken: true } }))?.joinToken ?? null;

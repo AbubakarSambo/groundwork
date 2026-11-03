@@ -102,7 +102,7 @@ import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { Injectable, ForbiddenException, NotFoundException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { GroundworkEvents, CheckInCompletedEvent, type AssessmentReadyEvent } from '../../common';
+import { GroundworkEvents, CheckInCompletedEvent, type AssessmentReadyEvent, type AimsReadEvent } from '../../common';
 import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { howACheckInIsGoing } from '../grounds/how-a-check-in-is-going';
@@ -367,14 +367,16 @@ export class BoardService {
    * only-one-board-listens.spec).
    */
   /* When the check-in's assessment is ready, not when it completes: its lines are written from the assessment (one source, part 2). */
+  /* And when the targets setup named land, which is after the save has answered (3 November 2026): they are new, so it is built again. */
   @OnEvent(GroundworkEvents.ASSESSMENT_READY)
-  async warmOnCheckInCompleted(event: CheckInCompletedEvent | AssessmentReadyEvent) {
+  @OnEvent(GroundworkEvents.AIMS_READ)
+  async warmOnCheckInCompleted(event: CheckInCompletedEvent | AssessmentReadyEvent | AimsReadEvent) {
     try {
       await (this.boardWarming ?? new OneAtATime<void>()).run(event.groundId, () => this.whatTheBoardIsBuiltFrom(event.groundId), async () => {
         const ground = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { initiatorId: true } });
         if (!ground?.initiatorId) return;
         await this.get(event.groundId, ground.initiatorId, DEFAULT_COVERAGE_VARIANT, { mayWordNewLines: true });
-        this.logger.log(`Board warmed for ${event.groundId} after session ${event.sessionNumber}.`);
+        this.logger.log(`Board warmed for ${event.groundId}${"sessionNumber" in event ? ` after session ${event.sessionNumber}` : " after its targets were read"}.`);
       });
     } catch (err: any) {
       this.logger.warn(`Board warm-up failed for ${event.groundId}: ${err?.message}`);
