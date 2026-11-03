@@ -203,6 +203,16 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
       {collections ? <TheCollectionsTeamReportSections r={collections} /> : (<>
       {/* F5, Hafsah's change 4 to the approved journey: the report opens with where things stand and what needs the lead, then
          where people differ and what is not known yet, then what moved and what each person did. */}
+      {/* AGAINST THE TARGET (the approved journey, stage 9), from the record: the board's own question about the check-in's team aim
+          and its answer (api board/the-headline-and-where-each-target-stands.ts), the one owner, so the report and the board agree.
+          Nothing where the record holds no team aim with a number and a date. */}
+      {b?.headline?.question && (
+        <Section heading="Against the target">
+          <p className="pb-read">{b.headline.question}</p>
+          {b.headline.answer && <p className="gwui-panel-text">{b.headline.answer}</p>}
+        </Section>
+      )}
+
       {/* team-report.jpg: "In short" is the report's own few sentences on the page, not in a box. */}
       <Section heading="In short">
         {teamsDay
