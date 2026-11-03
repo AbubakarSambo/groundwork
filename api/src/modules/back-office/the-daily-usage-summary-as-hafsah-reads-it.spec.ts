@@ -169,6 +169,8 @@ describe('who the usage counts (the same rules as the production SQL)', () => {
     expect(usage.people).toEqual({ once: { all: 4, external: 3, internal: 2 }, twice: 2, fiveTimes: 1 });
     expect(usage.thisWeek).toEqual({ people: 2, checkIns: 2, organisations: 2 });
     expect(usage.since).toEqual({ signUps: 1, completed: 3 });
+    /* Each total beside its change since this time yesterday: the same count on the record as it stood 24 hours ago. */
+    expect(usage.change).toEqual({ signedUp: 1, started: 1, fifth: 1, completed: 3, people: 1, twice: 0, fiveTimes: 1 });
     expect(usage.stillHere).toEqual({ after4: { of: 1, back: 1 }, after8: { of: 0, back: 0 } });
     expect(usage.signedUp).toEqual({ all: 3, external: 2, internal: 1 });
     expect({ started: usage.started, fifth: usage.fifth }).toEqual({ started: 2, fifth: 1 });
@@ -189,16 +191,15 @@ describe('the email, as Hafsah reads it', () => {
   it('says each total and each organisation in a plain sentence', async () => {
     const { mail } = await theEmail();
     for (const line of [
-      "3 organisations have signed up so far, 2 at client organisations and 1 at Coamana's own.",
-      '2 of them have completed a first session, and 1 has reached a fifth session.',
+      "3 organisations have signed up so far (1 more since yesterday), 2 at client organisations and 1 at Coamana's own.",
+      '2 of them have completed a first session (1 more since yesterday), and 1 has reached a fifth session (1 more since yesterday).',
       "1 organisation pays, as far as Groundwork's own records say, and 1 is on a free trial or free time now. $25.00 has been recorded as paid so far. Stripe is the full record of money.",
       'Of the 1 person whose first session was at least 4 weeks ago, 1 completed another session 4 weeks or more after it.',
       "Nobody's first session was 8 weeks ago or more yet.",
-      'Since this time yesterday, 1 organisation has signed up and 3 sessions have been completed.',
-      "10 sessions have been completed so far, 8 at client organisations and 2 at Coamana's own.",
+      "10 sessions have been completed so far (3 more since yesterday), 8 at client organisations and 2 at Coamana's own.",
       '3 sessions were started and not finished. 1 is still open, 1 was declined after it began, and 1 was closed by the clock after the person had answered part of it. The ones closed by the clock are also counted as completed, as the product counts them.',
-      "4 people have completed a check-in, 3 at client organisations and 2 at Coamana's own. Somebody at both is counted once in the total.",
-      'Of them, 2 people have completed two or more sessions, and 1 person has completed five or more.',
+      "4 people have completed a check-in (1 more since yesterday), 3 at client organisations and 2 at Coamana's own. Somebody at both is counted once in the total.",
+      'Of them, 2 people have completed two or more sessions (no change since yesterday), and 1 person has completed five or more (1 more since yesterday).',
       'This week, since Monday 2 November, 2 people completed a session, in 2 check-ins at 2 organisations.',
       'This is a client organisation. It signed up on 1 October 2026 and has a free trial on the Small Team plan until 30 November 2026.',
       'It has 1 check-in with 3 people on them, and 8 sessions have been completed.',

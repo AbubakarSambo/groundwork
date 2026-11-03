@@ -96,6 +96,8 @@ export interface TheUsage {
   now: Date;
   weekStarts: Date;
   since: { signUps: number; completed: number };
+  /** Each total's change since this time yesterday: the same count, on the record as it stood then. */
+  change: { signedUp: number; started: number; fifth: number; completed: number; people: number; twice: number; fiveTimes: number };
   completed: TwoSides;
   notFinished: { all: number; openNow: number; declinedAfterStarting: number; closedByTheClockAfterAnswering: number };
   people: { once: TwoSides; twice: number; fiveTimes: number };
@@ -128,8 +130,25 @@ export function itsPlan(o: TheCountedRecord['organisations'][number], now: Date)
   return 'has not chosen a plan or paid';
 }
 
-/** Everything the email says, counted from the rows. */
+/** The record as it stood at a moment: the organisations signed up by then, and the sessions that had happened by then. */
+export function theRecordAsItWas(record: TheCountedRecord, at: Date): TheCountedRecord {
+  const there = new Set(record.organisations.filter((o) => o.createdAt <= at).map((o) => o.id));
+  return { ...record, organisations: record.organisations.filter((o) => there.has(o.id)), sessions: record.sessions.filter((s) => there.has(s.organizationId) && s.at <= at) };
+}
+
+/** Everything the email says, counted from the rows: the totals from the first day, and each one's change since this time yesterday. */
 export function theUsage(record: TheCountedRecord, now: Date): TheUsage {
+  const today = theTotals(record, now);
+  const then = theTotals(theRecordAsItWas(record, new Date(now.getTime() - DAY)), new Date(now.getTime() - DAY));
+  const change = {
+    signedUp: today.signedUp.all - then.signedUp.all, started: today.started - then.started, fifth: today.fifth - then.fifth,
+    completed: today.completed.all - then.completed.all, people: today.people.once.all - then.people.once.all,
+    twice: today.people.twice - then.people.twice, fiveTimes: today.people.fiveTimes - then.people.fiveTimes,
+  };
+  return { ...today, change, since: { signUps: change.signedUp, completed: change.completed } };
+}
+
+function theTotals(record: TheCountedRecord, now: Date): Omit<TheUsage, 'change' | 'since'> {
   const yesterday = new Date(now.getTime() - DAY);
   const weekStarts = thisWeekStarts(now);
   const done = record.sessions.filter((s) => s.completed);
@@ -183,7 +202,6 @@ export function theUsage(record: TheCountedRecord, now: Date): TheUsage {
       freeNow: record.organisations.filter((o) => !o.subscriptionStatus && o.freeUntil && o.freeUntil > now).length,
       paidSaid: cents.size ? andList([...cents].map(([cur, c]) => money(c, cur))) : null,
     },
-    since: { signUps: organisations.filter((o) => o.isNew).length, completed: done.filter((s) => s.at > yesterday).length },
     completed: twoSides(done),
     notFinished: { all: openNow + declinedAfterStarting + closedByTheClockAfterAnswering, openNow, declinedAfterStarting, closedByTheClockAfterAnswering },
     people: {
@@ -203,6 +221,8 @@ export function theUsage(record: TheCountedRecord, now: Date): TheUsage {
 
 const n = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
 const sides = (t: TwoSides) => `${t.external} at client organisations and ${t.internal} at Coamana's own`;
+/** A total's change since yesterday, said after it: " (1 more since yesterday)". */
+const sinceYesterday = (k: number) => ` (${k > 0 ? `${k} more` : k < 0 ? `${-k} fewer` : 'no change'} since yesterday)`;
 const andList = (xs: string[]) => xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
 
 /** One organisation, as the sentences under its name. */
@@ -224,22 +244,21 @@ const esc = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'
 export function theUsageEmail(u: TheUsage, hour: number): { subject: string; text: string; html: string } {
   const subject = `Groundwork usage on ${theDay(u.now)}, with ${n(u.since.signUps, 'new sign-up', 'new sign-ups')} and ${n(u.since.completed, 'session', 'sessions')} completed since yesterday`;
   const opening = `This is how Groundwork has been used, up to ${theHourSaid(hour)} on ${theDay(u.now)}, Lagos time.`;
-  const since = `Since this time yesterday, ${n(u.since.signUps, 'organisation has', 'organisations have')} signed up and ${n(u.since.completed, 'session has', 'sessions have')} been completed.`;
   const growth = [
-    `${n(u.signedUp.all, 'organisation has', 'organisations have')} signed up so far, ${sides(u.signedUp)}.`,
-    `${n(u.started, 'of them has', 'of them have')} completed a first session, and ${n(u.fifth, 'has', 'have')} reached a fifth session.`,
+    `${n(u.signedUp.all, 'organisation has', 'organisations have')} signed up so far${sinceYesterday(u.change.signedUp)}, ${sides(u.signedUp)}.`,
+    `${n(u.started, 'of them has', 'of them have')} completed a first session${sinceYesterday(u.change.started)}, and ${n(u.fifth, 'has', 'have')} reached a fifth session${sinceYesterday(u.change.fifth)}.`,
     `${n(u.billing.paying, 'organisation pays', 'organisations pay')}, as far as Groundwork's own records say, and ${n(u.billing.freeNow, 'is', 'are')} on a free trial or free time now. ${u.billing.paidSaid ? `${u.billing.paidSaid} has been recorded as paid so far.` : 'No payment has been recorded yet.'} Stripe is the full record of money.`,
   ];
   const keptOn = (w: number, x: { of: number; back: number }) => x.of
     ? `Of the ${n(x.of, 'person', 'people')} whose first session was at least ${w} weeks ago, ${x.back} completed another session ${w} weeks or more after it.`
     : `Nobody's first session was ${w} weeks ago or more yet.`;
   const totals = [
-    `${n(u.completed.all, 'session has', 'sessions have')} been completed so far, ${sides(u.completed)}.`,
+    `${n(u.completed.all, 'session has', 'sessions have')} been completed so far${sinceYesterday(u.change.completed)}, ${sides(u.completed)}.`,
     u.notFinished.all
       ? `${n(u.notFinished.all, 'session was', 'sessions were')} started and not finished. ${n(u.notFinished.openNow, 'is', 'are')} still open, ${n(u.notFinished.declinedAfterStarting, 'was', 'were')} declined after it began, and ${n(u.notFinished.closedByTheClockAfterAnswering, 'was', 'were')} closed by the clock after the person had answered part of it. The ones closed by the clock are also counted as completed, as the product counts them.`
       : 'No session was started and left unfinished.',
-    `${n(u.people.once.all, 'person has', 'people have')} completed a check-in, ${sides(u.people.once)}. Somebody at both is counted once in the total.`,
-    `Of them, ${n(u.people.twice, 'person has', 'people have')} completed two or more sessions, and ${n(u.people.fiveTimes, 'person has', 'people have')} completed five or more.`,
+    `${n(u.people.once.all, 'person has', 'people have')} completed a check-in${sinceYesterday(u.change.people)}, ${sides(u.people.once)}. Somebody at both is counted once in the total.`,
+    `Of them, ${n(u.people.twice, 'person has', 'people have')} completed two or more sessions${sinceYesterday(u.change.twice)}, and ${n(u.people.fiveTimes, 'person has', 'people have')} completed five or more${sinceYesterday(u.change.fiveTimes)}.`,
     `This week, since ${theDay(u.weekStarts)}, ${n(u.thisWeek.people, 'person', 'people')} completed a session, in ${n(u.thisWeek.checkIns, 'check-in', 'check-ins')} at ${n(u.thisWeek.organisations, 'organisation', 'organisations')}.`,
     keptOn(4, u.stillHere.after4),
     keptOn(8, u.stillHere.after8),
@@ -250,8 +269,8 @@ export function theUsageEmail(u: TheUsage, hour: number): { subject: string; tex
     : "Groundwork's own team are left out as people wherever they took part.";
   const closing = 'This email goes to everybody on the back-office team with a connected account, the same people who are told about each new sign-up. It holds counts and organisation names only, and nothing anybody said. To turn it off or change the hour, go to Admin, then System, then Daily usage summary.';
 
-  const text: string[] = [opening, '', since, '', 'Organisations', ...growth, '', 'Sessions and people', ...totals, '', listHeading, ''];
-  const html: string[] = [`<p>${esc(opening)}</p>`, `<p><strong>${esc(since)}</strong></p>`,
+  const text: string[] = [opening, '', 'Organisations', ...growth, '', 'Sessions and people', ...totals, '', listHeading, ''];
+  const html: string[] = [`<p>${esc(opening)}</p>`,
     '<h2 style="font-size:17px;margin:24px 0 8px">Organisations</h2>', ...growth.map((t) => `<p style="margin:0 0 8px">${esc(t)}</p>`),
     '<h2 style="font-size:17px;margin:24px 0 8px">Sessions and people</h2>', ...totals.map((t) => `<p style="margin:0 0 8px">${esc(t)}</p>`),
     `<h2 style="font-size:17px;margin:24px 0 8px">${esc(listHeading)}</h2>`];
