@@ -43,6 +43,7 @@ import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { toast } from 'sonner'
 import { useCheckInFocusStore } from '@/stores/check-in-focus'
 import '@/components/gw/ui/gw-ui.css'
+import { whatTheServerSaid } from '@/lib/what-the-server-said'
 
 /** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
 /* .webp and .heic too: an iPhone photo is HEIC, and the server has always read both (documents.service ALLOWED_MIME). */
@@ -1011,7 +1012,7 @@ export function ChatPage() {
           setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.endCard ? closingMessageText(res.reply, res.endCard) : res.reply, closesTheCheckIn: !!res.sessionComplete && !res.endCard, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }))
           if (res.sessionComplete) setDone(true)
           if (res.endCard) setEndCard(res.endCard)
-        } catch {
+        } catch (sendErr) {
           /**
            * A MESSAGE THAT NEVER LANDED USED TO STAY ON SCREEN.
            *
@@ -1026,7 +1027,7 @@ export function ChatPage() {
           setMsgs(v => v.filter(m => m.id !== localId))
           setDisplayedMsgs(v => v.filter(m => m.id !== localId))
           setInput(message)
-          toast.error('That did not send. Your message is back in the box, try again.')
+          toast.error(whatTheServerSaid(sendErr, 'That did not send. Your message is back in the box, try again.'))
         }
         setLoading(false)
       } else {

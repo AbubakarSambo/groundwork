@@ -27,7 +27,7 @@ import { AssistantService } from '../assistant/assistant.service';
 import { DocumentsService } from '../documents/documents.service';
 import { ReportsService } from '../reports/reports.service';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
-import { AMessageIntoACheckInDto, A_MESSAGE_MAX } from '../../common/dto';
+import { AMessageIntoACheckInDto, A_MESSAGE_IS_TOO_LONG } from '../../common/dto';
 import { validateSync } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
@@ -211,7 +211,7 @@ export class WhatsAppForAnOrganisationService {
     if (arrived.kind === 'text') {
       const checked = validateSync(plainToInstance(AMessageIntoACheckInDto, { message: arrived.text }));
       if (checked.length) {
-        if (arrived.text.trim()) await say(`That is longer than a check-in can take in one message - up to ${A_MESSAGE_MAX.toLocaleString()} characters. Send it in parts.`);
+        if (arrived.text.trim()) await say(A_MESSAGE_IS_TOO_LONG);
         return;
       }
     }

@@ -3,7 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsIn, IsNotEmpty, IsOptional, IsString, IsUUID, Matches, MaxLength, ValidateIf } from 'class-validator';
 import { CurrentUser, CurrentUserData } from '../../common';
-import { A_MESSAGE_MAX } from '../../common/dto/a-message-into-a-check-in.dto';
+import { A_MESSAGE_MAX, A_MESSAGE_IS_TOO_LONG } from '../../common/dto/a-message-into-a-check-in.dto';
 import { Asker, AskService } from './ask.service';
 
 /** How the screen names asking from inside a check-in's setup (decision 65). */
@@ -22,7 +22,7 @@ export class AQuestionDto {
   @IsString()
   @IsNotEmpty()
   @Matches(/\S/, { message: 'a message has to say something' })
-  @MaxLength(A_MESSAGE_MAX)
+  @MaxLength(A_MESSAGE_MAX, { message: A_MESSAGE_IS_TOO_LONG })
   message: string;
 
   /** The check-in the question is about, chosen under "About". Optional. */

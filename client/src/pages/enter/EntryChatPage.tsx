@@ -59,6 +59,7 @@ import {
 import { whatIsSetAndWhatIsNot, whenTheCheckInsLand } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import { Button, Callout, Note, Section, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal, Mark, GroundworkIsWriting } from '@/components/gw/ui'
+import { whatTheServerSaid } from '@/lib/what-the-server-said'
 
 /*
  * A COLLEAGUE ON THE INVITE LIST, BY ID (U.4). The list of colleagues carries no addresses, so a
@@ -109,7 +110,7 @@ type TheBoxRead = { entries: string[]; names: Record<string, string>; numbers: R
 const NOBODY_IN_THE_BOX: TheBoxRead = { entries: [], names: {}, numbers: {} }
 
 /** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
-const A_MESSAGE_MAX = 8000
+const A_MESSAGE_MAX = 30000
 
 /* B-193: how long a set-up message may go without even its first delta before the watchdog in
    `sendOnboarding` gives up on it. See the comment at its call site. */
@@ -2440,7 +2441,7 @@ export function EntryChatPage() {
       }
       persistCheckin(updated)
     },
-    onError: (_err, msgs) => {
+    onError: (err, msgs) => {
       setLoading(false)
       /* B-052: `msgs` is `[...history, userTurn]`, so the turn that failed stays on screen as a
          sent message rather than vanishing - and `send()` already called `persistCheckin` with it
@@ -2449,7 +2450,7 @@ export function EntryChatPage() {
          prototype's own "Not saved" state, states.txt, always pairs the failure with that). Said
          plainly and truthfully here, the same way ChatPage's own failed-send toast already does. */
       setHistory(msgs)
-      toast.error('That did not send. What you wrote is still here, try again.')
+      toast.error(whatTheServerSaid(err, 'That did not send. What you wrote is still here, try again.'))
     },
   })
 
@@ -2554,12 +2555,12 @@ export function EntryChatPage() {
         setCorrectionStartIndex(null)
         await generateSessionReport(withReply)
       }
-    } catch {
+    } catch (err) {
       /* Same defect, same shape: the textarea was cleared before the call and the message said
          otherwise. The turn stays in the history — the server may have taken it — and the words go
          back where they were typed. */
       setCorrectionText(text)
-      toast.error('That did not send - what you wrote is back in the box. Try again.')
+      toast.error(whatTheServerSaid(err, 'That did not send. What you wrote is back in the box, so try again.'))
     } finally {
       setCorrectionLoading(false)
     }
@@ -3086,7 +3087,7 @@ export function EntryChatPage() {
     reader.onload = (ev) => {
       const content = (ev.target?.result as string) ?? ''
       if (content.length > A_MESSAGE_MAX) {
-        toast.warning(`${file.name} is large - only the first portion will be used in this session.`)
+        toast.warning(`${file.name} is very long, so only its first part is read here.`)
       }
       setUploadedDoc({ name: file.name, content: content.slice(0, A_MESSAGE_MAX) })
     }
@@ -3108,7 +3109,7 @@ export function EntryChatPage() {
     const ctx = docContext.trim()
     setDocContextMode(false)
     if (!uploadedDoc) return
-    /* The whole turn has to fit a message (8,000 characters, the same cap every door has), so the
+    /* The whole turn has to fit a message (30,000 characters, the same cap every door has), so the
        document part gives way to the wrapper and the context rather than the server refusing it. */
     const head = `[Document: "${uploadedDoc.name}"]\n`
     /* Groundwork says what is in it, then uses it (Hafsah, 26 October 2026: "it tells them what's in the doc and uses it as context"). */

@@ -12,8 +12,14 @@ import {
  * turns to the model (fix plan B14). This is the one posture. Every door constructs or declares it.
  */
 
-/** What a person may say in one message. The app's cap since it shipped; now everybody's. */
-export const A_MESSAGE_MAX = 8000;
+/**
+ * What a person may say in one message, on every door: about 30,000 characters (Hafsah, 3 November 2026: "Accept messages up to about
+ * 30,000 characters and record them accurately; beyond that, ask the person to attach it as a document instead"). It was 8,000.
+ */
+export const A_MESSAGE_MAX = 30_000;
+
+/** What a person reads when a message is longer than that, on every door. */
+export const A_MESSAGE_IS_TOO_LONG = 'That message is too long for me to take in one go. Please attach it as a document instead, and I will read all of it.';
 
 /**
  * A replayed turn from the model is the model's words, bounded by its own output limit (8192
@@ -30,7 +36,7 @@ export class AMessageIntoACheckInDto {
   @IsNotEmpty()
   /* Whitespace is not a message. Two doors trimmed by hand and two did not; now none of them do. */
   @Matches(/\S/, { message: 'a message has to say something' })
-  @MaxLength(A_MESSAGE_MAX)
+  @MaxLength(A_MESSAGE_MAX, { message: A_MESSAGE_IS_TOO_LONG })
   message: string;
 
   /*
@@ -60,7 +66,7 @@ export function IsAMessageWhenFromAPerson(options?: ValidationOptions) {
           return typeof value === 'string' && value.length <= A_MESSAGE_MAX;
         },
         defaultMessage() {
-          return `a message is at most ${A_MESSAGE_MAX} characters`;
+          return A_MESSAGE_IS_TOO_LONG;
         },
       },
     });

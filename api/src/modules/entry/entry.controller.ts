@@ -2,7 +2,7 @@ import { Controller, Post, Get, Patch, Put, Body, Query, UnauthorizedException, 
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public, OptionalAuth, CurrentUser, CurrentUserData } from '../../common';
-import { ATurnDto, A_HISTORY_MAX_TURNS, A_MESSAGE_MAX } from '../../common/dto';
+import { ATurnDto, A_HISTORY_MAX_TURNS, A_MESSAGE_MAX, A_MESSAGE_IS_TOO_LONG } from '../../common/dto';
 import { A_STREAM_FAILED } from '../../common/published-surfaces';
 import { EntryService } from './entry.service';
 import { TheOpenLinkService } from './the-open-link.service';
@@ -147,7 +147,7 @@ class EntryOpenerDto {
 class EntryClassifyDto {
   @IsString()
   @IsNotEmpty()
-  @MaxLength(A_MESSAGE_MAX)
+  @MaxLength(A_MESSAGE_MAX, { message: A_MESSAGE_IS_TOO_LONG })
   description: string;
 
   @IsOptional()
@@ -438,7 +438,7 @@ export class EntryCommitDto {
   @IsArray()
   @ArrayMaxSize(A_HISTORY_MAX_TURNS)
   @IsString({ each: true })
-  @MaxLength(A_MESSAGE_MAX, { each: true })
+  @MaxLength(A_MESSAGE_MAX, { each: true, message: A_MESSAGE_IS_TOO_LONG })
   leadsOwnWords?: string[];
 
   @IsOptional()
@@ -676,7 +676,7 @@ class OpenStartDto {
 
 class OpenSayDto {
   @IsString() @IsNotEmpty() @MaxLength(200) key: string;
-  @IsString() @IsNotEmpty() @MaxLength(A_MESSAGE_MAX) message: string;
+  @IsString() @IsNotEmpty() @MaxLength(A_MESSAGE_MAX, { message: A_MESSAGE_IS_TOO_LONG }) message: string;
 }
 
 class OpenFinishDto {
