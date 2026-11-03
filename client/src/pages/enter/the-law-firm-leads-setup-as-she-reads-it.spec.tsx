@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { ThisSoundsLike } from './ThisSoundsLike'
 import { FillsInAsYouTalk, type WhatSetupKnows } from './FillsInAsYouTalk'
 import { withTheNamedAdded, aLineFor } from '@/components/gw/TheTeamBox'
 
@@ -11,21 +10,28 @@ vi.mock('@/api/entry', () => ({ entryApi: { peopleOnLines: vi.fn() } }))
  * "It’s something else" and lost the conversation; and after she gave her team's emails in the chat the panel still said "Add their
  * emails here when you have them".
  */
-describe('the card under the first reply', () => {
-  it('offers Confirmed and It’s something else, whatever has been said since', () => {
-    const onConfirm = vi.fn()
-    const { container } = render(<ThisSoundsLike scenario="KEEP_READ" confirmed={false} onConfirm={onConfirm} onSomethingElse={() => {}} />)
-    expect(container.textContent).toMatch(/^This sounds like/)
-    expect(screen.getByRole('button', { name: 'Confirmed' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'It’s something else' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmed' }))
-    expect(onConfirm).toHaveBeenCalled()
+/* Was "the card under the first reply": the kind of check-in is said in the summary now, not on a card in the conversation (Hafsah,
+   3 November evening). Confirming it is answering the reply's own question in words; "It’s something else" is beside the kind. */
+describe('the kind of check-in, in the summary', () => {
+  const known: WhatSetupKnows = {
+    name: '', situation: 'Keep a read on live work', meaning: 'What moved, what’s stuck and what changed, every week.', cadence: 'WEEKLY', cadenceChosen: false,
+    workingDays: [], startsOn: '', endsOn: '', mentioned: [], added: [],
+  }
+  it('names the kind and what it means, and offers It’s something else, with no Confirmed button and no card', () => {
+    const onSomethingElse = vi.fn()
+    const { container } = render(<FillsInAsYouTalk {...known} onSomethingElse={onSomethingElse} />)
+    expect(container.textContent).toContain('Keep a read on live work')
+    expect(container.textContent).toContain('What moved, what’s stuck and what changed, every week.')
+    expect(container.textContent).not.toMatch(/This sounds like|of 4 set|[✓○]/)
+    expect(screen.queryByRole('button', { name: 'Confirmed' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'It’s something else' }))
+    expect(onSomethingElse).toHaveBeenCalled()
   })
 
-  it('once confirmed, keeps what it says and no buttons', () => {
-    render(<ThisSoundsLike scenario="KEEP_READ" confirmed onConfirm={() => {}} onSomethingElse={() => {}} />)
-    expect(screen.getByText('This sounds like')).toBeTruthy()
-    expect(screen.queryByRole('button')).toBeNull()
+  it('on a phone is one line, "2 people · Keep a read on live work", that opens to the same summary', () => {
+    const { container } = render(<FillsInAsYouTalk {...known} people={['Faith Wairimu, faith@kamau.test', 'Peter Mutua, peter@kamau.test']} asOneLine />)
+    expect(container.querySelector('summary')?.textContent).toBe('2 people · Keep a read on live work')
+    expect(container.textContent).toContain('Faith Wairimu, faith@kamau.test')
   })
 })
 

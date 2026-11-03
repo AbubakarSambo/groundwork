@@ -63,34 +63,17 @@ describe('and it is offered whenever the conversation has begun', () => {
    * `&& !isAnchorDraft()`; every other situation still reaches the same banner the same way, which
    * is what these two assertions actually guard.
    */
-  /* Changed in F5 (stage 2): "It’s something else" is on the card under setup's first reply (ThisSoundsLike), drawn from the
-     transcript itself, so a reload keeps it; still only during setup, and never for an anchor draft. */
-  it('asks about the transcript, not about a flag that a reload loses', () => {
-    expect(SRC).toContain("if (i !== firstShown || phase !== 'onboarding' || isAnchorDraft()) return bubble")
-    expect(SRC).toContain('onSomethingElse={itIsSomethingElse}')
-    /* The version that asked `pickedSituation` left a reloaded session with no route back at all. */
+  /* Changed 3 November evening (Hafsah: no cards in the conversation; the kind of check-in is part of the one quiet summary):
+     "It’s something else" is beside the kind in the summary, offered only during setup and never for an anchor draft. Start over is
+     no longer on the setup screen: "Start a check-in" in the sidebar asks to carry on or start a new one, and the save card keeps
+     its own Start over. The two tests that pinned the header's Start over are replaced by the one that proves where it went. */
+  it('offers It’s something else in the summary, during setup only, never for an anchor draft', () => {
+    expect(SRC).toContain("onSomethingElse={phase === 'onboarding' && !isAnchorDraft() && (onboardingSelections.classifiedScenario || pickedScenario || scenario) ? itIsSomethingElse : undefined}")
     expect(SRC).not.toContain("{phase === 'onboarding' && pickedSituation && (")
   })
 
-  it('and not once a check-in is running, where the situation is what it is about', () => {
-    expect(SRC).toContain("phase !== 'onboarding' || isAnchorDraft()) return bubble")
-  })
-
-  it('while Start over still exists, for somebody who really does want to bin it', () => {
-    expect(SRC).toMatch(/phase === 'checkin' \? 'Clear check-in' : 'Start over'/)
-  })
-
-  it('and it survives the session closing, which is when it used to vanish', () => {
-    /*
-     * REPORTED FROM THE SCREEN: "should be able to start over even when on the chat, clear or end
-     * session". The whole bar was hidden on `!closed`, so the moment a check-in ended there was no
-     * way out anywhere on the page - on the one screen a stranger meets first, with the browser
-     * back button as the only exit. Hiding it was defensible while closing meant nothing but
-     * "answers lock"; it is not, now that closing is followed by a save-and-invite step somebody
-     * may not want to take.
-     */
-    expect(SRC).not.toMatch(/\{!closed && \(\s*<div style=\{\{ padding: '6px 20px'/)
-    /* And it confirms first once there is a transcript to lose. */
-    expect(SRC).toMatch(/phase === 'checkin' \|\| closed \|\| onboardingHistory\.length > 1\) \? setConfirmClear\(true\)/)
+  it('Start over is not on the setup screen itself, and the save card still has it', () => {
+    expect(SRC).not.toMatch(/'Clear check-in'/)
+    expect(SRC).toContain('onClick={handleClearSession}>Start over</button>')
   })
 })

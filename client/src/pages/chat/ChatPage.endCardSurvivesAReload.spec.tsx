@@ -60,10 +60,11 @@ describe('reloading a check-in the engine has already closed, but not yet confir
     expect(screen.queryByText(/Finish my check-in now/i)).toBeNull()
   }, 15_000)
 
-  it('keeps the header consistent with the card, not "About two minutes"', async () => {
+  /* Changed 3 November evening: the header has no line under the name at all now, so nothing there can disagree with the card. */
+  it('keeps the header consistent with the card: no "About two minutes" and no line under the name', async () => {
     renderChat()
     await screen.findByRole('button', { name: /That’s right, finish/i }, { timeout: 4000 })
-    expect(screen.getByText('That’s everything for today')).toBeTruthy()
+    expect(screen.queryByText('That’s everything for today')).toBeNull()
     expect(screen.queryByText('About two minutes')).toBeNull()
   }, 15_000)
 })

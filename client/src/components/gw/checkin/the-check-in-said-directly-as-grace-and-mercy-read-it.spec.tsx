@@ -59,22 +59,19 @@ describe('the end card, as Grace reads it', () => {
   })
 })
 
-describe('the check-in header’s Pause menu', () => {
-  const header = (on: boolean) => {
-    render(<TheDirectMorning on={on}><TheCheckInHeader title="Sales team, Q4" underTitle={on ? 'A few minutes' : 'About ten minutes'} mayPause onStopForNow={() => {}} onSkip={() => {}} /></TheDirectMorning>)
-    fireEvent.click(screen.getByRole('button', { name: 'Pause' }))
-  }
-  it('off, as before', () => {
-    header(false)
-    expect(text()).toContain('Everything you have said is saved. You can come back to it any time.')
-    expect(text()).toContain('You can say no. You will see what that means before anything is recorded.')
-  })
-  it('on, each choice says what it does and nothing that defends the product', () => {
-    header(true)
-    expect(screen.getByText('Stop for now')).toBeTruthy()
-    expect(screen.getByText('You can come back to it later.')).toBeTruthy()
-    expect(screen.getByText('Skip this check-in')).toBeTruthy()
-    expect(text()).not.toMatch(/You can say no|before anything is recorded|Everything you have said is saved/)
+/* Was "the check-in header's Pause menu": the menu and its two notes are gone (Hafsah, 3 November evening: only the conversation, the
+   box and End session, small and quiet, always visible). Stop for now is the back link; skipping is End session before an answer. */
+describe('the check-in header', () => {
+  it('says the check-in\'s name and End session, and nothing else, with the direct morning on or off', () => {
+    for (const on of [false, true]) {
+      const end = vi.fn()
+      const { unmount } = render(<TheDirectMorning on={on}><TheCheckInHeader title="Sales team, Q4" onEnd={end} /></TheDirectMorning>)
+      expect(text()).toBe('Sales team, Q4End session')
+      expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'End session' }))
+      expect(end).toHaveBeenCalledTimes(1)
+      unmount()
+    }
   })
 })
 
@@ -120,9 +117,9 @@ describe('the check-in page itself (pages/chat/ChatPage.tsx)', () => {
     expect(page).toContain('<TheDirectMorning on={direct}>')
   })
   it('with it on, a few minutes, and no "You are not expected to agree" or "Nothing you have written here is shown to anyone"', () => {
-    /* Changed in F5: the header says the one measured length either way, as the server serves it (useACheckInTakes). */
-    expect(page).toContain(": takes\n")
-    expect(page).toContain('{!direct && <p className="gwui-panel-text-muted">Answer in your own words. You are not expected to agree with any of it.</p>}')
+    /* Changed 3 November evening: no length under the header and no about panel at all, so neither line is drawn, on or off. */
+    expect(page).not.toContain(": takes\n")
+    expect(page).not.toContain('You are not expected to agree with any of it.')
     expect(page).toContain('{!direct && <li>Nothing you have written here is shown to anyone.</li>}')
   })
 })

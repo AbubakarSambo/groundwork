@@ -42,13 +42,16 @@ describe('the setup conversation', () => {
     })
     await waitFor(() => expect(screen.getByText('Who is it, and what were they meant to be delivering?')).toBeTruthy())
     expect(screen.getByRole('heading', { level: 1, name: 'Set up a check-in' })).toBeTruthy()
-    /* Changed in F5 (stage 2): the opening is one line with the measured length, and the kind of check-in is a card under the first
-       reply, with its meaning, Confirmed and It’s something else. */
+    /* Changed in F5 (stage 2): the opening is one line with the measured length. Changed 3 November evening (Hafsah: no cards in the
+       conversation): the kind of check-in and its meaning are in the summary, with It’s something else, and End session is on screen. */
     expect(document.body.textContent).toContain('This takes about five minutes. You can stop any time with End session.')
-    const card = screen.getByRole('region', { name: 'This sounds like' })
-    expect((card.textContent ?? '').replace(/\s+/g, ' ')).toBe('This sounds likeHelp someone get back on trackBoth sides on the concern, before the conversation.ConfirmedIt’s something else')
-    expect(screen.getByRole('button', { name: 'Confirmed' })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'This sounds like' })).toBeNull()
+    const summary = screen.getByRole('complementary', { name: 'What is set so far' })
+    expect(summary.textContent).toContain('Help someone get back on track')
+    expect(summary.textContent).toContain('Both sides on the concern, before the conversation.')
+    expect(screen.queryByRole('button', { name: 'Confirmed' })).toBeNull()
     expect(screen.getByRole('button', { name: 'It’s something else' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'End session' })).toBeTruthy()
     const page = document.body.textContent ?? ''
     for (const old of ['Give this a name', 'Getting started', 'session is about 10 minutes', 'What is going on', 'Save & invite', 'Pick a different situation', 'Set up as', 'organic chickens', 'Fills in as you talk', 'about ten minutes']) {
       expect(page, old).not.toContain(old)
@@ -105,16 +108,17 @@ describe('the setup conversation', () => {
     expect(document.body.textContent).not.toContain('0 of 4 set')
   })
 
-  it('once in the check-in, the planned number follows how often it runs', async () => {
+  /* Was "the planned number follows how often it runs", read off the header's plan count, which is gone with the header's other pieces
+     (Hafsah, 3 November evening). How often it runs and until when are on the summary and the save card. */
+  it('once in the check-in, the header is its name and End session, with no plan count', async () => {
     openWith({
       scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
       history: [{ role: 'assistant', content: 'How is it going?' }],
       sessions: 1, cadence: 'WEEKLY', cadenceChosen: true, plannedFrom: { timelineDays: 42, cadence: 'WEEKLY' },
       onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
     })
-    await waitFor(() => expect(document.body.textContent).toContain('check-ins planned'))
-    expect(document.body.textContent).toContain('6 check-ins planned')
-    expect(document.body.textContent).not.toContain('1 check-in planned')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'End session' })).toBeTruthy())
+    expect(document.body.textContent).not.toMatch(/check-ins? planned|Session 1 in progress/)
   })
 })
 

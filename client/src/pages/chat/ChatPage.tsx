@@ -1,7 +1,5 @@
-import { useACheckInTakes } from '@/lib/how-long-setup-takes'
 import { aCorrectionOf } from '@/components/gw/ThatsNotRight'
 import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
-import { ANSWER_ON_WHATSAPP_INSTEAD } from '@/lib/answer-on-whatsapp-instead'
 import { WaitingForYouToConfirm } from '@/components/gw/ThePlanPage'
 import { CheckInOnWhatsApp } from '@/components/gw/CheckInOnWhatsApp'
 import { useState, useEffect, useRef } from 'react'
@@ -10,29 +8,23 @@ import { useNavigate, useParams, useLocation, useSearchParams } from 'react-rout
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
-import { conversationApi, streamMessage, type CheckInBrief, type TheEndCard as TheEndCardData } from '@/api/conversation'
+import { conversationApi, streamMessage, type TheEndCard as TheEndCardData } from '@/api/conversation'
 import { closingMessageText } from '@/lib/a-closing-message-claims-nothing-it-does-not-keep'
 import type { ConnectWhatsApp } from '@/types'
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
-import { asTheirWords, isTheEnginesOwnNote } from '@/lib/as-their-words'
 import { YourNextCheckIn } from '@/components/gw/YourNextCheckIn'
 import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFinished'
 import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
-import { useAfterAWhile, GETTING_YOUR_FIRST_QUESTION_READY, STILL_READING_WHAT_YOU_WROTE } from '@/lib/opening-is-slow'
 import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { Bubble } from '@/components/gw/ui/Bubble'
 import { GroundworkIsWriting, WritingDots } from '@/components/gw/ui/GroundworkIsWriting'
 import { ConversationCard } from '@/components/gw/ui/ConversationCard'
 import { Composer } from '@/components/gw/ui/Composer'
-import { Modal } from '@/components/gw/ui/Modal'
-import { Section } from '@/components/gw/ui/Section'
-import { Tag } from '@/components/gw/ui/Tag'
 import { Button } from '@/components/gw/ui/Button'
-import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { IdeaOffer } from '@/components/gw/checkin/IdeaOffer'
 import { RequestOffer, OpenTheRequest } from '@/components/gw/checkin/RequestOffer'
 import type { TheIdeaOfferInTheCheckIn, TheRequestOfferInTheCheckIn, TheRequestToOpen } from '@/api/anchorShapes'
@@ -56,8 +48,6 @@ interface Msg {
   role: 'AI' | 'PERSON'
   content: string
   docAssessment?: { docId: string; docName: string; assessment: DocumentAssessment }
-  /** The engine's suggested answers for this question, when it sends them. See SuggestedAnswers. */
-  suggestedAnswers?: string[]
   /** Piece 21: the yes to capture a concrete idea, attached to the reply that offers it. See IdeaOffer. */
   ideaOffer?: TheIdeaOfferInTheCheckIn | null
   /** Anchor pieces 26/27: a leave or spending request read in the person's own words. See RequestOffer. */
@@ -140,17 +130,6 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
   )
 }
 
-const RECORD_ENTRY_LABELS: Record<string, string> = {
-  SUCCESS_DEFINITION: 'What success looks like',
-  PROGRESS: 'What got done',
-  TIMEFRAME: 'Timeframe',
-  COMMITMENT: 'Commitment',
-  ASK: 'Ask',
-  INTENT: 'Intent',
-  TOLERANCE: 'Tolerance',
-  WORRY: 'Worry',
-  TENSION: 'Tension',
-}
 
 /**
  * How long an open request that is still working is waited for before the screen says it could not
@@ -183,7 +162,6 @@ export function ChatPage() {
   const groundLabel: string   = (location.state as any)?.groundLabel ?? ''
   const [groundId, setGroundId] = useState<string | undefined>((location.state as any)?.groundId)
   /** ROUND 6, ITEM 2: the two cards fold behind one quiet link and this panel. */
-  const [showAboutPanel, setShowAboutPanel] = useState(false)
   /*
    * THE CHECK-IN ITSELF, for its name on the way back ("← Sales team, Q3") and, at the end, for who
    * else answers it. Read from the server rather than from how somebody got here: a check-in opened
@@ -195,11 +173,9 @@ export function ChatPage() {
     enabled: !!groundId,
     retry: false,
   })
-  const takes = useACheckInTakes()
   const checkInName: string = groundLabel || (ground.data as any)?.label || ''
   /* The direct morning (lib/the-direct-morning.tsx): the fixed lines on this screen are direct where the organisation's switch is on. */
   const direct = isTheDirectMorningOn(ground.data)
-  const [brief, setBrief] = useState<CheckInBrief | null>(null)
   /**
    * "CONNECT WHATSAPP" (decision 106, 5 October, night): served on the person's own transcript
    * read, or null. An optional convenience - never required to answer - so it is drawn as one
@@ -207,7 +183,6 @@ export function ChatPage() {
    */
   const [connectWhatsApp, setConnectWhatsApp] = useState<ConnectWhatsApp | null>(null)
   const isInitiator: boolean  = (location.state as any)?.isInitiator ?? false
-  const isFinalSession: boolean = (location.state as any)?.isFinal ?? false
 
   const [msgs, setMsgs]               = useState<Msg[]>([])
   /**
@@ -230,20 +205,16 @@ export function ChatPage() {
 
   const [priorTurns, setPriorTurns]   = useState<Msg[]>([])
   const [priorSessionNumber, setPriorSessionNumber] = useState<number | null>(null)
-  /** The session this one is correcting, when it is a correction rather than a new session. */
-  const [correctingSession, setCorrectingSession] = useState<number | null>(null)
   // #3: a normal returning session (not self-correction) gets a read-only
   // recap of the person's own prior record entries - the same data the
   // model's PRIOR_SESSION prompt block already reads, but shown to the
   // person themselves instead of continuity depending entirely on whether
   // the AI's opening line happens to mention it.
-  const [priorRecordEntries, setPriorRecordEntries] = useState<import('@/api/conversation').PriorRecordEntrySession[]>([])
   const [displayedMsgs, setDisplayedMsgs] = useState<Msg[]>([])
   const [streamingId, setStreamingId] = useState<string | null>(null)
   const [input, setInput]             = useState('')
   const [loading, setLoading]         = useState(false)
   /* True once a reply has been outstanding long enough for somebody to start doubting it. */
-  const [waitedAWhile, setWaitedAWhile] = useState(false)
   const [opened, setOpened]           = useState(false)
   const [done, setDone]               = useState(false)
   const [completed, setCompleted]     = useState(false)
@@ -384,15 +355,6 @@ export function ChatPage() {
     if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
   }, [displayedMsgs, loading])
 
-  /*
-   * FOUR SECONDS is where the audit's waits started being noticed, so it is where the wait starts
-   * explaining itself. Cleared on the way out so a fast reply never shows the line at all.
-   */
-  useEffect(() => {
-    if (!loading) { setWaitedAWhile(false); return }
-    const t = setTimeout(() => setWaitedAWhile(true), 4000)
-    return () => clearTimeout(t)
-  }, [loading])
 
   const openSession = useMutation({
     mutationFn: () => {
@@ -408,9 +370,8 @@ export function ChatPage() {
         navigate(`/checkin/${res.checkInId}`, { replace: true, state: { ...((location.state as any) ?? {}), sessionNumber: sessionNumber + 1 } })
         return
       }
-      setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }])
+      setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
-      if (res.brief) setBrief(res.brief)
       setOpened(true)
       setOpenFailed(false)
     },
@@ -435,8 +396,7 @@ export function ChatPage() {
           const t = await conversationApi.transcript(checkInId)
           const turnsSoFar = t.turns ?? []
           if (turnsSoFar.length > 0) {
-            setMsgs(turnsSoFar.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest })))
-            if (t.brief) setBrief(t.brief)
+            setMsgs(turnsSoFar.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest })))
             if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
             setOpened(true)
             setOpenFailed(false)
@@ -448,7 +408,6 @@ export function ChatPage() {
              "already complete" over a check-in the server itself calls COMPLETED is the settled
              state, not a failure to retry. */
           if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
-          if (t.brief) setBrief(t.brief)
           if (t.checkIn?.status === 'COMPLETED') {
             setDone(true); setCompleted(true); setJustFinished(true)
             setOpened(true); setOpenFailed(false)
@@ -487,7 +446,6 @@ export function ChatPage() {
      (no model reachable) showed the toast, the banner's own 503 sentence, AND this status line, all
      three at once, for the one thing that happened. */
   const openingNow = !openFailed && (openSession.isPending || (!opened && msgs.length === 0 && !completed && !declined))
-  const openingIsSlow = useAfterAWhile(openingNow)
 
 
   const decline = useMutation({
@@ -739,46 +697,11 @@ export function ChatPage() {
           if (cancelled) return
           // Reopen (#3): if this is a correction session, show the prior
           // session's turns read-only so the person sees what they said before.
-          /*
-           * AND THAT THIS IS A CORRECTION, which the header had no way to know.
-           *
-           * A correction is created at the next free session number, so the page called it
-           * "Session 3" while the person had pressed Correct it on session 1. The check-in row
-           * has said so all along; the header was reading `sessionNumber` out of navigation
-           * state, which carries no such thing.
-           *
-           * OUT OF THE priorTurns BRANCH, WHERE IT WAS UNREACHABLE. Walked as a real participant:
-           * pressed "Something here is wrong - correct it", landed on a page identical to the one
-           * left behind - same transcript, same report card, same button - with nothing anywhere
-           * saying a correction had opened. It looked so exactly like a failed press that it was
-           * pressed again, and two empty correction sessions were created.
-           *
-           * The three places that say "Correcting session N" were all written and all correct.
-           * They were nested inside `if (t.priorTurns.length > 0)`, so whether the page could tell
-           * you what you were doing depended on whether the prior turns happened to come back.
-           * Whether this is a correction is a fact about the check-in, so it is read from the
-           * check-in and nothing else.
-           */
-          if ((t.checkIn as any)?.isSelfCorrection) {
-            setCorrectingSession((t.checkIn as any).selfCorrectionTargetSession ?? t.priorSessionNumber ?? null)
-          }
           // Reopen (#3): the prior session's turns, read-only, so the person sees what they said.
           if (t.priorTurns && t.priorTurns.length > 0) {
             setPriorTurns(t.priorTurns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
             setPriorSessionNumber(t.priorSessionNumber ?? null)
           }
-          if (t.priorRecordEntries && t.priorRecordEntries.length > 0) {
-            setPriorRecordEntries(t.priorRecordEntries)
-          }
-          /*
-            WHAT THIS CHECK-IN IS ABOUT, ON EVERY LOAD.
-
-            `brief` was set in exactly one place - `openSession.onSuccess` - so the band appeared on
-            the single load that opened the session and never again. Somebody did an entire check-in
-            and only found out what it was about afterwards. Outside the turns check on purpose: a
-            session with no turns yet still has a subject, and that is the load where it matters most.
-          */
-          if (t.brief) setBrief(t.brief)
           if (t.connectWhatsApp) setConnectWhatsApp(t.connectWhatsApp)
           /*
             SCREEN FAULT 3: THE END CARD WAS GONE AFTER A RELOAD, AND THE HEADER READ "ABOUT TWO
@@ -816,7 +739,7 @@ export function ChatPage() {
                  still claim a record the end card does not have (see
                  a-closing-message-claims-nothing-it-does-not-keep.ts). */
               content: turn.id === lastTurnId ? closingMessageText(turn.content, t.endCard) : turn.content,
-              suggestedAnswers: turn.suggestedAnswers, ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest,
+              ideaOffer: turn.ideaOffer, requestOffer: turn.requestOffer, openTheRequest: turn.openTheRequest,
             })))
           }
           /**
@@ -990,8 +913,8 @@ export function ChatPage() {
              this close sent no record lines - see a-closing-message-claims-nothing-it-does-not-keep.ts. */
           /* Decided only once the card is known: it is written ten to forty seconds after the goodbye (pilots, problem 13). */
           const replyText = r.endCard ? closingMessageText(r.reply, r.endCard) : r.reply
-          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: replyText, closesTheCheckIn: !!r.sessionComplete && !r.endCard, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
-          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: replyText, closesTheCheckIn: !!r.sessionComplete && !r.endCard, suggestedAnswers: r.suggestedAnswers, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
+          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: replyText, closesTheCheckIn: !!r.sessionComplete && !r.endCard, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
+          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: replyText, closesTheCheckIn: !!r.sessionComplete && !r.endCard, ideaOffer: r.ideaOffer, requestOffer: r.requestOffer, openTheRequest: r.openTheRequest } : m))
           if (r.sessionComplete) setDone(true)
           if (r.endCard) setEndCard(r.endCard)
         },
@@ -1009,7 +932,7 @@ export function ChatPage() {
         try {
           const res = await (answering ? conversationApi.send(checkInId, message, answering) : conversationApi.send(checkInId, message))
           acknowledge()
-          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.endCard ? closingMessageText(res.reply, res.endCard) : res.reply, closesTheCheckIn: !!res.sessionComplete && !res.endCard, suggestedAnswers: res.suggestedAnswers, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }))
+          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.endCard ? closingMessageText(res.reply, res.endCard) : res.reply, closesTheCheckIn: !!res.sessionComplete && !res.endCard, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }))
           if (res.sessionComplete) setDone(true)
           if (res.endCard) setEndCard(res.endCard)
         } catch (sendErr) {
@@ -1122,11 +1045,6 @@ export function ChatPage() {
    * number in the bottom bar - only when there is something to say ABOUT the session, closing one
    * or correcting one, is there a sentence here. An ordinary session says nothing in this spot.
    */
-  const privacyLabel = isFinalSession
-    ? `Closing session ${sessionNumber} · This is the last word on the record. Take the time to be thorough - what you document here is what the final report weighs.`
-    : correctingSession != null
-      ? `Correcting session ${correctingSession} · nothing is overwritten - this is recorded alongside what you said then.`
-      : null
 
   /**
    * WHAT HAPPENS TO WHAT YOU WRITE, BEFORE YOU ARE ASKED ANYTHING. (G40)
@@ -1226,14 +1144,8 @@ export function ChatPage() {
     )
   }
 
-  /**
-   * ROUND 6, ITEM 2: WHAT THE "WHAT THIS CHECK-IN IS ABOUT, AND WHAT YOU SAID LAST TIME" PANEL
-   * HOLDS, COMPUTED ONCE FOR BOTH THE LINK'S OWN "IS THERE ANYTHING TO OPEN" CHECK AND THE PANEL.
-   */
-  const hasAboutContent = !!brief && !!(brief.subject || brief.says || brief.objectives.length > 0)
-  const priorRecordLines = priorRecordEntries
-    .flatMap(s => s.entries.map(e => ({ session: s.sessionNumber, type: e.type, text: asTheirWords(e.text), raw: e.text })))
-    .filter(l => l.text && !isTheEnginesOwnNote(l.raw))
+  /* Only answers the server has acknowledged count: an echo of a send that never landed is not an answer. */
+  const anAnswerHasLanded = msgs.some((m) => m.role === 'PERSON' && !String(m.id).startsWith('local-'))
 
   /* Fills the screen exactly, so the composer sits at the bottom of the phone and the transcript scrolls inside. */
   return (
@@ -1266,36 +1178,11 @@ export function ChatPage() {
         backTitle="Leave this session. Everything you have said is already saved."
         header={(
                 <TheCheckInHeader
-                  /**
-                    * ROUND 6, ITEM 1: THE CHECK-IN'S OWN NAME, THE PROTOTYPE'S SHAPE.
-                    * check-in-start.txt: "Sales team check-in" (bold), "About two minutes" under
-                    * it, Pause on the right - "Your check-in" named no check-in at all. The
-                    * estimate is honest about what it is measuring (this one conversation, not
-                    * the record it draws on), so it applies the same way to every check-in.
-                    *
-                    * REVIEW ROUND 3, ITEM 7: APPENDING " check-in" READ AS "Sales team, Q3
-                    * check-in" - a name ending in a comma-joined part, with a second noun stuck on
-                    * after the comma reads worse than the fragment it was meant to fix. The
-                    * prototype's own title, "Sales team check-in", IS the check-in's name (a
-                    * check-in's `label` already names it that way in the prototype's data, not
-                    * "Sales team" plus a suffix this screen adds). Simplest: the check-in's own
-                    * name, exactly as it is, with nothing appended.
-                    */
+                  /* The check-in's own name, as the prototype has it, and End session, small and quiet, always on screen (Hafsah,
+                     3 November evening). Before any answer has landed, ending it is saying no to this session, so it asks first. */
                   title={checkInName || 'Your check-in'}
-                  underTitle={
-                    done && !completed && !declined
-                      ? 'That’s everything for today'
-                      : correctingSession != null
-                        ? `Correcting session ${correctingSession}`
-                        : isFinalSession
-                          ? `Closing session ${sessionNumber}. This is your final account.`
-                          : takes
-                  }
-                  mayPause={opened && !completed && !declined}
-                  /* Not in the bare frame: the only control on that screen should not lead out of the thing
-                     they came to do. See the-link-opens-on-the-question. Skipping is still offered. */
-                  onStopForNow={bareFrame ? undefined : leave}
-                  onSkip={() => setConfirmingDecline(true)}
+                  onEnd={opened && !done && !completed && !declined ? () => (anAnswerHasLanded ? complete.mutate(true) : setConfirmingDecline(true)) : undefined}
+                  ending={complete.isPending}
                 />
         )}
         banners={(
@@ -1325,66 +1212,8 @@ export function ChatPage() {
         bodyRef={msgsRef}
         footer={(
                   <div>
-                    {/**
-                      * ROUND 6, ITEM 3: THE GREY STRIP IS GONE.
-                      *
-                      * `background: 'var(--gw-bg)'` with its own `borderBottom` drew a visibly
-                      * separate grey band between the last message and the composer - the
-                      * prototype has none. The row stays (it still carries a real sentence when
-                      * closing or correcting a session, and "Set the context"/"Add people" for
-                      * whoever runs it - both real fixes for reported complaints, not decoration),
-                      * just on the page's own white now, not banded off from it.
-                      */}
-                    <div className="gwui-ci-footer-strip">
-                      {/* Always the spacer, whether or not there is a sentence to put in it: the buttons after
-                          it are laid out against this flex item, not against whether it has words in it. */}
-                      <span className="gwui-ci-footer-note">{privacyLabel}</span>
-                      {/*
-                        * THE TWO THINGS A PERSON KEEPS ASKING FOR, WHERE THEY ARE ASKING FOR THEM.
-                        *
-                        * Reported twice, the second time with "I told you to fix this": "the chat didn't ask
-                        * me who is involved or tell me i can set context or add people later", and "if someone
-                        * else is checking in and then others check in against it, the place to set context is
-                        * not very good and you are not told you can set context on a tab".
-                        *
-                        * Both exist. The check-in has a Context tab and a Setup tab, and neither is mentioned
-                        * anywhere in the conversation - so somebody sitting in the chat, realising the context
-                        * is thin or that the people who should answer are missing, has no idea either is a
-                        * click away. A tab nobody is told about is a tab nobody uses.
-                        *
-                        * Put in the privacy strip rather than in the model's mouth: an instruction to mention
-                        * it would fire whenever the model felt like it, and this is true on every turn of
-                        * every session. Quiet, always there, and it goes to the tab rather than describing it.
-                        */}
-                      {/*
-                        BOTH OF THESE ARE THE LEAD'S, AND EVERYBODY WAS OFFERED THEM.
-
-                        Walked as a participant: her chat carries "Set the context" and "Add people". The
-                        first goes to a Context page that tells her "you cannot change this here"; the second
-                        goes to Setup, which opens with "Nothing on this page is yours to change". Two
-                        controls offered to somebody, both leading to a page that refuses them - which is
-                        worse than not offering, because she has to go and find out.
-
-                        A participant is not short of things to do here: the one thing that IS hers is her
-                        own record, and it is already a tab.
-                      */}
-                      {groundId && isInitiator && (
-                        <span className="gwui-ci-footer-links">
-                          <button
-                            onClick={() => navigate(`/grounds/${groundId}?tab=context`)}
-                            className="gwui-ci-footer-link"
-                          >
-                            Set the context
-                          </button>
-                          <button
-                            onClick={() => navigate(`/grounds/${groundId}?tab=settings`)}
-                            className="gwui-ci-footer-link"
-                          >
-                            Add people
-                          </button>
-                        </span>
-                      )}
-                    </div>
+                    {/* No line above the box (Hafsah, 3 November evening): a closing or correcting session is named in the first message, and
+                        the lead's context and people are on the check-in's own tabs. */}
                     {/*
                       THE COMPOSER, THE SHAPE EVERY PERSON ALREADY KNOWS. 18 September 2026, her words: "the
                       chat box is small and hard to engage, we need to make it look like you are on whatsapp."
@@ -1440,11 +1269,6 @@ export function ChatPage() {
                             >
                               Paste text
                             </button>
-                            {/* The prototype's own sentence for a new document (U.7, Add a document), and the
-                                server's rule: a document starts private to its uploader (who-can-see-a-document). */}
-                            <div className="gwui-ci-attach-note">
-                              It starts private to you. You choose who can read it.
-                            </div>
                           </>
                         ) : undefined}
                       />
@@ -1466,21 +1290,6 @@ export function ChatPage() {
                         >
                           sign in with your email
                         </button>.
-                      </div>
-                    )}
-                    {/*
-                     * "CONNECT WHATSAPP" (decision 106): an optional convenience, drawn only when
-                     * served - one quiet line near the composer, never in its way. Groundwork
-                     * already writes to the person's saved number; this is only for saying hello
-                     * back, so it never reads as something the person must do to answer.
-                     */}
-                    {/* The prototype's own words for it (B3, the check-in): "Answer on WhatsApp instead", a quiet button.
-                        The session started here carries on there: the next message on WhatsApp continues this one. */}
-                    {/* With the line Hafsah asked for (fix list, item 5): "You can also check in on WhatsApp." */}
-                    {connectWhatsApp && (
-                      /* Inside the composer's own side padding, not against the screen's edge on a phone. */
-                      <div className="gwui-composer-aside">
-                        <CheckInOnWhatsApp link={connectWhatsApp.link} label={ANSWER_ON_WHATSAPP_INSTEAD} testId="answer-on-whatsapp" />
                       </div>
                     )}
                   </div>
@@ -1505,102 +1314,10 @@ export function ChatPage() {
                 {/* Said only once the wait is long enough to need explaining (U.8 review): opening a
                     session runs several model calls and can take up to a minute with nothing else on
                     screen, which read as a hang. */}
-                {openingIsSlow && (
-                  <div className="gwui-panel-text-muted">{GETTING_YOUR_FIRST_QUESTION_READY}</div>
-                )}
               </div>
             </Bubble>
           )}
 
-          {/*
-            ROUND 6, ITEM 2: "WHAT THIS CHECK-IN IS ABOUT" AND "WHAT YOU SAID LAST TIME" FOLD
-            BEHIND ONE QUIET LINK.
-
-            The prototype starts straight with Groundwork's first turn (check-in-start.jpg) - two
-            cards above it, with their own capitalised headings, are not there. Both still carry
-            real things the person may want before answering (an objective they have never seen
-            elsewhere; what they said last time, so they are not asked to repeat it) - dropping
-            them would be the wall an-objective-nobody-has-seen.spec.ts and
-            what-you-said-last-time were written against. So they are reachable, not gone: one
-            plain link above the first turn opens a panel with both, built from the parts
-            (Modal), rather than sitting open on screen before anyone has typed a word.
-
-            NOT IN THE BARE FRAME, same reason as before: a team update's link opens on the
-            question, and a card - or now a link - above it says something before anybody has
-            typed a word. See the-link-opens-on-the-question.
-          */}
-          {!bareFrame && (hasAboutContent || priorRecordLines.length > 0) && (
-            <button
-              type="button"
-              onClick={() => setShowAboutPanel(true)}
-              className="gw-link t-small gw-start"
-            >
-              What this check-in is about, and what you said last time
-            </button>
-          )}
-          {showAboutPanel && (
-            <Modal title="What this check-in is about, and what you said last time" onClose={() => setShowAboutPanel(false)}>
-              {/*
-                RE-REVIEW: THE FIRST HEADING REPEATED THE POP-UP'S OWN TITLE. "What this check-in
-                is about" said, word for word, the first half of the title right above it
-                ("What this check-in is about, and what you said last time"). This block is now a
-                plain section with no heading of its own; "What you said last time" below keeps
-                its heading, since that is genuinely the title's other half and there is content
-                between the two.
-              */}
-              {hasAboutContent && (
-                <div className="gwui-ci-about">
-                  {brief!.subject && (
-                    <p className="gwui-ci-subject">{brief!.subject}</p>
-                  )}
-                  {/*
-                    THE ENGINE'S OWN COLON SENTENCE, UNCHANGED. "The goals on this check-in: …; …"
-                    is the engine's own sentence (request 40 already asks it to write it as a plain
-                    sentence) - not reworded here.
-                  */}
-                  {brief!.says && (
-                    <p className="gwui-panel-text">{brief!.says}</p>
-                  )}
-                  {/*
-                    REVIEW ROUND 3, ITEM 7: THE GOALS WERE LISTED TWICE. `brief.says` already names
-                    every shared (and, for its owner, personal) goal in prose whenever it is
-                    present - `whatAParticipantIsToldAboutThis` (api/src/modules/grounds) builds it
-                    from the same objectives this structured list draws from. So this list, which
-                    exists to catch an objective the prose might leave out (it never truncates,
-                    where `says` caps at four), only draws when there is no prose to have already
-                    said them - the one case an objective could otherwise go unseen. Renamed to a
-                    full sentence, not a screen-authored colon label.
-                  */}
-                  {brief!.objectives.length > 0 && !brief!.says && (
-                    <>
-                      <p className="gwui-panel-text-muted">These are the goals on record.</p>
-                      {brief!.objectives.map((o, i) => (
-                        <p key={i} className="gwui-panel-text">
-                          {o.name}{o.target != null ? ` (${o.target.toLocaleString('en-US')})` : ''}
-                        </p>
-                      ))}
-                    </>
-                  )}
-                  {brief!.alsoSay && (
-                    <p className="gwui-panel-text-muted">{brief!.alsoSay}</p>
-                  )}
-                  {!direct && <p className="gwui-panel-text-muted">Answer in your own words. You are not expected to agree with any of it.</p>}
-                </div>
-              )}
-              {priorRecordLines.length > 0 && (
-                <Section heading="What you said last time">
-                  <div className="gwui-ci-record-list">
-                    {priorRecordLines.map((l, i) => (
-                      <div key={i} className="gwui-ci-record-line">
-                        <span className="gwui-panel-text">{l.text}</span>
-                        <Tag tone="plain">{RECORD_ENTRY_LABELS[l.type] ?? l.type}</Tag>
-                      </div>
-                    ))}
-                  </div>
-                </Section>
-              )}
-            </Modal>
-          )}
           {priorTurns.length > 0 && (
             <div className="gwui-ci-prior">
               <div className="gwui-ci-prior-label">
@@ -1657,14 +1374,7 @@ export function ChatPage() {
                  * already has its own enclosing `Bubble` (the one this content sits inside), so
                  * the indicator draws only its sentence and dots, not a second bubble around them.
                  */
-                <>
-                  <GroundworkIsWriting wrap={false} />
-                  {waitedAWhile && (
-                    <span role="status" className="gwui-ci-dot-note">
-                      {STILL_READING_WHAT_YOU_WROTE}
-                    </span>
-                  )}
-                </>
+                <GroundworkIsWriting wrap={false} />
               ) : nothingInternalReachesTheBubble(m.content)}
               {streamingId === m.id && (
                 <span className="gwui-ci-caret" />
@@ -1672,17 +1382,6 @@ export function ChatPage() {
             </Bubble>
             )
           ))}
-          {/*
-            THE ENGINE'S SUGGESTED ANSWERS, UNDER THE LATEST QUESTION ONLY (check-in-start.txt). Not
-            while its words are still arriving, and not once the conversation has closed: the end card
-            has its own two buttons. Pressing one sends it as the answer, exactly as if it were typed.
-          */}
-          {(() => {
-            const last = displayedMsgs[displayedMsgs.length - 1]
-            if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
-            if (loading || done || completed || declined || !opened) return null
-            return <SuggestedAnswers answers={last.suggestedAnswers} onPick={pickSuggestion} />
-          })()}
           {/*
             PIECE 21: THE YES TO CAPTURE AN IDEA FOR THE TEAM (plan section 5 row 21; decision 96,
             item 10). The same gate as the suggested answers above: not while its words are still
@@ -1792,23 +1491,6 @@ export function ChatPage() {
               refusal below still hands the composer back in plain words on an early press either
               way - that part of the fourth review's fix stands - but the offer itself now waits
               for the one floor everybody reads. */}
-          {/*
-            END SESSION, ALWAYS THERE (Hafsah, 26 October 2026). From the first message, on the web and the phone layout alike. What was
-            said is kept and the next session picks up what is missing; with nothing said yet the server says so and the check-in stays open.
-          */}
-          {!done && !completed && !declined && opened && (
-            <div className="gwui-ci-finish-wrap">
-              {/*
-                SCREEN FAULT 3: A 32px TEXT LINK WAS THE ONLY WAY FORWARD HERE, BELOW THE 40px
-                FLOOR EVERY TAPPABLE CONTROL ON A PHONE NEEDS. `Button` (components/gw/ui) is
-                44px tall at every width, the same shared part every other action on this page
-                already uses, so this one no longer needs its own undersized class.
-              */}
-              <button type="button" className="gw-link" onClick={() => complete.mutate(true)} disabled={complete.isPending}>
-                {complete.isPending ? 'Ending…' : 'End session'}
-              </button>
-            </div>
-          )}
           {declined && (
             <div className="gwui-stack-10">
               <div className="gwui-ci-settled-box">
@@ -1855,8 +1537,7 @@ export function ChatPage() {
             </div>
           )}
 
-          {/* The way to say no is under Pause now, in the header (check-in-start.txt), where it is
-              present on every turn and still one step from final: the confirm above spells it out. */}
+          {/* The way to say no is End session before any answer has landed, in the header, one step from final: the confirm above spells it out. */}
 
           {completed && groundId && checkInId && (
             <div className="gwui-stack-10">

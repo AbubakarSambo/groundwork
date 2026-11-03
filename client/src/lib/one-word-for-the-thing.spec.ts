@@ -185,8 +185,9 @@ describe('and the two words stay distinct', () => {
      * ${correctingSession}" for the two cases that DO have something to say about the session, so
      * this now pins one of those instead of the sentence that was removed.
      */
-    const chat = readFileSync(join(SRC, 'pages/chat/ChatPage.tsx'), 'utf8')
-    expect(chat).toMatch(/[Cc]losing session \$\{sessionNumber\}/)
-    expect(chat).toMatch(/[Cc]orrecting session \$\{correctingSession\}/)
+    /* Changed 3 November evening: the check-in page no longer says anything about the session (Hafsah: no explanation lines), so the
+       word is pinned where a person still reads it, on the finished check-in: "Session 3 of 12". */
+    const finished = readFileSync(join(SRC, 'components/gw/TheCheckInYouJustFinished.tsx'), 'utf8')
+    expect(finished).toContain('{`Session ${sessionNumber}${d?.plannedSessions ? ` of ${d.plannedSessions}` : \'\'}`}')
   })
 })

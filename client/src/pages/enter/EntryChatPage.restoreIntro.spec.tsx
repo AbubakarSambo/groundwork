@@ -74,6 +74,6 @@ describe('GW-003: restoring a conversation after refresh', () => {
   it('leaves a way to carry on answering', async () => {
     renderPage()
     await waitFor(() => expect(screen.getByText(/Got it, a new project/i)).toBeTruthy())
-    expect(screen.getByPlaceholderText(/Type your response/i)).toBeTruthy()
+    expect(screen.getByPlaceholderText(/Type your answer/)).toBeTruthy()
   })
 })

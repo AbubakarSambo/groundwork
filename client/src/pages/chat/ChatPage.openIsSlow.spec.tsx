@@ -69,8 +69,8 @@ describe('opening a session that is taking a while', () => {
     expect(region?.querySelector('.gwui-writing-dots')).toBeTruthy()
   })
 
-  /* Hafsah, 30 October 2026: plain language for an impatient first-time lead; one short line that never says how long it takes. */
-  it('says what it is doing once the wait has gone on a few seconds, and never how long it takes', async () => {
+  /* Changed 3 November evening (Hafsah: no explanation lines): a long wait adds no line; "Groundwork is writing…" and its dots say it. */
+  it('adds no line once the wait has gone on a few seconds, and never says how long it takes', async () => {
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'NOT_STARTED', sessionNumber: 1, groundId: 'g1' },
       turns: [],
@@ -81,7 +81,8 @@ describe('opening a session that is taking a while', () => {
     await screen.findByText('Groundwork is writing…')
     await vi.advanceTimersByTimeAsync(5_000)
 
-    expect(await screen.findByText('Getting your first question.')).toBeTruthy()
+    expect(screen.getByText('Groundwork is writing…')).toBeTruthy()
+    expect(screen.queryByText('Getting your first question.')).toBeNull()
     expect(document.body.textContent).not.toMatch(/minute or two|can take/i)
   })
 

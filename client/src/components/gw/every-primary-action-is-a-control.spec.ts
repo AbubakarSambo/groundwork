@@ -89,7 +89,9 @@ describe('a glyph carries a name', () => {
        two expressions on the same JSX line is still real text, not a CSS gap. */
     /* Setup page review, 13 October: the chip's words are built by thePlanInTheHeader (it says the
        rhythm instead of a count when there is no end); the space is still in the string. */
-    expect(read('pages/enter/EntryChatPage.tsx')).toMatch(/\{thePlanInTheHeader\(\{ planned: plannedNow,/)
+    /* The header chip is gone from setup (Hafsah, 3 November evening); the words it was built from are still TheSetup's, and still
+       carry their space in the string. */
+    expect(read('pages/enter/EntryChatPage.tsx')).not.toContain('thePlanInTheHeader(')
     expect(read('pages/enter/TheSetup.tsx')).toContain("return `${a.planned} ${a.planned === 1 ? 'check-in planned' : 'check-ins planned'}`")
   })
   it('TextAction lives in the kit and AuthPage does not keep its own', () => {

@@ -19,7 +19,7 @@ describe('the lead can attach a file in setup, and in every check-in', () => {
     expect(entry.match(/accept=\{UPLOAD_ACCEPT_ATTR\}/g)?.length).toBeGreaterThanOrEqual(2)
   })
   it('the first-check-in part of setup has the attach button beside the typing box', () => {
-    const at = entry.indexOf('placeholder="Type your response."')
+    const at = entry.indexOf('placeholder="Type your answer"', entry.indexOf('gwui-ec-checkin-composer-wrap'))
     expect(entry.slice(at, at + 600)).toContain('onPlus={() => fileRef.current?.click()}')
   })
   it('the check-in chat always shows its attach button', () => {

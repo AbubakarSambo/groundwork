@@ -4,7 +4,6 @@ import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
 import { Bubble } from '@/components/gw/ui/Bubble'
 import { ConversationCard } from '@/components/gw/ui/ConversationCard'
 import { Composer } from '@/components/gw/ui/Composer'
-import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
 import '@/components/gw/ui/gw-ui.css'
 
@@ -32,10 +31,6 @@ import '@/components/gw/ui/gw-ui.css'
 const OPENING_QUESTION =
   'Good news first: last week you said Lakeside’s buyer would meet you on the 29th. The buyer has now confirmed the meeting. That is in your record. Now, yesterday you said Green Mart wanted a quote. What happened?'
 
-const OPENING_SUGGESTIONS = [
-  'Sent it. They liked it but want to wait until after December.',
-  'Not yet',
-]
 
 type FixedMsg = { role: 'AI' | 'PERSON'; content: string }
 
@@ -87,16 +82,12 @@ function noop() {
     turn as a Bubble, in a ConversationCard, same as the real page. */
 function ConversationFrame({
   title,
-  underTitle,
   turns,
-  suggestions,
   endCard,
   maxWidth,
 }: {
   title: string
-  underTitle: string | null
   turns: FixedMsg[]
-  suggestions?: string[]
   endCard?: boolean
   maxWidth?: number
 }) {
@@ -108,20 +99,7 @@ function ConversationFrame({
         onBack={noop}
         backTitle="Leave this session. Everything you have said is already saved."
         header={(
-          <TheCheckInHeader
-            title={title}
-            underTitle={underTitle}
-            /*
-              GROUP 3 REVIEW, BATCH B: this used to hide Pause once the end card was showing
-              (`mayPause={!endCard}`). check-in-end-card.jpg keeps "Pause" in the header - the
-              real ChatPage.tsx already does the same (its `mayPause` only turns off once the
-              session is `completed` or `declined`, not merely `done`), so this preview was
-              the one place out of step with its own prototype source.
-            */
-            mayPause
-            onStopForNow={noop}
-            onSkip={noop}
-          />
+          <TheCheckInHeader title={title} onEnd={noop} />
         )}
         footer={(
           <Composer
@@ -141,7 +119,6 @@ function ConversationFrame({
             {m.content}
           </Bubble>
         ))}
-        {suggestions && <SuggestedAnswers answers={suggestions} onPick={noop} />}
         {endCard && (
           <TheEndCard
             engine={{ inYourRecord: END_CARD_RECORD, next: END_CARD_NEXT }}
@@ -178,9 +155,7 @@ export default function ConversationPreviewPage() {
         </h2>
         <ConversationFrame
           title="Sales team check-in"
-          underTitle="About ten minutes"
           turns={[{ role: 'AI', content: OPENING_QUESTION }]}
-          suggestions={OPENING_SUGGESTIONS}
         />
 
         <div style={{ height: 40 }} />
@@ -190,9 +165,7 @@ export default function ConversationPreviewPage() {
         </h2>
         <ConversationFrame
           title="Sales team check-in"
-          underTitle="About ten minutes"
           turns={[{ role: 'AI', content: OPENING_QUESTION }]}
-          suggestions={OPENING_SUGGESTIONS}
           maxWidth={375}
         />
 
@@ -203,7 +176,6 @@ export default function ConversationPreviewPage() {
         </h2>
         <ConversationFrame
           title="Sales team check-in"
-          underTitle="That’s everything for today"
           turns={END_CARD_TURNS}
           endCard
         />

@@ -143,13 +143,16 @@ describe('the law firm lead on a phone, 375px wide, while she is still talking',
   })
   afterEach(() => { window.matchMedia = wide })
 
-  /* Changed in F5 (stage 3): on a phone the panel is one line above the conversation, which opens it; the box opens from Change. */
+  /* Changed in F5 (stage 3): on a phone the panel is one line above the conversation, which opens it; the box opens from Change.
+     Changed 3 November evening: the line is Hafsah's "4 people · Sales team" form, with no count of what is set, and it is pinned
+     above the conversation rather than scrolling away with it. */
   it('reads one line above the conversation, opens it, and reaches the one team box from Change', async () => {
     seedHerSetup()
     open()
-    const line = await screen.findByText('0 of 4 set. 0 people.')
-    expect(line.tagName).toBe('SUMMARY')
-    expect(line.closest('.gwui-ec-messages')).toBeTruthy()
+    await waitFor(() => expect(document.querySelector('details.gwui-ec-panel-line > summary')).toBeTruthy())
+    const line = document.querySelector('details.gwui-ec-panel-line > summary') as HTMLElement
+    expect(line.textContent).not.toMatch(/of 4 set/)
+    expect(line.closest('.gwui-ec-messages')).toBeNull()
     expect(document.querySelector('.gw-fills-in')).toBeNull()
     fireEvent.click(line)
     fireEvent.click(screen.getByRole('button', { name: 'Change' }))
@@ -160,8 +163,8 @@ describe('the law firm lead on a phone, 375px wide, while she is still talking',
     const lines = NAMED.map((n) => `${n}, ${n.split(' ')[0].toLowerCase()}@law.test`).join('\n')
     fireEvent.change(box, { target: { value: lines } })
     expect(JSON.parse(localStorage.getItem('gw_entry_session')!).teamText).toBe(lines)
-    expect(screen.getByText('1 of 4 set. 4 people.')).toBeTruthy()
+    expect(line.textContent).toMatch(/^4 people/)
     /* The conversation goes on below it. */
-    expect(screen.getByPlaceholderText('Type your response, or add a document.')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Type your answer')).toBeTruthy()
   })
 })

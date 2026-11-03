@@ -48,7 +48,7 @@ function openAnchorArrival() {
 }
 
 async function sendOnboardingMessage(text: string) {
-  const box = await screen.findByPlaceholderText('Type your response, or add a document.')
+  const box = await screen.findByPlaceholderText('Type your answer')
   fireEvent.change(box, { target: { value: text } })
   fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
 }

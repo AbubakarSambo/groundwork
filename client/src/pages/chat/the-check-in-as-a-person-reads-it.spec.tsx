@@ -105,58 +105,44 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
+/** The person types their answer in the one box and sends it, as they do now that there are no suggested answers. */
+async function typeAndSend(text: string) {
+  const box = await findByRole('textbox', { name: 'Your answer' }, { timeout: 6000 })
+  await waitFor(() => expect((box as HTMLTextAreaElement).disabled).toBe(false))
+  fireEvent.change(box, { target: { value: text } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
+}
+
+/* Changed 3 November evening (Hafsah: "only the conversation ... one box ... and 'End session', small and quiet, always visible"): the
+   header is the check-in's name and End session. "About two minutes" and the Pause menu are gone; Stop for now is the back link, and
+   skipping is End session before any answer has landed, which still asks first and says what follows. */
 describe('the header', () => {
-  /**
-   * ROUND 6, ITEM 1: THE CHECK-IN'S OWN NAME, THE PROTOTYPE'S SHAPE (check-in-start.txt:
-   * "Sales team check-in", bold, "About ten minutes" under it, Pause on the right). "Your
-   * check-in" named no check-in at all.
-   *
-   * REVIEW ROUND 3, ITEM 7: NO " check-in" APPENDED. "Sales team, Q3 check-in" reads worse than
-   * the fragment it replaced - a name ending in a comma-joined part with a second noun stuck on
-   * after the comma. The prototype's own title ("Sales team check-in") IS a check-in's name; this
-   * one's name happens to be "Sales team, Q3", so that is the whole title, nothing appended.
-   */
-  it('names the check-in in the heading, and on the way back, with Pause', async () => {
+  it('names the check-in in the heading, and on the way back, with End session and nothing under the name', async () => {
     renderChat()
     expect(await findByRole('button', { name: '← Sales team, Q3' }, { timeout: 5000 })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Sales team, Q3' })).toBeTruthy()
-    expect(await findByRole('button', { name: 'Pause' })).toBeTruthy()
+    expect(await findByRole('button', { name: 'End session' })).toBeTruthy()
     expect(await findByText(OPENING, {}, { timeout: 5000 })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull()
+    expect(screen.queryByText('About two minutes')).toBeNull()
+    expect(screen.queryByText(/What this check-in is about/)).toBeNull()
   })
 
-  /**
-   * ROUND 6, ITEM 1: REVERSED FROM "DOES NOT PROMISE HOW LONG IT TAKES".
-   *
-   * That rule held while the header said "Your check-in": a fixed two-minute promise read as a
-   * claim about the RECORD behind a check-in, which is not true for every one of them (a
-   * probation review, for one). Hafsah's own read of the prototype at 1440 asked for it back -
-   * the estimate is about this ONE CONVERSATION, not the record, which is true the same way for
-   * every check-in, so it is honest to say plainly, as the prototype does.
-   */
-  it('says about how long the conversation takes', async () => {
+  it('the way back leaves with everything saved, and declines nothing', async () => {
     renderChat()
-    await findByText(OPENING, {}, { timeout: 5000 })
-    expect(screen.getByText('About two minutes')).toBeTruthy() /* F5: the measured length, from its one owner */
-  })
-
-  it('Pause offers to stop for now, which leaves with everything saved', async () => {
-    renderChat()
-    fireEvent.click(await findByRole('button', { name: 'Pause' }, { timeout: 5000 }))
-    const menu = screen.getByRole('menu')
-    expect(within(menu).getByText('Stop for now')).toBeTruthy()
-    expect(within(menu).getByText('Everything you have said is saved. You can come back to it any time.')).toBeTruthy()
-    fireEvent.click(within(menu).getByRole('menuitem', { name: /Stop for now/ }))
+    fireEvent.click(await findByRole('button', { name: '← Sales team, Q3' }, { timeout: 5000 }))
     expect(await findByText('The check-in’s own page')).toBeTruthy()
     expect(conversationApi.decline).not.toHaveBeenCalled()
   })
 
-  it('Pause offers to skip, and skipping still asks first and says what follows', async () => {
+  it('End session before any answer asks first and says what follows, as skipping did', async () => {
     renderChat()
-    fireEvent.click(await findByRole('button', { name: 'Pause' }, { timeout: 5000 }))
-    fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: /Skip this check-in/ }))
+    await findByText(OPENING, {}, { timeout: 5000 })
+    fireEvent.click(await findByRole('button', { name: 'End session' }))
     expect(await findByText('Not taking part in this session?')).toBeTruthy()
     expect(screen.getByText('The report will say you declined. It will not guess at what you would have said.')).toBeTruthy()
     expect(conversationApi.decline).not.toHaveBeenCalled()
+    expect(conversationApi.complete).not.toHaveBeenCalled()
   })
 
   it('the old underlined way to decline is gone from under the conversation', async () => {
@@ -166,68 +152,17 @@ describe('the header', () => {
   })
 })
 
-describe('suggested answers under the question', () => {
-  it('shows the engine’s suggested answers under the latest question, as buttons', async () => {
-    ;(conversationApi.transcript as any).mockResolvedValue({
-      checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
-      turns: [{ id: 't1', role: 'AI', content: OPENING, suggestedAnswers: ['Sent it. They liked it but want to wait until after December.', 'Not yet'] }],
-    })
-    renderChat()
-    const group = await findByRole('group', { name: 'Suggested answers' }, { timeout: 6000 })
-    expect(within(group).getByRole('button', { name: 'Sent it. They liked it but want to wait until after December.' })).toBeTruthy()
-    expect(within(group).getByRole('button', { name: 'Not yet' })).toBeTruthy()
-  })
-
-  it('pressing one sends it as the answer, and the next question brings its own', async () => {
+/* Was "suggested answers under the question": the engine sends none since 3 November, and the screen draws none (Hafsah, 3 November
+   evening: "no ... suggested answers"). The person types, as the prototype shows. */
+describe('no suggested answers under the question', () => {
+  it('draws none even when a turn carries some', async () => {
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
       turns: [{ id: 't1', role: 'AI', content: OPENING, suggestedAnswers: ['Not yet'] }],
     })
-    ;(conversationApi.send as any).mockResolvedValue({ reply: 'So they will buy after this quarter ends. Did they give you a date?', suggestedAnswers: ['They said January'] })
     renderChat()
-    fireEvent.click(await findByRole('button', { name: 'Not yet' }, { timeout: 6000 }))
-    await waitFor(() => expect(conversationApi.send).toHaveBeenCalledWith('ci1', 'Not yet'))
-    expect(await findByRole('button', { name: 'They said January' }, { timeout: 6000 })).toBeTruthy()
+    await findByText(OPENING, {}, { timeout: 5000 })
     expect(screen.queryByRole('button', { name: 'Not yet' })).toBeNull()
-  })
-
-  /**
-   * A SUGGESTION CONTAINING "..." IS A SHAPE TO FINISH, NOT A THING TO SEND (round 3, item C).
-   *
-   * docs/conversation-standard.md, point 6: the engine's suggestions are "a help, never a limit".
-   * Some of them are a shape with a gap the engine cannot fill in for the person - a name, a
-   * number, a date - marked "...". Pressing one of those must not send an ellipsis into the
-   * record; it puts the words in the box instead, with the "..." itself selected so typing
-   * immediately replaces it.
-   */
-  it('a suggestion with "..." fills the box instead of sending, with the gap selected', async () => {
-    ;(conversationApi.transcript as any).mockResolvedValue({
-      checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
-      turns: [{ id: 't1', role: 'AI', content: OPENING, suggestedAnswers: ['I met them on ... and they said ...'] }],
-    })
-    renderChat()
-    fireEvent.click(await findByRole('button', { name: 'I met them on ... and they said ...' }, { timeout: 6000 }))
-    await settle()
-    expect(conversationApi.send).not.toHaveBeenCalled()
-    const box = screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement
-    expect(box.value).toBe('I met them on ... and they said ...')
-    expect(document.activeElement).toBe(box)
-    expect(box.selectionStart).toBe('I met them on '.length)
-    expect(box.selectionEnd).toBe('I met them on '.length + 3)
-    // The suggestion stays offered - the person may still press it again, or another one, or type.
-    expect(screen.getByRole('button', { name: 'I met them on ... and they said ...' })).toBeTruthy()
-  })
-
-  it('and an ordinary suggestion with no gap still sends immediately, as before', async () => {
-    ;(conversationApi.transcript as any).mockResolvedValue({
-      checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
-      turns: [{ id: 't1', role: 'AI', content: OPENING, suggestedAnswers: ['Not yet'] }],
-    })
-    renderChat()
-    fireEvent.click(await findByRole('button', { name: 'Not yet' }, { timeout: 6000 }))
-    await waitFor(() => expect(conversationApi.send).toHaveBeenCalledWith('ci1', 'Not yet'))
-    const box = screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement
-    expect(box.value).toBe('')
   })
 
   it('draws nothing when the engine sends none, and the three fixed chips are gone', async () => {
@@ -299,12 +234,13 @@ describe('the yes to capture an idea for the team', () => {
 })
 
 describe('the + button', () => {
-  it('offers a photo or a document, or text, and says who can read it', async () => {
+  /* Changed 3 November evening: no privacy notes on screens; the server still keeps a new document private to whoever added it. */
+  it('offers a photo or a document, or text, with no note about who can read it', async () => {
     renderChat()
     fireEvent.click(await findByRole('button', { name: 'Add a photo, a document or some text' }, { timeout: 5000 }))
     expect(screen.getByText('Add a photo or a document')).toBeTruthy()
     expect(screen.getByText('Paste text')).toBeTruthy()
-    expect(screen.getByText('It starts private to you. You choose who can read it.')).toBeTruthy()
+    expect(screen.queryByText('It starts private to you. You choose who can read it.')).toBeNull()
   })
 
   it('the paste panel says plainly what it is for, in full sentences, not work jargon (U.8 review)', async () => {
@@ -360,7 +296,7 @@ describe('the end card, once Groundwork has closed the conversation', () => {
   }
   async function answerTheLastQuestion(expectToRead: string = SHORTENED) {
     renderChat()
-    fireEvent.click(await findByRole('button', { name: 'I’ll visit Westgate Deli on Friday' }, { timeout: 6000 }))
+    await typeAndSend('I’ll visit Westgate Deli on Friday')
     await findByText(expectToRead, {}, { timeout: 6000 })
   }
 
@@ -385,10 +321,11 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     delete (conversationApi as any).endCard
   })
 
-  it('Miriam reads the header change, why answering matters, what happens next, and the two buttons', async () => {
+  /* Changed 3 November evening: the header no longer changes to "That’s everything for today"; the closing message says it. */
+  it('Miriam reads why answering matters, what happens next, and the two buttons, and no line under the header', async () => {
     closesOnTheNextAnswer()
     await answerTheLastQuestion()
-    expect(screen.getByText('That’s everything for today')).toBeTruthy()
+    expect(screen.queryByText('That’s everything for today')).toBeNull()
     /* The light prototype's s68 (sales-first.md, section 5): why answering matters and what happens next
        fold behind one line, and lose their numbers. */
     expect(screen.getByText('Why answering matters, and what happens next').closest('summary')).toBeTruthy()
@@ -512,7 +449,7 @@ describe('the Done page, after “That’s right, finish”', () => {
     ;(conversationApi.send as any).mockResolvedValue({ reply: 'That’s all for today. Is anything wrong?', sessionComplete: true })
     ;(conversationApi.complete as any).mockResolvedValue({ status: 'COMPLETED', whatChanged: opts.whatChanged })
     renderChat(opts.qc)
-    fireEvent.click(await findByRole('button', { name: 'I’ll visit Westgate Deli on Friday' }, { timeout: 6000 }))
+    await typeAndSend('I’ll visit Westgate Deli on Friday')
     fireEvent.click(await findByRole('button', { name: 'That’s right, finish' }, { timeout: 6000 }))
     await findByRole('heading', { name: 'Done. Thanks, Miriam.' }, { timeout: 6000 })
   }

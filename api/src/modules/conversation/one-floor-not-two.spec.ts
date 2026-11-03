@@ -33,7 +33,8 @@ describe('no floor of answers, anywhere', () => {
 
   it('and the screen waits on no count: End session is on from the first message', () => {
     const page = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'client', 'src', 'pages', 'chat', 'ChatPage.tsx'), 'utf8'));
-    expect(page).toMatch(/\{!done && !completed && !declined && opened && \(/);
+    /* Changed 3 November evening: End session is in the header now (Hafsah: small and quiet, always visible), on from the first message. */
+    expect(page).toMatch(/onEnd=\{opened && !done && !completed && !declined \?/);
     expect(page).not.toMatch(/\.length >= \d+ && \(/);
     expect(page).not.toMatch(/mayCompleteAfter/);
   });

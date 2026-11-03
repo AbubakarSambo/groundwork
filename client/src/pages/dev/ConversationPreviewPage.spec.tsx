@@ -61,8 +61,8 @@ describe('the conversation preview page calls nothing', () => {
     // (the start state, the phone-width state of the same screen, and again as the first turn
     // of the end card's full conversation) - the question only once each as a suggestion.
     expect(screen.getAllByText(/Good news first: last week you said Lakeside/).length).toBe(3)
-    expect(screen.getAllByText('Not yet').length).toBe(2)
-    expect(screen.getAllByText('Sent it. They liked it but want to wait until after December.').length).toBeGreaterThan(0)
+    /* No suggested answers under the question any more (Hafsah, 3 November evening). */
+    expect(screen.queryAllByText('Not yet')).toHaveLength(0)
 
     // The end card: its parts and both buttons. The light prototype's s68 renames the first part "What goes in
     // your record" and folds the other two behind one line, without their numbers (sales-first.md, section 5).
@@ -77,7 +77,8 @@ describe('the conversation preview page calls nothing', () => {
 
     // GROUP 3 REVIEW, BATCH B: check-in-end-card.jpg keeps "Pause" in the header, so it shows
     // in all three states drawn on this page, not only the two still in conversation.
-    expect(screen.getAllByText('Pause').length).toBe(3)
+    // Changed 3 November evening: End session, small and quiet, sits where Pause was, in every state's header.
+    expect(screen.getAllByText('End session').length).toBe(3)
 
     // The three headings, one per state.
     expect(screen.getByText(/As it opens/)).toBeTruthy()

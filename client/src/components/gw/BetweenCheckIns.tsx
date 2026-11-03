@@ -160,7 +160,7 @@ export function BetweenCheckIns({ groundLabel, myCheckIns, groundId, canChangeTh
     <div style={{ height: '100%', minHeight: 420, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ flex: 1, minHeight: 0 }}>
         <ConversationCard
-          header={<TheCheckInHeader title={groundLabel} underTitle={next.openId ? 'Your next check-in is open' : 'No check-in open right now'} mayPause={false} />}
+          header={<TheCheckInHeader title={groundLabel} underTitle={next.openId ? 'Your next check-in is open' : 'No check-in open right now'} />}
           footer={
             <Composer
               value={draft}

@@ -14,22 +14,18 @@ const nothingYet: WhatSetupKnows = {
   name: '', situation: '', cadence: 'FORTNIGHTLY', cadenceChosen: false, workingDays: [], startsOn: '', endsOn: '', mentioned: [], added: [],
 }
 
+/* Changed 3 November evening (Hafsah: "one quiet summary of what's been understood so far"): no "N of 7 set" count and no ticks.
+   An item is there once the engine has heard it. */
 describe('the panel, for an anchor draft', () => {
-  it('draws the ordinary four rows when no anchorItems is given', () => {
+  it('draws no anchor item when no anchorItems is given', () => {
     render(<FillsInAsYouTalk {...nothingYet} />)
-    expect(screen.getByText('0 of 4 set')).toBeTruthy()
     expect(screen.queryByText(ANCHOR_ITEM_LABELS.responsibleFor)).toBeNull()
   })
 
-  it('draws all seven items, unset, when anchorItems is given but empty', () => {
+  it('draws nothing it has not heard yet, when anchorItems is given but empty', () => {
     render(<FillsInAsYouTalk {...nothingYet} anchorItems={{}} />)
-    expect(screen.getByText('0 of 7 set')).toBeTruthy()
-    for (const label of Object.values(ANCHOR_ITEM_LABELS)) {
-      expect(screen.getByText(label)).toBeTruthy()
-    }
-    const rows = screen.getAllByRole('listitem')
-    expect(rows).toHaveLength(7)
-    expect(rows.every((r) => r.textContent?.startsWith('○'))).toBe(true)
+    for (const label of Object.values(ANCHOR_ITEM_LABELS)) expect(screen.queryByText(label)).toBeNull()
+    expect(document.body.textContent).not.toMatch(/of 7 set|[✓○]/)
   })
 
   it('fills each item in as the engine sends it, and never shows the four-row fields', () => {
@@ -42,14 +38,13 @@ describe('the panel, for an anchor draft', () => {
         howItContributes: 'Projects keep clients paying, which pays everyone.',
       }}
     />)
-    expect(screen.getByText('3 of 7 set')).toBeTruthy()
     expect(screen.getByText('Keeping the whole company moving, not just my own team.')).toBeTruthy()
     expect(screen.getByText('Everyone, not only sales.')).toBeTruthy()
     expect(screen.getByText('Projects keep clients paying, which pays everyone.')).toBeTruthy()
+    expect(screen.getByText(ANCHOR_ITEM_LABELS.responsibleFor)).toBeTruthy()
+    expect(screen.queryByText(ANCHOR_ITEM_LABELS.whyItBothersYou)).toBeNull()
     expect(screen.queryByText('How often')).toBeNull()
     expect(screen.queryByText('Who’s in it')).toBeNull()
-    const rows = screen.getAllByRole('listitem')
-    expect(rows.filter((r) => r.textContent?.startsWith('✓'))).toHaveLength(3)
-    expect(rows.filter((r) => r.textContent?.startsWith('○'))).toHaveLength(4)
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
   })
 })

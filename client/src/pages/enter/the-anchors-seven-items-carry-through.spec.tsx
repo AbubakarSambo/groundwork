@@ -60,7 +60,7 @@ function openAnchorArrival() {
 
 async function sendOnboardingMessage(text: string) {
   /* Fault 7 (live walk, 6 October 2026): placeholder shortened, so it is never clipped at 375px. */
-  const box = await screen.findByPlaceholderText('Type your response, or add a document.')
+  const box = await screen.findByPlaceholderText('Type your answer')
   fireEvent.change(box, { target: { value: text } })
   fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
 }
@@ -73,7 +73,8 @@ beforeEach(() => {
 })
 
 describe('the anchor’s seven items merge across turns', () => {
-  it('keeps what one turn heard once a later turn says nothing about it, and ticks the panel', async () => {
+  /* Changed 3 November evening: the summary has no "N of 7 set" count; it shows each item heard, which is what is checked now. */
+  it('keeps what one turn heard once a later turn says nothing about it, and shows it in the summary', async () => {
     onboardStream
       .mockResolvedValueOnce({
         reply: 'Who are you trying to move?',
@@ -94,13 +95,15 @@ describe('the anchor’s seven items merge across turns', () => {
 
     await sendOnboardingMessage('Nobody on my team sees how the renewals land.')
     await waitFor(() => expect(onboardStream).toHaveBeenCalledTimes(1))
-    await screen.findByText('2 of 7 set')
+    await screen.findByText('Keeping renewals on track')
+    expect(screen.getByText('My whole team')).toBeTruthy()
 
     await sendOnboardingMessage('The whole commercial team.')
     await waitFor(() => expect(onboardStream).toHaveBeenCalledTimes(2))
     // Both the two already heard, AND the new one: nothing heard before was lost by a turn that
     // said nothing about it.
-    await screen.findByText('3 of 7 set')
+    await waitFor(() => expect(screen.getAllByRole('listitem').length).toBe(3))
+    expect(screen.getByText('Keeping renewals on track')).toBeTruthy()
   })
 
   it('sends the merged seven back on the next onboard call, under soFar.anchorItems', async () => {

@@ -1,7 +1,7 @@
 import { documentsApi } from '@/api/documents'
 import { UPLOAD_ACCEPT_ATTR, WHAT_YOU_CAN_UPLOAD_SHORT } from '@/lib/what-you-can-upload'
 import { whenItWas } from '../../lib/a-date-reads-the-same-everywhere'
-import { Fragment, useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { HOW_A_SITUATION_IS_CHOSEN } from '@/lib/one-way-to-say-what-a-situation-does'
 import { SETUP_TAKES, useACheckInTakes } from '@/lib/how-long-setup-takes'
 import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENCE_VALUE, type ScenarioKey } from '@/lib/scenario-catalog'
@@ -34,13 +34,13 @@ import { rememberTheFirstCheckInClosing } from '@/lib/the-closing-after-your-fir
 import { theDayTheyNamed } from '@/lib/the-day-they-named'
 import { theDaysADailyCheckInTakes, theDaysToSave } from '@/lib/a-daily-check-in-is-weekdays'
 import { theScheduleTheySaid } from '@/lib/the-schedule-they-said'
-import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, THE_ANCHOR_FIRST_QUESTION, takeTheServedFirstQuestion, rememberTheServedFirstQuestion, theAnchorStartSucceededForThisTab, rememberTheAnchorStartSucceeded, thePlanInTheHeader } from './TheSetup'
+import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, THE_ANCHOR_FIRST_QUESTION, takeTheServedFirstQuestion, rememberTheServedFirstQuestion, theAnchorStartSucceededForThisTab, rememberTheAnchorStartSucceeded } from './TheSetup'
 import type { ThePeopleStepRules } from '@/api/anchorShapes'
 import { TheLeadsReveal } from '@/components/gw/TheLeadsReveal'
 import { FillsInAsYouTalk, ReadyToSend, type WhatTheAnchorConversationKnows } from './FillsInAsYouTalk'
 import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
 import { EverySituation } from './EverySituation'
-import { ThisSoundsLike, THAT_IS_RIGHT, SAY_WHAT_IT_IS } from './ThisSoundsLike'
+import { theKindOfCheckIn, SAY_WHAT_IT_IS } from './ThisSoundsLike'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
@@ -56,9 +56,9 @@ import {
   COLLECT_WHATS_OWED, COLLECT_WHATS_OWED_CARD, COLLECT_WHATS_OWED_GROUP, COLLECT_WHATS_OWED_OPENER, COLLECT_WHATS_OWED_FOR_EXAMPLE,
   soundsLikeCollectingWhatsOwed,
 } from '@/lib/collect-whats-owed'
-import { whatIsSetAndWhatIsNot, whenTheCheckInsLand } from '@/components/gw/when-the-check-ins-land'
+import { whatIsSetAndWhatIsNot } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
-import { Button, Callout, Note, Section, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal, Mark, GroundworkIsWriting } from '@/components/gw/ui'
+import { Button, Callout, Note, Section, TextField, TextArea, Bubble, Composer, Modal, Mark, GroundworkIsWriting } from '@/components/gw/ui'
 import { whatTheServerSaid } from '@/lib/what-the-server-said'
 
 /*
@@ -290,25 +290,6 @@ const SESSION_END_PATTERNS = [
   'end and see your report',
 ]
 
-// Explicit end-intent FROM THE USER. Completion was only ever detected from the AI's
-// reply, so when a person said "yes I want to submit my answers" the AI just affirmed and
-// nothing ended - they could not finish even by asking. If the user clearly signals they
-// are done, we surface the end control immediately instead of sending another turn the AI
-// only affirms. Kept specific to avoid false positives on mid-conversation "submit"
-// (e.g. "I submitted a proposal to the board").
-const END_INTENT_PATTERNS: RegExp[] = [
-  /\b(submit|send in|record|save)\s+(my\s+)?(answer|answers|response|responses|record|record now)\b/,
-  /\bi\s*('?m| am)?\s*(done|finished)\b/,
-  /\bi('?m| am)?\s*ready to (submit|finish|end|wrap|be done)\b/,
-  /\b(end|finish|close|wrap up|complete)\s+(the\s+|this\s+)?(session|check.?in|conversation|chat)\b/,
-  /\bi (want|would like|'?d like)\s+to\s+(submit|finish|end|be done|wrap up)\b/,
-  /^\s*(yes|yep|yeah|yup|ok|okay|sure)\b.*\b(submit|finish|done|end|wrap)\b/,
-  /\bthat('?s| is) (all|everything|it)\b/,
-]
-export function isEndIntent(text: string): boolean {
-  const t = text.toLowerCase().trim()
-  return END_INTENT_PATTERNS.some((re) => re.test(t))
-}
 
 // Onboarding wrap-up safety net.
 //
@@ -1207,13 +1188,6 @@ export const SITUATION_GROUPS: { key: string; heading: string }[] = SCENARIO_GRO
   (g) => ({ key: g.key, heading: g.heading }),
 )
 
-// Quick actions shown after the check-in starts
-const QUICK_ACTIONS = [
-  { label: 'Check in', msg: 'I want to keep going with my check-in.' },
-  { label: 'My report', msg: 'Give me a summary of what my record shows so far.' },
-  { label: 'What am I missing?', msg: 'What is missing from my record that would make it stronger?' },
-  { label: 'Review my goals', msg: 'Review the goals I set at the start of this check-in and tell me where I stand against each one.' },
-]
 
 /**
  * A ground's name when nobody typed one.
@@ -1251,14 +1225,6 @@ export function itIsStillAskingSomething(reply: string): boolean {
   return lastSentence.trim().endsWith('?')
 }
 
-/**
- * WHETHER THE LAST REPLY ALREADY SAID GOODBYE (night quality run 1, the lead's walk). Esther read "Your report
- * is ready now. Speak soon." and straight under it "This session has reached a natural close. Would you like to
- * end and see your report?": the chat closed twice. Where the reply has said it, the card only offers the button.
- */
-export function theReplyAlreadySaidGoodbye(reply: string): boolean {
-  return /\b(?:your report is ready now|speak soon)\b/i.test(reply ?? '')
-}
 
 /*
  * THE NAME WHEN THE LEAD GAVE NONE: THE TOPIC, IN PLAIN WORDS, NEVER HER OWN WORDS (U.6 review).
@@ -1537,12 +1503,6 @@ export function EntryChatPage() {
   /* Before any early return, like every hook here: where the panel that fills in as you talk is drawn (see thePanel). */
   const thePanelFitsBeside = useThePanelFitsBeside()
   const { groundName, setGroundName, sessions, setSessions } = useEntryStore()
-  const [renamingGround, setRenamingGround] = useState(false)
-  const [renameInput, setRenameInput] = useState('')
-  const [editingSessions, setEditingSessions] = useState(false)
-  const [sessionsInput, setSessionsInput] = useState('1')
-  const [showSessionsUpgrade, setShowSessionsUpgrade] = useState(false)
-  const groundRenameRef = useRef<HTMLInputElement>(null)
 
   // Situation cards shown before user types first message
   const [pickedSituation, setPickedSituation] = useState<string | null>(null)
@@ -1606,7 +1566,6 @@ export function EntryChatPage() {
    * in the sense that matters: the two screens agreed yesterday and do not today.
    */
   // Once the user dismisses the natural-close banner, never re-show it
-  const [, setEndPromptDismissed] = useState(false)
 
   // Onboarding state
   const defaultSels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || '' }
@@ -1656,9 +1615,7 @@ export function EntryChatPage() {
   const [loading, setLoading] = useState(false)
   const [closed, setClosed] = useState(false)
   const [phase, setPhase] = useState<'onboarding' | 'checkin'>('onboarding')
-  const [showEndPrompt, setShowEndPrompt] = useState(false)
 
-  const [confirmClear, setConfirmClear] = useState(false)
   const [showAdminBriefing, setShowAdminBriefing] = useState(false)
   const [showNewScenarioConflict, setShowNewScenarioConflict] = useState(false)
   const [pendingNewScenario, setPendingNewScenario] = useState<{ sels: OnboardingSelections } | null>(null)
@@ -1676,12 +1633,7 @@ export function EntryChatPage() {
    * read for the kind by the one reader (classifyIntent). It used to put the conversation back to the opening question, so the law firm
    * lead gave her team three times.
    */
-  const [kindConfirmed, setKindConfirmed] = useState(false)
   const kindRefused = useRef(false)
-  function confirmTheKind(theFirstReplyIsLast: boolean) {
-    setKindConfirmed(true)
-    if (theFirstReplyIsLast) sendOnboarding(THAT_IS_RIGHT)
-  }
   function itIsSomethingElse() {
     kindRefused.current = true
     setPickedSituation(null)
@@ -1939,17 +1891,6 @@ export function EntryChatPage() {
   const [cadence, setCadence] = useState<'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'>('FORTNIGHTLY')
   /* Where the planned session count came from, so the chip can say so instead of presenting it as fact. */
   const [plannedFrom, setPlannedFrom] = useState<{ timelineDays: number; cadence: string } | null>(null)
-  /*
-   * FAULT B (reviewer, third round): TYPING 5 DID NOT STICK WHEN AN END DATE WAS ALSO SET.
-   * `plannedNow` (below) checked `lastCheckInBy` before `sessions`, so a lead who typed 5 into the
-   * open control still read "12 sessions planned" and saved "Session 1 of 12" if an end date
-   * happened to derive 12 from the rhythm. Clearing `plannedFrom` (already done on a manual edit)
-   * only beat the TIMELINE-DERIVED branch, never the END-DATE-DERIVED one - this flag beats both,
-   * and every other branch besides, the moment she types a number. Reset whenever the conversation
-   * itself hands over a fresh plan (`setPlannedFrom` below), so a later extraction is not blocked
-   * by an earlier, now-stale manual edit.
-   */
-  const [sessionsTypedByLead, setSessionsTypedByLead] = useState(false)
   /**
    * Did anyone actually choose this rhythm?
    *
@@ -2527,7 +2468,6 @@ export function EntryChatPage() {
   }
 
   function handleEndSession() {
-    setShowEndPrompt(false)
     setClosed(true)
     setShowSave(true)
     generateSessionReport(history)
@@ -2812,7 +2752,7 @@ export function EntryChatPage() {
            * was contradict the number the person had just agreed to.
            */
           const planned = plannedSessionsFor(res.extracted.timelineDays, res.extracted.cadence ?? cadence, undefined, res.extracted?.cadenceDays)
-          if (planned != null) { setSessions(planned); setPlannedFrom({ timelineDays: res.extracted.timelineDays, cadence: res.extracted.cadence ?? cadence }); setSessionsTypedByLead(false) }
+          if (planned != null) { setSessions(planned); setPlannedFrom({ timelineDays: res.extracted.timelineDays, cadence: res.extracted.cadence ?? cadence }) }
         }
         /* ONCE, AND READ BY THE SERVER. The kind is read from what they first said, on the server's first turn, and then stays: read again
            every turn it came back different each time (first experience, round 2), and a second reading here, from the summary a turn
@@ -3043,20 +2983,6 @@ export function EntryChatPage() {
     setInput('')
     if (taRef.current) taRef.current.style.height = '38px'
     const userTurn: Turn = { role: 'user', content }
-    // Explicit end-intent: the person is telling us they are done. Show their message,
-    // then surface the end control immediately rather than sending another turn the AI
-    // only affirms ("you can submit whenever") while they repeat themselves. They still
-    // confirm on the prompt, so a false positive costs one dismissable banner, never a
-    // silent end. Only once there is something to end (>=1 prior exchange).
-    if (isEndIntent(content) && history.length >= 1) {
-      const updated = [...history, userTurn]
-      setHistory(updated)
-      setUploadedDoc(null)
-      setEndPromptDismissed(false)
-      setShowEndPrompt(true)
-      persistCheckin(updated)
-      return
-    }
     setLoading(true)
     setUploadedDoc(null)
     setHistory(prev => [...prev, userTurn, { role: 'assistant', content: '…' }])
@@ -3582,24 +3508,6 @@ export function EntryChatPage() {
    * AT THE DOOR: nothing has been said and nothing picked. The prototype's first screen has no name,
    * no plan and no steps on it, because there is nothing yet to name, plan or step through.
    */
-  /*
-   * HOW MANY ARE PLANNED, FROM WHAT IS SET NOW (U.6 review). The header said "1 session planned" while
-   * "How often" said every week: the number was the conversation's first guess and never followed a
-   * later choice. It follows the rhythm and the chosen end now, the way the server will count them.
-   */
-  const plannedNow = (() => {
-    if (sessionsTypedByLead) return sessions
-    if (cadence === 'ONE_TIME') return 1
-    if (cadence === 'SEQUENTIAL') return sessions
-    if (lastCheckInBy) {
-      const all = whenTheCheckInsLand({ cadence, anchorDay: cadenceAnchorDay, startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null, workingDays, howMany: 400 })
-      const n = all.filter((d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` <= lastCheckInBy).length
-      return Math.max(1, n)
-    }
-    const days = plannedFrom?.timelineDays
-    const gap = ({ DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 } as Record<string, number>)[cadence]
-    return days && gap ? Math.max(1, Math.floor(days / gap)) : sessions
-  })()
   /*
    * THE SITUATION THE LEAD PICKED, not the one the classifier moved it to (U.6 review): the card she
    * pressed, found again from its sentence after a reload, or a known ?scenario= she arrived with.
@@ -4168,6 +4076,8 @@ export function EntryChatPage() {
             ) ?? ''
           : ''
       )}
+      meaning={isAnchorDraft() ? null : theKindOfCheckIn(onboardingSelections.classifiedScenario || pickedScenario || scenario, onboardingSelections.brief)?.meaning ?? null}
+      onSomethingElse={phase === 'onboarding' && !isAnchorDraft() && (onboardingSelections.classifiedScenario || pickedScenario || scenario) ? itIsSomethingElse : undefined}
       situation={(() => {
         /*
          * FAULT 2: THE PANEL'S SITUATION LINE, FOR AN ANCHOR DRAFT, IS THE ENGINE'S OWN
@@ -4240,317 +4150,28 @@ export function EntryChatPage() {
         </div>
       )}
 
-      {/* Session header */}
-      {/* U.6 review: not on the setup conversation, which start-chat.txt draws without a name, a plan or steps. */}
-      {!atTheDoor && phase !== 'onboarding' && (
-      <div className="gwui-ec-session-header">
-        {user && (
-          <button type="button" onClick={() => navigate('/grounds')} className="gwui-plain-link gwui-ec-session-back">← Check-ins</button>
-        )}
-        <div className="gwui-ec-session-name-row">
-          {renamingGround ? (
-            <TextField
-              ref={groundRenameRef}
-              value={renameInput}
-              onChange={e => setRenameInput(e.target.value)}
-              onBlur={() => { setGroundName(renameInput.trim() || groundName); setRenamingGround(false) }}
-              onKeyDown={e => { if (e.key === 'Enter') { setGroundName(renameInput.trim() || groundName); setRenamingGround(false) } if (e.key === 'Escape') setRenamingGround(false) }}
-              autoFocus
-            />
-          ) : (
-            <div className="gwui-ec-picked-row">
-              {/*
-                * FAULT 8 (live review): "WANJIRU, FIRST 90 DAYS" - THE SAME DEFAULT NAME
-                * `theDefaultGroundName()` ALREADY WORKS OUT TO SAVE - SHOWED NOWHERE AT 390px,
-                * BECAUSE THE ONLY PLACE IT WAS PREVIEWED (`FillsInAsYouTalk`'s side panel,
-                * `.gw-fills-in`) IS `display: none` BELOW 1000px. Once set-up finishes, this is
-                * the one place left that can show it: the default name itself, not a placeholder
-                * that calls it unnamed, still editable with the same control as a name the lead
-                * typed herself.
-                */}
-              {groundName || theDefaultGroundName() ? (
-                <>
-                  <span className="gwui-ec-session-name">{groundName || theDefaultGroundName()}</span>
-                  <button type="button" onClick={() => { setRenameInput(groundName); setRenamingGround(true) }} className="gwui-plain-link" title="Rename">✎</button>
-                </>
-              ) : (
-                <button type="button" onClick={() => { setRenameInput(''); setRenamingGround(true) }} className="gwui-plain-link">
-                  {/* "Name this ground" used the product's own word for a thing
-                      the reader has not met yet - on the first screen a stranger
-                      sees, before anything explains what a ground is. Judged
-                      against the weakest reader, as briefed. GW-007. */}
-                  Give this a name ✎
-                </button>
-              )}
-            </div>
-          )}
-          <div className="gwui-ec-session-status">
-            {phase === 'checkin' ? (
-              <>
-                <span className="gwui-ec-live-dot" />
-                Session 1 in progress
-              </>
-            ) : 'Getting started, and this session is about ten minutes.'}
-          </div>
-        </div>
-
-        {/* Sessions counter */}
-        <div className="gwui-ec-sessions-count">
-          {editingSessions ? (
-            <>
-              {/*
-                FAULT 2 (live walk, 6 October 2026): A BARE "sessions:" WAS THE ONLY LABEL. Once
-                opened, the only way to change how many sessions a check-in runs read as a label
-                for a filing field, not a sentence a person could read - and nothing said what the
-                number was for. A plain label and a sentence of help, the same shape every other
-                field on this page already uses.
-              */}
-              <span className="gwui-invite-link-row">
-                <label htmlFor="gwui-ec-sessions-input" className="gwui-fine">How many check-ins</label>
-                <TextField
-                  id="gwui-ec-sessions-input"
-                  className="gwui-ec-sessions-input"
-                  type="number" min={1}
-                  value={sessionsInput}
-                  onChange={e => setSessionsInput(e.target.value)}
-                  onBlur={() => {
-                    const n = Math.max(1, parseInt(sessionsInput) || 1)
-                    setSessions(n)
-                    setSessionsInput(String(n))
-                    setEditingSessions(false)
-                    if (n > 1) setShowSessionsUpgrade(true)
-                    /*
-                     * FAULT 3, then FAULT B (reviewer, third round): typing 5 and pressing Enter
-                     * still left "8 sessions planned", then "12 sessions planned" once an end date
-                     * was also set - `plannedNow` recomputed the count from `plannedFrom` or from
-                     * `lastCheckInBy`'s own schedule and never looked at the number just typed.
-                     * Once the lead has typed a number here, that is the plan, everywhere: the
-                     * label, and what gets saved.
-                     */
-                    setPlannedFrom(null)
-                    setSessionsTypedByLead(true)
-                    /*
-                     * FAULT B, PART 2: THE LABEL AGREEING IS NOT ENOUGH - THE SAVED CHECK-IN STILL
-                     * SAID "Session 1 of 12". `buildCommitPayload` never sends a session count at
-                     * all for a date-driven cadence (not ONE_TIME or SEQUENTIAL, which already use
-                     * `sessions` as the literal count): the server works the real schedule out from
-                     * `checkInBy`..`lastCheckInBy`, so the end date has to move to the one that
-                     * actually produces N sessions, or the date range still disagrees with what she
-                     * just typed.
-                     */
-                    if (cadence !== 'ONE_TIME' && cadence !== 'SEQUENTIAL') {
-                      const landings = whenTheCheckInsLand({
-                        cadence, anchorDay: cadenceAnchorDay,
-                        startsAt: checkInBy ? new Date(`${checkInBy}T00:00:00`) : null,
-                        workingDays, howMany: n,
-                      })
-                      const last = landings[n - 1]
-                      if (last) {
-                        setLastCheckInBy(`${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`)
-                        setEndChosen(true)
-                        endChangedOnTheSummary.current = true
-                        setRunsUntilEnded(false)
-                        keepTheSchedule({ lastCheckInBy: `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`, endChosen: true, runsUntilEnded: false })
-                      }
-                    }
-                  }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-                    if (e.key === 'Escape') setEditingSessions(false)
-                  }}
-                  autoFocus
-                />
-              </span>
-              <Note>How many check-ins to run. You can change it.</Note>
-            </>
-          ) : (
-            <Button
-              kind="secondary"
-              size="small"
-              onClick={() => { setSessionsInput(String(sessions)); setEditingSessions(true) }}
-              aria-label={plannedFrom ? `Change how many check-ins. ${sessions} ${sessions === 1 ? 'check-in is' : 'check-ins are'} planned from ${plannedFrom.timelineDays} days, ${plannedFrom.cadence.toLowerCase()}.` : 'Change how many check-ins'}
-            >
-              {/*
-                This read "1/{sessions}" - so during setup, before anyone has
-                checked in, it said "1/1 sessions". A user who had just told the
-                engine "90 day period, weekly check-ins" saw a header claiming
-                one. Two separate problems in one label: the "1/" prefix implies
-                a session in progress when none has happened, and the total is
-                whatever this control was last set to rather than anything the
-                conversation said. GW-005.
-
-                The prefix is gone and the number is labelled as the plan, which
-                is what it actually is - an editable estimate, derived from the
-                timeline and cadence the engine extracted (see onboard, above)
-                and traceable to them in the button's title.
-              */}
-              {thePlanInTheHeader({ planned: plannedNow, cadence, runsUntilEnded, anchorDay: cadenceAnchorDay, workingDays, startsOn: checkInBy })}
-            </Button>
-          )}
-        </div>
-      </div>
-      )}
-
-      {/* Phase stepper: makes which phase you are in legible at a glance.
-          1 Describe the situation -> 2 Your check-in (or Hand-off) -> 3 Save and invite. */}
-      {!atTheDoor && phase !== 'onboarding' && (() => {
-        /* Both answers at the fork lead into the same first check-in, so the step bar is the same for both. */
-        const step = closed || showSave ? 3 : 2
-        /* "Hand-off to your lead" named a step that no longer exists - handing the context to
-           somebody else was removed on 7 September. Somebody who picks "I set this check-in up only"
-           was being promised a hand-off screen they would never reach.
-           SCREEN FAULT 10 (FINAL WALK): "Save & invite" became "Save and invite" - "&" is a symbol
-           standing in for a word, and the wording rule is plain full sentences. */
-        const labels = ['What is going on', 'Your check-in', 'Save and invite']
-        const hints = [
-          "You are telling us what is going on. Nothing is saved yet.",
-          "You're saying how you see it.",
-          'Save this and invite the people involved.',
-        ]
-        return (
-          <div className="gwui-ec-phase-bar">
-            <PhaseSteps labels={labels} hints={hints} current={step} />
-          </div>
-        )
-      })()}
-
-      {/* Start over / clear check-in - hidden once session is closed */}
       {/*
-        * THE WAY OUT DOES NOT DISAPPEAR WHEN THE SESSION CLOSES.
-        *
-        * This whole bar was hidden on `!closed`, so once the check-in ended there was no "start
-        * over" and no "clear" anywhere on the page - reported as exactly that: "should be able to
-        * start over even when on the chat, clear or end session". A closed session with no exit is
-        * a dead end on the one screen a stranger meets first, and their only way out is the browser
-        * back button or a reload that restores the same finished session.
-        *
-        * Hiding it was defensible while closing meant "your answers lock" and nothing else. It is
-        * not defensible now that closing is followed by a save-and-invite step somebody may not
-        * want to take. The confirmation still stands in front of it, so nothing is thrown away by
-        * a stray click.
-        */}
+        ONE HEADER FOR THE WHOLE CONVERSATION, SETUP AND THE LEAD'S FIRST CHECK-IN ALIKE (Hafsah, 3 November evening: the setup screen keeps
+        the check-in's layout). The title, and End session on the right, small and quiet, always on screen until setup is done. The session
+        name, the plan's count, "Session 1 in progress", the step bar and "Start over" are gone: the summary says what is set, the save
+        card changes it, and "Start a check-in" in the sidebar offers to start a new one.
+      */}
       {!atTheDoor && (
         <div className={`gwui-ec-bar${phase === 'onboarding' ? ' gwui-ec-bar-onboarding' : ''}`}>
-          {/* U.6 review: the setup conversation's title, from start-chat.txt and new.txt. */}
-          {phase === 'onboarding' && (
-            <h1 className="gwui-ec-onboarding-title">Set up a check-in</h1>
-          )}
-          {confirmClear ? (
-            <span className="gwui-ec-confirm-clear">
-              {closed
-                ? 'This will throw away this session and everything in it. Are you sure?'
-                : phase === 'checkin' ? 'This will clear your check-in. Are you sure?' : 'This will start over. Are you sure?'}
-              <button type="button" onClick={handleClearSession} className="gwui-plain-link">Yes, clear</button>
-              <button type="button" onClick={() => setConfirmClear(false)} className="gwui-plain-link">Cancel</button>
-            </span>
-          ) : (
-            <span className="gwui-ec-which-row">
-              {/*
-                * PICK A DIFFERENT SITUATION, which is the thing somebody actually wants.
-                *
-                * "Start over" throws away the organisation name, the check-in name, anybody queued
-                * to be invited and the conversation. Somebody who clicked the wrong card had to
-                * choose between the wrong situation and typing everything again - and nothing has
-                * been set up yet, so retrying should be the cheap option. Offered only while still
-                * choosing: once a check-in is running, the situation is what it is about.
-                */}
-              {/*
-                * THE CONDITION IS "THE CONVERSATION HAS BEGUN", NOT "A CARD WAS CLICKED".
-                *
-                * `pickedSituation` is component state and does not survive a reload, while the
-                * transcript does - so somebody who reloaded was in the worst state of all: the
-                * cards hidden because the history is longer than one turn, and no way back
-                * because the flag they had set was gone. Asking about the transcript covers the
-                * click and the reload with one question.
-                */}
-              {/*
-                * SAY WHICH SITUATION IT PICKED, BECAUSE IT PICKS ONE AND NEVER SAID SO.
-                *
-                * Read live. She described tea shops in Kano and the engine classified it, changed
-                * the plan to six sessions and put "Pick a different situation" on the screen - and
-                * nowhere did it say which situation it had chosen. The header still read "Describe
-                * it in your own words, or choose a situation". So the product made a decision that
-                * shapes every question she will be asked, and kept it to itself.
-                *
-                * Beside the way out, because the two belong together: this is what it chose, and
-                * here is how to change it.
-                */}
-              {/*
-                * FAULT 1: NO "THIS SOUNDS LIKE ..." FOR AN ANCHOR DRAFT.
-                *
-                * The situation is not a guess here - it is how the person arrived
-                * (`HELP_TEAM_UNDERSTAND`), so there is nothing to confirm or reclassify, and
-                * "It's something else" would offer to pick a different situation that does not
-                * exist for this door.
-                */}
-              {/* "This sounds like" and "It’s something else" moved into the conversation, under the first reply (ThisSoundsLike, F5). */}
-              {/* CONFIRMED ONCE THE CONVERSATION EXISTS. Clearing throws away the transcript, the
-                  organisation name and anybody queued to be invited - cheap to confirm, expensive
-                  to undo. On the picker with nothing said yet there is nothing to lose, so it goes
-                  straight through. Once a session has CLOSED it always confirms: that is the state
-                  where somebody has the most written down and the least expectation of losing it. */}
-              <button
-                type="button"
-                onClick={() => (phase === 'checkin' || closed || onboardingHistory.length > 1) ? setConfirmClear(true) : handleClearSession()}
-                className="gwui-plain-link"
-              >
-                {closed ? 'Start over' : phase === 'checkin' ? 'Clear check-in' : 'Start over'}
-              </button>
-            </span>
+          <h1 className="gwui-ec-onboarding-title">{phase === 'onboarding' ? 'Set up a check-in' : (groundName || theDefaultGroundName() || 'Your check-in')}</h1>
+          {!closed && (phase === 'checkin' || onboardingHistory.some((t) => t.role === 'user')) && (
+            <button
+              type="button"
+              className="btn quiet sm"
+              onClick={() => (phase === 'checkin' ? setShowEndConfirm(true) : endTheSetup(onboardingHistory))}
+              disabled={phase === 'checkin' ? loading : onboardingLoading}
+            >
+              End session
+            </button>
           )}
         </div>
       )}
 
-      {/* Sessions upgrade prompt */}
-      {showSessionsUpgrade && (
-        <Callout tone="info" role="status">
-          {/* There is no per-session billing. The old copy told a brand-new
-              person "additional sessions are $5 each" at the moment they were
-              deciding whether to start - and it was not even true: their
-              first ground is free with unlimited sessions. */}
-          {/*
-            FAULT 1 (live walk, 6 October 2026): "MEANS SIGNING IN" WAS SAID TO SOMEBODY ALREADY
-            SIGNED IN. An admin who was already signed in read "6 sessions means signing in, and
-            it is free", then, on the save card below it, "Saving to her@company.com. No
-            confirmation needed, you are already signed in." - two sentences on the same screen
-            disagreeing about whether signing in was still ahead of her. Said only to a stranger,
-            for whom it is true; a signed-in reader is told only what is still true for them.
-          */}
-          {/*
-            FAULT 4 (live review): A SIGNED-IN LEAD STILL READ "SAVE YOUR SESSION BELOW TO GET SET
-            UP", WITH "SAVE AND SET UP" FOR A BUTTON - and then, on the save card right below it,
-            "you are already signed in". Nothing was left to set up or sign into; the save card's
-            own words for a signed-in reader ("Save this", `saveAsSignedInUser`, line 4623) are
-            used here too, so the two lines on screen at once agree with each other.
-          */}
-          {/*
-            FAULT (b) (coordinator, second round): "SAVE THIS BELOW" FOLLOWED BY A "SAVE THIS"
-            BUTTON READ ODDLY - one short sentence, then a button repeating almost the same two
-            words, saying nothing about what pressing it actually does. One plain sentence instead,
-            naming the two things saving does here (opens the check-in, invites the people named so
-            far) - no prototype screen covers a signed-in lead at this exact moment (the closest,
-            setup.txt, has her press "Start it and invite N people" directly, with no separate save
-            step at all), so this follows the coordinator's own wording rather than guessing.
-          */}
-          {user ? (
-            <>
-              Save this to set up the check-in and invite the people you named.{' '}
-              <button type="button" className="gwui-plain-link" onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}>
-                Save and set up
-              </button>
-            </>
-          ) : (
-            <>
-              <b>{sessions} sessions</b> means signing in, and it is free. Save your session below to get set up.{' '}
-              <button type="button" className="gwui-plain-link" onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}>
-                Save and set up
-              </button>
-            </>
-          )}
-          {' '}
-          <button type="button" className="gwui-plain-link" onClick={() => setShowSessionsUpgrade(false)}>Not now</button>
-        </Callout>
-      )}
 
       {/* Main content area */}
       <div className="gwui-ec-main">
@@ -4593,6 +4214,8 @@ export function EntryChatPage() {
               shared picture once everybody has checked in. That is worth saying and it is said on
               the step row and in the card, which is where somebody is looking when they act.
             */}
+            {/* On a phone the summary is one line pinned above the conversation, which opens on tap (Hafsah, 3 November evening). */}
+            {!thePanelFitsBeside && thePanel}
             <div
               ref={msgsRef}
               aria-live="polite"
@@ -4602,7 +4225,6 @@ export function EntryChatPage() {
               // for (fault 1): it goes straight to the narrow, conversational column.
               className={`gwui-ec-messages ${onboardingHistory.length === 1 && !pickedSituation && !anchorConversationOpensDirectly() && phase === 'onboarding' ? 'gwui-ec-messages-wide' : 'gwui-ec-messages-narrow'}`}
             >
-              {!thePanelFitsBeside && thePanel}
               {(() => { const firstShown = onboardingHistory.findIndex((t, j) => t.role === 'assistant' && !(j === 0 && t.content === THE_OPENING_QUESTION)); return onboardingHistory.map((m, i) => {
                 /*
                  * THE OPENER IS NOT DRAWN WHILE THE PICKER IS, because the picker says it better.
@@ -4637,21 +4259,7 @@ export function EntryChatPage() {
                     {i === firstShown ? <><span className="gwui-setup-line">{THE_SETUP_LINE}</span><br /><br /><span>{nothingInternalReachesTheBubble(m.content)}</span></> : nothingInternalReachesTheBubble(m.content)}
                   </Bubble>
                 )
-                /* F5, stage 2: the kind of check-in as a card under the first reply, with its meaning (ThisSoundsLike). Not for an
-                   anchor draft, whose situation is how the person arrived. */
-                if (i !== firstShown || phase !== 'onboarding' || isAnchorDraft()) return bubble
-                return (
-                  <Fragment key={i}>
-                    {bubble}
-                    <ThisSoundsLike
-                      scenario={onboardingSelections.classifiedScenario || pickedScenario || scenario}
-                      brief={onboardingSelections.brief}
-                      confirmed={kindConfirmed}
-                      onConfirm={() => confirmTheKind(i === onboardingHistory.length - 1)}
-                      onSomethingElse={itIsSomethingElse}
-                    />
-                  </Fragment>
-                )
+                return bubble
               }) })()}
 
               {/*
@@ -4778,33 +4386,15 @@ export function EntryChatPage() {
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (input.trim()) sendOnboarding(input) } }}
                       onSend={() => { if (input.trim()) sendOnboarding(input) }}
                       onPlus={() => setShowDocPanel(v => !v)}
-                      plusGlyph="+ Doc"
                       plusLabel="Add a document (paste or upload) instead of typing it out"
                       plusDisabled={onboardingLoading}
                       disabled={onboardingLoading}
                       sendDisabled={!input.trim()}
-                      sendText="Send"
                       sendLabel="Send message"
-                      /*
-                       * FAULT 7 (live walk, 6 October 2026): SHORTENED, AND TWO ROWS TALL, SO IT IS
-                       * NEVER CLIPPED AT 375px. The "+ Doc" button beside this already says how to
-                       * add a document, so repeating "with + Doc" in the placeholder was redundant
-                       * as well as too long to fit one line next to it and "Send" at a phone width -
-                       * `rows={2}` gives the wrapped text somewhere to go instead of being cut off.
-                       */
-                      placeholder="Type your response, or add a document."
-                      rows={2}
+                      /* The check-in's own box (Hafsah, 3 November evening): "+" and send inside it, one row that grows as she types. */
+                      placeholder="Type your answer"
                       autoFocus
                     />
-                    {/* END SESSION DURING SETUP TOO (Hafsah, 26 October 2026). It ends the setup where it is and opens the save card (endTheSetup);
-                        what was said is kept, so a lead who leaves the card finishes it later from Today. */}
-                    {onboardingHistory.some((t) => t.role === 'user') && (
-                      <div className="gwui-ec-quick-actions-end">
-                        <button type="button" className="gwui-ec-quick-action gwui-ec-quick-action-navy" onClick={() => endTheSetup(onboardingHistory)} disabled={onboardingLoading}>
-                          End session
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -4836,49 +4426,6 @@ export function EntryChatPage() {
               {startCheckin.isPending && (
                 <div className="gwui-ec-checkin-starting">Starting your session…</div>
               )}
-              {/*
-                W1. THE SEAM BETWEEN SETUP AND THE CHECK-IN.
-                Her run went "Thank you. That gives me what I need." then "How do
-                you want to run this?" then straight into a question of a
-                completely different kind - one that goes on her private record.
-                Nothing said the setup was finished, nothing said a check-in had
-                started, and nothing said this half is the private half. After
-                five setup questions, a person cannot tell that the sixth is a
-                different sort of question unless something says so.
-              */}
-              {/*
-                U.8 REVIEW: "Setup done · your check-in starts here", in capitals, joined with a
-                dot. CLAUDE.md's wording rule is the same one everywhere else on the product: plain,
-                full sentences, no pieces joined with dots, no work-label capitals. This is the same
-                seam the comment above it explains, said as a sentence a person would actually read.
-              */}
-              {/* DECISION 133 (walk fault 4): NO DIVIDER. Hafsah: no intro line. Setup carries straight on
-                  into the lead's first check-in, so the conversation reads as one. */}
-              {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div className="gwui-ec-checkin-note">
-                  What you say from here is yours, and it goes on your private record. About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
-                </div>
-              )}
-              {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div className="gwui-ec-checkin-note gwui-ec-checkin-note-row">
-                  <VennIcon size={22} />
-                  <span>Your individual report is private. The shared report shows where everyone agrees and where they differ.</span>
-                </div>
-              )}
-              {/*
-                AND WHERE THE REST OF THE CONTEXT GOES, WHICH NOTHING HAS EVER SAID.
-                
-                A lead finishes setup believing this conversation was the only chance to explain the
-                situation. There is a Context tab that takes documents, notes and anything else the
-                check-ins should be held against, and no screen in the flow mentions it - so the
-                brief, the plan and the spreadsheet somebody already has never arrive, and every
-                session afterwards runs on memory alone.
-              */}
-              {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div className="gwui-ec-checkin-note">
-                  Anything else the check-ins should be held against, such as a plan, a brief or a spreadsheet, goes on the Context and resources tab once this is saved. You can add it any time.
-                </div>
-              )}
               {displayedHistory.map((m, i) => {
                 const typing = m.content === '…'
                 return (
@@ -4890,50 +4437,9 @@ export function EntryChatPage() {
               })}
             </div>
 
-            {/* Natural close prompt */}
-            {showEndPrompt && !closed && (
-              <div className="gwui-ec-natural-close">
-                {!theReplyAlreadySaidGoodbye([...displayedHistory].reverse().find((m) => m.role === 'assistant')?.content ?? '') && (
-                  <Callout tone="info">
-                    This session has reached a natural close. Would you like to end and see your report?
-                  </Callout>
-                )}
-                <div className="gwui-ec-natural-close-actions">
-                  <Button kind="secondary" size="small" onClick={() => { setShowEndPrompt(false); setEndPromptDismissed(true) }}>
-                    Keep going
-                  </Button>
-                  <Button kind="secondary" redText size="small" onClick={() => setShowEndConfirm(true)}>
-                    {theReplyAlreadySaidGoodbye([...displayedHistory].reverse().find((m) => m.role === 'assistant')?.content ?? '') ? 'End and see your report' : 'End session'}
-                  </Button>
-                </div>
-              </div>
-            )}
 
-            {/* Quick action chips */}
-            {!closed && displayedHistory.length >= 1 && (
-              <div className="gwui-ec-quick-actions">
-                {QUICK_ACTIONS.map(a => (
-                  <button key={a.label} type="button" className="gwui-ec-quick-action" onClick={() => send(a.msg)} disabled={loading}>
-                    {a.label}
-                  </button>
-                ))}
-                <button type="button" className="gwui-ec-quick-action" onClick={() => send('What patterns are you noticing in what I have shared so far?')} disabled={loading}>
-                  Patterns
-                </button>
-                <label htmlFor="entry-doc-upload-chip" title="Upload a document" className="gwui-ec-quick-action gwui-ec-quick-action-attach">
-                  Attach a document
-                </label>
-                <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept={UPLOAD_ACCEPT_ATTR} className="gwui-sr-only" onChange={handleFileChange} />
-                <div className="gwui-ec-quick-actions-end">
-                  {/* No arrow (U.8 review): a button says what it does, and the other "End session"
-                      button on this same screen (the natural-close prompt above) already says it
-                      without one. */}
-                  <button type="button" className="gwui-ec-quick-action gwui-ec-quick-action-navy" onClick={() => setShowEndConfirm(true)} disabled={loading}>
-                    End session
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* The file the "+" in the box opens (the quick-action chips that sat here are gone: Hafsah, 3 November evening). */}
+            <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept={UPLOAD_ACCEPT_ATTR} className="gwui-sr-only" onChange={handleFileChange} />
 
             {/* Attached doc pill */}
             {uploadedDoc && (
@@ -4971,11 +4477,10 @@ export function EntryChatPage() {
                   disabled={loading}
                   sendDisabled={loading || !input.trim()}
                   sendLabel="Send message"
-                  placeholder="Type your response."
+                  placeholder="Type your answer"
                   inputRef={taRef}
                   /* The attach button beside the typing box, back (it went with the composer rebuild, 9be66c0ef). */
                   onPlus={() => fileRef.current?.click()}
-                  plusGlyph="+ Doc"
                   plusLabel="Add a document or a photo"
                   plusDisabled={loading}
                 />

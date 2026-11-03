@@ -277,57 +277,9 @@ describe('the save card, already signed in', () => {
    * signing in was still ahead of her. The "means signing in" clause is said only to a stranger,
    * for whom it is still true.
    */
-  it('setting more than one session never tells an already signed-in lead to sign in', async () => {
-    authedUser = { id: 'u1', email: 'rukia@example.test', firstName: 'Rukia' }
-    localStorage.setItem('gw_entry_session', JSON.stringify({
-      scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
-      history: [{ role: 'assistant', content: 'How is it going?' }],
-      sessions: 1, cadence: 'WEEKLY', cadenceChosen: true, plannedFrom: { timelineDays: 42, cadence: 'WEEKLY' },
-      onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
-    }))
-    renderPage()
-    await screen.findByText(/check-ins? planned/)
-    const sessionsButton = screen.getAllByRole('button', { name: /Change how many check-ins/i })[0]
-    fireEvent.click(sessionsButton)
-    const input = screen.getAllByLabelText('How many check-ins')[0]
-    fireEvent.change(input, { target: { value: '3' } })
-    fireEvent.blur(input)
-    /* FAULT 4, then FAULT (b) (coordinator, second round): this first read "Save your session
-       below to get set up", the same words told to a stranger who still has to sign in - read
-       right beside "you are already signed in" it contradicted itself. Then "Save this below"
-       next to a "Save this" button read oddly, repeating itself and saying nothing about what
-       saving does. One plain sentence now, naming what saving does. */
-    expect(await screen.findByText(/Save this to set up the check-in and invite the people you named/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Save and set up' })).toBeTruthy()
-    expect(screen.queryByText(/Save your session below to get set up/)).toBeNull()
-    expect(screen.queryByText(/means signing in/)).toBeNull()
-    /* FAULT E (reviewer, third round): this line is reworded too, from "Saving to ... No
-       confirmation needed, you are already signed in."
-
-       SCREEN FAULT (engine workspace, 9 October night): reworded again, by first name, with no
-       "account" and no address. This test is changed for the same reason as above. */
-    expect(screen.getByText('We save this for you, Rukia.')).toBeTruthy()
-  })
-
-  /** And the same prompt still says it to a stranger, for whom it remains true. */
-  it('still tells a signed-out visitor that more than one session means signing in', async () => {
-    authedUser = null
-    localStorage.setItem('gw_entry_session', JSON.stringify({
-      scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
-      history: [{ role: 'assistant', content: 'How is it going?' }],
-      sessions: 1, cadence: 'WEEKLY', cadenceChosen: true, plannedFrom: { timelineDays: 42, cadence: 'WEEKLY' },
-      onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
-    }))
-    renderPage()
-    await screen.findByText(/check-ins? planned/)
-    const sessionsButton = screen.getAllByRole('button', { name: /Change how many check-ins/i })[0]
-    fireEvent.click(sessionsButton)
-    const input = screen.getAllByLabelText('How many check-ins')[0]
-    fireEvent.change(input, { target: { value: '3' } })
-    fireEvent.blur(input)
-    await screen.findByText(/means signing in/)
-    expect(document.body.textContent).toMatch(/3 sessions means signing in/)
-  })
+  /* The two tests that read the "N sessions means signing in" prompt are deleted with it: it was opened only by the header's count of
+     check-ins, which is gone with the header's other pieces (Hafsah, 3 November evening). How often and until when are set on the save
+     card, which already says to a signed-in lead "We save this for you" (the test above) and to a stranger how to save. */
 })
 
 /*
@@ -380,75 +332,9 @@ describe('which day it lands on, end to end (nothing-removed-screens.md item 2)'
 })
 
 describe('changing how many sessions a check-in runs (fault 2, live walk, 6 October 2026)', () => {
-  /*
-   * ONCE OPENED, THE ONLY CONTROL FOR HOW MANY SESSIONS A CHECK-IN RUNS WAS A BARE "sessions:" -
-   * no sentence, nothing said about what the number was for. A plain label, found by a screen
-   * reader the same way every other field on this page already is, and one sentence of help.
-   */
-  it('opens with a plain label and a sentence of help, not a bare "sessions:"', async () => {
-    authedUser = { id: 'u1', email: 'rukia@example.test' }
-    localStorage.setItem('gw_entry_session', JSON.stringify({
-      scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
-      history: [{ role: 'assistant', content: 'How is it going?' }],
-      sessions: 1, cadence: 'WEEKLY', cadenceChosen: true, plannedFrom: { timelineDays: 42, cadence: 'WEEKLY' },
-      onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
-    }))
-    renderPage()
-    await screen.findByText(/check-ins? planned/)
-    const sessionsButton = screen.getAllByRole('button', { name: /Change how many check-ins/i })[0]
-    fireEvent.click(sessionsButton)
-    expect(screen.getAllByLabelText('How many check-ins')[0]).toBeTruthy()
-    expect(screen.getAllByText('How many check-ins').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('How many check-ins to run. You can change it.').length).toBeGreaterThan(0)
-    expect(document.body.textContent).not.toContain('sessions:')
-  })
-
-  /*
-   * FAULT B (reviewer, third round): TYPING 5 DID NOT STICK. `plannedNow` checked `lastCheckInBy`
-   * before the typed `sessions`, so with an end date already on the session (from which the
-   * weekly rhythm derives 12 occurrences), typing 5 and pressing Enter still read "12 sessions
-   * planned" - and the saved check-in agreed with the label, not with her, because
-   * `buildCommitPayload` sends no session count at all for a date-driven cadence; the server works
-   * the real schedule out from `checkInBy`..`lastCheckInBy`. Proven end to end: typing, the label,
-   * and the date range the signed-in save actually sends.
-   */
-  it('typing 5 sessions wins over an end date that would otherwise derive 12, everywhere', async () => {
-    authedUser = { id: 'u1', email: 'amina@suites.test' }
-    const { entryApi } = await import('@/api/entry')
-    const farEnough = new Date()
-    farEnough.setDate(farEnough.getDate() + 90)
-    const lastCheckInBy = `${farEnough.getFullYear()}-${String(farEnough.getMonth() + 1).padStart(2, '0')}-${String(farEnough.getDate()).padStart(2, '0')}`
-    localStorage.setItem('gw_entry_session', JSON.stringify({
-      scenario: 'PIP', closed: false, flowPath: 'self', onboardingStep: 7,
-      history: [{ role: 'assistant', content: 'How is it going?' }],
-      sessions: 1, cadence: 'WEEKLY', cadenceChosen: true, lastCheckInBy,
-      onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
-    }))
-    renderPage()
-    /* Confirms the fixture actually derives more than 5 (around 12, 90 days weekly) before the
-       fix is even exercised - otherwise this test would pass by accident. */
-    await screen.findByText(/^(?!5 check-in)\d+ check-ins? planned/)
-
-    const sessionsButton = screen.getAllByText(/\d+ check-ins? planned/)[0]
-    fireEvent.click(sessionsButton)
-    const input = screen.getAllByLabelText('How many check-ins')[0]
-    fireEvent.change(input, { target: { value: '5' } })
-    fireEvent.blur(input)
-
-    await screen.findByText('5 check-ins planned')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save and set up' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Save this' }))
-    await waitFor(() => expect(entryApi.commit).toHaveBeenCalled())
-    const payload = vi.mocked(entryApi.commit).mock.calls[0][0]
-    const { whenTheCheckInsLand } = await import('@/components/gw/when-the-check-ins-land')
-    const fifth = whenTheCheckInsLand({ cadence: 'WEEKLY', anchorDay: null, startsAt: null, workingDays: [], howMany: 5 })[4]
-    const expected = `${fifth.getFullYear()}-${String(fifth.getMonth() + 1).padStart(2, '0')}-${String(fifth.getDate()).padStart(2, '0')}`
-    /* `lastCheckInBy` is sent (buildCommitPayload, EntryChatPage.tsx) but not in entryApi.commit's
-       declared parameter type - cast to read what was actually sent. */
-    expect((payload as any).lastCheckInBy).toBe(expected)
-  })
-
+  /* The header's count of check-ins, its "How many check-ins" box and the typed number that beat an end date are gone (Hafsah,
+     3 November evening: the setup screen keeps the check-in's layout). The save card's own how often and end date say how many there
+     are; buildCommitPayload sends the dates. The two tests that typed into the count are deleted with it. */
   /*
    * FAULT E, PART 2 (reviewer, third round): THE SAVE CARD'S OWN HEADING CLAIMED A REPORT AND A
    * RECORD THAT DID NOT EXIST YET. Opened with no answer given (history holds only the assistant's
@@ -464,12 +350,9 @@ describe('changing how many sessions a check-in runs (fault 2, live walk, 6 Octo
       onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
     }))
     renderPage()
-    const sessionsButton = (await screen.findAllByRole('button', { name: /Change how many check-ins/ }))[0]
-    fireEvent.click(sessionsButton)
-    const input = screen.getAllByLabelText('How many check-ins')[0]
-    fireEvent.change(input, { target: { value: '2' } })
-    fireEvent.blur(input)
-    fireEvent.click(await screen.findByRole('button', { name: 'Save and set up' }))
+    /* Opened now from End session, the only way to the card before any answer (the header's count that opened it is gone). */
+    fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'End session' }))
 
     expect(await screen.findByText('This will be session 1. It will be your private report.')).toBeTruthy()
     expect(screen.getByText('Nothing is on record yet.')).toBeTruthy()
