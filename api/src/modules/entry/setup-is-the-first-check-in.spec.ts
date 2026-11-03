@@ -16,9 +16,10 @@ describe('how setup ends', () => {
       expect(Object.keys(setupModule)).not.toContain(gone);
     }
   });
-  it('the last line says the board is ready, with no "Done:" in front', () => {
-    expect(SETUP_IS_DONE.startsWith('Your board is ready with today’s picture.')).toBe(true);
-    expect(SETUP_IS_DONE).not.toMatch(/Done:/);
+  /* Changed in F5 (the approved journey, stage 5): nothing is saved yet, so the last line no longer says the board is ready or points below. */
+  it('the last line says only what is true before anything is sent', () => {
+    expect(SETUP_IS_DONE).toBe('That’s everything I need to start. Send the invitations when you are ready.');
+    expect(SETUP_IS_DONE).not.toMatch(/Done:|board is ready|below/);
   });
 });
 

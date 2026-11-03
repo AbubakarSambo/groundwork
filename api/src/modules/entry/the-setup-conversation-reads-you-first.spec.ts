@@ -80,9 +80,9 @@ describe('the first question fits the situation, and the context tab exists', ()
    * used to tell the model to write its own closer too; in round 6 of the first experience (1 November 2026) the model said "You can
    * add David, Sarah, John, and Emily below" while the conversation was still on screen, and the lead found nothing below.
    */
-  it('the product writes the last line, and it says where documents and further context go', () => {
-    /* Decision 51: renamed to "Context and resources" (29 September). */
-    expect(SETUP_IS_DONE).toMatch(/Context and resources tab at any time/);
+  /* Changed in F5: the last line no longer points at the Context tab or anything below; it says the invitations go when she sends them. */
+  it('the product writes the last line', () => {
+    expect(SETUP_IS_DONE).toMatch(/Send the invitations when you are ready\./);
     expect(SRC).toMatch(/THE END OF SETUP IS THE PRODUCT'S, NOT YOURS/);
     expect(SRC).not.toMatch(/their\s+board is ready and they can add their team below/);
   });

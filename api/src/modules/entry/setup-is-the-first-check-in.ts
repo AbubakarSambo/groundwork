@@ -17,13 +17,17 @@
 export const THE_FIRST_UPDATE_TOO = [
   'THIS CONVERSATION IS ALSO THE LEAD\'S FIRST CHECK-IN.',
   'Besides what the board needs, find out where things stand today and what is open, as far as the lead knows it.',
-  'Ask for that in one question once you know what the work is, unless they have already told you.',
+  'Ask for that once you know what the work is, unless they have already told you, in these words or close to them: "Where do things stand today, as far as you know? If your team knows better, say so and their first check-in will ask them."',
   'If they say the details are their team\'s, or they do not know, that is their answer: their team\'s check-ins will ask for those details, so say that in a few words and move on.',
   'Never ask what they have already said.',
 ].join(' ');
 
-/** The last line of setup, written by the product. */
-export const SETUP_IS_DONE = 'Your board is ready with today’s picture. Next, add your team below and choose when their first check-in opens. Anything else worth holding it against can go on its Context and resources tab at any time.';
+/**
+ * The last line of setup, written by the product (F5, stage 5). Nothing is saved yet, so it says only what is true: setup has what it
+ * needs, and the invitations go when the lead sends them. It no longer says the board is ready or points at a box "below" (round 7:
+ * "It says the board is ready, but then I have to set everything up").
+ */
+export const SETUP_IS_DONE = 'That’s everything I need to start. Send the invitations when you are ready.';
 
 /** Sentences about a next screen or a later first check-in belong to the two-part flow that is gone, so they are taken out. */
 export function withoutTalkOfTheNextScreen(reply: string): string {
