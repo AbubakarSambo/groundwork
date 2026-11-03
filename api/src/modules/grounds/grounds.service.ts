@@ -1462,7 +1462,7 @@ export class GroundsService {
          */
         /* `awaitingOrgApproval`: whether an admin has let them in yet, which every count reads (decision 77). The
            same yes or no the check-in's own read serves (SAFE_PARTICIPANT_SELECT). */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, inviteHeldAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
         checkIns: {
           /** `isSetup` so a setup conversation can be kept out of every session count. GW-EXP-6. */
           /**
@@ -1546,7 +1546,7 @@ export class GroundsService {
          */
         /* `awaitingOrgApproval`: whether an admin has let them in yet, which every count reads (decision 77). The
            same yes or no the check-in's own read serves (SAFE_PARTICIPANT_SELECT). */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, inviteHeldAt: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
             checkIns: {
               /** Must match the sibling query above: both feed the same list. GW-EXP-6. */
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true, closedReason: true, optional: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } },
@@ -1770,7 +1770,7 @@ export class GroundsService {
         const readerIsOutsideTheOrg = g.organizationId !== organizationId;
         const participants = ((allParticipants ?? []) as any[])
           .filter((p) => !hidePeers || isMe(p))
-          .map((p) => ({
+          .map(({ inviteHeldAt: _held, ...p }) => ({
             ...p,
             email: hideContact && !isInitiator && !isMe(p) ? null : p.email,
             /* What the lead wrote about a person is for the lead alone, not an admin (U.7 review).
@@ -1871,6 +1871,8 @@ export class GroundsService {
               .filter((w) => !!w.p && !w.p.managingOnly && (runsIt || (!w.declined && !!myRowHere && w.p.id !== myRowHere.id && !readerIsOutsideTheOrg)))
               .map(({ name, declined }) => ({ name: runsIt || peersVisibleEffective ? name : null, declined })),
           ) ?? null,
+          /* How many invitations the lead holds ready until she sends them (Hafsah, 3 November 2026). Only whoever runs it reads it. */
+          readyToSend: runsIt ? ((allParticipants ?? []) as any[]).filter((p) => !!p.inviteHeldAt && !p.leftAt).length : null,
           /* Whoever runs it, or an admin here, reads who was invited and has not joined yet; nobody who checks in does. */
           notJoinedYet: runsIt
             ? theNotJoinedYetLine([...(notJoinedOnTheList.get(g.id) ?? new Set<string>())]
@@ -6163,7 +6165,9 @@ export class GroundsService {
      * they could still change their mind about somebody who has already read it.
      */
     const startsAt = dto.startsAt ? new Date(dto.startsAt) : null;
-    const startsInFuture = !!startsAt && startsAt.getTime() > Date.now();
+    /* Held by the lead until they send it, or waiting for its start date: either way the row is written uninvited and no mail goes. */
+    const heldByTheLead = dto.heldUntilSent === true;
+    const theMailWaits = heldByTheLead || (!!startsAt && startsAt.getTime() > Date.now());
 
     /**
      * NOBODY IS INVITED TO A GROUND THAT HAS NOT BEEN ACCEPTED.
@@ -6469,8 +6473,9 @@ export class GroundsService {
              was sent is the worst of the three outcomes: the lead believes they can still change
              their mind about somebody who has in fact never heard from us - and here, the reverse,
              believes somebody has been written to when they have not. */
-          invitedAt: startsInFuture || heldForApproval || !waitingForASeat.room ? null : new Date(),
+          invitedAt: theMailWaits || heldForApproval || !waitingForASeat.room ? null : new Date(),
           startsAt: startsAt ?? null,
+          ...(heldByTheLead ? { inviteHeldAt: new Date() } : {}),
           inviteToken: token,
           inviteTokenExpiresAt,
         },
@@ -6525,9 +6530,9 @@ export class GroundsService {
      * `grounds.cron.ts` sends it on the day. Until then the ground shows the person as named and not
      * yet invited, which is exactly what is true.
      */
-    /* `waitingForASeat` holds the mail for the same reason `startsInFuture` does, and the row says
+    /* `waitingForASeat` holds the mail for the same reason `theMailWaits` does, and the row says
        so the same way: `invitedAt` stays null, so nothing believes they have been written to. */
-    if (!startsInFuture && !heldForApproval && waitingForASeat.room) {
+    if (!theMailWaits && !heldForApproval && waitingForASeat.room) {
     try {
       emailResult = await this.email.sendTheInviteThisGroundSends(
         ground,
@@ -6580,7 +6585,7 @@ export class GroundsService {
        * been added - Rule 3, nobody added silently - so stamping it for a deferred invite would claim
        * something that has not happened, and the cron would have nothing to look for.
        */
-      data: { notifiedAt: startsInFuture || heldForApproval || !waitingForASeat.room ? null : new Date() },
+      data: { notifiedAt: theMailWaits || heldForApproval || !waitingForASeat.room ? null : new Date() },
     });
 
     this.usage.emit(UsageEventType.PARTICIPANT_INVITED, { organizationId, groundId, participantId: participant.id }).catch(() => undefined);
@@ -6619,15 +6624,17 @@ export class GroundsService {
      * mail did not send - and the screen read them all as one null and told the lead "invited on the
      * start date", false in two of the three. The row carries the facts; this names them.
      */
-    const notInvitedBecause: 'starts_later' | 'no_seat' | 'mail_failed' | 'waiting_for_approval' | null = emailFailed
+    const notInvitedBecause: 'starts_later' | 'no_seat' | 'mail_failed' | 'waiting_for_approval' | 'ready_to_send' | null = emailFailed
       ? 'mail_failed'
       : !waitingForASeat.room
         ? 'no_seat'
         : heldForApproval
           ? 'waiting_for_approval'
-          : invitedAt
-            ? null
-            : 'starts_later';
+          : heldByTheLead
+            ? 'ready_to_send'
+            : invitedAt
+              ? null
+              : 'starts_later';
     return {
       id, email, partyType, userId, roleAsDescribed, invitedAt: emailFailed ? null : invitedAt, notifiedAt, soloArtifactAt, createdAt,
       /* The name the lead typed, as she typed it, so the row she is shown is never "Somebody invited by email" (journey test, 12 October). */
@@ -6719,7 +6726,8 @@ export class GroundsService {
     // reflects actual notification, not just intent to notify.
     await this.prisma.groundParticipant.update({
       where: { id: participantId },
-      data: { notifiedAt: new Date() },
+      /* Sent, so no longer held ready by the lead. */
+      data: { notifiedAt: new Date(), inviteHeldAt: null },
     });
 
     return { message: 'Invite resent' };
@@ -7698,6 +7706,22 @@ export class GroundsService {
   }
 
   /**
+   * "SEND N INVITATIONS", PRESSED LATER (Hafsah, 3 November 2026: "the lead's invitations stay ready but unsent until they tap 'Send N
+   * invitations'"). The lead who checked in on her own first sends the invitations she held. The hold is lifted, and they go the way
+   * the approval sends what waited for it: each once, now, except anybody whose start date is ahead (the morning cron sends theirs on the
+   * day) and, on a check-in still waiting for its approval, everybody (the approval sends them). Only whoever runs it, or an admin.
+   */
+  async sendTheInvitationsReadyToSend(groundId: string, organizationId: string, userId: string, role: string): Promise<{ sent: number }> {
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
+    if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
+    const runsIt = ground.initiatorId === userId || (!!ground.createdByUserId && ground.createdByUserId === userId);
+    if (!runsIt && role !== 'ADMIN') throw new ForbiddenException('Only the person who runs this check-in, or an administrator of the organisation, can send its invitations.');
+    await this.prisma.groundParticipant.updateMany({ where: { groundId, inviteHeldAt: { not: null } }, data: { inviteHeldAt: null } });
+    if (ground.status === GroundStatus.AWAITING_APPROVAL) return { sent: 0 };
+    return { sent: await this.sendTheInvitationsHeldForApproval(groundId, organizationId) };
+  }
+
+  /**
    * THE INVITATIONS THAT WAITED FOR THE APPROVAL, SENT ONCE (known issue B5).
    *
    * Everybody the lead named while the check-in waited is on it with `invitedAt` and `notifiedAt` empty. Those two empty fields are the
@@ -7710,8 +7734,9 @@ export class GroundsService {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
     if (!ground) return 0;
     const held = await this.prisma.groundParticipant.findMany({
-      /* Not filtered on `userId`: a colleague who already has an account is a person who has opened Groundwork, not one already invited, and is invited like anybody else. */
-      where: { groundId, partyType: PartyType.PARTICIPANT, invitedAt: null, notifiedAt: null, awaitingSeat: false, leftAt: null },
+      /* Not filtered on `userId`: a colleague who already has an account is a person who has opened Groundwork, not one already invited, and is invited like anybody else.
+         Not one the lead holds ready until she sends it: the approval lets it go, her press sends it. */
+      where: { groundId, partyType: PartyType.PARTICIPANT, invitedAt: null, notifiedAt: null, awaitingSeat: false, leftAt: null, inviteHeldAt: null },
       select: { id: true, email: true, inviteToken: true, remitAsGiven: true, startsAt: true },
     });
     const due = held.filter((p) => !p.startsAt || p.startsAt.getTime() <= Date.now());

@@ -64,6 +64,8 @@ export const FILLS_IN = {
   ready: 'Ready to send when you are',
   sends: (n: number, opens: string) => `${n === 1 ? '1 person gets an invitation now' : `${n} people get an invitation now`}. ${opens}`,
   send: (n: number) => (n === 1 ? 'Send 1 invitation' : `Send ${n} invitations`),
+  /* The approved journey, stage 5 (Hafsah, 3 November 2026): the invitations stay ready until "Send N invitations" on Today. */
+  later: 'Check in on your own first, invite later',
   /* The phone's one line above the answer box (stage 3). */
   inOneLine: (set: number, n: number) => `${set} of 4 set. ${n === 1 ? '1 person' : `${n} people`}.`,
 } as const
@@ -256,7 +258,7 @@ export function FillsInAsYouTalk(k: WhatSetupKnows) {
 }
 
 /** The end of setup (F5, stage 5): what sending does, and one button. Drawn in the panel, or where the conversation ends when the panel is not on screen. */
-export function ReadyToSend({ people, opens, onSend, sending, why, lines, onChange }: { people: number; opens: string; onSend: () => void; sending: boolean; why?: string; lines?: string[]; onChange?: () => void }) {
+export function ReadyToSend({ people, opens, onSend, onLater, sending, why, lines, onChange }: { people: number; opens: string; onSend: () => void; onLater?: () => void; sending: boolean; why?: string; lines?: string[]; onChange?: () => void }) {
   return (
     <section aria-label={FILLS_IN.ready}>
       <Stack gap={6}>
@@ -271,6 +273,7 @@ export function ReadyToSend({ people, opens, onSend, sending, why, lines, onChan
         <Button kind="primary" wide onClick={onSend} disabled={sending}>
           {sending ? 'Sending…' : FILLS_IN.send(people)}
         </Button>
+        {onLater && people > 0 && <button type="button" className="gwui-plain-link" onClick={onLater} disabled={sending}>{FILLS_IN.later}</button>}
         {why && <Note tone="error">{why}</Note>}
       </Stack>
     </section>

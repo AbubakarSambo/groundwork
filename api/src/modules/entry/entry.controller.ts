@@ -388,6 +388,8 @@ export class EntryCommitDto {
   @IsOptional() @IsBoolean() cadenceChosen?: boolean;
   /** "When I end it": no planned length and no planned last session (request 37). Send true instead of a length. */
   @IsOptional() @IsBoolean() runsUntilEnded?: boolean;
+  /** "Check in on your own first, invite later": the invitations are ready and held until the lead sends them (Hafsah, 3 November 2026). */
+  @IsOptional() @IsBoolean() inviteLater?: boolean;
   @IsOptional() @IsInt() cadenceAnchorDay?: number;
   /** Twice or more a week: the weekdays a weekly check-in meets on, 0=Sun..6=Sat, as setup's reading heard them. */
   @IsOptional() @IsArray() @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true })

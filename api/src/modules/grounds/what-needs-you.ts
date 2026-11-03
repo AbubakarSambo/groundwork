@@ -31,6 +31,11 @@ import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
  * screen, which gets the moment itself.
  */
 
+/** Today's one line while the lead holds her invitations, in Hafsah's words (3 November 2026). */
+export const theInvitationsReadyToSend = (n: number) => (n === 1 ? '1 invitation ready to send' : `${n} invitations ready to send`);
+/** The button beside it, the same words as setup's own (client FillsInAsYouTalk). */
+export const sendTheInvitations = (n: number) => (n === 1 ? 'Send 1 invitation' : `Send ${n} invitations`);
+
 export type NeedKind = 'ready' | 'decide' | 'look' | 'your_turn';
 
 export interface Need {
@@ -89,6 +94,8 @@ export interface WhatNeedsYou {
   lineNudge?: { groundId: string; participantId: string; firstName: string } | null;
   /** Who the line says was invited and has not joined yet, for the lead who runs it: their invitation, sent again on her press. */
   lineResend?: { groundId: string; participantIds: string[]; firstNames: (string | null)[] } | null;
+  /** The invitations the lead held ready while she checked in on her own first: the line says how many, and "Send N invitations" sends them. */
+  lineReadyToSend?: { groundId: string; count: number; label: string } | null;
   /** "Since yesterday": what moved since the round before, for the check-in the line is about. */
   sinceYesterday?: { heading: string; says: string; also: string | null } | null;
 }
@@ -115,6 +122,8 @@ export interface ListedCheckIn {
   report?: { releasedAt?: string | Date | null } | null;
   /** The report's first difference, by name, where this reader may read the report: "Jane and John see the Westgate deal differently." */
   whoDiffers?: string | null;
+  /** How many invitations the lead holds ready until she sends them; served only to whoever runs it. */
+  readyToSend?: number | null;
   participants?: { id: string; userId?: string | null; notLetIn?: boolean; user?: { firstName?: string | null } | null }[];
   checkIns?: {
     id: string;
@@ -252,6 +261,7 @@ export function whatNeedsYou(
   let lineGroundId: string | null = null;
   let lineNudge: WhatNeedsYou['lineNudge'] = null;
   let lineResend: WhatNeedsYou['lineResend'] = null;
+  let lineReadyToSend: WhatNeedsYou['lineReadyToSend'] = null;
 
   for (const g of list) {
     if ((g.status ?? '') === 'AWAITING_APPROVAL' || (g.status ?? '') === 'DECLINED') continue;
@@ -275,6 +285,9 @@ export function whatNeedsYou(
      * calls "released" - not yet something to hand somebody who has not been let into the reader.
      */
     const heldFromMyOwn = !!reader.notLetIn;
+
+    /* READY, NOT SENT (Hafsah, 3 November 2026): until the lead sends the invitations she held, the line is how many are ready to send. */
+    if (!over && iRunIt && (g.readyToSend ?? 0) > 0 && !lineReadyToSend) lineReadyToSend = { groundId: g.id, count: g.readyToSend!, label: sendTheInvitations(g.readyToSend!) };
 
     /* Your turn: the earliest open session of yours that is not done. Being two behind is one thing to do. */
     if (!over && me && !heldFromMyOwn) {
@@ -543,12 +556,14 @@ export function whatNeedsYou(
 
   decisions.push(...toApprove);
   const needs = [...firstTurns, ...lateTurns, ...reports, ...decisions, ...otherTurns, ...ownReports];
-  const said = (line as { text: string } | null)?.text ?? (myOpenTurn ? `Your check-in for ${myOpenTurn} is open.` : null);
+  const said = lineReadyToSend
+    ? theInvitationsReadyToSend(lineReadyToSend.count)
+    : (line as { text: string } | null)?.text ?? (myOpenTurn ? `Your check-in for ${myOpenTurn} is open.` : null);
   return {
     needs,
     count: needs.length,
     line: said,
-    ...(line ? { lineGroundId, lineNudge, lineResend } : {}),
+    ...(lineReadyToSend ? { lineGroundId: lineReadyToSend.groundId, lineReadyToSend } : line ? { lineGroundId, lineNudge, lineResend } : {}),
     comingUp: comingUp.sort((a, b) => time(a.at)! - time(b.at)!).slice(0, 5),
   };
 }

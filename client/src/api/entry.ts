@@ -314,6 +314,8 @@ export const entryApi = {
     lastCheckInBy?: string
     /** "When I end it": no planned length and no planned last session. */
     runsUntilEnded?: boolean
+    /** "Check in on your own first, invite later": the invitations are kept ready until the lead presses "Send N invitations" on Today. */
+    inviteLater?: boolean
     /** Which days people work, 0 = Sunday. Left out when nobody said. */
     workingDays?: number[]
     inviteNote?: string

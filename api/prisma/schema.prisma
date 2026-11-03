@@ -1674,6 +1674,10 @@ model GroundParticipant {
   ///
   /// Null means the work was already underway, which is true of every row that existed before it.
   startsAt                   DateTime?         @map("starts_at")
+  /// READY, NOT SENT (Hafsah, 3 November 2026: "the lead's invitations stay ready but unsent until they tap 'Send N invitations'").
+  /// When the lead set the check-in up to check in on their own first: the invitation is ready and held until they send it, whatever
+  /// the start date. Cleared when it is sent. Null for every invitation that was never held this way.
+  inviteHeldAt               DateTime?         @map("invite_held_at")
   leftAt                     DateTime?         @map("left_at") // quit, removed, or let go. Freeze, never erase.
   // Authorized absence: the DATES ONLY.
   //

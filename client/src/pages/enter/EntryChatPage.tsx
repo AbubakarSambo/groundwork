@@ -3318,7 +3318,7 @@ export function EntryChatPage() {
     whyInvitesFailed?: { email: string; because: string }[]
     failedInvites?: string[]
     numbersNotKept?: { email: string; because: string }[]
-  }) {
+  }, how: { inviteLater?: boolean } = {}) {
     for (const n of res.numbersNotKept ?? []) toast.error(n.because)
     const refused =
       res.whyInvitesFailed?.length
@@ -3328,7 +3328,8 @@ export function EntryChatPage() {
       for (const f of refused) toast.warning(`${f.email}: ${f.because}`)
       rememberWhoWasNotInvited(res.groundId, refused)
     }
-    const waiting = (res.contributors ?? []).filter((c) => c.waiting).length
+    /* Held on purpose, so not said as waiting for a start date: Today says how many are ready to send. */
+    const waiting = how.inviteLater ? 0 : (res.contributors ?? []).filter((c) => c.waiting).length
     if (waiting > 0) {
       toast.info(
         waiting === 1
@@ -3338,7 +3339,7 @@ export function EntryChatPage() {
     }
   }
 
-  async function saveAsSignedInUser() {
+  async function saveAsSignedInUser(how: { inviteLater?: boolean } = {}) {
     /* The server refuses an empty session (NO_ENTRY_SESSION). Rather than show that code, go and do the check-in. */
     if (history.length === 0) {
       setShowSave(false)
@@ -3354,11 +3355,11 @@ export function EntryChatPage() {
     const box = await readTheTeamBox()
     if (!box) { setSavingAsUser(false); return }
     try {
-      const res = await entryApi.commit({ ...buildCommitPayload(box), history })
+      const res = await entryApi.commit({ ...buildCommitPayload(box), history, ...(how.inviteLater ? { inviteLater: true } : {}) })
       /** The rail caches the grounds list, so it has to be told the ground exists. GW-019. */
       queryClient.invalidateQueries({ queryKey: ['grounds'] })
       clearEntryHandover()
-      sayWhoWasNotInvited(res)
+      sayWhoWasNotInvited(res, how)
       rememberTheFirstCheckInClosing(res.groundId)
       navigate(`/grounds/${res.groundId}`, { replace: true })
       /*
@@ -4947,7 +4948,7 @@ export function EntryChatPage() {
             {/* Input bar / save CTA */}
             {closed && !showSave && user && !emailSent && theTeamAsItStands().people.length > 0 ? (
               <div className="gwui-ec-invite-bar">
-                <ReadyToSend people={theTeamAsItStands().people.length} lines={theTeamAsItStands().people} onChange={() => setShowSave(true)} opens={whenTheirFirstCheckInOpens()} onSend={saveAsSignedInUser} sending={savingAsUser} why={whyItWasNotSaved || teamSaid || undefined} />
+                <ReadyToSend people={theTeamAsItStands().people.length} lines={theTeamAsItStands().people} onChange={() => setShowSave(true)} opens={whenTheirFirstCheckInOpens()} onSend={() => saveAsSignedInUser()} onLater={() => saveAsSignedInUser({ inviteLater: true })} sending={savingAsUser} why={whyItWasNotSaved || teamSaid || undefined} />
               </div>
             ) : closed && !showSave ? (
               <div className="gwui-ec-invite-bar">

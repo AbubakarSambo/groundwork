@@ -188,6 +188,8 @@ export class GroundsCron implements OnApplicationBootstrap {
           /** The three conditions together. Started, never invited, and still has a live token. */
           startsAt: { not: null, lte: now },
           invitedAt: null,
+          /* Not one the lead holds ready until she sends it (Hafsah, 3 November 2026): her press lets it go, and then this sends it on the day. */
+          inviteHeldAt: null,
           inviteToken: { not: null },
           /**
            * NOT TERMINAL, rather than ACTIVE. This was `status: ACTIVE` and found nothing, which

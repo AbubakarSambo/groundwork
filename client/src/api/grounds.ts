@@ -355,6 +355,10 @@ export const groundsApi = {
   resendParticipantInvite: (groundId: string, participantId: string) =>
     apiClient.post(`/grounds/${groundId}/participants/${participantId}/resend-invite`).then(r => r.data),
 
+  /** "Send N invitations" on Today: the invitations the lead held ready while she checked in on her own first (Hafsah, 3 November 2026). */
+  sendTheInvitationsReadyToSend: (groundId: string) =>
+    apiClient.post<{ sent: number }>(`/grounds/${groundId}/invitations/send`).then(r => r.data),
+
   /** D1 and D2 (13 October, evening): whoever runs the check-in adds somebody's WhatsApp number. */
   /** Each person's WhatsApp number and where they are on it (whoever runs the check-in, or an admin). */
   whereEachPersonIsOnWhatsApp: (groundId: string) =>

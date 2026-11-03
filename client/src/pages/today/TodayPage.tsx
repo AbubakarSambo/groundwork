@@ -192,6 +192,13 @@ export function TodayPage() {
   const resendLabel = lineResend
     ? (lineResend.participantIds.length === 1 && lineResend.firstNames[0] ? `Send it to ${lineResend.firstNames[0]} again` : 'Send it to them again')
     : ''
+  /* "Send N invitations" (Hafsah, 3 November 2026): the invitations the lead held ready while she checked in on her own first. */
+  const lineReadyToSend = data?.lineReadyToSend ?? null
+  const sendReady = useMutation({
+    mutationFn: () => groundsApi.sendTheInvitationsReadyToSend(lineReadyToSend!.groundId),
+    onSuccess: () => { toast.success(lineReadyToSend!.count === 1 ? 'The invitation has gone.' : 'The invitations have gone.'); refetch() },
+    onError: () => toast.error('The invitations did not send. They are still ready, so try again in a moment.'),
+  })
   const nudge = useMutation({
     mutationFn: () => boardApi.nudge(lineNudge!.groundId, lineNudge!.participantId),
     onSuccess: () => toast.success(`Sent to ${lineNudge!.firstName}.`),
@@ -213,6 +220,7 @@ export function TodayPage() {
               {/* "Send it to him on WhatsApp" (C1), said with their name: the board's own nudge, for the one person not checked in yet. */}
               {lineNudge && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => nudge.mutate()} disabled={nudge.isPending || nudge.isSuccess}>{nudge.isSuccess ? 'Sent.' : `Remind ${lineNudge.firstName}`}</button></>}
               {lineResend && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => resend.mutate()} disabled={resend.isPending || resend.isSuccess}>{resend.isSuccess ? 'Sent again.' : resendLabel}</button></>}
+              {lineReadyToSend && <>{' '}<button type="button" className="btn primary sm gw-inline-btn gwui-in-a-sentence" onClick={() => sendReady.mutate()} disabled={sendReady.isPending || sendReady.isSuccess}>{sendReady.isPending ? 'Sending…' : sendReady.isSuccess ? 'Sent.' : lineReadyToSend.label}</button></>}
             </>}
           />
 

@@ -578,6 +578,12 @@ export class GroundsController {
     return this.grounds.getParticipantCheckInUrl(id, participantId, userId);
   }
 
+  @Post(':id/invitations/send')
+  @ApiOperation({ summary: 'Send the invitations the lead held ready while she checked in on her own first' })
+  async sendTheInvitationsReadyToSend(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.grounds.sendTheInvitationsReadyToSend(id, user.organizationId, user.id, user.role);
+  }
+
   @Post(':id/participants/:participantId/resend-invite')
   @ApiOperation({ summary: 'Resend an expired participant invite (GW-24)' })
   async resendParticipantInvite(

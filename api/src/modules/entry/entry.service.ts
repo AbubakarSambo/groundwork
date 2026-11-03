@@ -2057,6 +2057,8 @@ from finishing at all.`;
       cadenceChosen?: boolean;
       /** Runs until the lead ends it (request 37). */
       runsUntilEnded?: boolean;
+      /** "Check in on your own first, invite later": every invitation is held ready until the lead presses "Send N invitations". */
+      inviteLater?: boolean;
       cadenceAnchorDay?: number;
       /** Twice or more a week: the weekdays it meets on (Ground.cadenceDays). */
       cadenceDays?: number[];
@@ -2857,6 +2859,7 @@ from finishing at all.`;
              morning it starts (the on-the-day cron sends it), as adding someone on the check-in's
              own page does. Without it the invitation went the moment the link was opened. */
           ...(dto.checkInBy ? { startsAt: dto.checkInBy } : {}),
+          ...(dto.inviteLater ? { heldUntilSent: true } : {}),
         });
         /*
          * WHETHER THE MAIL ACTUALLY WENT, WHICH THIS THREW AWAY.
