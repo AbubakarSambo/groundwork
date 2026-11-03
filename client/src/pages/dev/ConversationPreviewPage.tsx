@@ -95,11 +95,8 @@ function ConversationFrame({
   return (
     <div style={{ maxWidth: maxWidth ?? 600, margin: '0 auto' }}>
       <ConversationCard
-        backLabel="Sales team, Q3"
-        onBack={noop}
-        backTitle="Leave this session. Everything you have said is already saved."
         header={(
-          <TheCheckInHeader title={title} onEnd={noop} />
+          <TheCheckInHeader title={title} onEnd={noop} onBack={noop} backTitle="Leave this session. Everything you have said is already saved." />
         )}
         footer={(
           <Composer

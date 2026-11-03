@@ -754,6 +754,13 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* ── CONVERSATION CARD (prototype: .ci-focus, .ci-card, app.css) ─────────── */
 
+/* The way back is the check-in's name in the header, on the same line as End session (TheCheckInHeader.tsx, 3 November 2026):
+   the name keeps the header's bold, the arrow is the link colour, and the whole name is the button, at least 44px tall. */
+.ci-h-back { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.ci-h-back:hover { text-decoration: underline; }
+.ci-h-back:focus-visible { outline: 2px solid var(--act); outline-offset: 2px; border-radius: 4px; }
+.ci-h-arrow { color: var(--act); }
+
 /*
   REVIEW ROUND 3, ITEM 7: AT 375 WIDE, THE CARD RUNS FULL WIDTH.
   The prototype's own rule (app.css, `body.focus .ci-card` at <=860px): no side gutters, no

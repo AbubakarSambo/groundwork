@@ -60,7 +60,6 @@
 .gw-when-row { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--rule); }
 .gw-when-row a { color: var(--ink); text-decoration: none; }
 .gw-when-row a:hover { text-decoration: underline; }
-.gw-ci-back { margin-bottom: 12px; }
 .gw-chat-title { margin-bottom: 14px; }
 .gw-asst-h { flex-wrap: wrap; }
 .gw-ask-about { display: flex; gap: 6px; align-items: center; width: 100%; margin-top: 6px; }

@@ -179,10 +179,11 @@ describe('the check-in is not a trap', () => {
      * really does pass a real title and a real leave handler, and ConversationCard really does
      * draw the back button before the header.
      */
+    /* Changed 3 November 2026: the way back moved into the header, on the left of the same line as End session (TheCheckInHeader.tsx). */
     expect(CHAT).toMatch(/backTitle="Leave this session\. Everything you have said is already saved\."/)
-    expect(CHAT).toMatch(/onBack=\{leave\}/)
-    const CARD = strip(readFileSync(join(__dirname, 'ui/ConversationCard.tsx'), 'utf8'))
-    expect(CARD.indexOf('← {backLabel}')).toBeLessThan(CARD.indexOf('{header}'))
+    expect(CHAT).toMatch(/onBack=\{!bareFrame \? leave : undefined\}/)
+    const HEADER = strip(readFileSync(join(__dirname, 'checkin/TheCheckInHeader.tsx'), 'utf8'))
+    expect(HEADER.indexOf('ci-h-arrow')).toBeLessThan(HEADER.indexOf('End session'))
   })
 
   it('and it returns you to the check-in, not to the list of every ground', () => {

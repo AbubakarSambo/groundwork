@@ -116,11 +116,18 @@ async function typeAndSend(text: string) {
 /* Changed 3 November evening (Hafsah: "only the conversation ... one box ... and 'End session', small and quiet, always visible"): the
    header is the check-in's name and End session. "About two minutes" and the Pause menu are gone; Stop for now is the back link, and
    skipping is End session before any answer has landed, which still asks first and says what follows. */
+/* Changed 3 November 2026 (screens-after/checkin-reply-390.png): the way back was a link above the card that said the name, and the
+   header said it again. Now the name is said once, on one line: the arrow and the name are the way back, End session is beside them. */
 describe('the header', () => {
-  it('names the check-in in the heading, and on the way back, with End session and nothing under the name', async () => {
+  it('names the check-in once, on one line with the way back and End session, and nothing under the name', async () => {
     renderChat()
-    expect(await findByRole('button', { name: '← Sales team, Q3' }, { timeout: 5000 })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Sales team, Q3' })).toBeTruthy()
+    const back = await findByRole('button', { name: 'Sales team, Q3' }, { timeout: 5000 })
+    expect(back.textContent).toBe('←Sales team, Q3')
+    const heading = screen.getByRole('heading', { name: 'Sales team, Q3' })
+    expect(heading.contains(back)).toBe(true)
+    expect(screen.getAllByText('Sales team, Q3')).toHaveLength(1)
+    expect(document.querySelector('.ci-back')).toBeNull()
+    expect(back.closest('.ci-h')?.contains(screen.getByRole('button', { name: 'End session' }))).toBe(true)
     expect(await findByRole('button', { name: 'End session' })).toBeTruthy()
     expect(await findByText(OPENING, {}, { timeout: 5000 })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull()
@@ -130,7 +137,7 @@ describe('the header', () => {
 
   it('the way back leaves with everything saved, and declines nothing', async () => {
     renderChat()
-    fireEvent.click(await findByRole('button', { name: '← Sales team, Q3' }, { timeout: 5000 }))
+    fireEvent.click(await findByRole('button', { name: 'Sales team, Q3' }, { timeout: 5000 }))
     expect(await findByText('The check-in’s own page')).toBeTruthy()
     expect(conversationApi.decline).not.toHaveBeenCalled()
   })

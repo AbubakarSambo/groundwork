@@ -1173,9 +1173,6 @@ export function ChatPage() {
           a ground page, and the only control on the screen should not lead out of the thing
           they came to do. See the-link-opens-on-the-question. */}
       <ConversationCard
-        backLabel={!bareFrame ? (checkInName || 'Back') : undefined}
-        onBack={leave}
-        backTitle="Leave this session. Everything you have said is already saved."
         header={(
                 <TheCheckInHeader
                   /* The check-in's own name, as the prototype has it, and End session, small and quiet, always on screen (Hafsah,
@@ -1183,6 +1180,9 @@ export function ChatPage() {
                   title={checkInName || 'Your check-in'}
                   onEnd={opened && !done && !completed && !declined ? () => (anAnswerHasLanded ? complete.mutate(true) : setConfirmingDecline(true)) : undefined}
                   ending={complete.isPending}
+                  /* The way back is the name itself, on the same line (TheCheckInHeader). Not in the bare frame. */
+                  onBack={!bareFrame ? leave : undefined}
+                  backTitle="Leave this session. Everything you have said is already saved."
                 />
         )}
         banners={(
