@@ -156,6 +156,7 @@ import { StopMailPage } from '@/pages/mail/StopMailPage'
 import { HelpModal } from '@/components/gw/HelpModal'
 import { OfflineNote } from '@/components/gw/OfflineNote'
 import { AppShell } from '@/components/gw/AppShell'
+import { Page } from '@/components/gw/ui/Page'
 import { TalkToUsPage } from '@/pages/talk/TalkToUsPage'
 import type { JSX } from 'react'
 
@@ -269,6 +270,11 @@ function AdminsOnly({ children, what = 'add people to your organisation' }: { ch
  * is not a wall. Nobody waiting ever renders what is behind any of them; they are sent to "Almost
  * in" (`/join/waiting`) every time, until they are let in.
  */
+/** A page's shell with nothing in it: the frame a person sees while the wall decides, with no data and no requests behind it. */
+function TheEmptyPage() {
+  return <Page><div aria-busy="true" /></Page>
+}
+
 export function RequireOrgSetup({ children }: { children: JSX.Element }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const waiting = useQuery({ queryKey: ['my-waiting'], queryFn: authApi.myWaiting, enabled: isAuthenticated, retry: false })
@@ -300,9 +306,14 @@ export function RequireOrgSetup({ children }: { children: JSX.Element }) {
    * only once `isFetching` says the read for THIS mount has actually settled - never off a value
    * that might be the one that got them stuck here in the first place.
    */
-  if (waiting.isLoading) return null
+  /*
+   * (c) THE EMPTY FRAME WHILE IT DECIDES, NOT A WHITE PAGE (plan round 32: Today was blank the next morning). The page's own shell is
+   * drawn with nothing in it, so nothing behind the wall renders and nothing behind it is asked for; AppShell draws the rail's empty
+   * frame for the same moment. The wall itself is exactly as (a) and (b) say.
+   */
+  if (waiting.isLoading) return <TheEmptyPage />
   if (!waiting.isError && waiting.data?.waiting === true) {
-    if (waiting.isFetching) return null
+    if (waiting.isFetching) return <TheEmptyPage />
     return <Navigate to="/join/waiting" replace />
   }
   return children

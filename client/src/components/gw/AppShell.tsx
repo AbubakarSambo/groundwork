@@ -1478,6 +1478,20 @@ function GroundworkBars() {
   )
 }
 
+/**
+ * THE RAIL'S EMPTY FRAME, WHILE THE WALL DECIDES (B-202's wall is unchanged; plan round 32, Today blank). The same fixed column the
+ * sidebar takes, with nothing in it: no organisation, no doors, and none of AppSidebar's requests, until `my-waiting` has answered.
+ */
+function TheRailWhileItDecides() {
+  return (
+    <aside
+      className="gw-sidebar-desktop gw-rl"
+      aria-hidden="true"
+      style={{ position: 'fixed', top: 0, left: 0, width: 'var(--gw-sidebar-w, 256px)', height: '100vh', display: 'flex', flexDirection: 'column', zIndex: 40 }}
+    />
+  )
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   /**
    * THE ROUTER'S LOCATION, NOT THE BROWSER'S. This is why the menu was never there.
@@ -1696,10 +1710,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * the app, not an endless blank wall.
    */
   const waitingQuery = useQuery({ queryKey: ['my-waiting'], queryFn: authApi.myWaiting, enabled: isAuthenticated, retry: false })
-  const stillWaitingOrUnknown = isAuthenticated
-    && (waitingQuery.isLoading || (!waitingQuery.isError && waitingQuery.data?.waiting === true))
+  /* While the answer is not in yet, the rail's frame is drawn empty (TheRailWhileItDecides): no names, no doors, no requests. Once it
+     says the person is waiting, nothing is drawn, as before. */
+  const deciding = isAuthenticated && waitingQuery.isLoading
+  const stillWaiting = isAuthenticated && !waitingQuery.isLoading && !waitingQuery.isError && waitingQuery.data?.waiting === true
   const showSidebar =
-    isAuthenticated && !stillWaitingOrUnknown && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail && !aPageAskedForNoRail
+    isAuthenticated && !stillWaiting && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail && !aPageAskedForNoRail
 
   if (!showSidebar) return <main id="main">{children}</main>
 
@@ -1715,7 +1731,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         *
         * The link is visually hidden until it takes focus, which is the one case it exists for.
         */}
-      <AppSidebar />
+      {deciding ? <TheRailWhileItDecides /> : <AppSidebar />}
       <main id="main" className={onConversationPage ? 'gw-main-content gw-focus' : 'gw-main-content'}>
         {children}
       </main>
