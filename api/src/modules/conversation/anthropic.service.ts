@@ -607,6 +607,11 @@ export class AnthropicService implements OnApplicationBootstrap {
    * fields out of a short conversation while a person waits, and with the model's default budget
    * that pull took longer than the reply it followed (28s observed, against 2s for the reply).
    * Report synthesis leaves it unset and keeps the deeper default.
+   *
+   * A `fast` read thinks as much as a conversation turn does unless its caller says otherwise (3 November
+   * 2026). Measured on one check-in: the suggested answers, the session plan and Ask's reading of a
+   * question each ran on the fast model with its own default thinking, 500 to 1,800 tokens of it, and took
+   * 2 to 12 seconds while a person waited. A fast read is a small one by definition.
    */
   async extract<T = any>(
     systemPrompt: string,
@@ -621,6 +626,7 @@ export class AnthropicService implements OnApplicationBootstrap {
       parts: [{ text: t.content }],
     }));
 
+    const thinkingBudget = options.thinkingBudget ?? (options.fast ? this.conversationThinkingBudget() : undefined);
     let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
     /* Same treatment as respond(): an extraction lost to a burst is a report built from less. */
     try {
@@ -667,7 +673,7 @@ export class AnthropicService implements OnApplicationBootstrap {
            */
           ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
           ...(options.seed !== undefined ? { seed: options.seed } : {}),
-          ...(options.thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } } : {}),
+          ...(thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget } } : {}),
           tools: [{ functionDeclarations: [this.convertTool(tool)] }],
           toolConfig: {
             functionCallingConfig: {
