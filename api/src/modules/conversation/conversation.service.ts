@@ -6114,6 +6114,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       isTheOpener: !!how?.forTheOpener,
     };
     const systemPrompt = onlyTheRulesThisTurnNeeds(wholeEngine, thisTurn);
+    /* The same for every reply of this kind, so it is sent once and asked for by name (the-fixed-instructions-are-cached). */
+    this.anthropic.keepTheFixedInstructions?.(systemPrompt);
     const leftOut = whatWasLeftOut(thisTurn);
     /* `wholeEngine` is whatever the prompt store returned, which in a test is sometimes nothing. */
     if (leftOut.length && wholeEngine) {
