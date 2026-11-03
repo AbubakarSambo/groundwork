@@ -27,6 +27,8 @@ export type TheReader =
 export interface AFact {
   groundId: string;
   checkInId: string;
+  /** The item's id in its assessment, so a correction can be kept on the very item (its history). */
+  itemId: string;
   participantId: string;
   /** The person's name as the assessment wrote it. Pages that store text put their label in its place. */
   who: string;
@@ -111,7 +113,7 @@ export function theFactsIn(a: TheAssessment, reader: TheReader): AFact[] {
     if (words && seen.has(key)) continue;
     seen.add(key);
     out.push({
-      groundId: a.about.groundId, checkInId: a.about.checkInId, participantId: a.about.participantId, who: a.about.who,
+      groundId: a.about.groundId, checkInId: a.about.checkInId, itemId: item.id, participantId: a.about.participantId, who: a.about.who,
       isTheLead: a.about.isTheLead, sessionNumber: a.about.sessionNumber, on: a.about.endedAt, section, words, detail,
       proved: item.proof === 'proved',
       saidWordForWord: !corrected && item.saidWordForWord === true,

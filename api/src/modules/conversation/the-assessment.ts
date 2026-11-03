@@ -69,6 +69,10 @@ export interface AHistoryStep {
   nowSays: string;
   /** Whether the change is backed by proof or the record. */
   backed: boolean;
+  /** Who asked for it, where it was not said in a check-in (a correction in Ask): their sign-in id. */
+  by?: string | null;
+  /** Where the correction was made: in a check-in (the default) or in Ask, on a line they were shown. */
+  where?: 'check-in' | 'ask';
 }
 
 /** What every item carries. */

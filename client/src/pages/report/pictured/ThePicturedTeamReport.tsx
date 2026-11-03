@@ -1,4 +1,5 @@
 import { theZoneDatesAreIn } from '@/lib/a-date-reads-the-same-everywhere'
+import { ThatsNotRight } from '@/components/gw/ThatsNotRight'
 import { useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -251,6 +252,8 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
                 const will = teamsDay && typeof p.willDo === 'string' && p.willDo ? p.willDo : willDo(p.who)
                 return will ? <span><span className="pb-sub">Will do:</span> {will}</span> : <span className="pb-sub">Will do: did not say</span>
               })()}
+              {/* "That's not right" on their own line, or on any line for whoever runs the check-in (the server decides what reaches the check). */}
+              {(p.isYou || (!!me?.id && ground?.initiatorId === me.id)) && <ThatsNotRight line={(p.lines ?? []).join(' ') || p.inShort || ''} />}
             </div>
           ))}
         </div>
