@@ -1837,7 +1837,7 @@ export class ConversationService {
         : [];
       const claimsMade = theKindsOfClaimIn(raw);
       const claims = claimsMade.size
-        ? await whatTheRecordHoldsForClaims(this.prisma, { groundId: checkIn.groundId, kinds: claimsMade, wordsSaidHere }).catch(() => ({}))
+        ? await whatTheRecordHoldsForClaims(this.prisma, { groundId: checkIn.groundId, kinds: claimsMade, wordsSaidHere, engine: this.anthropic as any }).catch(() => ({}))
         : {};
       const blame = mayStateAColleaguesFault(raw)
         ? await whatTheRecordHoldsForBlame(this.prisma, checkIn.groundId, { speakerParticipantId: (checkIn as any)?.participantId ?? null, speakerIsTheReader: true, withTheNote: false }).catch(() => null)

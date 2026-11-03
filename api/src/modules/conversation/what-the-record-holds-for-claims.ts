@@ -1,6 +1,7 @@
 import type { AClaim, WhatTheRecordHoldsForClaims } from './a-claim-the-record-does-not-hold';
 import { whoWasReallyRemindedToCheckIn } from '../email/a-reminder-really-sent';
 import { itWasTakenFurther } from '../reports/what-they-said-they-did-about-it';
+import { TAKEN_FURTHER_MEANS } from './the-assessment';
 
 /**
  * WHAT ONE CHECK-IN'S RECORD HOLDS, FOR THE CLAIMS a-claim-the-record-does-not-hold READS (decision 139, must-fix 3).
@@ -10,8 +11,8 @@ import { itWasTakenFurther } from '../reports/what-they-said-they-did-about-it';
  *
  *   a reminder sent   the record of messages holds a reminder to check in, to somebody in this check-in, in the last seven days.
  *   an escalation     a wait in this check-in was taken above the person it was with, or round them, as the assessment read the
- *                     person's words (`takenFurther`). Never the product's own overnight stamp (`escalatedAt`). Not checked inside a
- *                     live check-in, where what was just said is not on a wait yet.
+ *                     person's words (`takenFurther`). Never the product's own overnight stamp (`escalatedAt`). Inside a live check-in,
+ *                     where what was just said is not on a wait yet, the model reads their words here with the same meaning.
  *   a target          the texts a target may be read from: the check-in's target rows, the organisation's objectives and targets, the
  *                     lead's setup (the brief, each person's role and remit as given, the lead's notes), and what people said.
  *
@@ -20,9 +21,16 @@ import { itWasTakenFurther } from '../reports/what-they-said-they-did-about-it';
  */
 const WEEK = 7 * 86_400_000;
 
+export const TOOK_IT_HIGHER_PROMPT = `You read what one person said in their check-in, below. Say whether they took something higher: true only when ${TAKEN_FURTHER_MEANS} Return JSON only.`;
+export const TOOK_IT_HIGHER_SCHEMA = {
+  name: 'emit_took_it_higher',
+  description: 'Whether the person said they took something above the person it was with.',
+  input_schema: { type: 'object', properties: { tookItHigher: { type: 'boolean' } }, required: ['tookItHigher'] },
+} as const;
+
 export async function whatTheRecordHoldsForClaims(
   prisma: any,
-  input: { groundId: string; kinds: Set<AClaim>; now?: Date; wordsSaidHere?: readonly string[] },
+  input: { groundId: string; kinds: Set<AClaim>; now?: Date; wordsSaidHere?: readonly string[]; engine?: { extract: (p: string, h: { role: 'user'; content: string }[], t: any, o?: any) => Promise<any> } | null },
 ): Promise<WhatTheRecordHoldsForClaims> {
   const { groundId, kinds } = input;
   const now = input.now ?? new Date();
@@ -42,12 +50,19 @@ export async function whatTheRecordHoldsForClaims(
     } catch { /* not read, so not checked */ }
   }
 
-  /* Inside a live check-in, what the person has just said is not on a wait yet (the waits are written from the assessment after it
-     closes), so an escalation cannot be read there and is not checked. */
-  if (kinds.has('an escalation') && !said.length) {
+  /*
+   * SOMEBODY TOOK IT HIGHER: from the waits, as the assessment read them; and inside a live check-in, where what was just said is not on
+   * a wait yet, from their words here, read by the model with the same meaning (TAKEN_FURTHER_MEANS). No word list. Not read, not checked.
+   */
+  if (kinds.has('an escalation')) {
     try {
       const waits = (await prisma.groundDependency?.findMany?.({ where: { groundId }, select: { takenFurther: true } })) ?? [];
-      held.somebodySaidTheyTookItHigher = waits.some((d: any) => itWasTakenFurther(d));
+      const onAWait = waits.some((d: any) => itWasTakenFurther(d));
+      if (onAWait || !said.length) held.somebodySaidTheyTookItHigher = onAWait;
+      else if (input.engine) {
+        const read = await input.engine.extract(TOOK_IT_HIGHER_PROMPT, [{ role: 'user', content: said.map((w) => `- ${w.slice(0, 800)}`).join('\n') }], TOOK_IT_HIGHER_SCHEMA);
+        if (typeof read?.tookItHigher === 'boolean') held.somebodySaidTheyTookItHigher = read.tookItHigher;
+      }
     } catch { /* not read, so not checked */ }
   }
 

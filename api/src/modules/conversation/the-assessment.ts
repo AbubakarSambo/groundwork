@@ -234,6 +234,9 @@ export function whoMaySee(section: string): WhoMaySee {
   return THE_LEADS_ONLY.has(section) ? 'the lead only' : 'the people in this check-in';
 }
 
+/** What "taken further" means, the one wording: the assessment reads it into each wait, and a live check-in reads it from what was said. */
+export const TAKEN_FURTHER_MEANS = 'they say they took it above the person it was with, or round them (to that person\'s manager or someone more senior, or another way past them); asking again, chasing, or calling the same person is false.';
+
 /* ---------------------------------------------------------------------------------------------------------------------
  * THE INSTRUCTIONS. The promise and wait rules are the ones the separate readers used, quoted whole, so the rules have one
  * home and the assessment reads promises and waits exactly as they were read before.
@@ -260,7 +263,7 @@ export const THE_ASSESSMENT_PROMPT = [
   '  - people: each person and organisation mentioned, with their role, and how the speaker spoke of them (praise, criticism or neutral), only from their words. For a person on the check-in, `theirWork` says how the speaker spoke of that person\'s work: "credited" when the speaker says they did or moved something, or unblocked the speaker; "covered for" when the speaker did or picked up work that belongs to them; otherwise "none". A mention with no work attached ("I spoke to Dana") is "none".',
   '  - dates: each date or deadline, as they said it.',
   '  - decisions: each decision made or waiting, and who decides.',
-  '  - blockers: each thing this person is waiting on or blocked by. The rules below apply. `since` is when it started, as they said it, and `sinceDay` is that day as a date (YYYY-MM-DD), worked out from their words and the day of the conversation; null when they did not say when it started. Where it is the same wait as one in their previous assessment, `previousItem` is that item\'s id. `takenFurther` is true only when they say they took it above the person it was with, or round them (to that person\'s manager or someone more senior, or another way past them); asking again, chasing, or calling the same person is false.',
+  '  - blockers: each thing this person is waiting on or blocked by. The rules below apply. `since` is when it started, as they said it, and `sinceDay` is that day as a date (YYYY-MM-DD), worked out from their words and the day of the conversation; null when they did not say when it started. Where it is the same wait as one in their previous assessment, `previousItem` is that item\'s id. `takenFurther` is true only when ' + TAKEN_FURTHER_MEANS,
   '  - corrections: anything they said the record, the board or Groundwork has wrong: what it said, what it should say, and whether they backed it. Where it corrects an item of the previous assessment, `correctsItem` is that item\'s id.',
   '  - documents: each document or photo they added or pointed to: what it says, what it proves, and where it belongs. Where it proves a claim in their previous assessment, `provesItem` is that claim\'s id.',
   '  - targets: what the check-in as a whole is aiming at, and each number somebody is aiming at, by the rules for aims below. In every conversation, setup or check-in.',
