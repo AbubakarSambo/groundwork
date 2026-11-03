@@ -56,14 +56,14 @@ describe('finishing waits for the card and returns it; its lines are the record\
       recordEntry: { createMany: jest.fn(async () => ({})) },
     };
     const service = aService(prisma);
-    service.readTheRecord = jest.fn();
+    service.theAssessmentAtTheClose = jest.fn();
     service.theEndCardFor = jest.fn(() => new Promise((resolve) => setTimeout(() => { turn = { ...turn, recordDraft: ROWS, endCard: CARD }; resolve(CARD); }, 20)));
     service.startTheEndCard({ id: 'ci1', participantId: 'p1', groundId: 'g1' }, 'turn-9');
     await service.waitForTheCardBeingBuilt('ci1');
     const ended = await service.theEndCardAtTheEnd({ id: 'ci1', participantId: 'p1' });
     expect(ended).toEqual({ card: CARD, lines: ROWS });
     expect(prisma.recordEntry.createMany).not.toHaveBeenCalled();
-    expect(service.readTheRecord).not.toHaveBeenCalled();
+    expect(service.theAssessmentAtTheClose).not.toHaveBeenCalled();
   });
 
   it('finishing a session waits, and the answer carries the card', () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
+import { vi } from 'vitest'
 import { TheEndCard } from './TheEndCard'
 
 /**
@@ -68,10 +69,29 @@ describe('TheEndCard, what it says where her answers should be', () => {
   })
   it('with a card that holds nothing, says that in a plain sentence', () => {
     draw({ engine: { inYourRecord: [], next: [] } })
-    expect(screen.getByText('I did not find anything in your answers to write down yet. If something is missing, choose “Change something” and tell me.')).toBeTruthy()
+    /* Changed in F5: "Change something" is gone; when nothing is written, the sentence itself says how to add what is missing. */
+    expect(screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === 'I did not find anything in your answers to write down yet. If something is missing, tell me.')).toBeTruthy()
+    expect(screen.queryByText('Change something')).toBeNull()
+  })
+  /* F5: "That’s not right" on each line, in place of one "Change something" for the whole card. */
+  it('puts “That’s not right” on each line, and pressing it goes back with that line', () => {
+    const onChange = vi.fn()
+    render(
+      <TheEndCard
+        engine={{ inYourRecord: [{ says: 'Green Mart has a quote.', how: 'You said this.', mark: 'said' }, { says: 'I will visit Westgate on Friday.', how: 'You said you will do this. I will ask you how it went.', mark: 'said' }] }}
+        leadName={null} nextOpens={null} finishing={false} onFinish={() => {}} onChange={onChange}
+      />
+    )
+    const buttons = screen.getAllByRole('button', { name: 'That’s not right' })
+    expect(buttons).toHaveLength(2)
+    fireEvent.click(buttons[1])
+    expect(onChange).toHaveBeenCalledWith('I will visit Westgate on Friday.')
+    expect(screen.queryByText('Change something')).toBeNull()
+    expect(screen.getByRole('button', { name: 'That’s right, finish' })).toBeTruthy()
   })
   it('with no card at all, says it could not be shown and that finishing writes it', () => {
     draw({ engine: null })
-    expect(screen.getByText('I could not show you what I wrote down just now. It is written from your answers when you finish.')).toBeTruthy()
+    /* Changed in F5: the way back to the conversation is in the sentence, since "Change something" is gone. */
+    expect(screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === 'I could not show you what I wrote down just now. It is written from your answers when you finish. If something is missing, tell me.')).toBeTruthy()
   })
 })

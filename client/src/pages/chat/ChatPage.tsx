@@ -1,3 +1,4 @@
+import { aCorrectionOf } from '@/components/gw/ThatsNotRight'
 import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { ANSWER_ON_WHATSAPP_INSTEAD } from '@/lib/answer-on-whatsapp-instead'
 import { WaitingForYouToConfirm } from '@/components/gw/ThePlanPage'
@@ -1726,8 +1727,8 @@ export function ChatPage() {
           {/*
             THE END CARD (check-in-end-card.txt). Finishing never happens on its own: the engine
             closing the conversation brings up this card, and only "That’s right, finish" finishes.
-            "Change something" goes back to the conversation, where they say what is wrong in their
-            own words; the card comes back on the next close.
+            "That’s not right" on a line goes back to the conversation with that line quoted, where they say what is wrong in
+            their own words; the card comes back on the next close.
           */}
           {done && !completed && !declined && (
             <TheEndCard
@@ -1745,7 +1746,7 @@ export function ChatPage() {
               */
               whileFinishing={<SlowStep steps={CLOSING_STEPS} />}
               onFinish={() => complete.mutate(false)}
-              onChange={() => { setDone(false); taRef.current?.focus() }}
+              onChange={(line) => { setDone(false); if (line) setInput(`${aCorrectionOf(line)} `); requestAnimationFrame(() => taRef.current?.focus()) }}
             />
           )}
           {/*

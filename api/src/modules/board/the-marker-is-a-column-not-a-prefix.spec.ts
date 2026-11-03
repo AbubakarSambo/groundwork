@@ -24,11 +24,11 @@ const read = (p: string) => strip(readFileSync(join(SRC, p), 'utf8'));
 describe('the marker is a column, not a prefix', () => {
   it('the write stores the column and leaves the text alone', () => {
     const SERVICE = read('conversation/conversation.service.ts');
-    /* The rows are built in readTheRecord since the end card (task 2.7), and written as built. */
-    const at = SERVICE.indexOf('valid.map((e) =>');
+    /* The rows are built from the assessment since F5 (theRecordLinesFromTheAssessment), for the record and the end card alike. */
+    const at = SERVICE.indexOf('return aTypedReferenceBacksItsLine(lines.map((l) =>');
     expect(at).toBeGreaterThan(-1);
     const block = SERVICE.slice(at, at + 1400);
-    expect(block).toContain('verifiability: v');
+    expect(block).toContain('verifiability: l.verifiability');
     /*
      * The text goes in as the person said it, with no marker built onto the front of it - which is
      * what this spec is for. It used to pin the exact call `e.text.trim()`; the trim now happens
@@ -38,10 +38,8 @@ describe('the marker is a column, not a prefix', () => {
      */
     /* Since 6331337b the line is also given back the quotation marks the person typed, and stored
        as `line` - still only their own words, with no marker on the front. The rule is the same. */
-    expect(block).toMatch(/text: theLineWithoutItsDanglingJoin\(e\.text\)|text: e\.text\.trim\(\)|text: line\b/);
-    if (/text: line\b/.test(block)) {
-      expect(SERVICE).toMatch(/const line = theirQuotationMarksBack\(theLineWithoutItsDanglingJoin\(e\.text\), whatTheyTyped\)/);
-    }
+    expect(block).toMatch(/const text = theirQuotationMarksBack\(theLineWithoutItsDanglingJoin\(l\.text\), whatTheyTyped\)/);
+    expect(block).toMatch(/\btext, saidWordForWord/);
     expect(block).not.toMatch(/text: `/);
     /* The prefix is not built any more. This is the line that ends the class. */
     expect(block).not.toMatch(/\[VERIFIABILITY:\$\{/);

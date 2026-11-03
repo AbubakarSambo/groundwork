@@ -86,7 +86,7 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
       where: { id: checkInId },
       select: {
         id: true, groundId: true, participantId: true, sessionNumber: true, startedAt: true, completedAt: true, whatWeHave: true, sessionReport: true,
-        turns: { orderBy: { createdAt: 'asc' }, select: { id: true, role: true, content: true, createdAt: true, recordDraft: true } },
+        turns: { orderBy: { createdAt: 'asc' }, select: { id: true, role: true, content: true, createdAt: true } },
         participant: { select: { partyType: true, nameGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, jobTitle: true } } } },
         ground: { select: { label: true } },
       },
@@ -119,7 +119,6 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     const previous = earlier[earlier.length - 1] ?? null;
     const priorities = (((await deps.prisma.groundObjective?.findMany?.({ where: { groundId: row.groundId }, select: { name: true } })?.catch?.(() => [])) ?? []) as any[])
       .map((o) => String(o.name ?? '').trim()).filter(Boolean);
-    const closing = ((row.turns ?? []) as any[]).filter((t) => Array.isArray(t.recordDraft)).pop();
     /* Their promises open on the record from before this conversation began: the read says what happened to each, and the settling reads that. */
     const openPromises = (((await deps.prisma.groundCommitment?.findMany?.({
       where: { groundId: row.groundId, participantId: row.participantId, status: 'UNKNOWN', createdAt: { lt: row.startedAt ?? how.closedAt } },
@@ -148,7 +147,8 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
       on: isoOf(row.startedAt ?? row.completedAt ?? how.closedAt)?.slice(0, 10) ?? null, givenRole, priorities, turns, setup, documents,
       draft: {
         claims: (((row.whatWeHave as any)?.claims ?? []) as any[]).map((c) => [c.said, c.number && `(${c.number}${c.measure ? ` ${c.measure}` : ''})`, c.date && `by ${c.date}`].filter(Boolean).join(' ')).filter(Boolean),
-        lines: ((closing?.recordDraft ?? []) as any[]).map((l) => String(l?.text ?? '').trim()).filter(Boolean),
+        /* The end card's lines are read from this assessment now, so they are not handed back to it as a draft. */
+        lines: [],
       },
       previous: previous ? { checkInId: previous.checkInId, on: previous.on, items: theItemsToCompareAgainst(previous.assessment) } : null,
       openPromises: openOnce,

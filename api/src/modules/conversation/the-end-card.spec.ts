@@ -150,7 +150,7 @@ describe('at the closing reply', () => {
       groundDocument: { findMany: jest.fn(async () => []) },
     };
     const service = aService(prisma);
-    service.readTheRecord = jest.fn(async () => ROWS.map((r) => ({ ...r })));
+    service.theAssessmentAtTheClose = jest.fn(async () => ({})); service.theRecordLinesFromTheAssessment = jest.fn(async () => ROWS.map((r) => ({ ...r })));
     const card = await service.theEndCardFor({ id: 'ci1', participantId: 'p1', groundId: 'g1' }, 'turn-9');
     expect(card.inYourRecord.map((l: any) => l.mark)).toEqual(['said', 'said']);
     expect(prisma.recordEntry.createMany).not.toHaveBeenCalled();
@@ -165,14 +165,17 @@ describe('at the closing reply', () => {
     const prisma: any = {
       conversationTurn: { update: jest.fn(async () => ({})) },
       recordEntry: { createMany: jest.fn() },
-      groundDocument: { findMany: jest.fn(async () => [{ id: 'doc-1', fileName: 'quote.jpg', content: 'Quote for Green Mart, January delivery', origin: null, descriptionCheck: null, mimeType: 'image/jpeg', participantId: 'p1' }]) },
+      groundDocument: { findMany: jest.fn(async () => [{ id: 'doc-1', fileName: 'quote.jpg', content: 'Quote DN-1182 for Green Mart, January delivery', origin: 'photo', descriptionCheck: null, mimeType: 'image/jpeg', participantId: 'p1' }]) },
     };
-    const anthropic = { extract: jest.fn(async () => ({ backed: [{ line: 0, document: 0, where: 'January delivery' }] })) };
+    /* Changed in F5: no model reads the documents for the card; a line naming a reference their own document names is backed by it. */
+    const anthropic = { extract: jest.fn(async () => null) };
     const service = aService(prisma, anthropic);
-    service.readTheRecord = jest.fn(async () => ROWS.map((r) => ({ ...r })));
+    service.theAssessmentAtTheClose = jest.fn(async () => ({}));
+    service.theRecordLinesFromTheAssessment = jest.fn(async () => [{ ...ROWS[0], text: 'Green Mart will buy in January, quote DN-1182' }, { ...ROWS[1] }]);
     const card = await service.theEndCardFor({ id: 'ci1', participantId: 'p1', groundId: 'g1' }, 'turn-9');
     /* Commitments come first, so the Green Mart line is second. */
-    expect(card.inYourRecord[1]).toEqual({ says: 'Green Mart will buy in January.', how: HOW.photo, mark: 'proven' });
+    expect(card.inYourRecord[1]).toEqual({ says: 'Green Mart will buy in January, quote DN-1182.', how: HOW.photo, mark: 'proven' });
+    expect(anthropic.extract).not.toHaveBeenCalled();
     const kept = prisma.conversationTurn.update.mock.calls[0][0].data.recordDraft;
     expect(kept[0]).toMatchObject({ recallBased: false, anchoredDocumentId: 'doc-1' });
   });
@@ -180,7 +183,7 @@ describe('at the closing reply', () => {
   it('a read that fails leaves no card and nothing kept', async () => {
     const prisma: any = { conversationTurn: { update: jest.fn() }, recordEntry: { createMany: jest.fn() } };
     const service = aService(prisma);
-    service.readTheRecord = jest.fn(async () => { throw new Error('model down'); });
+    service.theAssessmentAtTheClose = jest.fn(async () => { throw new Error('model down'); });
     expect(await service.theEndCardFor({ id: 'ci1', participantId: 'p1', groundId: 'g1' }, 'turn-9')).toBeNull();
     expect(prisma.conversationTurn.update).not.toHaveBeenCalled();
   });
@@ -228,11 +231,12 @@ describe('when the end card fails', () => {
   it('a database with no documents table still leaves no unhandled failure', async () => {
     const prisma: any = { conversationTurn: { update: jest.fn() } };
     const service = aService(prisma);
-    service.readTheRecord = jest.fn(async () => ROWS.map((r) => ({ ...r })));
+    service.theAssessmentAtTheClose = jest.fn(async () => ({})); service.theRecordLinesFromTheAssessment = jest.fn(async () => ROWS.map((r) => ({ ...r })));
     jest.spyOn(service.logger, 'warn').mockImplementation(() => undefined);
     const unhandled = await unhandledWhile(() => service.startTheEndCard({ id: 'ci1', participantId: 'p1', groundId: 'g1' }, 'turn-9'));
     expect(unhandled).toEqual([]);
-    expect(prisma.conversationTurn.update).not.toHaveBeenCalled();
+    /* Changed in F5: the card is built from the assessment's lines, so with no documents to read it is still shown, unbacked. */
+    expect(prisma.conversationTurn.update).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -270,11 +274,11 @@ describe('when they finish', () => {
       recordEntry: { createMany: jest.fn(async () => ({ count: 2 })) },
     };
     const service = aService(prisma);
-    service.readTheRecord = jest.fn();
+    service.theAssessmentAtTheClose = jest.fn();
     const ended = await service.theEndCardAtTheEnd({ id: 'ci1', participantId: 'p1' });
     expect(ended).toEqual({ card: { inYourRecord: [] }, lines: ROWS });
     expect(prisma.recordEntry.createMany).not.toHaveBeenCalled();
-    expect(service.readTheRecord).not.toHaveBeenCalled();
+    expect(service.theAssessmentAtTheClose).not.toHaveBeenCalled();
     expect(prisma.conversationTurn.count.mock.calls[0][0].where).toMatchObject({ checkInId: 'ci1', role: TurnRole.PERSON });
   });
 
@@ -303,9 +307,10 @@ describe('when they finish', () => {
     };
     const service = aService(prisma);
     const reread = [{ ...ROWS[1] }];
-    service.readTheRecord = jest.fn(async () => reread);
-    const { card, lines } = await service.theEndCardAtTheEnd({ id: 'ci1', participantId: 'p1' });
-    expect(service.readTheRecord).toHaveBeenCalledWith('ci1', 'p1');
+    service.theAssessmentAtTheClose = jest.fn(async () => ({}));
+    service.theRecordLinesFromTheAssessment = jest.fn(async () => reread);
+    const { card, lines } = await service.theEndCardAtTheEnd({ id: 'ci1', participantId: 'p1', groundId: 'g1' });
+    expect(service.theAssessmentAtTheClose).toHaveBeenCalledWith({ id: 'ci1', participantId: 'p1', groundId: 'g1' });
     expect(prisma.recordEntry.createMany).not.toHaveBeenCalled();
     expect(lines).toEqual(reread);
     const replaced = prisma.conversationTurn.update.mock.calls[0][0];
@@ -320,8 +325,8 @@ describe('when they finish', () => {
       recordEntry: { createMany: jest.fn() },
     };
     const service = aService(prisma);
-    service.readTheRecord = jest.fn(async () => ROWS.map((r) => ({ ...r })));
-    const { card } = await service.theEndCardAtTheEnd({ id: 'ci1', participantId: 'p1' });
+    service.theAssessmentAtTheClose = jest.fn(async () => ({})); service.theRecordLinesFromTheAssessment = jest.fn(async () => ROWS.map((r) => ({ ...r })));
+    const { card } = await service.theEndCardAtTheEnd({ id: 'ci1', participantId: 'p1', groundId: 'g1' });
     expect(prisma.recordEntry.createMany).not.toHaveBeenCalled();
     expect(card.inYourRecord).toHaveLength(2);
     expect(prisma.conversationTurn.update.mock.calls[0][0].data.endCard).toEqual(card);
@@ -408,10 +413,11 @@ describe('a photo that backs a line, as the person reads it', () => {
     expect(card.inYourRecord![0]).toEqual({ says: 'Green Mart has a quote.', how: 'You said this.', mark: 'said' });
   });
 
-  it('the card rebuilt from the written record asks who added each backing document', () => {
+  /* Changed in F5: the card is built from the assessment's lines, and only the person's own documents back them, so the card never asks. */
+  it('the card is backed only by the person\'s own documents', () => {
     const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
-    const rewrite = SRC.slice(SRC.indexOf('private async theEndCardAtTheEnd('), SRC.indexOf('private async readTheRecord('));
-    expect(rewrite).toContain('whoAddedEachBackingDocument(this.prisma, rows');
-    expect(rewrite).toContain('documentIsTheirOwn: whoAdded.get(doc) === checkIn.participantId');
+    const card = SRC.slice(SRC.indexOf('private async theEndCardFromTheLines('), SRC.indexOf('private async theEndCardFromTheLines(') + 1600);
+    expect(card).toContain('docs.filter((d) => d.participantId === checkIn.participantId)');
+    expect(card).toContain('theLinesADocumentBacks(rows as any[], theirs)');
   });
 });

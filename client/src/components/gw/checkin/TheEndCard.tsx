@@ -4,6 +4,7 @@ import { FoldedLine } from '@/components/gw/ui/FoldedLine'
 import '@/components/gw/ui/gw-ui.css'
 import type { TheEndCard as EngineEndCard } from '@/api/conversation'
 import { useTheDirectMorning } from '@/lib/the-direct-morning'
+import { THATS_NOT_RIGHT } from '@/components/gw/ThatsNotRight'
 
 /**
  * THE END CARD (B3, docs/prototype/screens/B3-the-check-in/check-in-end-card.txt).
@@ -31,8 +32,9 @@ import { useTheDirectMorning } from '@/lib/the-direct-morning'
  * else in it, the true sentence for that case is shown instead.
  *
 
- * "That’s right, finish" is the one press that finishes, and "Change something" goes back to the
- * conversation, where the person says what is wrong in their own words.
+ * "That’s right, finish" is the one press that finishes. "That’s not right" on a line (F5, in place of one "Change something" for the
+ * whole card) goes back to the conversation with that line quoted in the answer box, where the person says what is wrong in their own
+ * words, and the check-in checks the correction like any claim before the card comes back.
  *
  * GROUP 3, PIECE 3: rebuilt from the shared parts - `Button` and `ProofMark` from
  * `components/gw/ui` rather than the old `kit.tsx` (which drew the same two things under the
@@ -74,7 +76,8 @@ export function TheEndCard({
   /** What to show while finishing. */
   whileFinishing?: React.ReactNode
   onFinish: () => void
-  onChange: () => void
+  /** Back to the conversation, with the line they say is wrong, or with nothing when something is missing. */
+  onChange: (line?: string) => void
 }) {
   /*
    * THE DIRECT MORNING (lib/the-direct-morning.tsx): what goes in the record, when the next one opens, and what the engine says
@@ -96,9 +99,12 @@ export function TheEndCard({
         <p className="gwui-ci-endcard-body">
           {beingWritten
             ? 'I am still writing down what you said. It takes a few seconds.'
-            : engine
-              ? 'I did not find anything in your answers to write down yet. If something is missing, choose “Change something” and tell me.'
-              : 'I could not show you what I wrote down just now. It is written from your answers when you finish.'}
+            : <>
+                {engine
+                  ? 'I did not find anything in your answers to write down yet.'
+                  : 'I could not show you what I wrote down just now. It is written from your answers when you finish.'}
+                {' '}If something is missing,{' '}<button type="button" className="gw-link" onClick={() => onChange()} disabled={finishing}>tell me</button>.
+              </>}
         </p>
       )}
       {record.length > 0 && (
@@ -112,6 +118,7 @@ export function TheEndCard({
                 <span className="gwui-ci-endcard-text">
                   <span className="gwui-ci-endcard-line">{l.says}</span>
                   {l.how && <span className="gwui-ci-endcard-how">{l.how}</span>}
+                  <button type="button" className="gw-link gwui-fs-13" onClick={() => onChange(l.says)} disabled={finishing}>{THATS_NOT_RIGHT}</button>
                 </span>
               </li>
             ))}
@@ -164,9 +171,6 @@ export function TheEndCard({
       <div className="gwui-ci-endcard-actions">
         <Button kind="primary" wide onClick={onFinish} disabled={finishing}>
           {finishing ? 'Saving…' : 'That’s right, finish'}
-        </Button>
-        <Button kind="secondary" wide onClick={onChange} disabled={finishing}>
-          Change something
         </Button>
       </div>
     </section>

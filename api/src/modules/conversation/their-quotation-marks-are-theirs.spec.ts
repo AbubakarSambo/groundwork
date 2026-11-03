@@ -67,11 +67,11 @@ describe('the extractor keeps their marks, told and checked', () => {
     expect(READ_WHAT_THEY_PROMISED).toContain('Keep their punctuation and their quotation marks exactly as they typed them');
   });
 
-  it('the record extraction prompt is the file\'s, not a stored version', () => {
-    /* PromptVersion is read through prompts.getActive; the record reader is handed the constant. */
+  /* Changed in F5: the end card's own model read is gone; the one owner of the record's lines gives every line their marks back. */
+  it('the one owner of the record\'s lines gives them their marks back', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
-    expect(src).toContain('`${RECORD_EXTRACTION_PROMPT}\\n\\n${ONLY_THEIR_WORDS}`');
-    expect(src).not.toMatch(/getActive\(\s*'record/);
+    const owner = src.slice(src.indexOf('private async theRecordLinesFromTheAssessment('), src.indexOf('private async theAssessmentAtTheClose('));
+    expect(owner).toContain('theirQuotationMarksBack(theLineWithoutItsDanglingJoin(l.text), whatTheyTyped)');
   });
 
   /* Changed for one source, part 2: the lines reach the record from the conversation's assessment, by its one writer, which keeps

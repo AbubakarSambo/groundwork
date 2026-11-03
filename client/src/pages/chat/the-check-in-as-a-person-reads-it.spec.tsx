@@ -395,7 +395,8 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     expect(screen.getByRole('heading', { name: 'What happens next' }).closest('details')).toBeTruthy()
     expect(screen.getByText('If you don’t want to talk about something yet, that’s fine. You can leave it for now.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'That’s right, finish' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Change something' })).toBeTruthy()
+    /* Changed in F5: no "Change something"; with nothing written, the sentence offers to be told what is missing. */
+    expect(screen.getByRole('button', { name: 'tell me' })).toBeTruthy()
     // The engine sent no lines for the record, so none are made up.
     expect(screen.queryByText(/What goes in your record|What is now in your record/)).toBeNull()
     /*
@@ -475,10 +476,11 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     expect(screen.queryByText(/also answers a check-in/)).toBeNull()
   })
 
-  it('“Change something” goes back to the conversation without finishing', async () => {
+  /* Changed in F5: "Change something" became "That’s not right" on each line; with no lines, "tell me" does the same. */
+  it('“tell me” goes back to the conversation without finishing', async () => {
     closesOnTheNextAnswer()
     await answerTheLastQuestion()
-    fireEvent.click(screen.getByRole('button', { name: 'Change something' }))
+    fireEvent.click(screen.getByRole('button', { name: 'tell me' }))
     expect(screen.queryByRole('button', { name: 'That’s right, finish' })).toBeNull()
     expect(screen.queryByText('That’s everything for today')).toBeNull()
     expect((screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement).disabled).toBe(false)

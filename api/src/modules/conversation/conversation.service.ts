@@ -7182,8 +7182,10 @@ ${told}` : '';
       theDoorsTheirTurnsCameThrough(this, null).delete(checkIn.id);
       /* A read the model could not give is owed, and written again by the scheduled pass; meanwhile the assessment keeps every
          message whole, so nothing said is lost (a-write-is-owed-until-it-lands.ts). */
-      let assessed: TheAssessment | null = null;
-      await writeOrOwe(this.prisma as any, checkIn.id, 'the assessment', async () => {
+      /* The assessment the end card read, when it has read everything they said: the conversation is not read twice. */
+      const atTheClose = how.howItEnded === 'finished by the person' && !how.setup ? await theAssessmentOf(this.prisma, checkIn.id).catch(() => null) : null;
+      let assessed: TheAssessment | null = atTheClose && (await this.itHasReadEverythingTheySaid(checkIn.id, atTheClose)) ? atTheClose : null;
+      if (!assessed) await writeOrOwe(this.prisma as any, checkIn.id, 'the assessment', async () => {
         const a = await assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger, contextEnabled: this.config?.get?.<boolean>('app.contextEnabled') !== false }, checkIn.id, { ...how, channel: how.channel ?? channel });
         if (!a || a.measure.modelFailed) throw new Error('the model could not read the conversation');
         assessed = a;
@@ -8911,23 +8913,8 @@ ${told}` : '';
   async writeTheRecordFromTheAssessment(checkIn: { id: string; participantId: string; groundId: string }, assessed?: TheAssessment | null): Promise<number> {
     const a = assessed ?? (await theAssessmentOf(this.prisma, checkIn.id));
     if (!a) return 0;
-    const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } });
-    const whatTheyTyped = theWorkTheySaid(turns).map((t) => String(t.content ?? ''));
-    if (!whatTheyTyped.length) return 0;
-    const whatTheySaid = whatTheyTyped.join('\n');
-    const roster: string[] = await Promise.resolve(this.prisma.groundParticipant?.findMany?.({ where: { groundId: checkIn.groundId }, select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } } as any))
-      .then((rows: any[] | undefined) => (rows ?? []).flatMap((r) => [r.user?.firstName ?? r.nameGiven ?? '', r.user?.lastName ?? '']).filter(Boolean))
-      .catch(() => [] as string[]);
-    const lines = notARemarkAboutUs(theRecordLinesIn(a, (t) => countCheckableSpecifics(t) > 0))
-      .filter((l) => !isANonAnswer(l.text, l.type) && isTheirs(l.text, whatTheySaid) && !aNameNobodyTyped(l.text, whatTheySaid, roster).length);
     const already = new Set(((await this.prisma.recordEntry.findMany({ where: { checkInId: checkIn.id }, select: { text: true } }).catch(() => [])) ?? []).map((r: any) => String(r.text ?? '').trim()));
-    const rows = aTypedReferenceBacksItsLine(lines.map((l) => {
-      const text = theirQuotationMarksBack(theLineWithoutItsDanglingJoin(l.text), whatTheyTyped);
-      return {
-        participantId: checkIn.participantId, checkInId: checkIn.id, type: l.type as RecordEntryType, verifiability: l.verifiability as any,
-        text, saidWordForWord: saidWordForWord(text, whatTheyTyped), dimensionThreadKey: l.dimensionThreadKey,
-      };
-    }), whatTheyTyped).filter((r) => !already.has(r.text.trim()));
+    const rows = (await this.theRecordLinesFromTheAssessment(checkIn, a)).filter((r) => !already.has(String(r.text).trim()));
     if (rows.length) {
       const on = await this.whenTheSessionWas(checkIn.id);
       await this.prisma.recordEntry.createMany({ data: rows.map((r) => ({ ...r, createdAt: on })) });
@@ -8936,6 +8923,68 @@ ${told}` : '';
     await this.backTheLinesTheirDocumentsName(checkIn.participantId);
     this.logger.log(`Check-in ${checkIn.id}: wrote ${rows.length} line(s) to the record from its assessment.`);
     return rows.length;
+  }
+
+  /**
+   * THE RECORD'S LINES FROM THE CONVERSATION'S ASSESSMENT, AS THEY WILL BE WRITTEN: the one owner of what a check-in puts in the record,
+   * read by the record's writer and by the end card, so the card a person reads is what is written. Nothing is written here.
+   */
+  private async theRecordLinesFromTheAssessment(checkIn: { id: string; participantId: string; groundId: string }, a: TheAssessment): Promise<(Prisma.RecordEntryCreateManyInput & { text: string })[]> {
+    const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } });
+    const whatTheyTyped = theWorkTheySaid(turns).map((t) => String(t.content ?? ''));
+    if (!whatTheyTyped.length) return [];
+    const whatTheySaid = whatTheyTyped.join('\n');
+    const roster: string[] = await Promise.resolve(this.prisma.groundParticipant?.findMany?.({ where: { groundId: checkIn.groundId }, select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } } as any))
+      .then((rows: any[] | undefined) => (rows ?? []).flatMap((r) => [r.user?.firstName ?? r.nameGiven ?? '', r.user?.lastName ?? '']).filter(Boolean))
+      .catch(() => [] as string[]);
+    const lines = notARemarkAboutUs(theRecordLinesIn(a, (t) => countCheckableSpecifics(t) > 0))
+      .filter((l) => !isANonAnswer(l.text, l.type) && isTheirs(l.text, whatTheySaid) && !aNameNobodyTyped(l.text, whatTheySaid, roster).length);
+    return aTypedReferenceBacksItsLine(lines.map((l) => {
+      const text = theirQuotationMarksBack(theLineWithoutItsDanglingJoin(l.text), whatTheyTyped);
+      return {
+        participantId: checkIn.participantId, checkInId: checkIn.id, type: l.type as RecordEntryType, verifiability: l.verifiability as any,
+        text, saidWordForWord: saidWordForWord(text, whatTheyTyped), dimensionThreadKey: l.dimensionThreadKey,
+      };
+    }), whatTheyTyped);
+  }
+
+  /**
+   * THE ASSESSMENT THE CLOSE READS (F5, item 0): the one already written when it has read everything they said, otherwise the
+   * conversation is assessed now. The end card and the record both read it, and assessAndThenRead takes it rather than reading the
+   * conversation a second time. This replaced the end card's own model read of the conversation (readTheRecord), a second source.
+   */
+  private async theAssessmentAtTheClose(checkIn: { id: string }): Promise<TheAssessment | null> {
+    const stored = await theAssessmentOf(this.prisma, checkIn.id).catch(() => null);
+    if (stored && (await this.itHasReadEverythingTheySaid(checkIn.id, stored))) return stored;
+    const doors = theDoorsTheirTurnsCameThrough(this, checkIn.id);
+    const channel = doors.has('whatsapp') ? 'WhatsApp' : doors.has('web') ? 'the app' : doors.has('api') ? 'the API' : 'not known';
+    return assessTheConversation({ prisma: this.prisma, anthropic: this.anthropic as any, prompts: this.prompts as any, events: this.events, logger: this.logger, contextEnabled: this.config?.get?.<boolean>('app.contextEnabled') !== false }, checkIn.id, { howItEnded: 'finished by the person', closedAt: new Date(), channel } as any);
+  }
+
+  /** Whether this assessment, of a person finishing, has read every message they sent. */
+  private async itHasReadEverythingTheySaid(checkInId: string, a: TheAssessment): Promise<boolean> {
+    if (a.about?.howItEnded !== 'finished by the person' || a.measure?.modelFailed) return false;
+    const theirs: { id: string; content: string | null }[] = (await Promise.resolve(this.prisma.conversationTurn.findMany({ where: { checkInId, role: TurnRole.PERSON }, select: { id: true, content: true } })).catch(() => [])) ?? [];
+    const read = new Set((a.messages ?? []).map((m) => m.turnId).filter(Boolean));
+    return theirs.filter((t) => String(t.content ?? '').trim()).every((t) => read.has(t.id));
+  }
+
+  /**
+   * THE END CARD FROM THE ASSESSMENT'S LINES: what the record will hold, each marked by how it is known. A line a reference they typed
+   * backs, or one of their own documents names, is proven; nothing else is read for it.
+   */
+  private async theEndCardFromTheLines(checkIn: { id: string; participantId: string; groundId?: string }, rows: (Prisma.RecordEntryCreateManyInput & { text: string })[]): Promise<EndCard | null> {
+    const docs: any[] = checkIn.groundId ? await this.documentsThatMayBack(checkIn.participantId, checkIn.groundId).catch(() => []) : [];
+    const theirs = docs.filter((d) => d.participantId === checkIn.participantId);
+    for (const b of theLinesADocumentBacks(rows as any[], theirs)) Object.assign(b.row, { recallBased: false, anchoredDocumentId: b.doc.id, anchoredPassage: b.reference, anchoredOrigin: (b.doc as any).origin ?? null });
+    const photos = new Set(theirs.filter((d) => String(d.mimeType ?? '').startsWith('image/')).map((d) => d.id));
+    const lines: ALineForTheCard[] = rows.map((r: any) => ({
+      type: String(r.type), text: String(r.text ?? ''), recallBased: r.recallBased ?? (r.verifiability === 'HIGH' ? false : true),
+      anchoredDocumentId: r.anchoredDocumentId ?? null, anchoredOrigin: r.anchoredOrigin ?? null,
+      backedByAPhoto: !!r.anchoredDocumentId && photos.has(r.anchoredDocumentId),
+      ...(r.anchoredDocumentId ? { documentIsTheirOwn: true } : {}),
+    }));
+    return theEndCard(lines, checkIn.groundId ? await this.usesSimplerWords(checkIn.groundId) : false, await this.whatTheyWereAskedToShowAndDidNot(checkIn));
   }
 
   /**
@@ -9111,39 +9160,18 @@ ${told}` : '';
     const inTime = <T>(work: Promise<T>): Promise<T | null> =>
       Promise.race([work, new Promise<null>((resolve) => setTimeout(() => resolve(null), THE_END_CARD_WAITS_MS).unref?.())]);
     try {
-      const draft = await inTime((async () => {
-        const rows = await this.readTheRecord(checkIn.id, checkIn.participantId);
-        if (!rows.length) return { rows, photos: new Set<string>(), theirs: new Set<string>() };
-        /* A line a document backs is proven. Only asked when there is a document to ask about. */
-        const readable = await this.documentsThatMayBack(checkIn.participantId, checkIn.groundId);
-        const photos = new Set(readable.filter((d: any) => String(d.mimeType ?? '').startsWith('image/')).map((d) => d.id));
-        /* Only their own document proves their line; somebody else's plan is not proof. */
-        const theirs = new Set(readable.filter((d: any) => d.participantId === checkIn.participantId).map((d) => d.id));
-        if (readable.length) {
-          const result = await this.whatTheDocumentsBack(readable, rows.map((r) => String(r.text ?? '')));
-          for (const b of result?.backed ?? []) {
-            const row = Number.isInteger(b.line) ? rows[b.line] : undefined;
-            const doc = Number.isInteger(b.document) ? readable[b.document] : undefined;
-            if (!row || !doc) continue;
-            Object.assign(row, { recallBased: false, anchoredDocumentId: doc.id, anchoredPassage: (b.where ?? '').slice(0, 400) || null, anchoredOrigin: (doc as any).origin ?? null });
-          }
-        }
-        return { rows, photos, theirs };
+      const rows = await inTime((async () => {
+        const assessed = await this.theAssessmentAtTheClose(checkIn);
+        return assessed ? this.theRecordLinesFromTheAssessment(checkIn, assessed) : [];
       })());
-      if (!draft) {
+      if (!rows) {
         this.logger.warn(`Check-in ${checkIn.id}: the end card took longer than ${THE_END_CARD_WAITS_MS}ms, so it was left out; the record is read when they finish.`);
         return null;
       }
-      const lines: ALineForTheCard[] = draft.rows.map((r) => ({
-        type: String(r.type), text: String(r.text ?? ''), recallBased: (r as any).recallBased ?? true,
-        anchoredDocumentId: (r as any).anchoredDocumentId ?? null, anchoredOrigin: (r as any).anchoredOrigin ?? null,
-        backedByAPhoto: !!(r as any).anchoredDocumentId && draft.photos.has((r as any).anchoredDocumentId),
-        ...((r as any).anchoredDocumentId ? { documentIsTheirOwn: draft.theirs.has((r as any).anchoredDocumentId) } : {}),
-      }));
-      const card = theEndCard(lines, await this.usesSimplerWords(checkIn.groundId), await this.whatTheyWereAskedToShowAndDidNot(checkIn));
+      const card = await this.theEndCardFromTheLines(checkIn, rows);
       await this.prisma.conversationTurn.update({
         where: { id: closingTurnId },
-        data: { recordDraft: draft.rows as any, ...(card ? { endCard: card as any } : {}) },
+        data: { recordDraft: rows as any, ...(card ? { endCard: card as any } : {}) },
       });
       this.logger.log(`Check-in ${checkIn.id}: end card with ${card?.inYourRecord?.length ?? 0} line(s) in ${Date.now() - started}ms; nothing written to the record yet.`);
       return card;
@@ -9195,161 +9223,15 @@ ${told}` : '';
       : 0;
     if (draft && saidSince === 0) return { card: ((closing as any).endCard as EndCard | null) ?? null, lines: draft };
     if (draft) this.logger.log(`Check-in ${checkIn.id}: they said more after the end card, so its lines are read again.`);
-    const rows = await this.readTheRecord(checkIn.id, checkIn.participantId);
-    /*
-     * AND THE CARD SAYS WHAT THEY SAID LAST. Read again, the lines can differ from the card that was shown (the reviewer saw
-     * it), so the card on the closing turn is replaced with the lines just read.
-     */
-    /* Who added each backing document, as the first card knew: somebody else's plan proves nothing of theirs. */
-    const whoAdded = await whoAddedEachBackingDocument(this.prisma, rows as any[]);
-    const card = theEndCard(rows.map((r) => {
-      const doc = (r as any).anchoredDocumentId ?? null;
-      return {
-        type: String(r.type), text: String(r.text ?? ''), recallBased: (r as any).recallBased ?? true, anchoredDocumentId: doc, anchoredOrigin: (r as any).anchoredOrigin ?? null,
-        ...(doc && whoAdded.has(doc) ? { documentIsTheirOwn: whoAdded.get(doc) === checkIn.participantId } : {}),
-      };
-    }), checkIn.groundId ? await this.usesSimplerWords(checkIn.groundId) : false, await this.whatTheyWereAskedToShowAndDidNot(checkIn));
+    /* AND THE CARD SAYS WHAT THEY SAID LAST: read from the assessment of everything they said, and the card on the closing turn replaced with it. */
+    const assessed = await this.theAssessmentAtTheClose(checkIn);
+    const rows = assessed && checkIn.groundId ? await this.theRecordLinesFromTheAssessment(checkIn as any, assessed) : [];
+    const card = await this.theEndCardFromTheLines(checkIn, rows);
     if (closing?.id) {
       await this.prisma.conversationTurn.update({ where: { id: closing.id }, data: { endCard: (card ?? Prisma.DbNull) as any, recordDraft: rows as any } })
         .catch((err: any) => this.logger.warn(`Check-in ${checkIn.id}: could not replace the end card with what was read (${err?.message})`));
     }
     return { card, lines: rows };
-  }
-
-  /**
-   * THE LINES THE RECORD READER TAKES OUT OF A CONVERSATION, WITHOUT WRITING THEM.
-   *
-   * The end card's own read (task 2.7): what the card shows a person before they finish. Nothing it
-   * reads reaches record_entries: the record is written from the conversation's assessment
-   * (writeTheRecordFromTheAssessment), which reads these lines as its draft.
-   */
-  private async readTheRecord(checkInId: string, participantId: string): Promise<Prisma.RecordEntryCreateManyInput[]> {
-    const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
-    if (turns.length === 0) return [];
-
-    /*
-     * A REMARK ABOUT THE TOOL IS NOT THE WORK, AND THIS IS THE READ THAT DECIDES IT.
-     *
-     * Read on a live board: "you are repeating yourself, please end the session" filed under Asks,
-     * "you didnt even as me what i do" as a Risk AND a tracked blocker, "this is meant to be about
-     * personal" as a priority. Nothing in this pipeline had the concept of a turn that is not about
-     * the work, so every one of them was themed and shipped to a board an expansion team reads.
-     *
-     * Filtered here rather than in the prompt, and at the READ rather than at the write: the
-     * remarks stay in the transcript, because they are what the person said and not ours to
-     * delete, and they cannot reach the record by any path that forgot to ask. See
-     * a-remark-about-the-tool-is-not-the-work.
-     */
-    const theirs = turns.filter((t) => t.role !== TurnRole.AI);
-    const work = theWorkTheySaid(theirs);
-    if (theirs.length - work.length > 0) {
-      this.logger?.log?.(`Check-in ${checkInId}: ${theirs.length - work.length} turn(s) were about the conversation rather than the work; kept in the transcript, out of the record.`);
-    }
-    /* Nothing but remarks is not a thin record, it is no record. Extracting from it would leave the
-       themer only the AI's own words to work with, which is how a reply became a finding. */
-    if (work.length === 0) return [];
-    const keep = new Set(work.map((t) => t.id));
-
-    const transcript = turns
-      .filter((t) => t.role === TurnRole.AI || keep.has(t.id))
-      .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
-    /* Their side alone, kept for the check after extraction. See a-record-is-what-they-said.ts. */
-    const whatTheySaid = work.map((t) => t.content).join('\n');
-    const result = await this.anthropic.extract<{ entries: { type: string; text: string; verifiability: string }[] }>(
-      `${RECORD_EXTRACTION_PROMPT}\n\n${ONLY_THEIR_WORDS}`,
-      [{ role: 'user', content: transcript }],
-      RECORD_EXTRACTION_SCHEMA,
-    );
-
-    const VALID_VERIFIABILITY = ['HIGH', 'MEDIUM', 'LOW'];
-
-
-    /* Release 1's switch, for the line that is somebody else's promise (below). */
-    let releaseOne = false;
-    /* EVERYBODY IN THIS CHECK-IN BY NAME, for the line that puts the wrong one on somebody's work. */
-    const roster: string[] = await (async () => {
-      const ci = await this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { groundId: true } });
-      if (!ci?.groundId) return [] as string[];
-      releaseOne = await theReleaseOneSalesBoardIsOnFor(this.prisma, ci.groundId);
-      const rows: any[] = (await this.prisma.groundParticipant?.findMany?.({ where: { groundId: ci.groundId }, select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } } as any)) ?? [];
-      return rows.flatMap((r) => [r.user?.firstName ?? r.nameGiven ?? '', r.user?.lastName ?? '']).filter(Boolean);
-    })().catch(() => [] as string[]);
-
-    /* And belt-and-braces on the way out: an entry that quotes a remark anyway - by reaching into
-       an AI turn that repeated it back - is dropped. The thing it prevents ends up on a board. */
-    const valid = notARemarkAboutUs(result?.entries ?? []).filter(
-      (e) =>
-        e.text?.trim() &&
-        (Object.values(RecordEntryType) as string[]).includes(e.type) &&
-        !isANonAnswer(e.text, e.type) &&
-        /*
-         * AND IT HAS TO BE TRACEABLE TO WORDS THEY USED.
-         *
-         * A lead's report quoted "Five tabs, one design language" and "light theme only,
-         * deliberately" as her own commitments in a check-in she spent talking about testing and
-         * bugs. The transcript handed to the extractor carries both speakers, and nothing told it
-         * which one was the party - so the session's own summaries were available to be recorded
-         * as things she had committed to.
-         *
-         * The prompt now says so. This is what makes it hold, because a prompt asking a model
-         * politely not to confuse two speakers is the thing that just failed.
-         */
-        isTheirs(e.text, whatTheySaid) &&
-        /*
-         * AND IT CARRIES NO NAME THEY NEVER TYPED. "He did. He set them up." was written as "Amina set up
-         * the client meetings I am still attending" - the lead's own name on the hire's work, in the
-         * lead's own list. See a-record-line-with-a-name-nobody-typed.
-         */
-        !aNameNobodyTyped(e.text, whatTheySaid, roster).length,
-    );
-
-    /*
-     * Worth a line in the log rather than silence: it is how anybody finds out that the extractor
-     * has started reaching for the session's words again.
-     */
-    const dropped = (result?.entries ?? []).length - valid.length;
-    if (dropped > 0) this.logger?.log?.(`Dropped ${dropped} extracted entr${dropped === 1 ? 'y' : 'ies'} on check-in ${checkInId} as not traceable to what the person said.`);
-    if (valid.length === 0) return [];
-
-    /*
-     * Store entries. Verifiability is its OWN COLUMN now.
-     *
-     * It used to be stamped on the front of the text - "[VERIFIABILITY:HIGH] ..." - with a comment
-     * here saying the schema had no column for it and this preserved the signal without a
-     * migration. It came due twice: once under people's names on the board, and once inside the
-     * line a lead is shown when accepting a number, in code written the same evening. Every reader
-     * had to remember to strip it and the fifth one did not.
-     *
-     * The text is stored clean, which is the part that ends the leak: a marker that is not in the
-     * text cannot be printed by a reader who forgot it was there.
-     */
-    /* What this person typed in this check-in, every turn of it, for the stamp below. */
-    const whatTheyTyped = theirs.map((t) => String(t.content ?? ''));
-    /* A reference they typed (an M-Pesa code, a delivery note) backs the line it was given for. See a-typed-reference-backs-its-line. */
-    return aTypedReferenceBacksItsLine(valid.map((e) => {
-        /* Their quotation marks, where the marks are all the reader changed: the words are theirs, and
-           the marks are part of them. See their-quotation-marks-are-theirs. */
-        const line = theirQuotationMarksBack(theLineWithoutItsDanglingJoin(e.text), whatTheyTyped);
-        const v = VALID_VERIFIABILITY.includes(e.verifiability) ? e.verifiability : 'LOW';
-        /* "November 12 2026" came back typed COMMITMENT and sat under Commitments on the shared
-           report. A line that is nothing but a date is a timeframe, whatever the extractor called it. */
-        const bareDate = /^\s*(?:by |on |until |before |from )?(?:\d{1,2}(?:st|nd|rd|th)?\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?(?:\s+\d{1,2}(?:st|nd|rd|th)?)?,?(?:\s+\d{4})?\s*\.?\s*$/i.test(e.text) || /^\s*(?:by |on |until |before )?\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}\s*$/.test(e.text);
-        /* SOMEBODY ELSE'S PROMISE IS NOT THEIRS (Hafsah's point 13, behind Release 1's switch): "Rose said she will buy the two
-           units on 30 October." is Rose's, filed with what happened on the deal, never as the speaker's own commitment. */
-        const somebodyElses = releaseOne && e.type === 'COMMITMENT' && aPromiseSomebodyElseMade(e.text);
-        return {
-          participantId,
-          checkInId,
-          type: (bareDate ? 'TIMEFRAME' : somebodyElses ? 'PROGRESS' : e.type) as RecordEntryType,
-          verifiability: v as any,
-          /* A half sentence that kept its "and" is not a line anybody should read under a heading.
-             See half-a-sentence-is-not-a-line-in-a-report. */
-          text: line,
-          /* Whether the line as stored is their own words or the reader's tidied version. Only the
-             first may ever be quoted to anybody. See reports/a-quote-is-what-they-said. */
-          saidWordForWord: saidWordForWord(line, whatTheyTyped),
-        };
-      }), whatTheyTyped);
   }
 
   /**

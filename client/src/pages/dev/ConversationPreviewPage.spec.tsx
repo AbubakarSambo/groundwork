@@ -71,7 +71,9 @@ describe('the conversation preview page calls nothing', () => {
     expect(screen.getByText('Why answering matters')).toBeTruthy()
     expect(screen.getByText('What happens next')).toBeTruthy()
     expect(screen.getByText('That’s right, finish')).toBeTruthy()
-    expect(screen.getByText('Change something')).toBeTruthy()
+    /* Changed in F5: "That’s not right" on each line in place of "Change something". */
+    expect(screen.getAllByText('That’s not right').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Change something')).toBeNull()
 
     // GROUP 3 REVIEW, BATCH B: check-in-end-card.jpg keeps "Pause" in the header, so it shows
     // in all three states drawn on this page, not only the two still in conversation.
