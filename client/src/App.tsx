@@ -9,7 +9,7 @@ import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
-import { MARKETING_URL, MARKETING_URL_WAS_CONFIGURED, thisIsTheProductionApp } from '@/lib/marketing'
+import { MARKETING_URL, OUR_OWN_ROOT } from '@/lib/marketing'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
 import { useWhoTheServerSaysYouAre } from '@/lib/who-the-server-says-you-are'
 import { AuthPage } from '@/pages/auth/AuthPage'
@@ -375,7 +375,8 @@ function RootRoute() {
      * front door instead - sign in, or start a check-in, which is the whole product from a standing
      * start - and says plainly that it is not the live site.
      */
-    if (!MARKETING_URL_WAS_CONFIGURED && !thisIsTheProductionApp()) {
+    /* Whether this build has a marketing site at all is decided once, in lib/marketing.ts, for the logo as well as for here. */
+    if (MARKETING_URL === OUR_OWN_ROOT) {
       return <AFrontDoorOfItsOwn />
     }
     window.location.replace(MARKETING_URL)

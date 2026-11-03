@@ -3,6 +3,7 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { render, screen } from '@testing-library/react'
 import { Mark } from './Mark'
+import { MARKETING_URL } from '@/lib/marketing'
 import { Note, Callout } from './NoteEmpty'
 import { Steps, Step } from './Steps'
 import { SubHeading } from './SubHeading'
@@ -26,7 +27,9 @@ describe('Mark', () => {
     render(<Mark />)
     const link = screen.getByRole('link', { name: 'Groundwork' })
     expect(link).toBeTruthy()
-    expect(link.getAttribute('href')).toMatch(/^https?:\/\//)
+    /* Was "starts with http". A build not told where its marketing site is (this test run, local, staging) now links to its own
+       root rather than to the live site, so the mark links to wherever lib/marketing.ts decided, which is the rule that matters. */
+    expect(link.getAttribute('href')).toBe(MARKETING_URL)
     expect(document.querySelector('.gwui-mark-caption')).toBeNull()
   })
 
