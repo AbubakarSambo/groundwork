@@ -22,7 +22,7 @@ describe("Joseph on 22 October, his sessions 7 and 8 missed", () => {
   });
   it('before: "Grace will see this." Now he reads what is true: Grace will be told if he misses the next one', () => {
     expect(whatThePersonReads(stand, { leadName: 'Grace', somebodyWaitsOnThem: false })).toBe(
-      "You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late and Grace has to chase instead of help. If you miss the next one as well, Grace will be told. About ten minutes now puts your view back in the picture.",
+      "You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late and Grace has to chase instead of help. If you miss the next one as well, Grace will be told. About two minutes now puts your view back in the picture.",
     );
   });
   it('had he missed session 9 too, three of the last four: Grace is told, and he reads "Grace will see this." from the same rule', () => {

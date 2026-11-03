@@ -1,4 +1,5 @@
 import { timesAWeekInWords, theHourACheckInOpens } from '../grounds/the-check-ins-own-schedule';
+import { A_CHECK_IN_TAKES } from '../../common/how-long-a-check-in-takes';
 /**
  * HOW OFTEN A CHECK-IN ASKS, IN ONE PLAIN SENTENCE, for the invitation (A3, #/join/invite).
  *
@@ -8,13 +9,7 @@ import { timesAWeekInWords, theHourACheckInOpens } from '../grounds/the-check-in
  */
 export type ACadence = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL' | 'ONE_TIME';
 
-/**
- * HOW LONG A TEAM MEMBER'S CHECK-IN TAKES, MEASURED (F5, the approved journey, stage 6: "about two minutes"). The one owner: the
- * invitation's "What it asks" and the line under its button both read it (served as `takes`). Measured on 3 November 2026 from the
- * local test database gw_loop_round16, read only: 448 answered check-ins of people who are not the lead, first message to last,
- * median 1.9 minutes, middle half 0.6 to 2.8 minutes. Re-measure after each run and change it here.
- */
-export const A_CHECK_IN_TAKES = 'About two minutes';
+/* How long a check-in takes, from its one owner (common/how-long-a-check-in-takes.ts). */
 const ABOUT = A_CHECK_IN_TAKES;
 
 const DAY_NAMES = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];

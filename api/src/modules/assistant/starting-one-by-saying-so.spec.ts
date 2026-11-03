@@ -57,7 +57,7 @@ describe('what it takes to start', () => {
   it('then a session already open to them', () => {
     const said = whatItTakesToStart({ ...none, open: [{ checkInId: 'c1', label: 'September sprint' }] });
     expect(said.act).toEqual({ kind: 'open_a_check_in', id: 'c1', label: 'Open it' });
-    expect(said.line).toContain('ten minutes');
+    expect(said.line).toContain('about two minutes');
   });
 
   it('names the others without offering them', () => {

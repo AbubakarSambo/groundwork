@@ -3,6 +3,7 @@
  * link. No paragraph about Groundwork, no note about who sees what, no "shared picture", no count of things settled, and nothing that
  * hedges. Only ever used where the switch is on: with it off, each sender writes what it always wrote.
  */
+import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
 import { MAIL_BUTTON } from './the-kits-look-in-an-email';
 
 const esc = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -34,7 +35,7 @@ export function theReportIsStillWaitingDirectly(label: string, reportUrl: string
 export function theInvitationDirectly(a: { hello: string; from: string; label: string; joining: string; noteHtml: string; url: string; whatsApp: string; stopLine: string }): string {
   return p(a.hello) +
     `<p><strong>${esc(a.from)}</strong> would like to know what you are seeing in <strong>${esc(a.label)}</strong>.</p>` +
-    p('It is a short check-in, about ten minutes, where you say what is actually going on from where you sit.') +
+    p(`It is a short check-in, ${ABOUT_HOW_LONG}, where you say what is actually going on from where you sit.`) +
     a.joining + a.noteHtml +
     `<p><a href="${a.url}" style="${BUTTON}">Start my check-in →</a></p>` +
     a.whatsApp + a.stopLine;

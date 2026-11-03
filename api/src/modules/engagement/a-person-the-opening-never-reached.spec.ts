@@ -56,7 +56,7 @@ describe('the catch-up is the opening notice\'s own words and its own template, 
   it('reads the same as the opening notice, and goes as checkin_open', () => {
     const w = { firstName: 'Chidi', label: 'Sales team, Q4' };
     expect(theCheckInIsStillOpen(w).text).toBe(theCheckInIsOpen(w).text);
-    expect(theCheckInIsStillOpen(w).text).toBe('Hi Chidi, your check-in for Sales team, Q4 is open. It takes about ten minutes, and you can answer right here. Reply START to begin.');
+    expect(theCheckInIsStillOpen(w).text).toBe('Hi Chidi, your check-in for Sales team, Q4 is open. It takes about two minutes, and you can answer right here. Reply START to begin.');
     expect(TEMPLATES[CATCH_UP_KIND].name).toBe('checkin_open');
     expect(templateFor(CATCH_UP_KIND, ['checkin_open'])?.name).toBe('checkin_open');
     expect(templateFor(CATCH_UP_KIND, [])).toBeNull();
@@ -97,7 +97,7 @@ describe('the morning job', () => {
     expect(sendFor).toHaveBeenCalledTimes(1);
     const [org, phone, text, ctx] = sendFor.mock.calls[0];
     expect([org, phone]).toEqual(['org-1', '+254712345678']);
-    expect(text).toBe('Hi Chidi, your check-in for Sales team, Q4 is open. It takes about ten minutes, and you can answer right here. Reply START to begin.');
+    expect(text).toBe('Hi Chidi, your check-in for Sales team, Q4 is open. It takes about two minutes, and you can answer right here. Reply START to begin.');
     expect(ctx).toEqual({ checkInId: 'ci-1', kind: CATCH_UP_KIND, params: ['Chidi', 'Sales team, Q4'] });
   });
 

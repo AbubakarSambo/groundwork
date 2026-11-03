@@ -269,7 +269,7 @@ describe('on WhatsApp', () => {
     const { sendFor, today: was } = await theOpeningNotice(false);
     const [, , text, context] = (sendFor.mock.calls[0] as any[]);
     expect(text).toBe(was.text);
-    expect(text).toBe('Hi Kevin, your check-in for Sales team, Q4 is open. It takes about ten minutes, and you can answer right here. Reply START to begin.');
+    expect(text).toBe('Hi Kevin, your check-in for Sales team, Q4 is open. It takes about two minutes, and you can answer right here. Reply START to begin.');
     expect(context).toEqual(expect.objectContaining({ kind: 'checkin-open', params: was.params }));
   });
 });

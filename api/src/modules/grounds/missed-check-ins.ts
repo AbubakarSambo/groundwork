@@ -1,3 +1,4 @@
+import { A_CHECK_IN_TAKES, IT_TAKES } from '../../common/how-long-a-check-in-takes';
 import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { CheckInStatus } from '@prisma/client';
 import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
@@ -297,7 +298,7 @@ export function whatThePersonReads(stand: Pick<WhereTheyStand, 'inARow'> & Parti
       `You've missed your last ${aNumberInWords(Math.max(2, stand.inARow))} check-ins.`,
       ...(o.somebodyWaitsOnThem ? ['Somebody on the team is waiting on you.'] : []),
       told ? `${lead ?? 'Your manager'} will see this.` : `If you miss the next one as well, ${lead ?? 'your manager'} will be told.`,
-      'It takes about ten minutes.',
+      IT_TAKES,
     ].join(' ');
   }
   const theLead = lead ?? 'your manager';
@@ -311,7 +312,7 @@ export function whatThePersonReads(stand: Pick<WhereTheyStand, 'inARow'> & Parti
     'When you miss them, your team works without your view.',
     `${listed(what)}.`,
     theLeadIsTold({ stage: stand.stage ?? whereTheyStandFromARow(stand.inARow) }) ? `${lead ?? 'Your manager'} will see this.` : `If you miss the next one as well, ${lead ?? 'your manager'} will be told.`,
-    'About ten minutes now puts your view back in the picture.',
+    `${A_CHECK_IN_TAKES} now puts your view back in the picture.`,
   ].join(' ');
 }
 

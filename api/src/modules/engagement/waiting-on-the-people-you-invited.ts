@@ -1,3 +1,4 @@
+import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
 import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { GroundStatus } from '@prisma/client';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
@@ -62,7 +63,7 @@ export function theWaitingWords(firstName: string | null | undefined, w: WhoWasI
         ? `Groundwork has already sent a reminder to ${listed(reminded)}.`
         : 'Groundwork sent each of them the invitation, and is about to remind them.',
       again,
-      `You do not need to chase anyone yourself. If you would like to say a word to them as well, you could write, "I would value your view on ${w.label}. It takes about ten minutes."`,
+      `You do not need to chase anyone yourself. If you would like to say a word to them as well, you could write, "I would value your view on ${w.label}. It takes ${ABOUT_HOW_LONG}."`,
     ],
     linkLabel: 'See who has started',
   };
@@ -79,7 +80,7 @@ function theWaitingWordsDirectly(firstName: string | null | undefined, w: WhoWas
       `Hello ${firstName?.trim() || 'there'}. ${capital(who)} ${n === 1 ? 'was' : 'were'} invited to "${w.label}" on ${whenItWas(w.invitedOn, 'day')}, and nobody has started yet.`,
       reminded.length ? `${capital(listed(reminded))} ${w.reminded.length === 1 ? 'has' : 'have'} had a reminder.` : `${n === 1 ? 'They have' : 'Each of them has'} had the invitation.`,
       ...(w.remindingAgainOn.length ? [`The next reminder goes on ${listed(w.remindingAgainOn.map((d) => whenItWas(d, 'day')))}.`] : []),
-      `You could write to them yourself, "I would value your view on ${w.label}. It takes about ten minutes."`,
+      `You could write to them yourself, "I would value your view on ${w.label}. It takes ${ABOUT_HOW_LONG}."`,
     ],
     linkLabel: 'See who has started',
   };

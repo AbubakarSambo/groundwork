@@ -220,7 +220,7 @@ describe('the closing reminder of 21 October, only once it is listed', () => {
     const { wa } = aSender({ approved: [...THE_NAMES_TO_SUBMIT, 'groundwork_checkin_closes_soon_v2'], lastWrote: new Date(Date.now() - 60 * 60 * 1000) });
     await wa.sendFor('org-drop', '+254700300003', text, { checkInId: 'ci-mercy', kind: 'closes-soon', params });
     expect(sent().type).toBe('text');
-    expect(sent().text.body).toBe('Hi Mercy, your check-in for Sales team, Q4 closes in an hour, at 6pm. About ten minutes now means your view is part of this round.');
+    expect(sent().text.body).toBe('Hi Mercy, your check-in for Sales team, Q4 closes in an hour, at 6pm. About two minutes now means your view is part of this round.');
   });
 
   it('it is never sent with a blank missing, and it counts towards the messages Groundwork writes first that day', () => {

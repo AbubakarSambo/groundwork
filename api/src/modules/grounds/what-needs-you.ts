@@ -1,4 +1,5 @@
 import { theClocksSessionIn, type TheCountAsServed } from './the-count-as-served';
+import { A_CHECK_IN_TAKES } from '../../common/how-long-a-check-in-takes';
 import { theDayInWords } from '../board/the-day-in-words';
 import { aQuietSessionOnADayTheyCheckedIn, theDayIn, theDaysTheyCheckedIn } from '../board/a-day-they-checked-in';
 import { THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
@@ -321,7 +322,8 @@ export function whatNeedsYou(
              */
             ? `${theAwayLine('the person', null, reader.awayUntil)} You can still answer it if you want to.`
             : [
-              next.sessionNumber === 1 && iRunIt ? 'About ten minutes. Everyone else’s answers are read against yours.' : 'About ten minutes.',
+              `${A_CHECK_IN_TAKES}.`,
+              next.sessionNumber === 1 && iRunIt ? 'Everyone else’s answers are read against yours.' : null,
               /* The day it opened, never a count of days from the reading (request 117, part 9). */
               days > A_WHILE && opened ? `It opened on ${theDayInWords(new Date(opened), new Date(at))}.` : null,
             ].filter(Boolean).join(' '),
@@ -570,13 +572,13 @@ export function whatNeedsYou(
 
 /**
  * WHAT NEEDS YOU, SAID DIRECTLY (the direct morning, Hafsah, 20 October 2026; organisation/the-direct-morning-switch.ts). Where the
- * switch is on, a check-in's estimate is "A few minutes." (the check-in page says the same) and carries no line about how the
- * product reads the answers, and your own report carries no "Only you see it." Nothing else changes: which needs a reader is served is decided before this, the same either way.
+ * switch is on, a check-in's estimate is its length alone, from the one owner (common/how-long-a-check-in-takes.ts), with no line about how
+ * the product reads the answers, and your own report carries no "Only you see it." Nothing else changes: which needs a reader is served is decided before this, the same either way.
  */
 export function needsSaidDirectly<T extends { detail?: string | null }>(needs: T[]): T[] {
   return needs.map((n) => {
     if (typeof n?.detail !== 'string') return n;
-    if (/^About ten minutes\./.test(n.detail)) return { ...n, detail: 'A few minutes.' };
+    if (n.detail.startsWith(`${A_CHECK_IN_TAKES}.`)) return { ...n, detail: `${A_CHECK_IN_TAKES}.` };
     /* "Your own report for Sales team, Q4" needs no "Only you see it." under it: who reads it is the backend's rule. */
     if (n.detail === 'Only you see it.') return { ...n, detail: null };
     return n;

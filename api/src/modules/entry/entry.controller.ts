@@ -8,7 +8,7 @@ import { EntryService } from './entry.service';
 import { TheOpenLinkService } from './the-open-link.service';
 import { A_ROOM_MAY_START_PER_MINUTE, A_PERSON_MAY_SAY_PER_MINUTE } from '../../common/guards/a-room-of-people-is-not-one-person';
 import { HOW_MANY_PEOPLE_ONE_CHECK_IN_HOLDS } from './how-many-people-one-check-in-holds';
-import { A_CHECK_IN_TAKES } from '../participants/when-it-asks';
+import { A_CHECK_IN_TAKES } from '../../common/how-long-a-check-in-takes';
 import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject, Min, Max, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 import { peopleOnLines, MOST_IN_ONE_PASTE } from '../users/putting-a-whole-company-on';

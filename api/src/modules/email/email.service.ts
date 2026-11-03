@@ -1,3 +1,4 @@
+import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
 import { theOutboxKey, mayItGo, letItGoAgain } from '../../common/the-one-outbox';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { whatHappensWhenThisPersonJoins } from '../participants/named-when-an-admin-approved';
@@ -939,7 +940,7 @@ export class EmailService implements OnModuleInit {
       })) : this.layout(
         `<p>${escapeHtml(greeting(theirFirstName))}</p>
          <p><strong>${escapeHtml(founderName)}</strong> would like to know what you are seeing in <strong>${escapeHtml(groundLabel)}</strong>.</p>
-         <p>It is a short check-in, about ten minutes, where you say what is actually going on from where you sit.</p>
+         <p>It is a short check-in, ${ABOUT_HOW_LONG}, where you say what is actually going on from where you sit.</p>
          <p>${escapeHtml(await this.whoSeesWhatYouSay(context))}</p>
          ${await this.whatHappensWhenTheyJoin(context)}
          <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you share here is yours.</p>

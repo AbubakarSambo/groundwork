@@ -51,7 +51,7 @@ describe('what Baraka reads on the first reminder day', () => {
       expect.stringMatching(/^Hello Baraka\. Kito, Lerato, Tobi and Peter were invited to "Distributor review" on .*8.*Oct.*, and nobody has started yet\.$/),
       'Groundwork has already sent a reminder to Kito, Lerato, Tobi and Peter.',
       expect.stringMatching(/^It will remind them again on .*15.*Oct.* and .*22.*Oct.*\.$/),
-      'You do not need to chase anyone yourself. If you would like to say a word to them as well, you could write, "I would value your view on Distributor review. It takes about ten minutes."',
+      'You do not need to chase anyone yourself. If you would like to say a word to them as well, you could write, "I would value your view on Distributor review. It takes about two minutes."',
     ]);
     expect(w.sent[0].linkUrl).toBe('https://app.test/grounds/g1');
     const read = [w.sent[0].subject, ...w.sent[0].lines].join(' ');

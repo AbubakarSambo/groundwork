@@ -3616,7 +3616,7 @@ export function EntryChatPage() {
             <div className="gwui-ec-briefing-card">
               <span className="gwui-ec-briefing-icon">⏱</span>
               <div>
-                <CardTitle weight={700}>About 10 minutes</CardTitle>
+                <CardTitle weight={700}>{takes ?? 'A short check-in'}</CardTitle>
                 <div className="gwui-ec-briefing-card-body">Answer in your own words. The questions are based on what you just described. There are no right answers.</div>
               </div>
             </div>
