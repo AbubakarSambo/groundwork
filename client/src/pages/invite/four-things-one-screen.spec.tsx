@@ -34,8 +34,8 @@ const PREVIEW = {
   leadFirstName: 'Wairimu',
   organisationName: 'Baridi Appliances',
   endsAt: '2026-09-30T00:00:00.000Z',
-  schedule: 'About two minutes each weekday.',
-  takes: 'About two minutes',
+  schedule: 'About ten minutes each weekday.',
+  takes: 'About ten minutes',
   scenario: 'NEW_PROJECT',
   roleAsDescribed: null,
   alreadyAccepted: false,
@@ -68,11 +68,11 @@ describe('the invitation a participant reads', () => {
       'Baridi Appliances, until 30 September.',
       'The people in this check-in, including your manager, can see what you say in it.',
       'What it asks',
-      'About two minutes each weekday.',
+      'About ten minutes each weekday.',
       'Who sees your answers',
       'You see your own report straight away. Wairimu shares a team report',
       'Answer today’s check-in now',
-      'About two minutes. You choose how you sign in afterwards.',
+      'About ten minutes. You choose how you sign in afterwards.',
       'What happens to what you write',
     ].map(t => text.replace(/\s+/g, ' ').indexOf(t))
     expect(order.every(i => i > -1)).toBe(true)
@@ -87,7 +87,7 @@ describe('the invitation a participant reads', () => {
     expect(text).not.toMatch(/reads the report, not your words/)
     expect(text).not.toMatch(/Why you\.|What it takes\.|What you get back\./)
     /* The old block's "About ten minutes" is gone; the note under "Answer today's check-in now" says it once (fix list, item 4). */
-    expect(text.match(/About two minutes\./g) ?? []).toHaveLength(1) /* F5: the measured length */
+    expect(text.match(/About ten minutes\./g) ?? []).toHaveLength(1) /* Hafsah's fixed length, 3 November */
   })
 
   it('shows no "Your number" block, because the invitation carries no share of a target', async () => {
@@ -237,7 +237,7 @@ describe('what the lead wrote about the person is not on their invitation (U.6 r
 
 
 describe('a check-in that opens later (U.6 review)', () => {
-  /* Read live: "Answer today’s check-in now / About two minutes. You choose how you sign in afterwards."
+  /* Read live: "Answer today’s check-in now / About ten minutes. You choose how you sign in afterwards."
      on an invitation to a check-in that opens on 5 October. */
   it('says when the first check-in opens, and offers nothing to answer now', async () => {
     open({ ...PREVIEW, opensOn: '2099-10-05T00:00:00.000Z' })
@@ -250,7 +250,7 @@ describe('a check-in that opens later (U.6 review)', () => {
   it('and one that is open offers to answer now, as before', async () => {
     open({ ...PREVIEW, opensOn: null })
     expect(await screen.findByText('Answer today’s check-in now')).toBeTruthy()
-    expect(document.body.textContent).toContain('About two minutes. You choose how you sign in afterwards.')
+    expect(document.body.textContent).toContain('About ten minutes. You choose how you sign in afterwards.')
   })
 })
 
@@ -258,7 +258,7 @@ describe('"You choose how you sign in afterwards" (U.6 review)', () => {
   it('is not said to someone already signed in', async () => {
     authState.isAuthenticated = true
     open({ ...PREVIEW, opensOn: null })
-    expect(await screen.findByText('About two minutes.')).toBeTruthy()
+    expect(await screen.findByText('About ten minutes.')).toBeTruthy()
     expect(document.body.textContent).not.toContain('You choose how you sign in afterwards')
     authState.isAuthenticated = false
   })

@@ -151,7 +151,7 @@ describe('with the direct morning off, every email reads word for word as the ni
     expect(m.invite!.text).toBe([
       'Hi Kevin,',
       'Grace would like to know what you are seeing in Sales team, Q4.',
-      'It is a short check-in, about two minutes, where you say what is actually going on from where you sit.',
+      'It is a short check-in, about ten minutes, where you say what is actually going on from where you sit.',
       'The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Drop Access (test) stay private.',
       'When you join, you go straight in and can check in at once.',
       'You are not being asked to be fair or balanced. You are being asked to be honest. What you share here is yours.',
@@ -187,7 +187,7 @@ describe('with the direct morning off, every email reads word for word as the ni
 
   it('David, the reminder', () => {
     expect(m.nudge!.text).toBe([
-      'Your check-in for Litigation team daily is still open. It takes about two minutes, and your answers go into the report everyone reads.',
+      'Your check-in for Litigation team daily is still open. It takes about ten minutes, and your answers go into the report everyone reads.',
       'They have already shared their side. Yours is the last one we are waiting for.',
       'Check in',
       'Would you rather we stopped reminding you? Stop the reminders. Your invitation keeps working, and nothing is recorded either way.',
@@ -236,7 +236,7 @@ describe('with the direct morning on, every email says what happened and nothing
     expect(m.invite!.text).toBe([
       'Hi Kevin,',
       'Grace would like to know what you are seeing in Sales team, Q4.',
-      'It is a short check-in, about two minutes, where you say what is actually going on from where you sit.',
+      'It is a short check-in, about ten minutes, where you say what is actually going on from where you sit.',
       'When you join, you go straight in and can check in at once.',
       'Sales rep',
       'Start my check-in →',
@@ -265,7 +265,7 @@ describe('with the direct morning on, every email says what happened and nothing
   it('David, the reminder: the check-in, how long, and that he is the last', () => {
     expect(m.nudge!.subject).toBe('Your check-in for Litigation team daily is waiting');
     expect(m.nudge!.text).toBe([
-      'Your check-in for Litigation team daily is still open. It takes about two minutes.',
+      'Your check-in for Litigation team daily is still open. It takes about ten minutes.',
       'Everyone else has checked in. Yours is the last one.',
       'Check in',
       'Would you rather we stopped reminding you? Stop the reminders.',

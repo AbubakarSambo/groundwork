@@ -11,7 +11,7 @@ import { theReminderBody } from '../grounds/what-is-sent-in-simpler-words';
  * for that organisation." Read as Amani, whose organisation has WhatsApp on, and as the same Amani where it is off.
  *
  * And her standing rule the same day: the approved templates never change. Inside the 24 hours a normal message says
- * about two minutes; outside them the template goes exactly as approved.
+ * about ten minutes; outside them the template goes exactly as approved.
  */
 const DISPLAY = '+44 7700 900123';
 const LINE = 'You can also check in on WhatsApp. Send Hi to +44 7700 900123.';
@@ -80,7 +80,7 @@ describe('Today', () => {
     const { prisma, config } = aWorld(o);
     return new WhatNeedsYouService(prisma, {} as any, undefined, undefined, undefined, undefined, undefined, undefined, config);
   };
-  const DUE = [{ key: 'k', kind: 'do', title: 'Your next check-in for Sales team, Q4', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/c1' }, groundId: 'g-1' }] as any;
+  const DUE = [{ key: 'k', kind: 'do', title: 'Your next check-in for Sales team, Q4', detail: 'About ten minutes.', action: { label: 'Start it', to: '/checkin/c1' }, groundId: 'g-1' }] as any;
   it('says it under a check-in she has to answer, with Connect WhatsApp', async () => {
     expect(await todays().checkInOnWhatsAppFor('u-amani', 'amani@kito.test', 'org-1', DUE)).toEqual({
       says: 'You can also check in on WhatsApp.', link: 'https://wa.me/447700900123?text=Hi', label: 'Connect WhatsApp',
@@ -94,20 +94,20 @@ describe('Today', () => {
   });
 });
 
-describe('the approved templates stay as they are; a normal message inside the 24 hours says about two minutes', () => {
+describe('the approved templates stay as they are; a normal message inside the 24 hours says about ten minutes', () => {
   it('the three templates are word for word as Meta approved them', () => {
     expect(TEMPLATES['checkin-open'].body).toBe('Hi {{1}}, your check-in for {{2}} is open. It takes about five minutes, and you can answer right here. Reply START to begin.');
     expect(TEMPLATES['closes-soon'].body).toBe('Hi {{1}}, your check-in for {{2}} closes in an hour, at {{3}}. Five minutes now means your view is part of this round.');
     expect(TEMPLATES['your-view-matters'].body).toBe("Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} understand what's in your way, and where they can help. It takes about five minutes, and you can answer here.");
   });
-  it('the normal message Amani reads inside the 24 hours says about two minutes, with the same blanks for the template outside them', () => {
+  it('the normal message Amani reads inside the 24 hours says about ten minutes, with the same blanks for the template outside them', () => {
     const open = theCheckInIsOpen({ firstName: 'Amani', label: 'Sales team, Q4' });
-    expect(open.text).toBe('Hi Amani, your check-in for Sales team, Q4 is open. It takes about two minutes, and you can answer right here. Reply START to begin.');
+    expect(open.text).toBe('Hi Amani, your check-in for Sales team, Q4 is open. It takes about ten minutes, and you can answer right here. Reply START to begin.');
     expect(open.params).toEqual(['Amani', 'Sales team, Q4']);
-    expect(theCheckInIsStillOpen({ firstName: 'Amani', label: 'Sales team, Q4' }).text).toContain('It takes about two minutes');
+    expect(theCheckInIsStillOpen({ firstName: 'Amani', label: 'Sales team, Q4' }).text).toContain('It takes about ten minutes');
     expect(yourViewMatters({ firstName: 'Amani', label: 'Sales team, Q4' }, 'Wairimu').text).toBe(
-      "Hi Amani, your check-in for Sales team, Q4 is still waiting. Your answers help Wairimu understand what's in your way, and where they can help. It takes about two minutes, and you can answer here.",
+      "Hi Amani, your check-in for Sales team, Q4 is still waiting. Your answers help Wairimu understand what's in your way, and where they can help. It takes about ten minutes, and you can answer here.",
     );
-    expect(theReminderBody('closes-soon', TEMPLATES['closes-soon'].body)).toContain('About two minutes now');
+    expect(theReminderBody('closes-soon', TEMPLATES['closes-soon'].body)).toContain('About ten minutes now');
   });
 });

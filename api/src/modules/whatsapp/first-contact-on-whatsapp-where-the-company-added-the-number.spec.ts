@@ -105,7 +105,7 @@ describe('the opening goes on WhatsApp to somebody invited by their number, once
     cron.logger = { warn: jest.fn(), log: jest.fn() };
     expect(await cron.openTheCheckInOnWhatsAppForTheInvited(new Date('2026-10-19T05:00:00Z'))).toEqual({ sent: 1 });
     expect(sends[0][1]).toBe('+254712345678');
-    expect(sends[0][2]).toBe('Hi Brian, your check-in for Litigation team daily is open. It takes about two minutes, and you can answer right here. Reply START to begin.');
+    expect(sends[0][2]).toBe('Hi Brian, your check-in for Litigation team daily is open. It takes about ten minutes, and you can answer right here. Reply START to begin.');
     expect(sends[0][3]).toMatchObject({ checkInId: 'ci-brian-1', kind: 'checkin-open' });
     expect(await cron.openTheCheckInOnWhatsAppForTheInvited(new Date('2026-10-19T05:15:00Z'))).toEqual({ sent: 0 });
   });

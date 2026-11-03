@@ -23,9 +23,9 @@ const LEAD_READ = {
   count: 3,
   line: 'In Sales team, Q3, 5 of 6 have checked in for session 38; Omar hasn’t yet.',
   needs: [
-    { key: 'turn-f', kind: 'decide', title: 'Your first check-in for Faith, first 90 days', detail: 'About two minutes. Everyone else’s answers are read against yours.', action: { label: 'Start it', to: '/checkin/f1' }, groundId: 'f', organizationId: 'o' },
+    { key: 'turn-f', kind: 'decide', title: 'Your first check-in for Faith, first 90 days', detail: 'About ten minutes. Everyone else’s answers are read against yours.', action: { label: 'Start it', to: '/checkin/f1' }, groundId: 'f', organizationId: 'o' },
     { key: 'end-k', kind: 'decide', title: 'Decide how Kwame, first 90 days ends', detail: 'The last session is done.', action: { label: 'Decide', to: '/grounds/k' }, groundId: 'k', organizationId: 'o' },
-    { key: 'turn-l', kind: 'decide', title: 'Your own check-in for Leadership, Q3', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/l2' }, groundId: 'l', organizationId: 'o' },
+    { key: 'turn-l', kind: 'decide', title: 'Your own check-in for Leadership, Q3', detail: 'About ten minutes.', action: { label: 'Start it', to: '/checkin/l2' }, groundId: 'l', organizationId: 'o' },
   ],
   comingUp: [
     { at: tomorrowAt4, what: 'Session 39 of Sales team, Q3 opens.', to: '/grounds/s' },
@@ -98,9 +98,9 @@ describe('Today, as the lead', () => {
     expect(await screen.findByText('3 things, most important first')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'What needs you' })).toBeTruthy()
     expect(rows()).toEqual([
-      { title: 'Your first check-in for Faith, first 90 days', detail: 'About two minutes. Everyone else’s answers are read against yours.', action: [['Start it', '/checkin/f1']] },
+      { title: 'Your first check-in for Faith, first 90 days', detail: 'About ten minutes. Everyone else’s answers are read against yours.', action: [['Start it', '/checkin/f1']] },
       { title: 'Decide how Kwame, first 90 days ends', detail: 'The last session is done.', action: [['Decide', '/grounds/k']] },
-      { title: 'Your own check-in for Leadership, Q3', detail: 'About two minutes.', action: [['Start it', '/checkin/l2']] },
+      { title: 'Your own check-in for Leadership, Q3', detail: 'About ten minutes.', action: [['Start it', '/checkin/l2']] },
     ])
   })
 
@@ -313,7 +313,7 @@ describe('Today: the greeting never claims what "What needs you" does not', () =
     open(WAIRIMU, {
       count: 1,
       line: 'You have not checked in yet.',
-      needs: [{ key: 'turn-s', kind: 'decide', title: 'Your own check-in for Sales team, Q3', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/s1' }, groundId: 's', organizationId: 'o' }],
+      needs: [{ key: 'turn-s', kind: 'decide', title: 'Your own check-in for Sales team, Q3', detail: 'About ten minutes.', action: { label: 'Start it', to: '/checkin/s1' }, groundId: 's', organizationId: 'o' }],
       comingUp: [],
     })
     expect(await screen.findByText(/You have not checked in yet\./)).toBeTruthy()

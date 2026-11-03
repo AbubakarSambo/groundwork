@@ -35,7 +35,7 @@ describe('a held invitation', () => {
     )
     expect(await screen.findByRole('heading', { name: 'This check-in cannot start for you yet' })).toBeTruthy()
     expect(screen.getByText('There is no seat for you on the plan yet. You will get your invitation as soon as there is one.')).toBeTruthy()
-    expect(container.textContent).not.toMatch(/invited you|Your part in this|You choose how you sign in afterwards|About two minutes/)
+    expect(container.textContent).not.toMatch(/invited you|Your part in this|You choose how you sign in afterwards|About ten minutes/)
     expect(screen.queryByRole('button')).toBeNull()
     expect(participantsApi.accept).not.toHaveBeenCalled()
   })

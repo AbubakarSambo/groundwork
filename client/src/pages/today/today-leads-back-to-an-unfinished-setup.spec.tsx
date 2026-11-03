@@ -69,7 +69,7 @@ describe('Today, for a lead who left a setup unfinished', () => {
     keepTheSetupHeLeft()
     open(Promise.resolve({
       count: 1, line: null, comingUp: [],
-      needs: [{ key: 'turn-s', kind: 'decide', title: 'Your own check-in for Sales team', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/s1' }, groundId: 's', organizationId: 'o' }],
+      needs: [{ key: 'turn-s', kind: 'decide', title: 'Your own check-in for Sales team', detail: 'About ten minutes.', action: { label: 'Start it', to: '/checkin/s1' }, groundId: 's', organizationId: 'o' }],
     }))
     await waitFor(() => expect(rows().length).toBe(2))
     expect(rows()[0].title).toBe('Finish setting up “Get weekly reports from my field officers”')

@@ -34,7 +34,7 @@ const anHour = (h: number) => `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? 'am' : 'p
  * THE INVITATION'S "FROM 4PM" AND TOPIC (Hafsah, 3 November 2026, word for word: "'From 4pm' and the topic in the invitation come from
  * what setup already holds: the check-in's opening time and its name or purpose. If either isn't set, leave it out; don't guess.") The
  * opening time is the schedule's own (theHourACheckInOpens), said only where a check-in opens at a set hour; the topic is the check-in's
- * name. "About two minutes each weekday, from 8am, for Deal progress."
+ * name. "About ten minutes each weekday, from 8am, for Deal progress."
  */
 export function whenItAsks(g: {
   cadence: ACadence | string;

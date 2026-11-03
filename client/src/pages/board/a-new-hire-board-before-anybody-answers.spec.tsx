@@ -16,7 +16,7 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: { id: 
 vi.mock('@/api/board', () => ({ boardApi: { get: vi.fn() } }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn(), list: vi.fn().mockResolvedValue([]) } }))
 /* The length is the server's one owner's (lib/how-long-setup-takes.ts reads GET /entry/a-check-in-takes). Changed 3 November 2026: the board said "About ten minutes" of its own. */
-vi.mock('@/api/entry', () => ({ entryApi: { aCheckInTakes: vi.fn().mockResolvedValue('About two minutes') } }))
+vi.mock('@/api/entry', () => ({ entryApi: { aCheckInTakes: vi.fn().mockResolvedValue('About ten minutes') } }))
 vi.mock('@/api/today', () => ({ todayApi: { get: vi.fn().mockResolvedValue({ count: 0, line: null, comingUp: [], needs: [] }) } }))
 vi.mock('@/components/gw/TheOtherBoardsYouAreIn', () => ({ TheOtherBoardsYouAreIn: () => null }))
 
@@ -44,7 +44,7 @@ it('says the board fills in, and shows what was agreed, what is left to do and w
   expect(screen.getByText('Getting set up is kept apart')).toBeTruthy()
   expect(screen.getByText('See the onboarding board').closest('a')?.getAttribute('href')).toBe('/suite/onboard')
   expect(screen.getByText("Your own check-in")).toBeTruthy()
-  expect(await screen.findByText("About two minutes")).toBeTruthy()
+  expect(await screen.findByText("About ten minutes")).toBeTruthy()
   expect(screen.getByText('1 invited')).toBeTruthy()
   expect(screen.getByText('This may be relevant')).toBeTruthy()
   expect(screen.getByText('Check stock before a new rep starts.')).toBeTruthy()

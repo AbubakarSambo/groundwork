@@ -49,7 +49,7 @@ describe('the first message to a number', () => {
     const { wa } = aSender({});
     expect((await wa.sendFor('org-1', '+254700000001', OPEN_TEXT, { kind: 'checkin-open', params: OPEN })).sent).toBe(true);
     expect(what().template.name).toBe('groundwork_first_contact');
-    expect(read(what())).toBe('This is Groundwork, writing for Kito Foods. Hi Amani, your check-in for Sales team, Q4 is open. It takes about two minutes, and you can answer right here. Reply START to begin. Not you? Reply STOP.');
+    expect(read(what())).toBe('This is Groundwork, writing for Kito Foods. Hi Amani, your check-in for Sales team, Q4 is open. It takes about ten minutes, and you can answer right here. Reply START to begin. Not you? Reply STOP.');
   });
 
   it('the second is the ordinary message, with nothing added', async () => {

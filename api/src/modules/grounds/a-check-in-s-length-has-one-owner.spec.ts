@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'fs';
 import { join, relative } from 'path';
 
 /**
- * HOW LONG A CHECK-IN TAKES IS SAID FROM ONE OWNER (F5, the approved journey, stage 6: "about two minutes").
+ * HOW LONG A CHECK-IN TAKES IS SAID FROM ONE OWNER, and the owner says "About ten minutes" (Hafsah's fixed decision, 3 November 2026).
  *
  * History. Hafsah's fix list, item 4 (14 October 2026), said "about ten minutes" wherever a check-in's length is mentioned. On
  * 3 November 2026 a team member's check-in was measured at a median of 1.9 minutes and Hafsah approved "About two minutes", which
@@ -13,11 +13,12 @@ import { join, relative } from 'path';
  * CHANGED 3 November 2026 (evening; renamed from a-check-in-takes-about-ten-minutes.spec.ts): the owner moved to
  * common/how-long-a-check-in-takes.ts, and this now refuses any length of its own, ten included, in anything a person reads.
  *
+ * CHANGED 3 November 2026 (night): Hafsah fixed the length as "about ten minutes", a decision and not a measurement, so the owner
+ * says ten and this pins ten. The scenario packs' pacing words now read the owner too.
+ *
  * Left as they are, on purpose:
  *  - the WhatsApp templates (whatsapp/a-message-outside-the-window.ts). The approved ones cannot change without a new approval,
  *    and the ones waiting for approval must match what was submitted, so they are pinned here word for word and listed for Hafsah;
- *  - the scenario packs' pacing words to the model (conversation/prompt-library.ts, "KEEP IT SHORT"), which are stored prompt
- *    versions and never shown to a person;
  *  - setting a check-in up, which has its own owner (client/src/lib/how-long-setup-takes.ts).
  */
 const WHAT_THE_WHATSAPP_TEMPLATES_SAY = [
@@ -31,7 +32,7 @@ const WHAT_THE_WHATSAPP_TEMPLATES_SAY = [
 ];
 
 const ROOTS = [join(__dirname, '..', '..'), join(__dirname, '..', '..', '..', '..', 'client', 'src')];
-const LEFT_AS_THEY_ARE = ['modules/whatsapp/a-message-outside-the-window.ts', 'modules/conversation/prompt-library.ts'];
+const LEFT_AS_THEY_ARE = ['modules/whatsapp/a-message-outside-the-window.ts'];
 const THE_ONE_OWNER = 'common/how-long-a-check-in-takes.ts';
 const NUMBER = '(?:a few|one|two|three|four|five|six|seven|eight|nine|ten|fifteen|twenty|\\d+(?:\\s+to\\s+\\d+)?)';
 const A_LENGTH_OF_ITS_OWN = new RegExp(`\\b(?:about|takes?|only)\\s+${NUMBER}\\s+minutes?\\b|\\b${NUMBER}\\s+minutes\\s+(?:now|each)\\b`, 'i');
@@ -63,11 +64,11 @@ describe('a check-in\'s length is said from one owner', () => {
     expect(found).toEqual([]);
   });
 
-  it('the one owner says the measured length, "About two minutes"', () => {
+  it('the one owner says Hafsah\'s fixed length, "About ten minutes"', () => {
     const { A_CHECK_IN_TAKES, ABOUT_HOW_LONG, IT_TAKES } = require('../../common/how-long-a-check-in-takes');
-    expect(A_CHECK_IN_TAKES).toBe('About two minutes');
-    expect(ABOUT_HOW_LONG).toBe('about two minutes');
-    expect(IT_TAKES).toBe('It takes about two minutes.');
+    expect(A_CHECK_IN_TAKES).toBe('About ten minutes');
+    expect(ABOUT_HOW_LONG).toBe('about ten minutes');
+    expect(IT_TAKES).toBe('It takes about ten minutes.');
   });
 
   it('the WhatsApp templates are left exactly as they were approved or submitted', () => {

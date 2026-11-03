@@ -8,6 +8,7 @@ import { COMPANY_PICTURE_PROMPT, COMPANY_PICTURE_PROMPT_KEY } from '../grounds/t
 import { CUSTOMER_STANDING_PROMPT, CUSTOMER_STANDING_PROMPT_KEY } from '../suites/the-customer-standing';
 import { THINK_IT_THROUGH_PROMPT, THINK_IT_THROUGH_PROMPT_KEY } from '../assistant/think-it-through';
 import { alreadyEstablished } from './setup-already-asked-this';
+import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
 import { whatThisCheckInIsFor, whichStage, THE_SCENARIO_TABLE, type Stage } from './the-scenario-table';
 import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
@@ -2829,7 +2830,7 @@ That last question matters: a target quietly rewritten is not progress, and it i
 
 BE SPECIFIC: "things are busy" is not an answer. A named obstacle, a named person waiting, a number that moved or did not.
 
-KEEP IT SHORT: about five minutes. This is a standing read, not a deep account - it earns its value by happening every week, so it must never feel like a review.
+KEEP IT SHORT: ${ABOUT_HOW_LONG}. This is a standing read, not a deep account - it earns its value by happening every week, so it must never feel like a review.
 
 RECORD: The record should show what this person owns and is working to, what moved against it since last time, what is stuck and on whom, and any change to the target itself and who agreed it. Across sessions the useful signal is the same thing stuck three reads running, and work that is busy but not against anything anyone agreed.`;
 
@@ -2861,7 +2862,7 @@ A PROMISE IS THE PROMISE OF WHOEVER MADE IT. A client's promise to pay belongs t
 
 NEVER RAISE OR WRITE A BILL. Groundwork does not raise or draft a bill. If a bill should have gone out and did not, record that, and who would raise it.
 
-KEEP IT SHORT: about ten minutes.
+KEEP IT SHORT: ${ABOUT_HOW_LONG}.
 
 RECORD: The record should show each bill this person follows up or owes, by name, with its amount, what makes it due, what has been paid and the proof, any promised date in the client's words, what is in the way, and what this person said they would do next, with its day.`;
 

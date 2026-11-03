@@ -378,8 +378,8 @@ describe('Your turn, drawn as the prototype\'s own card (you-board-miriam.jpg)',
     open(MIRIAM, {
       ...MIRIAMS,
       turns: [
-        { key: 't1', title: 'Your sales check-in closes at 6pm', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/c39' } },
-        { key: 't2', title: 'Your own check-in for Leadership, Q3', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/c40' } },
+        { key: 't1', title: 'Your sales check-in closes at 6pm', detail: 'About ten minutes.', action: { label: 'Start it', to: '/checkin/c39' } },
+        { key: 't2', title: 'Your own check-in for Leadership, Q3', detail: 'About ten minutes.', action: { label: 'Start it', to: '/checkin/c40' } },
       ],
     })
     const starts = await screen.findAllByRole('link', { name: 'Start it' })

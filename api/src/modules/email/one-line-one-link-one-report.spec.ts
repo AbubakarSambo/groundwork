@@ -17,7 +17,7 @@ describe('what the team gets', () => {
     expect(lines[1]).toBe(THE_LINE);
     /* Five, not two: across a hundred real conversations the median was six answers. And the mail
        now says what arrives at the end, which is the reason to spend them. */
-    expect(lines[2]).toBe('It takes about two minutes. Reply by Friday.');
+    expect(lines[2]).toBe('It takes about ten minutes. Reply by Friday.');
     expect(lines[3]).toBe('You will get the consolidated report at the end.');
   });
 
@@ -30,7 +30,7 @@ describe('what the team gets', () => {
 
   it('drops the deadline rather than inventing one', () => {
     const { lines } = whatTheTeamGets({ leadName: 'Ada', theOneLine: THE_LINE, by: null });
-    expect(lines).toContain('It takes about two minutes.');
+    expect(lines).toContain('It takes about ten minutes.');
     expect(lines.join(' ')).not.toMatch(/Friday|by \w+day/);
   });
 

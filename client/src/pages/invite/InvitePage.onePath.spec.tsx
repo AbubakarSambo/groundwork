@@ -34,7 +34,7 @@ const PREVIEW = {
   roleAsDescribed: null,
   alreadyAccepted: false,
   organisationName: 'Acme Inc',
-  takes: 'About two minutes', /* as the server serves it, from A_CHECK_IN_TAKES */
+  takes: 'About ten minutes', /* as the server serves it, from A_CHECK_IN_TAKES */
 }
 
 function renderInvite() {
@@ -84,7 +84,7 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
 
   /* U.3: the invitation now reads as the prototype's (join-invite.txt). The old
      top box ("builds the shared report") and footer ("come back any time to add to") are replaced by
-     the prototype's box and "About two minutes. You choose how you sign in afterwards."
+     the prototype's box and "About ten minutes. You choose how you sign in afterwards."
      U.20 fifth review (Hafsah, pictured at 1440px): "What happens to what you write" no longer
      prints in full on the page (it made the page twice the prototype's length, which has none of
      it) - it is a plain link that opens the same four claims in the shared Modal, so this test now
@@ -113,7 +113,7 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
     expect(screen.getAllByText(/Admins at Acme Inc can read every check-in\./).length).toBe(2)
     expect(screen.queryByText(/Nobody else reads your answers/i)).toBeNull()
     expect(screen.queryByText(/reads the report, not your words/i)).toBeNull()
-    expect(screen.getByText('About two minutes. You choose how you sign in afterwards.')).toBeTruthy()
+    expect(screen.getByText('About ten minutes. You choose how you sign in afterwards.')).toBeTruthy()
   })
 
   it('the inline entry-pipeline chat is gone (no onboarding cards, no chat input)', async () => {

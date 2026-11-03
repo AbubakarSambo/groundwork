@@ -31,7 +31,7 @@ describe('nobody has started yet (to Grace)', () => {
       'Hello Grace. Kevin, Joseph, Peter and Mercy were invited to "Sales team, Q4" on 12 Oct 2026, and nobody has started yet.',
       'Kevin has had a reminder.',
       'The next reminder goes on 13 Oct 2026.',
-      'You could write to them yourself, "I would value your view on Sales team, Q4. It takes about two minutes."',
+      'You could write to them yourself, "I would value your view on Sales team, Q4. It takes about ten minutes."',
     ]);
   });
 });
@@ -50,10 +50,10 @@ describe('who has gone quiet (to Wanjiru)', () => {
 
 describe('missed check-ins', () => {
   it('David, off: as before', () => {
-    expect(whatThePersonReads({ inARow: 2, stage: 1 as any }, { leadName: 'Wanjiru', somebodyWaitsOnThem: false })).toBe("You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late and Wanjiru has to chase instead of help. If you miss the next one as well, Wanjiru will be told. About two minutes now puts your view back in the picture.");
+    expect(whatThePersonReads({ inARow: 2, stage: 1 as any }, { leadName: 'Wanjiru', somebodyWaitsOnThem: false })).toBe("You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late and Wanjiru has to chase instead of help. If you miss the next one as well, Wanjiru will be told. About ten minutes now puts your view back in the picture.");
   });
   it('David, on: how many, whether Wanjiru is told, and how long it takes', () => {
-    expect(whatThePersonReads({ inARow: 2, stage: 1 as any }, { leadName: 'Wanjiru', somebodyWaitsOnThem: true, direct: true })).toBe("You've missed your last two check-ins. Somebody on the team is waiting on you. If you miss the next one as well, Wanjiru will be told. It takes about two minutes.");
+    expect(whatThePersonReads({ inARow: 2, stage: 1 as any }, { leadName: 'Wanjiru', somebodyWaitsOnThem: true, direct: true })).toBe("You've missed your last two check-ins. Somebody on the team is waiting on you. If you miss the next one as well, Wanjiru will be told. It takes about ten minutes.");
   });
   it('Wanjiru, off and on', () => {
     const stand: any = { ofTheLastFour: 3, lastFour: 4, reason: null };

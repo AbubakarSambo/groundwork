@@ -86,14 +86,14 @@ describe('needsSaidDirectly (Today and You, with the direct morning on)', () => 
   /* CHANGED 3 November 2026: the estimate is the one owner's length (common/how-long-a-check-in-takes.ts) with the switch on or off, not a "A few minutes." of its own. */
   it('a check-in’s estimate is its length alone and says nothing about how answers are read; every other need is as it was', () => {
     const needs = [
-      { key: 'a', title: 'Your next check-in for Sales team, Q4', detail: 'About two minutes.' },
-      { key: 'b', title: 'Your check-in for Sales team, Q4', detail: 'About two minutes. Everyone else’s answers are read against yours.' },
+      { key: 'a', title: 'Your next check-in for Sales team, Q4', detail: 'About ten minutes.' },
+      { key: 'b', title: 'Your check-in for Sales team, Q4', detail: 'About ten minutes. Everyone else’s answers are read against yours.' },
       { key: 'c', title: 'Read the report', detail: 'Ready since Monday.' },
       { key: 'd', title: 'Your own report for Sales team, Q4', detail: 'Only you see it.' },
     ];
     expect(needsSaidDirectly(needs)).toEqual([
-      { key: 'a', title: 'Your next check-in for Sales team, Q4', detail: 'About two minutes.' },
-      { key: 'b', title: 'Your check-in for Sales team, Q4', detail: 'About two minutes.' },
+      { key: 'a', title: 'Your next check-in for Sales team, Q4', detail: 'About ten minutes.' },
+      { key: 'b', title: 'Your check-in for Sales team, Q4', detail: 'About ten minutes.' },
       { key: 'c', title: 'Read the report', detail: 'Ready since Monday.' },
       { key: 'd', title: 'Your own report for Sales team, Q4', detail: null },
     ]);

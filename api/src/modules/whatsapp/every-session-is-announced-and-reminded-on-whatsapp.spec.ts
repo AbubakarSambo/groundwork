@@ -20,7 +20,7 @@ const MIRIAM = { firstName: 'Miriam', label: 'the sales team' };
 
 describe('what a person reads, word for word as Hafsah wrote it', () => {
   it('checkin_open', () => {
-    expect(theCheckInIsOpen(MIRIAM).text).toBe('Hi Miriam, your check-in for the sales team is open. It takes about two minutes, and you can answer right here. Reply START to begin.');
+    expect(theCheckInIsOpen(MIRIAM).text).toBe('Hi Miriam, your check-in for the sales team is open. It takes about ten minutes, and you can answer right here. Reply START to begin.');
   });
   it('checkin_due_tomorrow', () => {
     expect(itIsDueTomorrow(MIRIAM, new Date('2026-10-08T09:00:00Z')).text).toBe('Hi Miriam, your check-in for the sales team is due tomorrow, Thursday 8 October. You can answer here whenever suits you before then.');
@@ -35,7 +35,7 @@ describe('what a person reads, word for word as Hafsah wrote it', () => {
     expect(theTeamIsAlmostIn(MIRIAM, 3, 5).text).toBe('Hi Miriam, 3 of 5 people have checked in for the sales team. Your check-in is still open, and you can answer here.');
   });
   it("checkin_your_view_matters, with the lead's first name", () => {
-    expect(yourViewMatters(MIRIAM, 'Wairimu').text).toBe("Hi Miriam, your check-in for the sales team is still waiting. Your answers help Wairimu understand what's in your way, and where they can help. It takes about two minutes, and you can answer here.");
+    expect(yourViewMatters(MIRIAM, 'Wairimu').text).toBe("Hi Miriam, your check-in for the sales team is still waiting. Your answers help Wairimu understand what's in your way, and where they can help. It takes about ten minutes, and you can answer here.");
   });
   it('lead_daily_summary and checkin_closes_soon are registered word for word', () => {
     expect(TEMPLATES['lead-summary'].body).toBe("Good morning {{1}}. Here is today's summary of your check-ins. {{2}} You can open your board for the full picture here {{3}} If you would rather not hear from us here again today, reply \"not now\".");
@@ -188,7 +188,7 @@ describe('the morning sweep', () => {
     const lead = aRow({ ground: { ...aRow().ground, initiatorId: 'u-1', initiator: { firstName: 'Miriam' } } });
     const { cron, sendFor } = aCron([lead], { session: [{ status: 'NOT_STARTED' }, { status: 'COMPLETED' }, { status: 'NOT_STARTED' }, { status: 'NOT_STARTED' }] });
     await cron.sendWhatsAppRemindersInner();
-    expect(sendFor.mock.calls[0][2]).toBe("Hi Miriam, your check-in for the sales team is still waiting. Your answers help you understand what's in your way, and where they can help. It takes about two minutes, and you can answer here.");
+    expect(sendFor.mock.calls[0][2]).toBe("Hi Miriam, your check-in for the sales team is still waiting. Your answers help you understand what's in your way, and where they can help. It takes about ten minutes, and you can answer here.");
   });
   it('with half or more in, the person reads the count, which leaves out anybody not yet let in', async () => {
     const { cron, sendFor } = aCron([aRow()], { session: [{ status: 'NOT_STARTED' }, { status: 'COMPLETED' }, { status: 'COMPLETED' }, { status: 'NOT_STARTED' }, { status: 'NOT_STARTED', awaiting: true }] });

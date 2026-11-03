@@ -28,7 +28,7 @@ vi.mock('@/api/conversation', () => ({
 }))
 vi.mock('@/api/documents', () => ({ documentsApi: { upload: vi.fn() } }))
 /* How long a check-in takes, as the server serves it from its one owner (participants/when-it-asks.ts). */
-vi.mock('@/api/entry', () => ({ entryApi: { aCheckInTakes: vi.fn().mockResolvedValue('About two minutes') } }))
+vi.mock('@/api/entry', () => ({ entryApi: { aCheckInTakes: vi.fn().mockResolvedValue('About ten minutes') } }))
 vi.mock('@/api/grounds', () => ({
   groundsApi: { get: vi.fn(), getMyCheckinStatus: vi.fn() },
 }))
@@ -114,7 +114,7 @@ async function typeAndSend(text: string) {
 }
 
 /* Changed 3 November evening (Hafsah: "only the conversation ... one box ... and 'End session', small and quiet, always visible"): the
-   header is the check-in's name and End session. "About two minutes" and the Pause menu are gone; Stop for now is the back link, and
+   header is the check-in's name and End session. "About ten minutes" and the Pause menu are gone; Stop for now is the back link, and
    skipping is End session before any answer has landed, which still asks first and says what follows. */
 /* Changed 3 November 2026 (screens-after/checkin-reply-390.png): the way back was a link above the card that said the name, and the
    header said it again. Now the name is said once, on one line: the arrow and the name are the way back, End session is beside them. */
@@ -131,7 +131,7 @@ describe('the header', () => {
     expect(await findByRole('button', { name: 'End session' })).toBeTruthy()
     expect(await findByText(OPENING, {}, { timeout: 5000 })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull()
-    expect(screen.queryByText('About two minutes')).toBeNull()
+    expect(screen.queryByText('About ten minutes')).toBeNull()
     expect(screen.queryByText(/What this check-in is about/)).toBeNull()
   })
 

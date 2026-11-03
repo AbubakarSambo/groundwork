@@ -19,7 +19,7 @@ export const SETUP_TAKES = `about ${['zero', 'one', 'two', 'three', 'four', 'fiv
 
 /**
  * HOW LONG A TEAM MEMBER'S CHECK-IN TAKES, as the server serves it from its one owner (A_CHECK_IN_TAKES in
- * api/src/modules/participants/when-it-asks.ts, the measured figure). The client holds no copy: "About two minutes", or null until
+ * api/src/common/how-long-a-check-in-takes.ts, Hafsah's fixed decision). The client holds no copy: "About ten minutes", or null until
  * it is served, when the pages say nothing about the length rather than a figure of their own.
  */
 export function useACheckInTakes(): string | null {
@@ -32,5 +32,5 @@ export function useACheckInTakes(): string | null {
   return data ?? null
 }
 
-/** The same, inside a sentence: "about two minutes". */
+/** The same, inside a sentence: "about ten minutes". */
 export const inASentence = (takes: string) => takes.charAt(0).toLowerCase() + takes.slice(1)

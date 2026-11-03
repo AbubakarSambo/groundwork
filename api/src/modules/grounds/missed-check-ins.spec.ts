@@ -68,7 +68,7 @@ describe('what each reader reads', () => {
     const text = whatThePersonReads({ inARow: 2 }, { leadName: 'Amani', somebodyWaitsOnThem: true });
     console.log(`THE PERSON READS:\n${text}`);
     /* Changed 18 October (Drop Access run 1, item 25): at two missed in a row the lead is not told yet (she is from three of the last four), so the person reads that she will be if they miss the next one, never that she will see this. */
-    expect(text).toBe("You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late, people waiting on you go unseen, and Amani has to chase instead of help. If you miss the next one as well, Amani will be told. About two minutes now puts your view back in the picture.");
+    expect(text).toBe("You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late, people waiting on you go unseen, and Amani has to chase instead of help. If you miss the next one as well, Amani will be told. About ten minutes now puts your view back in the picture.");
   });
 
   it('the person, with nobody waiting on them: no word about people waiting', () => {

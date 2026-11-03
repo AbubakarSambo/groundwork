@@ -4,8 +4,8 @@ import { medianOf, saysTheTruth, whatTheMedianSays, WHAT_WE_SAY_MINUTES, A_FAIR_
 
 /**
  * How long a check-in takes is said in the product from one owner (common/how-long-a-check-in-takes.ts). This is what measures it.
- * CHANGED 3 November 2026: the number is the owner's ("about two minutes", F5) and no longer a ten of its own, so the fair range is
- * half to twice the owner's number, and the examples are judged against two minutes.
+ * CHANGED 3 November 2026: the number is the owner's and no longer one of its own, so the fair range is half to twice the owner's
+ * number. CHANGED again 3 November 2026 (night): the owner says ten, Hafsah's fixed decision, so the examples are judged against ten.
  */
 describe('the median', () => {
   it('is the middle value, or the mean of the two middles, or nothing over nothing', () => {
@@ -15,11 +15,11 @@ describe('the median', () => {
   });
 
   it('the copy\'s number sits inside the range the copy is judged by', () => {
-    expect(WHAT_WE_SAY_MINUTES).toBe(2);
+    expect(WHAT_WE_SAY_MINUTES).toBe(10);
     expect(WHAT_WE_SAY_MINUTES).toBeGreaterThanOrEqual(A_FAIR_RANGE[0]);
     expect(WHAT_WE_SAY_MINUTES).toBeLessThanOrEqual(A_FAIR_RANGE[1]);
-    expect(saysTheTruth(2.7)).toBe(true);
-    expect(saysTheTruth(11)).toBe(false);
+    expect(saysTheTruth(11)).toBe(true);
+    expect(saysTheTruth(34)).toBe(false);
     expect(saysTheTruth(null)).toBeNull();
     expect(whatTheMedianSays(34, 12)).toMatch(/does not hold/);
     expect(whatTheMedianSays(null, 0)).toMatch(/no duration to give/);
@@ -53,7 +53,7 @@ describe('the metric', () => {
   /* CHANGED 3 November 2026: GroundChat.tsx no longer says the length (it failed before this change); the sentence the product says is the check-in's opening line. */
   it('the sentence the product says matches the number the metric is judged against', () => {
     const { THE_CHECK_IN_LINE } = require('../conversation/the-opening-line');
-    expect(THE_CHECK_IN_LINE).toBe('This takes about two minutes. You can stop any time with End session.');
-    expect(WHAT_WE_SAY_MINUTES).toBe(2);
+    expect(THE_CHECK_IN_LINE).toBe('This takes about ten minutes. You can stop any time with End session.');
+    expect(WHAT_WE_SAY_MINUTES).toBe(10);
   });
 });
