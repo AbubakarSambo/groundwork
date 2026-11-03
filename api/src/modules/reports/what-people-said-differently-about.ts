@@ -63,9 +63,15 @@ export function withoutTheOldEnding(question: string): string {
   return String(question ?? '').trim().replace(/(?:,\s*so it needs settling|\.\s*This needs settling)\.?$/i, '.');
 }
 
+/*
+ * NAMED, IN THE APPROVED JOURNEY'S WORDS (stages 8 and 9, Hafsah, 1 November 2026): "Jane and John see the Westgate deal
+ * differently." Where the people are named for this reader, the sentence says they see it differently; unnamed, it stays
+ * "People said different things about ...", which every board and the lead's morning read.
+ */
 export function peopleSaidDifferentThingsAbout(topic: string, who = 'People'): string {
   const t = (topic ?? '').trim().replace(/[.!?]+$/, '');
-  if (!t || ONLY_SAYS_PEOPLE_DIFFER.test(t)) return `${who} said different things.`;
-  if (isAWholeSentence(t)) return `${who} said different things. ${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
-  return `${who} said different things about ${inASentence(t)}.`;
+  const named = !/^People\b/.test(who);
+  if (!t || ONLY_SAYS_PEOPLE_DIFFER.test(t)) return named ? `${who} see this differently.` : `${who} said different things.`;
+  if (isAWholeSentence(t)) return `${named ? `${who} see this differently.` : `${who} said different things.`} ${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
+  return named ? `${who} see ${inASentence(t)} differently.` : `${who} said different things about ${inASentence(t)}.`;
 }

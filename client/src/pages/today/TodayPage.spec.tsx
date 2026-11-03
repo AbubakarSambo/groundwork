@@ -380,7 +380,7 @@ describe('Akinyi’s day one, as she reads Today', () => {
     lineGroundId: 'g-deals',
     lineResend: { groundId: 'g-deals', participantIds: ['p-peter', 'p-mary'], firstNames: ['Peter', 'Mary'] },
     needs: [
-      { key: 'report-g-deals', kind: 'ready', title: 'The report for Deal progress is ready', detail: 'Jane and John said different things about the Westgate deal.', action: { label: 'Read it', to: '/grounds/g-deals/report' }, groundId: 'g-deals', organizationId: 'o' },
+      { key: 'report-g-deals', kind: 'ready', title: 'Today’s report for Deal progress is ready', detail: 'Jane and John see the Westgate deal differently.', action: { label: 'Read it', to: '/grounds/g-deals/report' }, groundId: 'g-deals', organizationId: 'o' },
     ],
     comingUp: [],
   }
@@ -388,8 +388,8 @@ describe('Akinyi’s day one, as she reads Today', () => {
     open(AKINYI, DAY_ONE)
     expect(await screen.findByText(/In Deal progress, 2 of 4 have checked in; Peter and Mary haven’t joined yet\./)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Send it to them again' })).toBeTruthy()
-    expect(screen.getByText('The report for Deal progress is ready')).toBeTruthy()
-    expect(screen.getByText('Jane and John said different things about the Westgate deal.')).toBeTruthy()
+    expect(screen.getByText('Today’s report for Deal progress is ready')).toBeTruthy()
+    expect(screen.getByText('Jane and John see the Westgate deal differently.')).toBeTruthy()
   })
   it('names the one person when only one has not joined', async () => {
     open(AKINYI, { ...DAY_ONE, line: 'In Deal progress, 3 of 4 have checked in; Peter hasn’t joined yet.', lineResend: { groundId: 'g-deals', participantIds: ['p-peter'], firstNames: ['Peter'] } })

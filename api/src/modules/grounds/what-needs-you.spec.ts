@@ -1,3 +1,4 @@
+import { peopleSaidDifferentThingsAbout } from '../reports/what-people-said-differently-about';
 import { whatNeedsYou, type ListedCheckIn } from './what-needs-you';
 
 /**
@@ -233,5 +234,28 @@ describe('a turn of your own while you are on leave', () => {
   it('reads as before for somebody who is not away', () => {
     const notAway = whatNeedsYou([first], { userId: MIRIAM, role: 'MEMBER', organizationId: 'org' }, [], NOW);
     expect(notAway.needs[0].detail).toBe('About ten minutes. It opened on 15 September.');
+  });
+});
+
+/*
+ * THE REPORT ROW IN THE APPROVED JOURNEY'S WORDS (stage 8, F5 part 3): "Today's report for deal progress is ready. Jane and John
+ * see the Westgate deal differently. Read it". The title says "Today's" only for a daily check-in whose report was shared today;
+ * who differs is the one sentence for a difference (reports/what-people-said-differently-about.ts), named for this reader.
+ */
+describe('Today, as Akinyi, whose daily deal check-in has today\'s report', () => {
+  const deals: ListedCheckIn = {
+    id: 'g-deals', label: 'Deal progress', status: 'ACTIVE', organizationId: 'org', initiatorId: 'u-akinyi', cadence: 'DAILY',
+    participants: [person('p-a', 'u-akinyi', 'Akinyi'), person('p-j', 'u-jane', 'Jane'), person('p-jo', 'u-john', 'John')],
+    checkIns: [], reportWaitingForMe: true, report: { releasedAt: ago(1) },
+    whoDiffers: peopleSaidDifferentThingsAbout('the Westgate deal', 'Jane and John'),
+  };
+  it('reads "Today’s report for Deal progress is ready" and who sees what differently', () => {
+    const r = whatNeedsYou([deals], { userId: 'u-akinyi', role: 'MEMBER', organizationId: 'org' }, [], NOW);
+    const row = r.needs.find((n) => n.key === 'report-g-deals')!;
+    expect(row).toMatchObject({ title: 'Today’s report for Deal progress is ready', detail: 'Jane and John see the Westgate deal differently.', action: { label: 'Read it' } });
+  });
+  it('says "The report" when the report was shared on another day, or the check-in is not daily', () => {
+    const r = whatNeedsYou([{ ...deals, report: { releasedAt: ago(30) } }, { ...deals, id: 'g-w', cadence: 'WEEKLY' }], { userId: 'u-akinyi', role: 'MEMBER', organizationId: 'org' }, [], NOW);
+    expect(r.needs.filter((n) => n.kind === 'ready').map((n) => n.title)).toEqual(['The report for Deal progress is ready', 'The report for Deal progress is ready']);
   });
 });

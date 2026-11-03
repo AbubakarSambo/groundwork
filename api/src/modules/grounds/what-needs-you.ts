@@ -110,7 +110,10 @@ export interface ListedCheckIn {
   /** The one count, as the list serves it (the-count-as-served.ts). */
   theCount?: TheCountAsServed | null;
   latestSummary?: string | null;
-  /** The report's first difference, by name, where this reader may read the report: "Jane and John said different things about the Westgate deal." */
+  cadence?: string | null;
+  /** When the team report was last shared, as the list serves it. */
+  report?: { releasedAt?: string | Date | null } | null;
+  /** The report's first difference, by name, where this reader may read the report: "Jane and John see the Westgate deal differently." */
   whoDiffers?: string | null;
   participants?: { id: string; userId?: string | null; notLetIn?: boolean; user?: { firstName?: string | null } | null }[];
   checkIns?: {
@@ -336,7 +339,8 @@ export function whatNeedsYou(
       reports.push({
         key: `report-${g.id}`,
         kind: 'ready',
-        title: `The report for ${g.label} is ready`,
+        /* "Today’s report for deal progress is ready." (the approved journey, stage 8): a daily check-in's report shared today is today's. */
+        title: `${aReportOfToday(g, at) ? 'Today’s report' : 'The report'} for ${g.label} is ready`,
         /* Who differs, from the report (stage 8), or else the report's first sentence. */
         detail: g.whoDiffers ?? firstSentence(g.latestSummary),
         action: { label: 'Read it', to: myLatest ? `/checkin/${myLatest.id}/report` : `/grounds/${g.id}/report` },
@@ -562,4 +566,10 @@ export function needsSaidDirectly<T extends { detail?: string | null }>(needs: T
     if (n.detail === 'Only you see it.') return { ...n, detail: null };
     return n;
   });
+}
+
+/** A daily check-in whose team report was shared on the reader's day, in the product's own zone: "Today’s report". */
+function aReportOfToday(g: ListedCheckIn, at: number): boolean {
+  const shared = time(g.report?.releasedAt);
+  return String(g.cadence ?? '').toUpperCase() === 'DAILY' && shared != null && theDayIn(new Date(shared), THE_PRODUCTS_OWN_ZONE) === theDayIn(new Date(at), THE_PRODUCTS_OWN_ZONE);
 }

@@ -46,3 +46,14 @@ describe('a clause that says something of the people it is about is a whole sent
     expect(peopleSaidDifferentThingsAbout('Who owns the next step with the distributor is not agreed upon by the team.')).toBe('People said different things. Who owns the next step with the distributor is not agreed upon by the team.');
   });
 });
+
+/* F5 part 3 (stage 8 and 9): named people "see it differently"; unnamed, the sentence every board says is unchanged. */
+describe('a difference between people named for the reader', () => {
+  const say = peopleSaidDifferentThingsAbout;
+  it('reads as the approved journey says it', () => {
+    expect(say('the Westgate deal', 'Jane and John')).toBe('Jane and John see the Westgate deal differently.');
+    expect(say('The accounts differ on the primary cause of delays.', 'You and Kwame')).toBe('You and Kwame see this differently. The accounts differ on the primary cause of delays.');
+    expect(say('the price list')).toBe('People said different things about the price list.');
+    expect(say('the price list', 'People in this check-in')).toBe('People in this check-in said different things about the price list.');
+  });
+});
