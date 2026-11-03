@@ -85,8 +85,9 @@ describe('the lead, Grace, reads the whole page', () => {
     const r: any = await read(prisma, 'u-grace');
     expect(r.view).toBe('lead');
     /* Changed 28 October 2026 (fix plan, pattern 1): the people a session waits on, as Today's "1 of N" counts them. Grace runs it and checks in
-       when she chooses, and Peter was invited and has not joined, so 3, not 5. */
-    expect(r.howItRuns).toBe('3 people answer every weekday, until 30 October, on WhatsApp or here.');
+       when she chooses, so she is not counted. Changed again 3 November: somebody invited who has not joined is counted (Hafsah, 1 November:
+       "counted and named as not joined"), as Today and the board count them, so Peter is one of the 4. */
+    expect(r.howItRuns).toBe('4 people answer every weekday, until 30 October, on WhatsApp or here.');
     expect(r.problems).toEqual([
       { participantId: 'p-mercy', says: 'Mercy Wanjiru has no WhatsApp number, so Mercy answers here.', fix: 'add-a-number' },
       { participantId: 'p-joseph', says: "Nobody has described Joseph Mutua's role here, so Joseph gets the general questions.", fix: 'add-their-role' },
@@ -102,7 +103,7 @@ describe('the lead, Grace, reads the whole page', () => {
   it('a check-in kept in Groundwork asks nobody for a number, and says "here"', async () => {
     const { prisma } = theSalesCheckIn({ overWhatsApp: false });
     const r: any = await read(prisma, 'u-grace');
-    expect(r.howItRuns).toBe('3 people answer every weekday, until 30 October, here.');
+    expect(r.howItRuns).toBe('4 people answer every weekday, until 30 October, here.');
     expect(r.problems.map((p: any) => p.fix)).toEqual(['add-their-role', 'fix-the-address']);
   });
 });
@@ -112,7 +113,7 @@ describe('an admin who does not run it, Naomi, reads the whole page with no endi
     const { prisma, writes } = theSalesCheckIn();
     const r: any = await read(prisma, 'u-naomi');
     expect(r.view).toBe('admin');
-    expect(r.howItRuns).toBe('3 people answer every weekday, until 30 October, on WhatsApp or here.');
+    expect(r.howItRuns).toBe('4 people answer every weekday, until 30 October, on WhatsApp or here.');
     expect(r.problems).toEqual([
       { participantId: 'p-mercy', says: 'Mercy Wanjiru has no WhatsApp number, so Mercy answers here.', fix: 'add-a-number' },
       { participantId: 'p-joseph', says: "Nobody has described Joseph Mutua's role here, so Joseph gets the general questions.", fix: null },
@@ -135,7 +136,7 @@ describe('a team member, Mercy, is served only her short page', () => {
     expect(r).toEqual({
       on: true,
       view: 'member',
-      howItRuns: '3 people answer every weekday, until 30 October, on WhatsApp or here.',
+      howItRuns: '4 people answer every weekday, until 30 October, on WhatsApp or here.',
       yourRole: 'Rep, Kiambu and schools',
       status: 'AWAITING_PARTIES',
       yourSessionsDone: 2,
