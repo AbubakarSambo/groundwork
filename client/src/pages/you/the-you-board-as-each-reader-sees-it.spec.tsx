@@ -200,7 +200,7 @@ describe('when the engine serves its own parts (request 14)', () => {
       ...MIRIAMS,
       whereYouStand: { says: '14 of 16 kept, in the last 4 weeks. Nothing needs deciding about your work right now.', whatWouldChangeIt: 'Keeping 8 in 10 for the next 4 weeks.' },
       worthKnowing: ['In March you said supermarkets need a sample first. Lakeside hasn’t had one yet.'],
-      noticed: { says: 'For three weeks, calls that need a difficult ask have been moved to next week.', whoSees: 'You are seeing this first. Wairimu can see it too. Nothing is decided from it.' },
+      noticed: { says: 'For three weeks, calls that need a difficult ask have been moved to next week.' },
       coachingOverTime: 'Last week we talked about asking for a buying date on the first visit. You did it at Lakeside.',
       contributed: ['Warned the team early that Green Mart would wait until January.'],
       patterns: [{
@@ -216,7 +216,9 @@ describe('when the engine serves its own parts (request 14)', () => {
     await screen.findByRole('heading', { name: 'Where you stand' })
     expect(within(section('Where you stand')).getByText('What would change this: Keeping 8 in 10 for the next 4 weeks.')).toBeInTheDocument()
     expect(within(section('Worth knowing now')).getByText('In March you said supermarkets need a sample first. Lakeside hasn’t had one yet.')).toBeInTheDocument()
-    expect(within(section('Something Groundwork noticed about your work')).getByText('You are seeing this first. Wairimu can see it too. Nothing is decided from it.')).toBeInTheDocument()
+    /* Changed in F5: no note on who else sees it (the standards forbid privacy notes on screens). */
+    expect(within(section('Something Groundwork noticed about your work')).getByText('For three weeks, calls that need a difficult ask have been moved to next week.')).toBeInTheDocument()
+    expect(section('Something Groundwork noticed about your work').textContent).not.toMatch(/seeing this first|can see it too|Nothing is decided from it/)
     expect(within(section('Coaching, followed over time')).getByText(/You did it at Lakeside/)).toBeInTheDocument()
     expect(within(section('What you contributed')).getByText('Warned the team early that Green Mart would wait until January.')).toBeInTheDocument()
     const patternSection = section('Something that keeps coming up')

@@ -163,7 +163,6 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
             {b.noticed?.says && (
               <Panel as="section" heading="Something Groundwork noticed about your work">
                 <p className="gwui-panel-text">{b.noticed.says}</p>
-                {b.noticed.whoSees && <p className="gwui-panel-text-muted">{b.noticed.whoSees}</p>}
               </Panel>
             )}
             {b.coachingOverTime && (
