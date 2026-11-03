@@ -8605,7 +8605,7 @@ ${told}` : '';
       WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT,
       [{ role: 'user', content: theProofPrompt(commitments, lines) }],
       WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA as any,
-      { fast: true, thinkingBudget: 0 },
+      { fast: true },
     );
     const settled = theProofSettlements(commitments as any, lines as any, whoAdded, read?.pairs);
     const now = new Date();
@@ -8665,7 +8665,7 @@ ${told}` : '';
       READ_WHAT_HAPPENED,
       [{ role: 'user', content: theHappenedPrompt(once, said) }],
       WHAT_HAPPENED_SCHEMA as any,
-      { fast: true, thinkingBudget: 0 },
+      { fast: true },
     );
     const settled = theSettlements(once, read?.outcomes, said).flatMap((s) => {
       const key = aCommitmentKey(once.find((o) => o.id === s.id)?.text ?? '', once.find((o) => o.id === s.id)?.whenSaid);
@@ -8728,7 +8728,7 @@ ${told}` : '';
       READ_WHAT_THEY_PROMISED,
       [{ role: 'user', content: `THEIR OWN WORDS, in order, each after the question it answered:\n${pairs.join('\n')}` }],
       WHAT_THEY_PROMISED_SCHEMA as any,
-      { fast: true, thinkingBudget: 0 },
+      { fast: true },
     ).catch((err: any) => {
       this.logger.warn(`What they promised on ${checkInId} did not read: ${err?.message}`);
       return null;
@@ -8842,7 +8842,7 @@ ${told}` : '';
       theFitInstruction(frame, theirRole ?? row.participant?.organisationGiven ?? null),
       [{ role: 'user', content: `WHAT THEY SAID, in order:\n${said.map((x, n) => `${n + 1}. ${x}`).join('\n')}` }],
       THE_FIT_SCHEMA as any,
-      { fast: true, thinkingBudget: 0 },
+      { fast: true },
     ).catch((err: any) => {
       this.logger.warn(`The fit on ${checkInId} did not read: ${err?.message}`);
       return null;
@@ -9196,7 +9196,7 @@ ${told}` : '';
        * her own six answers the fast model returned the same five claims - the 30,000, the 30%, the
        * vetting, the volumes, the move into Niger and Kogi - in a fraction of the time.
        */
-      { fast: true, thinkingBudget: 0 },
+      { fast: true },
     ).catch((err: any) => {
       this.logger?.warn?.(`Could not note what was said on ${checkInId}: ${err?.message}`);
       return null;

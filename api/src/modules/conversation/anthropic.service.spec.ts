@@ -121,3 +121,38 @@ describe('respond() and extract() forward temperature and seed only when a calle
     expect(config.seed).toBe(20260930);
   });
 });
+
+/*
+ * A FAST READ THINKS AS LITTLE AS A CONVERSATION TURN (3 November 2026). The suggested answers, the
+ * session plan and Ask's reading of a question ran on the fast model with its own default thinking and
+ * took 2 to 12 seconds while a person waited. The default is set once, here, for every fast caller.
+ */
+describe('extract() on the fast model', () => {
+  const tool = { name: 'a_tool', description: 'd', input_schema: {} };
+  function svcWith() {
+    const svc = new AnthropicService({ get: () => undefined } as any);
+    const generateContent = jest.fn(async () => ({ candidates: [{ content: { parts: [{ functionCall: { name: 'a_tool', args: { ok: true } } }] } }] }));
+    (svc as any).client = { models: { generateContent } };
+    return { svc, config: () => (generateContent.mock.calls[0] as any[])[0] };
+  }
+
+  it('thinks no more than a conversation turn when the caller names no budget', async () => {
+    const { svc, config } = svcWith();
+    await svc.extract('sys', [{ role: 'user', content: 'hi' } as ChatTurn], tool, { fast: true });
+    expect(config().model).toBe('gemini-2.5-flash');
+    expect(config().config.thinkingConfig).toEqual({ thinkingBudget: 0 });
+  });
+
+  it('keeps a budget its caller names', async () => {
+    const { svc, config } = svcWith();
+    await svc.extract('sys', [{ role: 'user', content: 'hi' } as ChatTurn], tool, { fast: true, thinkingBudget: 256 });
+    expect(config().config.thinkingConfig).toEqual({ thinkingBudget: 256 });
+  });
+
+  it('and a report read, which is not fast, keeps the model its own thinking', async () => {
+    const { svc, config } = svcWith();
+    await svc.extract('sys', [{ role: 'user', content: 'hi' } as ChatTurn], tool);
+    expect(config().model).toBe('gemini-2.5-pro');
+    expect(config().config.thinkingConfig).toBeUndefined();
+  });
+});
