@@ -16,7 +16,7 @@ import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsa
 import { A_TEMPLATE_BODY_LIMIT, TEMPLATES, oneLine, NOT_TODAY, THEY_SAID_NOT_NOW, NOT_TURNED_ON_QUIETLY } from '../whatsapp/a-message-outside-the-window';
 import { ITS_OWN_WORDS_AT_MOST } from '../whatsapp/the-first-message-to-a-number';
 import { whatWaitsForYouToDecide, type TheBoards } from '../suites/what-waits-for-you-to-decide';
-import { whatWaitsInASentence } from '../whatsapp/the-leads-daily-summary';
+import type { AWaitingRequest } from '../suites/a-request-in-words';
 import { THEY_HAD_ONE_TODAY } from './one-routine-message-a-day';
 import { theirApprovedLeave, fallsInLeave, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { theirRosterEntry } from '../suites/a-roster-entry-and-its-sign-in';
@@ -68,6 +68,18 @@ const DAY = 86_400_000;
 const AT_MOST = 3;
 
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
+
+/** What waits for the lead to decide, in one sentence. Null when nothing does. */
+function whatWaitsInASentence(waiting: AWaitingRequest[]): string | null {
+  if (!waiting.length) return null;
+  if (waiting.length === 1) {
+    const r = waiting[0];
+    return r.kind === 'hours'
+      ? `${capital(r.thing)} are waiting for you to approve.`
+      : `${capital(r.thing)} is waiting for you to approve or decline.`;
+  }
+  return `${capital(aNumberInWords(waiting.length))} requests are waiting for you to approve or decline.`;
+}
 const quoted = (x: string) => `“${x.replace(/[.\s]+$/, '')}”`;
 const sentence = (s: string) => (/[.!?][”"’)]?$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
 
