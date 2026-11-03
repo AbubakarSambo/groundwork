@@ -17,6 +17,8 @@ The full version is `~/Desktop/next-steps/standards.md` (copy in `docs/overnight
 - **No new pages** (the Desk is the Company page renamed) and **no change to the notification cadence**.
 - **The assistant:** "[first name]'s assistant", "Helps you navigate your [organisation] Desk", the full specification in Hafsah's brief; it never discusses individual people's performance.
 - **Phone numbers** always shown and editable under People; nothing people need is removed again.
+- **Speed:** the first words of a reply within 2 seconds and the full reply within 8; any reply over 30 seconds is a failure. Measured in every judged run.
+- **Three decisions (3 November):** a team member's complaint about their lead is never shown to that lead and goes privately to HR or an admin, and the person is told who will see it; messages up to about 30,000 characters are taken whole, and a longer one is asked for as a document; a WhatsApp number nobody has linked gets one reply and nothing is done from it until it is linked.
 - **No pull requests or merges until Hafsah agrees.** Push only to her copy.
 
 ## How we fix things: five rules (Hafsah, 29 October 2026)
