@@ -1,4 +1,4 @@
-import { aFinishTooSoon } from './a-finish-too-soon-is-said-plainly';
+import * as aFinishTooSoonModule from './a-finish-too-soon-is-said-plainly';
 import { isADeadEnd } from './a-reply-that-asks-nothing-is-a-dead-end';
 import { withAQuestion } from './nobody-is-left-looking-at-a-paragraph';
 import { readFileSync } from 'fs';
@@ -22,16 +22,20 @@ describe('the first message ends on a question', () => {
   });
 });
 
-describe('"finish" too soon is said plainly', () => {
-  it('Grace reads that she can finish after one more answer, and the model\'s question stays', () => {
-    const reply = '"Finish" is an outcome. What would have to exist that does not exist today if Kilele is genuinely closed?';
-    expect(aFinishTooSoon(reply, 1)).toBe('You can finish after one more answer. What would have to exist that does not exist today if Kilele is genuinely closed?');
-    expect(aFinishTooSoon('What is due next?', 2)).toBe('You can finish after two more answers. What is due next?');
-  });
-  it('the check-in and the first check-in inside set-up both say it', () => {
+/*
+ * "FINISH" TOO SOON. Until 3 November 2026 Grace read "You can finish after one more answer." Since then there is no floor of answers
+ * (Hafsah: no question limits and no forced close): "finish" is a person finishing, in the check-in and in setup alike.
+ */
+describe('"finish" is never too soon', () => {
+  it('nothing says "You can finish after N more answers" any more', () => {
+    expect(Object.keys(aFinishTooSoonModule)).not.toContain('aFinishTooSoon');
+    expect(Object.keys(aFinishTooSoonModule)).not.toContain('youCanFinishAfter');
     const conv = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
     const entry = withoutComments(readFileSync(join(__dirname, '..', 'entry', 'entry.service.ts'), 'utf8'));
-    expect(conv).toMatch(/isTheWordFinish\(message\)\) \{[\s\S]{0,300}aFinishTooSoon\(/);
-    expect(entry).toMatch(/if \(theirLast && isTheWordFinish\(theirLast\)\) best = aFinishTooSoon\(best, 2 - personSaid\.length\);/);
+    for (const src of [conv, entry]) expect(src).not.toMatch(/aFinishTooSoon|You can finish after/);
+  });
+  it('in setup, "finish" after one answer closes the conversation on what they said', () => {
+    const entry = withoutComments(readFileSync(join(__dirname, '..', 'entry', 'entry.service.ts'), 'utf8'));
+    expect(entry).toMatch(/if \(theirLast && \(askedToFinish\(\[theirLast\]\) \|\| isTheWordFinish\(theirLast\)\) && personSaid\.length >= 1\) \{[\s\S]{0,300}closed: true/);
   });
 });

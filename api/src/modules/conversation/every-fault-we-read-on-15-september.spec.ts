@@ -41,7 +41,8 @@ describe('every fault we read on 15 September', () => {
       alreadySaidThisSession: [] as string[],
     };
     expect(theOneThingToDoBetter(has)).not.toBeNull();
-    expect(theOneThingToDoBetter({ ...has, answersSoFar: 3 })).toBeNull();
+    /* Changed 3 November 2026 (no forced close): not on the opener, but no count of answers before it either; when is the model's call. */
+    expect(theOneThingToDoBetter({ ...has, answersSoFar: 0 })).toBeNull();
     expect(theOneThingToDoBetter({
       ...has,
       alreadySaidThisSession: ["You haven't given Sahar or Amina a specific number yet for their parts in the 10,000 units."],

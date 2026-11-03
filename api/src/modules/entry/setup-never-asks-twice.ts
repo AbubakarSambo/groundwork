@@ -93,5 +93,5 @@ export function withoutTheSameQuestion(reply: string, earlierTurns: readonly str
   const before = earlierTurns.flatMap(questionsIn);
   const kept = String(reply ?? '').split(/(?<=[.!?])\s+/).filter((s) => !(/\?\s*$/.test(s) && before.some((b) => alike(s, b)))).join(' ').trim();
   if (/\?/.test(kept)) return kept;
-  return `${kept ? `${kept} ` : ''}${theyHaveSaidALot ? 'Anything else I should know?' : 'Where do things stand today, and what is still open?'}`.trim();
+  return `${kept ? `${kept} ` : ''}${theyHaveSaidALot ? 'Is there more you want to add, or shall we wrap up here?' : 'Where do things stand today, and what is still open?'}`.trim();
 }

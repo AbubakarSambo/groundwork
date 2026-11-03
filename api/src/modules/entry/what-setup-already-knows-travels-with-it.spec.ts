@@ -50,10 +50,12 @@ describe('the settled block', () => {
     expect(whatIsSettledAndWhatIsNot({ initial: 'Fintech payments SDK migration' })).not.toContain('What makes now the right time');
   });
 
-  it('and tells it to stop asking once nothing is missing', () => {
+  /* Changed 3 November 2026 (no forced close): "stop asking and wrap it up" became an offer to wrap up in the model's own words. */
+  it('and tells it to offer to wrap up once nothing is missing', () => {
     const block = whatIsSettledAndWhatIsNot(soFar);
     expect(block).not.toContain('NOT READ FROM THEIR WORDS YET');
-    expect(block).toMatch(/stop asking/i);
+    expect(block).toMatch(/NOTHING IS MISSING\. Setup has what it needs, so offer to wrap up in your own words/);
+    expect(block).not.toMatch(/stop asking/i);
   });
 
   /* An empty array and a string of spaces are not answers. The first version of this checked the

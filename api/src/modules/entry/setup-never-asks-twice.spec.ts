@@ -36,8 +36,10 @@ describe('in the setup conversation', () => {
     const anthropic: any = { extract: jest.fn(async () => ({ mode: 'something_new', initial: 'Solar lamp sales in Kisumu' })) };
     const prisma: any = { user: { findUnique: jest.fn(async () => null) } };
     const service = new EntryService(anthropic, prisma, {} as any, {} as any, {} as any, {} as any, {} as any, { active: jest.fn(async () => null) } as any);
-    const asked = jest.fn(async () => replies.shift() ?? '');
-    (service as any).guardedReply = asked;
+    /* Changed 3 November 2026: setup's first reply comes through guardedReplyWithClose (it carries whether the model finished), and the
+       second ask goes through guardedReply, which calls it. One queue serves both. */
+    const asked = jest.fn(async () => ({ reply: replies.shift() ?? '', closed: false }));
+    (service as any).guardedReplyWithClose = asked;
     (service as any).classifyIntent = jest.fn(async () => null);
     (service as any).whatThisLeadAlreadyHas = jest.fn(async () => null);
     return { service, asked };
@@ -72,8 +74,9 @@ describe('the same question twice', () => {
     expect(theQuestionAskedBefore('How many lamps are each of them looking to sell by November 30?', earlier)).toBeTruthy();
     expect(theQuestionAskedBefore('Who approves a price below KES 4,800?', earlier)).toBeNull();
   });
-  it('the last resort moves on to "Anything else I should know?" once she has said a lot', () => {
-    expect(withoutTheSameQuestion('Thanks. How many lamps are each of them looking to sell by November 30?', earlier, true)).toBe('Thanks. Anything else I should know?');
+  /* Changed 3 November 2026: no scripted "Anything else I should know?"; the last resort offers to wrap up and lets her carry on. */
+  it('the last resort offers to wrap up once she has said a lot, and lets her carry on', () => {
+    expect(withoutTheSameQuestion('Thanks. How many lamps are each of them looking to sell by November 30?', earlier, true)).toBe('Thanks. Is there more you want to add, or shall we wrap up here?');
   });
 });
 

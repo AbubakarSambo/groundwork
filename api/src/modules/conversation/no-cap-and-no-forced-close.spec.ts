@@ -1,56 +1,62 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { whereTheEndStands, itIsTimeToClose, whatToSayAboutTheEnd, itIsTimeToSayTheyCanEnd, saysThereIsNothingMore, A_SHORT_DAY, ANYTHING_ELSE, THE_DAY_IS_COVERED, THEY_ADDED_SOMETHING, WHEN_TODAY_IS_COVERED, YOU_CAN_END_NOW, ASK_ANYTHING_ELSE_AGAIN } from './a-short-day';
+import * as aShortDay from './a-short-day';
+import { A_SHORT_DAY, HOW_A_CHECK_IN_ENDS, HOW_SETUP_ENDS } from './a-short-day';
 import { asItReadsOnWhatsApp } from './the-opening-line';
 
-/** Hafsah, after round 3 (26 October 2026): no question limit and no forced close. */
+/**
+ * Hafsah, after round 3 (26 October 2026) and in the standards (2 November 2026): no question limits and no forced close. It offers to
+ * wrap up in its own words when the person seems done, they can carry on, and it can close when it has what it needs. Since 3 November
+ * the twenty-answer ceiling, the turn floors and the scripted "Anything else I should know?" end are gone; a-short-day.ts is the one
+ * owner of how a conversation ends.
+ */
+/* Comments are taken out first: the history of what was removed is told in comments, and only code is checked. */
+const withoutComments = (t: string): string => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+const conversation = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
+const entry = withoutComments(readFileSync(join(__dirname, '..', 'entry', 'entry.service.ts'), 'utf8'));
+
 describe('no question limit and no forced close', () => {
-  it('nothing closes on a count of answers', () => {
-    const end = whereTheEndStands(['What is next for Westgate?', 'Which day?'], 'Friday, and then I will call Ali about the price.');
-    for (const answers of [5, 8, 15, 30]) {
-      expect(itIsTimeToClose(end, false)).toBe(false);
-      expect(whatToSayAboutTheEnd(answers, end, false)).toBe(WHEN_TODAY_IS_COVERED);
+  it('the check-in prompt says there is no limit on questions and nothing ends it on a count', () => {
+    expect(HOW_A_CHECK_IN_ENDS).toMatch(/^HOW THIS CHECK-IN ENDS\. There is no limit on questions, and nothing ends it on a count\./);
+    expect(HOW_SETUP_ENDS).toMatch(/^HOW SETUP ENDS\. There is no limit on questions, and nothing ends it on a count\./);
+  });
+
+  it('the model offers to wrap up in its own words, and they can carry on', () => {
+    for (const how of [HOW_A_CHECK_IN_ENDS, HOW_SETUP_ENDS]) {
+      expect(how).toMatch(/offer to wrap up in your own words/);
+      expect(how).toMatch(/they can carry on if there is more/);
+      expect(how).toMatch(/\[\[SESSION_COMPLETE\]\]/);
     }
-    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
-    expect(src).not.toMatch(/itMustCloseNow|theCloseThatCoversToday/);
+    expect(HOW_A_CHECK_IN_ENDS).toMatch(/Do not use the same words each time/);
   });
 
-  it('once today is covered it asks "Anything else I should know?", and closes after a no', () => {
-    expect(WHEN_TODAY_IS_COVERED).toContain(ANYTHING_ELSE);
-    const end = whereTheEndStands([`Thanks. ${ANYTHING_ELSE}`], 'No, that is all.');
-    expect(end).toEqual({ asked: true, followUps: 0, nothingMore: true });
-    expect(itIsTimeToClose(end, false)).toBe(true);
-    expect(whatToSayAboutTheEnd(6, end, false)).toBe(THE_DAY_IS_COVERED);
+  it('setup reads back what it set up and asks whether anything is wrong before it finishes', () => {
+    expect(HOW_SETUP_ENDS).toMatch(/say back in plain full sentences what you have set up, from ALREADY SETTLED above and nothing else, and ask "Is anything wrong\?"/);
   });
 
-  /* Changed 26 October 2026 (Mercy was closed while still adding things): after two follow-ups it asks again, and only a "no" closes. */
-  it('what they add at the end is taken, with at most two follow-ups, then "Anything else I should know?" again', () => {
-    const added = whereTheEndStands([ANYTHING_ELSE], 'Oh, Savannah Cafe wants six more units next month.');
-    expect(itIsTimeToClose(added, false)).toBe(false);
-    expect(whatToSayAboutTheEnd(6, added, false)).toBe(THEY_ADDED_SOMETHING);
-    expect(THEY_ADDED_SOMETHING).toMatch(/at most 2 follow-up questions.*the day, or the proof/);
-    expect(THEY_ADDED_SOMETHING).toMatch(/Never close while they are still adding something/);
-    const afterTwo = whereTheEndStands(['Which day will they pay?', 'What shows the order?', ANYTHING_ELSE], 'Friday.');
-    expect(itIsTimeToClose(afterTwo, false)).toBe(false);
-    expect(whatToSayAboutTheEnd(8, afterTwo, false)).toBe(ASK_ANYTHING_ELSE_AGAIN);
-    const thenNo = whereTheEndStands([ANYTHING_ELSE, 'Which day will they pay?', 'What shows the order?'], 'No, that is all.');
-    expect(itIsTimeToClose(thenNo, false)).toBe(true);
+  it('both are said every turn, in code: the check-in with its system prompt, setup with its own', () => {
+    expect(conversation).toMatch(/const fullSystem = \[[^\n]*HOW_A_CHECK_IN_ENDS\]/);
+    expect(entry).toMatch(/\$\{HOW_SETUP_ENDS\}/);
   });
 
-  it('a long check-in is offered an end once, never given one', () => {
-    expect(itIsTimeToSayTheyCanEnd(9, false, [])).toBe(false);
-    expect(itIsTimeToSayTheyCanEnd(10, false, [])).toBe(true);
-    expect(itIsTimeToSayTheyCanEnd(12, false, [`Noted. ${YOU_CAN_END_NOW}`])).toBe(false);
-    expect(asItReadsOnWhatsApp(`Noted.\n\n${YOU_CAN_END_NOW}`)).toBe('Noted.\n\nWe’ve covered what’s needed today. You can reply END now, or tell me anything else.');
+  it('there is no ceiling, no floor of answers and no scripted end in either service', () => {
+    for (const src of [conversation, entry]) {
+      expect(src).not.toMatch(/A_CHECK_IN_TAKES_ANSWERS|theCeilingIsReached|howMuchRoomIsLeft|room for \S+ more answers?/);
+      expect(src).not.toMatch(/theFloorFor|A_CHECK_IN_IS_NOT_DONE_IN|AN_UPDATE_IS_NOT_DONE_IN|tooFewAnswersToFinish|NOT_ENOUGH_YET_TO_FINISH|mayCompleteAfter/);
+      expect(src).not.toMatch(/Anything else I should know\?|ANYTHING_ELSE|whereTheEndStands|itIsTimeToClose|YOU_CAN_END_NOW|whereSetupEnds/);
+    }
+  });
+
+  it('a-short-day.ts holds only the short day and the two ways a conversation ends', () => {
+    expect(Object.keys(aShortDay).sort()).toEqual(['A_SHORT_DAY', 'HOW_A_CHECK_IN_ENDS', 'HOW_SETUP_ENDS']);
+  });
+
+  it('the WhatsApp copy no longer swaps in a scripted "reply END now" offer', () => {
+    expect(asItReadsOnWhatsApp('Noted.\n\nThat sounds like everything for today. Shall we wrap up, or is there more?')).toBe('Noted.\n\nThat sounds like everything for today. Shall we wrap up, or is there more?');
   });
 
   it('something said outside the question is taken and filed, never pushed back', () => {
     expect(A_SHORT_DAY).toMatch(/If they say something outside your question, take it.*Never push them back to your question, and never cut them off/);
     expect(A_SHORT_DAY).not.toMatch(/5 TO 7|QUESTIONS IN ALL/);
-  });
-
-  it('"no" means nothing more, and an answer with something in it does not', () => {
-    for (const m of ['No', 'Nothing else', "That's all, thanks", 'No, thank you']) expect(saysThereIsNothingMore(m)).toBe(true);
-    for (const m of ['Not yet, but Ali will pay on Friday', 'Yes, Kilele wants ten more']) expect(saysThereIsNothingMore(m)).toBe(false);
   });
 });

@@ -1,4 +1,5 @@
-import { recordAndMoveOn, whatTheAbsenceMeans, NOTHING_HERE_HAS_A_NUMBER } from './a-refusal-is-an-answer';
+import * as refusal from './a-refusal-is-an-answer';
+import { recordAndMoveOn, whatTheAbsenceMeans } from './a-refusal-is-an-answer';
 
 /** Ngozi, run 6: asked for the individual targets three times, then what she would do about it, twice. */
 describe('a refusal is an answer', () => {
@@ -21,6 +22,11 @@ describe('a refusal is an answer', () => {
        The behaviour being checked - a refusal is acknowledged and not chased - is unchanged. */
     expect(recordAndMoveOn(null, {})).toBe('Understood. This record shows nothing more on that.');
     expect(recordAndMoveOn(null, {}).split(/\s+/).length).toBeGreaterThan(4);
-    expect(NOTHING_HERE_HAS_A_NUMBER).toMatch(/how it will read/);
+  });
+  /* 3 November 2026 (Hafsah: no forced close): the product no longer holds a close with "Nothing said this time carries a date ..." or
+     "No decision from you is on this record yet ...". */
+  it('no product-written line is put on a close any more', () => {
+    expect(Object.keys(refusal)).not.toContain('NOTHING_HERE_HAS_A_NUMBER');
+    expect(Object.keys(refusal)).not.toContain('NO_DECISION_YET');
   });
 });

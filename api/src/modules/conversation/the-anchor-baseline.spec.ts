@@ -303,11 +303,11 @@ describe('the team baseline is never held at its close (6 October)', () => {
     expect(await (world.service as any).mayClose('ci2')).toEqual({ ready: false });
   });
 
-  it('still holds an ordinary first session once, as before', async () => {
+  /* Changed 3 November 2026 (Hafsah: no question limits and no forced close): an ordinary first session is no longer held once for
+     "What will you do, and by when?". It closes like the baseline does. */
+  it('an ordinary first session is not held either', async () => {
     /* An ordinary scenario: the anchor's own is the anchor's even when startedFrom is empty (decision 114). */
-    const held = await theClose(null, GroundScenario.NEW_PROJECT);
-    expect(held.ready).toBe(false);
-    expect(held.ask).toMatch(/one more question|What will you do|by when/i);
+    expect(await theClose(null, GroundScenario.NEW_PROJECT)).toEqual({ ready: true });
   });
 });
 

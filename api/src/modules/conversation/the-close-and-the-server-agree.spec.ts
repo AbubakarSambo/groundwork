@@ -37,10 +37,11 @@ async function bothEnds(personSaid: string[]) {
 
 describe('the engine\'s close and the server\'s completion, on the same record', () => {
   // Changed 26 October 2026 (Hafsah: item 2): a person's own finish is honoured with any answer, so both ends now close together (they still agree).
-  it('three short answers ending in "please finish": both close, because it is the person\'s own end', async () => {
+  /* Changed 3 November 2026: with no floor, a finish is honoured once anything real is said; "ok" and "fine" keep nothing, so both ends keep it open. */
+  it('"ok", "fine", then "please finish": nothing real to keep, so both ends keep it open', async () => {
     const { closes, server } = await bothEnds(['ok', 'fine', 'Please finish my check-in']);
-    expect(server).toBe('written');
-    expect(closes).toBe(true);
+    expect(server).toMatch(/^refused: Nothing has been said yet/);
+    expect(closes).toBe(false);
   });
 
   it('three short answers with no finish asked for: neither closes, so no goodbye is written for a refusal', async () => {
@@ -60,13 +61,15 @@ describe('the engine\'s close and the server\'s completion, on the same record',
   });
 });
 
+/* Changed 3 November 2026 (Hafsah: no question limits and no forced close): the floor's "Please answer one or two more questions" went.
+   What is left is the empty-record gate, which asks for no count of answers. */
 describe('the sentence the server refuses a finish with, when there is too little yet', () => {
-  it('is the plain sentence the app and WhatsApp say, and the person can answer it', async () => {
+  it('is the empty-record sentence, with no count in it, and the person can answer it', async () => {
     const s = aService(['Things are going fine, thanks.']);
     const refusal = await s.complete('c1', 'u1').then(() => null, (e: any) => e);
-    expect(refusal?.response?.message).toBe('I need a little more from you before this check-in can close. Please answer one or two more questions, then finish again.');
+    expect(refusal?.response?.message).toBe('There is almost nothing here yet. Answer a couple of the questions properly, then complete.');
     expect(refusal?.response?.canContinue).toBe(true);
-    expect(refusal?.response?.message).not.toMatch(/ - |exchanges|record is still thin/);
+    expect(refusal?.response?.message).not.toMatch(/ - |exchanges|record is still thin|one or two more questions|I need a little more/);
   });
 });
 

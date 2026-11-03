@@ -3757,7 +3757,8 @@ export class ConversationService {
       this.prisma.conversationTurn.findMany({ where: { checkInId, role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } }),
     ]);
     const personSaid = turns.map((t) => t.content ?? '');
-    if (personSaid.length > 0 && askedToFinish(personSaid)) return { ready: true };
+    /* Their own finish is honoured at any point once anything real was said; "finish" as the first thing they say keeps nothing. */
+    if (personSaid.length > 0 && askedToFinish(personSaid)) return { ready: !nothingRealWasSaid(personSaid) };
     if (almostNothingHereYet(personSaid, isSelfCorrection)) {
       this.logger.log(`Holding the close on ${checkInId}: almost nothing in the record yet.`);
       return { ready: false };
@@ -7030,7 +7031,7 @@ ${told}` : '';
      * is nothing to keep, and the check-in stays open for when they come back.
      */
     const theyEndedIt = !!how.theyAskedToFinish || askedToFinish(personTurnRows.map((t) => t.content ?? ''));
-    if (theyEndedIt && personTurnRows.length === 0) {
+    if (theyEndedIt && nothingRealWasSaid(personTurnRows.map((t) => t.content ?? ''))) {
       throw new BadRequestException({ message: 'Nothing has been said yet, so there is nothing to save. Your check-in stays open for when you come back.', canContinue: true });
     }
     // SUBSTANCE, NOT LENGTH. Counting characters rejected two of one person's

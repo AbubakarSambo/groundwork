@@ -148,7 +148,8 @@ describe('the sales reminder is read last, in a sales check-in only', () => {
   });
   it('the conversation puts it after the turn\'s own question and before the last three lines', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(src).toMatch(/theHole, salesGathers\.last, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn/);
+    expect(src).toMatch(/theHole, salesGathers\.last, heldBack, proofKindly, cannotBeMissed, askedLastTurn/);
+    /* Changed 3 November 2026: whereItIs (the count-based "where the check-in is" block) went with the forced close. */
   });
 });
 

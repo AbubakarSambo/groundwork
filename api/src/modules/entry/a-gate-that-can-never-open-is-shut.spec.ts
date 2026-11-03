@@ -98,10 +98,12 @@ describe('and so the gate opens', () => {
        click. */
     /* Since 26 October 2026 setup is the lead's first check-in: the gate opening tells the model the board is covered, and setup is ready
        once it has ended the way a check-in ends. The `|| stoppedAsking` is unchanged. See setup-is-the-first-check-in. */
-    /* And since later on 26 October: a model that stops asking no longer ends setup; the product asks "Anything else I should know?". */
-    expect(SERVICE).toContain('const ready = endOfSetup.close;');
-    expect(SERVICE).toContain('const askTheLastQuestion = stoppedAsking && !endOfSetup.close;');
-    expect(SERVICE).toContain('theGate(soFar as any,');
+    /* Changed 3 November 2026 (Hafsah: no forced close): the product's "Anything else I should know?" and its count of follow-ups are gone.
+       Setup is ready when the model finishes, or when it has stopped asking: the `|| stoppedAsking` is back, as this file wants. */
+    expect(SERVICE).toContain('const ready = theModelFinished || stoppedAsking;');
+    expect(SERVICE).not.toMatch(/askTheLastQuestion|endOfSetup/);
+    /* The gate no longer tells the model the board is covered (that went with THE_BOARD_IS_COVERED); it is still read, to log what setup never got. */
+    expect(SERVICE).toContain('if (stoppedAsking && !theGate(extracted, forThisSituation)) {');
   });
 
   it('and says in the log what it never got, rather than passing silently', () => {
