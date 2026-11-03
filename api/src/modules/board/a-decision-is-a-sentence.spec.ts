@@ -23,7 +23,8 @@ describe('a decision on the board is a sentence', () => {
       [{ topic: 'Whether the order is signed', positions: [{ participantLabel: 'Participant A' }, { participantLabel: 'Participant B' }] }],
       [], () => null, [], (l: string) => names[l],
     );
-    expect(d.question).toBe('Brian Mwangi and Miriam Achieng said different things about whether the order is signed.');
+    /* Changed 3 November (F5 part 3, stage 8 and 9): named people "see it differently", in the approved journey's words. */
+    expect(d.question).toBe('Brian Mwangi and Miriam Achieng see differently whether the order is signed.');
     expect(d.why).toBe('What people said about this does not match, so nobody can assume it is agreed.');
   });
 

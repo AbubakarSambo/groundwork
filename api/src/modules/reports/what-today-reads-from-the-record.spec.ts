@@ -124,7 +124,8 @@ describe('week 16: the report’s open differences reach the lead’s list, and 
       const item = ((await report).forTheLead as any[]).find((x) => x.id === 'difference-1');
       expect(item).toEqual({
         id: 'difference-1',
-        decide: 'Brian Otieno and Miriam Wanjiku said different things about whether a price range counts as a budget.',
+        /* Changed 3 November (F5 part 3): named people "see it differently", the board's own sentence. */
+        decide: 'Brian Otieno and Miriam Wanjiku see differently whether a price range counts as a budget.',
         why: 'What people said about this does not match, so nobody can assume it is agreed.',
       });
     } finally { DIVERGENCES.splice(0, 1, saved[0]); }

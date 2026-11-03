@@ -73,5 +73,7 @@ export function peopleSaidDifferentThingsAbout(topic: string, who = 'People'): s
   const named = !/^People\b/.test(who);
   if (!t || ONLY_SAYS_PEOPLE_DIFFER.test(t)) return named ? `${who} see this differently.` : `${who} said different things.`;
   if (isAWholeSentence(t)) return `${named ? `${who} see this differently.` : `${who} said different things.`} ${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
-  return named ? `${who} see ${inASentence(t)} differently.` : `${who} said different things about ${inASentence(t)}.`;
+  /* "see whether X differently" is not English: a noun clause goes after "differently". */
+  if (named) return STARTS_A_NOUN_CLAUSE.test(t) ? `${who} see differently ${inASentence(t)}.` : `${who} see ${inASentence(t)} differently.`;
+  return `${who} said different things about ${inASentence(t)}.`;
 }

@@ -53,6 +53,7 @@ describe('a difference between people named for the reader', () => {
   it('reads as the approved journey says it', () => {
     expect(say('the Westgate deal', 'Jane and John')).toBe('Jane and John see the Westgate deal differently.');
     expect(say('The accounts differ on the primary cause of delays.', 'You and Kwame')).toBe('You and Kwame see this differently. The accounts differ on the primary cause of delays.');
+    expect(say('whether the order is signed', 'Brian and Miriam')).toBe('Brian and Miriam see differently whether the order is signed.');
     expect(say('the price list')).toBe('People said different things about the price list.');
     expect(say('the price list', 'People in this check-in')).toBe('People in this check-in said different things about the price list.');
   });
