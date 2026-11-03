@@ -21,6 +21,13 @@ The full version is `~/Desktop/next-steps/standards.md` (copy in `docs/overnight
 - **Three decisions (3 November):** a team member's complaint about their lead is never shown to that lead and goes privately to HR or an admin, and the person is told who will see it; messages up to about 30,000 characters are taken whole, and a longer one is asked for as a document; a WhatsApp number nobody has linked gets one reply and nothing is done from it until it is linked.
 - **No pull requests or merges until Hafsah agrees.** Push only to her copy.
 
+## Build, then test, then plan: the cycle (Hafsah, 3 November 2026)
+
+1. No new changes during a build-and-test cycle. Once a set of changes is agreed, build only those, then test. Nothing is added part-way.
+2. Every new issue or idea (from Hafsah, from a run, or from Claude) goes on one list, `docs/issues-next.md`, with where it came from and the evidence. It waits until the current run is finished.
+3. After each run, turn the list into a strategy before building anything: group the issues by root cause, using the five fix rules, decide what changes as one coherent set, and write it in `docs/fix-plan.md`. Then build that set, then run again.
+4. Only a bug that stops a run from finishing can be fixed during it.
+
 ## How we fix things: five rules (Hafsah, 29 October 2026)
 
 Standing rules for every fix. Follow them before any fix, and in each fix's note say how it meets them.
