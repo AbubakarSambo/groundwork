@@ -38,11 +38,24 @@ function andList(names: string[]): string {
   return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }
 
-/** The box's words with anybody named since added on a line of their own, never over what was typed. Matched by the name before the first comma. */
+/**
+ * The box's words with what the conversation has said about each person, never over what was typed. Matched by the name before the
+ * first comma: somebody new gets a line of their own, and a line the conversation now says more about (an email or a number given
+ * later in the chat) is written out in full. A line that holds anything the conversation's line does not is the lead's, and stays.
+ * Plan round 32: the law firm lead named three people, then gave their emails in the chat, and the panel went on saying "Add their
+ * emails here when you have them", because a name already on a line was never written again.
+ */
 export function withTheNamedAdded(now: string, prefilled: string[]): string {
-  const have = new Set(now.split('\n').map((l) => l.split(',')[0].trim().toLowerCase()).filter(Boolean))
-  const more = prefilled.filter((l) => !have.has(l.split(',')[0].trim().toLowerCase()))
-  return [now.trim(), ...more].filter(Boolean).join('\n')
+  const nameOf = (l: string) => l.split(',')[0].trim().toLowerCase()
+  const partsOf = (l: string) => l.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean)
+  const said = new Map(prefilled.map((l) => [nameOf(l), l]))
+  const lines = now.split('\n').map((l) => l.trim()).filter(Boolean)
+  const kept = lines.map((l) => {
+    const fuller = said.get(nameOf(l))
+    return fuller && partsOf(l).every((x) => partsOf(fuller).includes(x)) ? fuller : l
+  })
+  const have = new Set(lines.map(nameOf))
+  return [...kept, ...prefilled.filter((l) => !have.has(nameOf(l)))].join('\n')
 }
 
 /** How many people the box holds now: one per line with something on it. */

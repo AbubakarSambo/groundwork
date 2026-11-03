@@ -40,7 +40,7 @@ import { TheLeadsReveal } from '@/components/gw/TheLeadsReveal'
 import { FillsInAsYouTalk, ReadyToSend, type WhatTheAnchorConversationKnows } from './FillsInAsYouTalk'
 import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
 import { EverySituation } from './EverySituation'
-import { ThisSoundsLike, THAT_IS_RIGHT } from './ThisSoundsLike'
+import { ThisSoundsLike, THAT_IS_RIGHT, SAY_WHAT_IT_IS } from './ThisSoundsLike'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
@@ -1670,19 +1670,24 @@ export function EntryChatPage() {
   }
 
 
-  /**
-   * A WAY BACK FOR THE LEAD. Clears the read and puts the conversation back to the opening question,
-   * where the situation cards show again, so they can pick another one or describe it differently.
+  /*
+   * THE KIND OF CHECK-IN, ANSWERED ON ITS CARD (plan round 32). "Confirmed" holds it, and answers the first reply in the conversation
+   * while that is still the last thing said. "It’s something else" keeps everything said and asks what it is; the lead's next words are
+   * read for the kind by the one reader (classifyIntent). It used to put the conversation back to the opening question, so the law firm
+   * lead gave her team three times.
    */
-  function pickADifferentSituation() {
+  const [kindConfirmed, setKindConfirmed] = useState(false)
+  const kindRefused = useRef(false)
+  function confirmTheKind(theFirstReplyIsLast: boolean) {
+    setKindConfirmed(true)
+    if (theFirstReplyIsLast) sendOnboarding(THAT_IS_RIGHT)
+  }
+  function itIsSomethingElse() {
+    kindRefused.current = true
     setPickedSituation(null)
-    setSeeingEverySituation(false)
-    /* Or the next situation is set up with the last one's first question. */
     setPickedScenario(null)
-    setOnboardingHistory([{ role: 'assistant', content: THE_OPENING_QUESTION }])
-    setOnboardingSelections(defaultSels)
-    setOnboardingReady(false)
-    setInput('')
+    setOnboardingSelections((prev) => ({ ...prev, classifiedScenario: undefined }))
+    setOnboardingHistory((h) => [...h, { role: 'assistant', content: SAY_WHAT_IT_IS }])
   }
 
   const [showEndConfirm, setShowEndConfirm] = useState(false)
@@ -2607,6 +2612,16 @@ export function EntryChatPage() {
    */
   async function sendOnboarding(text: string, scenarioNow?: string | null) {
     if (!text.trim() || onboardingLoading) return
+    if (kindRefused.current) {
+      kindRefused.current = false
+      entryApi.classifyIntent(text.trim()).then((r) => {
+        /* A low-confidence answer comes back as null and nothing is claimed. */
+        const sure = r.scenario
+        if (sure) setOnboardingSelections((prev) => ({ ...prev, classifiedScenario: sure }))
+      }).catch(() => { /* the conversation goes on without a card */ })
+    }
+    /* The team box opened by "Change" closes when the conversation moves on: its lines are kept, and "Who’s in it" shows them (plan round 32). */
+    setChangingTeam(false)
     const userTurn: Turn = { role: 'user', content: text.trim() }
     const newHistory = [...onboardingHistory, userTurn]
     setOnboardingHistory(newHistory)
@@ -2799,29 +2814,11 @@ export function EntryChatPage() {
           const planned = plannedSessionsFor(res.extracted.timelineDays, res.extracted.cadence ?? cadence, undefined, res.extracted?.cadenceDays)
           if (planned != null) { setSessions(planned); setPlannedFrom({ timelineDays: res.extracted.timelineDays, cadence: res.extracted.cadence ?? cadence }); setSessionsTypedByLead(false) }
         }
-        // Background classify intent when we have initial
-        /* Nor is Collect what's owed (Release 2): the classifier does not know it, so any answer it gave would be wrong. */
-        /* ONCE. The situation is read from what they first said and then stays: asked again every turn, it came back different each
-           time ("Get a project back on track", then "Keep a read on live work", then "Build a workplan and budget"), and a sales lead
-           called the changing name jargon (first experience, round 2, 31 October 2026). "It's something else" is how they change it. */
-        if (res.extracted.initial && !onboardingSelections.classifiedScenario && !isAnchorDraft() && pickedScenario !== 'COLLECTIONS' && scenarioNow !== 'COLLECTIONS') {
-          /*
-           * FAULT 1(a): AN ANCHOR DRAFT IS NEVER RECLASSIFIED.
-           *
-           * The classifier is a guess from free text, and an anchor draft's situation
-           * (`HELP_TEAM_UNDERSTAND`) is not a guess - it is how the person arrived. Calling the
-           * classifier for an anchor draft used to let a confident wrong guess (e.g. "DRIFT")
-           * overwrite `classifiedScenario`, which then leaked into the "This sounds like ..."
-           * banner and into every later entry call and the commit's situation field. Skipping the
-           * call entirely for an anchor draft is simpler than calling it and discarding the
-           * answer, and it saves the request.
-           */
-          entryApi.classifyIntent(res.extracted.initial, res.extracted.mode).then(r => {
-            /* A low-confidence answer comes back as null and the card they picked stands. */
-            const sure = r.scenario
-            if (sure) setOnboardingSelections(prev => (prev.classifiedScenario ? prev : { ...prev, classifiedScenario: sure }))
-          }).catch(() => { /* non-critical */ })
-        }
+        /* ONCE, AND READ BY THE SERVER. The kind is read from what they first said, on the server's first turn, and then stays: read again
+           every turn it came back different each time (first experience, round 2), and a second reading here, from the summary a turn
+           later, put the card under the first reply only after the lead had answered it, with no "Confirmed" (plan round 32). "It’s
+           something else" is how they change it. Never for an anchor draft, whose kind is how they arrived. */
+        if (res.scenario && !isAnchorDraft()) setOnboardingSelections(prev => (prev.classifiedScenario ? prev : { ...prev, classifiedScenario: res.scenario }))
       }
       setOnboardingReady(res.ready)
       persistOnboarding([], onboardingSelections, onboardingStep, updatedHistory, res.ready)
@@ -3361,7 +3358,8 @@ export function EntryChatPage() {
       clearEntryHandover()
       sayWhoWasNotInvited(res, how)
       rememberTheFirstCheckInClosing(res.groundId)
-      navigate(`/grounds/${res.groundId}`, { replace: true })
+      /* To the board (the approved journey, stage 9; plan round 32: "I have sent the invitations and I expect to see the board now"). */
+      navigate(`/grounds/${res.groundId}/board`, { replace: true })
       /*
        * WHERE THE PANEL THAT JUST VANISHED WENT.
        *
@@ -4648,9 +4646,9 @@ export function EntryChatPage() {
                     <ThisSoundsLike
                       scenario={onboardingSelections.classifiedScenario || pickedScenario || scenario}
                       brief={onboardingSelections.brief}
-                      mayConfirm={i === onboardingHistory.length - 1 && !onboardingLoading}
-                      onConfirm={() => sendOnboarding(THAT_IS_RIGHT)}
-                      onSomethingElse={pickADifferentSituation}
+                      confirmed={kindConfirmed}
+                      onConfirm={() => confirmTheKind(i === onboardingHistory.length - 1)}
+                      onSomethingElse={itIsSomethingElse}
                     />
                   </Fragment>
                 )

@@ -1453,7 +1453,8 @@ from finishing at all.`;
       .replace(/\bwho (?:gives|should give|will give) (?:an? )?account\b/gi, 'whether you will check in too');
     /* Whichever way setup ended, its last line says what was set up and what happens next. */
     if (ready && !out.includes(SETUP_IS_DONE)) out = `${withoutTalkOfTheNextScreen(out).trim()}\n\n${SETUP_IS_DONE}`;
-    return { reply: out, extracted, ready, needsPeople };
+    /* The kind of check-in it read from their first message, the one reading of it: the screen's "This sounds like" card shows this. */
+    return { reply: out, extracted, ready, needsPeople, ...(!scenarioInput && scenarioForTheQuestion ? { scenario: scenarioForTheQuestion } : {}) };
   }
 
   /**

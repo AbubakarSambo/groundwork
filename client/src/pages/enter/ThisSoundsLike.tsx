@@ -13,13 +13,16 @@ import { theOneLine } from './EverySituation'
  *   [Confirmed]  [It’s something else]
  *
  * The name is never a bare label: its one-line meaning is the same line the list of every situation shows (theOneLine). It replaces
- * the header's "This sounds like <name>." "Confirmed" answers the first reply's question in the conversation, as the lead would, and
- * is only offered while that question is the last thing said; "It’s something else" is always there.
+ * the header's "This sounds like <name>." Both buttons stay until the lead has used one, whatever has been said since (plan round 32:
+ * "Confirmed" showed only while the first reply was the last thing said, so a card that arrived later had no way to accept it, and
+ * "It’s something else" threw the whole conversation away). Neither one ever holds the box.
  */
 export const CONFIRMED = 'Confirmed'
 export const IT_IS_SOMETHING_ELSE = 'It’s something else'
-/** What "Confirmed" says in the conversation for the lead. */
+/** What "Confirmed" says in the conversation for the lead, while the first reply's question is still the last thing said. */
 export const THAT_IS_RIGHT = 'That’s right.'
+/** What the conversation says after "It’s something else": what is said next is read for the kind, and nothing said so far is lost. */
+export const SAY_WHAT_IT_IS = 'Then tell me in a sentence what it is, and I will set it up for that.'
 
 export function theKindOfCheckIn(scenario: string | null | undefined, brief?: string | null): { name: string; meaning: string | null } | null {
   if (!scenario) return null
@@ -28,10 +31,11 @@ export function theKindOfCheckIn(scenario: string | null | undefined, brief?: st
   return { name, meaning: card ? theOneLine(card) : null }
 }
 
-export function ThisSoundsLike({ scenario, brief, mayConfirm, onConfirm, onSomethingElse }: {
+export function ThisSoundsLike({ scenario, brief, confirmed, onConfirm, onSomethingElse }: {
   scenario: string | null | undefined
   brief?: string | null
-  mayConfirm: boolean
+  /** The lead pressed "Confirmed": the kind is theirs, and the card keeps only what it says. */
+  confirmed: boolean
   onConfirm: () => void
   onSomethingElse: () => void
 }) {
@@ -42,10 +46,12 @@ export function ThisSoundsLike({ scenario, brief, mayConfirm, onConfirm, onSomet
       <p className="gwui-panel-text-muted">This sounds like</p>
       <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{kind.name}</p>
       {kind.meaning && <p className="gwui-panel-text">{kind.meaning}</p>}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-        {mayConfirm && <Button kind="primary" onClick={onConfirm}>{CONFIRMED}</Button>}
-        <Button kind="secondary" onClick={onSomethingElse}>{IT_IS_SOMETHING_ELSE}</Button>
-      </div>
+      {!confirmed && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+          <Button kind="primary" onClick={onConfirm}>{CONFIRMED}</Button>
+          <Button kind="secondary" onClick={onSomethingElse}>{IT_IS_SOMETHING_ELSE}</Button>
+        </div>
+      )}
     </Panel></section>
   )
 }

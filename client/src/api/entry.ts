@@ -193,6 +193,8 @@ export interface OnboardResult {
      * invented answer - but they are told, and they add the people afterwards.
      */
     needsPeople: boolean;
+    /** The kind of check-in the server read from their first message, when nothing was picked: the one reading of it. */
+    scenario?: string;
 }
 
 // ── Entry API ─────────────────────────────────────────────────────────────────

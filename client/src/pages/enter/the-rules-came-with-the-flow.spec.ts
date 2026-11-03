@@ -80,6 +80,7 @@ describe('the rules came with the flow', () => {
   })
 
   it('and it runs on the save, which is the only place a check-in is created now', () => {
-    expect(PAGE).toMatch(/sayWhoWasNotInvited\(res\)/)
+    /* Changed 3 November 2026: it is also told whether the invitations were held ("Check in on your own first, invite later"). */
+    expect(PAGE).toMatch(/sayWhoWasNotInvited\(res, how\)/)
   })
 })

@@ -44,7 +44,8 @@ describe('a failed send puts the words back', () => {
     /* Left there it looks sent, and a reload deletes it — the worst order for finding out. */
     const at = CHAT.indexOf("setMsgs(v => v.filter(m => m.id !== localId))")
     expect(at).toBeGreaterThan(-1)
-    const around = CHAT.slice(at, at + 220)
+    /* Widened 3 November 2026: the sentence now sits inside whatTheServerSaid(...), so it starts past the old 220 characters. */
+    const around = CHAT.slice(at, at + 320)
     expect(around).toContain('setInput(message)')
     expect(around).toMatch(/back in the box/)
   })

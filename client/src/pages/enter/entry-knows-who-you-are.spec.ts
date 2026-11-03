@@ -29,7 +29,8 @@ describe('somebody who is already signed in', () => {
   it('gets a save that commits straight to their account', () => {
     expect(CODE).toMatch(/function saveAsSignedInUser/)
     /* UPDATED (Hafsah's blocker, 31 October 2026): the save reads the team box first and commits with it. */
-    expect(CODE).toMatch(/entryApi\.commit\(\{ \.\.\.buildCommitPayload\(box\), history \}\)/)
+    /* Changed 3 November 2026: the same commit also says when the lead holds the invitations until later. */
+    expect(CODE).toMatch(/entryApi\.commit\(\{ \.\.\.buildCommitPayload\(box\), history, \.\.\.\(how\.inviteLater \? \{ inviteLater: true \} : \{\}\) \}\)/)
   })
 
   it('and is told it is saved for them, by their own first name, not an address', () => {
@@ -46,8 +47,9 @@ describe('somebody who is already signed in', () => {
     expect(CODE).not.toMatch(/We save this to your account/)
   })
 
-  it('lands on the check-in rather than back at a list', () => {
-    expect(CODE).toMatch(/navigate\(`\/grounds\/\$\{res\.groundId\}`, \{ replace: true \}\)/)
+  /* Changed 3 November 2026 (plan round 32): after "Send N invitations" the lead lands on the check-in's board, as the approved journey says. */
+  it('lands on the check-in\'s board rather than back at a list', () => {
+    expect(CODE).toMatch(/navigate\(`\/grounds\/\$\{res\.groundId\}\/board`, \{ replace: true \}\)/)
   })
 
   it('and the rail is told the check-in exists', () => {
