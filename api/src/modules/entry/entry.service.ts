@@ -80,7 +80,6 @@ import { whatTheyAskedFor } from './what-they-asked-for-in-so-many-words';
 import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
 import { whatTheyAlreadyHave, thePeopleAlreadyHere, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
-import { whatIsAnswered, whatItAsksAgain, doNotAskAgain, withoutAskingAgain, theQuestionAskedBefore, doNotAskThatAgain, withoutTheSameQuestion } from './setup-never-asks-twice';
 import { THE_FIRST_UPDATE_TOO, SETUP_IS_DONE, withoutTalkOfTheNextScreen } from './setup-is-the-first-check-in';
 import { HOW_SETUP_ENDS } from '../conversation/a-short-day';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
@@ -999,43 +998,8 @@ Your job is to gather these things through natural conversation:
    responsible is inside them - by name if they know it, by role if they do not. A record is
    built from accounts that individual people give; an organisation cannot check in. If they say
    they do not know yet, accept it and move on: never press twice, and never invent a name.
-5. decision: what is making this worth doing right now.
-   NEVER ASK IT AS "what makes you want to do this right now?" OR ANY VARIANT OF "why do you want
-   to". Hafsah, 17 September 2026, after reading it live: it is asking them to justify themselves,
-   and the honest answer ("it just seemed sensible") feels wrong to type.
-   ASK ABOUT THE TIMING, NOT THE MOTIVE, AND ALWAYS WITH EXAMPLES:
-   "What makes this the right time to set up a check-in on this? Is it a new quarter, a quarter
-    that missed, a handover, or needing the team lined up on it?"
-   SAY "SET UP A CHECK-IN", NOT "CHECK IN". Read live: "What makes this the right time to check in
-   on the migration?" asks why they are answering questions today, which is not the question. What
-   is being decided is whether to stand a check-in up at all, and for how long - so the sentence has
-   to say so. Her wording, 17 September 2026.
-   AND THE DASH IS A SPACED ONE OR IT IS NOTHING. Read live: "set this check-in up-a new quarter",
-   which is a typo on the screen. If the examples do not fit around a spaced dash, put them in
-   brackets instead.
-   The timing question has an easy answer that costs nobody anything to give. The motive question
-   does not. Two or three concrete examples turn it into a menu they can point at.
-
-   THE EXAMPLES ARE BUILT FROM WHAT THEY JUST TOLD YOU. NEVER FROM THIS FILE.
-   This used to print three: onboarding going well, probation being decided, the project starting
-   off right - followed by "use examples that fit what they have already told you". Three vivid
-   sentences and one weak negative, so the model said the three. Watched live: somebody setting
-   quarterly OKRs for a sales team was offered probation and onboarding, and had to type "this is
-   not about probation or onboarding" to get out of it. Being handed somebody else's situation at
-   the moment you are explaining your own reads as not being listened to.
-
-   So: two or three reasons SOMEBODY IN THEIR SITUATION would have, using their own nouns - their
-   team, their quarter, their handover, whatever they said. If they told you about targets, the
-   reasons are about targets. If they have not said enough to build one, ask the question bare
-   rather than borrowing an example from a different situation.
-   NEVER OFFER AN HR REASON. A live run produced "to have a clear reference for performance
-   reviews", which is the one thing the product says it is not for: the public page reads "not an
-   HR system, employee monitoring tool, or permanent performance-management layer. In fact, we do
-   not recommend using it that way." Suggesting appraisals, performance reviews, formal
-   evaluations, or building a file on somebody contradicts that at the exact moment a new person is
-   deciding what this is for. Reasons are about the WORK going well - understanding what is
-   actually happening, catching a gap early, agreeing what good looks like - never about
-   assessing a person.
+5. decision: why now. It is not a question (see HOW LONG AND HOW OFTEN ARE NOT QUESTIONS above): keep it when they say it, in
+   their first message or later, and never ask for it. Their first message nearly always says it already.
 6. goals: what they need from this process (can be more than one)
    A TARGET NOBODY OWNS CANNOT BE CHECKED IN AGAINST, AND THIS IS THE ONE THAT MAKES THE REST WORK.
    When what they are setting up is targets, objectives, OKRs, quotas or a plan for MORE THAN ONE
@@ -1420,27 +1384,12 @@ from finishing at all.`;
       }
     }
     /*
-     * NEVER ASKED TWICE (26 October 2026). A reply that asks why now, or the lead's own part, after they already said it, is written again
-     * without it; if it still asks, that question comes out. See setup-never-asks-twice.
+     * NOTHING REWRITES THE REPLY AFTER IT IS SHOWN (plan round 32). Word lists for "why now" and "the same question" caught a question,
+     * asked the model again and cut sentences out: the lead read a question stream in, then watched it change, and was told "Is there
+     * more you want to add, or shall we wrap up here?" after three answers. Setup is told what it already has (ALREADY SETTLED, WHAT THEY
+     * ALREADY HAVE, the conversation) and asks only what that does not answer.
      */
-    let reply = firstReply;
-    {
-      const answered = whatIsAnswered({ decision: soFar?.decision ?? extracted.decision, yourRole: soFar?.yourRole ?? extracted.yourRole }, theirWords);
-      const again = whatItAsksAgain(reply, answered);
-      if (again.length) {
-        this.logger.warn(`Setup asked again for ${again.join(' and ')}; written again without it.`);
-        const second = await this.guardedReply(`${setupPrompt}\n\n---\n\n${doNotAskAgain(answered, again)}`, messages).catch(() => reply);
-        reply = whatItAsksAgain(second, answered).length ? withoutAskingAgain(second, answered) : second;
-      }
-      const earlier = (messages as { role: string; content: string }[]).filter((m) => m.role === 'assistant').map((m) => m.content ?? '');
-      const repeated = theQuestionAskedBefore(reply, earlier);
-      if (repeated) {
-        this.logger.warn(`Setup asked "${repeated.slice(0, 80)}" again; written again without it.`);
-        const second = await this.guardedReply(`${setupPrompt}\n\n---\n\n${doNotAskThatAgain(repeated)}`, messages).catch(() => reply);
-        const theyHaveSaidALot = messages.filter((m) => m.role === 'user').length >= 3;
-        reply = theQuestionAskedBefore(second, earlier) || whatItAsksAgain(second, answered).length ? withoutTheSameQuestion(withoutAskingAgain(second, answered), earlier, theyHaveSaidALot) : second;
-      }
-    }
+    const reply = firstReply;
     const stoppedAsking = theSetupHasStoppedAsking(messages, reply);
     /*
      * THE AIM IS NOT IN THIS GATE, AND a-check-in-with-no-aim-has-nothing-to-read-against HOLDS THE

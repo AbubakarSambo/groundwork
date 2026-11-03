@@ -19,6 +19,7 @@ export const THE_FIRST_UPDATE_TOO = [
   'Besides what the board needs, find out where things stand today and what is open, as far as the lead knows it.',
   'Ask for that once you know what the work is, unless they have already told you, in these words or close to them: "Where do things stand today, as far as you know? If your team knows better, say so and their first check-in will ask them."',
   'If they say the details are their team\'s, or they do not know, that is their answer: their team\'s check-ins will ask for those details, so say that in a few words and move on.',
+  'What they set this up to find out is never asked of them: when they want to know what is owed, what is about to slip or who is on what, that is what their team\'s check-ins will find, so do not ask them for the list.',
   'Never ask what they have already said.',
 ].join(' ');
 

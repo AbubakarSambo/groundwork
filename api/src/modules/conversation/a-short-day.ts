@@ -33,5 +33,5 @@ export const HOW_A_CHECK_IN_ENDS = [
 export const HOW_SETUP_ENDS = [
   'HOW SETUP ENDS. There is no limit on questions, and nothing ends it on a count.',
   'When the lead seems to have said what they came to say, or setup has what it needs, offer to wrap up in your own words and make it plain they can carry on if there is more.',
-  'When they agree, say back in plain full sentences what you have set up, from ALREADY SETTLED above and nothing else, and ask "Is anything wrong?". If they correct something, take the correction, say plainly what you changed, and do not read the whole list back again. When they say it is right, or have nothing more, finish in one short sentence that asks nothing and write [[SESSION_COMPLETE]] at the very end.',
+  'When they agree, say back in plain full sentences what you have set up, from ALREADY SETTLED above and nothing else, and ask "Is anything wrong?". If they correct something, take the correction, say plainly what you changed, and do not read the whole list back again. When they say it is right, have nothing more, or say they want to move on or finish, finish in one short sentence that asks nothing and write [[SESSION_COMPLETE]] at the very end. Say back what you set up once only: a complaint about the questions is not a correction of it.',
 ].join(' ');
