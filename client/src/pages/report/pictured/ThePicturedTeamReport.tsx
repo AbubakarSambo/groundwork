@@ -201,6 +201,8 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
       {/* Release 2: on a "Collect what's owed" check-in where the switchboard picks the collections board, the team's report on the
           bills, in the full shape, as the server words it (the-collections-reports); every other check-in reads the sections below. */}
       {collections ? <TheCollectionsTeamReportSections r={collections} /> : (<>
+      {/* F5, Hafsah's change 4 to the approved journey: the report opens with where things stand and what needs the lead, then
+         where people differ and what is not known yet, then what moved and what each person did. */}
       {/* team-report.jpg: "In short" is the report's own few sentences on the page, not in a box. */}
       <Section heading="In short">
         {teamsDay
@@ -209,6 +211,81 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
           ? <div className="pb-in-short">{(rep.pictureLines as string[]).map((l) => <p className="pb-read" key={l}>{l}</p>)}</div>
           : <p className="gwui-panel-text">{rep.finding?.text ?? 'Nothing is written for this session yet.'}</p>}
       </Section>
+
+      {/* team-report.jpg: the lead's own question, in a dark-edged box with the heading inside it. The other check-ins' team
+          reports have no question to answer and no such section; the conversation worth having is on "?whole=1". */}
+      {question && (
+        <div className="pb-question">
+          <h3 className="pb-box-h">One question to answer</h3>
+          <p className="pb-read">{question.question}</p>
+          {question.why && <p className="gwui-panel-text">{question.why}</p>}
+          <div className="pb-relevant-actions">
+            {(question.action.choices as Any[]).filter((c) => c.route).map((c, i) => (
+              <Button key={c.label} kind={i === 0 ? 'primary' : /^No\b/.test(c.label) ? 'quiet' : 'secondary'} disabled={answer.isPending} onClick={() => answer.mutate(c.route)}>{/^No$/.test(c.label) ? theNoFor((question.action.choices as Any[])[0].label) : c.label}</Button>
+            ))}
+          </div>
+          {/* For a wait on the lead, only what the record can say the answer does: the wait is cleared. */}
+          <p className="pb-foot">{question.afterwards ?? 'Your answer updates the board, and everyone counts the same way from now on.'}</p>
+        </div>
+      )}
+
+      {/* Quality pass, 18 October, T-8: on Release 1's sales check-in, what the record shows in full sentences, never the model's fragments. */}
+      {teamsDay && ((teamsDay.whereTheySeeItDifferently ?? []) as string[]).length > 0 && (
+        <Section heading={direct ? 'Where people said different things' : 'Where people see it differently'}>
+          <Panel>{(teamsDay.whereTheySeeItDifferently as string[]).map((l) => <p className="gwui-panel-text" key={l}>{l}</p>)}</Panel>
+        </Section>
+      )}
+      {!teamsDay && differences.length > 0 && (
+        <Section heading={direct ? 'Where people said different things' : 'Where people see it differently'}>
+          {/* team-report.jpg: one panel, each side in its own column, the name in bold over what they said. */}
+          {differences.map((d) => (
+            <Panel key={d.topic}>
+              <div className="pb-two pb-sides">
+                {(d.positions ?? []).map((x: Any) => (
+                  <div key={x.who}>
+                    <p className="pb-side-h">{x.who === myName || x.who === 'You' ? 'You' : firstName(x.who)}</p>
+                    <p className="gwui-panel-text">{`“${x.view}”`}</p>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          ))}
+        </Section>
+      )}
+
+      <Section heading="What this report can’t tell you">
+        {/* team-report.jpg: plain sentences on the page, not in a box. */}
+        <div className="pb-cant-tell">
+          {notIn.length > 0 && <p>{`It cannot show ${listed(notIn.map((n) => `${n}’s`))} day, because ${listed(notIn)} did not check in.`}</p>}
+          {rep.whatWentQuiet && <p>{rep.whatWentQuiet}</p>}
+          {!notIn.length && !rep.whatWentQuiet && <p>Everybody checked in, and nothing anybody was waiting on has gone quiet.</p>}
+        </div>
+        {/* danielpip-team-report.jpg: a way to say something here is wrong, which the check-in takes in, and the change and the original both show. */}
+        <div><Button kind="quiet" to={`/grounds/${groundId}`}>Something here isn’t right</Button></div>
+      </Section>
+
+      {/* What was asked and not answered yet, and what happens next (moved up in F5 with what isn't known yet). Served to whoever runs the check-in only (what-i-dont-know-yet.ts). */}
+      {!collections && Array.isArray(rep.whatIDontKnowYet) && (
+        <Panel className="pb-unknowns">
+          <h3 className="pb-box-h">What I don’t know yet</h3>
+          {!direct && <p className="pb-sub pb-unknowns-note">Things Groundwork can’t tell from what it has, and what it will ask next.</p>}
+          {(rep.whatIDontKnowYet as Any[]).length
+            ? (rep.whatIDontKnowYet as Any[]).map((x, i) => (
+              <div className="pb-unknown" key={i}>
+                <p className="pb-card-h">{x.title}</p>
+                <p className="pb-sub">{x.says}</p>
+              </div>
+            ))
+            : <p className="gwui-panel-text">{direct ? 'Nothing asked for in this check-in is still waiting for an answer.' : 'Nothing Groundwork asked for in this check-in is still waiting for an answer.'}</p>}
+        </Panel>
+      )}
+
+      {/* sales-team-report.txt: "Why the numbers don’t match", only where the record can work it out (the price range). */}
+      {((teamsDay?.whyTheNumbersDontMatch ?? []) as string[]).length > 0 && (
+        <Section heading="Why the numbers don’t match">
+          <div className="pb-cant-tell">{(teamsDay.whyTheNumbersDontMatch as string[]).map((l) => <p key={l}>{l}</p>)}</div>
+        </Section>
+      )}
 
       {moved.length > 0 && (
         <Section heading="What moved" note="Ringed is someone’s word; filled is proven">
@@ -272,84 +349,9 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
         </div>
       </Section>
 
-      {/* Quality pass, 18 October, T-8: on Release 1's sales check-in, what the record shows in full sentences, never the model's fragments. */}
-      {teamsDay && ((teamsDay.whereTheySeeItDifferently ?? []) as string[]).length > 0 && (
-        <Section heading={direct ? 'Where people said different things' : 'Where people see it differently'}>
-          <Panel>{(teamsDay.whereTheySeeItDifferently as string[]).map((l) => <p className="gwui-panel-text" key={l}>{l}</p>)}</Panel>
-        </Section>
-      )}
-      {!teamsDay && differences.length > 0 && (
-        <Section heading={direct ? 'Where people said different things' : 'Where people see it differently'}>
-          {/* team-report.jpg: one panel, each side in its own column, the name in bold over what they said. */}
-          {differences.map((d) => (
-            <Panel key={d.topic}>
-              <div className="pb-two pb-sides">
-                {(d.positions ?? []).map((x: Any) => (
-                  <div key={x.who}>
-                    <p className="pb-side-h">{x.who === myName || x.who === 'You' ? 'You' : firstName(x.who)}</p>
-                    <p className="gwui-panel-text">{`“${x.view}”`}</p>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-          ))}
-        </Section>
-      )}
-
-      <Section heading="What this report can’t tell you">
-        {/* team-report.jpg: plain sentences on the page, not in a box. */}
-        <div className="pb-cant-tell">
-          {notIn.length > 0 && <p>{`It cannot show ${listed(notIn.map((n) => `${n}’s`))} day, because ${listed(notIn)} did not check in.`}</p>}
-          {rep.whatWentQuiet && <p>{rep.whatWentQuiet}</p>}
-          {!notIn.length && !rep.whatWentQuiet && <p>Everybody checked in, and nothing anybody was waiting on has gone quiet.</p>}
-        </div>
-        {/* danielpip-team-report.jpg: a way to say something here is wrong, which the check-in takes in, and the change and the original both show. */}
-        <div><Button kind="quiet" to={`/grounds/${groundId}`}>Something here isn’t right</Button></div>
-      </Section>
-
-      {/* sales-team-report.txt: "Why the numbers don’t match", only where the record can work it out (the price range). */}
-      {((teamsDay?.whyTheNumbersDontMatch ?? []) as string[]).length > 0 && (
-        <Section heading="Why the numbers don’t match">
-          <div className="pb-cant-tell">{(teamsDay.whyTheNumbersDontMatch as string[]).map((l) => <p key={l}>{l}</p>)}</div>
-        </Section>
-      )}
-
-      {/* team-report.jpg: the lead's own question, in a dark-edged box with the heading inside it. The other check-ins' team
-          reports have no question to answer and no such section; the conversation worth having is on "?whole=1". */}
-      {question && (
-        <div className="pb-question">
-          <h3 className="pb-box-h">One question to answer</h3>
-          <p className="pb-read">{question.question}</p>
-          {question.why && <p className="gwui-panel-text">{question.why}</p>}
-          <div className="pb-relevant-actions">
-            {(question.action.choices as Any[]).filter((c) => c.route).map((c, i) => (
-              <Button key={c.label} kind={i === 0 ? 'primary' : /^No\b/.test(c.label) ? 'quiet' : 'secondary'} disabled={answer.isPending} onClick={() => answer.mutate(c.route)}>{/^No$/.test(c.label) ? theNoFor((question.action.choices as Any[])[0].label) : c.label}</Button>
-            ))}
-          </div>
-          {/* For a wait on the lead, only what the record can say the answer does: the wait is cleared. */}
-          <p className="pb-foot">{question.afterwards ?? 'Your answer updates the board, and everyone counts the same way from now on.'}</p>
-        </div>
-      )}
-
       </>)}
 
       <Link to={`/grounds/${groundId}?tab=report`} className="pb-wide-btn">Every session</Link>
-
-      {/* team-report.jpg: below "Every session", what was asked and not answered yet, and what happens next. Served to whoever runs the check-in only (what-i-dont-know-yet.ts). */}
-      {!collections && Array.isArray(rep.whatIDontKnowYet) && (
-        <Panel className="pb-unknowns">
-          <h3 className="pb-box-h">What I don’t know yet</h3>
-          {!direct && <p className="pb-sub pb-unknowns-note">Things Groundwork can’t tell from what it has, and what it will ask next.</p>}
-          {(rep.whatIDontKnowYet as Any[]).length
-            ? (rep.whatIDontKnowYet as Any[]).map((x, i) => (
-              <div className="pb-unknown" key={i}>
-                <p className="pb-card-h">{x.title}</p>
-                <p className="pb-sub">{x.says}</p>
-              </div>
-            ))
-            : <p className="gwui-panel-text">{direct ? 'Nothing asked for in this check-in is still waiting for an answer.' : 'Nothing Groundwork asked for in this check-in is still waiting for an answer.'}</p>}
-        </Panel>
-      )}
 
       {/* sales-team-report.txt: the closing line, how sure Groundwork is about this report (T-12). */}
       {teamsDay?.howSure && <p className="pb-how-sure">{teamsDay.howSure}</p>}
