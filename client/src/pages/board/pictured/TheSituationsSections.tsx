@@ -1,5 +1,5 @@
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Section, Panel, EdgeList, EdgeRow } from '@/components/gw/ui'
+import { Section, Panel, EdgeList, EdgeRow, Tag } from '@/components/gw/ui'
 
 /**
  * RELEASE 8: THE SECTIONS A SITUATION'S BOARD DRAWS THAT NO KIT PICTURE DRAWS ON ITS OWN (api/src/modules/board/release-8-situations.ts).
@@ -117,3 +117,77 @@ export function TheSituationsWorkPlan({ b }: { b: Any }) {
     </Section>
   )
 }
+
+/* ------------------------------------------------------------------ where people differ, and what nobody knows yet */
+/*
+ * The situation boards' "What each person said" and "What is known, what is believed, and what nobody knows yet" (release-8-situations
+ * accounts and picture), in one place, so the sales board's first screen draws the same sections (F5 part 3).
+ */
+const firstNameOf = (n: string | null | undefined) => (n ?? '').trim().split(/\s+/)[0] || ''
+const wordsOf = (text: string) => String(text ?? '').replace(/^[^"“]*?said,\s*/i, '').replace(/^["“]|["”]$/g, '').trim()
+
+export function whoAnsweredThisRound(b: Any): { answered: Set<string>; open: number | null } {
+  const grid = b.checkInGrid
+  const last = (grid?.sessions ?? []).slice(-1)[0]
+  const answered = new Set<string>((grid?.rows ?? []).filter((r: Any) => last != null && r.cells?.[String(last)] === 'done').map((r: Any) => r.participantId))
+  return { answered, open: last ?? null }
+}
+
+/** "Each account, side by side": each person's own view, in their own words, as they gave it. */
+export function EachAccountSideBySide({ b }: { b: Any }) {
+  const { answered } = whoAnsweredThisRound(b)
+  /* Those who have answered first, as pictured. */
+  const people: Any[] = (b.participants ?? []).filter((x: Any) => !x.managingOnly).sort((a: Any, c: Any) => Number(!answered.has(a.id)) - Number(!answered.has(c.id)))
+  const linesOf = (pid: string): Any[] => ((b.whoOwnsWhat ?? []).find((w: Any) => w.participantId === pid)?.items ?? [])
+  if (people.length < 2) return null
+  return (
+    <Section heading="Each account, side by side" note="Nobody saw the others’ before answering">
+      <div className="pb-cards3">
+        {people.map((x) => {
+          /* Their view: what they said they want, which the board sends with no kind or as an intent, in their own words. */
+          const view = linesOf(x.id).filter((i) => (i.type == null || i.type === 'INTENT' || i.type === 'SUCCESS_DEFINITION') && i.mark !== 'proven' && /said,/.test(i.text ?? '')).map((i) => wordsOf(i.text)).join(' ')
+          const isIn = answered.has(x.id)
+          return (
+            <Panel key={x.id}>
+              <div className="pb-card-top">
+                <b>{x.id === b.myParticipantId ? 'You' : firstNameOf(x.name)}{x.role ? `, ${String(x.role).toLowerCase()}` : ''}</b>
+                <Tag tone={isIn ? 'proven' : 'attention'}>{isIn ? 'In' : 'Waiting'}</Tag>
+              </div>
+              {isIn
+                ? (view ? <p className="pb-read" style={{ marginTop: 10 }}>{`“${view}”`}</p> : <p className="gwui-panel-text">Answered, with no view of the decision on record.</p>)
+                : <p className="gwui-panel-text" style={{ marginTop: 10 }}>Hasn’t answered yet.</p>}
+            </Panel>
+          )
+        })}
+      </div>
+    </Section>
+  )
+}
+
+/** "What’s known, believed and unknown": what a document shows, what somebody said, and what is still to find out. */
+export function KnownBelievedUnknown({ b, unknown, leadFirstName }: { b: Any; unknown: string[]; leadFirstName: string | null }) {
+  const all: Any[] = (b.whoOwnsWhat ?? []).flatMap((w: Any) => (w.items ?? []).map((i: Any) => ({ ...i, who: w.name })))
+  const known = all.filter((i) => i.mark === 'proven' && i.type !== 'INTENT' && /said,/.test(i.text ?? '')).map((i) => wordsOf(i.text))
+  const believed = all.filter((i) => i.mark !== 'proven' && /said,/.test(i.text ?? '') && (i.type === 'WORRY' || i.type === 'TENSION' || i.type === 'PROGRESS')).map((i) => `${wordsOf(i.text)} (${i.who === 'You' ? 'your' : `${firstNameOf(i.who)}’s`} word; nothing on record backs it yet)`)
+  if (!known.length && !believed.length && !unknown.length) return null
+  const { answered } = whoAnsweredThisRound(b)
+  const people: Any[] = (b.participants ?? []).filter((x: Any) => !x.managingOnly)
+  const waitingFor = people.filter((x) => !answered.has(x.id)).map((x) => firstNameOf(x.name))
+  return (
+    <Section heading="What’s known, believed and unknown">
+      <div className="pb-cards3">
+        {[['Known', known, 'pb-k-known'], ['Believed', believed, 'pb-k-believed'], ['Unknown', unknown, 'pb-k-unknown']].map(([h, l, cls]) => (
+          <div key={h as string} className="pb-kbu">
+            <b className={cls as string}>{h as string}</b>
+            {(l as string[]).length ? (l as string[]).map((t) => <p key={t}>{t}</p>) : <p className="pb-sub">Nothing yet.</p>}
+          </div>
+        ))}
+      </div>
+      <div className="pb-decides">
+        <b>{`For ${b.canEditFrame ? 'you' : leadFirstName ?? 'the person who runs it'} to decide${waitingFor.length ? ` once ${waitingFor.join(' and ')}’s account is in` : ''}.`}</b>
+        <p>The board lays out the accounts and what’s known. It doesn’t choose.</p>
+      </div>
+    </Section>
+  )
+}
+

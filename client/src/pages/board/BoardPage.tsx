@@ -1667,7 +1667,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      The morning block used to say these above every board; since it left the board (24 October) this order had none of them
      (restored, 30 October 2026). The switchboard still decides the rest. */
   const situationOrder = situationRow ? [
-    'headline', 'closing', 'needsYou', 'teamToday', 'yourTeam',
+    /* Where people differ and what nobody knows yet follow what needs you, as on every situation's board (stage 10). */
+    'headline', 'needsYou', 'accounts', 'knownBelievedUnknown', 'closing', 'teamToday', 'yourTeam',
     ...(situationRow.sectionsOn.includes('Lead actions') ? ['assumes'] : []),
     ...(situationRow.sectionsOn.includes('Deal grid') ? ['deals'] : []),
     ...(situationRow.sectionsOn.includes('Blockers') ? ['blockers'] : []),

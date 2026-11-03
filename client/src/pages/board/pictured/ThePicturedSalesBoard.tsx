@@ -16,6 +16,7 @@ import { useTheDirectMorning } from '@/lib/the-direct-morning'
 import { TheNudgeButton } from './TheNudgeButton'
 import { theMorningLines, theMorningNeedsNotOnTheBoard, nothingNeedsYou, WhatIsClosing } from './TheMorningOnTheBoard'
 import { theClocksSessionSaid } from '@/lib/the-one-count'
+import { EachAccountSideBySide, KnownBelievedUnknown } from './TheSituationsSections'
 
 /**
  * THE SALES BOARD AS PICTURED, FOR WHOEVER RUNS IT (screen match, 16 October; the target is
@@ -1205,6 +1206,9 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
       <HeadlineAndGap b={b} deals={deals} groups={groups} />
       {/* An admin who only reads is never told "What needs you": it is not hers to do (the light board's rule, kept). */}
       {!p.readOnly && <WhatNeedsYou b={b} renderActions={p.renderActions} groundId={p.groundId} deals={deals} sessionRows={p.sessionRows} />}
+      {/* Where people differ, and what nobody knows yet (the approved journey, stage 10): the situation boards' own two sections. */}
+      <EachAccountSideBySide b={b} />
+      <KnownBelievedUnknown b={b} unknown={[]} leadFirstName={null} />
       {/* What's closing, on the first screen as Hafsah's 24 October decision keeps it: the morning's lines, served to the lead alone. */}
       <WhatIsClosing b={b} heading="What’s closing" />
       <TheTeamToday b={b} deals={deals} today={isoDay(now)} groundId={p.groundId} />
