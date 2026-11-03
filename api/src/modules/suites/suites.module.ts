@@ -15,7 +15,6 @@ import { CustomerStandingService } from './the-customer-standing.service';
 import { ReviewsProposedService } from './the-reviews-proposed.service';
 import { ReviewsProposedCron } from './the-reviews-proposed.cron';
 import { SuggestionsModule } from '../suggestions/suggestions.module';
-import { AnthropicService } from '../conversation/anthropic.service';
 import { AReviewToldOnWhatsApp } from './a-review-told-on-whatsapp.service';
 import { AReviewAppealToldService } from './a-review-appeal-told.service';
 import { AnAppealWaitsForANewAdmin } from './an-appeal-waits-for-a-new-admin';
@@ -30,7 +29,7 @@ import { DecisionsInABatchService } from './the-decisions-in-a-batch.service';
 @Module({
   imports: [SuggestionsModule],
   controllers: [SuitesController],
-  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, AnthropicService, ReviewsProposedService, ReviewsProposedCron, ARequestToldOnWhatsApp, AReviewToldOnWhatsApp, AReviewAppealToldService, AnAppealWaitsForANewAdmin, ARequestWaitsTooLongCron, SpendingForFinanceService, ARequestFiledFromItsForm, ApprovalsQueueService, TheApproversSummaryCron, DecisionsInABatchService],
+  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, ReviewsProposedService, ReviewsProposedCron, ARequestToldOnWhatsApp, AReviewToldOnWhatsApp, AReviewAppealToldService, AnAppealWaitsForANewAdmin, ARequestWaitsTooLongCron, SpendingForFinanceService, ARequestFiledFromItsForm, ApprovalsQueueService, TheApproversSummaryCron, DecisionsInABatchService],
   exports: [SuitesService, LeaveBoardService, TimeSheetsService, ReviewsService, ReviewsProposedService, SpendingService, EquipmentService, ARequestToldOnWhatsApp, SpendingForFinanceService, ApprovalsQueueService],
 })
 export class SuitesModule {}
