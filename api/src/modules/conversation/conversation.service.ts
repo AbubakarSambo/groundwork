@@ -552,6 +552,12 @@ export function aNumberTheySaid(said: string | null | undefined): number | null 
   return Number.isFinite(v) && v > 0 ? v : null;
 }
 
+/** What the streamed check-in route sends: the reply as it is written, the reply that is kept, and then its suggested answers. */
+export type WhatTheStreamSends =
+  | { type: 'delta'; text: string }
+  | { type: 'done'; reply: string; sessionComplete: boolean; suggestedAnswers?: string[]; ideaOffer?: any; requestOffer?: any; openTheRequest?: any }
+  | { type: 'suggestions'; suggestedAnswers: string[] };
+
 @Injectable()
 export class ConversationService {
   /** Answers being worked on right now, so the same answer arriving twice is answered once. See sendMessage. */
@@ -2165,7 +2171,7 @@ export class ConversationService {
     return { checkInId: target.id, reply: String(out?.reply ?? out?.content ?? '') };
   }
 
-  async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string, how: { streamDraft?: (text: string) => void; alreadyJoined?: boolean; door?: Door; answering?: string | null } = {}): Promise<any> {
+  async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string, how: { streamDraft?: (text: string) => void; alreadyJoined?: boolean; door?: Door; answering?: string | null; suggestionsAfterTheReply?: (coming: Promise<string[]>) => void } = {}): Promise<any> {
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
     /*
      * ONE ANSWER, ONE REPLY, HOWEVER MANY TIMES IT ARRIVES (request 48). The closing reply was read
@@ -3613,7 +3619,14 @@ export class ConversationService {
         this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
     }
     /* Suggested answers under the question: task 2.6, screens request 7a. See suggested-answers. */
-    const suggestedAnswers = sessionComplete ? [] : await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', message, checkIn.id);
+    /*
+     * AFTER THE REPLY, WHERE THE SCREEN CAN TAKE THEM (3 November 2026). They are read from the reply, so they cannot come before it,
+     * and the person waited a second more for every reply while they were read. The streamed route sends the reply first and the
+     * suggestions after it; every other door waits for them as it always has.
+     */
+    const suggestedAnswersComing = sessionComplete ? Promise.resolve([] as string[]) : this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', message, checkIn.id);
+    how.suggestionsAfterTheReply?.(suggestedAnswersComing);
+    const suggestedAnswers = how.suggestionsAfterTheReply ? [] : await suggestedAnswersComing;
     /*
      * WHAT IS NOW IN THEIR RECORD, SHOWN BEFORE THEY FINISH (task 2.7, screens request 7b). Built after
      * the goodbye and never in front of it: the record reader takes ten to forty-seven seconds on the
@@ -3938,8 +3951,7 @@ export class ConversationService {
    * Persistence and status transitions match sendMessage exactly; the AI turn is
    * written once, sanitized, after the stream completes.
    */
-  async *sendMessageStream(checkInId: string, requestingUserId: string, message: string, answering?: string | null):
-    AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean; suggestedAnswers?: string[]; ideaOffer?: any; requestOffer?: any; openTheRequest?: any }, void, unknown> {
+  async *sendMessageStream(checkInId: string, requestingUserId: string, message: string, answering?: string | null): AsyncGenerator<WhatTheStreamSends, void, unknown> {
     /*
      * THE SAME CODE AS THE PLAIN ROUTE, WITH THE DRAFT SHOWN AS IT IS WRITTEN. Hafsah, 28 September
      * 2026. What the person reads last is `done.reply`, which is exactly what sendMessage returns and
@@ -3957,9 +3969,11 @@ export class ConversationService {
      * what the person last read is what was saved, as `done.reply` says.
      */
     const draft: string[] = [];
+    let suggestions: Promise<string[]> = Promise.resolve([]);
     const result = await this.sendMessage(checkInId, requestingUserId as any, message, {
       streamDraft: (text) => { draft.push(text); },
       answering: answering ?? null,
+      suggestionsAfterTheReply: (coming) => { suggestions = coming; },
     });
     const r = result as any;
     if (typeof r.reply === 'string' && r.reply && draft.length) {
@@ -3977,6 +3991,8 @@ export class ConversationService {
       ...(r.requestOffer ? { requestOffer: r.requestOffer } : {}),
       ...(r.openTheRequest ? { openTheRequest: r.openTheRequest } : {}),
     };
+    const suggestedAnswers = await suggestions.catch(() => [] as string[]);
+    if (suggestedAnswers.length) yield { type: 'suggestions', suggestedAnswers };
   }
 
   /** For a participant's own check-in, the test for a sentence that quotes the lead's brief; null for the lead, or a team update. */

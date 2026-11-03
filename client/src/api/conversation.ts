@@ -62,7 +62,8 @@ const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}
 export async function streamMessage(
   checkInId: string,
   message: string,
-  handlers: { onDelta: (text: string) => void; onDone: (r: SendMessageResponse) => void; onError?: (m: string) => void },
+  /* `onSuggestions`: the suggested answers, sent after the reply so the reply is not held for them (3 November 2026). */
+  handlers: { onDelta: (text: string) => void; onDone: (r: SendMessageResponse) => void; onSuggestions?: (answers: string[]) => void; onError?: (m: string) => void },
   /* The last thing Groundwork said that is on their screen: the same words twice after it is read are a new answer (item 26). */
   answering?: string | null,
 ): Promise<void> {
@@ -91,6 +92,7 @@ export async function streamMessage(
         const evt = JSON.parse(data)
         if (evt.type === 'delta') handlers.onDelta(evt.text)
         else if (evt.type === 'done') handlers.onDone(evt)
+        else if (evt.type === 'suggestions') handlers.onSuggestions?.(evt.suggestedAnswers)
         else if (evt.type === 'error') handlers.onError?.(evt.message)
       } catch { /* ignore malformed keepalive lines */ }
     }

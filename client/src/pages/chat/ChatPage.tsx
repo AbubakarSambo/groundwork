@@ -1018,6 +1018,10 @@ export function ChatPage() {
           if (r.sessionComplete) setDone(true)
           if (r.endCard) setEndCard(r.endCard)
         },
+        onSuggestions: (answers) => {
+          setMsgs(v => v.map(m => m.id === aiId ? { ...m, suggestedAnswers: answers } : m))
+          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, suggestedAnswers: answers } : m))
+        },
         onError: (m) => { throw new Error(m) },
       }
       await (answering ? streamMessage(checkInId, message, handlers, answering) : streamMessage(checkInId, message, handlers))
