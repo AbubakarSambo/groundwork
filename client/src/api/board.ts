@@ -475,12 +475,6 @@ export type BoardPresent = {
    */
   kindsOffered?: KindOfWork[]
   /**
-   * ANCHOR PIECE 24/25: whether a new anchor check-in can be started (`release.anchorScenario`).
-   * Off at release, so nothing drawn from it shows. Serves no other change to this board's own
-   * sections - only "Groundwork recommends" (BoardPage.tsx) reads it, and only for the lead.
-   */
-  anchorScenarioOn?: boolean
-  /**
    * ANCHOR PIECE 30/31, THE "ACTIVE" LINE (section 26; docs/answers-from-engine.md, "Request 149
    * (4 of 6)", `TheActiveLine`). Groundwork manages engagement itself, and the lead sees a status
    * line of its own words, for example "18/20 active · Groundwork has nudged the remaining 2."
@@ -492,8 +486,7 @@ export type BoardPresent = {
   /**
    * ANCHOR PIECES 12/13/20, THE MONTH BOARD, "Are we moving together?" (section 24;
    * docs/answers-from-engine.md, "Request 149 (5 of 6)", `TheMonthBoard`). Lead only: this is the
-   * lead's own board, served only to whoever runs this check-in, only while `anchorScenarioOn` is
-   * served true (see BoardPage.tsx, `theMonthBoardForTheLead`) - absent otherwise, and the section
+   * lead's own board, served only to whoever runs this check-in, (see BoardPage.tsx, `theMonthBoardForTheLead`) - absent otherwise, and the section
    * draws nothing then.
    */
   theMonthBoard?: TheMonthBoard

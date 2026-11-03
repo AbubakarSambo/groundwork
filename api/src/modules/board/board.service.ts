@@ -81,7 +81,7 @@ import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-in
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { contributionWithoutTheLeadsAdvice, coverageWithoutTheLeadsAdvice } from './the-leads-advice-stays-with-the-lead';
 import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-served';
-import { theBoardKindsOffered, theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
+import { theBoardKindsOffered } from '../admin/what-is-hidden-at-release';
 import { theAnchorBoardParts } from './the-anchor-board-parts';
 import { aShortTagForTheWork } from './a-short-tag-for-the-work';
 import { oneOfTheKinds, isASalesKind, plainFields, theSameName, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, KINDS_THAT_ARE_NOT_WORK, type AServedRecord, type KindOfWork } from './the-kind-of-work';
@@ -1020,8 +1020,6 @@ export class BoardService {
       ...(await this.theCollectionsBoardIfPicked(ground as any, { runsIt: isInitiator || theyRunIt, participantId: me?.id ?? null }, now)),
       /* The kinds a NEW check-in may be given at release. A check-in that holds another keeps it above. */
       kindsOffered: await theBoardKindsOffered(this.prisma, (ground as any).organizationId),
-      /* Whether a new anchor check-in can be started (release.anchorScenario). Off at release. Nothing on the board changes with it yet. */
-      anchorScenarioOn: await theAnchorScenarioIsOn(this.prisma),
       /**
        * HOW IT IS GOING, AT THE TOP, WHICH IS WHY SOMEBODY OPENED THIS.
        *

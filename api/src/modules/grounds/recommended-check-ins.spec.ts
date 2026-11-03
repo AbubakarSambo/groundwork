@@ -55,15 +55,13 @@ function aWorld(opts: { switchOn?: boolean; startedFrom?: string | null; scenari
   return { prisma, rows, created, service: new RecommendedCheckInsService(prisma) };
 }
 
-describe('recommended check-ins, for a check-in with the anchor\'s scenario (decision 114)', () => {
-  it('are found and offered when startedFrom is empty but the scenario is the anchor\'s, and not for another scenario', async () => {
-    const byScenario = aWorld({ startedFrom: null, scenario: 'HELP_TEAM_UNDERSTAND' });
-    await byScenario.service.onCheckInCompleted({ groundId: GROUND });
-    expect((await byScenario.service.forTheLead(GROUND, LEAD)).offers).toHaveLength(3);
-    const plain = aWorld({ startedFrom: null, scenario: 'OKR_ALIGNMENT' });
-    await plain.service.onCheckInCompleted({ groundId: GROUND });
-    expect((await plain.service.forTheLead(GROUND, LEAD)).offers).toEqual([]);
-    expect(plain.rows).toEqual([]);
+describe('recommended check-ins, for every check-in (Hafsah, 3 November evening: leads always see what Groundwork recommends)', () => {
+  it('are found and offered whatever the scenario and however the check-in was started', async () => {
+    for (const shape of [{ startedFrom: null, scenario: 'HELP_TEAM_UNDERSTAND' }, { startedFrom: null, scenario: 'OKR_ALIGNMENT' }]) {
+      const w = aWorld(shape);
+      await w.service.onCheckInCompleted({ groundId: GROUND });
+      expect((await w.service.forTheLead(GROUND, LEAD)).offers).toHaveLength(3);
+    }
   });
 });
 
@@ -129,18 +127,10 @@ describe('recommended check-ins, as the lead reads them', () => {
     await expect(w.service.answer(GROUND, 'nope', LEAD, true)).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('with the switch off, nothing is looked for and nothing is served', async () => {
-    const w = aWorld({ switchOn: false });
+  it('with the anchor switch off, the lead still reads them: no setting stands in the way', async () => {
+    const w = aWorld({ switchOn: false, startedFrom: null });
     await w.service.onCheckInCompleted({ groundId: GROUND });
-    expect(w.rows).toEqual([]);
-    expect((await w.service.forTheLead(GROUND, LEAD)).offers).toEqual([]);
-  });
-
-  it('a check-in not started from the anchor gets nothing', async () => {
-    const w = aWorld({ startedFrom: null });
-    await w.service.onCheckInCompleted({ groundId: GROUND });
-    expect(w.rows).toEqual([]);
-    expect((await w.service.forTheLead(GROUND, LEAD)).offers).toEqual([]);
+    expect((await w.service.forTheLead(GROUND, LEAD)).offers).toHaveLength(3);
   });
 });
 

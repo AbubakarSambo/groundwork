@@ -1056,28 +1056,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   })
 
   /**
-   * "GROUNDWORK RECOMMENDS" (anchor piece 25; docs/anchor-scenario-plan.md section 5, row 9;
-   * docs/answers-from-engine.md, "5 October: anchor piece 24, recommended check-ins").
-   *
-   * Groundwork looks at this one check-in's own record and, where the work itself shows it, offers
-   * the lead one more check-in - never a label on a person, only what the record shows and a
-   * question. Drawn only for whoever runs this check-in, only while the anchor switch is on
-   * (`anchorScenarioOn`, read off the raw board answer rather than `b` - these hooks have to sit
-   * above every early return below, the same as `today`'s own query, or the number of hooks this
-   * component runs would differ between the loading render and the loaded one). The route itself
-   * answers an empty list with the switch off or for a check-in not started from the anchor, so
-   * there is nothing to gate here beyond that - `recommendedCheckInsApi.list` is itself refused for
-   * anybody who is not the lead.
+   * "GROUNDWORK RECOMMENDS" (anchor piece 25). Groundwork looks at this one check-in's own record and, where the work itself shows
+   * it, offers the lead one more check-in: never a label on a person, only what the record shows and a question. Whoever runs the
+   * check-in always reads it, with no setting in the way (Hafsah, 3 November evening); a team member is served only offers about
+   * their own work. The server decides both.
    */
-  /** Whether this check-in was itself started as the anchor scenario - read once, for every reader. */
-  const anchorScenarioOn = !!(data as any)?.anchorScenarioOn
-  const anchorRecommendationsOn = viewerRunsThisCheckIn && anchorScenarioOn
   /**
    * THE SWITCHBOARD'S OWN SECTION LIST, READ OFF THE RAW ANSWER (decision 114;
    * docs/answers-from-engine.md, "8 October (later): the anchor through the ordinary routes, route
    * by route"). `sections` names which sections this scenario carries at all - the same for every
    * reader of one check-in - read here, ahead of `b`/`has` below, because these hooks have to sit
-   * above every early return (the same reason `anchorScenarioOn` already reads raw `data`).
+   * above every early return.
    */
   const sectionsServed: string[] = (data as any)?.sections ?? []
   const hasSectionServed = (s: string) => sectionsServed.includes(s)
@@ -1095,7 +1084,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * PIECE 19/20, "IDEAS FROM YOUR TEAM" (plan section 5, row 7; docs/answers-from-engine.md,
    * "Request 149, missing (1)"; decision 114's `ideasFromTheTeam`, the same shape named by the
    * switchboard). To everyone in the check-in, not the lead alone - no `viewerRunsThisCheckIn`
-   * gate, and (decision 114) no `anchorScenarioOn` gate either: the new field is read first, the
+   * gate, and no switch either: the new field is read first, the
    * older one only as a fallback for a caller the server has not moved across yet, and the engine
    * is itself the one that decides who either is served to.
    */
@@ -1105,10 +1094,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     queryFn: () => recommendedCheckInsApi.list(id!),
     /* Screen match, 16 October: an account several people name is offered on any check-in, so whoever runs it asks. */
     /* And a team member, who is served only offers about their own work (Hafsah's answer 5, 16 October 2026; the server decides). */
-    enabled: !!id && (anchorRecommendationsOn || viewerRunsThisCheckIn || !!(data as any)?.myParticipantId),
+    enabled: !!id && (viewerRunsThisCheckIn || !!(data as any)?.myParticipantId),
     retry: false,
   })
-  const recommendedOffers: AnOfferTheLeadReads[] = anchorRecommendationsOn || viewerRunsThisCheckIn ? (recommended?.offers ?? []) : []
+  const recommendedOffers: AnOfferTheLeadReads[] = viewerRunsThisCheckIn ? (recommended?.offers ?? []) : []
   /* What a team member is recommended: the server serves them only offers resting on their own work. */
   const myOwnRecommendedOffers: AnOfferTheLeadReads[] = !viewerRunsThisCheckIn ? (recommended?.offers ?? []) : []
 
