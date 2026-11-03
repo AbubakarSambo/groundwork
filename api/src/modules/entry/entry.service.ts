@@ -600,9 +600,6 @@ export function overlayDraftOntoBody(
  */
 export { onboardingIsReady, theAimIsSettled, anAimIsOwedHere, NO_AIM_BY_DESIGN } from './a-check-in-with-no-aim-has-nothing-to-read-against';
 
-/** Enough to fill typed fields from a short chat, not enough to sit on the turn. See AnthropicService.extract. */
-const CONVERSATION_THINKING_BUDGET_FOR_EXTRACT = 256;
-
 @Injectable()
 export class EntryService {
   private readonly logger = new Logger(EntryService.name);
@@ -1324,7 +1321,7 @@ from finishing at all.`;
     const extractionInFlight: Promise<typeof extracted | null | Error> = (async () =>
       this.anthropic.extract<typeof extracted>(
         peopleHereForTheReading ? `${EXTRACT_SYSTEM}\n\n${peopleHereForTheReading}\nFor peopleNamed: when they mean people on this list, give each one by the name shown.` : EXTRACT_SYSTEM,
-        messages, EXTRACT_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true }))()
+        messages, EXTRACT_TOOL, { fast: true }))()
       .catch((err: Error) => err);
     const { reply: firstReply, closed: theModelFinished } = await replyInFlight;
     try {
@@ -1465,7 +1462,7 @@ from finishing at all.`;
    */
   private async onboardTheAnchorLead(messages: ChatTurn[], soFar: WhatSetupHasSoFar | null | undefined, onDelta?: (text: string) => void) {
     const read = await this.anthropic
-      .extract<TheSevenItems & { peopleNamed?: string[]; initial?: string }>(THE_EXTRACTION_SYSTEM, messages, THE_EXTRACTION_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true })
+      .extract<TheSevenItems & { peopleNamed?: string[]; initial?: string }>(THE_EXTRACTION_SYSTEM, messages, THE_EXTRACTION_TOOL, { fast: true })
       .catch((err: Error) => { this.logger.warn(`The anchor read failed this turn: ${err?.message}`); return null; });
     const openingWords = messages[0]?.role === 'assistant' ? messages[0].content : undefined;
     const heard = whatHasBeenHeard(withoutTheOpeningsOwnWords(read, openingWords, messages.filter((m) => m.role === 'user').map((m) => m.content)), soFar);
@@ -1944,7 +1941,7 @@ from finishing at all.`;
     if (scenario === ANCHOR_ENTRY_SCENARIO && (await theAnchorScenarioIsOn(this.prisma))) {
       /* What she said about her world, in her words: what the screen already holds from her first conversation, and what the same read finds in these turns. */
       const read = await this.anthropic
-        .extract<TheSevenItems>(THE_EXTRACTION_SYSTEM, trimmed, THE_EXTRACTION_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true })
+        .extract<TheSevenItems>(THE_EXTRACTION_SYSTEM, trimmed, THE_EXTRACTION_TOOL, { fast: true })
         .catch((err: Error) => { this.logger.warn(`The reveal could not read what the lead said: ${err?.message}`); return null; });
       const heard = whatHasBeenHeard(withoutTheOpeningsOwnWords(read, messages[0]?.role === 'assistant' ? messages[0].content : undefined, messages.filter((m) => m.role === 'user').map((m) => m.content)), anchorItems);
       return { ...served, leadsReveal: theLeadsReveal({ messages: messages as any, peopleNamed: [...alreadyNamed, ...served.mentionedPeople.map((m: any) => m.name)], reader: 'lead', heard }) } as EntryReport;
