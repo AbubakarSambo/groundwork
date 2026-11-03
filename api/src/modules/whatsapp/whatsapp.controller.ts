@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from './whatsapp.service';
 import { UNKNOWN_NUMBER_SAYING } from './a-message-outside-the-window';
+import { theFirstTimeThisIsSaidTo, TOLD_THE_NUMBER_IS_NOT_LINKED } from './said-once-to-a-number';
 import { WhatsAppForAnOrganisationService } from '../public-api/whatsapp-for-an-organisation.service';
 import { pickWasAsked, pickedOrganisation, whichOrganisationAsText, A_SWITCH_WORD } from '../public-api/a-whatsapp-message-is-routed';
 
@@ -126,7 +127,7 @@ export class WhatsAppController {
   private async whichOrganisation(fromNumber: string, message: any): Promise<string | null> {
     const orgs = await (this.whatsapp.whichOrganisationsWhereItWorks?.(fromNumber) ?? this.whatsapp.whichOrganisations(fromNumber));
     if (orgs.length === 0) {
-      await this.whatsapp.sendMessage(fromNumber, UNKNOWN_NUMBER_SAYING, { kind: 'refusal' });
+      if (await theFirstTimeThisIsSaidTo(this.prisma, fromNumber, TOLD_THE_NUMBER_IS_NOT_LINKED, null)) await this.whatsapp.sendMessage(fromNumber, UNKNOWN_NUMBER_SAYING, { kind: 'refusal' });
       return null;
     }
     if (orgs.length === 1) return orgs[0].id;

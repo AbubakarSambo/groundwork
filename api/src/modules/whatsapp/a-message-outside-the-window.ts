@@ -292,7 +292,12 @@ export const A_STOP_WORD = /^\s*(stop|unsubscribe|opt\s*out)\s*[.!]?\s*$/i;
 export const A_START_WORD = /^\s*(start|unstop|resume|opt\s*in)\s*[.!]?\s*$/i;
 
 /** A number Groundwork does not know (decision 106, item 5). */
-export const UNKNOWN_NUMBER_SAYING = 'Groundwork does not know this number yet. If you use Groundwork, add this number under Settings, or ask your admin to add it, then write again.';
+/**
+ * A NUMBER NOBODY HAS LINKED (Hafsah, 3 November 2026): one polite reply asking them to link it from the app or the link they were sent,
+ * said once to a number (said-once-to-a-number.ts), and nothing written or sent back from it until it is linked. Linking is the way a
+ * number is verified: the person adds it in Settings, or through the link they were sent, or an admin adds it under People.
+ */
+export const UNKNOWN_NUMBER_SAYING = 'Groundwork does not know this number yet, so nothing can be done from it. If this is your number, add it in the Groundwork app under Settings, or through the link you were sent, and then write again.';
 /* Decision 106 item 7: the last sentence is true because a decision that cannot go by WhatsApp goes by email (a-request-told-on-whatsapp.service.ts). */
 export const STOPPED_SAYING = 'Stopped. Nothing more comes to this number from Groundwork unless you reply START. Your check-ins are still in Groundwork. Leave and spending decisions still reach you by email.';
 export const RESUMED_SAYING = 'Resumed. Your check-in notices come here again.';

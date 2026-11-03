@@ -46,6 +46,7 @@ import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichO
   isAnAskWord, A_BACK_WORD, A_WISH_TO_CARRY_ON_THE_CHECK_IN, isAGreetingOrARequestToStart, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
   ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest, aReportWorthItsTemplate, THANKS_ONLY } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING, UNKNOWN_NUMBER_SAYING } from '../whatsapp/a-message-outside-the-window';
+import { theFirstTimeThisIsSaidTo, TOLD_THE_NUMBER_IS_NOT_LINKED } from '../whatsapp/said-once-to-a-number';
 import { keptOffThePhone, answerItInTheApp } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { WhichNumber, anInboundKey } from '../whatsapp/one-number-per-conversation';
 import {
@@ -121,12 +122,13 @@ export class WhatsAppForAnOrganisationService {
     /* The same words twice within a few seconds, under two message ids (a double tap, a phone that sent it again), are one answer and get one reply (B-105). */
     if (message.type === 'text' && typeof message.text?.body === 'string' && !(await this.notTheSameWordsJustNow(organizationId, WhatsAppService.normalize(from), message.text.body))) return;
     if (via === 'theirs') await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { lastInboundAt: new Date() } }).catch(() => undefined);
-    /* Blue ticks and "typing…", on the number this arrived on. AFTER the two guards above, so a
-       redelivery or a double tap raises nothing, and before the model is asked, which is the wait
-       it exists to cover. Never throws; a receipt that did not go does not cost the reply. */
-    /* Optional and caught here too (15 October): a sender without it, or one that throws, still leaves the reply to go. */
-    if (message.id && typeof this.whatsapp.weAreReadingThis === 'function') await this.whatsapp.weAreReadingThis(String(message.id), organizationId, via).catch(() => undefined);
     await this.route(organizationId, from, whatArrived(message), {
+      /* Blue ticks and "typing…", on the number this arrived on. AFTER the two guards above, so a
+         redelivery or a double tap raises nothing, and once the number is known to be somebody's, so a
+         number nobody has linked is sent nothing back but the one reply (Hafsah, 3 November 2026). Before
+         the model is asked, which is the wait it exists to cover. Never throws; a receipt that did not go
+         does not cost the reply. Optional (15 October): a sender without it still leaves the reply to go. */
+      reading: async () => { if (message.id && typeof this.whatsapp.weAreReadingThis === 'function') await this.whatsapp.weAreReadingThis(String(message.id), organizationId, via).catch(() => undefined); },
       /* A reply quoting one of our messages, or a template's button, carries that message's id (decision 106 item 1). */
       repliesTo: typeof message.context?.id === 'string' ? message.context.id : null,
       who: 'we do',
@@ -190,6 +192,8 @@ export class WhatsAppForAnOrganisationService {
       say: (text: string, about?: string | null) => Promise<unknown>;
       list: (prompt: string, rows: any[], asText: string) => Promise<unknown>;
       fetchMedia: (mediaId: string) => Promise<{ buffer: Buffer; mimeType: string } | null>;
+      /** Tells the sender their message is being read; only once they are known. */
+      reading?: () => Promise<unknown>;
     },
   ): Promise<void> {
     /* Everything below is the same routing whoever holds the number - the only difference is where
@@ -206,6 +210,14 @@ export class WhatsAppForAnOrganisationService {
       await out.say(asItReadsOnWhatsApp(t), about);
     };
 
+    /* WHO IT IS COMES FIRST: a number nobody has linked gets the one reply, and nothing else is read, written or sent back. */
+    const who = await this.whatsapp.whoIsWritingTo(organizationId, from);
+    if (!who.personId && !who.userId) {
+      if (await theFirstTimeThisIsSaidTo(this.prisma, from, TOLD_THE_NUMBER_IS_NOT_LINKED, organizationId)) await say(UNKNOWN_NUMBER_SAYING);
+      return;
+    }
+    await out.reading?.();
+
     if (arrived.kind === 'other') { await say('I can read text, photos, documents and location pins here. Say it in words, or send the file.'); return; }
     /* The same checks as every other door, on the one field this door plucks off a raw request. */
     if (arrived.kind === 'text') {
@@ -216,13 +228,8 @@ export class WhatsAppForAnOrganisationService {
       }
     }
 
-    const who = await this.whatsapp.whoIsWritingTo(organizationId, from);
     /* START said to begin the check-in, not to resume after STOP. */
     let beginning = false;
-    if (!who.personId && !who.userId) {
-      await say(UNKNOWN_NUMBER_SAYING);
-      return;
-    }
     /* The 24-hour window is measured from this, per person; and STOP means stop. */
     if (who.personId) await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappLastInboundAt: new Date() } }).catch(() => undefined);
     /*
@@ -1025,13 +1032,7 @@ export class WhatsAppForAnOrganisationService {
    */
   private async sayOnceThatProofIsShared(doc: any, organizationId: string, from: string): Promise<string> {
     if (doc?.visibility !== 'OPEN') return '';
-    const phone = WhatsAppService.normalize(from);
-    try {
-      const told = await this.prisma.whatsAppSend.findFirst({ where: { phone, kind: { startsWith: TOLD_PROOF_IS_SHARED } }, select: { id: true } });
-      if (told) return '';
-      await this.prisma.whatsAppSend.create({ data: { organizationId, phone, kind: TOLD_PROOF_IS_SHARED, checkInId: null, sentAt: null, failedAt: null, status: null, error: null } });
-    } catch { return ''; }
-    return ` ${PHOTOS_YOU_SEND_HERE_ARE_PROOF}`;
+    return (await theFirstTimeThisIsSaidTo(this.prisma, from, TOLD_PROOF_IS_SHARED, organizationId)) ? ` ${PHOTOS_YOU_SEND_HERE_ARE_PROOF}` : '';
   }
 
   /** Not talking to Ask Groundwork any more, and no pick waiting. Which check-in a message is for is never kept here: it is what it answers. */

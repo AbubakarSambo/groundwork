@@ -33,7 +33,11 @@ const platform = (orgs: { id: string; name: string }[], handle: any = async () =
     sendMessage: jest.fn(async (_to: string, text: string) => { sent.push(text); return { sent: true }; }),
   };
   const picks: any = { findUnique: jest.fn(async () => kept), upsert: jest.fn(async () => ({})), update: jest.fn(async () => ({})) };
-  const prisma: any = { whatsAppOrganisationPick: picks };
+  const told: any[] = [];
+  const prisma: any = {
+    whatsAppOrganisationPick: picks,
+    whatsAppSend: { findFirst: jest.fn(async ({ where }: any) => told.find((t) => t.phone === where.phone && t.kind.startsWith(where.kind.startsWith)) ?? null), create: jest.fn(async ({ data }: any) => { told.push(data); return data; }) },
+  };
   const inboundHandler: any = { handle: jest.fn(handle) };
   const c = new WhatsAppController({ get: () => undefined } as any, prisma, whatsapp, inboundHandler);
   return { c, sent, inboundHandler, whatsapp, picks };
@@ -52,7 +56,12 @@ describe('the platform handler', () => {
     await c.receive(inbound('hello') as any);
     expect(inboundHandler.handle).not.toHaveBeenCalled();
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toBe('Groundwork does not know this number yet. If you use Groundwork, add this number under Settings, or ask your admin to add it, then write again.');
+    /* Changed 3 November 2026 (Hafsah: one polite reply asking them to link it from the app or the link they were sent, one reply only). */
+    expect(sent[0]).toBe('Groundwork does not know this number yet, so nothing can be done from it. If this is your number, add it in the Groundwork app under Settings, or through the link you were sent, and then write again.');
+    await c.receive(inbound('hello again') as any);
+    await c.receive(inbound('are you there?') as any);
+    expect(sent).toHaveLength(1);
+    expect(inboundHandler.handle).not.toHaveBeenCalled();
   });
 
   it('a number on two rosters is asked which, as a numbered list, and nothing is guessed', async () => {
