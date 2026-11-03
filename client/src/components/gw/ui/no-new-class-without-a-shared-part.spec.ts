@@ -1,5 +1,3 @@
-/* KNOWN FAILURE (Release 1, pull request 1, 18 October 2026): this test fails on origin/staging (cbc1927ed) too, run the
-   same way, so this pull request does not cause it: it reads docs/the-parts-against-the-prototype.md, which staging does not have. Left in place, not changed, so it is fixed in its own change. */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'

@@ -1,5 +1,3 @@
-/* KNOWN FAILURE (Release 1, pull request 1, 18 October 2026): this test fails on origin/staging (cbc1927ed) too, run the
-   same way, so this pull request does not cause it: it expects the People and setup panel's new wording, which is not in this pull request. Left in place, not changed, so it is fixed in its own change. */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -85,15 +83,22 @@ function renderWith(over: Record<string, any> = {}) {
   return props
 }
 
+/*
+ * Changed on 3 November 2026 (F5). This spec asked for a "Who else can see it" section that says who may read the board and
+ * reports. It was never built, and the standards of 2 November forbid privacy notes on screens, so it now checks the page says
+ * nothing of the kind and offers no access grant. Who may read a check-in is the server's rule, and its tests are unchanged
+ * (api grounds/who-may-read-this-check-in.ts, checked in a-lead-in-the-department-does-not-read-an-evaluation.spec.ts and its neighbours).
+ */
 describe('who else can see it', () => {
-  it('on a team check-in, the people in it and admins', () => {
+  it('on a team check-in, no note about who can read it, and no access grant', () => {
     renderWith()
-    expect(screen.getByRole('heading', { name: 'Who else can see it' })).toBeTruthy()
-    expect(screen.getByText('Only the people above, and admins, can read the board and reports.')).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Who else can see it' })).toBeNull()
+    expect(document.body.textContent).not.toMatch(/can read the board and reports/)
     expect(screen.queryByText('Give someone access')).toBeNull()
   })
-  it('on somebody’s first 90 days, an admin only if they set it up or approved it', () => {
+  it('on somebody’s first 90 days, the same', () => {
     renderWith({ ground: ground({ scenario: 'NEW_HIRE' }) })
-    expect(screen.getByText('Only the people above can read the board and reports. An admin reads them only if they set this check-in up or approved it.')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/can read the board and reports|An admin reads them only if/)
+    expect(screen.queryByText('Give someone access')).toBeNull()
   })
 })

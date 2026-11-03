@@ -73,7 +73,9 @@ const GONE_FOR_GRACE = [
   'Nothing has come up three check-ins in a row yet. When something does, it shows here, and the person it is about sees it first.',
   'Each person sees what’s about them, and can answer it in their own words.',
   'Each one moving towards a decision. You always choose',
-  'No stall rule set yetGroundwork suggests dropping a deal after 3 working days with no answer from the customer. Until you set a rule, no deal is marked cold or dropped for going quiet. Upper Hill Offices has not answered since 13 October, which is more than that.Yes, 3 working daysNot now',
+  /* The stall item is read as its heading, its reason and its two buttons, each a line of its own (the decision card's parts). */
+  'No stall rule set yet',
+  'Groundwork suggests dropping a deal after 3 working days with no answer from the customer. Until you set a rule, no deal is marked cold or dropped for going quiet. Upper Hill Offices has not answered since 13 October, which is more than that.',
 ]
 const GONE_FOR_KEVIN = [
   'Today’s team picture is shared.',
@@ -89,7 +91,8 @@ const NEW_LINES = [
   'Nothing has come up three check-ins in a row yet.',
   'Today’s team report is shared.',
   'Open today’s team report.',
-  'Do you want to drop a deal after 3 working days with no answer?No deal is marked cold or dropped for going quiet until you set this. Upper Hill Offices has not answered since 13 October, which is more than that.Yes, 3 working daysNot now',
+  'Do you want to drop a deal after 3 working days with no answer?',
+  'No deal is marked cold or dropped for going quiet until you set this. Upper Hill Offices has not answered since 13 October, which is more than that.',
   'You have sold 49 of your 30 units so far, 46 paid (Savannah Cafe and Kilele Hotel) and 3 on your word (Roysambu Gym).',
 ]
 

@@ -138,7 +138,7 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     expect(document.body.textContent).toContain('One colleague and a third colleague have not checked in yet.')
     expect(document.body.textContent).not.toContain('You, one colleague')
     noNoteAsAName('lead, report')
-  })
+  }, 20_000) /* it opens four tabs of the whole check-in page in turn, which takes about five seconds on one worker */
 
   it('as a participant, on every tab that lists people, with no part of the note anywhere', async () => {
     me = { id: 'u-me', firstName: '', lastName: '', email: null, role: 'MEMBER' }
