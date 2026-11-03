@@ -57,7 +57,7 @@ describe('the platform handler', () => {
     expect(inboundHandler.handle).not.toHaveBeenCalled();
     expect(sent).toHaveLength(1);
     /* Changed 3 November 2026 (Hafsah: one polite reply asking them to link it from the app or the link they were sent, one reply only). */
-    expect(sent[0]).toBe('Groundwork does not know this number yet, so nothing can be done from it. If this is your number, add it in the Groundwork app under Settings, or through the link you were sent, and then write again.');
+    expect(sent[0]).toBe('Groundwork does not know this number yet, and it cannot act on what you send from it. To use this number, add it in the Groundwork app under Settings, or through the link you were sent, and then write again.');
     await c.receive(inbound('hello again') as any);
     await c.receive(inbound('are you there?') as any);
     expect(sent).toHaveLength(1);

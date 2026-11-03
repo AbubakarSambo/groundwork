@@ -42,7 +42,7 @@ describe('a number nobody has linked', () => {
     await svc.handle('org', body('wamid.3', 'Also record that I sold 3 units today.'), 'ours');
 
     expect(sent).toEqual([UNKNOWN_NUMBER_SAYING]);
-    expect(UNKNOWN_NUMBER_SAYING).toBe('Groundwork does not know this number yet, so nothing can be done from it. If this is your number, add it in the Groundwork app under Settings, or through the link you were sent, and then write again.');
+    expect(UNKNOWN_NUMBER_SAYING).toBe('Groundwork does not know this number yet, and it cannot act on what you send from it. To use this number, add it in the Groundwork app under Settings, or through the link you were sent, and then write again.');
     expect(conversation.sendMessage).not.toHaveBeenCalled();
     expect(whatsapp.weAreReadingThis).not.toHaveBeenCalled();
     expect(written).toEqual([{ table: 'whatsAppSend', data: expect.objectContaining({ phone: '+254700319901', kind: 'told:number-not-linked' }) }]);
