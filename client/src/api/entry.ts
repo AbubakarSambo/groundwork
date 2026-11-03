@@ -289,8 +289,10 @@ export const entryApi = {
     anchorItems?: Record<string, unknown>,
     /* What she said in setup, in her own words, so her report knows her own role and each person's part (15 October). */
     leadsOwnWords?: string[],
+    /* Which setup this is, the key its save carries, so a save pressed before the report lands keeps this same report (3 November 2026). */
+    setupKey?: string,
   ) =>
-    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel, peopleNamed, anchorItems, ...(leadsOwnWords?.length ? { leadsOwnWords } : {}) }).then(r => r.data),
+    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel, peopleNamed, anchorItems, ...(leadsOwnWords?.length ? { leadsOwnWords } : {}), ...(setupKey ? { setupKey } : {}) }).then(r => r.data),
 
   commit: (payload: {
     groundLabel: string

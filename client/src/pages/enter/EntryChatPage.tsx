@@ -2375,6 +2375,8 @@ export function EntryChatPage() {
   })
 
   const [reportTurnsForRetry, setReportTurnsForRetry] = useState<Turn[] | null>(null)
+  /* A signed-in lead may save while her report is still being written (3 November 2026). */
+  const savedBeforeTheReport = useRef(false)
 
   /**
    * ONE NAME FOR THE FAILURE STATE.
@@ -2391,11 +2393,14 @@ export function EntryChatPage() {
     try {
       /* The anchor's seven items go with the report too (request 166), so the lead's reveal says
          what she said rather than "not written down yet". Every other draft sends nothing here. */
-      const res = await entryApi.report(turns, scenario || undefined, groundName || undefined, onboardingSelections.peopleNamed, isAnchorDraft() ? onboardingSelections.anchorItems : undefined, theirOwnSetupWords(onboardingHistory))
+      const res = await entryApi.report(turns, scenario || undefined, groundName || undefined, onboardingSelections.peopleNamed, isAnchorDraft() ? onboardingSelections.anchorItems : undefined, theirOwnSetupWords(onboardingHistory), user ? theSetupKey() : undefined)
+      /* Saved before it landed (3 November 2026): the server keeps this report on the check-in, and this page has gone. */
+      if (savedBeforeTheReport.current) return
       setSessionReport(res.report)
       setReportTurnsForRetry(null)
       persistCheckin(turns, true, res.report ? JSON.stringify(res.report) : '')
     } catch {
+      if (savedBeforeTheReport.current) return
       setSessionReport(null)
       persistCheckin(turns, true, '')
       toast.error('We could not generate your session report. Your responses are saved.')
@@ -3225,6 +3230,7 @@ export function EntryChatPage() {
     setSavingAsUser(true)
     try {
       const res = await entryApi.commit({ ...buildCommitPayload(), history })
+      if (!sessionReport) savedBeforeTheReport.current = true
       /** The rail caches the grounds list, so it has to be told the ground exists. GW-019. */
       queryClient.invalidateQueries({ queryKey: ['grounds'] })
       clearEntryHandover()
@@ -4914,7 +4920,7 @@ export function EntryChatPage() {
             */}
             {generatingReport && !sessionReport && (
               <div className="gwui-ec-savecard-status" role="status" aria-live="polite">
-                <SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. It is the only slow step." />
+                <SlowStep steps={CLOSING_STEPS} note={user ? 'This one takes about half a minute. You do not have to wait for it. Save now, and your report is kept with your check-in when it is ready.' : 'This one takes about half a minute. It is the only slow step.'} />
               </div>
             )}
 
@@ -5078,7 +5084,8 @@ export function EntryChatPage() {
             )}
 
             {/* What happens next - shown after report is ready, before signup */}
-            {(sessionReport || (!generatingReport && closed)) && !emailSent && (
+            {/* Drawn while the report is still being written too, so a lead who saves first reads what she is saving (3 November 2026). */}
+            {(sessionReport || closed) && !emailSent && (
               <>
               {/*
                 SENDING NOW WAS THE ONLY OPTION, AND SAVING WAS THE TRIGGER.
@@ -5192,7 +5199,7 @@ export function EntryChatPage() {
               */}
             {user && !emailSent ? (
               <div className="gwui-ec-savecard-section">
-                <Button kind="primary" wide onClick={saveAsSignedInUser} disabled={savingAsUser || (generatingReport && !sessionReport)}>
+                <Button kind="primary" wide onClick={saveAsSignedInUser} disabled={savingAsUser}>
                   {savingAsUser ? 'Saving…' : 'Save this'}
                 </Button>
                 <div className="gwui-ec-savecard-helper">
