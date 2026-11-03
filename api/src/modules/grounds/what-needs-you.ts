@@ -1,4 +1,4 @@
-import type { ThisSession } from './this-sessions-count';
+import { theClocksSessionIn, type TheCountAsServed } from './the-count-as-served';
 import { theDayInWords } from '../board/the-day-in-words';
 import { aQuietSessionOnADayTheyCheckedIn, theDayIn, theDaysTheyCheckedIn } from '../board/a-day-they-checked-in';
 import { THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
@@ -105,8 +105,8 @@ export interface ListedCheckIn {
   resolvedAt?: string | Date | null;
   endsAt?: string | Date | null;
   reportWaitingForMe?: boolean;
-  /** Who is in this session and who has answered it, the one count (this-sessions-count.ts), as the list serves it. */
-  thisSession?: ThisSession | null;
+  /** The one count, as the list serves it (the-count-as-served.ts). */
+  theCount?: TheCountAsServed | null;
   latestSummary?: string | null;
   participants?: { id: string; userId?: string | null; notLetIn?: boolean; user?: { firstName?: string | null } | null }[];
   checkIns?: {
@@ -372,8 +372,8 @@ export function whatNeedsYou(
     /* Who has checked in, for whoever runs it or an admin. The check-in with the most people wins. */
     if (!over && mayName) {
       /* The session the one count is about, where the list serves it (Hafsah, 30 October 2026, first-experience round 3). */
-      const served = g.thisSession ?? null;
-      const n = served?.session ?? teamRound;
+      const served = g.theCount?.said ? theClocksSessionIn(g.theCount) : null;
+      const n = served ? g.theCount!.session : teamRound;
       /* Somebody an admin has not let in cannot be asked, so is neither counted nor named (request 95, decision 77). */
       const notLetInIds = new Set((g.participants ?? []).filter(isNotLetInYet).map((p) => p.id));
       const rows = sessions.filter((c) => c.sessionNumber === n && !notLetInIds.has(c.participantId));
@@ -386,8 +386,8 @@ export function whatNeedsYou(
       const counted = g.glance?.progress;
       const useCounted = !!counted && typeof counted.ofPeople === 'number' && Array.isArray(counted.waitingOn);
       const heldOut = useCounted ? counted!.waitingOn!.filter((id) => notLetInIds.has(id)).length : 0;
-      const total = served ? served.ofPeople : useCounted ? counted!.ofPeople! - heldOut : rows.length;
-      const answered = served ? served.answered : useCounted ? counted!.answeredThisRound ?? 0 : rows.filter((c) => c.status === 'COMPLETED').length;
+      const total = served ? served.onTheCheckIn.length : useCounted ? counted!.ofPeople! - heldOut : rows.length;
+      const answered = served ? served.answered.length : useCounted ? counted!.answeredThisRound ?? 0 : rows.filter((c) => c.status === 'COMPLETED').length;
       /*
        * NOBODY IS WAITED ON FOR A SESSION THAT HAS NOT OPENED, OR ON A DAY THEY CHECKED IN (polish round 15; board/a-day-they-checked-in.ts).
        * Wanjiru's Today read "Aisha has not checked in yet" every evening that week, about the next day's session written ahead of time, on
@@ -442,7 +442,7 @@ export function whatNeedsYou(
              answered session 1. Two more ... have not joined yet. Sarah and David have not checked in yet." The same words the board and
              the check-in's page say (this-sessions-count.ts). */
           text: served
-            ? `In ${g.label}, ${served.says.charAt(0).toLowerCase()}${served.says.slice(1)}${[whoHasNotYet(missing), whoDidNotCheckIn(missed)].filter(Boolean).map((x) => ` ${x}`).join('')}`
+            ? `In ${g.label}, ${g.theCount!.said!.says.charAt(0).toLowerCase()}${g.theCount!.said!.says.slice(1)}${[whoHasNotYet(missing), whoDidNotCheckIn(missed)].filter(Boolean).map((x) => ` ${x}`).join('')}`
             : answered === 0
             ? `In ${g.label}, nobody has checked in for ${theSession(n)}${missing.length ? ' yet' : ''}.${missed.length ? ` ${whoDidNotCheckIn(missed)}` : ''}${notJoined ? ` ${notJoined}` : ''}`
             : `In ${g.label}, ${answered} of ${total} have checked in for ${theSession(n)}. ${said}`,

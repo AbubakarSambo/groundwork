@@ -168,6 +168,7 @@ import { Page, CheckInHeader, Section, Placed, UpdatedLine, Panel, RowList, Row,
 import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
+import { theClocksSessionSaid } from '@/lib/the-one-count'
 import { KindOfWorkBanner, WorkRecordsSections, YourOwnRecordsSections, TheShapeOfTheWorkStrip, sectionHeading } from './WorkRecords'
 import {
   RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockersSection,
@@ -3194,11 +3195,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {(b as any).howItIsGoing?.glance && !((b as any).headline && !(b as any).headline.answer) && (
           <div className="gwui-mt-16">
-            <HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} theCountSays={(b as any).thisSession?.says ?? null} />
+            <HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere && viewerChecksIn} theCountSays={theClocksSessionSaid(b)?.says ?? null} />
             {/* The way to what each person said, once somebody else has answered this session (round 6; GroundAdminPage says the same). */}
-            {(b as any).thisSession?.othersHaveAnswered && (b as any).thisSession?.session != null && (
+            {theClocksSessionSaid(b)?.othersHaveAnswered && (
               <Note>
-                <Link className="gwui-plain-link" to={`/grounds/${id}/session/${(b as any).thisSession.session}`}>{SEE_WHAT_EACH_PERSON_SAID}</Link>
+                <Link className="gwui-plain-link" to={`/grounds/${id}/session/${theClocksSessionSaid(b)!.session}`}>{SEE_WHAT_EACH_PERSON_SAID}</Link>
               </Note>
             )}
           </div>

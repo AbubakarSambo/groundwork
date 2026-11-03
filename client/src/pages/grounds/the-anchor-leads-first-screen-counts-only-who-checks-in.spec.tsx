@@ -40,8 +40,8 @@ beforeEach(() => vi.clearAllMocks())
 
 /* The count is the server's one count now (api this-sessions-count.ts, whose spec pins that the anchor's lead and her set-up
    conversation are left out; Hafsah, 30 October 2026). Each fixture carries it as GET /grounds/:id serves it. */
-const anAnchor = (people: any[], checkIns: any[], thisSession: any = { session: 1, answered: 0, ofPeople: 0, everyoneIn: false, notCountedSays: null, says: '' }) => ({
-  thisSession,
+/* Changed 3 November (F1 part 2): one served count, theCount, in place of `thisSession` beside `answeredBySession`. */
+const anAnchor = (people: any[], checkIns: any[], said: any = { session: 1, everyoneIn: false, says: '' }) => ({
   id: 'g1', label: 'Help my team understand', status: 'ACTIVE', scenario: 'HELP_TEAM_UNDERSTAND', timelineDays: 30,
   cadence: 'WEEKLY', plannedSessions: 4, daysLeft: 30, overdue: 0, initiatorId: 'u-amina', endsOn: '2026-11-07',
   participants: [
@@ -56,10 +56,10 @@ const anAnchor = (people: any[], checkIns: any[], thisSession: any = { session: 
   sessionClock: { currentSession: 1, plannedSessions: 4, says: 'Session 1 of 4.', whileOpen: null },
   boardRenders: true,
   /* As the server counts it: the anchor's managing lead is never in a round; her team is, and a finished session is an answer. */
-  answeredBySession: aServedCount({ 1: {
+  theCount: aServedCount({ 1: {
     on: people.map((p) => p.id),
     answered: checkIns.filter((c) => c.status === 'COMPLETED').map((c) => c.participantId),
-  } }),
+  } }, said),
 })
 
 describe("the anchor lead's first screen", () => {

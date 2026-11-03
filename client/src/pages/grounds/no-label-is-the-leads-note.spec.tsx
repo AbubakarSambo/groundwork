@@ -62,7 +62,7 @@ function groundFor(reader: 'lead' | 'participant') {
     commitments: [{ id: 'k1', participantId: 'c', text: 'Send the price list.', explicit: true }],
     signals: [],
     /* As the server counts session 1: the lead did not answer it, so she is not in it. */
-    answeredBySession: aServedCount({ 1: { on: ['a', 'b', 'c'], answered: ['b'] } }),
+    theCount: aServedCount({ 1: { on: ['a', 'b', 'c'], answered: ['b'] } }),
   }
 }
 

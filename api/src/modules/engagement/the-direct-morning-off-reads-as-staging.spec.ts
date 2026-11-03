@@ -182,9 +182,9 @@ it('serves every reader exactly what origin/staging served, with the direct morn
   const before: Record<string, any> = (AS_STAGING_SERVED_IT as any).default ?? AS_STAGING_SERVED_IT;
   expect(Object.keys(out).sort()).toEqual(Object.keys(before).sort());
   for (const key of Object.keys(before)) {
-    /* `thisSession` is the one count of who has answered (grounds/this-sessions-count.ts, Hafsah, 30 October 2026), served to whoever
-       runs it; staging had none. It is checked in this-sessions-count.spec.ts, and left out of the comparison like `directMorning`. */
-    const now = key.startsWith('board.') ? (({ directMorning, thisSession: _one, ...rest }: any) => { expect(directMorning).toBe(false); return rest; })(out[key]) : out[key];
+    /* `theCount` is the one count of who has answered (grounds/the-count-as-served.ts; `thisSession` until 3 November), served to every
+       reader shaped for them; staging had none. It is checked in this-sessions-count.spec.ts, and left out of the comparison like `directMorning`. */
+    const now = key.startsWith('board.') ? (({ directMorning, theCount: _one, ...rest }: any) => { expect(directMorning).toBe(false); return rest; })(out[key]) : out[key];
     expect([key, now]).toEqual([key, before[key]]);
   }
   /* And it is not empty: the summary, the emails and the openings were all sent. */

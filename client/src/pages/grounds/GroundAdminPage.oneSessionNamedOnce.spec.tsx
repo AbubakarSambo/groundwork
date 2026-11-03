@@ -60,10 +60,9 @@ describe('B-053: the header names one session, and counts who has checked in for
          `openRound` has already moved to session 2, which nobody has answered - the exact split that
          produced the bug. */
       sessionClock: { currentSession: 1, plannedSessions: 12, says: 'Session 1 of 12.', whileOpen: null },
-      /* The count for that same session, from the server's one count (api this-sessions-count.ts; Hafsah, 30 October 2026). */
-      thisSession: { session: 1, answered: 1, ofPeople: 1, everyoneIn: true, notCountedSays: null, says: 'The one person in it has checked in for session 1.' },
+      /* The count for that same session, from the server's one count (api grounds/the-count-as-served.ts; Hafsah, 30 October 2026). Changed 3 November (F1 part 2): one served count, theCount, in place of `thisSession` beside `answeredBySession`; the same sentences. */
       boardRenders: true,
-      answeredBySession: aServedCount({ 1: { on: ['p-lead'], answered: ['p-lead'] }, 2: { on: [], answered: [] } }),
+      theCount: aServedCount({ 1: { on: ['p-lead'], answered: ['p-lead'] }, 2: { on: [], answered: [] } }, { session: 1, everyoneIn: true, says: 'The one person in it has checked in for session 1.' }),
     }
     ;(groundsApi.get as any).mockResolvedValue(g)
     renderPage()

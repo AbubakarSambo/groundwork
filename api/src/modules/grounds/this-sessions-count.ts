@@ -5,7 +5,7 @@ import { whoHasNotJoinedYet } from './invited-not-joined-yet';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { totalSessionsFor } from './session-count';
 import { aNumberInWords } from '../engagement/a-number-in-words';
-import { whoHasAnswered } from '../reports/how-many-have-answered';
+import { whoHasAnswered, eachSessionsServedCount, type TheServedCount } from '../reports/how-many-have-answered';
 import { awayUntilOn, type Stretch } from '../suites/who-is-away';
 import { nameToCall, SOMEONE } from '../engagement/a-name-to-call-them';
 import { theNotJoinedYetLine } from './invited-not-joined-yet';
@@ -147,7 +147,7 @@ export function whoHoldsTheClock(participants: readonly any[]): Set<string> {
 export function theSessionAndItsCount(
   g: WhatTheCountReads,
   opts: { now?: Date; handOn?: boolean; leave?: Map<string, Stretch[]>; names?: { readerUserId?: string | null } } = {},
-): { clock: TheSessionClock; count: ThisSession } {
+): { clock: TheSessionClock; count: ThisSession; bySession: Record<number, TheServedCount> } {
   const now = opts.now ?? new Date();
   const participants = (g.participants ?? []) as any[];
   const rows = ((g.checkIns ?? []) as any[]).filter((c) => !c.isSetup);
@@ -171,7 +171,17 @@ export function theSessionAndItsCount(
    * Grace were invited and have not joined yet." This sentence is only who is truly not counted: not let in yet.
    */
   const notCountedSays = progress.notCountedSays ?? null;
-  const one = theCountOfASession(participants, rows, clock.currentSession, g.scenario, opts.leave, now);
+  /*
+   * EVERY SESSION'S COUNT, AND THIS SESSION'S FROM IT (F1 part 2, 3 November 2026): the list, the check-in page and the board served
+   * `answeredBySession` from a second read of the people beside this count; now both come from these rows, in one call.
+   */
+  const bySession = eachSessionsServedCount(
+    participants.map((p) => ({ ...p, awayUntil: awayUntilOn(opts.leave?.get(p.id), now), checkIns: rows.filter((c) => c.participantId === p.id) })),
+    g.scenario ?? null,
+    clock.currentSession,
+  );
+  const theClocks = bySession[clock.currentSession];
+  const one = { counted: theClocks.onTheCheckIn, answered: theClocks.answered.length, ofPeople: theClocks.onTheCheckIn.length, notAnswered: theClocks.onTheCheckIn.filter((id) => !theClocks.answered.includes(id)) };
   /* With only one person counted, the count already says it of them; their name is not said twice. */
   const whoSays = opts.names && one.ofPeople > 1 ? whoSaid(participants, rows, clock.currentSession, one.counted, one.notAnswered, opts.names.readerUserId) || null : null;
   const readerIs = (id: string) => !!opts.names?.readerUserId && participants.find((p) => p.id === id)?.userId === opts.names.readerUserId;
@@ -190,5 +200,5 @@ export function theSessionAndItsCount(
     whoSays,
     othersHaveAnswered,
   };
-  return { clock, count };
+  return { clock, count, bySession };
 }

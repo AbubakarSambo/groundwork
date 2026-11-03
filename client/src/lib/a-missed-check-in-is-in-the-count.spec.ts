@@ -31,7 +31,7 @@ describe('a missed check-in stays in the count, and the lead\'s own row never da
   ]
   const rows = buildSessionRows({ participants, checkIns, roundCompletions: [{ sessionNumber: 1 }, { sessionNumber: 2 }], scenario: 'SALES_TEAM_CHECK',
     /* As the server counts these rows: Jared's quiet closes are not answers; Esther is in session 1, which she answered, not session 2. */
-    answeredBySession: aServedCount({ 1: { on: ['p-esther', 'p-collins', 'p-hassan', 'p-amina', 'p-jared'], answered: ['p-esther', 'p-collins', 'p-hassan', 'p-amina'] }, 2: { on: ['p-collins', 'p-hassan', 'p-amina', 'p-jared'], answered: ['p-collins', 'p-hassan', 'p-amina'] } }) }, 'u-esther', (p) => p.name)
+    theCount: aServedCount({ 1: { on: ['p-esther', 'p-collins', 'p-hassan', 'p-amina', 'p-jared'], answered: ['p-esther', 'p-collins', 'p-hassan', 'p-amina'] }, 2: { on: ['p-collins', 'p-hassan', 'p-amina', 'p-jared'], answered: ['p-collins', 'p-hassan', 'p-amina'] } }) }, 'u-esther', (p) => p.name)
   const row = (n: number) => rows.find((r) => r.sessionNumber === n)!
 
   it('session 1 reads 4 of 5 and names Jared, and is dated the team\'s first day, 19 October', () => {

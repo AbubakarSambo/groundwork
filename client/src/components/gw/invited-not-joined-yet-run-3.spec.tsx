@@ -29,7 +29,7 @@ describe('invited, not joined yet, on the check-in page', () => {
   /* CHANGED 1 NOVEMBER 2026: everyone on the check-in is counted, as the prototype does (Hafsah approved), and as the server's one count does. */
   it('she is in the count, and the roster names her as not joined', () => {
     /* As the server serves it (its rule is checked in the-one-count-as-every-page-reads-it.spec.ts); the page counts nothing itself. */
-    const ground = { answeredBySession: { 4: { sessionNumber: 4, onTheCheckIn: ['p-amina', 'p-jared', 'p-hassan'], answered: ['p-hassan'], notYet: ['p-jared'], notJoined: ['p-amina'], declined: [], notLetIn: [] } } }
+    const ground = { theCount: { session: 4, said: null, bySession: { 4: { sessionNumber: 4, onTheCheckIn: ['p-amina', 'p-jared', 'p-hassan'], answered: ['p-hassan'], notYet: ['p-jared'], notJoined: ['p-amina'], declined: [], notLetIn: [] } } } }
     expect(whoTheSessionCounts(people, ground, 4).map((p) => p.id)).toEqual(['p-amina', 'p-jared', 'p-hassan'])
     expect(theCountOf(ground, 4)?.notJoined).toEqual(['p-amina'])
   })

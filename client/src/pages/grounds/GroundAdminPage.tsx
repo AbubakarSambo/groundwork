@@ -54,6 +54,7 @@ import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { SendTheReportToEveryone } from '@/components/gw/SendTheReportToEveryone'
 import { howManyHaveNotAnsweredYet, numberUpToTenInWords, andWhoIsNotCountedYet } from '@/lib/a-number-up-to-ten-in-words'
+import { theClocksSessionSaid } from '@/lib/the-one-count'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -1305,10 +1306,10 @@ export function GroundAdminPage() {
   /*
    * WHO IS IN THIS SESSION AND WHO HAS ANSWERED IT, FROM THE SERVER'S ONE COUNT (Hafsah, 30 October 2026, first-experience round 1).
    * This page counted on the screen (`whoIsInRound`) while the board and Ask counted their own way, and a field lead read three
-   * different counts of one session. `ground.thisSession` is the board's own count for the clock's session (api this-sessions-count.ts),
+   * different counts of one session. The served count's own sentences for the clock's session (api grounds/the-count-as-served.ts),
    * with who it leaves out said beside it. Null where this reader is not shown the others.
    */
-  const thisSession = (ground as any).thisSession as { session?: number; answered: number; ofPeople: number; everyoneIn: boolean; says: string; othersHaveAnswered?: boolean | null } | null | undefined
+  const thisSession = theClocksSessionSaid(ground)
   /**
    * WHY THE SESSION NUMBER JUST WENT DOWN.
    *
@@ -1724,7 +1725,7 @@ export function GroundAdminPage() {
                (final walk): "1 of the 3 have not answered yet." is now said in words, with the
                right verb for one person left over - "One of the three has not answered yet." */
             /* And who, by name, from the same served count (round 6: "Two of the three have not answered yet" named nobody). */
-            : a.kind === 'waiting' ? { t: [howManyHaveNotAnsweredYet(a.total - a.done, a.total), (thisSession as any)?.whoSays ?? (thisSession as any)?.notJoinedSays, andWhoIsNotCountedYet(a.notLetIn).trim()].filter(Boolean).join(' ') }
+            : a.kind === 'waiting' ? { t: [howManyHaveNotAnsweredYet(a.total - a.done, a.total), thisSession?.whoSays ?? thisSession?.notJoinedSays, andWhoIsNotCountedYet(a.notLetIn).trim()].filter(Boolean).join(' ') }
             : null
           return say ? <Note tone={say.tone}>{say.t}</Note> : null
         })()}

@@ -23,8 +23,8 @@ const people = [
 ]
 const row = (participantId: string, sessionNumber: number, status: string) => ({ participantId, sessionNumber, status })
 
-function whatTheLeadReads(checkIns: ReturnType<typeof row>[], answeredBySession: ReturnType<typeof aServedCount>): string {
-  const a = railAttention({ status: 'ACTIVE', participants: people, checkIns, scenario: 'NEW_PROJECT', answeredBySession }, 'u-lena', NOW)
+function whatTheLeadReads(checkIns: ReturnType<typeof row>[], theCount: ReturnType<typeof aServedCount>): string {
+  const a = railAttention({ status: 'ACTIVE', participants: people, checkIns, scenario: 'NEW_PROJECT', theCount }, 'u-lena', NOW)
   if (a.kind !== 'waiting') return `(${a.kind})`
   return howManyHaveNotAnsweredYet(a.total - a.done, a.total) + andWhoIsNotCountedYet(a.notLetIn)
 }

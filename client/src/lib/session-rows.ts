@@ -1,5 +1,5 @@
 import type { SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
-import { theCountOf, type WhoHasAnswered } from '@/lib/the-one-count'
+import { theCountOf, type TheCountAsServed } from '@/lib/the-one-count'
 
 
 /** A session the clock closed where the person said nothing (closedReason 'auto_closed', no turn of theirs). Rows served without either field read as before. */
@@ -51,7 +51,7 @@ export function isSessionShared(
  * were never going to answer.
  */
 export function buildSessionRows(
-  ground: { participants?: any[]; checkIns?: any[]; roundCompletions?: any[]; scenario?: string | null; answeredBySession?: Record<string | number, WhoHasAnswered> | null } | null | undefined,
+  ground: { participants?: any[]; checkIns?: any[]; roundCompletions?: any[]; scenario?: string | null; theCount?: TheCountAsServed | null } | null | undefined,
   userId: string | null | undefined,
   labelInASentence: (p: any) => string,
   /**
@@ -61,7 +61,7 @@ export function buildSessionRows(
    * participant, `ground.participants` has one entry even on a two-person check-in, where the
    * board's own answer (`GET /grounds/:id/board`) sends every party's name to everybody on it (the
    * lead is not a peer whose visibility this withholds, and a party's own name on a roster they are
-   * already on is nothing new). The count itself is the server's (answeredBySession), so it is the whole check-in's
+   * already on is nothing new). The count itself is the server's (theCount), so it is the whole check-in's
    * whichever list the page has; this list only names the people still waited on.
    */
   fullParticipants?: { id: string; managingOnly?: boolean | null; notLetInYet?: boolean | null }[] | null,

@@ -38,9 +38,9 @@ const PEOPLE = [
 ]
 /* Only Aisha's row is on the screen: a screen counting for itself would say "1 of 1". */
 const CHECK_INS = [{ id: 'c1', participantId: 'p-aisha', sessionNumber: 1, status: 'COMPLETED', completedAt: '2026-10-31T08:40:00Z' }]
-/* Who has answered each session, from the same one count, as the server serves it beside thisSession. */
-const ANSWERED_BY_SESSION = aServedCount({ 1: { on: ['p-aisha', 'p-sarah', 'p-david', 'p-fatuma', 'p-james'], answered: ['p-aisha'], notJoined: ['p-fatuma', 'p-james'] } })
-const GROUND = { participants: PEOPLE, checkIns: CHECK_INS, roundCompletions: [], scenario: 'SALES', thisSession: THIS_SESSION, answeredBySession: ANSWERED_BY_SESSION }
+/* Who has answered each session, and the clock's session said, in the one served shape. Changed 3 November (F1 part 2): one served count, theCount, in place of `thisSession` beside `answeredBySession`; the same sentences. */
+const THE_COUNT = aServedCount({ 1: { on: ['p-aisha', 'p-sarah', 'p-david', 'p-fatuma', 'p-james'], answered: ['p-aisha'], notJoined: ['p-fatuma', 'p-james'] } }, THIS_SESSION)
+const GROUND = { participants: PEOPLE, checkIns: CHECK_INS, roundCompletions: [], scenario: 'SALES', theCount: THE_COUNT }
 
 describe('one count on every screen a first-time lead reads', () => {
   it('the board\'s header says the served sentence', () => {
@@ -51,7 +51,7 @@ describe('one count on every screen a first-time lead reads', () => {
 
   it('The team today opens with the served sentence', () => {
     const b = {
-      thisSession: THIS_SESSION,
+      theCount: THE_COUNT,
       eachPerson: [{ participantId: 'p-sarah', reason: 'has not answered', says: 'Sarah Chebet has not checked in for this session yet.' }],
       eachPersonToday: [{ participantId: 'p-sarah', who: 'Sarah Chebet', line: 'Sarah Chebet has not checked in for this session yet.' }],
       patterns: [],

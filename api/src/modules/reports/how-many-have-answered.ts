@@ -205,10 +205,24 @@ export async function whoHasAnsweredInEachSession(prisma: any, groundId: string,
   const people: SomebodyWhoMightAnswer[] = rows
     .filter((p) => !onlyThese || onlyThese.has(p.id))
     .map((p) => ({ ...p, notLetIn: notLetIn.has(p.id), notJoinedYet: notJoined.has(p.id), awayUntil: away.get(p.id) ?? null }));
-  /* Every session so far, and the next, so a page asking about a round nobody has a row for yet reads it too. */
-  const last = Math.max(0, ...rows.flatMap((p) => (p.checkIns ?? []).map((c: any) => Number(c.sessionNumber) || 0)));
+  return eachSessionsServedCount(people as any, ground?.scenario);
+}
+
+/**
+ * THE ONE COUNT OF EVERY SESSION, FROM PEOPLE ALREADY MARKED (who has not joined, who is not let in, who is away) AND CARRYING THEIR
+ * OWN ROWS: the pure half of whoHasAnsweredInEachSession, which the check-in page, the list and the board call on the rows they have
+ * already read (grounds/this-sessions-count.ts, theSessionAndItsCount), so the clock's session and every other session are one count.
+ * Every session so far, and the next, so a page asking about a round nobody has a row for yet reads it too; `upTo` adds the sessions up
+ * to the clock's own.
+ */
+export function eachSessionsServedCount(
+  people: (SomebodyWhoMightAnswer & { checkIns?: { sessionNumber?: number | null }[] | null })[],
+  scenario?: string | null,
+  upTo = 0,
+): Record<number, TheServedCount> {
+  const last = Math.max(0, upTo - 1, ...(people ?? []).flatMap((p) => (p.checkIns ?? []).map((c: any) => Number(c.sessionNumber) || 0)));
   const sessions = Array.from({ length: last + 1 }, (_, i) => i + 1);
-  return Object.fromEntries(sessions.map((n) => [n, asServed(whoHasAnswered(people, n, ground?.scenario))]));
+  return Object.fromEntries(sessions.map((n) => [n, asServed(whoHasAnswered(people as any, n, scenario))]));
 }
 
 /** The one count of each session kept to the people a reader may see: the same as counting only them, since each person counts alone. */

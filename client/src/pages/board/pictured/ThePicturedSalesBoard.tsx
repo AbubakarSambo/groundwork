@@ -17,6 +17,7 @@ import './pictured-board.css'
 import { useTheDirectMorning } from '@/lib/the-direct-morning'
 import { TheNudgeButton } from './TheNudgeButton'
 import { theMorningLines, theMorningNeedsNotOnTheBoard, nothingNeedsYou, WhatIsClosing } from './TheMorningOnTheBoard'
+import { theClocksSessionSaid } from '@/lib/the-one-count'
 
 /**
  * THE SALES BOARD AS PICTURED, FOR WHOEVER RUNS IT (screen match, 16 October; the target is
@@ -735,7 +736,7 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
   return (
     <Section heading="The team today" note="Each person’s line, their last 10 check-ins, and what keeps coming up">
       {/* Who has answered this session, the one count Today, the check-in's page and Ask say (api this-sessions-count.ts). */}
-      {b.thisSession?.says && <p className="pb-foot" data-testid="the-team-today-count">{b.thisSession.says}</p>}
+      {theClocksSessionSaid(b)?.says && <p className="pb-foot" data-testid="the-team-today-count">{theClocksSessionSaid(b)!.says}</p>}
       <div className="pb-rows">
         {rows.map((r) => {
           /*

@@ -144,7 +144,7 @@ describe('buildSessionRows: somebody not let in yet is not counted', () => {
       ],
       roundCompletions: [],
       /* As the server counts it: Faraji, held at the door and not answered, is not counted. */
-      answeredBySession: aServedCount({
+      theCount: aServedCount({
         1: { on: ['p-rukia', 'p-baraka', 'p-amani', 'p-neema', 'p-colleague'], answered: ['p-rukia', 'p-baraka', 'p-amani', 'p-neema'], notLetIn: ['p-faraji'] },
         2: { on: ['p-rukia', 'p-baraka', 'p-amani', 'p-neema', 'p-colleague'], answered: ['p-rukia', 'p-amani'], notLetIn: ['p-faraji'] },
       }),
@@ -179,7 +179,7 @@ describe('buildSessionRows: a restricted roster, given the full one from the boa
     ],
     roundCompletions: [{ sessionNumber: 1, completedAt: '2026-09-26T16:01:40.000Z' }],
     /* The server counts the whole check-in, whichever rows this reader was sent: both answered session 1, Tobi session 2. */
-    answeredBySession: aServedCount({ 1: { on: ['p-tobi', 'p-director'], answered: ['p-tobi', 'p-director'] }, 2: { on: ['p-tobi', 'p-director'], answered: ['p-tobi'] } }),
+    theCount: aServedCount({ 1: { on: ['p-tobi', 'p-director'], answered: ['p-tobi', 'p-director'] }, 2: { on: ['p-tobi', 'p-director'], answered: ['p-tobi'] } }),
   }
   const fullParticipants = [
     { id: 'p-tobi', managingOnly: false },
@@ -239,7 +239,7 @@ describe('buildSessionRows: agrees with the board’s own grid about who joined 
     ],
     roundCompletions: [],
     /* As the server counts it, which does not know when somebody joined: Tendai is counted on both sessions. */
-    answeredBySession: aServedCount({ 1: { on: ['p-amani', 'p-tendai'], answered: ['p-amani'] }, 2: { on: ['p-amani', 'p-tendai'], answered: ['p-amani'] } }),
+    theCount: aServedCount({ 1: { on: ['p-amani', 'p-tendai'], answered: ['p-amani'] }, 2: { on: ['p-amani', 'p-tendai'], answered: ['p-amani'] } }),
   }
   /* The server's own grid: Tendai is "na" on session 1 (never on it), and waiting on session 2. */
   const onSessionFromGrid = new Map<string, Set<number>>([
@@ -276,7 +276,7 @@ describe('buildSessionRows: a roster that is longer only by somebody not let in 
       ],
       checkIns: [{ id: 'c1', participantId: 'p-a', sessionNumber: 38, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-23T14:00:00.000Z' }],
       roundCompletions: [],
-      answeredBySession: aServedCount({ 38: { on: ['p-a', 'p-b'], answered: ['p-a'] } }),
+      theCount: aServedCount({ 38: { on: ['p-a', 'p-b'], answered: ['p-a'] } }),
     }
     const full = [...ground.participants, { id: 'p-peter', managingOnly: false }]
     const row = buildSessionRows(ground, 'u-w', (p: any) => p.name ?? 'a colleague', full).find((r) => r.sessionNumber === 38)

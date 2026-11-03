@@ -186,6 +186,7 @@ import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-q
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { whoHasNotJoinedYet, theNotJoinedYetLine } from '../grounds/invited-not-joined-yet';
 import { theSessionAndItsCount, withWhoHasNotJoinedMarked, whoHoldsTheClock } from '../grounds/this-sessions-count';
+import { theCountAsServed } from '../grounds/the-count-as-served';
 import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 /** The person's first turn on a check-in, if any: with `closedReason`, enough to tell a session the clock closed with nothing said (wasAQuietClose). */
 const SAID = { where: { role: 'PERSON' as any }, take: 1, select: { id: true } };
@@ -990,7 +991,7 @@ export class BoardService {
       timelineDays: (ground as any).runsUntilEnded ? null : (ground as any).timelineDays ?? null, cadence: (ground as any).cadence ?? null,
       cadenceDays: (ground as any).cadenceDays ?? null,
       runsUntilEnded: !!(ground as any).runsUntilEnded,
-    /* By name for whoever is served the count (thisSession, below): "You and Aisha have checked in. David has started and not finished yet." */
+    /* By name for whoever is served the count (theCount, below): "You and Aisha have checked in. David has started and not finished yet." */
     }, { now, handOn: releaseOne, leave: theLeave, names: { readerUserId: requestingUserId } });
     const out: Record<string, any> = {
       groundId,
@@ -1030,8 +1031,13 @@ export class BoardService {
        * Computed by how-a-check-in-is-going.ts, the same function the list calls, so the two cannot
        * disagree about one week. Not a new read: the same summary, the same two facts.
        */
-      /* Who is in this session and who has answered it, to whoever runs it or an admin here: the same count Today and the page say. */
-      thisSession: isInitiator || isSetupAdmin || adminHere || theyRunIt ? theOneCount.count : null,
+      /* The one count (grounds/the-count-as-served.ts), the same shape Today and the page read: to whoever runs it or an admin here, every
+         session and the clock's session said; to anybody else, their own row and no sentence. */
+      theCount: theCountAsServed(
+        { session: theOneCount.clock.currentSession, said: theOneCount.count },
+        theOneCount.bySession,
+        { onlyThese: isInitiator || isSetupAdmin || adminHere || theyRunIt ? null : new Set(me?.id ? [me.id] : []) },
+      ),
       howItIsGoing: howACheckInIsGoing({
         /* The session the check-in's clock names, the same one the page and Ask count (this-sessions-count.ts). */
         round: theOneCount.clock.currentSession,

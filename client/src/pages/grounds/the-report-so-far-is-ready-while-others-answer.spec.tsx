@@ -39,9 +39,9 @@ function ground() {
     ],
     roundCompletions: [],
     /* The server's one count (api this-sessions-count.ts; Hafsah, 30 October 2026): Hafsah answered, the two she invited have not. */
-    thisSession: { session: 1, answered: 1, ofPeople: 3, everyoneIn: false, notCountedSays: null, says: 'One of the three people has checked in for session 1.' },
+    /* Changed 3 November (F1 part 2): one served count, theCount, in place of `thisSession` beside `answeredBySession`; the same sentences. */
     boardRenders: true,
-    answeredBySession: aServedCount({ 1: { on: ['p-lead', 'p-a', 'p-b'], answered: ['p-lead'] } }),
+    theCount: aServedCount({ 1: { on: ['p-lead', 'p-a', 'p-b'], answered: ['p-lead'] } }, { session: 1, says: 'One of the three people has checked in for session 1.' }),
   }
 }
 

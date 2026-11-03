@@ -1,5 +1,5 @@
 import { isShut } from './a-ground-that-has-ended'
-import { theCountOf, type WhoHasAnswered } from './the-one-count'
+import { theCountOf, type TheCountAsServed } from './the-one-count'
 
 /**
  * WHAT A GROUND IN THE RAIL NEEDS FROM YOU, IF ANYTHING.
@@ -47,7 +47,7 @@ export interface RailGround {
   resolvedAt?: string | null
   scenario?: string | null
   /** Who has answered each session, as the server counted it (the one count). */
-  answeredBySession?: Record<string | number, WhoHasAnswered> | null
+  theCount?: TheCountAsServed | null
 }
 
 /** How long after a check-in opens before it counts as late. */

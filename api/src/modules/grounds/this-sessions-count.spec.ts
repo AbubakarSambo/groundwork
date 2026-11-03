@@ -1,4 +1,5 @@
-import { theSessionAndItsCount, theCountSaid } from './this-sessions-count';
+import { theSessionAndItsCount, theCountSaid, theCountOfASession } from './this-sessions-count';
+import { theCountAsServed } from './the-count-as-served';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { theOpenSession, whereOneStands } from '../engagement/heres-what-is-new';
 
@@ -124,11 +125,16 @@ import { whyThisRow, whatHappened } from '../board/where-each-person-is-against-
 
 describe('the one count, as Today and the board say it', () => {
   const { count } = theSessionAndItsCount({ participants: MARKED, checkIns: ROWS, ...GROUND }, { now: NOW });
+  /* Changed 3 November (F1 part 2): the list and the board serve one shape, theCount, in place of `thisSession` beside `answeredBySession`. */
+  const one = theCountOfASession(MARKED, ROWS, count.session, (GROUND as any).scenario ?? null, undefined, NOW);
+  const theCount = theCountAsServed({ session: count.session, said: count }, {
+    [count.session]: { sessionNumber: count.session, onTheCheckIn: one.counted, answered: one.counted.filter((id) => !one.notAnswered.includes(id)), notYet: count.waitingOn, notJoined: [], declined: [], notLetIn: [] },
+  } as any, { onlyThese: null });
 
   it("Today's line is the count's own sentence, with who it waits on by name", () => {
     const listed = {
       id: 'g', label: 'the Weekly Sales Check-in', status: 'ACTIVE', organizationId: 'org', initiatorId: 'u-akua', cadence: 'WEEKLY', timelineDays: 84,
-      participants: MARKED, checkIns: ROWS.map((r, i) => ({ ...r, id: `c${i}` })), thisSession: count,
+      participants: MARKED, checkIns: ROWS.map((r, i) => ({ ...r, id: `c${i}` })), theCount,
       glance: { progress: { roundsDone: 0, roundsPlanned: 12, answeredThisRound: count.answered, ofPeople: count.ofPeople, waitingOn: count.waitingOn } },
     } as unknown as ListedCheckIn;
     const t = whatNeedsYou([listed], { userId: 'u-akua', role: 'MEMBER', organizationId: 'org' }, [], NOW);
@@ -136,7 +142,7 @@ describe('the one count, as Today and the board say it', () => {
   });
 
   it("the board's at-a-glance line is the same sentence", () => {
-    expect(theBoardAtAGlance({ thisSession: count, howItIsGoing: { glance: { progress: { answeredThisRound: 3, ofPeople: 5 } } } }, { readerCheckedInThisRound: true, readerIsTheLead: true }).lines.whoCheckedIn).toBe(count.says);
+    expect(theBoardAtAGlance({ theCount, howItIsGoing: { glance: { progress: { answeredThisRound: 3, ofPeople: 5 } } } }, { readerCheckedInThisRound: true, readerIsTheLead: true }).lines.whoCheckedIn).toBe(count.says);
   });
 
   it('The team today says somebody who has not joined was invited and has not joined, never that they have not checked in', () => {

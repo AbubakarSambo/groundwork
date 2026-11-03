@@ -131,7 +131,8 @@ import { adminsThisOrg, askedToApproveIt, readsAsAnAdmin, readsTheLeadsPeopleNot
 import { EVALUATION_SCENARIOS, isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, briefChangedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
-import { howManyHaveAnswered, whoHasAnsweredInEachSession, forThesePeople } from '../reports/how-many-have-answered';
+import { howManyHaveAnswered } from '../reports/how-many-have-answered';
+import { theCountAsServed } from './the-count-as-served';
 import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, theDatesToKeep, theSameWords, theNumberAsWritten, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExactQuestion, theLeadsOwnQuestionIfAddressedToThem, THE_EXACT_QUESTION_PROMPT, THE_EXACT_QUESTION_TOOL, whatGroundworkWillAsk, type AQuestionForAPerson } from './a-question-asked-word-for-word';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
@@ -1607,10 +1608,6 @@ export class GroundsService {
         mayChangeSetup: whoMayConfirmSetup(userId, g, { lead: leadState, confirmer: { role: userRole, organizationId } as any, organizationId: g.organizationId ?? null }).allowed,
       };
     };
-    /* Who has answered each session, by the one count, for every check-in on the list (reports/how-many-have-answered.ts). */
-    const countsOnTheList = new Map<string, Record<number, any>>(await Promise.all([...orgGrounds, ...participantGrounds]
-      .filter((g: any) => !heldForASeat.has(g.id))
-      .map(async (g: any) => [g.id, await whoHasAnsweredInEachSession(this.prisma, g.id).catch(() => ({}))] as [string, Record<number, any>])));
     return [...orgGrounds, ...participantGrounds]
       .filter((g: any) => !heldForASeat.has(g.id))
       .map(g => {
@@ -1845,8 +1842,9 @@ export class GroundsService {
               }
             : {}),
           checkIns: checkInsShown,
-          /* Who has answered each session, by the one count, over the people this reader may see (how-many-have-answered.ts). */
-          answeredBySession: hidePeers ? forThesePeople(countsOnTheList.get(g.id), shown) : countsOnTheList.get(g.id) ?? {},
+          /* The one count (the-count-as-served.ts): who has answered each session, over the people this reader may see, and the clock's
+             session said, to whoever is shown the others. */
+          theCount: theCountAsServed({ session: listedCount.clock.currentSession, said: listedCount.count }, listedCount.bySession, { onlyThese: hidePeers ? shown : null }),
           dependencies: dependenciesShown,
           peersVisibleEffective,
           /* Decision 17, said plainly: on a check-in about one person the switch never reaches them. */
@@ -1884,9 +1882,7 @@ export class GroundsService {
           })(),
           hasBoard,
           /* No count of other people either, where they are not named to this reader: not how many
-             answered, nor what is holding them up. Their own turn still shows from their own rows. */
-          /* Who is in this session and who has answered it, the one count (this-sessions-count.ts), to whoever is shown the others. */
-          thisSession: hidePeers ? null : listedCount.count,
+             answered, nor what is holding them up. Their own turn still shows from their own rows (theCount, above). */
           glance: (() => {
             const { oldestOnParticipantId, ...inTheWay } = (glance.inTheWay ?? {}) as any;
             /*
@@ -2108,7 +2104,7 @@ export class GroundsService {
      * AND WHO IS IN THAT SESSION AND WHO HAS ANSWERED IT, FROM THE SAME ONE PLACE THE BOARD AND ASK READ (this-sessions-count.ts,
      * Hafsah, 30 October 2026). The page used to count on the screen, and its clock counted the lead while the board's did not.
      */
-    const { clock: sessionClock, count: thisSessionsCount } = theSessionAndItsCount(
+    const { clock: sessionClock, count: thisSessionsCount, bySession: eachSessionsCount } = theSessionAndItsCount(
       {
         participants: await withWhoHasNotJoinedMarked(this.prisma, (((ground as any).participants ?? []) as any[])),
         checkIns: ((ground as any).checkIns ?? []) as any[],
@@ -3010,11 +3006,15 @@ export class GroundsService {
       /** Whether this round already has two people counted in it - a yes/no. See the note above. */
       atLeastTwoInThisRound,
       /**
-       * WHO HAS ANSWERED EACH SESSION, BY THE ONE COUNT (reports/how-many-have-answered.ts, 1 November 2026). The check-in page, its
-       * session rows and the reports' headers read this instead of a copy of the rule in the browser. Over the people this reader may
-       * see: on a check-in whose people do not see each other, a participant's own row alone, as the roster above.
+       * THE ONE COUNT (the-count-as-served.ts; reports/how-many-have-answered.ts, 1 November 2026). The check-in page, its session rows,
+       * the header and the reports' headers read this instead of a copy of the rule in the browser. Over the people this reader may
+       * see: on a check-in whose people do not see each other, a participant's own row alone, as the roster above, and no sentence.
        */
-      answeredBySession: await whoHasAnsweredInEachSession(this.prisma, ground.id, hidePeers ? new Set(participantsWithCheckIns.map((p: any) => p.id)) : null),
+      theCount: theCountAsServed(
+        { session: sessionClock.currentSession, said: thisSessionsCount },
+        eachSessionsCount,
+        { onlyThese: hidePeers ? new Set(participantsWithCheckIns.map((p: any) => p.id)) : null },
+      ),
       /**
        * WHAT THE PEER RULE IS ACTUALLY DOING, not what is stored. W14-4.
        *
@@ -3076,9 +3076,6 @@ export class GroundsService {
       /* The header's count, from the board's own clock: "Session 1 of 12.", and the line for a later session
          somebody has started. Every reader gets the same sentences (request 101 f). */
       sessionClock,
-      /* Who is in this session and who has answered it, the board's own count (this-sessions-count.ts). Not served where this reader
-         does not see the others: no count of people they are not shown. */
-      thisSession: hidePeers ? null : thisSessionsCount,
       /*
        * WHO IS WAITING TO BE LET IN, APART FROM THE COUNT (decision 77): "Faraji Odhiambo is waiting to be
        * let in." To whoever runs it and an admin, every such person, by name or as a count where no name is

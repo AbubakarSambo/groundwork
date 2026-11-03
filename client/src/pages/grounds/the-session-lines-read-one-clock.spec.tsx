@@ -114,8 +114,9 @@ function served(thisSession: any, extra: any = {}) {
   /* The per-session count the page's waiting line reads, served from the same one count as `thisSession` (wip/assessment's answeredBySession). */
   const on = Array.from({ length: thisSession.ofPeople }, (_, i) => (i === 0 ? 'p-lead' : `p-${i}`))
   return { ...sessionTwo(), label: 'Field officers', sessionClock: { currentSession: 1, plannedSessions: 12, says: 'Session 1 of 12.', whileOpen: null },
-    checkIns: [{ id: 'c1', sessionNumber: 1, status: 'COMPLETED', participantId: 'p-lead', completedAt: '2027-02-08' }], roundCompletions: [], thisSession,
-    answeredBySession: aServedCount({ 1: { on, answered: on.slice(0, thisSession.answered) } }), ...extra }
+    checkIns: [{ id: 'c1', sessionNumber: 1, status: 'COMPLETED', participantId: 'p-lead', completedAt: '2027-02-08' }], roundCompletions: [],
+    /* Changed 3 November (F1 part 2): the sentences ride in the one served count, theCount, not in `thisSession` beside it. */
+    theCount: aServedCount({ 1: { on, answered: on.slice(0, thisSession.answered) } }, thisSession), ...extra }
 }
 async function headerOf(g: any) {
   ;(groundsApi.get as any).mockResolvedValue(g)

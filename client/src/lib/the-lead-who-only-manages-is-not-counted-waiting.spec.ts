@@ -23,7 +23,7 @@ const ground = {
     { participantId: 'p-lerato', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: null, isSetup: false },
   ],
   /* As the server counts it: the anchor's managing lead is never in a round. */
-  answeredBySession: aServedCount({ 1: { on: ['p-kito', 'p-lerato'], answered: [] } }),
+  theCount: aServedCount({ 1: { on: ['p-kito', 'p-lerato'], answered: [] } }),
 }
 
 describe('the lead who only manages, and her set-up conversation, are not counted', () => {
