@@ -256,7 +256,7 @@ async function theSalesOnRecord(
 
 /** The answer to say, or the sentence that says it is not in the documents. Never offered as a line. */
 export async function answerFromTheDocuments(
-  deps: { prisma: any; engine: { extract: (system: string, history: any[], tool: any) => Promise<any> } },
+  deps: { prisma: any; engine: { extract: (system: string, history: any[], tool: any, options?: { fast?: boolean; thinkingBudget?: number }) => Promise<any> } },
   input: { organizationId: string; userId: string; groundId?: string | null; question: string },
 ): Promise<string> {
   const records = await theRecordTheyMayRead(deps.prisma, input).catch(() => [] as ADocumentToAnswerFrom[]);
@@ -274,6 +274,12 @@ export async function answerFromTheDocuments(
     ANSWER_FROM_THE_DOCUMENTS_PROMPT,
     [{ role: 'user', content: `${given.map((d) => `DOCUMENT "${d.fileName}":\n${d.content}`).join('\n\n')}\n\nQUESTION: ${input.question.trim()}` }],
     ANSWER_SCHEMA,
+    /*
+     * ON THE MODEL ASK TALKS WITH, GIVEN ROOM TO WORK OUT A SUM (3 November 2026). It ran on the report model with its own thinking and
+     * took 10 to 13 seconds while the person waited; that model thought about 1,100 tokens to answer. The fast model with the same room
+     * answers in a few seconds, and a figure no document holds is still never said (everyFigureIsInTheDocumentsOrSums, below).
+     */
+    { fast: true, thinkingBudget: 1024 },
   ).catch(() => null);
   const answer = String(read?.answer ?? '').replace(/\s+/g, ' ').trim();
   if (!read?.found || !answer) return NOT_IN_THE_DOCUMENTS;
