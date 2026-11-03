@@ -87,6 +87,8 @@ export interface WhatNeedsYou {
   lineGroundId?: string | null;
   /** The one person the line names as not checked in yet, for the lead who runs it: the board's own nudge, offered beside the line. */
   lineNudge?: { groundId: string; participantId: string; firstName: string } | null;
+  /** Who the line says was invited and has not joined yet, for the lead who runs it: their invitation, sent again on her press. */
+  lineResend?: { groundId: string; participantIds: string[]; firstNames: (string | null)[] } | null;
   /** "Since yesterday": what moved since the round before, for the check-in the line is about. */
   sinceYesterday?: { heading: string; says: string; also: string | null } | null;
 }
@@ -108,6 +110,8 @@ export interface ListedCheckIn {
   /** The one count, as the list serves it (the-count-as-served.ts). */
   theCount?: TheCountAsServed | null;
   latestSummary?: string | null;
+  /** The report's first difference, by name, where this reader may read the report: "Jane and John said different things about the Westgate deal." */
+  whoDiffers?: string | null;
   participants?: { id: string; userId?: string | null; notLetIn?: boolean; user?: { firstName?: string | null } | null }[];
   checkIns?: {
     id: string;
@@ -244,6 +248,7 @@ export function whatNeedsYou(
   let line: { people: number; text: string } | null = null;
   let lineGroundId: string | null = null;
   let lineNudge: WhatNeedsYou['lineNudge'] = null;
+  let lineResend: WhatNeedsYou['lineResend'] = null;
 
   for (const g of list) {
     if ((g.status ?? '') === 'AWAITING_APPROVAL' || (g.status ?? '') === 'DECLINED') continue;
@@ -332,7 +337,8 @@ export function whatNeedsYou(
         key: `report-${g.id}`,
         kind: 'ready',
         title: `The report for ${g.label} is ready`,
-        detail: firstSentence(g.latestSummary),
+        /* Who differs, from the report (stage 8), or else the report's first sentence. */
+        detail: g.whoDiffers ?? firstSentence(g.latestSummary),
         action: { label: 'Read it', to: myLatest ? `/checkin/${myLatest.id}/report` : `/grounds/${g.id}/report` },
         ...base,
       });
@@ -436,13 +442,19 @@ export function whatNeedsYou(
         lineNudge = iRunIt && waitingIds.length === 1 && !missedIds.length && missing[0]?.name && !missing[0].isMe
           ? { groundId: g.id, participantId: waitingIds[0], firstName: missing[0].name }
           : null;
+        /* "Send it to them again" (stage 8): the invitation sent again to whoever was invited and has not joined yet, by the lead's own press. */
+        const notJoinedIds = served ? served.notJoined.filter((id) => !notLetInIds.has(id)) : [];
+        lineResend = iRunIt && notJoinedIds.length
+          ? { groundId: g.id, participantIds: notJoinedIds, firstNames: notJoinedIds.map((id) => byId.get(id)?.user?.firstName?.trim() || (byId.get(id) as any)?.nameGiven?.trim() || null) }
+          : null;
         line = {
           people: total,
           /* The one count's own sentence, then who it is waiting on by name: "In the Weekly Sales Check-in, one of the three people has
              answered session 1. Two more ... have not joined yet. Sarah and David have not checked in yet." The same words the board and
              the check-in's page say (this-sessions-count.ts). */
           text: served
-            ? `In ${g.label}, ${g.theCount!.said!.says.charAt(0).toLowerCase()}${g.theCount!.said!.says.slice(1)}${[whoHasNotYet(missing), whoDidNotCheckIn(missed)].filter(Boolean).map((x) => ` ${x}`).join('')}`
+            /* Where the count names who is missing (whoSays), it is the whole line; where it names nobody, who it waits on is said after it. */
+            ? `In ${g.label}, ${g.theCount!.said!.says.charAt(0).toLowerCase()}${g.theCount!.said!.says.slice(1)}${g.theCount!.said!.whoSays ? '' : [whoHasNotYet(missing), whoDidNotCheckIn(missed)].filter(Boolean).map((x) => ` ${x}`).join('')}`
             : answered === 0
             ? `In ${g.label}, nobody has checked in for ${theSession(n)}${missing.length ? ' yet' : ''}.${missed.length ? ` ${whoDidNotCheckIn(missed)}` : ''}${notJoined ? ` ${notJoined}` : ''}`
             : `In ${g.label}, ${answered} of ${total} have checked in for ${theSession(n)}. ${said}`,
@@ -532,7 +544,7 @@ export function whatNeedsYou(
     needs,
     count: needs.length,
     line: said,
-    ...(line ? { lineGroundId, lineNudge } : {}),
+    ...(line ? { lineGroundId, lineNudge, lineResend } : {}),
     comingUp: comingUp.sort((a, b) => time(a.at)! - time(b.at)!).slice(0, 5),
   };
 }

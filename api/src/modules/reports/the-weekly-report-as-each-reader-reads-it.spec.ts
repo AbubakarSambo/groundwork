@@ -649,7 +649,7 @@ describe('the check-ins made this week, and the one count', () => {
     const { count } = theSessionAndItsCount({ participants: PARTIES, checkIns: CHECK_INS, scenario: 'SALES_TEAM_CHECK', cadence: 'WEEKLY', timelineDays: null }, { now: AT });
     expect(count.session).toBe(5);
     expect([count.answered, count.ofPeople]).toEqual([2, 3]);
-    expect(count.says).toBe('Two of the three people have checked in for session 5.');
+    expect(count.says).toBe('2 of 3 have checked in.'); /* F5: the approved journey's words */
     expect(r.inNumbers![0]).toEqual({ figure: '67%', of: 'of check-ins made this week', says: '2 of the 3 check-ins due this week were made.' });
   });
 

@@ -181,6 +181,17 @@ export function TodayPage() {
   const unfinished = useAnUnfinishedSetup()
   const allNeeds = needs.length + moreRows.length + (unfinished ? 1 : 0)
   const lineNudge = data?.lineNudge ?? null
+  /* "Send it to them again" (the approved journey, stage 8): the invitation's own resend, for each person the line says has not
+     joined yet. The lead's own press, so nothing about when anything is sent changes. */
+  const lineResend = data?.lineResend ?? null
+  const resend = useMutation({
+    mutationFn: async () => { for (const pid of lineResend!.participantIds) await groundsApi.resendParticipantInvite(lineResend!.groundId, pid) },
+    onSuccess: () => toast.success(lineResend!.participantIds.length === 1 ? 'Invitation sent again.' : 'Invitations sent again.'),
+    onError: () => toast.error('It did not send again. The first invitation still works. Try again in a moment.'),
+  })
+  const resendLabel = lineResend
+    ? (lineResend.participantIds.length === 1 && lineResend.firstNames[0] ? `Send it to ${lineResend.firstNames[0]} again` : 'Send it to them again')
+    : ''
   const nudge = useMutation({
     mutationFn: () => boardApi.nudge(lineNudge!.groundId, lineNudge!.participantId),
     onSuccess: () => toast.success(`Sent to ${lineNudge!.firstName}.`),
@@ -201,6 +212,7 @@ export function TodayPage() {
               {`${whenItWas(now, 'weekdayAndDay')}.${greetingLine ? ` ${greetingLine}` : ''}`}
               {/* "Send it to him on WhatsApp" (C1), said with their name: the board's own nudge, for the one person not checked in yet. */}
               {lineNudge && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => nudge.mutate()} disabled={nudge.isPending || nudge.isSuccess}>{nudge.isSuccess ? 'Sent.' : `Remind ${lineNudge.firstName}`}</button></>}
+              {lineResend && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => resend.mutate()} disabled={resend.isPending || resend.isSuccess}>{resend.isSuccess ? 'Sent again.' : resendLabel}</button></>}
             </>}
           />
 

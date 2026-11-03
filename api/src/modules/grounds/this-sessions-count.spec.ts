@@ -52,7 +52,7 @@ describe('one session, one count, whoever reads it', () => {
     expect(clock.currentSession).toBe(1);
     expect(count).toMatchObject({ session: 1, answered: 3, ofPeople: 6, everyoneIn: false });
     expect(count.waitingOn.sort()).toEqual(['adwoa', 'kofi', 'yaw']);
-    expect(count.says).toBe('Three of the six people have checked in for session 1. One of them was invited and has not joined yet.');
+    expect(count.says).toBe('3 of 6 have checked in. One of them was invited and has not joined yet.' /* F5: the approved journey's words */);
   });
 
   it('the board reads the same numbers for the same session', () => {
@@ -70,9 +70,11 @@ describe('one session, one count, whoever reads it', () => {
   });
 
   it('says everybody only when everybody counted has answered', () => {
-    expect(theCountSaid(2, 0, 4)).toBe('Nobody has checked in for session 2 yet.');
-    expect(theCountSaid(2, 4, 4)).toBe('All four people have checked in for session 2.');
-    expect(theCountSaid(2, 1, 1)).toBe('The one person in it has checked in for session 2.');
+    /* Changed in F5: the approved journey's words, "2 of 4 have checked in", with no session number. */
+    expect(theCountSaid(0, 4)).toBe('Nobody has checked in yet');
+    expect(theCountSaid(4, 4)).toBe('All 4 have checked in');
+    expect(theCountSaid(1, 1)).toBe('The one person in it has checked in');
+    expect(theCountSaid(2, 4)).toBe('2 of 4 have checked in');
   });
 });
 
@@ -88,7 +90,7 @@ describe('who the one count counts', () => {
     const rows = [{ ...row('baraka', 'COMPLETED'), isSetup: true }, row('kito', 'NOT_STARTED'), row('lerato', 'NOT_STARTED')];
     const { count } = theSessionAndItsCount({ participants: anchor(), checkIns: rows, ...GROUND, scenario: 'HELP_TEAM_UNDERSTAND' }, { now: NOW });
     expect([count.answered, count.ofPeople]).toEqual([0, 2]);
-    expect(count.says).toBe('Nobody has checked in for session 1 yet.');
+    expect(count.says).toBe('Nobody has checked in yet.');
   });
 
   it('an anchor lead alone has no count to say, never "one of zero"', () => {
@@ -110,7 +112,7 @@ describe('who the one count counts', () => {
     const { clock, count } = theSessionAndItsCount({ participants: people, checkIns: rows, ...GROUND, scenario: 'NEW_PROJECT' }, { now: NOW });
     expect(clock.currentSession).toBe(1);
     expect([count.answered, count.ofPeople]).toEqual([1, 3]);
-    expect(count.says).toBe('One of the three people has checked in for session 1. Three more people are not counted yet, because an admin has not let them in.');
+    expect(count.says).toBe('1 of 3 has checked in. Three more people are not counted yet, because an admin has not let them in.');
   });
 });
 

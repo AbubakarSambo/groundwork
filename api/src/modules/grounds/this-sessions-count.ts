@@ -4,11 +4,9 @@ import { isNotLetInYet, whoIsNotLetInYet, markedNotLetIn } from './who-an-admin-
 import { whoHasNotJoinedYet } from './invited-not-joined-yet';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { totalSessionsFor } from './session-count';
-import { aNumberInWords } from '../engagement/a-number-in-words';
 import { whoHasAnswered, eachSessionsServedCount, type TheServedCount } from '../reports/how-many-have-answered';
 import { awayUntilOn, type Stretch } from '../suites/who-is-away';
 import { nameToCall, SOMEONE } from '../engagement/a-name-to-call-them';
-import { theNotJoinedYetLine } from './invited-not-joined-yet';
 import { andList } from '../reports/each-wait-under-whoever-holds-it';
 
 /**
@@ -66,16 +64,17 @@ export interface WhatTheCountReads {
   runsUntilEnded?: boolean | null;
 }
 
-/** "Three of the five people have checked in for session 2.", in words up to ten. */
-export function theCountSaid(session: number, answered: number, ofPeople: number): string {
-  /* Nobody in the session yet (an anchor lead alone, before her team is in): there is no count to say, never "one of zero". */
+/**
+ * THE COUNT, AS THE APPROVED JOURNEY SAYS IT (stage 8, Hafsah, 1 November 2026): "2 of 4 have checked in", counting everyone on the
+ * check-in, with no session number (the report's header says which session it is about). The same words on Today, the board, Ask and
+ * What's new, which all read `says`.
+ */
+export function theCountSaid(answered: number, ofPeople: number): string {
+  /* Nobody in the session yet (an anchor lead alone, before her team is in): there is no count to say, never "0 of 0". */
   if (ofPeople <= 0) return '';
-  if (answered <= 0) return `Nobody has checked in for session ${session} yet.`;
-  if (answered >= ofPeople) {
-    return ofPeople === 1 ? `The one person in it has checked in for session ${session}.` : `All ${aNumberInWords(ofPeople)} people have checked in for session ${session}.`;
-  }
-  const a = aNumberInWords(answered);
-  return `${a.charAt(0).toUpperCase()}${a.slice(1)} of the ${aNumberInWords(ofPeople)} people ${answered === 1 ? 'has' : 'have'} checked in for session ${session}.`;
+  if (answered <= 0) return 'Nobody has checked in yet';
+  if (answered >= ofPeople) return ofPeople === 1 ? 'The one person in it has checked in' : `All ${ofPeople} have checked in`;
+  return `${answered} of ${ofPeople} ${answered === 1 ? 'has' : 'have'} checked in`;
 }
 
 /**
@@ -106,36 +105,48 @@ export function theCountOfASession(
   return { counted, answered: counted.length - notAnswered.length, ofPeople: counted.length, notAnswered };
 }
 
-/** The clock and the count, from rows already marked (`withWhoHasNotJoinedMarked`). Pure: the board, the page and Ask all call this. */
 /**
- * Each person the session counts, in one state each, by name: checked in, started and not finished, or not started. The reader is "you".
- * Read from the same rows and the same people the count reads, so the names and the number are one fact.
+ * WHO IS MISSING, BY NAME, each once, in one state: "Omar has started and not finished yet", "Neema hasn't started yet", "Kofi didn't
+ * check in before it closed", "Peter and Mary haven't joined yet". The reader is "you". Read from the same rows and people the count
+ * reads, so the names and the number are one fact. Who has checked in is the rest of the count, and is not named again (stage 8:
+ * "2 of 4 have checked in; Peter and Mary haven't joined yet").
  */
-export function whoSaid(people: any[], rows: any[], session: number, counted: string[], notAnswered: string[], readerUserId?: string | null): string {
+export function whoSaid(people: any[], rows: any[], session: number, notAnswered: string[], closed: ReadonlySet<string>, readerUserId?: string | null): string[] {
   const byId = new Map((people ?? []).map((p) => [p.id, p]));
   const nameOf = (id: string) => {
     const p = byId.get(id);
     return p?.userId && readerUserId && p.userId === readerUserId ? 'you' : nameToCall(p);
   };
-  const waiting = new Set(notAnswered);
   const startedIt = (id: string) => (rows ?? []).some((c) => !c.isSetup && c.participantId === id && (c.sessionNumber ?? 1) === session && c.status === 'IN_PROGRESS');
-  const done = counted.filter((id) => !waiting.has(id)).map(nameOf).sort((a, b) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
-  const started = notAnswered.filter(startedIt).map(nameOf);
-  /* Somebody invited and not joined is counted (Hafsah, 1 November) and said as what happened, never "has not started". */
-  /* Somebody with no name is counted in the sentence ("1 other person"), never called "Someone" (theNotJoinedYetLine). */
-  const notJoined = notAnswered.filter((id) => !startedIt(id) && byId.get(id)?.notJoinedYet === true).map(nameOf).map((n) => (n === SOMEONE ? null : n));
-  const notStarted = notAnswered.filter((id) => !startedIt(id) && byId.get(id)?.notJoinedYet !== true).map(nameOf);
-  const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+  const notJoinedYet = (id: string) => byId.get(id)?.notJoinedYet === true;
+  const started = notAnswered.filter((id) => !notJoinedYet(id) && startedIt(id)).map(nameOf);
+  const missed = notAnswered.filter((id) => !notJoinedYet(id) && !startedIt(id) && closed.has(id)).map(nameOf);
+  const notStarted = notAnswered.filter((id) => !notJoinedYet(id) && !startedIt(id) && !closed.has(id)).map(nameOf);
+  /* Somebody with no name is counted ("1 other person"), never called "Someone". */
+  const notJoined = notAnswered.filter(notJoinedYet).map(nameOf);
+  const named = notJoined.filter((n) => n !== SOMEONE);
+  const unnamed = notJoined.length - named.length;
   const one = (xs: string[]) => xs.length === 1 && xs[0] !== 'you';
   const out: string[] = [];
-  if (done.length) out.push(`${cap(andList(done))} ${one(done) ? 'has' : 'have'} checked in.`);
-  if (started.length) out.push(`${cap(andList(started))} ${one(started) ? 'has' : 'have'} started and not finished yet.`);
-  if (notStarted.length) out.push(`${cap(andList(notStarted))} ${one(notStarted) ? 'has' : 'have'} not started yet.`);
-  const notJoinedLine = theNotJoinedYetLine(notJoined);
-  if (notJoinedLine) out.push(notJoinedLine);
-  return out.join(' ');
+  if (started.length) out.push(`${andList(started)} ${one(started) ? 'has' : 'have'} started and not finished yet`);
+  if (notStarted.length) out.push(`${andList(notStarted)} ${one(notStarted) ? 'hasn’t' : 'haven’t'} started yet`);
+  if (missed.length) out.push(`${andList(missed)} didn’t check in before it closed`);
+  if (named.length) out.push(`${andList(named)} ${one(named) ? 'hasn’t' : 'haven’t'} joined yet`);
+  if (unnamed) out.push(`${unnamed} ${named.length ? 'other ' : ''}${unnamed === 1 ? 'person hasn’t' : 'people haven’t'} joined yet`);
+  return out;
 }
 
+/** Clauses that may hold an "and" of their own, joined so they still read apart: "a, b, and c". */
+const theClauses = (xs: string[]): string => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')}, and ${xs[xs.length - 1]}`);
+
+/** The count and who is missing, as one sentence: "2 of 4 have checked in; Peter and Mary haven't joined yet." */
+export function theCountWithWhoIsMissing(answered: number, ofPeople: number, missing: string[]): string {
+  const count = theCountSaid(answered, ofPeople);
+  if (!count) return '';
+  return missing.length ? `${count}; ${theClauses(missing)}.` : `${count}.`;
+}
+
+/** The clock and the count, from rows already marked (`withWhoHasNotJoinedMarked`). Pure: the board, the page and Ask all call this. */
 /**
  * WHO HOLDS THE SESSION CLOCK, the one rule every count of the session reads (the check-in's page, the board, the reports and Ask): somebody
  * who owes the session (the lead checks in when they choose, decision 133), has been let in (decision 77), and has joined.
@@ -183,7 +194,9 @@ export function theSessionAndItsCount(
   const theClocks = bySession[clock.currentSession];
   const one = { counted: theClocks.onTheCheckIn, answered: theClocks.answered.length, ofPeople: theClocks.onTheCheckIn.length, notAnswered: theClocks.onTheCheckIn.filter((id) => !theClocks.answered.includes(id)) };
   /* With only one person counted, the count already says it of them; their name is not said twice. */
-  const whoSays = opts.names && one.ofPeople > 1 ? whoSaid(participants, rows, clock.currentSession, one.counted, one.notAnswered, opts.names.readerUserId) || null : null;
+  const closedOnThem = new Set(one.notAnswered.filter((id) => !theClocks.notYet.includes(id)));
+  const missing = opts.names && one.ofPeople > 1 ? whoSaid(participants, rows, clock.currentSession, one.notAnswered, closedOnThem, opts.names.readerUserId) : [];
+  const whoSays = missing.length ? `${theClauses(missing).charAt(0).toUpperCase()}${theClauses(missing).slice(1)}.` : null;
   const readerIs = (id: string) => !!opts.names?.readerUserId && participants.find((p) => p.id === id)?.userId === opts.names.readerUserId;
   const othersHaveAnswered = opts.names ? one.counted.some((id) => !one.notAnswered.includes(id) && !readerIs(id)) : null;
   const count: ThisSession = {
@@ -196,7 +209,7 @@ export function theSessionAndItsCount(
     notCountedSays,
     notJoinedSays: progress.notJoinedSays ?? null,
     /* Each person once: where they are named, who has not joined is named among them, so the count's own not-joined sentence is not said too. */
-    says: [theCountSaid(clock.currentSession, one.answered, one.ofPeople), whoSays ?? progress.notJoinedSays, notCountedSays].filter(Boolean).join(' '),
+    says: [opts.names ? theCountWithWhoIsMissing(one.answered, one.ofPeople, missing) : theCountWithWhoIsMissing(one.answered, one.ofPeople, []), opts.names ? null : progress.notJoinedSays, notCountedSays].filter(Boolean).join(' '),
     whoSays,
     othersHaveAnswered,
   };

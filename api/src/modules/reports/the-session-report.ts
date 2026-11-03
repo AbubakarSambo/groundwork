@@ -278,7 +278,7 @@ function storedTitleOf(x: unknown): string | null {
 }
 
 /** The title a reader sees: the stored title without any field joined onto it (journey walk rows 1 and 2; no-field-names-on-the-page.ts). */
-function titleOf(x: unknown): string | null {
+export function titleOf(x: unknown): string | null {
   const stored = storedTitleOf(x);
   return stored ? splitAtFieldNames(stored).head || stored : null;
 }

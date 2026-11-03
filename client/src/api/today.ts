@@ -71,6 +71,8 @@ export interface WhatNeedsYou {
   forTheLead?: ForTheLead
   /** The one person the line names as not checked in yet, for the lead: the board's own nudge, beside the line. */
   lineNudge?: { groundId: string; participantId: string; firstName: string } | null
+  /** Who the line says has not joined yet, for the lead: "Send it to them again" sends each their invitation again. */
+  lineResend?: { groundId: string; participantIds: string[]; firstNames: (string | null)[] } | null
   /** "Since yesterday" (C1): what moved since the round before, for the check-in the line is about. */
   sinceYesterday?: { heading: string; says: string; also: string | null } | null
 }

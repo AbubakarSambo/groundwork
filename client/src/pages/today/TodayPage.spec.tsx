@@ -370,3 +370,29 @@ describe('the lead’s Today, with what her mail also tells her', () => {
     expect(screen.queryByRole('list', { name: 'From Groundwork' })).toBeNull()
   })
 })
+
+/* F5, the approved journey, stage 8: the count in its words, "Send it to them again" for who has not joined, and the report row naming who differs. */
+describe('Akinyi’s day one, as she reads Today', () => {
+  const AKINYI = { id: 'u-a', firstName: 'Akinyi', role: 'MEMBER', organizationName: 'Westgate Supplies' }
+  const DAY_ONE = {
+    count: 1,
+    line: 'In Deal progress, 2 of 4 have checked in; Peter and Mary haven’t joined yet.',
+    lineGroundId: 'g-deals',
+    lineResend: { groundId: 'g-deals', participantIds: ['p-peter', 'p-mary'], firstNames: ['Peter', 'Mary'] },
+    needs: [
+      { key: 'report-g-deals', kind: 'ready', title: 'The report for Deal progress is ready', detail: 'Jane and John said different things about the Westgate deal.', action: { label: 'Read it', to: '/grounds/g-deals/report' }, groundId: 'g-deals', organizationId: 'o' },
+    ],
+    comingUp: [],
+  }
+  it('reads the count, who has not joined, a way to send it again, and who differs', async () => {
+    open(AKINYI, DAY_ONE)
+    expect(await screen.findByText(/In Deal progress, 2 of 4 have checked in; Peter and Mary haven’t joined yet\./)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Send it to them again' })).toBeTruthy()
+    expect(screen.getByText('The report for Deal progress is ready')).toBeTruthy()
+    expect(screen.getByText('Jane and John said different things about the Westgate deal.')).toBeTruthy()
+  })
+  it('names the one person when only one has not joined', async () => {
+    open(AKINYI, { ...DAY_ONE, line: 'In Deal progress, 3 of 4 have checked in; Peter hasn’t joined yet.', lineResend: { groundId: 'g-deals', participantIds: ['p-peter'], firstNames: ['Peter'] } })
+    expect(await screen.findByRole('button', { name: 'Send it to Peter again' })).toBeTruthy()
+  })
+})

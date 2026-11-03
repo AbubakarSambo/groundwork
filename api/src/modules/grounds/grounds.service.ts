@@ -44,6 +44,8 @@ import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT, wasAQuietClose } from './an-answer-inc
 import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine, markedNotLetIn } from './who-an-admin-did-not-let-in';
 import { whoHasNotJoinedYet, theNotJoinedYetLine } from './invited-not-joined-yet';
 import { theSessionAndItsCount, withWhoHasNotJoinedMarked } from './this-sessions-count';
+import { peopleSaidDifferentThingsAbout } from '../reports/what-people-said-differently-about';
+import { titleOf } from '../reports/the-session-report';
 import { aNameTypedInLowerCase } from '../../common/a-name-typed-in-lower-case';
 import { whoASessionCounts } from './the-lead-checks-in-when-they-choose';
 import { openTheLeadsCheckIn } from './check-in-yourself';
@@ -1677,7 +1679,8 @@ export class GroundsService {
         const listedCount = theSessionAndItsCount({
           participants: listedPeople, checkIns: checkIns as any, scenario: (rest as any).scenario ?? null,
           timelineDays: (rest as any).timelineDays ?? null, cadence: (rest as any).cadence ?? null, cadenceDays: (rest as any).cadenceDays ?? null, runsUntilEnded: !!(rest as any).runsUntilEnded,
-        }, { handOn: handsOnIn.get((rest as any).organizationId) === true, leave: leaveOnTheList });
+        /* By name, as the check-in's page asks it: the sentence is served only to a reader shown the others (theCountAsServed). */
+        }, { handOn: handsOnIn.get((rest as any).organizationId) === true, leave: leaveOnTheList, names: { readerUserId: userId ?? null } });
         const going = howACheckInIsGoing({
           /* The session the check-in's clock names, the one the board, the page and Ask count (this-sessions-count.ts). The people
              here are already marked for who has not joined and who is not let in, above. */
@@ -1881,6 +1884,29 @@ export class GroundsService {
             const me = ((allParticipants ?? []) as any[]).find(isMe);
             const named = this.reportTextAsItWasShared({ ...(rest as any), participants: allParticipants, initiatorId: (rest as any).initiatorId ?? g.initiatorId ?? null }, { latestFinding, latestSummary }, fullReport?.sharedAs, me?.id ?? null, runsIt);
             return { latestFinding: aFindingThatReadsRight(named.latestFinding) as typeof named.latestFinding, latestSummary: named.latestSummary };
+          })(),
+          /*
+           * WHO DIFFERS, FROM THE REPORT (the approved journey, stage 8: "Today's report for deal progress is ready. Jane and John see the
+           * Westgate deal differently."): the report's first difference that names two sides, said in the one sentence every page says a
+           * difference with (peopleSaidDifferentThingsAbout), through the report's own door, so names go in only where this reader may
+           * read them.
+           */
+          whoDiffers: (() => {
+            if (!mayReadTheReport || !fullReport) return null;
+            const me = ((allParticipants ?? []) as any[]).find(isMe);
+            const { divergences } = this.reportListsAsItWasShared(
+              { ...(rest as any), participants: allParticipants, initiatorId: (rest as any).initiatorId ?? g.initiatorId ?? null },
+              { agreements: [], divergences: (fullReport as any).divergences ?? [] }, fullReport?.sharedAs, me?.id ?? null, runsIt,
+            );
+            for (const d of (Array.isArray(divergences) ? divergences : []) as any[]) {
+              const topic = titleOf(d) ?? '';
+              const sides = (Array.isArray(d?.positions) ? d.positions : Array.isArray(d?.perspectives) ? d.perspectives : [])
+                .map((x: any) => String(x?.participantLabel ?? x?.who ?? '').trim().split(/\s+/)[0])
+                .filter((n: string) => !!n && !/^(participant|party|colleague)$/i.test(n));
+              const who = [...new Set(sides)] as string[];
+              if (topic && who.length >= 2) return peopleSaidDifferentThingsAbout(topic, who.length === 2 ? `${who[0]} and ${who[1]}` : `${who.slice(0, -1).join(', ')} and ${who[who.length - 1]}`);
+            }
+            return null;
           })(),
           hasBoard,
           /* No count of other people either, where they are not named to this reader: not how many

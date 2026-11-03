@@ -4,7 +4,7 @@ import { whatToProbe } from '../reports/what-to-probe';
 /**
  * THE ONE COUNT SAYS WHO (round 6, 1 November 2026). The family business lead read "1 of 2 answered" with nobody named; the mobile
  * cinema lead's board said Aisha was "partway through session 1" beside "Aisha has not answered this session". The one count
- * (this-sessions-count.ts) now names each person counted, once, in one state, from the same rows and people it counts, for the reader
+ * (this-sessions-count.ts) now names each person missing, once, in one state, from the same rows and people it counts, for the reader
  * it is served to; and the probe list says "started and not finished" in the grid's own state.
  */
 const p = (id: string, userId: string | null, firstName: string, partyType = 'PARTICIPANT') => ({ id, userId, partyType, user: { firstName, lastName: null }, managingOnly: false });
@@ -18,8 +18,10 @@ const ROWS = [
 
 describe('the one count, by name', () => {
   it('names each person once, in one state, with the reader as you', () => {
-    const said = whoSaid(PEOPLE, ROWS, 1, ['p-juma', 'p-aisha', 'p-david', 'p-neema'], ['p-david', 'p-neema'], 'u-juma');
-    expect(said).toBe('You and Aisha have checked in. David has started and not finished yet. Neema has not started yet.');
+    /* Changed in F5 (the approved journey, stage 8): who is missing is named, each once, in one state; who has checked in is the
+       rest of the count and is not named again. */
+    const said = whoSaid(PEOPLE, ROWS, 1, ['p-david', 'p-neema'], new Set(), 'u-juma');
+    expect(said).toEqual(['David has started and not finished yet', 'Neema hasn’t started yet']);
   });
 
   it('is in the served sentence beside the number, and agrees with it', () => {
@@ -27,10 +29,8 @@ describe('the one count, by name', () => {
       { participants: PEOPLE, checkIns: ROWS, scenario: 'NEW_PROJECT', cadence: 'DAILY', runsUntilEnded: true },
       { now: new Date('2026-11-01T12:00:00Z'), names: { readerUserId: 'u-juma' } },
     );
-    expect(count.whoSays).not.toBeNull();
-    expect(count.says).toContain(count.whoSays!);
-    const named = (count.whoSays!.match(/\b(You|Aisha|David|Neema)\b/g) ?? []).length;
-    expect(named).toBe(count.ofPeople);
+    expect(count.says).toBe('2 of 4 have checked in; David has started and not finished yet, and Neema hasn’t started yet.')
+    expect(count.whoSays).toBe('David has started and not finished yet, and Neema hasn’t started yet.')
     /* Aisha has answered, so there is somebody else's account to read in this session. */
     expect(count.othersHaveAnswered).toBe(true);
   });
@@ -74,6 +74,6 @@ describe('right after the save, who was invited, by name', () => {
     );
     /* Changed on wip/plan: the four invited are counted now (wip/assessment's one count, Hafsah, 1 November 2026), so the count is
        "one of the five", and the lead is said once, as "you", among the people it names; the four are said once, as not joined. */
-    expect(count.says).toBe('One of the five people has checked in for session 1. You have checked in. Kwame, Fatuma, David and Grace were invited and have not joined yet.');
+    expect(count.says).toBe('1 of 5 has checked in; Kwame, Fatuma, David and Grace haven’t joined yet.' /* F5: the approved journey's words, who is missing named once */);
   });
 });
