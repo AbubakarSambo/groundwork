@@ -665,11 +665,9 @@ export const groundsApi = {
     apiClient.post(`/grounds/${groundId}/plan/proposals/${cardId}/confirm`, direction ? { direction } : {}).then(r => r.data),
   planCardNotNow: (groundId: string, cardId: string) =>
     apiClient.post(`/grounds/${groundId}/plan/proposals/${cardId}/not-now`).then(r => r.data),
-  editPlanCard: (groundId: string, cardId: string, says: string) =>
-    apiClient.patch<PlanCard>(`/grounds/${groundId}/plan/proposals/${cardId}`, { says }).then(r => r.data),
-  /** A target from the lead's own check-in, corrected: what it counts and its number, as she types them. */
-  correctATargetCard: (groundId: string, cardId: string, fields: { what: string; number: number | null }) =>
-    apiClient.patch<PlanCard>(`/grounds/${groundId}/plan/proposals/${cardId}`, { fields }).then(r => r.data),
+  /** One card changed while it waits: its sentence (`says`), or a target's own values as she types them (`fields`). */
+  editPlanCard: (groundId: string, cardId: string, change: { says: string } | { fields: { what: string; number: number | null } }) =>
+    apiClient.patch<PlanCard>(`/grounds/${groundId}/plan/proposals/${cardId}`, change).then(r => r.data),
 
   contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient
