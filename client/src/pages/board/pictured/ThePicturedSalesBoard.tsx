@@ -1203,8 +1203,6 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
     <div className="pb">
       {/* THE FIRST SCREEN, AS THE PROTOTYPE HAS IT (Hafsah, 24 October): the headline with what is closing the gap, What needs you, and the team. */}
       <HeadlineAndGap b={b} deals={deals} groups={groups} />
-      {/* Right under the gap, as the prototype's board has it. */}
-      <WhatTheTargetAssumes b={b} />
       {/* An admin who only reads is never told "What needs you": it is not hers to do (the light board's rule, kept). */}
       {!p.readOnly && <WhatNeedsYou b={b} renderActions={p.renderActions} groundId={p.groundId} deals={deals} sessionRows={p.sessionRows} />}
       {/* What's closing, on the first screen as Hafsah's 24 October decision keeps it: the morning's lines, served to the lead alone. */}
@@ -1212,6 +1210,9 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
       <TheTeamToday b={b} deals={deals} today={isoDay(now)} groundId={p.groundId} />
       {/* Everything else, folded under its own heading (FoldTheRest): the same sections and words, opened with a tap. */}
       <FoldTheRest>
+        {/* What the target assumes is the lead's own setup words, so it no longer opens the board (Hafsah's change 4 to the
+            approved journey, 1 November 2026); it is kept here, with the rest. */}
+        <WhatTheTargetAssumes b={b} />
         {deals && <EveryDealDayByDay b={b} section={deals} now={now} groundId={p.groundId} />}
         {p.otherRecords}
         {p.yourTeam}
