@@ -1,3 +1,6 @@
+import { useQuery } from '@tanstack/react-query'
+import { entryApi } from '@/api/entry'
+
 /**
  * HOW LONG SETUP TAKES, MEASURED (Hafsah's approval of the target journey, 1 November 2026, change 3: "Setup's opening states an
  * honest length. Time setup in the next run and use the real figure, instead of 'about two minutes'").
@@ -15,9 +18,19 @@ export const SETUP_TAKES_MINUTES = 5
 export const SETUP_TAKES = `about ${['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][SETUP_TAKES_MINUTES] ?? SETUP_TAKES_MINUTES} minutes`
 
 /**
- * HOW LONG A TEAM MEMBER'S CHECK-IN TAKES, MEASURED (F5, stage 6), the client's copy of the server's A_CHECK_IN_TAKES
- * (api/src/modules/participants/when-it-asks.ts, which the invitation serves as `takes`). Measured on 3 November 2026 from
- * gw_loop_round16, read only: 448 answered check-ins of people who are not the lead, first message to last, median 1.9 minutes.
+ * HOW LONG A TEAM MEMBER'S CHECK-IN TAKES, as the server serves it from its one owner (A_CHECK_IN_TAKES in
+ * api/src/modules/participants/when-it-asks.ts, the measured figure). The client holds no copy: "About two minutes", or null until
+ * it is served, when the pages say nothing about the length rather than a figure of their own.
  */
-export const A_CHECK_IN_TAKES = 'About two minutes'
-export const a_check_in_takes = 'about two minutes'
+export function useACheckInTakes(): string | null {
+  const { data } = useQuery({
+    queryKey: ['a-check-in-takes'],
+    queryFn: () => entryApi.aCheckInTakes(),
+    staleTime: Infinity,
+    retry: false,
+  })
+  return data ?? null
+}
+
+/** The same, inside a sentence: "about two minutes". */
+export const inASentence = (takes: string) => takes.charAt(0).toLowerCase() + takes.slice(1)

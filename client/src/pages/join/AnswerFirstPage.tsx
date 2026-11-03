@@ -1,4 +1,4 @@
-import { a_check_in_takes } from '@/lib/how-long-setup-takes'
+import { useACheckInTakes, inASentence } from '@/lib/how-long-setup-takes'
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { openLinkApi } from '@/api/entry'
@@ -83,6 +83,7 @@ export function AnswerFirstPage() {
   const [email, setEmail] = useState('')
   /* Optional, always asked (Hafsah, 30 October 2026); saved to them through PATCH /auth/me when that address signs in here. */
   const [phone, setPhone] = useState('')
+  const takes = useACheckInTakes()
   const [name, setName] = useState('')
   /* WHO THEY ANSWERED FOR. On a link sent across a network the organisation is the unit the whole
      report is about, and this asked for a name and an address and nothing else. */
@@ -302,7 +303,7 @@ export function AnswerFirstPage() {
                 made in the second before somebody types is the worst place in the product to be
                 wrong. Hafsah, 23 September 2026.
               */}
-              Answer in your own words. It takes {a_check_in_takes}. The answers help everybody get a
+              Answer in your own words.{takes ? ` It takes ${inASentence(takes)}.` : ''} The answers help everybody get a
               shared picture, and you will receive the consolidated report at the end.
             </p>
             <button className="btn pri" onClick={begin} disabled={busy}

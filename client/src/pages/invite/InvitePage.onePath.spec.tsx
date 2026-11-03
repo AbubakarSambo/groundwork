@@ -34,6 +34,7 @@ const PREVIEW = {
   roleAsDescribed: null,
   alreadyAccepted: false,
   organisationName: 'Acme Inc',
+  takes: 'About two minutes', /* as the server serves it, from A_CHECK_IN_TAKES */
 }
 
 function renderInvite() {

@@ -1,4 +1,4 @@
-import { A_CHECK_IN_TAKES } from '@/lib/how-long-setup-takes'
+import { useACheckInTakes } from '@/lib/how-long-setup-takes'
 import { aCorrectionOf } from '@/components/gw/ThatsNotRight'
 import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { ANSWER_ON_WHATSAPP_INSTEAD } from '@/lib/answer-on-whatsapp-instead'
@@ -194,6 +194,7 @@ export function ChatPage() {
     enabled: !!groundId,
     retry: false,
   })
+  const takes = useACheckInTakes()
   const checkInName: string = groundLabel || (ground.data as any)?.label || ''
   /* The direct morning (lib/the-direct-morning.tsx): the fixed lines on this screen are direct where the organisation's switch is on. */
   const direct = isTheDirectMorningOn(ground.data)
@@ -1287,7 +1288,7 @@ export function ChatPage() {
                         ? `Correcting session ${correctingSession}`
                         : isFinalSession
                           ? `Closing session ${sessionNumber}. This is your final account.`
-                          : A_CHECK_IN_TAKES
+                          : takes
                   }
                   mayPause={opened && !completed && !declined}
                   /* Not in the bare frame: the only control on that screen should not lead out of the thing

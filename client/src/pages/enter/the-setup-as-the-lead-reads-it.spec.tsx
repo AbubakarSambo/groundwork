@@ -24,7 +24,7 @@ function Harness({ start = '', end = '', cadence = 'FORTNIGHTLY' as Cadence, cho
     <>
       <TheSetup cadence={c} cadenceChosen={picked} onCadence={(x) => { setC(x); setPicked(true) }} anchorDay={ad} onAnchorDay={setAd}
         workingDays={wd} daysPicker={<WhichDaysTheyWork value={wd} onChange={setWd} />} startsOn={s} onStartsOn={setS} endsOn={e} onEndsOn={setE}
-        runsUntilEnded={u} onRunsUntilEnded={setU} today={TODAY}
+        runsUntilEnded={u} onRunsUntilEnded={setU} today={TODAY} takes="About two minutes" /* as the server serves it */
         nameField={withNameAndPeople ? <input aria-label="Name this situation" defaultValue="Sales team, Q3" /> : undefined}
         people={withNameAndPeople ? <p>Not ready? You can add people any time from the check-in itself. Nothing goes out until you do.</p> : undefined} />
       <output data-testid="saved">{JSON.stringify({ c, s, e, wd, ad, u })}</output>

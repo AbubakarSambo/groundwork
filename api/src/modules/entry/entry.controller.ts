@@ -8,6 +8,7 @@ import { EntryService } from './entry.service';
 import { TheOpenLinkService } from './the-open-link.service';
 import { A_ROOM_MAY_START_PER_MINUTE, A_PERSON_MAY_SAY_PER_MINUTE } from '../../common/guards/a-room-of-people-is-not-one-person';
 import { HOW_MANY_PEOPLE_ONE_CHECK_IN_HOLDS } from './how-many-people-one-check-in-holds';
+import { A_CHECK_IN_TAKES } from '../participants/when-it-asks';
 import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject, Min, Max, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 import { peopleOnLines, MOST_IN_ONE_PASTE } from '../users/putting-a-whole-company-on';
@@ -794,6 +795,18 @@ export class EntryCommitController {
   @Get('open')
   async openPreview(@Query('t') token: string) {
     return this.openLink.whatThisIs(token ?? '');
+  }
+
+  /**
+   * HOW LONG A TEAM MEMBER'S CHECK-IN TAKES, from its one owner (participants/when-it-asks.ts, the measured figure). Public, because
+   * the pages that say it are read before anybody signs in: the answer-first link and setup. The check-in page reads it here too, so
+   * the client holds no copy of the figure.
+   */
+  @Public()
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
+  @Get('a-check-in-takes')
+  aCheckInTakes() {
+    return { takes: A_CHECK_IN_TAKES };
   }
 
   /* A hundred people scanning one QR code in one minute is the case this exists for, and ten a

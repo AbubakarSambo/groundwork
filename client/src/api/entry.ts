@@ -208,6 +208,10 @@ export const entryApi = {
    * the anchor through the ordinary routes, route by route". `source` is not read by any caller yet
    * (nothing used it off `/entry/anchor-start` either); `thePeopleStep` is, by `EntryChatPage.tsx`.
    */
+  /** How long a team member's check-in takes, from the server's one owner (lib/how-long-setup-takes.ts reads it). */
+  aCheckInTakes: () =>
+    apiClient.get<{ takes: string }>('/entry/a-check-in-takes').then(r => r.data.takes),
+
   opener: (scenario?: string, source?: string) =>
     apiClient.post<{ reply: string; source?: string; thePeopleStep?: ThePeopleStepRules }>('/entry/opener', { scenario, source }).then(r => r.data),
 

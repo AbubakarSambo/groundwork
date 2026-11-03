@@ -3,7 +3,7 @@ import { UPLOAD_ACCEPT_ATTR, WHAT_YOU_CAN_UPLOAD_SHORT } from '@/lib/what-you-ca
 import { whenItWas } from '../../lib/a-date-reads-the-same-everywhere'
 import { Fragment, useState, useEffect, useRef } from 'react'
 import { HOW_A_SITUATION_IS_CHOSEN } from '@/lib/one-way-to-say-what-a-situation-does'
-import { SETUP_TAKES } from '@/lib/how-long-setup-takes'
+import { SETUP_TAKES, useACheckInTakes } from '@/lib/how-long-setup-takes'
 import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENCE_VALUE, type ScenarioKey } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
@@ -1482,6 +1482,7 @@ export function EntryChatPage() {
    * what that call used to decide, and there is no longer a separate screen that needs to know
    * the answer before anything else has been asked for.
    */
+  const takes = useACheckInTakes()
   const anchorStartQuery = useQuery({
     queryKey: ['anchor-start-inline', params.get('source')],
     queryFn: () => entryAnchorApi.start(params.get('source')),
@@ -5205,6 +5206,7 @@ export function EntryChatPage() {
                   /* Setup page review: "You have not added anybody else yet" is about the people, so it is said there. */
                   peopleNote={theSetupHoldsTheNameAndPeople && !isAnchorDraft() && peopleOnTheList === 0 ? 'You have not added anybody else yet. A check-in with one person still works, and it stays a note to yourself until somebody joins it.' : undefined}
                   people={isAnchorDraft() || theSetupHoldsTheNameAndPeople ? renderPeopleStep(true) : undefined}
+                  takes={takes}
                 />
               </Section>
 

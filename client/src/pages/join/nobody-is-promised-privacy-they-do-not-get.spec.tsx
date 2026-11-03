@@ -35,7 +35,7 @@ describe('what the page promises before somebody types', () => {
   /* Changed in F5: the length is the measured one, from its one owner (how-long-setup-takes.ts: a team member's check-in, median
      1.9 minutes on gw_loop_round16), as the approved journey says it (stage 6), not a figure written here. */
   it('says how long it takes from the one measured figure', () => {
-    expect(CODE).toMatch(/It takes \{a_check_in_takes\}\./)
+    expect(CODE).toMatch(/It takes \$\{inASentence\(takes\)\}\./)
     expect(CODE).not.toMatch(/about ten minutes|about two minutes/)
   })
 })

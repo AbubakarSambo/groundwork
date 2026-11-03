@@ -120,8 +120,8 @@ describe('the check-in page itself (pages/chat/ChatPage.tsx)', () => {
     expect(page).toContain('<TheDirectMorning on={direct}>')
   })
   it('with it on, a few minutes, and no "You are not expected to agree" or "Nothing you have written here is shown to anyone"', () => {
-    /* Changed in F5: the header says the one measured length either way (lib/how-long-setup-takes.ts). */
-    expect(page).toContain(": A_CHECK_IN_TAKES")
+    /* Changed in F5: the header says the one measured length either way, as the server serves it (useACheckInTakes). */
+    expect(page).toContain(": takes\n")
     expect(page).toContain('{!direct && <p className="gwui-panel-text-muted">Answer in your own words. You are not expected to agree with any of it.</p>}')
     expect(page).toContain('{!direct && <li>Nothing you have written here is shown to anyone.</li>}')
   })

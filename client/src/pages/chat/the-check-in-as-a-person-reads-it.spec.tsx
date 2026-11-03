@@ -27,6 +27,8 @@ vi.mock('@/api/conversation', () => ({
   streamMessage: vi.fn().mockRejectedValue(new Error('no stream in tests')),
 }))
 vi.mock('@/api/documents', () => ({ documentsApi: { upload: vi.fn() } }))
+/* How long a check-in takes, as the server serves it from its one owner (participants/when-it-asks.ts). */
+vi.mock('@/api/entry', () => ({ entryApi: { aCheckInTakes: vi.fn().mockResolvedValue('About two minutes') } }))
 vi.mock('@/api/grounds', () => ({
   groundsApi: { get: vi.fn(), getMyCheckinStatus: vi.fn() },
 }))

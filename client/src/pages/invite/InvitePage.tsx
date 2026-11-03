@@ -580,7 +580,7 @@ export function InvitePage() {
                   {/* "You choose how you sign in afterwards" only to someone not signed in (U.6 review). Whether an
                       address has an account is never revealed, so being signed in is what this can know. */}
                   {/* How long it takes is the server's one measured figure (when-it-asks.ts). The target's "You make your account afterwards" says "account", which is never said; the sign-in sentence it replaced stays. */}
-                  {signedIn ? `${preview.takes ?? 'About two minutes'}.` : `${preview.takes ?? 'About two minutes'}. You choose how you sign in afterwards.`}
+                  {signedIn ? (preview.takes ? `${preview.takes}.` : '') : `${preview.takes ? `${preview.takes}. ` : ''}You choose how you sign in afterwards.`}
                 </p>
               </Stack>
             )}
