@@ -136,10 +136,9 @@ describe('the check-in page says the server\'s one count', () => {
   it('says the served sentence, with who it leaves out, and no count of its own', async () => {
     const says = 'Three of the five people have checked in for session 1. One of them was invited and has not joined yet.'
     const text = await headerOf(served({ session: 1, answered: 3, ofPeople: 5, everyoneIn: false, notCountedSays: null, notJoinedSays: 'One of them was invited and has not joined yet.', says }))
-    /* The lead has answered, so the line at the top says it once (B-148), from the same count: two of the five still out. */
-    expect(text).toContain('Two of the five have not answered yet. One of them was invited and has not joined yet.')
-    expect(text).not.toContain(says)
-    expect(text).not.toMatch(/The one person in it|checked in for session 1/)
+    /* Changed 3 November (F5 part 3): the page says the served sentence once, and no count of its own ("Two of the five have not answered yet."). */
+    expect(text.split(says).length - 1).toBe(1)
+    expect(text).not.toMatch(/The one person in it|have not answered yet/)
     expect(text).not.toMatch(/Everyone is in/)
   })
 
@@ -153,7 +152,7 @@ describe('the check-in page says the server\'s one count', () => {
   it('says who, from the served count, and the way to what each person said once somebody else has answered', async () => {
     const whoSays = 'You and Aisha have checked in. David has started and not finished yet. Neema has not started yet.'
     const text = await headerOf(served({ session: 1, answered: 2, ofPeople: 4, everyoneIn: false, notCountedSays: null, whoSays, othersHaveAnswered: true, says: `Two of the four people have checked in for session 1. ${whoSays}` }))
-    expect(text).toContain(`Two of the four have not answered yet. ${whoSays}`)
+    expect(text).toContain(`Two of the four people have checked in for session 1. ${whoSays}`)
     const link = screen.getByRole('link', { name: 'See what each person said, in their own words' })
     expect(link.getAttribute('href')).toBe('/grounds/g1/session/1')
   })

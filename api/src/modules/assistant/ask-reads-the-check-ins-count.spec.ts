@@ -31,7 +31,8 @@ describe('the open session, as Ask reads it', () => {
 
   it('says the count by name, with the lead as you, so a lead asking about Aisha and David is told where they are', async () => {
     const stood = await theOpenSession(prisma, 'g-cinema', 'u-juma');
-    expect(stood?.says).toContain('You have checked in.');
-    expect(stood?.says).toContain('Aisha and David have started and not finished yet.');
+    /* Changed 3 November: since df0ff233a the count names only who is missing, once ("2 of 4 have checked in; Peter and Mary haven't
+       joined yet"); who has checked in is the rest of the count and is not named again. */
+    expect(stood?.says).toBe('1 of 3 has checked in; Aisha and David have started and not finished yet.');
   });
 });

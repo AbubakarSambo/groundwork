@@ -62,10 +62,11 @@ describe('one session, one count, whoever reads it', () => {
 
   it('Ask reads the same numbers for the same session, and says who is not counted', async () => {
     const asked = await theOpenSession(aPrismaFor(), 'g', 'u-akua');
-    expect(asked).toMatchObject({ answered: count.answered, ofHowMany: count.ofPeople, round: count.session, notCountedSays: count.notCountedSays });
+    expect(asked).toMatchObject({ answered: count.answered, ofHowMany: count.ofPeople, round: count.session });
+    /* Changed 3 November (F5 part 3): Ask says the one count's own sentence, by name, not a count of its own. */
     const said = whereOneStands({ ...asked!, label: 'Farmer Training' });
-    expect(said).toContain('three of six people have checked in');
-    expect(said).toContain('One of them was invited and has not joined yet.');
+    expect(said).toBe(`In "Farmer Training", ${asked!.says.charAt(0).toLowerCase()}${asked!.says.slice(1)}`);
+    expect(said).toContain('3 of 6 have checked in');
     expect(said).not.toMatch(/all three people/);
   });
 

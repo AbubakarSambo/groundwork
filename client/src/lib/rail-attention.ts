@@ -30,11 +30,8 @@ export type RailAttention =
   /** An open check-in of your own, past the date it was due. */
   | { kind: 'overdue'; sessionNumber: number; daysLate: number }
   /** Not yours to do: other people have not checked in yet. */
-  | {
-      kind: 'waiting'; done: number; total: number
-      /** People on it who are not counted because an admin has not let them in yet, and who have not answered. Said beside the count, so "one of the two" beside five names reads true. */
-      notLetIn?: number
-    }
+  /** The served count's own sentence says who is not counted and why (api grounds/this-sessions-count.ts). */
+  | { kind: 'waiting'; done: number; total: number }
 
 export interface RailGround {
   /** The ground's own status. Without it, the rail cannot tell a live check-in from a shut one. */
@@ -113,13 +110,12 @@ export function railAttention(g: RailGround, myUserId: string | null | undefined
    * the top of every tab read "Three of the four have not answered yet." when none of the three
    * people who actually check in had answered. One rule, used here too.
    */
-  /* Who the round counts, who has answered it and who is not let in yet, as the server counted them (the one count). */
+  /* Who the round counts and who has answered it, as the server counted them (the one count). */
   const count = theCountOf(g, round)
   const parties = count?.onTheCheckIn.length ?? 0
   if (parties > 1 && round > 0 && count) {
     const done = count.answered.length
-    const notLetIn = count.notLetIn.length
-    if (done < parties) return { kind: 'waiting', done, total: parties, ...(notLetIn ? { notLetIn } : {}) }
+    if (done < parties) return { kind: 'waiting', done, total: parties }
   }
   return { kind: 'none' }
 }

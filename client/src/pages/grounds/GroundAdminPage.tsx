@@ -53,7 +53,7 @@ import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { SendTheReportToEveryone } from '@/components/gw/SendTheReportToEveryone'
-import { howManyHaveNotAnsweredYet, numberUpToTenInWords, andWhoIsNotCountedYet } from '@/lib/a-number-up-to-ten-in-words'
+import { numberUpToTenInWords } from '@/lib/a-number-up-to-ten-in-words'
 import { theClocksSessionSaid } from '@/lib/the-one-count'
 
 /**
@@ -1721,11 +1721,7 @@ export function GroundAdminPage() {
           const say: { t: string; tone?: 'amber' | 'navy' } | null =
             a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn. It is 1 day late.' : `Your turn. It is ${a.daysLate} days late.`, tone: 'amber' }
             : a.kind === 'yours' ? { t: 'Your turn.', tone: 'navy' }
-            /* U.9 re-review, item B: a sentence, not a label and a fraction. Screen fault 4
-               (final walk): "1 of the 3 have not answered yet." is now said in words, with the
-               right verb for one person left over - "One of the three has not answered yet." */
-            /* And who, by name, from the same served count (round 6: "Two of the three have not answered yet" named nobody). */
-            : a.kind === 'waiting' ? { t: [howManyHaveNotAnsweredYet(a.total - a.done, a.total), thisSession?.whoSays ?? thisSession?.notJoinedSays, andWhoIsNotCountedYet(a.notLetIn).trim()].filter(Boolean).join(' ') }
+            /* Waiting on others is said once, in the session line below, in the server's one count sentence. */
             : null
           return say ? <Note tone={say.tone}>{say.t}</Note> : null
         })()}
@@ -1862,11 +1858,10 @@ export function GroundAdminPage() {
               "session" appears in 159 visible strings and "round" in 25.
             */
             /*
-             * B-148: NOT SAID TWICE. When the lead takes part herself, has already answered, and is only waiting on others, the
-             * attention Note just above already says it, from the same served count. Said here in every other case, as the server
-             * says it ("Three of the five people have checked in for session 2." and who it leaves out).
+             * THE ONE COUNT, SAID ONCE (B-148; F5 part 3): the server's own sentence ("2 of 4 have checked in; Peter and Mary haven't
+             * joined yet."), the words Today, the board, the list and Ask say. The attention line above no longer has a count of its own.
              */
-            if (thisSession?.says && !(isInitiator && viewerChecksIn && attention.kind === 'waiting')) parts.push(thisSession.says)
+            if (thisSession?.says) parts.push(thisSession.says)
             if (roundWentBack) parts.push(`It went back to session ${openRound}, because somebody new was added. Nothing anybody wrote is lost.`)
           }
           /* Report state only while there is something to say about it. */

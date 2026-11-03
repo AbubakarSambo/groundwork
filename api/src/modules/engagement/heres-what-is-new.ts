@@ -6,9 +6,8 @@ import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended
 import { isAlreadyHeld } from './a-message-sent-once';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
-import { theSessionAndItsCount, withWhoHasNotJoinedMarked } from '../grounds/this-sessions-count';
+import { theSessionAndItsCount, withWhoHasNotJoinedMarked, theCountSaid } from '../grounds/this-sessions-count';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
-import { theCheckIn } from '../grounds/which-check-in-it-is';
 import { aNumberInWords } from './a-number-in-words';
 import { nameToCall, aNameToList } from './a-name-to-call-them';
 
@@ -27,7 +26,7 @@ export const WHATS_NEW_SENDER = 'sendHeresWhatIsNew';
 
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 
-export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Who the count leaves out and why, said after it (this-sessions-count.ts). */ notCountedSays?: string | null; /** Who of them was invited and has not joined yet, said after the count: they are counted (Hafsah, 1 November), and said there, not in `notYet`. */ notJoinedSays?: string | null; notJoined?: number; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean; /** Set only when another listed check-in has the same name: when this one was started, as the lead reads a date ("3 September"). */ startedOn?: string; groundId?: string; /** Which round the count is about. */ round?: number; /** The one count's own sentence, by name, as the board and the check-in's page say it. */ says?: string }
+export interface AnExistingCheckIn { label: string; ofHowMany: number; answered: number; notYet: string[]; /** Whether it has a session still to come, which is what the follow-up is for. */ moreToCome?: boolean; /** Set only when another listed check-in has the same name: when this one was started, as the lead reads a date ("3 September"). */ startedOn?: string; groundId?: string; /** Which round the count is about. */ round?: number; /** The one count's own sentence, by name, as the board and the check-in's page say it (this-sessions-count.ts). */ says: string }
 
 /**
  * WHETHER THIS CHECK-IN HAS A SESSION STILL TO COME. The follow-up (a person's own promise, said back to them) is sent for a session that begins after
@@ -39,30 +38,19 @@ export function thereIsASessionToCome(g: { runsUntilEnded?: boolean | null; ends
   return !!end && end.getTime() > now.getTime();
 }
 
-const people = (n: number) => `${aNumberInWords(n)} ${n === 1 ? 'person' : 'people'}`;
 const capLine = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
-const cap = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
 const listed = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 
 /** The check-in by its name, and, when another has the same name, by when its lead started it. */
 const calledBy = (c: AnExistingCheckIn) => (c.startedOn ? `"${c.label}", which you started on ${c.startedOn}` : `"${c.label}"`);
 
-/** One check-in, in one sentence, from the count alone. */
+/**
+ * One check-in, in the one count's own sentence (grounds/this-sessions-count.ts), the words Today, the board, the list and the
+ * check-in's page say: "In "Deal progress", 2 of 4 have checked in; Peter and Mary haven't joined yet." Its own count is gone.
+ */
 export function whereOneStands(c: AnExistingCheckIn): string {
-  const line = whereTheCountStands(c);
-  return [line, c.notJoinedSays, c.notCountedSays].filter(Boolean).join(' ');
-}
-
-function whereTheCountStands(c: AnExistingCheckIn): string {
-  const In = `In ${calledBy(c)}`;
-  /* Which round the count is about, said the way Today and the board say it. */
-  const forIt = c.round ? ` for ${theCheckIn(c.round)}` : '';
-  if (c.answered <= 0) return `${In}, nobody has checked in${forIt} yet, out of ${people(c.ofHowMany)}.`;
-  if (c.answered >= c.ofHowMany) return `${In}, ${c.ofHowMany === 1 ? 'the one person who can answer has' : c.ofHowMany === 2 ? 'both people have' : `all ${aNumberInWords(c.ofHowMany)} people have`} checked in${forIt}.`;
-  const named = c.notYet.slice(0, 3);
-  const others = c.ofHowMany - c.answered - named.length - (c.notJoined ?? 0);
-  const who = named.length ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${aNumberInWords(others)} others`] : named)} ${named.length + Math.max(others, 0) === 1 && !named.includes('you') ? 'has' : 'have'} not yet` : '';
-  return `${In}, ${aNumberInWords(c.answered)} of ${aNumberInWords(c.ofHowMany)} people ${c.answered === 1 ? 'has' : 'have'} checked in${forIt}${who}.`;
+  const says = c.says.trim();
+  return `In ${calledBy(c)}, ${says.charAt(0).toLowerCase()}${says.slice(1)}`;
 }
 
 /** True only for the check-ins that have a session to come; said for all, for some by name, or not at all. */
@@ -80,13 +68,9 @@ export function theWhatIsNewWords(firstName: string | null | undefined, checkIns
   const follow = theFollowUpSentence(checkIns);
   /* NOTHING NEW TO SAY, NOTHING SENT (decision 109 review): the one new thing is the follow-up, so a lead with no check-in it applies to is not written to. */
   if (!follow) return null;
-  /* The check-in its count is about, as the body says it (messages test, 19 October, finding 17): "Nobody has checked in on "Sales team, Q4" yet"
-     was held for Grace on Monday at 21:30, after all five had checked in for the first; the count was about the second. */
-  const forIt = checkIns.length === 1 && checkIns[0].round ? ` for ${theCheckIn(checkIns[0].round)}` : '';
+  /* The count, in the one count's own words (theCountSaid), the same count the body says. */
   const subject = checkIns.length === 1
-    ? (checkIns[0].answered <= 0
-      ? `Nobody has checked in${forIt} on "${checkIns[0].label}" yet, and here is what is new`
-      : `${cap(aNumberInWords(checkIns[0].answered))} of ${aNumberInWords(checkIns[0].ofHowMany)} people ${checkIns[0].answered === 1 ? 'has' : 'have'} checked in${forIt} on "${checkIns[0].label}", and here is what is new`)
+    ? `${theCountSaid(checkIns[0].answered, checkIns[0].ofHowMany) || 'Nobody has checked in yet'} on "${checkIns[0].label}", and here is what is new`
     : `Here is where your ${aNumberInWords(checkIns.length + andMore)} check-ins stand, and what is new`;
   const lines = [
     `Hello ${firstName?.trim() || 'there'}. Here is where your check-ins stand today.`,
@@ -143,7 +127,7 @@ export async function theOpenSession(prisma: any, groundId: string, leadUserId: 
     .map((p: any) => (p?.userId === leadUserId ? 'you' : nameToCall(p)))
     .filter(aNameToList)
     .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
-  return { label: '', ofHowMany: count.ofPeople, answered: count.answered, notYet, round: count.session, notJoinedSays: count.notJoinedSays, notJoined: count.notAnswered.length - counted.length, notCountedSays: count.notCountedSays, says: count.says };
+  return { label: '', ofHowMany: count.ofPeople, answered: count.answered, notYet, round: count.session, says: count.says };
 }
 
 /** The sweep. Returns how many were tried; the sender decides whether each may go. */

@@ -3,7 +3,6 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { isSessionShared } from '@/lib/session-rows'
 import { numberUpToTenInWords } from '@/lib/a-number-up-to-ten-in-words'
-import { howManyCheckedInSentence } from '@/lib/how-many-checked-in'
 
 /**
  * THE CONFIRM WALK OF 7 OCTOBER: three sentences that were wrong on screen.
@@ -35,7 +34,7 @@ describe('the confirm walk’s three sentences', () => {
     const src = read('GroundAdminPage.tsx')
     expect(src).toContain('parts.push(thisSession.says)')
     expect(src).not.toContain('howManyCheckedInSentence(')
-    expect(howManyCheckedInSentence(2, 3, 1)).toBe('Two of the three people have checked in for session 1.')
+    /* Changed 3 November (F5 part 3): the page's own copy of the sentence (lib/how-many-checked-in.ts) is deleted; the server's one count says it. */
     expect(src).not.toMatch(/\$\{roundDone\} of \$\{total\} \$\{roundDone === 1 \? 'person has'/)
   })
 

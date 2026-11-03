@@ -30,6 +30,7 @@ import { sidebarWasFolded, rememberSidebarFolded } from './where-the-sidebar-was
 import { pinnedFor, togglePin } from './pinned-check-ins'
 import { recentlyOpenedFor } from './recently-opened-check-ins'
 import { whatTheRowSays } from './what-a-sidebar-row-says'
+import { theClocksSessionSaid } from '@/lib/the-one-count'
 import { OrganisationChoices } from './OrganisationChoices'
 import { initialsOf, roleWord } from './your-organisations'
 import { JumpTo } from './JumpTo'
@@ -997,6 +998,7 @@ export function AppSidebar() {
       roundsDone: (g as any).roundsDone,
       alignment: (g as any).alignment,
       closed: isClosed(g),
+      countSays: theClocksSessionSaid(g)?.says ?? null,
     })
     return (
       <li key={g.id}>

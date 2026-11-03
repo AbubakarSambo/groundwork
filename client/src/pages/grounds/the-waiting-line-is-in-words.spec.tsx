@@ -45,7 +45,7 @@ function ground() {
     /* The server's one count for the session (api this-sessions-count.ts; Hafsah, 30 October 2026): the lead answered, so she counts. */
     /* Changed 3 November (F1 part 2): one served count, theCount, in place of `thisSession` beside `answeredBySession`; the same sentences. */
     boardRenders: true,
-    theCount: aServedCount({ 1: { on: ['p-lead', 'p-a', 'p-b'], answered: ['p-lead', 'p-a'] } }, { session: 1, says: 'Two of the three people have checked in for session 1.' }),
+    theCount: aServedCount({ 1: { on: ['p-lead', 'p-a', 'p-b'], answered: ['p-lead', 'p-a'] } }, { session: 1, says: '2 of 3 have checked in; Ben hasn’t started yet.' }),
   }
 }
 
@@ -65,24 +65,22 @@ beforeEach(() => {
   ;(groundsApi.get as any).mockResolvedValue(ground())
 })
 
+/*
+ * Changed 3 November (F5 part 3): the attention line's own count ("One of the three has not answered yet.") is gone. The page says
+ * the server's one count sentence (api grounds/this-sessions-count.ts), the same words Today, the board, the list and Ask say, once.
+ */
 describe('the lead’s attention line, when one of the team has not answered yet', () => {
-  it('reads "One of the three has not answered yet.", not "1 of the 3 have not answered yet."', async () => {
-    renderPage()
+  it('says the served sentence, with who is missing, not a fraction', async () => {
+    const { container } = renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
-    expect((await screen.findAllByText('One of the three has not answered yet.')).length).toBeGreaterThan(0)
-    expect(screen.queryByText(/1 of the 3/)).toBeNull()
+    await waitFor(() => expect(container.textContent).toContain('2 of 3 have checked in; Ben hasn’t started yet.'))
+    expect(container.textContent).not.toMatch(/1 of the 3|has not answered yet/)
   })
 
-  /*
-   * B-148. The same fact used to be said twice: the Note above ("One of the three has not
-   * answered yet.") and, further down the page, a second, independently-worded sentence built
-   * from the same counts ("Two of the three people have checked in for session 1."). Only the
-   * Note is kept once the lead has already answered and is only waiting on others.
-   */
-  it('does not also say "Two of the three people have checked in for session 1." underneath (B-148)', async () => {
-    renderPage()
-    await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
-    await screen.findAllByText('One of the three has not answered yet.')
-    expect(screen.queryByText(/have checked in for session 1/)).toBeNull()
+  /* B-148: the same fact is said once, never in two wordings on one page. */
+  it('says it once (B-148)', async () => {
+    const { container } = renderPage()
+    await waitFor(() => expect(container.textContent).toContain('2 of 3 have checked in'))
+    expect(container.textContent!.split('2 of 3 have checked in').length - 1).toBe(1)
   })
 })

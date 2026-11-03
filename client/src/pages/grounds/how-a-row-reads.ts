@@ -1,4 +1,5 @@
 import { railAttention, openRound } from '@/lib/rail-attention'
+import { theClocksSessionSaid } from '@/lib/the-one-count'
 import { hasEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { timesAWeek } from '@/lib/cadence'
@@ -228,6 +229,7 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   /* WHERE IT STANDS. */
   let stands: string
   const answered = g.glance?.progress?.answeredThisRound
+  const said = theClocksSessionSaid(g)
   const ofPeople = g.glance?.progress?.ofPeople ?? 0
   const next = nextSessionOn(g, now)
   if (g.status === 'AWAITING_APPROVAL') stands = 'Not started yet'
@@ -238,7 +240,8 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   else if (done === 0 && round <= 1 && !answered) stands = 'Just started'
   /* danielpip-board.jpg, "Daniel, the next six weeks: Both accounts in": on a check-in about one person, the person's account and the lead's are both in for this session. */
   else if (round > 0 && isEvaluationScenario(g.scenario) && ofPeople === 2 && answered === 2) stands = 'Both accounts in'
-  else if (round > 0 && ofPeople > 1 && answered != null && answered < ofPeople) stands = `${answered} of ${ofPeople} answered`
+  /* The one count's own sentence, as the server serves it to a reader shown the others: "2 of 4 have checked in; Peter and Mary haven't joined yet." */
+  else if (round > 0 && said && !said.everyoneIn) stands = said.says
   else if (next) stands = `Next: ${whenItWas(next, 'dayAndMonthLong')}`
   else if (planned) stands = `${done} of ${planned} sessions done`
   else stands = done === 1 ? '1 session done' : `${done} sessions done`

@@ -6,7 +6,8 @@ import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { buildSessionRows } from '@/lib/session-rows'
 import { checkedIn, stillToCheckIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { railAttention } from '@/lib/rail-attention'
-import { howManyHaveNotAnsweredYet } from '@/lib/a-number-up-to-ten-in-words'
+import { whatTheRowSays } from '@/components/gw/what-a-sidebar-row-says'
+import { theClocksSessionSaid } from '@/lib/the-one-count'
 import { aServedCount } from '@/lib/a-served-count-for-a-spec'
 
 /**
@@ -71,6 +72,8 @@ describe('one count on every screen a first-time lead reads', () => {
   it('the sidebar and the check-in\'s waiting line say the served numbers', () => {
     const a = railAttention({ status: 'ACTIVE', ...GROUND } as any, 'u-aisha')
     expect(a).toEqual({ kind: 'waiting', done: 1, total: 5 })
-    if (a.kind === 'waiting') expect(howManyHaveNotAnsweredYet(a.total - a.done, a.total)).toBe('Four of the five have not answered yet.')
+    /* Changed 3 November (F5 part 3): the sidebar row says the served sentence whole, not a count of its own. */
+    expect(whatTheRowSays({ label: 'Sales', attention: a, round: 1, planned: null, roundsDone: 0, alignment: null, closed: false, countSays: theClocksSessionSaid(GROUND)?.says }))
+      .toBe(`Sales. ${THIS_SESSION.says}`)
   })
 })
