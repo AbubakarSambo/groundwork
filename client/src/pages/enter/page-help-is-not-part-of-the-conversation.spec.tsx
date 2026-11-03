@@ -43,7 +43,8 @@ const HER_SETUP = [
 
 describe('the page’s own lines', () => {
   it('are left out of what was said, and nothing the person typed is', () => {
-    expect(THE_OPENING_QUESTION).toMatch(/300 organic chickens/)
+    /* Changed in F5: the worked example is gone from the page altogether; the line is still left out of what was said. */
+    expect(THE_OPENING_QUESTION).not.toMatch(/organic chickens|For example/)
     const said = whatWasSaid(HER_SETUP as any)
     expect(said.map((t) => t.content)).toEqual(['Track farmer progress to report to our donor.', 'Who is on the team?', 'Kofi, Ama, Kwame and Adwoa.'])
     expect(JSON.stringify(said)).not.toMatch(/chickens/)

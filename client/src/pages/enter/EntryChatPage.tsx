@@ -1,8 +1,9 @@
 import { documentsApi } from '@/api/documents'
 import { UPLOAD_ACCEPT_ATTR, WHAT_YOU_CAN_UPLOAD_SHORT } from '@/lib/what-you-can-upload'
 import { whenItWas } from '../../lib/a-date-reads-the-same-everywhere'
-import { useState, useEffect, useRef } from 'react'
-import { HOW_A_SITUATION_IS_CHOSEN, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
+import { Fragment, useState, useEffect, useRef } from 'react'
+import { HOW_A_SITUATION_IS_CHOSEN } from '@/lib/one-way-to-say-what-a-situation-does'
+import { SETUP_TAKES } from '@/lib/how-long-setup-takes'
 import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENCE_VALUE, type ScenarioKey } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
@@ -36,9 +37,10 @@ import { theScheduleTheySaid } from '@/lib/the-schedule-they-said'
 import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES, THE_ANCHOR_FIRST_QUESTION, takeTheServedFirstQuestion, rememberTheServedFirstQuestion, theAnchorStartSucceededForThisTab, rememberTheAnchorStartSucceeded, thePlanInTheHeader } from './TheSetup'
 import type { ThePeopleStepRules } from '@/api/anchorShapes'
 import { TheLeadsReveal } from '@/components/gw/TheLeadsReveal'
-import { FillsInAsYouTalk, type WhatTheAnchorConversationKnows } from './FillsInAsYouTalk'
+import { FillsInAsYouTalk, ReadyToSend, type WhatTheAnchorConversationKnows } from './FillsInAsYouTalk'
 import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
 import { EverySituation } from './EverySituation'
+import { ThisSoundsLike, THAT_IS_RIGHT } from './ThisSoundsLike'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
@@ -1159,7 +1161,8 @@ export function groupOf(card: { cardKey: string; scenario: string }): string {
  * THE OPENING LINE, AND THE CLOSE, OF THE LEAD'S SETUP (Hafsah, 26 October 2026). Said in the chat itself: what this is for, how long it
  * takes and how to stop, added in front of the first message she reads, which stays as it was; and one line when setup is done.
  */
-export const THE_SETUP_LINE = 'This sets up your team’s check-ins and records where things stand today. It takes about ten minutes, and you can stop any time with End session.'
+/* The target journey's opening, one line (F5, stage 2), with the measured length from its one owner. */
+export const THE_SETUP_LINE = `This takes ${SETUP_TAKES}. You can stop any time with End session.`
 export function theSetupIsDoneSaying(firstOpensOn: string | null): string {
   const d = firstOpensOn ? new Date(`${firstOpensOn}T12:00:00Z`) : null
   const day = d && !isNaN(d.getTime()) ? whenItWas(d, 'weekdayAndDay', 'UTC') : null
@@ -1186,16 +1189,8 @@ export const THE_OPENING_QUESTION =
    * So this says what the two routes ARE. The question is asked once, on the card that takes the
    * answer.
    */
-  /*
-   * AND ONE WORKED EXAMPLE, BECAUSE AN EMPTY BOX WITH AN INSTRUCTION IN IT IS THE HARDEST QUESTION
-   * IN THE PRODUCT.
-   *
-   * "Describe it in your own words" tells somebody nothing about how much to write, how specific to
-   * be, or whether a number belongs in it. One sentence showing all three costs a line and removes
-   * the stall. See WHAT_THAT_SOUNDS_LIKE, which is deliberately about buying chickens: this is used
-   * to procure livestock and to sell tea as often as it is used to ship software.
-   */
-  `${HOW_A_SITUATION_IS_CHOSEN} ${WHAT_THAT_SOUNDS_LIKE}`
+  /* No worked example any more (F5): the chickens example was kept as two leads' own goal in round 7. The examples are buttons on the way in. */
+  HOW_A_SITUATION_IS_CHOSEN
 
 /*
  * THE GROUPS SOMEBODY PICKS BETWEEN, which is not all of them.
@@ -1907,6 +1902,12 @@ export function EntryChatPage() {
     } catch { /* best effort, like every other save on this page */ }
   }
   const [teamSaid, setTeamSaid] = useState('')
+  /*
+   * THE TEAM FROM THE CONVERSATION (F5, stage 3). Everybody the conversation has read, with the email and number they were given with,
+   * goes into the team's lines here, the one owner, never over what was typed: the box is no longer always on screen to do it, and the
+   * lines are what every save reads. "Change" under "Who’s in it" opens the box.
+   */
+  const [changingTeam, setChangingTeam] = useState(false)
   /** How many people this save invites: those on the list and those in the box (the box's lines are the team, not a draft of it). */
   const peopleOnTheList = inviteAdded.length + linesInTheBox(teamText)
   const [inviteContextFor, setInviteContextFor] = useState<string | null>(null)
@@ -2509,7 +2510,11 @@ export function EntryChatPage() {
     }
     setHistory(said)
     setClosed(true)
-    setShowSave(true)
+    /* F5, stage 5: a signed-in lead whose team can all be invited ends setup on "Ready to send when you are", with one button; the full
+       save card opens from Change. When somebody still needs an email, or nobody is on it yet, the card opens with the team box, where
+       that is typed; somebody signed out still needs the card, which asks for their email. */
+    const team = theTeamAsItStands()
+    setShowSave(!user || team.people.length === 0 || team.noEmailYet.length > 0)
     persistCheckin(said, true, '')
     generateSessionReport(said)
   }
@@ -3678,6 +3683,15 @@ export function EntryChatPage() {
      `setShowAdminBriefing(false)`. Documented rather than deleted, same as that finding - a page
      losing a screen is a bigger decision than a rendering rebuild, so this still gets the same
      shared-parts treatment as everything else, in case something upstream starts reaching it. */
+  /* The team from the conversation, into the one team's lines (F5, stage 3; see changingTeam). Before the early returns, like every hook. */
+  const namedKey = JSON.stringify([onboardingSelections.peopleNamed, onboardingSelections.peopleEmails, onboardingSelections.peoplePhones, inviteAdded])
+  useEffect(() => {
+    /* Signed in only: somebody signed out gives their email first, and their team box is filled when it is shown, as before. */
+    if (!user) return
+    const next = withTheNamedAdded(teamTextNow.current, theTeamNamedInTheSetup())
+    if (next !== teamTextNow.current) writeTheTeam(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [namedKey, !!user])
   if (showAdminBriefing) {
     return (
       <div className="gwui-ec-briefing">
@@ -3788,6 +3802,22 @@ export function EntryChatPage() {
    * open, filled with everybody named in the conversation and the number and email they gave: the lead types only the missing emails
    * and presses once. Somebody already in the organisation is recognised by name and needs no email.
    */
+  /** The team as it stands, for the panel: each person who can be invited, on a line, and who was named with no email yet. */
+  function theTeamAsItStands(): { people: string[]; noEmailYet: string[] } {
+    const lines = teamText.split('\n').map((l) => l.trim()).filter(Boolean)
+    const named = (l: string) => l.split(',')[0].trim()
+    const reachable = (l: string) => l.includes('@') || !!colleagueNamed(named(l))
+    return {
+      people: [...inviteAdded.map((e) => shownEntry(e)), ...lines.filter(reachable)],
+      noEmailYet: lines.filter((l) => !reachable(l)).map(named),
+    }
+  }
+  /** "Their first check-in opens on Tuesday 4 November.", from the day it starts, or now. */
+  function whenTheirFirstCheckInOpens(): string {
+    const d = checkInBy ? new Date(`${checkInBy}T12:00:00Z`) : null
+    const later = d && !isNaN(d.getTime()) && d.getTime() > Date.now() + 12 * 3600_000
+    return later ? `Their first check-in opens on ${whenItWas(d!, 'weekdayAndDay', 'UTC')}.` : 'Their first check-in opens as soon as you send this.'
+  }
   function theTeamNamedInTheSetup(): string[] {
     const onTheList = new Set(inviteAdded.map((e) => shownAs(e.split(' - ')[0]).trim().toLowerCase()))
     return (onboardingSelections.peopleNamed ?? []).map((n) => n.trim()).filter(Boolean)
@@ -4116,6 +4146,7 @@ export function EntryChatPage() {
    * box while she talked). Drawn beside the conversation where it fits (1000px, the width index.css gives .gw-fills-in), and at the top
    * of the conversation where it does not: the same panel, the same box, the same kept lines.
    */
+  const namedInTheSetup = theTeamNamedInTheSetup()
   const thePanel = atTheDoor ? null : (
     <FillsInAsYouTalk
       /*
@@ -4155,6 +4186,13 @@ export function EntryChatPage() {
       runsUntilEnded={runsUntilEnded}
       mentioned={onboardingSelections.peopleNamed ?? []}
       added={inviteAdded.map((e) => shownAs(e.split(' - ')[0]))}
+      /* Signed in: the team as read from the conversation. Signed out, the panel names who was mentioned and holds the box, as before. */
+      people={isAnchorDraft() || !user ? undefined : theTeamAsItStands().people}
+      noEmailYet={theTeamAsItStands().noEmailYet}
+      onChangeTeam={() => setChangingTeam(true)}
+      onChangeSetup={closed && !showSave ? () => setShowSave(true) : undefined}
+      asOneLine={!thePanelFitsBeside}
+      ready={closed && !showSave && user && !emailSent ? { opens: whenTheirFirstCheckInOpens(), onSend: saveAsSignedInUser, sending: savingAsUser, why: whyItWasNotSaved || teamSaid || undefined } : null}
       /*
        * FAULT 2: THE ANCHOR'S SEVEN ITEMS, NOT THE USUAL FOUR.
        *
@@ -4164,7 +4202,7 @@ export function EntryChatPage() {
        */
       anchorItems={isAnchorDraft() ? (onboardingSelections.anchorItems ?? {}) : undefined}
       /* The one team box, while the conversation is on screen; once setup ends it is on the save card, with the same lines. */
-      team={!closed ? <TheTeamBox prefilled={theTeamNamedInTheSetup()} text={teamText} onText={writeTheTeam} said={teamSaid} /> : undefined}
+      team={changingTeam || (!user && !closed) ? <TheTeamBox prefilled={namedInTheSetup} text={teamText} onText={writeTheTeam} said={teamSaid} disabled={savingAsUser || saving} /> : undefined}
     />
   )
 
@@ -4444,23 +4482,7 @@ export function EntryChatPage() {
                 * "It's something else" would offer to pick a different situation that does not
                 * exist for this door.
                 */}
-              {phase === 'onboarding' && onboardingHistory.length > 1 && !isAnchorDraft() && (() => {
-                const chosen = onboardingSelections.classifiedScenario || pickedScenario || scenario
-                const label = chosen ? sentenceCase(scenarioLabel(chosen, onboardingSelections.brief)) : null
-                return (
-                  <span className="gwui-ec-picked-row">
-                    {/* U.6 review: start-chat.txt's words, "This sounds like" and "It’s something else". */}
-                    {label && (
-                      <span className="gwui-panel-text-muted">
-                        This sounds like <b>{label}</b>.
-                      </span>
-                    )}
-                    <button type="button" onClick={pickADifferentSituation} className="gwui-plain-link">
-                      It’s something else
-                    </button>
-                  </span>
-                )
-              })()}
+              {/* "This sounds like" and "It’s something else" moved into the conversation, under the first reply (ThisSoundsLike, F5). */}
               {/* CONFIRMED ONCE THE CONVERSATION EXISTS. Clearing throws away the transcript, the
                   organisation name and anybody queued to be invited - cheap to confirm, expensive
                   to undo. On the picker with nothing said yet there is nothing to lose, so it goes
@@ -4606,13 +4628,28 @@ export function EntryChatPage() {
                     </div>
                   )
                 }
-                return (
+                const bubble = (
                   <Bubble key={i} mine={m.role === 'user'}>
                     {/* THE LAST PLACE BEFORE A READER'S EYES. `[[SESSION_COMPLETE]]` was photographed
                         in a bubble in production, with its markdown asterisks intact. Stripped on the
                         server too - this is a net, not the fix. */}
                     {i === firstShown ? <><span className="gwui-setup-line">{THE_SETUP_LINE}</span><br /><br /><span>{nothingInternalReachesTheBubble(m.content)}</span></> : nothingInternalReachesTheBubble(m.content)}
                   </Bubble>
+                )
+                /* F5, stage 2: the kind of check-in as a card under the first reply, with its meaning (ThisSoundsLike). Not for an
+                   anchor draft, whose situation is how the person arrived. */
+                if (i !== firstShown || phase !== 'onboarding' || isAnchorDraft()) return bubble
+                return (
+                  <Fragment key={i}>
+                    {bubble}
+                    <ThisSoundsLike
+                      scenario={onboardingSelections.classifiedScenario || pickedScenario || scenario}
+                      brief={onboardingSelections.brief}
+                      mayConfirm={i === onboardingHistory.length - 1 && !onboardingLoading}
+                      onConfirm={() => sendOnboarding(THAT_IS_RIGHT)}
+                      onSomethingElse={pickADifferentSituation}
+                    />
+                  </Fragment>
                 )
               }) })()}
 
@@ -4906,7 +4943,11 @@ export function EntryChatPage() {
             )}
 
             {/* Input bar / save CTA */}
-            {closed && !showSave ? (
+            {closed && !showSave && user && !emailSent && theTeamAsItStands().people.length > 0 ? (
+              <div className="gwui-ec-invite-bar">
+                <ReadyToSend people={theTeamAsItStands().people.length} lines={theTeamAsItStands().people} onChange={() => setShowSave(true)} opens={whenTheirFirstCheckInOpens()} onSend={saveAsSignedInUser} sending={savingAsUser} why={whyItWasNotSaved || teamSaid || undefined} />
+              </div>
+            ) : closed && !showSave ? (
               <div className="gwui-ec-invite-bar">
                 <div className="gwui-ec-invite-bar-text">
                   <div className="gwui-ec-invite-bar-title">{'What you said is on record.'}</div>

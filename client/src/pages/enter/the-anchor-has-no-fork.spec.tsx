@@ -141,7 +141,7 @@ describe('every other situation (decision 133)', () => {
     })
 
     renderPage('/start')
-    const box = await screen.findByPlaceholderText('For example: our sales targets this quarter')
+    const box = await screen.findByLabelText('What do you need updates on, or want to track?')
     fireEvent.change(box, { target: { value: 'A new project is starting.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
 

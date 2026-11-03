@@ -70,9 +70,9 @@ describe('a lead who added her team on People first', () => {
     seedHerSetup()
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
-    const box = (await screen.findByLabelText('Your team, one per line')) as HTMLTextAreaElement
-    await waitFor(() => expect(box.value.split('\n')).toEqual(['Ben Juma', 'Diana Omondi']))
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    /* Changed in F5 (stage 5): both are colleagues, so nobody needs an email and setup ends on one button. */
+    expect(await screen.findByText('Ben Juma')).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: 'Send 2 invitations' }))
 
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0] as any
@@ -85,6 +85,8 @@ describe('a lead who added her team on People first', () => {
     seedHerSetup()
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
+    /* Changed in F5 (stage 5): the full setup, with the picker, opens from Change beside the name. */
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Change' }))[0])
     const box = (await screen.findByLabelText('Your team, one per line')) as HTMLTextAreaElement
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Karanja Mumbi' }))
     const picker = screen.getByRole('listbox').closest('div')!.parentElement as HTMLElement

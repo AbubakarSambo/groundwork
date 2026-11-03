@@ -2461,3 +2461,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-b8-field-label { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
 /* B6, B7 and B8 (References and resources, My work, People and setup): section headings in Literata, as the pictures draw them. */
 .gwui-b-tab .sec-h .t-h2 { font-family: var(--gw-font-name); font-weight: 500; font-size: 22px; line-height: 28px; }
+
+/* F5, stage 3: on a phone the setup panel is one line above the conversation ("3 of 4 set. 4 people."), which opens it. */
+.gwui-ec-panel-line { margin: 0 0 12px; }
+.gwui-ec-panel-line > summary {
+  cursor: pointer; list-style: none; padding: 10px 14px; border: 1px solid var(--gw-border); border-radius: 10px;
+  background: var(--gw-surface, #fff); color: var(--gw-text); font-size: 15px; font-weight: 600; min-height: 44px; box-sizing: border-box;
+}
+.gwui-ec-panel-line > summary::-webkit-details-marker { display: none; }
+.gwui-ec-panel-line[open] > summary { margin-bottom: 8px; }
+/* F5, stage 2: the kind of check-in, as a card under setup's first reply. */
+.gwui-ec-sounds-like { margin: 8px 0 16px; max-width: 560px; }

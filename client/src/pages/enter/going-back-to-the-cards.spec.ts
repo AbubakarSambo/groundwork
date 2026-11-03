@@ -74,16 +74,17 @@ describe('and it is offered whenever the conversation has begun', () => {
    * `&& !isAnchorDraft()`; every other situation still reaches the same banner the same way, which
    * is what these two assertions actually guard.
    */
+  /* Changed in F5 (stage 2): "It’s something else" is on the card under setup's first reply (ThisSoundsLike), drawn from the
+     transcript itself, so a reload keeps it; still only during setup, and never for an anchor draft. */
   it('asks about the transcript, not about a flag that a reload loses', () => {
-    expect(SRC).toContain("{phase === 'onboarding' && onboardingHistory.length > 1 && !isAnchorDraft() && (")
+    expect(SRC).toContain("if (i !== firstShown || phase !== 'onboarding' || isAnchorDraft()) return bubble")
+    expect(SRC).toContain('onSomethingElse={pickADifferentSituation}')
     /* The version that asked `pickedSituation` left a reloaded session with no route back at all. */
     expect(SRC).not.toContain("{phase === 'onboarding' && pickedSituation && (")
   })
 
   it('and not once a check-in is running, where the situation is what it is about', () => {
-    const at = SRC.indexOf("onboardingHistory.length > 1 && !isAnchorDraft() && (")
-    const condition = SRC.slice(at - 40, at)
-    expect(condition).toContain("phase === 'onboarding'")
+    expect(SRC).toContain("phase !== 'onboarding' || isAnchorDraft()) return bubble")
   })
 
   it('while Start over still exists, for somebody who really does want to bin it', () => {

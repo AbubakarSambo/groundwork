@@ -44,7 +44,8 @@ describe('someone signed out opens /start', () => {
   it('reads the prototype’s first screen, and nothing about names, plans or steps', async () => {
     openStart()
     expect(await screen.findByRole('heading', { level: 1, name: 'What do you need updates on, or want to track?' })).toBeTruthy()
-    expect(screen.getByText('A goal, a new hire, a decision. Describe it and we’ll set it up in about two minutes.')).toBeTruthy()
+    /* Changed in F5: the length is the measured one (how-long-setup-takes.ts), not "about two minutes". */
+    expect(screen.getByText('A goal, a new hire, a decision. Describe it and we’ll set it up in about five minutes.')).toBeTruthy()
     for (const example of [
       'Track the team’s targets for the quarter',
       'Sales are behind and I don’t know why',
@@ -54,7 +55,7 @@ describe('someone signed out opens /start', () => {
     ]) expect(screen.getByRole('button', { name: example })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy()
     expect(text(screen.getByText('Rather pick from a list?', { exact: false }))).toBe('Rather pick from a list? See every situation.')
-    expect(screen.getByPlaceholderText('For example: our sales targets this quarter')).toBeTruthy()
+    expect(screen.getByLabelText('What do you need updates on, or want to track?')).toBeTruthy()
 
     const page = document.body.textContent ?? ''
     for (const gone of ['Give this a name', 'session planned', 'What is going on', 'Save & invite', 'Start over', 'Or pick a situation that already fits']) {
@@ -65,7 +66,7 @@ describe('someone signed out opens /start', () => {
   it('an example fills the box, and Continue sends those words to start the setup conversation', async () => {
     openStart()
     fireEvent.click(await screen.findByRole('button', { name: 'Someone isn’t delivering' }))
-    expect((screen.getByPlaceholderText('For example: our sales targets this quarter') as HTMLTextAreaElement).value).toBe('Someone isn’t delivering')
+    expect((screen.getByLabelText('What do you need updates on, or want to track?') as HTMLTextAreaElement).value).toBe('Someone isn’t delivering')
     expect(onboardStream).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(onboardStream).toHaveBeenCalled())
@@ -117,17 +118,18 @@ describe('someone signed out opens /start', () => {
 })
 
 describe('someone signed in starts a check-in', () => {
-  it('reads new.txt’s words, with no examples and nothing about an account', () => {
+  /* Changed in F5 (the approved journey, stage 1): a signed-in lead meets the same way in as the prototype's start.txt, with the
+     examples as buttons, under the crumbs; "Set up a check-in" and "Describe it in your own words" are gone. */
+  it('reads start.txt’s words under the crumbs, with the examples as buttons and no example in the box', () => {
     render(<TheDoor signedIn onSend={() => {}} onSeeEverySituation={() => {}} />)
-    /* TheDoor's crumb now comes from the shared PageTitle (group 3 drift list, piece 1), whose "/"
-       separator is spaced with CSS margin rather than literal text - the same text shape every other
-       PageTitle crumb already reads (e.g. 'Suites/Customers and deals'), not a wording change. */
     expect(text(screen.getByRole('navigation', { name: 'Where you are' }))).toBe('Check-ins/New check-in')
-    expect(screen.getByRole('heading', { level: 1, name: 'Set up a check-in' })).toBeTruthy()
-    expect(screen.getByText('Describe it in your own words. Nothing is sent to anyone until you press send.')).toBeTruthy()
-    expect(screen.getByLabelText('What do you want your team to check in about?')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Send' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'A new hire starts on Monday' })).toBeNull()
+    expect(screen.getByRole('heading', { level: 1, name: 'What do you need updates on, or want to track?' })).toBeTruthy()
+    expect(screen.getByText('A goal, a new hire, a decision. Describe it and we’ll set it up in about five minutes.')).toBeTruthy()
+    const box = screen.getByLabelText('What do you need updates on, or want to track?') as HTMLTextAreaElement
+    expect(box.placeholder).toBe('')
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'A new hire starts on Monday' })).toBeTruthy()
+    for (const gone of ['Set up a check-in', 'Describe it in your own words', 'press send', 'For example']) expect(document.body.textContent, gone).not.toContain(gone)
   })
 
   it('the picked panel does not tell a signed-in person they need no account', () => {

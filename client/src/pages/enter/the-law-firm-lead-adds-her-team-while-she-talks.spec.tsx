@@ -64,28 +64,34 @@ function open() {
 describe('the law firm lead, while she is still talking', () => {
   beforeEach(() => { localStorage.clear(); vi.clearAllMocks() })
 
-  it('finds her four people in the team box beside the conversation, and what she writes there is kept with the setup', async () => {
+  /* Changed in F5 (the approved journey, stage 3): the team is given in the conversation and shown in the panel; the box opens from
+     "Change", so there is one place to type. */
+  it('finds her four people in the panel beside the conversation, and what she writes in the box is kept with the setup', async () => {
     seedHerSetup()
     open()
     const panel = (await screen.findByText('Who’s in it')).closest('aside') as HTMLElement
-    expect(within(panel).getByText('Their emails, once you’re ready. You can add them now or at the end.')).toBeTruthy()
+    expect(within(panel).getByText('You mentioned David Ochieng, Fatima Kariuki, Joseph Muthama and Esther Wanjiru. Add their emails here when you have them.')).toBeTruthy()
+    expect(within(panel).queryByLabelText('Your team, one per line')).toBeNull()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Change' }))
     const box = within(panel).getByLabelText('Your team, one per line') as HTMLTextAreaElement
     expect(box.value.split('\n')).toEqual(NAMED)
 
     const lines = NAMED.map((n) => `${n}, ${n.split(' ')[0].toLowerCase()}@law.test`).join('\n')
     fireEvent.change(box, { target: { value: lines } })
     expect(JSON.parse(localStorage.getItem('gw_entry_session')!).teamText).toBe(lines)
+    expect(within(panel).getByText('4 people')).toBeTruthy()
   })
 
   it('and once she ends the setup, the save card has the same lines in its box', async () => {
     seedHerSetup()
     open()
     const panel = (await screen.findByText('Who’s in it')).closest('aside') as HTMLElement
+    fireEvent.click(within(panel).getByRole('button', { name: 'Change' }))
     const lines = NAMED.map((n) => `${n}, ${n.split(' ')[0].toLowerCase()}@law.test`).join('\n')
     fireEvent.change(within(panel).getByLabelText('Your team, one per line'), { target: { value: lines } })
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
-    await waitFor(() => expect(screen.getAllByLabelText('Your team, one per line')).toHaveLength(1))
-    expect((screen.getByLabelText('Your team, one per line') as HTMLTextAreaElement).value).toBe(lines)
+    await waitFor(() => expect(screen.getAllByLabelText('Your team, one per line').length).toBeGreaterThan(0))
+    for (const box of screen.getAllByLabelText('Your team, one per line')) expect((box as HTMLTextAreaElement).value).toBe(lines)
   })
 })
 
@@ -137,21 +143,24 @@ describe('the law firm lead on a phone, 375px wide, while she is still talking',
   })
   afterEach(() => { window.matchMedia = wide })
 
-  it('reaches the one team box in the conversation, filled with her four, and can type into it', async () => {
+  /* Changed in F5 (stage 3): on a phone the panel is one line above the conversation, which opens it; the box opens from Change. */
+  it('reads one line above the conversation, opens it, and reaches the one team box from Change', async () => {
     seedHerSetup()
     open()
-    const boxes = await screen.findAllByLabelText('Your team, one per line')
+    const line = await screen.findByText('0 of 4 set. 0 people.')
+    expect(line.tagName).toBe('SUMMARY')
+    expect(line.closest('.gwui-ec-messages')).toBeTruthy()
+    expect(document.querySelector('.gw-fills-in')).toBeNull()
+    fireEvent.click(line)
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }))
+    const boxes = screen.getAllByLabelText('Your team, one per line')
     expect(boxes).toHaveLength(1)
     const box = boxes[0] as HTMLTextAreaElement
-    expect(box.closest('.gwui-ec-messages')).toBeTruthy()
-    expect(document.querySelector('.gw-fills-in')).toBeNull()
     expect(box.value.split('\n')).toEqual(NAMED)
-    expect(screen.getByText('Their emails, once you’re ready. You can add them now or at the end.')).toBeTruthy()
-
     const lines = NAMED.map((n) => `${n}, ${n.split(' ')[0].toLowerCase()}@law.test`).join('\n')
     fireEvent.change(box, { target: { value: lines } })
-    expect(box.value).toBe(lines)
     expect(JSON.parse(localStorage.getItem('gw_entry_session')!).teamText).toBe(lines)
+    expect(screen.getByText('1 of 4 set. 4 people.')).toBeTruthy()
     /* The conversation goes on below it. */
     expect(screen.getByPlaceholderText('Type your response, or add a document.')).toBeTruthy()
   })

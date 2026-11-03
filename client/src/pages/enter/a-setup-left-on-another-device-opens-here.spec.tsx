@@ -78,7 +78,10 @@ describe('a lead opens /start on a device that has nothing kept', () => {
   it('brings back the team box as he wrote it, emails and all, so nothing is asked again', async () => {
     vi.mocked(entryApi.unfinished).mockResolvedValue(ENDED_WITH_HIS_TEAM_TYPED as any)
     open()
-    fireEvent.click(await screen.findByText(/Invite and finish/))
+    /* Changed in F5 (stage 5): setup ends in the panel, with his four listed and one button; the box opens from Change. */
+    expect(await screen.findByRole('button', { name: 'Send 4 invitations' })).toBeTruthy()
+    expect(screen.getByText('David Mutebi, david@startup.test')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }))
     const box = (await screen.findByLabelText('Your team, one per line')) as HTMLTextAreaElement
     expect(box.value).toBe(HIS_TEAM)
   })
@@ -102,6 +105,7 @@ describe('a signed-in lead with nothing left anywhere', () => {
   it('opens a new setup at its first question', async () => {
     vi.mocked(entryApi.unfinished).mockResolvedValue(null)
     open()
-    expect(await screen.findByText('What do you want your team to check in about?')).toBeTruthy()
+    /* Changed in F5: the signed-in way in reads start.txt's question. */
+    expect(await screen.findByRole('heading', { name: 'What do you need updates on, or want to track?' })).toBeTruthy()
   })
 })

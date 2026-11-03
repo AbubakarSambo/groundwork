@@ -133,7 +133,8 @@ describe('the fills-in-as-you-talk panel, once the door has given way to a conve
     }))
     renderPage()
     await waitFor(() => expect(screen.getByText('Who is it, and what were they meant to be delivering?')).toBeTruthy())
-    expect(screen.getByText('Fills in as you talk. You can start without all of it.')).toBeTruthy()
+    /* Changed in F5: the panel no longer says "Fills in as you talk"; it is found by what it is. */
+    expect(screen.getByRole('complementary', { name: 'What is set so far' })).toBeTruthy()
     expect(screen.getByText('0 of 4 set')).toBeTruthy()
     expect(entryApi.chat).not.toHaveBeenCalled()
     expect(entryApi.onboard).not.toHaveBeenCalled()
@@ -150,7 +151,7 @@ describe('the check-in phase, once the engine has spoken', () => {
     /* The fills-in panel only shows during setup (new.txt, beside the onboarding conversation) -
        phase 'checkin' means setup is done, so it is gone here, the same as the prototype's own
        start-chat.txt, which carries no such panel either. */
-    expect(screen.queryByText('Fills in as you talk. You can start without all of it.')).toBeNull()
+    expect(screen.queryByRole('complementary', { name: 'What is set so far' })).toBeNull()
     /* The composer: a real textbox, placeholder "Type your response.", arrow-send (B3's own shape,
        not B1's "Send"). */
     expect(screen.getByPlaceholderText('Type your response.')).toBeTruthy()

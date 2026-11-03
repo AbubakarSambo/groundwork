@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { scrollTo } from '@/lib/scroll-to'
 import { SCENARIOS, groupOfCard, type ScenarioCard } from '@/pages/grounds/CreateGroundPage'
 import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
-import { EVERY_SITUATION, FOR_EXAMPLE, HOW_IT_WORKS, THE_DOOR_SIGNED_OUT, THE_GROUPS_IN_ORDER, THE_ONE_LINE, orderWithinGroup } from './the-way-in'
+import { EVERY_SITUATION, FOR_EXAMPLE, HOW_IT_WORKS, THE_GROUPS_IN_ORDER, THE_ONE_LINE, orderWithinGroup } from './the-way-in'
 
 /*
  * EVERY SITUATION IN ONE LIST (U.6, B1): #/start/all.
@@ -79,7 +79,6 @@ export function EverySituation({
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && text.trim()) onSend(text.trim()) }}
-            placeholder={THE_DOOR_SIGNED_OUT.placeholder}
             aria-label={EVERY_SITUATION.heading}
             style={{ flex: 1, minWidth: 0, border: 0 }}
           />

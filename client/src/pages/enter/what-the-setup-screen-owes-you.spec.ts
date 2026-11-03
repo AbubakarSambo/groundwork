@@ -14,13 +14,11 @@ describe('what the setup screen owes you', () => {
     /* It classified her description, changed the plan to six sessions, put "Pick a different
        situation" on screen, and never said which situation it had picked. */
     /* U.6 review: said in start-chat.txt's words now, "This sounds like", with "It’s something else". */
-    expect(PAGE).toContain('This sounds like')
-    expect(PAGE).toContain('It’s something else')
-    /* Was `<span style={{ fontWeight: 700, ... }}>` (group 3, piece 4d-1 rebuilt the surrounding bar
-       from the shared parts and dropped the inline style, which a listed page may not carry - the
-       label is still bold, now a plain `<b>`). */
-    const at = PAGE.indexOf('This sounds like <b')
-    expect(PAGE.slice(at - 900, at)).toMatch(/classifiedScenario/)
+    /* Changed in F5 (stage 2): said on a card under the first reply (ThisSoundsLike), with the situation's meaning. */
+    const CARD = readFileSync(join(__dirname, 'ThisSoundsLike.tsx'), 'utf8')
+    expect(CARD).toContain('This sounds like')
+    expect(CARD).toContain('It’s something else')
+    expect(PAGE).toMatch(/<ThisSoundsLike\s+scenario=\{onboardingSelections\.classifiedScenario/)
   })
 
   it('does not say nobody is named while it is showing their names', () => {

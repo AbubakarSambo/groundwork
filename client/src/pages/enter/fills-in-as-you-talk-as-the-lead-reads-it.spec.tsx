@@ -25,7 +25,8 @@ describe('the panel, as the lead reads it', () => {
   it('knows nothing yet, and says nothing it does not know', () => {
     render(<FillsInAsYouTalk {...nothingYet} />)
     expect(screen.getByText('0 of 4 set')).toBeTruthy()
-    expect(screen.getByText('Fills in as you talk. You can start without all of it.')).toBeTruthy()
+    /* Changed in F5: "Fills in as you talk" is gone from the screen (round 7: "I am typing"). */
+    expect(screen.queryByText(/Fills in as you talk/)).toBeNull()
     expect(rows()).toEqual(['○A name', '○How often', '○When it runs', '○Who’s in it'])
   })
 
@@ -111,10 +112,39 @@ describe('on the setup conversation itself', () => {
       </QueryClientProvider>,
     )
     await waitFor(() => expect(screen.getByText('Who is it, and what will they be doing?')).toBeTruthy())
-    const panel = screen.getByRole('complementary', { name: 'Fills in as you talk. You can start without all of it.' })
+    const panel = screen.getByRole('complementary', { name: 'What is set so far' })
     expect(within(panel).getByText('Help a new hire get started')).toBeTruthy()
     expect(within(panel).getByText('2 of 4 set')).toBeTruthy()
     expect(within(panel).getByText('Every week')).toBeTruthy()
     expect(within(panel).getByText('You mentioned Kwame.')).toBeTruthy()
+  })
+})
+
+/* F5, stage 3: the team given in the conversation, as the panel shows it, and the end of setup in the panel (stage 5). */
+describe('the team from the conversation, and ready to send', () => {
+  const four = ['John Kamau, john@deals.test, 0722 124 856', 'Jane Wanjiku, jane@deals.test', 'Peter Mbugua, peter@deals.test', 'Mary Mwangi, mary@deals.test']
+  it('lists each person under “Who’s in it, 4 people”, with Change, and says who still needs an email', () => {
+    let changed = 0
+    render(<FillsInAsYouTalk {...nothingYet} people={four} noEmailYet={['Samuel', 'Omar']} onChangeTeam={() => { changed++ }} />)
+    const who = screen.getAllByRole('listitem')[3]
+    expect(within(who).getByText('4 people')).toBeTruthy()
+    expect(within(who).getByText('John Kamau, john@deals.test, 0722 124 856')).toBeTruthy()
+    expect(within(who).getByText('2 more you mentioned: Samuel and Omar. Add their emails here when you have them.')).toBeTruthy()
+    expect(who.textContent?.startsWith('○')).toBe(true)
+    within(who).getByRole('button', { name: 'Change' }).click()
+    expect(changed).toBe(1)
+    expect(screen.queryByLabelText('Your team, one per line')).toBeNull()
+  })
+  it('ends with what sending does and one button', () => {
+    let sent = 0
+    render(<FillsInAsYouTalk {...nothingYet} people={four} noEmailYet={[]} ready={{ opens: 'Their first check-in opens on Tuesday 4 November.', onSend: () => { sent++ }, sending: false }} />)
+    expect(screen.getByText('Ready to send when you are')).toBeTruthy()
+    expect(screen.getByText('4 people get an invitation now. Their first check-in opens on Tuesday 4 November.')).toBeTruthy()
+    screen.getByRole('button', { name: 'Send 4 invitations' }).click()
+    expect(sent).toBe(1)
+  })
+  it('on a phone, is one line that opens it', () => {
+    render(<FillsInAsYouTalk {...nothingYet} name="Deal progress" cadence="DAILY" cadenceChosen workingDays={[1, 2, 3, 4, 5]} people={four} noEmailYet={[]} asOneLine />)
+    expect(screen.getByText('3 of 4 set. 4 people.').tagName).toBe('SUMMARY')
   })
 })
