@@ -50,8 +50,8 @@ describe('the save', () => {
   });
 
   it('tells the board when the reading has landed, so it is built again with the targets', () => {
-    expect(commit).toMatch(/if \(landed\) this\.events\?\.emit\?\.\(GroundworkEvents\.AIMS_READ, \{ groundId: ground\.id \}/);
+    expect(commit).toMatch(/if \(landed\) this\.events\?\.emit\?\.\(GroundworkEvents\.SETUP_READ, \{ groundId: ground\.id \}/);
     const board = withoutComments(readFileSync(join(__dirname, '..', 'board', 'board.service.ts'), 'utf8'));
-    expect(board).toMatch(/@OnEvent\(GroundworkEvents\.ASSESSMENT_READY\)\s*@OnEvent\(GroundworkEvents\.AIMS_READ\)\s*async warmOnCheckInCompleted\(/);
+    expect(board).toMatch(/@OnEvent\(GroundworkEvents\.ASSESSMENT_READY\)\s*@OnEvent\(GroundworkEvents\.SETUP_READ\)\s*async warmOnCheckInCompleted\(/);
   });
 });

@@ -483,6 +483,8 @@ export type BoardPresent = {
    * rebuilt from `active`/`total`/`nudged` on this side.
    */
   activeLine?: TheActiveLine
+  /** "Your full report is ready in a moment." Served to the lead only, while setup's report is still being written after the save. */
+  fullReportComing?: string
   /**
    * ANCHOR PIECES 12/13/20, THE MONTH BOARD, "Are we moving together?" (section 24;
    * docs/answers-from-engine.md, "Request 149 (5 of 6)", `TheMonthBoard`). Lead only: this is the

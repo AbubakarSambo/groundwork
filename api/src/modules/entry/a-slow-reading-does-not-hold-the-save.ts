@@ -6,7 +6,7 @@
  * wait for the whole reading, which kept the page on "Saving..." for 20 to 50 seconds. B4 capped that wait at twenty seconds; the
  * reading usually took about twenty, so every save still waited about twenty seconds. The save now answers as soon as the check-in,
  * its people and their invitations are made, and the reading runs after it, the same call on the same words, writing the same rows.
- * The board is warmed again when it lands (GroundworkEvents.AIMS_READ), so what it shows is built with the targets.
+ * The board is warmed again when it lands (GroundworkEvents.SETUP_READ), so what it shows is built with the targets.
  *
  * A reading that fails is not lost: it was logged and dropped before. It is tried again after half a minute, two minutes and ten
  * minutes, which outlasts the model being busy or away for a while. The words it reads are kept on the check-in either way.

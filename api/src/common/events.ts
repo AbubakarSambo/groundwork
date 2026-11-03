@@ -9,8 +9,9 @@ export const GroundworkEvents = {
      ends, once its one assessment is ready (or could not be written), on every path that ends one. The readers that moved onto
      the assessment wait for this rather than for the completion, so they never read a conversation before it is assessed. */
   ASSESSMENT_READY: 'assessment.ready',
-  /** THE AIMS AND TARGETS SETUP NAMED WERE READ, after the save had answered (3 November 2026). The board listens and is warmed with them. */
-  AIMS_READ: 'ground.aimsRead',
+  /** SOMETHING SETUP GAVE WAS READ, after the save had answered (3 November 2026): the aims and targets it named, then the lead's full
+      report. The board listens and is warmed with each as it lands. */
+  SETUP_READ: 'ground.setupRead',
   /* THE TEAM IS TOLD. Three things the back office wants to hear about the moment they happen: a
      new organisation, a request for the API, a request for a call or coaching. Listened to in
      back-office/the-team-is-told.service.ts. */
@@ -207,6 +208,6 @@ export interface CallAskedEvent {
   note: string | null;
 }
 
-export interface AimsReadEvent {
+export interface SetupReadEvent {
   groundId: string;
 }

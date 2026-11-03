@@ -44,7 +44,7 @@ import { GroundsService, RECOMMENDED_MOMENT, DEFAULT_TIMELINE_DAYS } from '../gr
 import { EmailService } from '../email/email.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import { ConversationService } from '../conversation/conversation.service';
-import { GroundworkEvents, CheckInCompletedEvent, AimsReadEvent } from '../../common';
+import { GroundworkEvents, CheckInCompletedEvent, SetupReadEvent } from '../../common';
 import {
   ENGINE_RULES,
   buildScenarioPackForParty,
@@ -2905,14 +2905,14 @@ from finishing at all.`;
      */
     if (dto.history.length > 0) {
       /* After the save has answered (Hafsah's speed brief, 3 November 2026): nothing here holds the save. The targets are read first, tried
-         again if the reading fails, and the board is warmed again when they land (AIMS_READ); then what else setup gave, and the report. */
+         again if the reading fails, and the board is warmed again when they land (SETUP_READ); then what else setup gave, and the report. */
       void readUntilItLands(
         /* From the setup conversation, which is no longer copied onto her session. See extractExpectations: the targets are what she said
            the check-in is FOR, not her account of the work, so setup is still the right place to read them from. */
         () => this.conversation.extractExpectations(checkIn.id, participant.id, ground.id, dto.history),
         (err, tried, willTryAgain) => this.logger.error(`commit: aims and targets failed for initiator on ${ground.id} (try ${tried}): ${err?.message}${willTryAgain ? '; trying again' : '; giving up'}`),
       ).then(async (landed) => {
-        if (landed) this.events?.emit?.(GroundworkEvents.AIMS_READ, { groundId: ground.id } satisfies AimsReadEvent);
+        if (landed) this.events?.emit?.(GroundworkEvents.SETUP_READ, { groundId: ground.id } satisfies SetupReadEvent);
         /* And everything else the lead said in setup, where each part lives (GroundsService.keepWhatSetupGave), after the targets and
            once the first session's record is written, so nothing is written twice. */
         await theLeadsRecordIsRead;
@@ -2932,6 +2932,9 @@ from finishing at all.`;
         const made = await this.report(dto.history, dto.scenario, dto.groundLabel, undefined, theTeam.length ? theTeam : undefined, dto.leadsOwnWords)
           .catch((err: Error) => { this.logger.warn(`The setup's report could not be made with its team on ${ground.id}: ${err?.message ?? err}`); return null; });
         if (made) await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionReport: made as object } }).catch(() => undefined);
+        /* The lead is on the board already, reading "Your full report is ready in a moment." (Hafsah, 3 November evening): the same event
+           warms it again now the report is there, and the board stops saying it is coming. */
+        this.events?.emit?.(GroundworkEvents.SETUP_READ, { groundId: ground.id } satisfies SetupReadEvent);
       }).catch((err: any) => this.logger.error(`commit: what setup gave could not be read after the save on ${ground.id}: ${err?.message ?? err}`));
     }
 

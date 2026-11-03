@@ -1053,6 +1053,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     queryFn: () => boardApi.get(id!, variant),
     enabled: !!id,
     retry: false,
+    /* While the server says the lead's full report is still coming, the board is read again until it lands. */
+    refetchInterval: (q: any) => (q?.state?.data?.fullReportComing ? 5_000 : false),
   })
 
   /**
@@ -2690,6 +2692,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           trailing={!groundId ? <TheOtherBoardsYouAreIn groundId={id!} label={light || picturedLead || picturedOnboarding || picturedMember || picturedParticipant || picturedDecision || picturedPlan || picturedOtherKind ? 'Views' : undefined} plain={picturedLead || picturedOnboarding || picturedMember || picturedParticipant || picturedDecision || picturedPlan || picturedOtherKind} /> : undefined}
         />
         )}
+        {/* Straight from "Send N invitations": the board shows what is known while setup's report is written (Hafsah, 3 November evening). */}
+        {b.fullReportComing && <p className="gwui-fs-15 gwui-ink-dark gwui-mt-8" role="status">{b.fullReportComing}</p>}
 
         {/*
           WHEN IT LAST CHANGED, AND THAT OPENING IT CHANGES NOTHING (U.10). The same line for every

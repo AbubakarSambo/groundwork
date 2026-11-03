@@ -48,6 +48,10 @@ import { helpNobodyMentioned } from './help-nobody-mentioned';
 import { theOpenIssues, sharesTheWords, ISSUE_STEPS, type AnOpenIssue, type WhatTheIssuesAreReadFrom } from './the-open-issues';
 
 /** Said where the prototype has "Open issues" (request 115 c): what the record would need to hold. */
+/** What the lead reads on her board while setup's full report is still being written (Hafsah, 3 November evening). */
+export const YOUR_FULL_REPORT_IS_COMING = 'Your full report is ready in a moment.';
+/** Setup's report takes about half a minute on the reports model; past this, a report that has not come is not coming. */
+const A_SETUP_REPORT_TAKES_AT_MOST_MS = 5 * 60_000;
 export const NO_OPEN_ISSUES_ON_RECORD = 'Groundwork does not follow an issue from the day it is raised to the day it is decided and done, so there is no list of open issues here. Where people see something differently, and the questions written down to decide on the Context page, are under what needs you.';
 import { theShareSays, YOU_HAVE_NO_SHARE_YET } from './your-share';
 import { theirOwnAimsKeptOnlyAsPromises, AN_AIM_FROM_THEIR_PROMISE } from './an-aim-kept-only-as-their-promise';
@@ -102,11 +106,11 @@ import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { Injectable, ForbiddenException, NotFoundException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { GroundworkEvents, CheckInCompletedEvent, type AssessmentReadyEvent, type AimsReadEvent } from '../../common';
+import { GroundworkEvents, CheckInCompletedEvent, type AssessmentReadyEvent, type SetupReadEvent } from '../../common';
 import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { howACheckInIsGoing } from '../grounds/how-a-check-in-is-going';
-import { CheckInStatus, DependencyStatus, GroundMode, PartyType } from '@prisma/client';
+import { CheckInStatus, DependencyStatus, GroundMode, PartyType, Prisma } from '@prisma/client';
 import { onlyWhatThisReaderMaySee, onlyHandoffsTheyAreIn, WHY_YOU_ONLY_SEE_YOURSELF, WHY_YOU_ONLY_SEE_YOURSELF_AND_YOUR_LEAD } from './the-board-keeps-the-same-wall';
 import {
   BoardFamily,
@@ -369,8 +373,8 @@ export class BoardService {
   /* When the check-in's assessment is ready, not when it completes: its lines are written from the assessment (one source, part 2). */
   /* And when the targets setup named land, which is after the save has answered (3 November 2026): they are new, so it is built again. */
   @OnEvent(GroundworkEvents.ASSESSMENT_READY)
-  @OnEvent(GroundworkEvents.AIMS_READ)
-  async warmOnCheckInCompleted(event: CheckInCompletedEvent | AssessmentReadyEvent | AimsReadEvent) {
+  @OnEvent(GroundworkEvents.SETUP_READ)
+  async warmOnCheckInCompleted(event: CheckInCompletedEvent | AssessmentReadyEvent | SetupReadEvent) {
     try {
       await (this.boardWarming ?? new OneAtATime<void>()).run(event.groundId, () => this.whatTheBoardIsBuiltFrom(event.groundId), async () => {
         const ground = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { initiatorId: true } });
@@ -383,11 +387,28 @@ export class BoardService {
     }
   }
 
-  /* The board's inputs, as one fingerprint: check-ins, the record's lines and documents, the aims and
+  /**
+   * "YOUR FULL REPORT IS READY IN A MOMENT." (Hafsah, 3 November evening). After "Send N invitations" the lead lands on this board at once,
+   * showing what is already known, while setup's report is written after the save (EntryService.commit). Said only while her setup's
+   * session has no report yet and was saved in the last few minutes, so a report that could not be made never leaves the line standing.
+   * When the report lands, SETUP_READ warms the board again and the line is gone.
+   */
+  private async herFullReportIsComing(groundId: string, leadId: string | null, now: Date): Promise<{ fullReportComing?: string }> {
+    if (!leadId) return {};
+    const hers = await this.prisma.checkIn.findFirst({
+      where: { groundId, sessionNumber: 1, participant: { userId: leadId } },
+      select: { completedAt: true, sessionReport: true },
+    }).catch(() => null);
+    const saved = hers?.completedAt?.getTime() ?? 0;
+    return hers && hers.sessionReport == null && saved && now.getTime() - saved < A_SETUP_REPORT_TAKES_AT_MOST_MS ? { fullReportComing: YOUR_FULL_REPORT_IS_COMING } : {};
+  }
+
+  /* The board's inputs, as one fingerprint: check-ins and the reports written on them, the record's lines and documents, the aims and
      numbers, what is in the way, who is in it, and the report whose story it carries. */
   private async whatTheBoardIsBuiltFrom(groundId: string): Promise<string | null> {
-    const [checkIns, lines, docs, aims, blockers, people, report] = await Promise.all([
+    const [checkIns, reported, lines, docs, aims, blockers, people, report] = await Promise.all([
       this.prisma.checkIn.aggregate({ where: { groundId }, _count: { _all: true }, _max: { completedAt: true } }),
+      this.prisma.checkIn.count({ where: { groundId, sessionReport: { not: Prisma.DbNull } } }),
       this.prisma.recordEntry.aggregate({ where: { disputedAt: null, participant: { groundId } }, _count: { _all: true }, _max: { createdAt: true } }),
       this.prisma.groundDocument.count({ where: { groundId } }),
       this.prisma.groundObjective.aggregate({ where: { groundId }, _count: { _all: true }, _max: { updatedAt: true } }),
@@ -395,7 +416,7 @@ export class BoardService {
       this.prisma.groundParticipant.count({ where: { groundId } }),
       this.prisma.report.findUnique({ where: { groundId }, select: { updatedAt: true } }),
     ]);
-    return JSON.stringify([checkIns, lines, docs, aims, blockers, people, report?.updatedAt ?? null]);
+    return JSON.stringify([checkIns, reported, lines, docs, aims, blockers, people, report?.updatedAt ?? null]);
   }
 
   /*
@@ -1020,6 +1041,8 @@ export class BoardService {
       ...(await this.theCollectionsBoardIfPicked(ground as any, { runsIt: isInitiator || theyRunIt, participantId: me?.id ?? null }, now)),
       /* The kinds a NEW check-in may be given at release. A check-in that holds another keeps it above. */
       kindsOffered: await theBoardKindsOffered(this.prisma, (ground as any).organizationId),
+      /* The lead lands here straight from "Send N invitations", while her full report is still being written (Hafsah, 3 November evening). */
+      ...(isInitiator ? await this.herFullReportIsComing(groundId, ground.initiatorId, now) : {}),
       /**
        * HOW IT IS GOING, AT THE TOP, WHICH IS WHY SOMEBODY OPENED THIS.
        *
