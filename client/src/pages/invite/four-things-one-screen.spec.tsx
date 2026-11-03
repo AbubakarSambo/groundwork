@@ -34,7 +34,8 @@ const PREVIEW = {
   leadFirstName: 'Wairimu',
   organisationName: 'Baridi Appliances',
   endsAt: '2026-09-30T00:00:00.000Z',
-  schedule: 'A short check-in each weekday.',
+  schedule: 'About two minutes each weekday.',
+  takes: 'About two minutes',
   scenario: 'NEW_PROJECT',
   roleAsDescribed: null,
   alreadyAccepted: false,
@@ -58,19 +59,20 @@ describe('the invitation a participant reads', () => {
    * always-open section before the form to a plain link under the button's own line, so the person
    * reads the button before that link now, where it used to be the other way round.
    */
+  /* Changed in F5 (the approved journey, stage 6): the target's heading, place and length; how long it takes is the measured figure. */
   it('in the prototype\'s words, in its order', async () => {
     open()
-    expect(await screen.findByRole('heading', { name: 'Wairimu invited you to “Sales team, Q3”' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Wairimu invited you to the Sales team, Q3 check-in' })).toBeTruthy()
     const text = document.body.textContent ?? ''
     const order = [
-      'This runs at Baridi Appliances until 30 September.',
+      'Baridi Appliances, until 30 September.',
       'The people in this check-in, including your manager, can see what you say in it.',
       'What it asks',
-      'A short check-in each weekday.',
+      'About two minutes each weekday.',
       'Who sees your answers',
       'You see your own report straight away. Wairimu shares a team report',
       'Answer today’s check-in now',
-      'About ten minutes. You choose how you sign in afterwards.',
+      'About two minutes. You choose how you sign in afterwards.',
       'What happens to what you write',
     ].map(t => text.replace(/\s+/g, ' ').indexOf(t))
     expect(order.every(i => i > -1)).toBe(true)
@@ -85,7 +87,7 @@ describe('the invitation a participant reads', () => {
     expect(text).not.toMatch(/reads the report, not your words/)
     expect(text).not.toMatch(/Why you\.|What it takes\.|What you get back\./)
     /* The old block's "About ten minutes" is gone; the note under "Answer today's check-in now" says it once (fix list, item 4). */
-    expect(text.match(/About ten minutes/g) ?? []).toHaveLength(1)
+    expect(text.match(/About two minutes\./g) ?? []).toHaveLength(1) /* F5: the measured length */
   })
 
   it('shows no "Your number" block, because the invitation carries no share of a target', async () => {
@@ -154,8 +156,8 @@ describe('who can read this, built from the check-in\'s own scenario (item 11, c
 
 describe('the two lines built from the record', () => {
   it('names the lead by first name', () => {
-    expect(theInvitation(PREVIEW)).toBe('Wairimu invited you to “Sales team, Q3”')
-    expect(theInvitation({ ...PREVIEW, leadFirstName: null })).toBe('Wairimu Kamau invited you to “Sales team, Q3”')
+    expect(theInvitation(PREVIEW)).toBe('Wairimu invited you to the Sales team, Q3 check-in')
+    expect(theInvitation({ ...PREVIEW, leadFirstName: null })).toBe('Wairimu Kamau invited you to the Sales team, Q3 check-in')
   })
 
   /*
@@ -167,7 +169,7 @@ describe('the two lines built from the record', () => {
    * same way everything else on the product already does.
    */
   it('says the organisation and the end date, or whichever there is', () => {
-    expect(whereAndUntil(PREVIEW)).toBe('This runs at Baridi Appliances until 30 September.')
+    expect(whereAndUntil(PREVIEW)).toBe('Baridi Appliances, until 30 September.') /* F5: the target journey's words, which Hafsah approved after B-088 */
     /* U.3 review: each alone is a full sentence. These read "Baridi Appliances." and "Until 30
        September." before, which are not sentences. */
     expect(whereAndUntil({ organisationName: 'Baridi Appliances', endsAt: null })).toBe('A check-in at Baridi Appliances.')
@@ -177,7 +179,7 @@ describe('the two lines built from the record', () => {
   it('B-088: reads the same end date as whenItWas renders everywhere else, with nothing of its own imposed', () => {
     const endsAt = '2026-11-08T00:00:00.000Z'
     expect(whereAndUntil({ organisationName: 'Msingi Foods', endsAt })).toBe(
-      `This runs at Msingi Foods until ${whenItWas(endsAt, 'dayAndMonthLong')}.`,
+      `Msingi Foods, until ${whenItWas(endsAt, 'dayAndMonthLong')}.`,
     )
   })
 })
@@ -248,7 +250,7 @@ describe('a check-in that opens later (U.6 review)', () => {
   it('and one that is open offers to answer now, as before', async () => {
     open({ ...PREVIEW, opensOn: null })
     expect(await screen.findByText('Answer today’s check-in now')).toBeTruthy()
-    expect(document.body.textContent).toContain('About ten minutes. You choose how you sign in afterwards.')
+    expect(document.body.textContent).toContain('About two minutes. You choose how you sign in afterwards.')
   })
 })
 
@@ -256,7 +258,7 @@ describe('"You choose how you sign in afterwards" (U.6 review)', () => {
   it('is not said to someone already signed in', async () => {
     authState.isAuthenticated = true
     open({ ...PREVIEW, opensOn: null })
-    expect(await screen.findByText('About ten minutes.')).toBeTruthy()
+    expect(await screen.findByText('About two minutes.')).toBeTruthy()
     expect(document.body.textContent).not.toContain('You choose how you sign in afterwards')
     authState.isAuthenticated = false
   })

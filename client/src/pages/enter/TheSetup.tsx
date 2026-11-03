@@ -1,3 +1,4 @@
+import { a_check_in_takes } from '@/lib/how-long-setup-takes'
 import { useRef, useState } from 'react'
 import { Choices, FieldLabel, Panel, Select, SetupBlock, SetupBlocks, Stack, Text, TextField } from '@/components/gw/ui'
 import { ordinal } from '@/components/gw/AnchorDayPicker'
@@ -133,7 +134,7 @@ export const THE_SETUP = {
   moreTimeLater: 'You can give it more time later.',
   /* Setup page, piece 3a: the rest of the prototype's own words (setup.txt, new.txt). */
   aName: 'A name',
-  twoMinutes: 'Each check-in takes about ten minutes.',
+  twoMinutes: `Each check-in takes ${a_check_in_takes}.`,
   whenIEndIt: 'When I end it',
   untilYouEndIt: 'It keeps going until you end it. There is no last date.',
   whosInIt: 'Who’s in it',

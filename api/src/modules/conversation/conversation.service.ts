@@ -24,7 +24,6 @@ import { isWhatSomebodyDoesNotAnAim } from './what-somebody-does-is-not-an-aim';
 import { theParticipantAsServed, theFitAsServed, theCheckInRowAsServed, theyAreTheirOwnWords } from './a-transcript-serves-only-what-is-theirs';
 import { theNumberInTheNameIsKept } from './an-aim-said-twice-is-one-aim';
 import { theDayKeptApart, aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
-import { suggestAnswers } from './suggested-answers';
 import { whatTheYesSays, startsWithAYes } from './yes-but-a-new-number';
 import { READS_DIFFERENTLY, alreadyAsked as theLinesInTheStamps, theStampForWhatItRaised } from './a-document-that-disagrees-is-asked-once';
 import { aClaimNothingShowsYet, askForProofKindly, ASKS_FOR_PROOF } from './asking-for-proof-kindly';
@@ -688,25 +687,6 @@ export class ConversationService {
   }
 
   /** Returns the transcript for a check-in - owner-scoped only. */
-  /**
-   * Two to four suggested answers for the question this turn asks, stored on the turn so they
-   * survive a reload. Empty when it asks nothing, and on any failure: a missing suggestion is never
-   * an error the person sees. See suggested-answers.
-   */
-  private async suggestedAnswersFor(turnId: string, turnText: string, theirLastAnswer: string | null, checkInId?: string): Promise<string[]> {
-    /*
-     * NOTHING IS SUGGESTED IN THE TEAM BASELINE (anchor piece 14). Its questions ask what the person sees from where they sit, what they
-     * think their lead is worried about, and who they depend on. A ready-made answer there ("I believe we are shipping the product.") is an
-     * answer put into their mouth, on the one conversation that exists to learn what is in theirs.
-     */
-    if (checkInId && this.anchorWeekForThisTurn.get(checkInId)?.isTheBaseline) return [];
-    const answers = await suggestAnswers(this.anthropic as any, turnText, theirLastAnswer).catch(() => [] as string[]);
-    if (answers.length) {
-      await this.prisma.conversationTurn.update({ where: { id: turnId }, data: { suggestedAnswers: answers } as any }).catch(() => undefined);
-    }
-    return answers;
-  }
-
   /**
    * THE TARGETS THIS PERSON'S OWN CHECK-IN MAY BE GIVEN (week 0 of docs/weekly-plan.md). Where people
    * see only their own targets, a colleague's is not given to the model that talks to them: the rule
@@ -1616,9 +1596,7 @@ export class ConversationService {
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
     /* A session that opens after a document was attached opens with what we have from it. Once. */
     const contextAtTheTop = await this.theContextNotYetSaid(checkIn as any);
-    /* Suggested answers under the opening question too. */
-    const suggestedAnswers = await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', null, checkIn.id);
-    return { reply: contextAtTheTop ? (personal ? `${aiTurn.content}\n\n${contextAtTheTop}` : `${contextAtTheTop}\n\n${aiTurn.content}`) : aiTurn.content, theOpener: aiTurn.content, ...(personal ? { personalOpening: true } : {}), groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), ...(suggestedAnswers.length ? { suggestedAnswers } : {}), ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}) };
+    return { reply: contextAtTheTop ? (personal ? `${aiTurn.content}\n\n${contextAtTheTop}` : `${contextAtTheTop}\n\n${aiTurn.content}`) : aiTurn.content, theOpener: aiTurn.content, ...(personal ? { personalOpening: true } : {}), groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}) };
   }
 
 
@@ -3621,8 +3599,8 @@ export class ConversationService {
       this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
         this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
     }
-    /* Suggested answers under the question: task 2.6, screens request 7a. See suggested-answers. */
-    const suggestedAnswers = sessionComplete ? [] : await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', message, checkIn.id);
+    /* No suggested answers under the question (F5, the approved journey, stage 7: "No generic suggested answers: the person types, as
+       the prototype shows"). It also takes a model call off every turn. */
     /*
      * WHAT IS NOW IN THEIR RECORD, SHOWN BEFORE THEY FINISH (task 2.7, screens request 7b). Built after
      * the goodbye and never in front of it: the record reader takes ten to forty-seven seconds on the
@@ -3663,7 +3641,6 @@ export class ConversationService {
     const answer: any = {
       reply: [contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay, theReplyItself].filter(Boolean).join('\n\n'),
       sessionComplete,
-      ...(suggestedAnswers.length ? { suggestedAnswers } : {}),
       ...(idea.ideaOffer ? { ideaOffer: idea.ideaOffer } : {}),
       ...(request.requestOffer ? { requestOffer: request.requestOffer } : {}),
       ...(request.openTheRequest ? { openTheRequest: request.openTheRequest } : {}),

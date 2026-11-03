@@ -1,3 +1,4 @@
+import { a_check_in_takes } from '@/lib/how-long-setup-takes'
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { openLinkApi } from '@/api/entry'
@@ -301,7 +302,7 @@ export function AnswerFirstPage() {
                 made in the second before somebody types is the worst place in the product to be
                 wrong. Hafsah, 23 September 2026.
               */}
-              Answer in your own words. It takes about ten minutes. The answers help everybody get a
+              Answer in your own words. It takes {a_check_in_takes}. The answers help everybody get a
               shared picture, and you will receive the consolidated report at the end.
             </p>
             <button className="btn pri" onClick={begin} disabled={busy}

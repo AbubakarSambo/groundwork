@@ -103,7 +103,7 @@ export function TheEndCard({
                 {engine
                   ? 'I did not find anything in your answers to write down yet.'
                   : 'I could not show you what I wrote down just now. It is written from your answers when you finish.'}
-                {' '}If something is missing,{' '}<button type="button" className="gw-link" onClick={() => onChange()} disabled={finishing}>tell me</button>.
+                {' '}If something is missing,{' '}<button type="button" className="gwui-plain-link" onClick={() => onChange()} disabled={finishing}>tell me</button>.
               </>}
         </p>
       )}
@@ -118,7 +118,7 @@ export function TheEndCard({
                 <span className="gwui-ci-endcard-text">
                   <span className="gwui-ci-endcard-line">{l.says}</span>
                   {l.how && <span className="gwui-ci-endcard-how">{l.how}</span>}
-                  <button type="button" className="gw-link gwui-fs-13" onClick={() => onChange(l.says)} disabled={finishing}>{THATS_NOT_RIGHT}</button>
+                  <button type="button" className="gwui-plain-link" onClick={() => onChange(l.says)} disabled={finishing}>{THATS_NOT_RIGHT}</button>
                 </span>
               </li>
             ))}

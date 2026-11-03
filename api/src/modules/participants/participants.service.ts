@@ -12,7 +12,7 @@ import { canSignIn } from '../grounds/can-sign-in';
 export { HELD_FOR_A_SEAT };
 import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
 import { assertInviteLinkStillOpens, hasExpired } from './an-invite-link-still-opens';
-import { whenItAsks } from './when-it-asks';
+import { whenItAsks, A_CHECK_IN_TAKES } from './when-it-asks';
 import { inviteExpiryFrom } from './how-long-an-invite-lasts';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -130,6 +130,8 @@ export class ParticipantsService {
         workingDays: ground.workingDays,
         leadFirstName: leadFirst,
       }),
+      /* How long a check-in takes, from its one owner, for the line under the button. */
+      takes: A_CHECK_IN_TAKES,
       groundLabel: ground.label,
       scenario: ground.scenario,
       initiatorName: `${ground.initiator.firstName} ${ground.initiator.lastName}`.trim(),

@@ -9,6 +9,15 @@ import { timesAWeekInWords } from '../grounds/the-check-ins-own-schedule';
  */
 export type ACadence = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL' | 'ONE_TIME';
 
+/**
+ * HOW LONG A TEAM MEMBER'S CHECK-IN TAKES, MEASURED (F5, the approved journey, stage 6: "about two minutes"). The one owner: the
+ * invitation's "What it asks" and the line under its button both read it (served as `takes`). Measured on 3 November 2026 from the
+ * local test database gw_loop_round16, read only: 448 answered check-ins of people who are not the lead, first message to last,
+ * median 1.9 minutes, middle half 0.6 to 2.8 minutes. Re-measure after each run and change it here.
+ */
+export const A_CHECK_IN_TAKES = 'About two minutes';
+const ABOUT = A_CHECK_IN_TAKES;
+
 const DAY_NAMES = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
 
 function listed(items: string[]): string {
@@ -35,25 +44,25 @@ export function whenItAsks(g: {
   switch (g.cadence) {
     case 'DAILY': {
       const days = theDays(g.workingDays);
-      if (!days) return 'A short check-in each day.';
-      if (days === 'weekday') return 'A short check-in each weekday.';
-      return `A short check-in on ${days}.`;
+      if (!days) return `${ABOUT} each day.`;
+      if (days === 'weekday') return `${ABOUT} each weekday.`;
+      return `${ABOUT} on ${days}.`;
     }
     case 'WEEKLY': {
       const often = timesAWeekInWords({ cadence: g.cadence, days: g.cadenceDays });
-      if (often) return `A short check-in ${often}.`;
+      if (often) return `${ABOUT} ${often}.`;
       const d = g.cadenceAnchorDay;
-      return Number.isInteger(d) && d! >= 0 && d! <= 6 ? `A short check-in every week, on ${DAY_NAMES[d!]}.` : 'A short check-in every week.';
+      return Number.isInteger(d) && d! >= 0 && d! <= 6 ? `${ABOUT} every week, on ${DAY_NAMES[d!]}.` : `${ABOUT} every week.`;
     }
     case 'FORTNIGHTLY':
-      return 'A short check-in every two weeks.';
+      return `${ABOUT} every two weeks.`;
     case 'MONTHLY':
-      return 'A short check-in once a month.';
+      return `${ABOUT} once a month.`;
     case 'SEQUENTIAL':
-      return lead ? `A short check-in each time ${lead} checks in.` : 'A short check-in each time the person who runs it checks in.';
+      return lead ? `${ABOUT} each time ${lead} checks in.` : `${ABOUT} each time the person who runs it checks in.`;
     case 'ONE_TIME':
-      return 'One short check-in.';
+      return `One check-in, of ${ABOUT.toLowerCase()}.`;
     default:
-      return 'A short check-in.';
+      return `${ABOUT}.`;
   }
 }

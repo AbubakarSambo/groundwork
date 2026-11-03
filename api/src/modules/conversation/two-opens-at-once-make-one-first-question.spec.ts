@@ -42,7 +42,6 @@ function makeService() {
     { canStartSession: jest.fn() } as any, {} as any, { emit: jest.fn(() => Promise.resolve()) } as any, {} as any,
   );
   jest.spyOn(service as any, 'composeSystemPrompt').mockResolvedValue('SYSTEM');
-  jest.spyOn(service as any, 'suggestedAnswersFor').mockResolvedValue([]);
   return { service, anthropic, turns };
 }
 

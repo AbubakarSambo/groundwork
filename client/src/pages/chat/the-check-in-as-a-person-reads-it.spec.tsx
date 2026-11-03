@@ -134,7 +134,7 @@ describe('the header', () => {
   it('says about how long the conversation takes', async () => {
     renderChat()
     await findByText(OPENING, {}, { timeout: 5000 })
-    expect(screen.getByText('About ten minutes')).toBeTruthy()
+    expect(screen.getByText('About two minutes')).toBeTruthy() /* F5: the measured length, from its one owner */
   })
 
   it('Pause offers to stop for now, which leaves with everything saved', async () => {

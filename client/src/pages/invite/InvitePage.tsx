@@ -579,7 +579,8 @@ export function InvitePage() {
                 <p className="gwui-fine" style={{ textAlign: 'center' }}>
                   {/* "You choose how you sign in afterwards" only to someone not signed in (U.6 review). Whether an
                       address has an account is never revealed, so being signed in is what this can know. */}
-                  {signedIn ? 'About ten minutes.' : 'About ten minutes. You choose how you sign in afterwards.'}
+                  {/* How long it takes is the server's one measured figure (when-it-asks.ts). The target's "You make your account afterwards" says "account", which is never said; the sign-in sentence it replaced stays. */}
+                  {signedIn ? `${preview.takes ?? 'About two minutes'}.` : `${preview.takes ?? 'About two minutes'}. You choose how you sign in afterwards.`}
                 </p>
               </Stack>
             )}
@@ -705,10 +706,11 @@ export function whoCanReadThis(scenario: GroundScenario | null | undefined, orga
   return `The people in this check-in, including your manager, can see what you say in it.${admins} Your own report and your questions to ${askNameFor(organisationName)} stay private.`
 }
 
-/** "Wairimu invited you to the sales team's check-in", with the check-in's own name. */
+/** "Akinyi invited you to the Deal progress check-in" (the approved journey, stage 6), with the check-in's own name. */
 export function theInvitation(p: { leadFirstName?: string | null; initiatorName: string; groundLabel: string }): string {
   const who = (p.leadFirstName ?? '').trim() || p.initiatorName.trim() || 'Someone'
-  return `${who} invited you to “${p.groundLabel}”`
+  const name = p.groundLabel.trim()
+  return /\bcheck-?in$/i.test(name) ? `${who} invited you to the ${name.replace(/^the\s+/i, '')}` : `${who} invited you to the ${name} check-in`
 }
 
 /**
@@ -726,7 +728,8 @@ export function theInvitation(p: { leadFirstName?: string | null; initiatorName:
 export function whereAndUntil(p: { organisationName?: string | null; endsAt?: string | null; today?: Date }): string {
   const until = p.endsAt ? theLastDay(p.endsAt, p.today ?? new Date()) : null
   const org = (p.organisationName ?? '').trim()
-  if (org && until) return `This runs at ${org} until ${until}.`
+  /* The approved journey's words (stage 6, Hafsah 1 November 2026), as join-invite.txt has them. */
+  if (org && until) return `${org}, until ${until}.`
   if (org) return `A check-in at ${org}.`
   return `It runs until ${until}.`
 }

@@ -136,7 +136,6 @@ function aCheckInOver(g: AGroundOfTheRun, first: string, on: boolean, modelSays 
   jest.spyOn(service as any, 'openTheDoor').mockResolvedValue(theCheckIn);
   jest.spyOn(service as any, 'closeAsMissed').mockResolvedValue(false);
   jest.spyOn(service as any, 'composeSystemPrompt').mockResolvedValue('SYSTEM');
-  jest.spyOn(service as any, 'suggestedAnswersFor').mockResolvedValue([]);
   jest.spyOn(service as any, 'theContextNotYetSaid').mockResolvedValue('');
   jest.spyOn(service as any, 'provisionalFunctionFromTheStatedRole').mockResolvedValue(undefined);
   jest.spyOn(service as any, 'theSubjectsToCover').mockResolvedValue(null);

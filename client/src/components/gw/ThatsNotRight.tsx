@@ -18,7 +18,7 @@ export function ThatsNotRight({ line }: { line: string }) {
   const showWith = useAskStore((s) => s.showWith)
   if (!String(line ?? '').trim()) return null
   return (
-    <button type="button" className="gw-link gwui-fs-13" onClick={() => showWith(aCorrectionOf(line))}>
+    <button type="button" className="gwui-plain-link" onClick={() => showWith(aCorrectionOf(line))}>
       {THATS_NOT_RIGHT}
     </button>
   )

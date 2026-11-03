@@ -34,7 +34,7 @@ describe('a check-in that meets twice a week', () => {
   it('says how often in one wording, everywhere on the server', () => {
     expect(timesAWeekInWords({ cadence: 'WEEKLY', days: MON_THU })).toBe('twice a week, on Monday and Thursday');
     expect(theRhythmInWords({ cadence: 'WEEKLY', cadenceDays: MON_THU, cadenceAnchorDay: 1 })).toBe('twice a week, on Monday and Thursday');
-    expect(whenItAsks({ cadence: 'WEEKLY', cadenceDays: MON_THU })).toBe('A short check-in twice a week, on Monday and Thursday.');
+    expect(whenItAsks({ cadence: 'WEEKLY', cadenceDays: MON_THU })).toBe('About two minutes twice a week, on Monday and Thursday.');
     expect(howThisCheckInRuns({ answering: 5, cadence: 'WEEKLY', cadenceDays: MON_THU, endsOn: null, noEnd: true, onWhatsApp: false, endedBy: 'Grace', timeZone: 'UTC' } as any))
       .toBe('5 people answer twice a week, on Monday and Thursday, until Grace ends it, here.');
     expect(timesAWeekInWords({ cadence: 'WEEKLY', days: [1, 3, 5] })).toBe('three times a week, on Monday, Wednesday and Friday');
@@ -46,6 +46,6 @@ describe('a check-in that meets twice a week', () => {
     expect(totalSessionsFor(28, Cadence.WEEKLY, [])).toBe(4);
     expect(totalSessionsFor(28, Cadence.WEEKLY)).toBe(4);
     expect(theRhythmInWords({ cadence: 'WEEKLY', cadenceAnchorDay: 4 })).toBe('every Thursday');
-    expect(whenItAsks({ cadence: 'WEEKLY', cadenceAnchorDay: 4 })).toBe('A short check-in every week, on Thursdays.');
+    expect(whenItAsks({ cadence: 'WEEKLY', cadenceAnchorDay: 4 })).toBe('About two minutes every week, on Thursdays.');
   });
 });

@@ -21,6 +21,8 @@ export interface InvitePreview {
   /** When their first check-in opens, only when that is later than now (U.6 review). */
   opensOn?: string | null
   schedule?: string
+  /** How long a check-in takes, from the server's one measured figure: "About two minutes". */
+  takes?: string
   /** "Your number" (U.20 ninth round): WHO would see this person's own share of a target, through
       the engine's own visibility rule (targetsFor, board/whose-number-is-whose-business.ts) - never
       the number itself. This is read with the link's token, before any sign-in, so the value can

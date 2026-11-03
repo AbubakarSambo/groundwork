@@ -1,3 +1,4 @@
+import { a_check_in_takes } from '@/lib/how-long-setup-takes'
 import { useState } from 'react'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { useNavigate } from 'react-router-dom'
@@ -542,7 +543,7 @@ export function GroundChat({
             disabled={openPending}
             style={{ width: '100%', marginBottom: 6 }}
           >
-            Do check-in {openSessionNumber ?? sessions.length + 1}{totalSessions ? ` of ${totalSessions}` : ''} · about ten minutes
+            Do check-in {openSessionNumber ?? sessions.length + 1}{totalSessions ? ` of ${totalSessions}` : ''} · {a_check_in_takes}
           </button>
         )}
 

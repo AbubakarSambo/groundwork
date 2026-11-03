@@ -13,3 +13,11 @@ export const SETUP_TAKES_MINUTES = 5
 
 /** "about five minutes" */
 export const SETUP_TAKES = `about ${['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][SETUP_TAKES_MINUTES] ?? SETUP_TAKES_MINUTES} minutes`
+
+/**
+ * HOW LONG A TEAM MEMBER'S CHECK-IN TAKES, MEASURED (F5, stage 6), the client's copy of the server's A_CHECK_IN_TAKES
+ * (api/src/modules/participants/when-it-asks.ts, which the invitation serves as `takes`). Measured on 3 November 2026 from
+ * gw_loop_round16, read only: 448 answered check-ins of people who are not the lead, first message to last, median 1.9 minutes.
+ */
+export const A_CHECK_IN_TAKES = 'About two minutes'
+export const a_check_in_takes = 'about two minutes'
