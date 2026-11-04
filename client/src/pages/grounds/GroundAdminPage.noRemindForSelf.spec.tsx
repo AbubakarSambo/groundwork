@@ -15,7 +15,11 @@ import { documentsApi } from '@/api/documents'
  * so a lead whose own session was still open saw "Remind" beside her own name. There is nobody to
  * remind there but her.
  */
-vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
+/* My work is the B7 page for everybody (batch 1, group 10), drawn from the server's answer; "Who has answered" is under it. */
+vi.mock('@/api/grounds', async () => {
+  const { SERVED_TO_THE_LEAD } = await import('./my-work-served.fixture')
+  return { groundsApi: { get: vi.fn(), myWork: vi.fn().mockResolvedValue(SERVED_TO_THE_LEAD) } }
+})
 vi.mock('@/api/participantRequests', () => ({ participantRequestsApi: { list: vi.fn().mockResolvedValue([]) } }))
 vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn() } }))
 vi.mock('@/api/documents', () => ({ documentsApi: { list: vi.fn() } }))
@@ -69,6 +73,9 @@ describe('the roster does not offer "Remind" for the lead herself', () => {
        already used - so the extra click through "Who has answered" is gone with the bug it
        worked around. See `myWorkDefault` in GroundAdminPage.tsx. */
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
+    /* Batch 1, group 10: "My work" opens the B7 page for a lead too, from every tab row, so the roster is one press further,
+       behind "Who has answered" inside it (it was the lead's landing while Release 1B's switch was off). */
+    fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
     const reminds = await screen.findAllByRole('button', { name: 'Remind' })
     expect(reminds).toHaveLength(1)
   })
