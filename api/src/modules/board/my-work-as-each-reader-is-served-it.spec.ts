@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { readMyWork, myWorkFrom, myWorkSaidDirectly, THE_LEADS_NOTE_SHOWS_ON_THEIR_OWN_MY_WORK, type MyWorkServed } from './my-work';
+import { readMyWork, myWorkFrom, THE_LEADS_NOTE_SHOWS_ON_THEIR_OWN_MY_WORK, type MyWorkServed } from './my-work';
 import { THE_SEVEN_BEHAVIOURS } from '../patterns/the-seven-behaviours';
 
 /**
@@ -122,7 +122,7 @@ describe('My work, as each reader is served it', () => {
     const page = (await readMyWork(c.prisma, c.board, { groundId: 'g-sales', userId: 'u-mercy' }, NOW)) as MyWorkServed;
     expect(page.view).toBe('self');
     expect(page.heading).toBe('Mercy’s work');
-    expect(page.topLine).toBe('What you need to do, what you’ve done, and how to get better. Grace sees this page too.');
+    expect(page.topLine).toBe('What you need to do, what you’ve done, and how to get better.');
     expect(page.numbers).toEqual([
       { value: '4', label: 'sold, 3 with proof' },
       { value: '4 of 40', label: 'your target' },
@@ -156,7 +156,7 @@ describe('My work, as each reader is served it', () => {
     expect(by['backing-claims-with-proof']).toMatchObject({ verdict: 'Strength', happened: '3 of your 4 sales have proof.', means: 'Proof makes your work easy to trust.', basedOn: 'Your deals' });
     expect(by['helping-your-team']).toMatchObject({ verdict: 'Strength', happened: 'Joseph mentioned your help in 2 check-ins.', means: 'Helping teammates is what strong team players do.', basedOn: 'Joseph’s check-ins' });
     expect(by['check-in-quality']).toMatchObject({ verdict: 'Strength', happened: 'You did 10 of 10 check-ins on time. 9 of 10 were specific.', means: 'Specific, on-time check-ins make your work visible.', basedOn: '10 check-ins' });
-    expect(page.performing.libraryNote).toBe('What each behaviour means and how to improve come from the behaviour and pattern library, so the words are the same in every check-in.');
+    expect(page.performing.libraryNote).toBe('');
     expect(page.coaching.better).toEqual([
       { text: TEAM_COACHING, from: 'Grace’s coaching for the team' },
       { text: 'The same problem is raised again and never fixed.', from: 'From your pattern' },
@@ -201,7 +201,7 @@ describe('My work, as each reader is served it', () => {
       { participantId: 'p-joseph', name: 'Joseph Kariuki' },
     ]);
     expect(page.heading).toBe('Mercy’s work');
-    expect(page.topLine).toBe('What Mercy needs to do, what Mercy has done, and how Mercy can get better. Mercy sees this page too.');
+    expect(page.topLine).toBe('What Mercy needs to do, what Mercy has done, and how Mercy can get better.');
     expect(page.numbers[1]).toEqual({ value: '4 of 40', label: 'Mercy’s target' });
     expect(page.focus).toEqual({ line: 'Book the next step, with a day, before you finish each piece of work.', why: '3 of Mercy’s 5 open deals have no next step with a day.' });
     expect(page.toDo.othersNeed[0].text).toBe('Joseph is waiting on Mercy for the Kiambu route notes.');
@@ -307,32 +307,24 @@ describe('My work, the lead on her own page', () => {
 
   it('a team member’s own page still names who runs it', () => {
     const page = myWorkFrom({ ...base, person: { participantId: 'p-mercy', name: 'Mercy Wanjiru', firstName: 'Mercy' } }, 'Sales team, Q4');
-    expect(page.topLine).toBe('What you need to do, what you’ve done, and how to get better. Grace sees this page too.');
+    expect(page.topLine).toBe('What you need to do, what you’ve done, and how to get better.');
     expect(page.coaching.better[0].from).toBe('Grace’s coaching for the team');
   });
 });
 
-/** MY WORK, SAID DIRECTLY (the direct morning): no note about who else sees it and none about where the words come from. Off, untouched. */
-describe('myWorkSaidDirectly', () => {
+/** MY WORK SAYS WHAT IT IS FOR (the direct morning's words, the only words since 4 November 2026): no note about who else sees it and none about where the words come from. */
+describe('my work says what it is for, and no privacy note or library note', () => {
   const base = { reader: 'self' as const, person: { participantId: 'p-kevin', name: 'Kevin Omondi', firstName: 'Kevin' }, leadFirst: 'Grace', kindOfWork: 'sales org', items: [], commitments: [], waitsOnThem: [], raised: [], credits: [], checkIns: [], ownLines: [], patterns: [], teamCoaching: [], helpWith: null, target: null, now: NOW, timeZone: 'Africa/Nairobi' };
 
-  it('Kevin reads what the page is for, and no privacy note or library note', () => {
-    const page: any = { ...myWorkFrom(base, 'Sales team, Q4') };
-    expect(page.topLine).toContain('Grace sees this page too.');
-    const direct: any = myWorkSaidDirectly(page);
-    expect(direct.topLine).toBe('What you need to do, what you’ve done, and how to get better.');
-    expect(direct.performing.libraryNote).toBe('');
-    expect(direct.performing.behaviours).toEqual(page.performing.behaviours);
-    expect(direct.items).toEqual(page.items);
+  it('Kevin reads what the page is for', () => {
+    const page: any = myWorkFrom(base, 'Sales team, Q4');
+    expect(page.topLine).toBe('What you need to do, what you’ve done, and how to get better.');
+    expect(page.performing.libraryNote).toBe('');
   });
 
   it('Grace on Kevin’s page reads the same, without "Kevin sees this page too."', () => {
-    const page: any = { ...myWorkFrom({ ...base, reader: 'lead' }, 'Sales team, Q4') };
-    expect((myWorkSaidDirectly(page) as any).topLine).toBe('What Kevin needs to do, what Kevin has done, and how Kevin can get better.');
-  });
-
-  it('a page that is off is passed on as it is', () => {
-    expect(myWorkSaidDirectly({ on: false })).toEqual({ on: false });
+    const page: any = myWorkFrom({ ...base, reader: 'lead' }, 'Sales team, Q4');
+    expect(page.topLine).toBe('What Kevin needs to do, what Kevin has done, and how Kevin can get better.');
   });
 });
 

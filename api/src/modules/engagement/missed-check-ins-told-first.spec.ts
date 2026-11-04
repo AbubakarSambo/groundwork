@@ -71,7 +71,7 @@ describe('missed check-ins, told to the person first (decision 136)', () => {
     expect(needs).toHaveLength(1);
     expect(needs[0].title).toBe("You've missed your last two check-ins.");
     /* Changed 18 October (Drop Access run 1, item 25): at two missed in a row the lead is not told yet (she is from three of the last four), so the person reads that she will be if they miss the next one, never that she will see this. */
-    expect(needs[0].detail).toBe('When you miss them, your team works without your view. Things you know about surface late and Amani has to chase instead of help. If you miss the next one as well, Amani will be told. About ten minutes now puts your view back in the picture.');
+    expect(needs[0].detail).toBe('If you miss the next one as well, Amani will be told. It takes about ten minutes.');
     expect(needs[0].action).toEqual({ label: 'Check in now', to: '/checkin/p-brian-c4' });
     expect(needs[0].missedReason).toEqual({ checkInId: 'p-brian-c3', given: null });
   });
@@ -79,7 +79,7 @@ describe('missed check-ins, told to the person first (decision 136)', () => {
   it('people waiting on Brian are mentioned only when a wait on him is confirmed', async () => {
     const { prisma } = world({ waitOnBrian: true });
     const [t] = await whatThePersonIsToldAboutMissing(prisma, 'u-brian', 'org1', NOW);
-    expect(t.text).toContain('Things you know about surface late, people waiting on you go unseen, and Amani has to chase instead of help.');
+    expect(t.text).toContain('Somebody on the team is waiting on you.');
   });
 
   it('Neema, Amani (whose own skipped sessions are never missed) and Grace read nothing about it', async () => {

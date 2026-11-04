@@ -611,11 +611,8 @@ model Organization {
   /// coaching about a person, the pattern and verdict lines about a person, and suggestions about a person are neither built nor
   /// served for that organisation (organisation/person-judgements.ts). The board, the summaries and the reports still go ahead.
   personJudgementsOn     Boolean   @default(true) @map("person_judgements_on")
-  /// THE DIRECT MORNING, A SWITCH PER ORGANISATION (Hafsah, 20 October 2026). Off for every organisation until
-  /// scripts/the-direct-morning.ts sets it on for one, by its id. On: the lead's morning summary answers the target, what needs
-  /// her, what is about to close and who on the team needs her; her board opens at the same four parts; each team member's
-  /// opening names the one thing that matters to them today; and the messages, emails and screens say names, numbers,
-  /// customers and days without explaining Groundwork (organisation/the-direct-morning-switch.ts). Off: everything reads as before.
+  /// NO LONGER READ (release batch 1, Hafsah, 4 November 2026): the direct wording is what everybody reads. The column is left in
+  /// place, unused, so no migration drops it.
   directMorningOn        Boolean   @default(false) @map("direct_morning_on")
   /// Release 3, raising invoices on time (24 October 2026). Off for every organisation until switched on.
   release3InvoicesOn     Boolean   @default(false) @map("release_3_invoices_on")

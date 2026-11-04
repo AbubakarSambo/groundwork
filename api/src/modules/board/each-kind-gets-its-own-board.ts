@@ -111,7 +111,7 @@ function whatTheSystemsShow(metrics: AMetric[], heading: string, now: Date) {
  * ---------------------------------------------------------------------------------------------- */
 
 export const NO_LEVEL_ON_RECORD =
-  'Groundwork does not keep which level each person works at, so each person\'s own words are shown in the order they joined, after the aim that was set.';
+  'Nobody’s level is on record, so each person’s words are in the order they joined.';
 
 function whatEachLevelUnderstood(i: WhatTheKindsBoardIsBuiltFrom) {
   const heading = 'What each level understood';
@@ -232,7 +232,7 @@ function whatNeedsDeciding(i: WhatTheKindsBoardIsBuiltFrom): { question: string;
   const lead = i.people.find((p) => p.isLead);
   return open.map((t) => ({
     question: peopleSaidDifferentThingsAbout(t),
-    why: 'What people said about this does not match, so nobody can assume it is agreed.',
+    why: 'What people said about this does not match.',
     owner: i.readerIsTheLead ? 'You' : (lead?.name ?? null),
   }));
 }
@@ -287,7 +287,7 @@ function whatChangedThisWeek(i: WhatTheKindsBoardIsBuiltFrom) {
  * ---------------------------------------------------------------------------------------------- */
 
 export const NO_GROUP_ON_RECORD =
-  'Groundwork does not keep which group each person belongs to, such as processors, distributors or researchers, so the answers cannot be shown by group yet.';
+  'Nobody’s group is on record, so the answers can’t be shown by group yet.';
 
 function byWhoTheyAre(i: WhatTheKindsBoardIsBuiltFrom) {
   /* A lead who checks in too is one of the people asked (item 21, the where-next board): Omar read "3 of 3 people have

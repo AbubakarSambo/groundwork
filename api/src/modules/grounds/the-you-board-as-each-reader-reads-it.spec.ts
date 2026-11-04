@@ -191,7 +191,7 @@ describe('nobody else may read Miriam’s You board', () => {
   it('Grace’s own board is empty, though an admin’s list carries every check-in', async () => {
     const { read } = setup();
     const b = await read('grace');
-    expect(b).toEqual({ checkIns: [], turns: [], goals: [], saidYoudDo: [], todos: [], coaching: null, ownReports: [], keptLately: null, directMorning: false });
+    expect(b).toEqual({ checkIns: [], turns: [], goals: [], saidYoudDo: [], todos: [], coaching: null, ownReports: [], keptLately: null });
   });
 
   it('Brian’s own board is his, and none of Miriam’s', async () => {

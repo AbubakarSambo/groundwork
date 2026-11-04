@@ -1,5 +1,4 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { readThePersonsRecord, type AStoredPersonsRecord } from './the-persons-record-store';
 import { theRecordInWords, type TheRecordInWords } from './the-persons-record-in-words';
@@ -107,7 +106,7 @@ function theActionsFor(first: string, kind: AKindOfCheckIn, items: { id: string;
 }
 
 /**
- * EACH PERSON'S SECTION, for the lead who runs the check-in. Null where the reader does not run it or the direct morning is off.
+ * EACH PERSON'S SECTION, for the lead who runs the check-in. Null where the reader does not run it.
  */
 export async function yourTeamPersonByPerson(
   prisma: any,
@@ -118,7 +117,6 @@ export async function yourTeamPersonByPerson(
     select: { id: true, label: true, initiatorId: true, organizationId: true, createdByUserId: true, approvedById: true, participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, jobTitle: true } } } } },
   })).catch(() => null);
   if (!ground || ground.initiatorId !== o.leadUserId) return null;
-  if (!(await theDirectMorningIsOn(prisma, ground.organizationId))) return null;
   const judgements = await thePersonJudgementsAreOn(prisma, ground.organizationId);
   const zone = String((await Promise.resolve(prisma?.organization?.findUnique?.({ where: { id: ground.organizationId }, select: { timeZone: true } })).catch(() => null))?.timeZone ?? '') || 'Africa/Nairobi';
   const team = ((ground.participants ?? []) as any[]).filter((p) => p.userId !== ground.initiatorId && p.partyType !== 'INITIATOR' && !p.managingOnly && !p.leftAt);
@@ -152,7 +150,7 @@ export async function yourTeamPersonByPerson(
   }
   return {
     heading: 'Your team, person by person',
-    note: 'Each person’s part is read from what they said in their check-ins and what is on file. It changes only when something new comes in. Only you see this.',
+    note: '',
     people,
   };
 }
@@ -197,7 +195,6 @@ export async function theLeadActsOnAPerson(
   });
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
   if (ground.initiatorId !== userId) throw new ForbiddenException('Only the person who runs this check-in can do this.');
-  if (!(await theDirectMorningIsOn(prisma, ground.organizationId))) throw new ForbiddenException('This is not turned on for your organisation yet.');
   const person = (ground.participants as any[]).find((p) => p.id === participantId && p.userId !== ground.initiatorId);
   if (!person) throw new BadRequestException('That person is not on your team in this check-in.');
   const first = firstOf(fullNameOf(person));

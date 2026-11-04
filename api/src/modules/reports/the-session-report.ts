@@ -312,11 +312,13 @@ const ofTypes = (
 const COUNT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
 const inWords = (n: number) => (n >= 0 && n < COUNT_WORDS.length ? COUNT_WORDS[n] : String(n));
 
-/** "Three things are settled, and three are still open." / "Nothing is settled yet, and one thing is still open." */
+/** "People agree on three things, and differ on one." / "People differ on one thing." / "People agree on two things, and differ on nothing." */
 export function theCountsInASentence(settled: number, open: number): string {
-  const firstHalf = settled > 0 ? `${inWords(settled).replace(/^./, (c) => c.toUpperCase())} ${settled === 1 ? 'thing is' : 'things are'} settled` : 'Nothing is settled yet';
-  const secondHalf = open > 0 ? `${settled > 0 ? inWords(open) : `${inWords(open)} ${open === 1 ? 'thing' : 'things'}`} ${open === 1 ? 'is' : 'are'} still open` : 'nothing is still open';
-  return `${firstHalf}, and ${secondHalf}.`;
+  const things = (n: number) => `${inWords(n)} ${n === 1 ? 'thing' : 'things'}`;
+  if (settled > 0 && open > 0) return `People agree on ${things(settled)}, and differ on ${inWords(open)}.`;
+  if (open > 0) return `People differ on ${things(open)}.`;
+  if (settled > 0) return `People agree on ${things(settled)}, and differ on nothing.`;
+  return 'Nothing is settled yet, and nothing is still open.';
 }
 
 /** What a person reads on another person's row, before the team's report is shared with them. The words are walled, and nobody is said to have said nothing. */

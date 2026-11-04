@@ -69,7 +69,7 @@ describe('a message WhatsApp cannot take goes by email instead (point 2)', () =>
     expect(mails).toEqual([{
       to: 'brian@muchemi.test',
       subject: 'Thank you, your answer for Fee notes is in',
-      text: 'Thank you, your answer for Fee notes is in. The shared picture is made once everyone has answered, and you will be told as soon as there is something to read.',
+      text: 'Thank you, your answer for Fee notes is in. You will be told when the report is ready.',
       sender: BY_EMAIL_AFTER_THEIR_OWN,
       link: null,
     }]);

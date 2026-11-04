@@ -42,11 +42,10 @@ export function aDifferenceInAWords(d: { topic?: string | null; whoSeesIt?: stri
   if (!topic) return who || null;
   /* A topic that is already a whole sentence ("The timing of handovers between team members creates daily friction and delays") is said as one,
      and the people who differ come after it. Put in quotation marks between "see" and "differently" it read as nonsense (anchor walk, 8 October). */
-  if (topic.split(/\s+/).length > 8 && who.endsWith('see this differently.')) {
-    return `${topic.charAt(0).toUpperCase()}${topic.slice(1)}. ${who.slice(0, -'see this differently.'.length)}said different things about this.`;
-  }
-  if (who.endsWith('see this differently.')) return `${who.slice(0, -'see this differently.'.length)}see "${topic}" differently.`;
-  return `${who || 'People see this differently.'} It is about "${topic}".`;
+  const SAID = 'said different things about this.';
+  if (topic.split(/\s+/).length > 8 && who.endsWith(SAID)) return `${topic.charAt(0).toUpperCase()}${topic.slice(1)}. ${who}`;
+  if (who.endsWith(SAID)) return `${who.slice(0, -SAID.length)}said different things about "${topic}".`;
+  return `${who || 'People said different things about this.'} It is about "${topic}".`;
 }
 
 const THE_QUESTIONS = {
@@ -123,10 +122,10 @@ export function whatIsMoving(r: TheMonthRecord): string[] {
 
 export function whatGroundworkIsWorkingOn(r: TheMonthRecord): string[] {
   const out: string[] = [];
-  if (r.notYetThisRound > 0) out.push(`Groundwork is checking in with the ${aNumber(r.notYetThisRound)} ${plural(r.notYetThisRound, 'person who has', 'people who have')} not yet answered this round.`);
-  if (r.commitmentsOpen > 0) out.push(`Groundwork will ask about the ${aNumber(r.commitmentsOpen)} ${plural(r.commitmentsOpen, 'thing', 'things')} people said they would do that ${plural(r.commitmentsOpen, 'is', 'are')} still open.`);
-  if (r.waiting.length > 0) out.push(`Groundwork will ask about the ${aNumber(r.waiting.length)} ${plural(r.waiting.length, 'handoff', 'handoffs')} still waiting on someone.`);
-  return out.length ? out : ['Groundwork is waiting for the first check-ins to come in.'];
+  if (r.notYetThisRound > 0) out.push(`${capital(aNumber(r.notYetThisRound))} ${plural(r.notYetThisRound, 'person has', 'people have')} not answered this round yet. They’re being asked.`);
+  if (r.commitmentsOpen > 0) out.push(`${capital(aNumber(r.commitmentsOpen))} ${plural(r.commitmentsOpen, 'thing', 'things')} people said they’d do ${plural(r.commitmentsOpen, 'is', 'are')} still open.`);
+  if (r.waiting.length > 0) out.push(`${capital(aNumber(r.waiting.length))} ${plural(r.waiting.length, 'handoff', 'handoffs')} ${plural(r.waiting.length, 'is', 'are')} still waiting on someone.`);
+  return out.length ? out : ['No check-ins yet.'];
 }
 
 /**
@@ -177,6 +176,6 @@ export function theMonthBoard(input: {
       ? input.differences
       : [r.checkedIn < 2 ? 'Groundwork needs to hear from at least two people before it can show where they differ.' : 'No two people have described the same thing differently so far.'],
     whatIsStillGettingInTheWay: inTheWay.length ? inTheWay : ['Nobody has said that anything is in their way.'],
-    whatGroundworkIsWorkingOnNext: input.ended ? ['Groundwork is not asking anyone for more.'] : whatGroundworkIsWorkingOn(r),
+    whatGroundworkIsWorkingOnNext: input.ended ? ['Nobody is being asked for more.'] : whatGroundworkIsWorkingOn(r),
   };
 }

@@ -37,14 +37,14 @@ describe('where people differ', () => {
     const item = b.divergence.items[0];
     expect(item.positions.map((p: any) => p.view)).not.toContain('');
     expect(item.positions).toHaveLength(4);
-    expect(item.whoSeesIt).toMatch(/ and .* see this differently\.$/);
+    expect(item.whoSeesIt).toMatch(/ and .* said different things about this\.$/);
     expect(item.whoSeesIt.split(',').length + 1).toBeGreaterThanOrEqual(4);
     expect(item.whoSeesIt).not.toMatch(/Rukia/);
   });
 
   it('Amina reads herself first, as "You"', async () => {
     const b = await boardAs(setup, ...AMINA);
-    expect(b.divergence.items[0].whoSeesIt).toBe('You, Baraka Otieno, Neema Achieng and Amani Wekesa see this differently.');
+    expect(b.divergence.items[0].whoSeesIt).toBe('You, Baraka Otieno, Neema Achieng and Amani Wekesa said different things about this.');
   });
 
   it('Juma, an admin who only reads, gets the same sides, with no empty one', async () => {

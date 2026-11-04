@@ -56,7 +56,6 @@ describe('journey 9: most of one team has stopped', () => {
         /* "Of the seven" is the one count (1 November 2026): the board's own number, the lead counted in a session she answered (decision 133). */
         'Hello Wairimu. Four of the seven people on "Sales team, Q4" have not answered the latest check-in, which opened more than a week ago.',
         'Two have never answered, and Omar and Vera answered before and have not answered since.',
-        'Most of the team has not answered, so this is a pattern across the team and not about one person. Groundwork has not changed or shortened the check-in.',
         'If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
       ],
       linkLabel: 'See who has answered',

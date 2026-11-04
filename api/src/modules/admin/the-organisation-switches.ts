@@ -18,7 +18,6 @@ export const THE_ORGANISATION_SWITCHES = [
   { key: 'release7PeopleOn', name: 'Release 7, reviews built from check-ins' },
   { key: 'release8SituationsOn', name: 'Release 8, the remaining situations' },
   { key: 'release9PolicyOn', name: 'Release 9, the policy board and setup from documents' },
-  { key: 'directMorningOn', name: 'Direct language' },
   { key: 'personJudgementsOn', name: 'What the lead reads about each person' },
 ] as const;
 

@@ -151,7 +151,7 @@ describe('the lead, Grace, reads every section', () => {
     const r: any = await read(prisma, 'u-grace');
     expect(r.view).toBe('lead');
     expect(r.mayAdd).toBe(true);
-    expect(r.topLine).toBe('Your team’s reference for this work. They can read it, except People. Only you can add to it.');
+    expect(r.topLine).toBe('Your team’s reference for this work.');
     expect(r.about.purpose).toBe('Sell 120 water dispensers this quarter, mostly to hardware shops and schools in Nairobi and Kiambu.');
     expect(r.about.whose).toBe('Grace, at setup');
     expect(r.about.keyFacts).toEqual([{ id: 'l-fact', label: 'Customers', fact: 'Hardware shops and schools, Nairobi and Kiambu' }]);
@@ -243,7 +243,8 @@ describe('a team member, Kevin, never receives People or the lead’s notes', ()
     const { prisma } = theSalesCheckIn({ brief: BRIEF });
     const kevin: any = await read(prisma, 'u-kevin');
     expect(kevin.about.purpose).toBe('Sell 120 water dispensers this quarter, mostly to hardware shops and schools in Nairobi and Kiambu.');
-    expect(kevin.about.whose).toBe('Groundwork wrote this from Grace’s words at setup.');
+    /* Changed 4 November 2026 (release batch 1): no line about Groundwork having written it. */
+    expect(kevin.about.whose).toBeNull();
     expect(JSON.stringify(kevin)).not.toContain('needs pushing');
     const grace: any = await read(prisma, 'u-grace');
     expect(grace.about.yourOwnWords).toBe(BRIEF);

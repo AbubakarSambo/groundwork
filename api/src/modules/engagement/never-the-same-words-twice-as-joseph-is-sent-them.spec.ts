@@ -45,12 +45,6 @@ describe('the rule', () => {
     await rememberTheWords(db, DROP, JOSEPH, GENERIC);
     expect(await theSameWordsAgain(db, { groundId: DROP, participantId: JOSEPH, words: GENERIC, now: new Date('2026-10-21T05:00:00Z') })).toBeNull();
   });
-  it('with the switch off, nothing is kept and nothing is held back', async () => {
-    const { db } = theRecord(false);
-    await rememberTheWords(db, DROP, JOSEPH, GENERIC);
-    expect(db.platformSetting.create).not.toHaveBeenCalled();
-    expect(await theSameWordsAgain(db, { groundId: DROP, participantId: JOSEPH, words: GENERIC, now: THURSDAY })).toBeNull();
-  });
 });
 
 describe('the WhatsApp opening on Thursday, as the opening notice sends it', () => {
@@ -83,10 +77,4 @@ describe('the WhatsApp opening on Thursday, as the opening notice sends it', () 
     expect(ledger).toEqual([expect.objectContaining({ channel: 'whatsapp', toAddress: 'joseph@dropaccess.test', sender: 'checkin-open', outcome: 'skipped', because: THE_SAME_WORDS_AFTER_TWO_MISSED_DAYS })]);
   });
 
-  it('with the switch off, the opening goes exactly as before', async () => {
-    const { sends, ledger } = await announce(false, null);
-    expect(sends).toHaveLength(1);
-    expect(sends[0][2]).toBe(GENERIC);
-    expect(ledger).toEqual([]);
-  });
 });

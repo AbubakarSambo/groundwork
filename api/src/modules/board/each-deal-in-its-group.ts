@@ -95,7 +95,7 @@ export function whyThisDealIsHere(f: Facts, now: Date, byBuyingDate = false, cri
   const out: string[] = [];
   /* With the four criteria, as the kit says it: "All four criteria met, buying date 30 September, contact yesterday, next step booked." */
   if (criteriaSays) out.push(criteriaSays);
-  else out.push(f.shown ? 'Proof shows it.' : f.confirmed ? 'A colleague confirmed it.' : f.addedOnTheBoard ? 'It was added on the board, not said in a check-in.' : 'It rests on what somebody said, with no proof yet.');
+  else out.push(f.shown ? 'Proof shows it.' : f.confirmed ? 'A colleague confirmed it.' : f.addedOnTheBoard ? 'It was added on the board, not said in a check-in.' : 'There is no proof yet.');
   /* With the four criteria, a missing buying date is already said among them. */
   if (byBuyingDate) { if (f.due || !criteriaSays) out.push(f.due ? `The customer said they will buy on ${theDayInWords(f.due, now)}.` : 'No buying date is on record for it.'); }
   else out.push(f.due ? `The date given for it is ${theDayInWords(f.due, now)}.` : 'No date has been given for it.');
@@ -186,7 +186,6 @@ export function aContactIsOnRecord(r: Pick<AServedRecord, 'from' | 'lastSaidOn' 
 }
 
 /** Said under the grid, so nobody reads a group as more than it is. */
-export const NO_CRITERIA_ARE_CHECKED = 'Nothing on record says what a deal must show at each stage, so no group here says whether a criterion is met.';
 export const NO_DEAL_IS_COLD = 'No deal is put under Cold, because nothing on record counts how many times a customer was followed up without a reply, so the stall rule cannot be applied.';
 /** The stall rule, said under the grid (A4). */
 export const THE_STALL_RULE = `A deal is stalled when a check-in says the customer has not answered and ${STALLED_AFTER_WORKING_DAYS} working days have passed, with nothing said since that they answered.`;
@@ -274,7 +273,7 @@ export function eachDealInItsGroup(
     const stallNote = opts.stallDays === undefined ? THE_STALL_RULE
       : opts.stallDays == null ? `${NO_STALL_RULE_YET}, so no deal is marked cold for going quiet.`
         : `A deal is stalled when a check-in says the customer has not answered and ${opts.stallDays} working days have passed, with nothing said since that they answered. This is your stall rule.`;
-    const groupsNote = [...(opts.criteria ? [] : [NO_CRITERIA_ARE_CHECKED]), stallNote, ...(endKey ? [] : [NO_END_DATE])];
+    const groupsNote = [stallNote, ...(endKey ? [] : [NO_END_DATE])];
     return {
       ...sec, rows: open, groups, groupsNote,
       ...(lostRows.length ? { lost: lostRows.map(aLostRow) } : {}),

@@ -59,7 +59,7 @@ describe("Joseph's notice at 11:15 on 22 October, when nothing is agreed or open
     const s = aSender({ wroteWithinADay: true });
     const result = await s.wa.sendFor(s.org, '+254700300004', THANKS_YOUR_ANSWER_IS_IN('Sales team, Q4'), { checkInId: '16a7a44f-45a1-4cf2-8795-af1e21469cff', kind: THANKS_ONLY });
     expect(result.sent).toBe(true);
-    expect(s.posted[0].text.body).toBe('Thank you, your answer for Sales team, Q4 is in. The shared picture is made once everyone has answered, and you will be told as soon as there is something to read.');
+    expect(s.posted[0].text.body).toBe('Thank you, your answer for Sales team, Q4 is in. You will be told when the report is ready.');
   });
 });
 

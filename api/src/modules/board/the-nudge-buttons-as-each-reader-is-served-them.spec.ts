@@ -40,15 +40,10 @@ describe('Grace, who runs it, with the direct morning on', () => {
   });
 });
 
-describe('everybody else, and the switch off', () => {
+describe('everybody else', () => {
   it('Kevin, a rep, is served no button and no morning', async () => {
     const k = await boardAs(theRun(true, THURSDAY_AFTERNOON), ...reader('Kevin'));
     expect(k.theMorning).toBeUndefined();
     expect(JSON.stringify(k)).not.toMatch(/Nudge |"nudges?"/);
-  });
-  it('with the switch off, Grace’s board has no button and reads as before', async () => {
-    const g = await boardAs(theRun(false, THURSDAY_AFTERNOON), ...reader('Grace'));
-    expect(g.theMorning).toBeUndefined();
-    expect(JSON.stringify(g)).not.toMatch(/Nudge |"nudges?"|checked in on time/);
   });
 });

@@ -1,4 +1,3 @@
-import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { theirDay, aDayByName, type ASessionOnRecord } from './who-answers-and-when';
 
@@ -29,10 +28,10 @@ export interface TheSameWords {
   days: string[];
 }
 
-/** Null where the message may go; otherwise the days they missed. With the switch off, always null. */
+/** Null where the message may go; otherwise the days they missed. */
 export async function theSameWordsAgain(prisma: any, opts: { groundId: string; participantId: string; words: string; now?: Date }): Promise<TheSameWords | null> {
   try {
-    if (!opts.words || !(await theDirectMorningIsOnFor(prisma, opts.groundId))) return null;
+    if (!opts.words) return null;
     const now = opts.now ?? new Date();
     const g = await prisma?.ground?.findUnique?.({ where: { id: opts.groundId }, select: { organizationId: true } });
     const zone = (g?.organizationId ? await theOrganisationsZone(prisma, g.organizationId).catch(() => null) : null) ?? THE_PRODUCTS_OWN_ZONE;
@@ -52,10 +51,10 @@ export async function theSameWordsAgain(prisma: any, opts: { groundId: string; p
   }
 }
 
-/** The words an opening or a reminder said to this person, kept after it went. With the switch off, nothing is written. */
+/** The words an opening or a reminder said to this person, kept after it went. */
 export async function rememberTheWords(prisma: any, groundId: string, participantId: string, words: string, now: Date = new Date()): Promise<void> {
   try {
-    if (!words || !(await theDirectMorningIsOnFor(prisma, groundId))) return;
+    if (!words) return;
     const value = { words, at: now.toISOString() };
     try { await prisma.platformSetting.create({ data: { key: KEY(participantId), value, updatedBy: 'engagement' } }); }
     catch { await prisma.platformSetting.update({ where: { key: KEY(participantId) }, data: { value, updatedBy: 'engagement' } }); }

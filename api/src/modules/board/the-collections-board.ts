@@ -648,7 +648,7 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
         ? 'A check-in from each borrower behind or not heard from, and a repayment record for each repayment said.'
         : `A date from each client behind, and a slip, a message or the accounting system’s record for each payment said.`,
       whoDecides: 'You decide.',
-      groundworkDoesNotChoose: 'Groundwork lays out the outcomes and the proof. It doesn’t choose.',
+      groundworkDoesNotChoose: '',
     };
   }
 

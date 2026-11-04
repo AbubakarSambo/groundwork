@@ -9,9 +9,9 @@
 export function whoSeesThisDifferently(sides: (string | null | undefined)[], myName: string | null): string {
   const isMe = (w: string) => w === 'You' || (!!myName && w === myName);
   const named = [...new Set(sides.map((w) => (w ?? '').trim()).filter(Boolean))];
-  if (named.length < 2) return 'This is seen differently.';
-  if (named.some((w) => /colleague/i.test(w))) return 'People see this differently.';
+  if (named.length < 2) return 'People said different things about this.';
+  if (named.some((w) => /colleague/i.test(w))) return 'People said different things about this.';
   const ordered = [...named.filter(isMe).slice(0, 1).map(() => 'You'), ...named.filter((w) => !isMe(w))];
   const list = ordered.length === 2 ? `${ordered[0]} and ${ordered[1]}` : `${ordered.slice(0, -1).join(', ')} and ${ordered[ordered.length - 1]}`;
-  return `${list} see this differently.`;
+  return `${list} said different things about this.`;
 }

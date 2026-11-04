@@ -104,15 +104,6 @@ describe('each team member reads the one thing that matters to them today, from 
   });
 });
 
-describe('with the switch off, nobody\'s opening changes', () => {
-  it.each([['drop', 'Kevin'], ['drop', 'Mercy'], ['drop', 'Joseph'], ['drop', 'Peter'], ['fees', 'Njeri'], ['fees', 'Aisha'], ['fees', 'Brian']] as const)('%s %s: no personal opening', async (g, first) => {
-    expect(await openingFor(g, first, false)).toBeNull();
-  });
-  it('and the model is told nothing more', () => {
-    expect(theOneThingTodayBlock(null)).toBe('');
-  });
-});
-
 /* --------------------------------------------------------------------------------------------------------------------------- */
 /* The check-in itself: the opening turn is the line, word for word, and the model is not asked for it                          */
 /* --------------------------------------------------------------------------------------------------------------------------- */
@@ -166,15 +157,6 @@ describe('the check-in opens on that line (web, and the first message after STAR
     const { service, ci, userId } = aCheckInOver('drop', 'Joseph', true);
     // Changed 26 October 2026 (Hafsah: item 1): the opening line is in front of the short version.
     expect((await service.open(ci.id, userId)).reply).toBe(withTheOpeningLine(JOSEPH_LATE));
-  });
-
-  it('switch off, Kevin: the opening is the model\'s, exactly as before', async () => {
-    const { service, anthropic, ci, userId } = aCheckInOver('drop', 'Kevin', false);
-    const r: any = await service.open(ci.id, userId);
-    expect(anthropic.respond).toHaveBeenCalledTimes(1);
-    // Changed 26 October 2026 (Hafsah: item 1): the model's opening is unchanged, with the opening line in front.
-    expect(r.reply).toBe(withTheOpeningLine('What moved on your deals since yesterday?'));
-    expect(r.personalOpening).toBeUndefined();
   });
 
   it('switch on, Peter with nothing specific on record: the opening is the model\'s, as before', async () => {
@@ -265,13 +247,6 @@ describe('on WhatsApp', () => {
     expect(context).toEqual(expect.objectContaining({ kind: 'checkin-open', params: was.params }));
   });
 
-  it('the opening notice: switch off, today\'s words exactly', async () => {
-    const { sendFor, today: was } = await theOpeningNotice(false);
-    const [, , text, context] = (sendFor.mock.calls[0] as any[]);
-    expect(text).toBe(was.text);
-    expect(text).toBe('Hi Kevin, your check-in for Sales team, Q4 is open. It takes about ten minutes, and you can answer right here. Reply START to begin.');
-    expect(context).toEqual(expect.objectContaining({ kind: 'checkin-open', params: was.params }));
-  });
 });
 
 /* --------------------------------------------------------------------------------------------------------------------------- */
@@ -329,10 +304,4 @@ describe('by email', () => {
     expect(m.html).toContain(`<p>${JOSEPH_LATE}</p>`);
   });
 
-  it('switch off, Kevin: the email he got before, exactly', async () => {
-    const [m] = await theOpeningEmail(false, 'Kevin');
-    expect(m.subject).toBe('Your next check-in is open: Sales team, Q4');
-    expect(m.html).toContain('<strong>Sales team, Q4</strong>');
-    expect(m.html).not.toContain('Ngong Road');
-  });
 });

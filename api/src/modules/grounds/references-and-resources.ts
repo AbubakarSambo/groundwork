@@ -358,7 +358,7 @@ export async function readReferencesAndResources(
   /* ABOUT THIS WORK. The purpose is what everyone in the check-in reads, in the lead's words where it is hers. */
   const purpose = whatSomeoneWhoDoesNotRunItReads({ brief: ground.brief, toldToParticipants: ground.toldToParticipants, scenario: ground.scenario });
   const herOwnWords = !!purpose && purpose === String(ground.brief ?? '').trim();
-  const whose = !purpose ? null : herOwnWords ? `${leadFirst}, at setup` : `Groundwork wrote this from ${leadFirst}’s words at setup.`;
+  const whose = !purpose ? null : herOwnWords ? `${leadFirst}, at setup` : null;
   /* Her own brief, to her alone, where what everyone reads is Groundwork's short version of it (decision 75, item 13: the brief
      itself is never served to anybody else). */
   const yourOwnWords = isLead && !herOwnWords && String(ground.brief ?? '').trim() ? String(ground.brief).trim() : null;
@@ -429,7 +429,7 @@ export async function readReferencesAndResources(
     checkInName: ground.label || 'This check-in',
     leadName,
     topLine: isLead
-      ? THE_LEADS_TOP_LINE
+      ? 'Your team’s reference for this work.'
       : `Your team’s reference for this work, kept by ${leadFirst}.`,
     mayAdd: isLead,
     itemWord: template.itemWord,
@@ -531,18 +531,3 @@ export function aLineToKeep(
   return { kind, text, audience: 'EVERYONE', aboutParticipantId: null };
 }
 
-/**
- * REFERENCES AND RESOURCES, SAID DIRECTLY (the direct morning, Hafsah, 20 October 2026; organisation/the-direct-morning-switch.ts).
- * Where the switch is on, the lead's top line says what the page is, with no note about who can read or add to it, and the purpose
- * carries no line about Groundwork having written it. Which sections a reader is served is decided before this, the same either way.
- */
-export const THE_LEADS_TOP_LINE = 'Your team’s reference for this work. They can read it, except People. Only you can add to it.';
-export function referencesSaidDirectly<T>(served: T): T {
-  const s: any = served;
-  if (!s || typeof s !== 'object' || s.on !== true) return served;
-  return {
-    ...s,
-    ...(s.topLine === THE_LEADS_TOP_LINE ? { topLine: 'Your team’s reference for this work.' } : {}),
-    ...(s.about && typeof s.about.whose === 'string' && /^Groundwork wrote this from /.test(s.about.whose) ? { about: { ...s.about, whose: null } } : {}),
-  } as T;
-}

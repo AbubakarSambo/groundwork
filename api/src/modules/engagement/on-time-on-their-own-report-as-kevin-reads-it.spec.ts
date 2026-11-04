@@ -23,12 +23,6 @@ describe('Kevin’s own report, with the direct morning on', () => {
   });
 });
 
-describe('with the direct morning off', () => {
-  it('nothing is said', async () => {
-    expect(await onTimeForThemselves(dated(theNightRunsDatabase('drop', { directMorning: false })), DROP, KEVIN, new Date('2026-10-19T12:00:00Z'))).toBeNull();
-  });
-});
-
 describe('only the person whose report it is', () => {
   it('the route reads the check-in as its owner’s before it says anything', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8')

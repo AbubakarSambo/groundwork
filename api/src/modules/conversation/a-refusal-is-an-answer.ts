@@ -36,13 +36,10 @@ export function whatTheAbsenceMeans(owedWhat: string): string {
  * the record of the absence, and the next thing - the plan's next question where there is one, the next
  * owed thing said to them where there is not, nothing where there is nothing.
  */
-/**
- * `direct`: the direct morning is on for the check-in's organisation (email/a-direct-email.ts). The refusal is taken plainly and the
- * conversation moves on, with nothing said about how the record will read.
- */
-export function recordAndMoveOn(declinedWhat: string | null, next: { question?: string | null; owed?: string | null }, direct = false): string {
+/** The refusal is taken plainly and the conversation moves on, with nothing said about how the record will read. */
+export function recordAndMoveOn(next: { question?: string | null; owed?: string | null }): string {
   /* Not the filing sentence: see the-same-sentence-five-times. A refusal gets a plain acknowledgement. */
-  const first = declinedWhat && !direct ? whatTheAbsenceMeans(declinedWhat) : 'Understood.';
+  const first = 'Understood.';
   if (next.question?.trim()) return `${first} ${next.question.trim()}`;
   if (next.owed?.trim()) return `${first} ${asAQuestion(next.owed)}`;
   /*
@@ -59,6 +56,5 @@ export function recordAndMoveOn(declinedWhat: string | null, next: { question?: 
    * about it.
    */
   /* Not "We can leave that there": this follows an answer, often a correction, and read as brushing it off (two-week check, Brian). */
-  if (direct) return 'Thank you, that is noted.';
-  return declinedWhat ? first : 'Understood. This record shows nothing more on that.';
+  return 'Thank you, that is noted.';
 }

@@ -10,7 +10,6 @@ import { theDirectMorningFor, asServedOnTheBoard } from '../engagement/the-direc
 import { yourTeamPersonByPerson, theLeadActsOnAPerson, type AnActionAsked } from './your-team-person-by-person';
 import { theNudgesOnTheBoard } from '../engagement/the-leads-own-nudge';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
-import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { aLineThatSaysItHappened } from './somebody-said-it-happened';
 import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
 import { whoHasMissedCheckIns, whatTheLeadReads, theNextStepSuggested, TOLD_THE_LEAD, whoMissedTheCheckInsJustBefore } from '../grounds/missed-check-ins';
@@ -51,7 +50,7 @@ import { theOpenIssues, sharesTheWords, ISSUE_STEPS, type AnOpenIssue, type What
 export const YOUR_FULL_REPORT_IS_COMING = 'Your full report is ready in a moment.';
 /** Setup's report takes about half a minute on the reports model; past this, a report that has not come is not coming. */
 const A_SETUP_REPORT_TAKES_AT_MOST_MS = 5 * 60_000;
-export const NO_OPEN_ISSUES_ON_RECORD = 'Groundwork does not follow an issue from the day it is raised to the day it is decided and done, so there is no list of open issues here. Where people see something differently, and the questions written down to decide on the Context page, are under what needs you.';
+export const NO_OPEN_ISSUES_ON_RECORD = '';
 import { theShareSays, YOU_HAVE_NO_SHARE_YET } from './your-share';
 import { theirOwnAimsKeptOnlyAsPromises, AN_AIM_FROM_THEIR_PROMISE } from './an-aim-kept-only-as-their-promise';
 import { eachDealInItsGroup } from './each-deal-in-its-group';
@@ -497,8 +496,6 @@ export class BoardService {
     const releaseOne = await theReleaseOneSalesBoardIsOn(this.prisma, (ground as any).organizationId);
     /* Release 4 (release-4-teams): each team type's board as its kit picture, and each target with its unit. Off, as before. */
     const releaseFour = await theRelease4TeamsIsOn(this.prisma, (ground as any).organizationId);
-    /* The direct morning (organisation/the-direct-morning-switch): it changes the board's own words, never who reads what. Off, as before. */
-    const direct = await theDirectMorningIsOn(this.prisma, (ground as any).organizationId).catch(() => false);
     /* The lead's answer on whether a price range counts as a budget, from how we work (a-deals-four-criteria). Release 1 only. */
     const priceRange: ARangeAnswer = releaseOne && isASalesKind((ground as any).kindOfWork) ? await thePriceRangeAnswer(this.prisma, groundId) : null;
     /* The lead's own stall rule, or none (standing decision 4, 18 October; the-stall-rule). Off Release 1, the rule the board always read. */
@@ -641,8 +638,7 @@ export class BoardService {
         withheldUntilYouCheckIn: true,
         mode: ground.mode,
         family: familyFor(ground.scenario),
-        /* The direct morning says it in one line, with one button (Hafsah, 25 October). Off, as before. */
-        saying: direct ? 'Check in first, then you’ll see the board.' : BECAUSE_YOURS_WOULD_BE_AN_ANSWER,
+        saying: BECAUSE_YOURS_WOULD_BE_AN_ANSWER,
       };
     }
 
@@ -1618,12 +1614,6 @@ export class BoardService {
         objectiveId: o.id,
         /* On Release 1's sales board, the reader's own deals are named in it (R-5): from their own aim's count only. */
         says: theShareSays(o.name, o.count, o.target, o.direction, releaseOne && countedFromTheDeals.get(o.id) ? { ...(o.fromTheDeals ?? {}), ...(countedFromTheDeals.get(o.id) as any) } : (o.fromTheDeals ?? null)),
-        /* With the direct morning on, no note about who else sees it: who reads it is the backend's rule, the same either way. */
-        ...(direct ? {} : {
-          whoSees: (ground as any).whoSeesTargets === 'EVERYBODY'
-            ? 'Everybody in this check-in sees your share.'
-            : `Only you and ${(releaseOne ? (leadName ?? '').split(/\s+/)[0] : leadName) || 'the person running this check-in'} see your share.`,
-        }),
       }));
       if (!mine.length) out.yourShareSays = YOU_HAVE_NO_SHARE_YET;
     }
@@ -3279,11 +3269,10 @@ export class BoardService {
        * leave. Not to an admin, a colleague or the person themselves (they read their own on Today).
        */
       if (isInitiator) {
-        /* With the direct morning on, the fact, the reason and what to do, without the lecture on what missing costs or "Groundwork will not start one by itself". */
         const missed = (await whoHasMissedCheckIns(this.prisma, [groundId]).catch(() => [] as Awaited<ReturnType<typeof whoHasMissedCheckIns>>))
           .filter((m) => m.stand.stage >= TOLD_THE_LEAD && m.name !== SOMEONE_NAMED);
         const missedSaid = missed
-          .map((m) => ({ participantId: m.participantId, name: m.name, text: whatTheLeadReads(m.name, m.stand, undefined, direct), reason: m.stand.reason, suggestion: theNextStepSuggested(m.name, m.stand.stage, direct) }));
+          .map((m) => ({ participantId: m.participantId, name: m.name, text: whatTheLeadReads(m.name, m.stand), reason: m.stand.reason, suggestion: theNextStepSuggested(m.name, m.stand.stage) }));
         if (missedSaid.length) (out as any).missedCheckIns = missedSaid;
       }
       const obligations = theObligations(people, mine.commitments, handoffs, sessions, reader);
@@ -3351,10 +3340,10 @@ export class BoardService {
         }
       }
       /*
-       * EVERY NEXT STEP IN ABOUT EIGHT WORDS, IN ONE PLACE (Hafsah, 25 October), where the direct morning is on; off, each step is said
-       * whole, as before. The whole sentence stays in `next` for the opened deal. Every writer above gives the step whole.
+       * EVERY NEXT STEP IN ABOUT EIGHT WORDS, IN ONE PLACE (Hafsah, 25 October). The whole sentence stays in `next` for the opened deal.
+       * Every writer above gives the step whole.
        */
-      if (direct && Array.isArray(out.workRecords)) {
+      if (Array.isArray(out.workRecords)) {
         for (const sec of out.workRecords as any[]) for (const row of (sec?.rows ?? []) as any[]) if (row?.nextStep) row.nextStep = inAboutEightWords(String(row.nextStep));
       }
       /*
@@ -3921,7 +3910,7 @@ export class BoardService {
         /* To close the gap (request 115 c): to whoever is served the headline, from the deals they are served. See to-close-the-gap. */
         if (walled.headline && !aParticipantOnly) {
           const storedAims = new Map(((ground.objectives ?? []) as any[]).map((o) => [o.id, o]));
-          const gap = toCloseTheGap(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, ((walled.objectives ?? []) as any[]).map((o) => ({ ...o, dueOn: storedAims.get(o.id)?.dueOn ?? null })), deadlineOf(ground as any), now, { nothingBooked: releaseOne, inShort: releaseOne, short: direct });
+          const gap = toCloseTheGap(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, ((walled.objectives ?? []) as any[]).map((o) => ({ ...o, dueOn: storedAims.get(o.id)?.dueOn ?? null })), deadlineOf(ground as any), now, { nothingBooked: releaseOne, inShort: releaseOne, short: true });
           /* The heading ("To close the gap, two of these three") is Release 1's; off, the gap reads as it did before it. */
           if (gap && !releaseOne) delete (gap as any).heading;
           if (gap) walled.toCloseTheGap = gap;
@@ -3954,14 +3943,11 @@ export class BoardService {
             walled.leadActions = [...((Array.isArray(walled.leadActions) ? walled.leadActions : []) as any[]), {
               id: 'the-stall-rule',
               kind: 'decision',
-              /* With the direct morning on, the question itself and what follows from it, with no "Groundwork suggests" (the-stall-rule). */
-              text: direct ? THE_STALL_RULE_ASKED : NO_STALL_RULE_YET,
+              text: THE_STALL_RULE_ASKED,
               decision: {
-                question: direct ? THE_STALL_RULE_ASKED : NO_STALL_RULE_YET,
+                question: THE_STALL_RULE_ASKED,
                 asked: THE_STALL_RULE_ASKED,
-                why: direct
-                  ? `No deal is marked cold or dropped for going quiet until you set this.${example}`
-                  : `Groundwork suggests dropping a deal after ${THE_SUGGESTED_DAYS} working days with no answer from the customer. Until you set a rule, no deal is marked cold or dropped for going quiet.${example}`,
+                why: `No deal is marked cold or dropped for going quiet until you set this.${example}`,
                 afterwards: 'Your answer goes in how we work.',
               },
               action: {
@@ -4028,7 +4014,7 @@ export class BoardService {
         });
       }
       /*
-       * THE DIRECT MORNING AT THE TOP (engagement/the-direct-morning.ts): for the lead who runs it, where her organisation's switch is on,
+       * THE DIRECT MORNING AT THE TOP (engagement/the-direct-morning.ts): for the lead who runs it,
        * the same four parts her morning summary says, in the same order, built from this board as she is served it. Never to anybody else.
        */
       if (isInitiator) {
@@ -4218,7 +4204,7 @@ export class BoardService {
       const who = whoSaidDifferentThings(d, nameForLabel);
       return {
         question: peopleSaidDifferentThingsAbout(String(d.topic ?? ''), who),
-        why: 'What people said about this does not match, so nobody can assume it is agreed.',
+        why: 'What people said about this does not match.',
         owner: theLeadOwns,
         source: 'divergence' as const,
       };

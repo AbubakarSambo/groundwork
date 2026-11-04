@@ -45,7 +45,8 @@ describe('the switches are Groundwork\'s own', () => {
     const svc = new AdminService({ organization: { findUnique: jest.fn(async () => org), update } } as any, {} as any, {} as any);
     const read = await svc.theSwitchesOf('org-drop');
     expect(read.switches.map((s) => s.key)).toEqual(THE_ORGANISATION_SWITCHES.map((s) => s.key));
-    expect(read.switches.find((s) => s.key === 'directMorningOn')!.on).toBe(true);
+    expect(read.switches.find((s) => s.key === 'release3InvoicesOn')!.on).toBe(false);
+    expect(read.switches.some((s) => (s.key as string) === 'directMorningOn')).toBe(false);
     await svc.setASwitch('org-drop', 'release3InvoicesOn', true);
     expect(update).toHaveBeenCalledWith({ where: { id: 'org-drop' }, data: { release3InvoicesOn: true } });
     await expect(svc.setASwitch('org-drop', 'billWord', true)).rejects.toThrow(BadRequestException);

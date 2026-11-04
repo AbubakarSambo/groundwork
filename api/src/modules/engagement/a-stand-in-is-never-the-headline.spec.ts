@@ -25,7 +25,7 @@ describe("Wanjiru's shared-picture email when one difference could not be restat
   it('opens with the difference that can be named, and still counts both', () => {
     expect(insight.lines[0]).toBe('The people in "Litigation team daily" differ on "The current status of the legal reply for the Kasarani Foods case", and one more difference is still open.');
     expect(insight.lines.join(' ')).not.toContain('[');
-    expect(insight.lines).toContain('Three things are settled and two are still open.');
+    expect(insight.lines.join(' ')).not.toContain('settled');
   });
 
   it("says what would settle the one it names, not the stand-in's", () => {
@@ -38,8 +38,8 @@ describe("Wanjiru's shared-picture email when one difference could not be restat
 
   it('with only the stand-in open, says how many the picture found', () => {
     const only = theFirstInsight(report([A_LINE_WE_COULD_NOT_RESTATE]), 'Litigation team daily', { isTheLead: true })!;
-    expect(only.lines[0]).toBe('The shared picture for "Litigation team daily" found one difference still open.');
-    expect(only.subjectForTheLead).toBe('The shared picture for "Litigation team daily" found one difference still open');
+    expect(only.lines[0]).toBe('The report for "Litigation team daily" found one difference still open.');
+    expect(only.subjectForTheLead).toBe('The report for "Litigation team daily" found one difference still open');
     expect(only.lines.join(' ')).not.toContain('[');
     expect(theFirstOpenDifference(report([A_LINE_WE_COULD_NOT_RESTATE]))).toBeNull();
     expect(theFindingOnItsOwn(report([A_LINE_WE_COULD_NOT_RESTATE]), 'Litigation team daily')).toBeNull();

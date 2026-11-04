@@ -1063,9 +1063,9 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
-   * THE DIRECT MORNING BY SEVEN (engagement/the-direct-morning.ts; Hafsah, 20 October 2026): every quarter hour, for the organisations whose
-   * switch is on, the lead's morning summary goes in the hour from seven where the organisation is, before the check-ins open, once a day
-   * a lead. The 9am sweep above sends it only to a lead it did not reach. Organisations with the switch off are never read here.
+   * THE DIRECT MORNING BY SEVEN (engagement/the-direct-morning.ts; Hafsah, 20 October 2026): every quarter hour, for every organisation,
+   * the lead's morning summary goes in the hour from seven where the organisation is, before the check-ins open, once a day
+   * a lead. The 9am sweep above sends it only to a lead it did not reach.
    */
   @Cron('*/15 * * * *', { timeZone: 'UTC' })
   async sendTheDirectMorningsAtSeven() {
@@ -1073,8 +1073,6 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendTheDirectMorningsAtSevenInner(now: Date = new Date()): Promise<{ tried: number }> {
-    const any = await (this.prisma as any).organization.findFirst({ where: { directMorningOn: true }, select: { id: true } }).catch(() => null);
-    if (!any) return { tried: 0 };
     let boards: { get(groundId: string, userId: string): Promise<any> } | undefined;
     try {
       if (this.moduleRef) { const { BoardService } = await import('../board/board.service'); boards = this.moduleRef.get(BoardService, { strict: false }); }

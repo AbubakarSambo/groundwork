@@ -50,7 +50,7 @@ describe('request 108 (d): where this is heading, as Bisi, who runs it, reads it
       whatWouldSettleIt: ['Whether to take the credit committee delays to the Head of Credit.'],
       whatWouldSettleItSays: 'You wrote this down as still to decide.',
       whoDecides: 'You decide.',
-      groundworkDoesNotChoose: 'Groundwork lays out the outcomes and the proof. It doesn’t choose.',
+      groundworkDoesNotChoose: '',
       recordTheDecision: 'Record the decision',
       decided: null,
     });

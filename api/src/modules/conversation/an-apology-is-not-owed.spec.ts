@@ -15,7 +15,7 @@ describe('an apology is not owed, and it is not met with silence', () => {
   });
 
   it('the line is plain, and the product’s own', () => {
-    expect(NOTHING_TO_APOLOGISE_FOR).toBe('No need to say sorry here. This is a record of where things are, not a judgement of you.');
+    expect(NOTHING_TO_APOLOGISE_FOR).toBe('No need to say sorry.');
   });
 
   it('goes in front of the close on both paths, and never on a close that is still asking', () => {

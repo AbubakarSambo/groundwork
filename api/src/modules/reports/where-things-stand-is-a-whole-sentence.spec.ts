@@ -22,19 +22,20 @@ describe('where things stand is a whole sentence', () => {
     divergences: three(['How progress toward the target is measured', 'Whether a sale counts before a payment', 'Who follows up with Juja Hardware']),
   } as any);
 
+  /* Changed 4 November 2026 (release batch 1): the direct morning's words are the only words, so it says who agrees and differs, never "settled". */
   it('on the report page', () => {
-    expect(report.whereThingsStand.saying).toBe('Three things are settled, and three are still open.');
+    expect(report.whereThingsStand.saying).toBe('People agree on three things, and differ on three.');
   });
 
   it('and in the WhatsApp message Mercy and Joseph read', () => {
-    expect(reportAsTemplateBlanks(report, 'Sales team, Q4')).toEqual(['Sales team, Q4', 'Three things are settled, and three are still open.']);
-    expect(reportAsOneLine(report, 'Sales team, Q4')).toBe('Your report for Sales team, Q4 is ready. Three things are settled, and three are still open.');
+    expect(reportAsTemplateBlanks(report, 'Sales team, Q4')).toEqual(['Sales team, Q4', 'The people in "Sales team, Q4" differ on "How progress toward the target is measured".']);
+    expect(reportAsOneLine(report, 'Sales team, Q4')).toBe('Your report for Sales team, Q4 is ready. The people in "Sales team, Q4" differ on "How progress toward the target is measured".');
   });
 
   it('one, and none', () => {
     const one = theSessionReport({ ...base, agreements: three(['Kilele Hotel bought 40 units']), divergences: [] } as any);
-    expect(one.whereThingsStand.saying).toBe('One thing is settled, and nothing is still open.');
+    expect(one.whereThingsStand.saying).toBe('People agree on one thing, and differ on nothing.');
     const none = theSessionReport({ ...base, agreements: [], divergences: three(['Who follows up with Juja Hardware']) } as any);
-    expect(none.whereThingsStand.saying).toBe('Nothing is settled yet, and one thing is still open.');
+    expect(none.whereThingsStand.saying).toBe('People differ on one thing.');
   });
 });

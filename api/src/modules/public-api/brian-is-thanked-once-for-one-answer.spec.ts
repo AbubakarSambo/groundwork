@@ -7,12 +7,12 @@ import { THANKS_ONLY } from './a-whatsapp-message-is-routed';
  *
  * Muchemi & Co. (test). Brian Otieno answered "Litigation team daily" on WhatsApp on Tuesday 13 October at 14:01 in Nairobi and was
  * thanked. On Thursday 15 and Friday 16 October at 07:30 he read again, on WhatsApp, "Thank you, your answer for Litigation team daily
- * is in. The shared picture is made once everyone has answered, and you will be told as soon as there is something to read." He had not
+ * is in. You will be told when the report is ready." He had not
  * answered either day: the morning backstop re-emits the round's completion as a repair, and each repair thanked him again.
  */
 const CHECK_IN = '629a5a54-f0b5-435c-bc90-09b1eefd7f31';
 const ORG = 'org-muchemi';
-const THANKS = 'Thank you, your answer for Litigation team daily is in. The shared picture is made once everyone has answered, and you will be told as soon as there is something to read.';
+const THANKS = 'Thank you, your answer for Litigation team daily is in. You will be told when the report is ready.';
 
 function brian(o: { thankedOnTuesday: boolean }) {
   const sent: { text: string; kind: string }[] = [];

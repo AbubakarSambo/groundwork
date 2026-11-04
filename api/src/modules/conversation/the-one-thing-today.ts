@@ -9,7 +9,6 @@ import { peersAreNamedOn } from '../reports/peers-are-named';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
-import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { aCheckInStartedFromTheAnchor } from './the-anchor-weekly-check-in';
 import { forHumans } from '../presentation/outbound';
 
@@ -427,7 +426,6 @@ export async function aTeamMembersOpeningFor(
         participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, createdAt: true, user: { select: { firstName: true, lastName: true } } } } },
     })).catch(() => null) as any;
     if (!ground) return null;
-    if (!(await theDirectMorningIsOn(prisma, ground.organizationId))) return null;
     /* An evaluation check-in weighs one person, and the anchor's weekly check-in opens with its own words: neither is changed here. */
     if (isEvaluationCheckIn(ground.scenario) || aCheckInStartedFromTheAnchor(ground)) return null;
     const people: any[] = ground.participants ?? [];

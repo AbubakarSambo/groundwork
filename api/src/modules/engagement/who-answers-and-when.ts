@@ -20,7 +20,6 @@ import { workingDaysOf } from '../grounds/which-days-this-team-works';
  * FACTS ONLY. Nothing here is a label on a person: a sentence built from it says what happened and on which day.
  */
 
-import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 
 export const AN_HOUR_AFTER_THEIR_USUAL_TIME = 60;
@@ -275,7 +274,6 @@ export const mayBeNudged = (d: TheirDay) => d.dueToday && !d.answeredToday && (d
 export async function onTimeForThemselves(prisma: any, groundId: string | null | undefined, participantId: string, now: Date = new Date()): Promise<string | null> {
   try {
     if (!groundId) return null;
-    if (!(await theDirectMorningIsOnFor(prisma, groundId))) return null;
     const g = await prisma?.ground?.findUnique?.({ where: { id: groundId }, select: { organizationId: true, cadence: true, cadenceDays: true, workingDays: true } });
     const zone = (g?.organizationId ? await theOrganisationsZone(prisma, g.organizationId).catch(() => null) : null) ?? THE_PRODUCTS_OWN_ZONE;
     const sessions: ASessionOnRecord[] = (await prisma?.checkIn?.findMany?.({

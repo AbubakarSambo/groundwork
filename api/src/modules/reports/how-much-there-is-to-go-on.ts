@@ -136,12 +136,12 @@ export function howMuchThereIsToGoOn(input: WhatItRestsOn): Confidence {
     band === 'solid'
       ? 'There is enough here to act on.'
       : band === 'partial'
-        ? 'There is enough here to talk about, and not enough to settle anything.'
-        : 'There is not much here yet. Treat it as a starting point rather than a finding.';
+        ? 'There is enough here to talk about.'
+        : 'There is not much here yet.';
 
   /* A perfect report still says why it is one, rather than showing an empty list. */
   if (score >= 67 && !somethingToActOn) {
-    reasons.push('Well evidenced, and still only something to talk about: nothing here has an owner and a date yet.');
+    reasons.push('Nothing here has an owner and a date yet.');
   }
   if (!reasons.length) {
     reasons.push('Everybody answered, what was said is anchored to documents, and the commitments have owners and dates.');

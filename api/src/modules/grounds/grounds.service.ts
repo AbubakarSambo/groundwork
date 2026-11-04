@@ -3,10 +3,8 @@ import { whatTheRecordShowsTheLead } from '../patterns/what-the-record-shows-the
 import { theWeekdaysItMeets } from './the-check-ins-own-schedule';
 import { ConversationService as ConversationServiceForReopening } from '../conversation/conversation.service';
 import { theEndingSaid } from '../resolution/end-states';
-import { withTheDirectMorningSaid } from '../organisation/the-screen-is-told-the-direct-morning';
 import { THE_TEMPLATES, theTemplate } from '../board/the-thirteen-templates';
 import { theRelease4TeamsIsOn } from '../board/release-4-teams';
-import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { theNumberIsOnlyADay } from '../conversation/a-day-is-not-a-target';
 import { readWhereEachPersonIsGettingStarted } from './getting-each-person-started';
@@ -94,7 +92,7 @@ import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { theGlanceAsThisReaderMayReadIt, whatIsInTheWay } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
 import { readPeopleAndSetup } from './people-and-setup';
-import { readReferencesAndResources, readTheEvidence, aLineToKeep, aKeyFactFrom, referencesSaidDirectly, type EvidenceQuery } from './references-and-resources';
+import { readReferencesAndResources, readTheEvidence, aLineToKeep, aKeyFactFrom, type EvidenceQuery } from './references-and-resources';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
@@ -8549,17 +8547,14 @@ export class GroundsService {
   async peopleAndSetup(groundId: string, organizationId: string, userId: string) {
     await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
     await this.assertMaySeeGround(groundId, userId);
-    /* The direct morning (organisation/the-screen-is-told-the-direct-morning.ts): one yes or no for the page's fixed words. It shows nothing more. */
-    return withTheDirectMorningSaid(await readPeopleAndSetup(this.prisma as any, { groundId, organizationId, userId }), await theDirectMorningIsOnFor(this.prisma, groundId));
+    return readPeopleAndSetup(this.prisma as any, { groundId, organizationId, userId });
   }
 
   /** References and resources, as this reader may read it (Release 1B, pull request 2 of 3). Asked after the check-in's own read rules. */
   async referencesAndResources(groundId: string, userId: string) {
     await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
     await this.assertMaySeeGround(groundId, userId);
-    const served = await readReferencesAndResources(this.prisma as any, { groundId, userId, contextEnabled: this.contextEnabled() });
-    const direct = await theDirectMorningIsOnFor(this.prisma, groundId);
-    return withTheDirectMorningSaid(direct ? referencesSaidDirectly(served) : served, direct);
+    return readReferencesAndResources(this.prisma as any, { groundId, userId, contextEnabled: this.contextEnabled() });
   }
 
   /** One page of the evidence this reader may read (Release 1B, pull request 2 of 3). */

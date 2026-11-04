@@ -21,7 +21,7 @@ describe('a sale somebody said they made is their claim, not a sale won', () => 
       { group: 'said-won', heading: 'Said to be won, not shown yet', reason: 'Somebody said each of these was won, in their own words. Nothing has been shown to back them yet, so they count in what is sold as their word, not as sales with proof of payment.', rowIds: ['d-collins'] },
     ]);
     expect(sec.rows[0].said).toBe('I did eleven, all the deliveries are done.');
-    expect(sec.rows[0].groupSays).toMatch(/^It rests on what somebody said, with no proof yet\./);
+    expect(sec.rows[0].groupSays).toMatch(/^There is no proof yet\./);
   });
 
   it('a sale with proof, one a colleague confirmed, and one the lead put there on the board stay under Won', () => {

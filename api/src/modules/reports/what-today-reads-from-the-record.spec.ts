@@ -126,7 +126,7 @@ describe('week 16: the report’s open differences reach the lead’s list, and 
         id: 'difference-1',
         /* Changed 3 November (F5 part 3): named people "see it differently", the board's own sentence. */
         decide: 'Brian Otieno and Miriam Wanjiku see differently whether a price range counts as a budget.',
-        why: 'What people said about this does not match, so nobody can assume it is agreed.',
+        why: 'What people said about this does not match.',
       });
     } finally { DIVERGENCES.splice(0, 1, saved[0]); }
   });
@@ -138,7 +138,7 @@ describe('week 16: the report’s open differences reach the lead’s list, and 
     expect(item).toEqual({
       id: 'difference-1',
       decide: 'Agree what counts as a budget and tell both of them.',
-      why: 'Brian Otieno counts a price range as a budget, and Miriam Wanjiku counts only a written figure. Brian Otieno and Miriam Wanjiku said different things about this, so nobody can assume it is agreed.',
+      why: 'Brian Otieno counts a price range as a budget, and Miriam Wanjiku counts only a written figure. Brian Otieno and Miriam Wanjiku said different things about this.',
       changes: 'Four deals are counted differently until this is agreed.',
     });
     const text = JSON.stringify(r.forTheLead);

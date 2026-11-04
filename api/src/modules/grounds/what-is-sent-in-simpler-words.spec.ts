@@ -25,15 +25,14 @@ describe('the WhatsApp messages after "finish"', () => {
   });
 });
 
+/* Changed 4 November 2026 (release batch 1): the direct morning's words are the only words on the phone, so the question is said on its own,
+   with no "conversation worth having" before it, in simpler words or not. */
 describe('the report on the phone', () => {
-  it('is byte for byte what it was with the switch off or missing', () => {
-    expect(reportAsText(REPORT, 'sales')).toBe(reportAsText(REPORT, 'sales', false));
-    expect(reportAsText(REPORT, 'sales')).toContain('Here is a conversation worth having. Who can decide on the Quickmart price?');
-  });
-  it('reads "Here is one thing worth talking about." with the switch on, and keeps the facts', () => {
-    const on = reportAsText(REPORT, 'sales', true);
-    expect(on).toContain('Here is one thing worth talking about. Who can decide on the Quickmart price?');
-    expect(on).toContain('Two things are settled and one is open.');
+  it('keeps the facts, and says the question on its own', () => {
+    const said = reportAsText(REPORT, 'sales');
+    expect(said).toContain('Two things are settled and one is open.');
+    expect(said).toContain('Who can decide on the Quickmart price?');
+    expect(said).not.toMatch(/conversation worth having|worth talking about/);
   });
 });
 
