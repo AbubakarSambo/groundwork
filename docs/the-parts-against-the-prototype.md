@@ -205,6 +205,8 @@ Rebuilding `SuitesPage.tsx` and all ten boards (`OnboardingBoardPage`, `LeaveBoa
 | --- | --- | --- | --- |
 | **`.gwui-suite-head`/`.gwui-suite-switch`** (a suite card's own two-column layout, title and body left, On/Off tag and its `Toggle` right) | layout | `gw-suite-head`/`gw-suite-switch` | unchanged |
 | **`.gwui-suite-ask`/`.gwui-suite-q`** (the small form a suite's own questions open into) | layout | `gw-suite-ask`/`gw-suite-q` | unchanged |
+| **`.gwui-suite-ask-alone`** (screen fault 6e, live walk 6 October 2026: the same form, for the two pages - `LeaveRequestNewPage.tsx`, `SpendRequestNewPage.tsx` - where it is the only thing in its panel, so `.gwui-suite-ask`'s own top rule drew as an empty line with nothing above it to divide from) | layout | `.gwui-suite-ask`, with the top rule and its spacing left off | same gap, no line |
+| **`.gwui-help-close`** (phone walk, 7 October 2026: the Help window's own close button, `HelpModal.tsx`, was a fixed 28px circle at every width, under the 40px tap floor on a phone; its position, background and colour stay inline on that one button) | sizes | the button's own inline 28px circle | 28px on a wide screen, 40px at 640px and under, the same floor as `.gwui-icon-btn` |
 | **`.gwui-record-table`** (a record table: time sheets, equipment, spending, customers, the role map) | sizes | `gw-suite-table`, `gw-time-table` | unchanged, merged into one name since both were the same shape |
 | **`.gwui-time-bar`** (a progress bar against an agreed amount, time sheets' own "Hours against what each client agreed") | sizes/colour | `gw-time-bar` | unchanged |
 | **`.gwui-quoted-text`** (a review's own quoted words) | font/size | `gw-review-said` | unchanged |
@@ -759,23 +761,209 @@ width" symptom `.gwui-row > .gwui-btn { justify-self: start; }` already names (B
 "Waiting"/"Approved" stretched edge to edge of the row once its grid collapsed to one column.
 Fixed the same way, scoped to `.gwui-tag` only: `.gwui-row > .gwui-tag { justify-self: start; }`.
 
-## Hafsah, 21 October: everything you can tap is at least 44px tall
+## Live review, 7 October: one new class, a number box
 
+**`.gwui-ec-sessions-input`** (new part, `EntryChatPage.tsx`'s session header): the shared
+`TextField`'s own `.gwui-input` is `width: 100%`, right for a name or an address, wrong for a
+count of sessions - inside the header's own number-of-sessions editor it stretched to fill
+whatever space the name row had given up (measured at 463px wide), and the header's own text
+crushed to "Give / this / a" around it (fault 2, live review, 7 October). No prototype screen
+draws this editor at all (`new.txt` has no sessions control), so there is no prototype value to
+follow; the nearest the product already has is the inline `width: 70` number boxes on
+`AdminPage.tsx` ("Days to correct a record", "Free months"). `.gwui-ec-sessions-input` is that
+same idea as a shared class rather than a fourth inline copy: `width: 64px`, centred text, fixed
+rather than growing, which is all a 1-2 digit count ever needs.
+
+## Reviewer, third round (D1 and D2, 1024px): one new rule, no new class
+
+**`.gwui-ec-sofar`** (EntryChatPage.tsx's "What Groundwork has so far" card) already existed as a
+class name with no CSS rule of its own - every value it drew came from its child selectors
+(`.gwui-ec-sofar-row`, `-label`, `-value`). At 1024px the card sat in a chat bubble with no width
+of its own (`Bubble.tsx`'s `maxWidth: '82%'`, never a `width`), so the browser sized the whole
+bubble, card and row chain down to the narrowest width their wrappable text could still occupy -
+measured live, the value column held only 84px of a 468px-wide messages area, wrapping "New
+project launching with Daniel and Grace" across four lines of two or three words. A `min-width`
+on the card itself (`min-width: 480px`, 900px and up only) is a floor the shrink-to-fit
+calculation has to honour going back up that chain, still capped by the bubble's own 82% and the
+viewport beneath it. No prototype screen draws this card at exactly this width to follow a value
+from; the number is the smallest that kept every value on one line against the fixtures read live.
+
+Also fixed in the same pass, no new classes: `.gwui-ec-sofar-value` gained a `flex: 1 1 320px` (a
+real preferred width for the value column to claim from the row, alongside the label's own fixed
+160px); `.gwui-btn-wide` gained `white-space: normal` (a long-sentence wide button, like the
+fork's two choices, could overflow and be clipped above the 640px breakpoint that already fixed
+it below); `.gwui-ec-sessions-count`, `.gwui-ec-which-row` and `.gwui-ec-quick-actions-end` each
+gained a narrow-width rule fixing clipped or overlapping text and controls at 390px (the sessions
+help line, "Start over", and "End session" against the floating Feedback trigger).
+
+## Style clean-up round 2: two new shared parts, no new CSS
+
+**`FlexRow`** (`components/gw/ui/FlexRow.tsx`) and **`Text`** (`components/gw/ui/Text.tsx`), per
+Hafsah's instruction of 9 October ("Add two shared parts whose CSS is EXACTLY what the inline
+code does today, so swapping them in cannot change a pixel"). Neither adds a CSS rule: both are a
+typed wrapper around classes and inline-style properties `BoardPage.tsx` (and others) already set
+by hand, written up here because the one-off guard requires any new shared part to be.
+
+**`FlexRow`** replaces `<div className="gwui-gap-N" style={{ display: 'flex', ... }}>` - a row of
+buttons, tags or short facts spaced with one of the existing `gwui-gap-*` classes (`gw-ui.css`,
+unchanged). Its props (`gap`, `align`, `justify`, `wrap`, `shrink0`, `flex1`, `as`) are exactly the
+inline style properties the board already used (`alignItems`, `justifyContent`, `flexWrap`,
+`flexShrink: 0`, `flex: 1`), and only the specific values actually in use anywhere in `BoardPage.tsx`
+(`align`: `center`/`baseline`/`flex-start`; `justify`: `center`/`flex-end`/`space-between`) - no
+value is offered that no caller needs yet. Not named `Row`: that name is already `Rows.tsx`'s grid
+-column table row, a different part with its own inset padding, and the two must not be confused.
+
+A row whose inline style set anything else - a fixed `width`, `flexDirection: 'column'`, a
+`flexBasis` - is not an exact match and was left alone. `GroundParticipantPage.tsx`'s settings tab
+is the clearest case: its own comment explains it stays a flex column so `MyParticipation`'s child
+`order` values keep working, which `Stack`'s block-margin layout would break: `FlexRow` does not
+change that reasoning (it is still a flex container, `order` would still work), but converting a
+column is outside what this round's `FlexRow` offers (row-only props), so it was left as written.
+
+**`Text`** replaces a `gwui-fs-N`/`gwui-ink-X` pair of classes on a `<div>`/`<span>`/`<p>`, for the
+cases with no inline style at all - a sentence set in one size and one colour and nothing else
+(for example `<div className="gwui-fs-15 gwui-ink-muted">Nothing to show here yet...</div>`).
+`size`/`ink` are strings rather than numbers because some sizes are not whole numbers
+(`gwui-fs-13-5`); each names the existing class's own suffix exactly, so `Text` renders the same
+class names `gw-ui.css` already has rules for. `weight`/`lineHeight`/`letterSpacing`/`display` are
+there for a later batch that also carries one of those inline alongside the size and colour, but
+this round's first use of `Text` is the plain, style-free case only - see `docs/style-cleanup.md`
+for exactly which lines moved. A caller whose inline style sets a property `Text` does not offer
+(a margin, a different colour not already a `gwui-ink-*`) is not an exact match and was left alone.
+
+## GroundworkIsWriting: one indicator for every chat, now that replies arrive whole
+
+**`GroundworkIsWriting`** (`components/gw/ui/GroundworkIsWriting.tsx`). Hafsah's instruction of 9
+October: replies now arrive whole, as the engine sends them, rather than drawn in piece by piece,
+so every chat needs a clear sign of work while one is on its way, in the prototype's own
+language - since the prototype itself has no typing indicator, this is built from the pieces it
+does have: Groundwork's own bubble shape and colours (`Bubble.tsx`, which already follows
+`docs/prototype/source/app.css`'s `.bub.them`), its muted ink and type sizes, and its only
+animation's spirit (`@keyframes up`) rather than its exact keyframes, since nothing in the
+prototype fades in place the way three waiting dots do.
+
+It renders the sentence "Groundwork is writing…" (or "Ask Kijani Foods is writing…" where the
+reply comes from Ask and its name is known), with `role="status"` and `aria-live="polite"`, and
+three small dots that fade and stop under `prefers-reduced-motion`. Two new classes, both written
+up here as the guard requires: `.gwui-writing` (the row: inline-flex, 14px, `var(--gw-sub)`, the
+same muted ink the check-in's own waiting note already used) and `.gwui-writing-dots`/
+`.gwui-writing-dot` (each dot 6px, `var(--gw-sub)`, the existing `gwDotBounce` keyframes,
+switched off under reduced motion - `gw-ui.css` had no reduced-motion rule before this).
+
+`wrap` (default true) draws the sentence inside its own `Bubble`; a caller that already wraps this
+turn's content in a `Bubble` of its own (`ChatPage.tsx`'s placeholder `AI` message, `EntryChatPage.tsx`'s
+onboarding and check-in placeholders) passes `wrap={false}` so the sentence sits inside the one
+bubble already there, never a second one nested in it.
+
+**Replaces, so every chat reads the same:** `ChatPage.tsx`'s waiting dots (in its `AI` placeholder
+bubble) and its unlabelled "Opening your session…" status line; `EntryChatPage.tsx`'s "Thinking"
+label and dots (the onboarding conversation) and its typing placeholder (`m.content === '…'`, the
+check-in portion); `AskGroundwork.tsx`'s own three-dot indicator (sent under its own `askName`);
+`BetweenCheckIns.tsx`, which had no waiting indicator at all while `asking` was true; and
+`ContextChat.tsx`'s bare "Thinking…" line (drawn with `wrap={false}`, since that chat draws no
+bubbles of its own at all - a citation-style rule down its left edge instead - so wrapping only
+this one line in a bubble would be a shape nothing else in that screen has).
+
+**`.gwui-fb-field`** (`components/gw/ui/gw-ui.css`). One new class, written up here as the guard
+requires. B-225 (review 5): the Feedback panel's own fields (`AppShell.tsx`'s `FeedbackWidget` -
+"Tell us what happened", the build-detail box, and the two email fields) set `outline: 'none'`
+inline with no replacement at all, so Tab moved keyboard focus through them with nothing on screen
+to show where it was. The panel's fields are not built from `.gwui-input` - a different, more
+compact box model chosen for that panel - so rather than take on `.gwui-input`'s unrelated
+padding, border and radius too, this repeats only the one rule that matters, the same focus ring
+`.gwui-input:focus-visible` already gives every other field in the product: `outline: 3px solid
+var(--gw-navy); outline-offset: 2px`.
+
+**`.gwui-ask-about-select`** (`components/gw/ui/gw-ui.css`). One new class, written up here as the
+guard requires. B-231 (review 6): Ask's own "About" picker (`AskGroundwork.tsx`) puts "About" and
+its `<select>` on one row, the select shrinking (item 6's own fix, above: `flex: 1, minWidth: 0`)
+to whatever the row has left after "About" - at 390 wide, too little for its longest option ("The
+whole organisation and your work"), read cut off ("...and your wor") because a plain `<select>`
+clips rather than wraps. The row already wraps (`flexWrap: 'wrap'`); this one rule gives the
+select `flex-basis: 100%` under 420px, so it drops to its own full-width line there instead of
+squeezing beside "About" - the select's own `flex: 1, minWidth: 0` is untouched, so item 6's own
+shrink-to-fit still holds at every width this rule does not apply at.
+
+**`.gwui-ground-header-wrap`** (`components/gw/ui/gw-ui.css`). One new class, written up here as
+the guard requires. B-231 (review 6): a check-in's own header, on the party view
+(`GroundParticipantPage.tsx`), sits in its own `<Page>` (the "Page itself, not a second copy of
+its numbers" note just above this one) - which always carries `.gwui-page-main`'s own padding,
+including its large bottom padding (140px on a phone), meant for whatever Page is the LAST thing
+on the screen. This header never is: the conversation, or a failure/opening note, always follows
+it. Left alone, that reserved room sat as a roughly 150px empty gap above a check-in's own failure
+note at 390 wide, before a single word of it (Dov's own account,
+`review6/shots/b226-dov-mywork-390.png`). This one rule zeros the wrapped `<Page>`'s own bottom
+padding under 640px, where the gap was measured, since the room it reserves is never wanted there.
+
+## Setup page, piece 3a (13 October): one new shared part, `SetupBlock`, and `ToggleChoices`
+
+| Part | Prototype | Value | Note |
+| --- | --- | --- | --- |
+| **`SetupBlock`** (`.gwui-setup-block`, `.gwui-setup-block-title`, `.gwui-setup-block-help`, `.gwui-setup-block-body`) | `blk` on the setup screen (B1-starting-a-check-in/setup.jpg): `display:grid; grid-template-columns:minmax(0,260px) minmax(0,1fr); gap:28px; padding:24px 0; border-top:1px solid var(--rule)`, the heading `t-h3`, its sentence `t-small mut` 4px below, the controls a 12px stack | 260px heading column, 28px gap, 24px above and below, 1px rule on top; heading 18px/1.3 bold; sentence 14.5px/1.45 muted | added: each question of the setup (a name, when it starts, how often, when it ends, who is in it) as the prototype lays it out, in place of `TheSetup.tsx`'s own grey box and inline-styled headings |
+| **`SetupBlocks`** (`.gwui-setup-blocks`) | the prototype's own phone layout, the heading above its controls | a CSS container; under 720px of room the block is one column with a 12px gap and 20px above and below | added: the same setup sits on a wide page and inside the 640px card at the end of the lead's first check-in, so the blocks follow the room they are given, not the screen's width |
+| **`ToggleChoices`** (extends `Choices`, no new class) | `.seg` with several buttons `on` at once ("On which days", Monday to Friday on) | the same `.gwui-choices`/`.gwui-choice`/`.gwui-choice-on` | added: a group where each button is switched on and off on its own (`aria-pressed`), for the days of the week and the day a check-in lands on, in place of `WhichDaysTheyWork.tsx`'s and `AnchorDayPicker.tsx`'s own inline-styled buttons |
+
+## The light parts (14 October): the shared pieces of the light prototype
+
+From Hafsah's light prototype (`groundwork-prototype-light.html`, the layers `s56`, `s57`, `s58`, `s71` and `s72`, and `light-layer.css`), built once here and used by the sales board first. Read as a specification, never copied.
+
+| Part | Prototype | Value | Note |
+| --- | --- | --- | --- |
+| **`UpdatedLine`** (`.gwui-upd`, `.gwui-upd-full`, `.gwui-upd-plain`) | `details.upd` (s71): "Updated Wed 23 Sep, 6pm ⓘ", the full sentence opening below | 14px muted, the full sentence 70ch wide | replaces the "Last updated on … The board only changes when …" paragraph; with no time on record the sentence is said in full as before |
+| **`FoldedLine`** (`.gwui-folds`, `.gwui-fold`, `.gwui-fold-sum`, `.gwui-fold-name`, `.gwui-fold-fact`, `.gwui-fold-chev`, `.gwui-fold-body`) | `.ctx-fold` (light-layer.css, s56) | name column 150 to 240px, 14px 18px padding, fact 14px muted on one line, chevron turns when open; on a phone 44% for the name, 13px fact, still one line | the section inside keeps its own note and buttons; its repeated title is not drawn twice |
+| **`Box`** (`.gwui-boxes`, `.gwui-box`, `.gwui-box-sum`, `.gwui-box-name`, `.gwui-box-facts`, `.gwui-box-body`) | `.bd-group` (s58) | 12px corners, 16px 18px padding, name 17px bold, two facts joined with " · " | the five boxes of a board |
+| **`NeedsYouRow`** (`.gwui-needs`, `.gwui-need`, `.gwui-need-main`, `.gwui-need-what`, `.gwui-need-from`, `.gwui-need-why`, `.gwui-need-quote`, `.gwui-need-btns`, `.gwui-need-btn-main`, `.gwui-need-btn-quiet`) | `.ctx-need` (s56) | what it is 16px bold, where it came from 14px muted, "Why" opens the quote, buttons to the right; on a phone the buttons go under | the main button filled, the others quiet, decided by the caller |
+| **`ShowAll`** (`.gwui-show-all`) | `.cap-more` (s72) | navy, bold, 14px, 40px tall to tap | first three, then "Show all N" and "Show fewer" |
+| **`NumberTiles`** (`.gwui-tiles`, `.gwui-tile`, `.gwui-tile-label`, `.gwui-tile-value`, `.gwui-tile-sub`) | `.ctx-strip`, `.ctx-tile` and the phone `.g4` swipe (s56, s71) | tiles at least 150px wide; on a phone one row that swipes, a tile at a time | |
+| **`SmallMenu`** (`.gwui-menu`, `.gwui-menu-btn`, `.gwui-menu-btn-main`, `.gwui-menu-pop`, `.gwui-menu-pop-left`) | `.share-menu`, `.share-pop` (s71) | 40px button with " ▾", a card that drops below, closes on Escape or a press outside | "Share", "Views" |
+| **`CheckInHeader` on a phone** (`.gwui-cih`) | s71's phone rules | no breadcrumb, the main action beside the title, the schedule cut to two lines | the tabs already scroll sideways with the current one in view |
+
+## The light pages (15 October): the classes staging's pull requests #342 and #345 to #350 brought in
+
+These came into `wip/release` with the merge of staging on 15 October. Each one belongs to a light page built from the light prototype (`s56` to `s58`, `s71` to `s74`) and is drawn by the shared parts above; this section writes them up by name, as the guard asks.
+
+| Classes | Where they are drawn | What they are for |
+| --- | --- | --- |
+| `.gwui-light-sec`, `.gwui-light-slot`, `.gwui-light-part`, `.gwui-light-needs`, `.gwui-light-folds`, `.gwui-light-else`, `.gwui-light-full`, `.gwui-light-full-body`, `.gwui-light-glance`, `.gwui-light-glance-rows`, `.gwui-light-glance-row`, `.gwui-light-glance-name`, `.gwui-light-glance-fact` | `pages/board/TheLightSalesBoard.tsx` (#345) | the light sales board: what needs you first, the headline, the five boxes and the folded lines at a glance |
+| `.gwui-fold-nofact` | `components/gw/ui/FoldedLine.tsx` | a folded line that has no fact to show beside its name |
+| `.gwui-light-report-part`, `.gwui-light-report-h`, `.gwui-light-report-more-h`, `.gwui-light-report-note`, `.gwui-light-report-from`, `.gwui-light-report-do`, `.gwui-light-report-share`, `.gwui-menu-item` | `components/gw/TheSessionsReport.tsx` (#346) | the light sales reports: Share, In short, One question to answer, More in this report; the Share menu's items |
+| `.gwui-assumes-title`, `.gwui-target-figure`, `.gwui-deal-short`, `.gwui-deal-short-top`, `.gwui-deal-short-sum`, `.gwui-deal-short-body`, `.gwui-key-info`, `.gwui-key-info-body` | `components/gw/TargetsBand.tsx`, `pages/board/TheSwitchboardsSections.tsx`, `pages/board/WorkRecords.tsx` (#348) | the sales goals board: Where each target stands, and Work and targets |
+| `.gwui-ctx-light`, `.gwui-ctx-actions`, `.gwui-ctx-same` | `components/gw/ContextPage.tsx` (#349) | the light Context page: Needs you, what it is for, everything else folded, Add context |
+| `.gwui-done-changed`, `.gwui-done-tomorrow`, `.gwui-done-tomorrow-heading`, `.gwui-ci-endcard-text`, `.gwui-ci-endcard-nextopens`, `.gwui-ci-endcard-more-body`, `.gwui-own-mark`, `.gwui-own-more` | `components/gw/checkin/TheDonePage.tsx`, `components/gw/checkin/TheEndCard.tsx`, `components/gw/TheCheckInYouJustFinished.tsx` (#350) | the participant's check-in: What goes in your record, For tomorrow, what changed on your deals, and her own report |
+| `.gwui-plan-table`, `.gwui-plan-table-wrap`, `.gwui-plan-table-mine`, `.gwui-plan-table-enterprise` | `pages/billing/BillingPage.tsx` (#342) | the plans table on Plan and billing, with the plan you are on marked |
+
+## Hafsah, 21 October: everything you can tap is at least 44px tall
 Hafsah's answer of 21 October: the 44px rule covers buttons, links in lists, chips and switches, and a link inside a sentence is
 the only exception. The browser test measured the sidebar's icons and Feedback at 34px, the chips at 40px, the switches at 28px and
 the session tags you can tap at 26px. Three shared parts, all in gw-ui.css, under "The 44px floor and the tap target":
-
 **The floor** (no class): `:where(button, summary, select, [role="button"], [role="switch"], [role="tab"])` is at least 44px tall.
 `:where` gives it no weight, so a part that sets its own height of 44px or more still wins.
-
 **`.gwui-in-a-sentence`**: a button that sits inside a sentence and reads as a link in it. It is left out of the floor, the one
 exception Hafsah named.
-
 **`.gwui-tap-target`**: a control whose drawn shape must stay small (the admin page's hand-drawn switches) keeps its own height and
 takes an invisible layer at least 44px tall, centred on it and only as wide as it. The same layer is given to `.gw-switch`,
 `.gwui-toggle` (in place of its old phone-only `inset: -6px`), a tag you can tap (`button.gwui-tag`, the session tags on Every
 session) and the folded sidebar's coloured initials (`.gw-rl-ini`).
-
 **`.gwui-tap-44`** is `.gwui-tap-40` above, renamed: the same `min-height`/`inline-flex` floor, now 44px and at every width, not
 only on a phone. `.gwui-icon-btn` and `.gwui-help-close` are 44px squares at every width, and `.gwui-open-link`, `.gwui-plain-link`,
 `.gwui-choice`, the small menus and the folding summaries are 44px tall. The guard is the-kits-look-holds.spec.ts.
+
+## The pictured pages (24 October to 3 November): the classes the prototype's pictured screens brought in
+
+Each of these came in with a page laid out as the prototype pictures it (B6, B7, B8, the board's person-by-person part, setup's
+read-back) and is drawn from the prototype's own values: Literata for a line someone reads as the point, `--rule` for a hairline,
+the navy band and the amber callout the prototype already uses. They were never written up by name; this section does, as the
+guard asks.
+
+| Classes | Where they are drawn | What they are for, and the prototype value it follows |
+| --- | --- | --- |
+| `.gwui-b-tab` | `pages/grounds/PeopleAndSetupAsPictured.tsx`, `pages/grounds/MyWorkPage.tsx` | B6 to B8's section headings in Literata, 22px/28px, weight 500 (Hafsah's corrections of 24 October) |
+| `.gwui-b8-field-label`, `.gwui-b8-line`, `.gwui-field-with-label`, `.gwui-three-fields`, `.gwui-setup-problem` | `pages/grounds/PeopleAndSetupAsPictured.tsx` | B8's people and setup: a field's 13px label over its field, a Literata 19px line, three fields side by side down to 200px each, and the amber callout (`--att` ground) for a setup problem |
+| `.gwui-chips`, `.gwui-chip`, `.gwui-chip-label`, `.gwui-chip-value`, `.gwui-focus-band`, `.gwui-focus-line`, `.gwui-focus-why` | `pages/grounds/MyWorkPage.tsx` | B7's My work: the figures as chips (a 14px label beside a Literata 19px number) and the navy band with today's one thing and why |
+| `.gwui-four-up`, `.gwui-ref-band`, `.gwui-suggestion-row` | `pages/grounds/ReferencesAndResources.tsx` | B6's references and resources: four cards across down to 200px each, the pale navy band, and a suggestion as an amber row with its button |
+| `.gwui-person-part`, `.gwui-person-part-name` | `pages/board/pictured/YourTeamPersonByPerson.tsx` | the board's person by person: one part per person under a `--rule` hairline, the name in 17px bold |
+| `.gwui-ruled`, `.gwui-ruled-row`, `.gwui-session-row-btn`, `.gwui-session-row-body`, `.gwui-session-row-open` | `components/gw/MyCheckInSessions.tsx`, `components/gw/TheirRecord.tsx`, `pages/suites/ApprovalStepsByAmount.tsx` | a list ruled with `--rule` hairlines, and a session row that opens in place (44px tall, "Open" in navy) |
+| `.gwui-stack-32` | `pages/grounds/GroundAdminPage.tsx` | the check-in page's sections 32px apart, the prototype's `.stack` gap |
+| `.gwui-composer-aside` | `pages/chat/ChatPage.tsx` | "Answer on WhatsApp instead" inside the composer's own padding on a phone |
+| `.gwui-ec-panel-line`, `.gwui-ec-sounds-like` | `pages/enter/FillsInAsYouTalk.tsx`, `pages/enter/ThisSoundsLike.tsx` | setup's one-line panel bar on a phone and the "This sounds like" card (the approved journey, stages 2 and 3) |
+| `.gwui-light-glance-line` | `pages/board/TheLightSalesBoard.tsx` | each fact on the light board on its own line, never two joined with a dot (boards audit O1) |
