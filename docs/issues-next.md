@@ -92,3 +92,15 @@ The fixed rule this follows is in standards.md: no lines that explain what a pag
 | 44 | **Bug:** on desktop the board and other pages fill only the left half of the window, leaving the right side empty. | Hafsah, 4 November | Screenshot 10.33.33 |
 | 45 | The tab still says "Context and resources"; it should be "References and resources", as decided. | Hafsah, 4 November | Screenshot 10.33.33 |
 | 46 | Every explainer line and every page in between, on every page, listed for removal in the same build. The list is being made now. | Hafsah, 4 November | To follow |
+
+## From the first experience on 8 organisations, round 39 (wip/plan bf22429c8, 4 November; ~/Desktop/first-experience/round-9/)
+
+Ratings: clinic 1, family 1, field 1, law 1, ngo 1, sales 1, startup 2, wild 1 (average 1.1). Every lead names the same thing first: setup asks the same questions again and again, in a loop. The run took 97 minutes.
+
+| # | Issue | Source | Evidence |
+|---|---|---|---|
+| 47 | **Setup loops, for all eight leads** ("kept asking me the same things over and over in a broken circle"). This is group 5 of the fix plan, and it is the largest cause of the low ratings. | First experience, round 39 | Each kind's .json, in their words |
+| 48 | **Setup sometimes doesn't answer at all:** no reply came on 4 turns (sales turn 13, field turn 9, startup turn 9, wild turn 9), and 2 more took 30 to 36 s. In the startup and wild cases, 23 and 33 model calls were running at once. Something fans out calls on a setup turn. | First experience, round 39 | round-9/speed.md, the "over 30 seconds" list |
+| 49 | Clinic: "I was told my people had checked in, but the system says 'no check-ins' on every screen. Then I find I have to add them myself." A status that says two things (one source for each thing). | First experience, round 39 | clinic.json |
+| 50 | Reports "repeat my own words back to me", "empty report filled with useless business jargon", and "a report that tells me nothing". | First experience, round 39 | field, ngo and startup .json |
+| 51 | Ask "can't even answer the most basic question about my business". | First experience, round 39 | wild.json |
