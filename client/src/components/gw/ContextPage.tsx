@@ -69,6 +69,14 @@ const THE_WAY_IN: Record<string, string> = {
   NOTE: 'Worth knowing: ',
 }
 
+/** What a document holds, without the line that says where it came from: the card already names the document. Read from the served field. */
+export function withoutItsFirstLine(doc: { theContextWeHave?: string | null; theDocumentLine?: string | null }): string | null {
+  const all = doc.theContextWeHave?.trim()
+  if (!all) return null
+  const line = doc.theDocumentLine?.trim()
+  return line && all.startsWith(line) ? all.slice(line.length).trim() || null : all
+}
+
 export function ContextPage({
   ground,
   role,
@@ -1003,11 +1011,11 @@ export function ContextPage({
                     const suggests = Array.isArray((doc as any).assessment?.suggests) ? (doc as any).assessment.suggests : []
                     const whatWeRead = suggests.length > 0
                       ? suggests.join(' ')
-                      : (doc.theContextWeHave ? doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '').trim() : null)
+                      : withoutItsFirstLine(doc)
                     if (!whatWeRead) return null
                     return (
                       <div className="gwui-mt-5">
-                        <SubHeading>What we read from it</SubHeading>
+                        <SubHeading>What I read in it</SubHeading>
                         <p className="gwui-panel-text-muted gwui-pre-line">{whatWeRead}</p>
                       </div>
                     )
@@ -1030,7 +1038,7 @@ export function ContextPage({
                           element inside another of the same kind - invalid HTML, and a console error
                           on the participant's Context tab. A <div> carries the same text classes. */}
                       <div className="gwui-panel-text gwui-pre-line gwui-mt-6">
-                        {doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '')}
+                        {withoutItsFirstLine(doc)}
                         {(doc.holds?.forOnePerson?.length || doc.holds?.forEverybody?.length) ? (
                           <Note>These are on the board and in the report, against the people who hold them.</Note>
                         ) : null}

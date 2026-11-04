@@ -190,6 +190,7 @@ import { whatYouAskedLastTurn } from './you-asked-that-last-turn';
 import { theSetTheySpokeToPartOf, whatTheyToldWithoutWhen, askForWhatTheyLeftOut, theCustomersThatAreNotTheirs, withoutTheseCustomers } from './asking-for-what-they-left-out';
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
+import { whatItWouldRestOn, nothingChangedSince, thePreparedOpeningIn, theOpeningAsRead, writeOnlyTheQuestion, whatItWasBasedOn, KEPT_IN_THE_PLAN_AS, type APreparedOpening } from './the-opening-prepared-in-advance';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
 import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, withoutTheGoodbye, isAnAcknowledgement, takenAsSaidAndOn, saysGoodbye, hasAGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
@@ -1222,6 +1223,121 @@ export class ConversationService {
     return new ServiceUnavailableException(whenTheConversationCannotBeReached({ isTheLead, leadFirstName: row?.ground?.initiator?.firstName ?? null }));
   }
 
+  /**
+   * THE OPENING FROM THE RECORD, ONE READING FOR THE OPEN AND FOR THE SCREEN'S FIRST LINE (the-opening-prepared-in-advance). A team
+   * member's session only: not a closing session, a correction, setup, or the "who are you in this" question of a first session.
+   *   - personal: the direct morning's own opening, with its switch on, word for word as the morning message said it;
+   *   - prepared: the opener and first question prepared in advance, nothing relevant changed since;
+   *   - fresh: the fact line from the record now, and the question is still to be written.
+   */
+  private async theOpeningFromTheRecord(checkIn: any, ground: any): Promise<
+    | { kind: 'personal'; personal: ATeamMembersOpening }
+    | { kind: 'prepared'; text: string; line: string }
+    | { kind: 'fresh'; line: string }
+    | null
+  > {
+    if (!checkIn || checkIn.isFinal || checkIn.isSelfCorrection || checkIn.isSetup) return null;
+    const whoAreYouComesFirst = STARTING_SCENARIOS.has(String(ground?.scenario ?? '')) && checkIn.participant?.partyType !== PartyType.INITIATOR
+      && checkIn.sessionNumber === 1 && !theRosterAlreadySaysWhoTheyAre(aRoleInTheirOwnWords(checkIn.participant as any));
+    if (whoAreYouComesFirst) return null;
+    const who = { groundId: checkIn.groundId, participantId: checkIn.participantId, sessionNumber: checkIn.sessionNumber };
+    const personal = await aTeamMembersOpeningFor(this.prisma, who).catch(() => null);
+    if (personal) return { kind: 'personal', personal };
+    const now = await whatItWouldRestOn(this.prisma, who).catch(() => null);
+    if (!now) return null;
+    const row = await (this.prisma.checkIn?.findUnique?.({ where: { id: checkIn.id }, select: { sessionPlan: true } as any }) ?? Promise.resolve(null)).catch(() => null);
+    const prepared = thePreparedOpeningIn((row as any)?.sessionPlan);
+    /* In the house's own style, once, so the line the screen shows first is the line the saved message starts with. */
+    if (prepared && nothingChangedSince(prepared, now)) return { kind: 'prepared', text: forHumans(theOpeningAsRead(prepared.line, prepared.question)), line: forHumans(prepared.line) };
+    return { kind: 'fresh', line: forHumans(now.line) };
+  }
+
+  /** The opener's instructions: the whole engine for an opener, the anchor's words where it is the anchor's, and the opener's own last word. */
+  private async theOpenersInstructions(checkIn: any): Promise<string> {
+    const composedOpener = await this.composeSystemPrompt(checkIn, undefined, { forTheOpener: true });
+    const anchored = this.theAnchorWeekWords(checkIn.id);
+    return `${[composedOpener, ...anchored.before].filter(Boolean).join('\n\n')}\n\n${THE_OPENER_IS_ONE_MESSAGE}${anchored.last ? `\n\n${anchored.last}` : ''}`;
+  }
+
+  /**
+   * THE FIRST QUESTION AFTER THE FACT LINE, written by the model from the record and the session plan, building on the line. One
+   * sentence ending in a question mark (shape only). Should the model give none, the plan's own opening question is asked, and failing
+   * that a plain one, so the line never stands alone.
+   */
+  private async theFirstQuestionAfter(checkIn: any, line: string, instructions: string): Promise<string> {
+    const raw = await this.anthropic.respond(`${instructions}\n\n${writeOnlyTheQuestion(line)}`, [
+      { role: 'user', content: '<<BEGIN_CHECK_IN>> The person has just arrived, and their opening line is already written. Write only the first question.' },
+    ]).catch(() => '');
+    const saved = await this.theTurnAsItIsSaved(checkIn, forHumans(raw).replace(line, '').trim()).catch(() => forHumans(raw));
+    const theQuestion = (t: string) => t.split(/(?<=[.!?])\s+/).map((x) => x.trim()).find((x) => x.endsWith('?')) ?? '';
+    const asked = theQuestion(saved);
+    if (asked) return asked;
+    const row = await (this.prisma.checkIn?.findUnique?.({ where: { id: checkIn.id }, select: { sessionPlan: true } as any }) ?? Promise.resolve(null)).catch(() => null);
+    return theQuestion(tidyThePlan((row as any)?.sessionPlan)?.openWith ?? '') || 'What has happened since last time, and what is next?';
+  }
+
+  /**
+   * PREPARE ONE SESSION'S OPENER AND FIRST QUESTION IN ADVANCE, AND KEEP IT ON ITS ROW (the-opening-prepared-in-advance). Only for a
+   * session nobody has opened, and only when there is not already a draft that nothing has changed since. It writes no turn and changes
+   * no status: a draft is not a session or a round. The plan the question is written from is the session's own plan, made here once.
+   */
+  async prepareTheOpening(checkInId: string): Promise<APreparedOpening | null> {
+    const checkIn: any = await (this.prisma.checkIn?.findUnique?.({
+      where: { id: checkInId },
+      include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true, lastName: true } } } } },
+    }) ?? Promise.resolve(null)).catch(() => null);
+    if (!checkIn || checkIn.status !== CheckInStatus.NOT_STARTED) return null;
+    const ground = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { scenario: true } as any }) ?? Promise.resolve(null)).catch(() => null);
+    const from = await this.theOpeningFromTheRecord(checkIn, ground);
+    if (from?.kind !== 'fresh') return null;
+    const restsOn = await whatItWouldRestOn(this.prisma, { groundId: checkIn.groundId, participantId: checkIn.participantId, sessionNumber: checkIn.sessionNumber });
+    if (!restsOn) return null;
+    const question = await this.theFirstQuestionAfter(checkIn, restsOn.line, await this.theOpenersInstructions(checkIn));
+    const preparedAt = new Date();
+    const row = await this.prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { sessionPlan: true } as any }).catch(() => null);
+    const plan = ((row as any)?.sessionPlan ?? {}) as Record<string, unknown>;
+    const draft: APreparedOpening = {
+      line: restsOn.line, question, preparedAt: preparedAt.toISOString(),
+      basedOn: whatItWasBasedOn(restsOn, preparedAt, !!tidyThePlan(plan)), restsOn,
+    };
+    const kept = await this.prisma.checkIn.updateMany({ where: { id: checkIn.id, status: CheckInStatus.NOT_STARTED }, data: { sessionPlan: { ...plan, [KEPT_IN_THE_PLAN_AS]: draft } as any } }).catch(() => ({ count: 0 }));
+    if (kept.count) this.logger.log(`Check-in ${checkIn.id}: its opener and first question are prepared. ${draft.basedOn}`);
+    return kept.count ? draft : null;
+  }
+
+  /**
+   * PREPARE AGAIN WHERE SOMETHING CHANGED, FOR EVERYBODY'S NEXT SESSION IN A CHECK-IN: at the end of a session, when promises are settled,
+   * after Add something, and once setup is saved. A draft nothing has changed since is left as it is, so this costs a few reads, and the
+   * model only where a person's record changed.
+   */
+  async prepareTheOpeningsIn(groundId: string): Promise<void> {
+    const next: any[] = await (this.prisma.checkIn?.findMany?.({
+      where: { groundId, status: CheckInStatus.NOT_STARTED, isSetup: false, isSelfCorrection: false },
+      select: { id: true, participantId: true, sessionNumber: true },
+      orderBy: { sessionNumber: 'asc' },
+    }) ?? Promise.resolve([])).catch(() => []);
+    const firstForEach = new Map<string, string>();
+    for (const c of next ?? []) if (!firstForEach.has(c.participantId)) firstForEach.set(c.participantId, c.id);
+    for (const id of firstForEach.values()) {
+      await this.prepareTheOpening(id).catch((err: any) => this.logger.warn(`Check-in ${id}: its opener could not be prepared: ${err?.message ?? err}`));
+    }
+  }
+
+  /**
+   * THE FIRST LINE, FOR THE SCREEN TO SHOW STRAIGHT AWAY WHILE THE CHECK-IN OPENS (Hafsah, 3 November night, answer 2). The prepared
+   * opener whole when nothing changed since it was prepared, else the fact line from the record; nothing where the opener is not one
+   * from the record. Read the same way the open reads it, so the message the open saves starts with exactly these words.
+   */
+  async theOpeningLine(checkInId: string, requestingUserId: WhoIsAsking): Promise<{ line: string | null }> {
+    const checkIn: any = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    if (checkIn.status !== CheckInStatus.NOT_STARTED) return { line: null };
+    const ground = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { scenario: true } as any }).catch(() => null);
+    const from = await this.theOpeningFromTheRecord(checkIn, ground).catch(() => null);
+    if (!from) return { line: null };
+    const first = from.kind === 'personal' ? from.personal.text : from.kind === 'prepared' ? from.text : from.line;
+    return { line: withTheOpeningLine(forHumans(first)) };
+  }
+
   private async openOnce(checkInId: string, requestingUserId: WhoIsAsking, alreadyWritten?: string | null): Promise<any> {
     const checkIn = await this.openTheDoor(checkInId, requestingUserId);
 
@@ -1470,22 +1586,23 @@ export class ConversationService {
      * on every turn after). Null with the switch off, for the lead, on a correction, a closing session, the "who are you in this"
      * question, and where nothing specific is on record: then the opening is written exactly as before. See the-one-thing-today.
      */
-    const whoAreYouComesFirst = STARTING_SCENARIOS.has(String(ground?.scenario ?? '')) && checkIn.participant.partyType !== PartyType.INITIATOR
-      && checkIn.sessionNumber === 1 && !theRosterAlreadySaysWhoTheyAre(aRoleInTheirOwnWords(checkIn.participant as any));
-    const personal = !alreadyWritten && correctingSession == null && !(checkIn as any).isFinal && !whoAreYouComesFirst
-      ? await aTeamMembersOpeningFor(this.prisma, { groundId: checkIn.groundId, participantId: checkIn.participantId, sessionNumber: checkIn.sessionNumber }).catch(() => null)
-      : null;
+    /*
+     * AND OTHERWISE, A TEAM MEMBER'S OPENER IS ONE PLAIN FACT FROM THE RECORD, BY NAME, THEN THE FIRST QUESTION (Hafsah, 3 November night;
+     * the-opening-prepared-in-advance). Prepared at the end of their last session and kept on this row: when nothing relevant has changed
+     * since, it is said as it was prepared, with no model call. When something has, the fact line is read from the record now (the screen
+     * has already shown it) and only the question is written fresh. theOpeningFromTheRecord is the one reading, for this and for the screen.
+     */
+    const fromTheRecord = !alreadyWritten && correctingSession == null ? await this.theOpeningFromTheRecord(checkIn, ground).catch(() => null) : null;
+    const personal = fromTheRecord?.kind === 'personal' ? fromTheRecord.personal : null;
+    const prepared = fromTheRecord?.kind === 'prepared' ? fromTheRecord.text : null;
+    const freshLine = fromTheRecord?.kind === 'fresh' ? fromTheRecord.line : null;
     if (personal) {
       this.theOneThingTodayFor.set(checkIn.id, personal);
       this.logger.log(`Check-in ${checkIn.id}: the direct morning's own opening, from the record (${personal.things.map((t) => t.key.split(':')[0]).join(', ')}${personal.late ? ', late' : ''}).`);
     }
-    const openerSystem = alreadyWritten
-      ? ''
-      : personal ? '' : await (async () => {
-        const composedOpener = await this.composeSystemPrompt(checkIn, undefined, { forTheOpener: true });
-        const anchored = this.theAnchorWeekWords(checkIn.id);
-        return `${[composedOpener, ...anchored.before].filter(Boolean).join('\n\n')}\n\n${THE_OPENER_IS_ONE_MESSAGE}${anchored.last ? `\n\n${anchored.last}` : ''}`;
-      })();
+    if (prepared) this.logger.log(`Check-in ${checkIn.id}: the opener prepared in advance, nothing changed since, so no model call.`);
+    if (freshLine) this.logger.log(`Check-in ${checkIn.id}: the fact line from the record now; the first question is written fresh.`);
+    const openerSystem = alreadyWritten || personal || prepared ? '' : await this.theOpenersInstructions(checkIn);
     if (!alreadyWritten) this.logger.log(`Check-in ${checkIn.id}: opener prompt ${openerSystem.length} chars.`);
     /* The opener is saved through the same step as every turn, so it is read against its own prompt. */
     if (openerSystem) this.setThePromptForThisTurn(checkIn.id, openerSystem);
@@ -1530,6 +1647,10 @@ export class ConversationService {
       ? alreadyWritten
       : personal
       ? personal.text
+      : prepared
+      ? prepared
+      : freshLine
+      ? theOpeningAsRead(freshLine, await this.theFirstQuestionAfter(checkIn as any, freshLine, openerSystem))
       : startsSomething && notTheLead && firstSession && theRosterIsSilent && correctingSession == null && !(checkIn as any).isFinal && !theBaselineIsRunning
       ? WHO_ARE_YOU_IN_THIS
       : await this.anthropic.respond(openerSystem, [
@@ -1554,7 +1675,7 @@ export class ConversationService {
     const theOpening = this.anchorWeekForThisTurn.get(checkIn.id) && !alreadyWritten ? withoutAnAnnouncedAngle(forHumans(reply)) : forHumans(reply);
     const held = alreadyWritten
       ? forHumans(reply)
-      : personal ? forHumans(reply) : await this.theOpenerIsHeldToTheSameBar(checkIn.id, openerSystem, beginMessage, theOpening);
+      : personal || prepared || freshLine ? forHumans(reply) : await this.theOpenerIsHeldToTheSameBar(checkIn.id, openerSystem, beginMessage, theOpening);
     /* Before this person has typed a word in any session, nothing can be "you said". See the module. */
     const saidSoFar = await (this.prisma.conversationTurn?.count?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: checkIn.participantId } } }) ?? Promise.resolve(1)).catch(() => 1)
       /* And what is on their own record (imported, or brought over): a person with a record has said things, and the
@@ -1569,17 +1690,18 @@ export class ConversationService {
     const quoted = nothingSaidYetCannotBeQuoted(held, saidSoFar, whoSetItUp);
     if (quoted.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener quoted a person who has not spoken; rewritten.`);
     /* "Last time you said..." is their own words with its day, or it is not said (a-last-time-is-their-own-words.ts, 26 October). */
-    const theirEarlier: AWordTheyWrote[] = personal ? [] : await (this.prisma.conversationTurn?.findMany?.({
+    const fromRecordText = personal ? personal.text : prepared ?? (freshLine ? forHumans(reply) : null);
+    const theirEarlier: AWordTheyWrote[] = fromRecordText ? [] : await (this.prisma.conversationTurn?.findMany?.({
       where: { role: TurnRole.PERSON, checkIn: { participantId: checkIn.participantId }, NOT: { checkInId: checkIn.id } },
       select: { content: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 200,
     }) ?? Promise.resolve([])).then((ts: any[]) => ts.map((t) => ({ text: t.content ?? '', at: t.createdAt }))).catch(() => []);
-    const theirOwn = personal ? { text: quoted.text, changed: false } : aLastTimeInTheirOwnWords(quoted.text, theirEarlier);
+    const theirOwn = fromRecordText ? { text: quoted.text, changed: false } : aLastTimeInTheirOwnWords(quoted.text, theirEarlier);
     if (theirOwn.changed) this.logger.warn(`Check-in ${checkIn.id}: the opener told them what they said before; now in their own words.`);
     /* An opener never answers its own question for them: "Is that now filed? Understood. What is..." (E7). */
     const guarded0 = await this.theTurnAsItIsSaved(checkIn as any, withoutAnAnswerToItsOwnQuestion(theirOwn.text));
     /* News a promise of theirs waits on, that somebody else already gave: told in one line, first (Hafsah, 19 October, FN-005). See a-promise-that-waits-on-news. */
     /* The direct morning's own opening is said as it was written, first; news a promise of theirs waits on follows it. */
-    const guarded = personal ? await this.thePersonalOpeningAsSaid(checkIn as any, personal.text) : await this.withTheNewsTheyWaitOn(checkIn as any, guarded0).catch(() => guarded0);
+    const guarded = fromRecordText ? await this.thePersonalOpeningAsSaid(checkIn as any, fromRecordText) : await this.withTheNewsTheyWaitOn(checkIn as any, guarded0).catch(() => guarded0);
     /* The checks after the bar can take the question out (Kevin's first WhatsApp message read only "This is our first
        check-in, and it's about getting a regular read on the work you're doing."): the opening always ends on a question (reviewer, 14 October). */
     const opening = anOpeningWithNothingLeftOver(isADeadEnd(guarded, false) ? withAQuestion(guarded, { opening: true }) : guarded);
@@ -1601,7 +1723,7 @@ export class ConversationService {
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
     /* A session that opens after a document was attached opens with what we have from it. Once. */
     const contextAtTheTop = await this.theContextNotYetSaid(checkIn as any);
-    return { reply: contextAtTheTop ? (personal ? `${aiTurn.content}\n\n${contextAtTheTop}` : `${contextAtTheTop}\n\n${aiTurn.content}`) : aiTurn.content, theOpener: aiTurn.content, ...(personal ? { personalOpening: true } : {}), groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}) };
+    return { reply: contextAtTheTop ? (fromRecordText ? `${aiTurn.content}\n\n${contextAtTheTop}` : `${contextAtTheTop}\n\n${aiTurn.content}`) : aiTurn.content, theOpener: aiTurn.content, ...(personal ? { personalOpening: true } : {}), groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}) };
   }
 
 
@@ -2213,6 +2335,8 @@ export class ConversationService {
       await this.open(target.id, userId, WHAT_WOULD_YOU_LIKE_TO_ADD);
     }
     const out: any = await this.sendMessage(target.id, userId, said);
+    /* Something added is a change before the next session: the openers that rest on it are prepared again (the-opening-prepared-in-advance). */
+    void this.prepareTheOpeningsIn(groundId).catch(() => undefined);
     return { checkInId: target.id, reply: String(out?.reply ?? out?.content ?? '') };
   }
 
@@ -5295,7 +5419,7 @@ export class ConversationService {
 
 This was inferred because: ${noStandInLabelIn(inference.reason ?? '', calledHere)}
 
-Open the session by naming this specific inference directly. Do NOT ask the standard opener. Instead say something like: "In your last report, we wrote that [inference text]. You said that wasn't accurate. Tell me what was actually happening." Then use the standard probes and extraction rules. Record only what they explicitly say. Do not re-infer. The goal is to replace the inferred claim with the participant's own words.`;
+Open the session by naming this specific inference directly. Do NOT ask the standard opener. Instead say something like: "In your last report, I wrote that [inference text]. You said that wasn't accurate. Tell me what was actually happening." Then use the standard probes and extraction rules. Record only what they explicitly say. Do not re-infer. The goal is to replace the inferred claim with the participant's own words.`;
       }
     }
 

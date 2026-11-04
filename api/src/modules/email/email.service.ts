@@ -755,12 +755,12 @@ export class EmailService implements OnModuleInit {
     const name = firstName?.trim() ? firstName.trim().split(' ')[0] : 'there';
     await this.sendEmail({
       to: email,
-      subject: 'We have your request to speak to a coach',
+      subject: 'I have your request to speak to a coach',
       html: `
         <p>${greeting(name)}</p>
         <p>Thanks for asking. Somebody reads these and will come back to you within two working days.</p>
-        <p>So there are no surprises, coaching is $700 per month with no retainer, or $7,500 a year for twelve sessions. We usually suggest two sessions per issue, back to back: one to understand it, the next to work through it.</p>
-        <p>We identify a coach suited to the situation: the scenario, the seniority, the language, the industry. You meet them before you commit to anything.</p>
+        <p>So there are no surprises, coaching is $700 per month with no retainer, or $7,500 a year for twelve sessions. I usually suggest two sessions per issue, back to back: one to understand it, the next to work through it.</p>
+        <p>I find a coach suited to the situation: the scenario, the seniority, the language, the industry. You meet them before you commit to anything.</p>
         <p>Nothing has been created in Groundwork and nobody on your team has been contacted. If you would rather just get going, the software works on its own and most teams run it themselves.</p>
         <p>Groundwork</p>
       `,
@@ -2349,7 +2349,7 @@ function decodeEntities(t: string): string {
 
 /** Appended to every mail we decided to send. The link works with no sign-in (round-digest.service.ts#unsubscribe). */
 export const UNSUBSCRIBE_FOOTER = (url: string) =>
-  `<p style="font-size:13px;color:#4E4236;margin-top:28px;">If you would rather not get the emails we decide to send, you can <a href="${url}" style="color:#4E4236;">stop them here</a>.</p>`;
+  `<p style="font-size:13px;color:#4E4236;margin-top:28px;">If you would rather not get the emails I decide to send, you can <a href="${url}" style="color:#4E4236;">stop them here</a>.</p>`;
 
 /** Takes out `<!-- ... -->` comments. A conditional comment for a mail client (`<!--[if`) is left alone. */
 export function withoutDeveloperComments(html: string): string {

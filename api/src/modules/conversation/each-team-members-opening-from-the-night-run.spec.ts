@@ -168,21 +168,24 @@ describe('the check-in opens on that line (web, and the first message after STAR
     expect((await service.open(ci.id, userId)).reply).toBe(withTheOpeningLine(JOSEPH_LATE));
   });
 
-  it('switch off, Kevin: the opening is the model\'s, exactly as before', async () => {
+  /*
+   * CHANGED 4 November 2026 (Hafsah's answers of 3 November night; fix plan, batch 1, group 7). With no direct-morning opening, a team
+   * member's opener is now one plain fact from the record, by name, then the first question, which the model writes building on it
+   * (the-opening-prepared-in-advance.spec.ts has the prepared and the changed cases). These two pinned the model writing the whole opener.
+   */
+  it('switch off, Kevin: his fact line from the record, then the question the model writes after it, in one call', async () => {
     const { service, anthropic, ci, userId } = aCheckInOver('drop', 'Kevin', false);
     const r: any = await service.open(ci.id, userId);
     expect(anthropic.respond).toHaveBeenCalledTimes(1);
-    // Changed 26 October 2026 (Hafsah: item 1): the model's opening is unchanged, with the opening line in front.
-    expect(r.reply).toBe(withTheOpeningLine('What moved on your deals since yesterday?'));
+    expect(r.reply).toBe(withTheOpeningLine('Kevin, Ngong Road Minimart said they would pay KES 25,000 for 5 units on delivery tomorrow. What moved on your deals since yesterday?'));
     expect(r.personalOpening).toBeUndefined();
   });
 
-  it('switch on, Peter with nothing specific on record: the opening is the model\'s, as before', async () => {
+  it('switch on, Peter with nothing specific on record: "nothing is open from last time", then the model\'s question', async () => {
     const { service, anthropic, ci, userId } = aCheckInOver('drop', 'Peter', true);
     const r: any = await service.open(ci.id, userId);
     expect(anthropic.respond).toHaveBeenCalledTimes(1);
-    // Changed 26 October 2026 (Hafsah: item 1): the model's opening is unchanged, with the opening line in front.
-    expect(r.reply).toBe(withTheOpeningLine('What moved on your deals since yesterday?'));
+    expect(r.reply).toBe(withTheOpeningLine('Peter, nothing is open from last time. What moved on your deals since yesterday?'));
   });
 
   it('switch on, the lead: her opening is the model\'s, as before', async () => {

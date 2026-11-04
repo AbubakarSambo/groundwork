@@ -51,7 +51,7 @@ vi.mock('@/components/gw/Suggestions', () => ({ SuggestionsForTheLead: () => nul
 
 /** The Sec title BoardPage.tsx actually renders for each of the 7 mapped board sections this test covers. */
 const TITLE_FOR_BOARD_SECTION: Record<string, string> = {
-  objectives: 'What we are aiming for',
+  objectives: 'What the team is aiming for',
   startingState: 'What was agreed at the start',
   divergence: 'Where people differ',
   whatTheRoomIsAbout: 'What people are after, and where',

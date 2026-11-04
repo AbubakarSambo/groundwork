@@ -419,6 +419,27 @@ export async function aTeamMembersOpeningFor(
   prisma: any,
   opts: { groundId: string; participantId: string; sessionNumber?: number | null; now?: Date },
 ): Promise<ATeamMembersOpening | null> {
+  /* The switch first, on one small read, so nothing more is read with it off. */
+  const g = await Promise.resolve(prisma?.ground?.findUnique?.({ where: { id: opts.groundId }, select: { organizationId: true } })).catch(() => null) as any;
+  if (!g || !(await Promise.resolve(theDirectMorningIsOn(prisma, g.organizationId)).catch(() => false))) return null;
+  const open = await whatIsOpenFor(prisma, opts);
+  if (!open) return null;
+  const opening = theOpeningFrom(open.firstName, open.things, open.late, open.label);
+  /* In the house's own style, once, so the phone, the mailbox and the check-in read the same words. */
+  return opening ? { ...opening, text: forHumans(opening.text) || opening.text } : null;
+}
+
+/** What is open for one team member, from the record only: their first name, the things that matter to them today, and whether they were late. */
+export interface WhatIsOpen { organizationId: string; firstName: string | null; things: AThingThatMatters[]; late: boolean; label: string }
+
+/**
+ * THE SAME READING, WITH NO SWITCH: what the prepared opening's fact line is written from (the-opening-prepared-in-advance). Null for the
+ * lead, somebody who only manages or left, an evaluation check-in or the anchor's weekly one, exactly as the opening above.
+ */
+export async function whatIsOpenFor(
+  prisma: any,
+  opts: { groundId: string; participantId: string; sessionNumber?: number | null; now?: Date },
+): Promise<WhatIsOpen | null> {
   const now = opts.now ?? new Date();
   try {
     const ground = await Promise.resolve(prisma?.ground?.findUnique?.({
@@ -427,7 +448,6 @@ export async function aTeamMembersOpeningFor(
         participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, createdAt: true, user: { select: { firstName: true, lastName: true } } } } },
     })).catch(() => null) as any;
     if (!ground) return null;
-    if (!(await theDirectMorningIsOn(prisma, ground.organizationId))) return null;
     /* An evaluation check-in weighs one person, and the anchor's weekly check-in opens with its own words: neither is changed here. */
     if (isEvaluationCheckIn(ground.scenario) || aCheckInStartedFromTheAnchor(ground)) return null;
     const people: any[] = ground.participants ?? [];
@@ -488,9 +508,7 @@ export async function aTeamMembersOpeningFor(
       participantId: me.id, firstName: firstOf(me), callThem, waits: open, carriedWaitIds: new Set(carried.map((c) => c.waitId)),
       deals, silentSince, bills, billWord, now, zone,
     });
-    const opening = theOpeningFrom(firstOf(me), things, late, String(ground.label ?? 'your check-in'));
-    /* In the house's own style, once, so the phone, the mailbox and the check-in read the same words. */
-    return opening ? { ...opening, text: forHumans(opening.text) || opening.text } : null;
+    return { organizationId: ground.organizationId, firstName: firstOf(me), things, late, label: String(ground.label ?? 'your check-in') };
   } catch {
     /* Nothing that could not be read changes what anybody reads: today's opening goes. */
     return null;

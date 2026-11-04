@@ -44,7 +44,7 @@ describe('nothing here is not could not load', () => {
   })
 
   it('a failure says so, and says the record is safe', () => {
-    const i = SRC.indexOf('We could not load your check-ins')
+    const i = SRC.indexOf('I could not load your check-ins')
     expect(i).toBeGreaterThan(-1)
     const block = SRC.slice(i, i + 400)
     expect(block).toContain('not a lost record')

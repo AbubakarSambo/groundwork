@@ -33,7 +33,7 @@ import {
 import { assertInviteLinkStillOpens } from '../participants/an-invite-link-still-opens';
 import {
   WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ,
-  theContextWeHave, BANK_DETAILS_LEFT_OUT, whoThisNameIs, theNameWeUseFor, aSentence, type WhatADocumentHolds, type WhatLanded,
+  theContextWeHave, theDocumentLine, BANK_DETAILS_LEFT_OUT, whoThisNameIs, theNameWeUseFor, aSentence, type WhatADocumentHolds, type WhatLanded,
 } from './what-a-document-holds';
 
 const ALLOWED_MIME = [
@@ -133,6 +133,8 @@ export function toDocShape(
        sentence the chat said rather than a filename and a date. See what-a-document-holds. */
     holds: doc.holds ?? null,
     theContextWeHave: doc.holds ? theContextWeHave(doc.holds as any, { reader: { participantId: viewerParticipantId } }) : null,
+    /* Its first line, one field: a page that already names the document shows the block without it (theDocumentLine). */
+    theDocumentLine: doc.holds ? theDocumentLine((doc.holds as any).fileName, (doc.holds as any).whatItIs) : null,
     /* The same sentence with the question on it, for the conversation that is waiting on the read. */
     askingAboutIt: doc.holds ? theContextWeHave(doc.holds as any, { asking: true, willNoteIt: { visibility: (doc as any).visibility }, reader: { participantId: viewerParticipantId } }) : null,
     /* ITEM BY ITEM, WITH PAGES (week 14, request 6c): what it took, and what it left out and why.
@@ -561,6 +563,7 @@ export class DocumentsService {
       /* What it holds, and the product's own words for it, so every page says the same sentence. */
       holds: held ?? null,
       theContextWeHave: held ? theContextWeHave(held) : null,
+      theDocumentLine: held ? theDocumentLine(held.fileName, held.whatItIs) : null,
       /*
        * AND THE SAME SENTENCE WITH THE QUESTION ON IT, for the conversation that attached it.
        *
@@ -1017,6 +1020,7 @@ export class DocumentsService {
       ...(isConversation ? { assumed: THE_ASSUMPTION_WHEN_UPLOADING } : {}),
       holds: held ?? null,
       theContextWeHave: held ? theContextWeHave(held) : null,
+      theDocumentLine: held ? theDocumentLine(held.fileName, held.whatItIs) : null,
     };
   }
 

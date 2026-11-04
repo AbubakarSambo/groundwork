@@ -68,16 +68,18 @@ describe('the words this product does not use', () => {
   });
 });
 
-describe('and it reaches both conversations', () => {
+describe('and it reaches the check-in', () => {
   const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   it('the check-in path asks again when it finds one', () => {
     const src = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
     expect(src).toMatch(/const notOurWords = wordsWeDoNotUse\(screened\.text, theirWords\)/);
     expect(src).toMatch(/sayItWithoutThose\(notOurWords, screened\.text\)/);
   });
-  it('and so does the setup path, where a person meets the product first', () => {
+  /* Changed 4 November 2026 (fix plan, group 5): on the setup path this check only wrote a log line after the reply had gone, and it is
+     removed with the other word matchers there. The setup prompt carries the words it does not use; the check-in keeps its check. */
+  it('and the setup path no longer reads its reply for them after the fact', () => {
     const src = strip(readFileSync(join(__dirname, '..', 'entry', 'entry.service.ts'), 'utf8'));
-    expect(src).toMatch(/const notOurWords = wordsWeDoNotUse\(text, personSaid\)/);
+    expect(src).not.toMatch(/wordsWeDoNotUse\(/);
   });
 });
 

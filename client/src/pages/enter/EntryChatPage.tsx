@@ -158,6 +158,15 @@ interface OnboardingSelections {
   decision?: string
   brief?: string
   classifiedScenario?: string
+  /** The kind's name, from the server's one owner of situation names (the scenario table). */
+  kindName?: string
+  /** The name they gave in so many words ("Call it ..."), and the days and length they said: the rest of the server's reading. */
+  name?: string
+  cadenceDays?: number[]
+  timelineDays?: number
+  runsUntilEnded?: boolean
+  yourRole?: string
+  noAimAndTheySaidSo?: boolean
   /**
    * THE ANCHOR'S SEVEN ITEMS, AS THE CONVERSATION HEARS THEM (fault 2; request 144 (2) and (3)).
    * Not served yet - every one of the seven keys is optional, and this is `{}` until the engine
@@ -2652,47 +2661,21 @@ export function EntryChatPage() {
       const assistantTurn: Turn = { role: 'assistant', content: onboardDisplayReply(res.reply, res.ready) }
       const updatedHistory = [...newHistory, assistantTurn]
       setOnboardingHistory(updatedHistory)
-      // Merge extracted fields into selections
       if (res.extracted) {
+        /*
+         * WHAT SETUP KNOWS IS THE SERVER'S ONE READING (fix plan, group 5). The server merges what it knew with what this turn read and
+         * sends the whole of it; the panel shows it as it is, and it goes back with the next message. Field-by-field merging here made a
+         * second copy that could drift from the one the model was told. The anchor's seven items arrive the same way, under anchorItems.
+         */
+        const { responsibleFor, tryingToMove, howItContributes, seeingToday, whyItBothersYou, whatTheyDontUnderstand, whatTheyWouldDoDifferently, ...known } = res.extracted
+        const seven = { responsibleFor, tryingToMove, howItContributes, seeingToday, whyItBothersYou, whatTheyDontUnderstand, whatTheyWouldDoDifferently }
+        const heardAny = Object.values(seven).some((v) => v !== undefined)
         setOnboardingSelections(prev => ({
           ...prev,
-          ...(res.extracted.mode ? { mode: res.extracted.mode! } : {}),
-          ...(res.extracted.initial ? { initial: res.extracted.initial! } : {}),
-          ...(res.extracted.whoInvolved ? { whoInvolved: res.extracted.whoInvolved! } : {}),
-          ...(res.extracted.peopleNamed?.length ? { peopleNamed: res.extracted.peopleNamed! } : {}),
-          ...(res.extracted.peopleEmails ? { peopleEmails: res.extracted.peopleEmails } : {}),
-          ...((res.extracted as any).peoplePhones ? { peoplePhones: (res.extracted as any).peoplePhones } : {}),
-          ...((res.extracted as any).peopleRoles ? { peopleRoles: (res.extracted as any).peopleRoles } : {}),
-          ...(res.extracted.decision ? { decision: res.extracted.decision! } : {}),
-          ...(res.extracted.goals ? { goals: res.extracted.goals! } : {}),
-          ...(res.extracted.brief !== undefined ? { brief: res.extracted.brief! } : {}),
-          /*
-           * FAULT 2: THE ANCHOR'S SEVEN ITEMS, WHICHEVER OF THEM THE ENGINE HAS SENT SO FAR.
-           * Not served yet, so this is a no-op today - every key below is `undefined` and the
-           * spread adds nothing. The moment the engine starts sending them, they merge here the
-           * same way every other extracted field does, and the panel already knows how to draw
-           * them (FillsInAsYouTalk.tsx's `theAnchorRows`).
-           */
-          ...((
-            res.extracted.responsibleFor !== undefined ||
-            res.extracted.tryingToMove !== undefined ||
-            res.extracted.howItContributes !== undefined ||
-            res.extracted.seeingToday !== undefined ||
-            res.extracted.whyItBothersYou !== undefined ||
-            res.extracted.whatTheyDontUnderstand !== undefined ||
-            res.extracted.whatTheyWouldDoDifferently !== undefined
-          ) ? {
-            anchorItems: {
-              ...prev.anchorItems,
-              ...(res.extracted.responsibleFor !== undefined ? { responsibleFor: res.extracted.responsibleFor } : {}),
-              ...(res.extracted.tryingToMove !== undefined ? { tryingToMove: res.extracted.tryingToMove } : {}),
-              ...(res.extracted.howItContributes !== undefined ? { howItContributes: res.extracted.howItContributes } : {}),
-              ...(res.extracted.seeingToday !== undefined ? { seeingToday: res.extracted.seeingToday } : {}),
-              ...(res.extracted.whyItBothersYou !== undefined ? { whyItBothersYou: res.extracted.whyItBothersYou } : {}),
-              ...(res.extracted.whatTheyDontUnderstand !== undefined ? { whatTheyDontUnderstand: res.extracted.whatTheyDontUnderstand } : {}),
-              ...(res.extracted.whatTheyWouldDoDifferently !== undefined ? { whatTheyWouldDoDifferently: res.extracted.whatTheyWouldDoDifferently } : {}),
-            },
-          } : {}),
+          ...(known as Partial<OnboardingSelections>),
+          /* The kind is never set on an anchor draft, whose kind is how they arrived. */
+          ...(isAnchorDraft() ? { classifiedScenario: prev.classifiedScenario } : {}),
+          ...(heardAny ? { anchorItems: { ...prev.anchorItems, ...Object.fromEntries(Object.entries(seven).filter(([, v]) => v !== undefined)) } } : {}),
         }))
 
         /**
@@ -2754,11 +2737,6 @@ export function EntryChatPage() {
           const planned = plannedSessionsFor(res.extracted.timelineDays, res.extracted.cadence ?? cadence, undefined, res.extracted?.cadenceDays)
           if (planned != null) { setSessions(planned); setPlannedFrom({ timelineDays: res.extracted.timelineDays, cadence: res.extracted.cadence ?? cadence }) }
         }
-        /* ONCE, AND READ BY THE SERVER. The kind is read from what they first said, on the server's first turn, and then stays: read again
-           every turn it came back different each time (first experience, round 2), and a second reading here, from the summary a turn
-           later, put the card under the first reply only after the lead had answered it, with no "Confirmed" (plan round 32). "It’s
-           something else" is how they change it. Never for an anchor draft, whose kind is how they arrived. */
-        if (res.scenario && !isAnchorDraft()) setOnboardingSelections(prev => (prev.classifiedScenario ? prev : { ...prev, classifiedScenario: res.scenario }))
       }
       setOnboardingReady(res.ready)
       persistOnboarding([], onboardingSelections, onboardingStep, updatedHistory, res.ready)
@@ -4085,6 +4063,8 @@ export function EntryChatPage() {
          * `HELP_TEAM_UNDERSTAND`, which is missing its "my".
          */
         if (isAnchorDraft()) return anchorGroundLabel
+        /* The server's reading names the kind from its one owner of situation names; a card picked before the first reply is named from the card. */
+        if (onboardingSelections.kindName && onboardingSelections.classifiedScenario) return sentenceCase(onboardingSelections.kindName)
         const chosen = onboardingSelections.classifiedScenario || pickedScenario || scenario
         return chosen ? sentenceCase(scenarioLabel(chosen, onboardingSelections.brief)) : ''
       })()}
@@ -4624,7 +4604,7 @@ export function EntryChatPage() {
             {reportFailed && (
               <div className="gwui-ec-savecard-retry">
                 <div className="gwui-ec-savecard-retry-text">
-                  We could not generate your report. Your responses are saved.
+                  I could not write your report. What you said is saved.
                 </div>
                 <Button kind="secondary" size="small" onClick={() => generateSessionReport(reportTurnsForRetry)}>
                   Retry
@@ -4828,7 +4808,7 @@ export function EntryChatPage() {
                 <div className="gwui-ec-savecard-helper">
                   {/* U.6 review: it promised the invites went out on opening the link, which a later start (or a
                       seat, or an admin who must accept it) makes untrue. The same sentences as after saving. */}
-                  {`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(peopleOnTheList, startsLater ? checkInBy : null)}`}
+                  {`I'll email you a confirmation link. ${whatOpeningTheLinkDoes(peopleOnTheList, startsLater ? checkInBy : null)}`}
                 </div>
 
                 {/* SIGNING UP WITH GOOGLE, AT THE MOMENT SIGNING UP HAPPENS.
@@ -4900,7 +4880,7 @@ export function EntryChatPage() {
                 className="gwui-ec-savecard-confirm-box"
               >
                 <div className="gwui-ec-savecard-confirm-title">Check your email</div>
-                <div className="gwui-ec-savecard-confirm-body">We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
+                <div className="gwui-ec-savecard-confirm-body">I sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
                 {inviteAdded.length > 0 ? (
                   <div className="gwui-ec-savecard-confirm-sub">
                     {whoIsWaiting()} Nobody is invited before you confirm your email.

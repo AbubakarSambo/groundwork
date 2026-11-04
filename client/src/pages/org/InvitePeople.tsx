@@ -84,7 +84,7 @@ export function InvitePeople() {
       if (a.rows.length > 0 && a.rows.every((r) => r.result === 'invited')) send.mutate()
       else setAnswer(a)
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'We could not read that list. Try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'I could not read that list. Try again.'),
   })
 
   const canGo = answer?.preview ? answer.rows.filter((r) => r.result === 'invited').length : 0

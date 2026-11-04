@@ -2387,7 +2387,7 @@ export class AssistantService {
     if (open) {
       const next = whatToAskForNext(open);
       if (!next) return this.offerToSeed(organizationId, who, open);
-      return rules('set_an_objective', text(`We are still working on "${open.workingTitle}". ${next.asks}`));
+      return rules('set_an_objective', text(`I am still working on "${open.workingTitle}" with you. ${next.asks}`));
     }
 
     /*
@@ -3050,7 +3050,7 @@ export class AssistantService {
    * exactly one open question, because that is the only way a bare "yes" is unambiguous.
    */
   private async whatShouldWeTalkAbout(organizationId: string, who: string | null): Promise<Reply> {
-    if (!who) return rules('what_should_we_talk_about', text('I cannot find you in what your organisation has sent us.'));
+    if (!who) return rules('what_should_we_talk_about', text('I cannot find you in what your organisation has sent me.'));
 
     /* Mapped, not cast. `says` lives inside the evidence blob - see `fromRow`. */
     const kept = await keptInTheApp(this.prisma as any, organizationId);
@@ -3318,7 +3318,7 @@ export class AssistantService {
       where: { id: personId, organizationId },
       select: { email: true, linkedUserId: true },
     });
-    if (!me?.email) return rules('what_came_of_it', text('I cannot find you in what your organisation has sent us.'));
+    if (!me?.email) return rules('what_came_of_it', text('I cannot find you in what your organisation has sent me.'));
 
     /* On WhatsApp, a check-in kept in the app is never recalled (decision 82, item 7). */
     const kept = await keptInTheApp(this.prisma as any, organizationId);
@@ -5827,7 +5827,7 @@ export class AssistantService {
       where: { id: personId, organizationId },
       select: { externalId: true, linkedUserId: true },
     });
-    if (!me) return rules('what_did_i_commit_to', text('I cannot find you in what your organisation has sent us.'));
+    if (!me) return rules('what_did_i_commit_to', text('I cannot find you in what your organisation has sent me.'));
 
     const kept = await keptInTheApp(this.prisma as any, organizationId);
     const open = await withoutCommitmentsFromGoalsNotToldYet(this.prisma, await this.prisma.commitment.findMany({
@@ -5972,7 +5972,7 @@ export class AssistantService {
       where: { id: personId, organizationId },
       select: { externalId: true },
     });
-    if (!me) return rules('what_am_i_on', text('I cannot find you in what your organisation has sent us, which is something your admin would need to look at.'));
+    if (!me) return rules('what_am_i_on', text('I cannot find you in what your organisation has sent me, which is something your admin would need to look at.'));
 
     const all = await this.prisma.subject.findMany({
       where: { organizationId, sourceDeletedAt: null },
@@ -5994,7 +5994,7 @@ export class AssistantService {
     if (!owned.length && !contributing.length) {
       /* An empty answer that says WHY it is empty. "Nothing" and "nothing has been sent to me" are
          different facts and only one of them is about the person. */
-      return rules('what_am_i_on', text('Nothing your organisation has sent us lists you as an owner or a contributor. That may mean the work is tracked somewhere that is not connected yet.'));
+      return rules('what_am_i_on', text('Nothing your organisation has sent me lists you as an owner or a contributor. That may mean the work is tracked somewhere that is not connected yet.'));
     }
 
     const parts: string[] = [];
@@ -6026,7 +6026,7 @@ export class AssistantService {
      *
      * This echoed whatever it was handed. Juma asked about looking after people while the road was
      * closed and read back: 'I do not have anybody called "looking after them while the road is
-     * closed. ...". I only know the people your organisation has sent us.' A request to add some
+     * closed. ...". I only know the people your organisation has sent me.' A request to add some
      * notes, read back to him as a missing colleague.
      *
      * The router put him here and that is worth fixing too, but the damage is done at this line,
@@ -6050,7 +6050,7 @@ export class AssistantService {
         || (p.displayName ?? '').toLowerCase().split(' ')[0] === lower
         || p.externalId.toLowerCase() === lower,
     );
-    if (!hit) return rules('who_is', text(`I do not have anybody called "${q}". I only know the people your organisation has sent us.`));
+    if (!hit) return rules('who_is', text(`I do not have anybody called "${q}". I only know the people your organisation has sent me.`));
 
     const manager = hit.managerExternalId
       ? people.find((p) => p.externalId === hit.managerExternalId)
@@ -6063,7 +6063,7 @@ export class AssistantService {
         : hit.managerExternalId
           /* The id resolved to nobody: said plainly rather than rendered as "no manager", which is a
              different and wrong fact. */
-          ? `Their reporting line points at ${hit.managerExternalId}, who has not been sent to us.`
+          ? `Their reporting line points at ${hit.managerExternalId}, who has not been sent to me.`
           : 'No reporting line has been sent for them.',
     ];
     return rules('who_is', text(bits.join(' ')));

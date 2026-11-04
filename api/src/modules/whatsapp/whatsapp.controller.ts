@@ -110,7 +110,7 @@ export class WhatsAppController {
        * person - and this caught every one of them, logged it, and told the person nothing. The
        * sentence goes back to them; only if THAT send fails is it a log line.
        */
-      const said = err?.response?.message ?? err?.message ?? 'Something went wrong on our side. Try again in a moment.';
+      const said = err?.response?.message ?? err?.message ?? 'Something went wrong on my side. Try again in a moment.';
       const to = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.from;
       const told = to ? await this.whatsapp.sendMessage(to, Array.isArray(said) ? said.join(' ') : String(said), { kind: 'refusal' }).catch(() => ({ sent: false })) : { sent: false };
       if (!told.sent) this.logger.error(`WhatsApp inbound handling failed and the person could not be told: ${err?.message}`);

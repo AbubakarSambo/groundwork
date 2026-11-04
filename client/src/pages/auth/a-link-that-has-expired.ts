@@ -4,7 +4,7 @@
  * Four answers need different screens:
  *
  *  - 'resent': a sign-up still waiting whose link had run out. The server has already made a new link
- *    and sent it to the same address ("That link had expired, so we have sent a new one to the same
+ *    and sent it to the same address ("That link had expired, so I have sent a new one to the same
  *    address. Nothing you wrote has been lost."). There is nothing to ask for; the page says it is
  *    on its way.
  *  - 'expired': any other link that has run out: sign-in ("This verification link has expired"),
@@ -30,7 +30,7 @@ export type WhatTheLinkDid = 'expired' | 'resent' | 'used-confirmed' | 'did-not-
 
 export function whatTheLinkDid(serverSentence: unknown): WhatTheLinkDid {
   const s = typeof serverSentence === 'string' ? serverSentence : Array.isArray(serverSentence) ? String(serverSentence[0] ?? '') : ''
-  if (/had expired, so we have sent a new one/i.test(s)) return 'resent'
+  if (/had expired, so I have sent a new one/i.test(s)) return 'resent'
   if (/\bhas expired\b/i.test(s)) return 'expired'
   /* B-208: checked before the broader "used" match below, because this one sentence has somewhere
      useful to send the person (sign in) and nothing to ask for, unlike the rest of "used". */
@@ -42,7 +42,7 @@ export function whatTheLinkDid(serverSentence: unknown): WhatTheLinkDid {
 }
 
 /** The server's sentence for a waiting sign-up whose link it has already sent again. */
-export const WE_SENT_A_NEW_ONE = 'That link had expired, so we have sent a new one to the same address. Nothing you wrote has been lost.'
+export const WE_SENT_A_NEW_ONE = 'That link had expired, so I have sent a new one to the same address. Nothing you wrote has been lost.'
 
 /** The server's sentence for a sign-in link already used, when nothing of the server's own is on hand. */
 export const ALREADY_CONFIRMED = 'This link has already been used, so your address is confirmed. Sign in from the sign-in page.'

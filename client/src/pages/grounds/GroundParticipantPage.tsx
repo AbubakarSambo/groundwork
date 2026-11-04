@@ -319,7 +319,7 @@ export function GroundParticipantPage() {
    */
   if (isError && !definitelyGone) return (
     <Page narrow>
-      <Empty title="We could not load this check-in" action={<Button kind="secondary" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Trying…' : 'Try again'}</Button>}>
+      <Empty title="I could not load this check-in" action={<Button kind="secondary" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Trying…' : 'Try again'}</Button>}>
         This is a connection problem, not a lost record. You are still part of it, and nothing you
         have written is affected.
       </Empty>

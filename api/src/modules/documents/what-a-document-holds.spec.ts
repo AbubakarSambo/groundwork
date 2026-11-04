@@ -35,7 +35,7 @@ describe('what a document holds', () => {
      * quarterly sales target sheet, by rep."). `aSentence` now turns a phrase with no verb of its own
      * into a full sentence in the product's voice - see what-a-document-holds.ts.
      */
-    expect(said.startsWith('Here is the context we have from Sales team Q3 2026.xlsx. It looks like a quarterly sales target sheet, by rep.')).toBe(true);
+    expect(said.startsWith('Here is what I took from Sales team Q3 2026.xlsx. It looks like a quarterly sales target sheet, by rep.')).toBe(true);
     expect(said).toContain('For everyone in this check-in, the target for Team sales is 153m.');
     /* Changed (B-014): the limit's name opens the sentence, so its capital is never mid-sentence. */
     expect(said).toContain('Credit ceiling must stay at or under 35 for everyone in this check-in.');

@@ -145,7 +145,7 @@ export function PatternPanel({
                 talkedAbout.mutate()
               }}
             >
-              We talked about it
+              I talked to them about it
             </Button>
             {talkedAbout.isError && (
               <p className="gwui-panel-text-muted" role="alert">That could not be saved. Try again.</p>

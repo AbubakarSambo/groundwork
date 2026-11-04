@@ -29,15 +29,15 @@ export const THE_TEAM_CONSEQUENCE =
   'Groundwork can still use the information available inside the product, but you may miss timely insights or follow-ups that would normally reach you by email.';
 
 export const THE_SETTINGS_LABEL = {
-  title: 'Emails from Groundwork that we decide to send',
+  title: 'Emails Groundwork decides to send',
   detail: 'Reminders, summaries and insights Groundwork sends without being asked.',
   /** Shown instead of the switch being on, when they used the link in a mail. */
   stoppedFromAMail:
-    'You turned these off from a link in one of our emails. Turn them back on here whenever you like.',
+    'You turned these off from a link in one of these emails. Turn them back on here whenever you like.',
 };
 
-export const NOT_A_LINK_WE_KNOW_TITLE = 'That link is not one we recognise';
-export const NOT_A_LINK_WE_KNOW_SAYS = 'Nothing has been changed. If emails you do not want are still arriving, reply to one and we will stop them by hand.';
+export const NOT_A_LINK_WE_KNOW_TITLE = 'That link is not one I recognise';
+export const NOT_A_LINK_WE_KNOW_SAYS = 'Nothing has been changed. If emails you do not want are still arriving, reply to one and I will stop them by hand.';
 
 export type TheirRole = 'lead' | 'participant' | 'other';
 
@@ -100,7 +100,7 @@ export class TheWaysToStopMail {
       known: true,
       stopped,
       role,
-      title: stopped ? 'These emails are already turned off' : 'Do you want to stop the emails from Groundwork that we decide to send?',
+      title: stopped ? 'These emails are already turned off' : 'Do you want to stop the emails Groundwork decides to send?',
       says: stopped ? [WHAT_STILL_ARRIVES] : role === 'other' ? [loses, WHAT_STILL_ARRIVES] : [loses, THE_TEAM_CONSEQUENCE, WHAT_STILL_ARRIVES],
       keepLabel: 'Keep email insights',
       stopLabel: 'Turn off email insights',

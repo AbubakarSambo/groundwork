@@ -81,7 +81,7 @@ function aWorld(w: World = {}) {
 describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
   it('with the switch on, for somebody on an anchor lead\'s team in their second session, carries the scenario\'s words', async () => {
     const prompt = await aWorld({ startedFrom: 'anchor', switchOn: true }).compose();
-    for (const said of ['What moved since we last spoke?', 'You were going to speak to James. What happened?', "You mentioned the client wasn't clear about the next phase. Has that changed?", "What's taking most of your attention now?", "That connects the delay in delivery to the customer's renewal."]) {
+    for (const said of ['What moved since you last checked in?', 'You were going to speak to James. What happened?', "You mentioned the client wasn't clear about the next phase. Has that changed?", "What's taking most of your attention now?", "That connects the delay in delivery to the customer's renewal."]) {
       expect(prompt).toContain(said);
     }
     expect(prompt).toContain('This person was invited by their lead');
@@ -160,7 +160,7 @@ describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
     const w = aWorld({ startedFrom: 'anchor', switchOn: true, stored: { id: 'pv-31', content: 'STORED WEEKLY WORDS' } });
     const prompt = await w.compose();
     expect(prompt).toContain('STORED WEEKLY WORDS');
-    expect(prompt).not.toContain('What moved since we last spoke?');
+    expect(prompt).not.toContain('What moved since you last checked in?');
     expect(prompt).not.toContain(THE_WEEKLY_REMINDER);
     expect(w.version()).toBe('pv-31');
   });
@@ -184,8 +184,8 @@ describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
   });
 
   it('takes an announced new angle out of the opening and keeps the question', () => {
-    expect(withoutAnAnnouncedAngle('Last time you said Ngozi depends on you. Today we are going to talk about those sheets. What moved since we last spoke?')).toBe('Last time you said Ngozi depends on you. What moved since we last spoke?');
-    expect(withoutAnAnnouncedAngle('What moved since we last spoke?')).toBe('What moved since we last spoke?');
+    expect(withoutAnAnnouncedAngle('Last time you said Ngozi depends on you. Today we are going to talk about those sheets. What moved since you last checked in?')).toBe('Last time you said Ngozi depends on you. What moved since you last checked in?');
+    expect(withoutAnAnnouncedAngle('What moved since you last checked in?')).toBe('What moved since you last checked in?');
     expect(withoutAnAnnouncedAngle('Today we are going to talk about the sheets.')).toBe('Today we are going to talk about the sheets.');
   });
 
@@ -204,7 +204,7 @@ describe('anchor piece 15: the opening of the weekly check-in', () => {
     (w.service as any).billing = { canStartSession: jest.fn(async () => ({ allowed: true, sessionsBalance: 5 })) };
     await w.service.open('ci2', 'user-1').catch(() => undefined);
     const opener = w.seen[0] ?? '';
-    expect(opener).toContain('What moved since we last spoke?');
+    expect(opener).toContain('What moved since you last checked in?');
     expect(opener).toContain(`- ${THEIR_WORDS}`);
     expect(opener.endsWith(THE_WEEKLY_REMINDER)).toBe(true);
     expect(opener.indexOf('<<')).toBe(-1);
@@ -217,9 +217,9 @@ describe('anchor piece 15: the opening does not announce another angle', () => {
     (w.service as any).prisma.conversationTurn.findFirst = jest.fn(async () => null);
     (w.service as any).prisma.checkIn.findUnique = jest.fn(async () => ({ ...w.checkIn, status: CheckInStatus.NOT_STARTED }));
     (w.service as any).billing = { canStartSession: jest.fn(async () => ({ allowed: true, sessionsBalance: 5 })) };
-    (w.service as any).anthropic.respond = jest.fn(async () => 'Today we are going to talk about the sheets. What moved since we last spoke?');
+    (w.service as any).anthropic.respond = jest.fn(async () => 'Today we are going to talk about the sheets. What moved since you last checked in?');
     const out = await w.service.open('ci2', 'user-1').catch(() => ({ reply: '' } as any));
-    expect(out.reply).toContain('What moved since we last spoke?');
+    expect(out.reply).toContain('What moved since you last checked in?');
     expect(out.reply).not.toContain('Today we are going to');
   });
 });

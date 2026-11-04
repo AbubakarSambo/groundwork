@@ -4116,7 +4116,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.objectives && b.objectives && (
           <Section
-            heading="What we are aiming for"
+            heading="What the team is aiming for"
             /* Board review, 1 October, item 4: "The lead sets these targets." said "the lead" even
                to the lead themselves, and even where a colleague's reader already knows their name
                from elsewhere on this board (leadFirstName). */
@@ -4138,7 +4138,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               <Callout tone="warning">{b.objectivesPrompt}</Callout>
             )}
             <Panel pad={false}>
-              <RowList label="What we are aiming for">
+              <RowList label="What the team is aiming for">
               {b.objectives.map((o) => {
                 /*
                   A MEASURE THAT GOES DOWN IS STILL GOING WELL.

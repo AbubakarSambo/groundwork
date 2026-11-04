@@ -190,7 +190,7 @@ export function TheReportYouSawAtTheEnd({
         <div className="gw-head"><div style={{ background: 'var(--gw-dark)', borderRadius: 10, padding: 'var(--er-box-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 'var(--er-gap-sm)' }}>
             {/* U.9 RE-REVIEW, ITEM A: a plain heading, not a shout. */}
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-b)' }}>What you told us</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-b)' }}>What you told me</div>
             {correctedNote && (
               <div style={{ fontSize: 'var(--er-label)', color: 'rgba(255,255,255,.55)', fontStyle: 'normal' }}>Updated after your correction</div>
             )}

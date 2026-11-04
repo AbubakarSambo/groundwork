@@ -53,7 +53,7 @@ export function confidenceInThePicture(scoredSessions: number, meanLevel: number
     if ((also.failed ?? 0) > 0) {
       return {
         band: 'nothing yet',
-        line: 'The scoring did not run for the sessions here, so this part of the picture has not been read. That is a fault on our side, not a fact about anybody.',
+        line: 'The scoring did not run for the sessions here, so this part of the picture has not been read. That is a fault on my side, not a fact about anybody.',
       };
     }
     return {
@@ -79,7 +79,7 @@ export function confidenceInThePicture(scoredSessions: number, meanLevel: number
   return {
     band: 'thin',
     // The sentence that used to say "low specificity" about a person.
-    line: `We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. ${WHERE_IT_WAS_READ_FROM}`,
+    line: `I am not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. ${WHERE_IT_WAS_READ_FROM}`,
   };
 }
 

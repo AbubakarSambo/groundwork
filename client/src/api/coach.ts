@@ -55,7 +55,7 @@ export const MIN_INTENTION_LENGTH = 40
 export const COACHING_PRICE = {
   hourly: '$700 per month, no retainer',
   retained: '$7,500 a year for twelve sessions',
-  note: 'We usually suggest two sessions per issue, back to back: one to understand it, the next to work through it.',
+  note: 'I usually suggest two sessions per issue, back to back: one to understand it, the next to work through it.',
 }
 
 /**

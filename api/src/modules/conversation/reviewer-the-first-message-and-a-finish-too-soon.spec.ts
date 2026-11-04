@@ -36,6 +36,7 @@ describe('"finish" is never too soon', () => {
   });
   it('in setup, "finish" after one answer closes the conversation on what they said', () => {
     const entry = withoutComments(readFileSync(join(__dirname, '..', 'entry', 'entry.service.ts'), 'utf8'));
-    expect(entry).toMatch(/if \(theirLast && \(askedToFinish\(\[theirLast\]\) \|\| isTheWordFinish\(theirLast\)\) && personSaid\.length >= 1\) \{[\s\S]{0,300}closed: true/);
+    /* The redundant "personSaid.length >= 1" went with the setup path's rewrite (fix plan, group 5): a last message means somebody spoke. */
+    expect(entry).toMatch(/if \(theirLast && \(askedToFinish\(\[theirLast\]\) \|\| isTheWordFinish\(theirLast\)\)\) \{[\s\S]{0,300}closed: true/);
   });
 });

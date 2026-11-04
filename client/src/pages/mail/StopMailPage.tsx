@@ -87,16 +87,16 @@ export function StopMailPage({ which }: { which: Which }) {
              with a way to Settings, never "Done." with nothing to press.
              B-209: TWO THINGS HERE WERE NOT TRUE. The heading was this page's own fixed sentence,
              borrowed from StopRemindersPage ("We could not find those reminders"), instead of the
-             server's own title for this exact case ("That link is not one we recognise",
+             server's own title for this exact case ("That link is not one I recognise",
              the-ways-to-stop-mail.ts's NOT_A_LINK_WE_KNOW_TITLE) - said now, with that as the
              fallback should an older server ever send none. And the server's own sentence here goes
-             on to say "reply to one and we will stop them by hand" - mail from Groundwork comes from
+             on to say "reply to one and I will stop them by hand" - mail from Groundwork comes from
              a no-reply address (email.service.ts's fromEmail), so nobody ever reads a reply. That
              clause is left out; "Sign in to change your emails in Settings" below is the way that
              actually works. */
           if (q?.known === false) {
             setUnknownToken(true)
-            setDoneTitle(q?.title || 'That link is not one we recognise')
+            setDoneTitle(q?.title || 'That link is not one I recognise')
             setSays('Nothing has been changed.')
             setState('done')
             return

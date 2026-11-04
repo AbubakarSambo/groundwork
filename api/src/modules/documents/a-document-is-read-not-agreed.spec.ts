@@ -8,7 +8,7 @@ import { whatWasRecordedFromADocument } from './what-was-recorded-from-a-documen
  *
  * Driven in the browser, 22 September 2026. A sheet of Q4 targets was attached in the middle of a
  * check-in. Nineteen rows appeared on the record - three for the team, three each for two people -
- * and the conversation then said: "Here is the context we have from harvestline-q4-targets.xlsx...
+ * and the conversation then said: "Here is what I took from harvestline-q4-targets.xlsx...
  * Is that right?"
  *
  * The question was about something already done. A target is the yardstick somebody is read against,

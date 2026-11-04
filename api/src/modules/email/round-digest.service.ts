@@ -9,7 +9,7 @@ import { GroundworkEvents, RoundCompletedEvent } from '../../common';
 import { mayNotSend, digestSubject, digestBody, DigestFacts } from './nothing-lands-at-3am';
 
 /** Said to an unknown unsubscribe token, in place of an error. */
-export const NOT_A_LINK_WE_KNOW = 'That link is not one we recognise, which usually means these emails have already stopped. If any still arrive, reply to one and we will stop them by hand.';
+export const NOT_A_LINK_WE_KNOW = 'That link is not one I recognise, which usually means these emails have already stopped. If any still arrive, reply to one and I will stop them by hand.';
 
 /**
  * ONE MAIL PER ROUND, TO THE PEOPLE WHO WANT IT, IN THEIR OWN HOURS.

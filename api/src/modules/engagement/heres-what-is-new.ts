@@ -79,7 +79,7 @@ export function theWhatIsNewWords(firstName: string | null | undefined, checkIns
     follow,
     /* The two other things that are new for a lead (engagement spec sections 7 and 24), said so she is not surprised by them. */
     'On Fridays, when your team has done something that week, Groundwork also sends you a short letter about it. The email that tells you a shared picture is ready now says what the picture found.',
-    'The link at the bottom of any of these emails stops the ones we decide to send. So does Settings, where you can also turn them back on. Emails you ask for, such as sign-in links and reports, always reach you.',
+    'The link at the bottom of any of these emails stops the ones I decide to send. So does Settings, where you can also turn them back on. Emails you ask for, such as sign-in links and reports, always reach you.',
   ];
   return { subject, lines, linkLabel: 'See your check-ins' };
 }

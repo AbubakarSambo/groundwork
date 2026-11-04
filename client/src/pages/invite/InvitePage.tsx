@@ -361,7 +361,7 @@ export function InvitePage() {
       <LinkProblem
         kind="invite"
         detail={signedIn
-          ? 'We do not recognise this link. Ask the person who added you for a new invitation.'
+          ? 'I do not recognise this link. Ask the person who added you for a new invitation.'
           : 'We do not recognise this link. If you have already joined, sign in with your email. If you have not, ask the person who added you for a new invitation.'}
       />
     </Page>

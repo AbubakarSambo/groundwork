@@ -23,6 +23,6 @@ describe('when the payment provider refuses', () => {
     expect(JSON.stringify(out)).not.toMatch(/sk_|API Key|Stripe/);
   });
   it('answers every other crash with one plain sentence, not its own words', () => {
-    expect(respond(new Error('Something else broke')).message).toBe('Something went wrong on our side. Please try again in a minute, and if it happens again, tell us.');
+    expect(respond(new Error('Something else broke')).message).toBe('Something went wrong on my side. Please try again in a minute, and if it happens again, tell me.');
   });
 });

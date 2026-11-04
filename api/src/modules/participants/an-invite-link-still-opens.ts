@@ -32,7 +32,7 @@ export function assertInviteLinkStillOpens<T extends { userId: string | null; in
     throw new NotFoundException(
       /* Not "already been used": the token deliberately survives use, so that is no longer a state this
          sentence can be describing. The row is simply not found; say that, and what to do. */
-      'We do not recognise that link. Have you already joined? Then sign in as you usually do. Have you not joined yet? Ask the person who added you to send you a new invite.',
+      'I do not recognise that link. Have you already joined? Then sign in as you usually do. Have you not joined yet? Ask the person who added you to send you a new invite.',
     );
   }
   // Skip expiry for participants who already accepted - they can always return via their link.

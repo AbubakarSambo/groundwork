@@ -207,7 +207,7 @@ export function GroundsListPage() {
 
       {!isLoading && isError && (
         /* Could not load. Say which of the two things happened, and offer the one that helps. */
-        <Empty title="We could not load your check-ins" action={<Button kind="secondary" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Trying…' : 'Try again'}</Button>}>
+        <Empty title="I could not load your check-ins" action={<Button kind="secondary" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Trying…' : 'Try again'}</Button>}>
           This is a connection problem, not a lost record. Nothing you have written is affected.
         </Empty>
       )}

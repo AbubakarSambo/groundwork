@@ -47,7 +47,7 @@ describe('the model words it and nothing more', () => {
   });
 
   it('accepts a draft with no numbers at all', () => {
-    const plain = 'Nothing your organisation has sent us lists you as an owner.';
+    const plain = 'Nothing your organisation has sent me lists you as an owner.';
     expect(safeToUse(plain, 'Nothing sent to us lists you as an owner.')).toBe(true);
   });
 });

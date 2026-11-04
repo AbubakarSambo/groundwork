@@ -116,6 +116,10 @@ export const conversationApi = {
   open: (checkInId: string) =>
     apiClient.post<OpenCheckInResponse>(`/check-ins/${checkInId}/open`, undefined, { skipForbiddenToast: true, skipNotFoundToast: true, skipServerErrorToast: true } as any).then(r => r.data),
 
+  /** The opening's first line, from the record, shown straight away while the check-in opens (null where the opener is not from the record). */
+  openingLine: (checkInId: string) =>
+    apiClient.get<{ line: string | null }>(`/check-ins/${checkInId}/opening-line`, { skipForbiddenToast: true, skipNotFoundToast: true, skipServerErrorToast: true } as any).then(r => r.data?.line ?? null),
+
   send: (checkInId: string, message: string, answering?: string | null) =>
     apiClient.post<SendMessageResponse>(`/check-ins/${checkInId}/messages`, answering ? { message, answering } : { message }).then(r => r.data),
 

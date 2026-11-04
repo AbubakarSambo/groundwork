@@ -320,8 +320,9 @@ export function ChatPage() {
     if (displayedMsgs[lastIdx]?.content === last.content) return
 
     setStreamingId(last.id)
-    let i = 0
     const full = last.content
+    /* The first line was already on screen while the check-in opened: the typing carries on after it, and never writes it again. */
+    let i = openingLineRef.current && lastIdx === 0 && full.startsWith(openingLineRef.current) ? openingLineRef.current.length : 0
     const base = msgs.slice(0, lastIdx)
     /*
      * THE TYPEWRITER RAN AT A FIXED RATE, SO A LONG ANSWER TOOK LONGER TO APPEAR THAN TO WRITE.
@@ -356,10 +357,19 @@ export function ChatPage() {
   }, [displayedMsgs, loading])
 
 
+  /*
+   * THE FIRST LINE STRAIGHT AWAY (Hafsah, 3 November night, answer 2). While the check-in opens, the opening's first line is read from
+   * the record and shown at once; the saved opening starts with exactly these words, so nothing already read is written again.
+   */
+  const [openingLine, setOpeningLine] = useState<string | null>(null)
+  const openingLineRef = useRef<string | null>(null)
   const openSession = useMutation({
     mutationFn: () => {
       const n = ++openCountRef.current
       openInFlightRef.current = { n, at: Date.now() }
+      Promise.resolve(conversationApi.openingLine?.(checkInId!))
+        .then((line) => { if (line && openInFlightRef.current?.n === n) { openingLineRef.current = line; setOpeningLine(line) } })
+        .catch(() => { /* the opening still comes with the open */ })
       return conversationApi.open(checkInId!).finally(() => {
         if (openInFlightRef.current?.n === n) openInFlightRef.current = null
       })
@@ -1190,7 +1200,7 @@ export function ChatPage() {
                 {/* Clarification session banner */}
                 {isClarificationSession && (
                   <div className="gwui-ci-banner-info">
-                    <strong>Clarification session.</strong> Something in your report was inferred, not quoted directly. Tell us what was actually happening and we'll update the record.
+                    <strong>Clarification session.</strong> Something in your report was inferred, not quoted directly. Tell me what was actually happening and I will update the record.
                   </div>
                 )}
 
@@ -1308,6 +1318,7 @@ export function ChatPage() {
              * inside it (the-page-says-what-it-is-doing.spec.ts).
              */
             <Bubble mine={false}>
+              {openingLine && <p className="gwui-pre-line">{openingLine}</p>}
               <div role="status" aria-live="polite" className="gwui-writing">
                 Groundwork is writing…
                 <WritingDots />

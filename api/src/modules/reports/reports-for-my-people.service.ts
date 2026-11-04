@@ -96,7 +96,7 @@ export class ReportsForMyPeopleService {
       where: { id: personId, organizationId },
       select: { externalId: true },
     });
-    if (!person) throw new NotFoundException('We cannot see that person in your organisation.');
+    if (!person) throw new NotFoundException('I cannot see that person in your organisation.');
     return person.externalId;
   }
 }

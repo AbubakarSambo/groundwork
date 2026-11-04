@@ -40,26 +40,26 @@ beforeEach(() => {
 })
 
 describe('the lead who runs the check-in', () => {
-  it('sees "We talked about it", and pressing it sends one request and the served answer is drawn', async () => {
+  it('sees "I talked to them about it", and pressing it sends one request and the served answer is drawn', async () => {
     post.mockResolvedValueOnce({ data: { ...BASE, yours: false, talkedAbout: true } })
     panel({ ...BASE, yours: false }, 'Femi Okoro')
 
-    const button = screen.getByRole('button', { name: 'We talked about it' })
+    const button = screen.getByRole('button', { name: 'I talked to them about it' })
     fireEvent.click(button)
     await waitFor(() => expect(post).toHaveBeenCalledTimes(1))
     expect(post).toHaveBeenCalledWith('/patterns/pd2/talked-about', {})
 
     await waitFor(() => expect(screen.getByText('This has been talked through with Femi Okoro.')).toBeTruthy())
-    expect(screen.queryByRole('button', { name: 'We talked about it' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'I talked to them about it' })).toBeNull()
   })
 
   it('a failed "we talked about it" says so in a sentence, and leaves the button there to press again', async () => {
     post.mockRejectedValueOnce(new Error('network'))
     panel({ ...BASE, yours: false })
 
-    fireEvent.click(screen.getByRole('button', { name: 'We talked about it' }))
+    fireEvent.click(screen.getByRole('button', { name: 'I talked to them about it' }))
     await waitFor(() => expect(screen.getByText('That could not be saved. Try again.')).toBeTruthy())
-    expect(screen.getByRole('button', { name: 'We talked about it' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'I talked to them about it' })).toBeTruthy()
   })
 
   it('sees "After talking it through, was this right?" with Right, Wrong and Not sure, none pressed yet', () => {
@@ -100,7 +100,7 @@ describe('the lead who runs the check-in', () => {
     post.mockReturnValueOnce(new Promise((r) => { resolve = r }))
     panel({ ...BASE, yours: false })
 
-    const button = screen.getByRole('button', { name: 'We talked about it' })
+    const button = screen.getByRole('button', { name: 'I talked to them about it' })
     fireEvent.click(button)
     fireEvent.click(button)
     fireEvent.click(button)
@@ -123,7 +123,7 @@ describe('the lead who runs the check-in', () => {
 describe('the person the pattern is about', () => {
   it('never sees the "we talked about it" button, or the right/wrong/not sure choice, and the server never gives them a mark to read', () => {
     panel({ ...BASE, yours: true, talkedAbout: false, leadMark: null })
-    expect(screen.queryByRole('button', { name: 'We talked about it' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'I talked to them about it' })).toBeNull()
     expect(screen.queryByText('After talking it through, was this right?')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Right' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Wrong' })).toBeNull()
@@ -144,7 +144,7 @@ describe('a colleague, or an admin who does not run this check-in', () => {
        panel is never mounted with their row. This test documents that the panel itself still
        defaults to the safe (no-buttons) reading whenever `yours` is not explicitly false. */
     panel({ ...BASE, yours: true, talkedAbout: false, leadMark: null })
-    expect(screen.queryByRole('button', { name: 'We talked about it' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'I talked to them about it' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Right' })).toBeNull()
   })
 })

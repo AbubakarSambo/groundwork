@@ -16,7 +16,7 @@ import { TheCheckInYouJustFinished } from './TheCheckInYouJustFinished'
  * MIRIAM'S OWN REPORT ON A SALES CHECK-IN, AS SHE READS IT (sales-first.md, sections 2 and 5; the light
  * prototype's own report, docs/prototype/screens/B4-reports-and-sharing/own-report.txt, with the s71 truth fix).
  *
- * What you did well, What you told us, One thing to think about, then the rest folded. The rows are the shape the
+ * What you did well, What you told me, One thing to think about, then the rest folded. The rows are the shape the
  * reports serve her (`myRows`, her own lines alone, each with its mark and where it comes from). A photo is only
  * claimed where the server says a photo backs the line: the Green Mart quote she said "Later" to reads as her word.
  */
@@ -52,10 +52,10 @@ describe('Miriam’s own report on a sales check-in', () => {
     vi.mocked(groundsApi.getMySpecificity).mockResolvedValue({ mostUseful: null, strongest: null } as any)
   })
 
-  it('reads What you did well, What you told us and One thing to think about, in that order', async () => {
+  it('reads What you did well, What you told me and One thing to think about, in that order', async () => {
     renderIt(true)
     await screen.findByText('What you did well')
-    const order = ['What you did well', 'What you told us', 'One thing to think about'].map((t) => document.body.textContent!.indexOf(t))
+    const order = ['What you did well', 'What you told me', 'One thing to think about'].map((t) => document.body.textContent!.indexOf(t))
     expect(order.every((i) => i >= 0)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
     expect(screen.queryByText('What you said')).toBeNull()
@@ -74,7 +74,7 @@ describe('Miriam’s own report on a sales check-in', () => {
 
   it('no photo is claimed for the quote she did not add: her line is her word, marked so', async () => {
     renderIt(true)
-    const told = (await screen.findByText('What you told us')).parentElement as HTMLElement
+    const told = (await screen.findByText('What you told me')).parentElement as HTMLElement
     const quote = [...told.querySelectorAll('p')].find((p) => p.textContent === '“Green Mart has a quote.”')!.parentElement as HTMLElement
     expect(quote.textContent).not.toMatch(/photo|document backs it/i)
     expect(quote.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Only someone’s word')

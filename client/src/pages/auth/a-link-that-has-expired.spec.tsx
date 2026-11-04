@@ -84,11 +84,11 @@ describe('an old sign-in link (/verify-email)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send me a fresh link' }))
     await screen.findByRole('heading', { name: 'Check your email' })
     expect(authApi.entrySave).toHaveBeenCalledWith('miriam@baridi.test', undefined, '')
-    expect(screen.getByText(/We sent a sign-in link to/).textContent).toBe('We sent a sign-in link to Miriam@Baridi.test. Open it on any device.')
+    expect(screen.getByText(/I sent a sign-in link to/).textContent).toBe('I sent a sign-in link to Miriam@Baridi.test. Open it on any device.')
   })
 
   it('a waiting sign-up whose link the server already sent again is told it is on its way, and asked for nothing', async () => {
-    const said = 'That link had expired, so we have sent a new one to the same address. Nothing you wrote has been lost.'
+    const said = 'That link had expired, so I have sent a new one to the same address. Nothing you wrote has been lost.'
     ;(authApi.verifyEmail as any).mockRejectedValue(refused(said))
     const { container } = renderAt('/verify-email?token=t2')
     await screen.findByRole('heading', { name: 'Check your email' })
@@ -133,7 +133,7 @@ describe('an old sign-in link (/verify-email)', () => {
     renderAt('/verify-email?token=t5')
     fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'nobody@baridi.test' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send me a fresh link' }))
-    expect((await screen.findByRole('alert')).textContent).toBe('That did not send, because something went wrong on our side. Please try again.')
+    expect((await screen.findByRole('alert')).textContent).toBe('That did not send, because something went wrong on my side. Please try again.')
 
     ;(authApi.entrySave as any).mockRejectedValueOnce({ response: { status: 400 } })
     fireEvent.click(screen.getByRole('button', { name: 'Send me a fresh link' }))
@@ -193,7 +193,7 @@ describe('the sentences the server sends are the ones this page reads', () => {
   })
 
   it('the waiting sign-up\'s sentence reads as already sent again', () => {
-    const s = service.match(/'(That link had expired, so we have sent a new one[^']*)'/)?.[1]
+    const s = service.match(/'(That link had expired, so I have sent a new one[^']*)'/)?.[1]
     expect(s).toBeTruthy()
     expect(whatTheLinkDid(s)).toBe('resent')
   })
