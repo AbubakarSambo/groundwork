@@ -48,7 +48,8 @@ import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Page } from '@/components/gw/ui/Page'
 import { billingApi } from '@/api/billing'
 import { CheckInPeopleAndSetup, sessionsDoneBy } from './CheckInPeopleAndSetup'
-import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
+import { rememberWhoWasNotInvited } from './who-was-not-invited'
+import { TheyWereNotInvited } from './TheyWereNotInvited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
@@ -230,7 +231,6 @@ export function GroundAdminPage() {
   }
   /* People the wizard could not invite, kept against this ground so the toast that faded is not
      the only record. Read once on mount: it is unfinished business, not live data. */
-  const [notInvited, setNotInvited] = useState<NotInvited[]>(() => (id ? whoWasNotInvited(id) : []))
   const [groundLabel, setGroundLabel] = useState('')
   /* Opened from the "give it more time"/"out of time" banners above the tabs, which live outside
      People and setup entirely - so switching there is not enough, the timeframe editor there has
@@ -1938,23 +1938,7 @@ export function GroundAdminPage() {
           away from a moment later. Their list of five became three and this page said nothing about
           it, so they left believing everybody had been asked. See who-was-not-invited.ts.
         */}
-        {notInvited.length > 0 && (
-          /* Not <Callout>: its children render inside one <p>, and a <ul> cannot sit inside a
-              <p>. Builds the same tinted box directly from the shared classes instead. */
-          <div className="gwui-callout gwui-callout-warning">
-            <p className="gwui-callout-title">{whatToSayAboutThem(notInvited)}</p>
-            <Stack gap={10}>
-              <ul>
-                {notInvited.map(f => (
-                  <li key={f.email}>{f.email}, {f.because}</li>
-                ))}
-              </ul>
-              <Button kind="quiet" size="small" onClick={() => { thatIsDealtWith(id!); setNotInvited([]) }}>
-                I have dealt with this
-              </Button>
-            </Stack>
-          </div>
-        )}
+        {id && <TheyWereNotInvited groundId={id} />}
 
         {/* CHECK-INS */}
         {/**
