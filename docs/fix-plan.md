@@ -74,7 +74,7 @@ Drafted from `docs/issues-next.md` items 1 to 38, the cast run (round 38) and th
 - **Proof.** `oneVoice.groundworkSaysWe` is 0.
 
 ## 7. Agreed builds in batch 1
-- **3b**, Check-in opens the chat directly.
+- **3b**, Check-in opens the chat directly (with group 10).
 - **3**, desktop full width, like Slack. The phone layout is unchanged.
 - **1**, openers prepared in advance, which removes the roughly 7 s of opening calls and probably item 38.
 - **Proof.** Screenshots at web and phone width; the opener appears with no model call.
@@ -93,13 +93,24 @@ Drafted from `docs/issues-next.md` items 1 to 38, the cast run (round 38) and th
 - Removing the target-number matcher.
 - **16**, the marketing site's copy.
 
-## Decisions Hafsah owes
-1. With setup no longer copied in, the lead has her own session 1 (decision 28). Decision 133's premise falls away. Confirm.
-2. Should PatternDetection's patterns shown to the person themselves be retired too, leaving one pattern layer?
-3. Item 7: should "Set the context" and "Add people" come back to the check-in screen?
-4. Item 11: should the logo on a signed-in production screen go to the marketing site or to Today?
-5. Item 14: should the approved "five minutes" WhatsApp templates be resubmitted?
-6. Item 12: drop the leftover test databases.
+## Hafsah's answers, 4 November (built into the groups above)
+1. **Group 1:** the lead keeps one conversation on screen (setup and her first check-in together), stored in two parts. Setup facts stay private to whoever runs the check-in. Her "where things stand today" is saved as her first check-in under the normal rules.
+2. **Group 4:** the older patterns system (PatternDetection) is retired, leaving one pattern layer for everyone. People still see their own coaching from it.
+3. The check-in screen stays just the conversation. "Set the context" lives in References and resources, and "Add people" in People and setup.
+4. When signed in, the logo goes to Today.
+5. WhatsApp: the two templates waiting for approval replace their five-minute versions. The ten-minute replacement for `checkin_your_view_matters` is drafted in docs/whatsapp-templates.md and wired in this batch.
+6. The leftover test databases are listed in ~/Desktop/next-steps/leftover-test-databases.md, for Hafsah to remove.
+
+## 9. The boards: the order and the first screen (added by Hafsah, 4 November)
+In the prototype's look, the first screen reads in this order: where things stand against the target, then what needs the lead, what's closing, and the team. Everything else is folded below. The full prototype match waits for batch 2. **Proof:** before and after screenshots at web and phone width, for the lead and for a member. The judge's "at a glance" score must not drop.
+
+## 10. No explainer lines, no privacy notes, no pages in between (added by Hafsah, 4 November; standards.md fixed rule)
+Every line on the list in ~/Desktop/next-steps/explainers-and-pages-between.md is removed. Status lines with real information stay. The pages in between go: the Check-in tab opens the conversation (item 3b), and the not-checked-in board is one line, "Check in first, then you'll see the board.", plus the button. This group also covers items 39 to 46:
+- the blank first page on opening a session;
+- pages using only half the desktop window;
+- the tab renamed "References and resources".
+
+**Proof:** a sweep of every page as lead and as member finds none of the listed lines.
 
 ## Test tooling, before the live baseline
 The privacy judge's brief now follows the four rules (done 4 November, `~/Desktop/assessment-test/harness/score.ts`). Round 38 will be re-scored with it, so live and plan are counted the same way.
