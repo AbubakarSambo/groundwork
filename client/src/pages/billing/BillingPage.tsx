@@ -303,7 +303,12 @@ export function BillingPage() {
         </Panel>
       ))}
 
-      {billingStatus?.onTheHouse && !billingStatus.onTheHouse.freeTrial && (
+      {/* After the free month (2 November 2026): how long everything keeps working, or that Groundwork is paused, in the server's words. */}
+      {billingStatus?.afterTheTrial ? (
+        <Panel>
+          <p className="gwui-panel-text"><b>{billingStatus.afterTheTrial}</b></p>
+        </Panel>
+      ) : billingStatus?.onTheHouse && !billingStatus.onTheHouse.freeTrial && (
         <Panel>
           <Stack gap={10}>
             <p className="gwui-panel-text"><b>You are on us until {whenItWas(billingStatus.onTheHouse.until, 'full')}</b></p>

@@ -46,10 +46,8 @@ export const NOT_WRITTEN_TO_THE_PERSON_WHO_SAID_IT: ReadonlySet<string> = new Se
   /* About a request, an approval, a seat or the organisation. */
   'sendApprovalsSummary', 'sendRequestDecided', 'sendGroundApproved', 'sendGroundDeclined', 'sendYouAreInNow', 'sendTheyAreInNow', 'sendTheyWereNotLetIn',
   'sendInviteBounced', 'sendInviteLapsed',
-  /* About money, the account, the API and the running of the product. */
-  'sendCoachRequestReceived', 'sendRecordPortabilityNotice', 'sendBillingChangeNotification', 'sendPaymentRequestEmail', 'sendPaymentFailed',
-  'sendSubscriptionConfirmed', 'sendSubscriptionCancelled', 'sendSubscriptionPaymentFailed', 'sendSubscriptionRenewal', 'sendFreeExtensionClaimed',
-  'sendApproachingSessionLimit', 'sendMemberCapWarning', 'sendCareFeeConfirmation', 'sendCodeExpiryReminder',
+  /* About the API and the running of the product. Mail about money is its own kind ('about paying') and is left off below, by its kind. */
+  'sendCoachRequestReceived',
   'sendApiAccessApproved', 'sendApiAccessDeclined', 'sendApiAccessWithdrawn', 'sendWebhookEndpointDying',
 ]);
 
@@ -57,6 +55,8 @@ export function shouldSayWhatGroundworkIs(sender: string | undefined): boolean {
   if (!sender) return false;
   if (NOT_ABOUT_ONE_CHECK_INS_ANSWERS.has(sender)) return false;
   if (NOT_WRITTEN_TO_THE_PERSON_WHO_SAID_IT.has(sender)) return false;
+  /* A bill, a plan, a free month and its four weeks are not about anybody's answers (2 November 2026: every mail about paying, by its kind). */
+  if (whatThisMailIs(sender) === 'about paying') return false;
   /* Mail to our own roster about the running of the product is never about a check-in's answers. */
   if (whatThisMailIs(sender) === 'operational') return false;
   /* A door does not need explaining, and a person opening one is not writing anything down. */

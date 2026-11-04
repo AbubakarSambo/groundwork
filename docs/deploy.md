@@ -531,6 +531,43 @@ Never write `pricing.freeTrial` as a bare `{"on": true}`. Without `onSince`, eve
 
 **Run on the local test database, 5 October.** Both statements ran on `gw_pw9_1786222102`. A new team, Kijani Repairs, was made by its founder, Wanjiru, who said it had fewer than 20 people. It was given one month on the Small Team plan, ending on 5 November 2026. Wanjiru, its admin, turned WhatsApp on and read that nothing is charged for WhatsApp until the trial ends. Stripe test mode could not be driven: the local environment holds only the placeholder `sk_test_...`, so creating a checkout failed with "Invalid API Key provided". A real Stripe test key in the local `api/.env` is needed for that part.
 
+## Four weeks after a free trial, then a pause (branch `wip/trial-grace`, Hafsah, 2 November 2026)
+
+**What it does.** When an organisation's free month ends, everything keeps working for 4 more weeks. Its admins and leads get one email at the start of each of weeks 1 to 3, and one a day in the last week ("Groundwork pauses in 5 days", down to "Groundwork pauses tomorrow"), and a quiet note on Today and on Plan and billing. Team members get nothing. After the 4 weeks Groundwork pauses for that organisation: no check-in opens, no new check-in can be made, and no reminder, report, summary or other message goes out, by email or WhatsApp. Nothing is deleted; people can still sign in, read everything and pay. When it pays, the next scheduled job sends as usual. Organisations that pay, or ever paid (any `subscription_status`, or an active care fee), are unchanged. A free run given by hand is not a free month and is unchanged.
+
+**It does nothing while `pricing.freeTrial` is off.** Production's free trial is switched on by step 13a ("Switching billing on at release", above). Until then this change only adds a settings row. The 4 weeks of anybody whose free month has already ended start when the free trial is switched on (or when the migration ran, whichever is later), so nobody is paused without their 4 weeks and their emails.
+
+**The steps, in order.**
+
+1. **Backup first**, as for every release (the rule at the top of this document).
+2. **Merge and deploy.** The API's start runs `prisma migrate deploy`, which applies one migration, `20261102120000_four_weeks_after_a_free_trial`. It adds no column; it only inserts the `platform_settings` row `pricing.trialGrace` as `{"weeks": 4, "dailyForTheLastDays": 7, "fromHour": 9, "onSince": "<the moment it ran>"}`, and leaves a row already there as it is. No new environment variable, no secret, no script.
+3. **Check the row:** `SELECT value FROM platform_settings WHERE key = 'pricing.trialGrace';` shows `"weeks": 4`, `"dailyForTheLastDays": 7`, `"fromHour": 9` and an `onSince` of the deploy. The words are not in the row: the product's own words are used until somebody saves their own at Admin, System, Pricing, "After the free trial".
+4. **See who it will reach (read only), and send the list to Hafsah** before step 13a switches the free trial on:
+
+   ```sql
+   SELECT o.id, o.name, o.free_until, o.free_trial_started_at IS NOT NULL AS trial, o.free_month_of_release_at IS NOT NULL AS release_month,
+          (SELECT count(*) FROM users u WHERE u.organization_id = o.id AND u.deleted_at IS NULL AND u.is_active AND u.role IN ('ADMIN','LEAD')) AS admins_and_leads
+   FROM organizations o
+   WHERE o.free_until IS NOT NULL
+     AND (o.free_trial_started_at IS NOT NULL OR o.free_month_of_release_at IS NOT NULL)
+     AND o.subscription_status IS NULL AND o.care_fee_status <> 'ACTIVE'
+   ORDER BY o.free_until;
+   ```
+
+   Each row is an organisation on a free month that has not paid. Its 4 weeks start at the latest of its `free_until`, the `onSince` above, and the free trial's own `onSince`; it pauses 4 weeks after that unless it pays. An organisation with `admins_and_leads` = 0 is paused with nobody told, so tell Hafsah about it.
+5. **Nothing to switch on.** It starts with the free trial's switch (step 13a). Do not change `pricing.trialGrace` on the day of the deploy.
+
+**How to check it worked**, once the free trial is on:
+- The hourly job `TheFreeMonthEmails.everyHour` logs nothing new when it has nothing to send. Each email it sends is a row in `notifications` with `sender = 'sendGroundworkPausesSoon'`: `SELECT to_address, subject, created_at FROM notifications WHERE sender = 'sendGroundworkPausesSoon' ORDER BY created_at DESC LIMIT 20;`. Only admins and leads should appear, once a week in weeks 1 to 3 and once a day in the last 7 days.
+- For a paused organisation, mail about the work is written down and not sent: `SELECT to_address, sender, created_at FROM notifications WHERE outcome = 'suppressed' AND because LIKE 'Nothing about the work goes out while Groundwork is paused%' ORDER BY created_at DESC LIMIT 20;`, and WhatsApp messages it would have started are rows in `whatsapp_sends` with a `kind` ending in `:paused`.
+- Sign in as an admin of an organisation in its 4 weeks: Today shows "Your free month has ended. Everything keeps working until <day>, and then Groundwork pauses until you choose a plan." beside the link to Plan and billing, and Plan and billing shows the same sentence.
+
+**To change the 4 weeks, the timing or the words:** Admin, System, Pricing, "After the free trial" (or `PATCH /api/v1/admin/pricing/trial-grace`). A change applies to every organisation at once, by arithmetic; nothing is rewritten.
+
+**Run on the local test bed, 2 November** (database `gw_trial_grace_28`, the clock moved from 3 November to 8 December 2026 with the real scheduled jobs, mail to the local catcher only, no model and no Stripe key). Seven organisations, each with an admin, two leads and five team members: one in its trial, one whose trial had just ended, one in its third week, one in its last week, one paused, one paused that then paid, and one that already pays. Admins and leads got one email at the start of each of weeks 1 to 3 and one a day in the last week, down to "Groundwork pauses tomorrow"; team members got none. The paused organisations sent nothing about the work (every reminder, opening and summary written down as held), refused a new check-in and the opening of a session, and lost no row. The one that paid had its morning summaries back the next day and its session's opening sent at 7 in the morning, its usual time. The organisation that already pays was untouched.
+
+**To undo it without a code rollback:** `UPDATE platform_settings SET value = jsonb_set(value, '{weeks}', '12') WHERE key = 'pricing.trialGrace';` gives everybody 12 weeks, the longest the setting allows; switching the free trial off stops the emails and the pause together (and the rest of billing with them). A paused organisation starts again the moment either is done. Rolling the code back leaves the row, which the old code does not read.
+
 ## Organisations over their plan
 
 Decision 123: an organisation already over its plan's limit at release keeps everyone it has; only people added afterwards wait for a seat. Hafsah wants to know which organisations are over, and by how much, so she can talk to them. Run this once on the live database, read-only, and send her the result. A seat is an active, not-deleted person who is not waiting to be let in (`api/src/common/seats.ts`); an organisation with no plan is on the free plan, whose limit is 5 unless the platform's free limit says otherwise.

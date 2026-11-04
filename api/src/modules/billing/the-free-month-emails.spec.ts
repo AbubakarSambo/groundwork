@@ -5,7 +5,8 @@ import { TheFreeMonthEmails } from './the-free-month-emails';
 import { forgetTheOrganisationsZone } from '../../common/the-organisations-own-day';
 
 /**
- * THE FREE MONTH'S TWO EMAILS, AS GRACE AND OTIENO READ THEM (Hafsah, 15 October 2026).
+ * THE FREE MONTH'S EMAILS, AND THE FOUR WEEKS AFTER IT, AS GRACE, OTIENO, WANJIRU AND JUMA READ THEM (Hafsah, 15 October and
+ * 2 November 2026). Grace and Otieno are admins, Wanjiru is a lead, Juma is a team member and is sent nothing.
  *
  * Baridi Appliances is in Nairobi and on its free month on Small Team ($90 for 20 seats). It has 23 people, so 3 extra
  * seats at $5, and 3 people used WhatsApp this month at $4 each. Its free month ends at 22:30 UTC on 18 October, which is
@@ -24,17 +25,20 @@ function world(opts: { trialOn?: boolean; createdAt?: Date; whatsAppPeople?: num
   forgetTheOrganisationsZone(orgId);
   const settings = new Map<string, any>();
   settings.set('pricing.freeTrial', { on: opts.trialOn ?? true, teamsUnder: 20, months: 1, onSince: '2026-10-15T00:00:00Z' });
+  settings.set('pricing.trialGrace', { weeks: 4, dailyForTheLastDays: 7, fromHour: 9, onSince: '2026-10-15T00:00:00Z' });
   const notifications: any[] = [];
   const delivered: Array<{ to: string; subject: string; html: string }> = [];
   const org = {
     id: orgId, name: 'Baridi Appliances', timeZone: 'Africa/Nairobi', createdAt: opts.createdAt ?? new Date('2026-09-01T09:00:00Z'),
     freeUntil: UNTIL, freePlan: 'SMALL_TEAM', freeTrialStartedAt: null, freeMonthOfReleaseAt: new Date('2026-09-18T22:30:00Z'),
-    subscriptionPlan: null, subscriptionStatus: null,
+    subscriptionPlan: null, subscriptionStatus: null, careFeeStatus: 'NONE',
   };
   const admins = [
-    { id: 'u-grace', email: 'grace@baridi.test', firstName: 'Grace' },
-    { id: 'u-otieno', email: 'otieno@baridi.test', firstName: 'Otieno' },
+    { id: 'u-grace', email: 'grace@baridi.test', firstName: 'Grace', lastName: 'Achieng', role: 'ADMIN' },
+    { id: 'u-otieno', email: 'otieno@baridi.test', firstName: 'Otieno', lastName: null, role: 'ADMIN' },
   ];
+  /* The rule for who is told about paying is the database's (TOLD_ABOUT_PAYING): admins and leads. Juma, a member, is not in it. */
+  const lead = { id: 'u-wanjiru', email: 'wanjiru@baridi.test', firstName: 'Wanjiru', lastName: 'Kamau', role: 'LEAD' };
   const prisma: any = {
     platformSetting: {
       findUnique: jest.fn(async ({ where }: any) => (settings.has(where.key) ? { key: where.key, value: settings.get(where.key) } : null)),
@@ -52,7 +56,7 @@ function world(opts: { trialOn?: boolean; createdAt?: Date; whatsAppPeople?: num
       findUnique: jest.fn(async () => org),
     },
     user: {
-      findMany: jest.fn(async ({ where }: any) => (where?.role ? admins : [])),
+      findMany: jest.fn(async ({ where }: any) => (where?.role ? admins : where?.organizationId && where?.OR ? [...admins, lead] : [])),
       findUnique: jest.fn(async () => null),
       count: jest.fn(async () => 23),
     },
@@ -86,14 +90,14 @@ describe('three days before the free month ends, counted in Nairobi', () => {
   it('is not sent four days before in Nairobi, even when it is only three days before in UTC', async () => {
     const w = world();
     /* 15 October, 13:00 in Nairobi; the month ends on 19 October there (18 October in UTC). */
-    expect(await w.sweep.sweep(new Date('2026-10-15T10:00:00Z'))).toEqual({ endsSoon: 0, ended: 0 });
+    expect(await w.sweep.sweep(new Date('2026-10-15T10:00:00Z'))).toEqual({ endsSoon: 0, pausesSoon: 0 });
     expect(w.delivered).toEqual([]);
   });
 
   it('is not sent in the night in Nairobi, and is sent at nine in the morning, three days before', async () => {
     const w = world();
-    expect(await w.sweep.sweep(new Date('2026-10-16T03:00:00Z'))).toEqual({ endsSoon: 0, ended: 0 });
-    expect(await w.sweep.sweep(new Date('2026-10-16T06:00:00Z'))).toEqual({ endsSoon: 1, ended: 0 });
+    expect(await w.sweep.sweep(new Date('2026-10-16T03:00:00Z'))).toEqual({ endsSoon: 0, pausesSoon: 0 });
+    expect(await w.sweep.sweep(new Date('2026-10-16T06:00:00Z'))).toEqual({ endsSoon: 1, pausesSoon: 0 });
     expect(w.delivered.map((d) => d.to)).toEqual(['grace@baridi.test', 'otieno@baridi.test']);
   });
 
@@ -109,7 +113,7 @@ describe('three days before the free month ends, counted in Nairobi', () => {
       'You have 3 seats more than that, at $5 each, which is $15 a month.',
       'WhatsApp is $4 a month for each person who uses it. 3 people have used it this month, which is $12.',
       'That is $117 a month in all.',
-      'Nothing is charged until you choose a plan. If you do not choose a plan by then, Baridi Appliances moves to the free plan, which is for teams of 5 or fewer people. Baridi Appliances has 23 people, which is more than the free plan covers, so choose a plan for all of them.',
+      'Nothing is charged until you choose a plan. If you do not choose a plan by then, everything at Baridi Appliances keeps working for 4 weeks after that, and then Groundwork pauses until you do. Nothing is deleted.',
       'You can choose a plan, and see every plan, on Plan and billing.',
       'Open Plan and billing',
     ].join('\n'));
@@ -148,47 +152,96 @@ describe('it is the admin\'s one routine message that day', () => {
   });
 });
 
-describe('once the free month has ended', () => {
-  it('tells each admin once what happens now, with the link', async () => {
+/*
+ * THE FOUR WEEKS (2 November 2026). Baridi's free month ended on 19 October in Nairobi, so Groundwork pauses there on 16 November.
+ * Changed from the two "once the free month has ended" tests of 15 October: that email said check-ins were paused, or that Baridi
+ * was on the free plan, from the day the month ended. Neither is true any more; the first of the four weeks' emails replaces it.
+ */
+const ALL = ['grace@baridi.test', 'otieno@baridi.test', 'wanjiru@baridi.test'];
+async function aDayInNairobi(w: ReturnType<typeof world>, day: string) {
+  /* Every working hour of that day in Nairobi (9 in the morning to 6 in the evening is 06:00 to 15:00 UTC). */
+  for (let h = 5; h <= 16; h++) await w.sweep.sweep(new Date(`${day}T${String(h).padStart(2, '0')}:00:00Z`));
+}
+
+describe('the four weeks after the free month, as each reader reads them', () => {
+  it('the day it ends: one email to each admin and lead, saying how long is left and how to pay; nothing to Juma', async () => {
     const w = world();
-    await w.sweep.sweep(new Date('2026-10-19T07:00:00Z'));
-    await w.sweep.sweep(new Date('2026-10-19T08:00:00Z'));
-    expect(w.delivered.map((d) => [d.to, d.subject])).toEqual([
-      ['grace@baridi.test', 'Your free month at Baridi Appliances has ended'],
-      ['otieno@baridi.test', 'Your free month at Baridi Appliances has ended'],
-    ]);
+    await aDayInNairobi(w, '2026-10-19');
+    expect(w.delivered.map((d) => [d.to, d.subject])).toEqual(ALL.map((to) => [to, 'Groundwork pauses at Baridi Appliances on 16 November']));
     expect(w.read(0)).toBe([
       'Hello Grace,',
-      'Your free month at Baridi Appliances ended on 19 October. Nothing has been charged.',
-      'Baridi Appliances is on the free plan now, which is for teams of 5 or fewer people. Baridi Appliances has 23 people, which is more than the free plan covers, so choose a plan for all of them.',
-      'This is what you will pay each month when you choose a plan.',
-      'Baridi Appliances has 23 people. The Small Team plan is $90 a month, and it includes 20 seats.',
-      'You have 3 seats more than that, at $5 each, which is $15 a month.',
-      'WhatsApp is $4 a month for each person who uses it. 3 people have used it this month, which is $12.',
-      'That is $117 a month in all.',
-      'You can choose a plan, and see every plan, on Plan and billing.',
+      'Your free month at Baridi Appliances ended on 19 October. Everything keeps working until 16 November, which is 4 weeks from today.',
+      'While Groundwork is paused, no check-ins open and no messages go out. Nothing is deleted, and everyone can still sign in and read what is there.',
+      'To keep everything running, choose a plan on Plan and billing. Everything starts again as soon as you do.',
       'Open Plan and billing',
     ].join('\n'));
+    expect(w.delivered[0].html).toContain('href="https://myground.work/billing"');
+    /* Wanjiru leads, and cannot pay: she is told who can. */
+    expect(w.read(2)).toBe([
+      'Hello Wanjiru,',
+      'Your free month at Baridi Appliances ended on 19 October. Everything keeps working until 16 November, which is 4 weeks from today.',
+      'While Groundwork is paused, no check-ins open and no messages go out. Nothing is deleted, and everyone can still sign in and read what is there.',
+      'Only an admin can choose a plan. Grace Achieng and Otieno can do it on Plan and billing, and everything starts again as soon as they do.',
+      'Open Plan and billing',
+    ].join('\n'));
+    expect(w.delivered.some((d) => /juma/i.test(d.to))).toBe(false);
   });
 
-  it('for a team that came after the trial was switched on, says its check-ins are paused until a plan is chosen', async () => {
-    const w = world({ createdAt: new Date('2026-10-16T00:00:00Z') });
-    await w.sweep.sweep(new Date('2026-10-19T07:00:00Z'));
-    expect(w.read(0)).toContain('Check-ins at Baridi Appliances are paused until you choose a plan. Nothing is deleted, and every record stays readable.');
-  });
-
-  it('is not sent for a free month that ended more than a week ago', async () => {
+  it('one a week at the start of weeks 1 to 3, then one a day in the last week counting down, then nothing once it has paused', async () => {
     const w = world();
-    await w.sweep.sweep(new Date('2026-10-27T07:00:00Z'));
-    expect(w.delivered).toEqual([]);
+    const days: string[] = [];
+    for (let t = Date.parse('2026-10-19T00:00:00Z'); t <= Date.parse('2026-11-20T00:00:00Z'); t += 86400000) days.push(new Date(t).toISOString().slice(0, 10));
+    for (const day of days) await aDayInNairobi(w, day);
+    const toGrace = w.delivered.filter((d) => d.to === 'grace@baridi.test').map((d) => d.subject);
+    expect(toGrace).toEqual([
+      'Groundwork pauses at Baridi Appliances on 16 November',
+      'Groundwork pauses at Baridi Appliances on 16 November',
+      'Groundwork pauses at Baridi Appliances on 16 November',
+      'Groundwork pauses in 7 days', 'Groundwork pauses in 6 days', 'Groundwork pauses in 5 days', 'Groundwork pauses in 4 days',
+      'Groundwork pauses in 3 days', 'Groundwork pauses in 2 days',
+      'Groundwork pauses tomorrow',
+    ]);
+    /* The weeks' emails went on 19 October, 26 October and 2 November: 4 weeks, 3 weeks and 2 weeks from today. */
+    const weekly = w.delivered.filter((d) => d.to === 'grace@baridi.test').slice(0, 3).map((d) => /which is (.+) from today/.exec(d.html)?.[1]);
+    expect(weekly).toEqual(['4 weeks', '3 weeks', '2 weeks']);
+    const last = w.delivered.filter((d) => d.to === 'grace@baridi.test').pop()!;
+    expect(last.html).toContain('Groundwork pauses at Baridi Appliances tomorrow, 16 November. Today is the last day everything runs.');
+    /* The same for Otieno and Wanjiru, and nothing at all to anybody else. */
+    expect(w.delivered.filter((d) => d.to === 'otieno@baridi.test')).toHaveLength(10);
+    expect(w.delivered.filter((d) => d.to === 'wanjiru@baridi.test')).toHaveLength(10);
+    expect(new Set(w.delivered.map((d) => d.to))).toEqual(new Set(ALL));
+  });
+
+  it('a day\'s email that could not go that day does not go the next day with the wrong number', async () => {
+    const w = world();
+    await aDayInNairobi(w, '2026-11-11');
+    expect(w.delivered.map((d) => d.subject)).toEqual(['Groundwork pauses in 5 days', 'Groundwork pauses in 5 days', 'Groundwork pauses in 5 days']);
+    await aDayInNairobi(w, '2026-11-12');
+    expect(w.delivered.slice(3).map((d) => d.subject)).toEqual(['Groundwork pauses in 4 days', 'Groundwork pauses in 4 days', 'Groundwork pauses in 4 days']);
+  });
+
+  it('is not the day\'s one routine message: Grace, who had one this morning, is still told', async () => {
+    const w = world();
+    w.routineEarlier('grace@baridi.test', new Date('2026-10-19T05:00:00Z'));
+    await w.sweep.sweep(new Date('2026-10-19T07:00:00Z'));
+    expect(w.delivered.map((d) => d.to)).toEqual(ALL);
   });
 
   it('and nothing is sent to a team that has subscribed', async () => {
     const w = world();
     Object.assign(w.org, { subscriptionPlan: 'SMALL_TEAM', subscriptionStatus: 'active' });
     await w.sweep.sweep(new Date('2026-10-16T06:00:00Z'));
-    await w.sweep.sweep(new Date('2026-10-19T07:00:00Z'));
+    await aDayInNairobi(w, '2026-10-19');
+    await aDayInNairobi(w, '2026-11-12');
     expect(w.delivered).toEqual([]);
+  });
+
+  it('a free month that ended long before the rule came in gets its four weeks from the day the rule came in', async () => {
+    const w = world();
+    w.org.freeUntil = new Date('2026-08-01T09:00:00Z');
+    /* The rule came in on 15 October, so Baridi pauses on 12 November, and is told so from 15 October. */
+    await aDayInNairobi(w, '2026-10-15');
+    expect(w.delivered[0].subject).toBe('Groundwork pauses at Baridi Appliances on 12 November');
   });
 });
 
@@ -196,7 +249,7 @@ describe('nothing is sent while the free trial is switched off', () => {
   it('neither email, at any time', async () => {
     const w = world({ trialOn: false });
     for (const at of ['2026-10-16T06:00:00Z', '2026-10-17T06:00:00Z', '2026-10-19T07:00:00Z']) {
-      expect(await w.sweep.sweep(new Date(at))).toEqual({ endsSoon: 0, ended: 0 });
+      expect(await w.sweep.sweep(new Date(at))).toEqual({ endsSoon: 0, pausesSoon: 0 });
     }
     expect(w.delivered).toEqual([]);
   });

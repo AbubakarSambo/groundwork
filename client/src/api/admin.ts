@@ -37,6 +37,15 @@ export interface CorrectionWindow {
 }
 
 /** The regular free trial: whether it is on, the team size it is for, and how many months (decision 78: always 1 today). */
+/** The weeks after a free trial before Groundwork pauses, the timing of their emails, and their words (2 November 2026). */
+export interface AdminTrialGrace {
+  weeks: number
+  dailyForTheLastDays: number
+  fromHour: number
+  words: Record<string, string>
+  onSince?: string
+}
+
 export interface AdminFreeTrial {
   on: boolean
   teamsUnder: number
@@ -207,6 +216,12 @@ export const adminApi = {
 
   setASwitch: (organizationId: string, key: string, on: boolean) =>
     apiClient.patch<{ id: string; name: string; switches: { key: string; name: string; on: boolean }[] }>(`/admin/organisations/${organizationId}/switches/${key}`, { on }).then(r => r.data),
+
+  getTrialGrace: () =>
+    apiClient.get<AdminTrialGrace>('/admin/pricing/trial-grace').then(r => r.data),
+
+  setTrialGrace: (change: Partial<Omit<AdminTrialGrace, 'onSince'>>) =>
+    apiClient.patch<AdminTrialGrace>('/admin/pricing/trial-grace', change).then(r => r.data),
 
   getAnchorTrial: () =>
     apiClient.get<AdminAnchorTrial>('/admin/pricing/anchor-trial').then(r => r.data),

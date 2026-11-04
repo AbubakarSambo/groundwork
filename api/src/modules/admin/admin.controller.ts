@@ -131,6 +131,18 @@ export class AdminController {
     return this.pricing.setFreeTrial(body ?? {}, userId);
   }
 
+  @Get('pricing/trial-grace')
+  @ApiOperation({ summary: 'The weeks after a free trial before Groundwork pauses, the timing of their emails, and their words' })
+  async getTrialGrace() {
+    return this.pricing.getTrialGrace();
+  }
+
+  @Patch('pricing/trial-grace')
+  @ApiOperation({ summary: 'Change the weeks after a free trial, the timing of their emails, or their words' })
+  async setTrialGrace(@CurrentUser('id') userId: string, @Body() body: { weeks?: number; dailyForTheLastDays?: number; fromHour?: number; words?: Record<string, string> }) {
+    return this.pricing.setTrialGrace(body as any, userId);
+  }
+
   @Get('pricing/anchor-trial')
   @ApiOperation({ summary: 'The anchor trial: whether it is on. One month, up to 20 people besides the lead.' })
   async getAnchorTrial() {

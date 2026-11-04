@@ -31,7 +31,8 @@ import { aDirectiveAboutRepeatingYourself } from './asked-twice-is-a-loop';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import { needsApproval, WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { tellTheAdminsSomebodyIsWaiting } from '../participants/somebody-is-waiting-at-the-door';
-import { isCovered } from '../../common/subscription';
+import { isCovered, WHAT_COVER_READS } from '../../common/subscription';
+import { theGraceInForce } from '../billing/the-trial-grace';
 import { freeSeatLimitMessage } from '../billing/billing.service';
 import {
   restoreTheirWords, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
@@ -3197,9 +3198,9 @@ from finishing at all.`;
         /* And a free run is cover here too - see the note in grounds.service.addParticipant. */
         const org = await tx.organization.findUnique({
           where: { id: ground.organizationId },
-          select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
+          select: WHAT_COVER_READS,
         });
-        if (ground.isFreeGround && !(org && isCovered(org))) {
+        if (ground.isFreeGround && !(org && isCovered(org, new Date(), await theGraceInForce(tx).catch(() => null)))) {
           const taken = await tx.groundParticipant.count({ where: { groundId: ground.id } });
           if (taken >= ground.freeParticipantCap) throw new BadRequestException(freeSeatLimitMessage(ground.freeParticipantCap));
         }
