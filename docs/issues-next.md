@@ -77,3 +77,18 @@ Headline: first experience 1, 2 and 2 (law, sales, field; average 1.7). 91% of f
 - **4a and 4b are not breaches.** Moses's blocker sits in the shared session report of a check-in Joseph is in. "What you said about your work is short…" is fixed text everyone gets, and its wording reads like a verdict: a wording fault.
 - **31:** the privacy judge's brief needs the four rules, so it stops counting a person's own words as leaks.
 - **28 on staging and production (checked read only, 4 November):** LIKELY YES. On staging (237a36837) and main (0f9308542), entry.service.ts (staging :2681, main :2600) writes the setup conversation (`dto.history`) as the lead's session-1 turns and extracts RecordEntry rows from them. reports.service.ts `whereAgainstSuccessAsBuilt` (staging :3215 `whoseLines`) then gives a member every colleague's lines from released sessions, the lead included, with no exclusion for setup. The member reads "{lead} said what success looks like in their own check-in…" (where-you-are-against-what-you-named.ts:213) above her words. `sessionReportAsBuilt` probably shows the same. No staging privacy spec covers it. None of #405 to #409 adds it. Not yet reproduced on a bed.
+
+## From Hafsah's screenshots, 4 November (evidence in ~/Desktop/next-steps/evidence-4-november/), for the next build
+
+The fixed rule this follows is in standards.md: no lines that explain what a page, section or feature does or how it works; no privacy notes; no pages in between. Status lines with real information stay.
+
+| # | Issue | Source | Evidence |
+|---|---|---|---|
+| 39 | The board for someone who hasn't checked in shows a four-line paragraph ("The board puts what everybody said next to each other…"). It should be one line, "Check in first, then you'll see the board.", and the button. Check why the wording sweep's version isn't showing. | Hafsah, 4 November | Her screenshots |
+| 40 | The top of the board: keep "Last updated on Wednesday 4 November at 9:33am." and remove the explanation after it ("The board only changes when something new comes in, such as…"). | Hafsah, 4 November | Screenshot 10.33.33 |
+| 41 | My work: remove "Your own check-in. The report shows where you and the others agree, differ, and what to do next." and "Everything you've said, and what the proof shows. Only you see this page." | Hafsah, 4 November | Her screenshots |
+| 42 | The Check-in tab's page in between goes ("Session 14…", "See what each person said…", "Check in yourself", "Add context", the session list). Check-in opens the conversation directly (item 3b). | Hafsah, 4 November | Her screenshots |
+| 43 | **Bug:** opening a session shows a blank white page first. | Hafsah, 4 November | Screenshot 07.53.23 (/session/10, white page) |
+| 44 | **Bug:** on desktop the board and other pages fill only the left half of the window, leaving the right side empty. | Hafsah, 4 November | Screenshot 10.33.33 |
+| 45 | The tab still says "Context and resources"; it should be "References and resources", as decided. | Hafsah, 4 November | Screenshot 10.33.33 |
+| 46 | Every explainer line and every page in between, on every page, listed for removal in the same build. The list is being made now. | Hafsah, 4 November | To follow |
