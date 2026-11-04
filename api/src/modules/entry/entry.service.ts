@@ -6,7 +6,7 @@ import { askedToFinish, isTheWordFinish } from '../conversation/close-readiness'
 import { aFinishTooSoon } from '../conversation/a-finish-too-soon-is-said-plainly';
 import { endingOnTheClose } from '../conversation/the-close-says-what-comes-next';
 import { withAQuestion as withAQuestionForTheFirstCheckIn } from '../conversation/nobody-is-left-looking-at-a-paragraph';
-import { waitNoLongerThan, HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS } from './a-slow-reading-does-not-hold-the-save';
+import { readUntilItLands } from './a-slow-reading-does-not-hold-the-save';
 import { withoutTheUserLabel } from './the-lead-is-never-the-user';
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
 import { tooManyForTheAnchor, THE_PEOPLE_STEP_RULES } from './the-anchor-people-step';
@@ -45,7 +45,7 @@ import { GroundsService, RECOMMENDED_MOMENT, DEFAULT_TIMELINE_DAYS } from '../gr
 import { EmailService } from '../email/email.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import { ConversationService } from '../conversation/conversation.service';
-import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
+import { GroundworkEvents, CheckInCompletedEvent, AimsReadEvent } from '../../common';
 import {
   ENGINE_RULES,
   buildScenarioPackForParty,
@@ -1853,7 +1853,25 @@ from finishing at all.`;
   }
 
 
-  async report(messages: ChatTurn[], scenario?: string, groundLabel?: string, anchorItems?: Record<string, unknown>, peopleNamed?: string[], leadsOwnWords?: string[]): Promise<EntryReport | null> {
+  /*
+   * THE REPORT BEING WRITTEN FOR A SETUP, BY THE SETUP'S OWN KEY (3 November 2026). The report is the slowest step at the end of
+   * setup, and Save waited for it. Save no longer does: a lead who saves first has this same report, the one her screen asked for,
+   * kept on her check-in when it lands (commitInner), so it is written once and read the same everywhere. Held for ten minutes.
+   */
+  private readonly reportsBeingWritten = new Map<string, Promise<EntryReport | null>>();
+
+  async report(messages: ChatTurn[], scenario?: string, groundLabel?: string, anchorItems?: Record<string, unknown>, peopleNamed?: string[], leadsOwnWords?: string[], setupKey?: string): Promise<EntryReport | null> {
+    const coming = this.writeTheReport(messages, scenario, groundLabel, anchorItems, peopleNamed, leadsOwnWords);
+    const key = setupKey?.trim();
+    if (key) {
+      this.reportsBeingWritten.set(key, coming);
+      const letGo = setTimeout(() => { if (this.reportsBeingWritten.get(key) === coming) this.reportsBeingWritten.delete(key); }, 10 * 60_000);
+      (letGo as any).unref?.();
+    }
+    return coming;
+  }
+
+  private async writeTheReport(messages: ChatTurn[], scenario?: string, groundLabel?: string, anchorItems?: Record<string, unknown>, peopleNamed?: string[], leadsOwnWords?: string[]): Promise<EntryReport | null> {
     messages = withoutBankDetailsAnywhere(messages);
     if (!messages || messages.length === 0) throw new BadRequestException('There was nothing to send, so write a message and try again.');
 
@@ -2736,6 +2754,15 @@ from finishing at all.`;
         where: { id: checkIn.id },
         data: { sessionReport: dto.report as object },
       });
+    } else {
+      /* Saved before her report landed (3 November 2026): the report her screen asked for is kept here when it does, with the role it read. */
+      const theReportComing = dto.setupKey ? this.reportsBeingWritten.get(dto.setupKey.trim()) : undefined;
+      theReportComing?.then(async (report) => {
+        if (!report) return;
+        await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionReport: report as object } });
+        const roleFromTheReport = setterRole ? null : theSettersRole({ report });
+        if (roleFromTheReport) await this.prisma.groundParticipant.updateMany({ where: { groundId: ground.id, userId: initiatorId, partyType: PartyType.INITIATOR }, data: { roleAsDescribed: roleFromTheReport } });
+      }).catch((err) => this.logger.warn(`Could not keep the report that landed after the save on ${ground.id}: ${err?.message}`));
     }
 
     /**
@@ -2874,21 +2901,20 @@ from finishing at all.`;
      * Found by running the whole journey and counting the rows: two objectives where there should
      * have been five. So it runs here, after addParticipant, where the people it needs are real.
      *
-     * Awaited: the report is built moments later and reads the board, and a target that arrives
-     * after it is a target the lead does not see where she would look for it.
+     * AFTER THE SAVE HAS ANSWERED (3 November 2026). It was awaited, so that the board would be built with the targets; the save then
+     * waited about twenty seconds for it (B4 capped that wait at twenty). It runs after the answer now, and when it lands the board is
+     * warmed again with the targets on it (AIMS_READ). A reading that fails is tried again rather than dropped. See
+     * a-slow-reading-does-not-hold-the-save.
      */
     if (dto.history.length > 0) {
-      /* Started now, and waited for as before, but for a while only: a slow model must not hold the save (a-slow-reading-does-not-hold-the-save). */
-      const reading = (async () => {
-        await this.conversation
-          /* From the setup conversation, which is no longer copied onto her session. See
-             extractExpectations: the targets are what she said the check-in is FOR, not her account
-             of the work, so setup is still the right place to read them from. */
-          .extractExpectations(checkIn.id, participant.id, ground.id, dto.history)
-          .catch((err) => this.logger.error(`commit: aims and targets failed for initiator: ${err.message}`));
-      })();
-      const waited = await waitNoLongerThan(reading, HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS);
-      if (!waited.finished) this.logger.warn(`Ground ${ground.id}: the aims were still being read after ${HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS / 1000} seconds, so the save answered and the reading finishes on its own.`);
+      void readUntilItLands(
+        /* From the setup conversation, which is no longer copied onto her session. See extractExpectations: the targets are what
+           she said the check-in is FOR, not her account of the work, so setup is still the right place to read them from. */
+        () => this.conversation.extractExpectations(checkIn.id, participant.id, ground.id, dto.history),
+        (err, tried, willTryAgain) => this.logger.error(`commit: aims and targets failed for initiator on ${ground.id} (try ${tried}): ${err?.message}${willTryAgain ? '; trying again' : '; giving up'}`),
+      ).then((landed) => {
+        if (landed) this.events?.emit?.(GroundworkEvents.AIMS_READ, { groundId: ground.id } satisfies AimsReadEvent);
+      });
     }
 
     const joinToken = (await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { joinToken: true } }))?.joinToken ?? null;

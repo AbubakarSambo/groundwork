@@ -1,7 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { BoardService } from './board.service';
 import { BoardListener } from './board.listener';
-import { AnthropicService } from '../conversation/anthropic.service';
 import { BoardController } from './board.controller';
 import { MyWorkController } from './my-work.controller';
 import { GroundsModule } from '../grounds/grounds.module';
@@ -28,7 +27,7 @@ import { ThePersonsRecordService } from './the-persons-record.service';
    */
   imports: [forwardRef(() => GroundsModule), forwardRef(() => ReportsModule)],
   controllers: [BoardController, MyWorkController, TheLeadsOwnNudgeController],
-  providers: [BoardService, BoardListener, AnthropicService, TheLeadsOwnNudgeService, ThePersonsRecordService],
+  providers: [BoardService, BoardListener, TheLeadsOwnNudgeService, ThePersonsRecordService],
   exports: [BoardService],
 })
 export class BoardModule {}

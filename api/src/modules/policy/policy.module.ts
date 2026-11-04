@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { SuitesModule } from '../suites/suites.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
-import { AnthropicService } from '../conversation/anthropic.service';
 import { PolicyController } from './policy.controller';
 import { PolicyService } from './policy.service';
 
@@ -9,6 +8,6 @@ import { PolicyService } from './policy.service';
 @Module({
   imports: [SuitesModule, KnowledgeModule],
   controllers: [PolicyController],
-  providers: [PolicyService, AnthropicService],
+  providers: [PolicyService],
 })
 export class PolicyModule {}

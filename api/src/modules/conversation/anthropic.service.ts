@@ -401,14 +401,16 @@ export class AnthropicService implements OnApplicationBootstrap {
     const started = Date.now();
     if (this.standIn) return { ok: true, latencyMs: 0, model: this.model, models: this.modelsInUse(), lastRebuildAt: this.lastRebuildAt, error: 'the model stand-in is on (local test only); no model was called' };
     try {
+      /*
+       * ON THE CONVERSATION MODEL, THE CHEAPER OF THE TWO WE USE (3 November 2026). Both are reached through this one
+       * client, project and region, so one answer from either proves the engine is up; this was a reports-model call
+       * with thinking, every five minutes, and now it is the conversation turn's own setting. Real headroom still: a
+       * tiny cap would make a working engine report unhealthy, the trap the maxTokens floor guards against.
+       */
       const res = await this.client.models.generateContent({
-        model: this.model,
+        model: this.conversationModel,
         contents: [{ role: 'user', parts: [{ text: 'Reply with the single word: ok' }] }],
-        // Real headroom, and the LOWEST thinking budget this model accepts
-        // (2.5-pro rejects 0). A tiny cap gets eaten by thinking tokens before
-        // any text is produced, which makes a WORKING engine report unhealthy -
-        // the same trap the maxTokens floor in the constructor guards against.
-        config: { maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: 128 } },
+        config: { maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
       });
       const ok = !!res?.text;
       if (ok) this.noteSuccess();

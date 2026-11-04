@@ -33,6 +33,8 @@ export const GroundworkEvents = {
    * (Kevin's Kilimani deal) were never read. The board listens, and reads the finished sessions' records once.
    */
   KIND_OF_WORK_READ: 'ground.kindOfWorkRead',
+  /** THE AIMS AND TARGETS SETUP NAMED WERE READ, after the save had answered (3 November 2026). The board listens and is warmed with them. */
+  AIMS_READ: 'ground.aimsRead',
   /**
    * A HANDOFF WAS NAMED FOR THE FIRST TIME. Only when it clears the board's substance bar, so a
    * passing remark does not become an alert in somebody else's channel.
@@ -118,6 +120,10 @@ export interface GroundActivatedEvent {
 }
 
 export interface KindOfWorkReadEvent {
+  groundId: string;
+}
+
+export interface AimsReadEvent {
   groundId: string;
 }
 

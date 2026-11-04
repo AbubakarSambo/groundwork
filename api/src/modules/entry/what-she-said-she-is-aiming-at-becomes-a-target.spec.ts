@@ -38,16 +38,17 @@ describe('what she said she is aiming at becomes a target', () => {
     expect(src).toMatch(/extractExpectations\(checkIn\.id, participant\.id, ground\.id, dto\.history\)/);
   });
 
-  it('and waits for it, so the report and the board are not built before the targets exist', () => {
-    /* Look back from the call itself: there is an earlier `await this.conversation` on this path
-       (ensureNextSession), and the first match is not the one this spec is about. */
+  /* Changed 3 November 2026: the save answers before the reading (Hafsah's speed brief); the board is built again when it lands. */
+  it('and runs it after the save has answered, telling the board when the targets have landed', () => {
     const at = src.indexOf('.extractExpectations(checkIn.id, participant.id, ground.id, dto.history)');
     expect(at).toBeGreaterThan(-1);
-    expect(src.slice(Math.max(0, at - 400), at)).toMatch(/await this\.conversation/);
+    expect(src.slice(Math.max(0, at - 400), at)).toMatch(/void readUntilItLands\(/);
+    expect(src.slice(at, at + 600)).toMatch(/GroundworkEvents\.AIMS_READ/);
   });
 
-  it('and a failure there never loses the session', () => {
+  /* Changed 3 November 2026: a failure is tried again rather than caught and dropped; readUntilItLands never throws. */
+  it('and a failure there never loses the session, and is tried again', () => {
     const at = src.indexOf('extractExpectations(checkIn.id');
-    expect(src.slice(at, at + 260)).toMatch(/\.catch\(/);
+    expect(src.slice(Math.max(0, at - 400), at)).toMatch(/readUntilItLands\(/);
   });
 });
