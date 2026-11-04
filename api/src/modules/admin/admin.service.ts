@@ -1,4 +1,6 @@
 import { THE_ORGANISATION_SWITCHES, isAnOrganisationSwitch } from './the-organisation-switches';
+import { DAILY_USAGE_KEY, DailyUsageSetting, isAnHour, theDailyUsageSetting, theHourSaid } from '../back-office/the-daily-usage-summary';
+import { recipients, theBackOfficeRoster } from '../back-office/the-team-is-told';
 import {
   Injectable,
   NotFoundException,
@@ -233,6 +235,28 @@ export class AdminService implements OnApplicationBootstrap {
       update: { value: email, updatedBy: adminUserId },
     });
     return theDeliveryAlertAddress(this.prisma);
+  }
+
+  /**
+   * THE DAILY USAGE SUMMARY (back-office/the-daily-usage-summary.ts): whether it goes and at which hour in Lagos. It goes to the
+   * back-office roster, the same people told about each new sign-up, so the page says who that is today rather than asking for an address.
+   */
+  async getDailyUsage(): Promise<DailyUsageSetting & { to: string[]; hours: string[] }> {
+    const [setting, roster] = await Promise.all([theDailyUsageSetting(this.prisma), theBackOfficeRoster(this.prisma)]);
+    return { ...setting, to: recipients(roster), hours: Array.from({ length: 24 }, (_, h) => theHourSaid(h)) };
+  }
+
+  async setDailyUsage(body: { on?: unknown; hour?: unknown }, adminUserId: string): Promise<DailyUsageSetting & { to: string[]; hours: string[] }> {
+    const now = await theDailyUsageSetting(this.prisma);
+    if (body?.on !== undefined && typeof body.on !== 'boolean') throw new BadRequestException('Say whether the daily usage summary is on or off.');
+    if (body?.hour !== undefined && !isAnHour(body.hour)) throw new BadRequestException('The hour is a whole number from 0 to 23, in Lagos time.');
+    const value = { on: (body?.on as boolean | undefined) ?? now.on, hour: (body?.hour as number | undefined) ?? now.hour };
+    await this.prisma.platformSetting.upsert({
+      where: { key: DAILY_USAGE_KEY },
+      create: { key: DAILY_USAGE_KEY, value, updatedBy: adminUserId },
+      update: { value, updatedBy: adminUserId },
+    });
+    return this.getDailyUsage();
   }
 
   async getCorrectionWindow(): Promise<{ days: number; default: number; max: number }> {

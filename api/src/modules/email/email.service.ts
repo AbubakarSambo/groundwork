@@ -1254,6 +1254,20 @@ export class EmailService implements OnModuleInit {
   }
 
   /**
+   * THE DAILY USAGE SUMMARY (back-office/the-daily-usage-summary.ts). Groundwork's own email to the back-office team: counts and
+   * organisation names, built and escaped there, with its own text part.
+   */
+  async sendTheDailyUsageSummary(to: string, subject: string, html: string, text: string): Promise<{ sent: boolean }> {
+    try {
+      await this.sendEmail({ to, subject, html: this.layout(html), text }, undefined, 'sendTheDailyUsageSummary');
+      return { sent: true };
+    } catch (err: any) {
+      this.logger.error(`The daily usage summary to ${to} did not send: ${err?.message}`);
+      return { sent: false };
+    }
+  }
+
+  /**
    * THE LEAD'S WEEKLY LETTER (anchor piece 29). The words are built in the-leads-weekly-letter.ts from
    * counts and first names only; here they are escaped, wrapped and posted. The way to stop it is the
    * footer every mail we decide to send carries, and a lead who used it is not written to.

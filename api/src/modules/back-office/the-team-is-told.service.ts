@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { GroundworkEvents, OrgSignedUpEvent, ApiAccessAskedEvent, CallAskedEvent } from '../../common/events';
-import { isOneOfUs, recipients, RosterAccount, WHAT_A_CALL_IS_ABOUT } from './the-team-is-told';
+import { isOneOfUs, recipients, theBackOfficeRoster, RosterAccount, WHAT_A_CALL_IS_ABOUT } from './the-team-is-told';
 
 /**
  * THE TEAM IS TOLD. Three events, one mail each, to everybody on the back-office roster. Recipients
@@ -21,11 +21,8 @@ export class TheTeamIsToldService {
     private readonly config: ConfigService,
   ) {}
 
-  private async roster(): Promise<RosterAccount[]> {
-    const people = await this.prisma.opsPerson.findMany({ where: { active: true }, select: { userId: true, accounts: { select: { userId: true } } } });
-    const userIds = people.flatMap((p) => [p.userId, ...p.accounts.map((a) => a.userId)]).filter((id): id is string => !!id);
-    if (!userIds.length) return [];
-    return this.prisma.user.findMany({ where: { id: { in: userIds }, isActive: true }, select: { email: true, organizationId: true } });
+  private roster(): Promise<RosterAccount[]> {
+    return theBackOfficeRoster(this.prisma);
   }
 
   private app(path: string) {

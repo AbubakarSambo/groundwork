@@ -585,3 +585,32 @@ GROUP BY o.id, o.name, plan, p.member_cap
 HAVING COUNT(u.id) > COALESCE(p.member_cap, CASE WHEN o.subscription_plan IS NULL AND o.free_plan IS NULL THEN 5 END)
 ORDER BY over_by DESC;
 ```
+
+## The daily usage summary (branch `wip/daily-usage-email`, Hafsah, 2 November 2026)
+
+**What it does.** Once a day, at 8 in the morning in Lagos unless somebody changes it, the API emails a usage summary to the same people the new sign-up email goes to: everybody on the back-office roster (the back office, under People) whose account is connected and active. It lists every organisation that has signed up, newest first, with its plan and free time, its check-ins, the people on them, its completed sessions, its last session and whether it reached a fifth session; and the totals: sign-ups, organisations with a first and a fifth session, paying organisations and recorded payments, completed sessions, sessions started and not finished, people who completed a session (two or more, five or more), this week's active people, check-ins and organisations, and who was still checking in 4 and 8 weeks after their first session, each split between client organisations and Coamana's own. Since yesterday: new sign-ups and sessions completed. Test, demo and staff organisations and Groundwork's own team are left out by the same rules as the YC production SQL (`api/src/modules/back-office/who-the-usage-counts.ts`), and the organisations left out are named at the end. It holds counts and organisation names only: no conversation content, and no member's name, address or phone number. Every query is a read.
+
+**The steps, in order.**
+
+1. **Backup first**, as for every release.
+2. **Merge and deploy.** No migration, no new environment variable, no secret, no script. With no settings row it is on, at 8 in the morning, Lagos time.
+3. **Check who it will go to (read only):**
+
+   ```sql
+   SELECT DISTINCT lower(u.email) AS goes_to
+   FROM ops_people p
+   LEFT JOIN ops_person_accounts a ON a.person_id = p.id
+   JOIN users u ON u.id IN (p.user_id, a.user_id)
+   WHERE p.active AND u.is_active;
+   ```
+
+   It should hold `hjumare@gmail.com`. If it does not, Hafsah connects that account to herself in the back office, under People (the same step that makes the new sign-up email reach her). Anybody else listed also receives it, as they receive the new sign-up email.
+4. **Nothing to switch on.** To turn it off or move the hour: Admin, then System, then "Daily usage summary" (or `PATCH /api/v1/admin/daily-usage` with `{"on": false}` or `{"hour": 7}`, the hour 0 to 23 in Lagos time). It is kept in the `platform_settings` row `daily_usage_summary` as `{"on": true, "hour": 8}`.
+
+**How to check the first email arrived.** After 8 in the morning in Lagos on the day after the deploy:
+- `SELECT to_address, subject, outcome, created_at FROM notifications WHERE sender = 'sendTheDailyUsageSummary' ORDER BY created_at DESC LIMIT 5;` shows one row per person on the roster, with an outcome of `sent`, and a subject starting "Groundwork usage on".
+- `SELECT value, updated_at FROM platform_settings WHERE key = 'job.daily-usage-summary.ran_for';` shows that Lagos day, which is what stops a second copy of the API sending it twice.
+- The API logs "Daily usage summary sent to 1 on the back-office team." Nothing in the log or the email holds what anybody said.
+- If nothing came: a roster with no connected account logs nothing and sends nothing (step 3); a switched-off setting reads `"on": false`.
+
+**To undo it without a code rollback:** turn it off at Admin, then System. Rolling the code back leaves the settings row, which the old code does not read.

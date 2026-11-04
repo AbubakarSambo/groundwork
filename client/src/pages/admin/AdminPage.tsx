@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData, PANEL_RANGES, type PanelRange, type Rate, type ActivationFunnel, type ActivationStage, type ActivationNowBucket, type ActivationEmailOutcome, type ParticipantActivation, type ParticipantReachedStep, type ParticipantStuckBucket } from '@/api/prompts'
-import { adminApi, type PricingPlanRow, type InboundMessage, type CallRequestRow, type CoachingBatch } from '@/api/admin'
+import { adminApi, type DailyUsage, type PricingPlanRow, type InboundMessage, type CallRequestRow, type CoachingBatch } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { coachApi, type CoachRequestRow } from '@/api/coach'
@@ -213,6 +213,54 @@ function DeliveryAlertRow() {
       ) : (
         <button className="btn sec sm" type="button" onClick={() => { setValue(data.from === 'here' ? data.email ?? '' : ''); setEditing(true) }} style={{ flexShrink: 0 }}>{data.email ? 'Change' : 'Set an address'}</button>
       )}
+    </div>
+  )
+}
+
+/**
+ * THE DAILY USAGE SUMMARY (api back-office/the-daily-usage-summary.ts). It goes to the back-office team, the same people told about each
+ * new sign-up, so there is no address to type here: the row says who it goes to, and lets it be turned off or moved to another hour.
+ */
+export function DailyUsageRow() {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['admin-daily-usage'], queryFn: adminApi.getDailyUsage })
+  const [err, setErr] = useState<string | null>(null)
+  const save = useMutation({
+    mutationFn: (body: { on?: boolean; hour?: number }) => adminApi.setDailyUsage(body),
+    onSuccess: (res: DailyUsage) => {
+      qc.setQueryData(['admin-daily-usage'], res)
+      setErr(null)
+      toast.success(res.on ? `The daily usage summary now goes at ${res.hours[res.hour]}, Lagos time.` : 'The daily usage summary is turned off now.')
+    },
+    onError: (e: any) => setErr(e?.response?.data?.message ?? e.message),
+  })
+  if (!data) return null
+  const who = data.to.length
+    ? `It goes to ${data.to.join(', ')}, everybody on the back-office team with a connected account, who are also told about each new sign-up.`
+    : 'Nobody on the back-office team has a connected account yet, so nobody receives it. Connect an account in the back office, under People.'
+  return (
+    <div style={{ ...C, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700 }}>Daily usage summary</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
+          {data.on
+            ? `Every day at ${data.hours[data.hour]}, Lagos time, an email lists every organisation that has signed up, with its usage, and the totals. It holds counts and organisation names only. `
+            : 'It is turned off, so no usage summary is sent. '}
+          {who}
+        </div>
+        {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        {data.on && (
+          <select className="gwui-input" aria-label="The hour the daily usage summary goes, Lagos time" value={data.hour} disabled={save.isPending}
+            onChange={e => save.mutate({ hour: Number(e.target.value) })} style={{ width: 'auto' }}>
+            {data.hours.map((said, h) => <option key={h} value={h}>{said}</option>)}
+          </select>
+        )}
+        <button className="btn sec sm" type="button" disabled={save.isPending} onClick={() => save.mutate({ on: !data.on })}>
+          {data.on ? 'Turn it off' : 'Turn it on'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -992,7 +1040,10 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
 
       <section>
         <div style={SL}>Delivery</div>
-        <DeliveryAlertRow />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <DeliveryAlertRow />
+          <DailyUsageRow />
+        </div>
       </section>
 
       <section>

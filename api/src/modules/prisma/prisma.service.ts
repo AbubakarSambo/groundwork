@@ -126,6 +126,8 @@ export const CronLock = {
   HELD_WHATSAPP: 920_015,
   /** The daily delivery alert to Groundwork's own address. See email/the-daily-delivery-alert.cron.ts. */
   DELIVERY_ALERT: 920_016,
+  /** The daily usage summary to the back-office team. See back-office/the-daily-usage-summary.cron.ts. */
+  DAILY_USAGE: 920_017,
 } as const;
 
 /**

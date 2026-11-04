@@ -1,0 +1,41 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`the email, as Hafsah reads it reads like this 1`] = `
+"This is how Groundwork has been used, up to 8 in the morning on Tuesday 3 November, Lagos time.
+
+Organisations
+3 organisations have signed up so far (1 more since yesterday), 2 at client organisations and 1 at Coamana's own.
+2 of them have completed a first session (1 more since yesterday), and 1 has reached a fifth session (1 more since yesterday).
+1 organisation pays, as far as Groundwork's own records say, and 1 is on a free trial or free time now. $25.00 has been recorded as paid so far. Stripe is the full record of money.
+
+Sessions and people
+10 sessions have been completed so far (3 more since yesterday), 8 at client organisations and 2 at Coamana's own.
+3 sessions were started and not finished. 1 is still open, 1 was declined after it began, and 1 was closed by the clock after the person had answered part of it. The ones closed by the clock are also counted as completed, as the product counts them.
+4 people have completed a check-in (1 more since yesterday), 3 at client organisations and 2 at Coamana's own. Somebody at both is counted once in the total.
+Of them, 2 people have completed two or more sessions (no change since yesterday), and 1 person has completed five or more (1 more since yesterday).
+This week, since Monday 2 November, 2 people completed a session, in 2 check-ins at 2 organisations.
+Of the 1 person whose first session was at least 4 weeks ago, 1 completed another session 4 weeks or more after it.
+Nobody's first session was 8 weeks ago or more yet.
+
+Every organisation that has signed up, newest first (3)
+
+Coamana Field Team
+This organisation is new since yesterday. This is one of Coamana's own organisations. It signed up on 2 November 2026 and has not chosen a plan or paid.
+It has 1 check-in with 2 people on them, and 2 sessions have been completed.
+The last session was on 2 November 2026.
+It has not reached a fifth session yet.
+
+Drop Access
+This is a client organisation. It signed up on 1 October 2026 and has a free trial on the Small Team plan until 30 November 2026.
+It has 1 check-in with 3 people on them, and 8 sessions have been completed.
+The last session was on 2 November 2026.
+It has reached a fifth session.
+
+Lipa Kiosks
+This is a client organisation. It signed up on 1 September 2026 and pays for the Starter plan.
+It has not made a check-in yet.
+
+4 organisations are left out of everything above, because they are for tests or demos or are Groundwork's own. They are Jumare Ventures, Drop Access (test), Kijani Repairs and Demo Organisation. Groundwork's own team are also left out as people wherever they took part.
+
+This email goes to everybody on the back-office team with a connected account, the same people who are told about each new sign-up. It holds counts and organisation names only, and nothing anybody said. To turn it off or change the hour, go to Admin, then System, then Daily usage summary."
+`;
