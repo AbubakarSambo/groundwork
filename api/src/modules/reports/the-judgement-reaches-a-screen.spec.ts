@@ -21,7 +21,7 @@ describe('one answer, fitted when its person finishes', () => {
        stated plainly, and a fit asks which of these fields they told us in whatever words. */
     expect(fn).toMatch(/role: TurnRole\.PERSON/);
     expect(fn).toMatch(/theirAnswerFitted:/);
-    expect(fn).toMatch(/\{ fast: true, thinkingBudget: 0 \}/);
+    expect(fn).toMatch(/\{ fast: true \}/);
   });
 
   /* Nothing about one person's own completion may fail over the report's arithmetic. */

@@ -74,8 +74,10 @@ describe('and the answer is actually kept', () => {
      * nowhere - which is the failure mode this codebase has watched several times: a rule that
      * exists, is followed, and is then dropped by the thing downstream of it.
      */
-    const calls = SERVICE.match(/await this\.writeTheirOwnPromises\(/g) ?? [];
+    const calls = SERVICE.match(/this\.writeTheirOwnPromises\(/g) ?? [];
     expect(calls.length).toBe(2);
+    /* 3 November 2026: the lead's are written at the same time as her expectations of others, and still waited for. */
+    expect(SERVICE).toMatch(/await herOwnPromises;/);
   });
 
   it('and still keeps expectations of others separate from promises of your own', () => {

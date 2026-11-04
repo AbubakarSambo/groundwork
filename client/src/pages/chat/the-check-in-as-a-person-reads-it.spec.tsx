@@ -3,7 +3,7 @@ import { render, screen, fireEvent, within, act } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ChatPage } from './ChatPage'
-import { conversationApi } from '@/api/conversation'
+import { conversationApi, streamMessage } from '@/api/conversation'
 import { documentsApi } from '@/api/documents'
 import { groundsApi } from '@/api/grounds'
 
@@ -187,6 +187,23 @@ describe('suggested answers under the question', () => {
     await waitFor(() => expect(conversationApi.send).toHaveBeenCalledWith('ci1', 'Not yet'))
     expect(await findByRole('button', { name: 'They said January' }, { timeout: 6000 })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Not yet' })).toBeNull()
+  })
+
+  /* 3 November 2026: on the stream the reply comes first and its suggested answers follow it, so the reply is not held for them. */
+  it('reads the streamed reply first, then its suggested answers as buttons when they follow', async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
+      turns: [{ id: 't1', role: 'AI', content: OPENING, suggestedAnswers: ['Not yet'] }],
+    })
+    ;(streamMessage as any).mockImplementationOnce(async (_id: string, _m: string, h: any) => {
+      h.onDelta('So they will buy after this quarter ends. Did they give you a date?')
+      h.onDone({ reply: 'So they will buy after this quarter ends. Did they give you a date?', sessionComplete: false })
+      h.onSuggestions(['They said January'])
+    })
+    renderChat()
+    fireEvent.click(await findByRole('button', { name: 'Not yet' }, { timeout: 6000 }))
+    expect(await findByText('So they will buy after this quarter ends. Did they give you a date?')).toBeTruthy()
+    expect(await findByRole('button', { name: 'They said January' })).toBeTruthy()
   })
 
   /**
