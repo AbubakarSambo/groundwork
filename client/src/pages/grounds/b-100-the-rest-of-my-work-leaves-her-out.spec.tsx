@@ -24,12 +24,21 @@ import { groundsApi } from '@/api/grounds'
  *
  * All three are fixed the same way as B-077/B-078/B-080: a managing-only lead is left out of a
  * count or a list of people who check in, not relabelled within it.
+ *
+ * 4 November 2026: since Release 1B's switch went, My work is the B7 page for a lead too, drawn from GET
+ * /grounds/:id/my-work, and "Your reports" is the server's (my-work.ts reads a person's check-ins with `isSetup: false`, so
+ * the set-up conversation is never one of them). The third case now checks that the page draws the server's reports and
+ * never builds "Session 1, your own" from the ground's own setup row; "You check in when you choose" is read where it is
+ * now, under "Your sessions" on People and setup.
  */
 let currentUser: { id: string; role: string; email: string }
 vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: currentUser, isAuthenticated: true }),
 }))
-vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
+vi.mock('@/api/grounds', async () => {
+  const { SERVED_TO_THE_LEAD } = await import('./my-work-served.fixture')
+  return { groundsApi: { get: vi.fn(), myWork: vi.fn().mockResolvedValue(SERVED_TO_THE_LEAD) } }
+})
 vi.mock('@/api/participantRequests', () => ({ participantRequestsApi: { list: vi.fn().mockResolvedValue([]) } }))
 vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn() } }))
 vi.mock('@/api/documents', () => ({ documentsApi: { list: vi.fn() } }))
@@ -84,11 +93,17 @@ describe('a lead who only manages: the rest of My work leaves her out, same as "
     expect(screen.queryByText(/once all three people are in/)).toBeNull()
   })
 
-  it('reads "Nothing on record yet.", not a report, on her own "Your reports"', async () => {
+  it('reads the server\'s "Your reports", never a report built from her setup row, on her own My work', async () => {
     ;(groundsApi.get as any).mockResolvedValue(groundWithAManagingLead)
     renderPage('record')
-    expect(await screen.findByText('You check in when you choose. Use Check in yourself any time.')).toBeTruthy()
-    expect(screen.queryByText('Your reports')).toBeNull()
+    expect(await screen.findByText('No reports yet.')).toBeTruthy()
+    expect((groundsApi.myWork as any).mock.calls[0][0]).toBe('g1')
     expect(screen.queryByText('Session 1, your own')).toBeNull()
+  })
+
+  it('reads "You check in when you choose" under "Your sessions" on People and setup', async () => {
+    ;(groundsApi.get as any).mockResolvedValue(groundWithAManagingLead)
+    renderPage('settings')
+    expect(await screen.findByText('You check in when you choose. Use Check in yourself any time.')).toBeTruthy()
   })
 })
