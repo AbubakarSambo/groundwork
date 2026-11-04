@@ -167,8 +167,11 @@ export function EachAccountSideBySide({ b }: { b: Any }) {
 /** "What’s known, believed and unknown": what a document shows, what somebody said, and what is still to find out. */
 export function KnownBelievedUnknown({ b, unknown, leadFirstName }: { b: Any; unknown: string[]; leadFirstName: string | null }) {
   const all: Any[] = (b.whoOwnsWhat ?? []).flatMap((w: Any) => (w.items ?? []).map((i: Any) => ({ ...i, who: w.name })))
-  const known = all.filter((i) => i.mark === 'proven' && i.type !== 'INTENT' && /said,/.test(i.text ?? '')).map((i) => wordsOf(i.text))
-  const believed = all.filter((i) => i.mark !== 'proven' && /said,/.test(i.text ?? '') && (i.type === 'WORRY' || i.type === 'TENSION' || i.type === 'PROGRESS')).map((i) => `${wordsOf(i.text)} (${i.who === 'You' ? 'your' : `${firstNameOf(i.who)}’s`} word; nothing on record backs it yet)`)
+  /* Known is what proof backs: a document behind the line, or a claim the record settles anywhere (the server's `settled`, read from
+     the one pattern layer). Everything else is somebody's word, said as that, never judged here as unbacked (fix plan, group 4). */
+  const backed = (i: Any) => i.mark === 'proven' || i.settled === true
+  const known = all.filter((i) => backed(i) && i.type !== 'INTENT' && /said,/.test(i.text ?? '')).map((i) => wordsOf(i.text))
+  const believed = all.filter((i) => !backed(i) && /said,/.test(i.text ?? '') && (i.type === 'WORRY' || i.type === 'TENSION' || i.type === 'PROGRESS')).map((i) => `${wordsOf(i.text)} (${i.who === 'You' ? 'you said it' : `${firstNameOf(i.who)} said it`})`)
   if (!known.length && !believed.length && !unknown.length) return null
   const { answered } = whoAnsweredThisRound(b)
   const people: Any[] = (b.participants ?? []).filter((x: Any) => !x.managingOnly)

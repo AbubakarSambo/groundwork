@@ -55,7 +55,7 @@ describe('Akinyi’s first board, the first screen', () => {
       at('“Westgate is waiting on a quote.”')
       at('“The Westgate quote went last week.”')
       const unknown = at('What’s known, believed and unknown')
-      at('Westgate wants the quote by Friday. (Jane’s word; nothing on record backs it yet)')
+      at('Westgate wants the quote by Friday. (Jane said it)')
       expect(q < a && a < differ && differ < unknown).toBe(true)
       /* Her own setup words are not on the first screen ahead of these. */
       const assumes = t.indexOf('Every rep closes two a month.')

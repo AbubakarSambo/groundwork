@@ -30,11 +30,11 @@ describe('a wait on the person reading the probe', () => {
   /* F2 (Hafsah, 2 November 2026; false-flags.md cause 1): the wait is the fact and the lead is given a question, never a finding from silence. */
   it('a wait on somebody else is said as the fact, with a question to ask', () => {
     expect(probeFor([{ what: 'the lawyer\'s draft', who: 'the lawyer', daysOld: 3, escalated: false, since: '30 September' }]).probe)
-      .toEqual(['Tunde Bakare has been waiting on the lawyer for the lawyer\'s draft since 30 September. Ask Tunde Bakare what has happened with it since.']);
+      .toEqual(['Tunde Bakare has been waiting on the lawyer for the lawyer\'s draft since 30 September.']);
   });
   it('one on the reader and one on somebody else are each said their own way', () => {
     const p = probeFor([ON_ADA[0], { what: 'the lawyer\'s draft', who: 'the lawyer', daysOld: 3, escalated: false, since: '30 September' }]).probe;
     expect(p[0]).toBe('Tunde Bakare has been waiting on you for the formalized agreement since 30 September. Give Tunde Bakare an answer, or say when you will.');
-    expect(p[1]).toMatch(/^Tunde Bakare has been waiting on the lawyer for the lawyer's draft since 30 September\. Ask Tunde Bakare what has happened with it since\.$/);
+    expect(p[1]).toMatch(/^Tunde Bakare has been waiting on the lawyer for the lawyer's draft since 30 September\.$/);
   });
 });

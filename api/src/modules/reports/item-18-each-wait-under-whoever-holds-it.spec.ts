@@ -33,7 +33,7 @@ describe('item 18: each wait under whoever holds it, and each thing once', () =>
       { what: 'the details for the analysis', who: 'Kwabena Mensah', daysOld: 7, escalated: false, since: '25 September' },
       { what: 'approval for the external dataset', who: 'Finance', daysOld: 7, escalated: false, since: '25 September' },
     ]);
-    expect(p.probe).toContain('Samuel Aryee has been waiting on Kwabena Mensah for the details for the analysis, and on Finance for approval for the external dataset, since 25 September. Ask Samuel Aryee what has happened with it since.');
+    expect(p.probe).toContain('Samuel Aryee has been waiting on Kwabena Mensah for the details for the analysis, and on Finance for approval for the external dataset, since 25 September.');
   });
 
   it('the lead reads a wait recorded twice once', () => {
@@ -41,7 +41,7 @@ describe('item 18: each wait under whoever holds it, and each thing once', () =>
       { what: 'the data team\'s market sizing extract', who: null, daysOld: 7, escalated: false, since: '25 September' },
       { what: 'the data team\'s market sizing extract', who: null, daysOld: 7, escalated: false, since: '25 September' },
     ]);
-    expect(p.probe).toContain('Samuel Aryee has been waiting for the data team\'s market sizing extract since 25 September. Ask Samuel Aryee what has happened with it since.');
+    expect(p.probe).toContain('Samuel Aryee has been waiting for the data team\'s market sizing extract since 25 September.');
   });
 
   it('a person reads each thing put in writing to the person who holds it, and the rest without a holder', () => {

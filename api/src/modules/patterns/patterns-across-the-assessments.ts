@@ -113,6 +113,9 @@ export interface TheRecordAcrossTime {
   /** What the next check-in carries for this person, and the one owner of it: what the record cannot settle, and what they said
    *  last time to confirm (each wait still open, each promise of their own). Their own items only, never a judgement. */
   toAskNextTime: string[];
+  /** THE CLAIMS THE RECORD SETTLES: each report of a claim that proof anywhere on the record backs, by check-in and in their words.
+   *  The one owner of "is this backed": the board's lines read it (board.service, whoOwnsWhat). */
+  settled?: { checkInId: string; words: string }[];
 }
 
 export interface AnAssessmentSeen {
@@ -230,7 +233,11 @@ function theClaimsRead(seen: AnAssessmentSeen[]) {
   for (const e of theEvidenceOnTheRecord(seen)) for (const k of e.proves) { const r = claims.get(root(k)); if (r) r.proved = true; }
   const all = [...claims.values()];
   const needed = all.filter((c) => c.claim.needsProof === true);
+  /* Every report of a claim the record settles, in the check-in it was said in and in their words: what the board's lines read. */
+  const settled = answered(seen).flatMap((s) => ((s.assessment.claims ?? []) as AnItem[])
+    .filter((c) => claims.get(root(ownKey(s, c)))?.proved && text(c.words)).map((c) => ({ checkInId: s.checkInId, words: text(c.words) })));
   return {
+    settled,
     proved: all.filter((c) => c.proved),
     neededAndProved: needed.filter((c) => c.proved),
     askedAndNotProved: needed.filter((c) => !c.proved && c.claim.proofAsked === true),
@@ -432,7 +439,7 @@ export function theRecordAcrossTime(
   const bias = isTheLead ? null : theLeadsBias({ participantId, name }, leadsView, patterns);
   if (bias) patterns.push(bias);
   for (const p of patterns) p.who = firstNameOf(name);
-  return { patterns, role, focus, toAskNextTime: isTheLead ? [] : whatToAskNextTime(name, seen) };
+  return { patterns, role, focus, toAskNextTime: isTheLead ? [] : whatToAskNextTime(name, seen), settled: theClaimsRead(seen).settled };
 }
 
 /** The lead's view of one person, read from her setup assessment: what she said about them there, and the role she gave them. */

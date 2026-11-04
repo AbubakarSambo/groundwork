@@ -102,6 +102,8 @@ describe('claims rarely proved counts only claims that needed proof, whose proof
       a.documents = [item('r1.documents.0', 'The delivery note was signed.', { from: [3], proves: 'The sale.' })];
     }));
     expect(record(xs).patterns.map((p) => p.key)).not.toContain('claims-rarely-proved');
+    /* The board reads the same settled claims, by check-in and in their words, so it never calls the line unbacked. */
+    expect(record(xs).settled).toEqual([{ checkInId: 'ci-1', words: 'I closed r1.claims.0' }, { checkInId: 'ci-2', words: 'I closed r1.claims.0' }]);
   });
 
   it('a document from another message of the same check-in proves nothing it does not name', () => {
