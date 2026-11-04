@@ -3191,8 +3191,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
         organizationId: true,
         initiatorId: true,
         createdByUserId: true,
-        /* Whether a colleague's words about their target may be read (their-words-about-a-target-follow-the-setting). */
-        whoSeesTargets: true,
         /*
          * RE-REVIEW PRIVACY BUG (SCREENS WORKSPACE): `scenario` AND `peersVisibleToEachOther`
          * WERE NEVER SELECTED, SO `peersAreNamedOn` BELOW COULD NOT SEE WHETHER THIS CHECK-IN
