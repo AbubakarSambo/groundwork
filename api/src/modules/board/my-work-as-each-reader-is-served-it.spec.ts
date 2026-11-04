@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { readMyWork, myWorkFrom, THE_LEADS_NOTE_SHOWS_ON_THEIR_OWN_MY_WORK, type MyWorkServed } from './my-work';
 import { THE_SEVEN_BEHAVIOURS } from '../patterns/the-seven-behaviours';
+import { anAssessmentHolding } from '../conversation/an-assessment-for-a-spec';
 
 /**
  * MY WORK, AS EACH READER IS SERVED IT (Release 1B, pull request 3 of 3). Proved at the server, on the sales check-in of the B7
@@ -21,7 +22,7 @@ const HELP_MERCY = 'Find the decision maker at each school before quoting.';
 const TEAM_COACHING = 'Book the next step before you leave each visit.';
 const KEVINS_PROMISE = 'I will visit two shops in Westlands tomorrow.';
 
-function theSalesCheckIn(over: { switchOn?: boolean; thin?: boolean; judgementsOff?: boolean } = {}) {
+function theSalesCheckIn(over: { switchOn?: boolean; thin?: boolean; judgementsOff?: boolean; claims?: any[][] } = {}) {
   const person = (id: string, userId: string, first: string, last: string) => ({
     id, userId, email: `${first.toLowerCase()}@dropaccess.test`, nameGiven: null, partyType: id === 'p-grace' ? 'INITIATOR' : 'PARTICIPANT',
     managingOnly: id === 'p-grace', createdAt: at('01'), user: { firstName: first, lastName: last },
@@ -68,10 +69,14 @@ function theSalesCheckIn(over: { switchOn?: boolean; thin?: boolean; judgementsO
     { kind: 'COACHING', text: TEAM_COACHING, audience: 'EVERYONE', aboutParticipantId: null, createdAt: at('03') },
     { kind: 'HELP_WITH', text: HELP_MERCY, audience: 'LEAD_ONLY', aboutParticipantId: 'p-mercy', createdAt: at('04') },
   ];
-  const recordEntries = over.thin ? [] : [
-    { participantId: 'p-mercy', checkInId: 'c-mercy-10', text: 'Greenfield signed the order today.', createdAt: at('14', 10) },
-    { participantId: 'p-mercy', checkInId: 'c-mercy-9', text: 'Ruiru Academy moved to Qualified.', createdAt: at('13', 10) },
-  ];
+  /* What Mercy said in two check-ins, as their assessments hold it: the one source My work reads her own lines from. */
+  const said = (checkInId: string, sessionNumber: number, ...claims: any[]) => {
+    const a = anAssessmentHolding({});
+    return { participantId: 'p-mercy', sessionReport: { ...a, about: { ...a.about, checkInId, groundId: 'g-sales', participantId: 'p-mercy', who: 'Mercy', sessionNumber }, claims: claims.map((c, i) => ({ id: `r1.claims.${i}`, from: [1], whoMaySee: 'the people in this check-in', saidWordForWord: true, proof: 'said', ...(typeof c === 'string' ? { words: c } : c) })) } };
+  };
+  const assessments = over.thin ? [] : over.claims
+    ? [said('c-mercy-9', 9, ...over.claims[0]), said('c-mercy-10', 10, ...over.claims[1])]
+    : [said('c-mercy-9', 9, 'Ruiru Academy moved to Qualified.'), said('c-mercy-10', 10, 'Greenfield signed the order today.')];
   const reads: string[] = [];
   const prisma: any = {
     organization: { findUnique: async () => ({ release1bTabsOn: over.switchOn !== false, personJudgementsOn: !over.judgementsOff }) },
@@ -79,10 +84,13 @@ function theSalesCheckIn(over: { switchOn?: boolean; thin?: boolean; judgementsO
     groundCommitment: { findMany: async ({ where }: any) => { reads.push(`commitments:${where.participantId}`); return commitments.filter((c) => c.participantId === where.participantId); } },
     groundDependency: { findMany: async ({ where }: any) => { reads.push(`handoffs:${where.OR[0].fromParticipantId}`); const pid = where.OR[0].fromParticipantId; return deps.filter((d) => d.fromParticipantId === pid || d.onParticipantId === pid); } },
     workMention: { findMany: async ({ where }: any) => mentions.filter((m) => m.aboutParticipantId === where.aboutParticipantId) },
-    checkIn: { findMany: async ({ where }: any) => { reads.push(`check-ins:${where.participantId}`); return checkIns.filter((c) => c.participantId === where.participantId); } },
+    checkIn: { findMany: async ({ where, select }: any) => {
+      /* The one reader of the assessments asks for their columns; a person's own lines are read only for the person. */
+      if (select?.sessionReport) { reads.push(`own-words:${where.participantId.in.join(',')}`); return assessments.filter((r) => where.participantId.in.includes(r.participantId)); }
+      reads.push(`check-ins:${where.participantId}`); return checkIns.filter((c) => c.participantId === where.participantId);
+    } },
     groundContextItem: { findMany: async ({ where }: any) => lines.filter((l) => where.OR.some((o: any) => o.kind === l.kind && (o.aboutParticipantId === undefined || o.aboutParticipantId === l.aboutParticipantId) && (!o.audience || o.audience === l.audience))) },
     groundObjective: { findMany: async ({ where }: any) => (where.ownerParticipantId === 'p-mercy' && !over.thin ? [{ name: 'Dispensers sold', target: 40, count: 4, ownerParticipantId: 'p-mercy', isADecisionAboutAPerson: false }] : []) },
-    recordEntry: { findMany: async ({ where }: any) => { reads.push(`own-words:${where.participantId}`); return recordEntries.filter((e) => e.participantId === where.participantId && where.checkInId.in.includes(e.checkInId)); } },
   };
   const row = (id: string, name: string, stage: string, more: any = {}) => ({ id, kind: 'deal', name, stage, ownerParticipantId: 'p-mercy', owner: 'Mercy', due: null, fields: {}, from: 'said', ...more });
   const mercysDeals = over.thin ? [] : [
@@ -116,6 +124,17 @@ function theSalesCheckIn(over: { switchOn?: boolean; thin?: boolean; judgementsO
 const allText = (x: unknown) => JSON.stringify(x);
 
 describe('My work, as each reader is served it', () => {
+
+  it('round 51: what the read says cannot be true is never offered back on her own reports, and her unproven sale reads as said', async () => {
+    const c = theSalesCheckIn({ claims: [
+      [{ words: 'I sold 10,000 freezers today.', cannotBeTrue: 'Far more than one sales rep could sell in a day.' }, 'I sold 30 units today.'],
+      [{ words: 'I will deliver the Carrefour freezers on 20 October.', cannotBeTrue: '20 October had already passed when it was said.' }],
+    ] });
+    const page = (await readMyWork(c.prisma, c.board, { groundId: 'g-sales', userId: 'u-mercy' }, NOW)) as MyWorkServed;
+    expect(page.reports.items.slice(0, 2).map((r) => r.line)).toEqual(['Session 10.', 'You said, “I sold 30 units today.”']);
+    expect(allText(page)).not.toContain('10,000 freezers');
+    expect(allText(page)).not.toContain('20 October');
+  });
 
   it('Mercy reads her own page, in her own words for her, with the seven behaviours in the library’s order and words', async () => {
     const c = theSalesCheckIn();
@@ -164,7 +183,7 @@ describe('My work, as each reader is served it', () => {
     expect(page.coaching.keep).toEqual(['Doing what you say you’ll do.', 'Adding proof when you say something is done.', 'Helping your teammates.', 'Specific, on-time check-ins.']);
     expect(page.checkIns).toMatchObject({ heading: 'Your check-ins', due: 10, done: 10, onTime: 10, specific: 9 });
     expect(page.reports.heading).toBe('Your reports');
-    expect(page.reports.items.slice(0, 2).map((r) => r.line)).toEqual(['“Greenfield signed the order today.”', '“Ruiru Academy moved to Qualified.”']);
+    expect(page.reports.items.slice(0, 2).map((r) => r.line)).toEqual(['You said, “Greenfield signed the order today.”', 'You said, “Ruiru Academy moved to Qualified.”']);
     expect(page.items.heading).toBe('Your deals');
     expect(page.items.note).toBe('5 open');
     expect(page.items.rows.find((r) => r.name === 'Westgate Deli')).toMatchObject({ stage: 'Contacted', next: 'Nothing booked', proof: 'None yet' });

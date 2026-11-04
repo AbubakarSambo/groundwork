@@ -2684,7 +2684,9 @@ export class BoardService {
           const line = isInitiator
             ? theirLine((said as any[]).filter((l) => l.checkInId === c.id).map((l) => ({ text: cleanText(String(l.text ?? '')), type: l.type ?? null, createdAt: l.createdAt })), deals.filter((d) => d.ownerParticipantId === row.participantId).map((d) => String(d.name ?? '')))
             : null;
-          return { ...row, line: line ?? CHECKED_IN_TODAY, checkedInToday: true };
+          /* What they said today is worded as said, by name, as their last check-in's line is: their word, never a fact the board states (Hafsah, 4 November 2026). */
+          const first = String(row.who ?? '').trim().split(/\s+/)[0] || 'They';
+          return { ...row, line: line ? `${first} said, “${line}”` : CHECKED_IN_TODAY, checkedInToday: true };
         });
       }
     }

@@ -157,7 +157,8 @@ describe('with Release 1\'s sales board on', () => {
   it('point 10: Bisi reads each person\'s line from today\'s check-in, and the kit\'s words for one who has not checked in today', async () => {
     const b = await boardAs(run(true), ...BISI);
     const today = new Map((b.eachPersonToday ?? []).map((r: any) => [r.participantId, r]));
-    expect((today.get('p-kwame') as any).line).toBe('I met Mr. Kariuki from Juja Hardware.');
+    /* Worded as said, by name (Hafsah, 4 November 2026): his word, never a fact the board states. */
+    expect((today.get('p-kwame') as any).line).toBe('Kwame said, “I met Mr. Kariuki from Juja Hardware.”');
     expect((today.get('p-kwame') as any).checkedInToday).toBe(true);
     expect((today.get('p-ngozi') as any).line).toBe('Hasn’t checked in today.');
     expect((today.get('p-ngozi') as any).checkedInToday).toBe(false);

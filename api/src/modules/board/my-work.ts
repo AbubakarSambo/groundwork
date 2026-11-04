@@ -21,6 +21,7 @@ import { thePraiseFromYourLead } from './the-praise-from-your-lead';
 import { withTheirCountNow } from './an-aim-is-counted-now';
 import { thePromisesOf, thePromisesCounted } from '../grounds/the-promises-counted-once';
 import { theCheckInsCounted } from './a-day-they-checked-in';
+import { theFactsOnRecord, type AFact } from '../conversation/the-facts-on-record';
 
 /**
  * MY WORK, AS EACH READER IS SERVED IT (Release 1B, pull request 3 of 3; Hafsah's references-and-my-work.md of 17 October 2026,
@@ -524,7 +525,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
         items: [...done].reverse().slice(0, 3).map((c) => ({
           checkInId: c.id,
           when: aDayWithItsName(c.completedAt ?? c.availableFrom ?? r.now, r.timeZone, r.now),
-          line: lineOf.get(c.id) ? `“${String(lineOf.get(c.id)).trim().replace(/^[“"]|[”"]$/g, '')}”` : `Session ${c.sessionNumber}.`,
+          /* What they said, worded as said: their word, not a fact the page states. */
+          line: lineOf.get(c.id) ? `You said, “${String(lineOf.get(c.id)).trim().replace(/^[“"]|[”"]$/g, '')}”` : `Session ${c.sessionNumber}.`,
         })),
         emptySays: 'Your own report for each check-in will show here once you finish one.',
       }
@@ -779,17 +781,19 @@ export async function readMyWork(
     prisma.groundCommitment?.findMany?.({ where: { groundId: ground.id, participantId: { not: pid } }, select: { text: true } }).catch(() => []) ?? [],
   ]);
 
-  /* Their own first line in each finished check-in, for the person alone: a person's own report is private, always. */
+  /*
+   * Their own first line in each finished check-in, for the person alone: a person's own report is private, always. Read through the one
+   * reader of the assessments, as the person reads their own, so how each thing stands comes with it: what the read says cannot be true
+   * as said is never offered back to them (Hafsah, 4 November 2026; theStandingOf in the-assessment.ts).
+   */
   const done = (checkIns as any[]).filter((c) => c.status === 'COMPLETED');
+  const doneIds = new Set(done.map((c) => c.id));
   const ownLines = reader === 'self' && done.length
-    ? ((await prisma.recordEntry?.findMany?.({
-        where: { participantId: pid, checkInId: { in: done.map((c) => c.id) }, disputedAt: null },
-        select: { checkInId: true, text: true, createdAt: true },
-        orderBy: { createdAt: 'asc' },
-      }).catch(() => [])) ?? []).reduce((acc: { checkInId: string; text: string }[], l: any) => {
-        if (l.checkInId && !acc.some((x) => x.checkInId === l.checkInId) && String(l.text ?? '').trim()) acc.push({ checkInId: l.checkInId, text: String(l.text).trim() });
+    ? ((await theFactsOnRecord(prisma, { groundId: ground.id, reader: { kind: 'the person', participantId: pid } }).catch(() => [] as AFact[]))
+      .reduce((acc: { checkInId: string; text: string }[], f) => {
+        if (doneIds.has(f.checkInId) && !f.inSetup && !acc.some((x) => x.checkInId === f.checkInId) && f.words.trim()) acc.push({ checkInId: f.checkInId, text: f.words.trim() });
         return acc;
-      }, [])
+      }, []))
     : [];
 
   const helpWith = (reader === 'lead' || THE_LEADS_NOTE_SHOWS_ON_THEIR_OWN_MY_WORK)
