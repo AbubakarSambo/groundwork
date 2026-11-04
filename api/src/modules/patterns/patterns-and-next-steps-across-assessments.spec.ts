@@ -92,6 +92,25 @@ describe('claims rarely proved counts only claims that needed proof, whose proof
     ];
     expect(record(xs).patterns.map((p) => p.key)).not.toContain('claims-rarely-proved');
   });
+
+  /* Round 38: Mercy's "Sold 4 units to Kenya Breweries" came with "The delivery note was signed." in the same message, and Joseph's
+     Paicho training with "I have the signed attendance sheet". The read listed the proof, never linked it, and both were shown as
+     claims not proved. Proof given with the claim settles it. */
+  it('proof given with the claim, in the same message of the same check-in, settles it', () => {
+    const xs = [1, 2].map((n) => seen(n, (a) => {
+      a.claims = [claim('r1.claims.0', { proofAsked: true, from: [3] })];
+      a.documents = [item('r1.documents.0', 'The delivery note was signed.', { from: [3], proves: 'The sale.' })];
+    }));
+    expect(record(xs).patterns.map((p) => p.key)).not.toContain('claims-rarely-proved');
+  });
+
+  it('a document from another message of the same check-in proves nothing it does not name', () => {
+    const xs = [1, 2].map((n) => seen(n, (a) => {
+      a.claims = [claim('r1.claims.0', { proofAsked: true, from: [3] })];
+      a.documents = [item('r1.documents.0', 'A photo of the shop.', { from: [7] })];
+    }));
+    expect(holds(xs).map((p) => p.key)).toEqual(['claims-rarely-proved']);
+  });
 });
 
 describe('strengths, load, role and focus', () => {
