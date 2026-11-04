@@ -13,6 +13,7 @@ import { TheOwedWritesCron } from './the-owed-writes.cron';
 import { AComplaintIsToldListener } from './a-complaint-is-told.listener';
 import { WorkspaceModule } from '../workspace/workspace.module';
 
+import { TheOpeningsPreparedAgainListener } from './the-openings-prepared-again.listener';
 @Module({
   /* WorkspaceModule: the lead digest now also posts "people have a check-in waiting" to a
      connected channel — see remind.service.ts. */
@@ -22,7 +23,7 @@ import { WorkspaceModule } from '../workspace/workspace.module';
    * `KnowledgeService` is a provider rather than an imported module because it has none - it is
    * registered directly wherever it is used, the same way the public API does it.
    */
-  providers: [ConversationService, ConversationContextService, RemindService, KnowledgeService, TheOwedWritesCron, AComplaintIsToldListener],
+  providers: [ConversationService, ConversationContextService, RemindService, KnowledgeService, TheOwedWritesCron, AComplaintIsToldListener, TheOpeningsPreparedAgainListener],
   exports: [ConversationService],
 })
 export class ConversationModule {}
