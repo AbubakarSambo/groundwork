@@ -1,4 +1,4 @@
-import { theCopiedSetupIn, withTheCopiedMessagesAsSetup } from './setup-words-copied-into-the-leads-first-check-in';
+import { anOlderCopiedSetup, theCopiedSetupIn, wasCopiedInOneGo, withTheCopiedMessagesAsSetup } from './setup-words-copied-into-the-leads-first-check-in';
 
 /* The one-time script finds only a setup whose turns were copied, and marks only those messages as setup. */
 const column = (messages: any[], howItEnded = 'setup saved', isTheLead = true) => ({ kind: 'assessment', version: 1, about: { howItEnded, isTheLead }, messages, setup: {} });
@@ -18,5 +18,19 @@ describe('setup words copied into the lead\'s first check-in, found and undone',
   it('marks only the copied messages as setup', () => {
     const c = column([{ n: 1, where: 'setup', turnId: null }, { n: 2, where: 'check-in', turnId: 't1' }]);
     expect((withTheCopiedMessagesAsSetup(c, [2]) as any).messages.map((m: any) => m.where)).toEqual(['setup', 'setup']);
+  });
+});
+
+/* A session 1 saved before the assessment existed: the staging script's case, kept in the one script. */
+describe('an older copied setup, with no assessment on it', () => {
+  const at = (ms: number) => ({ createdAt: new Date(1_700_000_000_000 + ms) });
+  it('is found when every turn was written in one go', () => {
+    expect(anOlderCopiedSetup({ sessionReport: { summary: 'the report she read' }, turns: [at(0), at(1), at(2)] })).toBe(true);
+    expect(wasCopiedInOneGo([new Date(0), new Date(999)])).toBe(true);
+  });
+  it('is not found where she really talked, where nothing was copied, or where an assessment is on it', () => {
+    expect(anOlderCopiedSetup({ sessionReport: null, turns: [at(0), at(8000)] })).toBe(false);
+    expect(anOlderCopiedSetup({ sessionReport: null, turns: [] })).toBe(false);
+    expect(anOlderCopiedSetup({ sessionReport: column([]), turns: [at(0), at(1)] })).toBe(false);
   });
 });

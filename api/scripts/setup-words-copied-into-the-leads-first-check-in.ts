@@ -10,9 +10,15 @@
  *   2. in its stored assessment, each message that came from a copied turn is marked as setup, so the facts read from it stay with
  *      whoever runs the check-in, like every setup fact now.
  *
- * Which check-ins: the lead's session 1 whose assessment ended "setup saved" and holds a check-in message with a turn behind it that
- * was not typed in setup. Since this fix, the only turns on such a session are her own update, marked as said in setup, so a check-in
- * saved since is never touched.
+ * Which check-ins, two kinds:
+ *   - the lead's session 1 whose assessment ended "setup saved" and holds a check-in message with a turn behind it that was not typed
+ *     in setup. Since this fix, the only turns on such a session are her own update, marked as said in setup, so a check-in saved
+ *     since is never touched;
+ *   - a lead's session 1 saved before the assessment existed (no assessment on it), whose turns were all written within one second of
+ *     each other. A copy is written in one go; a conversation she really had takes seconds a turn, because every reply waits for the
+ *     model. Only her record lines there are removed; there are no messages to mark. (This is the case the staging script of
+ *     4 November removed; after that has run, this finds no lines there and changes nothing.)
+ * Safe to run twice: a second run finds nothing to change. No model is called.
  *
  * Nothing changes without --yes. Run first without it and read what it would do.
  *   npx ts-node -P tsconfig.json --transpile-only scripts/setup-words-copied-into-the-leads-first-check-in.ts
@@ -39,6 +45,23 @@ export function theCopiedSetupIn(checkIn: { id: string; groundId: string; sessio
   return copied.length ? { checkInId: checkIn.id, groundId: checkIn.groundId, copied } : null;
 }
 
+/** A copy is written in one go, so every turn falls within this of the first. A real exchange cannot: each reply waits for the model. */
+export const A_COPY_IS_WRITTEN_WITHIN_MS = 1000;
+
+/** Whether a session's turns were copied in one go, from their times. */
+export function wasCopiedInOneGo(turnTimes: readonly (Date | string | number)[]): boolean {
+  if (!turnTimes.length) return false;
+  const ms = turnTimes.map((t) => new Date(t).getTime());
+  return Math.max(...ms) - Math.min(...ms) < A_COPY_IS_WRITTEN_WITHIN_MS;
+}
+
+/** Whether a session 1 was saved before the assessment existed and its turns were copied: no assessment on it, every turn in one go. */
+export function anOlderCopiedSetup(checkIn: { sessionReport: unknown; turns: { createdAt: Date | string }[] }): boolean {
+  const a = checkIn.sessionReport as any;
+  if (a && a.kind === 'assessment') return false;
+  return wasCopiedInOneGo(checkIn.turns.map((t) => t.createdAt));
+}
+
 /** The column with each copied message marked as setup. */
 export function withTheCopiedMessagesAsSetup(column: unknown, copied: number[]): unknown {
   const a = column as any;
@@ -51,23 +74,31 @@ async function main() {
   const yes = process.argv.includes('--yes');
   const rows = await prisma.checkIn.findMany({
     where: { sessionNumber: 1, participant: { partyType: 'INITIATOR' } },
-    select: { id: true, groundId: true, sessionReport: true },
+    select: { id: true, groundId: true, participantId: true, isSetup: true, sessionReport: true, turns: { select: { createdAt: true } } },
   });
-  const found = rows.map((r) => ({ row: r, copied: theCopiedSetupIn(r) })).filter((x) => x.copied);
   console.log(yes ? 'Changing:' : 'Would change (add --yes to do it):');
+  let found = 0;
   let lines = 0;
-  for (const { row, copied } of found) {
-    const entries = await prisma.recordEntry.findMany({ where: { checkInId: row.id }, select: { id: true, type: true, text: true } });
+  for (const row of rows) {
+    const copied = theCopiedSetupIn(row);
+    /* Never the anchor's own setup row, which is not her check-in. */
+    const older = !copied && !row.isSetup && anOlderCopiedSetup(row);
+    if (!copied && !older) continue;
+    /* On an older copy only her own lines, as the staging script removed; on an assessed copy every line, each read from a copied turn. */
+    const where = copied ? { checkInId: row.id } : { checkInId: row.id, participantId: row.participantId };
+    const entries = await prisma.recordEntry.findMany({ where, select: { id: true, type: true, text: true } });
+    if (older && !entries.length) continue;
+    found += 1;
     lines += entries.length;
-    console.log(`\nCheck-in ${row.id} (ground ${row.groundId}): ${entries.length} record line(s) to remove, ${copied!.copied.length} message(s) to mark as setup.`);
+    console.log(`\nCheck-in ${row.id} (ground ${row.groundId}): ${entries.length} record line(s) to remove${copied ? `, ${copied.copied.length} message(s) to mark as setup` : ''}.`);
     for (const e of entries) console.log(`  - ${e.type}: ${e.text.slice(0, 160)}`);
     if (!yes) continue;
     await prisma.$transaction([
-      prisma.recordEntry.deleteMany({ where: { checkInId: row.id } }),
-      prisma.checkIn.update({ where: { id: row.id }, data: { sessionReport: withTheCopiedMessagesAsSetup(row.sessionReport, copied!.copied) as any } }),
+      prisma.recordEntry.deleteMany({ where }),
+      ...(copied ? [prisma.checkIn.update({ where: { id: row.id }, data: { sessionReport: withTheCopiedMessagesAsSetup(row.sessionReport, copied.copied) as any } })] : []),
     ]);
   }
-  console.log(`\n${found.length} check-in(s), ${lines} record line(s). ${yes ? 'Done.' : 'Nothing was changed.'}`);
+  console.log(`\n${found} check-in(s), ${lines} record line(s). ${yes ? 'Done.' : 'Nothing was changed.'}`);
   await prisma.$disconnect();
 }
 
