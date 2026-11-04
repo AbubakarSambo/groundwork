@@ -4,6 +4,7 @@ import { theSettersRole } from '../../common/a-role-or-nothing';
 import { askedToFinish, isTheWordFinish } from '../conversation/close-readiness';
 import { endingOnTheClose } from '../conversation/the-close-says-what-comes-next';
 import { stripCloseMarker } from '../conversation/prompt-library';
+import { theAssessmentIn, theColumnWith } from '../conversation/the-assessment';
 import { withAQuestion as withAQuestionForTheFirstCheckIn } from '../conversation/nobody-is-left-looking-at-a-paragraph';
 import { readUntilItLands } from './a-slow-reading-does-not-hold-the-save';
 import { withoutTheUserLabel } from './the-lead-is-never-the-user';
@@ -2739,7 +2740,12 @@ from finishing at all.`;
         const theTeam = (onIt ?? []).map((p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim()).filter(Boolean);
         const made = await this.report(dto.history, dto.scenario, dto.groundLabel, undefined, theTeam.length ? theTeam : undefined, dto.leadsOwnWords)
           .catch((err: Error) => { this.logger.warn(`The setup's report could not be made with its team on ${ground.id}: ${err?.message ?? err}`); return null; });
-        if (made) await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionReport: made as object } }).catch(() => undefined);
+        /* Kept inside her assessment where it is written already (the-assessment.ts, theColumnWith), so the report never overwrites it. */
+        if (made) {
+          const before = await Promise.resolve().then(() => this.prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { sessionReport: true } })).catch(() => null);
+          const assessed = theAssessmentIn(before?.sessionReport);
+          await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionReport: (assessed ? theColumnWith(assessed, made) : made) as object } }).catch(() => undefined);
+        }
         /* The lead is on the board already, reading "Your full report is ready in a moment." (Hafsah, 3 November evening): the same event
            warms it again now the report is there, and the board stops saying it is coming. */
         this.events?.emit?.(GroundworkEvents.SETUP_READ, { groundId: ground.id } satisfies SetupReadEvent);
