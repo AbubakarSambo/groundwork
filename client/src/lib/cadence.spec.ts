@@ -29,7 +29,7 @@ describe('cadence is named the same way everywhere', () => {
      * international readers. The bar is "reads instantly for everyone", not "is
      * correct English", so the label is now the one nobody has to pause on.
      */
-    expect(cadenceLabel('FORTNIGHTLY')).toBe('Every 2 weeks')
+    expect(cadenceLabel('FORTNIGHTLY', null)).toBe('Every 2 weeks')
   })
 
   it('excludes the lead-triggered cadence from the timed list, because it has no interval', () => {

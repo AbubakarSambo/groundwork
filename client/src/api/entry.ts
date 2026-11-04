@@ -163,6 +163,8 @@ export interface OnboardResult {
       goals?: string[]; brief?: string;
       /** The name the lead gave in so many words ("Call it ..."). Absent when they did not. */
       name?: string;
+      /** Twice or more a week: the weekdays she named ("Monday and Thursday"), 0 = Sunday. Absent when she named none. */
+      cadenceDays?: number[];
       /** An address the lead typed beside a name, kept with that name. */
       peopleEmails?: Record<string, string>;
       // What they actually said about rhythm and length. Absent when they did
@@ -191,11 +193,16 @@ export interface OnboardResult {
      * invented answer - but they are told, and they add the people afterwards.
      */
     needsPeople: boolean;
+    /** The kind of check-in the server read from their first message, when nothing was picked: the one reading of it. */
+    scenario?: string;
 }
 
 // ── Entry API ─────────────────────────────────────────────────────────────────
 
 export const entryApi = {
+  /** A team typed one per line, read by the server's one reader (POST /entry/people-on-lines). Nothing is stored. */
+  peopleOnLines: (pasted: string): Promise<{ name: string | null; email: string | null; phone: string | null }[]> =>
+    apiClient.post('/entry/people-on-lines', { pasted }).then((r) => (r.data?.data ?? r.data)?.people ?? []),
   /**
    * `POST /entry/opener`: `reply` is the opening words, as before. `source` and `thePeopleStep`
    * ride on the same call for a scenario that has its own (today the anchor's, with its switch on)
@@ -203,6 +210,10 @@ export const entryApi = {
    * the anchor through the ordinary routes, route by route". `source` is not read by any caller yet
    * (nothing used it off `/entry/anchor-start` either); `thePeopleStep` is, by `EntryChatPage.tsx`.
    */
+  /** How long a team member's check-in takes, from the server's one owner (lib/how-long-setup-takes.ts reads it). */
+  aCheckInTakes: () =>
+    apiClient.get<{ takes: string }>('/entry/a-check-in-takes').then(r => r.data.takes),
+
   opener: (scenario?: string, source?: string) =>
     apiClient.post<{ reply: string; source?: string; thePeopleStep?: ThePeopleStepRules }>('/entry/opener', { scenario, source }).then(r => r.data),
 
@@ -289,10 +300,8 @@ export const entryApi = {
     anchorItems?: Record<string, unknown>,
     /* What she said in setup, in her own words, so her report knows her own role and each person's part (15 October). */
     leadsOwnWords?: string[],
-    /* Which setup this is, the key its save carries, so a save pressed before the report lands keeps this same report (3 November 2026). */
-    setupKey?: string,
   ) =>
-    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel, peopleNamed, anchorItems, ...(leadsOwnWords?.length ? { leadsOwnWords } : {}), ...(setupKey ? { setupKey } : {}) }).then(r => r.data),
+    apiClient.post<{ report: EntryReport | null }>('/entry/report', { messages, scenario, groundLabel, peopleNamed, anchorItems, ...(leadsOwnWords?.length ? { leadsOwnWords } : {}) }).then(r => r.data),
 
   commit: (payload: {
     groundLabel: string
@@ -307,6 +316,8 @@ export const entryApi = {
     lastCheckInBy?: string
     /** "When I end it": no planned length and no planned last session. */
     runsUntilEnded?: boolean
+    /** "Check in on your own first, invite later": the invitations are kept ready until the lead presses "Send N invitations" on Today. */
+    inviteLater?: boolean
     /** Which days people work, 0 = Sunday. Left out when nobody said. */
     workingDays?: number[]
     inviteNote?: string
@@ -314,6 +325,8 @@ export const entryApi = {
     /** RESTORED (nothing-removed-screens.md item 2): the day check-ins land on - a weekday (0 =
         Sunday) for WEEKLY/FORTNIGHTLY, a day of the month for MONTHLY. Omit to leave it unset. */
     cadenceAnchorDay?: number
+    /** Twice or more a week: the weekdays it meets on, as setup's reading heard them. */
+    cadenceDays?: number[]
     history: ChatTurn[]
     report?: EntryReport | null
     /** A colleague picked from the list is sent by `colleagueId`, never by address (U.4). */
@@ -325,6 +338,8 @@ export const entryApi = {
       note?: string
       /** "Name + email" (anchor section 13): what the lead calls this person, asked beside their email. Anchor draft only. */
       displayName?: string
+      /** The phone number given beside them in the setup; the server keeps it once they are on the check-in. */
+      phone?: string
     }[]
     // Coordinator/lead path: the committer sets the ground up for someone else
     // to run. The lead is invited to confirm and becomes the initiator; the
@@ -349,6 +364,8 @@ export const entryApi = {
       failedInvites?: string[]
       /* Why each one failed, in the API's own words. See entry.service.ts. */
       whyInvitesFailed?: { email: string; because: string }[]
+      /* A number given in the setup that did not keep, with why; the person is on the check-in either way. */
+      numbersNotKept?: { email: string; because: string }[]
     }>(opts?.ifThereIsOne ? '/entry/commit?ifThereIsOne=1' : '/entry/commit', payload).then(r => r.data),
 
   // Pre-auth update of the server-side draft, authorized by the draftToken
@@ -356,6 +373,12 @@ export const entryApi = {
   // still mirrors the same data for the same-browser case).
   patchDraft: (draftToken: string, payload: Record<string, unknown>) =>
     apiClient.patch<{ ok: true }>('/entry/draft', { draftToken, payload }).then(r => r.data),
+
+  /* The setup a signed-in lead has not saved yet, kept on the server so any device leads back to it (Hafsah's blocker, 31 October 2026).
+     The same record /start restores; `null` throws it away. */
+  unfinished: () => apiClient.get<{ setup: Record<string, unknown> | null }>('/entry/unfinished').then(r => r.data.setup),
+  keepUnfinished: (setup: Record<string, unknown> | null) =>
+    apiClient.put<{ ok: true }>('/entry/unfinished', { setup }).then(r => r.data),
 }
 
 /**

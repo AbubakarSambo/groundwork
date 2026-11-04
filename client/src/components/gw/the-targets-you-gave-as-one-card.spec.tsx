@@ -5,7 +5,7 @@ import { WaitingForYouToConfirm } from './ThePlanPage'
 import { groundsApi } from '@/api/grounds'
 
 vi.mock('@/api/grounds', () => ({
-  groundsApi: { planCardsWaiting: vi.fn(), confirmPlanCard: vi.fn(), planCardNotNow: vi.fn(), editPlanCard: vi.fn(), correctATargetCard: vi.fn() },
+  groundsApi: { planCardsWaiting: vi.fn(), confirmPlanCard: vi.fn(), planCardNotNow: vi.fn(), editPlanCard: vi.fn() },
 }))
 vi.mock('@/api/documents', () => ({ documentsApi: { list: vi.fn().mockResolvedValue([]) } }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() } }))
@@ -51,11 +51,11 @@ describe('Grace reads the targets she gave as one card', () => {
   })
 
   it('Edit corrects one target: what it counts and its number', async () => {
-    (groundsApi.correctATargetCard as any).mockResolvedValue({})
+    (groundsApi.editPlanCard as any).mockResolvedValue({})
     wrap(<WaitingForYouToConfirm groundId="g1" />)
     fireEvent.click((await screen.findAllByRole('button', { name: 'Edit' }))[1])
     fireEvent.change(screen.getByLabelText('The number'), { target: { value: '45' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(groundsApi.correctATargetCard).toHaveBeenCalledWith('g1', 'h2', { what: 'units sold by 30 October', number: 45 }))
+    await waitFor(() => expect(groundsApi.editPlanCard).toHaveBeenCalledWith('g1', 'h2', { fields: { what: 'units sold by 30 October', number: 45 } }))
   })
 })

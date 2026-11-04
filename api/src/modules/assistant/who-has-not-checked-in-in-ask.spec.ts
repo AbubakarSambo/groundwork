@@ -47,7 +47,8 @@ describe('who has not checked in, asked by an admin who runs nothing', () => {
     ROLE.value = 'ADMIN';
     RUNS_NOTHING.value = true;
     const said = await ask(svc().service, 'Who has not checked in on Sales team, Q4?');
-    expect(said).toContain('Juma and Neema have not yet');
+    /* Changed 3 November (F5 part 3): Ask says the one count's own sentence, each person missing named once in their state. */
+    expect(said).toContain('Neema has started and not finished yet, and Juma hasn’t started yet.');
     RUNS_NOTHING.value = true;
     ROLE.value = 'LEAD';
     expect(await ask(svc().service, 'Who has not checked in?')).toContain('You do not run a check-in that is going yet');
@@ -69,13 +70,14 @@ describe('who has not checked in', () => {
 
   it('names the people on the check-in asked about, as the board counts them', async () => {
     const said = await ask(svc().service, 'Who has not checked in on Sales team, Q4?');
-    expect(said).toContain('In "Sales team, Q4", 2 of 4 people have checked in for the second check-in, and Juma and Neema have not yet.'.replace('2 of 4', 'two of four'));
+    expect(said).toContain('In "Sales team, Q4", 2 of 4 have checked in; Neema has started and not finished yet, and Juma hasn’t started yet.');
     expect(said).not.toContain('Warehouse rollout');
   });
 
   it('answers for every check-in she runs when none is named', async () => {
     const said = await ask(svc().service, 'Who has not checked in?');
-    expect(said).toContain('Juma and Neema have not yet');
+    /* Changed 3 November (F5 part 3): Ask says the one count's own sentence, each person missing named once in their state. */
+    expect(said).toContain('Neema has started and not finished yet, and Juma hasn’t started yet.');
     expect(said).toContain('Warehouse rollout');
   });
 

@@ -55,14 +55,16 @@ describe('progress', () => {
   /* Changed 28 Sep 2026, Hafsah: the numbers people read count who is in the round by the check-in
      header's rule, so somebody whose invitation ran out is still one of the people. The round-closing
      rule still stops waiting on them: they are not in waitingOn. */
-  it('still counts somebody whose invitation ran out, and no longer waits on them', () => {
+  /* CHANGED 1 NOVEMBER 2026: the one count counts everyone on the check-in, as the prototype does ("5 of 6 have checked in today; Omar
+     hasn't yet", approved by Hafsah), so somebody whose invitation ran out is counted and named as not answered yet, on every page alike. */
+  it('still counts somebody whose invitation ran out, and names them as not answered yet', () => {
     const people = [
       { id: 'p1', userId: 'u1' },
       { id: 'p2', invitedAt: new Date('2026-06-01'), inviteTokenExpiresAt: new Date('2026-09-01') },
     ];
     const g = atAGlance({ ...base, people, thisRound: [{ participantId: 'p1', status: 'COMPLETED' }] } as any, NOW);
     expect(g.progress.ofPeople).toBe(2);
-    expect(g.progress.waitingOn).toEqual([]);
+    expect(g.progress.waitingOn).toEqual(['p2']);
     const live = [{ id: 'p1', userId: 'u1' }, { id: 'p2', invitedAt: new Date('2026-09-20'), inviteTokenExpiresAt: new Date('2026-12-20') }];
     expect(atAGlance({ ...base, people: live, thisRound: [{ participantId: 'p1', status: 'COMPLETED' }] } as any, NOW).progress.ofPeople).toBe(2);
   });

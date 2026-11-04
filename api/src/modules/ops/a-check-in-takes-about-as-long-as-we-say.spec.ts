@@ -1,10 +1,12 @@
-import { readFileSync } from 'fs';
-import { join } from 'path';
 import { METRICS_BY_KEY } from './a-number-you-can-open';
 import { BOARDS_BY_KEY } from './what-each-person-opens-to';
 import { medianOf, saysTheTruth, whatTheMedianSays, WHAT_WE_SAY_MINUTES, A_FAIR_RANGE } from './a-check-in-takes-about-as-long-as-we-say';
 
-/** "A check-in takes about ten minutes" is said on the site and in the product. This is what measures it. */
+/**
+ * How long a check-in takes is said in the product from one owner (common/how-long-a-check-in-takes.ts). This is what measures it.
+ * CHANGED 3 November 2026: the number is the owner's and no longer one of its own, so the fair range is half to twice the owner's
+ * number. CHANGED again 3 November 2026 (night): the owner says ten, Hafsah's fixed decision, so the examples are judged against ten.
+ */
 describe('the median', () => {
   it('is the middle value, or the mean of the two middles, or nothing over nothing', () => {
     expect(medianOf([3, 9, 12])).toBe(9);
@@ -48,10 +50,10 @@ describe('the metric', () => {
     expect(r.says).toMatch(/Median 11 minutes over 3 sessions/);
   });
 
+  /* CHANGED 3 November 2026: GroundChat.tsx no longer says the length (it failed before this change); the sentence the product says is the check-in's opening line. */
   it('the sentence the product says matches the number the metric is judged against', () => {
-    const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    const chat = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'client', 'src', 'components', 'gw', 'GroundChat.tsx'), 'utf8'));
-    expect(chat).toContain('about ten minutes');
+    const { THE_CHECK_IN_LINE } = require('../conversation/the-opening-line');
+    expect(THE_CHECK_IN_LINE).toBe('This takes about ten minutes. You can stop any time with End session.');
     expect(WHAT_WE_SAY_MINUTES).toBe(10);
   });
 });

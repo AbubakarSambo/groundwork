@@ -27,7 +27,7 @@ describe('how busy or moving, as each reader reads it', () => {
 
 describe('what to recognise, for whoever runs it', () => {
   const probe = (more: Partial<Parameters<typeof whatToProbe>[0]>) => whatToProbe({
-    who: 'Blessing Okafor', participantId: 'p-blessing', role: 'Warehouse manager', answeredThisSession: true, patterns: [],
+    who: 'Blessing Okafor', participantId: 'p-blessing', role: 'Warehouse manager', answeredThisSession: true,
     waitingOn: [{ what: "the partner's truck schedule", who: 'the logistics partner', daysOld: 2, escalated: false, since: '1 October' }],
     holdingUp: [], concrete: [], documentsAttached: 0, sessionNumber: 1, totalSessions: 1, scenario: 'CONTRACT_RENEWAL', ...more,
   });

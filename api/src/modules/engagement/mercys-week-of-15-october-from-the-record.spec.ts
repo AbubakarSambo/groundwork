@@ -13,7 +13,7 @@ describe("Mercy's week", () => {
       waitingOnYou: [],
     })!;
     expect(w.lines).toEqual([
-      'Hello Mercy. Here is your week in Groundwork. Only you can read this.',
+      'Hello Mercy. Here is your week.',
       'You kept the one thing you said you would do since Monday 12 October, "Call Mrs. Njeri tomorrow to get the order signed".',
       'You are waiting for "the Tuskys Westgate samples" from Joseph.',
     ]);

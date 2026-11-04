@@ -24,6 +24,8 @@ import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 import { useEffect } from 'react'
 import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-needs-you-does-not'
+import { useAnUnfinishedSetup } from '@/pages/auth/entry-handover'
+import { TheSetupNotSavedYet } from '@/components/gw/TheSetupNotSavedYet'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -134,15 +136,8 @@ export function TodayPage() {
   /* Screen fault 4 (final walk): never claim "You have not checked in yet." beside "Nothing needs
      you right now." - see the-greeting-line-does-not-claim-what-needs-you-does-not.ts. */
   const greetingLine = todayGreetingLine(data?.line, needs.length)
-  /* A SUITE ITEM GOES TO THE QUEUE, NOT STRAIGHT TO THE BOARD (live walk at a hundred people, fault
-     2): with a hundred people waiting on one approver, the board behind "/suite/leave" or
-     "/suite/spend" is the whole organisation's, not filtered to this one thing. The queue
-     (`/suite/queue`) is filtered to what waits for this reader, so "Look at it"/"Look at them" on an
-     approval item goes there instead, with `?suite=` set so the right tab opens. */
-  const whereItGoes = (n: Need) =>
-    n.action.to === '/suite/leave' ? '/suite/queue?suite=leave'
-      : n.action.to === '/suite/spend' ? '/suite/queue?suite=spend'
-        : n.action.to
+  /* Where each item goes is the server's `to` alone (waiting-for-you-to-approve.ts, what-needs-you.service.ts): an approval opens the
+     queue filtered to this reader, and finance's item opens the requests for finance. */
   const comingUp = data?.comingUp ?? []
 
   /* The lead's daily nudge's own link (decision 120). Every sentence is already worded by the
@@ -178,8 +173,32 @@ export function TodayPage() {
     }),
     ...[...outstandingNeedsYou, ...overdueOnYourTeam, ...risks].map((sentence) => ({ key: sentence, kind: 'look' as const, ...aSentenceAsARow(sentence) })),
   ].filter(once)
-  const allNeeds = needs.length + moreRows.length
+  /*
+   * A SETUP LEFT UNFINISHED IS THE FIRST THING THAT NEEDS YOU (Hafsah's blocker, 31 October 2026). Three leads in round 3 told the
+   * setup about their team, left before saving, and came back here to "Nothing needs you right now". The lead's setup, kept on the
+   * server and read by the one reader Check-ins also uses, is first, with the way back, on any device.
+   */
+  const unfinished = useAnUnfinishedSetup()
+  const allNeeds = needs.length + moreRows.length + (unfinished ? 1 : 0)
   const lineNudge = data?.lineNudge ?? null
+  /* "Send it to them again" (the approved journey, stage 8): the invitation's own resend, for each person the line says has not
+     joined yet. The lead's own press, so nothing about when anything is sent changes. */
+  const lineResend = data?.lineResend ?? null
+  const resend = useMutation({
+    mutationFn: async () => { for (const pid of lineResend!.participantIds) await groundsApi.resendParticipantInvite(lineResend!.groundId, pid) },
+    onSuccess: () => toast.success(lineResend!.participantIds.length === 1 ? 'Invitation sent again.' : 'Invitations sent again.'),
+    onError: () => toast.error('It did not send again. The first invitation still works. Try again in a moment.'),
+  })
+  const resendLabel = lineResend
+    ? (lineResend.participantIds.length === 1 && lineResend.firstNames[0] ? `Send it to ${lineResend.firstNames[0]} again` : 'Send it to them again')
+    : ''
+  /* "Send N invitations" (Hafsah, 3 November 2026): the invitations the lead held ready while she checked in on her own first. */
+  const lineReadyToSend = data?.lineReadyToSend ?? null
+  const sendReady = useMutation({
+    mutationFn: () => groundsApi.sendTheInvitationsReadyToSend(lineReadyToSend!.groundId),
+    onSuccess: () => { toast.success(lineReadyToSend!.count === 1 ? 'The invitation has gone.' : 'The invitations have gone.'); refetch() },
+    onError: () => toast.error('The invitations did not send. They are still ready, so try again in a moment.'),
+  })
   const nudge = useMutation({
     mutationFn: () => boardApi.nudge(lineNudge!.groundId, lineNudge!.participantId),
     onSuccess: () => toast.success(`Sent to ${lineNudge!.firstName}.`),
@@ -200,6 +219,8 @@ export function TodayPage() {
               {`${whenItWas(now, 'weekdayAndDay')}.${greetingLine ? ` ${greetingLine}` : ''}`}
               {/* "Send it to him on WhatsApp" (C1), said with their name: the board's own nudge, for the one person not checked in yet. */}
               {lineNudge && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => nudge.mutate()} disabled={nudge.isPending || nudge.isSuccess}>{nudge.isSuccess ? 'Sent.' : `Remind ${lineNudge.firstName}`}</button></>}
+              {lineResend && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => resend.mutate()} disabled={resend.isPending || resend.isSuccess}>{resend.isSuccess ? 'Sent again.' : resendLabel}</button></>}
+              {lineReadyToSend && <>{' '}<button type="button" className="btn primary sm gw-inline-btn gwui-in-a-sentence" onClick={() => sendReady.mutate()} disabled={sendReady.isPending || sendReady.isSuccess}>{sendReady.isPending ? 'Sending…' : sendReady.isSuccess ? 'Sent.' : lineReadyToSend.label}</button></>}
             </>}
           />
 
@@ -216,16 +237,10 @@ export function TodayPage() {
           {/* ONE LIST, AS THE PROTOTYPE: what the lead's nudge adds (needs you, overdue on the team, risks) are rows in
               "What needs you", most important first, never sections of their own. */}
           <Section heading="What needs you" note={allNeeds > 1 ? `${allNeeds} things, most important first` : undefined}>
-            {isLoading && <Note>Loading…</Note>}
-            {isError && (
-              <div>
-                <Note tone="error">What needs you didn’t load. Try again.</Note>
-                <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
-              </div>
-            )}
             {data && allNeeds === 0 && <Empty>Nothing needs you right now.</Empty>}
             {allNeeds > 0 && (
               <EdgeList label="What needs you">
+                {unfinished && <TheSetupNotSavedYet unfinished={unfinished} primary />}
                 {/* ONE NAVY BUTTON (Hafsah, 30 September): the prototype's own Today draws every "Start it"
                     navy, but with two check-ins open that is two navy buttons at once. Only the first,
                     the most important, is navy; the rest are white. */}
@@ -236,9 +251,9 @@ export function TodayPage() {
                     /* One line of title: a second sentence goes to the detail line when there is none (Hafsah, 25 October). */
                     title={aSentenceAsARow(n.title, n.detail).title}
                     detail={aSentenceAsARow(n.title, n.detail).detail}
-                    to={whereItGoes(n)}
+                    to={n.action.to}
                     actions={<>
-                      <Button kind={n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={whereItGoes(n)}>{n.action.label}</Button>
+                      <Button kind={!unfinished && n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={n.action.to}>{n.action.label}</Button>
                       {n.missedReason && <TheReasonYouMissed checkInId={n.missedReason.checkInId} given={n.missedReason.given} />}
                     </>}
                   />
@@ -248,6 +263,13 @@ export function TodayPage() {
                     actions={r.action ? <Button kind="secondary" size="small" to={r.action.to}>{r.action.label}</Button> : undefined} />
                 ))}
               </EdgeList>
+            )}
+            {isLoading && <Note>Loading…</Note>}
+            {isError && (
+              <div>
+                <Note tone="error">What needs you didn’t load. Try again.</Note>
+                <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
+              </div>
             )}
             {/* Under what needs you, when one of those is a check-in to answer (fix list, item 5). The server decides. */}
             {data?.checkInOnWhatsApp && (

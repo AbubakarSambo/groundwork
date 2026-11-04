@@ -23,7 +23,7 @@ const bucket = (at: Date, ms: number) => Math.floor(at.getTime() / ms);
 /** Kinds that are an invitation, sent once a day to a person, whatever check-in it is for. */
 const AN_INVITATION = /invite|invitation|your-view-matters|would-like-your-take/i;
 /** Words of an apology that something on our side failed. */
-const AN_APOLOGY = /could not be reached|cannot continue this minute|a problem on our side/i;
+const AN_APOLOGY = /could not be reached|cannot continue this minute|a problem on my side/i;
 
 export function theOutboxKey(m: { channel: AChannel; to: string; kind?: string | null; about?: string | null; text?: string | null; at?: Date }): string | null {
   const to = String(m.to ?? '').trim().toLowerCase();

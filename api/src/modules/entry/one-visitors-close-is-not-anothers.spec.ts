@@ -17,7 +17,9 @@ describe('the close flag', () => {
     expect(controller).not.toContain('didLastReplyClose');
   });
   it('comes back beside the reply and is what the controller reads', () => {
-    expect(service).toMatch(/return \{ reply: forHumans\(best\), closed: hadCloseMarker\(best\) \};/);
+    /* The close is read once from what the model wrote, before the text is cleaned (issue 48, fix plan group 5), and travels beside it. */
+    expect(service).toMatch(/const \{ text: reply, hadMarker: closed \} = stripCloseMarker\(raw\);/);
+    expect(service).toMatch(/return \{ reply: forHumans\(restored\), closed \};/);
     expect(service).toMatch(/async chat\([\s\S]*?\): Promise<\{ reply: string; closed: boolean; promptVersionId\?: string \| null \}>/);
     expect(controller).toMatch(/const \{ reply, closed(, promptVersionId)? \} = await this\.service\.chat\(/);
     expect(controller).toMatch(/private sessionCompleteFrom\(reply: string, markerClosed: boolean\)/);

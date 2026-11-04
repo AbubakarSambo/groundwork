@@ -14,8 +14,8 @@ export function EmailConfirmed({ email, onContinue }: { email: string | null; on
     <AuthCard
       title="Your email is confirmed"
       sub={email
-        ? <>We’ll send sign-in links and reports to <strong>{email}</strong>.</>
-        : 'We’ll send sign-in links and reports to this address.'}
+        ? <>I’ll send sign-in links and reports to <strong>{email}</strong>.</>
+        : 'I’ll send sign-in links and reports to this address.'}
     >
       <Stack gap={10}>
         <Button wide size="big" onClick={onContinue}>Continue</Button>

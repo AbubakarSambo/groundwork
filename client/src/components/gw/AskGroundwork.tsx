@@ -14,6 +14,8 @@ import { Mark } from './kit'
 import { Composer } from './ui/Composer'
 import { GroundworkIsWriting } from './ui/GroundworkIsWriting'
 import { PRIVATE_LINE } from './what-ask-groundwork-says'
+import { STILL_READING_WHAT_YOU_WROTE } from '@/lib/opening-is-slow'
+import { whatTheServerSaid } from '@/lib/what-the-server-said'
 
 /** What the Context page already says while a document's read has not landed yet (AddADocument.tsx). */
 const STILL_READING = 'Reading it now.'
@@ -336,8 +338,7 @@ export function AskGroundwork({
       setSaid((s) => [...s, ...(message ? [{ from: 'you' as const, says: message }] : []), { from: 'groundwork' as const, reply }])
       if (clearDraft) setDraft('')
     } catch (e: unknown) {
-      const said = (e as { response?: { data?: { message?: unknown } } })?.response?.data?.message
-      setProblem(typeof said === 'string' ? said : 'That did not send. What you wrote is still here, so you can try again.')
+      setProblem(whatTheServerSaid(e, 'That did not send. What you wrote is still here, so you can try again.'))
     } finally {
       setSending(false)
     }
@@ -618,7 +619,7 @@ export function AskGroundwork({
             {waitedAWhile && (
               <p className={bubble(false)}>
                 <span role="status" className="t-tiny mut">
-                  Still reading what you wrote. Nothing was lost, you do not need to send it again.
+                  {STILL_READING_WHAT_YOU_WROTE}
                 </span>
               </p>
             )}
@@ -672,7 +673,6 @@ export function AskGroundwork({
             sendDisabled={!draft.trim()}
             placeholder={page.data?.caption ?? 'Ask a question'}
             ariaLabel={page.data?.caption ?? 'Ask a question'}
-            maxLength={8000}
             /* THE "+" (Hafsah, 15 October): for whoever may add a document here, a lead for the check-ins they run
                (`addsContext`, served) or an admin for the whole organisation. It opens the file picker at once.
                The server still decides, on the file's way in, whether they may and where it goes. */

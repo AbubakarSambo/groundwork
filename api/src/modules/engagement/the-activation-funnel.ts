@@ -72,7 +72,8 @@ export async function theParticipantStages(prisma: any, since: Date | null, now:
         AND (${since}::timestamp IS NULL OR g.created_at >= ${since}::timestamp)
     ), c AS (
       SELECT participant_id,
-        COUNT(*) FILTER (WHERE status IN ('IN_PROGRESS', 'COMPLETED'))::int AS started,
+        /* Started is their first reply (Hafsah, 3 November 2026), not a session opened or closed by the clock with nothing said. */
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM conversation_turns t WHERE t.check_in_id = check_ins.id AND t.role = 'PERSON'))::int AS started,
         COUNT(*) FILTER (WHERE status = 'COMPLETED')::int AS done,
         MAX(completed_at) FILTER (WHERE status = 'COMPLETED') AS last_done
       FROM check_ins WHERE is_setup = false GROUP BY participant_id

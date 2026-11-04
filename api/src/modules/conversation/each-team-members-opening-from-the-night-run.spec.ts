@@ -28,7 +28,10 @@ const openingFor = async (g: AGroundOfTheRun, first: string, on = true) => {
 
 const KEVIN = 'Kevin, Ngong Road Minimart said they would pay KES 25,000 for 5 units on delivery tomorrow. Is the delivery set for tomorrow?';
 const MERCY = "Mercy, Mama Rose's Kiosk is marked won for KES 5,000, and no payment record is filed for it yet. Can you send the M-Pesa message or the receipt?";
-const JOSEPH_LATE = "Just two things today, Joseph. What's happening with the KES 4,500 price for Juja Hardware, and has Mrs Atieno at Mama Pima Stores decided?";
+/* Changed 4 November 2026 (batch 1 merge, one opener): somebody late reads both things as the fact line, then one question about both. */
+const JOSEPH_LATE_LINE = "Joseph, two things are open from last time. Juja Hardware is waiting on the KES 4,500 price for 5 units. You're waiting on Mrs Atieno at Mama Pima Stores for her final decision on the number of units and confirmation of payment.";
+const JOSEPH_LATE = `${JOSEPH_LATE_LINE} What's happening with the KES 4,500 price for Juja Hardware, and has Mrs Atieno at Mama Pima Stores decided?`;
+const KEVINS_LINE = 'Kevin, Ngong Road Minimart said they would pay KES 25,000 for 5 units on delivery tomorrow.';
 const JOSEPH = "Joseph, Juja Hardware is waiting on the KES 4,500 price for 5 units. What's happening with it, and what's next?";
 const NJERI = 'Njeri, Aisha is waiting on you for confirmation of payment for Baraka Hardware (FN-006), since 12 October. When will Aisha have it?';
 const AISHA = 'Aisha, FN-006 for Baraka Hardware, KES 120,000, is marked paid, and no payment record is filed for it yet. Can you send the bank slip or the M-Pesa message?';
@@ -50,7 +53,7 @@ describe('each team member reads the one thing that matters to them today, from 
     const o = await openingFor('drop', 'Joseph');
     expect(o?.late).toBe(true);
     expect(o?.text).toBe(JOSEPH_LATE);
-    expect(o?.text.startsWith('Just two things today')).toBe(true);
+    expect(o?.text.startsWith('Joseph, two things are open from last time.')).toBe(true);
     expect(o?.things).toHaveLength(2);
     expect(o?.subject).toBe('Joseph, just two things today on Sales team, Q4');
   });
@@ -104,15 +107,6 @@ describe('each team member reads the one thing that matters to them today, from 
   });
 });
 
-describe('with the switch off, nobody\'s opening changes', () => {
-  it.each([['drop', 'Kevin'], ['drop', 'Mercy'], ['drop', 'Joseph'], ['drop', 'Peter'], ['fees', 'Njeri'], ['fees', 'Aisha'], ['fees', 'Brian']] as const)('%s %s: no personal opening', async (g, first) => {
-    expect(await openingFor(g, first, false)).toBeNull();
-  });
-  it('and the model is told nothing more', () => {
-    expect(theOneThingTodayBlock(null)).toBe('');
-  });
-});
-
 /* --------------------------------------------------------------------------------------------------------------------------- */
 /* The check-in itself: the opening turn is the line, word for word, and the model is not asked for it                          */
 /* --------------------------------------------------------------------------------------------------------------------------- */
@@ -136,7 +130,6 @@ function aCheckInOver(g: AGroundOfTheRun, first: string, on: boolean, modelSays 
   jest.spyOn(service as any, 'openTheDoor').mockResolvedValue(theCheckIn);
   jest.spyOn(service as any, 'closeAsMissed').mockResolvedValue(false);
   jest.spyOn(service as any, 'composeSystemPrompt').mockResolvedValue('SYSTEM');
-  jest.spyOn(service as any, 'suggestedAnswersFor').mockResolvedValue([]);
   jest.spyOn(service as any, 'theContextNotYetSaid').mockResolvedValue('');
   jest.spyOn(service as any, 'provisionalFunctionFromTheStatedRole').mockResolvedValue(undefined);
   jest.spyOn(service as any, 'theSubjectsToCover').mockResolvedValue(null);
@@ -153,37 +146,31 @@ describe('the check-in opens on that line (web, and the first message after STAR
   beforeEach(() => jest.useFakeTimers({ now: NOW, doNotFake: ['setTimeout', 'setInterval', 'setImmediate', 'clearTimeout', 'clearInterval', 'nextTick', 'queueMicrotask'] }));
   afterEach(() => jest.useRealTimers());
 
-  it('switch on, Kevin: the opening turn is the line word for word, and the model is not asked to write it', async () => {
+  /*
+   * CHANGED 4 November 2026 (batch 1 merge: the direct morning is on for everybody, and the prepared opener is the one opener). With no
+   * draft ready on his row, Kevin's opener is his fact line straight away and a question written fresh after it, in one model call, with
+   * the record's own question shown to the model. With a draft ready it is said as prepared, with no call: the-opening-prepared-in-advance.
+   */
+  it('Kevin, with no draft ready: his fact line, then the question written fresh after it, in one call that is shown the record\'s question', async () => {
     const { service, anthropic, saved, ci, userId } = aCheckInOver('drop', 'Kevin', true);
     const r: any = await service.open(ci.id, userId);
-    // Changed 26 October 2026 (Hafsah: item 1): the opening line is in front; the line itself is still word for word after it.
-    expect(r.reply).toBe(withTheOpeningLine(KEVIN));
-    expect(r.personalOpening).toBe(true);
-    expect(saved.filter((t) => t.role === 'AI').map((t) => t.content)).toEqual([withTheOpeningLine(KEVIN)]);
-    expect(anthropic.respond).not.toHaveBeenCalled();
-  });
-
-  it('switch on, Joseph who is late: the short version is the opening turn', async () => {
-    const { service, ci, userId } = aCheckInOver('drop', 'Joseph', true);
-    // Changed 26 October 2026 (Hafsah: item 1): the opening line is in front of the short version.
-    expect((await service.open(ci.id, userId)).reply).toBe(withTheOpeningLine(JOSEPH_LATE));
-  });
-
-  it('switch off, Kevin: the opening is the model\'s, exactly as before', async () => {
-    const { service, anthropic, ci, userId } = aCheckInOver('drop', 'Kevin', false);
-    const r: any = await service.open(ci.id, userId);
     expect(anthropic.respond).toHaveBeenCalledTimes(1);
-    // Changed 26 October 2026 (Hafsah: item 1): the model's opening is unchanged, with the opening line in front.
-    expect(r.reply).toBe(withTheOpeningLine('What moved on your deals since yesterday?'));
-    expect(r.personalOpening).toBeUndefined();
+    expect(anthropic.respond.mock.calls[0][0]).toContain('"Is the delivery set for tomorrow?"');
+    expect(r.reply).toBe(withTheOpeningLine(`${KEVINS_LINE} What moved on your deals since yesterday?`));
+    expect(r.personalOpening).toBe(true);
+    expect(saved.filter((t) => t.role === 'AI').map((t) => t.content)).toEqual([r.reply]);
   });
 
-  it('switch on, Peter with nothing specific on record: the opening is the model\'s, as before', async () => {
+  it('Joseph who is late: both things are his fact line, then the question', async () => {
+    const { service, ci, userId } = aCheckInOver('drop', 'Joseph', true);
+    expect((await service.open(ci.id, userId)).reply).toBe(withTheOpeningLine(`${JOSEPH_LATE_LINE} What moved on your deals since yesterday?`));
+  });
+
+  it('Peter with nothing specific on record: "nothing is open from last time", then the model\'s question', async () => {
     const { service, anthropic, ci, userId } = aCheckInOver('drop', 'Peter', true);
     const r: any = await service.open(ci.id, userId);
     expect(anthropic.respond).toHaveBeenCalledTimes(1);
-    // Changed 26 October 2026 (Hafsah: item 1): the model's opening is unchanged, with the opening line in front.
-    expect(r.reply).toBe(withTheOpeningLine('What moved on your deals since yesterday?'));
+    expect(r.reply).toBe(withTheOpeningLine('Peter, nothing is open from last time. What moved on your deals since yesterday?'));
   });
 
   it('switch on, the lead: her opening is the model\'s, as before', async () => {
@@ -198,7 +185,7 @@ describe('the check-in opens on that line (web, and the first message after STAR
     const { service, ci, userId } = aCheckInOver('drop', 'Kevin', true);
     await service.open(ci.id, userId);
     const block = await (service as any).theOneThingTodayHere({ id: ci.id, groundId: ci.groundId, participantId: ci.participantId, sessionNumber: ci.sessionNumber });
-    expect(block).toContain(`"${KEVIN}"`);
+    expect(block).toContain(`"${KEVINS_LINE} What moved on your deals since yesterday?"`);
     expect(block).toContain('already asked, word for word');
     expect(block).toContain('Ngong Road Minimart said they would pay KES 25,000 for 5 units on delivery tomorrow.');
   });
@@ -266,13 +253,6 @@ describe('on WhatsApp', () => {
     expect(context).toEqual(expect.objectContaining({ kind: 'checkin-open', params: was.params }));
   });
 
-  it('the opening notice: switch off, today\'s words exactly', async () => {
-    const { sendFor, today: was } = await theOpeningNotice(false);
-    const [, , text, context] = (sendFor.mock.calls[0] as any[]);
-    expect(text).toBe(was.text);
-    expect(text).toBe('Hi Kevin, your check-in for Sales team, Q4 is open. It takes about ten minutes, and you can answer right here. Reply START to begin.');
-    expect(context).toEqual(expect.objectContaining({ kind: 'checkin-open', params: was.params }));
-  });
 });
 
 /* --------------------------------------------------------------------------------------------------------------------------- */
@@ -330,10 +310,4 @@ describe('by email', () => {
     expect(m.html).toContain(`<p>${JOSEPH_LATE}</p>`);
   });
 
-  it('switch off, Kevin: the email he got before, exactly', async () => {
-    const [m] = await theOpeningEmail(false, 'Kevin');
-    expect(m.subject).toBe('Your next check-in is open: Sales team, Q4');
-    expect(m.html).toContain('<strong>Sales team, Q4</strong>');
-    expect(m.html).not.toContain('Ngong Road');
-  });
 });

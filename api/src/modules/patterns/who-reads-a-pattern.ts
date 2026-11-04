@@ -3,7 +3,6 @@ import { PATTERNS_ARE_SERVED } from './patterns-are-served';
 import { plainNameOf, type PlainKind } from './plain-pattern-names';
 import { plainVoice } from './plain-voice';
 import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
-import { coachingForAPattern } from './what-to-coach-towards';
 import { whatAPatternIsAbout, type WhatAPatternIsAbout } from './what-a-pattern-is-about';
 
 /**
@@ -68,11 +67,6 @@ export function readsHowTheLeadingIsLanding(
 ): boolean {
   return runsItForAPattern(checkIn, userId);
 }
-/** How long the person has to answer after they were first shown it, before the lead reads it. */
-export const DAYS_THE_PERSON_HAS_TO_ANSWER = 3;
-/** How long after it was ready the lead reads it anyway, when the person never opened it. */
-export const DAYS_BEFORE_IT_REACHES_THE_LEAD_UNOPENED = 7;
-const DAY = 24 * 60 * 60 * 1000;
 
 /** The lead's own read of a pattern, after talking it through (decision 57, item 2). Never served to
  *  the person it is about, and never to a colleague. */
@@ -169,8 +163,6 @@ export interface AServedPattern {
   theirWords: string | null;
   /** Only the person it is about can answer it. */
   canAnswer: boolean;
-  /** Who else reads it, and when, as a sentence for this reader. */
-  whoSeesIt: string;
   /**
    * After talking it through, whoever runs the check-in marks it right, wrong or not sure (decision
    * 57, item 2). Only for that reader — always null for the person it is about, so it is never shown
@@ -184,30 +176,12 @@ export interface AServedPattern {
    */
   talkedAbout: boolean;
   /**
-   * "Two separate reads of the record found this." Served only when the model's own reading and the
-   * matching number-based rule both agree (decision 57, item 4), and only to whoever runs the
-   * check-in — always null for the person it is about, so it never reads as a score or a rating of
-   * them, and null for a colleague, who never reaches this row at all.
-   */
-  secondReadNote: string | null;
-  /**
    * WHICH PART OF "WHAT KEEPS COMING UP" IT BELONGS IN (screens request 82, decision 67): "the work"
    * for "About each person's work", or "what is said against what happened" for "How what people say
    * can run ahead of what happened". The same for every reader, since it says nothing about a person.
    */
   about: WhatAPatternIsAbout;
-  /**
-   * FOR WHOEVER RUNS THE CHECK-IN ONLY (decision 67): what to coach the person towards, the good
-   * version, in one plain sentence. Fixed text per pattern and role, never written by a model at read
-   * time. Null for the person it is about, since the coaching is framed for the manager.
-   */
-  coachTowards: string | null;
-  /** FOR WHOEVER RUNS THE CHECK-IN ONLY: one small, concrete step the person could take. Null for the person. */
-  oneStep: string | null;
 }
-
-/** The one place this sentence is written, so it is never paraphrased from one surface to the next. */
-export const TWO_SEPARATE_READS_NOTE = 'Two separate reads of the record found this.';
 
 /** The names a sentence needs: the lead's, for the person, and the person's first name, for the lead. */
 export interface WhoIsWho {
@@ -217,8 +191,6 @@ export interface WhoIsWho {
   firstNameOf?: (participantId: string) => string | null;
   /** Whether this ground's periods are calendar weeks, not sessions (decision 57, item 1). */
   isDaily?: boolean;
-  /** A person's detected function and how sure it is, so the coaching can use their role's own map (decision 67). */
-  roleOf?: (participantId: string) => { fn?: string | null; confidence?: number | null } | null;
 }
 
 /** The headings the page puts over the list, from the prototype's screens. */
@@ -304,20 +276,6 @@ export function howOftenItCameUp(row: Pick<APatternRow, 'seenInSessions' | 'peri
     : `This came up in ${whose}.`;
 }
 
-const at = (d: Date | string | null | undefined): number | null => {
-  if (!d) return null;
-  const t = new Date(d).getTime();
-  return Number.isFinite(t) ? t : null;
-};
-
-/** Whether somebody other than the person may read it yet: rule 5. */
-export function thePersonHasHadTheirTurn(row: APatternRow, now: Date = new Date()): boolean {
-  if (at(row.personAnsweredAt) !== null && (row.personAnswer ?? '').trim()) return true;
-  const shown = at(row.shownToPersonAt);
-  if (shown !== null && now.getTime() - shown >= DAYS_THE_PERSON_HAS_TO_ANSWER * DAY) return true;
-  const ready = at(row.readyAt);
-  return ready !== null && now.getTime() - ready >= DAYS_BEFORE_IT_REACHES_THE_LEAD_UNOPENED * DAY;
-}
 
 /**
  * The stored rows this reader may read, for a builder that needs the code to look up the library's
@@ -331,35 +289,18 @@ export function patternRowsThisReaderMayRead<T extends APatternRow>(
   opts: { on?: boolean; now?: Date } = {},
 ): T[] {
   if (!(opts.on ?? PATTERNS_ARE_SERVED)) return [];
-  const now = opts.now ?? new Date();
   return (rows ?? []).filter((row) => {
     if (!row?.participantId || ALIGNMENT_FEED_ONLY_CODES.has(row.code)) return false;
     if (!plainNameOf(row.code)) return false;
     if (!hasBeenSeenInThreePeriods(row)) return false;
-    const yours = !!reader.participantId && row.participantId === reader.participantId;
-    if (yours) return true;
-    /* A participant reads their own and nobody else's; whoever runs it, only after the person's turn. */
-    return reader.runsIt && thePersonHasHadTheirTurn(row, now);
+    /*
+     * A STORED PATTERN IS READ BY THE PERSON IT IS ABOUT, AND BY NOBODY ELSE (Hafsah, 2 November 2026: "yes to replacing
+     * PatternDetection's lead-facing patterns with the assessment's single pattern layer"). Whoever runs the check-in reads what
+     * the record shows about each person from layer 2 instead (what-the-record-shows-the-lead.ts), counted from distinct items
+     * across the whole record. A participant reads their own and nobody else's, as before.
+     */
+    return !!reader.participantId && row.participantId === reader.participantId;
   });
-}
-
-function whoSeesIt(row: APatternRow, yours: boolean, names: WhoIsWho, now: Date): string {
-  if (yours) {
-    /* Hafsah, 29 September 2026: when the person it is about is the lead themselves, the sentence
-       must not name the lead as if they were someone else reading it back to them. */
-    const isTheLeadsOwn = !!names.leadParticipantId && row.participantId === names.leadParticipantId;
-    if (isTheLeadsOwn) return 'Only you see this. Nothing is decided from it.';
-    const lead = names.leadName?.trim() || 'The person who runs this check-in';
-    return thePersonHasHadTheirTurn(row, now)
-      ? `${lead} can see this too, with anything you say about it. Nothing is decided from it.`
-      : `You are seeing this first. ${lead} will see it too, with anything you say about it. Nothing is decided from it.`;
-  }
-  const first = names.firstNameOf?.(row.participantId)?.trim() || 'The person it is about';
-  if ((row.personAnswer ?? '').trim()) return `${first} saw this first and said what is behind it.`;
-  /* Hafsah, 28 September 2026: when the lead sees a pattern the person has not answered, it says
-     plainly that they have not answered yet. */
-  if (at(row.shownToPersonAt) !== null) return `${first} saw this first and has not answered yet.`;
-  return `${first} has not seen this yet, and has not answered yet. It is shown to you because a week has passed since it came up for the third time.`;
 }
 
 /** The patterns this reader may read, in the form they may read them. */
@@ -387,16 +328,9 @@ export function servedPatterns(
         askThem: yours ? null : whatToAskAbout(row.code),
         theirWords: (row.personAnswer ?? '').trim() || null,
         canAnswer: yours,
-        whoSeesIt: whoSeesIt(row, yours, opts, now),
         leadMark: yours ? null : (row.leadMark ?? null),
         talkedAbout: !!row.talkedAboutAt,
-        secondReadNote: !yours && row.evidenceSource === 'both' ? TWO_SEPARATE_READS_NOTE : null,
         about: whatAPatternIsAbout(row.code),
-        ...(() => {
-          if (yours) return { coachTowards: null, oneStep: null };
-          const c = coachingForAPattern(row.code, opts.roleOf?.(row.participantId) ?? null);
-          return { coachTowards: c?.coachTowards ?? null, oneStep: c?.oneStep ?? null };
-        })(),
       };
     })
     .sort((a, b) => Number(b.yours) - Number(a.yours));
@@ -415,43 +349,6 @@ export function seenAgainAfterTalk(row: Pick<APatternRow, 'seenInSessions' | 'ta
   if (!row.talkedAboutAt) return null;
   const anchor = row.talkedAboutAtPeriod ?? 0;
   return new Set((row.seenInSessions ?? []).filter((n) => Number.isFinite(n) && n > anchor)).size;
-}
-
-/**
- * THE NUDGE, ONCE (decision 57, item 3). "Talk with Tobi about 'Steps in to stop things failing'.
- * Tobi has seen it and said: '...'." — or, if Tobi has not answered yet, says so plainly. Built from
- * a served pattern, so it never carries a code or an internal name either. The caller leaves this
- * pattern out once `talkedAbout` is true: the nudge goes away once it is marked.
- */
-export function patternTalkNudge(pattern: Pick<AServedPattern, 'id' | 'heading' | 'theirWords'>, name: string): { id: string; decide: string; why: string } {
-  const why = pattern.theirWords
-    ? `${name} has seen it. ${name} said, “${pattern.theirWords}”${/[.!?]$/.test(pattern.theirWords) ? '' : '.'}`
-    : `${name} has seen this and has not answered yet.`;
-  return { id: `pattern-talk-${pattern.id}`, decide: `Talk with ${name} about “${pattern.heading}”.`, why };
-}
-
-/** The ones this reader is the person for and has never been shown: rule 5's clock starts when they are. */
-export function theOnesTheyAreSeeingFirst(rows: readonly APatternRow[] | null | undefined, served: readonly AServedPattern[] | null | undefined): string[] {
-  if (!served?.length) return [];
-  const unseen = new Set((rows ?? []).filter((r) => at(r.shownToPersonAt) === null).map((r) => r.id));
-  return served.filter((p) => p.yours && unseen.has(p.id)).map((p) => p.id);
-}
-
-/**
- * Record that the person has now been shown these. Never throws: a page is not refused because a
- * timestamp could not be written, and the lead then simply waits for the seven-day rule.
- */
-export async function markShownToThePerson(
-  prisma: { patternDetection?: { updateMany?: (args: any) => Promise<unknown> } },
-  ids: string[],
-  now: Date = new Date(),
-): Promise<void> {
-  if (!ids.length || !prisma?.patternDetection?.updateMany) return;
-  try {
-    await prisma.patternDetection.updateMany({ where: { id: { in: ids }, shownToPersonAt: null }, data: { shownToPersonAt: now } });
-  } catch {
-    /* See above. */
-  }
 }
 
 /**
@@ -480,10 +377,6 @@ export function whoIsWhoIn(
     leadName: first(lead),
     leadParticipantId: lead?.id ?? null,
     firstNameOf: (pid: string) => first(rows.find((p) => p.id === pid)),
-    roleOf: (pid: string) => {
-      const p = rows.find((x) => x.id === pid) as any;
-      return p ? { fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null } : null;
-    },
     isDaily: cadence === 'DAILY',
   };
 }

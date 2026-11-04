@@ -8,6 +8,8 @@ import { ENGAGEMENT_MOMENT_KEY as RELEASE_MOMENT_KEY } from './the-engagement-re
  * Femi answered both. She is told it is most of the team, once, as one thing.
  * Journey 7: the same people spread over three check-ins, none of them most of its team. She is told once across them.
  */
+/* The "of how many" is the one count since 1 November 2026 (how-many-have-answered.ts): the board's own number, with the lead counted in a
+   session she answered (decision 133), so each denominator below is one more than when Today counted for itself. */
 const RELEASE = new Date('2026-10-01T00:00:00Z');
 const NOW = new Date('2026-10-28T10:00:00Z');
 const S2 = new Date('2026-10-12T08:00:00Z');
@@ -49,11 +51,11 @@ describe('journey 9: most of one team has stopped', () => {
     expect(await w.run()).toEqual({ tried: 1 });
     expect(w.sent).toEqual([{
       to: 'wairimu@x.test',
-      subject: 'Four of six people on "Sales team, Q4" have not answered the latest check-in',
+      subject: 'Four of seven people on "Sales team, Q4" have not answered the latest check-in',
       lines: [
-        'Hello Wairimu. Four of the six people on "Sales team, Q4" have not answered the latest check-in, which opened more than a week ago.',
+        /* "Of the seven" is the one count (1 November 2026): the board's own number, the lead counted in a session she answered (decision 133). */
+        'Hello Wairimu. Four of the seven people on "Sales team, Q4" have not answered the latest check-in, which opened more than a week ago.',
         'Two have never answered, and Omar and Vera answered before and have not answered since.',
-        'Most of the team has not answered, so this is a pattern across the team and not about one person. Groundwork has not changed or shortened the check-in.',
         'If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
       ],
       linkLabel: 'See who has answered',
@@ -93,7 +95,7 @@ describe('one check-in, fewer than most', () => {
     const w = world({ g1: rows });
     await w.run();
     expect(w.sent[0].subject).toBe('Three people have not answered the latest check-in in "Sales team, Q4"');
-    expect(w.sent[0].lines[0]).toBe('Hello Wairimu. Three of the eight people in "Sales team, Q4" have not answered the latest check-in.');
+    expect(w.sent[0].lines[0]).toBe('Hello Wairimu. Three of the nine people in "Sales team, Q4" have not answered the latest check-in.');
     expect(JSON.stringify(w.sent)).not.toMatch(/stopped answering|have stopped/i);
   });
   it('says a positive only as a plain fact about the one person who did all of it, and otherwise leaves it out', async () => {
@@ -116,7 +118,7 @@ describe('one check-in, fewer than most', () => {
 describe('who is not written to', () => {
   it('somebody on approved leave is not counted as having gone quiet, and is not named', () => {
     const q = theQuietIn(salesRows, 'Sales team, Q4', 'u-lead', NOW, RELEASE, new Set(['o']));
-    expect(q).toMatchObject({ ofHowMany: 5, neverAnswered: 2, stoppedAfterAnswering: ['Vera'] });
+    expect(q).toMatchObject({ ofHowMany: 6, neverAnswered: 2, stoppedAfterAnswering: ['Vera'] });
     expect(JSON.stringify(q)).not.toContain('Omar');
   });
   it('only asks for check-ins made at or after the release', async () => {
@@ -198,7 +200,7 @@ describe('a check-in the clock closed with nothing said is not an answer', () =>
 
   it('Jared, with both of his sessions closed by the clock, is counted as never having answered', () => {
     const q = theQuietIn(team([clockClosed('j', 'Jared', 1, S1), clockClosed('j', 'Jared', 2, S2)]), 'Lakeshore sales', 'u-lead', NOW, RELEASE);
-    expect(q).toEqual({ label: 'Lakeshore sales', ofHowMany: 3, neverAnswered: 1, stoppedAfterAnswering: [] });
+    expect(q).toEqual({ label: 'Lakeshore sales', ofHowMany: 4, neverAnswered: 1, stoppedAfterAnswering: [] });
   });
 
   it('Jared, with a third session waiting after two the clock closed, is not said to have answered before', () => {

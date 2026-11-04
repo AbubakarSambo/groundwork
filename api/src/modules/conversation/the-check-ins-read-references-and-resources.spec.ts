@@ -163,26 +163,7 @@ function aServiceFor(whose: typeof NGOZI | typeof TUNDE) {
 
 const allOf = (handed: string[]) => handed.join('\n');
 
-describe("with Release 1B's switch off, the check-ins ask exactly as today", () => {
-  afterEach(() => { SWITCH_ON = true; LINES_HELD = CONTEXT_LINES; });
-
-  it('every prompt Ngozi\u2019s turn hands the model is the same as with none of the new lines on record', async () => {
-    SWITCH_ON = false;
-    const withThem = aServiceFor(NGOZI);
-    await withThem.service.sendMessage('ci1', 'u-ngozi', 'The invoice is still waiting for Abena to approve it.');
-    LINES_HELD = CONTEXT_LINES.filter((l) => !NEW_KINDS.includes(l.kind));
-    const without = aServiceFor(NGOZI);
-    await without.service.sendMessage('ci1', 'u-ngozi', 'The invoice is still waiting for Abena to approve it.');
-    /* The turn's own prompts, the ones the reply is written from. (A background note-taking call can land in either run's list
-       a moment later; it is read from what the person said, never from References and resources.) */
-    const turnPrompts = (s: { service: any }) => ((s.service as any).anthropic.respond as jest.Mock).mock.calls.map((c) => JSON.stringify(c));
-    expect(turnPrompts(withThem).length).toBeGreaterThan(0);
-    expect(turnPrompts(withThem)).toEqual(turnPrompts(without));
-    for (const t of [STAGE, COACH, RISK, NOTE_ON_NGOZI, HELP_NGOZI, NOTE_ON_FEMI, 'IMG_2231.jpg', REFERENCES_HEADING]) expect(allOf(withThem.handed)).not.toContain(t);
-  });
-});
-
-describe('with it on, the check-ins read References and resources', () => {
+describe('the check-ins read References and resources', () => {
   afterEach(() => { SWITCH_ON = true; LINES_HELD = CONTEXT_LINES; THE_PEOPLE_NOTES_REACH_THEIR_OWN_CHECK_IN.on = false; });
 
   it('until Hafsah says so (decision 32), no check-in is handed a People note: Ngozi gets the stage needs, coaching, risks and her proof, and neither note', async () => {

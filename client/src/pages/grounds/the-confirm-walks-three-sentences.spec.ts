@@ -3,7 +3,6 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { isSessionShared } from '@/lib/session-rows'
 import { numberUpToTenInWords } from '@/lib/a-number-up-to-ten-in-words'
-import { howManyCheckedInSentence } from '@/lib/how-many-checked-in'
 
 /**
  * THE CONFIRM WALK OF 7 OCTOBER: three sentences that were wrong on screen.
@@ -30,9 +29,12 @@ describe('the confirm walk’s three sentences', () => {
        session `ground.sessionClock.says` names, not the page's own `openRound` - see
        GroundAdminPage.oneSessionNamedOnce.spec.tsx for why (the two used to count different
        sessions). The shared sentence itself, and its wording, are unchanged. */
+    /* UPDATED (Hafsah, 30 October 2026): the page no longer counts. It says the server's one sentence for the session
+       (`thisSession.says`, api this-sessions-count.ts, whose spec pins "Three of the five people have checked in for session 1."). */
     const src = read('GroundAdminPage.tsx')
-    expect(src).toContain('howManyCheckedInSentence(clockRoundDone, total, clockRound)')
-    expect(howManyCheckedInSentence(2, 3, 1)).toBe('Two of the three people have checked in for session 1.')
+    expect(src).toContain('parts.push(thisSession.says)')
+    expect(src).not.toContain('howManyCheckedInSentence(')
+    /* Changed 3 November (F5 part 3): the page's own copy of the sentence (lib/how-many-checked-in.ts) is deleted; the server's one count says it. */
     expect(src).not.toMatch(/\$\{roundDone\} of \$\{total\} \$\{roundDone === 1 \? 'person has'/)
   })
 

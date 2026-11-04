@@ -34,8 +34,8 @@ export interface ProbeInput {
   participantId: string;
   role: string | null;
   answeredThisSession: boolean;
-  /** Surfaced patterns for this person. Recurrence is carried, because it is the finding. */
-  patterns: { code: string; periodsObserved: number; signal: string; probe?: string }[];
+  /** Started this session and not finished it: said as that, never as "has not answered" beside a grid that says "partway through" (round 6). */
+  startedThisSession?: boolean;
   /** What they say they are waiting on. */
   /** `since`: the day it began, in words ("27 September"), said in place of a count of days (request 117, part 9). */
   waitingOn: { what: string; who: string | null; daysOld: number; escalated: boolean; kind?: Kind | null; since?: string | null }[];
@@ -46,8 +46,6 @@ export interface ProbeInput {
   /** Of `concrete`, the ones stamped as the person's own words, word for word. Only those are quoted. */
   concreteWordForWord?: string[];
   documentsAttached: number;
-  /** How many worries or tensions this person has on record, so "nothing is blocked" is not said beside one (B-164). */
-  worries?: number;
   sessionNumber: number;
   totalSessions: number | null;
   scenario: string | null;
@@ -118,20 +116,6 @@ export const whatKindOfThing = (xs: { kind?: Kind | null }[]): string | null => 
 const andList = (xs: string[]): string =>
   xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
 
-/**
- * Early enough that not escalating is ordinary. Coach it, do not treat it as a finding.
- *
- * AND NEVER WHERE THE ROUND IS NOT KNOWN. This read "This early" on the last session of a
- * three-month engagement, because the caller could not see the check-ins and fell back to session
- * one. A missing session number is not evidence of being early, so a zero or a missing value is
- * treated as "cannot say", and the ordinary sentence is used.
- */
-function earlyDays(i: ProbeInput): boolean {
-  const n = Number(i.sessionNumber);
-  if (!Number.isFinite(n) || n < 1) return false;
-  if (n <= 2) return true;
-  return i.scenario === 'NEW_HIRE' && n <= 3;
-}
 
 export function whatToProbe(i: ProbeInput): WhatToProbe {
   const probe: string[] = [];
@@ -144,7 +128,9 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
   const has = you ? 'have' : 'has';
 
   if (!i.answeredThisSession) {
-    probe.push(`${He} ${has} not answered this session, so nothing below is from this round.`);
+    probe.push(i.startedThisSession
+      ? `${He} ${has} started this session and not finished it yet, so nothing below is from this round.`
+      : `${He} ${has} not answered this session, so nothing below is from this round.`);
   }
 
   /*
@@ -210,25 +196,16 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
       const waited = since
         ? `${He} ${has} been waiting ${onEach}${onEach.includes(', and ') ? ',' : ''} since ${since}`
         : `${He} ${has} been waiting${howLong(oldest)} ${onEach}`;
-      probe.push(
-        earlyDays(i)
-          ? `${waited}, and nothing on record says it was raised higher. ${you ? 'It is early. What is being held up, and would help raising it be useful?' : `It is early, so ask ${them} what is being held up and whether help raising it would be useful.`}`
-          : `${waited}, and nothing on record says it was raised higher. Ask what has stopped ${you ? 'you' : them} raising it.`,
-      );
+      /*
+       * THE FACT, NEVER A FINDING FROM SILENCE (F2, false-flags.md cause 1; fix plan group 4). "Ask Peter what has happened with it
+       * since" was said of a wait on a shipment Peter had dated himself: this list judged him on its own. What the record cannot settle
+       * about a wait is the single pattern layer's, which puts it to the person in their next check-in ("Last time you said ... Is that
+       * still where it stands?", patterns-across-the-assessments.ts, toAskNextTime). The lead is given the wait as the fact it is.
+       */
+      probe.push(`${waited}.`);
       const kind = whatKindOfThing(notYet);
       if (kind) probe.push(kind);
     }
-  }
-
-  /*
-   * RECURRENCE AS A FACT WITH ITS HISTORY. "Observed across four sessions" is countable and the
-   * person can answer it. Anything about why they do it is not.
-   */
-  for (const p of i.patterns.filter((x) => x.periodsObserved >= 2)) {
-    const said = /[.!?]$/.test(p.signal.trim()) ? p.signal.trim() : `${p.signal.trim()}.`;
-    probe.push(
-      `${said} On record across ${p.periodsObserved} sessions.${p.probe ? ` Worth asking: ${p.probe}` : ''}`,
-    );
   }
 
   if (i.concrete.length) {
@@ -258,7 +235,7 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
       `${He} attached ${i.documentsAttached === 1 ? 'a document' : `${i.documentsAttached} documents`}, so ${you ? 'your' : 'their'} side can be checked rather than taken on trust.`,
     );
   }
-  if (i.answeredThisSession && !encourage.length && (i.waitingOn.length || i.patterns.length)) {
+  if (i.answeredThisSession && !encourage.length && i.waitingOn.length) {
     /* Kwabena read "Named a problem out loud rather than reporting everything as fine." with nobody in it (item 21). */
     encourage.push(`${He} named a problem out loud rather than reporting everything as fine.`);
   }
@@ -277,9 +254,9 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
      * were waiting on a credit decision. No wait row is not no worry, so the sentence says which of the two the record holds.
      */
     const ownWork = (i.whoInASentence ?? i.who) === 'you' ? 'your work' : `${i.who}'s work`;
-    triedToUnblock = (i.worries ?? 0) > 0
-      ? `No wait has been recorded against a named person, but ${i.worries === 1 ? `a worry about ${ownWork} is` : `${i.worries} worries about ${ownWork} are`} on record, so the record does not say what was done about it.`
-      : `Nothing is recorded as holding up ${ownWork}.`;
+    /* B-164 kept: never "nothing is blocked" beside a worry. Only what the record holds: no wait on a named person. A worry is not
+       counted here, since a worry about an office's delay is not a worry about their work (F2, false-flags.md J1). */
+    triedToUnblock = `Nothing in the record says ${ownWork} is waiting on a named person.`;
   } else {
     const escalated = i.waitingOn.filter((d) => d.escalated).length;
     const asked = i.waitingOn.length - escalated;
@@ -288,7 +265,7 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     } else if (escalated) {
       triedToUnblock = escalated === 1 ? 'It was taken above the person it was with.' : `All ${escalated} were taken above the person they were with.`;
     } else if (asked) {
-      triedToUnblock = `It was asked for, and nothing on record shows it was taken any further. It does not say whether anything happened outside the check-ins.`;
+      triedToUnblock = 'It was asked for.';
     } else {
       triedToUnblock = 'The record does not say what they did about it.';
     }

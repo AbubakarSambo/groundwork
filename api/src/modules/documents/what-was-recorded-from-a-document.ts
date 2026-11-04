@@ -76,8 +76,8 @@ export function whatWasRecordedFromADocument(r: WhatWasRecorded): string {
   }
   if (r.reader === 'setup') {
     out.push(total === 1
-      ? 'You can see it on the Context and resources page now, and every check-in will ask about it.'
-      : 'You can see them on the Context and resources page now, and every check-in will ask about them.');
+      ? 'You can see it on the References and resources page now, and every check-in will ask about it.'
+      : 'You can see them on the References and resources page now, and every check-in will ask about them.');
   } else {
     out.push('Nobody is measured against a number until they have seen it.');
   }

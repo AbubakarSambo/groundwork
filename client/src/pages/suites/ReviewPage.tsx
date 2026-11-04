@@ -381,12 +381,11 @@ function TheBriefing({ b }: { b: ABriefing }) {
                   {p.whatHappened && <p className="gwui-panel-text">{p.whatHappened}</p>}
                   <p className="gwui-panel-text">{p.howOften}</p>
                   <p className="gwui-panel-text-muted">{p.checkIn}</p>
-                  <p className="gwui-panel-text">{p.theirAnswer}</p>
+                  {p.nextStep && <p className="gwui-panel-text">{p.nextStep}</p>}
                 </div>
               </Row>
             ))}
           </RowList>
-          {b.patternsNote && <p className="gwui-panel-text-muted">{b.patternsNote}</p>}
         </Panel>
       )}
       {b.changedAfterEarlierConversations.length > 0 && (

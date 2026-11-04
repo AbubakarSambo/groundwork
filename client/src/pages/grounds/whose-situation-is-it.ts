@@ -67,8 +67,6 @@ export function theWordsForPickingASituation(): TheWordsForPickingASituation {
      */
     describeOwnHelp:
       'Set the overall context, goals, or plan, or add them for each individual, in your own words. '
-      + 'This will define the purpose of the conversations in each check-in. '
-      + 'For example: I am setting a goal for my team to procure 300 organic chickens from Kaduna by 31 March, '
-      + 'and I need Sahar and Amina to each own part of it.',
+      + 'This will define the purpose of the conversations in each check-in.',
   };
 }

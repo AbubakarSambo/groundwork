@@ -6,7 +6,7 @@ import { looksLikeAName } from './assistant.service';
  * Juma asked about looking after people while the road was closed, and read:
  *
  *   I do not have anybody called "looking after them while the road is closed. ...".
- *   I only know the people your organisation has sent us.
+ *   I only know the people your organisation has sent me.
  *
  * `whoIs` echoed whatever it was handed. The router putting him there is worth fixing too, but
  * the damage is done at the echo, which is where it is held: anything that cannot be a name is

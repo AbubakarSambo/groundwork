@@ -6,8 +6,9 @@ import { ConversationService, DECLINED_TO_TAKE_PART } from './conversation.servi
  *
  * decline() permits IN_PROGRESS - somebody can say no partway through - and it wrote DECLINED and
  * nothing else, so every turn they had already given never reached their private record. What they
- * said is theirs. The extraction complete() runs is run first, and the reason is written, so a
- * reader can tell a decline from a close.
+ * said is theirs. Their conversation is assessed like any that ended, and its record is written from the
+ * assessment by the one writer (one source, part 2), and the reason is written, so a reader can tell a
+ * decline from a close.
  */
 /**
  * `parties` is what the ground has to hear from. Empty by default, so `recordRoundCompletion`
@@ -30,24 +31,22 @@ const service = (status: CheckInStatus, parties: { id: string }[] = []) => {
     groundObjectiveSnapshot: { createMany: jest.fn(async () => ({})) },
   };
   const svc: any = new ConversationService(prisma, {} as any, {} as any, {} as any, events as any, {} as any, {} as any, {} as any, {} as any, { get: () => undefined } as any);
-  svc.extractRecordEntries = jest.fn(async () => undefined);
+  svc.assessAndThenRead = jest.fn(async () => undefined);
   return { svc, prisma, events };
 };
 
 describe('declining', () => {
-  it('partway through extracts what was said before the session is marked declined', async () => {
+  it('partway through, what was said is assessed, and so written to their record, once the session is marked declined', async () => {
     const { svc, prisma } = service(CheckInStatus.IN_PROGRESS);
     await svc.decline('ci', 'me');
-    expect(svc.extractRecordEntries).toHaveBeenCalledWith('ci', 'p');
-    const extractedAt = svc.extractRecordEntries.mock.invocationCallOrder[0];
-    const declinedAt = prisma.checkIn.update.mock.invocationCallOrder[0];
-    expect(extractedAt).toBeLessThan(declinedAt);
+    expect(svc.assessAndThenRead).toHaveBeenCalledWith(expect.objectContaining({ id: 'ci', participantId: 'p' }), expect.objectContaining({ howItEnded: 'declined' }));
+    expect(prisma.checkIn.update.mock.invocationCallOrder[0]).toBeLessThan(svc.assessAndThenRead.mock.invocationCallOrder[0]);
   });
 
-  it('before starting extracts nothing, because nothing was said', async () => {
+  it('before starting assesses nothing, because nothing was said', async () => {
     const { svc } = service(CheckInStatus.NOT_STARTED);
     await svc.decline('ci', 'me');
-    expect(svc.extractRecordEntries).not.toHaveBeenCalled();
+    expect(svc.assessAndThenRead).not.toHaveBeenCalled();
   });
 
   it('writes the reason', async () => {
@@ -79,9 +78,9 @@ describe('declining', () => {
     expect(events.emit.mock.calls.find((c: any[]) => c[0] === 'checkin.completed')).toBeFalsy();
   });
 
-  it('a failed extraction does not stop the decline - saying no must always work', async () => {
+  it('a failed assessment does not stop the decline - saying no must always work', async () => {
     const { svc, prisma } = service(CheckInStatus.IN_PROGRESS);
-    svc.extractRecordEntries = jest.fn(async () => { throw new Error('model down'); });
+    svc.assessAndThenRead = jest.fn(async () => { throw new Error('model down'); });
     svc.logger = { warn: jest.fn(), log: jest.fn(), error: jest.fn() };
     await expect(svc.decline('ci', 'me')).resolves.toEqual({ status: 'declined' });
     expect(prisma.checkIn.update).toHaveBeenCalled();

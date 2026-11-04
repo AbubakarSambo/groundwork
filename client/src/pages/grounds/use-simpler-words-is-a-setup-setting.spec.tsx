@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
 import { groundsApi } from '@/api/grounds'
@@ -11,6 +11,10 @@ import { groundsApi } from '@/api/grounds'
  * who runs it may change it (the server's own refusal, served word for word). The label and its one
  * sentence are copied exactly from the engine's answer, and nothing beyond it is promised: the
  * WhatsApp reply, the phone report, reminders and emails still send their usual sentences today.
+ *
+ * 4 November 2026: People and setup is the B8 page for everybody now (Release 1B's switch went). There the setting is a
+ * checkbox under "How people answer", with B8's own sentence beside it, for whoever may change the setup, with no "Change"
+ * to press; like every setting on that page it is sent when "Save changes" is pressed.
  */
 
 vi.mock('@/api/grounds', async (importOriginal) => {
@@ -97,18 +101,19 @@ beforeEach(() => vi.clearAllMocks())
 describe('"Use simpler words", on the check-in\'s own setup', () => {
   it('reads off by default, to the lead', async () => {
     renderWith()
-    expect(await screen.findByText('Use simpler words')).toBeTruthy()
-    expect(screen.getByText('Off')).toBeTruthy()
+    const box = await screen.findByRole('switch', { name: 'Use simpler words' })
+    expect(box.getAttribute('aria-checked')).toBe('false')
   })
 
-  it('switching it on sends { on: true } and the row shows on', async () => {
+  it('switching it on and saving sends { on: true }, and the row shows on', async () => {
     const props = renderWith()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Change' }).find((b) => b.closest('div')?.textContent?.includes('Use simpler words'))!)
-    const toggle = await screen.findByRole('switch', { name: 'Use simpler words' })
-    fireEvent.click(toggle)
+    fireEvent.click(await screen.findByRole('switch', { name: 'Use simpler words' }))
+    expect(props.setSimplerWords.mutate).not.toHaveBeenCalled()
+    fireEvent.click(await screen.findByRole('button', { name: 'Save changes' }))
     expect(props.setSimplerWords.mutate).toHaveBeenCalledWith(true)
 
     // Reflects the server's answer once the ground is read back with it on.
+    cleanup()
     const onProps = baseProps({ ground: ground({ simplerWords: true }) })
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(
@@ -116,13 +121,12 @@ describe('"Use simpler words", on the check-in\'s own setup', () => {
         <CheckInPeopleAndSetup {...(onProps as any)} />
       </QueryClientProvider>,
     )
-    expect((await screen.findAllByText('On')).length).toBeGreaterThan(0)
+    expect((await screen.findByRole('switch', { name: 'Use simpler words' })).getAttribute('aria-checked')).toBe('true')
   })
 
-  it('carries the served description, and nothing it does not do today', async () => {
+  it('carries one plain sentence, and nothing it does not do today', async () => {
     renderWith()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Change' }).find((b) => b.closest('div')?.textContent?.includes('Use simpler words'))!)
-    expect(await screen.findByText('Everybody in this check-in is spoken to in short sentences and everyday words, and what is sent to them afterwards is written the same way.')).toBeTruthy()
+    expect(await screen.findByText('Short sentences and everyday words, in the check-in and everything sent afterwards')).toBeTruthy()
   })
 
   it('is not shown to a participant', async () => {
@@ -135,9 +139,7 @@ describe('"Use simpler words", on the check-in\'s own setup', () => {
 
   it('an admin who runs it may also change it, with the same condition as Over WhatsApp', async () => {
     renderWith({ isInitiator: false, isOrgAdmin: true, viewerIsAParty: false })
-    const row = await screen.findByText('Use simpler words')
-    expect(row).toBeTruthy()
-    expect(screen.getAllByRole('button', { name: 'Change' }).some((b) => b.closest('div')?.textContent?.includes('Use simpler words'))).toBe(true)
+    expect(await screen.findByRole('switch', { name: 'Use simpler words' })).not.toBeDisabled()
   })
 
   it('a refusal, when it comes, is said in the server\'s own served sentence, never a made-up one', async () => {

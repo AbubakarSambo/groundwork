@@ -19,7 +19,7 @@ import {
 } from './the-record-read-for-a-review';
 import { monthsToDrawOn, theFirstCheckInOf, theOpenDecisionsAbout, whereItStandsSaid, type Stands } from './where-a-review-stands';
 import { SuggestionsService } from '../suggestions/suggestions.service';
-import { PATTERNS_NOTE, theBriefingsHeading, theCountsSaid, theEarlierReviews, theOneWhoDecidesSaid, thePatternsForTheBriefing, whoDecidesTheReview, type ABriefing } from './a-review-briefing';
+import { theBriefingsHeading, theCountsSaid, theEarlierReviews, theOneWhoDecidesSaid, thePatternsForTheBriefing, whoDecidesTheReview, type ABriefing } from './a-review-briefing';
 import type { ForTheLead } from '../suggestions/a-suggestion-told-like-a-signal';
 import { AReviewToldOnWhatsApp } from './a-review-told-on-whatsapp.service';
 import { AReviewAppealToldService } from './a-review-appeal-told.service';
@@ -1005,7 +1005,6 @@ export class ReviewsService {
       heading: theBriefingsHeading(writes, first),
       counts: theCountsSaid(lines, first),
       patterns: found.patterns,
-      patternsNote: found.patterns.length ? PATTERNS_NOTE(first) : null,
       changedAfterEarlierConversations: [...found.talkedThrough, ...earlier],
       corrections: (record?.parts ?? []).flatMap((p) => p.lines).filter((l) => l.correction).map((l) => ({ line: l.says, said: l.correction!.said, whatIsTrue: l.correction!.whatIsTrue })),
       whoDecides: whoDecidesTheReview(writes, first, writerFirst),

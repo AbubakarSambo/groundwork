@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
 import { describe, it, expect } from 'vitest'
+import { whereTheMarkGoes } from '@/lib/marketing'
 
 /**
  * THE LOGO GOES HOME, AND SIGNING OUT IS POSSIBLE FROM ANYWHERE.
@@ -75,9 +76,21 @@ describe('one declaration of where the site is', () => {
      *
      * Caught by reading the attribute off the running page rather than trusting the expression.
      */
-    const src = read('lib/marketing.ts')
-    expect(src).toMatch(/VITE_MARKETING_URL \|\| 'https:\/\/myground\.work'/)
-    expect(src).not.toMatch(/VITE_MARKETING_URL \?\?/)
+    /* Was a match on the source line `VITE_MARKETING_URL || 'https://myground.work'`. The decision is now a function, so it is
+       checked by what it returns: an empty value falls back exactly as a missing one does. */
+    expect(whereTheMarkGoes('', 'app.myground.work')).toBe('https://myground.work')
+    expect(whereTheMarkGoes(undefined, 'app.myground.work')).toBe('https://myground.work')
+    expect(read('lib/marketing.ts')).not.toMatch(/VITE_MARKETING_URL \?\?/)
+  })
+
+  it('and a build that was not told where its site is never sends anyone to the live one', () => {
+    /* Milestone 1's smoke run, 3 November 2026: the rail's logo on the local bed took a signed-in lead, mid-setup, to the live
+       marketing site and from there to the live sign-in. Only the production app goes to the production site by default. */
+    for (const host of ['localhost', '127.0.0.1', 'staging.myground.work', 'gw-19.preview.vercel.app']) {
+      expect(whereTheMarkGoes(undefined, host), host).toBe('/')
+      expect(whereTheMarkGoes('', host), host).toBe('/')
+    }
+    expect(whereTheMarkGoes('https://staging-site.example', 'staging.myground.work')).toBe('https://staging-site.example')
   })
 
   it('and nothing else declares it, or hardcodes the production URL', () => {

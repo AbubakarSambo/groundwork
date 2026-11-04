@@ -23,8 +23,8 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
    is checked against the keys IT can be sent, not against every key that exists. A page failing to
    map a key it never shows is not a broken link. */
 const KEYS_FOR = {
-  'the lead': groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: false }).map(t => t.key),
-  'a party': groundTabs({ contextEnabled: true, canRunThisCheckIn: false, isAParty: true }).map(t => t.key),
+  'the lead': groundTabs({ canRunThisCheckIn: true, isAParty: false }).map(t => t.key),
+  'a party': groundTabs({ canRunThisCheckIn: false, isAParty: true }).map(t => t.key),
 } as const
 
 describe('every tab in the row can be linked to', () => {

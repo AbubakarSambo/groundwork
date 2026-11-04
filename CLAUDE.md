@@ -2,21 +2,6 @@
 
 Read this first, every session. Then read `docs/tasks.md` and carry on from the first task that is not ticked.
 
-## The standards everything is built and scored against (Hafsah, 2 November 2026)
-
-The full version is `~/Desktop/next-steps/standards.md` (copy in `docs/overnight/standards.md` on wip/first-experience). Score every change against all of these, the approved target journey, and the test's measures.
-
-- **The target:** 8.5 out of 10 on Hafsah's scale, on average, nobody below 7.5, across every use case. She rates today about 2. She does not rate runs: Claude builds, runs the tests in a visible Chrome window as real people would (web and phone width; WhatsApp through the local recorder, email through the mail catcher; the API only for test data and the clock), re-scores and repeats until the target is met.
-- **The five fix rules** below apply to every change.
-- **The assessment and its three layers:** one assessment per conversation that every page, report and assistant answer reads from; patterns built over time (role detection, areas of focus, behaviour patterns), each naming its instances; interventions followed up to see if they worked (small steps automatic; warnings, plans and firing are the lead's decision).
-- **How Groundwork thinks:** assume people lie, forget and are biased, the lead included; trust evidence; state patterns plainly with their instances, even when nobody can prove who is telling the truth; the record is the only limit.
-- **How it talks:** radical transparency; direct, normal human language; no AI speak; no watering down (firing is called firing); no privacy notes in messages or screens.
-- **Natural conversation:** no question limits, no forced close; it offers to wrap up in its own words when the person seems done, they can carry on, and it can close when it has what it needs.
-- **No new pages** (the Desk is the Company page renamed) and **no change to the notification cadence**.
-- **The assistant:** "[first name]'s assistant", "Helps you navigate your [organisation] Desk", the full specification in Hafsah's brief; it never discusses individual people's performance.
-- **Phone numbers** always shown and editable under People; nothing people need is removed again.
-- **No pull requests or merges until Hafsah agrees.** Push only to her copy.
-
 ## How we fix things: five rules (Hafsah, 29 October 2026)
 
 Standing rules for every fix. Follow them before any fix, and in each fix's note say how it meets them.

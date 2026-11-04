@@ -58,7 +58,7 @@ describe('"Seen in 1 sessions." (109 f)', () => {
 
 describe('the withheld board has no dash (109 g)', () => {
   it('Amani, before she has checked in', () => {
-    expect(BECAUSE_YOURS_WOULD_BE_AN_ANSWER).toBe('The board puts what everybody said next to each other, and you have not answered yet. You will be able to open it as soon as you have checked in. Reading what everybody else said first would make yours an answer to theirs, and each answer is meant to be your own.');
+    expect(BECAUSE_YOURS_WOULD_BE_AN_ANSWER).toBe('Check in first, then you’ll see the board.');
     expect(BECAUSE_YOURS_WOULD_BE_AN_ANSWER).not.toMatch(/ - /);
   });
 });

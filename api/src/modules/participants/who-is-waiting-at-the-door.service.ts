@@ -73,12 +73,12 @@ export class WhoIsWaitingAtTheDoorService {
      */
     const ownDomain = effectiveJoinDomain((request.organization as any) ?? { email: null, joinDomain: null });
     const onTheOrganisationsOwnAddress = !!ownDomain && theDomainOf((request as any).email) === ownDomain;
-    const asked = admin ? ` We’ve asked ${[admin.firstName, admin.lastName].filter(Boolean).join(' ').trim() || 'the admins there'}.` : ' We’ve asked the admins there.';
+    const asked = admin ? ` I’ve asked ${[admin.firstName, admin.lastName].filter(Boolean).join(' ').trim() || 'the admins there'}.` : ' I’ve asked the admins there.';
     const adminName = admin ? [admin.firstName, admin.lastName].filter(Boolean).join(' ').trim() : '';
     const says = !seats.allowed
       ? `${request.organization.name} has no free seat right now, so an admin there has to make room before you can start.${asked}`
       : onTheOrganisationsOwnAddress
-        ? `${request.viaInvitation && inviter?.firstName ? `${inviter.firstName} invited you. ` : ''}${adminName ? `${adminName}, an admin, has` : 'An admin has'} to add you to ${request.organization.name} first.${adminName ? '' : ' We’ve asked the admins there.'}`
+        ? `${request.viaInvitation && inviter?.firstName ? `${inviter.firstName} invited you. ` : ''}${adminName ? `${adminName}, an admin, has` : 'An admin has'} to add you to ${request.organization.name} first.${adminName ? ''  : ' I’ve asked the admins there.'}`
         : `You’re from outside ${request.organization.name}, so an admin there has to let you in.${asked}`;
     return {
       waiting: true as const,

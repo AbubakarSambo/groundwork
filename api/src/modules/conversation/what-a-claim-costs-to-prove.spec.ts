@@ -161,7 +161,7 @@ describe('and it is ranked behind what they asked for', () => {
   /* Marked as put after the reply has gone, not while the prompt is being built - a prompt is
      assembled whether or not the turn ever reaches anybody. */
   it('and is remembered after the turn, not during it', () => {
-    const notes = SRC.slice(SRC.indexOf('async noteWhatTheySaid('), SRC.indexOf('async extractRecordEntries('));
+    const notes = SRC.slice(SRC.indexOf('async noteWhatTheySaid('), SRC.indexOf('async writeTheRecordFromTheAssessment('));
     /* And not by a turn that said goodbye: that reply put nothing to anybody, and a challenge
        marked as said without being said is a challenge nobody ever gets. */
     expect(notes).toMatch(/const putLastTurn = row\.completedAt \? null : theChallengeWorthPutting\(before\.claims, before\.challenged/);

@@ -51,9 +51,29 @@ const inASentence = (phrase: string): string => {
  */
 const ONLY_SAYS_PEOPLE_DIFFER = /^(?:people|they|the team|everybody|everyone)\s+(?:see|saw|said|say|describe|described|read|view)\s+(?:(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+|some|several|a few|many)\s+)?(?:things?|this|it|matters?)?\s*(?:differently|different things)$/i;
 
-export function peopleSaidDifferentThingsAbout(topic: string): string {
+/*
+ * WHO SAID IT, WHEN THE READER MAY KNOW (Hafsah, 30 October 2026, first-experience round 1). The board, Today and the lead's
+ * summary each wrote their own sentence for one difference ("..., so it needs settling.", "Settle the difference between what
+ * you and Kwame said."), and an impatient lead read both, about the same thing, on one page. This is now the one sentence all
+ * of them say: "You and Kwame Nkosi said different things about the purpose of this check-in." `who` is the people, already
+ * named for this reader; without it, "People".
+ */
+/** A board stored before 30 October 2026 ended the sentence ", so it needs settling." or " This needs settling."; read as the sentence alone. */
+export function withoutTheOldEnding(question: string): string {
+  return String(question ?? '').trim().replace(/(?:,\s*so it needs settling|\.\s*This needs settling)\.?$/i, '.');
+}
+
+/*
+ * NAMED, IN THE APPROVED JOURNEY'S WORDS (stages 8 and 9, Hafsah, 1 November 2026): "Jane and John see the Westgate deal
+ * differently." Where the people are named for this reader, the sentence says they see it differently; unnamed, it stays
+ * "People said different things about ...", which every board and the lead's morning read.
+ */
+export function peopleSaidDifferentThingsAbout(topic: string, who = 'People'): string {
   const t = (topic ?? '').trim().replace(/[.!?]+$/, '');
-  if (!t || ONLY_SAYS_PEOPLE_DIFFER.test(t)) return 'People said different things.';
-  if (isAWholeSentence(t)) return `People said different things. ${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
-  return `People said different things about ${inASentence(t)}.`;
+  const named = !/^People\b/.test(who);
+  if (!t || ONLY_SAYS_PEOPLE_DIFFER.test(t)) return named ? `${who} see this differently.` : `${who} said different things.`;
+  if (isAWholeSentence(t)) return `${named ? `${who} see this differently.` : `${who} said different things.`} ${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
+  /* "see whether X differently" is not English: a noun clause goes after "differently". */
+  if (named) return STARTS_A_NOUN_CLAUSE.test(t) ? `${who} see differently ${inASentence(t)}.` : `${who} see ${inASentence(t)} differently.`;
+  return `${who} said different things about ${inASentence(t)}.`;
 }

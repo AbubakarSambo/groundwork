@@ -34,7 +34,12 @@ const GROUND = {
   ],
 }
 
-vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
+/* My work is the B7 page for a lead too since Release 1B's switch went, drawn from GET /grounds/:id/my-work, with "Who has
+   answered" under it; without the server's answer it says it could not be read, and the roster's way in is not drawn. */
+vi.mock('@/api/grounds', async () => {
+  const { SERVED_TO_THE_LEAD } = await import('./my-work-served.fixture')
+  return { groundsApi: { get: vi.fn(), myWork: vi.fn().mockResolvedValue(SERVED_TO_THE_LEAD) } }
+})
 vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn() } }))
 vi.mock('@/api/documents', () => ({ documentsApi: { list: vi.fn() } }))
 

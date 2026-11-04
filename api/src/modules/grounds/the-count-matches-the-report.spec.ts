@@ -50,11 +50,14 @@ describe('who the denominator counts', () => {
     /* Asked of how-many-have-answered now rather than copied here; the clause lives there. */
     expect(fn).toContain('await howManyHaveAnswered(this.prisma, groundId, sessionNumber)');
     const theRule = require('fs').readFileSync(require('path').join(__dirname, '..', 'reports', 'how-many-have-answered.ts'), 'utf8');
-    expect(theRule).toContain('AND: [whoASessionCounts(sessionNumber, AN_ANSWER)]');
+    /* CHANGED 1 NOVEMBER 2026: the rule is the one pure function now, not a where clause (how-many-have-answered.ts). */
+    expect(theRule).toContain('if (checksInOnlyWhenTheyChoose(p) && !did) continue;');
   });
 
   it('and still counts anyone who has actually completed this round', () => {
     const theRuleToo = require('fs').readFileSync(require('path').join(__dirname, '..', 'reports', 'how-many-have-answered.ts'), 'utf8');
-    expect(theRuleToo).toMatch(/checkIns: \{ some: \{ sessionNumber, status: \{ in: AN_ANSWER \} \} \}/);
+    /* Everybody on the check-in is read, and whoever answered is counted whatever else holds them out (1 November 2026). */
+    expect(theRuleToo).toContain("where: { groundId },");
+    expect(theRuleToo).toContain('if (did) {');
   });
 });

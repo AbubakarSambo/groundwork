@@ -1,15 +1,13 @@
-import { aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundworkEvents } from '../../common/events';
-import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { lookForRecommendedCheckIns, theOffersWaiting, theLeadAnswers, THE_YES, THE_NO, type AnOfferTheLeadReads, type WhatToSetUp } from '../detectors/the-anchor-recommendations';
 
 /**
- * RECOMMENDED CHECK-INS FOR A CHECK-IN STARTED FROM THE ANCHOR (piece 24). Behind the anchor switch:
- * with it off nothing is looked for and nothing is served. The lead alone reads and answers them.
- * See detectors/the-anchor-recommendations.ts for what is offered and what is never done.
+ * WHAT GROUNDWORK RECOMMENDS (piece 24). Every lead reads it on every check-in she runs, with no setting in the way (Hafsah, 3 November
+ * evening). It rests on the check-in's own record; warnings, plans and firing stay the lead's decision. The lead reads and answers every
+ * offer; a team member only their own. See detectors/the-anchor-recommendations.ts for what is offered and what is never done.
  */
 @Injectable()
 export class RecommendedCheckInsService {
@@ -22,7 +20,6 @@ export class RecommendedCheckInsService {
   async onCheckInCompleted(e: { groundId?: string }) {
     if (!e?.groundId) return;
     try {
-      if (!(await theAnchorScenarioIsOn(this.prisma))) return;
       await lookForRecommendedCheckIns(this.prisma as any, e.groundId);
     } catch (err: any) {
       this.logger.warn(`Recommended check-ins could not be looked for: ${err?.message ?? err}`);
@@ -30,7 +27,7 @@ export class RecommendedCheckInsService {
   }
 
   private async theLeadsGround(groundId: string, userId: string) {
-    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, initiatorId: true, startedFrom: true, scenario: true } });
+    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, initiatorId: true } });
     if (!g) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     if (g.initiatorId !== userId) throw new ForbiddenException('Only the person who set this check-in up can read what Groundwork recommends.');
     return g;
@@ -38,7 +35,6 @@ export class RecommendedCheckInsService {
 
   async forTheLead(groundId: string, userId: string): Promise<{ offers: AnOfferTheLeadReads[] }> {
     const g = await this.theLeadsGround(groundId, userId);
-    if (!aGroundIsTheAnchors(g as any) || !(await theAnchorScenarioIsOn(this.prisma))) return { offers: [] };
     return { offers: await theOffersWaiting(this.prisma as any, groundId, g.organizationId) };
   }
 

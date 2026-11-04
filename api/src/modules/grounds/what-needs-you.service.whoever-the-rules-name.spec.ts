@@ -93,7 +93,9 @@ function setup(opts: { above?: string; duties?: Record<string, unknown> } = {}) 
       if (s === 'leave') return { isOn: true, answers: { days: 21, approver: 'Their manager' } };
       if (s === 'time') return { isOn: true, answers: { clients: ['Naivas', 'Lakeside'], approver: 'Their manager' } };
       if (s === 'reviews') return { isOn: true, answers: { every: 'Every 6 months', writer: 'Their manager' } };
-      if (s === 'spend') return { isOn: true, answers: { currency: 'KES', limit: 20000, above: opts.above ?? 'An admin' } };
+      if (s === 'spend') return { isOn: true, answers: { currency: 'KES' } };
+      /* The limit and the person named above it are the lowest of the steps by amount (Hafsah's plan of 2 November, step 0). */
+      if (s === 'spendRules') return { isOn: false, answers: { thresholds: [{ above: 20000, steps: [[opts.above ? { named: opts.above } : 'admin']] }] } };
       return null;
     }) },
     organizationMembership: {
@@ -131,8 +133,7 @@ function setup(opts: { above?: string; duties?: Record<string, unknown> } = {}) 
 /* One approval step, its rules tried in order (theStepsFor gives a list of steps since build step 4). */
 function theRulesAre(rulesOfTheStep: rules.Step) {
   jest.spyOn(rules, 'theStepsFor').mockImplementation((() => [rulesOfTheStep]) as any);
-  /* Spending asks theStepsADecisionFollows since B-004 (09b14bd7), which calls theStepsFor inside its own module, out of the spy's reach. */
-  jest.spyOn(rules, 'theStepsADecisionFollows').mockImplementation((() => [rulesOfTheStep]) as any);
+  /* Spending asks theStepsFor again since its steps by amount became the one owner (Hafsah's plan of 2 November, step 0), so the one spy covers it. */
 }
 
 beforeEach(() => {

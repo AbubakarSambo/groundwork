@@ -1,4 +1,5 @@
 import { ItsEvidence } from '@/components/gw/ItsEvidence'
+import { ThatsNotRight } from '@/components/gw/ThatsNotRight'
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -632,6 +633,7 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
           <div key={label} className="gwui-note gwui-mt-2">{`The ${label.toLowerCase()} is ${value}.`}</div>
         ))}
         <DueLine due={row.due} />
+        <ThatsNotRight line={[row.name, ...fieldEntries.map(([label, value]) => `The ${label.toLowerCase()} is ${value}.`)].join('. ')} />
       </div>
       <div className="gwui-fs-15 gwui-ink-text">
         {row.owner ?? (

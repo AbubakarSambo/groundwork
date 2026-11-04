@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, cleanup } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
 import { ShareSection } from './ShareSection'
 
 vi.mock('qrcode', () => ({ default: { toDataURL: () => Promise.resolve('data:image/png;base64,QR') }, toDataURL: () => Promise.resolve('data:image/png;base64,QR') }))
@@ -27,15 +30,47 @@ describe('share a link, as the lead reads it', () => {
 })
 
 describe('where people answer, on the same Setup', () => {
+  /*
+   * REPOINTED (People and setup rebuild, 29 Sept): GroundAdminPage.tsx still reads whether
+   * WhatsApp is switched on (`useWhatsAppIsOn`) and hands it down as `whatsAppIsOn`.
+   *
+   * REPOINTED AGAIN (4 November 2026): People and setup is the B8 page for everybody now (Release 1B's switch went), where
+   * the gate is the "Where" row under "How people answer". This used to match one line of the old page's source; it now
+   * renders the page and reads the row, for each of the three cases.
+   */
+  const fn = () => vi.fn()
+  const mut = () => ({ mutate: vi.fn(), isPending: false })
+  function drawIt(whatsAppIsOn: boolean, orgHasWhatsApp: boolean) {
+    const props: any = {
+      ground: { id: 'g1', label: 'Sales team, Q3', status: 'ACTIVE', scenario: 'SALES', timelineDays: 90, cadence: 'WEEKLY', initiatorId: 'u-lead', mayChangeSetup: true, orgHasWhatsApp, participants: [] },
+      user: { id: 'u-lead' }, id: 'g1', navigate: fn(), isInitiator: true, isOrgAdmin: false, viewerIsAParty: true,
+      mySessionsDone: 0, plannedSessions: 12, addManyParticipants: fn(), billingStatus: null, onShareCode: fn(),
+      fixingEmailId: null, setFixingEmailId: fn(), fixingEmailValue: '', setFixingEmailValue: fn(), fixEmail: mut(), resendInvite: mut(), updateRole: mut(),
+      settingsChangeCount: 0, startsAtDraft: '', setStartsAtDraft: fn(), startsAtOnRecord: '', canOfferStartDate: false,
+      timelineDaysDraft: 90, setTimelineDaysDraft: fn(), cadenceDraft: 'WEEKLY', setCadenceDraft: fn(), workingDaysDraft: [1, 2, 3, 4, 5], setWorkingDaysDraft: fn(),
+      anchorDayDraft: null, setAnchorDayDraft: fn(), theTimeframeChanged: false, saveSetup: mut(),
+      peersVisible: false, peersDefaultHidden: false, setPeerVisibility: mut(), contactHidden: false, setContactVisibility: mut(),
+      numbersShared: false, setWhoSeesTargets: mut(), whatsAppIsOn, setOverWhatsApp: mut(), setSimplerWords: mut(),
+      expectsUnblocking: false, setExpectThemToUnblock: mut(), setWorkTogether: mut(), setChasing: mut(),
+      confirmDelete: false, setConfirmDelete: fn(), deleteError: null, setDeleteError: fn(), removeGround: mut(),
+    }
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    return render(<QueryClientProvider client={qc}><MemoryRouter><CheckInPeopleAndSetup {...props} /></MemoryRouter></QueryClientProvider>)
+  }
+
   it('is only offered while WhatsApp is switched on, as well as connected', () => {
-    /*
-     * REPOINTED (People and setup rebuild, 29 Sept): GroundAdminPage.tsx still reads whether
-     * WhatsApp is switched on (`useWhatsAppIsOn`) and hands it to CheckInPeopleAndSetup.tsx as
-     * `whatsAppIsOn`, which is where the "Where people answer" row's own gate now lives.
-     */
     const admin = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
-    const page = readFileSync(join(__dirname, 'CheckInPeopleAndSetup.tsx'), 'utf8')
     expect(admin).toContain('const whatsAppIsOn = useWhatsAppIsOn()')
-    expect(page).toContain('props.whatsAppIsOn && (ground as any)?.orgHasWhatsApp && (')
+
+    drawIt(true, true)
+    expect(screen.getByRole('combobox', { name: 'Where people answer' })).toBeTruthy()
+    cleanup()
+
+    for (const [on, connected] of [[false, true], [true, false], [false, false]] as const) {
+      drawIt(on, connected)
+      expect(screen.queryByRole('combobox', { name: 'Where people answer' }), `switched on ${on}, connected ${connected}`).toBeNull()
+      expect(screen.getByText('In Groundwork only')).toBeTruthy()
+      cleanup()
+    }
   })
 })

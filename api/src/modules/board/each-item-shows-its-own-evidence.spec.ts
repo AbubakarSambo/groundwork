@@ -49,12 +49,3 @@ describe('with Release 1B’s switch on, each deal shows its own evidence', () =
     expect(JSON.stringify(n)).not.toContain('ev-femi');
   });
 });
-
-describe('with it off, the board reads exactly as before', () => {
-  it.each([[false], [undefined]])('no row carries evidence (switch %s), and nothing else changes', async (off) => {
-    const b = await boardAs(RUN(off as any), ...BISI);
-    expect(rowsOf(b).some((r: any) => 'evidence' in r)).toBe(false);
-    const withNoEvidenceAtAll = await boardAs({ ...RUN(off as any), prismaExtras: { organization: RUN(off as any).prismaExtras!.organization } }, ...BISI);
-    expect(JSON.parse(JSON.stringify(b))).toEqual(JSON.parse(JSON.stringify(withNoEvidenceAtAll)));
-  });
-});

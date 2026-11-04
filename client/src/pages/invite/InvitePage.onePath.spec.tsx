@@ -34,6 +34,7 @@ const PREVIEW = {
   roleAsDescribed: null,
   alreadyAccepted: false,
   organisationName: 'Acme Inc',
+  takes: 'About ten minutes', /* as the server serves it, from A_CHECK_IN_TAKES */
 }
 
 function renderInvite() {
@@ -62,7 +63,7 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
 
   it('accepting routes straight into /checkin/:id on the right ground (seamless handoff)', async () => {
     renderInvite()
-    await screen.findByText('Sarah invited you to “Groundwork project”')
+    await screen.findByText('Sarah invited you to the Groundwork project check-in' /* F5, stage 6 */)
     fireEvent.click(screen.getByRole('button', { name: /Answer today’s check-in now/i }))
     await waitFor(() => expect(mockedNavigate).toHaveBeenCalled())
     const [path, opts] = mockedNavigate.mock.calls[0]
@@ -76,14 +77,14 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
       accessToken: 'jwt-1', user: { id: 'u-p', email: 'p@x.test' }, groundId: 'g-1', checkInId: null,
     })
     renderInvite()
-    await screen.findByText('Sarah invited you to “Groundwork project”')
+    await screen.findByText('Sarah invited you to the Groundwork project check-in' /* F5, stage 6 */)
     fireEvent.click(screen.getByRole('button', { name: /Answer today’s check-in now/i }))
     await waitFor(() => expect(mockedNavigate).toHaveBeenCalledWith('/grounds/g-1/p', { replace: true }))
   })
 
   /* U.3: the invitation now reads as the prototype's (join-invite.txt). The old
      top box ("builds the shared report") and footer ("come back any time to add to") are replaced by
-     the prototype's box and "About two minutes. You choose how you sign in afterwards."
+     the prototype's box and "About ten minutes. You choose how you sign in afterwards."
      U.20 fifth review (Hafsah, pictured at 1440px): "What happens to what you write" no longer
      prints in full on the page (it made the page twice the prototype's length, which has none of
      it) - it is a plain link that opens the same four claims in the shared Modal, so this test now
@@ -104,7 +105,7 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
      `organisationName` and the assertions read the named form. */
   it('keeps the privacy panel once, reachable from a link, and says what the prototype says', async () => {
     renderInvite()
-    await screen.findByText('Sarah invited you to “Groundwork project”')
+    await screen.findByText('Sarah invited you to the Groundwork project check-in' /* F5, stage 6 */)
     expect(screen.getByText(/The people in this check-in, including your manager, can see what you say in it\. Admins at Acme Inc can read every check-in\. Your own report and your questions to Ask\s+Acme Inc stay private\./)).toBeTruthy()
     expect(screen.queryByText('Nobody you work with reads it')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'What happens to what you write' }))
@@ -117,7 +118,7 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
 
   it('the inline entry-pipeline chat is gone (no onboarding cards, no chat input)', async () => {
     renderInvite()
-    await screen.findByText('Sarah invited you to “Groundwork project”')
+    await screen.findByText('Sarah invited you to the Groundwork project check-in' /* F5, stage 6 */)
     expect(screen.queryByText(/Type anything to continue/i)).toBeNull()
     expect(screen.queryByPlaceholderText(/Type your/i)).toBeNull()
   })

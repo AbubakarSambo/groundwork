@@ -39,9 +39,9 @@ describe('a day is not a target', () => {
         return target[prop];
       },
     });
-    const anthropic: any = { extract: jest.fn(async () => ({ groundAims: [{ name: MATTER_A, target: 22 }], expectations: [], promises: [] })) };
-    const svc = new ConversationService(prisma, {} as any, anthropic, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
-    await svc.extractExpectations('c1', 'lead', 'g1');
+    const svc = new ConversationService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+    /* The aim as her assessment read it (one source, 2 November 2026), kept by the one writer of the team's aims. */
+    await svc.keepTheTeamsAims('g1', 'lead', [{ name: MATTER_A, target: 22 }], ['Matter A defence filed on time on 22 October, and no missed court dates this term.']);
     const matterA = written.find((w) => /Matter A/.test(w.name));
     console.log(`ON THE BOARD: ${JSON.stringify(matterA)}`);
     expect(matterA).toBeTruthy();

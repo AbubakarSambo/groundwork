@@ -46,7 +46,7 @@ function renderIt() {
 describe('Mercy’s own report, as she reads it', () => {
   it('reads Greenfield Supermarket’s promise as theirs, never "Delivery’s", and who "him" is where her check-in names him', async () => {
     renderIt()
-    const told = await screen.findByRole('region', { name: 'What you told us' })
+    const told = await screen.findByRole('region', { name: 'What you told me' })
     const text = document.body.textContent ?? ''
     expect(within(told).getByText("Delivery is set for Friday, and they'll pay then.")).toBeTruthy()
     expect(within(told).getByText('This is Greenfield Supermarket’s promise, not yours, so it is kept on the Greenfield Supermarket deal. A message from Greenfield Supermarket would prove it.')).toBeTruthy()
@@ -61,7 +61,7 @@ describe('Mercy’s own report, as she reads it', () => {
     expect(within(think).getByText('Greenfield Supermarket said yes, but nothing on record says they have paid yet. What would help you get the payment this week?')).toBeTruthy()
     expect(within(think).queryByText(/I have not asked Rose about money yet/)).toBeNull()
 
-    const told = screen.getByRole('region', { name: 'What you told us' })
+    const told = screen.getByRole('region', { name: 'What you told me' })
     expect(within(told).getByText('Rose said she will buy the two units at the end of the month, on October 30th.')).toBeTruthy()
     expect(within(told).getByText('This is Rose’s promise, not yours, so it is kept on the Mama Mboga Mart deal, with 30 October as the day they will buy. A message from Rose would prove it.')).toBeTruthy()
     /* The proven line is said once, under What you did well, with where its date comes from (Drop Access short run, item 14). */

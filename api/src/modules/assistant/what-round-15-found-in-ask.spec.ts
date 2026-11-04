@@ -35,7 +35,9 @@ describe('Ask counts the sales the way the board counts them (U3, U4)', () => {
   });
   it('a code typed in full is proof, and a document somebody else added proves nothing of Peter’s (U28)', async () => {
     const grace = await recordAs(R15.drop.ground.initiatorId);
-    expect(grace.content).toContain('progress, proven by the M-Pesa code they typed: M-Pesa code TGH5K2M9QX.');
+    /* What each person said is read from their assessments now (the one reader, 1 November 2026); round 15's record predates them,
+       so the typed code reaches Grace through the sales as the board counts them, as proof of that sale. */
+    expect(grace.content).toContain('It is paid, and the M-Pesa code TGH5K2M9QX shows it.');
     expect(grace.content).not.toMatch(/proven by a document: I haven't actually finished my check-in/);
     expect(ANSWER_FROM_THE_DOCUMENTS_PROMPT).toContain('use "THE SALES ON RECORD" in the record');
   });

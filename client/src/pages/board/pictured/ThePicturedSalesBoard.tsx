@@ -1,4 +1,5 @@
 import { theZoneDatesAreIn } from '@/lib/a-date-reads-the-same-everywhere'
+import { timesAWeek } from '@/lib/cadence'
 import { ItsEvidence } from '@/components/gw/ItsEvidence'
 import { useMemo, useState, type ReactNode } from 'react'
 import { FoldTheRest } from './FoldTheRest'
@@ -6,16 +7,16 @@ import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
 import { toast } from 'sonner'
-import { MessageCircle } from 'lucide-react'
 import { Section, Panel, Tag, Button, EdgeList, EdgeRow } from '@/components/gw/ui'
 import { checkInLinksApi } from '@/api/check-in-links'
-import { useAskStore } from '@/stores/ask'
 import { whenTheBoardLastChanged } from '../when-the-board-last-changed'
 import { TheDealsCanBeChanged, WhatShowsItBlock } from '../WorkRecords'
 import './pictured-board.css'
 import { useTheDirectMorning } from '@/lib/the-direct-morning'
 import { TheNudgeButton } from './TheNudgeButton'
 import { theMorningLines, theMorningNeedsNotOnTheBoard, nothingNeedsYou, WhatIsClosing } from './TheMorningOnTheBoard'
+import { theClocksSessionSaid } from '@/lib/the-one-count'
+import { EachAccountSideBySide, KnownBelievedUnknown } from './TheSituationsSections'
 
 /**
  * THE SALES BOARD AS PICTURED, FOR WHOEVER RUNS IT (screen match, 16 October; the target is
@@ -59,8 +60,16 @@ export interface PicturedBoardProps {
  * HOW OFTEN, IN THE PICTURE'S WORDS ("Daily on weekdays, from 4pm."): the cadence, the days it runs and the
  * hour the latest session opened, in this reader's own time. Null where the cadence is not known.
  */
-export function theScheduleInWords(cadence: string | null | undefined, workingDays: number[] | null | undefined, opensAt: string | null | undefined, anchorDay: number | null = null): string | null {
-  const days = [...new Set(workingDays ?? [])].sort().join(',')
+export function theScheduleInWords(
+  g: { cadence?: string | null; workingDays?: number[] | null; cadenceAnchorDay?: number | null; cadenceDays?: number[] | null } | null | undefined,
+  opensAt: string | null | undefined,
+): string | null {
+  const cadence = g?.cadence
+  const anchorDay = g?.cadenceAnchorDay ?? null
+  const days = [...new Set(g?.workingDays ?? [])].sort().join(',')
+  /* Twice or more a week reads its days, the one wording every page uses (lib/cadence.ts timesAWeek). */
+  const often = timesAWeek(cadence, g?.cadenceDays)
+  if (often) return `${often[0].toUpperCase()}${often.slice(1)}.`
   /*
    * ONLY A DAILY CHECK-IN OPENS AT AN HOUR, 8 IN THE MORNING WHERE THE ORGANISATION IS (the server's theHourItOpens). Every other rhythm opens
    * at the start of its day, and its "from 10pm" was that midnight read in another zone (fix plan, pattern 4; quarter test, Faith's 90 days).
@@ -725,6 +734,8 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
   }
   return (
     <Section heading="The team today" note="Each person’s line, their last 10 check-ins, and what keeps coming up">
+      {/* Who has answered this session, the one count Today, the check-in's page and Ask say (api this-sessions-count.ts). */}
+      {theClocksSessionSaid(b)?.says && <p className="pb-foot" data-testid="the-team-today-count">{theClocksSessionSaid(b)!.says}</p>}
       <div className="pb-rows">
         {rows.map((r) => {
           /*
@@ -737,7 +748,8 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
           /* What they said today is said in full beside them, so the tag is about the work only, never the reason said short. */
           const says = saysOf.get(r.participantId) ?? null
           const tag = r.lastIn ? { word: `Last in ${r.lastIn}`, tone: 'plain' as const } : aTagForTheWork(says ? '' : reason, dealsOf(r.participantId), today, r.workTag)
-          const more = [theirTarget(r.participantId, firstName(r.who)), says, ...morning.filter((l) => l.participantId === r.participantId).map((l) => l.text)].filter(Boolean) as string[]
+          /* Each sentence once: the person's line already is what the board says of them, so it is not said again under it (round 3: every row read its line twice). */
+          const more = [...new Set([theirTarget(r.participantId, firstName(r.who)), says, ...morning.filter((l) => l.participantId === r.participantId).map((l) => l.text)].filter(Boolean) as string[])].filter((x) => x !== r.line)
           return (
             <div className="pb-row pb-row-team" key={r.participantId}>
               <Link className="pb-row-name pb-name-link" to={`/grounds/${groundId}/person/${r.participantId}`}>{firstName(r.who)}</Link>
@@ -1151,18 +1163,6 @@ export function WhereThisIsHeading({ b, onRecordTheDecision, readOnly = false }:
 
 /* ------------------------------------------------------------------ ask, and what Groundwork recommends */
 
-export function AskAboutThisBoard({ example }: { example: string }) {
-  const [draft, setDraft] = useState('')
-  const showWith = useAskStore((s) => s.showWith)
-  return (
-    <form className="pb-ask" onSubmit={(e) => { e.preventDefault(); const m = draft.trim(); if (!m) return; showWith(m); setDraft('') }}>
-      <MessageCircle size={18} aria-hidden="true" />
-      <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`Ask about this board, for example “${example}”`} aria-label="Ask about this board" />
-      <Button kind="primary" type="submit">Ask</Button>
-    </form>
-  )
-}
-
 export function GroundworkRecommends({ offers, onAnswer, busy }: { offers: PicturedBoardProps['recommendations']; onAnswer: (id: string, yes: boolean) => void; busy: boolean }) {
   /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
   const direct = useTheDirectMorning()
@@ -1200,21 +1200,23 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
   const now = useMemo(() => new Date(), [])
   const deals = (b.workRecords ?? []).find((s: Any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: Any) => r.kind === 'deal')) ?? null
   const groups = dealsByGroup(deals)
-  const nextQuarterDeal = (groups['next-quarter'] ?? [])[0]
-  const example = nextQuarterDeal ? `Why is ${nextQuarterDeal.name} next quarter?` : 'Who is waiting on whom?'
   return (
     <div className="pb">
       {/* THE FIRST SCREEN, AS THE PROTOTYPE HAS IT (Hafsah, 24 October): the headline with what is closing the gap, What needs you, and the team. */}
       <HeadlineAndGap b={b} deals={deals} groups={groups} />
-      {/* Right under the gap, as the prototype's board has it. */}
-      <WhatTheTargetAssumes b={b} />
       {/* An admin who only reads is never told "What needs you": it is not hers to do (the light board's rule, kept). */}
       {!p.readOnly && <WhatNeedsYou b={b} renderActions={p.renderActions} groundId={p.groundId} deals={deals} sessionRows={p.sessionRows} />}
+      {/* Where people differ, and what nobody knows yet (the approved journey, stage 10): the situation boards' own two sections. */}
+      <EachAccountSideBySide b={b} />
+      <KnownBelievedUnknown b={b} unknown={[]} leadFirstName={null} />
       {/* What's closing, on the first screen as Hafsah's 24 October decision keeps it: the morning's lines, served to the lead alone. */}
       <WhatIsClosing b={b} heading="What’s closing" />
       <TheTeamToday b={b} deals={deals} today={isoDay(now)} groundId={p.groundId} />
       {/* Everything else, folded under its own heading (FoldTheRest): the same sections and words, opened with a tap. */}
       <FoldTheRest>
+        {/* What the target assumes is the lead's own setup words, so it no longer opens the board (Hafsah's change 4 to the
+            approved journey, 1 November 2026); it is kept here, with the rest. */}
+        <WhatTheTargetAssumes b={b} />
         {deals && <EveryDealDayByDay b={b} section={deals} now={now} groundId={p.groundId} />}
         {p.otherRecords}
         {p.yourTeam}
@@ -1229,7 +1231,6 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
         <WhereThisIsHeading b={b} onRecordTheDecision={p.onRecordTheDecision} readOnly={p.readOnly} />
       </FoldTheRest>
       <Reports b={b} groundId={p.groundId} sessionRows={p.sessionRows} navigate={p.navigate} now={now} />
-      <AskAboutThisBoard example={example} />
       <GroundworkRecommends offers={p.recommendations} onAnswer={p.onAnswerRecommendation} busy={p.recommendationBusy} />
       {p.kindOfWork}
     </div>
@@ -1249,9 +1250,3 @@ export function ThePicturedOwnDeals({ b, groundId, myFirstName }: { b: Any; grou
   return <EveryDealDayByDay b={b} section={mine} now={now} groundId={groundId} heading="Your deals, day by day" note="Only yours" ownTag={myFirstName ? 'Your deal' : null} />
 }
 
-/** The board's own ask bar, with an example from this board's deals ("Why is Green Mart next quarter?"). */
-export function ThePicturedAskBar({ b }: { b: Any }) {
-  const deals = (b.workRecords ?? []).find((s: Any) => s.section === 'Deal grid') ?? null
-  const next = (deals?.rows ?? []).find((r: Any) => r.kind === 'deal' && r.group === 'next-quarter')
-  return <AskAboutThisBoard example={next ? `Why is ${next.name} next quarter?` : 'Who is waiting on whom?'} />
-}

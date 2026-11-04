@@ -3,7 +3,6 @@ import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
 import { whatTheyTriedFirst } from './what-they-tried-first';
 import { saidWhatTheyTried } from '../grounds/a-wait-is-the-speakers-account';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { theReferencesTemplateFor } from '../grounds/the-references-template';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
 import { whenItWasFor } from '../grounds/a-day-said-is-read-on-the-day-it-was-said';
@@ -14,15 +13,15 @@ import { theUnitsOf } from './a-sales-aim-is-counted-from-the-deals';
 import { peersAreNamedOn, theReaderBySignIn } from '../reports/peers-are-named';
 import { isASalesKind, oneOfTheKinds, RECORDS_FOR_EACH_KIND, type AServedRecord } from './the-kind-of-work';
 import { plainNameOf } from '../patterns/plain-pattern-names';
-import { THE_SEVEN_BEHAVIOURS, WHERE_THE_WORDS_COME_FROM, theBehaviour, type ABehaviourKey } from '../patterns/the-seven-behaviours';
+import { THE_SEVEN_BEHAVIOURS, theBehaviour, type ABehaviourKey } from '../patterns/the-seven-behaviours';
 import { thePersonJudgementsAreOn, NOT_SHOWN_IN_THIS_ORGANISATION } from '../organisation/person-judgements';
-import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { readThePersonsRecord, readTheirOtherRecords } from './the-persons-record-store';
 import { theRecordInWords, acrossTheirCheckIns, type TheRecordInWords } from './the-persons-record-in-words';
 import { thePraiseFromYourLead } from './the-praise-from-your-lead';
 import { withTheirCountNow } from './an-aim-is-counted-now';
 import { thePromisesOf, thePromisesCounted } from '../grounds/the-promises-counted-once';
 import { theCheckInsCounted } from './a-day-they-checked-in';
+import { theFactsOnRecord, type AFact } from '../conversation/the-facts-on-record';
 
 /**
  * MY WORK, AS EACH READER IS SERVED IT (Release 1B, pull request 3 of 3; Hafsah's references-and-my-work.md of 17 October 2026,
@@ -290,7 +289,6 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const leadFirst = r.leadFirst || 'the person who runs it';
   /* The lead on her own page: nobody else to name, and her own coaching is "your" coaching. */
   const herOwn = self && r.readerRunsIt === true;
-  const alsoSees = herOwn ? '' : ` ${leadFirst} sees this page too.`;
   const theLeads = herOwn ? 'Your' : `${leadFirst}’s`;
   /** "you"/"your" to the person, the person's name to the lead. */
   const You = self ? 'You' : first;
@@ -527,7 +525,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
         items: [...done].reverse().slice(0, 3).map((c) => ({
           checkInId: c.id,
           when: aDayWithItsName(c.completedAt ?? c.availableFrom ?? r.now, r.timeZone, r.now),
-          line: lineOf.get(c.id) ? `“${String(lineOf.get(c.id)).trim().replace(/^[“"]|[”"]$/g, '')}”` : `Session ${c.sessionNumber}.`,
+          /* What they said, worded as said: their word, not a fact the page states. */
+          line: lineOf.get(c.id) ? `You said, “${String(lineOf.get(c.id)).trim().replace(/^[“"]|[”"]$/g, '')}”` : `Session ${c.sessionNumber}.`,
         })),
         emptySays: 'Your own report for each check-in will show here once you finish one.',
       }
@@ -563,8 +562,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       person: r.person,
       heading: `${first}’s work`,
       topLine: self
-        ? `What you need to do and what you’ve done.${alsoSees}`
-        : `What ${first} needs to do and what ${first} has done. ${first} sees this page too.`,
+        ? 'What you need to do and what you’ve done.'
+        : `What ${first} needs to do and what ${first} has done.`,
       numbers: numbers.slice(0, 3),
       focus: null,
       focusEmpty: NOT_SHOWN_IN_THIS_ORGANISATION,
@@ -614,8 +613,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
     person: r.person,
     heading: `${first}’s work`,
     topLine: self
-      ? `What you need to do, what you’ve done, and how to get better.${alsoSees}`
-      : `What ${first} needs to do, what ${first} has done, and how ${first} can get better. ${first} sees this page too.`,
+      ? 'What you need to do, what you’ve done, and how to get better.'
+      : `What ${first} needs to do, what ${first} has done, and how ${first} can get better.`,
     numbers: numbers.slice(0, 3),
     focus,
     focusEmpty: self
@@ -636,7 +635,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
         ? `The same seven behaviours in every check-in, read from ${your} last ${plural(done.length, 'check-in')}.`
         : 'The same seven behaviours in every check-in. Each one shows once the check-ins give enough to read.',
       behaviours,
-      libraryNote: WHERE_THE_WORDS_COME_FROM,
+      libraryNote: '',
     },
     coaching: {
       better,
@@ -678,7 +677,7 @@ const GROUND_SELECT = {
   id: true, label: true, organizationId: true, initiatorId: true, scenario: true, kindOfWork: true, peersVisibleToEachOther: true,
   initiator: { select: { firstName: true, lastName: true } },
   organization: { select: { timeZone: true } },
-  cadence: true, workingDays: true, workStages: true,
+  cadence: true, cadenceDays: true, workingDays: true, workStages: true,
   participants: {
     select: {
       id: true, userId: true, email: true, nameGiven: true, partyType: true, managingOnly: true, createdAt: true,
@@ -697,7 +696,6 @@ export async function readMyWork(
 ): Promise<MyWork> {
   const ground = await prisma.ground.findFirst({ where: { id: input.groundId }, select: GROUND_SELECT });
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
-  if (!(await theRelease1bTabsAreOn(prisma, ground.organizationId))) return { on: false };
 
   const isLead = ground.initiatorId === input.userId;
   const participants: any[] = ground.participants ?? [];
@@ -783,17 +781,19 @@ export async function readMyWork(
     prisma.groundCommitment?.findMany?.({ where: { groundId: ground.id, participantId: { not: pid } }, select: { text: true } }).catch(() => []) ?? [],
   ]);
 
-  /* Their own first line in each finished check-in, for the person alone: a person's own report is private, always. */
+  /*
+   * Their own first line in each finished check-in, for the person alone: a person's own report is private, always. Read through the one
+   * reader of the assessments, as the person reads their own, so how each thing stands comes with it: what the read says cannot be true
+   * as said is never offered back to them (Hafsah, 4 November 2026; theStandingOf in the-assessment.ts).
+   */
   const done = (checkIns as any[]).filter((c) => c.status === 'COMPLETED');
+  const doneIds = new Set(done.map((c) => c.id));
   const ownLines = reader === 'self' && done.length
-    ? ((await prisma.recordEntry?.findMany?.({
-        where: { participantId: pid, checkInId: { in: done.map((c) => c.id) }, disputedAt: null },
-        select: { checkInId: true, text: true, createdAt: true },
-        orderBy: { createdAt: 'asc' },
-      }).catch(() => [])) ?? []).reduce((acc: { checkInId: string; text: string }[], l: any) => {
-        if (l.checkInId && !acc.some((x) => x.checkInId === l.checkInId) && String(l.text ?? '').trim()) acc.push({ checkInId: l.checkInId, text: String(l.text).trim() });
+    ? ((await theFactsOnRecord(prisma, { groundId: ground.id, reader: { kind: 'the person', participantId: pid } }).catch(() => [] as AFact[]))
+      .reduce((acc: { checkInId: string; text: string }[], f) => {
+        if (doneIds.has(f.checkInId) && !f.inSetup && !acc.some((x) => x.checkInId === f.checkInId) && f.words.trim()) acc.push({ checkInId: f.checkInId, text: f.words.trim() });
         return acc;
-      }, [])
+      }, []))
     : [];
 
   const helpWith = (reader === 'lead' || THE_LEADS_NOTE_SHOWS_ON_THEIR_OWN_MY_WORK)
@@ -847,7 +847,7 @@ export async function readMyWork(
     ? { ...(built as any), items: { ...(built as any).items, note: '', emptySays: `${reader === 'self' ? 'Your' : `${firstOf(name)}’s`} ${(built as any).items.heading?.replace(/^(Your|\S+’s) /, '') || 'items'} show here again once ${reader === 'self' ? 'you have' : `${firstOf(name)} has`} checked in for this session.` } } as any
     : built;
   /* The person's record, read from where it is kept and never rebuilt here: the person's own, or, for the lead, the person's in this check-in. */
-  const theirRecord = judgements && page.on === true && !(page as any).judgements && await theDirectMorningIsOn(prisma, ground.organizationId)
+  const theirRecord = judgements && page.on === true && !(page as any).judgements
     ? await theRecordOnTheirPage(prisma, { groundId: ground.id, organizationId: ground.organizationId, label: ground.label || 'this check-in', pid, firstName: firstOf(name), self: reader === 'self', userId: person.userId ?? null, leadFirst, timeZone })
     : null;
   return { ...page, ...(theirRecord ? { record: theirRecord } : {}), ...(peopleList ? { people: peopleList } : {}) };
@@ -874,7 +874,7 @@ function emptyFor(label: string | null) {
     numbers: [], focus: null, focusEmpty: '',
     toDo: { othersNeed: [], own: [], emptySays: '' },
     achieved: { items: [], note: '', emptySays: '' },
-    performing: { note: '', behaviours: [], libraryNote: WHERE_THE_WORDS_COME_FROM },
+    performing: { note: '', behaviours: [], libraryNote: '' },
     coaching: { better: [], keep: [], betterEmpty: '', keepEmpty: '' },
     checkIns: { heading: '', due: 0, done: 0, onTime: 0, specific: 0, emptySays: null },
     reports: { heading: '', items: [], emptySays: '' },
@@ -883,17 +883,3 @@ function emptyFor(label: string | null) {
   };
 }
 
-/**
- * MY WORK, SAID DIRECTLY (the direct morning, Hafsah, 20 October 2026; organisation/the-direct-morning-switch.ts). Where the switch
- * is on, the page carries no note about who else sees it and no note about where its words come from. The page is the same page:
- * who may read it is decided before this, the same either way.
- */
-export function myWorkSaidDirectly<T>(served: T): T {
-  const s: any = served;
-  if (!s || typeof s !== 'object' || s.on !== true) return served;
-  return {
-    ...s,
-    ...(typeof s.topLine === 'string' ? { topLine: s.topLine.replace(/ [^.]+ sees this page too\.$/, '') } : {}),
-    ...(s.performing && typeof s.performing === 'object' ? { performing: { ...s.performing, libraryNote: '' } } : {}),
-  } as T;
-}

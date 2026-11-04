@@ -1,3 +1,5 @@
+import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
+
 /**
  * THE LEAN CONVERSATION: A PROPOSAL, FOR SIDE-BY-SIDE REPLAYS ONLY (Hafsah's fix list, item 4, 14 October 2026).
  *
@@ -42,7 +44,7 @@ export function aSecondTryTheLeanVersionKeeps(addedInstruction: string, kept: re
 }
 
 /** The base of the lean prompt, in place of the 19,000-word rulebook. */
-export const THE_LEAN_CORE = `You are Groundwork, having a short check-in with one person about their work. A check-in takes about ten minutes. Talk the way a good, warm colleague would: plainly, briefly, and interested in what they actually did.
+export const THE_LEAN_CORE = `You are Groundwork, having a short check-in with one person about their work. A check-in takes ${ABOUT_HOW_LONG}. Talk the way a good, warm colleague would: plainly, briefly, and interested in what they actually did.
 
 WHAT YOU ARE FOR
 Each check-in exists to learn what this kind of check-in needs, so the board and the report show what is really happening. The situation below says what this check-in is for and what you need to learn. Those are the things to cover. You choose the order and the words, and you follow what the person tells you.

@@ -1,8 +1,19 @@
 import {
-  FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_PROMPT, ROLE_TOPICS, asksAboutTheirJob, THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB, SAYS_WHICH_CHECK_IN_THIS_IS, coverageOf, isTheirFirstCheckIn, keepWhatTheySaidAboutTheirJob, onlyWhatTheySaid,
+  FIRST_CHECK_IN_ROLE_PROMPT, ROLE_TOPICS, asksAboutTheirJob, THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB, SAYS_WHICH_CHECK_IN_THIS_IS, coverageOf, isTheirFirstCheckIn, keepWhatTheySaidAboutTheirJob, onlyWhatTheySaid,
   theRoleBlock, theirJobAsTheyToldUs, theRoleMapQuestion, theProofComesFirst,
 } from './their-role-in-the-first-check-in';
 import { aClaimNothingShowsYet, askForProofKindly, ASKS_FOR_PROOF } from './asking-for-proof-kindly';
+import { THE_ASSESSMENT_PROMPT } from './the-assessment';
+import { anAssessmentHolding } from './an-assessment-for-a-spec';
+
+/* What their conversation's assessment heard about their job, as its role signals (2 November 2026: the separate reading went). */
+const PART = { roleName: 'the name of their job', owns: 'what they are responsible for', doingWell: 'what doing well looks like', dependsOn: 'who they depend on', inTheWay: 'what gets in their way' } as Record<string, string>;
+const theAssessmentHearing = (read: any) => {
+  const a = anAssessmentHolding({ promptVersionId: 'pv-assessment' } as any);
+  a.roleSignals = Object.entries(read ?? {}).map(([k, words], i) => ({ id: `r1.roleSignals.${i}`, words: String(words), from: [1], whoMaySee: 'the lead only' as any, saidWordForWord: true, part: PART[k] }));
+  a.promptVersionId = 'pv-assessment';
+  return a;
+};
 
 /**
  * Decision 129: the role interview, in a person's first check-in. These read what the model is given, what is kept, and what a
@@ -32,7 +43,7 @@ function world(opts: { setup?: boolean; clarification?: boolean; correction?: bo
   };
   const anthropic = { extract: jest.fn(async () => opts.read ?? {}) };
   const prompts = { getActive: jest.fn(async (key: string) => opts.stored?.[key] ?? null) };
-  return { deps: { prisma, anthropic: anthropic as any, prompts: prompts as any }, prisma, anthropic, created, proposals: proposalsList, users, persons };
+  return { deps: { prisma, anthropic: anthropic as any, prompts: prompts as any }, prisma, anthropic, created, proposals: proposalsList, users, persons, assessment: theAssessmentHearing(opts.read) };
 }
 const SAID = [
   'I am a sales representative and I look after the Nairobi accounts, and I answer for the monthly sales number for the region.',
@@ -241,11 +252,11 @@ describe('what is kept after the check-in', () => {
     expect(kept.inTheWay).toBeUndefined();
   });
 
-  it('the reading is shown each answer under the question it answered', async () => {
+  it('makes no model call: the parts come from their conversation\'s assessment', async () => {
     const w = world({ turns: SAID, read: { owns: 'the Nairobi accounts, and I answer for the monthly sales number' } });
-    await keepWhatTheySaidAboutTheirJob(w.deps, CHECK_IN);
-    const sent = (w.anthropic.extract as jest.Mock).mock.calls[0][1][0].content as string;
-    expect(sent).toMatch(/^They were asked: A question\.\nThey said: I am a sales representative/);
+    await keepWhatTheySaidAboutTheirJob(w.deps, CHECK_IN, w.assessment);
+    expect(w.anthropic.extract).not.toHaveBeenCalled();
+    expect(w.created[0].owns).toBe('the Nairobi accounts, and I answer for the monthly sales number');
   });
 
   it('a short job name they said is kept, a long one is not', () => {
@@ -254,11 +265,11 @@ describe('what is kept after the check-in', () => {
   });
 
   it('writes one private row, sets the title because there is none, and leaves a request in Ask for the role map', async () => {
-    const w = world({ turns: SAID, read: { roleName: 'sales representative', owns: 'the Nairobi accounts, and I answer for the monthly sales number', doingWell: 'hitting the number', dependsOn: 'finance to approve discounts', inTheWay: 'waiting for stock to be confirmed by the depot' }, stored: { role_reading: { id: 'pv-read', content: 'x' }, first_check_in_role: { id: 'pv-ask', content: 'y' } } });
-    const done = await keepWhatTheySaidAboutTheirJob(w.deps, CHECK_IN);
+    const w = world({ turns: SAID, read: { roleName: 'sales representative', owns: 'the Nairobi accounts, and I answer for the monthly sales number', doingWell: 'hitting the number', dependsOn: 'finance to approve discounts', inTheWay: 'waiting for stock to be confirmed by the depot' }, stored: { first_check_in_role: { id: 'pv-ask', content: 'y' } } });
+    const done = await keepWhatTheySaidAboutTheirJob(w.deps, CHECK_IN, w.assessment);
     expect(done).toMatchObject({ kept: true });
     expect(w.created).toHaveLength(1);
-    expect(w.created[0]).toMatchObject({ source: 'first_check_in', sharedAt: null, promptVersionId: 'pv-read', askedWithPromptVersionId: 'pv-ask', checkInId: 'ci-1', personExternalId: 'p-1' });
+    expect(w.created[0]).toMatchObject({ source: 'first_check_in', sharedAt: null, promptVersionId: 'pv-assessment', askedWithPromptVersionId: 'pv-ask', checkInId: 'ci-1', personExternalId: 'p-1' });
     expect(w.created[0].roleName).toBe('sales representative');
     expect(w.users[0]).toMatchObject({ where: { id: 'u-1' }, data: { jobTitle: 'sales representative' } });
     expect(w.persons[0]).toMatchObject({ data: { title: 'sales representative' } });
@@ -270,25 +281,24 @@ describe('what is kept after the check-in', () => {
 
   it('a title that is already there is never changed, and the row is kept under it', async () => {
     const w = world({ turns: SAID, jobTitle: 'Account manager', read: { roleName: 'sales representative', owns: 'the Nairobi accounts, and I answer for the monthly sales number' } });
-    await keepWhatTheySaidAboutTheirJob(w.deps, CHECK_IN);
+    await keepWhatTheySaidAboutTheirJob(w.deps, CHECK_IN, w.assessment);
     expect(w.users).toHaveLength(0);
     expect(w.persons).toHaveLength(0);
     expect(w.created[0].roleName).toBe('Account manager');
   });
 
-  it('keeps nothing for somebody who has done a check-in before, and nothing when the model fails', async () => {
+  it('keeps nothing for somebody who has done a check-in before, and nothing when there is no assessment', async () => {
     const before = world({ earlier: 1, turns: SAID, read: { owns: 'x' } });
-    expect(await keepWhatTheySaidAboutTheirJob(before.deps, CHECK_IN)).toBeNull();
+    expect(await keepWhatTheySaidAboutTheirJob(before.deps, CHECK_IN, before.assessment)).toBeNull();
     expect(before.created).toHaveLength(0);
     const broken = world({ turns: SAID });
-    broken.anthropic.extract.mockRejectedValue(new Error('model off'));
-    expect(await keepWhatTheySaidAboutTheirJob(broken.deps, CHECK_IN)).toBeNull();
+    expect(await keepWhatTheySaidAboutTheirJob(broken.deps, CHECK_IN, null)).toBeNull();
     expect(broken.created).toHaveLength(0);
   });
 
   it('a very short check-in is not read', async () => {
     const w = world({ turns: ['Fine.', 'Ok.'], read: { owns: 'Fine' } });
-    expect((await keepWhatTheySaidAboutTheirJob(w.deps, CHECK_IN))?.kept).toBe(false);
+    expect((await keepWhatTheySaidAboutTheirJob(w.deps, CHECK_IN, w.assessment))?.kept).toBe(false);
     expect(w.created).toHaveLength(0);
   });
 
@@ -296,8 +306,8 @@ describe('what is kept after the check-in', () => {
     expect(theRoleMapQuestion('Sales rep', 'the Nairobi accounts')).toMatch(/^In your first check-in you told me about your job as Sales rep\. You said you are responsible for "the Nairobi accounts"\. Shall I let the role map show this under Sales rep\?/);
   });
 
-  it('the reading is told to use only their words', () => {
-    expect(ROLE_READING_PROMPT).toMatch(/Use only their own words/);
+  it('the assessment is told to copy each part of the job from one of their answers, exactly', () => {
+    expect(THE_ASSESSMENT_PROMPT).toContain('`words` are copied from ONE of their answers, exactly, never joined from two.');
   });
 });
 

@@ -38,17 +38,16 @@ describe('the new admin', () => {
     expect([...document.querySelectorAll('.gwui-get-going-title')].map(e => e.textContent)).toEqual([
       'Invite your team', 'Add a second admin', 'Start your first check-in',
     ])
-    expect(screen.getAllByRole('link', { name: 'Do it' }).map(a => a.getAttribute('href'))).toEqual(['/org/members', '/org/members', '/start'])
+    /* Each button says what it does (Hafsah, 30 October 2026: plain language for an impatient
+       first-time lead); three buttons all called "Do it" side by side said nothing. */
+    expect(['Invite people', 'Add an admin', 'Start a check-in'].map(name => screen.getByRole('link', { name }).getAttribute('href'))).toEqual(['/org/members', '/org/members', '/start'])
+    expect(screen.queryByRole('link', { name: 'Do it' })).toBeNull()
     const text = document.body.textContent ?? ''
     expect(text).not.toMatch(/WhatsApp/)
-    /* Ask is named for the organisation (decision 100): "Ask Nyali Foods", not "Ask Groundwork".
-       SCREEN FAULT 8: "a performance plan, promotion or renewal" left out the fourth kind
-       who-may-read-this-check-in.ts closes to an admin (somebody's first 90 days). Updated to the
-       one shared sentence (lib/what-an-admin-cannot-read-without-access.ts) Today, the guide and a
-       person's own page all now read, word for word. */
-    expect(screen.getByText(
-      'You can see every board and report, including what people said in them. You never see anyone’s questions to Ask Nyali Foods, anyone’s own report, or a lead’s private notes, and never a performance plan, a promotion, a renewal or somebody\'s first 90 days unless given access to that check-in.',
-    )).toBeTruthy()
+    /* Taken off the first screen (Hafsah, 30 October 2026: plain language for an impatient
+       first-time lead). The prototype's Today has no such paragraph; the same sentence stays in
+       the guide for leads and admins and on a person's own page. */
+    expect(text).not.toMatch(/You can see every board and report/)
   })
 
   /*
@@ -119,10 +118,16 @@ describe('the new admin', () => {
     expect(screen.queryByText('Connect WhatsApp (optional)')).toBeNull()
   })
 
+  /* Changed in F5 (the approved journey, stage 8): the checklist moves off Today once a check-in exists, so the ticks are read
+     before one does, and the list is gone after. */
   it('ticks what has happened', async () => {
-    open(ADMIN, { ...NEW, people: 3, checkIns: 1 })
+    open(ADMIN, { ...NEW, people: 3, admins: 2, checkIns: 0 })
     expect(await screen.findByText('2 of 3 done')).toBeTruthy()
     expect(screen.getAllByText('Done')).toHaveLength(2)
+  })
+  it('and once a check-in exists, the checklist is off Today', async () => {
+    open(ADMIN, { ...NEW, people: 3, checkIns: 1 })
+    await waitFor(() => expect(screen.queryByText(/Get Nyali Foods going/)).toBeNull())
   })
 
   it('"Got it" is saved on the server and the card goes', async () => {

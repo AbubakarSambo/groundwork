@@ -19,7 +19,7 @@ export class RolesGuard implements CanActivate {
     const { user } = context.switchToHttp().getRequest();
     
     if (!user) {
-      throw new ForbiddenException('We could not find that sign-in, so sign in again and try once more.');
+      throw new ForbiddenException('I could not find that sign-in, so sign in again and try once more.');
     }
 
     const hasRole = requiredRoles.some((role) => user.role === role);

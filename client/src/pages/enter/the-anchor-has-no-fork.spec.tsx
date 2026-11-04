@@ -48,7 +48,7 @@ function openAnchorArrival() {
 }
 
 async function sendOnboardingMessage(text: string) {
-  const box = await screen.findByPlaceholderText('Type your response, or add a document.')
+  const box = await screen.findByPlaceholderText('Type your answer')
   fireEvent.change(box, { target: { value: text } })
   fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
 }
@@ -141,7 +141,7 @@ describe('every other situation (decision 133)', () => {
     })
 
     renderPage('/start')
-    const box = await screen.findByPlaceholderText('For example: our sales targets this quarter')
+    const box = await screen.findByLabelText('What do you need updates on, or want to track?')
     fireEvent.change(box, { target: { value: 'A new project is starting.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
 

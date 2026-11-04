@@ -73,6 +73,8 @@ export interface CreateGroundBody {
   timelineDays?: number
   cadence?: GroundCadence
   cadenceAnchorDay?: number
+  /** Twice or more a week: the weekdays a weekly check-in meets on, 0 = Sunday. */
+  cadenceDays?: number[]
   /** Rounds where every party has completed their check-in. W13-6. */
   roundsDone?: number
   startsAt?: string
@@ -352,6 +354,10 @@ export const groundsApi = {
 
   resendParticipantInvite: (groundId: string, participantId: string) =>
     apiClient.post(`/grounds/${groundId}/participants/${participantId}/resend-invite`).then(r => r.data),
+
+  /** "Send N invitations" on Today: the invitations the lead held ready while she checked in on her own first (Hafsah, 3 November 2026). */
+  sendTheInvitationsReadyToSend: (groundId: string) =>
+    apiClient.post<{ sent: number }>(`/grounds/${groundId}/invitations/send`).then(r => r.data),
 
   /** D1 and D2 (13 October, evening): whoever runs the check-in adds somebody's WhatsApp number. */
   /** Each person's WhatsApp number and where they are on it (whoever runs the check-in, or an admin). */
@@ -663,11 +669,9 @@ export const groundsApi = {
     apiClient.post(`/grounds/${groundId}/plan/proposals/${cardId}/confirm`, direction ? { direction } : {}).then(r => r.data),
   planCardNotNow: (groundId: string, cardId: string) =>
     apiClient.post(`/grounds/${groundId}/plan/proposals/${cardId}/not-now`).then(r => r.data),
-  editPlanCard: (groundId: string, cardId: string, says: string) =>
-    apiClient.patch<PlanCard>(`/grounds/${groundId}/plan/proposals/${cardId}`, { says }).then(r => r.data),
-  /** A target from the lead's own check-in, corrected: what it counts and its number, as she types them. */
-  correctATargetCard: (groundId: string, cardId: string, fields: { what: string; number: number | null }) =>
-    apiClient.patch<PlanCard>(`/grounds/${groundId}/plan/proposals/${cardId}`, { fields }).then(r => r.data),
+  /** One card changed while it waits: its sentence (`says`), or a target's own values as she types them (`fields`). */
+  editPlanCard: (groundId: string, cardId: string, change: { says: string } | { fields: { what: string; number: number | null } }) =>
+    apiClient.patch<PlanCard>(`/grounds/${groundId}/plan/proposals/${cardId}`, change).then(r => r.data),
 
   contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient

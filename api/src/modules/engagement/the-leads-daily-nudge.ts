@@ -7,7 +7,7 @@ import { withWhatTheBoardsSay, type TheLeadsBoard, type TheRecordBesideTheBoard 
 import { DependencyStatus, GroundStatus } from '@prisma/client';
 import { whichOfThesePromisesAreDone, whoThesePromisesAreAbout } from '../conversation/a-promise-said-done-is-kept';
 import { theDealsThatHaveStalled } from '../board/the-deals-that-have-stalled';
-import { theConfirmedWaits, whatTheyTriedInFull, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
+import { theConfirmedWaits, whatTheyTriedInFull } from '../grounds/a-wait-is-the-speakers-account';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
@@ -16,7 +16,7 @@ import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsa
 import { A_TEMPLATE_BODY_LIMIT, TEMPLATES, oneLine, NOT_TODAY, THEY_SAID_NOT_NOW, NOT_TURNED_ON_QUIETLY } from '../whatsapp/a-message-outside-the-window';
 import { ITS_OWN_WORDS_AT_MOST } from '../whatsapp/the-first-message-to-a-number';
 import { whatWaitsForYouToDecide, type TheBoards } from '../suites/what-waits-for-you-to-decide';
-import { whatWaitsInASentence } from '../whatsapp/the-leads-daily-summary';
+import type { AWaitingRequest } from '../suites/a-request-in-words';
 import { THEY_HAD_ONE_TODAY } from './one-routine-message-a-day';
 import { theirApprovedLeave, fallsInLeave, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { theirRosterEntry } from '../suites/a-roster-entry-and-its-sign-in';
@@ -43,7 +43,6 @@ import { theEngagementMoment } from './the-engagement-release-moment';
 import { theQuietIn, quietIn } from './who-has-gone-quiet';
 import { whoHasMissedCheckIns, whatTheLeadReads, TOLD_THE_LEAD } from '../grounds/missed-check-ins';
 import { isAlreadyHeld, hasBeenToldOnce, nowToldOnce } from './a-message-sent-once';
-import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { theDirectMorningFor, theParagraph, theEmailParts, theSubject, type TheDirectMorning } from './the-direct-morning';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 
@@ -68,6 +67,18 @@ const DAY = 86_400_000;
 const AT_MOST = 3;
 
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
+
+/** What waits for the lead to decide, in one sentence. Null when nothing does. */
+function whatWaitsInASentence(waiting: AWaitingRequest[]): string | null {
+  if (!waiting.length) return null;
+  if (waiting.length === 1) {
+    const r = waiting[0];
+    return r.kind === 'hours'
+      ? `${capital(r.thing)} are waiting for you to approve.`
+      : `${capital(r.thing)} is waiting for you to approve or decline.`;
+  }
+  return `${capital(aNumberInWords(waiting.length))} requests are waiting for you to approve or decline.`;
+}
 const quoted = (x: string) => `“${x.replace(/[.\s]+$/, '')}”`;
 const sentence = (s: string) => (/[.!?][”"’)]?$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
 
@@ -342,14 +353,12 @@ async function leaveOutWhatIsLongOverdueOnOldCheckIns(prisma: any, o: WhatIsOuts
 
 export async function whatIsOutstandingFor(
   prisma: any,
-  lead: { userId: string; organizationId: string; grounds: { id: string; label: string; scenario: any; overWhatsApp: boolean | null; timelineDays: number | null; cadence: any }[] },
+  lead: { userId: string; organizationId: string; grounds: { id: string; label: string; scenario: any; overWhatsApp: boolean | null; timelineDays: number | null; cadence: any; cadenceDays?: number[] | null }[] },
   deps: { boards: TheBoards; release: Date | null },
   now: Date,
 ): Promise<WhatIsOutstanding> {
   /* What Release 1 adds to the summary is read only where its switch is on for her organisation (release-one-sales-board). */
   const releaseOne = await theReleaseOneSalesBoardIsOn(prisma, lead.organizationId).catch(() => false);
-  /* With the direct morning on, a missed check-in is the fact, the reason and what to do, and a wait carries what they tried in full rather than "Not backed". */
-  const direct = await theDirectMorningIsOn(prisma, lead.organizationId).catch(() => false);
   const out: WhatIsOutstanding = { needsYou: [], overdueOnYourTeam: [], risks: [], ...(releaseOne ? { releaseOne: true } : {}) };
   const today = theDayIn('Africa/Lagos', now);
   const grounds = lead.grounds.filter((g) => !isEvaluationCheckIn(g.scenario));
@@ -447,13 +456,12 @@ export async function whatIsOutstandingFor(
   };
   /* A wait on one of her people is late against them only when they said it is theirs to give (decision 137). */
   const confirmedWaits = await theConfirmedWaits(prisma, real.filter((w) => !hers.has(w.onParticipantId)));
-  /* "Kofi says the work is waiting on Omar for the stock count. Not backed: no attempt to unblock mentioned." */
+  /* "Kofi says the work is waiting on Omar for the stock count.", with what Kofi said he tried, where he said anything. */
   const theirAccountOfAWait = (w: any, since?: string): string => {
     const from = hers.has(w.fromParticipantId) ? 'You' : nameToCall(w.fromParticipant);
     const on = w.onParticipant ? nameToCall(w.onParticipant) : aHolderSaidWithWhose((w.onLabel ?? '').trim(), from === 'You' ? null : from, from === 'You');
-    /* What they said they tried, in full with its day, or nothing beside the claim (Drop Access run 1, item 18), where Release 1's switch
-       is on; off, the note beside the claim as before. */
-    const tried = releaseOne || direct ? whatTheyTriedInFull(w, from) : theNoteBesideTheClaim(w, { by: from, on, lead: 'you' });
+    /* What they said they tried, in full with its day, or nothing beside the claim (Drop Access run 1, item 18). */
+    const tried = whatTheyTriedInFull(w, from);
     return `${from} ${from === 'You' ? 'say' : 'says'} the work ${since ? 'has been' : 'is'} waiting on ${on} for ${String(w.what ?? '').trim().replace(/[.\s]+$/, '')}${THE_PLACE_MARK}${since ? ` since ${since}` : ''}.${tried ? ` ${tried}` : ''}`;
   };
   const counted = new Set<string>();
@@ -508,7 +516,7 @@ export async function whatIsOutstandingFor(
     const objectives: any[] = await prisma.groundObjective.findMany({ where: { groundId: g.id, ownerParticipantId: null, isADecisionAboutAPerson: false }, select: { id: true, name: true, target: true, count: true, direction: true, dueOn: true } }).catch(() => []);
     if (!objectives.length) continue;
     const snaps: any[] = await prisma.groundObjectiveSnapshot.findMany({ where: { groundId: g.id }, select: { objectiveId: true, sessionNumber: true, count: true } }).catch(() => []);
-    const planned = totalSessionsFor(g.timelineDays, g.cadence) ?? null;
+    const planned = totalSessionsFor(g.timelineDays, g.cadence, g.cadenceDays) ?? null;
     for (const o of objectives) {
       if (typeof o.target !== 'number' || !o.name?.trim()) continue;
       const counts = snaps.filter((s) => s.objectiveId === o.id && typeof s.sessionNumber === 'number');
@@ -575,7 +583,7 @@ export async function whatIsOutstandingFor(
     const g = grounds.find((x) => x.id === m.groundId);
     if (!g) continue;
     missedLines.push({
-      text: whatTheLeadReads(m.name, m.stand, g.label, direct),
+      text: whatTheLeadReads(m.name, m.stand, g.label),
       keptInTheApp: keptOffThePhone(g),
       groundId: g.id,
       about: { kind: 'missed', ids: [m.participantId] },
@@ -653,7 +661,7 @@ export async function everythingOutstandingFor(
 ): Promise<{ needsYou: string[]; overdueOnYourTeam: string[]; risks: string[]; about: { needsYou: TheAbout[]; overdueOnYourTeam: TheAbout[]; risks: TheAbout[] } } | null> {
   const grounds: any[] = await prisma.ground.findMany({
     where: { initiatorId: reader.userId, organizationId: reader.organizationId, status: { notIn: [...TERMINAL, ...HELD, GroundStatus.AWAITING_APPROVAL] } },
-    select: { id: true, label: true, scenario: true, organizationId: true, overWhatsApp: true, initiatorId: true, timelineDays: true, cadence: true, workStages: true, endsAt: true, createdAt: true, startsAt: true, runsUntilEnded: true },
+    select: { id: true, label: true, scenario: true, organizationId: true, overWhatsApp: true, initiatorId: true, timelineDays: true, cadence: true, cadenceDays: true, workStages: true, endsAt: true, createdAt: true, startsAt: true, runsUntilEnded: true },
   });
   if (!grounds.length) return null;
   const release = await theEngagementMoment(prisma, now).catch(() => null);
@@ -670,7 +678,7 @@ export async function everythingOutstandingFor(
 async function theLeadsAndTheirCheckIns(prisma: any) {
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
     where: { status: { notIn: [...TERMINAL, ...HELD, GroundStatus.AWAITING_APPROVAL] } },
-    select: { id: true, label: true, scenario: true, organizationId: true, overWhatsApp: true, initiatorId: true, timelineDays: true, cadence: true, workingDays: true, workStages: true, endsAt: true, createdAt: true, startsAt: true, runsUntilEnded: true },
+    select: { id: true, label: true, scenario: true, organizationId: true, overWhatsApp: true, initiatorId: true, timelineDays: true, cadence: true, cadenceDays: true, workingDays: true, workStages: true, endsAt: true, createdAt: true, startsAt: true, runsUntilEnded: true },
     orderBy: { id: 'asc' },
     ...page,
   }), 1000);
@@ -771,12 +779,10 @@ export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = n
       if (!user || user.deletedAt || user.isActive === false) continue;
       if (fallsInLeave(now, await theirApprovedLeave(prisma, lead.userId, lead.organizationId))) continue;
       /*
-       * THE DIRECT MORNING (the-direct-morning.ts), where the organisation's switch is on: the target, what needs her, what is about to
-       * close and her team, by seven in the morning where the organisation is, and never twice in a day. Off, everything below runs as before.
+       * THE DIRECT MORNING (the-direct-morning.ts): the target, what needs her, what is about to close and her team, by seven in the
+       * morning where the organisation is, and never twice in a day. Where it has nothing to say, the summary below goes instead.
        */
-      const direct = await theDirectMorningIsOn(prisma, lead.organizationId);
-      if (opts.onlyTheDirectMorningAt7 && !direct) continue;
-      if (direct) {
+      {
         const went = await sendTheDirectMorningTo(deps, lead, user, now, { onlyAt7: !!opts.onlyTheDirectMorningAt7 });
         if (went === 'sent') { tried++; continue; }
         if (went === 'not-now' || opts.onlyTheDirectMorningAt7) continue;
@@ -844,12 +850,13 @@ export async function sendTheDirectMorningTo(
   opts: { onlyAt7?: boolean } = {},
 ): Promise<'sent' | 'not-now' | 'nothing'> {
   const { prisma } = deps;
+  /* Built from her boards as she is served them: with no way to read them there is nothing to say, and the summary below goes. */
+  if (!deps.board) return 'nothing';
   const zone = (await theOrganisationsZone(prisma, lead.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
   /* By seven where the organisation is: the early sweep sends it in the quarter hour from seven; the 9am sweep only if it has not gone. */
   if (opts.onlyAt7 && theHourIn(now, zone) !== 7) return 'not-now';
   const key = theDirectMorningsKey(lead.userId, theDayIn7(now, zone));
   if (await hasBeenToldOnce(prisma, key)) return 'not-now';
-  if (!deps.board) return 'nothing';
   const mornings: TheDirectMorning[] = [];
   for (const g of lead.grounds.filter((x) => !isEvaluationCheckIn(x.scenario))) {
     /*

@@ -28,16 +28,21 @@ const MY_RECORD = readFileSync(path.join(__dirname, '../../components/gw/MyRecor
 const BAND = readFileSync(path.join(__dirname, '../../components/gw/WhatSuccessLooksLike.tsx'), 'utf8')
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-/** The tab's own region, bounded by its braces so it grows with what it is guarding. */
+/**
+ * The tab's own region, bounded by its braces so it grows with what it is guarding, and the page it draws.
+ * 4 November 2026: since Release 1B's switch went, the party's tab is one element, `<YourPeopleAndSetup />`, so its page
+ * (YourPeopleAndSetup.tsx) is read with it; the old inline block it replaced no longer exists.
+ */
+const YOURS = readFileSync(path.join(__dirname, 'YourPeopleAndSetup.tsx'), 'utf8')
 const SETTINGS = (() => {
-  const i = PARTY.indexOf("{tab === 'settings' && (")
+  const i = PARTY.indexOf("{tab === 'settings' && ")
   expect(i).toBeGreaterThan(-1)
   let depth = 0
   for (let j = i; j < PARTY.length; j++) {
     if (PARTY[j] === '{') depth++
     else if (PARTY[j] === '}') {
       depth--
-      if (depth === 0) return strip(PARTY.slice(i, j + 1))
+      if (depth === 0) return strip(PARTY.slice(i, j + 1)) + strip(YOURS)
     }
   }
   throw new Error("the settings tab's block never closes")
@@ -55,6 +60,7 @@ describe('the setup tab is what is true about you, and nothing else', () => {
   })
 
   it('found the region, so an empty slice cannot pass these', () => {
+    expect(SETTINGS).toContain('<YourPeopleAndSetup')
     expect(SETTINGS).toContain('MyParticipation')
   })
 })

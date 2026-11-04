@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { EXPECTATION_PROMPT, EXPECTATION_SCHEMA } from './prompt-library';
+import { EXPECTATION_PROMPT, EXPECTATION_SCHEMA, READ_THE_AIMS } from './prompt-library';
+import { THE_ASSESSMENT_PROMPT, THE_ASSESSMENT_SCHEMA } from './the-assessment';
 
 /**
  * "500 CONTRACTS, 150 EACH, AND I HAVE A TARGET OF 50", AND NOT ONE NUMBER WAS KEPT.
@@ -20,25 +21,28 @@ import { EXPECTATION_PROMPT, EXPECTATION_SCHEMA } from './prompt-library';
 describe('the number she said is kept', () => {
   const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const service = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
-  const write = service.slice(service.indexOf('const aims = (result.groundAims'));
+  /* The aims are read by the conversation's assessment now (one source, 2 November 2026) and kept by keepTheTeamsAims. */
+  const write = service.slice(service.indexOf('const aims = said'));
 
   it('asks for the number, not only the name', () => {
-    expect(EXPECTATION_PROMPT).toMatch(/- target: the NUMBER they are aiming at/);
-    const aims = (EXPECTATION_SCHEMA as any).input_schema.properties.groundAims;
+    expect(THE_ASSESSMENT_PROMPT).toContain(READ_THE_AIMS);
+    expect(READ_THE_AIMS).toMatch(/- target: the NUMBER they are aiming at/);
+    const aims = (THE_ASSESSMENT_SCHEMA as any).input_schema.properties.targets;
     expect(aims.items.type).toBe('object');
     expect(aims.items.properties).toHaveProperty('target');
     expect(aims.items.properties).toHaveProperty('by');
-    /* The name is the only thing an aim cannot do without. */
-    expect(aims.items.required).toEqual(['name']);
+    expect(aims.items.properties).toHaveProperty('aim');
+    /* And the expectations read no longer reads the aims a second time. */
+    expect((EXPECTATION_SCHEMA as any).input_schema.properties).not.toHaveProperty('groundAims');
   });
 
   it('asks for the total, never what is done so far', () => {
-    expect(EXPECTATION_PROMPT).toMatch(/Take the TOTAL they are aiming at, never what is done so far/);
-    expect(EXPECTATION_PROMPT).toMatch(/"Nine of the forty are migrated" is a target of 40/);
+    expect(READ_THE_AIMS).toMatch(/Take the TOTAL they are aiming at, never what is done so far/);
+    expect(READ_THE_AIMS).toMatch(/"Nine of the forty are migrated" is a target of 40/);
   });
 
   it('and says a wrong number is worse than none', () => {
-    expect(EXPECTATION_PROMPT).toMatch(/a wrong number is worse than none/);
+    expect(READ_THE_AIMS).toMatch(/a wrong number is worse than none/);
   });
 
   it('writes the number rather than null', () => {
@@ -89,7 +93,7 @@ describe('a number said about one person is that person\'s', () => {
   it('asks for a number per person, and says to split "150 each"', () => {
     expect(EXPECTATION_PROMPT).toMatch(/- targetNumber: the NUMBER this particular person is aiming at/);
     expect(EXPECTATION_PROMPT).toMatch(/"150 each" said about three people is 150 for each of those three/);
-    expect(EXPECTATION_PROMPT).toMatch(/A total for the whole group belongs in\s+groundAims, not here/);
+    expect(EXPECTATION_PROMPT).toMatch(/A total for the whole group is the\s+team's aim, not one person's, and does not go here/);
   });
 
   it('keeps it on a key of its own rather than a second meaning on an existing one', () => {
@@ -152,13 +156,13 @@ describe('the lead is a participant too', () => {
 
 describe('one aim per thing they are after', () => {
   it('is asked for, in the words it went wrong in', () => {
-    expect(EXPECTATION_PROMPT).toMatch(/ONE AIM PER THING THEY ARE AFTER, NOT ONE PER SENTENCE/);
-    expect(EXPECTATION_PROMPT).toMatch(/one aim getting sharper, not three aims/);
+    expect(READ_THE_AIMS).toMatch(/ONE AIM PER THING THEY ARE AFTER, NOT ONE PER SENTENCE/);
+    expect(READ_THE_AIMS).toMatch(/one aim getting sharper, not three aims/);
   });
 
   it('keeps the sharpest version rather than the first or the last', () => {
-    expect(EXPECTATION_PROMPT).toMatch(/Keep the sharpest version - the one with the number/);
+    expect(READ_THE_AIMS).toMatch(/Keep the sharpest version - the one with the number/);
     /* And does not collapse things that are genuinely different, which would lose a real objective. */
-    expect(EXPECTATION_PROMPT).toMatch(/Two aims that\s+are genuinely different stay as two/);
+    expect(READ_THE_AIMS).toMatch(/Two aims that\s+are genuinely different stay as two/);
   });
 });

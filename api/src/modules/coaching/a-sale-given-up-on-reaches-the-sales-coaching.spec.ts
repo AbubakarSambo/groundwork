@@ -1,4 +1,3 @@
-import { theBehavioursAnybodyCanBeRead } from '../board/a-role-nobody-mapped-is-still-a-person';
 import { aFunctionThatMayBeUsed, theStatedRole } from '../board/function-detection';
 import { buildRoleProbeBlock, roleMapFor, RoleFunction } from '../board/role-maps';
 import { ConversationService } from '../conversation/conversation.service';
@@ -23,6 +22,12 @@ import { ConversationService } from '../conversation/conversation.service';
  *
  * Nothing about WHEN a step is offered changes: still one step, still only after the same thing is
  * seen in two distinct periods, still never the thing they asked for themselves.
+ *
+ * 2 November 2026 (F2, Hafsah's decisions): reasons 2 and 3 were about the coach's own transcript read
+ * against the role map, which is removed: coaching has one owner, layer 3 on the check-in's
+ * assessment, and the role played is layer 2's role detection there. So the coach's part of this file
+ * now asserts that the coach reads no role map and makes no model call, and that it runs after the
+ * assessment. Reason 1, the read on every turn, is unchanged and still asserted.
  */
 
 const SALES = roleMapFor(RoleFunction.SALES)!;
@@ -107,30 +112,25 @@ describe('the read on every turn knows a sales executive does sales', () => {
   });
 });
 
-describe('the coach reads a confirmed sales role against the sales behaviours', () => {
-  const handed = (anthropic: any) => (anthropic.extract as jest.Mock).mock.calls[0]?.[1]?.[0]?.content ?? '';
-
-  it('confirmed: the sales behaviours, and what was noticed is kept for the next period', async () => {
-    const { service, anthropic, upserts } = aService({ confirmedAt: new Date('2026-10-15T09:00:00Z') });
-    await (service as any).observeForCoaching('ci1', 'p1', 1);
-    expect(handed(anthropic)).toContain(REOPEN);
-    expect(upserts[0].create.observations).toEqual([expect.objectContaining({ noticed: REOPEN })]);
-    /* Seen once is not a pattern: no step yet, exactly as before. */
-    expect(upserts[0].create.currentStep).toBeNull();
-    expect(upserts[0].create.lastInput.why ?? null).toBeNull();
-  });
-
-  it('not confirmed: still the floor, never a guessed job', async () => {
-    const { service, anthropic, upserts } = aService({ confirmedAt: null });
-    await (service as any).observeForCoaching('ci1', 'p1', 1);
-    expect(handed(anthropic)).not.toContain(REOPEN);
-    for (const line of theBehavioursAnybodyCanBeRead()) expect(handed(anthropic)).toContain(line);
-    expect(upserts[0].create.lastInput.why).toMatch(/below 0.5 and not confirmed/);
+describe('the coach no longer reads the role map itself', () => {
+  it('confirmed or not: no model call, no list of sales behaviours, and no count of its own', async () => {
+    for (const confirmedAt of [new Date('2026-10-15T09:00:00Z'), null]) {
+      const { service, prisma, anthropic, upserts } = aService({ confirmedAt });
+      prisma.checkIn = { findUnique: jest.fn(async (a: any) => (a?.select?.sessionReport ? { sessionReport: { kind: 'assessment', version: 1, interventions: [] } } : { groundId: 'g1', isSetup: false })) };
+      prisma.ground = { findUnique: jest.fn(async () => ({ organizationId: 'org' })) };
+      prisma.organization = { findUnique: jest.fn(async () => ({ personJudgementsOn: true })) };
+      await (service as any).observeForCoaching('ci1', 'p1', 1);
+      expect(anthropic.extract).not.toHaveBeenCalled();
+      expect(prisma.conversationTurn.findMany).not.toHaveBeenCalled();
+      expect(JSON.stringify(upserts)).not.toContain(REOPEN);
+      expect(upserts[0].create.observations).toBeUndefined();
+      expect(upserts[0].create.currentStep).toBeNull();
+    }
   });
 });
 
-describe('the coach runs after the role is read and any confirmation is stamped', () => {
-  it('waits for both, so a role confirmed in this check-in is the one the coach reads', async () => {
+describe('the coach runs after the conversation\'s assessment', () => {
+  it('waits for the assessment, which holds the role played and the step, and not for the role confirmation', async () => {
     const checkIn = {
       id: 'ci1', groundId: 'g1', sessionNumber: 1, status: 'IN_PROGRESS',
       isSelfCorrection: true, participantId: 'p1',
@@ -160,18 +160,20 @@ describe('the coach runs after the role is read and any confirmation is stamped'
       { emit: jest.fn() } as any, {} as any, { canStartSession: jest.fn() } as any, {} as any,
       { emit: jest.fn(() => Promise.resolve()) } as any, { get: jest.fn(() => true) } as any,
     );
-    for (const m of ['extractRecordEntries', 'buildSoloArtifact', 'ensureNextSession', 'extractDependencies', 'extractWorkMentions']) {
+    /* (1 November 2026: the coach now also waits for the conversation's assessment, stubbed here like the other readers.) */
+    for (const m of ['theEndCardAtTheEnd', 'buildSoloArtifact', 'ensureNextSession', 'extractDependencies', 'extractWorkMentions']) {
       jest.spyOn(service as any, m).mockResolvedValue(undefined);
     }
     const order: string[] = [];
     const later = (name: string, ms: number) => () => new Promise<void>((r) => setTimeout(() => { order.push(name); r(); }, ms));
-    jest.spyOn(service as any, 'reviseDetectedFunction').mockImplementation(later('role read', 20));
-    jest.spyOn(service as any, 'extractRoleConfirmation').mockImplementation(later('confirmation stamped', 40));
+    jest.spyOn(service as any, 'reviseDetectedFunction').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'assessAndThenRead').mockImplementation(later('assessed', 30));
+    jest.spyOn(service as any, 'extractRoleConfirmation').mockResolvedValue(undefined);
     const coached = new Promise<void>((resolve) => {
       jest.spyOn(service as any, 'observeForCoaching').mockImplementation(async () => { order.push('coach'); resolve(); });
     });
     await service.complete('ci1', 'user1');
     await coached;
-    expect(order).toEqual(['role read', 'confirmation stamped', 'coach']);
+    expect(order).toEqual(['assessed', 'coach']);
   });
 });

@@ -1,6 +1,7 @@
 import { PartyType, TurnRole } from '@prisma/client';
 import { ConversationService, aNumberTheySaid } from './conversation.service';
-import { OWN_PROMISE_PROMPT } from './prompt-library';
+import { THE_ASSESSMENT_PROMPT } from './the-assessment';
+import { anAssessmentHolding } from './an-assessment-for-a-spec';
 import { anAimAsASentence } from '../board/an-aim-is-a-sentence-about-somebody';
 
 /**
@@ -11,10 +12,13 @@ import { anAimAsASentence } from '../board/an-aim-is-a-sentence-about-somebody';
  * alone, and returned before the only path that puts an owned target on the board, which read the
  * lead's session. This runs her check-in through the real code with the model's answer given, and
  * reads what is written for the board.
+ *
+ * Changed 2 November 2026: her own aims are read from her conversation's assessment (its `targets`, the items whose holder is
+ * her), not by a separate model call, so the model's answer given here is her assessment.
  */
 const AMANI_SAID = 'I am aiming for 3 shops in Kilimani.';
 
-function amanisCheckIn(promises: any[]) {
+function amanisCheckIn(targets: any[]) {
   const boardTargets: any[] = [];
   const prisma: any = {
     ground: { findUnique: jest.fn(async () => ({
@@ -34,17 +38,18 @@ function amanisCheckIn(promises: any[]) {
   };
   const svc = Object.create(ConversationService.prototype) as any;
   svc.prisma = prisma;
-  svc.anthropic = { extract: jest.fn(async () => ({ promises })) };
+  svc.anthropic = { extract: jest.fn(async () => { throw new Error('no model call: her aims are her assessment\'s'); }) };
   svc.logger = { log: () => {}, warn: () => {} };
-  return { svc, boardTargets };
+  const keep = () => svc.keepTheAimsTheySaid({ id: 'c-1', participantId: 'p-amani', groundId: 'g-1' }, anAssessmentHolding({ targets }));
+  return { svc, boardTargets, keep };
 }
 
 describe('a number somebody sets for themselves is their target on the board', () => {
   it('Amani\'s aim lands as hers, set by her, in her words', async () => {
-    const { svc, boardTargets } = amanisCheckIn([
-      { promise: AMANI_SAID, kind: 'TARGET', check: 'A_NUMBER', dueKind: 'NOT_SAID', target: '3', measure: 'shops in Kilimani' },
+    const { boardTargets, keep } = amanisCheckIn([
+      { words: AMANI_SAID, aim: 'Amani is aiming for 3 shops in Kilimani.', target: 3, unit: 'shops in Kilimani', whose: 'Amani' },
     ]);
-    await svc.extractExpectations('c-1', 'p-amani', 'g-1');
+    await keep();
     /* Stored whole, as she said it; the short label is worked out when it is read and shown beside it (Hafsah, 12 October). */
     expect(boardTargets).toEqual([expect.objectContaining({ groundId: 'g-1', name: AMANI_SAID, target: 3, ownerParticipantId: 'p-amani', setByParticipantId: 'p-amani' })]);
   });
@@ -53,17 +58,25 @@ describe('a number somebody sets for themselves is their target on the board', (
     expect(anAimAsASentence(AMANI_SAID, { speaker: 'Amani Wekesa', holder: 'Amani Wekesa', target: 3 })).toBe('Amani Wekesa is aiming for 3 shops in Kilimani.');
   });
 
-  it('a promise with no number, or a to-do, is not a target', async () => {
-    const { svc, boardTargets } = amanisCheckIn([
-      { promise: 'I will visit the shops in Kilimani.', kind: 'TODO', check: 'DONE_OR_NOT', dueKind: 'NOT_SAID' },
-      { promise: 'I want to do better in Kilimani.', kind: 'TARGET', check: 'A_JUDGEMENT', dueKind: 'NOT_SAID', target: 'more', measure: 'shops' },
+  it("an aim with no number, the team's number or a colleague's is not her target", async () => {
+    const { boardTargets, keep } = amanisCheckIn([
+      { words: 'I want to do better in Kilimani.', aim: 'Amani wants to do better in Kilimani.', target: null, whose: 'Amani' },
+      { words: 'I am aiming for 3 shops in Kilimani.', aim: 'The team is aiming for 3 shops in Kilimani.', target: 3, unit: 'shops', whose: 'The team' },
+      { words: 'I am aiming for 3 shops in Kilimani.', aim: 'Rukia is aiming for 3 shops in Kilimani.', target: 3, unit: 'shops', whose: 'Rukia' },
     ]);
-    await svc.extractExpectations('c-1', 'p-amani', 'g-1');
+    await keep();
     expect(boardTargets).toEqual([]);
   });
 
-  it('the prompt that reads her check-in counts an aim for her own number as a target', () => {
-    expect(OWN_PROMISE_PROMPT).toContain('"I am aiming for 3 shops in Kilimani" is target 3, measure "shops in Kilimani"');
+  it("a member's own check-in makes no separate model call for her aims", async () => {
+    const { svc } = amanisCheckIn([]);
+    await svc.extractExpectations('c-1', 'p-amani', 'g-1');
+    expect(svc.anthropic.extract).not.toHaveBeenCalled();
+  });
+
+  it('the assessment reads every aim by whoever holds it, with its number, unit and holder', () => {
+    expect(THE_ASSESSMENT_PROMPT).toContain('each number somebody is aiming at');
+    expect(THE_ASSESSMENT_PROMPT).toContain('`whose` the first name of whoever holds it');
   });
 
   it('reads a number as people say it', () => {

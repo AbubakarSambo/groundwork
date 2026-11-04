@@ -220,15 +220,22 @@ describe('the live switch, since decision 52', () => {
  * words, and still no internal name, no code and nothing from the stored record over time.
  */
 describe('and the fixture is not empty: with the switch on, the board serves them under the rules', () => {
-  it('the lead’s board carries the pattern section in plain words, and no internal name', async () => {
+  it('Ngozi’s own board carries her pattern section in plain words; the lead’s carries nothing of any stored pattern', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     /* The switch is on for real since decision 52, so this reads the live constant, not a mock. */
-    const board = await boardFor(real(), 'u-tunde', 'MEMBER', groundWith(GROUNDS[0][1]));
-    const found = whatOfAPatternIsIn(board);
-    expect(found).toContain('a "patterns" section');
-    expect(board.patterns.map((p: any) => p.heading)).toContain('Problems are mostly put down to things outside the team');
-    expect(found.filter((f) => f.startsWith('the internal name') || f.startsWith('the code'))).toEqual([]);
-    expect(found).not.toContain('patterns in the record over time');
-    expect(found).not.toContain('a question built from a pattern');
+    const ngozis = await boardFor(real(), 'u-ngozi', 'MEMBER', groundWith(GROUNDS[0][1]));
+    const hers = whatOfAPatternIsIn(ngozis);
+    expect(hers).toContain('a "patterns" section');
+    expect(ngozis.patterns.map((p: any) => p.heading)).toContain('Problems are mostly put down to things outside the team');
+    expect(hers.filter((f) => f.startsWith('the internal name') || f.startsWith('the code'))).toEqual([]);
+    expect(hers).not.toContain('patterns in the record over time');
+    expect(hers).not.toContain('a question built from a pattern');
+    const lead = await boardFor(real(), 'u-tunde', 'MEMBER', groundWith(GROUNDS[0][1]));
+    expect(lead.renders).toBe(true);
+    /* The section may be drawn for the record layer, but nothing in it comes from a stored row. */
+    expect(whatOfAPatternIsIn(lead).filter((f) => f !== 'a "patterns" section' && !f.startsWith('"patterns" in the sections'))).toEqual([]);
+    expect((lead.patterns ?? []).map((p: any) => p.heading)).not.toContain('Problems are mostly put down to things outside the team');
+    expect((lead.patterns ?? []).map((p: any) => p.heading)).not.toContain('Others describe doing work they described as theirs');
   });
 });
 
@@ -249,17 +256,21 @@ describe('and the report serves the record over time the same way', () => {
  * board carries no pattern". There is no such reach now: with nothing put in force, the lead's board
  * carries Ngozi's pattern after her turn, and Ngozi's own board carries hers, telling her Tunde reads it.
  */
-describe('with no setting at all, the lead’s board carries Ngozi’s pattern and Ngozi’s carries hers (decision 86)', () => {
-  it('the lead’s board has the pattern in plain words, and no internal name', async () => {
+describe('with no setting at all, the lead’s board carries no stored pattern and Ngozi’s carries hers (decision 86, then Hafsah, 2 November 2026)', () => {
+  it('the lead’s board has none of Ngozi’s stored pattern, in any words', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const board = await boardFor(real(), 'u-tunde', 'MEMBER', groundWith(GROUNDS[0][1]));
-    expect((board.patterns ?? []).map((p: any) => p.heading)).toContain('Problems are mostly put down to things outside the team');
+    expect((board.patterns ?? []).map((p: any) => p.heading)).not.toContain('Problems are mostly put down to things outside the team');
+    expect(JSON.stringify(board)).not.toContain(NGOZI_SAID);
     expect(whatOfAPatternIsIn(board).filter((f) => f.startsWith('the internal name') || f.startsWith('the code'))).toEqual([]);
   });
 
-  it('Ngozi’s own board carries hers, in plain words, and never says only she sees it', async () => {
+  it('Ngozi’s own board carries hers, in plain words, with no note under it', async () => {
     const board = await boardFor(real(), 'u-ngozi', 'MEMBER', groundWith(GROUNDS[0][1]));
     expect((board.patterns ?? []).map((p: any) => p.heading)).toContain('Problems are mostly put down to things outside the team');
     expect((board.patterns ?? []).every((p: any) => p.yours)).toBe(true);
-    expect(JSON.stringify(board.patterns)).not.toContain('Only you see this');
+/* Hafsah, 2 November 2026: only the person reads a stored pattern now, so they are told only they see it. */
+    /* Changed 3 November: the note under a person's own pattern was removed on purpose in 23a41f190; who may read it is unchanged. */
+    expect((board.patterns ?? []).every((p: any) => p.whoSeesIt === undefined)).toBe(true);
   });
 });

@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { groundsApi } from '@/api/grounds'
 import { isASalesKind } from '@/lib/a-sales-kind'
-import { whoIsInRound } from '@/lib/who-is-in-this-round'
+import { theCountOf } from '@/lib/the-one-count'
 import { useAuthStore } from '@/stores/auth'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
@@ -28,7 +28,7 @@ export default function RoundReportPage() {
   const n = Number(sessionNumber)
   /*
    * U.9 REVIEW FIX 6: THE SAME COUNT AS THE CHECK-IN HEADER.
-   * The header on GroundAdminPage counts who is in this round with `whoIsInRound`; the session
+   * The header on GroundAdminPage reads who is in this round from the served one count; the session
    * report's own count can disagree with it (engine request 56). This reader has no session of
    * their own, so their only count is this one - it should still be the product's one count.
    */
@@ -61,10 +61,9 @@ export default function RoundReportPage() {
 
   const canRunThisCheckIn = !!user?.id && (ground as any)?.initiatorId === user.id
   const isAParty = !!(ground as any)?.viewerIsInitiator || !!(ground as any)?.participants?.some((p: any) => p.userId === user?.id)
-  const contextEnabled = (ground as any)?.contextEnabled === true
   /* The direct morning (lib/the-direct-morning.tsx), from the check-in this page already reads, said once for what it draws. */
   const direct = isTheDirectMorningOn(ground)
-  const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
+  const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions, (ground as any)?.cadenceDays) : null
 
   /*
    * SCREEN MATCH, 16 OCTOBER: THE TEAM'S REPORT AS PICTURED, FOR WHOEVER RUNS THE CHECK-IN (team-report.jpg). The whole
@@ -93,11 +92,12 @@ export default function RoundReportPage() {
           id={id}
           title={(ground as any)?.label ?? 'Check-in'}
           cadence={(ground as any)?.cadence ?? null}
+          cadenceDays={(ground as any)?.cadenceDays ?? null}
           plannedSessions={plannedSessions}
           canRunThisCheckIn={canRunThisCheckIn}
           isAParty={isAParty}
           active="report"
-          tabs={checkInHeaderTabs({ id, contextEnabled, canRunThisCheckIn, isAParty, ground: ground as any })}
+          tabs={checkInHeaderTabs({ id, canRunThisCheckIn, isAParty, ground: ground as any })}
         />
       )}
 
@@ -121,7 +121,7 @@ export default function RoundReportPage() {
             groundId={id}
             sessionNumber={n}
             light={isASalesKind((ground as any)?.kindOfWork)}
-            totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), n, (ground as any).scenario, (ground as any).checkIns ?? []).length : null}
+            totalInThisRound={ground ? theCountOf(ground, n)?.onTheCheckIn.length ?? null : null}
           />
         )}
       </div>

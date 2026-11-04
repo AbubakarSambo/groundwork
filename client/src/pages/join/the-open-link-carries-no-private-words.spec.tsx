@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { AnswerFirstPage } from './AnswerFirstPage'
 
@@ -9,7 +10,7 @@ const whatThisIs = vi.fn()
 vi.mock('@/api/entry', () => ({ openLinkApi: { whatThisIs: (...a: unknown[]) => whatThisIs(...a), start: vi.fn(), say: vi.fn(), finish: vi.fn() } }))
 
 function open() {
-  return render(<MemoryRouter initialEntries={['/answer?t=j']}><AnswerFirstPage /></MemoryRouter>)
+  return render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={['/answer?t=j']}><AnswerFirstPage /></MemoryRouter></QueryClientProvider>)
 }
 
 describe('the open link', () => {

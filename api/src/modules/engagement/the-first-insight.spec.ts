@@ -74,15 +74,17 @@ describe('the finding is read at the moment of release, before the release is st
 });
 
 describe('the lead reads the finding, in the subject and in the body', () => {
-  it('names what the people differ on, how many things are settled, the question worth answering and what to do first', async () => {
+  /* Changed 4 November 2026 (release batch 1): the direct wording is the only wording: no count of things settled, and the question on its own. */
+  it('names what the people differ on, the question worth answering and what to do first', async () => {
     const w = world(() => SERVED());
     await w.service.tellThemTheReportIsReady('g1', 1);
     const lead = to(w.sent, 'wairimu@x.test');
     expect(lead.subject).toBe('The people in "Kenya launch" differ on "Who owns the next step with the distributor"');
     const read = text(lead.html);
     expect(read).toContain('The people in "Kenya launch" differ on "Who owns the next step with the distributor".');
-    expect(read).toContain('Two things are settled and one is still open.');
-    expect(read).toContain('Here is a conversation worth having. Who is going to own the next step with the distributor, and by when?');
+    expect(read).not.toContain('settled');
+    expect(read).toContain('Who is going to own the next step with the distributor, and by when?');
+    expect(read).not.toContain('conversation worth having');
     expect(read).toContain('Here is what I would do first. Name one owner for the distributor by Friday.');
     expect(read).not.toMatch(/Your report is ready|is ready\.$/);
   });
@@ -97,7 +99,7 @@ describe('a participant reads the same finding, with no "what I would do" and no
     expect(abi.subject).toContain('Kenya launch');
     const read = text(abi.html);
     expect(read).toContain('The people in "Kenya launch" differ on "Who owns the next step with the distributor".');
-    expect(read).toContain('Two things are settled and one is still open.');
+    expect(read).not.toContain('settled');
     expect(read).not.toContain('what I would do');
     expect(read).not.toContain('Name one owner for the distributor');
   });
@@ -108,13 +110,13 @@ describe('nothing is claimed that the report does not hold', () => {
     const w = world(() => SERVED({ stand: { agreed: 0, stillOpen: 0, settled: [], open: [], openWithReasons: [] }, top: { theConversationWorthHaving: null } }));
     await w.service.tellThemTheReportIsReady('g1', 1);
     const lead = to(w.sent, 'wairimu@x.test');
-    expect(text(lead.html)).toContain('has now checked in, so the shared picture is open to all of you at the same moment.');
+    expect(text(lead.html)).toContain('has checked in, and the report is ready.');
     expect(text(lead.html)).not.toContain('differ on');
   });
   it('a report that cannot be read for somebody sends them the notice it always did, and the others still read the finding', async () => {
     const w = world((userId) => { if (userId === 'u-abi') throw new Error('not yet let in'); return SERVED(); });
     await w.service.tellThemTheReportIsReady('g1', 1);
-    expect(text(to(w.sent, 'abigail@x.test').html)).toContain('has now checked in, so the shared picture is open to all of you');
+    expect(text(to(w.sent, 'abigail@x.test').html)).toContain('has checked in, and the report is ready.');
     expect(text(to(w.sent, 'wairimu@x.test').html)).toContain('differ on');
   });
   it('a person with no account is not given a finding read for nobody', async () => {
@@ -133,11 +135,11 @@ describe('the words themselves', () => {
   it('say several differences without a list, and settled-with-none-open without a difference', () => {
     const many = theFirstInsight(SERVED({ stand: { open: ['Pricing.', 'Who signs off', 'The start date:'], agreed: 1, settled: ['x'], openWithReasons: [] } }), 'Q4', { isTheLead: true });
     expect(many!.subjectForTheLead).toBe('The people in "Q4" differ on "Pricing", and two more differences are still open');
-    expect(many!.lines).toContain('One thing is settled and three are still open.');
+    expect(many!.lines.join(' ')).not.toContain('settled');
     expect(many!.lines.join(' ')).toContain('What I would do is bring the people involved together on that one question.');
     const none = theFirstInsight(SERVED({ stand: { open: [], stillOpen: 0, agreed: 3, settled: ['a', 'b', 'c'], openWithReasons: [] } }), 'Q4', { isTheLead: true });
     expect(none!.subjectForTheLead).toBeNull();
-    expect(none!.lines[0]).toBe('Three things in "Q4" are settled, and none are still open.');
+    expect(none!.lines[0]).toBe('Nothing in the report for "Q4" is still open.');
   });
   it('says a difference the report wrote as a whole sentence as that sentence, and not after "differ on" (found on the test bed, journey 5)', () => {
     const real = SERVED({ stand: {
@@ -148,7 +150,7 @@ describe('the words themselves', () => {
     const i = theFirstInsight(real, 'Q4 priorities', { isTheLead: true })!;
     expect(i.subjectForTheLead).toBe('In "Q4 priorities", who owns the next step with the distributor is not agreed upon by the team, and one more difference is still open');
     expect(i.lines[0]).toBe('Who owns the next step with the distributor is not agreed upon by the team, and one more difference is still open.');
-    expect(i.lines).toContain('Two things are settled and two are still open.');
+    expect(i.lines.join(' ')).not.toContain('settled');
     expect(i.lines).toContain('Here is what I would do first. Agree on a single owner for the distributor relationship and communicate this to the entire team.');
     const them = theFirstInsight(real, 'Q4 priorities', { isTheLead: false })!;
     expect(them.subjectForTheLead).toBeNull();
@@ -158,7 +160,7 @@ describe('the words themselves', () => {
   it('a long sentence is never cut in the middle and never makes a subject too long to read (found on the test bed)', () => {
     const long = 'The team\'s progress toward the 120,000,000 objective cannot be calculated because team members are measuring their contributions in different units.';
     const i = theFirstInsight(SERVED({ stand: { open: [long, 'Who signs off the discount is not agreed.'], agreed: 1, settled: ['x'], openWithReasons: [] } }), 'Q4 priorities', { isTheLead: true })!;
-    expect(i.subjectForTheLead).toBe('The shared picture for "Q4 priorities" found two differences still open');
+    expect(i.subjectForTheLead).toBe('The report for "Q4 priorities" found two differences still open');
     expect(i.lines[0]).toBe('The team\'s progress toward the 120,000,000 objective cannot be calculated because team members are measuring their contributions in different units, and one more difference is still open.');
     expect(i.lines.join(' ')).not.toContain('...');
   });
@@ -171,12 +173,12 @@ describe('the words themselves', () => {
 describe('"I can help you do that": the way into Ask about the finding (screens request 198)', () => {
   const links = (html: string) => [...html.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => ({ href: m[1], says: m[2].trim() }));
 
-  it('the lead\'s main link is Ask about this check-in, and the shared picture is still one plain link away', async () => {
+  it('the lead\'s main link is Ask about this check-in, and the report is still one plain link away', async () => {
     const w = world(() => SERVED());
     await w.service.tellThemTheReportIsReady('g1', 1);
     const l = links(to(w.sent, 'wairimu@x.test').html);
     expect(l[0]).toEqual({ href: 'https://app.test/chat?about=g1', says: 'I can help you do that' });
-    expect(l[1]).toEqual({ href: 'https://app.test/grounds/g1/session/1', says: 'Read the shared picture' });
+    expect(l[1]).toEqual({ href: 'https://app.test/grounds/g1/session/1', says: 'Read the report' });
   });
 
   it('a participant is given it where the report served to them names a finding, in words that are theirs', async () => {
@@ -191,16 +193,16 @@ describe('"I can help you do that": the way into Ask about the finding (screens 
     const w = world(() => SERVED());
     await w.service.tellThemTheReportIsReady('g1', 1);
     expect(to(w.sent, 'omar@x.test').html).not.toContain('chat?about');
-    expect(links(to(w.sent, 'omar@x.test').html)[0].says).toBe('Read the shared picture →');
+    expect(links(to(w.sent, 'omar@x.test').html)[0].says).toBe('Read the report →');
   });
 
   it('with nothing open, or a picture still withheld, the link is the one it always was', async () => {
     const none = world(() => SERVED({ stand: { agreed: 0, stillOpen: 0, settled: [], open: [], openWithReasons: [] }, top: { theConversationWorthHaving: null } }));
     await none.service.tellThemTheReportIsReady('g1', 1);
-    expect(links(to(none.sent, 'wairimu@x.test').html)[0].says).toBe('Read the shared picture →');
+    expect(links(to(none.sent, 'wairimu@x.test').html)[0].says).toBe('Read the report →');
     const held = world((u) => (u === 'u-abi' ? { sessionNumber: 1, withheldUntilYouAnswer: true } : SERVED()));
     await held.service.tellThemTheReportIsReady('g1', 1);
-    expect(links(to(held.sent, 'abigail@x.test').html)[0].says).toBe('Read the shared picture →');
+    expect(links(to(held.sent, 'abigail@x.test').html)[0].says).toBe('Read the report →');
     expect(to(held.sent, 'abigail@x.test').html).not.toContain('chat?about');
   });
 });

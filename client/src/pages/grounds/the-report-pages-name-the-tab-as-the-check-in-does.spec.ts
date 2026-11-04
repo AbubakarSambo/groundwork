@@ -1,20 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { checkInHeaderTabs } from './ground-tabs'
+import { checkInHeaderTabs, groundTabs } from './ground-tabs'
 
 /**
  * THE REPORT PAGES NAME THE TAB AS THE CHECK-IN PAGE DOES (browser test, 20 October 2026). Achieng opened her session report
- * in Pesa Ndogo Lenders (test), where Release 1B is on: the check-in page's tab said "References and resources" and the
- * report page's said "Context and resources". Off, every page names it exactly as before.
+ * and the check-in page's tab said "References and resources" while the report page's said "Context and resources". Since
+ * release batch 1 (Hafsah, 4 November 2026) there is one name for everybody, with no switch.
  */
-const at = (ground: { release1bTabsOn?: boolean } | null) =>
-  checkInHeaderTabs({ id: 'g1', contextEnabled: true, canRunThisCheckIn: false, isAParty: true, ground }).find((t) => t.key === 'context')!.label
-
-describe('the report pages name the context tab as the check-in page does', () => {
-  it('says "References and resources" where Release 1B is on', () => {
-    expect(at({ release1bTabsOn: true })).toBe('References and resources')
-  })
-  it('says what it said before where it is off', () => {
-    expect(at({ release1bTabsOn: false })).toBe('Context and resources')
-    expect(at(null)).toBe('Context and resources')
+describe('the report pages name the tab as the check-in page does', () => {
+  it('says "References and resources" on both, for the lead and for a team member', () => {
+    for (const who of [{ canRunThisCheckIn: true, isAParty: false }, { canRunThisCheckIn: false, isAParty: true }]) {
+      expect(checkInHeaderTabs({ id: 'g1', ...who }).find((t) => t.key === 'context')!.label).toBe('References and resources')
+      expect(groundTabs(who).find((t) => t.key === 'context')!.label).toBe('References and resources')
+    }
   })
 })

@@ -9,18 +9,18 @@ import { peersAreNamedOn } from '../reports/peers-are-named';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
-import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { aCheckInStartedFromTheAnchor } from './the-anchor-weekly-check-in';
 import { forHumans } from '../presentation/outbound';
+import { theDraftNothingHasChangedSince, theOpeningAsRead } from './the-opening-prepared-in-advance';
 
 /**
- * EACH TEAM MEMBER'S OPENING, THE ONE THING THAT MATTERS TO THEM TODAY (the direct morning, part 3; Hafsah, 20 October 2026; behind
- * `organizations.direct_morning_on`, organisation/the-direct-morning-switch.ts).
+ * EACH TEAM MEMBER'S OPENING, THE ONE THING THAT MATTERS TO THEM TODAY (the direct morning, part 3; Hafsah, 20 October 2026; for
+ * everybody since the direct morning's switch went, batch 1, 4 November 2026).
  *
  * A team member (never the lead) is opened with one personal question about the one thing on record that matters to them today,
  * answerable in one reply: "Joseph, Juja Hardware is waiting on the KES 4,500 price for 5 units. What's happening with it, and what's
  * next?". Somebody who is late (they missed their previous session, or answered it a day late) gets the short version, at most two
- * things: "Just two things today, Joseph. What's happening with ..., and ...?".
+ * things: "Joseph, two things are open from last time. ... What's happening with ..., and ...?".
  *
  * WHERE THE ONE THING COMES FROM. The record only, for this person, in this order:
  *   1. something a colleague or the lead is waiting on them for (an open wait on them), most overdue first; where it is a promise of
@@ -37,8 +37,8 @@ import { forHumans } from '../presentation/outbound';
  * where the check-in names people to each other (peers-are-named.ts), else "a colleague". What a colleague said in the check-in is
  * theirs to read (they are in it); the lead's judgement is never read here, only what she is waiting for.
  *
- * NOTHING SPECIFIC ON RECORD: null, and the opening is today's, exactly. Never for the lead, someone who only manages, someone who left,
- * an evaluation check-in, or with the switch off.
+ * NOTHING SPECIFIC ON RECORD: null; the prepared opener then says "nothing is open from last time". Never for the lead, someone who only
+ * manages, someone who left, or an evaluation check-in.
  */
 
 export interface AThingThatMatters {
@@ -59,8 +59,12 @@ export interface AThingThatMatters {
 }
 
 export interface ATeamMembersOpening {
-  /** The words the person reads first, and the first question of the check-in, word for word. */
+  /** The words the person reads first, and the first question of the check-in, word for word: the prepared opener where one is ready. */
   text: string;
+  /** The one plain fact by name, from the record. */
+  line: string;
+  /** The record's own question after it. */
+  question: string;
   /** The email subject that carries it. */
   subject: string;
   late: boolean;
@@ -124,25 +128,39 @@ function whatTheyAreWaitedOnFor(what: string | null | undefined, theirFirstName:
 /* The words, from the things                                                                                                 */
 /* ------------------------------------------------------------------------------------------------------------------------- */
 
-/** The opening a person reads, from the things that matter to them (best first). Null where there is none. */
-export function theOpeningFrom(firstName: string | null, things: AThingThatMatters[], late: boolean, label: string): ATeamMembersOpening | null {
+/** The things in the order they are said: best first, and never one thing twice. */
+export function inTheOrderTheyAreSaid(things: AThingThatMatters[]): AThingThatMatters[] {
   const sorted = [...things].sort((a, b) => a.rank - b.rank || a.order - b.order);
   const kept: AThingThatMatters[] = [];
   for (const t of sorted) if (!kept.some((k) => k.key === t.key)) kept.push(t);
+  return kept;
+}
+
+/**
+ * The opening a person reads, from the things that matter to them. Null where there is none. `line` is the one plain fact by name (the
+ * prepared opener's fact line, the-opening-prepared-in-advance); `question` is the record's own question after it, which the model is
+ * shown when it writes the first question, and which a notice sent before the check-in opens carries when no draft is ready. Somebody late
+ * reads at most two things, both in the line ("Joseph, two things are open from last time. ..."), and one question about both.
+ */
+export function theOpeningFrom(firstName: string | null, things: AThingThatMatters[], late: boolean, label: string): ATeamMembersOpening | null {
+  const kept = inTheOrderTheyAreSaid(things);
   if (!kept.length) return null;
   const name = String(firstName ?? '').trim() || null;
+  const byName = (fact: string) => (name ? `${name}, ${fact}` : capital(fact));
   if (late) {
     const two = kept.slice(0, 2);
-    const asked = two.length === 2 ? `${capital(two[0].short)}, and ${two[1].short}?` : `${capital(two[0].short)}?`;
+    const line = two.length === 2 ? byName(`two things are open from last time. ${capital(two[0].says)} ${capital(two[1].says)}`) : byName(two[0].says);
+    const question = two.length === 2 ? `${capital(two[0].short)}, and ${two[1].short}?` : `${capital(two[0].short)}?`;
     return {
-      text: `Just ${two.length === 2 ? 'two things' : 'one thing'} today${name ? `, ${name}` : ''}. ${asked}`,
+      line, question, text: `${line} ${question}`,
       subject: `${name ? `${name}, just` : 'Just'} ${two.length === 2 ? 'two things' : 'one thing'} today on ${label}`,
       late: true, things: two, firstName: name,
     };
   }
   const one = kept[0];
+  const line = byName(one.says);
   return {
-    text: `${name ? `${name}, ${one.says}` : capital(one.says)} ${one.asks}`,
+    line, question: one.asks, text: `${line} ${one.asks}`,
     subject: name ? `${name}, ${one.subject}` : capital(one.subject),
     late: false, things: [one], firstName: name,
   };
@@ -412,13 +430,36 @@ export function wasLateLastTime(previous: { status: string; completedAt: Date | 
 /* ------------------------------------------------------------------------------------------------------------------------- */
 
 /**
- * THE OPENING FOR ONE TEAM MEMBER'S CHECK-IN, or null: the switch is off, the reader runs the check-in (or only manages, or left),
- * it is an evaluation check-in, or nothing specific is on record (then today's opening goes, exactly as it would).
+ * THE OPENING FOR ONE TEAM MEMBER'S CHECK-IN, AS THEY WILL READ IT, or null: the reader runs the check-in (or only manages, or left), it is
+ * an evaluation check-in, or nothing specific is on record. ONE OPENER (batch 1 merge, 4 November 2026): where the opener and first
+ * question of this session are prepared in advance and nothing has changed since, these are its words, so the email, the WhatsApp message
+ * and the check-in all say the same thing. Only where no draft is ready yet does a notice carry the fact line and the record's own question.
  */
 export async function aTeamMembersOpeningFor(
   prisma: any,
   opts: { groundId: string; participantId: string; sessionNumber?: number | null; now?: Date },
 ): Promise<ATeamMembersOpening | null> {
+  const open = await whatIsOpenFor(prisma, opts);
+  if (!open) return null;
+  const opening = theOpeningFrom(open.firstName, open.things, open.late, open.label);
+  if (!opening) return null;
+  const prepared = await theDraftNothingHasChangedSince(prisma, opts).catch(() => null);
+  const text = prepared ? theOpeningAsRead(prepared.line, prepared.question) : opening.text;
+  /* In the house's own style, once, so the phone, the mailbox and the check-in read the same words. */
+  return { ...opening, line: forHumans(opening.line) || opening.line, text: forHumans(text) || text };
+}
+
+/** What is open for one team member, from the record only: their first name, the things that matter to them today, and whether they were late. */
+export interface WhatIsOpen { organizationId: string; firstName: string | null; things: AThingThatMatters[]; late: boolean; label: string }
+
+/**
+ * What the opening and the prepared opener's fact line are both written from (the-opening-prepared-in-advance), the things best first.
+ * Null for the lead, somebody who only manages or left, an evaluation check-in or the anchor's weekly one.
+ */
+export async function whatIsOpenFor(
+  prisma: any,
+  opts: { groundId: string; participantId: string; sessionNumber?: number | null; now?: Date },
+): Promise<WhatIsOpen | null> {
   const now = opts.now ?? new Date();
   try {
     const ground = await Promise.resolve(prisma?.ground?.findUnique?.({
@@ -427,7 +468,6 @@ export async function aTeamMembersOpeningFor(
         participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, createdAt: true, user: { select: { firstName: true, lastName: true } } } } },
     })).catch(() => null) as any;
     if (!ground) return null;
-    if (!(await theDirectMorningIsOn(prisma, ground.organizationId))) return null;
     /* An evaluation check-in weighs one person, and the anchor's weekly check-in opens with its own words: neither is changed here. */
     if (isEvaluationCheckIn(ground.scenario) || aCheckInStartedFromTheAnchor(ground)) return null;
     const people: any[] = ground.participants ?? [];
@@ -488,9 +528,7 @@ export async function aTeamMembersOpeningFor(
       participantId: me.id, firstName: firstOf(me), callThem, waits: open, carriedWaitIds: new Set(carried.map((c) => c.waitId)),
       deals, silentSince, bills, billWord, now, zone,
     });
-    const opening = theOpeningFrom(firstOf(me), things, late, String(ground.label ?? 'your check-in'));
-    /* In the house's own style, once, so the phone, the mailbox and the check-in read the same words. */
-    return opening ? { ...opening, text: forHumans(opening.text) || opening.text } : null;
+    return { organizationId: ground.organizationId, firstName: firstOf(me), things: inTheOrderTheyAreSaid(things), late, label: String(ground.label ?? 'your check-in') };
   } catch {
     /* Nothing that could not be read changes what anybody reads: today's opening goes. */
     return null;

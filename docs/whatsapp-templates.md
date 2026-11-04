@@ -317,3 +317,19 @@ Written 21 October 2026, from Hafsah's answers of that day. It does not change a
 - **Sample values:** {{1}} = Mercy; {{2}} = Sales team, Q4; {{3}} = 6pm
 - **Rule:** it counts as that day's one routine message.
 - **For Abubakar:** once `groundwork_checkin_closes_soon_v2` is approved and listed, `checkin_closes_soon` stops being used. Leave it approved in Meta, but unused.
+
+## The new template of 4 November, for Abubakar to submit
+
+Written 4 November 2026, from Hafsah's answer of that day: a check-in takes "about ten minutes" (her fixed decision), and each approved template that says five minutes is replaced. `groundwork_checkin_open_v2` and `groundwork_checkin_closes_soon_v2` replace their five-minute versions. This one replaces the third. It does not change an approved template: it is a new one, wired the same way as the four of 19 October. It is used only when its name is in `WHATSAPP_APPROVED_TEMPLATES`, only outside the 24 hours, and only when the message carries every blank. Until it is approved and listed, `checkin_your_view_matters` goes as it does today.
+
+### 6. groundwork_checkin_your_view_matters_v2
+
+- **Replaces:** `checkin_your_view_matters` (which says "about five minutes"). Once this is approved and listed, it is used instead.
+- **Category:** Utility
+- **Body:**
+  Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} understand what's in your way, and where they can help. It takes about ten minutes, and you can answer here.
+- **Variables:** {{1}} first name; {{2}} check-in name; {{3}} the lead's first name.
+- **Sample values:** {{1}} = Miriam; {{2}} = the sales team; {{3}} = Wairimu
+- **Why:** the same sending rule as `checkin_your_view_matters`: on the lead's chase days, when fewer than half have checked in, and always for a check-in about one person.
+- **If Meta refuses it as Utility** (the second sentence may be read as Marketing), submit this instead: "Hi {{1}}, your check-in for {{2}} is still waiting. It takes about ten minutes, and you can answer here."
+- **For Abubakar:** once it is approved and listed, `checkin_your_view_matters` stops being used. Leave it approved in Meta, but unused. Wiring it in the code (`a-message-outside-the-window.ts`) is part of batch 1.

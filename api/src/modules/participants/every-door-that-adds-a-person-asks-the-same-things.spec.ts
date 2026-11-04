@@ -18,14 +18,16 @@ describe('the doors', () => {
     expect(read('../public-api/public-api.controller.ts')).toMatch(/addPersonFromPanel[\s\S]{0,300}department\?: string/);
     expect(read('../public-api/a-check-in-a-customer-can-run.service.ts')).toMatch(/urn:ietf:params:scim:schemas:extension:enterprise:2\.0:User': \{ department/);
   });
-  it('adding a contributor in the app asks it beside the role', () => {
+  /*
+   * UPDATED (Hafsah, 31 October 2026: "Make adding a team the top pattern ... without repeating themselves"). The app's door is now the
+   * one team box, the same one the organisation's invite box is: one person per line, a name, an email and a phone number, and
+   * everybody on in one press. What somebody does (their role) is added after, on People and setup. The route still takes a
+   * department, so a door that sends one keeps it.
+   */
+  it('adding people in the app is the one team box, and the route still takes a department', () => {
     expect(read('../grounds/dto/add-participant.dto.ts')).toMatch(/department\?: string/);
-    const page = strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'GroundAdminPage.tsx'), 'utf8'));
-    /* The add-person form moved into "Who's in it" when People and setup was rebuilt from the
-       shared parts (29 September); the page keeps the draft and sends it. */
     const form = strip(readFileSync(join(CLIENT, 'components', 'gw', 'WhosInItRoster.tsx'), 'utf8'));
-    expect(form).toContain('placeholder="Their department (optional)"');
-    expect(page).toMatch(/department: newParticipantDepartment\.trim\(\) \|\| undefined/);
+    expect(form).toContain('<TheTeamBox');
   });
   it('the join page asks it beside "your part in this"', () => {
     /* The join body is a DTO class since B14 (the pipe could not see the inline type); the field is on it. */

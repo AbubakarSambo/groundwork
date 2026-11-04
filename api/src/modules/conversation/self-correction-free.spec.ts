@@ -111,7 +111,7 @@ describe('GW-SELFCORRECT-FREE: correcting your own record is never paywalled', (
       { content: 'The October reconvene date is actually provisional, not fixed, and still needs confirmation.' },
     ]);
     jest.spyOn(service as any, 'scoreSessionSpecificity').mockResolvedValue(null);
-    jest.spyOn(service as any, 'extractRecordEntries').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'theEndCardAtTheEnd').mockResolvedValue(undefined);
     jest.spyOn(service as any, 'buildSoloArtifact').mockResolvedValue(undefined);
     jest.spyOn(service as any, 'ensureNextSession').mockResolvedValue(undefined);
 
@@ -130,7 +130,7 @@ describe('GW-SELFCORRECT-FREE: correcting your own record is never paywalled', (
       { content: 'The October reconvene date is actually provisional, not fixed, and still needs confirmation.' },
     ]);
     jest.spyOn(service as any, 'scoreSessionSpecificity').mockResolvedValue(null);
-    jest.spyOn(service as any, 'extractRecordEntries').mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'theEndCardAtTheEnd').mockResolvedValue(undefined);
 
     await expect(service.complete('ci-correction', 'user1')).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.checkIn.update).not.toHaveBeenCalled();

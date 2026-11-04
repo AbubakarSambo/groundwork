@@ -108,7 +108,8 @@ describe('Wanjiru, who runs it', () => {
   it('reads the scenario, the two kinds of work the picture names with the one Groundwork read chosen, and how to confirm it', async () => {
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue(SERVED_TO_WANJIRU)
     renderPage(props())
-    await waitFor(() => expect(whatItIs().getByText('Groundwork read this from what you wrote when setting it up. Save changes to confirm it.')).toBeTruthy())
+    /* The first render of the whole page takes over a second on one worker; the default wait of one second ran out before it. */
+    await waitFor(() => expect(whatItIs().getByText('Groundwork read this from what you wrote when setting it up. Save changes to confirm it.')).toBeTruthy(), { timeout: 5000 })
     expect(whatItIs().getByText('Collect what’s owed')).toBeTruthy()
     const kind = whatItIs().getByLabelText('Kind of work') as HTMLSelectElement
     expect([...kind.options].map((o) => o.textContent)).toEqual(['Fee notes and invoices', 'Loan repayments'])

@@ -45,7 +45,10 @@ describe('what it is allowed to say', () => {
   it('reports the record being silent as the record being silent', () => {
     /* The one line most likely to become a verdict. Reading effort out of an empty table is how a
        product ends up telling a manager that somebody is not trying. */
-    expect(PROBE).toContain('does not say whether anything happened outside the check-ins');
+    /* 2 November 2026 (f76a189df): silence is never a finding, so the line no longer says what the record does not show at all;
+       it says the wait and "It was asked for." The sentence that read effort out of the empty record is asserted gone. */
+    expect(PROBE).not.toContain('nothing on record shows it was taken any further');
+    expect(PROBE).toContain('It was asked for.');
   });
 
   it('carries none of the words that would make it a judgement', () => {

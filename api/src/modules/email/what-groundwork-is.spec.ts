@@ -69,15 +69,9 @@ describe('and the sender applies it once, for every mail', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
 
-  it('is applied in sendEmail rather than in the templates', () => {
-    expect(src).toContain('withWhatGroundworkIs(options.html, sender,');
-  });
-
-  it('before the send and before the dev log, so what is logged is what goes out', () => {
-    const at = src.indexOf('withWhatGroundworkIs(options.html');
-    expect(at).toBeGreaterThan(-1);
-    expect(at).toBeLessThan(src.indexOf('[DEV EMAIL] To:'));
-    expect(at).toBeLessThan(src.indexOf('transport.sendMail'));
+  /* Changed 4 November 2026 (release batch 1, Hafsah: no explainer lines and no privacy notes in messages): no mail is given the paragraph. */
+  it('is applied to no mail any more', () => {
+    expect(src).not.toContain('withWhatGroundworkIs(options.html');
   });
 
   it('and every classified sender is one or the other, never unclassified', () => {

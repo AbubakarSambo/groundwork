@@ -102,7 +102,7 @@ describe('Grace nudges Joseph', () => {
   });
 });
 
-describe('only Grace may, and only with the switch on: decided on the server', () => {
+describe('only Grace may: decided on the server', () => {
   it('Kevin, a team member, is refused (403) and nothing is sent', async () => {
     const w = aWorld();
     await expect(w.svc.nudge(DROP, JOSEPH, KEVIN_USER, AFTERNOON)).rejects.toBeInstanceOf(ForbiddenException);
@@ -115,12 +115,6 @@ describe('only Grace may, and only with the switch on: decided on the server', (
   it('Grace cannot nudge herself', async () => {
     const w = aWorld();
     await expect(w.svc.nudge(DROP, '9594ee31-5f40-41d2-97fe-e87527405712', GRACE, AFTERNOON)).rejects.toThrow(/nobody to nudge/);
-  });
-  it('with the direct morning off, the route refuses, the board serves no button, and nothing is sent', async () => {
-    const w = aWorld({ directMorning: false });
-    await expect(w.svc.nudge(DROP, JOSEPH, GRACE, AFTERNOON)).rejects.toBeInstanceOf(ForbiddenException);
-    expect(w.sent).toHaveLength(0);
-    expect(await theNudgesOnTheBoard(w.db, N.drop.ground.organizationId, [{ participantId: JOSEPH, firstName: 'Joseph' }], AFTERNOON)).toEqual([]);
   });
 });
 

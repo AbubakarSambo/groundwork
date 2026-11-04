@@ -49,7 +49,7 @@ export function whyThisCannotBeSent(
     return 'There is nothing to send yet - ask me something first and then say "email me that".';
   }
   if (!to.email) {
-    return 'Your organisation has not given us an email address for you, so there is nowhere to send it. Whoever set Groundwork up can add one.';
+    return 'Your organisation has not given me an email address for you, so there is nowhere to send it. Whoever set Groundwork up can add one.';
   }
   return null;
 }

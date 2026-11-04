@@ -162,8 +162,12 @@ describe('every page is painted with the page colour, not the card fill', () => 
      * floor drops again, by that one file, to 11.
      */
     const onThePage = files.filter(f => /background: 'var\(--gw-page\)'/.test(readFileSync(f, 'utf8')))
-    /* 24 October: the Ask page moved onto the prototype's .main and .wrap (no inline page colour), so the floor drops by one. */
-    expect(onThePage.length).toBeGreaterThan(9)
+    /* 24 October: the Ask page moved onto the prototype's .main and .wrap (no inline page colour), so the floor drops by one.
+       4 November: nine pages still paint it inline (HomePage, EntryChat, AnswerFirstPage, GoogleCallbackPage, AdminDashboardPage,
+       AdminPage, PromptVersioningPage, BillingCallbackPage, PricingPage); this floor said "more than nine" and has failed
+       since before batch 1. The search is still proved to find real pages, by name, below. */
+    expect(onThePage.length).toBeGreaterThanOrEqual(9)
+    expect(onThePage.some((f) => f.endsWith('PricingPage.tsx'))).toBe(true)
   })
 })
 

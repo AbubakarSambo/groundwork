@@ -80,10 +80,10 @@ export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent, forRes
     <AuthCard
       title="Check your email"
       sub={forReset
-        ? <>If there is an account for <strong>{email}</strong>, we sent it a link to choose a new password. The link works for an hour.</>
+        ? <>If there is an account for <strong>{email}</strong>, I sent it a link to choose a new password. The link works for an hour.</>
         : withPassword
-          ? <>Your password is saved. We sent a link to <strong>{email}</strong> to confirm it is yours. Open it, and answer anything it still asks you - once that is done, you can sign in with your password any time.</>
-          : <>We sent a sign-in link to <strong>{email}</strong>. Open it on any device.</>}
+          ? <>Your password is saved. I sent a link to <strong>{email}</strong> to confirm it is yours. Open it, and answer anything it still asks you - once that is done, you can sign in with your password any time.</>
+          : <>I sent a sign-in link to <strong>{email}</strong>. Open it on any device.</>}
     >
       {failed && <AuthError>{failed}</AuthError>}
       <Stack gap={10}>

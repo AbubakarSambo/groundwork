@@ -152,7 +152,8 @@ describe('a request is said back, and only a yes to that request sends it', () =
   })
 
   it('shows the server’s own words when it refuses', async () => {
-    ;vi.mocked(askApi.ask).mockRejectedValue({ response: { data: { message: 'You are not part of this check-in.' } } })
+    /* A refusal comes with its 4xx status, as the server sends it; whatTheServerSaid (5d1cbb40e) shows a server's words only for a 4xx. */
+    ;vi.mocked(askApi.ask).mockRejectedValue({ response: { status: 403, data: { message: 'You are not part of this check-in.' } } })
     panel(MIRIAMS)
     await screen.findByPlaceholderText(CAPTION)
     fireEvent.change(screen.getByPlaceholderText(CAPTION), { target: { value: 'what is stuck?' } })

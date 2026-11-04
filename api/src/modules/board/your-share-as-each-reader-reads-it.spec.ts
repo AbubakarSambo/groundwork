@@ -21,14 +21,14 @@ const TARGETS = [
 ];
 
 describe('your share, as each reader reads it', () => {
-  it('Rukia reads her own share and who else sees it', async () => {
+  /* Changed 4 November 2026 (release batch 1, Hafsah: no privacy notes on screens): the share carries no note about who else sees it. Who may read it is unchanged. */
+  it('Rukia reads her own share', async () => {
     const b = await boardAs({ objectives: TARGETS }, ...RUKIA);
     expect(b.yourShare).toEqual([{
       objectiveId: 'o-rukia',
       /* Her own aim is said as hers (decision 75, item 37); it read "You are aiming for", as if set for her. */
       /* Since 12 October a person's own aim is quoted whole in their words, with the short label beside it (52f9d4241, 59a945e03, e93258d96). */
       says: 'Your own aim is 3 shops in Kilimani. You said, "I am aiming for 3 shops in Kilimani". You have 1 of the 3 so far.',
-      whoSees: 'Only you and Amina Wanjiru see your share.',
     }]);
     expect(JSON.stringify(b.yourShare)).not.toMatch(/Baraka|visits/);
   });
@@ -38,9 +38,9 @@ describe('your share, as each reader reads it', () => {
     expect(b.yourShare.map((s: any) => s.says)).toEqual(['Your own aim is 5 visits a week. You said, "I want 5 visits a week". You have 2 of the 5 so far.']);
   });
 
-  it('where the lead chose that everybody sees every number, it says so', async () => {
+  it('where the lead chose that everybody sees every number, there is no note either', async () => {
     const b = await boardAs({ objectives: TARGETS, whoSeesTargets: 'EVERYBODY' }, ...RUKIA);
-    expect(b.yourShare[0].whoSees).toBe('Everybody in this check-in sees your share.');
+    expect(b.yourShare[0].whoSees).toBeUndefined();
   });
 
   for (const [name, reader] of Object.entries({ 'Amina, who runs it': AMINA, 'Juma, an admin who only reads': JUMA, 'the admin who set it up': SETUP_ADMIN })) {

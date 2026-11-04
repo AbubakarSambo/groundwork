@@ -124,10 +124,12 @@ describe('commit falls back to the server-side draft (the vanish fix)', () => {
      * arrived empty, and the assertions above and below prove that from the label, the org name and
      * the contributor. The transcript still travels - it is what the targets are read from.
      */
-    /* CHANGED 4 NOVEMBER (Hafsah: setup stays private to whoever runs the check-in): the conversation holds her setup as well as
-       her first update, so it is no longer copied onto session 1, where every member's reads picked it up. Session 1 is still
-       closed as answered. */
-    expect(prisma.conversationTurn?.createMany ?? jest.fn()).not.toHaveBeenCalled();
+    /* CHANGED 11 OCTOBER (decision 133): the transcript is the check-in that followed setup, which is
+       the lead's first check-in, so it is written onto session 1. Setup itself is never in it. */
+    /* CHANGED 4 NOVEMBER (Hafsah: one conversation on screen, stored in two parts). The transcript is not copied onto session 1 as
+       check-in turns any more, because its assessment then read setup's words as said in a check-in and the team read them. Session 1
+       is still closed as her first check-in, from the draft's transcript, and her words reach her assessment once, as setup. */
+    expect(prisma.conversationTurn.createMany).not.toHaveBeenCalled();
     expect(prisma.checkIn.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'ci1' }, data: expect.objectContaining({ status: 'COMPLETED' }) }));
     expect(grounds.addParticipant).toHaveBeenCalledTimes(1); // contributor from the DRAFT
     expect(res.groundId).toBe('g-new');

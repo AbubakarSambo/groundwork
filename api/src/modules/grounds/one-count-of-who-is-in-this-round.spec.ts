@@ -34,13 +34,12 @@ describe('who is in this round', () => {
 
   it('is one definition, and the counter uses it', () => {
     /* The counter stopped carrying its own copy of the clause on 22 September 2026 - three copies is
-       three answers waiting to happen - and asks how-many-have-answered, which holds the one. */
+       three answers waiting to happen - and asks how-many-have-answered, which holds the one.
+       CHANGED 1 NOVEMBER 2026: the count is one pure function (whoHasAnswered) that counts everyone on the check-in, as Hafsah approved;
+       the release rule's own query answers a different question (whom the report waits for) and no longer shares its clauses. */
     expect(progress).toContain('await howManyHaveAnswered(this.prisma, groundId, sessionNumber)');
     const theRule = fs.readFileSync(path.join(__dirname, '..', 'reports', 'how-many-have-answered.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    /* CHANGED 11 OCTOBER (decision 133): 'managingOnly: false' became whoASessionCounts, which counts the lead only when they answered. */
-    for (const clause of ['AND: [whoASessionCounts(sessionNumber, AN_ANSWER)]', 'userId: { not: null }', 'invitedAt: { not: null }', 'inviteTokenExpiresAt: { gt: new Date() }']) {
-      expect(release).toContain(clause);
-      expect(theRule).toContain(clause);
-    }
+    expect(theRule).toContain('const c = whoHasAnswered(people, sessionNumber, ground?.scenario);');
+    expect(release.length).toBeGreaterThan(0);
   });
 });

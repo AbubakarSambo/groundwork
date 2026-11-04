@@ -47,7 +47,8 @@ describe('a live invitation', () => {
     expect(p.organisationName).toBe('Baridi Appliances');
     expect(p.leadFirstName).toBe('Wairimu');
     expect(p.endsAt).toBe('2026-09-30T00:00:00.000Z');
-    expect(p.schedule).toBe('A short check-in each weekday.');
+    /* Changed 3 November 2026 (Hafsah): the hour it opens and its name, from what setup holds. */
+    expect(p.schedule).toBe('About ten minutes each weekday, from 8am, for Sales team, Q3.');
     expect(p.expired).toBeUndefined();
   });
 });
@@ -102,17 +103,23 @@ describe('"Send me a fresh link"', () => {
   });
 });
 
+/* Changed 3 November 2026 (Hafsah: "'From 4pm' and the topic in the invitation come from what setup already holds: the check-in's opening
+   time and its name or purpose. If either isn't set, leave it out; don't guess."). A daily check-in opens at 8 in the morning, so it
+   says so; every other rhythm opens at the start of its day, so no hour is said. With no name given here, no topic is said. */
 describe('how often it asks, in words', () => {
   it.each([
-    [{ cadence: 'DAILY', workingDays: [1, 2, 3, 4, 5] }, 'A short check-in each weekday.'],
-    [{ cadence: 'DAILY', workingDays: [] }, 'A short check-in each day.'],
-    [{ cadence: 'DAILY', workingDays: [1, 3, 5] }, 'A short check-in on Mondays, Wednesdays and Fridays.'],
-    [{ cadence: 'WEEKLY', cadenceAnchorDay: 1 }, 'A short check-in every week, on Mondays.'],
-    [{ cadence: 'WEEKLY' }, 'A short check-in every week.'],
-    [{ cadence: 'FORTNIGHTLY' }, 'A short check-in every two weeks.'],
-    [{ cadence: 'MONTHLY' }, 'A short check-in once a month.'],
-    [{ cadence: 'SEQUENTIAL', leadFirstName: 'Wairimu' }, 'A short check-in each time Wairimu checks in.'],
-    [{ cadence: 'ONE_TIME' }, 'One short check-in.'],
+    [{ cadence: 'DAILY', workingDays: [1, 2, 3, 4, 5] }, 'About ten minutes each weekday, from 8am.'],
+    [{ cadence: 'DAILY', workingDays: [] }, 'About ten minutes each day, from 8am.'],
+    [{ cadence: 'DAILY', workingDays: [1, 3, 5] }, 'About ten minutes on Mondays, Wednesdays and Fridays, from 8am.'],
+    [{ cadence: 'WEEKLY', cadenceAnchorDay: 1 }, 'About ten minutes every week, on Mondays.'],
+    [{ cadence: 'WEEKLY' }, 'About ten minutes every week.'],
+    [{ cadence: 'FORTNIGHTLY' }, 'About ten minutes every two weeks.'],
+    [{ cadence: 'MONTHLY' }, 'About ten minutes once a month.'],
+    [{ cadence: 'SEQUENTIAL', leadFirstName: 'Wairimu' }, 'About ten minutes each time Wairimu checks in.'],
+    [{ cadence: 'ONE_TIME' }, 'One check-in, of about ten minutes.'],
+    [{ cadence: 'DAILY', workingDays: [1, 2, 3, 4, 5], label: 'Deal progress' }, 'About ten minutes each weekday, from 8am, for Deal progress.'],
+    [{ cadence: 'WEEKLY', cadenceAnchorDay: 1, label: 'Deal progress' }, 'About ten minutes every week, on Mondays, for Deal progress.'],
+    [{ cadence: 'ONE_TIME', label: 'Deal progress' }, 'One check-in, of about ten minutes, for Deal progress.'],
   ])('%j reads "%s"', (g, sentence) => {
     expect(whenItAsks(g as any)).toBe(sentence);
   });

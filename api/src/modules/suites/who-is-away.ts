@@ -196,6 +196,25 @@ export function awayUntilAsServed(awayUntil: Record<string, string>, reader: { f
   return Object.fromEntries(Object.entries(awayUntil ?? {}).filter(([id]) => id === reader.myParticipantId));
 }
 
+/**
+ * THE ROUND'S PROGRESS AS ONE READER IS SERVED IT: the check-in page and the report both serve it from here (2 November 2026; the
+ * report served every date to every reader, a guest included). Who is away is kept to what this reader may be told; the count
+ * itself already leaves them out without saying why.
+ */
+export async function theRoundAsServed<P extends { awayUntil?: Record<string, string>; missingParticipantIds: string[] }>(
+  prisma: PrismaService,
+  progress: P | null,
+  reader: { userId: string | null | undefined; organizationId: string | null | undefined; myParticipantId: string | null },
+): Promise<(P & { awayUntil: Record<string, string>; requestingUserIsMissing: boolean }) | null> {
+  if (!progress) return null;
+  const fromOutside = Object.keys(progress.awayUntil ?? {}).length ? await isFromOutside(prisma, reader.userId, reader.organizationId) : false;
+  return {
+    ...progress,
+    awayUntil: awayUntilAsServed(progress.awayUntil ?? {}, { fromOutside, myParticipantId: reader.myParticipantId }),
+    requestingUserIsMissing: !!reader.myParticipantId && progress.missingParticipantIds.includes(reader.myParticipantId),
+  };
+}
+
 export function theAwayLinesFor(
   awayUntil: Record<string, string>,
   served: { id: string; nameGiven?: string | null; user?: { firstName?: string | null } | null }[],

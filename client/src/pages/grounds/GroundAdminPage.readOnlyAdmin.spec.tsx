@@ -68,7 +68,10 @@ describe('the read-only view, for an admin who neither runs nor takes part in th
     renderPage()
     await waitFor(() => expect(screen.getByRole('tab', { name: 'People and setup' })).toBeTruthy())
     expect(screen.getByRole('tab', { name: 'Board' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Documents' })).toBeTruthy()
+    /* The third tab is named as it is pictured for everybody, now that Release 1B's switch has gone (it read "Documents" with
+       the switch off). What an admin who is not in the check-in can open is unchanged: these three, and nothing else. */
+    expect(screen.getByRole('tab', { name: 'References and resources' })).toBeTruthy()
+    expect(screen.getAllByRole('tab').map(t => t.textContent)).toEqual(['Board', 'References and resources', 'People and setup'])
     expect(screen.queryByRole('tab', { name: 'Check-in' })).toBeNull()
     expect(screen.queryByRole('tab', { name: 'My work' })).toBeNull()
   })

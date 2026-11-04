@@ -124,7 +124,8 @@ export async function readWhereEachPersonIsGettingStarted(
     select: {
       id: true, email: true, nameGiven: true, invitedAt: true, acceptedAt: true, userId: true, inviteDeliveryStatus: true, department: true,
       user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
-      checkIns: { select: { startedAt: true, completedAt: true, closedReason: true, sessionNumber: true, availableFrom: true } },
+      /* Started is their first reply (Hafsah, 3 November 2026), not the moment the first question was written. */
+      checkIns: { select: { completedAt: true, closedReason: true, sessionNumber: true, availableFrom: true, turns: { where: { role: 'PERSON' }, orderBy: { createdAt: 'asc' }, take: 1, select: { createdAt: true } } } },
     },
   });
   return {
@@ -139,7 +140,7 @@ export async function readWhereEachPersonIsGettingStarted(
       bounced: String(p.inviteDeliveryStatus ?? '').toUpperCase() === 'BOUNCED',
       email: p.email ?? null,
       delivered: String(p.inviteDeliveryStatus ?? '').toUpperCase() === 'DELIVERED',
-      checkIns: (p.checkIns ?? []).map((c: any) => ({ startedAt: c.startedAt ? new Date(c.startedAt) : null, completedAt: c.completedAt ? new Date(c.completedAt) : null, quietClose: c.closedReason === 'auto_closed', sessionNumber: c.sessionNumber ?? null, availableFrom: c.availableFrom ? new Date(c.availableFrom) : null })),
+      checkIns: (p.checkIns ?? []).map((c: any) => ({ startedAt: c.turns?.[0]?.createdAt ? new Date(c.turns[0].createdAt) : null, completedAt: c.completedAt ? new Date(c.completedAt) : null, quietClose: c.closedReason === 'auto_closed', sessionNumber: c.sessionNumber ?? null, availableFrom: c.availableFrom ? new Date(c.availableFrom) : null })),
       waitingToBeLetIn: isHeldAtTheDoor(p),
     })), now, { readerIsAnAdmin: input.role === 'ADMIN' }),
   };

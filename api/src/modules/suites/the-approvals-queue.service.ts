@@ -2,12 +2,12 @@ import { whatWasAttachedSaid } from './what-was-attached-to-a-spend-request';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AN_ADMIN_SWITCHES_IT_ON } from './a-suite-that-is-off-says-what-to-do';
-import { decidesIt, theStepsADecisionFollows, theStepsFor, whoDecidesNow, type DecidesNow } from './who-may-decide';
+import { decidesIt, theStepsFor, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { dutiesFrom } from './who-holds-each-duty';
 import { loadLookups, type Lookups } from './the-lookups';
 import { WORKFLOWS_ROW, workflowsFrom, type AWorkflow } from './the-approval-steps';
 import { LEAVE_RULES_ROW, leaveRulesFrom, type LeaveRules } from './the-leave-rules';
-import { SPEND_RULES_ROW, spendRulesFrom } from './the-spending-rules';
+import { SPEND_RULES_ROW, spendRulesFrom, theCardsAnswers } from './the-spending-rules';
 import { DUTIES_ROW } from './who-holds-each-duty';
 import { workingDays } from './the-leave-board.service';
 import { workingDaysSince } from './a-request-waits-too-long';
@@ -206,9 +206,7 @@ export class ApprovalsQueueService {
     const sa = (suites.spend?.answers ?? {}) as Record<string, unknown>;
     const spendAnswers = {
       currency: typeof sa.currency === 'string' ? sa.currency : null,
-      limit: typeof sa.limit === 'number' ? sa.limit : null,
-      above: typeof sa.above === 'string' ? sa.above : null,
-      workflow: workflows.spend as AWorkflow | undefined,
+      ...theCardsAnswers(spendRules),
       thresholds: spendRules.thresholds,
     };
 
@@ -228,7 +226,7 @@ export class ApprovalsQueueService {
     }
     for (const r of spendRows ?? []) {
       const team = r.team?.trim() || lookups.entryOf.get(r.userId)?.department?.trim() || null;
-      const now = await whoDecidesNow(this.prisma, theStepsADecisionFollows(spendAnswers, num(r.amount)), { ...asker(r), team }, r, { lookups, on: today });
+      const now = await whoDecidesNow(this.prisma, theStepsFor('spend', spendAnswers, num(r.amount)), { ...asker(r), team }, r, { lookups, on: today });
       waiting.push({ suite: 'spend', row: r, now, since: r.stepSince ?? r.createdAt ?? today });
     }
     /* Oldest first, and by id after that, so no two pages ever hold the same request. */

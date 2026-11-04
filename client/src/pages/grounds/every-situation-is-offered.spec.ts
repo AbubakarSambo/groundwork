@@ -204,12 +204,16 @@ describe('the Setup card offers every situation', () => {
    * `scenarioLabel()`, the one lookup every other reader of the catalogue already goes through,
    * which knows "Help my team understand" without needing a card. Still the one catalogue, not a
    * list of its own.
+   *
+   * REPOINTED (4 November 2026): the old page went with Release 1B's switch. People and setup is the B8 page
+   * (PeopleAndSetupAsPictured.tsx) for everybody, where the row is "Scenario" under "What it is", read the same way.
    */
   it('reads its label from the catalogue, not a list of its own', () => {
-    const src = require('fs').readFileSync(require('path').join(__dirname, 'CheckInPeopleAndSetup.tsx'), 'utf8');
-    const i = src.indexOf('label="Situation"');
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'PeopleAndSetupAsPictured.tsx'), 'utf8');
+    const i = src.indexOf('label="Scenario"');
+    expect(i).toBeGreaterThan(-1);
     const around = src.slice(Math.max(0, i - 200), i + 400);
-    expect(around).toMatch(/scenarioLabel\(ground\.scenario/);
+    expect(around).toMatch(/scenarioLabel\(g\.scenario/);
     expect(around).not.toMatch(/\['NEW_HIRE', 'New hire'\]/);
     expect(src).not.toMatch(/Save situation/);
   });

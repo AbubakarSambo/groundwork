@@ -112,7 +112,7 @@ describe('a document\'s numbers, said back through Ask Groundwork', () => {
 
     expect(reply.lane).toBe('add_a_document');
     const said = (reply.blocks[0] as any).body as string;
-    expect(said).toContain('Here is the context we have from Q4 targets.xlsx');
+    expect(said).toContain('Here is what I took from Q4 targets.xlsx');
     expect(said).toContain("Dayo Adebayo's target for Q3 sales is 45m.");
     expect(said).toContain('For everyone in this check-in, the target for New dealers is 12.');
     expect(said).toContain('Shall I record these numbers on this check-in?');

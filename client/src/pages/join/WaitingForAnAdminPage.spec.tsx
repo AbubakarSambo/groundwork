@@ -49,7 +49,7 @@ describe('after a real invitation', () => {
        the product actually writes rather than assuming it is always there. */
     expect(steps[1]).toMatch(/^✓Done\. Grace was asked, (yesterday|on \d+ \w+) at \d{1,2}(:\d{2})?(am|pm)$/)
     expect(steps[2]).toBe('○Still to happen. Grace lets you in')
-    expect(screen.getByText('We’ll email you the moment Grace does, and your first check-in will be waiting.')).toBeTruthy()
+    expect(screen.getByText('I’ll email you the moment Grace does, and your first check-in will be waiting.')).toBeTruthy()
     expect(screen.getByText('You can remind Grace once a day. Wairimu can see you’re waiting too.')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/text you|Usually within a day/)
   })
@@ -103,7 +103,7 @@ describe('after a link shared with many people', () => {
     open()
     expect(await screen.findByText('You’re from outside Baridi Appliances, so an admin there has to let you in. We’ve asked the admins there.')).toBeTruthy()
     expect(screen.getByText('You asked to join')).toBeTruthy()
-    expect(screen.getByText('We’ll email you the moment they do, and your first check-in will be waiting.')).toBeTruthy()
+    expect(screen.getByText('I’ll email you the moment they do, and your first check-in will be waiting.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Remind/ })).toBeNull()
   })
 })

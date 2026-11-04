@@ -49,7 +49,7 @@ describe('when the link has just created the account', () => {
     await screen.findByRole('heading', { name: 'Your email is confirmed' })
     expect(readable(container)).toBe(
       /* U.2 review: one sentence, not an address and a sentence joined by a full stop. */
-      'Groundwork' + 'Your email is confirmed' + 'We’ll send sign-in links and reports to wairimu@baridi.test.' + 'Continue',
+      'Groundwork' + 'Your email is confirmed' + 'I’ll send sign-in links and reports to wairimu@baridi.test.' + 'Continue',
     )
     expect(navigated).not.toHaveBeenCalled()
   })
@@ -88,7 +88,7 @@ describe('when the link has just created the account', () => {
   it('with no address on the response, it says "this address" rather than guessing', async () => {
     vi.mocked(authApi.verifyEmail).mockResolvedValue({ user: { ...user, email: undefined }, accessToken: 't', justCreated: true })
     open()
-    expect((await screen.findByText(/sign-in links and reports/)).textContent).toBe('We’ll send sign-in links and reports to this address.')
+    expect((await screen.findByText(/sign-in links and reports/)).textContent).toBe('I’ll send sign-in links and reports to this address.')
   })
 
   it('is never shown in front of a failure', async () => {

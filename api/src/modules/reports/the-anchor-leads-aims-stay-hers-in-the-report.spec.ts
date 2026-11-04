@@ -58,8 +58,19 @@ describe("an anchor check-in: the lead's aims stay hers in the report", () => {
     expect(said(out)).toContain('20 percent');
   });
 
-  it('a check-in that is not the anchor is unchanged for a member', async () => {
+  /*
+   * CHANGED 4 NOVEMBER (Hafsah: "setup stays private to whoever runs the check-in. Only what's meant for the team (targets, rules,
+   * expectations) is shared, through the proper places"). This pinned the leak of issue 28: outside the anchor, Juma read the lead's
+   * aim in her own words. Now no check-in gives it to him in a report sentence; the target reaches him as the check-in's target.
+   */
+  it('a check-in that is not the anchor keeps the lead\'s aims hers too, and Juma still reads the rest', async () => {
     const out = await service(null, 'OKR_ALIGNMENT').whatTheLeadHasNotShared('g1', JUMA, 'org1', served());
-    expect(said(out)).toContain('20 percent');
+    expect(said(out)).not.toMatch(/20 percent|thrown away|in the lead's own words/);
+    expect(said(out)).toContain('owe for three weeks');
+  });
+
+  it('the standard the lead set, the target\'s own place in the band, is still read by Juma', async () => {
+    const out: any = await service(null, 'OKR_ALIGNMENT').whatTheLeadHasNotShared('g1', JUMA, 'org1', { stated: AIM, definitions: [] });
+    expect(out.stated).toBe(AIM);
   });
 });

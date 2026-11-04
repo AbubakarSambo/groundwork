@@ -45,7 +45,7 @@ export async function readTheInputs(prisma: any, groundId: string, now: Date = n
   const ground: any = await prisma.ground.findUnique({
     where: { id: groundId },
     select: {
-      id: true, organizationId: true, kindOfWork: true, initiatorId: true, cadence: true, workingDays: true,
+      id: true, organizationId: true, kindOfWork: true, initiatorId: true, cadence: true, cadenceDays: true, workingDays: true,
       organization: { select: { timeZone: true } },
       participants: { select: { id: true, userId: true, managingOnly: true, user: { select: { firstName: true, lastName: true } } } },
     },

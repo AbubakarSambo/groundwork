@@ -1,101 +1,63 @@
-import { closeReadiness } from './close-readiness';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { TurnRole } from '@prisma/client';
+import { ConversationService } from './conversation.service';
+import { almostNothingHereYet } from './how-short-a-check-in-may-be';
 
 /**
  * THE ENGINE MUST NOT OFFER TO CLOSE SOMETHING THE SERVER WILL REFUSE.
  *
- * complete() enforces a floor: three answers on a normal check-in, one on a
- * correction. That floor knew nothing about the close gate, and the close gate
- * knew nothing about the floor, so a person could land between them:
+ * The deadlock this file was written for (live Ground 1 runs): the engine signalled a close after two rich answers, the composer went
+ * off, and complete() refused the record for being one answer short, with no way left to answer. It was fixed by making the close
+ * signal read the server's floor of answers.
  *
- *   the engine decides it has enough after two answers
- *   -> it signals the close
- *   -> the client disables the composer, because the session is over
- *   -> the person presses finish
- *   -> the server refuses: "A few more exchanges are needed before this
- *      check-in can close - the record is still thin. Answer one or two more
- *      questions, then complete."
- *   -> there is no way to answer. The input is gone.
- *
- * A DEADLOCK, not friction. Seen on live Ground 1 runs, repeatedly, and it
- * stopped several of them dead at session 1.
- *
- * WHO IT HITS IS THE UNCOMFORTABLE PART. This gate releases a close as soon as
- * anything checkable exists, so a dense first answer clears it immediately:
- *
- *   "Abubakar. He's joining as a delivery lead, starting Monday. I'm the ops
- *    admin setting this up, but Hafsah is his manager and should run it. Run it
- *    for 90 days with weekly check-ins."
- *
- * A name, a role, a start day, a duration and a rhythm, all in one breath. The
- * engine wraps on the next turn, and the person who gave the BEST opening answer
- * is the one who gets stuck. The original gate was written because thin records
- * closed too easily; this is the same fault arriving from the other direction.
- *
- * The trap was already known. The comment above complete()'s floor describes it
- * exactly - "the AI signals done, the input disables, but completion 400s for a
- * turn the person can no longer add" - and it was fixed there for corrections by
- * relaxing the floor, and left standing on the normal path.
- *
- * One number now, consulted in one place: the floor governs the close signal as
- * well as the close itself.
+ * Since 3 November 2026 there is no floor (Hafsah: no question limits and no forced close). The only bar on a close is the empty
+ * record, and the engine's close (mayClose) and the server's completion (complete) read the same one, almostNothingHereYet, so the two
+ * can still never disagree.
  */
+function serviceWith(personSaid: string[]) {
+  const turns = personSaid.map((c) => ({ role: TurnRole.PERSON, content: c }));
+  const prisma: any = {
+    checkIn: { findUnique: jest.fn(async () => ({ sessionNumber: 2, participant: { partyType: 'PARTICIPANT' }, ground: { cadence: 'WEEKLY', scenario: 'NEW_HIRE' } })) },
+    conversationTurn: { findMany: jest.fn(async () => turns) },
+  };
+  return new ConversationService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { get: () => '' } as any) as any;
+}
 
-describe('the close signal respects the floor that completion enforces', () => {
-  it('does not signal a close on two answers when three are required', () => {
-    // THE DEADLOCK. Both answers are rich, so the checkable-content rule would
-    // release the close, and the server would then refuse it.
+describe('the close signal and completion read one gate', () => {
+  it('two rich answers close: no count of answers holds them', async () => {
     const turns = [
       "Abubakar. He's joining as a delivery lead, starting Monday. Run it for 90 days with weekly check-ins.",
       'Success at 90 days is that I can hand him a messy client problem and not think about it again.',
     ];
-    expect(closeReadiness(turns, false, 3).ready).toBe(false);
+    expect(almostNothingHereYet(turns, false)).toBe(false);
+    expect(await serviceWith(turns).mayClose('c1', false)).toEqual({ ready: true });
   });
 
-  it('says why, in terms that name the trap', () => {
-    const verdict = closeReadiness(['one dense answer with 22 tickets in it'], false, 3);
-    expect(verdict.reason).toMatch(/strand/i);
+  it('an empty record is held by both: the engine does not close what the server would refuse', async () => {
+    const turns = ['ok', 'fine'];
+    expect(almostNothingHereYet(turns, false)).toBe(true);
+    expect(await serviceWith(turns).mayClose('c1', false)).toEqual({ ready: false });
   });
 
-  it('lets the close through once the floor is met', () => {
-    const turns = [
-      'I closed 22 tickets in my first three weeks.',
-      'Nobody has told me I own a client yet.',
-      'I would take a second account if one came up.',
-    ];
-    expect(closeReadiness(turns, false, 3).ready).toBe(true);
+  it('a correction, which is short by nature, closes on one plain sentence', async () => {
+    expect(almostNothingHereYet(['The deadline was March, not May.'], true)).toBe(false);
+    expect(await serviceWith(['The deadline was March, not May.']).mayClose('c1', true)).toEqual({ ready: true });
   });
 
-  it('uses the relaxed floor for a correction, which is short by nature', () => {
-    // A correction is "the deadline was March, not May". One turn is the whole
-    // point of it, and holding it to three would strand it the other way.
-    expect(closeReadiness(['The deadline was March, not May.'], false, 1).ready).toBe(true);
+  it('complete() reads the same gate, and nothing else counts answers', () => {
+    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const complete = src.slice(src.indexOf('  async complete('), src.indexOf('return this.finishTheSession(checkIn, \'the person\''));
+    expect(complete).toMatch(/almostNothingHereYet\(/);
+    expect(src).not.toMatch(/theFloorFor|tooFewAnswersToFinish|closeReadiness\(/);
   });
 });
 
-describe('what the floor must never override', () => {
-  it('always honours somebody asking to stop, whatever the count', () => {
-    // Nobody is held in a conversation because a counter says so. This check
-    // sits BEFORE the floor deliberately.
-    expect(closeReadiness(['I need to go'], false, 3).ready).toBe(true);
-    expect(closeReadiness(["that's it from me"], false, 3).ready).toBe(true);
-  });
-
-  it('leaves the original thin-record behaviour intact above the floor', () => {
-    // The gate this was added to: nothing checkable, no statement that there is
-    // nothing, so one more question is worth asking.
-    const vague = ['things are going fine', 'yeah, all good', 'no real news'];
-    expect(closeReadiness(vague, false, 3).ready).toBe(false);
-    // ...and the one held-back close is still the whole budget.
-    expect(closeReadiness(vague, true, 3).ready).toBe(true);
-  });
-
-  it('still lets an honest empty week close, once the floor is met', () => {
-    const nothing = ['Nothing much this week', 'no update really', 'same as before'];
-    expect(closeReadiness(nothing, false, 3).ready).toBe(true);
-  });
-
-  it('behaves exactly as before when no floor is passed', () => {
-    // Default 0, so every existing caller is unaffected.
-    expect(closeReadiness(['I closed 22 tickets.'], false).ready).toBe(true);
+describe('what the gate must never override', () => {
+  /* Changed 3 November 2026: a finish is honoured at any point once anything real was said; "I need to go" alone keeps nothing. */
+  it('always honours somebody asking to stop once they have said anything, whatever the count', async () => {
+    expect(await serviceWith(['Kilele paid KES 40,000 on Monday.', 'I need to go']).mayClose('c1', false)).toEqual({ ready: true });
+    expect(await serviceWith(['I need to go']).mayClose('c1', false)).toEqual({ ready: false });
+    expect(await serviceWith(['We sent the Kilele quote on Tuesday.', "that's it from me"]).mayClose('c1', false)).toEqual({ ready: true });
   });
 });

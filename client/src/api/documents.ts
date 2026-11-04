@@ -33,6 +33,8 @@ export interface GroundDocument {
    */
   numbersWaiting?: number
   theContextWeHave?: string | null
+  /** The block's first line ("Here is what I took from team-plan.txt."), one field, so a page that names the document can show the rest. */
+  theDocumentLine?: string | null
   /**
    * Who can read it. Absent on deployments with CONTEXT_ENABLED off, where every
    * document is private to its uploader and there is nothing to choose.

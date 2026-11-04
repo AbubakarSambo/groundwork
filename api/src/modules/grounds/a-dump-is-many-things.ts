@@ -225,6 +225,11 @@ export interface WhatAPasteGives {
    * back from that list by the yes: if the list did not show it, it is absent and nothing is written.
    */
   toldToParticipants?: string | null;
+  /**
+   * True when these came from setup, not a paste: setup's facts stay with whoever runs the check-in (Hafsah, 4 November 2026), so
+   * every line is kept for the lead except the ways of working, the rules the team works by, which are meant for them.
+   */
+  keptForTheLead?: boolean;
 }
 
 /**

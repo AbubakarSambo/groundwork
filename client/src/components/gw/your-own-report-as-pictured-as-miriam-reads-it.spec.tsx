@@ -6,7 +6,7 @@ import { TheCheckInYouJustFinished } from './TheCheckInYouJustFinished'
 
 /**
  * YOUR OWN REPORT, AS PICTURED, AS MIRIAM READS IT (own-report.jpg, screen 42). "What you did well" in its own panel,
- * the session's own sentences, "What you told us" with each line's mark and where it comes from, "One thing to think
+ * the session's own sentences, "What you told me" with each line's mark and where it comes from, "One thing to think
  * about" with one thing to think about, and "Something here isn't right". None of the card's other parts are on it:
  * they are on the page as it was, one tap away.
  */
@@ -39,7 +39,7 @@ describe('your own report, as pictured', () => {
     const well = await screen.findByRole('region', { name: 'What you did well' })
     expect(within(well).getByText('You added a photo of the Green Mart quote. It counts as proof.')).toBeTruthy()
     expect(await screen.findByText('The Green Mart sale moved forward. The quote is proven.')).toBeTruthy()
-    const told = screen.getByRole('region', { name: 'What you told us' })
+    const told = screen.getByRole('region', { name: 'What you told me' })
     expect(within(told).getByText('Green Mart buys in January.')).toBeTruthy()
     expect(within(told).getByText('You said this. A message from them would prove it.')).toBeTruthy()
     expect(screen.queryByText('A line from another session.')).toBeNull()

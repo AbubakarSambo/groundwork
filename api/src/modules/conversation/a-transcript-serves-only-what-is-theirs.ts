@@ -9,6 +9,7 @@
  * THE DEFAULT, NOT ONE FIELD: somebody who is not the lead is served an allowlist of what is theirs. A field added to the row later is
  * not served to them until it is added here.
  */
+import { theReportTheyRead } from './the-assessment';
 export const WHAT_A_PERSON_TAKING_PART_MAY_READ_OF_THEIR_ROW = [
   'id', 'groundId', 'userId', 'email', 'partyType', 'managingOnly', 'nameGiven', 'organisationGiven', 'department', 'language',
   'wantsTheReport', 'awaitingSeat', 'cameThroughTheLink', 'user',
@@ -65,8 +66,11 @@ export const WHAT_A_PERSON_TAKING_PART_MAY_READ_OF_THEIR_CHECK_IN = [
 ] as const;
 
 export function theCheckInRowAsServed<T extends Record<string, any>>(checkIn: T, runsIt: boolean): T {
-  if (runsIt) return checkIn;
+  /* The conversation's assessment is kept in `sessionReport` and is internal: whoever reads the row, lead or not, is served
+     only the report the person read at the end, never the assessment around it (the-assessment.ts). */
+  const row = 'sessionReport' in checkIn ? { ...checkIn, sessionReport: theReportTheyRead((checkIn as any).sessionReport) } : checkIn;
+  if (runsIt) return row as T;
   const out: Record<string, any> = {};
-  for (const key of WHAT_A_PERSON_TAKING_PART_MAY_READ_OF_THEIR_CHECK_IN) if (key in checkIn) out[key] = (checkIn as any)[key];
+  for (const key of WHAT_A_PERSON_TAKING_PART_MAY_READ_OF_THEIR_CHECK_IN) if (key in row) out[key] = (row as any)[key];
   return out as T;
 }

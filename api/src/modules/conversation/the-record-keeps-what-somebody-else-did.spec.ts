@@ -1,4 +1,3 @@
-import { RECORD_EXTRACTION_PROMPT } from './prompt-library';
 import { isTheirs } from './a-record-is-what-they-said';
 
 /**
@@ -21,30 +20,11 @@ const JOSEPH = [
 ].join('\n');
 
 describe('the record keeps what somebody says another person did, by name', () => {
-  it('the extraction is told to keep it, as PROGRESS, with the name as said', () => {
-    expect(RECORD_EXTRACTION_PROMPT).toContain('WHAT SOMEBODY ELSE DID IS ON THE RECORD TOO');
-    expect(RECORD_EXTRACTION_PROMPT).toMatch(/a colleague, a contractor, a supplier, a customer, anybody/);
-    expect(RECORD_EXTRACTION_PROMPT).toMatch(/If that work was done, it is PROGRESS/);
-    expect(RECORD_EXTRACTION_PROMPT).toMatch(/Keep the other person's name exactly as the person said it/);
-    expect(RECORD_EXTRACTION_PROMPT).toMatch(/only a name the person used themselves/);
-  });
-
-  it('and the example it gives is still their words, so the entry is not thrown away', () => {
-    const example = RECORD_EXTRACTION_PROMPT.match(/is recorded as "([^"]+)"/)?.[1];
-    expect(example).toBe('Victor worked over the weekend of the 14th to get the script done, and it was the really hard part.');
-    expect(isTheirs(example!, JOSEPH)).toBe(true);
-  });
-
-  it('and the entries run 6 should have kept pass the same check', () => {
+  /* Changed 3 November 2026: the tests that read the record's own extraction prompt are deleted with it (the record is written from
+     the assessment, which reads the people mentioned and their work). What stays is the check every record line still passes. */
+  it('the entries run 6 should have kept pass the same check', () => {
     expect(isTheirs('Victor put in extra hours to make sure the script for the backend was ready', JOSEPH)).toBe(true);
     expect(isTheirs('Victor was responsible for the migration script for existing users',
       'Victor saw my work closely. He was responsible for the migration script for existing users.')).toBe(true);
-  });
-
-  it('does not loosen PROGRESS for the person’s own work', () => {
-    /* The new paragraph comes after the narrow rule, so the near misses are still routed first. */
-    expect(RECORD_EXTRACTION_PROMPT.indexOf('WHAT SOMEBODY ELSE DID')).toBeGreaterThan(
-      RECORD_EXTRACTION_PROMPT.indexOf('PROGRESS IS NARROW AND IS THE LAST ONE TO REACH FOR'),
-    );
   });
 });

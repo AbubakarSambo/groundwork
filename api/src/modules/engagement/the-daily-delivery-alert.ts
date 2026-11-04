@@ -163,10 +163,11 @@ export async function whatWentWrongYesterday(prisma: any, now: Date = new Date()
   })).catch(() => [])).filter((ci: any) => !ci.isSetup && orgIds.includes(ci.ground?.organizationId) && within(openedAt(ci), weekFrom, to) && forARealPerson(ci));
   const ids = theWeek.map((c) => c.id);
 
-  /* Whether they answered: a turn of theirs exists. Only the check-in's id is read, never what was said. */
+  /* Whether they answered: a turn of theirs exists (Hafsah, 3 November 2026: started is their first reply). A session the clock closed
+     with nothing of theirs in it is not answered. Only the check-in's id is read, never what was said. */
   const turns: { checkInId: string }[] = ids.length ? await Promise.resolve(prisma.conversationTurn.findMany({ where: { checkInId: { in: ids }, role: 'PERSON' }, select: { checkInId: true }, distinct: ['checkInId'] })).catch(() => []) : [];
   const theyAnswered = new Set(turns.map((t) => t.checkInId));
-  const answered = (ci: any) => ci.status === 'COMPLETED' || theyAnswered.has(ci.id);
+  const answered = (ci: any) => theyAnswered.has(ci.id);
 
   const sends: any[] = await Promise.resolve(prisma.whatsAppSend.findMany({
     where: { OR: [...(ids.length ? [{ checkInId: { in: ids } }] : []), { organizationId: { in: orgIds }, createdAt: { gte: from, lt: to } }] },

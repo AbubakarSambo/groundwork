@@ -28,11 +28,12 @@ function panel(p: any, name?: string, leadFirstName?: string | null) {
 }
 
 describe('a pattern reads in full sentences', () => {
-  it('the lead reads whose words they are, and a question to ask, with no colons', () => {
+  it('the lead reads whose words they are, and the next step, with no colons', () => {
     panel(PATTERN, 'Amani Wekesa')
     expect(screen.getByText('Amani Wekesa said this about it.')).toBeTruthy()
     expect(screen.getByText('“I asked every shop for the form.”')).toBeTruthy()
-    expect(screen.getByText('A question you could ask Amani Wekesa, to hear their side.')).toBeTruthy()
+    /* (2 November 2026: askThem is layer 3's next step for the lead now, a step or Groundwork's question, so it is titled as the step.) */
+    expect(screen.getByText('Here is the next step.')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/Ask them:|In their own words:|In your own words:/)
   })
 
@@ -41,42 +42,20 @@ describe('a pattern reads in full sentences', () => {
     expect(theWordsLine(false, '  ')).toBe('They said this about it.')
   })
 
-  /**
-   * REQUEST 82 AND DECISION 67: COACHING BESIDE A PATTERN, FOR WHOEVER RUNS THE CHECK-IN ONLY.
-   * `coachTowards` and `oneStep` are null for the person it is about (api/src/modules/patterns/
-   * who-reads-a-pattern.ts), so the panel draws them only when the server actually sends them -
-   * there is no separate "am I the lead" check here, the presence of the fields already decides it.
-   */
-  it('whoever runs the check-in reads the coaching and the one step, in plain sentences', () => {
+  /* (2 November 2026, F2: the coaching lines and the second-read note left the served shape; the lead reads layer 2's next step in
+     askThem instead, so those tests went with them.) */
+  it('reads whether talked through, and the lead’s own mark, when the server sends them', () => {
     panel({
       ...PATTERN,
-      coachTowards: 'Coach them towards naming what the team itself can change when something goes wrong.',
-      oneStep: 'One step they could take this week is to name one thing in the team’s own hands the next time a problem comes up.',
-    }, 'Amani Wekesa')
-    expect(screen.getByText('Coach them towards naming what the team itself can change when something goes wrong.')).toBeTruthy()
-    expect(screen.getByText('One step they could take this week is to name one thing in the team’s own hands the next time a problem comes up.')).toBeTruthy()
-  })
-
-  it('the person it is about reads neither, because the server sends them null', () => {
-    panel({ ...PATTERN, coachTowards: null, oneStep: null, yours: true }, undefined)
-    expect(screen.queryByText(/Coach them towards/)).toBeNull()
-    expect(screen.queryByText(/One step they could take/)).toBeNull()
-  })
-
-  it('reads the second-read note, whether talked through, and the lead’s own mark, when the server sends them', () => {
-    panel({
-      ...PATTERN,
-      secondReadNote: 'Two separate reads of the record found this.',
       talkedAbout: true,
       leadMark: 'RIGHT',
     }, 'Amani Wekesa')
-    expect(screen.getByText('Two separate reads of the record found this.')).toBeTruthy()
     expect(screen.getByText('This has been talked through with Amani Wekesa.')).toBeTruthy()
     expect(screen.getByText('You said this was right, once you talked it through.')).toBeTruthy()
   })
 
   it('the person it is about reads that their lead talked it through, in their own words, never the mark', () => {
-    panel({ ...PATTERN, yours: true, talkedAbout: true, leadMark: null, secondReadNote: null }, undefined)
+    panel({ ...PATTERN, yours: true, talkedAbout: true, leadMark: null }, undefined)
     expect(screen.getByText('Your lead has said they talked this through with you.')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/once you talked it through/)
   })
@@ -87,7 +66,7 @@ describe('a pattern reads in full sentences', () => {
    * say so; this is the one place that still said the bare word "lead" instead.
    */
   it('names the lead, when the lead’s first name is known', () => {
-    panel({ ...PATTERN, yours: true, talkedAbout: true, leadMark: null, secondReadNote: null }, undefined, 'Rukia')
+    panel({ ...PATTERN, yours: true, talkedAbout: true, leadMark: null }, undefined, 'Rukia')
     expect(screen.getByText('Rukia has said they talked this through with you.')).toBeTruthy()
     expect(screen.queryByText(/Your lead has said/)).toBeNull()
   })

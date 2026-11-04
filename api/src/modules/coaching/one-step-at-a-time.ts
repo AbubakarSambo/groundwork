@@ -49,65 +49,12 @@ export interface StepRecord {
   outcome: StepOutcome | null;
 }
 
-export interface Observation {
-  sessionNumber: number;
-  noticed: string;
-  reason: string;
-}
-
 export interface CoachingStateShape {
   currentStep: string | null;
   stepGivenAt: number | null;
   staircase: string | null;
   staircasePosition: number;
   history: StepRecord[];
-  observations?: Observation[];
-}
-
-/**
- * RECURRENCE IS WHAT MAKES A PATTERN.
- *
- * The first batch offered Tunde a step for chasing on the strength of one unanswered email. One
- * instance is not one. The pattern engine's own rule is three periods before a detection surfaces;
- * a coaching step is an offer rather than a finding, so it waits for the same thing to be seen in
- * two distinct PERIODS (decision 57, item 1, 30 September 2026) - what `Observation.sessionNumber`
- * holds is a period number, from `periodOf`: on a weekly-or-slower ground that is the session
- * number, unchanged; on a daily ground it is the calendar week, so several sessions in one week are
- * not counted as recurrence on their own. This function itself only ever counts distinct numbers in
- * whatever it is handed - the caller is where "session" became "period". This is that count.
- */
-export const SESSIONS_BEFORE_A_STEP = 2;
-export function seenInEnoughSessions(observations: Observation[] | undefined, noticed: string | null): boolean {
-  if (!noticed) return false;
-  const sessions = new Set((observations ?? []).filter((o) => o.noticed === noticed).map((o) => o.sessionNumber));
-  return sessions.size >= SESSIONS_BEFORE_A_STEP;
-}
-
-/**
- * NEVER TELL SOMEBODY TO DO THE THING THEY JUST ASKED FOR.
- *
- * Fay: "What I want is to stop being the only person who touches infra, and for Eli to review my
- * PRs again." Offered: "Brings the dependents in early enough to change it." The observation was
- * inverted, and that is the one failure that makes a person stop trusting the product. Cheap check
- * against their own words: the content words of the step, looked for in each of their turns; three
- * shared in one turn, or the turn saying they want or asked for it alongside two, and it is theirs
- * already. The model is asked the same question in its own field; either answer suppresses.
- */
-const STOP = new Set(['the', 'a', 'an', 'and', 'or', 'to', 'of', 'in', 'on', 'it', 'is', 'so', 'that', 'this', 'they', 'them', 'their', 'what', 'with', 'for', 'be', 'by', 'as', 'at', 'from', 'into', 'once', 'has', 'have', 'not', 'nobody', 'somebody', 'says', 'say', 'makes', 'make', 'uses', 'use', 'enough', 'early', 'own']);
-const words = (s: string) => (s.toLowerCase().match(/[a-z][a-z'-]{2,}/g) ?? []).filter((w) => !STOP.has(w));
-const stem = (w: string) => w.replace(/(ing|ed|es|s)$/, '');
-export function theyAskedForItThemselves(step: string | null, personSaid: string[]): boolean {
-  if (!step) return false;
-  const want = new Set(words(step).map(stem));
-  if (!want.size) return false;
-  for (const turn of personSaid) {
-    const said = new Set(words(turn).map(stem));
-    let shared = 0;
-    for (const w of want) if (said.has(w)) shared++;
-    const asksForIt = /\b(i want|i would want|i would like|i asked|i have asked|i need|can we|could we|what i want)\b/i.test(turn);
-    if (shared >= 3 || (shared >= 2 && asksForIt)) return true;
-  }
-  return false;
 }
 
 export const EMPTY: CoachingStateShape = {
@@ -142,14 +89,6 @@ export interface SessionRead {
   sessionNumber: number;
   /** Whether this session had anything checkable in it at all. */
   hadSubstance: boolean;
-  /**
-   * WHETHER THE STEP IS ABOUT THE ACCOUNT RATHER THAN ABOUT THE WORK.
-   *
-   * The two are coached differently and the substance gate below only makes sense for one of them.
-   * True for every step off the universal floor, which is what somebody gets when nobody has
-   * settled what kind of work they do. See a-role-nobody-mapped-is-still-a-person.
-   */
-  aboutTheAccount?: boolean;
 }
 
 /**
@@ -165,23 +104,8 @@ export function nextMove(state: CoachingStateShape, read: SessionRead): NextMove
   if (!read.reason?.trim()) {
     return { move: 'wait', because: 'nothing in this session gave a reason to offer a step.' };
   }
-  /*
-   * A THIN SESSION IS NOT A REASON TO WITHHOLD A STEP ABOUT THIN SESSIONS.
-   *
-   * The rule is right about work: you cannot coach somebody on work they never described. Counted
-   * on the corpus, it was wrong about thirteen people in the other direction - the behaviour had
-   * recurred, nothing was inverted, a destination existed, and the step was held back because the
-   * session was vague. The steps being held back:
-   *
-   *   "Put one detail on each thing you name, so somebody else can tell whether it happened."
-   *   "When something stalls, say what you tried next."
-   *
-   * The step that fixes a vague session, withheld because the session was vague. So the gate now
-   * applies to what it was always about: a step about the WORK needs something of the work in
-   * front of it; a step about how somebody gives their account needs only the account, and a thin
-   * one is the evidence rather than the obstacle.
-   */
-  if (!read.hadSubstance && !read.aboutTheAccount) {
+  /* A step rests on something of the work: layer 3's step rests on its pattern's distinct items across the record. */
+  if (!read.hadSubstance) {
     return { move: 'wait', because: 'this session had nothing checkable in it, so there is nothing to coach from.' };
   }
 

@@ -114,6 +114,23 @@ describe('week 16: the report’s open differences reach the lead’s list, and 
     return { report: (svc as ReportsService).get('g-sales', requestingUserId, 'org-1') as Promise<any>, writes };
   }
 
+  /* Hafsah, 30 October 2026, first-experience round 1: Today read "Settle the difference between what you and Kwame Nkosi said." beside
+     the board's own sentence for the same difference. With nothing on record to settle it, Today now says the board's one sentence. */
+  it('with nothing on record to settle it, the lead reads the board\'s own sentence, never "Settle the difference"', async () => {
+    const saved = structuredClone(DIVERGENCES);
+    DIVERGENCES[0] = { ...DIVERGENCES[0], topic: 'whether a price range counts as a budget', settledBy: undefined as any, atStake: undefined as any };
+    try {
+      const { report } = withDifferences('u-wairimu');
+      const item = ((await report).forTheLead as any[]).find((x) => x.id === 'difference-1');
+      expect(item).toEqual({
+        id: 'difference-1',
+        /* Changed 3 November (F5 part 3): named people "see it differently", the board's own sentence. */
+        decide: 'Brian Otieno and Miriam Wanjiku see differently whether a price range counts as a budget.',
+        why: 'What people said about this does not match.',
+      });
+    } finally { DIVERGENCES.splice(0, 1, saved[0]); }
+  });
+
   it('the lead reads one item per open difference, in plain sentences with names', async () => {
     const { report, writes } = withDifferences('u-wairimu');
     const r = await report;
@@ -121,7 +138,7 @@ describe('week 16: the report’s open differences reach the lead’s list, and 
     expect(item).toEqual({
       id: 'difference-1',
       decide: 'Agree what counts as a budget and tell both of them.',
-      why: 'Brian Otieno counts a price range as a budget, and Miriam Wanjiku counts only a written figure. Brian Otieno and Miriam Wanjiku said different things about this, so nobody can assume it is agreed.',
+      why: 'Brian Otieno counts a price range as a budget, and Miriam Wanjiku counts only a written figure. Brian Otieno and Miriam Wanjiku said different things about this.',
       changes: 'Four deals are counted differently until this is agreed.',
     });
     const text = JSON.stringify(r.forTheLead);
@@ -182,14 +199,13 @@ describe('week 16 / decision 57 item 3: the pattern nudge in Today', () => {
     return { report: (svc as ReportsService).get('g-sales', requestingUserId, 'org-1') as Promise<any>, writes };
   }
 
-  it('nudges the lead once, naming Brian and quoting what he said', async () => {
+  it('never nudges the lead about Brian’s stored pattern, though he answered it', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const r = await withPattern(PATTERN_ROW).report;
-    const item = (r.forTheLead as any[]).find((x) => x.id === 'pattern-talk-pd-brian-b3');
-    expect(item).toEqual({
-      id: 'pattern-talk-pd-brian-b3',
-      decide: 'Talk with Brian about “Others describe doing work they described as theirs”.',
-      why: 'Brian has seen it. Brian said, “I ran the call, Miriam built the numbers.”',
-    });
+    const items = (r.forTheLead as any[]) ?? [];
+    expect(items.filter((x) => String(x.id).startsWith('pattern-talk-'))).toEqual([]);
+    expect(JSON.stringify(items)).not.toContain('Talk with Brian about');
+    expect(JSON.stringify(items)).not.toContain('I ran the call, Miriam built the numbers.');
   });
 
   it('goes away once the lead has marked they talked about it', async () => {
@@ -213,14 +229,16 @@ describe('week 16 / decision 57 item 3: the pattern nudge in Today', () => {
   /* Decision 86 reverses decision 74, item 2. This block was "with the person-only reach, the
      lead's Today has no nudge". There is no such reach now, and nothing is put in force in this file,
      so the nudge above is what the lead reads by default. This pins that Brian's own words are in it. */
-  describe('with no setting at all (decision 86)', () => {
-    it('the lead’s Today has the nudge, the plain heading and Brian’s own words', async () => {
+  describe('with no setting at all (decision 86, then Hafsah, 2 November 2026)', () => {
+    it('the lead’s Today has no nudge, no plain heading and none of Brian’s own words', async () => {
+      /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
       const r = await withPattern(PATTERN_ROW).report;
       const ids = ((r.forTheLead as any[]) ?? []).map((x) => x.id);
-      expect(ids).toContain('pattern-talk-pd-brian-b3');
+      expect(ids).not.toContain('pattern-talk-pd-brian-b3');
       const all = JSON.stringify(r);
-      expect(all).toContain('Others describe doing work they described as theirs');
-      expect(all).toContain('I ran the call, Miriam built the numbers.');
+      expect(all).not.toContain('Others describe doing work they described as theirs');
+      expect(all).not.toContain('I ran the call, Miriam built the numbers.');
+      expect(all).not.toContain('Brian described the Kito Foods deal as his own');
     });
   });
 });

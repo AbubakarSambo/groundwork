@@ -200,8 +200,7 @@ export interface RecogniseForThePerson { facts: string; whoDecides: string }
 export interface ABriefing {
   heading: string
   counts: string | null
-  patterns: { heading: string; whatHappened: string | null; howOften: string; checkIn: string; theirAnswer: string }[]
-  patternsNote: string | null
+  patterns: { heading: string; whatHappened: string | null; howOften: string; checkIn: string; nextStep: string | null }[]
   changedAfterEarlierConversations: string[]
   corrections: { line: string; said: string; whatIsTrue: string }[]
   whoDecides: string
@@ -425,12 +424,19 @@ export interface SpendBoard {
 
 /** THE APPROVAL STEPS BY AMOUNT (GET and PUT /suites/spend/rules, thresholds only): one setting, which the spending page, Ask and the policy board all write. */
 export type ApprovalRole = 'manager' | 'departmentHead' | 'budgetOwner' | 'finance' | 'hr' | 'chiefExecutive' | 'admin'
-export interface AnAmountsSteps { above: number; steps: ApprovalRole[][] }
-export interface TheSpendRules { rules: { thresholds?: AnAmountsSteps[] }; said: string[] }
+/** One rule of a step: a role, or one person named (the settings card's "Who approves anything above that?"). */
+export type AStepRule = ApprovalRole | { named: string }
+export interface AnAmountsSteps { above: number; steps: AStepRule[][] }
+/** A receipt or a quote needed for any request over `above` (0: every request). */
+export interface TheReceiptRule { what: 'receipt' | 'quote'; above: number }
+/** `said` is the server's whole route (who approves at each amount, then finance's part) and the receipt rule, in full sentences. */
+export interface TheSpendRules { rules: { thresholds?: AnAmountsSteps[]; evidence?: TheReceiptRule }; said: string[]; people: { id: string; name: string }[] }
 export const spendRulesApi = {
   get: async (): Promise<TheSpendRules> => (await apiClient.get('/suites/spend/rules', { skipForbiddenToast: true } as any)).data,
   setThresholds: async (thresholds: AnAmountsSteps[]): Promise<TheSpendRules> =>
     (await apiClient.put('/suites/spend/rules', { thresholds: thresholds.length ? thresholds : null })).data,
+  setReceiptRule: async (evidence: TheReceiptRule | null): Promise<TheSpendRules> =>
+    (await apiClient.put('/suites/spend/rules', { evidence })).data,
 }
 
 export const spendApi = {

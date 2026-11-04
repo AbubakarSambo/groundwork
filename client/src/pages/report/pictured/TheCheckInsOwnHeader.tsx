@@ -2,6 +2,7 @@ import { Button } from '@/components/gw/ui'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { theScheduleInWords } from '@/pages/board/pictured/ThePicturedSalesBoard'
 import { plannedSessionsFor } from '@/lib/sessionCount'
+import { timesAWeek } from '@/lib/cadence'
 
 type Any = any
 
@@ -11,7 +12,7 @@ type Any = any
  */
 export function TheCheckInsOwnHeader({ groundId, ground, sessionNumber, label }: { groundId: string; ground: Any; sessionNumber?: number | null; label: string }) {
   const people = (ground?.participants ?? []).length
-  const planned = plannedSessionsFor(ground?.timelineDays, ground?.cadence, ground?.plannedSessions)
+  const planned = plannedSessionsFor(ground?.timelineDays, ground?.cadence, ground?.plannedSessions, ground?.cadenceDays)
   const now = sessionNumber ?? null
   return (
     <CheckInHeader
@@ -19,16 +20,17 @@ export function TheCheckInsOwnHeader({ groundId, ground, sessionNumber, label }:
       title={label}
       subtitle={[
         people ? `${people} ${people === 1 ? 'person' : 'people'}.` : null,
-        theScheduleInWords(ground?.cadence, ground?.workingDays, null, ground?.cadenceAnchorDay ?? null),
-        planned && now ? `${ground?.cadence === 'WEEKLY' ? 'Week' : 'Session'} ${now} of ${planned}.` : null,
+        theScheduleInWords(ground, null),
+        /* A week holds one session only when it meets once a week; twice a week, a session is not a week. */
+        planned && now ? `${ground?.cadence === 'WEEKLY' && !timesAWeek(ground?.cadence, ground?.cadenceDays) ? 'Week' : 'Session'} ${now} of ${planned}.` : null,
       ].filter(Boolean).join(' ')}
       action={<YourCheckIn groundId={groundId} />}
       active=""
       tabs={[
         { key: 'board', label: 'Board', to: `/grounds/${groundId}/board` },
         { key: 'chat', label: 'Check-in', to: `/grounds/${groundId}` },
-        { key: 'context', label: 'Context and resources', to: `/grounds/${groundId}?tab=context` },
-        { key: 'sessions', label: 'My work', to: `/grounds/${groundId}?tab=sessions` },
+        { key: 'context', label: 'References and resources', to: `/grounds/${groundId}?tab=context` },
+        { key: 'record', label: 'My work', to: `/grounds/${groundId}?tab=record` },
         { key: 'settings', label: 'People and setup', to: `/grounds/${groundId}?tab=settings` },
       ]}
     />

@@ -12,6 +12,10 @@ import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
  * it" - the comment explaining the old sentence ("no route ends a check-in") was itself stale.
  * The lead now reads a true sentence pointing at the page that exists; an admin, who can only
  * read that page rather than decide there, keeps the old sentence and the mail fallback.
+ *
+ * 4 November 2026: People and setup is the B8 page for everybody now (Release 1B's switch went). Its sentences are the
+ * B8 ones; what is protected is the same: the lead is sent to the ending page, an admin who does not run it is not, and
+ * keeps the mail link.
  */
 function ground(over: Record<string, any> = {}) {
   return {
@@ -88,15 +92,15 @@ beforeEach(() => vi.clearAllMocks())
 describe('"Ending it" points the lead at the page that actually ends a check-in', () => {
   it('tells the lead she can end it, with a link to the ending page', async () => {
     renderWith({ isInitiator: true, isOrgAdmin: false, viewerIsAParty: true })
-    expect(await screen.findByText('You can end this check-in when it has done its job.')).toBeTruthy()
-    expect(screen.queryByText(/You cannot end a check-in yourself yet/)).toBeNull()
+    expect(await screen.findByText(/ending it stops new check-ins, everything stays as it is, and each person keeps their own history\./)).toBeTruthy()
+    expect(screen.queryByText(/You can't end a check-in you don't run/)).toBeNull()
     const link = screen.getByRole('link', { name: 'Decide how it ends' })
     expect(link).toHaveAttribute('href', '/grounds/g1/end')
   })
 
   it('still tells an admin, who cannot decide there herself, to ask us', async () => {
     renderWith({ isInitiator: false, isOrgAdmin: true, viewerIsAParty: false })
-    expect(await screen.findByText(/You cannot end a check-in yourself yet\. Ask us and we will end it for you/)).toBeTruthy()
+    expect(await screen.findByText(/You can't end a check-in you don't run\. Ask us and we'll end it, usually the same day\./)).toBeTruthy()
     expect(screen.queryByRole('link', { name: 'Decide how it ends' })).toBeNull()
     expect(screen.getByRole('link', { name: 'Ask us to end this check-in' })).toBeTruthy()
   })

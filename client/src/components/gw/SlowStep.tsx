@@ -18,7 +18,7 @@ import { useState, useEffect } from 'react'
  * wait and showed only "Saving…". That is the path everybody is on from session
  * two onwards.
  */
-export function SlowStep({ steps, note, everyMs = 9000 }: { steps: string[]; note?: string; everyMs?: number }) {
+export function SlowStep({ steps, everyMs = 9000 }: { steps: string[]; everyMs?: number }) {
   const [step, setStep] = useState(0)
   useEffect(() => {
     const t = setInterval(() => setStep(s => Math.min(s + 1, steps.length - 1)), everyMs)
@@ -33,17 +33,17 @@ export function SlowStep({ steps, note, everyMs = 9000 }: { steps: string[]; not
         <span className="gw-dot" /><span className="gw-dot" /><span className="gw-dot" />
         <span>{steps[step]}…</span>
       </div>
-      {note && (
-        <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 6, lineHeight: 1.5 }}>{note}</div>
-      )}
     </div>
   )
 }
 
-/** What closing a session actually does, in order. */
+/**
+ * What closing a session actually does, in order, in words an impatient lead reads at a glance
+ * (Hafsah, 30 October 2026, first-experience round 1): no "specific enough to stand on", and no
+ * note saying how long it takes, the way the prototype's waiting state says only what is happening.
+ */
 export const CLOSING_STEPS = [
-  'Reading back what you said',
-  'Checking what is specific enough to stand on',
+  'Reading what you said',
   'Finding what is still open',
-  'Writing it into the record',
+  'Writing your report',
 ]

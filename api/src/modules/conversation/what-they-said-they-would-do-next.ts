@@ -65,29 +65,7 @@ export const READ_WHAT_THEY_PROMISED = [
   '  - An empty list is the right answer for a session where somebody committed to nothing.',
 ].join('\n');
 
-export const WHAT_THEY_PROMISED_SCHEMA = {
-  name: 'what_they_said_they_would_do',
-  description: 'The things this person said they themselves would do next, in their own words.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      commitments: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            action: { type: 'string', description: 'Their action, their words, at most twenty words.' },
-            clear: { type: 'string', description: 'The same promise as one clear, plain action, with names in place of her, them, it, that and then.' },
-            outcome: { type: 'string', description: 'What they said it is for. Omit if they did not say.' },
-            when: { type: 'string', description: 'Their own words for the timing. Omit if they gave none. Never a date you worked out.' },
-          },
-          required: ['action'],
-        },
-      },
-    },
-    required: ['commitments'],
-  },
-} as const;
+/* The schema this read had of its own is gone: the rules above are now part of the conversation's assessment (the-assessment.ts), which reads every promise once. */
 
 /**
  * A DECISION ABOUT A PERSON IS NOT A COMMITMENT, AND MUST NOT BECOME A ROW.

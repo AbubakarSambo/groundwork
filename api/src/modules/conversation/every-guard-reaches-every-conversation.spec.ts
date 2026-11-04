@@ -44,8 +44,14 @@ describe('every guard reaches every conversation', () => {
     expect(checkIn).toContain(`${guard}(`);
   });
 
-  it.each(GUARDS)('%s is reached by the entry chat, which is the one people meet first', (guard) => {
-    expect(entry).toContain(`${guard}(`);
+  /*
+   * CHANGED 4 November 2026 (fix plan, release batch 1, group 5). The entry chat only logged five of these after its reply had gone, and
+   * round 39's leads still said setup asked the same things again and again: the word matchers are removed from the setup path, which is
+   * told what setup knows instead. The invention screen, which drops a sentence before it is shown, still runs there.
+   */
+  it('the entry chat keeps the invention screen and no longer reads its replies with word matchers after the fact', () => {
+    expect(entry).toContain('screen(');
+    for (const guard of GUARDS.filter((g) => g !== 'screen')) expect(entry).not.toContain(`${guard}(`);
   });
 
   it('and the list is not empty, so an accident cannot make this pass', () => {

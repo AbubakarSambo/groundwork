@@ -22,7 +22,8 @@ describe('there is no round after the last planned one', () => {
   });
   it('and the service does not create one', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '../conversation/conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    expect(src).toMatch(/const planned = totalSessionsFor\(\(ground as any\)\?\.timelineDays \?\? null, cadence\);\s*if \(planned != null && sessionNumber >= planned\)/);
+    /* Changed 2 November 2026 (twice a week): the count also takes the weekdays it meets on. */
+    expect(src).toMatch(/const planned = totalSessionsFor\(\(ground as any\)\?\.timelineDays \?\? null, cadence, \(ground as any\)\?\.cadenceDays\);\s*if \(planned != null && sessionNumber >= planned\)/);
     expect(src).toMatch(/ownAvailableFrom >= ground\.endsAt/);
   });
 });

@@ -33,11 +33,16 @@ const BOARD = strip(readFileSync(join(__dirname, '..', 'board', 'BoardPage.tsx')
 /* Source order is chat, myrecord, checkins, docs, report, settings - so the tab AFTER sessions is
    the documents one, not My record. Sliced to the wrong end this returned an empty string and the
    three "no longer contains" assertions passed on nothing. */
-const SESSIONS_TAB = ADMIN.slice(ADMIN.indexOf("{tab === 'checkins' && ("), ADMIN.indexOf("{tab === 'docs' && ("))
+/* 4 November 2026: the docs tab is one element now, `{tab === 'docs' && <ReferencesAndResourcesPage ... />}` (Release 1B's
+   switch went), so the slice ends at "{tab === 'docs' &&" rather than "{tab === 'docs' && (", which no longer exists: with
+   the old anchor the slice ran to the end of the file and took in the report tab's own "Add a person". */
+const SESSIONS_END = ADMIN.indexOf("{tab === 'docs' &&")
+const SESSIONS_TAB = ADMIN.slice(ADMIN.indexOf("{tab === 'checkins' && ("), SESSIONS_END)
 const SETUP_TAB = ADMIN.slice(ADMIN.indexOf("{tab === 'settings' && ("), ADMIN.indexOf('{shareCodeModalOpen && ('))
 
 describe('the sessions tab', () => {
   it('reads the real slices, so an empty one cannot pass', () => {
+    expect(SESSIONS_END).toBeGreaterThan(ADMIN.indexOf("{tab === 'checkins' && ("))
     expect(SESSIONS_TAB.length).toBeGreaterThan(2000)
     expect(SETUP_TAB.length).toBeGreaterThan(2000)
   })
@@ -74,7 +79,8 @@ describe('where they went', () => {
      * CheckInPeopleAndSetup.tsx renders under its own "Who's in it" heading.
      */
     const ROSTER = strip(readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'WhosInItRoster.tsx'), 'utf8'))
-    expect(ROSTER).toContain('Add a person to this check-in')
+    /* One box for the whole team now (Hafsah, 31 October 2026), headed "Add people to this check-in". */
+    expect(ROSTER).toContain('Add people to this check-in')
     expect(ROSTER).toContain('Or share an access code instead')
     expect(ROSTER).toContain('<ShareSection')
   })

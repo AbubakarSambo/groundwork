@@ -32,19 +32,18 @@ describe('the first check-in inside set-up keeps the check-in’s rules', () => 
     expect(r.closed).toBe(true);
   });
 
-  it('their own sentence is not handed back to them', async () => {
-    const r = await guard('The owner of Kilele Hotel paid for 40 units today. What shows the payment came in?')([
+  /*
+   * CHANGED 4 November 2026 (fix plan, release batch 1, group 5). These two pinned word matchers that cut a reply after the model wrote it
+   * (their own sentence said back, the job question asked again). Setup's leads in round 39 still said it asked the same things over and
+   * over; the matchers are removed from the setup path and the conversation is told what it knows instead. What it is told is checked.
+   */
+  it('their own sentence is not handed back: the conversation is told so, and nothing cuts the reply afterwards', async () => {
+    const { OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE } = require('../conversation/prompt-library');
+    expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).toMatch(/NEVER OPEN BY SAYING THEIR OWN ANSWER BACK TO THEM/);
+    const r = await guard('What shows the payment came in?')([
       { role: 'assistant', content: 'What moved on Kilele Hotel today?' },
       { role: 'user', content: 'The owner of Kilele Hotel paid for 40 units today.' },
     ]);
     expect(r.reply).toBe('What shows the payment came in?');
-  });
-
-  it('the job question is not asked a second time', async () => {
-    const r = await guard('Thanks. From what you said, most of your work is sales. Is that right?')([
-      { role: 'assistant', content: 'What is your role?' }, { role: 'user', content: 'I run the sales team at Kilima Water.' },
-    ]);
-    expect(r.reply).not.toMatch(/most of your work is sales/);
-    expect(r.reply).toMatch(/\?$/);
   });
 });

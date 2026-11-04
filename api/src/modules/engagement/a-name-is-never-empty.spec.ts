@@ -4,7 +4,6 @@ import { theQuietIn, theAcrossWords } from './who-has-gone-quiet';
 import { theEmailForTheLead } from '../conversation/chasing-belongs-to-the-lead';
 import { theLeadsLetter } from '../email/the-leads-weekly-letter';
 import { theWhatIsNewWords } from './heres-what-is-new';
-import { aCheckInInASentence } from '../whatsapp/the-leads-daily-summary';
 
 /**
  * A NAME IS NEVER EMPTY (existing-users check, section 15), AS WAIRIMU READS IT.
@@ -62,19 +61,17 @@ describe('the not-started email, when somebody has no first name', () => {
 describe('no email address, nor any piece of one, appears as a name in any message', () => {
   const ADDRESS_BITS = /@|x\.test|amina|otieno|mensah|unclaimed|open-|[0-9a-f]{8}/i;
   const nameless = (n: string, email: string) => ({ participantId: n, sessionNumber: 2, status: 'NOT_STARTED', createdAt: new Date('2026-10-12T08:00:00Z'), participant: { userId: `u${n}`, managingOnly: false, nameGiven: null, email, user: { firstName: '', lastName: '', email, awaitingOrgApproval: false } } });
-  it('the lead\'s not-started email, the quiet email, the weekly letter, what is new, the daily summary and the participant\'s week', () => {
+  it('the lead\'s not-started email, the quiet email, the weekly letter, what is new and the participant\'s week', () => {
     const people = ['amina.otieno@x.test', 'k.mensah2@x.test', 'open-2a3aa45daca8@unclaimed.invalid'];
     const names = people.map((e) => nameToCall({ user: { firstName: '', lastName: '', email: e }, email: e }));
     const lead = theEmailForTheLead({ leadName: 'Wairimu', groundLabel: 'Kenya launch', whoHasNotStarted: ['Omar', ...names], chasedOn: [3, 7], link: 'https://app.test' })!;
     expect(lead.subject).toBe('Omar and three others have not started "Kenya launch", and Groundwork has reminded them');
     const quiet = theQuietIn([...people.map((e, i) => nameless(String(i), e)), ...people.map((e, i) => ({ ...nameless(String(i), e), sessionNumber: 1, status: 'COMPLETED' }))], 'Kenya launch', 'u-lead', new Date('2026-10-25T08:00:00Z'), new Date('2026-10-01T00:00:00Z'))!;
     const letter = theLeadsLetter([{ groundId: 'g', label: 'Kenya launch', ofHowMany: 5, checkedIn: 1, saidWhatNext: 0, done: 0, waiting: 0, notYet: ['Omar', ...names], closedBy: [], waitingOn: [] } as any])!;
-    const what = theWhatIsNewWords('Wairimu', [{ label: 'Kenya launch', ofHowMany: 5, answered: 1, notYet: ['Omar'], moreToCome: true }])!;
-    const today = aCheckInInASentence({ label: 'Kenya launch', ofHowMany: 5, answered: 1, notYet: ['Omar'] } as any)!;
-    const all = [lead.subject, lead.text, ...theAcrossWords('Wairimu', [quiet]).lines, letter.subject, ...letter.lines, what.subject, ...what.lines, today].join(' ').replace(/https:\/\/app\.test/g, '');
+    const what = theWhatIsNewWords('Wairimu', [{ label: 'Kenya launch', ofHowMany: 5, answered: 1, notYet: ['Omar'], moreToCome: true, says: '1 of 5 has checked in; Omar and 3 other people haven’t started yet.' }])!;
+    const all = [lead.subject, lead.text, ...theAcrossWords('Wairimu', [quiet]).lines, letter.subject, ...letter.lines, what.subject, ...what.lines].join(' ').replace(/https:\/\/app\.test/g, '');
     expect(all).not.toMatch(ADDRESS_BITS);
     expect(all).not.toMatch(/Someone(,| and) Someone/);
     expect(letter.lines.join(' ')).toContain('Omar and three others did not check in.');
-    expect(today).toBe('In "Kenya launch", 1 of 5 people has checked in, and Omar and 3 others have not yet.');
   });
 });

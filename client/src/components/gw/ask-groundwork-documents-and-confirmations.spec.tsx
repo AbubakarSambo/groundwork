@@ -192,7 +192,7 @@ describe('the upload next step', () => {
       .mockResolvedValueOnce(uploadReply)
       .mockResolvedValueOnce({
         lane: 'add_a_document', composedBy: 'rules',
-        blocks: [{ type: 'proposal', proposalId: 'pr-nums', summary: 'Here is the context we have from Q4 targets.xlsx. Shall I record these numbers on this check-in?' }],
+        blocks: [{ type: 'proposal', proposalId: 'pr-nums', summary: 'Here is what I took from Q4 targets.xlsx. Shall I record these numbers on this check-in?' }],
       })
     vi.mocked(documentsApi.upload).mockResolvedValue({ id: 'doc-1', name: 'Q4 targets.xlsx', mimeType: 'application/vnd.ms-excel', uploadedAt: '2026-09-30T00:00:00Z' } as GroundDocument)
     vi.mocked(documentsApi.list).mockResolvedValue([
@@ -215,7 +215,7 @@ describe('the upload next step', () => {
 
     await waitFor(() => expect(documentsApi.upload).toHaveBeenCalledWith('g-sales', file))
     await waitFor(() => expect(askApi.ask).toHaveBeenLastCalledWith("I've uploaded it.", 'g-sales'))
-    expect(await screen.findByText(/Here is the context we have from Q4 targets\.xlsx/)).toBeInTheDocument()
+    expect(await screen.findByText(/Here is what I took from Q4 targets\.xlsx/)).toBeInTheDocument()
     expect(screen.queryByText('Reading it now.')).toBeNull()
   })
 

@@ -206,7 +206,7 @@ describe('only an admin of the organisation can remove somebody from it (the exi
   it('an admin of Lakeview Clinic cannot reach Juma, who is only in Msingi Foods', async () => {
     const s = aStore(LAKEVIEW);
     const svc = services(s);
-    await expect(svc.users.remove('juma', LAKEVIEW, 'someone-at-lakeview')).rejects.toThrow('We could not find that sign-in, so sign in again and try once more.');
+    await expect(svc.users.remove('juma', LAKEVIEW, 'someone-at-lakeview')).rejects.toThrow('I could not find that sign-in, so sign in again and try once more.');
     expect(s.users.find((u) => u.id === 'juma').isActive).toBe(true);
   });
 });

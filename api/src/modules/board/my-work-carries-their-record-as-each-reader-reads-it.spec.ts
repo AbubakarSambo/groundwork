@@ -57,17 +57,8 @@ describe('with the direct morning on', () => {
   });
 });
 
-describe('with the direct morning off, the page is served exactly as before', () => {
-  it('no record on Aisha’s page, Wanjiru’s view of it, or Njeri’s, and every other part as it was', async () => {
-    const table = await theTable();
-    for (const [userId, personId] of [[AISHA.userId, null], [WANJIRU, AISHA.participantId], [NJERI.userId, null]] as const) {
-      const off = await myWork({ directMorning: false }, userId, personId, table);
-      expect(off.record).toBeUndefined();
-      const without = await readMyWork(theRunAsADatabase('fees', { directMorning: false, others: ['lit'], personRecord: { findUnique: async () => null, findMany: async () => [], upsert: async () => null } as any }), null, { groundId: FEES, userId, personId }, THE_END_OF_THE_RUN);
-      expect(off).toEqual(without);
-    }
-  });
-  it('and where judgements of a person are off, no record either, with the direct morning on', async () => {
+describe('judgements of a person', () => {
+  it('where judgements of a person are off, no record', async () => {
     expect((await myWork({ directMorning: true, judgements: false }, AISHA.userId)).record).toBeUndefined();
   });
 });

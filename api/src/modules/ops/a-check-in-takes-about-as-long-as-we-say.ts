@@ -1,8 +1,10 @@
+import { A_CHECK_IN_TAKES_MINUTES, ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
+
 /**
  * A CHECK-IN TAKES ABOUT AS LONG AS WE SAY.
  *
- * The site says "A check-in takes about ten minutes" and the product repeats it to the person
- * mid-session (GroundChat.tsx). Nothing measured it. A session has a started and a completed
+ * The product says how long a check-in takes from one owner (common/how-long-a-check-in-takes.ts), and the site's frozen copy
+ * says "about ten minutes". Neither was measured on real people. A session has a started and a completed
  * timestamp, so the median is one query away, and it goes where the ops board already shows product
  * numbers - never on the marketing page as a live figure, which is built at build time. If the
  * median comes back materially off ten, the copy is wrong and the owner is told; the site's copy is
@@ -10,11 +12,11 @@
  * product. That is a decision to surface, not a defect to fix here.
  */
 
-/** The number the copy says, in minutes. Asserted against the range below, never against the median directly. */
-export const WHAT_WE_SAY_MINUTES = 10;
+/** The number the product says, in minutes, from its one owner. Asserted against the range below, never against the median directly. */
+export const WHAT_WE_SAY_MINUTES = A_CHECK_IN_TAKES_MINUTES;
 
-/** "About ten" is honest inside this. Outside it, the sentence is a claim the product does not keep. */
-export const A_FAIR_RANGE: readonly [number, number] = [5, 20];
+/** "About" is honest from half of it to twice it. Outside that, the sentence is a claim the product does not keep. */
+export const A_FAIR_RANGE: readonly [number, number] = [WHAT_WE_SAY_MINUTES / 2, WHAT_WE_SAY_MINUTES * 2];
 
 export function medianOf(values: number[]): number | null {
   if (values.length === 0) return null;
@@ -30,6 +32,6 @@ export function saysTheTruth(medianMinutes: number | null): boolean | null {
 
 export function whatTheMedianSays(medianMinutes: number | null, over: number): string {
   if (medianMinutes == null) return 'No completed sessions in this window, so there is no duration to give';
-  const verdict = saysTheTruth(medianMinutes) ? `"about ${WHAT_WE_SAY_MINUTES} minutes" holds` : `"about ${WHAT_WE_SAY_MINUTES} minutes" does not hold - the copy is wrong`;
+  const verdict = saysTheTruth(medianMinutes) ? `"${ABOUT_HOW_LONG}" holds` : `"${ABOUT_HOW_LONG}" does not hold, so the length the product says is wrong`;
   return `Median ${medianMinutes} minutes over ${over} sessions; ${verdict}`;
 }

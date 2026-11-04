@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
-import { GroundworkEvents, CheckInCompletedEvent, CommitmentsSettledEvent } from '../../common';
+import { GroundworkEvents, CheckInCompletedEvent, CommitmentsSettledEvent, type AssessmentReadyEvent } from '../../common';
 import { rebuildThePersonsRecords } from './the-persons-record-store';
 
 /**
@@ -13,8 +13,9 @@ export class ThePersonsRecordService {
   private readonly logger = new Logger(ThePersonsRecordService.name);
   constructor(private prisma: PrismaService) {}
 
-  @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
-  async onCheckInCompleted(event: CheckInCompletedEvent) {
+  /* When the check-in's assessment is ready, not when it completes: its lines are written from the assessment (one source, part 2). */
+  @OnEvent(GroundworkEvents.ASSESSMENT_READY)
+  async onCheckInCompleted(event: CheckInCompletedEvent | AssessmentReadyEvent) {
     await this.rebuild(event.groundId);
   }
 

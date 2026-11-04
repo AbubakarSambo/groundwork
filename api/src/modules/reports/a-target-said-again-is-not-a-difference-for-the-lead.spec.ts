@@ -73,7 +73,7 @@ describe('Grace\'s list of what only she can settle, on a sales check-in with Re
   it('names only the people who said something: Mercy, whose side on the report is empty, is not one of them', async () => {
     const out = (await theListFor('sales team', true))!;
     const why = out.find((x) => x.decide.startsWith('Agree on one consistent way'))!.why;
-    expect(why).toBe('How sales are counted and tracked against the overall team goal. You, Kevin Omondi and Joseph Kariuki said different things about this, so nobody can assume it is agreed.');
+    expect(why).toBe('How sales are counted and tracked against the overall team goal. You, Kevin Omondi and Joseph Kariuki said different things about this.');
   });
 
   it('the weekly report keeps it marked when it is built, so its read decides by the switch', async () => {

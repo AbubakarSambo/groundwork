@@ -50,25 +50,12 @@ describe('a reply is not an essay', () => {
     expect(SAY_IT_SHORTER).toMatch(/drop the explaining, the restating and the reasons for asking/);
   });
 
-  it('and reaches both conversations', () => {
+  /* Changed 4 November 2026 (fix plan, group 5): the setup path no longer reads its replies for length after the fact, so this reads
+     only the check-in, which keeps the check. */
+  it('reaches the check-in', () => {
     const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '');
     const checkIn = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
-    const entry = strip(readFileSync(join(__dirname, '..', 'entry', 'entry.service.ts'), 'utf8'));
-    /*
-     * Both paths, and both now pass the close-AND-not-asking reading rather than the bare marker.
-     * A reply that carries the marker and then asks one more thing is not the closing turn, so it
-     * does not get the closing turn's hundred and forty words. Read live at a hundred and twenty
-     * seven. See a-turn-still-asking-is-not-a-close.
-     */
     expect(checkIn).toMatch(/isAnEssay\(screened\.text, thisIsTheClosingTurn\)/);
-    expect(entry).toMatch(/const closingHere = hadCloseMarker\(text\) && !stillAsking\(text\)/);
-    expect(entry).toMatch(/isAnEssay\(text, closingHere\)/);
-  });
-
-  it('is checked last on the entry path, so a real fault is fixed for the fault not the length', () => {
-    const entry = readFileSync(join(__dirname, '..', 'entry', 'entry.service.ts'), 'utf8');
-    const fn = entry.slice(entry.indexOf('const whatIsWrong'));
-    expect(fn.indexOf('isAnEssay')).toBeGreaterThan(fn.indexOf('opensByRepeatingThem'));
   });
 });
 

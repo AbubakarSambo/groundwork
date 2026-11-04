@@ -1,5 +1,6 @@
 import { aPromiseSomebodyElseMade } from './a-promise-somebody-else-made';
 import { ConversationService } from './conversation.service';
+import { anAssessmentHolding } from './an-assessment-for-a-spec';
 
 /**
  * A PROMISE IS FILED AS THE PROMISE OF WHOEVER MADE IT (Hafsah's point 13). Every line below is word for word a line the Drop
@@ -46,12 +47,13 @@ async function whatIsWritten(on: boolean) {
   const said = ['Rose said she will buy the two units at the end of the month, on October 30th.', 'I will send Peter the quote for 30 units by Friday.'];
   const fake: any = {
     prisma: {
-      checkIn: { findUnique: async () => ({ groundId: 'g', sessionNumber: 4, participantId: 'p-mercy', turns: said.map((content) => ({ content })) }) },
+      /* The promises come from the conversation's assessment now (one source, 1 November 2026), not a call of the writer's own. */
+      checkIn: { findUnique: async () => ({ groundId: 'g', sessionNumber: 4, participantId: 'p-mercy', sessionReport: anAssessmentHolding({ promises: said.map((action) => ({ action, when: null, outcome: null })) }), turns: said.map((content) => ({ content })) }) },
       ground: { findUnique: async () => ({ organizationId: 'org' }) },
       organization: { findUnique: async () => ({ release1SalesBoardOn: on }) },
       groundCommitment: { create: async ({ data }: any) => { created.push(data); return { id: `n${created.length}` }; }, findMany: async () => [], update: async () => ({}) },
     },
-    anthropic: { extract: async () => ({ commitments: said.map((action) => ({ action, when: null, outcome: null })) }) },
+    anthropic: { extract: async () => { throw new Error('the promises are read from the assessment, never a call of their own'); } },
     logger: { log() {}, warn() {} },
   };
   await (ConversationService.prototype as any).writeWhatTheyPromised.call(fake, 'c4');

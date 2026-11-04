@@ -121,9 +121,13 @@ describe('the report, as each reader', () => {
 describe("the board's coaching, what to ask each person, as each reader", () => {
   beforeEach(() => { SET_UP_BY = 'u-tunde'; });
 
-  it('Tunde reads the pattern line under Femi, in its plain name', async () => {
+  it('Tunde reads what to ask Femi, and no line from Femi’s stored pattern', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const coaching: any = await reportsFor('MEMBER').coachingForTheBoard('g-atlas', 'u-tunde');
-    expect(JSON.stringify(coaching?.eachPerson)).toContain(PATTERN_LINE);
+    expect((coaching?.eachPerson ?? []).find((r: any) => r.participantId === 'p-femi')).toBeTruthy();
+    const said = JSON.stringify(coaching);
+    expect(said).not.toContain(PATTERN_LINE);
+    expect(said).not.toMatch(/On record across \d+ sessions/);
   });
 
   it('Grace, an admin who only reads, still reads what to ask Femi (decision 93), but never the pattern line', async () => {
@@ -135,9 +139,11 @@ describe("the board's coaching, what to ask each person, as each reader", () => 
     expect(said).not.toMatch(/On record across \d+ sessions/);
   });
 
-  it('Adaeze, who set it up, reads the pattern line (decision 58)', async () => {
+  it('Adaeze, who set it up, reads what to ask Femi, and no line from Femi’s stored pattern, as Tunde now does', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     SET_UP_BY = 'u-adaeze';
     const coaching: any = await reportsFor('ADMIN').coachingForTheBoard('g-atlas', 'u-adaeze', { adminReadsIt: true });
-    expect(JSON.stringify(coaching?.eachPerson)).toContain(PATTERN_LINE);
+    expect((coaching?.eachPerson ?? []).find((r: any) => r.participantId === 'p-femi')).toBeTruthy();
+    expect(JSON.stringify(coaching)).not.toContain(PATTERN_LINE);
   });
 });

@@ -46,6 +46,18 @@ export const NOT_A_QUIET_CLOSE = {
   ],
 };
 
+/**
+ * WHETHER THEY HAVE STARTED IT: THEY HAVE REPLIED (Hafsah, 3 November 2026: "the check-in only counts as started when the person first
+ * replies, so the counts stay right"). The first question may be written before they ever read it (when the invitation goes out, or
+ * when they open it), and a session holding only Groundwork's question is not started. Over a row read with its person turns (or a
+ * count of them); a row read without them is taken at its status, as before.
+ */
+export function theyHaveReplied(c: { status?: string | null; turns?: unknown[] | null; personTurns?: number | null }): boolean {
+  if (typeof c.personTurns === 'number') return c.personTurns > 0;
+  if (Array.isArray(c.turns)) return c.turns.length > 0;
+  return c.status === 'IN_PROGRESS';
+}
+
 /** The same, over a row already read with `closedReason` and a person-turn count (or the first person turn). */
 export function wasAQuietClose(c: { closedReason?: string | null; turns?: unknown[] | null; personTurns?: number | null }): boolean {
   if (c.closedReason !== CLOSED_BY_THE_CLOCK) return false;

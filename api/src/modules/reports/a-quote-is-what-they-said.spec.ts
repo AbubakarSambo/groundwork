@@ -287,12 +287,13 @@ describe('whether a record line is their own words, stamped when it is written',
   it('and the record writer stamps every line it writes, from what the person typed in that check-in', () => {
     const src = fs.readFileSync(path.join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-    expect(src).toMatch(/const whatTheyTyped = theirs\.map\(/);
-    /* The stamp is made on the line as it is stored: the reader's line with the person's own quotation
+    /* Changed 3 November: since 39c34f42e the record's lines are written from the conversation's assessment
+       (theRecordLinesFromTheAssessment), not from a separate record read. What is pinned is the same: the stamp is
+       made on the line as it is stored, against what the person typed in this check-in, with their own quotation
        marks put back (see conversation/their-quotation-marks-are-theirs). */
-    expect(src).toMatch(/const line = theirQuotationMarksBack\(theLineWithoutItsDanglingJoin\(e\.text\), whatTheyTyped\);/);
-    expect(src).toMatch(/text: line,/);
-    expect(src).toMatch(/saidWordForWord: saidWordForWord\(line, whatTheyTyped\)/);
+    expect(src).toMatch(/const whatTheyTyped = theWorkTheySaid\(turns\)\.map\(/);
+    expect(src).toMatch(/const text = theirQuotationMarksBack\(theLineWithoutItsDanglingJoin\(l\.text\), whatTheyTyped\);/);
+    expect(src).toMatch(/text, saidWordForWord: saidWordForWord\(text, whatTheyTyped\)/);
   });
 });
 

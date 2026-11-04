@@ -83,7 +83,6 @@ describe('request 112 (a): each deal in its group', () => {
       'Somebody reported each of these at Won, the last stage.',
     ]);
     expect(grid(b).groupsNote).toEqual([
-      'Nothing on record says what a deal must show at each stage, so no group here says whether a criterion is met.',
       /* The stall rule is applied now, from the record (pilots after fixes, A4). */
         'A deal is stalled when a check-in says the customer has not answered and 3 working days have passed, with nothing said since that they answered.',
     ]);
@@ -93,8 +92,8 @@ describe('request 112 (a): each deal in its group', () => {
   it('each deal says why it is where it is', async () => {
     const b = await boardAs(RUN, ...BISI);
     expect(why(b, 'Lekki Cold Rooms')).toBe('A colleague confirmed it. The date given for it is 28 September. It was last spoken about on 22 September. Nobody has said what happens next.');
-    expect(why(b, 'Mama Ngozi Kitchens')).toBe('It rests on what somebody said, with no proof yet. No date has been given for it. It was last spoken about on 16 September. Nobody has said what happens next.');
-    expect(why(b, 'Jos Grain Traders')).toBe('It rests on what somebody said, with no proof yet. The date given for it is 15 October. It was last spoken about on 22 September. Nobody has said what happens next.');
+    expect(why(b, 'Mama Ngozi Kitchens')).toBe('There is no proof yet. No date has been given for it. It was last spoken about on 16 September. Nobody has said what happens next.');
+    expect(why(b, 'Jos Grain Traders')).toBe('There is no proof yet. The date given for it is 15 October. It was last spoken about on 22 September. Nobody has said what happens next.');
     expect(why(b, 'Plateau Foods')).toBe('It was added on the board, not said in a check-in. No date has been given for it. Nobody has spoken about it in a check-in yet. Nobody has said what happens next.');
     expect(why(b, 'Ikeja Bakery')).toBe('Proof shows it. No date has been given for it. It was last spoken about on 16 September. Nobody has said what happens next.');
   });

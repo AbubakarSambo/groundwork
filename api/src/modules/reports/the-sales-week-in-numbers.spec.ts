@@ -34,6 +34,14 @@ const LINES = [
   { id: 'l-pima2', participantId: 'p-joseph', type: 'PROGRESS', text: 'I am following up with Mama Pima Stores.', anchoredDocumentId: null, recallBased: true, createdAt: MON, disputedAt: null },
   { id: 'l-mboga', participantId: 'p-mercy', type: 'PROGRESS', text: 'Mama Mboga Mart wants two units.', anchoredDocumentId: null, recallBased: true, createdAt: WED, disputedAt: null },
 ];
+/* The lines as each rep's assessment holds them: a line with a document behind it is a proven claim. */
+const theAssessmentsOf = (lines: typeof LINES) => ['p-kevin', 'p-mercy', 'p-joseph'].map((pid) => ({
+  sessionReport: {
+    kind: 'assessment', version: 1, summary: '', setup: null, comparedWithLastTime: {},
+    about: { checkInId: `c-${pid}`, groundId: 'g1', participantId: pid, who: pid, isTheLead: false, sessionNumber: 4, endedAt: THU.toISOString() },
+    claims: lines.filter((l) => l.participantId === pid).map((l) => ({ id: l.id, words: l.text, from: [1], whoMaySee: 'the people in this check-in', saidWordForWord: true, proof: l.anchoredDocumentId ? 'proved' : 'said' })),
+  },
+}));
 const deal = (id: string, name: string, stage: string, owner: string, source: string, created: Date, fields: Record<string, unknown>) =>
   ({ id, groundId: 'g1', kind: 'deal', name, stage, ownerParticipantId: owner, sourceEntryId: source, createdAt: created, fields });
 const DEALS = [
@@ -80,7 +88,8 @@ function aSalesCheckIn(kindOfWork: string | null = 'sales org', deals = DEALS, r
     ground: { findUnique: jest.fn(async () => ground) },
     /* Release 1's sales board, switched on for the organisation unless a spec says otherwise (release-one-sales-board). */
     organization: { findUnique: jest.fn(async () => ({ id: 'org', release1SalesBoardOn: releaseOne, timeZone: null })) },
-    checkIn: { findMany: jest.fn(async () => CHECK_INS) },
+    /* What each rep said this week reaches the week from their assessments, through the one reader (1 November 2026): the same lines. */
+    checkIn: { findMany: jest.fn(async ({ select }: any = {}) => (select?.sessionReport ? theAssessmentsOf(LINES) : CHECK_INS)) },
     recordEntry: { findMany: jest.fn(async () => LINES) },
     workItem: { findMany: jest.fn(async () => deals) },
     groundObjectiveSnapshot: { findMany: jest.fn(async () => []) },
@@ -328,7 +337,8 @@ describe('Release 1\'s switch off: the week reads as it did', () => {
   it('Grace reads each person\'s sentence as before and no paragraphs from the deals', async () => {
     const r = await theWeekAs(GRACE, false);
     expect(r.whatThisWeekShows).toBeUndefined();
-    expect(r.eachPerson.map((p) => p.says).join('\n')).toMatch(/Kevin Omondi named Kilele Hotel/);
+    /* Each person's sentence quotes what they said now (the one reader, 1 November 2026). */
+    expect(r.eachPerson.map((p) => p.says).join('\n')).toMatch(/This week Kevin Omondi said “Kilele Hotel is all done, 40 units sold/);
     expect(r.whatChanged!.moved).toEqual(['Nothing was marked as done this week yet.']);
     expect(r.forNextWeek ?? []).not.toContainEqual(expect.objectContaining({ comesFrom: 'This comes from the plan.' }));
   });

@@ -189,6 +189,8 @@ export class GroundsCron implements OnApplicationBootstrap {
           /** The three conditions together. Started, never invited, and still has a live token. */
           startsAt: { not: null, lte: now },
           invitedAt: null,
+          /* Not one the lead holds ready until she sends it (Hafsah, 3 November 2026): her press lets it go, and then this sends it on the day. */
+          inviteHeldAt: null,
           inviteToken: { not: null },
           /**
            * NOT TERMINAL, rather than ACTIVE. This was `status: ACTIVE` and found nothing, which
@@ -917,7 +919,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       },
       select: {
         id: true, groundId: true, sessionNumber: true, createdAt: true, availableFrom: true, participantId: true,
-        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, cadenceAnchorDay: true, startsAt: true, createdAt: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, workingDays: true, startedFrom: true, simplerWords: true, initiatorId: true, initiator: { select: { firstName: true } } } },
+        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, cadenceDays: true, cadenceAnchorDay: true, startsAt: true, createdAt: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, workingDays: true, startedFrom: true, simplerWords: true, initiatorId: true, initiator: { select: { firstName: true } } } },
         participant: { select: { id: true, email: true, userId: true, remindersStoppedAt: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
       ...page,
@@ -1065,9 +1067,9 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   /**
-   * THE DIRECT MORNING BY SEVEN (engagement/the-direct-morning.ts; Hafsah, 20 October 2026): every quarter hour, for the organisations whose
-   * switch is on, the lead's morning summary goes in the hour from seven where the organisation is, before the check-ins open, once a day
-   * a lead. The 9am sweep above sends it only to a lead it did not reach. Organisations with the switch off are never read here.
+   * THE DIRECT MORNING BY SEVEN (engagement/the-direct-morning.ts; Hafsah, 20 October 2026): every quarter hour, for every organisation,
+   * the lead's morning summary goes in the hour from seven where the organisation is, before the check-ins open, once a day
+   * a lead. The 9am sweep above sends it only to a lead it did not reach.
    */
   @Cron('*/15 * * * *', { timeZone: 'UTC' })
   async sendTheDirectMorningsAtSeven() {
@@ -1075,8 +1077,6 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendTheDirectMorningsAtSevenInner(now: Date = new Date()): Promise<{ tried: number }> {
-    const any = await (this.prisma as any).organization.findFirst({ where: { directMorningOn: true }, select: { id: true } }).catch(() => null);
-    if (!any) return { tried: 0 };
     let boards: { get(groundId: string, userId: string): Promise<any> } | undefined;
     try {
       if (this.moduleRef) { const { BoardService } = await import('../board/board.service'); boards = this.moduleRef.get(BoardService, { strict: false }); }
@@ -1309,7 +1309,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       },
       select: {
         id: true, groundId: true, availableFrom: true, participantId: true,
-        ground: { select: { label: true, organizationId: true, overWhatsApp: true, simplerWords: true, cadence: true } },
+        ground: { select: { label: true, organizationId: true, overWhatsApp: true, simplerWords: true, cadence: true, cadenceDays: true } },
         participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
       ...page,

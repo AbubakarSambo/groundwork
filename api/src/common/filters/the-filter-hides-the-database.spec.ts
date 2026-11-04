@@ -57,6 +57,6 @@ describe('an ordinary failure reaching the filter', () => {
   it('is a server error, and the person reads one plain sentence, never the crash\'s own words', () => {
     const { status, body } = throwAtTheFilter(new Error('something ordinary broke'));
     expect(status).toBe(500);
-    expect(body.message).toBe('Something went wrong on our side. Please try again in a minute, and if it happens again, tell us.');
+    expect(body.message).toBe('Something went wrong on my side. Please try again in a minute, and if it happens again, tell me.');
   });
 });

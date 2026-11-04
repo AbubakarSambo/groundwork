@@ -446,7 +446,10 @@ const RULES = [
   rule('what_did_i_commit_to', [
     /* Ordered above `what_am_i_on` because "what did I commit to" contains "what did I" and the
        objectives rule would otherwise take it. */
-    /\bwhat\s+did\s+i\s+(?:commit|say|promise)\b/i,
+    /* "What did I say I would do?", never every "what did I say": "What did I say we are trying to achieve?" asks what she said in
+       setup, and was answered "You have not said you will do anything that is still waiting." (assessment test, 2 November). */
+    /\bwhat\s+did\s+i\s+(?:commit|promise)\b/i,
+    /\bwhat\s+did\s+i\s+say\s+(?:i|i'?d|i'?ll|that\s+i)\s+(?:would|will|was\s+going\s+to|do|did)?\b/i,
     /\bmy\s+commitments?\b/i,
     /\bwhat\s+have\s+i\s+committed\b/i,
     /\bwhat\s+did\s+i\s+agree\s+to\b/i,

@@ -191,7 +191,7 @@ describe('nobody else may read Miriam’s You board', () => {
   it('Grace’s own board is empty, though an admin’s list carries every check-in', async () => {
     const { read } = setup();
     const b = await read('grace');
-    expect(b).toEqual({ checkIns: [], turns: [], goals: [], saidYoudDo: [], todos: [], coaching: null, ownReports: [], keptLately: null, directMorning: false });
+    expect(b).toEqual({ checkIns: [], turns: [], goals: [], saidYoudDo: [], todos: [], coaching: null, ownReports: [], keptLately: null });
   });
 
   it('Brian’s own board is his, and none of Miriam’s', async () => {
@@ -235,10 +235,11 @@ describe('something that keeps coming up, on the You board', () => {
     expect(p.theirWords).toBeNull();
   });
 
-  it('marks it as shown to her, the first time she reads it', async () => {
+  /* 2 November 2026 (F2): nobody but Miriam reads it, so the "shown to the person" clock that let the lead read it later is not kept. */
+  it('keeps no "shown to her" clock when she reads it, since nobody else ever reads it', async () => {
     const { read, prisma } = setup([miriamsPattern]);
     await read('miriam');
-    expect(prisma.patternDetection.updateMany).toHaveBeenCalled();
+    expect(prisma.patternDetection.updateMany).not.toHaveBeenCalled();
   });
 
   it('is never on Wairimu’s own board, though she runs the check-in it is about', async () => {

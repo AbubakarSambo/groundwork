@@ -70,22 +70,6 @@ describe('the team report, as the model is told to write it', () => {
     expect(systems.some((s) => s.includes('You are writing the judgement') && s.endsWith(THE_DIRECT_JUDGEMENT))).toBe(true);
   });
 
-  it('off: the instruction is exactly what it was, with no direct block, and the report records none', async () => {
-    const on = theSynthesis(true);
-    const off = theSynthesis(false);
-    await on.run();
-    await off.run();
-    const was = off.systems.find((s) => s.startsWith('STORED SYNTHESIS v7.'))!;
-    const now = on.systems.find((s) => s.startsWith('STORED SYNTHESIS v7.'))!;
-    expect(was).not.toContain('THE DIRECT MORNING');
-    expect(now).toBe(`${was}\n\n${THE_DIRECT_TEAM_REPORT}`);
-    /* Every other call (the opening written from the facts) is the same text off, and the same text plus the block on. */
-    for (const s of off.systems) expect(s).not.toContain('THE DIRECT MORNING');
-    const data = off.upserts.find((u) => u?.create?.promptVersionId)?.create;
-    expect(data.promptVersionId).toBe('pv-synthesis-7');
-    expect('theDirectMorning' in data.engagement).toBe(false);
-    expect(on.systems.length).toBe(off.systems.length);
-  });
 });
 
 function theJudgement(on: boolean, stored: { id: string; content: string } | null) {
@@ -114,14 +98,6 @@ function theJudgement(on: boolean, stored: { id: string; content: string } | nul
 describe('the board\'s judgement, as the model is told to write it', () => {
   const CODE = theJudgementOverARoom('whoever called this check-in', 'what to do next about the people and the work it covers', 'Wairimu Kamau');
 
-  it('off, with nothing stored: the code text, exactly, and no block recorded', async () => {
-    const { run, seen } = theJudgement(false, null);
-    const out = await run();
-    expect(seen[0]).toBe(CODE);
-    expect(out.judgement.promptVersionId).toBeNull();
-    expect('theDirectMorning' in out.judgement).toBe(false);
-  });
-
   it('on, with nothing stored: the code text, then the direct block', async () => {
     const { run, seen } = theJudgement(true, null);
     const out = await run();
@@ -140,21 +116,12 @@ describe('the board\'s judgement, as the model is told to write it', () => {
     expect(out.judgement.theDirectMorning).toBe(THE_DIRECT_MORNING_BLOCKS);
   });
 
-  it('off, with a version stored: the stored text exactly as before', async () => {
-    const content = `${theRoomJudgementTemplate()}\n\nA NEW RULE FOR THIS VERSION.`;
-    const { run, seen } = theJudgement(false, { id: 'pv-judgement-2', content });
-    await run();
-    expect(seen[0]).not.toContain('THE DIRECT MORNING');
-    expect(seen[0].endsWith('A NEW RULE FOR THIS VERSION.')).toBe(true);
-  });
 });
 
 describe('the blocks themselves', () => {
-  it('off is the prompt, character for character; on is the prompt and the block after it', () => {
-    expect(withTheDirectMorning(POST_REPORT_GUIDE_PROMPT, THE_DIRECT_OWN_REPORT, false)).toBe(POST_REPORT_GUIDE_PROMPT);
-    expect(withTheDirectMorning(POST_REPORT_GUIDE_PROMPT, THE_DIRECT_OWN_REPORT, true)).toBe(`${POST_REPORT_GUIDE_PROMPT}\n\n${THE_DIRECT_OWN_REPORT}`);
-    expect(whichDirectBlockRan(false)).toEqual({});
-    expect(whichDirectBlockRan(true)).toEqual({ theDirectMorning: THE_DIRECT_MORNING_BLOCKS });
+  it('every prompt is the prompt and the block after it, and every report records which block ran', () => {
+    expect(withTheDirectMorning(POST_REPORT_GUIDE_PROMPT, THE_DIRECT_OWN_REPORT)).toBe(`${POST_REPORT_GUIDE_PROMPT}\n\n${THE_DIRECT_OWN_REPORT}`);
+    expect(whichDirectBlockRan()).toEqual({ theDirectMorning: THE_DIRECT_MORNING_BLOCKS });
   });
 
   it('delete the alignment framing and the hedges, and allow a recommendation', () => {
@@ -196,12 +163,6 @@ describe('each person\'s own guide after the report, as the model is told to wri
     const service: any = new ReportsService(prisma, {} as any, anthropic, {} as any, config, {} as any, {} as any, { tell: async () => [] } as any);
     return { run: () => service.generatePostReportGuides({ groundId: 'g1', sharedPicture: 'x', agreements: [], divergences: [], centralQuestion: 'q', engagement: {} }, ['p1']), seen };
   }
-
-  it('off: the guide\'s instruction exactly as it was', async () => {
-    const { run, seen } = theGuide(false);
-    await run();
-    expect(seen[0]).toBe(POST_REPORT_GUIDE_PROMPT);
-  });
 
   it('on: the same instruction, its rule against naming anybody kept, and the direct block after it', async () => {
     const { run, seen } = theGuide(true);

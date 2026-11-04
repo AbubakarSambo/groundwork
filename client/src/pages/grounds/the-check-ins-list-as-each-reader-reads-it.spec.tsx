@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GroundsListPage } from './GroundsListPage'
 import { howARowReads, howOften } from './how-a-row-reads'
 import { useAuthStore } from '@/stores/auth'
+import { aServedCount } from '@/lib/a-served-count-for-a-spec'
 
 /**
  * THE CHECK-INS LIST (C1), AS EACH READER READS IT. Mounted with the list exactly as the server
@@ -36,6 +37,8 @@ const SALES = {
     { participantId: 'p-s', sessionNumber: 6, status: 'COMPLETED', availableFrom: ago(5) },
   ],
   glance: { progress: { roundsDone: 5, roundsPlanned: 12, answeredThisRound: 4, ofPeople: 5 }, inTheWay: { count: 1, oldest: 'the sales deck' } },
+  /* The one count, as the server serves it to Hafsah (api grounds/this-sessions-count.ts). Added 3 November (F5 part 3): the list says its sentence. */
+  theCount: aServedCount({ 6: { on: ['p-o', 'p-b', 'p-m', 'p-a', 'p-s'], answered: ['p-b', 'p-m', 'p-a', 'p-s'] } }, { session: 6, says: '4 of 5 have checked in; Omar hasn’t started yet.' }),
 }
 const KWAME = {
   id: 'g-kwame', label: 'Kwame, first 90 days', status: 'ACTIVE', initiatorId: 'u-h', scenario: 'NEW_HIRE', cadence: 'WEEKLY', cadenceAnchorDay: 1,
@@ -48,6 +51,7 @@ const LEADERSHIP = {
   participants: [p('p-am', 'u-amani', 'Amani', 'Njoroge', 'INITIATOR'), p('p-h3', 'u-h', 'Hafsah', 'Jumare')],
   checkIns: [{ participantId: 'p-h3', sessionNumber: 4, status: 'NOT_STARTED', availableFrom: ago(2) }],
   glance: { progress: { roundsDone: 3, roundsPlanned: 12, answeredThisRound: 0, ofPeople: 2 } },
+  theCount: aServedCount({ 4: { on: ['p-am', 'p-h3'], answered: [] } }, { session: 4, says: 'Nobody has checked in yet; you and Amani haven’t started yet.' }),
 }
 const STRATEGY = {
   id: 'g-strat', label: 'Company strategy check-in', status: 'ACTIVE', initiatorId: 'u-amani', scenario: 'OKR_ALIGNMENT', brief: 'One main goal with the teams underneath it', cadence: 'MONTHLY',
@@ -100,7 +104,7 @@ describe('the check-ins list, as Hafsah reads it (she runs two and is in two)', 
     expect([...table.querySelectorAll('th')].map(th => th.textContent)).toEqual(['Check-in', 'What it’s for', 'Needs you', 'Where it stands'])
     expect(rowsOf(table)).toEqual([
       /* check-ins.jpg: a daily check-in's team report is there to read and share once anybody is in, so it reads "Today’s report ready", not who it waits on. */
-      ['Sales team, Q36 people. Daily, weekdays. Session 6 of 12.', 'Set goals and keep the team on track', 'Today’s report ready', '4 of 5 answeredThe sales deck is holding it up.'],
+      ['Sales team, Q36 people. Daily, weekdays. Session 6 of 12.', 'Set goals and keep the team on track', 'Today’s report ready', '4 of 5 have checked in; Omar hasn’t started yet.The sales deck is holding it up.'],
       ['Kwame, first 90 daysKwame and you. Weekly, Mondays. Session 12 of 12, finished.', 'Help a new hire get started', '', 'Decide how it ends'],
     ])
     expect(table.textContent).not.toMatch(/Hafsah|·|Led by|Progress|In the way/)
@@ -110,7 +114,7 @@ describe('the check-ins list, as Hafsah reads it (she runs two and is in two)', 
     open(HAFSAH, [SALES, KWAME, LEADERSHIP, STRATEGY, Q2])
     const table = await screen.findByRole('table', { name: 'You’re in' })
     expect(rowsOf(table)).toEqual([
-      ['Leadership, Q3Run by Amani Njoroge. Weekly, Wednesdays. Session 4 of 12.', 'Set goals and keep the team on track', 'Your turn', '0 of 2 answered'],
+      ['Leadership, Q3Run by Amani Njoroge. Weekly, Wednesdays. Session 4 of 12.', 'Set goals and keep the team on track', 'Your turn', 'Nobody has checked in yet; you and Amani haven’t started yet.'],
       ['Company strategy check-inRun by Amani Njoroge. Monthly. Session 2 of 6.', 'Connect goals across the team', '', 'Next: 1 October'],
     ])
     expect(screen.getByText('You see these boards as a participant: the team’s picture once it’s shared, and your own part in full.')).toBeTruthy()

@@ -1,4 +1,4 @@
-import { howManyHaveAnswered, whoIsExpected, whoIsInTheRound } from '../reports/how-many-have-answered';
+import { howManyHaveAnswered, whoHasAnswered, whoIsInTheRound } from '../reports/how-many-have-answered';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { howACheckInIsGoing } from '../grounds/how-a-check-in-is-going';
 import { keptLately } from '../grounds/your-board';
@@ -121,7 +121,8 @@ describe('the round does not wait for somebody who is away', () => {
       { id: 'a', userId: 'u', checkIns: [{ status: 'COMPLETED', sessionNumber: 1 }] },
       { id: 'y', userId: 'v', awayUntil: '2026-10-02', checkIns: [] },
     ];
-    expect(whoIsExpected(people, 1).map((p) => p.id)).toEqual(['a']);
+    /* The one count (1 November 2026): away and not answered is out of it, and named as away. */
+    expect(whoHasAnswered(people, 1)).toMatchObject({ onTheCheckIn: ['a'], away: { y: '2026-10-02' } });
     expect(whoIsInTheRound(people, 1).map((p) => p.id)).toEqual(['a']);
     expect(whoIsInTheRound([{ ...people[1], checkIns: [{ status: 'COMPLETED', sessionNumber: 1 }] }], 1)).toHaveLength(1);
   });

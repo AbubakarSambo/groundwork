@@ -1,5 +1,6 @@
 import { AnthropicService } from './anthropic.service';
-import { DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_SCHEMA } from './prompt-library';
+import { DEPENDENCY_EXTRACTION_SCHEMA } from './prompt-library';
+import { THE_ASSESSMENT_SCHEMA } from './the-assessment';
 
 /**
  * GW-SCHEMA-CONV tripwire.
@@ -47,8 +48,9 @@ describe('GW-SCHEMA-CONV: nullable union types survive conversion', () => {
     expect(props.status.enum).toEqual(['BLOCKING', 'WAITING', 'CLEARED']);
   });
 
-  it('converts the REAL work-mention schema without throwing', () => {
-    expect(() => convert(WORK_MENTION_SCHEMA.input_schema)).not.toThrow();
+  /* Changed 2 November 2026: work mentions are read by the conversation's assessment, so its schema is the one that carries them. */
+  it('converts the REAL assessment schema, which carries the work mentions, without throwing', () => {
+    expect(() => convert((THE_ASSESSMENT_SCHEMA as any).input_schema)).not.toThrow();
   });
 
   it('preserves enum, required, nested properties and array items', () => {

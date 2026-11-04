@@ -1,5 +1,5 @@
 import { isShut } from './a-ground-that-has-ended'
-import { whoIsInRound } from './who-is-in-this-round'
+import { theCountOf, type TheCountAsServed } from './the-one-count'
 
 /**
  * WHAT A GROUND IN THE RAIL NEEDS FROM YOU, IF ANYTHING.
@@ -30,11 +30,8 @@ export type RailAttention =
   /** An open check-in of your own, past the date it was due. */
   | { kind: 'overdue'; sessionNumber: number; daysLate: number }
   /** Not yours to do: other people have not checked in yet. */
-  | {
-      kind: 'waiting'; done: number; total: number
-      /** People on it who are not counted because an admin has not let them in yet, and who have not answered. Said beside the count, so "one of the two" beside five names reads true. */
-      notLetIn?: number
-    }
+  /** The served count's own sentence says who is not counted and why (api grounds/this-sessions-count.ts). */
+  | { kind: 'waiting'; done: number; total: number }
 
 export interface RailGround {
   /** The ground's own status. Without it, the rail cannot tell a live check-in from a shut one. */
@@ -45,8 +42,9 @@ export interface RailGround {
   checkIns?: { participantId: string; sessionNumber: number; status: string; availableFrom?: string | null; isSetup?: boolean | null }[]
   closedAt?: string | null
   resolvedAt?: string | null
-  /** B-078: needed to leave out a lead who only manages, the same rule `whoIsInRound` already uses. */
   scenario?: string | null
+  /** Who has answered each session, as the server counted it (the one count). */
+  theCount?: TheCountAsServed | null
 }
 
 /** How long after a check-in opens before it counts as late. */
@@ -106,24 +104,18 @@ export function railAttention(g: RailGround, myUserId: string | null | undefined
   const round = openRound(theTeams.length ? theTeams : checkIns, now)
   /*
    * B-078: A LEAD WHO ONLY MANAGES IS NOT COUNTED PAST HER OWN SET-UP ROUND. Grace runs "Shops
-   * reorder in two days" (HELP_TEAM_UNDERSTAND) and never checks in; `whoIsInRound` already leaves
-   * her out of this exact count everywhere else on the page (who-is-in-this-round.ts), but this
+   * reorder in two days" (HELP_TEAM_UNDERSTAND) and never checks in; the server's one count leaves
+   * her out of this exact count everywhere else on the page, but this
    * function counted every participant and her completed set-up row as an answer, so the line at
    * the top of every tab read "Three of the four have not answered yet." when none of the three
    * people who actually check in had answered. One rule, used here too.
    */
-  /* Decision 133: the lead is in the round only when they answered it. */
-  const inThisRound = whoIsInRound(g.participants ?? [], round, g.scenario, checkIns)
-  const parties = inThisRound.length
-  if (parties > 1) {
-    if (round > 0) {
-      const inThisRoundIds = new Set(inThisRound.map((p) => p.id))
-      const done = checkIns.filter((c) => c.sessionNumber === round && c.status === 'COMPLETED' && inThisRoundIds.has(c.participantId)).length
-      /* Who is on it and not counted: not let in yet, not the lead, and not answered (decision 77, the same rule as whoIsInRound). */
-      const answeredHere = new Set(checkIns.filter((c) => c.sessionNumber === round && c.status === 'COMPLETED').map((c) => c.participantId))
-      const notLetIn = (g.participants ?? []).filter((p) => p.notLetInYet && !choosesWhen.has(p.id) && !answeredHere.has(p.id)).length
-      if (done < parties) return { kind: 'waiting', done, total: parties, ...(notLetIn ? { notLetIn } : {}) }
-    }
+  /* Who the round counts and who has answered it, as the server counted them (the one count). */
+  const count = theCountOf(g, round)
+  const parties = count?.onTheCheckIn.length ?? 0
+  if (parties > 1 && round > 0 && count) {
+    const done = count.answered.length
+    if (done < parties) return { kind: 'waiting', done, total: parties }
   }
   return { kind: 'none' }
 }

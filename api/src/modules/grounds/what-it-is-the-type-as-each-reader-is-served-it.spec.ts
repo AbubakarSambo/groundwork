@@ -116,10 +116,6 @@ describe('with Release 2 off, People and setup is served exactly as before', () 
     expect(writes).toEqual([]);
   });
 
-  it('with Release 1B off as well, it is { on: false }, as before', async () => {
-    const { prisma } = theFeeNotesCheckIn({ release2: false, release1b: false });
-    expect(await read(prisma, 'u-wanjiru')).toEqual({ on: false });
-  });
 });
 
 describe('the type is stored only when the lead confirms it', () => {

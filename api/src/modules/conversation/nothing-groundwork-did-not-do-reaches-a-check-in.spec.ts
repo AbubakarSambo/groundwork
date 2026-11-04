@@ -15,12 +15,17 @@ function aCheckIn(over: { said?: string[]; triedSaid?: (string | null)[]; ledger
       findMany: jest.fn(async (a: any) => (a?.where?.role === 'PERSON' ? (over.said ?? []).map((content) => ({ content })) : [])),
     },
     groundObjective: { findMany: jest.fn(async () => []) },
-    groundDependency: { findMany: jest.fn(async () => (over.triedSaid ?? [null]).map((triedSaid) => ({ triedSaid }))) },
+    /* Since b0f021440 a wait carries the assessment's takenFurther; Felix's waits were never taken further. */
+    groundDependency: { findMany: jest.fn(async () => (over.triedSaid ?? [null]).map((triedSaid) => ({ triedSaid, takenFurther: false }))) },
     recordEntry: { findMany: jest.fn(async () => []) },
     groundParticipant: { findMany: jest.fn(async () => [{ email: 'brian@msingi.test' }, { email: 'wairimu@msingi.test' }]) },
     notification: { findMany: jest.fn(async () => over.ledger ?? []) },
   };
-  const s: any = new ConversationService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { get: () => '' } as any);
+  /* The model reads whether they took something higher from what they said here (TAKEN_FURTHER_MEANS): this stands in for it, reading
+     the meaning the way the instruction gives it, so the spec checks the wiring and not a word list. */
+  const engine = { extract: jest.fn(async (prompt: string, history: { content: string }[]) => (/took something higher/.test(prompt)
+    ? { tookItHigher: /\b(?:escalated it to|took it to)\s+the head\b/i.test(history.map((h) => h.content).join(' ')) } : null)) };
+  const s: any = new ConversationService(prisma, {} as any, engine as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { get: () => '' } as any);
   jest.spyOn(s.logger, 'warn').mockImplementation(() => undefined);
   /* What a real turn sets before it is saved: the people's names, as buildSystemPrompt does. Since the final check (12 October) a
      name the check-in does not hold is cut, and Brian is one of Wairimu's people. */

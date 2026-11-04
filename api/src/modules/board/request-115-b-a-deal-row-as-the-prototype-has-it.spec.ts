@@ -63,8 +63,8 @@ describe('request 115 (b): a deal row as the prototype has it', () => {
       expect(lekki.value).toBe('NGN 4,500,000');
       expect(lekki.valueSays).toBeNull();
       expect(lekki.contactHistory).toEqual([
-        { on: '2026-09-22', how: 'with proof', says: 'On 22 September, somebody spoke about it, and proof backs what they said.' },
-        { on: '2026-09-10', how: 'in their words', says: 'On 10 September, somebody spoke about it, in their own words.' },
+        { on: '2026-09-22', how: 'with proof', says: 'On 22 September, it came up in a check-in, with proof.' },
+        { on: '2026-09-10', how: 'in their words', says: 'On 10 September, it came up in a check-in.' },
       ]);
       expect(lekki.contactHistorySays).toBe(WHAT_CONTACT_HISTORY_IS);
       expect(lekki.theirRead).toEqual({ who: 'Femi Okonkwo', words: FEMIS_WORDS, says: "Femi Okonkwo's read, in their own words." });
@@ -73,8 +73,8 @@ describe('request 115 (b): a deal row as the prototype has it', () => {
       expect(deal(b, 'Ikeja Bakery').value).toBeNull();
       expect(deal(b, 'Ikeja Bakery').valueSays).toBe(NO_VALUE_SAID);
       expect(deal(b, 'Ikeja Bakery').theirRead).toBeNull();
-      /* No row claims a criterion; the grid says why once. */
-      expect(grid(b).groupsNote[0]).toBe('Nothing on record says what a deal must show at each stage, so no group here says whether a criterion is met.');
+      /* No row claims a criterion. Changed 4 November 2026 (release batch 1): the grid no longer explains why (no explainer lines). */
+      expect(grid(b).groupsNote.join(' ')).not.toMatch(/criterion is met/);
     },
   );
 

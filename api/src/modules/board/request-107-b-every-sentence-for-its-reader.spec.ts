@@ -30,6 +30,7 @@ const REPORT = {
   divergences: [{ topic: 'There is no shared understanding of who owns the release.', positions: [{ participantLabel: 'one' }, { participantLabel: 'two' }] }],
 };
 
+/* Expectations updated (Hafsah, 30 October 2026: plain language for an impatient first-time lead; a difference is said as what people said, with no "needs settling".) */
 describe('a wait on a thing is not said as a wait on somebody', () => {
   it('tells a thing from somebody', () => {
     expect(aPartyOutside({ onLabel: 'the data structure decision', what: 'the data structure decision' })).toBe(false);
@@ -65,7 +66,7 @@ describe('a wait on a thing is not said as a wait on somebody', () => {
       /* A fix to the pipeline is something to provide, not a decision (item 21): it no longer says "so it needs deciding". */
       expect.objectContaining({ question: 'Rukia Mwangi is waiting for the pipeline fix, and nobody has been named to provide it.', owner: 'Nobody has been named to provide it.' }),
       expect.objectContaining({
-        question: 'People in this check-in said different things. There is no shared understanding of who owns the release. This needs settling.',
+        question: 'People in this check-in said different things. There is no shared understanding of who owns the release.',
         owner: 'You',
       }),
     ]));
@@ -94,7 +95,7 @@ describe('a wait on a thing is not said as a wait on somebody', () => {
 
 describe('the coaching probe names the person, and says "you" to the reader', () => {
   const base: ProbeInput = {
-    who: 'Rukia Otieno', participantId: 'p-rukia', role: null, answeredThisSession: true, patterns: [], waitingOn: [],
+    who: 'Rukia Otieno', participantId: 'p-rukia', role: null, answeredThisSession: true, waitingOn: [],
     holdingUp: [
       { what: 'the plan for the launch', who: 'Baraka Mwangi', daysOld: 3 },
       { what: 'the shop list', who: 'Amani Wekesa', daysOld: 2 },
@@ -116,7 +117,7 @@ describe('the coaching probe names the person, and says "you" to the reader', ()
     const p = whatToProbe({ ...base, holdingUp: [], answeredThisSession: false, whoInASentence: 'Rukia Otieno', waitingOn: [{ what: 'the budget', who: 'Juma', daysOld: 4, escalated: false }] });
     expect(p.probe).toEqual([
       'Rukia Otieno has not answered this session, so nothing below is from this round.',
-      'Rukia Otieno has been waiting for 4 days on Juma for the budget, and nothing on record says it was raised higher. Ask what has stopped Rukia Otieno raising it.',
+      'Rukia Otieno has been waiting for 4 days on Juma for the budget.',
     ]);
   });
 });

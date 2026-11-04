@@ -6,7 +6,6 @@ import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hos
 import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LEARNING_SIGNAL } from '../learning/learning-signal';
-import { shouldThisCodeBeAboutThem } from './a-chaser-is-not-the-blocker';
 import { theirOwnEarlierRecord, earlierRecordQuery } from './the-detector-reads-their-own-earlier-record';
 import {
   theReadsWereSplit,
@@ -25,6 +24,7 @@ import { plainVoice } from './plain-voice';
 import { PERIODS_BEFORE_A_PATTERN_IS_SHOWN, PATTERN_ROW_SELECT, patternRowsThisReaderMayRead, servedPatterns, periodsSeen, type AServedPattern, type ALeadPatternMark } from './who-reads-a-pattern';
 import { periodOf } from './period-of';
 import { PATTERNS_ARE_SERVED } from './patterns-are-served';
+import { theLeadMarksAPatternAcrossTime } from './the-leads-mark-on-a-pattern';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 import { isAgainstAGoalTheyStated, whatTheySaidThisWasFor } from './against-the-goal-they-stated';
@@ -114,9 +114,6 @@ export class PatternsService {
     return stored ? { content: stored.content, id: stored.id } : { content: PATTERN_DETECTION_PROMPT, id: null };
   }
 
-  private learnFrom(detectionId: string): void {
-    try { this.events?.emit(LEARNING_SIGNAL, { detectionId }); } catch { /* counting must never break a mark */ }
-  }
 
   /**
    * Analyse one completed check-in (one period for one party). Extracts pattern
@@ -128,9 +125,9 @@ export class PatternsService {
       where: { id: checkInId },
       select: {
         id: true, groundId: true, participantId: true, sessionNumber: true,
-        patternsAnalyzedAt: true, specificityDimensions: true,
+        patternsAnalyzedAt: true, specificityDimensions: true, sessionReport: true,
         completedAt: true, startedAt: true, createdAt: true,
-        ground: { select: { cadence: true } },
+        ground: { select: { cadence: true, cadenceDays: true } },
       },
     });
     if (!checkIn || checkIn.patternsAnalyzedAt) return;
@@ -218,24 +215,6 @@ export class PatternsService {
       .catch(() => [] as { code: string; observationText: string | null; lastPeriodNumber: number | null }[]);
     const recogniseBlock = lastPeriodBlockFor(whatWasSeenLastPeriod(lastPeriod, period), period);
 
-    /*
-     * WHO THIS PERSON IS WAITING ON, BY NAME, INSIDE THIS CHECK-IN.
-     *
-     * Read before anything is written, because three of the codes are reads about carrying your own
-     * work and must not land on the person doing the chasing. See a-chaser-is-not-the-blocker.
-     */
-    const theirDependencies = await (this.prisma.groundDependency?.findMany?.({
-      where: { groundId: checkIn.groundId, fromParticipantId: checkIn.participantId },
-      select: { onParticipantId: true, status: true, what: true, groundId: true, triedSaid: true },
-    }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
-    /* And what those colleagues promised in their own check-ins: only a colleague's own word confirms a wait (decision 137). */
-    const theirColleaguesIds = [...new Set((theirDependencies as any[]).map((d) => d?.onParticipantId).filter(Boolean))] as string[];
-    const theColleaguesOwnPromises: any[] = theirColleaguesIds.length
-      ? await Promise.resolve(this.prisma.groundCommitment?.findMany?.({
-          where: { groundId: checkIn.groundId, participantId: { in: theirColleaguesIds } },
-          select: { groundId: true, participantId: true, text: true },
-        }) ?? []).catch(() => [] as any[])
-      : [];
 
     /*
      * THE NUMBER-BASED RULES ARE A SECOND SOURCE OF EVIDENCE (decision 57, item 4), wherever one
@@ -276,7 +255,7 @@ export class PatternsService {
       Array.from({ length: READS_PER_CHECK_IN }, () => {
         const leftOut: { code: string; observation: string }[] = [];
         leftOutForARecord.push(leftOut);
-        return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, theColleaguesOwnPromises, getDetectionInput, whatThePersonSaid, leftOut, detector.content);
+        return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, getDetectionInput, whatThePersonSaid, leftOut, detector.content);
       }),
     );
 
@@ -296,6 +275,20 @@ export class PatternsService {
       this.logger.error(`Pattern extraction: only ${succeeded.length} of ${READS_PER_CHECK_IN} reads succeeded for check-in ${checkInId}; leaving it unanalysed for the nightly sweep to retry.`);
       return;
     }
+
+    /*
+     * EACH BAD-FAITH CODE IS CONFIRMED ONCE, NOT ONCE PER READ (2 November 2026). The confirming
+     * call used to run inside every read for every candidate, so one code was confirmed up to ten
+     * times in a check-in on slightly different wordings of the same observation (13.8 calls a
+     * check-in). Now each distinct code that at least two reads kept, the least that could ever be
+     * split or counted, is confirmed once on the first observation that kept it, and a code the
+     * verifier rejects leaves every read. The vote, the split and the settle then run on exactly
+     * the codes they did before.
+     */
+    const verdicts = await this.confirmEachCodeOnce(checkInId, succeeded);
+    const confirmedOnly = (reads: { code: string; observation: string }[][]) =>
+      reads.map((read) => read.filter((d) => !isBadFaithCode(d.code) || verdicts.get(d.code) === true));
+    succeeded.splice(0, succeeded.length, ...confirmedOnly(succeeded));
 
     /* Count how many of the successful reads kept each code (one vote per read), keeping the
        observation from the first of the five, in order, that kept it. */
@@ -323,11 +316,11 @@ export class PatternsService {
         Array.from({ length: MORE_READS_WHEN_SPLIT }, () => {
           const leftOut: { code: string; observation: string }[] = [];
           leftOutForARecord.push(leftOut);
-          return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, theColleaguesOwnPromises, getDetectionInput, whatThePersonSaid, leftOut, detector.content);
+          return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, getDetectionInput, whatThePersonSaid, leftOut, detector.content);
         }),
       );
       moreAttempts.forEach((attempt, i) => {
-        if (attempt.status === 'fulfilled') more.push(attempt.value);
+        if (attempt.status === 'fulfilled') more.push(...confirmedOnly([attempt.value]));
         else this.logger.warn(`Pattern extraction failed for check-in ${checkInId}, extra read ${i + 1} of ${MORE_READS_WHEN_SPLIT}: ${attempt.reason?.message}`);
       });
     }
@@ -373,7 +366,7 @@ export class PatternsService {
    * One extraction call at the steady setting, then the same filters in the same order this method
    * always ran, when it ran once: the borrowed-evidence check, the positive-code short road (M1
    * against a stated goal, then "does this say something checkable"), carrying codes (no
-   * confirmation), the chaser guard, the confirming call (also at the steady setting), and the F1
+   * confirmation) and the F1
    * composite gate. Five calls to this, run in parallel, are how analyzeCheckIn reads a check-in
    * five times; a code is only written once at least three of the five keep it.
    */
@@ -383,8 +376,6 @@ export class PatternsService {
     recogniseBlock: string,
     lastPeriod: { code: string; observationText: string | null; lastPeriodNumber: number | null }[],
     statedGoals: string[],
-    theirDependencies: any[],
-    theColleaguesOwnPromises: any[],
     getDetectionInput: () => Promise<DetectionInput>,
     whatThePersonSaid: string[] = [],
     leftOutForARecord: { code: string; observation: string }[] = [],
@@ -460,25 +451,8 @@ export class PatternsService {
         continue;
       }
       if (!isBadFaithCode(d.code)) continue;
-      /*
-       * AND NOT ABOUT THE PERSON WAITING. B5, B11 and K3 read one transcript for "a lot of talking
-       * and it has not moved", which is exactly the shape a lead produces when the person they
-       * hired is not delivering - it surfaced on the client, not the consultant, and her coaching
-       * then told her to communicate better. See a-chaser-is-not-the-blocker.
-       */
-      const mine = shouldThisCodeBeAboutThem(d.code, theirDependencies as any[], theColleaguesOwnPromises as any[]);
-      if (!mine.keep) {
-        this.logger.log(`Check-in ${checkInId}: ${d.code} not written about this person; ${mine.because}.`);
-        continue;
-      }
-      // AI confirmation gate: each candidate pattern is confirmed by a
-      // second AI call before being written to the record. This prevents
-      // false positives from the batch extraction step.
-      const confirmed = await this.confirmDetection(d.code, d.observation.trim(), PATTERN_DETECTION_STEADY_OPTIONS).catch((err) => {
-        this.logger.warn(`Pattern confirmation skipped for ${d.code}: ${err.message}`);
-        return false;
-      });
-      if (!confirmed) continue;
+      /* The confirming call is not made here: a code is confirmed once per check-in, across all the
+         reads (analyzeCheckIn, confirmEachCodeOnce), not once in every read that kept it. */
 
       // Gap #30 - F1 composite gate: F1 (Insight Without Operation) requires
       // ALL four conditions (high thinking-language, low output-language,
@@ -684,7 +658,7 @@ export class PatternsService {
     const latest = await this.prisma.checkIn.findFirst({
       where: { groundId },
       orderBy: { sessionNumber: 'desc' },
-      select: { sessionNumber: true, completedAt: true, startedAt: true, createdAt: true, ground: { select: { cadence: true } } },
+      select: { sessionNumber: true, completedAt: true, startedAt: true, createdAt: true, ground: { select: { cadence: true, cadenceDays: true } } },
     });
     const currentPeriod = latest
       ? periodOf({ sessionNumber: latest.sessionNumber, when: latest.completedAt ?? latest.startedAt ?? latest.createdAt }, latest.ground)
@@ -1017,7 +991,7 @@ export class PatternsService {
     const [participant, checkIns] = await Promise.all([
       this.prisma.groundParticipant.findUnique({
         where: { id: participantId },
-        select: { roleAsDescribed: true, ground: { select: { cadence: true } } },
+        select: { roleAsDescribed: true, ground: { select: { cadence: true, cadenceDays: true } } },
       }),
       this.prisma.checkIn.findMany({
         where: { participantId, status: CheckInStatus.COMPLETED },
@@ -1084,6 +1058,24 @@ export class PatternsService {
    * The excerpt is the observation text produced by the batch extraction step -
    * a plain-language description of what the record shows, never a verdict.
    */
+  /**
+   * One confirming call for each distinct bad-faith code that at least two reads kept, on the first
+   * observation that kept it. A code fewer reads kept can never be split or counted, so it is not
+   * asked about and leaves the reads with the rejected ones. An error counts as a NO, as it always has.
+   */
+  private async confirmEachCodeOnce(checkInId: string, reads: { code: string; observation: string }[][]): Promise<Map<string, boolean>> {
+    const asked = [...votesOf(reads)].filter(([code, { count }]) => isBadFaithCode(code) && count >= READS_THAT_MUST_AGREE - 1);
+    const answers = await Promise.all(
+      asked.map(([code, { observation }]) =>
+        this.confirmDetection(code, observation, PATTERN_DETECTION_STEADY_OPTIONS).catch((err) => {
+          this.logger.warn(`Check-in ${checkInId}: pattern confirmation skipped for ${code}: ${err.message}`);
+          return false;
+        }),
+      ),
+    );
+    return new Map(asked.map(([code], i) => [code, answers[i]]));
+  }
+
   private async confirmDetection(code: string, excerpt: string, options: { temperature?: number; seed?: number } = {}): Promise<boolean> {
     const description = CODE_DESCRIPTIONS.get(code) ?? code;
     const systemPrompt =
@@ -1134,7 +1126,7 @@ export class PatternsService {
     const now = new Date();
     const saved = await this.prisma.patternDetection.update({
       where: { id: row.id },
-      data: { personAnswer: words, personAnsweredAt: now, ...(row.shownToPersonAt ? {} : { shownToPersonAt: now }) },
+      data: { personAnswer: words, personAnsweredAt: now },
       select: PATTERN_ROW_SELECT,
     });
     const ground = row.participant.ground;
@@ -1143,74 +1135,18 @@ export class PatternsService {
   }
 
   /**
-   * The row plus the lead's identity, loaded the same way for both routes below: `markAsTheLead`
-   * and `markTalkedAbout`. "The person who runs the check-in" is the ground's own lead
-   * (`initiatorId`), the same identity `forTheLeadFrom` gates its nudge on - not the wider `runsIt`
-   * class (which also lets an org admin read a pattern) and never the person it is about or a
-   * colleague. Both routes answer 403 for anybody else, so nobody outside that one identity can even
-   * learn whether the pattern exists.
+   * "AFTER TALKING A PATTERN THROUGH, THE LEAD MARKS IT RIGHT, WRONG OR NOT SURE" (decision 57, item 2), and "AND CAN MARK 'WE
+   * TALKED ABOUT IT'" (item 3). The lead reads what the record shows about each person (layer 2) and marks that: see
+   * the-leads-mark-on-a-pattern.ts. A stored pattern is read only by the person it is about, so nobody else marks one.
    */
-  private async loadForTheLeadToMark(detectionId: string, userId: string) {
-    const forbidden = () => new ForbiddenException('Only the person who runs this check-in can do that.');
-    if (!PATTERNS_ARE_SERVED) throw forbidden();
-    const row = await this.prisma.patternDetection.findUnique({
-      where: { id: detectionId },
-      select: {
-        ...PATTERN_ROW_SELECT,
-        participant: {
-          select: {
-            ground: { select: { initiatorId: true, participants: { select: { id: true, userId: true } } } },
-          },
-        },
-      },
-    });
-    if (!row) throw forbidden();
-    const ground = row.participant.ground;
-    if (ground.initiatorId !== userId) throw forbidden();
-    const lead = ground.participants.find((p) => p.userId === userId);
-    const reader = { participantId: lead?.id ?? null, runsIt: true };
-    /* Decision 39's timing: allowed only once the lead may already read the pattern. */
-    if (!patternRowsThisReaderMayRead([row], reader).length) throw forbidden();
-    return { row, reader };
+  async markAsTheLead(id: string, userId: string, mark: ALeadPatternMark): Promise<AServedPattern> {
+    if (!PATTERNS_ARE_SERVED) throw new ForbiddenException('Only the person who runs this check-in can do that.');
+    return theLeadMarksAPatternAcrossTime(this.prisma, id, userId, { mark });
   }
 
-  /**
-   * "AFTER TALKING A PATTERN THROUGH, THE LEAD MARKS IT RIGHT, WRONG OR NOT SURE" (decision 57, item
-   * 2). Only the person who runs the check-in, and only once they may already read the pattern
-   * (decision 39's timing). The mark is stored beside `personAnswer`, the person's own answer, which
-   * already counts as evidence; it is never served back to the person or to a colleague - see
-   * `servedPatterns`, which nulls it out for anybody but this reader.
-   */
-  async markAsTheLead(detectionId: string, userId: string, mark: ALeadPatternMark): Promise<AServedPattern> {
-    const { row, reader } = await this.loadForTheLeadToMark(detectionId, userId);
-    const now = new Date();
-    const saved = await this.prisma.patternDetection.update({
-      where: { id: row.id },
-      data: { leadMark: mark, leadMarkedAt: now, leadMarkedBy: userId },
-      select: PATTERN_ROW_SELECT,
-    });
-    this.learnFrom(row.id);
-    return servedPatterns([saved], reader, { now })[0];
-  }
-
-  /**
-   * "AND CAN MARK 'WE TALKED ABOUT IT'" (decision 57, item 3). Same identity, same timing as the mark
-   * above. Sets `talkedAboutAt` once - a second call is a no-op, not an error, since the nudge that
-   * leads here goes away the moment this is set and there is nothing left for a repeat call to change.
-   * `talkedAboutAtPeriod` is the anchor `seenAgainAfterTalk` derives "did it come up again" from.
-   */
-  async markTalkedAbout(detectionId: string, userId: string): Promise<AServedPattern> {
-    const { row, reader } = await this.loadForTheLeadToMark(detectionId, userId);
-    const now = new Date();
-    const saved = row.talkedAboutAt
-      ? row
-      : await this.prisma.patternDetection.update({
-          where: { id: row.id },
-          data: { talkedAboutAt: now, talkedAboutBy: userId, talkedAboutAtPeriod: periodsSeen(row) },
-          select: PATTERN_ROW_SELECT,
-        });
-    if (!row.talkedAboutAt) this.learnFrom(row.id);
-    return servedPatterns([saved], reader, { now })[0];
+  async markTalkedAbout(id: string, userId: string): Promise<AServedPattern> {
+    if (!PATTERNS_ARE_SERVED) throw new ForbiddenException('Only the person who runs this check-in can do that.');
+    return theLeadMarksAPatternAcrossTime(this.prisma, id, userId, { talkedAbout: true });
   }
 
   /**

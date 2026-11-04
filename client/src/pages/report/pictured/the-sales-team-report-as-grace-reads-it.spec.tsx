@@ -222,3 +222,23 @@ describe('the team’s report, as Grace reads it', () => {
     expect(screen.getByText(/Greenfield took delivery of the 25 units today/)).toBeTruthy()
   })
 })
+
+/* F5 part 3 (stage 9): the report opens with "Against the target", the board's own question and answer, as the lead reads it. */
+describe('the team’s report, against the target, as the lead reads it', () => {
+  it('says the board’s question and its answer under "Against the target"', async () => {
+    vi.mocked(reportsApi.sessionReport).mockResolvedValue(SERVED as any)
+    vi.mocked(boardApi.get).mockResolvedValue({ ...BOARD, headline: { question: 'Will we reach 25 sales by 31 December?', answer: '3 deals named today, none closed yet.', bars: [] } } as any)
+    wrap()
+    const h = await screen.findByRole('heading', { name: 'Against the target' })
+    const section = h.closest('section') as HTMLElement
+    expect(within(section).getByText('Will we reach 25 sales by 31 December?')).toBeTruthy()
+    expect(within(section).getByText('3 deals named today, none closed yet.')).toBeTruthy()
+  })
+  it('draws nothing where the record holds no team aim', async () => {
+    vi.mocked(reportsApi.sessionReport).mockResolvedValue(SERVED as any)
+    vi.mocked(boardApi.get).mockResolvedValue(BOARD as any)
+    wrap()
+    await screen.findByRole('heading', { name: 'The team’s report, Sunday 18 October' })
+    expect(screen.queryByRole('heading', { name: 'Against the target' })).toBeNull()
+  })
+})

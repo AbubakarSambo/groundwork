@@ -92,7 +92,8 @@ describe('the plumbing does not leak onto a goodbye', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   /* "Your report is ready now. Speak soon. There is room for 3 more answers in this session." */
-  it('the room notice is not appended to a closing turn', () => {
-    expect(SRC).toMatch(/const room = sessionComplete \? null : howMuchRoomIsLeft\(/);
+  /* Changed 3 November 2026: there is no answer ceiling, so there is no room notice to append to any turn. */
+  it('no room notice is appended to any turn, closing or not', () => {
+    expect(SRC).not.toMatch(/howMuchRoomIsLeft|room for \S+ more answers?/);
   });
 });

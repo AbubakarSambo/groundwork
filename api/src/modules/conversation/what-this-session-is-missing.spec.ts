@@ -75,9 +75,11 @@ describe('the note is due once, near the close, and not again', () => {
     answersSoFar: 5, alreadySaidThisSession: [] as string[], ...o,
   });
 
-  it('says nothing while the session is still too short to close', () => {
-    expect(theOneThingToDoBetter(has({ answersSoFar: 4 }))).toBeNull();
-    expect(theOneThingToDoBetter(has({ answersSoFar: 1 }))).toBeNull();
+  /* Changed 3 November 2026 (Hafsah: no question limits and no forced close): there is no count before a check-in may close, so the note
+     waits only for them to have said something; when before the close it is said is the model's to judge. */
+  it('says nothing before they have said anything, and waits on no count after that', () => {
+    expect(theOneThingToDoBetter(has({ answersSoFar: 0 }))).toBeNull();
+    expect(theOneThingToDoBetter(has({ answersSoFar: 1 }))).not.toBeNull();
     expect(theOneThingToDoBetter(has({ answersSoFar: 5 }))).not.toBeNull();
   });
 

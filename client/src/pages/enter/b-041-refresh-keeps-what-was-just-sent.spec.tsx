@@ -62,7 +62,7 @@ describe('B-041: what is sent is saved before the reply comes back', () => {
     renderPage()
     await waitFor(() => expect(screen.getByText(/Got it, a new project/i)).toBeTruthy())
 
-    const box = screen.getByPlaceholderText(/Type your response/i)
+    const box = screen.getByPlaceholderText(/Type your answer/)
     fireEvent.change(box, { target: { value: 'Amani Wekesa and Baraka Mutua are on the team.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
 

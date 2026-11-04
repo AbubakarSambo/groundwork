@@ -1,4 +1,3 @@
-import { theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
 /**
  * THE REST OF THE WEEKLY REPORT (week 12b, screens request 9 part d, decision 43).
  *
@@ -80,7 +79,7 @@ export interface AWeeksHandoff {
    * that is not confirmed is the speaker's account. Weeks kept before this field read as not confirmed.
    */
   confirmed?: boolean;
-  /** The note beside the claim, read from the speaker's own words: "Tried: ..." or "Not backed: ...". */
+  /** The note beside the claim: what the speaker said they tried, in full with its day (whatTheyTriedInFull), or nothing. */
   note?: string | null;
   /** The colleague's own words about the speaker, where the record holds them, by label. Set beside the claim. */
   theirSide?: string | null;
@@ -366,7 +365,6 @@ export function whatWasSaidAndWhatTheProofShows(c: Omit<AWeeksCount, 'participan
     const m = mem ? `${mem} ${mem === 1 ? 'number was' : 'numbers were'} given from memory with nothing attached` : '';
     const both = e && m ? `${e}, and ${m}` : e || m;
     parts.push(`${both.charAt(0).toUpperCase()}${both.slice(1)}, so ${est + mem === 1 ? 'it cannot' : 'they cannot'} be checked yet.`);
-    parts.push(`It is worth confirming ${est + mem === 1 ? 'it' : 'them'} before acting on ${est + mem === 1 ? 'it' : 'them'}.`);
   }
   return parts.join(' ');
 }
@@ -432,10 +430,10 @@ export function aHandoffThatCleared(d: AWeeksHandoff, who: string, onWhom: strin
   const forWhat = /^(whether|how|what|which|who|when|where|if)\b/i.test(what) ? `for a decision on ${what}` : `for ${what}`;
   if (d.onParticipantId && d.confirmed !== true) {
     const on = onWhom ?? 'a colleague';
-    const note = d.note || theNoteBesideTheClaim({ what: d.what }, { by: who, on });
+    const note = (d.note ?? '').trim();
     const theirs = (d.theirSide ?? '').trim().replace(/[.\s]+$/, '');
     const theySaid = theirs ? ` ${on.charAt(0).toUpperCase()}${on.slice(1)} said, "${theirs}."` : '';
-    return `${who} said the work was waiting on ${on} ${forWhat}, and it is no longer waiting. ${note}${theySaid}`;
+    return `${who} said the work was waiting on ${on} ${forWhat}, and it is no longer waiting.${note ? ` ${note}` : ''}${theySaid}`;
   }
   return `${who} ${who === 'You' ? 'are' : 'is'} no longer waiting${onWhom ? ` on ${onWhom}` : ''} ${forWhat}.`;
 }

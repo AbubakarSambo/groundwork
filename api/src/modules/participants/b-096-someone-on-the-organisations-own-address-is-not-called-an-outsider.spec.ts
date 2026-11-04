@@ -34,11 +34,11 @@ describe('B-096: who is called an outsider', () => {
   it('somebody on another address is still told they are from outside', async () => {
     const r: any = await make('halima@gmail.com').myOwnRequest('u-halima');
     expect(r.onTheOrganisationsOwnAddress).toBe(false);
-    expect(r.says).toBe('You’re from outside Msingi Foods, so an admin there has to let you in. We’ve asked Grace Achieng.');
+    expect(r.says).toBe('You’re from outside Msingi Foods, so an admin there has to let you in. I’ve asked Grace Achieng.');
   });
   it('a full plan is said as a full plan, whoever the person is', async () => {
     const r: any = await make('halima@msingi.test', { seatsFull: true }).myOwnRequest('u-halima');
-    expect(r.says).toBe('Msingi Foods has no free seat right now, so an admin there has to make room before you can start. We’ve asked Grace Achieng.');
+    expect(r.says).toBe('Msingi Foods has no free seat right now, so an admin there has to make room before you can start. I’ve asked Grace Achieng.');
   });
   it('Grace reads which of the people waiting are on the organisation\'s own address', async () => {
     const rows: any[] = await make('halima@msingi.test').waiting('o1');

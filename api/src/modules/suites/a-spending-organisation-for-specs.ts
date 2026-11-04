@@ -8,7 +8,7 @@ import { AssistantService } from '../assistant/assistant.service';
  * each person is served word for word. Test-only; nothing in the product imports it.
  *
  * Baridi Appliances, Monday 5 October 2026. The suite is on with KES, "the most a manager may approve on
- * their own" of 20,000, and Grace for anything above it.
+ * their own" of 20,000, and Grace for anything above it: the lowest of the steps by amount.
  *   - Grace Achieng, admin, the chief executive. Manages Fatuma and Wairimu.
  *   - Fatuma Hassan, lead of Operations, manages Kamau and Joseph.
  *   - Wairimu Kamau, lead of Sales, manages Miriam.
@@ -56,10 +56,14 @@ function matches(row: any, where: any): boolean {
 export function aSpendingOrganisation(opts: { rules?: unknown; duties?: unknown; workflows?: unknown; on?: boolean } = {}) {
   let n = 0;
   const suites: Record<string, any> = {
-    spend: { isOn: opts.on ?? true, answers: { currency: 'KES', limit: 20000, above: 'u-grace' } },
+    spend: { isOn: opts.on ?? true, answers: { currency: 'KES' } },
     duties: { isOn: false, answers: opts.duties ?? { finance: 'u-omar', chiefExecutive: 'u-grace', budgetOwners: { Operations: 'u-joseph' } } },
   };
-  if (opts.rules !== undefined) suites.spendRules = { isOn: false, answers: opts.rules };
+  /* The settings card's limit of 20,000 and Grace above it are the lowest of the steps by amount, where they are kept (the-spending-rules.ts). */
+  const given = (opts.rules ?? {}) as Record<string, any>;
+  const card = { above: 20000, steps: [[{ named: 'u-grace' }]] };
+  const thresholds = [card, ...((given.thresholds ?? []) as any[]).filter((t) => t.above !== 20000)].sort((a, b) => a.above - b.above);
+  suites.spendRules = { isOn: false, answers: { ...given, thresholds } };
   if (opts.workflows !== undefined) suites.workflows = { isOn: false, answers: opts.workflows };
   const requests: any[] = [];
   const req = (userId: string, amount: number, what: string, team: string | null, status = 'waiting', createdAt = new Date('2026-10-02T08:00:00Z'), more: any = {}) => {

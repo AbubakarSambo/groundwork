@@ -5,71 +5,46 @@ import { join } from 'path'
 /**
  * ADDING FOUR PEOPLE SHOULD NOT BE FOUR VISITS TO THE SAME FORM.
  *
- * "You should be able to add many parties to the check-in at setup and add context about them."
- * The form took one address, sent the invitation, and cleared itself - so a team of six was six
- * rounds of typing, pressing, waiting for a mail to go, and finding the box again.
+ * "You should be able to add many parties to the check-in at setup and add context about them." The form took one address at a time.
+ * A queue with a line per person about what they answer for followed; then, on 31 October 2026, Hafsah's own words replaced it: "Make
+ * adding a team the top pattern ... Judge it by how fast a lead can get their whole team in, with phone numbers, without repeating
+ * themselves." Each person's role is added after, on People and setup (Their role here), not in a step per person while adding.
  *
- * A BULK PASTE OF ADDRESSES WOULD HAVE BEEN EASIER AND WOULD HAVE THROWN AWAY THE PART THAT
- * MATTERS. Each person keeps their own line about what they are accountable for, because that line
- * is the difference between a check-in that asks each person the right question and one that asks
- * everybody the same one.
- *
- * AND NOTHING IS SENT UNTIL THE QUEUE IS INVITED. Adding to the list is free and reversible; that is
- * the whole reason to have a list rather than firing an invitation per keystroke of enthusiasm.
+ * REWRITTEN for the one team box (TheTeamBox.tsx, used by WhosInItRoster's AddPeopleForm). What this always proved still holds: many
+ * people go on at once, each through the per-person call so every rule still applies, nobody twice, and every outcome is said.
  */
-/*
- * REPOINTED (People and setup rebuild): the queue's STATE and its network calls (`addParticipant`,
- * `rememberWhoWasNotInvited`, the toasts) stayed on GroundAdminPage.tsx, which keeps every hook for
- * the tab that was pulled out into its own file. The QUEUE'S OWN MARKUP - the "+ Add another" button,
- * the one-line-per-person list, the empty-note sentence, and the two guards on the list itself -
- * moved to WhosInItRoster.tsx, which the new CheckInPeopleAndSetup.tsx renders inside "Who's in it".
- * Read both, concatenated, so this still proves the one thing it always proved: a bulk paste never
- * replaced the per-person queue.
- */
-const PAGE = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
-  + '\n' + readFileSync(join(__dirname, '../../components/gw/WhosInItRoster.tsx'), 'utf8')
+const ROSTER = readFileSync(join(__dirname, '../../components/gw/WhosInItRoster.tsx'), 'utf8')
+const BOX = readFileSync(join(__dirname, '../../components/gw/TheTeamBox.tsx'), 'utf8')
 
 describe('many parties at once', () => {
-  it('queues people instead of inviting each one immediately', () => {
-    expect(PAGE).toMatch(/const \[queuedToAdd, setQueuedToAdd\] = useState<\{ email: string; note: string \}\[\]>/)
-    expect(PAGE).toContain('+ Add another')
+  it('takes the whole team in one box, one person per line, and adds them in one press', () => {
+    expect(BOX).toContain('One per line: a name, an email and a phone number.')
+    expect(BOX).toContain("'Add everyone'")
+    expect(ROSTER).toContain('<TheTeamBox')
+    expect(ROSTER).not.toContain('+ Add another')
   })
 
-  it('keeps a line per person about what they answer for', () => {
-    expect(PAGE).toMatch(/setQueuedToAdd\(\[\.\.\.queuedToAdd, \{ email, note: newParticipantNote\.trim\(\) \}\]\)/)
-    /*
-     * And says what an empty one means, rather than leaving a blank line. FAULT 5 (live walk, 6
-     * October 2026): this used to join the two statements with a dash ("No note - they will be
-     * asked..."); each is now its own plain sentence, so the assertion moved to match.
-     */
-    expect(PAGE).toContain('There is no note. They will be asked the general questions for this situation.')
+  it('reads the lines with the server\'s one reader, the one the organisation\'s invite box uses', () => {
+    expect(BOX).toContain('entryApi.peopleOnLines(pasted)')
   })
 
-  it('refuses to queue the same address twice', () => {
-    /* Two rows for one person produces one refusal and one success, and a list that disagrees with
-       itself about whether they were added. */
-    expect(PAGE).toMatch(/queuedToAdd\.some\(\(q\) => q\.email === email\)/)
+  it('sends each person through the per-person call, so every rule still applies', () => {
+    /* `addParticipant` holds the seat check, the approval rule and the start-date deferral. */
+    expect(ROSTER).toMatch(/groundsApi\.addParticipant\(groundId, \{ email: p\.email/)
   })
 
-  it('and lets one be taken back out before anything is sent', () => {
-    expect(PAGE).toMatch(/setQueuedToAdd\(queuedToAdd\.filter\(\(x\) => x\.email !== q\.email\)\)/)
+  it('never adds somebody twice: a colleague already on it is left alone', () => {
+    expect(ROSTER).toMatch(/if \(colleague\) continue/)
   })
 
-  it('sends them through the per-person call, so every rule still applies', () => {
-    /* `addParticipant` holds the seat check, the approval rule and the start-date deferral. A bulk
-       endpoint would have been a second door past all three. */
-    expect(PAGE).toMatch(/queuedToAdd\.map\(\(q\) =>\s*\n?\s*groundsApi\.addParticipant/)
-  })
-
-  it('reports every outcome: sent, waiting, and refused by name', () => {
-    expect(PAGE).toMatch(/Invite sent to \$\{sent\}/)
-    expect(PAGE).toMatch(/will be invited on the start date/)
-    expect(PAGE).toMatch(/toast\.warning\(`\$\{f\.email\}: \$\{f\.because\}`\)/)
-    expect(PAGE).toMatch(/rememberWhoWasNotInvited\(id!, failed\)/)
+  it('reports every outcome: waiting, refused by name, and the lines that still need an email stay in the box', () => {
+    expect(ROSTER).toMatch(/is on the check-in\. Their invitation goes out on the start date\./)
+    expect(ROSTER).toMatch(/did not send\. They are on the check-in/)
+    expect(ROSTER).toMatch(/could not be added\. Check the email and try again\./)
+    expect(BOX).toMatch(/Add an email for \$\{andList\(needEmail\)\}, then press Add everyone again\./)
   })
 
   it('and a total failure says what became of the list', () => {
-    /* The other half of an honest error: nobody was invited, and the typing is not gone. */
-    expect(PAGE).toContain('Nobody was invited - your list is still here.')
+    expect(BOX).toContain('That did not go through, and nobody was added. Try again.')
   })
 })

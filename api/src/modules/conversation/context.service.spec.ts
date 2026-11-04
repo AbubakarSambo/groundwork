@@ -6,26 +6,29 @@ import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
  * (cofounder / founder burden asymmetry) surface to the alignment feed only.
  */
 describe('ConversationContextService - feed-only code filtering (GW-07)', () => {
-  it('excludes ALIGNMENT_FEED_ONLY_CODES from the surfaced-pattern query', async () => {
-    let capturedWhere: any;
+  /*
+   * 2 November 2026 (F2, Hafsah's decisions): no stored pattern shapes a person's own conversation any more, so the rule is now
+   * kept by construction: the build reads no feed-only code, and none reaches the block, even when the table holds them. This
+   * asserted the query's filter; it now asserts the stronger thing, that nothing of those rows reaches the conversation.
+   */
+  it('never puts a feed-only code, or any stored pattern, into the conversation', async () => {
+    const asked: any[] = [];
     const prisma: any = {
       groundParticipant: { findUnique: jest.fn(async () => ({ specificityHistory: [] })) },
       patternDetection: {
         findMany: jest.fn(async (args: any) => {
-          capturedWhere = args.where;
-          return [];
+          asked.push(args.where);
+          return [...ALIGNMENT_FEED_ONLY_CODES].map((code) => ({ code, periodsObserved: 9, seenInSessions: [1, 2, 3] }));
         }),
         count: jest.fn(async () => 0),
       },
     };
     const service = new ConversationContextService(prisma);
-    // No latestMessage → skips intake/cross-reference, goes straight to the
-    // surfaced-pattern query we want to assert on.
-    await service.build({ groundId: 'g1', participantId: 'p1', sessionNumber: 1 });
-
-    expect(capturedWhere.status).toBe('SURFACED');
-    expect(capturedWhere.code).toEqual({ notIn: [...ALIGNMENT_FEED_ONLY_CODES] });
-    expect(capturedWhere.code.notIn).toEqual(expect.arrayContaining(['F5', 'E4']));
+    const { block } = await service.build({ groundId: 'g1', participantId: 'p1', sessionNumber: 1 });
+    expect(asked.filter((w) => w?.code !== undefined)).toEqual([]);
+    for (const code of ALIGNMENT_FEED_ONLY_CODES) expect(block).not.toContain(code);
+    expect(block).not.toContain('Surface to alignment feed only');
+    expect(block).not.toContain('PATTERN_PROBE');
   });
 });
 

@@ -20,12 +20,15 @@ vi.mock('@/api/grounds', () => ({
 }))
 vi.mock('@/api/ask', () => ({ askApi: { ask: vi.fn() } }))
 
+/* The next check-in, a few days off: the card works out its own sentence from the rows (theNextOne), as the page passes them. */
+const LATER = { id: 'c2', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: new Date(Date.now() + 4 * 86_400_000).toISOString() }
+
 function mount(props: Partial<Parameters<typeof BetweenCheckIns>[0]> = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
-        <BetweenCheckIns groundLabel="Sales team, Q3" nextOpensSaying="Your next check-in opens tomorrow at 4pm." groundId="g1" {...props} />
+        <BetweenCheckIns groundLabel="Sales team, Q3" myCheckIns={[LATER]} groundId="g1" {...props} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -41,11 +44,23 @@ describe('between check-ins', () => {
     mount()
     expect(screen.getByText('Sales team, Q3')).toBeTruthy()
     expect(screen.getByText('No check-in open right now')).toBeTruthy()
-    expect(screen.getByText('Your next check-in opens tomorrow at 4pm. Anything I can help with in the meantime?')).toBeTruthy()
+    expect(screen.getByText(/^Your next check-in opens on .+ at .+\. Anything I can help with in the meantime\?$/)).toBeTruthy()
+  })
+
+  /*
+   * ONE OWNER FOR THE NEXT CHECK-IN (Hafsah, 30 October 2026, first-experience round 1). A clinic lead read "No check-in open
+   * right now" above "Your next check-in is open now." on this one card. The header and the sentence now both read theNextOne,
+   * so with a check-in open the card never says none is.
+   */
+  it('with the next check-in open, the header says so, and nothing on the card says none is open', () => {
+    const { container } = mount({ myCheckIns: [{ id: 'c2', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: new Date(Date.now() - 60_000).toISOString() }] })
+    expect(screen.getByText('Your next check-in is open')).toBeTruthy()
+    expect(screen.getByText('Anything I can help with before you start?')).toBeTruthy()
+    expect(container.textContent).not.toMatch(/No check-in open/)
   })
 
   it('says just the question when nothing is scheduled yet', () => {
-    mount({ nextOpensSaying: null })
+    mount({ myCheckIns: [] })
     expect(screen.getByText('Anything I can help with in the meantime?')).toBeTruthy()
   })
 

@@ -37,10 +37,11 @@ describe('the person a pattern is about says what is behind it', () => {
     const data = update.mock.calls[0][0].data;
     expect(data.personAnswer).toBe('I built the deck and Ngozi did the pricing. I said "we" on the call.');
     expect(data.personAnsweredAt).toBeInstanceOf(Date);
-    expect(data.shownToPersonAt).toBeInstanceOf(Date);
+    /* (2 November 2026: nobody else reads it, so no "shown to the person" clock is kept for the lead.) */
+    expect(data.shownToPersonAt).toBeUndefined();
     expect(served.heading).toBe('Others describe doing work they described as theirs');
     expect(served.theirWords).toBe('I built the deck and Ngozi did the pricing. I said "we" on the call.');
-    expect(served.whoSeesIt).toBe('Tunde can see this too, with anything you say about it. Nothing is decided from it.');
+    /* F5: no privacy note on the screen; who may read it is unchanged. */ expect('whoSeesIt' in served).toBe(false);
     expect(JSON.stringify(served)).not.toMatch(/Claimed Work Inflation|"B3"/);
   });
 
@@ -87,14 +88,13 @@ describe('the person a pattern is about says what is behind it', () => {
  * force, and Femi is told his lead will read it with his answer.
  */
 describe('with no setting at all, the person answers and is told the lead reads it too (decision 86)', () => {
-  it('keeps their words beside it, and the sentence names Tunde, never "only you"', async () => {
+  it('keeps their words beside it, and is told only they see it (Hafsah, 2 November 2026: only the person reads a stored pattern now)', async () => {
     const { svc, update } = serviceWith(true);
     const served = await svc.answerAsThePerson('pd2', 'u-femi', 'I built the deck and Ngozi did the pricing.');
     expect(update).toHaveBeenCalledTimes(1);
     expect(served.theirWords).toBe('I built the deck and Ngozi did the pricing.');
     expect(served.canAnswer).toBe(true);
-    expect(served.whoSeesIt).toBe('Tunde can see this too, with anything you say about it. Nothing is decided from it.');
-    expect(served.whoSeesIt).not.toContain('Only you see this');
+    /* F5: no privacy note on the screen; who may read it is unchanged. */ expect('whoSeesIt' in served).toBe(false);
   });
 
   it('a colleague, the lead or an admin still cannot answer it', async () => {

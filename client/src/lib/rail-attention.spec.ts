@@ -1,3 +1,4 @@
+import { aServedCount } from './a-served-count-for-a-spec'
 import { describe, it, expect } from 'vitest'
 import { openRound, railAttention, railRank, stillInRail, OVERDUE_AFTER_DAYS, RAIL_KEEPS_CLOSED_FOR_DAYS } from './rail-attention'
 
@@ -75,7 +76,7 @@ describe('somebody who is not a party to the check-in', () => {
     const g = ground({ checkIns: [
       { participantId: 'p-me', sessionNumber: 1, status: 'COMPLETED' },
       { participantId: 'p-them', sessionNumber: 1, status: 'NOT_STARTED' },
-    ] })
+    ], theCount: aServedCount({ 1: { on: ['p-me', 'p-them'], answered: ['p-me'] } }) })
     expect(railAttention(g, 'u-admin-not-in-it', NOW)).toEqual({ kind: 'waiting', done: 1, total: 2 })
   })
 
@@ -83,14 +84,14 @@ describe('somebody who is not a party to the check-in', () => {
     const g = ground({ checkIns: [
       { participantId: 'p-me', sessionNumber: 1, status: 'COMPLETED' },
       { participantId: 'p-them', sessionNumber: 1, status: 'NOT_STARTED' },
-    ] })
+    ], theCount: aServedCount({ 1: { on: ['p-me', 'p-them'], answered: ['p-me'] } }) })
     expect(railAttention(g, 'u-me', NOW).kind).toBe('waiting')
   })
 })
 
 /**
  * B-078: A LEAD WHO ONLY MANAGES IS NOT COUNTED. In an anchor check-in (`HELP_TEAM_UNDERSTAND`),
- * Grace runs it and never checks in - `whoIsInRound` already leaves her out of this exact count
+ * Grace runs it and never checks in - the server's one count already leaves her out of this exact count
  * everywhere else on the page, but this function counted her (and her completed set-up round) as a
  * party, so "Three of the four have not answered yet." was said about three people, none of whom
  * had answered.
@@ -114,7 +115,8 @@ describe('a lead who only manages is left out of how many are still out', () => 
       { participantId: 'p-amani', sessionNumber: 1, status: 'NOT_STARTED' },
       { participantId: 'p-juma', sessionNumber: 1, status: 'NOT_STARTED' },
       { participantId: 'p-zola', sessionNumber: 1, status: 'NOT_STARTED' },
-    ] })
+    /* As the server counts it: the anchor's managing lead is never in a round. */
+    ], theCount: aServedCount({ 1: { on: ['p-amani', 'p-juma', 'p-zola'], answered: [] } }) })
     expect(railAttention(g, 'u-admin-not-in-it', NOW)).toEqual({ kind: 'waiting', done: 0, total: 3 })
   })
 
@@ -124,7 +126,8 @@ describe('a lead who only manages is left out of how many are still out', () => 
       { participantId: 'p-amani', sessionNumber: 2, status: 'COMPLETED' },
       { participantId: 'p-juma', sessionNumber: 2, status: 'COMPLETED' },
       { participantId: 'p-zola', sessionNumber: 2, status: 'NOT_STARTED' },
-    ] })
+    /* As the server counts it: a managing-only lead is not in a round past her first. */
+    ], theCount: aServedCount({ 2: { on: ['p-amani', 'p-juma', 'p-zola'], answered: ['p-amani', 'p-juma'] } }) })
     expect(railAttention(g, 'u-admin-not-in-it', NOW)).toEqual({ kind: 'waiting', done: 2, total: 3 })
   })
 })
@@ -179,6 +182,7 @@ describe('the waiting count is about a session that has opened', () => {
         { participantId: 'c', sessionNumber: 2, status: 'IN_PROGRESS', availableFrom: '2026-09-25T12:00:00Z' },
         { participantId: 'a', sessionNumber: 3, status: 'NOT_STARTED', availableFrom: '2026-10-03T12:00:00Z' },
       ],
+      theCount: aServedCount({ 2: { on: ['a', 'b', 'c'], answered: ['a', 'b'] }, 3: { on: ['a', 'b', 'c'], answered: [] } }),
     }
     expect(openRound(g.checkIns, NOW)).toBe(2)
     expect(railAttention(g, 'u-admin', NOW)).toEqual({ kind: 'waiting', done: 2, total: 3 })

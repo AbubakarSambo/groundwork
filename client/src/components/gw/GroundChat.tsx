@@ -143,7 +143,7 @@ export function SessionSummary({ checkInId, groundId, sessionNumber }: {
           onClick={() => setOpen(o => !o)}
           style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 700 }}
         >
-          {open ? 'Hide what we heard' : 'What we heard from you'}
+          {open ? 'Hide what you told me' : 'What you told me'}
         </button>
         <button
           onClick={() => correct.mutate()}
@@ -542,7 +542,7 @@ export function GroundChat({
             disabled={openPending}
             style={{ width: '100%', marginBottom: 6 }}
           >
-            Do check-in {openSessionNumber ?? sessions.length + 1}{totalSessions ? ` of ${totalSessions}` : ''} · about ten minutes
+            Do check-in {openSessionNumber ?? sessions.length + 1}{totalSessions ? ` of ${totalSessions}` : ''}
           </button>
         )}
 

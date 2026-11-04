@@ -43,7 +43,7 @@ describe('the "Check in" button explains a long wait, the same way /checkin does
     try {
       renderChat(true)
       await act(async () => { await vi.advanceTimersByTimeAsync(1000) })
-      expect(screen.queryByText(/Getting your first question ready/i)).toBeNull()
+      expect(screen.queryByText('Getting your first question.')).toBeNull()
     } finally {
       vi.useRealTimers()
     }
@@ -54,7 +54,8 @@ describe('the "Check in" button explains a long wait, the same way /checkin does
     try {
       renderChat(true)
       await act(async () => { await vi.advanceTimersByTimeAsync(4000) })
-      expect(screen.getByText('Getting your first question ready. This can take a minute or two.')).toBeTruthy()
+      /* Hafsah, 30 October 2026: plain language for an impatient first-time lead; one short line that never says how long it takes. */
+      expect(screen.getByText('Getting your first question.')).toBeTruthy()
     } finally {
       vi.useRealTimers()
     }
@@ -62,6 +63,6 @@ describe('the "Check in" button explains a long wait, the same way /checkin does
 
   it('says nothing when nothing is opening', async () => {
     renderChat(false)
-    expect(screen.queryByText(/Getting your first question ready/i)).toBeNull()
+    expect(screen.queryByText('Getting your first question.')).toBeNull()
   })
 })

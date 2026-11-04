@@ -1,4 +1,5 @@
 import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
+import { ThatsNotRight } from '@/components/gw/ThatsNotRight'
 import { useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -174,6 +175,7 @@ function ToDo({ served, askedOf }: { served: Served; askedOf: string }) {
                 <span>
                   {t.text}
                   {t.whose && <Note tone="muted">{t.whose}</Note>}
+                  <ThatsNotRight line={t.text} />
                 </span>
                 {t.when ? <Note tone={t.late ? 'amber' : 'muted'}>{t.when}</Note> : <span />}
               </Row>
@@ -195,7 +197,7 @@ function Achieved({ served, heading }: { served: Served; heading: string }) {
           <RowList label={heading}>
             {a.items.map((x, i) => (
               <Row key={i} columns="1fr auto" inset="panel">
-                <span>{x.text}</span>
+                <span>{x.text} <ThatsNotRight line={x.text} /></span>
                 <Note tone="muted">{x.proof}</Note>
               </Row>
             ))}

@@ -234,7 +234,7 @@ describe('the banner an admin reads over a check-in somebody else leads', () => 
 describe('a document card, as each reader sees it', () => {
   const read = {
     assessment: { suggests: ['It sets the lowest price for each freezer.'], willDo: [] },
-    theContextWeHave: 'Here is the context we have from Q3 price list.pdf.\n\nFor the whole check-in:\n- Lowest price for the 600L: 76,000',
+    theDocumentLine: 'Here is what I took from Q3 price list.pdf.', theContextWeHave: 'Here is what I took from Q3 price list.pdf.\n\nFor the whole check-in:\n- Lowest price for the 600L: 76,000',
     holds: { forEverybody: [{ what: 'Lowest price for the 600L', target: 76000 }], forOnePerson: [], dates: [], unmatched: [] },
   }
   const face = (id: string) => {

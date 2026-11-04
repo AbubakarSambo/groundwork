@@ -175,10 +175,10 @@ export class WebhooksListener {
     if (e.sessionNumber === 1 && await this.theApprovalEmailOpenedIt(e.checkInId, participant)) return;
     const today = theCheckInIsOpen({ firstName: participant.user?.firstName, label: ground.label }, ground.simplerWords);
     /*
-     * WITH THE DIRECT MORNING ON, THE ONE THING THAT MATTERS TO THEM TODAY IS THE MESSAGE (part 3; conversation/the-one-thing-today). Inside
-     * the 24 hours the personal line goes as the free message and is their check-in's first question; outside them the approved template
-     * goes exactly as it is, from the same blanks, and the personal line is the first thing they read once they reply START. Off, or with
-     * nothing specific on record, the notice is today's, word for word.
+     * THE ONE THING THAT MATTERS TO THEM TODAY IS THE MESSAGE (part 3; conversation/the-one-thing-today), for everybody since batch 1. It
+     * is their prepared opener where one is ready, so this message and their check-in say the same words. Inside the 24 hours it goes as
+     * the free message; outside them the approved template goes exactly as it is, from the same blanks, and the opener is the first thing
+     * they read once they reply START. With nothing specific on record, the notice is today's, word for word.
      */
     const personal = await aTeamMembersOpeningFor(this.prisma, { groundId: e.groundId, participantId: participant.id, sessionNumber: e.sessionNumber }).catch(() => null);
     const said = personal ? { ...today, text: personal.text } : today;

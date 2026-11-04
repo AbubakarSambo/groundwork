@@ -26,10 +26,11 @@ describe('the gate', () => {
     expect(onboardingIsReady({ ...THE_OTHER_THREE, goals: ['all 12 merchants off v2 by 30 November'] }, 'OKR_ALIGNMENT')).toBe(true);
   });
 
-  it('still needs the other three', () => {
+  /* Why now no longer holds the gate (first experience, round 2, 31 October 2026: asked four times of a lead who had answered it). */
+  it('still needs the situation and what it is about, and not why now', () => {
     expect(onboardingIsReady({ initial: 'a thing', decision: 'because' }, 'DRIFT')).toBe(false);
     expect(onboardingIsReady({ mode: 'x', decision: 'because' }, 'DRIFT')).toBe(false);
-    expect(onboardingIsReady({ mode: 'x', initial: 'a thing' }, 'DRIFT')).toBe(false);
+    expect(onboardingIsReady({ mode: 'x', initial: 'a thing' }, 'DRIFT')).toBe(true);
   });
 });
 

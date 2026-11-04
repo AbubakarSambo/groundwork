@@ -27,7 +27,7 @@ export function InvitationExpired({ token, leadFirstName }: { token: string; lea
     onError: (err: any) => {
       const status = err?.response?.status
       if (status === 429) { setProblem('Too many attempts. Wait a minute and try again.'); return }
-      setProblem('That did not send, because something went wrong on our side. Please try again.')
+      setProblem('That did not send, because something went wrong on my side. Please try again.')
     },
   })
 

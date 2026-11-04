@@ -37,7 +37,8 @@ describe('an invite that failed says why', () => {
   });
 
   it('sends it back to the screen', () => {
-    expect(SRC).toContain('failedInvites, whyInvitesFailed }');
+    /* UPDATED (Hafsah's blocker, 31 October 2026): the numbers the save could not keep are sent back beside the reasons. */
+    expect(SRC).toContain('failedInvites, whyInvitesFailed, numbersNotKept }');
   });
 
   it('still returns the plain list, because something else filters on it', () => {

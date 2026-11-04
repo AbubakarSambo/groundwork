@@ -56,7 +56,7 @@ describe('the end of the month, as the lead reads it', () => {
     expect(Object.keys(e).sort()).toEqual([...THE_SHAPES_KEYS.endOfMonth].sort());
     expect(e.yourOwnWords).toBe(HER_WORDS);
     expect(e.whatWeFound).toEqual(['Groundwork heard from three of five people over the month.']);
-    expect(e.whatTheyNowUnderstandDifferently).toEqual(['Groundwork does not yet keep how each person saw things at the start, so it cannot say what changed in what they understand.']);
+    expect(e.whatTheyNowUnderstandDifferently).toEqual([]);
     expect(e.whatTheyAreDoingDifferently).toEqual([
       'Two people said what they would do themselves.',
       'One of the things people said they would do was done.',
@@ -65,7 +65,7 @@ describe('the end of the month, as the lead reads it', () => {
     expect(e.whatYourTeamContributed).toEqual(['No idea from your team has been captured yet.']);
     /* Changed with piece 32: the same people and sentences as the month board's (piece 22). */
     expect(e.peopleWhoHelpedMoveTheThinking).toEqual([{ name: 'Rukia', sentence: 'Rukia committed to send the deck to the client, and Rukia says it is done.' }]);
-    expect(e.whatYouChangedAsALead).toEqual(['Groundwork does not yet keep what changed in how you lead, so it has nothing to say here.']);
+    expect(e.whatYouChangedAsALead).toEqual([]);
     expect(e.whatIsStillStuck).toEqual(['Baraka is waiting on Rukia for the sales deck.']);
     expect(e.whatShouldHappenNext).toEqual(['One of the things people said they would do is still open.']);
     expect(e.reveal).toEqual({ projectsThatCouldHaveTheirOwnGround: 0, sharedObjectivesWorthTracking: 0, workingRelationshipsNeedingAlignment: 0, activeCommitments: 1, teamGeneratedIdeas: 0, suitesRelevantToWorkAlreadyBeingDone: 0 });
@@ -194,14 +194,14 @@ describe('the end of the month reads in plain sentences, and an ended check-in d
   it('while the check-in is still running, the board says which week of the month it is', async () => {
     const b = (await boardAs(anchor(), ...AMINA)).theMonthBoard;
     expect(b.weekSaid).toBe('Week 4 of the month');
-    expect(b.whatGroundworkIsWorkingOnNext.join(' ')).toContain('Groundwork is checking in with');
+    expect(b.whatGroundworkIsWorkingOnNext.join(' ')).toContain('have not answered this round yet. They’re being asked.');
   });
 
   it('once the check-in has ended, the board says it has ended and nobody is being chased', async () => {
     const b = (await boardAs(anchor({ status: 'RESOLVED' }), ...AMINA)).theMonthBoard;
     expect(b.weekSaid).toBe('This check-in has ended.');
-    expect(b.whatGroundworkIsWorkingOnNext).toEqual(['Groundwork is not asking anyone for more.']);
-    expect(everyString(b).join(' ')).not.toMatch(/Week 4 of the month|checking in with the/);
+    expect(b.whatGroundworkIsWorkingOnNext).toEqual(['Nobody is being asked for more.']);
+    expect(everyString(b).join(' ')).not.toMatch(/Week 4 of the month|being asked\./);
   });
 });
 

@@ -34,7 +34,6 @@ const leadBase = {
   participantId: 'p1',
   role: 'ward coordinator',
   answeredThisSession: true,
-  patterns: [] as any[],
   waitingOn: [] as any[],
   holdingUp: [] as any[],
   concrete: [] as string[],
@@ -59,8 +58,9 @@ describe('neither surface passes a verdict', () => {
   });
 
   it('and silence in the record is reported as silence, never as not having tried', () => {
-    expect(lead.triedToUnblock).toContain('nothing on record shows it was taken any further');
-    expect(lead.triedToUnblock).toContain('does not say whether anything happened outside');
+    /* F2: the record's silence about what more was done is not stated as a finding. */
+    expect(lead.triedToUnblock).toBe('It was asked for.');
+    expect(lead.triedToUnblock).not.toMatch(/not (?:trying|tried)|no effort/i);
   });
 });
 
@@ -144,12 +144,10 @@ describe('recurrence is what makes a pattern', () => {
     expect(founder.whyItMatters).not.toContain('founder or ceo');
   });
 
-  it('the lead sees the same threshold, and the history rather than a conclusion', () => {
-    const lead = whatToProbe({
-      ...leadBase,
-      patterns: [{ code: 'K3', periodsObserved: 3, signal: 'Issues flagged repeatedly without resolution.' }],
-    });
-    expect(lead.probe.join(' ')).toContain('On record across 3 sessions');
+  it('the lead\'s probe list states no stored pattern: what the record shows about a person is layer 2\'s', () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    const lead = whatToProbe({ ...leadBase } as any);
+    expect(lead.probe.join(' ')).not.toMatch(/On record across|Issues flagged repeatedly/);
   });
 });
 
@@ -157,12 +155,13 @@ describe('role and stage change what the same fact is worth raising as', () => {
   const early = whatToProbe({ ...leadBase, sessionNumber: 2, waitingOn: [waiting] });
   const later = whatToProbe({ ...leadBase, sessionNumber: 5, waitingOn: [waiting] });
 
-  it('a new hire in session 2 who has not escalated is somebody to coach', () => {
-    expect(early.probe.join(' ')).toContain('ask Zainab what is being held up');
-  });
-
-  it('and the same fact later is something to ask about', () => {
-    expect(later.probe.join(' ')).toContain('what has stopped Zainab raising it');
+  /* F2 (false-flags.md, cause 1): a record that does not say what somebody did says nothing about them, early or late. */
+  /* Fix plan group 4: the question about a wait goes to the person's next check-in (the single layer's toAskNextTime), never the lead's list. */
+  it('early or late, the wait is the fact, with no question put to the lead and never "nothing on record says it was raised higher"', () => {
+    for (const p of [early, later]) {
+      expect(p.probe.join(' ')).not.toContain('what has happened with it since');
+      expect(p.probe.join(' ')).not.toMatch(/raised higher|what has stopped/);
+    }
   });
 });
 
@@ -174,6 +173,6 @@ describe('the box never renders empty', () => {
   });
 
   it('and the lead section says plainly when nothing is blocked', () => {
-    expect(whatToProbe(leadBase).triedToUnblock).toContain('Nothing is recorded as holding up');
+    expect(whatToProbe(leadBase).triedToUnblock).toBe("Nothing in the record says Zainab's work is waiting on a named person.");
   });
 });

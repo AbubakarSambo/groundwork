@@ -25,7 +25,7 @@ function makeService(switchOn: boolean) {
   const grounds: any = { create: jest.fn(async () => ({ id: 'g-self', joinToken: 'jt' })), createForLead: jest.fn(), addParticipant: jest.fn(async () => ({})) };
   const conversation: any = { extractRecordEntries: jest.fn(async () => undefined), extractExpectations: jest.fn(async () => undefined), ensureNextSession: jest.fn(async () => undefined), buildSoloArtifact: jest.fn(async () => undefined) };
   const service = new EntryService({} as any, prisma, grounds, {} as any, {} as any, conversation, { emit: jest.fn() } as any);
-  return { service, prisma, grounds, conversation };
+  return { service, prisma, grounds };
 }
 const save = (service: EntryService, scenario: string) =>
   service.commit('org1', 'user1', { groundLabel: 'Help my team understand', scenario, cadence: 'FORTNIGHTLY', cadenceChosen: true, runsUntilEnded: true, history: [{ role: 'user', content: 'hi' }] as any, report: null, contributors: [] } as any);
@@ -79,15 +79,13 @@ describe('the lead who sets the anchor up', () => {
 });
 
 describe('decision 133: there is no "only they check in" answer any more', () => {
-  /* CHANGED 4 NOVEMBER (Hafsah: setup stays private to whoever runs the check-in). This pinned her whole conversation copied onto
-     session 1, which is how her setup words reached every member. Now it pins the opposite: she still counts in session 1, and
-     nothing from the conversation becomes a turn or a record line on it. */
-  it('closes the lead\'s first check-in as answered, so she counts in it, without copying her setup conversation onto it', async () => {
-    const { service, prisma, conversation } = makeService(false);
+  /* CHANGED 4 NOVEMBER (Hafsah: one conversation on screen, stored in two parts): her words are no longer copied onto session 1 as
+     check-in turns, which is how setup's words reached the team. Session 1 is still closed as answered, so she counts in it. */
+  it('closes the lead\'s first check-in as answered, so she counts in it, without copying the conversation into its turns', async () => {
+    const { service, prisma } = makeService(false);
     await service.commit('org1', 'user1', { groundLabel: 'Sales team', scenario: 'NEW_PROJECT', cadence: 'WEEKLY', cadenceChosen: true, report: null, contributors: [],
       history: [{ role: 'assistant', content: 'What did the team close this week?' }, { role: 'user', content: 'Two orders from Green Mart, 40 cases.' }] } as any);
-    expect(prisma.conversationTurn?.createMany ?? jest.fn()).not.toHaveBeenCalled();
-    expect(conversation.extractRecordEntries).not.toHaveBeenCalled();
+    expect(prisma.conversationTurn.createMany).not.toHaveBeenCalled();
     const done = prisma.checkIn.update.mock.calls.map((c: any[]) => c[0]).find((a: any) => a.data.status === 'COMPLETED');
     expect(done).toMatchObject({ where: { id: 'ci1' }, data: { status: 'COMPLETED', optional: true } });
     expect(done.data.isSetup).toBeUndefined();

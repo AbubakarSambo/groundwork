@@ -102,7 +102,7 @@ export function WaitingForAnAdminPage() {
           {/* B-147 follow-up: the prototype's own exact sentence (A3-organisations-and-joining/
               join-waiting.txt) says "check-in" here, not "session" - left as the prototype has
               it rather than swept into the session rename. */}
-          {`We’ll email you the moment ${who ?? 'they do'}${who ? ' does' : ''}, and your first check-in will be waiting.`}
+          {`I’ll email you the moment ${who ?? 'they do'}${who ? ' does' : ''}, and your first check-in will be waiting.`}
         </p>
       </Stack>
 

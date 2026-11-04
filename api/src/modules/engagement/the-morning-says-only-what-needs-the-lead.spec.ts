@@ -105,7 +105,4 @@ describe('the switches', () => {
     expect(theMessage(m)).not.toMatch(/\bAisha said\b|coached/);
   });
 
-  it('with the direct morning off, there is no morning at all, records or not', async () => {
-    expect(await morningOf('drop', await theNightRunsDatabaseWithRecords('drop', { directMorning: false }))).toBeNull();
-  });
 });

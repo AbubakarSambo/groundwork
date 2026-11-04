@@ -1,5 +1,5 @@
 import { WhatIsTrue } from './what-is-true-for-this-person';
-import { itTakesAboutTenMinutes } from './what-it-takes-to-start';
+import { howLongItTakes } from './what-it-takes-to-start';
 
 /**
  * WHAT TO SAY TO SOMEBODY WHO HAS JUST OPENED IT.
@@ -64,7 +64,7 @@ export function whatIsWorthSayingWhenYouArrive(
       line:
         `${firstName} - your check-in on "${open[0].label}" is open. `
         /* "Released with everybody else's" only where there is somebody else (decision 82, item 5). */
-        + (open[0].aboutOnePerson ? 'It takes about ten minutes.' : 'About ten minutes, and what you say is released with everybody else\'s, not before.'),
+        + howLongItTakes(open[0].aboutOnePerson),
       source: 'session_open',
     };
   }

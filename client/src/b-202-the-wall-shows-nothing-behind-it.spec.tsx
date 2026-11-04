@@ -81,6 +81,21 @@ describe('(a) nothing behind the wall renders while the first read is in flight'
   })
 })
 
+describe('(c) while it decides, the page is an empty frame, not a white screen (plan round 32, Today blank)', () => {
+  it('draws the page shell with nothing in it, and nothing of the page behind the wall', async () => {
+    let resolve!: (v: any) => void
+    waiting.fn.mockReturnValue(new Promise(r => { resolve = r }))
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { container } = renderWall(qc)
+    expect(container.querySelector('[aria-busy="true"]')).toBeTruthy()
+    expect((container.textContent ?? '').trim()).toBe('')
+    expect(screen.queryByText(/Today's real page/)).toBeNull()
+    resolve({ waiting: false })
+    expect(await screen.findByText(/Today's real page/)).toBeTruthy()
+    expect(container.querySelector('[aria-busy="true"]')).toBeNull()
+  })
+})
+
 describe('(b) a cached "waiting: true" is not trusted until this mount\'s own fetch has settled', () => {
   it('does not bounce back to "Almost in" on a stale cached true while a fresh (now false) answer is still in flight', async () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })

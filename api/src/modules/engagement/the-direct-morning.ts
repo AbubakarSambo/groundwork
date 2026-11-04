@@ -1,3 +1,4 @@
+import { withoutTheOldEnding } from '../reports/what-people-said-differently-about';
 import { workingDaysOf } from '../grounds/which-days-this-team-works';
 import { isASalesKind } from '../board/the-kind-of-work';
 import { theTeamsTargetsSaid } from '../board/release-4-teams';
@@ -15,7 +16,6 @@ import { theCollectionsTypeFor } from '../board/the-collections-record';
 import { aDeadlineSaid } from '../board/the-matter-board';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
-import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { theirDay, twoMissedDaysSaid, notInTodaySaid, onTimeSaid, mayBeNudged, type ASessionOnRecord, type TheirDay } from './who-answers-and-when';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { readThePersonsRecord, type AStoredPersonsRecord } from '../board/the-persons-record-store';
@@ -384,7 +384,7 @@ export function theNeedsYouLines(input: TheSalesMorningInput, name: (pid: string
   }
   /* Then a difference people said that is hers to settle, as the board lists it. */
   for (const d of ((input.board?.decisions ?? []) as any[]).filter((x) => x?.source === 'divergence' && /^you$/i.test(String(x?.owner ?? '')))) {
-    const m = /^People in this check-in said different things about (.+?), so it needs settling\.?$/i.exec(String(d.question ?? '').trim());
+    const m = /^People in this check-in said different things about (.+?)\.?$/i.exec(withoutTheOldEnding(d.question));
     if (m) lines.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 6, ref: String(d.question), row: { title: `Settle ${m[1]}`, detail: 'People said different things about it.' } });
   }
   return { lines, first };
@@ -793,7 +793,7 @@ export function theMatterDirectMorning(input: { groundId: string; label: string;
     }
   }
   for (const d of ((input.board?.decisions ?? []) as any[]).filter((x) => x?.source === 'divergence' && /^you$/i.test(String(x?.owner ?? '')))) {
-    const m = /^People in this check-in said different things about (.+?), so it needs settling\.?$/i.exec(String(d.question ?? '').trim());
+    const m = /^People in this check-in said different things about (.+?)\.?$/i.exec(withoutTheOldEnding(d.question));
     /* Never about "this" or "it": a line with no thing in it tells her nothing to settle (final real-model check, item 9). */
     if (m && !/^(?:this|that|it|them|these|those|the same thing)$/i.test(m[1].trim())) needs.push({ text: `People said different things about ${m[1]}, so settle it with them.`, rank: 5, ref: String(d.question) });
   }
@@ -914,11 +914,10 @@ export async function theDirectMorningFor(
   const now = opts.now ?? new Date();
   const ground = await Promise.resolve(prisma?.ground?.findUnique?.({
     where: { id: opts.groundId },
-    select: { id: true, label: true, organizationId: true, initiatorId: true, kindOfWork: true, scenario: true, workingDays: true, overWhatsApp: true, cadence: true,
+    select: { id: true, label: true, organizationId: true, initiatorId: true, kindOfWork: true, scenario: true, workingDays: true, overWhatsApp: true, cadence: true, cadenceDays: true,
       participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, user: { select: { firstName: true, lastName: true } } } } },
   })).catch(() => null) as any;
   if (!ground || ground.initiatorId !== opts.leadUserId) return null;
-  if (!(await theDirectMorningIsOn(prisma, ground.organizationId))) return null;
   const zone = (await theOrganisationsZone(prisma, ground.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
   const people = ((ground.participants ?? []) as any[]).map((p) => ({
     id: p.id,

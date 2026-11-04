@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { render, screen } from '@testing-library/react'
@@ -31,33 +31,17 @@ describe('ConversationCard', () => {
     expect(card).toBeTruthy()
   })
 
-  it('shows the back link only when both a label and a destination are given', () => {
-    const { rerender } = render(
+  /* Changed 3 November 2026: the way back is no longer a link above the card. It is the check-in's name in the header, on one line with
+     End session (TheCheckInHeader.tsx, pinned in the-check-in-as-a-person-reads-it.spec.tsx), so the card draws no back link of its own. */
+  it('draws no way back of its own above the card', () => {
+    const { container } = render(
       <MemoryRouter>
         <ConversationCard header={<div>Header</div>}>Body</ConversationCard>
       </MemoryRouter>,
     )
     expect(screen.queryByRole('link')).toBeNull()
-    rerender(
-      <MemoryRouter>
-        <ConversationCard backLabel="Sales team, Q3" backTo="/grounds/g1" header={<div>Header</div>}>Body</ConversationCard>
-      </MemoryRouter>,
-    )
-    const link = screen.getByRole('link', { name: '← Sales team, Q3' })
-    expect(link.getAttribute('href')).toBe('/grounds/g1')
-  })
-
-  it('a callback back-button is offered instead, when leaving must do something first', async () => {
-    const onBack = vi.fn()
-    render(
-      <MemoryRouter>
-        <ConversationCard backLabel="Sales team, Q3" onBack={onBack} header={<div>Header</div>}>Body</ConversationCard>
-      </MemoryRouter>,
-    )
-    expect(screen.queryByRole('link')).toBeNull()
-    const button = screen.getByRole('button', { name: '← Sales team, Q3' })
-    button.click()
-    expect(onBack).toHaveBeenCalled()
+    expect(screen.queryByRole('button')).toBeNull()
+    expect(container.querySelector('.ci-back')).toBeNull()
   })
 
   it('is 560px, centred, bordered and rounded above 640px; full width, no side border, no radius, at or below it', () => {

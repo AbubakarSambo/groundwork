@@ -1,4 +1,4 @@
-import { theContextTabsName } from '@/lib/the-references-tab'
+import { REFERENCES_AND_RESOURCES } from '@/lib/the-references-tab'
 /**
  * ONE TAB ORDER FOR A GROUND, WHOEVER IS LOOKING.
  *
@@ -42,8 +42,6 @@ export interface GroundTab {
 }
 
 export interface TabContext {
-  /** `CONTEXT_ENABLED`. Off, the tab is documents and nothing else. */
-  contextEnabled: boolean
   /**
    * WHOSE TAB IT IS, WHICH THIS DELIBERATELY DID NOT ASK BEFORE.
    *
@@ -76,7 +74,7 @@ export interface TabContext {
  */
 /* Both required, with no default: a default here decides who sees what by omission, and the two
    call sites are the two views this exists to keep apart. The typechecker asks each of them. */
-export function groundTabs({ contextEnabled, canRunThisCheckIn, isAParty }: TabContext): GroundTab[] {
+export function groundTabs({ canRunThisCheckIn, isAParty }: TabContext): GroundTab[] {
   const tabs: GroundTab[] = [
     /** The conversation. "Check-in" rather than "Chat" because that is what the product calls it everywhere else. */
     { key: 'chat', label: 'Check-in' },
@@ -101,7 +99,7 @@ export function groundTabs({ contextEnabled, canRunThisCheckIn, isAParty }: TabC
      'record': it is a route, not a word anybody reads. */
   if (isAParty) tabs.push({ key: 'record', label: 'What I shared' })
 
-  tabs.push({ key: 'context', label: contextEnabled ? 'Context and resources' : 'Documents' })
+  tabs.push({ key: 'context', label: REFERENCES_AND_RESOURCES })
   tabs.push({ key: 'settings', label: 'Setup' })
   return tabs
 }
@@ -123,15 +121,16 @@ export const FIRST_TAB: GroundTabKey = 'chat'
  * TheCheckInHeader.tsx's own note); kept reachable as a sixth, unconditionally.
  */
 export function checkInHeaderTabs({
-  id, contextEnabled, canRunThisCheckIn, isAParty, ground,
-}: { id: string; ground?: { release1bTabsOn?: boolean } | null } & TabContext): { key: string; label: string; to: string }[] {
-  const myWorkTab = canRunThisCheckIn ? 'sessions' : 'record'
+  id, canRunThisCheckIn, isAParty,
+}: { id: string; ground?: unknown } & TabContext): { key: string; label: string; to: string }[] {
+  /* My work is one page for the lead and each person in it (MyWorkPage.tsx, B7), so every tab row sends it to one key. */
+  const myWorkTab = 'record'
   return [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
     ...(canRunThisCheckIn || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),
     /* Named as the check-in page names it: "References and resources" where Release 1B is on (browser test, 20 October:
        the report pages still said "Context and resources" beside a check-in page that said "References and resources"). */
-    { key: 'context', label: theContextTabsName(ground, contextEnabled ? 'Context and resources' : 'Documents'), to: `/grounds/${id}?tab=context` },
+    { key: 'context', label: REFERENCES_AND_RESOURCES, to: `/grounds/${id}?tab=context` },
     ...(canRunThisCheckIn || isAParty ? [{ key: myWorkTab, label: 'My work', to: `/grounds/${id}?tab=${myWorkTab}` }] : []),
     { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
     { key: 'report', label: 'Report', to: `/grounds/${id}?tab=report` },

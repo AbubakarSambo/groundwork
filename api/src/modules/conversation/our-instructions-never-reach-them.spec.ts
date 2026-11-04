@@ -3,7 +3,7 @@ import { ConversationService } from './conversation.service';
 import { withoutOurInstructions, theInstructionSentences } from './our-instructions-never-reach-them';
 import { landThisOneInstead } from './four-questions-in-a-row';
 import { THE_THREE_THINGS, THEY_JUST_PUSHED_BACK } from './the-last-thing-it-reads-is-the-thing-it-must-not-miss';
-import { whereTheCheckInIs } from './what-they-will-do-is-asked-before-the-end';
+import { HOW_A_CHECK_IN_ENDS } from './a-short-day';
 import { ASK_ONE_THING } from './a-turn-asks-one-thing';
 
 /**
@@ -18,10 +18,9 @@ const TOBI_ASKED_BEFORE = [
   'You have named what you will do in your next meeting with Amina, and that clarifies an open question.\n\nI have one more question before we finish. By when will you do that?',
 ];
 
-/* A prompt as the turn is given it: the engine, the rhythm block, the last three things, and where the check-in is. */
-const NEXT_STEP_BLOCK = whereTheCheckInIs({
-  personTurns: ['a', 'b', 'c', 'd', 'e', 'The committee has not replied to me.'], aiTurns: [], oneTime: false, isLead: false, notACheckIn: false, askedToFinish: false,
-});
+/* A prompt as the turn is given it: the engine, the rhythm block, how the check-in ends, and the last three things.
+   (The next-step block, whereTheCheckInIs, went on 3 November 2026 with the forced close; HOW_A_CHECK_IN_ENDS is said every turn instead.) */
+const NEXT_STEP_BLOCK = HOW_A_CHECK_IN_ENDS;
 const PROMPT = ['SYS: You run a check-in. Ask "What will you do about this, and by when?" before you close.', landThisOneInstead(), NEXT_STEP_BLOCK, THE_THREE_THINGS, THEY_JUST_PUSHED_BACK].join('\n\n');
 
 describe('a sentence that copies our instructions is cut where every reply is saved', () => {
@@ -41,9 +40,9 @@ describe('a sentence that copies our instructions is cut where every reply is sa
     expect(r.text).toBe('You have 19 applications in.');
   });
 
-  it('another block echoed: the next-step note is cut', () => {
-    expect(NEXT_STEP_BLOCK).toContain('If they say there is nothing to do yet, that is a real answer.');
-    const r = withoutOurInstructions('Thank you. If they say there is nothing to do yet, that is a real answer. What happens next with the committee?', PROMPT);
+  it('another block echoed: the note on how the check-in ends is cut', () => {
+    expect(NEXT_STEP_BLOCK).toContain('If they carry on, follow them.');
+    const r = withoutOurInstructions('Thank you. If they carry on, follow them. What happens next with the committee?', PROMPT);
     expect(r.text).toBe('Thank you. What happens next with the committee?');
   });
 
@@ -136,8 +135,8 @@ describe('a reply asked for again is read against the instruction it was asked a
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '');
     expect(src).not.toMatch(/\.respond\(`\$\{fullSystem\}/);
-    /* 20 since 13 October 2026: the job question asked again (E6) and a correction taken (Hafsah's principle) are retries too, and go through the leak check. */
-    expect((src.match(/\.respond\(this\.keptForTheLeakCheck\(/g) ?? []).length).toBe(20);
+    /* 3 since 2 November 2026: the eighteen re-asks after a reply are one re-ask carrying every failing instruction; with the opener's and the invention note's, three retries, all through the leak check. (20 from 13 October.) */
+    expect((src.match(/\.respond\(this\.keptForTheLeakCheck\(/g) ?? []).length).toBe(3);
   });
 });
 

@@ -123,6 +123,9 @@ describe('one word and it is session', () => {
        `ground.sessionClock.says` itself names, rather than the page's own `openRound` - the two
        used to disagree the moment the lead had finished a session the server still called
        current. Still "session", never "round". */
-    expect(SURFACES['the check-in header']).toContain('howManyCheckedInSentence(clockRoundDone, total, clockRound)')
+    /* UPDATED (Hafsah, 30 October 2026): the header says the server's one count, thisSession.says, whose sentence is "checked in for
+       session N" (api this-sessions-count.ts theCountSaid). Still "session", never "round". */
+    expect(SURFACES['the check-in header']).toContain('parts.push(thisSession.says)')
+    expect(SURFACES['the check-in header']).not.toContain('howManyCheckedInSentence(')
   })
 })

@@ -3,7 +3,7 @@ import { answerFirst } from '../whatsapp/answer-the-webhook-then-do-the-work';
 import { Body, Controller, Delete, Get, HttpCode, Logger, Param, Post, Put, Query, Req, Res, BadRequestException, UseGuards } from '@nestjs/common';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { MachineTokenGuard, RequiresScope, type MachineCaller } from './machine-token.guard';
-import { A_MESSAGE_MAX } from '../../common/dto';
+import { A_MESSAGE_MAX, A_MESSAGE_IS_TOO_LONG } from '../../common/dto';
 import { ConfigService } from '@nestjs/config';
 import { LANGUAGES_WE_CONVERSE_IN } from './a-whatsapp-message-is-routed';
 import { THE_NAMES_TO_SUBMIT, THE_NAMES_WE_MAY_USE } from '../whatsapp/a-message-outside-the-window';
@@ -38,7 +38,7 @@ class ARelayedMessageDto {
   @ApiPropertyOptional({ description: 'What they typed' })
   @IsOptional()
   @IsString()
-  @MaxLength(A_MESSAGE_MAX)
+  @MaxLength(A_MESSAGE_MAX, { message: A_MESSAGE_IS_TOO_LONG })
   text?: string;
 
   @ApiPropertyOptional({ description: "WhatsApp's own message id, so a redelivery is not a second answer" })

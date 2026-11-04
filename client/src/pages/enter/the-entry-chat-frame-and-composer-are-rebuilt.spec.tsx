@@ -166,7 +166,7 @@ describe('the chat once a conversation exists (the engine has spoken)', () => {
     seedConversation()
     const { container } = renderPage()
     await waitFor(() => expect(screen.getByText('Got it. Who is on the team with you?')).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: '+ Doc' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add a document (paste or upload) instead of typing it out' }))
     expect(await screen.findByRole('textbox', { name: 'What is it?' })).toBeTruthy()
     expectAtMostOnePrimaryButton(container)
   })

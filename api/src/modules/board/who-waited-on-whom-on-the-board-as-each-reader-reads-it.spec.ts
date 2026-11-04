@@ -23,7 +23,7 @@ describe('Who waited on whom, as each person reads it', () => {
       'Ngozi Eze waited on the Head of Credit for the Head of Credit\'s reply from 2 September until it was cleared on 16 September, 14 days in all.',
       'Femi Okonkwo has been waiting for the bank statements since 16 September, and it has not been cleared.',
       'Ngozi Eze has been waiting on Mr. Adebayo for a date for the credit decision since 16 September, and it has not been cleared.',
-      'Kwame Mensah says the work has been waiting on you for the approval of five applications since 16 September. Not backed: no attempt to unblock mentioned. Kwame Mensah could have messaged you or asked again.',
+      'Kwame Mensah says the work has been waiting on you for the approval of five applications since 16 September.',
     ]);
     expect(b.whoWaitedOnWhom[0]).toMatchObject({ startedAt: '2026-09-02', clearedAt: '2026-09-16', days: 14 });
     expect(b.whoWaitedOnWhom[1]).toMatchObject({ startedAt: '2026-09-16', clearedAt: null, days: null });
@@ -43,12 +43,12 @@ describe('Who waited on whom, as each person reads it', () => {
   });
 
   it('an admin who only reads an ordinary check-in reads every wait, with the lead named', async () => {
-    expect(says(await boardAs(WITH_A_CLEARED_WAIT, ...JUMA))[3]).toBe('Kwame Mensah says the work has been waiting on Bisi Adeyemi for the approval of five applications since 16 September. Not backed: no attempt to unblock mentioned. Kwame Mensah could have messaged Bisi Adeyemi or asked again.');
+    expect(says(await boardAs(WITH_A_CLEARED_WAIT, ...JUMA))[3]).toBe('Kwame Mensah says the work has been waiting on Bisi Adeyemi for the approval of five applications since 16 September.');
   });
 
   it('on an evaluation check-in the person reviewed reads only their own waits, the admin who set it up reads all, and an admin with no access reads nothing', async () => {
     const evaluation: Setup = { ...WITH_A_CLEARED_WAIT, scenario: GroundScenario.PIP, createdByUserId: 'u-setup' };
-    expect(says(await boardAs(evaluation, ...KWAME))).toEqual(['You say the work has been waiting on Bisi Adeyemi for the approval of five applications since 16 September. Not backed: no attempt to unblock mentioned. You could have messaged Bisi Adeyemi or asked again.']);
+    expect(says(await boardAs(evaluation, ...KWAME))).toEqual(['You say the work has been waiting on Bisi Adeyemi for the approval of five applications since 16 September.']);
     expect(says(await boardAs(evaluation, ...SETUP_ADMIN))).toHaveLength(4);
     const asJuma = await boardAs(evaluation, ...JUMA).then((b) => b, (e) => e);
     expect(asJuma.whoWaitedOnWhom).toBeUndefined();
@@ -70,14 +70,14 @@ describe('Who waited on whom, as each person reads it', () => {
     ] };
     const asNgozi = await boardAs(claimed, ...NGOZI);
     expect(says(asNgozi)).toEqual([
-      'Kwame Mensah said the work was waiting on you for the final prices from 2 September until it was cleared on 24 September. Not backed: no attempt to unblock mentioned. Kwame Mensah could have messaged you, asked again, or raised it with Bisi Adeyemi.',
+      'Kwame Mensah said the work was waiting on you for the final prices from 2 September until it was cleared on 24 September.',
       /* Hafsah, 12 October: with his attempt in the record it is a confirmed block, and reads as any wait does. */
       'Kwame Mensah has been waiting on you for the signed forms since 16 September, and it has not been cleared.',
     ]);
     expect(asNgozi.whoWaitedOnWhom[0].days).toBeNull();
     expect(says(asNgozi).join(' ')).not.toMatch(/days in all/);
     const asBisi = await boardAs(claimed, ...BISI);
-    expect(says(asBisi)[0]).toBe('Kwame Mensah said the work was waiting on Ngozi Eze for the final prices from 2 September until it was cleared on 24 September. Not backed: no attempt to unblock mentioned. Kwame Mensah could have messaged Ngozi Eze, asked again, or raised it with you.');
+    expect(says(asBisi)[0]).toBe('Kwame Mensah said the work was waiting on Ngozi Eze for the final prices from 2 September until it was cleared on 24 September.');
     const promised = await boardAs({ ...claimed, commitments: [...(SALES_RUN.commitments ?? []), { id: 'c-ng', groundId: 'g-1', participantId: 'p-ngozi', text: 'I will send the final prices to Kwame.', status: 'DONE', createdAt: new Date('2026-09-02T17:00:00Z') }] }, ...NGOZI);
     expect(says(promised)[0]).toBe('Kwame Mensah waited on you for the final prices from 2 September until it was cleared on 24 September, 22 days in all.');
   });
@@ -87,7 +87,7 @@ describe('Who waited on whom, as each person reads it', () => {
       handoff('d-kw2', 'p-kwame', 'the signed forms', { onParticipantId: 'p-ngozi', onLabel: null, status: 'WAITING', createdAt: new Date('2026-09-16T17:00:00Z') }),
     ] };
     const b: any = await boardAs(claimed, ...BISI);
-    expect((b.risks ?? []).map((x: any) => x.says)).toContain('Kwame Mensah says the work is waiting on Ngozi Eze for the signed forms. Not backed: no attempt to unblock mentioned. Kwame Mensah could have messaged Ngozi Eze, asked again, or raised it with you.');
-    expect((b.timeline ?? []).map((x: any) => x.says)).toContain('On 16 September, Kwame Mensah said the work was waiting on Ngozi Eze for the signed forms. Not backed: no attempt to unblock mentioned. Kwame Mensah could have messaged Ngozi Eze, asked again, or raised it with you.');
+    expect((b.risks ?? []).map((x: any) => x.says)).toContain('Kwame Mensah says the work is waiting on Ngozi Eze for the signed forms.');
+    expect((b.timeline ?? []).map((x: any) => x.says)).toContain('On 16 September, Kwame Mensah said the work was waiting on Ngozi Eze for the signed forms.');
   });
 });

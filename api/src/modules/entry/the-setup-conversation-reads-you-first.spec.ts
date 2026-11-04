@@ -1,3 +1,4 @@
+import { SETUP_IS_DONE } from './setup-is-the-first-check-in';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -30,20 +31,21 @@ describe('the setup conversation reads you first', () => {
     expect(SRC).toMatch(/Do not defend the question and do not\n   apologise/);
   });
 
-  it('asks one thing, and never announces what it needs', () => {
-    expect(SRC).toMatch(/ONE QUESTION, AND SAY WHY IT HELPS/);
+  /*
+   * CHANGED 4 November 2026 (fix plan, release batch 1, group 5). These pinned "ONE QUESTION, AND SAY WHY IT HELPS", her example "It helps
+   * to keep a definition of what clear success looks like" and two or three example answers for every abstract question. Copied word for
+   * word into every setup, they are what round 39's leads called a chatbot ("It helps to know what else you would look for, like feedback
+   * from schools"), and the law firm got sales examples. The rule is gone; one question at a time, plainly, stays.
+   */
+  it('asks one thing, plainly, and never announces what it needs', () => {
+    expect(SRC).toMatch(/ASK FOR ONE THING, PLAINLY, THE WAY A COLLEAGUE WOULD/);
     expect(SRC).toMatch(/Never "I need to know"/);
   });
 
-  it('gives the reason the question is worth answering', () => {
-    /* Her own example of what this sounds like. */
-    expect(SRC).toContain('It helps to keep a definition of what clear');
-  });
-
-  it('and shows what an answer could look like, from their world', () => {
-    expect(SRC).toMatch(/AND SHOW WHAT AN ANSWER COULD LOOK LIKE/);
-    expect(SRC).toMatch(/A distributor list, a photo from a shop\n     visit, an invoice/);
-    expect(SRC).toMatch(/pipeline, conversion and sign-ups are somebody else's/);
+  it('gives no reason for the question and no list of example answers', () => {
+    expect(SRC).not.toContain('It helps to keep a definition of what clear');
+    expect(SRC).not.toMatch(/AND SHOW WHAT AN ANSWER COULD LOOK LIKE|ONE QUESTION, AND SAY WHY IT HELPS/);
+    expect(SRC).not.toMatch(/# A question carries its reason/);
   });
 
   it('never builds a sentence by joining two of their phrases', () => {
@@ -74,10 +76,16 @@ describe('the first question fits the situation, and the context tab exists', ()
     expect(SRC).toMatch(/const firstTurn = \(messages as \{ role: string \}\[\]\)\.filter\(\(m\) => m\.role === 'user'\)\.length <= 1/);
   });
 
-  it('the closer says where documents and further context go', () => {
-    expect(SRC).toMatch(/SAY WHERE THE REST OF THE CONTEXT GOES/);
-    /* Decision 51: renamed to "Context and resources" (29 September). */
-    expect(SRC).toMatch(/goes on the Context and resources tab, any\s+time/);
+  /*
+   * The last line of setup has one owner, the product (SETUP_IS_DONE), and it says where documents and further context go. The prompt
+   * used to tell the model to write its own closer too; in round 6 of the first experience (1 November 2026) the model said "You can
+   * add David, Sarah, John, and Emily below" while the conversation was still on screen, and the lead found nothing below.
+   */
+  /* Changed in F5: the last line no longer points at the Context tab or anything below; it says the invitations go when she sends them. */
+  it('the product writes the last line', () => {
+    expect(SETUP_IS_DONE).toMatch(/Send the invitations when you are ready\./);
+    expect(SRC).toMatch(/THE END OF SETUP IS THE PRODUCT'S, NOT YOURS/);
+    expect(SRC).not.toMatch(/their\s+board is ready and they can add their team below/);
   });
 });
 
@@ -87,18 +95,12 @@ describe('the first question fits the situation, and the context tab exists', ()
 describe('the check-in after setup does not start again', () => {
   it('treats everything setup settled as answered', () => {
     expect(SRC).toMatch(/# Setup is finished, and everything in it is answered/);
-    expect(SRC).toMatch(/Never for something already on the card/);
-  });
-
-  it('carries the reason and the example there too, where the conversation actually is', () => {
-    expect(SRC).toMatch(/# A question carries its reason, and an abstract one carries an example/);
-    expect(SRC).toMatch(/A distributor list, a photo from a shop visit, an invoice/);
-    expect(SRC).toMatch(/pipeline, conversion and sign-ups mean nothing to/);
+    expect(SRC).toMatch(/Not\s+one of those may be asked for again/);
   });
 
   it('and stops asking after two I-do-not-knows', () => {
     /* Read live: three versions of the same unanswerable question in a row. */
     expect(SRC).toMatch(/# Twice is enough/);
-    expect(SRC).toMatch(/A third version of the\nsame question is the product arguing with a person about their own work/);
+    expect(SRC).toMatch(/Never ask a third version of the same question/);
   });
 });

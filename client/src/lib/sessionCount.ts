@@ -35,6 +35,8 @@ export function plannedSessionsFor(
   timelineDays: number | null | undefined,
   cadence: string | null | undefined,
   explicit?: number | null,
+  /** Twice or more a week: the weekdays a weekly check-in meets on. A week then holds that many (7 over the days). */
+  cadenceDays?: number[] | null,
 ): number | null {
   // An explicit count set on the ground wins over anything derived.
   if (explicit != null) return explicit
@@ -43,7 +45,8 @@ export function plannedSessionsFor(
   // on a timer - so there is no planned count, and null means "unknown" rather
   // than zero. Treating unknown as zero would call a ground finished before it
   // began.
-  const gap = cadence ? DAYS_BETWEEN[cadence] : undefined
+  const often = cadence === 'WEEKLY' ? new Set((cadenceDays ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)).size : 0
+  const gap = often >= 2 ? 7 / often : cadence ? DAYS_BETWEEN[cadence] : undefined
   if (!gap || !timelineDays || timelineDays <= 0) return null
   // At least one: a two-week ground on a monthly cadence still holds a check-in,
   // and telling someone they have zero would read as broken.

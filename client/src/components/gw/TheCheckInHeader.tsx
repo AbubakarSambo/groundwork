@@ -43,6 +43,7 @@ export function TheCheckInHeader({
   id,
   title,
   cadence,
+  cadenceDays,
   plannedSessions,
   currentSession,
   endsAt,
@@ -58,6 +59,8 @@ export function TheCheckInHeader({
   id: string
   title: string
   cadence?: GroundCadence | null
+  /** The days a weekly check-in meets on, when more than one: the cadence line reads them. */
+  cadenceDays?: number[] | null
   plannedSessions?: number | null
   currentSession?: number | null
   endsAt?: string | null
@@ -112,7 +115,7 @@ export function TheCheckInHeader({
    * ("from 4pm") this product does not keep as a fact about the ground, so that part is not
    * invented - the rhythm, the session count and the end date are.
    */
-  const cadenceWords = cadence ? cadenceLabel(cadence) : null
+  const cadenceWords = cadence ? cadenceLabel(cadence, cadenceDays) : null
   const spineWords = phaseSpineSentence(
     currentSession ? { startsAt: null, endsAt: endsAt ?? null, currentSession } : null,
     plannedSessions ?? null,
@@ -124,7 +127,8 @@ export function TheCheckInHeader({
    * `canRunThisCheckIn`. board-as-participant.txt shows "People and setup" on a party's own board
    * too, which agrees: kept unconditional here, matching that file rather than my first guess.
    */
-  const myWorkTab = canRunThisCheckIn ? 'sessions' : 'record'
+  /* My work is one page for the lead and each person in it (MyWorkPage.tsx, B7), so every tab row sends it to one key. */
+  const myWorkTab = 'record'
   const tabs: { key: string; label: string; to?: string }[] = tabsOverride ?? [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
     /* Someone who neither runs this check-in nor is in it (an admin who only reads) has no

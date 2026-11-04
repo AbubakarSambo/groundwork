@@ -25,12 +25,13 @@ describe('Release 7: Daniel\'s running record, on his You board', () => {
 
   it('says how he adapted when the direction changed, and the counts in one sentence', () => {
     expect(r.adapted).toEqual(['You stopped “Visit 10 new corporate prospects” on 19 September, when the direction changed.']);
-    expect(r.inShort).toBe('You said you would do 4 things. 2 done, 1 not done, 1 still open.');
+    /* Changed 3 November 2026: one plain sentence (whatHappenedToThePromises), no clipped pieces. */
+    expect(r.inShort).toBe('You said you would do 4 things. 2 are done, 1 was not done and 1 is still open.');
   });
 
   it('drafts his own view in the first person, for him to finish', () => {
     expect(aSelfReviewDraft(r).split('\n\n')).toEqual([
-      'I said I would do 4 things. 2 done, 1 not done, 1 still open.',
+      'I said I would do 4 things. 2 are done, 1 was not done and 1 is still open.',
       'I did send Kito Foods the revised quote and renew Lakeside’s contract.',
       'I did not set up a monthly call with each corporate account. What got in the way was',
       'I stopped “Visit 10 new corporate prospects” on 19 September, when the direction changed.',

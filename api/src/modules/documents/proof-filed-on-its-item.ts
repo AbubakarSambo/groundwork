@@ -1,10 +1,8 @@
-import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { readsAsAPayment, readsAsASignedOrder } from '../board/a-deals-four-criteria';
 import { theWordsNameTheDeal } from '../board/a-deals-proof-is-about-that-deal';
 import { aLineNamesTheCustomer } from '../board/one-deal-per-customer';
 import { KINDS_THAT_ARE_NOT_WORK } from '../board/the-kind-of-work';
 import { weCouldNotReadIt } from './a-document-we-could-not-read-is-not-a-source';
-import { aCollectionsCheckInWithRelease2 } from '../grounds/release-2-collections';
 import { BILL, LOAN_OWED, F, aBillIsNamed } from '../board/the-collections-record';
 
 /**
@@ -75,8 +73,7 @@ export async function fileTheProofOnItsItem(
   now: Date = new Date(),
 ): Promise<{ id: string; itemName: string | null } | null> {
   const ground = await prisma?.ground?.findUnique?.({ where: { id: doc.groundId }, select: { organizationId: true } }).catch(() => null);
-  /* Or on a "Collect what's owed" check-in with Release 2 on, where a slip or a message is what makes a bill paid (Release 2). */
-  if (!ground || !((await theRelease1bTabsAreOn(prisma, ground.organizationId)) || (await aCollectionsCheckInWithRelease2(prisma, doc.groundId)))) return null;
+  if (!ground) return null;
   const words = [doc.fileName, doc.uploaderNote, weCouldNotReadIt(doc.content) ? '' : doc.content].filter((x) => String(x ?? '').trim()).join(' ');
   const reading = whatTheProofIs(words, doc.mimeType);
   const items: AnItem[] = (await prisma.workItem?.findMany?.({

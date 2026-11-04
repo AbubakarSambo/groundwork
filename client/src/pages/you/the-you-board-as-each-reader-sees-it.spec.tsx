@@ -200,7 +200,7 @@ describe('when the engine serves its own parts (request 14)', () => {
       ...MIRIAMS,
       whereYouStand: { says: '14 of 16 kept, in the last 4 weeks. Nothing needs deciding about your work right now.', whatWouldChangeIt: 'Keeping 8 in 10 for the next 4 weeks.' },
       worthKnowing: ['In March you said supermarkets need a sample first. Lakeside hasn’t had one yet.'],
-      noticed: { says: 'For three weeks, calls that need a difficult ask have been moved to next week.', whoSees: 'You are seeing this first. Wairimu can see it too. Nothing is decided from it.' },
+      noticed: { says: 'For three weeks, calls that need a difficult ask have been moved to next week.' },
       coachingOverTime: 'Last week we talked about asking for a buying date on the first visit. You did it at Lakeside.',
       contributed: ['Warned the team early that Green Mart would wait until January.'],
       patterns: [{
@@ -211,20 +211,22 @@ describe('when the engine serves its own parts (request 14)', () => {
         askThem: null,
         theirWords: null,
         canAnswer: true,
-        whoSeesIt: 'Wairimu sees this pattern too. You can say what’s behind it; it goes next to the pattern, in your words.',
       }],
     })
     await screen.findByRole('heading', { name: 'Where you stand' })
     expect(within(section('Where you stand')).getByText('What would change this: Keeping 8 in 10 for the next 4 weeks.')).toBeInTheDocument()
     expect(within(section('Worth knowing now')).getByText('In March you said supermarkets need a sample first. Lakeside hasn’t had one yet.')).toBeInTheDocument()
-    expect(within(section('Something Groundwork noticed about your work')).getByText('You are seeing this first. Wairimu can see it too. Nothing is decided from it.')).toBeInTheDocument()
+    /* Changed in F5: no note on who else sees it (the standards forbid privacy notes on screens). */
+    expect(within(section('Something Groundwork noticed about your work')).getByText('For three weeks, calls that need a difficult ask have been moved to next week.')).toBeInTheDocument()
+    expect(section('Something Groundwork noticed about your work').textContent).not.toMatch(/seeing this first|can see it too|Nothing is decided from it/)
     expect(within(section('Coaching, followed over time')).getByText(/You did it at Lakeside/)).toBeInTheDocument()
     expect(within(section('What you contributed')).getByText('Warned the team early that Green Mart would wait until January.')).toBeInTheDocument()
     const patternSection = section('Something that keeps coming up')
     expect(within(patternSection).getByText('About your part in the work')).toBeInTheDocument()
     expect(within(patternSection).getByText('Your qualified deals often don’t have a buying date')).toBeInTheDocument()
     expect(within(patternSection).getByText(/3 of 5, for three weeks running\./)).toBeInTheDocument()
-    expect(within(patternSection).getByText(/Wairimu sees this pattern too\./)).toBeInTheDocument()
+    /* F5: no sentence about who sees it under her own pattern (no privacy notes on screens); who may read it is unchanged. */
+    expect(within(patternSection).queryByText(/sees this pattern too|Only you see this/)).toBeNull()
     expect(within(patternSection).getByRole('button', { name: 'Say what’s behind it' })).toBeInTheDocument()
   })
 
@@ -236,7 +238,6 @@ describe('when the engine serves its own parts (request 14)', () => {
         heading: 'Something about a colleague’s work', whatHappened: null,
         howOften: '3 of 5, for three weeks running.', askThem: 'Ask them about it.',
         theirWords: null, canAnswer: false,
-        whoSeesIt: 'A colleague has not seen this yet, and has not answered yet.',
       }],
     })
     await screen.findByText('Your board')
@@ -250,7 +251,6 @@ describe('when the engine serves its own parts (request 14)', () => {
       heading: 'Your qualified deals often don’t have a buying date', whatHappened: null,
       howOften: '3 of 5, for three weeks running.', askThem: null,
       theirWords: 'The buyer keeps pushing the meeting back.', canAnswer: true,
-      whoSeesIt: 'Wairimu sees this pattern too.',
     })
     open(MIRIAM, {
       ...MIRIAMS,
@@ -259,7 +259,6 @@ describe('when the engine serves its own parts (request 14)', () => {
         heading: 'Your qualified deals often don’t have a buying date', whatHappened: null,
         howOften: '3 of 5, for three weeks running.', askThem: null,
         theirWords: null, canAnswer: true,
-        whoSeesIt: 'Wairimu sees this pattern too.',
       }],
     })
     await screen.findByRole('heading', { name: 'Something that keeps coming up' })
@@ -379,8 +378,8 @@ describe('Your turn, drawn as the prototype\'s own card (you-board-miriam.jpg)',
     open(MIRIAM, {
       ...MIRIAMS,
       turns: [
-        { key: 't1', title: 'Your sales check-in closes at 6pm', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/c39' } },
-        { key: 't2', title: 'Your own check-in for Leadership, Q3', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/c40' } },
+        { key: 't1', title: 'Your sales check-in closes at 6pm', detail: 'About ten minutes.', action: { label: 'Start it', to: '/checkin/c39' } },
+        { key: 't2', title: 'Your own check-in for Leadership, Q3', detail: 'About ten minutes.', action: { label: 'Start it', to: '/checkin/c40' } },
       ],
     })
     const starts = await screen.findAllByRole('link', { name: 'Start it' })

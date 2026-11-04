@@ -38,7 +38,7 @@ describe('the set-up chat: the writing indicator', () => {
 
   it('shows "Groundwork is writing…" from the moment the first message is sent until the reply is drawn', async () => {
     openStart()
-    const field = await screen.findByPlaceholderText('For example: our sales targets this quarter')
+    const field = await screen.findByLabelText('What do you need updates on, or want to track?')
     fireEvent.change(field, { target: { value: 'A new hire starting Monday' } })
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
 

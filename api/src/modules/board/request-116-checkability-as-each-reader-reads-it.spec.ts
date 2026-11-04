@@ -119,3 +119,38 @@ describe('request 116 (c): nobody gets a read on answers they never gave', () =>
   });
 });
 
+
+/*
+ * ONLY WHERE NOTHING IN THE WHOLE RECORD CAN BE CHECKED (Hafsah, 2 November 2026: silence is never a finding). Baraka's first check-in
+ * named a number and a date, and his second said only that things were fine. Proof from any check-in counts, so no reader is told that
+ * nothing he said can be checked; with nothing checkable in either, the lead still reads the prototype's line.
+ */
+describe('"Nothing checkable" only where nothing in the person\'s whole record can be checked', () => {
+  const twoRounds = (firstIsCheckable: boolean) => ({
+    ...setup,
+    checkIns: [
+      answered('p-rukia', 1), answered('p-rukia', 2),
+      firstIsCheckable ? answered('p-baraka', 1) : { ...answered('p-baraka', 1), specificityLevel: 'managed', specificityDimensions: NONE_OF_FIVE },
+      { ...answered('p-baraka', 2), specificityLevel: 'managed', specificityDimensions: NONE_OF_FIVE },
+    ],
+    dependencies: [],
+  });
+
+  it.each([
+    ['Amina, the lead', AMINA],
+    ['the admin who set it up', SETUP_ADMIN],
+    ['Juma, an admin who only reads', JUMA],
+  ])('%s reads no "Nothing ... can be checked yet" beside Baraka when his first check-in could be checked', async (_who, reader) => {
+    const board = await boardAs(twoRounds(true) as any, ...(reader as readonly [string, string]));
+    const row = board.eachPerson.find((r: any) => r.participantId === 'p-baraka');
+    expect(row.reason).not.toBe('nothing checkable');
+    expect(everyString(board).filter((s) => /Baraka/.test(s) && /said this round can be checked yet/.test(s))).toEqual([]);
+  });
+
+  it('Amina reads the prototype\'s line, with the two check-ins in a row, when nothing in either can be checked', async () => {
+    const board = await boardAs(twoRounds(false) as any, ...AMINA);
+    const row = board.eachPerson.find((r: any) => r.participantId === 'p-baraka');
+    expect(row.reason).toBe('nothing checkable');
+    expect(row.says).toBe('Nothing Baraka Otieno said this round can be checked yet. This is the second week in a row. A number, a date or a document for what moved would change that.');
+  });
+});

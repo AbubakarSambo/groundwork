@@ -141,29 +141,29 @@ describe('a sales check-in: deals and their stages', () => {
           id: 'w-1', kind: 'deal', name: 'Nyama Choma Palace', stage: 'Won', owner: 'Rukia Mwangi', ownerParticipantId: 'p-rukia',
           /* Since 12 October a deal said to be won with nothing behind it says so beside its stage (baefa3f50). */
           stageSays: 'Said to be won, not shown yet',
-          due: null, fields: { Value: 'KES 90K' }, from: 'said', said: 'Nyama Choma Palace paid KES 90K on 22 September, so that one is won.',
+          due: null, evidence: [], fields: { Value: 'KES 90K' }, from: 'said', said: 'Nyama Choma Palace paid KES 90K on 22 September, so that one is won.',
           saidBy: 'Rukia', saidByParticipantId: 'p-rukia', saidByLine: "In Rukia's words,",
           known: 'said', knownSays: 'Someone said it.', mark: 'memory', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
           lastSaidOn: null, group: 'said-won', groupSays: 'None of the four criteria is on record yet. Nobody has spoken about it in a check-in yet. No next step is booked.',
           ...NONE_OF_THE_FOUR, stagesMet: ['Contacted'], stageMet: 'Contacted',
           /* Request 115 (b): its value as said, the days it was spoken about, and the owner's own read where there is one. */
-          value: 'KES 90K', valueSays: null, buyingDate: null, contactHistory: [], contactHistorySays: 'Each date is a day somebody spoke about this deal in a check-in. Nothing on record holds each contact with the customer.', notAnsweringSince: null, theirRead: null,
+          value: 'KES 90K', valueSays: null, buyingDate: null, contactHistory: [], contactHistorySays: 'Each date is a day this deal came up in a check-in.', notAnsweringSince: null, theirRead: null,
         },
         {
           id: 'w-2', kind: 'deal', name: 'Eastside Foods', stage: 'Qualified', owner: 'Baraka Otieno', ownerParticipantId: 'p-baraka',
-          due: null, fields: {}, from: 'said', said: 'Eastside Foods wants a second freezer and the owner has agreed the budget.',
+          due: null, evidence: [], fields: {}, from: 'said', said: 'Eastside Foods wants a second freezer and the owner has agreed the budget.',
           saidBy: 'Baraka', saidByParticipantId: 'p-baraka', saidByLine: "In Baraka's words,",
           known: 'said', knownSays: 'Someone said it.', mark: 'said', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
           lastSaidOn: null, group: 'possible', groupSays: 'None of the four criteria is on record yet. Nobody has spoken about it in a check-in yet. No next step is booked.',
           ...NONE_OF_THE_FOUR, stagesMet: ['Contacted'], stageMet: 'Contacted',
-          value: null, valueSays: 'Nobody has said what this deal is worth yet.', buyingDate: null, contactHistory: [], contactHistorySays: 'Each date is a day somebody spoke about this deal in a check-in. Nothing on record holds each contact with the customer.', notAnsweringSince: null, theirRead: null,
+          value: null, valueSays: 'Nobody has said what this deal is worth yet.', buyingDate: null, contactHistory: [], contactHistorySays: 'Each date is a day this deal came up in a check-in.', notAnsweringSince: null, theirRead: null,
         },
         {
-          id: 'w-3', kind: 'deal', name: 'Karen Butchery', stage: 'Contacted', owner: null, ownerParticipantId: null, due: null, fields: {}, from: 'lead', saidBy: null, saidByParticipantId: null, saidByLine: null,
+          id: 'w-3', kind: 'deal', name: 'Karen Butchery', stage: 'Contacted', owner: null, ownerParticipantId: null, due: null, evidence: [], fields: {}, from: 'lead', saidBy: null, saidByParticipantId: null, saidByLine: null,
           known: 'lead', knownSays: 'You added it on the board.', mark: 'none', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
           lastSaidOn: null, group: 'possible', groupSays: 'None of the four criteria is on record yet. Nobody has spoken about it in a check-in yet. No next step is booked.',
           ...NONE_OF_THE_FOUR, stagesMet: [], stageMet: null,
-          value: null, valueSays: 'Nobody has said what this deal is worth yet.', buyingDate: null, contactHistory: [], contactHistorySays: 'Each date is a day somebody spoke about this deal in a check-in. Nothing on record holds each contact with the customer.', notAnsweringSince: null, theirRead: null,
+          value: null, valueSays: 'Nobody has said what this deal is worth yet.', buyingDate: null, contactHistory: [], contactHistorySays: 'Each date is a day this deal came up in a check-in.', notAnsweringSince: null, theirRead: null,
         },
       ],
       /* Request 112 (a): each deal in its group, from its own record. This check-in has no end date. */
@@ -183,7 +183,7 @@ describe('a sales check-in: deals and their stages', () => {
       section: 'Forecast',
       holds: 'where the sales numbers are likely to end up',
       state: 'not-known',
-      why: 'Groundwork does not keep this yet. It needs numbers from another system, such as payment records.',
+      why: '',
     });
   });
 
@@ -257,7 +257,7 @@ describe('an engineering check-in: releases and tasks', () => {
       stages: ['Built', 'Reviewed', 'Shipped'],
       rows: [{
         id: 'w-1', kind: 'release', name: 'Release 2.4', stage: 'Reviewed', owner: 'Rukia Mwangi', ownerParticipantId: 'p-rukia',
-        due: '2026-09-24', fields: {}, from: 'said', said: 'Release 2.4 is reviewed and waits for the production test on 24 September.',
+        due: '2026-09-24', evidence: [], fields: {}, from: 'said', said: 'Release 2.4 is reviewed and waits for the production test on 24 September.',
         saidBy: 'Rukia', saidByParticipantId: 'p-rukia', saidByLine: "In Rukia's words,",
         known: 'said', knownSays: 'Someone said it.', mark: 'memory', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
         lastSaidOn: null,
@@ -296,7 +296,7 @@ describe('a law firm matter: deadlines and parties', () => {
     ]);
     expect(section(board, 'Obligations')).toEqual({
       section: 'Obligations', holds: 'the parties', state: 'filled',
-      rows: [{ id: 'w-3', kind: 'party', name: 'Pwani Mills', stage: null, owner: null, ownerParticipantId: null, due: null, fields: { Side: 'The other side' }, from: 'lead', saidBy: null, saidByParticipantId: null, saidByLine: null, known: 'lead', knownSays: 'You added it on the board.', mark: 'none', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.', lastSaidOn: null }],
+      rows: [{ id: 'w-3', kind: 'party', name: 'Pwani Mills', stage: null, owner: null, ownerParticipantId: null, due: null, evidence: [], fields: { Side: 'The other side' }, from: 'lead', saidBy: null, saidByParticipantId: null, saidByLine: null, known: 'lead', knownSays: 'You added it on the board.', mark: 'none', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.', lastSaidOn: null }],
     });
   });
 
@@ -323,7 +323,7 @@ describe('a check-in whose kind of work nobody knows', () => {
     expect(board.kindOfWork).toBeNull();
     expect(board.workRecords.every((s: any) => s.state === 'not-known')).toBe(true);
     expect(board.workRecords.map((s: any) => s.section)).toEqual(['Deal grid', 'Forecast', 'Themes', 'Work plan', 'Timeline', 'Obligations']);
-    expect(board.workRecords[0].why).toBe('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.');
+    expect(board.workRecords[0].why).toBe('');
   });
 
   it('a stored kind that is not one of the eleven is served as none', async () => {
@@ -334,7 +334,7 @@ describe('a check-in whose kind of work nobody knows', () => {
   it('a kind Groundwork keeps records for, with none yet, is none-yet rather than not known', () => {
     expect(theRecordSections('support desk', null, [])).toEqual([
       { section: 'Deal grid', holds: 'tickets', state: 'none-yet', rows: [] },
-      { section: 'Themes', holds: 'ticket volume and causes from the helpdesk', state: 'not-known', why: 'Groundwork does not keep this yet. It needs the ticket counts from the helpdesk itself.' },
+      { section: 'Themes', holds: 'ticket volume and causes from the helpdesk', state: 'not-known', why: '' },
     ]);
   });
 });
