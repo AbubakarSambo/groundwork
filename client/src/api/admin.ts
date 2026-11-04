@@ -30,6 +30,15 @@ export interface DeliveryAlert {
   from: 'here' | 'server' | null
 }
 
+/** The daily usage summary: whether it goes, at which hour in Lagos (0 to 23), and the back-office team it goes to. */
+export interface DailyUsage {
+  on: boolean
+  hour: number
+  to: string[]
+  /** How each hour, 0 to 23, is said ("8 in the morning"), from the API so the page and the email say it the same way. */
+  hours: string[]
+}
+
 export interface CorrectionWindow {
   days: number
   default: number
@@ -154,6 +163,9 @@ export const adminApi = {
   setRelease2Collections: (organizationId: string, on: boolean) =>
     apiClient.patch<{ id: string; name: string; release2CollectionsOn: boolean; says: string }>(`/admin/organisations/${organizationId}/release-2-collections`, { on }).then(r => r.data),
 
+  getDailyUsage: () => apiClient.get<DailyUsage>('/admin/daily-usage').then(r => r.data),
+  setDailyUsage: (body: { on?: boolean; hour?: number }) =>
+    apiClient.patch<DailyUsage>('/admin/daily-usage', body).then(r => r.data),
   getDeliveryAlert: () => apiClient.get<DeliveryAlert>('/admin/delivery-alert').then(r => r.data),
   setDeliveryAlert: (email: string) =>
     apiClient.patch<DeliveryAlert>('/admin/delivery-alert', { email }).then(r => r.data),
