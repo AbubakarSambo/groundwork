@@ -18,6 +18,7 @@ import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { aDaySaidInFull } from '../board/a-day-said-in-full';
 import { theRhythmInWords } from '../grounds/people-and-setup';
 import { theFactsOnRecord, aFactAsALine, type TheReader } from '../conversation/the-facts-on-record';
+import { everyQuoteFromTheRecord } from '../reports/a-quote-is-what-they-said';
 import { thePersonJudgementsAreOn, NOT_SHOWN_IN_THIS_ORGANISATION } from '../organisation/person-judgements';
 import { isASalesKind } from '../board/the-kind-of-work';
 import { theDealsOnRecord, theAimsTheDealsCount, theSalesStages, theSalesAnswer, theUnitsOf, theMoneyOf, whatWasSold, type ADealOnRecord } from '../board/a-sales-aim-is-counted-from-the-deals';
@@ -79,7 +80,12 @@ export function everyFigureIsInTheDocuments(answer: string, documents: { content
   return figuresIn(answer).every((f) => held.has(f));
 }
 
-export interface ADocumentToAnswerFrom { fileName: string; content: string }
+export interface ADocumentToAnswerFrom {
+  fileName: string;
+  content: string;
+  /** What may stand in quotation marks from it, where that is not the whole of it: from the record, only what was said word for word. */
+  mayBeQuoted?: string[];
+}
 
 /** The documents this person may open: on the named check-in, or on every check-in they are in. */
 export async function theDocumentsTheyMayOpen(
@@ -124,7 +130,10 @@ export async function theDocumentsTheyMayOpen(
  * a person reaches a lead only while the organisation's person-judgements switch is on (thePersonJudgementsAreOn).
  */
 const DAY_SAID = (d: Date) => aDaySaidInFull(new Date(d));
+/* The most of the rest of one person's record that is read, the newest, so one long record never pushes the others out. */
 const MOST_FACTS_FOR_ONE = 40;
+/* What is still open: their promises and what they wait on. Never cut, and read before the rest of a person's record. */
+const STILL_OPEN = new Set(['promises', 'blockers', 'compared.promisesDue', 'compared.blockers']);
 
 export async function theRecordTheyMayRead(
   prisma: any,
@@ -140,7 +149,6 @@ export async function theRecordTheyMayRead(
     select: { id: true, label: true, initiatorId: true, kindOfWork: true, workStages: true, cadence: true, cadenceDays: true, cadenceAnchorDay: true, workingDays: true },
   })).catch(() => [])) ?? []) as { id: string; label: string; initiatorId: string | null; kindOfWork?: unknown; workStages?: unknown; cadence?: string | null; cadenceDays?: number[] | null; cadenceAnchorDay?: number | null; workingDays?: number[] | null }[];
   const out: ADocumentToAnswerFrom[] = [];
-  const since = new Date(now.getTime() - 45 * 86_400_000);
   const judgements = await thePersonJudgementsAreOn(prisma, input.organizationId);
   for (const g of grounds) {
     const isLead = g.initiatorId === input.userId;
@@ -155,7 +163,11 @@ export async function theRecordTheyMayRead(
     for (const p of people) if (!p.user) p.user = users.find((u) => u.id === p.userId) ?? null;
     const nameOf = (p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || String(p.email ?? '').split('@')[0];
     const reader: TheReader = isLead ? { kind: 'the lead', judgements } : { kind: 'the person', participantId: people[0].id };
-    const facts = await theFactsOnRecord(prisma, { groundId: g.id, reader, participantIds: people.map((p) => p.id), since });
+    /*
+     * THE WHOLE RECORD, NOT THE LAST SIX WEEKS (docs/fix-plan.md, group 3; round 38, Ask answered 1 of 6 setup questions). It read 45
+     * days and at most 40 facts a person, so what was said in setup and an older promise still open were cut before Ask read them.
+     */
+    const facts = await theFactsOnRecord(prisma, { groundId: g.id, reader, participantIds: people.map((p) => p.id) });
     /* How often people check in, from the check-in itself (theRhythmInWords, the one wording), never guessed from the days things were
        said: Ask told a lead "the team checks in every Monday" of a check-in set to Monday and Thursday (assessment test, 2 November). */
     const lines: string[] = g.cadence ? [`HOW OFTEN PEOPLE CHECK IN: ${theRhythmInWords(g)}.`] : [];
@@ -170,10 +182,13 @@ export async function theRecordTheyMayRead(
     /* The team first and the reader's own last, so a long record of their own never pushes the team out. */
     people.sort((a, b) => Number(a.userId === input.userId) - Number(b.userId === input.userId));
     for (const p of people) {
-      const theirs = facts.filter((f) => f.participantId === p.id && !f.inSetup).slice(-MOST_FACTS_FOR_ONE);
+      const theirs = facts.filter((f) => f.participantId === p.id && !f.inSetup);
       lines.push(`PERSON: ${p.userId === input.userId ? `${nameOf(p)} (you)` : nameOf(p)}`);
-      for (const f of theirs) lines.push(aFactAsALine(f, DAY_SAID, whoSaid(f.participantId)));
-      if (!theirs.length) lines.push('- Nothing on record in the last six weeks.');
+      /* What is still open first and whole, then the newest of the rest. */
+      const open = theirs.filter((f) => STILL_OPEN.has(f.section));
+      const rest = theirs.filter((f) => !STILL_OPEN.has(f.section)).slice(-MOST_FACTS_FOR_ONE);
+      for (const f of [...open, ...rest]) lines.push(aFactAsALine(f, DAY_SAID, whoSaid(f.participantId)));
+      if (!theirs.length) lines.push('- Nothing on record yet.');
     }
     const items = ((await Promise.resolve(prisma.workItem?.findMany?.({
       where: { groundId: g.id, ...(isLead ? {} : { ownerParticipantId: { in: people.map((p) => p.id) } }) },
@@ -197,7 +212,7 @@ export async function theRecordTheyMayRead(
     /* The sales, counted as the board counts them, first: a long record must never push them out (polish round 15, U3 and U4). */
     const sales = isASalesKind(g.kindOfWork) ? await theSalesOnRecord(prisma, g, people, nameOf, isLead, now).catch(() => [] as string[]) : [];
     const content = [...sales, ...lines].join('\n');
-    out.push({ fileName: `the record of ${g.label}`, content: content.slice(0, MOST_WE_READ_FROM_ONE) });
+    out.push({ fileName: `the record of ${g.label}`, content: content.slice(0, MOST_WE_READ_FROM_ONE), mayBeQuoted: facts.filter((f) => f.saidWordForWord).map((f) => f.words) });
   }
   return out;
 }
@@ -265,7 +280,7 @@ export async function answerFromTheDocuments(
   /* The documents that share the question's words go first, so a short question is not answered from whatever was added last (A6). */
   for (const d of theMostLikelyFirst(documents, input.question)) {
     if (room <= 0) break;
-    given.push({ fileName: d.fileName, content: d.content.slice(0, room) });
+    given.push({ ...d, content: d.content.slice(0, room) });
     room -= d.content.length;
   }
   const read = await deps.engine.extract(
@@ -286,7 +301,12 @@ export async function answerFromTheDocuments(
   if (!read?.found || !answer) return NOT_IN_THE_DOCUMENTS;
   /* A figure no document holds is not said: the person would take it as the document's. */
   if (!everyFigureIsInTheDocumentsOrSums(answer, given, input.question)) return NOT_IN_THE_DOCUMENTS;
-  return answer;
+  /*
+   * QUOTE MARKS ONLY FOR WORDS SAID WORD FOR WORD (docs/fix-plan.md, group 3; round 38, "quotes stitched together from two things
+   * said"). The record's lines are the assessment's items, and only those found word for word in what was typed may be quoted; a
+   * quote that is not one is no longer a quote, by the same pass every report uses (a-quote-is-what-they-said).
+   */
+  return everyQuoteFromTheRecord({ answer }, given.flatMap((d) => d.mayBeQuoted ?? [d.content])).value.answer || answer;
 }
 
 /**

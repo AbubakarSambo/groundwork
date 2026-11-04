@@ -117,3 +117,24 @@ describe('Ask reads the record as each reader may', () => {
     expect(said).toBe(NOT_SHOWN_IN_THIS_ORGANISATION);
   });
 });
+
+/*
+ * FACTS LOST ON THE WAY, AND WORDS NOBODY SAID (docs/fix-plan.md, group 3). Ask read only 45 days of the record, so what was said in
+ * setup and older work were gone; and it could put quote marks round words nobody typed.
+ */
+describe('Ask reads the whole record, and quotes only words said word for word', () => {
+  it('reads what was said months ago, which the 45-day window cut', async () => {
+    const [doc] = await theRecordTheyMayRead(aPrisma(), { organizationId: 'o', userId: 'u-kevin' }, new Date('2027-03-01T09:00:00Z'));
+    expect(doc.content).toContain('Kilele Hotel paid for 40 units.');
+  });
+
+  it('an answer that quotes words nobody said loses the marks; words said word for word keep them', async () => {
+    const prisma = aPrisma();
+    prisma.groundDocument = { findMany: jest.fn(async () => []) };
+    const groundsFor = prisma.ground.findMany;
+    prisma.ground.findMany = jest.fn(async (a: any) => (await groundsFor(a)).map((g: any) => ({ ...g, participants: [] })));
+    const said = (answer: string) => answerFromTheDocuments({ prisma, engine: { extract: jest.fn(async () => ({ found: true, answer, judgesAPerson: false })) } }, { organizationId: 'o', userId: 'u-kevin', question: 'What did I say about Kilele?' });
+    expect(await said('You said “Kilele Hotel paid for 40 units.”')).toBe('You said “Kilele Hotel paid for 40 units.”');
+    expect(await said('You said “Kilele paid in full and asked for more”, which is what you told me.')).not.toMatch(/[“”"]/);
+  });
+});
