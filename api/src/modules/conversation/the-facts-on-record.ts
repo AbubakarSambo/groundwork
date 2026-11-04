@@ -19,8 +19,12 @@
  *     reads that complaint and what came with it, and nothing else. The lead never reads it, nor does anybody reading what is shared
  *     with the people in the check-in; the person who said it reads it as their own (Hafsah, 3 November 2026).
  * A correction kept on an item (its history) is read as the item now says: once fixed, it stays fixed.
+ *
+ * HOW IT STANDS (theStandingOf, the-assessment.ts, the one place): every fact carries it. Something the read says cannot be true as said
+ * (10,000 freezers sold in a day, a delivery promised for a day already past) is read by the lead alone, as what was said, and by nobody
+ * else: it is never offered back to the person, or shared, as fact or as something still open (Hafsah, 4 November 2026).
  */
-import { theAssessmentIn, THE_ITEM_SECTIONS, THE_SETUP_SECTIONS, THE_COMPARED_SECTIONS, KEPT_FROM_THE_LEAD, type AnItem, type TheAssessment } from './the-assessment';
+import { theAssessmentIn, theStandingOf, theWordsThatCannotBeTrue, THE_ITEM_SECTIONS, THE_SETUP_SECTIONS, THE_COMPARED_SECTIONS, KEPT_FROM_THE_LEAD, type AnItem, type TheAssessment, type TheStanding } from './the-assessment';
 
 export type TheReader =
   | { kind: 'the lead'; judgements: boolean }
@@ -48,6 +52,8 @@ export interface AFact {
   detail: string | null;
   /** Whether it has proof behind it, where the item says. */
   proved: boolean;
+  /** How it stands: proved, said (their word only), or cannot be true as said. Only the lead reads one that cannot be true. */
+  standing: TheStanding;
   /** True where their words were found word for word in what they typed, so a report may quote them. */
   saidWordForWord: boolean;
   /** True where it was said while setting the check-in up, not in a check-in. */
@@ -120,9 +126,12 @@ export function theFactsIn(a: TheAssessment, reader: TheReader, whoSeesTargets: 
   const setupMessages = new Set((a.messages ?? []).filter((m) => m.where === 'setup').map((m) => m.n));
   /* Their words about a target, wherever else the same words were read (a target's words are often a number too). */
   const targetWords = new Set((a.targets ?? []).map((t) => squashed(t.words)).filter(Boolean));
+  const cannot = theWordsThatCannotBeTrue(a);
   const out: AFact[] = [];
   for (const { section, item } of everyItemWithItsSection(a)) {
     if (NOT_A_FACT.has(section)) continue;
+    const standing = theStandingOf(item, cannot);
+    if (standing === 'cannot be true' && reader.kind !== 'the lead') continue;
     const inSetup = (item.from ?? []).length > 0 && (item.from ?? []).every((n) => setupMessages.has(n));
     if (!mayRead(reader, item, section, a.about.participantId, inSetup, whoSeesTargets === 'THEIR_OWN' && (section === 'targets' || targetWords.has(squashed(item.words))))) continue;
     const corrected = (item.history ?? []).filter((h) => h.backed).pop();
@@ -136,7 +145,8 @@ export function theFactsIn(a: TheAssessment, reader: TheReader, whoSeesTargets: 
     out.push({
       groundId: a.about.groundId, checkInId: a.about.checkInId, itemId: item.id, participantId: a.about.participantId, who: a.about.who,
       isTheLead: a.about.isTheLead, sessionNumber: a.about.sessionNumber, on: a.about.endedAt, section, words, detail,
-      proved: item.proof === 'proved',
+      proved: standing === 'proved',
+      standing,
       saidWordForWord: !corrected && item.saidWordForWord === true,
       inSetup,
     });
@@ -179,5 +189,5 @@ export async function theFactsOnRecord(
  */
 export function aFactAsALine(f: AFact, day: (d: Date) => string, who: string = f.who): string {
   const kind = f.section.replace(/^setup\./, 'setup, ').replace(/^compared\./, 'since last time, ').replace(/([A-Z])/g, ' $1').toLowerCase();
-  return `- ${f.on ? day(new Date(f.on)) : 'undated'}, ${who} said${f.inSetup ? ' in setup' : ''}, ${kind}, ${f.proved ? 'proven' : 'their word'}: ${f.words}${f.detail ? ` (${f.detail})` : ''}`;
+  return `- ${f.on ? day(new Date(f.on)) : 'undated'}, ${who} said${f.inSetup ? ' in setup' : ''}, ${kind}, ${f.standing === 'proved' ? 'proven' : f.standing === 'said' ? 'their word' : 'their word, and it cannot be true as said'}: ${f.words}${f.detail ? ` (${f.detail})` : ''}`;
 }

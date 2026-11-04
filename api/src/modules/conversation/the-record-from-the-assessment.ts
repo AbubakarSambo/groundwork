@@ -25,7 +25,7 @@
  * read puts in her first check-in (theTwoPartsOfSetup), becomes her lines, like anybody's. Observations, role and focus reads
  * stay in the assessment too, as they always did.
  */
-import type { AnItem, TheAssessment } from './the-assessment';
+import { theStandingOf, theWordsThatCannotBeTrue, type AnItem, type TheAssessment } from './the-assessment';
 
 export type ARecordLineType = 'COMMITMENT' | 'PROGRESS' | 'WORRY' | 'SUCCESS_DEFINITION' | 'TIMEFRAME' | 'INTENT';
 
@@ -42,8 +42,10 @@ export interface ARecordLineFromTheAssessment {
    lead-only ones (observations, role signals, areas, disagreements, the team, risks, private notes) are not, and the item check
    below holds even if one were added. */
 const PROGRESS = () => 'PROGRESS' as const;
-const THE_SECTIONS: { section: string; pick: (a: TheAssessment) => AnItem[]; type: (i: AnItem) => ARecordLineType; onlyWhatIsNew?: true }[] = [
-  { section: 'promises', pick: (a) => a.promises ?? [], type: (i) => ((i as any).byThePerson === true ? 'COMMITMENT' : 'PROGRESS') },
+/* A promise of their own is a COMMITMENT, unless the read says it cannot be true as said (a day already past when they said it): then it
+   stays on the record as what they told us, and nothing reads it back as an open promise (theStandingOf, the-assessment.ts). */
+const THE_SECTIONS: { section: string; pick: (a: TheAssessment) => AnItem[]; type: (i: AnItem, cannot: Set<string>) => ARecordLineType; onlyWhatIsNew?: true }[] = [
+  { section: 'promises', pick: (a) => a.promises ?? [], type: (i, cannot) => ((i as any).byThePerson === true && theStandingOf(i, cannot) !== 'cannot be true' ? 'COMMITMENT' : 'PROGRESS') },
   { section: 'blockers', pick: (a) => a.blockers ?? [], type: () => 'WORRY' },
   { section: 'decisions', pick: (a) => a.decisions ?? [], type: () => 'INTENT' },
   { section: 'targets', pick: (a) => a.targets ?? [], type: () => 'SUCCESS_DEFINITION' },
@@ -74,6 +76,7 @@ const squash = (s: string) => s.toLowerCase().replace(/[‘’]/g, "'").replace(
  */
 export function theRecordLinesIn(a: TheAssessment, hasSpecifics: (text: string) => boolean): ARecordLineFromTheAssessment[] {
   const inTheCheckIn = new Set((a.messages ?? []).filter((m) => m.where === 'check-in').map((m) => m.n));
+  const cannot = theWordsThatCannotBeTrue(a);
   const candidates: (ARecordLineFromTheAssessment & { key: string; onlyWhatIsNew?: true })[] = [];
   for (const s of THE_SECTIONS) {
     for (const item of s.pick(a)) {
@@ -85,7 +88,7 @@ export function theRecordLinesIn(a: TheAssessment, hasSpecifics: (text: string) 
       candidates.push({
         key: squash(text),
         onlyWhatIsNew: s.onlyWhatIsNew,
-        type: s.type(item),
+        type: s.type(item, cannot),
         text,
         verifiability: proved ? 'HIGH' : hasSpecifics(text) ? 'MEDIUM' : 'LOW',
         dimensionThreadKey: String((item as any).area ?? (item as any).previousItem ?? '').trim() || null,

@@ -268,6 +268,7 @@ export const THE_ASSESSMENT_PROMPT = [
   '  - `words` is the person\'s own words, copied exactly from their messages, as short as still makes sense. Never your paraphrase. Keep their punctuation and quotation marks.',
   '  - `from` is the number of every message the item came from.',
   '  - Write any other field in plain, short English that a colleague with basic English understands.',
+  '  - `cannotBeTrue`: on any item, a short plain reason when what they say cannot be true as they said it, read from their words, what you know of their work and the day of the conversation: far more than one person could do in the time they gave ("10,000 freezers sold by one sales rep in one day"), or a promise for a day that had already passed when they said it ("deliver on 20 October", said on 4 November). Otherwise leave it out. It is not doubt: an ordinary claim with no proof yet is "said", not this.',
   '',
   'EVERY MESSAGE IS ACCOUNTED FOR. Each message number must appear in the `from` of at least one item, or in `nothingToRecord` when it holds nothing to record (a greeting, "ok", a remark about Groundwork itself). When unsure, record it under everythingElse rather than leave it out.',
   '',
@@ -327,6 +328,7 @@ const anItem = (props: Record<string, any>) => ({
     properties: {
       words: { type: 'string', description: 'Their own words, copied exactly.' },
       from: { type: 'array', items: { type: 'integer' }, description: 'The message numbers it came from.' },
+      cannotBeTrue: S('Only when it cannot be true as said: far more than one person could do in the time given, or a promise for a day already past when it was said. The plain reason.'),
       ...props,
     },
     required: ['words', 'from'],
@@ -698,9 +700,33 @@ export function theWorkTheyMentioned(a: TheAssessment | null): { personName: str
 }
 
 /** This person's own promises, in the shape the promises writer (writeWhatTheyPromised) always took. */
+/*
+ * HOW WHAT THEY SAID STANDS, THE ONE PLACE IT IS DECIDED (Hafsah, 4 November 2026: "In the one source, an unproven claim is always worded
+ * as said ('Brian said he sold…'), and an impossible claim or a date already past is left out of the opener, My work and anything else that
+ * reads it."). The assessment's own reading says it: "proved" where they showed it, "cannot be true" where the read gave a reason it
+ * cannot be true as said (`cannotBeTrue`), otherwise "said". The same words read into two sections are one thing said, so they stand
+ * together. Every reader takes the standing from here; the words stay in the assessment, and the lead reads them as what was said.
+ */
+export type TheStanding = 'proved' | 'said' | 'cannot be true';
+
+const theWordsOf = (i: AnItem) => squash(String(i.words ?? ''));
+
+/** The words in this assessment that the read says cannot be true as said. */
+export function theWordsThatCannotBeTrue(a: Pick<TheAssessment, AnItemSection | 'setup' | 'comparedWithLastTime'> | null): Set<string> {
+  return new Set((a ? everyItemIn(a) : []).filter((i) => text(i.cannotBeTrue)).map(theWordsOf).filter(Boolean));
+}
+
+/** How one item of this assessment stands. */
+export function theStandingOf(item: AnItem, cannotBeTrue: Set<string>): TheStanding {
+  if (text(item.cannotBeTrue) || (theWordsOf(item) && cannotBeTrue.has(theWordsOf(item)))) return 'cannot be true';
+  return item.proof === 'proved' ? 'proved' : 'said';
+}
+
 export function whatTheyPromisedThemselves(a: TheAssessment | null): { action: string; clear?: string | null; outcome?: string | null; when?: string | null }[] {
+  /* A promise that cannot be true as said (a day already past when it was said) is not kept as a promise: it stays what they said. */
+  const cannot = theWordsThatCannotBeTrue(a);
   return (a?.promises ?? [])
-    .filter((p) => p.byThePerson === true)
+    .filter((p) => p.byThePerson === true && theStandingOf(p, cannot) !== 'cannot be true')
     .map((p) => ({ action: text(p.action) ?? text(p.words) ?? '', clear: text(p.clear), outcome: text(p.outcome), when: text(p.when) }))
     .filter((p) => p.action);
 }

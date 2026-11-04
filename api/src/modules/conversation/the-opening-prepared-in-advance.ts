@@ -1,4 +1,5 @@
 import { whatIsOpenFor, theOpeningFrom, type WhatIsOpen } from './the-one-thing-today';
+import { ONE_VOICE } from './prompt-library';
 
 /**
  * EACH PERSON'S OPENER AND FIRST QUESTION, PREPARED IN ADVANCE (Hafsah, 3 November 2026 night, answers 1 to 3; fix plan, release batch 1,
@@ -154,5 +155,7 @@ export function writeOnlyTheQuestion(line: string, recordsQuestion?: string | nu
     'Write only the first question that follows it: one plain sentence that builds on that line where it can, ending in a question mark.',
     ...(recordsQuestion ? [`The record's own question after it is "${recordsQuestion}". Ask it, or a better one the session plan gives you about the same thing.`] : []),
     'Do not repeat the line, do not greet them, and do not say what this check-in is for.',
+    /* The opener speaks as "I", never "we" (round 51: "what happened with Carrefour Junction since we last spoke?"). */
+    ONE_VOICE,
   ].join('\n');
 }
