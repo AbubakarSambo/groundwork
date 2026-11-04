@@ -28,12 +28,24 @@ describe('missed check-ins (decision 136)', () => {
     expect(stand([missed(1), missed(2), missed(3), answered(4)]).stage).toBe(0);
   });
 
-  it('a session still open is not missed, and one left waiting when the next opened is', () => {
+  /* Read from the one session clock (fix plan, group 4): a session is missed once the clock has moved past it or closed it, never
+     by this count's own idea of when the next one opened. Session 3 still in progress is the clock's open session, so it is not
+     missed yet; once the clock has moved on to session 4, it is. */
+  it('a session still open is not missed, and one the clock has moved past is', () => {
     const open = { id: 'c3', sessionNumber: 3, status: 'NOT_STARTED', availableFrom: day(3) };
     expect(stand([answered(1), missed(2), open]).stage).toBe(0);
-    const expired = { id: 'c3', sessionNumber: 3, status: 'IN_PROGRESS', availableFrom: day(3) };
+    const stillInProgress = { id: 'c3', sessionNumber: 3, status: 'IN_PROGRESS', availableFrom: day(3) };
     const next = { id: 'c4', sessionNumber: 4, status: 'NOT_STARTED', availableFrom: day(4) };
-    expect(stand([answered(1), missed(2), expired, next]).stage).toBe(TOLD_THE_PERSON);
+    expect(stand([answered(1), missed(2), stillInProgress, next]).stage).toBe(0);
+    const leftWaiting = { id: 'c3', sessionNumber: 3, status: 'NOT_STARTED', availableFrom: day(3) };
+    const nextStarted = { id: 'c4', sessionNumber: 4, status: 'IN_PROGRESS', availableFrom: day(4) };
+    expect(stand([answered(1), missed(2), leftWaiting, nextStarted]).stage).toBe(TOLD_THE_PERSON);
+  });
+
+  it('a session past the check-in\'s clock was not due to them yet, so it is never missed', () => {
+    const rows = [answered(1), missed(2), missed(3), missed(4)];
+    expect(whereTheyStand(theirClosedSessions(rows, [], NOW, { theClocksSession: 2 })).ofTheLastFour).toBe(1);
+    expect(whereTheyStand(theirClosedSessions(rows, [], NOW, { theClocksSession: 5 })).ofTheLastFour).toBe(3);
   });
 
   it('approved leave never counts as missed', () => {
