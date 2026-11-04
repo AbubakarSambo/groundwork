@@ -1,7 +1,7 @@
 import { WhatsAppService } from './whatsapp.service';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { TEMPLATES, fill, THE_NAMES_TO_SUBMIT, THE_FOUR_OF_19_OCTOBER, THE_ONE_OF_21_OCTOBER, THE_NAMES_WE_MAY_USE, FIRST_MESSAGES, theTemplateToUse } from './a-message-outside-the-window';
+import { TEMPLATES, fill, THE_NAMES_TO_SUBMIT, THE_FOUR_OF_19_OCTOBER, THE_ONE_OF_21_OCTOBER, THE_ONE_OF_4_NOVEMBER, THE_NAMES_WE_MAY_USE, FIRST_MESSAGES, theTemplateToUse } from './a-message-outside-the-window';
 import { theReminderBody } from '../grounds/what-is-sent-in-simpler-words';
 import { THANKS_YOUR_ANSWER_IS_IN } from '../public-api/a-whatsapp-message-is-routed';
 import { ROUTINE_EMAILS } from '../engagement/one-routine-message-a-day';
@@ -227,5 +227,58 @@ describe('the closing reminder of 21 October, only once it is listed', () => {
     expect(theTemplateToUse('closes-soon', ['groundwork_checkin_closes_soon_v2'], { params: ['Mercy', 'Sales team, Q4'] })).toBeNull();
     expect(theTemplateToUse('closes-soon', ['groundwork_checkin_closes_soon_v2', 'checkin_closes_soon'], { params: ['Mercy', 'Sales team, Q4'] })?.template.name).toBe('checkin_closes_soon');
     expect(FIRST_MESSAGES.has('closes-soon')).toBe(true);
+  });
+});
+
+/*
+ * THE TEMPLATE OF 4 NOVEMBER (Hafsah's answer 5 of 4 November): groundwork_checkin_your_view_matters_v2 replaces checkin_your_view_matters,
+ * which says "about five minutes", once it is approved and listed, outside the 24 hours only. The lead's own nudge goes as it too. Read as
+ * Mercy reads her phone.
+ */
+describe('the chase of 4 November, only once it is listed', () => {
+  const realFetch = (global as any).fetch;
+  let fetchSpy: jest.Mock;
+  beforeEach(() => { fetchSpy = jest.fn(async () => ({ ok: true, status: 200, text: async () => '{"messages":[{"id":"wamid.1"}]}' })); (global as any).fetch = fetchSpy; });
+  afterEach(() => { (global as any).fetch = realFetch; });
+  const sent = () => JSON.parse(fetchSpy.mock.calls[0][1].body);
+  const read = (body: any, t: { body: string }) => fill(t.body, body.template.components[0].parameters.map((p: any) => p.text));
+  const params = ['Mercy', 'Sales team, Q4', 'Grace'];
+  const text = fill(theReminderBody('your-view-matters', TEMPLATES['your-view-matters'].body), params);
+  const V2 = 'groundwork_checkin_your_view_matters_v2';
+
+  it('holds the words of docs/whatsapp-templates.md exactly, may be listed, and checkin_your_view_matters is unchanged', () => {
+    expect(THE_ONE_OF_4_NOVEMBER.yourViewMatters.name).toBe(V2);
+    expect(THE_ONE_OF_4_NOVEMBER.yourViewMatters.body).toBe("Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} understand what's in your way, and where they can help. It takes about ten minutes, and you can answer here.");
+    expect(THE_NAMES_WE_MAY_USE).toContain(V2);
+    expect(THE_NAMES_TO_SUBMIT).not.toContain(V2);
+    expect(TEMPLATES['your-view-matters'].name).toBe('checkin_your_view_matters');
+    const doc = readFileSync(join(__dirname, '..', '..', '..', '..', 'docs', 'whatsapp-templates.md'), 'utf8');
+    const section = doc.slice(doc.indexOf(`### 6. ${V2}`));
+    expect(/- \*\*Body:\*\*\s*(.+)/.exec(section)![1].trim()).toBe(THE_ONE_OF_4_NOVEMBER.yourViewMatters.body);
+    expect(section).toMatch(/\*\*Category:\*\* Utility/);
+  });
+
+  it('checkin_your_view_matters goes as today until the new one is approved and listed, and then the new one goes', async () => {
+    const before = aSender({ approved: THE_NAMES_TO_SUBMIT });
+    await before.wa.sendFor('org-drop', '+254700300003', text, { checkInId: 'ci-mercy', kind: 'your-view-matters', params });
+    expect(sent().template.name).toBe('checkin_your_view_matters');
+    fetchSpy.mockClear();
+    const after = aSender({ approved: [...THE_NAMES_TO_SUBMIT, V2] });
+    await after.wa.sendFor('org-drop', '+254700300003', text, { checkInId: 'ci-mercy', kind: 'your-view-matters', params });
+    expect(sent().template.name).toBe(V2);
+    expect(read(sent(), THE_ONE_OF_4_NOVEMBER.yourViewMatters)).toBe("Hi Mercy, your check-in for Sales team, Q4 is still waiting. Your answers help Grace understand what's in your way, and where they can help. It takes about ten minutes, and you can answer here.");
+  });
+
+  it("the lead's own nudge goes as the new one once it is listed, and never with a blank missing", () => {
+    expect(theTemplateToUse('lead-nudge', [V2, 'checkin_your_view_matters'], { params })?.template.name).toBe(V2);
+    expect(theTemplateToUse('your-view-matters', [V2], { params: ['Mercy', 'Sales team, Q4'] })).toBeNull();
+    expect(theTemplateToUse('your-view-matters', [V2, 'checkin_your_view_matters'], { params: ['Mercy', 'Sales team, Q4'] })?.template.name).toBe('checkin_your_view_matters');
+  });
+
+  it('inside the 24 hours the chase goes as an ordinary message, as before, even once it is listed', async () => {
+    const { wa } = aSender({ approved: [...THE_NAMES_TO_SUBMIT, V2], lastWrote: new Date(Date.now() - 60 * 60 * 1000) });
+    await wa.sendFor('org-drop', '+254700300003', text, { checkInId: 'ci-mercy', kind: 'your-view-matters', params });
+    expect(sent().type).toBe('text');
+    expect(sent().text.body).toBe(text);
   });
 });
