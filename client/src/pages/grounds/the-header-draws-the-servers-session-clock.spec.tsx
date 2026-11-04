@@ -81,10 +81,12 @@ describe('the check-in header draws the server\'s sessionClock', () => {
     expect(screen.queryByText(/has started for some people/)).toBeNull()
   })
 
-  it('falls back to the client\'s own count when the server sends no sessionClock at all', async () => {
+  /* 4 November 2026: the client's own count is gone (0e39f8556, "one figure, one owner"): the session clock is the
+     server's alone, so with none served the header says no session number rather than one counted on the client. */
+  it('says no session number of its own when the server sends no sessionClock at all', async () => {
     (groundsApi.get as any).mockResolvedValue(ground())
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
-    expect(await screen.findByText(/Session 2 of/)).toBeTruthy()
+    expect(screen.queryByText(/Session \d+ of/)).toBeNull()
   })
 })
