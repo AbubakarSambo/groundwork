@@ -21,9 +21,15 @@ import { join } from 'path'
  * WHAT THIS FILE STILL HAS TO PROVE, unchanged: a person is never shown a wall of every control at
  * once with nothing said about what it is currently set to, and pressing "Change" is what reveals
  * more, not a page load.
+ *
+ * REPOINTED AGAIN (4 November 2026). People and setup is the B8 page for everybody now (PeopleAndSetupAsPictured.tsx,
+ * Release 1B's switch went). B8 draws each setting as its own field showing what it is set to, with no "Change" to press,
+ * and nothing applies until "Save changes". What is still proved: named sections, a value on every row, and the parts a
+ * lead rarely needs (adding people, the join link, the days the team works) stay closed until asked for; and nothing is
+ * written as she goes.
  */
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
-const PAGE = strip(readFileSync(join(__dirname, 'CheckInPeopleAndSetup.tsx'), 'utf8'))
+const PAGE = strip(readFileSync(join(__dirname, 'PeopleAndSetupAsPictured.tsx'), 'utf8'))
 
 describe('the People and setup tab', () => {
   it('is named sections, not one long column', () => {
@@ -39,9 +45,16 @@ describe('the People and setup tab', () => {
     for (const row of rows) expect(row).toMatch(/label=/)
   })
 
-  it('reveals more controls behind "Change", rather than showing every control at once', () => {
-    expect(PAGE).toContain("setEditingWhen((v) => !v)")
-    expect(PAGE).toContain('{editingWhen &&')
+  it('keeps what a lead rarely needs closed until she asks, rather than showing every control at once', () => {
+    expect(PAGE).toContain('setShowAdd((v) => !v)')
+    expect(PAGE).toContain('{isInitiator && showAdd && (')
+    expect(PAGE).toContain('setShowLink((v) => !v)')
+    expect(PAGE).toContain('<Folded summary="The days this team works">')
+  })
+
+  it('and writes nothing until "Save changes"', () => {
+    expect(PAGE).toContain('{anyChange && (')
+    expect(PAGE).toContain('onClick={save}>Save changes</Button>')
   })
 
   it('the old numbered accordion is gone, not just renamed', () => {
