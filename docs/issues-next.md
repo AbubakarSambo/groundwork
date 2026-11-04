@@ -91,7 +91,7 @@ The fixed rule this follows is in standards.md: no lines that explain what a pag
 | 43 | **Bug:** opening a session shows a blank white page first. | Hafsah, 4 November | Screenshot 07.53.23 (/session/10, white page) |
 | 44 | **Bug:** on desktop the board and other pages fill only the left half of the window, leaving the right side empty. | Hafsah, 4 November | Screenshot 10.33.33 |
 | 45 | The tab still says "Context and resources"; it should be "References and resources", as decided. | Hafsah, 4 November | Screenshot 10.33.33 |
-| 46 | Every explainer line and every page in between, on every page, listed for removal in the same build. The list is being made now. | Hafsah, 4 November | To follow |
+| 46 | Every explainer line and every page in between, on every page, listed for removal in the same build: about 120 lines (85 explainers, 25 privacy notes, 6 pages in between). Most of the 25 October wording sweep's fixes, and the References rename, sit behind two switches that are off by default (`directMorningOn`, `release1bTabsOn`). In batch 1 the approved wording becomes the only wording, and the switch branches are deleted. | Hafsah, 4 November; read-only sweep | ~/Desktop/next-steps/explainers-and-pages-between.md |
 
 ## From the first experience on 8 organisations, round 39 (wip/plan bf22429c8, 4 November; ~/Desktop/first-experience/round-9/)
 
