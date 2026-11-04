@@ -60,3 +60,11 @@ describe('decision 86: what keeps coming up, in the lead\'s "what to settle firs
       expect(JSON.stringify(board)).not.toMatch(/keeps coming up in .{1,40}’s check-ins/);
     });
 });
+
+describe('a strength is never a question to settle', () => {
+  it('Joseph\'s strength is not worded as something he has not answered', () => {
+    const { patternQuestionsToSettleFirst } = require('./pattern-questions-to-settle-first');
+    const served = [{ id: 'x', participantId: 'p-joseph', yours: false, kind: 'good', heading: 'Keeps promises and shows the proof', whatHappened: null, sessions: [1, 2, 3], howOften: 'It came up in 3 check-ins.', askThem: null, theirWords: null, canAnswer: false, talkedAbout: false }];
+    expect(patternQuestionsToSettleFirst(served, () => 'Joseph')).toEqual([]);
+  });
+});
