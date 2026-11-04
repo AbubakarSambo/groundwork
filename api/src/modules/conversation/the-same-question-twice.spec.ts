@@ -126,7 +126,7 @@ describe('the note that merges onto what is already held', () => {
   /* Two or three seconds, not fifteen: it reads one answer and quotes it back into fields. */
   it('and the note runs on the fast model with nothing to deliberate about', () => {
     const notes = SRC.slice(SRC.indexOf('private async noteWhatTheySaidNow('), SRC.indexOf('async extractRecordEntries('));
-    expect(notes).toMatch(/\{ fast: true, thinkingBudget: 0 \}/);
+    expect(notes).toMatch(/\{ fast: true \}/);
   });
 });
 

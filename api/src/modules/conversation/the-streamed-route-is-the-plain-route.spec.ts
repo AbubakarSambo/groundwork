@@ -58,6 +58,27 @@ describe('the streamed route is the plain route', () => {
     expect(events[events.length - 1]).toMatchObject({ type: 'done', reply: plain.reply });
   });
 
+  /* 3 November 2026: the suggestions are read from the reply, so the reply goes first and they follow it. */
+  it('sends the reply before its suggested answers, and the suggestions after it', async () => {
+    const svc = Object.create(ConversationService.prototype) as any;
+    svc.logger = { debug: () => undefined, warn: () => undefined, log: () => undefined };
+    svc.aSessionUnderway = async () => ({ id: 'c-1' });
+    let release: (a: string[]) => void = () => undefined;
+    svc.sendMessage = async (_id: string, _who: string, _msg: string, how: any) => {
+      how?.streamDraft?.('Which shop placed the order?');
+      how?.suggestionsAfterTheReply?.(new Promise<string[]>((r) => { release = r; }));
+      return { reply: 'Which shop placed the order?', sessionComplete: false };
+    };
+    const events: any[] = [];
+    const it = svc.sendMessageStream('c-1', 'u-1', 'We sold three.');
+    events.push((await it.next()).value, (await it.next()).value);
+    /* The person is reading the reply while the suggestions are still being read. */
+    expect(events.map((e) => e.type)).toEqual(['delta', 'done']);
+    release(['Kariuki Butchery.', 'Not sure yet.']);
+    for await (const e of it) events.push(e);
+    expect(events[2]).toEqual({ type: 'suggestions', suggestedAnswers: ['Kariuki Butchery.', 'Not sure yet.'] });
+  });
+
   it('closes when the plain route closes', async () => {
     const events = await run(serviceWith({ reply: 'Your report is ready now. Speak soon.', sessionComplete: true }, []));
     expect(events).toEqual([{ type: 'done', reply: 'Your report is ready now. Speak soon.', sessionComplete: true }]);
