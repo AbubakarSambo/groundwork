@@ -57,6 +57,12 @@ describe('the app opens in light mode', () => {
     // A dark theme for someone who chooses it is its own piece of work. Following the phone's
     // setting by default is exactly what "opens in light mode" rules out.
     expect(CSS).not.toMatch(/prefers-color-scheme:\s*dark/)
+    // Every stylesheet, not only index.css: three dark blocks in styles/prototype.css turned Today and the board near-black on a
+    // Chrome set to dark, and the text could not be read (Hafsah, 4 November 2026: "never do dark mode on groundwork").
+    const sheets: string[] = []
+    const walk = (d: string) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (f.endsWith('.css')) sheets.push(p) } }
+    walk(SRC)
+    for (const f of sheets) expect({ f, dark: /prefers-color-scheme:\s*dark/.test(readFileSync(f, 'utf8')) }).toEqual({ f, dark: false })
   })
 })
 
