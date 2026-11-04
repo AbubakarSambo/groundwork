@@ -84,7 +84,7 @@ The older system (PatternDetection) is merged into the single pattern layer (pat
 - **observe, observePositive, surfacePatterns and startNewPeriod as stored state** (`patterns.service.ts:490-702`). **Why:** the single layer works the state out from the record each time, so there is no second state to drift. Their rules (three periods, the leave pause, positives at once) are kept above.
 - **The record-over-time pattern lines** (`reports/reports.service.ts:4809-4899`). **Why:** they are worked out and then always removed before serving.
 - **The chaser guard:** already deleted (c156bcd16, 2 November).
-- **Collusion, concentration and M4_PLUS** (`patterns.service.ts:723-918`, `intelligence/intelligence.service.ts:234`). **Why:** they judge people outside the assessments. **Hafsah to confirm** before removal; until she does, they stay as they are.
+- **Collusion, concentration and M4_PLUS are NOT removed** (Hafsah, 4 November): they are the organisation-level patterns she wants. In batch 1 they stay exactly as they are. None of round 38's false flags came from them (see the table above), so there is nothing in them to fix in this batch. In batch 2 they are merged into the single layer the same way (issues-next item 52).
 
 **Proof:** in the lead's view, honest people wrongly flagged is 0 on every control. At least 10 of 12 patterns are still caught. A person's own patterns show as before. A positive shows on its first sighting. A pattern spec for each family reads from an assessment fixture.
 

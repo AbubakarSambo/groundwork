@@ -104,3 +104,9 @@ Ratings: clinic 1, family 1, field 1, law 1, ngo 1, sales 1, startup 2, wild 1 (
 | 49 | Clinic: "I was told my people had checked in, but the system says 'no check-ins' on every screen. Then I find I have to add them myself." A status that says two things (one source for each thing). | First experience, round 39 | clinic.json |
 | 50 | Reports "repeat my own words back to me", "empty report filled with useless business jargon", and "a report that tells me nothing". | First experience, round 39 | field, ngo and startup .json |
 | 51 | Ask "can't even answer the most basic question about my business". | First experience, round 39 | wild.json |
+
+## For batch 2 (Hafsah, 4 November)
+
+| # | Issue | Source | Evidence |
+|---|---|---|---|
+| 52 | **Merge the three organisation-level checks into the single pattern layer:** collusion (COLLUSION_RISK), work concentrated in one person (CONCENTRATION_RISK) and the invisible backbone (M4_PLUS). Do it the same way as the older system: keep their definitions, and make them read from the assessments. Collusion is only ever shown to an admin or the lead, with strong evidence, and never worded as an accusation. In batch 1 they stay as they are, because none caused a false flag in round 38. | Hafsah, 4 November | `patterns/patterns.service.ts:723-918`, `intelligence/intelligence.service.ts:234`; the round 38 false-flag table in docs/fix-plan.md, group 4 |
