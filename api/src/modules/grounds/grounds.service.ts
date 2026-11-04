@@ -4972,7 +4972,8 @@ export class GroundsService {
   /** The setup assessment's parts in the shape the context page's writer takes; the targets, the people's numbers and the promises are the save's other readers' to write. */
   private async whatTheSetupsAssessmentGives(groundId: string, a: TheAssessment): Promise<WhatAPasteGives> {
     const said = (i: any, field: string) => String(i?.[field] ?? i?.words ?? '').replace(/\s+/g, ' ').trim();
-    const forTheTeam = (items: any[] | undefined, field: string) => (items ?? []).filter((i) => i?.whoMaySee !== 'the lead only').map((i) => said(i, field)).filter(Boolean).map((t) => t.slice(0, 300));
+    /* Every part of setup is the lead's (whoMaySee); what goes to the team goes through the writer's own places, chosen below. */
+    const lines = (items: any[] | undefined, field: string) => (items ?? []).map((i) => said(i, field)).filter(Boolean).map((t) => t.slice(0, 300));
     const people = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } },
@@ -4983,18 +4984,24 @@ export class GroundsService {
       const note = said(n, 'note');
       if (who && note) aboutPeople.push({ who: theNameWeUseFor(who as any), participantId: who.id, observation: note.slice(0, 300) });
     }
+    /*
+     * WHAT IS MEANT FOR THE TEAM GOES THROUGH ITS OWN PLACE, AND THE REST STAYS HERS (Hafsah, 4 November 2026). What success looks
+     * like becomes the check-in's standard and the rules its ways of working, which the team reads; the strategy, the notes, the
+     * dates and what is still to decide are kept on References and resources for her alone (keptForTheLead), where she can share them.
+     */
     return {
-      success: forTheTeam(a.setup?.success, 'success')[0] ?? null,
+      success: lines(a.setup?.success, 'success')[0] ?? null,
       teamTargets: [], forPeople: [], commitments: [], questionsForPeople: [], toldToParticipants: null,
-      dates: (a.dates ?? []).filter((d: any) => d?.whoMaySee !== 'the lead only').map((d: any) => ({ what: said(d, 'what'), when: String(d?.when ?? '').trim() })).filter((d) => d.what && d.when),
+      dates: (a.dates ?? []).map((d: any) => ({ what: said(d, 'what'), when: String(d?.when ?? '').trim() })).filter((d) => d.what && d.when),
       unmatched: [],
-      waysOfWorking: forTheTeam(a.setup?.rules, 'rule'),
-      strategy: forTheTeam(a.setup?.strategy, 'strategy'),
-      notes: forTheTeam(a.setup?.notes, 'note'),
-      openDecisions: forTheTeam((a.decisions ?? []).filter((d: any) => d?.state === 'waiting'), 'decision'),
+      waysOfWorking: lines(a.setup?.rules, 'rule'),
+      strategy: lines(a.setup?.strategy, 'strategy'),
+      notes: lines(a.setup?.notes, 'note'),
+      openDecisions: lines((a.decisions ?? []).filter((d: any) => d?.state === 'waiting'), 'decision'),
       notSettled: [],
       aboutPeople,
       betweenPeople: [],
+      keptForTheLead: true,
     };
   }
 
@@ -5143,7 +5150,7 @@ export class GroundsService {
             text: clean.slice(0, 400),
             saidAs: opts?.saidAs?.trim()?.slice(0, 600) ?? null,
             /* A line about a person is the lead's alone, whatever anybody passes. */
-            audience: ABOUT_SOMEBODY.has(kind) ? ContextNoteAudience.LEAD_ONLY : ContextNoteAudience.EVERYONE,
+            audience: ABOUT_SOMEBODY.has(kind) || (got.keptForTheLead && kind !== ContextItemKind.WAY_OF_WORKING) ? ContextNoteAudience.LEAD_ONLY : ContextNoteAudience.EVERYONE,
             aboutParticipantId: about,
             source: 'PASTE',
             authorUserId: author,

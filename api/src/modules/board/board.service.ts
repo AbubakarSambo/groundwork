@@ -1,4 +1,4 @@
-import { whatTheRecordShowsTheLead } from '../patterns/what-the-record-shows-the-lead';
+import { whatTheRecordShowsTheLead, theNewestRecordOfEachPerson } from '../patterns/what-the-record-shows-the-lead';
 import { theSituationBoard, theRelease8SituationsIsOn } from './release-8-situations';
 import { whereTheTimeWent } from './the-switchboards-own-sections';
 import { theRelease4TeamsIsOn, theUnitOfATarget } from './release-4-teams';
@@ -2052,6 +2052,10 @@ export class BoardService {
       });
       /* How each line is known, by the same rule as the reports (week 6b). Stored columns only. */
       const whoAdded = await whoAddedEachBackingDocument(this.prisma, entries as any[]);
+      /* WHAT THE RECORD SETTLES (fix plan, group 4): a claim backed by proof anywhere on the record is settled, read from the single
+         pattern layer's claims, the one owner, so the board never says of a line on its own that nothing backs it. */
+      const settled = new Set((await theNewestRecordOfEachPerson(this.prisma, groundId).catch(() => []))
+        .flatMap((r) => (r.record.settled ?? []).map((c) => `${c.checkInId}\u0000${c.words}`)));
       /* What each person typed in their own check-ins, so a line is quoted only in words they said. See
          what-each-person-said-is-in-their-name. */
       const typed = await whatEachHandoffPersonTyped(
@@ -2154,6 +2158,7 @@ export class BoardService {
             mark: theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded),
             markSays: WHAT_EACH_MARK_SAYS[theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded)],
             sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
+            settled: !!e.checkInId && settled.has(`${e.checkInId}\u0000${cleanText(e.text)}`),
           } })).concat(theirPromises(p.id) as any[])
             .sort((a, b) => a.at - b.at)
             .map((x) => x.line) as any[],

@@ -30,7 +30,9 @@ import { theRecordsClock, theDayItBegan, wholeDaysTo } from '../board/a-wait-is-
 import { THE_REPORT_IN_SIMPLER_WORDS } from '../grounds/what-is-sent-in-simpler-words';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
-import { aCheckInStartedFromTheAnchor } from '../conversation/the-anchor-weekly-check-in';
+import { theLinesAboutAColleaguesTargetLeftOut } from './their-words-about-a-target-follow-the-setting';
+/* The standard the lead set, which is the target's own place in a report read (not her words in setup). */
+const THE_STANDARD_AS_SET = [['stated'], ['againstSuccess', 'stated']] as const;
 import { theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
 import { whatIDontKnowYet } from './what-i-dont-know-yet';
 import { theOpenQuestionsThenTheDeals } from './the-sales-team-report-from-the-record';
@@ -121,9 +123,7 @@ import { howTheNumbersSit } from './do-the-parts-add-up-to-the-whole';
 import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
 import { whatSituationThisIsAbout } from './what-situation-this-report-is-about';
-import { totalSessionsFor } from '../grounds/session-count';
-import { theSessionClock } from '../board/one-count-for-the-sessions';
-import { whoHoldsTheClock } from '../grounds/this-sessions-count';
+import { theSessionAndItsCount, thePlannedSessionsOf } from '../grounds/this-sessions-count';
 import { hasEnded } from '../grounds/a-ground-that-has-ended';
 import { nobodyHasSaidWhoArrangedAnything } from '../conversation/who-secured-that-meeting';
 import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
@@ -1075,8 +1075,15 @@ export class ReportsService {
    * the people this reader may read, and as everybody in the check-in may read it unless the reader runs it. Words the record's lines
    * already hold are not given twice.
    */
-  private async whatSuccessWasSaid(groundId: string, readable: string[], readerIsTheLead: boolean, lines: { text: string }[], uptoSession?: number, mayRead: (f: AFact) => boolean = () => true): Promise<{ type: RecordEntryType; text: string; participantId: string }[]> {
-    const facts = await theFactsOnRecord(this.prisma, { groundId, participantIds: readable, reader: readerIsTheLead ? { kind: 'the lead', judgements: false } : { kind: 'everybody in the check-in' } }).catch(() => [] as AFact[]);
+  private async whatSuccessWasSaid(groundId: string, readable: string[], readerIsTheLead: boolean, lines: { text: string }[], uptoSession?: number, mayRead: (f: AFact) => boolean = () => true, readersOwnId: string | null = null): Promise<{ type: RecordEntryType; text: string; participantId: string }[]> {
+    const none = () => [] as AFact[];
+    /* The reader's own words as theirs, everybody else's as what is shared with everybody in the check-in (mayRead decides each). */
+    const facts = readerIsTheLead
+      ? await theFactsOnRecord(this.prisma, { groundId, participantIds: readable, reader: { kind: 'the lead', judgements: false } }).catch(none)
+      : [
+        ...(readersOwnId && readable.includes(readersOwnId) ? await theFactsOnRecord(this.prisma, { groundId, reader: { kind: 'the person', participantId: readersOwnId } }).catch(none) : []),
+        ...await theFactsOnRecord(this.prisma, { groundId, participantIds: readable.filter((id) => id !== readersOwnId), reader: { kind: 'everybody in the check-in' } }).catch(none),
+      ];
     const held = lines.map((l) => String(l.text ?? '').toLowerCase()).join('\n');
     return facts
       .filter((f) => ['setup.success', 'targets', 'setup.objective'].includes(f.section) && (uptoSession == null || f.sessionNumber <= uptoSession) && mayRead(f))
@@ -1355,7 +1362,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const theSituation = whatSituationThisIsAbout(
       (ground as any).scenario,
       roundNow,
-      totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
+      thePlannedSessionsOf(ground as any),
     );
     /* The direct morning (the-direct-morning-is-written-straight): for a switched-on organisation the code's block goes LAST, after the
        stored version and every code block, so it runs whatever version is stored. Off, the prompt is exactly as it was. */
@@ -3204,6 +3211,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
          */
         scenario: true,
         peersVisibleToEachOther: true,
+        whoSeesTargets: true,
         participants: {
           select: {
             id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true,
@@ -3267,12 +3275,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
         select: { successLooksLike: true, version: true, conditions: true },
       }),
       this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, ...whoseLines } as any,
+        where: { disputedAt: null, ...whoseLines, ...theLinesAboutAColleaguesTargetLeftOut((ground as any).whoSeesTargets, me, viewerIsLead) } as any,
         orderBy: { createdAt: 'asc' },
         select: { type: true, text: true, participantId: true },
       }).then(async (lines) => [...lines, ...(await this.whatSuccessWasSaid(groundId, readableParticipantIds, isInitiator, lines, undefined,
         /* The same wall as the lines: a colleague's only from a released session. */
-        (f) => releasedSessions === null || !me || f.participantId === me.id || (releasedSessions as number[]).includes(f.sessionNumber)))]),
+        (f) => releasedSessions === null || !me || f.participantId === me.id || (releasedSessions as number[]).includes(f.sessionNumber), me?.id ?? null))]),
     ]);
 
     return whereYouAreAgainstWhatYouNamed({
@@ -3325,6 +3333,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
            Left out of this select, plannedSessions was null on every read (request 55). */
         timelineDays: true,
         runsUntilEnded: true,
+        whoSeesTargets: true,
       },
     });
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
@@ -3413,15 +3422,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
       ? ground.participants.map((p) => p.id)
       : me ? [me.id] : [];
     const mine = new Set(me ? [me.id] : []);
+    /* A colleague's words about their own target, where each person sees only their own (their-words-about-a-target-follow-the-setting). */
+    const theTargetWordsWall = theLinesAboutAColleaguesTargetLeftOut((ground as any).whoSeesTargets, me, viewerIsLead);
 
     const [entries, previousEntries, baseline, startingPoint, checkIn] = await Promise.all([
       this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber } },
+        where: { disputedAt: null, ...theTargetWordsWall, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber } },
         select: { type: true, text: true, recallBased: true, anchoredOrigin: true, dimensionThreadKey: true, participantId: true, confirmedAt: true, anchoredDocumentId: true },
       }),
       sessionNumber > 1
         ? this.prisma.recordEntry.findMany({
-          where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: sessionNumber - 1 } },
+          where: { disputedAt: null, ...theTargetWordsWall, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: sessionNumber - 1 } },
           select: { type: true, text: true, dimensionThreadKey: true, participantId: true },
         })
         : Promise.resolve([]),
@@ -3597,7 +3608,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
          otherwise the length over the rhythm. Null where either is unset, so the header omits the
          position rather than inventing a denominator. Worked out inline it had no step for a one-time
          check-in, so the report read "Session 1." while the board read "of 1" (12 October). */
-      plannedSessions: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
+      plannedSessions: thePlannedSessionsOf(ground as any),
       closed: !!snapshot,
       /* The wall is the release, not whether the round has closed (user journeys, F-12). */
       othersWordsAreNotYetOpen: !(released || viewerIsLead),
@@ -3854,10 +3865,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * the report.
      */
     const everyEntrySoFar = await this.prisma.recordEntry.findMany({
-      where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: { lte: sessionNumber } } },
+      where: { disputedAt: null, ...theTargetWordsWall, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: { lte: sessionNumber } } },
       orderBy: { createdAt: 'asc' },
       select: { type: true, text: true, participantId: true },
-    }).then(async (lines) => [...lines, ...(await this.whatSuccessWasSaid((ground as any).id, readableParticipantIds, isInitiator, lines, sessionNumber))]);
+    }).then(async (lines) => [...lines, ...(await this.whatSuccessWasSaid((ground as any).id, readableParticipantIds, isInitiator, lines, sessionNumber, undefined, me?.id ?? null))]);
     /* A team target the lead set is what success looks like, said as a number (request 132 g): "No standard is set. You have not
        said what success looks like" was read by a lead who had set 6,000. Only to the lead, who may read every target. */
     const theTargetTheLeadSet = !(baseline?.successLooksLike ?? '').trim() && isInitiator
@@ -4300,7 +4311,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           /* How many this run holds, from the length and the rhythm - the same arithmetic the
              chat composer does when it says "session 3 of 6", by the one rule in session-count.ts. Null where either is unset, which
              makes the read fall silent rather than guess at a last session. */
-          plannedSessions: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
+          plannedSessions: thePlannedSessionsOf(ground as any),
           thereIsALater: ONE_SITTING_ONLY.has((ground as any).scenario)
             ? false
             : ALREADY_IN_THE_OPEN.has((ground as any).scenario)
@@ -6553,16 +6564,19 @@ happened, and what is in the way.`;
    * written ahead of time included. All three now read this one: the open round among the people who check
    * in (nobody an admin has not let in holds it back, decision 77), capped at the last planned session.
    */
+  /* One clock (docs/fix-plan.md, group 2): the board's own theSessionAndItsCount, read with the same rows, not a second build of its inputs. */
   private async theBoardsClock(groundId: string, ground: any): Promise<{ current: number; planned: number | null }> {
     const rows = ((await (this.prisma.checkIn?.findMany?.({
       where: { groundId },
       select: { participantId: true, sessionNumber: true, status: true, isSetup: true, availableFrom: true, startedAt: true, completedAt: true },
     }) ?? Promise.resolve([] as any[]))?.catch?.(() => [] as any[])) ?? []) as any[];
-    const givers = whoHoldsTheClock((ground?.participants ?? []) as any[]);
-    const planned = totalSessionsFor(ground?.timelineDays, ground?.cadence, ground?.cadenceDays) ?? null;
     /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
     const handOn = await theReleaseOneSalesBoardIsOn(this.prisma, ground?.organizationId ?? null).catch(() => false);
-    const clock = theSessionClock(rows.filter((c) => !c.isSetup) as any, givers, planned, new Date(), handOn);
+    const { clock } = theSessionAndItsCount({
+      participants: (ground?.participants ?? []) as any[], checkIns: rows, scenario: ground?.scenario ?? null,
+      timelineDays: ground?.runsUntilEnded ? null : ground?.timelineDays ?? null, cadence: ground?.cadence ?? null, cadenceDays: ground?.cadenceDays ?? null,
+      runsUntilEnded: !!ground?.runsUntilEnded,
+    }, { now: new Date(), handOn });
     return { current: clock.currentSession, planned: clock.plannedSessions };
   }
 
@@ -7521,15 +7535,14 @@ happened, and what is in the way.`;
       /* And the objectives the engine wrote from them, in its own words (decisions 48 and 56). */
       served = withoutGoalsNotToldIn(served, theWordsOfWhatTheLeadHasNotToldThemAbout(ground.objectives ?? [], notTold as any[], ground.participants ?? [], false));
       /*
-       * IN AN ANCHOR CHECK-IN, NONE OF THE LEAD'S AIMS, for anybody who does not run it (decision 96, item 8; release check, 8 October
-       * 2026). Her aims are made from what she said she is seeing today, which stays hers. The model was already kept from them
-       * (4eb427e2), but the session report's shared picture quoted one to Juma on test bed copy a: "The objective, in the lead's own
-       * words, is "The team checks orders before baking to reduce the 20 percent of bread that gets thrown away"". The same wall as
-       * a goal not told, through the same door, so the lead's words and their numbers are in no sentence a team member reads.
+       * NONE OF THE LEAD'S AIMS IN HER OWN WORDS, for anybody who does not run it (decision 96, item 8, for the anchor; every check-in
+       * since Hafsah's decision of 4 November 2026, "setup stays private to whoever runs the check-in. Only what's meant for the team
+       * (targets, rules, expectations) is shared, through the proper places"). Her aims are made from what she said in setup, and the
+       * session report's shared picture quoted one to Juma on test bed copy a: "The objective, in the lead's own words, is "The team
+       * checks orders before baking to reduce the 20 percent of bread that gets thrown away"". The same wall as a goal not told, through
+       * the same door. The target reaches the team through its own places: the board's target, and the standard here (`stated`).
        */
-      if (aCheckInStartedFromTheAnchor(ground)) {
-        served = withoutGoalsNotToldIn(served, (ground.objectives ?? []).map((o: any) => String(o?.name ?? '')).filter((n: string) => n.trim()));
-      }
+      served = withTheirOwnWordsKept(served, THE_STANDARD_AS_SET, (v) => withoutGoalsNotToldIn(v, (ground.objectives ?? []).map((o: any) => String(o?.name ?? '')).filter((n: string) => n.trim())));
       /* A line of the picture whose only sentence was the goal is not left as a line with no words. */
       if (Array.isArray((served as any).sharedPictureLines)) {
         served = { ...(served as any), sharedPictureLines: (served as any).sharedPictureLines.filter((l: any) => !(l && typeof l.text === 'string' && !l.text.trim())) };
@@ -8402,7 +8415,7 @@ happened, and what is in the way.`;
       if (!g) return false;
       if (hasEnded(g.status as any)) return true;
       if ((g.checkIns ?? []).some((c: any) => c.isFinal && c.status === CheckInStatus.COMPLETED)) return true;
-      const planned = totalSessionsFor((g as any).timelineDays, (g as any).cadence, (g as any).cadenceDays) ?? null;
+      const planned = thePlannedSessionsOf(g as any);
       const held = Math.max(0, ...(g.checkIns ?? []).map((c: any) => c.sessionNumber ?? 0));
       return planned !== null && held >= planned;
     })().catch(() => false);

@@ -197,11 +197,12 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
         ? `${He} ${has} been waiting ${onEach}${onEach.includes(', and ') ? ',' : ''} since ${since}`
         : `${He} ${has} been waiting${howLong(oldest)} ${onEach}`;
       /*
-       * THE FACT, AND A QUESTION, NEVER A FINDING FROM SILENCE (F2, false-flags.md cause 1). "Nothing on record says it was raised
-       * higher. Ask what has stopped Aisha raising it" was said of a debtor who owed the firm, beside the call she had made. A record
-       * that does not say what somebody did says nothing about them, so the lead is given the wait and the question to ask.
+       * THE FACT, NEVER A FINDING FROM SILENCE (F2, false-flags.md cause 1; fix plan group 4). "Ask Peter what has happened with it
+       * since" was said of a wait on a shipment Peter had dated himself: this list judged him on its own. What the record cannot settle
+       * about a wait is the single pattern layer's, which puts it to the person in their next check-in ("Last time you said ... Is that
+       * still where it stands?", patterns-across-the-assessments.ts, toAskNextTime). The lead is given the wait as the fact it is.
        */
-      probe.push(`${waited}. Ask ${you ? 'yourself' : them} what has happened with it since.`);
+      probe.push(`${waited}.`);
       const kind = whatKindOfThing(notYet);
       if (kind) probe.push(kind);
     }

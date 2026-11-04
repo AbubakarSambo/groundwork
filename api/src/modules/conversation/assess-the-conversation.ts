@@ -18,7 +18,7 @@ import { everybodyMayOpen } from './a-private-documents-numbers-stay-with-it';
 import { GroundworkEvents, type AssessmentReadyEvent } from '../../common/events';
 import {
   ASSESSMENT_PROMPT_KEY, THE_ASSESSMENT_PROMPT, THE_ASSESSMENT_SCHEMA, THE_ASSESSMENT_KIND, THE_ASSESSMENT_VERSION,
-  theFilesPromptVersion, theMaterialAsText, theUnmatchedAsText, thePartsFrom, theUnmatched, withTheSecondRead, withWhatIsLeftKeptWhole, withWhatIsAboutTheLeadSetAside,
+  theFilesPromptVersion, theMaterialAsText, theUnmatchedAsText, thePartsFrom, theUnmatched, withTheSecondRead, withWhatIsLeftKeptWhole, withWhatIsAboutTheLeadSetAside, theTwoPartsOfSetup,
   theItemsToCompareAgainst, thePreviousWithItsCorrections, theAssessmentIn, theColumnWith,
   type AMessage, type HowItEnded, type TheAssessment, type TheMaterial, type TheReadParts,
 } from './the-assessment';
@@ -40,6 +40,8 @@ export interface AssessmentDeps {
 /** What setup gives beside the conversation: the lead's setup messages, and what she typed in the form (her notes on each person, the timing). */
 export interface TheSetupGiven {
   words: string[];
+  /** For each of `words`, in the same order, the question Groundwork had just asked, where there was one. */
+  asked?: (string | null)[];
   given: string[];
 }
 
@@ -96,8 +98,8 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     /* The messages, numbered: setup's words first, then each thing the person said in the check-in. */
     const messages: AMessage[] = [];
     const said = new Map<number, string>();
-    const setupWords = (how.setup?.words ?? []).map((w) => String(w ?? '').trim()).filter(Boolean);
-    const setup = how.setup ? { words: setupWords.map((content, i) => ({ n: i + 1, content })), given: how.setup.given.filter(Boolean) } : null;
+    const setupWords = (how.setup?.words ?? []).map((w, i) => ({ content: String(w ?? '').trim(), asked: String(how.setup?.asked?.[i] ?? '').trim() || null })).filter((w) => w.content);
+    const setup = how.setup ? { words: setupWords.map((w, i) => ({ n: i + 1, ...w })), given: how.setup.given.filter(Boolean) } : null;
     for (const w of setup?.words ?? []) { messages.push({ n: w.n, turnId: null, where: 'setup', at: null }); said.set(w.n, w.content); }
     const turns: TheMaterial['turns'] = [];
     for (const t of (row.turns ?? []) as any[]) {
@@ -188,7 +190,12 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
     }
     /* A complaint about the lead, and all read from the same messages, leaves every section before anything reads them. */
     const setAside = withWhatIsAboutTheLeadSetAside(parts);
-    parts = setAside.parts;
+    const { herUpdate, ...theParts } = setAside.parts;
+    parts = theParts;
+
+    /* Setup in two parts: her own update is her first check-in, written as its turns (theTwoPartsOfSetup and herFirstCheckIn, below). */
+    const theMessages = theTwoPartsOfSetup(messages, herUpdate);
+    if (how.howItEnded === 'setup saved' && setup && !(row.turns ?? []).length) await herFirstCheckIn(deps.prisma, checkInId, theMessages, setup.words, log);
 
     const readyAt = new Date();
     const assessment: TheAssessment = {
@@ -201,7 +208,7 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
       },
       ...parts,
       ...(setAside.keptFromTheLead ? { keptFromTheLead: setAside.keptFromTheLead } : {}),
-      messages,
+      messages: theMessages,
       completeness: { messages: messages.length, matchedByTheFirstRead: matchedFirst, addedByTheSecondRead: addedSecond, keptWhole, ready: true },
       promptVersionId: stored?.id ?? null,
       promptFromFile: stored ? null : theFilesPromptVersion(),
@@ -235,6 +242,31 @@ export async function assessTheConversation(deps: AssessmentDeps, checkInId: str
   } catch (err: any) {
     log.warn(`Assessment of ${checkInId} could not be written: ${err?.message ?? err}`);
     return null;
+  }
+}
+
+/**
+ * HER FIRST CHECK-IN, AS ITS TURNS (Hafsah, 4 November 2026: one conversation on screen, "stored in two parts: setup facts stay private
+ * to whoever runs the check-in; her 'where things stand today' is saved as her first check-in under the normal rules"). The messages the
+ * read named as her own update are written onto session 1, each after the question Groundwork had asked, in the order she said them,
+ * and each message keeps its turn, so her first check-in is a check-in like anybody's. Setup's own messages are never written as turns:
+ * they stay setup's, in LeadSetupWords, read only by whoever runs the check-in. Written once: a session that already has turns is left.
+ */
+async function herFirstCheckIn(prisma: any, checkInId: string, messages: AMessage[], words: { n: number; content: string; asked?: string | null }[], log: { warn: (m: string) => void }): Promise<void> {
+  const hers = messages.filter((m) => m.where === 'check-in' && !m.turnId);
+  if (!hers.length || !prisma.conversationTurn?.create) return;
+  let at = Date.now() - hers.length * 2;
+  try {
+    for (const m of hers) {
+      const w = words.find((x) => x.n === m.n);
+      if (!w) continue;
+      if (w.asked) await prisma.conversationTurn.create({ data: { checkInId, role: 'AI', content: w.asked, createdAt: new Date(at++) } });
+      const turn = await prisma.conversationTurn.create({ data: { checkInId, role: 'PERSON', content: w.content, createdAt: new Date(at++) } });
+      m.turnId = turn?.id ?? null;
+      m.at = new Date(at - 1).toISOString();
+    }
+  } catch (err: any) {
+    log.warn(`Her first check-in's turns on ${checkInId} could not be written: ${err?.message ?? err}`);
   }
 }
 

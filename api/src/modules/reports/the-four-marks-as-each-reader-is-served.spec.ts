@@ -137,7 +137,9 @@ describe('the board: each line in who owns what carries its mark', () => {
     for (const item of aisha.items) expect(item.text).toMatch(SAID_AS_THEIRS);
     expect(marksIn(aisha.items)).toEqual(EXPECTED);
     /* Only the line and how it is known: no file, and nothing about how anybody's answers were rated. */
-    for (const item of aisha.items) expect(Object.keys(item).sort()).toEqual(['id', 'mark', 'markSays', 'sessionNumber', 'text', 'type']);
+    /* `settled` is how it is known too: whether proof anywhere on the record backs the claim (fix plan, group 4), a yes or no only. */
+    for (const item of aisha.items) expect(Object.keys(item).sort()).toEqual(['id', 'mark', 'markSays', 'sessionNumber', 'settled', 'text', 'type']);
+    for (const item of aisha.items) expect(typeof item.settled).toBe('boolean');
     const served = JSON.stringify(board.whoOwnsWhat);
     expect(served).not.toContain(AISHAS_PHOTO);
     expect(served).not.toContain(LEADS_PLAN);

@@ -117,7 +117,7 @@ describe('the coaching probe names the person, and says "you" to the reader', ()
     const p = whatToProbe({ ...base, holdingUp: [], answeredThisSession: false, whoInASentence: 'Rukia Otieno', waitingOn: [{ what: 'the budget', who: 'Juma', daysOld: 4, escalated: false }] });
     expect(p.probe).toEqual([
       'Rukia Otieno has not answered this session, so nothing below is from this round.',
-      'Rukia Otieno has been waiting for 4 days on Juma for the budget. Ask Rukia Otieno what has happened with it since.',
+      'Rukia Otieno has been waiting for 4 days on Juma for the budget.',
     ]);
   });
 });

@@ -156,6 +156,7 @@ function theRulesKeptTheRestWithoutStandInLabels(all: string, theRules: string, 
   return noStandInLabelIn(all, called);
 }
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, saidWordForWord } from '../reports/a-quote-is-what-they-said';
+import { theFactsOnRecord } from './the-facts-on-record';
 import { theirQuotationMarksBack } from './their-quotation-marks-are-theirs';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import {
@@ -610,6 +611,9 @@ function theDoorsTheirTurnsCameThrough(svc: any, checkInId: string | null): any 
   if (!svc._doorsOfCheckIns.has(checkInId)) svc._doorsOfCheckIns.set(checkInId, new Set<string>());
   return svc._doorsOfCheckIns.get(checkInId);
 }
+
+/* What carries on from one check-in to the next: the work, the promises, the waits and the decisions (the check-in's memory). */
+const WHAT_CARRIES_ON: ReadonlySet<string> = new Set(['workUpdates', 'promises', 'blockers', 'decisions', 'compared.promisesDue', 'compared.blockers', 'compared.workMoved']);
 
 @Injectable()
 export class ConversationService {
@@ -4482,17 +4486,22 @@ export class ConversationService {
         orderBy: { createdAt: 'asc' },
         select: { what: true, onLabel: true, onParticipantId: true, createdAt: true, triedSaid: true, takenFurther: true, then: true },
       })?.catch(() => [] as any[]) ?? [],
-      /* Their own words from the session before this one, so a promise can be followed up. */
-      this.prisma.recordEntry?.findMany({
-        where: {
-          participantId: checkIn.participantId,
-          disputedAt: null,
-          checkIn: { sessionNumber: { lt: checkIn.sessionNumber ?? 1 }, status: 'COMPLETED' },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 6,
-        select: { text: true, type: true, createdAt: true },
-      })?.catch(() => [] as any[]) ?? [],
+      /*
+       * WHAT THEY SAID BEFORE, FROM THEIR OWN ASSESSMENTS (docs/fix-plan.md, group 3; round 38: "I have nothing on Safaricom House. I
+       * have not mentioned it before.", said in check-in 1). This was their last six record lines, so anything older was forgotten and
+       * then denied. It is now, through the one reader, everything they said last time, and every piece of work, promise, wait and
+       * decision from their earlier check-ins, which are what carries on. Newest first, as the lines were.
+       */
+      theFactsOnRecord(this.prisma, { groundId: ground.id, reader: { kind: 'the person', participantId: checkIn.participantId } })
+        .then((facts) => {
+          const before = facts.filter((f) => f.sessionNumber < (checkIn.sessionNumber ?? 1));
+          const last = Math.max(0, ...before.map((f) => f.sessionNumber));
+          return before
+            .filter((f) => f.sessionNumber === last || WHAT_CARRIES_ON.has(f.section))
+            .map((f) => ({ text: f.words, type: f.section === 'workUpdates' || f.section === 'claims' ? 'PROGRESS' : f.section, createdAt: f.on ? new Date(f.on) : null }))
+            .reverse();
+        })
+        .catch(() => [] as any[]),
     ]);
     /* What the colleagues they wait on promised here: only a colleague's own promise confirms a wait (decision 137). */
     const theColleaguesTheyWaitOn = [...new Set((inTheWayRows as any[]).map((d) => d?.onParticipantId).filter(Boolean))] as string[];

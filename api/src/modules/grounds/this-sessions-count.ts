@@ -156,6 +156,11 @@ export function whoHoldsTheClock(participants: readonly any[]): Set<string> {
   return new Set((participants ?? []).filter((p) => owesThisSession(p) && holdsTheClock(p, isNotLetInYet) && p.notJoinedYet !== true).map((p) => p.id));
 }
 
+/** How many sessions the check-in plans: none while it runs until somebody ends it. The one rule every count of the session reads. */
+export function thePlannedSessionsOf(g: { runsUntilEnded?: boolean | null; timelineDays?: unknown; cadence?: unknown; cadenceDays?: unknown }): number | null {
+  return g.runsUntilEnded ? null : totalSessionsFor(g.timelineDays as any, g.cadence as any, g.cadenceDays as any) ?? null;
+}
+
 export function theSessionAndItsCount(
   g: WhatTheCountReads,
   opts: { now?: Date; handOn?: boolean; leave?: Map<string, Stretch[]>; names?: { readerUserId?: string | null } } = {},
@@ -163,7 +168,7 @@ export function theSessionAndItsCount(
   const now = opts.now ?? new Date();
   const participants = (g.participants ?? []) as any[];
   const rows = ((g.checkIns ?? []) as any[]).filter((c) => !c.isSetup);
-  const planned = g.runsUntilEnded ? null : totalSessionsFor(g.timelineDays as any, g.cadence as any, g.cadenceDays as any) ?? null;
+  const planned = thePlannedSessionsOf(g);
   const clock = theSessionClock(rows, whoHoldsTheClock(participants), planned, now, opts.handOn ?? true);
   const progress = howACheckInIsGoing({
     checkIns: g.checkIns ?? [],

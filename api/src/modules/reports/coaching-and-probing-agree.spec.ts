@@ -156,9 +156,10 @@ describe('role and stage change what the same fact is worth raising as', () => {
   const later = whatToProbe({ ...leadBase, sessionNumber: 5, waitingOn: [waiting] });
 
   /* F2 (false-flags.md, cause 1): a record that does not say what somebody did says nothing about them, early or late. */
-  it('early or late, the wait is the fact and the lead is given a question, never "nothing on record says it was raised higher"', () => {
+  /* Fix plan group 4: the question about a wait goes to the person's next check-in (the single layer's toAskNextTime), never the lead's list. */
+  it('early or late, the wait is the fact, with no question put to the lead and never "nothing on record says it was raised higher"', () => {
     for (const p of [early, later]) {
-      expect(p.probe.join(' ')).toContain('Ask Zainab what has happened with it since.');
+      expect(p.probe.join(' ')).not.toContain('what has happened with it since');
       expect(p.probe.join(' ')).not.toMatch(/raised higher|what has stopped/);
     }
   });

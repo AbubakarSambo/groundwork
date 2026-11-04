@@ -86,8 +86,14 @@ describe('what was said reaches the session report from the assessments', () => 
     expect(read).toContain(`(numbers) ${BRIAN_SAID} (KES 380,000, for the fee note for Baraka Hardware)`);
   });
 
-  it('reads the lead’s target, said in setup, though the target writer wrote nothing', () => {
-    expect(read).toContain('(targets) We must collect KES 2,400,000 by the end of the year (The team is aiming to collect 2,400,000 Kenyan shillings by the end of the year, 2400000, KES, by the end of the year)');
+  /*
+   * CHANGED 4 NOVEMBER (Hafsah: "setup stays private to whoever runs the check-in. Only what's meant for the team (targets, rules,
+   * expectations) is shared, through the proper places", and a person's words about a target follow the target setting). The shared
+   * report is read by everybody, so it no longer reads the lead's words about the target: the target reaches the team as the check-in's
+   * target. This pinned the leak of issue 28.
+   */
+  it('never reads the lead’s words about the target, said in setup, where each person sees only their own target', () => {
+    expect(read).not.toContain('We must collect KES 2,400,000');
   });
 
   it('never reads an item kept for the lead alone: her private note, or what was noticed about Brian', () => {

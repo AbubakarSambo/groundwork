@@ -12,7 +12,7 @@
  *     wait the read says is the same as one in the previous assessment (`previousItem`) is the same item.
  *   - ONLY THE PERSON'S OWN ACTIONS ARE INSTANCES OF THEIR BEHAVIOUR. A client's promise to pay, an office's delay, somebody else's
  *     obligation is part of their work, never evidence about them.
- *   - THE WHOLE RECORD COUNTS. Proof given in any check-in settles the claim it proves; a missed session is simply not there, so it
+ *   - THE WHOLE RECORD COUNTS. Proof anywhere on the record settles the claim it proves (theEvidenceOnTheRecord); a missed session is simply not there, so it
  *     never breaks a run.
  *   - A RE-PROMISE PAST ITS DAY COUNTS AS NOT KEPT: each day that passed is one instance (the read marks `dayPassed`).
  *   - SILENCE IS NEVER A FINDING. A promise "not mentioned", a claim nobody asked proof for, a wait with no word of what was tried:
@@ -113,6 +113,9 @@ export interface TheRecordAcrossTime {
   /** What the next check-in carries for this person, and the one owner of it: what the record cannot settle, and what they said
    *  last time to confirm (each wait still open, each promise of their own). Their own items only, never a judgement. */
   toAskNextTime: string[];
+  /** THE CLAIMS THE RECORD SETTLES: each report of a claim that proof anywhere on the record backs, by check-in and in their words.
+   *  The one owner of "is this backed": the board's lines read it (board.service, whoOwnsWhat). */
+  settled?: { checkInId: string; words: string }[];
 }
 
 export interface AnAssessmentSeen {
@@ -182,26 +185,43 @@ const promiseInstance = (r: APromiseRead): AnInstance => ({
 
 /* ---------------------------------------------------------------------------------------------------------------------
  * CLAIMS. A claim that needed proof (the read's `needsProof`: something said to be done, sold, paid or true that a document,
- * a photo or another person could show; never "I did not do it", a plan or a feeling) is settled by proof in any check-in: its
- * own, a later claim that is the same one and proved, or a later document that proves it. An instance is a claim whose proof was
- * asked for or promised (`proofAsked`) and never came. One nobody asked proof for is a question for next time.
+ * a photo or another person could show; never "I did not do it", a plan or a feeling) is settled by ANY PROOF ANYWHERE ON THE
+ * RECORD (fix plan, group 4: round 38 flagged Aisha, Joseph and Mercy, who had proof). The record's evidence is every document
+ * in every one of their check-ins, each with the claims it proves: the claims it was given with (the same message of theirs),
+ * the claim it names in its own check-in or the one before (`provesItem`), and so every later report of the same claim. A claim
+ * the read itself marked proved is its own evidence. An instance is a claim whose proof was asked for or promised (`proofAsked`)
+ * and never came anywhere. One nobody asked proof for is a question for next time.
  * ------------------------------------------------------------------------------------------------------------------- */
 
 interface AClaimRead { key: string; s: AnAssessmentSeen; claim: AnItem; proved: boolean }
 
+const theMessages = (i: AnItem) => new Set(((i.from ?? []) as unknown[]).map(Number).filter(Number.isFinite));
+const shareAMessage = (a: AnItem, b: AnItem) => { const m = theMessages(b); return [...theMessages(a)].some((n) => m.has(n)); };
+
+/** THE RECORD'S EVIDENCE: each document of theirs, in any check-in, with the claims it proves (keyed `<checkInId>/<item id>`). */
+export function theEvidenceOnTheRecord(seen: AnAssessmentSeen[]): { checkInId: string; document: AnItem; proves: string[] }[] {
+  return answered(seen).flatMap((s) => {
+    const prev = s.assessment.comparedWithLastTime?.previousCheckInId;
+    const claims = (s.assessment.claims ?? []) as AnItem[];
+    return ((s.assessment.documents ?? []) as AnItem[]).map((d) => {
+      const named = text(d.provesItem);
+      const here = claims.filter((c) => shareAMessage(c, d) || (named && text(c.id) === named)).map((c) => ownKey(s, c));
+      const before = prev && named ? [`${prev}/${named}`] : [];
+      return { checkInId: s.checkInId, document: d, proves: [...here, ...before] };
+    });
+  });
+}
+
 function theClaimsRead(seen: AnAssessmentSeen[]) {
   const claims = new Map<string, AClaimRead>();
-  /* Which earlier item a later one is the same as, so proof later settles it. */
+  /* Which earlier item a later one is the same as, so proof anywhere settles it. */
   const sameAs = new Map<string, string>();
-  const ofPrevious = (s: AnAssessmentSeen, id: unknown) => {
-    const prev = s.assessment.comparedWithLastTime?.previousCheckInId;
-    return prev && text(id) ? `${prev}/${text(id)}` : null;
-  };
   const root = (k: string) => { let r = k; const been = new Set<string>(); while (sameAs.has(r) && !been.has(r)) { been.add(r); r = sameAs.get(r)!; } return r; };
   for (const s of answered(seen)) {
+    const prev = s.assessment.comparedWithLastTime?.previousCheckInId;
     for (const c of (s.assessment.claims ?? []) as AnItem[]) {
       const key = ownKey(s, c);
-      const earlier = ofPrevious(s, c.previousItem);
+      const earlier = prev && text(c.previousItem) ? `${prev}/${text(c.previousItem)}` : null;
       if (earlier && claims.has(root(earlier))) sameAs.set(key, root(earlier));
       const r = root(key);
       const proved = c.proof === 'proved';
@@ -209,15 +229,15 @@ function theClaimsRead(seen: AnAssessmentSeen[]) {
       if (had) { had.proved = had.proved || proved; had.claim = { ...had.claim, proofAsked: had.claim.proofAsked === true || c.proofAsked === true }; }
       else claims.set(r, { key: r, s, claim: c, proved });
     }
-    for (const d of (s.assessment.documents ?? []) as AnItem[]) {
-      const proves = ofPrevious(s, d.provesItem);
-      const r = proves ? claims.get(root(proves)) : undefined;
-      if (r) r.proved = true;
-    }
   }
+  for (const e of theEvidenceOnTheRecord(seen)) for (const k of e.proves) { const r = claims.get(root(k)); if (r) r.proved = true; }
   const all = [...claims.values()];
   const needed = all.filter((c) => c.claim.needsProof === true);
+  /* Every report of a claim the record settles, in the check-in it was said in and in their words: what the board's lines read. */
+  const settled = answered(seen).flatMap((s) => ((s.assessment.claims ?? []) as AnItem[])
+    .filter((c) => claims.get(root(ownKey(s, c)))?.proved && text(c.words)).map((c) => ({ checkInId: s.checkInId, words: text(c.words) })));
   return {
+    settled,
     proved: all.filter((c) => c.proved),
     neededAndProved: needed.filter((c) => c.proved),
     askedAndNotProved: needed.filter((c) => !c.proved && c.claim.proofAsked === true),
@@ -419,7 +439,7 @@ export function theRecordAcrossTime(
   const bias = isTheLead ? null : theLeadsBias({ participantId, name }, leadsView, patterns);
   if (bias) patterns.push(bias);
   for (const p of patterns) p.who = firstNameOf(name);
-  return { patterns, role, focus, toAskNextTime: isTheLead ? [] : whatToAskNextTime(name, seen) };
+  return { patterns, role, focus, toAskNextTime: isTheLead ? [] : whatToAskNextTime(name, seen), settled: theClaimsRead(seen).settled };
 }
 
 /** The lead's view of one person, read from her setup assessment: what she said about them there, and the role she gave them. */

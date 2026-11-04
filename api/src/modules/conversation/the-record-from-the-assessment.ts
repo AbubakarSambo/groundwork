@@ -12,7 +12,7 @@
  * never reached the record, and the session report, which reads the record, never saw them. Which part becomes which kind:
  *   - this person's own promises are COMMITMENT; a promise somebody else made, which they told us of, is what happened (PROGRESS);
  *   - what they are waiting on or blocked by is WORRY; a decision or a rule is INTENT;
- *   - what they or the team aim at, the objective, and what success looks like, is SUCCESS_DEFINITION;
+ *   - what they or the team aim at is SUCCESS_DEFINITION;
  *   - a date or timing is TIMEFRAME;
  *   - everything else (work, claims, numbers, documents, people, corrections, what changed since last time, what is still open,
  *     everything else) is PROGRESS, what they told us.
@@ -20,8 +20,10 @@
  * message kept whole never swallows the short lines read out of it.
  *
  * PRIVACY. Only items everybody in the check-in may see (whoMaySee, the one rule for the assessment) become lines, and only
- * items that came from what the person said in the check-in itself: setup's words, her notes on each person, the team, the
- * risks, observations, role and focus reads stay in the assessment and never reach the record, as they never did.
+ * items that came from what the person said in the check-in itself. Every part of setup is the lead's (Hafsah, 4 November 2026),
+ * so none of it is here: setup's words stay in the assessment, and only the lead's own update on where things stand, which the
+ * read puts in her first check-in (theTwoPartsOfSetup), becomes her lines, like anybody's. Observations, role and focus reads
+ * stay in the assessment too, as they always did.
  */
 import type { AnItem, TheAssessment } from './the-assessment';
 
@@ -45,15 +47,11 @@ const THE_SECTIONS: { section: string; pick: (a: TheAssessment) => AnItem[]; typ
   { section: 'blockers', pick: (a) => a.blockers ?? [], type: () => 'WORRY' },
   { section: 'decisions', pick: (a) => a.decisions ?? [], type: () => 'INTENT' },
   { section: 'targets', pick: (a) => a.targets ?? [], type: () => 'SUCCESS_DEFINITION' },
-  { section: 'setup.success', pick: (a) => (a.setup as any)?.success ?? [], type: () => 'SUCCESS_DEFINITION' },
   { section: 'claims', pick: (a) => a.claims ?? [], type: PROGRESS },
   { section: 'workUpdates', pick: (a) => a.workUpdates ?? [], type: PROGRESS },
   { section: 'numbers', pick: (a) => a.numbers ?? [], type: PROGRESS },
   { section: 'dates', pick: (a) => a.dates ?? [], type: () => 'TIMEFRAME' },
   ...([
-    ['setup.objective', (a) => (a.setup as any)?.objective ?? [], () => 'SUCCESS_DEFINITION'],
-    ['setup.timing', (a) => (a.setup as any)?.timing ?? [], () => 'TIMEFRAME'],
-    ['setup.rules', (a) => (a.setup as any)?.rules ?? [], () => 'INTENT'],
     ['documents', (a) => a.documents ?? [], PROGRESS],
     ['corrections', (a) => a.corrections ?? [], PROGRESS],
     ['people', (a) => a.people ?? [], PROGRESS],

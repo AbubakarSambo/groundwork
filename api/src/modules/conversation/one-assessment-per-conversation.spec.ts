@@ -192,7 +192,8 @@ describe('the assessment of a setup', () => {
     expect(w.calls[0].content).toContain('[3] THE PERSON: I delivered 40 cartons');
     expect(w.calls[0].content).toContain('  - Wanjiru: new, needs support');
     expect(a.setup!.privateNotes[0].whoMaySee).toBe('the lead only');
-    expect(a.setup!.objective[0].whoMaySee).toBe('the people in this check-in');
+    /* CHANGED 4 NOVEMBER: the objective is setup's, so it is hers too (Hafsah: setup stays private to whoever runs the check-in). */
+    expect(a.setup!.objective[0].whoMaySee).toBe('the lead only');
     expect(a.messages.slice(0, 2).map((m) => m.where)).toEqual(['setup', 'setup']);
     expect(a.about.channel).toBe('setup');
     /* Her report, as she read it, is inside the column whole. */
@@ -231,9 +232,11 @@ describe('nobody is served the assessment', () => {
 });
 
 describe('who may see each part, decided in code', () => {
-  it('the lead\'s private notes, the team as she described it, risks, observations, role and focus are hers only', () => {
-    for (const s of ['setup.privateNotes', 'setup.team', 'setup.risks', 'observations', 'roleSignals', 'areas', 'compared.disagreements']) expect(whoMaySee(s)).toBe('the lead only');
-    for (const s of ['claims', 'promises', 'blockers', 'numbers', 'setup.objective']) expect(whoMaySee(s)).toBe('the people in this check-in');
+  /* CHANGED 4 NOVEMBER (Hafsah: setup stays private to whoever runs the check-in): every part of setup is the lead's, the objective,
+     what success looks like and the rules included. They reach the team only through their own places, never as her words. */
+  it('every part of setup, observations, role and focus are the lead\'s only', () => {
+    for (const s of ['setup.objective', 'setup.success', 'setup.timing', 'setup.rules', 'setup.strategy', 'setup.notes', 'setup.privateNotes', 'setup.team', 'setup.risks', 'observations', 'roleSignals', 'areas', 'compared.disagreements']) expect(whoMaySee(s)).toBe('the lead only');
+    for (const s of ['claims', 'promises', 'blockers', 'numbers', 'targets']) expect(whoMaySee(s)).toBe('the people in this check-in');
   });
 });
 
