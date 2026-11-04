@@ -1161,7 +1161,7 @@ export class GroundsService {
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId, partyType: PartyType.INITIATOR },
     });
-    if (!participant) throw new NotFoundException('The person who runs this check-in has no place in it yet, so contact us and we will put it right.');
+    if (!participant) throw new NotFoundException('The person who runs this check-in has no place in it yet, so tell me and I will put it right.');
 
     const managingOnly = edits?.managingOnly === true;
 

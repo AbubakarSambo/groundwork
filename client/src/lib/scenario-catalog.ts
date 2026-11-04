@@ -314,7 +314,7 @@ export const COACH_CARD = {
   question: 'You want somebody experienced helping you steer your team through it, not just the software.',
   label: 'Ask to speak to a coach',
   moment: 'You know what you are dealing with. You want a person in it with you.',
-  whatHappens: 'Nothing is created and nobody on your team is contacted. You tell us what you are dealing with, we email you back, and a coach picks it up from there.',
+  whatHappens: 'Nothing is created and nobody on your team is contacted. You tell me what you are dealing with, I email you back, and a coach picks it up from there.',
   /*
    * THE SAME NUMBERS THE PRICING PAGE SHOWS, and they were not. This card said $5,000 and $500
    * while the site said $7,500 and $700 - two prices for one thing, one of them inside the product
