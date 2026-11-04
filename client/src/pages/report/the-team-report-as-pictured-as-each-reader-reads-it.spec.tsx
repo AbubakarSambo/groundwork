@@ -120,7 +120,8 @@ it('Wairimu reads, before anybody has checked in, the check-in’s header with �
   expect(screen.getByText('It’s written once everyone has checked in, and only you see it until you share it.')).toBeTruthy()
   expect(screen.getByText('2 people. Weekly, Mondays.')).toBeTruthy()
   expect(screen.getByRole('link', { name: 'Your check-in' }).getAttribute('href')).toBe('/grounds/g1')
-  for (const tab of ['Board', 'Check-in', 'Context and resources', 'My work', 'People and setup']) expect(screen.getByText(tab)).toBeTruthy()
+  /* The third tab is "References and resources" for everybody since Release 1B's switch went (eb43a349d). */
+  for (const tab of ['Board', 'Check-in', 'References and resources', 'My work', 'People and setup']) expect(screen.getByText(tab)).toBeTruthy()
 })
 
 /* salesorg-team-report.jpg: a sales organisation of more than ten people reads "What each person said"; one sales team, "What each person did". */

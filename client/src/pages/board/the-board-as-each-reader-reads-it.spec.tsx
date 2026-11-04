@@ -139,9 +139,11 @@ describe('the board, as each reader reads it', () => {
     me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
     renderBoard(AS_AN_ADMIN)
     expect(await screen.findByRole('tab', { name: 'Board' })).toBeTruthy()
-    /* "Context" renamed to "Context and resources" so the tab's name says what it now holds. */
-    expect(screen.getByRole('tab', { name: 'Context and resources' })).toBeTruthy()
+    /* "Context" renamed to "Context and resources", then "References and resources" for everybody once Release 1B's switch
+       went (eb43a349d). The three tabs are now asserted as the whole tab list, so nothing else can slip in. */
+    expect(screen.getByRole('tab', { name: 'References and resources' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'People and setup' })).toBeTruthy()
+    expect(screen.getAllByRole('tab').map((t) => t.textContent?.trim())).toEqual(['Board', 'References and resources', 'People and setup'])
     expect(screen.queryByRole('tab', { name: 'Check-in' })).toBeNull()
     expect(screen.queryByRole('tab', { name: 'My work' })).toBeNull()
     expect(screen.queryByText('Your check-in')).toBeNull()
