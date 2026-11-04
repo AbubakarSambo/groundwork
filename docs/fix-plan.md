@@ -38,16 +38,55 @@ Drafted from `docs/issues-next.md` items 1 to 38, the cast run (round 38) and th
   - Only `saidWordForWord` facts may be shown in quote marks.
 - **Proof.** No denial of something said earlier; Ask answers 6 of 6 setup questions; no quote that wasn't typed.
 
-## 4. Honest people flagged. Closes 37 (flags).
-- **Cause.**
-  - Judgements made outside layer 2: missed check-ins (`missed-check-ins.ts:330-337`) count rounds on a clock that disagrees with itself.
-  - Per-person PatternDetection rows.
-  - The claims rule misses proof elsewhere on the record (`patterns-across-the-assessments.ts:201-223, 324`).
-- **One fix.**
-  - Read the instances behind each flag first.
-  - Missed check-ins read the one clock and count only rounds due to that person.
-  - Any proof on the record settles a claim. No threshold changes.
-- **Proof.** 0 honest people flagged, with patterns caught kept at 10 of 12 or better.
+## 4. One pattern layer, and no honest person flagged. Closes 37 (flags). Hafsah's correction of 4 November: merge the older system, don't retire it.
+
+The older system (PatternDetection) is merged into the single pattern layer (patterns across the assessments). The written plan comes first: nothing changes until this list is built exactly as it stands. Paths are relative to api/src/modules/; "lib" means patterns/pattern-library.ts.
+
+**What the round 38 false flags came from.** Most were not PatternDetection.
+
+| Person | False flag | Written by |
+|---|---|---|
+| Aisha | "missed 3 of the last 4 check-ins" | `grounds/missed-check-ins.ts:334-336` |
+| Aisha, Joseph, Mercy | claims rarely proved | layer 2, `patterns-across-the-assessments.ts:324-327` |
+| Mercy | slipping promises | layer 2, `:319-321` |
+| Peter, Mercy | B2, K1, K3 and B8 stored as candidates | the older system's model detector, `patterns.service.ts:341, 512-524` |
+| Peter | "Peter's word; nothing on record backs it yet" | `board/what-happens-next-to-a-record.ts` |
+| Peter | "Ask Peter what has happened…" | `reports/what-to-probe.ts:204` |
+| Joseph | a strength worded as "keeps coming up… has not answered" | `board/pattern-questions-to-settle-first.ts:35-36` |
+| Mercy | a next step that did not fit | `the-next-step-for-each-pattern.ts` |
+
+### KEPT: these move into the single layer as its definitions
+- **The 49 kinds, their codes, names and families** (lib:23-206): 8 positives, 3 carrying, and 38 bad-faith across D, B, K, E, R and F. This is the vocabulary Hafsah decided on.
+- **The plain names** (`patterns/plain-pattern-names.ts`): the only names a person ever reads.
+- **Each kind's probe and `whatToAskAbout`** (lib:337-348), with the F5 exclusion: each pattern's own question.
+- **The what-counts lines** (`what-counts-for-each-pattern.ts`): these become each kind's rule for what counts as an instance.
+- **The feed-only kinds** (lib:212): E4 and F5 are never named to anyone.
+- **The three periods** (`who-reads-a-pattern.ts:207-214`, `period-of.ts:59`): three periods in a row or three separate ones, where a period is a session on a weekly or slower check-in and a calendar week on a daily one. This replaces layer 2's "2 items from 2 check-ins".
+- **The leave pause** (`patterns.service.ts:690`): approved leave never breaks a run.
+- **Positives shown at once** (observePositive's rule, `patterns.service.ts:563-618`): one sighting is enough. Today the readers' three-period gate (`who-reads-a-pattern.ts:32-35`) wrongly holds positives back too, so the gate changes to honour it. Layer 2's strength threshold of 3 items goes.
+- **Who reads a pattern, rules 1 to 5** (`who-reads-a-pattern.ts`): a person reads only their own, sees it first and can answer it. Only the source of the rows changes.
+- **The wording checks:** `whatHappenedIn` (:241), `plainVoice` and `howOftenItCameUp` (:266, "came up in N…").
+
+### CHANGED: now read from the one source, the assessments
+- **Finding each kind:** it reads the assessment's items, each naming its instances in the person's own words, not raw turns and record entries. **Why:** it can then never disagree with the board, which reads the same assessments.
+- **What a person sees** (`servedPatterns`, `patternRowsThisReaderMayRead`, the board's own patterns at `board/board.service.ts:2527-2549`, My work at `board/my-work.ts:745` and `grounds/your-board.service.ts:144, 289`, the ground page, the session report, the ending page, the weekly report): all read the single layer. **Why:** people still see their own patterns exactly as now, from one source.
+- **The person's answer, the lead's mark, "talked about" and the accuracy rating** (`patterns.controller.ts:36-88`): re-keyed to the single layer's ids. **Why:** nothing a person said back is lost.
+- **Learning counts** (`learning/learning.service.ts:40, 62`): count the single layer. **Why:** one count.
+- **The session planner** (`conversation/conversation.service.ts:7836-7874`): reads the single layer and its toAskNextTime, never raw candidates or internal names. **Why:** today it reads unconfirmed rows that no serving rule has checked.
+- **Layer 2's claims-rarely-proved** (`:324-327`): any proof anywhere on the record settles a claim, as already agreed. **Why:** it flagged Aisha, Joseph and Mercy, who had proof.
+- **Missed check-ins** (`grounds/missed-check-ins.ts:334`): read the one session clock and count only rounds due to that person. **Why:** it counted rounds with a clock that disagrees with itself (group 2).
+- **"Ask Peter what has happened…" and the board's "nothing on record backs it yet"** (`reports/what-to-probe.ts:204`, `board/what-happens-next-to-a-record.ts`): read the single layer's settled claims. **Why:** each judged a person on its own.
+- **A strength's wording** (`pattern-questions-to-settle-first.ts:35-36`): a positive is never worded as something unanswered.
+
+### REMOVED: only the duplicate judges
+- **The model detector, with its 5 or 10 reads, confirmation, settling and last-period steer** (`patterns.service.ts:123-474, 1066-1088`). **Why:** it judged each person separately from the assessments, and wrote Peter's and Mercy's false flags. The kinds it detected are kept above.
+- **The keyword and threshold rules, the F1 gate and the evidence-source rule** (lib:444-935). **Why:** fixed word lists, not understanding (rule 4).
+- **observe, observePositive, surfacePatterns and startNewPeriod as stored state** (`patterns.service.ts:490-702`). **Why:** the single layer works the state out from the record each time, so there is no second state to drift. Their rules (three periods, the leave pause, positives at once) are kept above.
+- **The record-over-time pattern lines** (`reports/reports.service.ts:4809-4899`). **Why:** they are worked out and then always removed before serving.
+- **The chaser guard:** already deleted (c156bcd16, 2 November).
+- **Collusion, concentration and M4_PLUS** (`patterns.service.ts:723-918`, `intelligence/intelligence.service.ts:234`). **Why:** they judge people outside the assessments. **Hafsah to confirm** before removal; until she does, they stay as they are.
+
+**Proof:** in the lead's view, honest people wrongly flagged is 0 on every control. At least 10 of 12 patterns are still caught. A person's own patterns show as before. A positive shows on its first sighting. A pattern spec for each family reads from an assessment fixture.
 
 ## 5. Setup loops and sounds like a chatbot. Closes 19, 20, 27 and 15.
 - **Cause.**
