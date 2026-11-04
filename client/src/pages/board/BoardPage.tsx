@@ -1744,7 +1744,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const restOfWorkRecordSections = isSalesOrg
     ? (b.workRecords ?? []).filter((s) => s.section !== 'Deal grid')
     : (b.workRecords ?? []).filter((s) => s.state === 'not-known' && !(themesAndAreaAfterTheTeam && s.section === 'Themes'))
-  const myWorkTab = viewerRunsThisCheckIn ? 'sessions' : 'record'
+  /* My work is one page for the lead and each person in it (MyWorkPage.tsx, B7), so every tab row sends it to one key. */
+  const myWorkTab = 'record'
   const headerTabs = [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
     ...(viewerRunsThisCheckIn || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),

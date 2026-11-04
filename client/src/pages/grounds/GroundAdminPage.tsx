@@ -118,7 +118,7 @@ const FROM_TAB_KEY: Record<string, Tab> = {
    * single landing tab too - `checkins` is in that group for every reader (`outerTabOf` returns
    * `'mywork'` for it) and is never the Check-in tab, so it can never trigger the auto-open.
    */
-  mywork: 'checkins', people: 'settings',
+  mywork: 'myrecord', people: 'settings',
   /**
    * `record` MEANS ONE THING NOW, AND IT IS SOMEBODY'S OWN.
    *
@@ -1473,25 +1473,10 @@ export function GroundAdminPage() {
   /**
    * FAULT 3: "MY WORK" HAS TO LAND IN THE SAME PLACE, HOWEVER IT WAS REACHED.
    *
-   * This used to default on `viewerIsAParty`, so a lead who is also a party in her own check-in
-   * (the ordinary case) landed on `myrecord` - her own account - when she clicked "My work" from
-   * inside the check-in page. But the board's own tab row, and `ground-tabs.ts`'s
-   * `checkInHeaderTabs` (used by SessionReportPage.tsx and RoundReportPage.tsx), send the same
-   * "My work" label to `?tab=sessions`, which this page reads as `checkins` - the roster the
-   * prototype's own lead view shows (sessions.txt: the lead's "My work" opens "Every session").
-   * Same page, same label, two different destinations depending only on which tab row was clicked.
-   *
-   * The prototype draws the line the same way everywhere: whoever RUNS the check-in sees the
-   * roster; whoever is only a party to it sees their own record. `isInitiator` is that line here,
-   * matching `canRunThisCheckIn`/`viewerRunsThisCheckIn` elsewhere - not `viewerIsAParty`, which a
-   * lead who also takes part in her own check-in satisfies too.
-   *
-   * An admin who runs this check-in but is NOT a party to it still defaults to `report`, unchanged:
-   * `YourWork` never mounts for her, so she has no roster-and-record quick-link row either, and
-   * `report` is where that row's own two links (see `!viewerIsAParty` below) already expect to send
-   * her back from.
+   * My work is the B7 page (MyWorkPage.tsx) for the lead and for each person in the check-in, so this tab row, the board's,
+   * the report pages' (`checkInHeaderTabs` in ground-tabs.ts) and `?tab=mywork` all land on `myrecord`. "Every session" and
+   * "Who has answered" stay one press away inside it, and `?tab=sessions` still opens the roster directly.
    */
-  /* The lead's My work lands on the B7 page (MyWorkPage.tsx), where she chooses whose work to read; "Every session" and "Who has answered" stay one press away. */
   const myWorkDefault: Tab = 'myrecord'
   const outerTabOf = (t: Tab): string => {
     if (t === 'chat') return 'checkin'
@@ -2130,20 +2115,11 @@ export function GroundAdminPage() {
           AN ADMIN WHO IS NOT A PARTY HAS NO "Your work" TO SHOW.
           `YourWork` never mounts for her (it is gated on `viewerIsAParty` below, unchanged from
           before this round), so the two quiet links inside it - "Every session", "Who has
-          answered" - never render either. She still runs this check-in (My work's own default
-          for her is already `report` when she is not a party - see `myWorkDefault` above), so
-          both stay reachable directly rather than disappearing with the sub-tab row that used to
-          offer them unconditionally.
+          answered" - never render either. A lead who only manages gets both as their own row
+          under her B7 page instead (the `isInitiator && !viewerIsAParty` row below), so both stay
+          reachable.
         */}
-        {/*
-          FAULT 3 FOLLOW-ON: A LEAD WHO IS ALSO A PARTY NOW DEFAULTS STRAIGHT TO `checkins`
-          (the roster - see `myWorkDefault` above, which matches the board's own "My work" link).
-          She used to land on `myrecord` instead, where `YourWork` carries its own "Every session"
-          and "Who has answered" links. Landing on the roster first must not leave her without a
-          way back to her own record, so this row now also offers "What I shared" whenever she is
-          a party - hidden only on `myrecord` itself, where `YourWork`'s own links already cover
-          the other two and a second copy would be a duplicate.
-        */}
+        {/* On the roster or every session, the way back to My work (the B7 page, see `myWorkDefault` above) and to the other. */}
         {inMyWork && tab !== 'myrecord' && (
           <div className="gwui-button-row">
             {isInitiator && tab !== 'report' && <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every session</button>}

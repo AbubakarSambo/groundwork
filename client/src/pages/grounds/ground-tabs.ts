@@ -123,7 +123,8 @@ export const FIRST_TAB: GroundTabKey = 'chat'
 export function checkInHeaderTabs({
   id, canRunThisCheckIn, isAParty,
 }: { id: string; ground?: unknown } & TabContext): { key: string; label: string; to: string }[] {
-  const myWorkTab = canRunThisCheckIn ? 'sessions' : 'record'
+  /* My work is one page for the lead and each person in it (MyWorkPage.tsx, B7), so every tab row sends it to one key. */
+  const myWorkTab = 'record'
   return [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
     ...(canRunThisCheckIn || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),
