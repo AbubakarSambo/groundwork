@@ -61,6 +61,8 @@ export interface AMessage {
   turnId: string | null;
   where: 'setup' | 'check-in';
   at: string | null;
+  /** True for a message she typed in setup that the read named as her own update: it is her first check-in (theTwoPartsOfSetup). */
+  saidInSetup?: true;
 }
 
 export interface AHistoryStep {
@@ -236,14 +238,17 @@ export function theColumnWith(assessment: TheAssessment, columnBefore: unknown):
  * WHO MAY SEE EACH SECTION.
  * ------------------------------------------------------------------------------------------------------------------- */
 
-const THE_LEADS_ONLY: ReadonlySet<string> = new Set([
-  'observations', 'roleSignals', 'areas', 'setup.team', 'setup.risks', 'setup.privateNotes',
-  'compared.disagreements',
-]);
+/*
+ * SETUP BELONGS TO WHOEVER RUNS THE CHECK-IN (Hafsah, 4 November 2026: "setup stays private to whoever runs the check-in. Only what's
+ * meant for the team (targets, rules, expectations) is shared, through the proper places"). So every part of setup is the lead's,
+ * not only the team, the risks and her private notes: the targets reach the team as the check-in's targets, and the rules and what
+ * success looks like as the lines of References and resources (keepWhatSetupGave), never as her words.
+ */
+const THE_LEADS_ONLY: ReadonlySet<string> = new Set(['observations', 'roleSignals', 'areas', 'compared.disagreements']);
 
 export function whoMaySee(section: string): WhoMaySee {
   if (section === 'aboutTheLead') return KEPT_FROM_THE_LEAD;
-  return THE_LEADS_ONLY.has(section) ? 'the lead only' : 'the people in this check-in';
+  return section.startsWith('setup.') || THE_LEADS_ONLY.has(section) ? 'the lead only' : 'the people in this check-in';
 }
 
 /** What "taken further" means, the one wording: the assessment reads it into each wait, and a live check-in reads it from what was said. */
@@ -279,6 +284,7 @@ export const THE_ASSESSMENT_PROMPT = [
   '  - corrections: anything they said the record, the board or Groundwork has wrong: what it said, what it should say, and whether they backed it. Where it corrects an item of the previous assessment, `correctsItem` is that item\'s id.',
   '  - documents: each document or photo they added or pointed to: what it says, what it proves, and where it belongs. Where it proves a claim in their previous assessment, `provesItem` is that claim\'s id.',
   '  - targets: what the check-in as a whole is aiming at, and each number somebody is aiming at, by the rules for aims below. In every conversation, setup or check-in.',
+  '  - herUpdate (only when setup material is given): the number of each of the lead\'s setup messages that gives her own update on the work, that is where things stand today and what is open, as far as she knows it. Read those messages into the sections above as you would any check-in: they are her first check-in. A message that only sets the check-in up (what it is for, who is in it, the targets, the rules, how often, her notes on people, what she wants to find out) is not in it, and is read only into setup.',
   '  - setup (only when setup material is given): the objective, what success looks like, the team and their roles, working days and timing, rules and definitions, risks, the strategy (how the lead means to get there), notes (anything else about the work the team should know, something between two people included), and the lead\'s private notes on each person. Anything still to decide goes under decisions, as waiting. For each person on the team and each private note, `spokenOf` says how the lead spoke of that person (praise, criticism or neutral), only from her words.',
   '  - roleSignals: what the person actually did or talked about doing: tasks, decisions, who they dealt with, what they owned. Also each thing they said about their own job, with its `part`: "the name of their job" (a few words such as "sales representative", only if they said it), "what they are responsible for" (in their job, over this one piece of work), "what doing well looks like" (in their job), "who they depend on" (and who depends on them), or "what gets in their way". Anything else they did is "something they did". `words` are copied from ONE of their answers, exactly, never joined from two. A worry about a customer or a deal is not part of their job.',
   '  - roleAgainstGiven: from this conversation only, the role they are actually playing, and whether it fits the role they were given ("cannot tell" when the conversation does not show it).',
@@ -386,6 +392,7 @@ export const THE_ASSESSMENT_SCHEMA = {
       everythingElse: anItem({ what: S('What it is about.') }),
       aboutTheLead: anItem({ what: S('What they say against the person who leads this check-in, in plain words.') }),
       nothingToRecord: { type: 'array', items: { type: 'integer' }, description: 'Message numbers with nothing to record.' },
+      herUpdate: { type: 'array', items: { type: 'integer' }, description: 'Only in setup: the numbers of the lead\'s messages that give her own update on where things stand today.' },
     },
     required: ['summary', 'nothingToRecord'],
   },
@@ -410,7 +417,7 @@ export interface TheMaterial {
   /** Every turn in order; person turns carry their number. */
   turns: { role: 'person' | 'groundwork'; content: string; n?: number }[];
   /** Setup's words, numbered first, and what setup was given beside them (the lead's notes on each person, the timing). */
-  setup: { words: { n: number; content: string }[]; given: string[] } | null;
+  setup: { words: { n: number; content: string; asked?: string | null }[]; given: string[] } | null;
   /** The lead's documents that everybody on the check-in may open, read with her words (never a private one). */
   documents?: { name: string; content: string }[];
   /** The per-turn note's claims and the end card's lines, as a draft. */
@@ -435,7 +442,7 @@ export function theMaterialAsText(m: TheMaterial): string {
   if (m.priorities.length) out.push('', 'THE TEAM\'S PRIORITIES:', ...m.priorities.map((p) => `  - ${p}`));
   if (m.setup) {
     out.push('', 'SETUP MATERIAL (the lead setting this check-in up):');
-    for (const w of m.setup.words) out.push(`[${w.n}] THE LEAD, IN SETUP: ${w.content}`);
+    for (const w of m.setup.words) out.push(...(w.asked ? [`(Groundwork had asked: ${w.asked.slice(-300)})`] : []), `[${w.n}] THE LEAD, IN SETUP: ${w.content}`);
     if (m.setup.given.length) out.push('What the lead gave in setup beside the conversation:', ...m.setup.given.map((g) => `  - ${g}`));
   }
   if (m.documents?.length) {
@@ -513,6 +520,8 @@ export function everyItemIn(a: Pick<TheAssessment, AnItemSection | 'setup' | 'co
 export type TheReadParts = Pick<TheAssessment, AnItemSection | 'setup' | 'comparedWithLastTime' | 'summary' | 'roleAgainstGiven' | 'nothingToRecord'> & {
   /** What they said against the lead, as read; set aside by withWhatIsAboutTheLeadSetAside before anything is stored. */
   aboutTheLead?: AnItem[];
+  /** In setup, the messages that are the lead's own update on where things stand: her first check-in (theTwoPartsOfSetup). */
+  herUpdate?: number[];
 };
 
 export function thePartsFrom(answer: any, said: Map<number, string>, opts: { hasSetup: boolean; previous: { checkInId: string; on: string | null } | null; givenRole: string | null; read: number; compares?: boolean }): TheReadParts {
@@ -521,6 +530,7 @@ export function thePartsFrom(answer: any, said: Map<number, string>, opts: { has
   const parts: any = {
     summary: typeof a.summary === 'string' ? a.summary.trim() : '',
     nothingToRecord: Array.isArray(a.nothingToRecord) ? [...new Set(a.nothingToRecord.map(Number).filter((n: number) => said.has(n)))] : [],
+    herUpdate: opts.hasSetup && Array.isArray(a.herUpdate) ? [...new Set(a.herUpdate.map(Number).filter((n: number) => said.has(n)))] : [],
   };
   for (const s of THE_ITEM_SECTIONS) parts[s] = theItems(a[s], s, p(s), said);
   parts.aboutTheLead = theItems(a.aboutTheLead, 'aboutTheLead', p('aboutTheLead'), said);
@@ -552,7 +562,11 @@ export function theUnmatched(parts: TheReadParts, messages: AMessage[]): number[
 
 /** The second read's items added to the first's, under their own ids. */
 export function withTheSecondRead(first: TheReadParts, second: TheReadParts): TheReadParts {
-  const out: any = { ...first, nothingToRecord: [...new Set([...(first.nothingToRecord ?? []), ...(second.nothingToRecord ?? [])])] };
+  const out: any = {
+    ...first,
+    nothingToRecord: [...new Set([...(first.nothingToRecord ?? []), ...(second.nothingToRecord ?? [])])],
+    herUpdate: [...new Set([...(first.herUpdate ?? []), ...(second.herUpdate ?? [])])],
+  };
   for (const s of THE_ITEM_SECTIONS) out[s] = [...((first as any)[s] ?? []), ...((second as any)[s] ?? [])];
   out.aboutTheLead = [...(first.aboutTheLead ?? []), ...(second.aboutTheLead ?? [])];
   if (first.setup || second.setup) {
@@ -571,6 +585,18 @@ export function withWhatIsLeftKeptWhole(parts: TheReadParts, left: number[], sai
     what: 'Said, and not yet read into any other part.',
   }));
   return { ...parts, everythingElse: [...(parts.everythingElse ?? []), ...kept] };
+}
+
+/**
+ * SETUP, STORED IN TWO PARTS (Hafsah, 4 November 2026: "Keep one conversation for the lead (setup and her first check-in together), but
+ * store it in two parts: setup facts stay private to whoever runs the check-in; her 'where things stand today' is saved as her first
+ * check-in under the normal rules"). Every setup message is setup's until the read says it is her own update on the work; those are
+ * her first check-in, so what she says in them is her record and is read like anybody's check-in. Which is which is understood by
+ * the read, never matched; what each part may be read by is fixed in code (whoMaySee, and mayRead in the-facts-on-record.ts).
+ */
+export function theTwoPartsOfSetup(messages: AMessage[], herUpdate: number[] | undefined): AMessage[] {
+  const hers = new Set(herUpdate ?? []);
+  return messages.map((m) => (m.where === 'setup' && hers.has(m.n) ? { ...m, where: 'check-in' as const, saidInSetup: true as const } : m));
 }
 
 /**

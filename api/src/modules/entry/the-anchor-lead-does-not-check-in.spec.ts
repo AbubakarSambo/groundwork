@@ -79,15 +79,13 @@ describe('the lead who sets the anchor up', () => {
 });
 
 describe('decision 133: there is no "only they check in" answer any more', () => {
-  it('closes the lead\'s first check-in as answered, with her words on session 1, so she counts in it', async () => {
+  /* CHANGED 4 NOVEMBER (Hafsah: one conversation on screen, stored in two parts): her words are no longer copied onto session 1 as
+     check-in turns, which is how setup's words reached the team. Session 1 is still closed as answered, so she counts in it. */
+  it('closes the lead\'s first check-in as answered, so she counts in it, without copying the conversation into its turns', async () => {
     const { service, prisma } = makeService(false);
     await service.commit('org1', 'user1', { groundLabel: 'Sales team', scenario: 'NEW_PROJECT', cadence: 'WEEKLY', cadenceChosen: true, report: null, contributors: [],
       history: [{ role: 'assistant', content: 'What did the team close this week?' }, { role: 'user', content: 'Two orders from Green Mart, 40 cases.' }] } as any);
-    /* Each turn now carries its own time, in order (E5, 13 October 2026). */
-    expect(prisma.conversationTurn.createMany).toHaveBeenCalledWith({ data: [
-      { checkInId: 'ci1', role: 'AI', content: 'What did the team close this week?', createdAt: expect.any(Date) },
-      { checkInId: 'ci1', role: 'PERSON', content: 'Two orders from Green Mart, 40 cases.', createdAt: expect.any(Date) },
-    ] });
+    expect(prisma.conversationTurn.createMany).not.toHaveBeenCalled();
     const done = prisma.checkIn.update.mock.calls.map((c: any[]) => c[0]).find((a: any) => a.data.status === 'COMPLETED');
     expect(done).toMatchObject({ where: { id: 'ci1' }, data: { status: 'COMPLETED', optional: true } });
     expect(done.data.isSetup).toBeUndefined();

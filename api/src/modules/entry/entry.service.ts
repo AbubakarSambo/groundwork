@@ -5,8 +5,8 @@ import { notTheLeadHerself, herSetupWordsAsATurn, howSheDescribesHerself, aLineT
 import { theSettersRole } from '../../common/a-role-or-nothing';
 import { askedToFinish, isTheWordFinish } from '../conversation/close-readiness';
 import { endingOnTheClose } from '../conversation/the-close-says-what-comes-next';
-import { withAQuestion as withAQuestionForTheFirstCheckIn } from '../conversation/nobody-is-left-looking-at-a-paragraph';
 import { stripCloseMarker } from '../conversation/prompt-library';
+import { withAQuestion as withAQuestionForTheFirstCheckIn } from '../conversation/nobody-is-left-looking-at-a-paragraph';
 import { readUntilItLands } from './a-slow-reading-does-not-hold-the-save';
 import { withoutTheUserLabel } from './the-lead-is-never-the-user';
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
@@ -23,7 +23,7 @@ import {
 } from './a-join-link-is-not-a-password';
 import { Injectable, Optional, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType, Prisma } from '@prisma/client';
+import { GroundScenario, GroundMoment, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType, Prisma } from '@prisma/client';
 import { namesWithoutPossessives } from './a-name-is-not-a-possessive';
 import { withHeadingsThatReadAsHeadings } from './a-heading-is-a-noun-phrase';
 import { splitMentions } from './a-client-is-not-a-colleague';
@@ -2616,31 +2616,25 @@ from finishing at all.`;
     /*
      * DECISION 133: SETUP FLOWS STRAIGHT INTO THE LEAD'S FIRST CHECK-IN, IN THE SAME CONVERSATION.
      * The setup is not the check-in (decision 28) and is not in `history`: `history` holds only the
-     * check-in that followed it, which is the lead's first check-in. So it is written into session 1
-     * and closed as answered, exactly like anybody's finished check-in, and the lead counts in session 1.
+     * check-in that followed it, which is the lead's first check-in. So session 1 is closed as answered,
+     * exactly like anybody's finished check-in, and the lead counts in session 1.
      * Before this, session 1 was left NOT_STARTED, the ground page opened it again, and it read
      * "Nobody has checked in yet" and "Your turn" to a lead who had just checked in.
      */
     /* The lead's first session's record, once written; nothing to wait for where there is none. */
     let theLeadsRecordIsRead: Promise<unknown> = Promise.resolve();
-    const theirCheckIn = (dto.history ?? []).filter((t: any) => t && typeof t.content === 'string' && t.content.trim());
-    const theyAnswered = theirCheckIn.some((t: any) => t.role === 'user');
+    const theConversation = (dto.history ?? []).filter((t: any) => t && typeof t.content === 'string' && t.content.trim());
+    const theyAnswered = theConversation.some((t: any) => t.role === 'user');
     if (!theAnchorIsOn && theyAnswered) {
       /*
-       * IN THE ORDER IT HAPPENED (pilots, 13 October 2026, E5). Every turn was written with one and the same time, so
-       * Njeri's session 1 came back in whatever order the database chose: her closing turn mid-transcript, two of
-       * Groundwork's turns together and her answers after them. Each turn now has its own moment, a millisecond apart,
-       * in the order she had the conversation. And the close marker's brackets never reach the record.
+       * STORED IN TWO PARTS (Hafsah, 4 November 2026: one conversation on screen, "setup facts stay private to whoever runs the
+       * check-in; her 'where things stand today' is saved as her first check-in under the normal rules"). The whole setup chat was
+       * copied into her session 1 as check-in turns, so its assessment read every setup sentence as said in a check-in, and the record
+       * took them: "I do not know what he is working on. That is what I want to find out from these check-ins." reached a team
+       * member's board. Her words now reach the assessment once, as setup (setupGiven, below); the read names the messages that are
+       * her own update on where things stand, and only those are written onto session 1 as her first check-in's turns
+       * (assess-the-conversation.ts, herFirstCheckIn), so that part is her record like anybody's, and the rest stays setup's.
        */
-      const startedAt = Date.now() - theirCheckIn.length;
-      await this.prisma.conversationTurn.createMany({
-        data: theirCheckIn.map((t: any, i: number) => ({
-          checkInId: checkIn.id,
-          role: t.role === 'user' ? TurnRole.PERSON : TurnRole.AI,
-          content: t.role === 'user' ? t.content : stripCloseMarker(t.content).text,
-          createdAt: new Date(startedAt + i),
-        })),
-      });
       await this.prisma.checkIn.update({
         where: { id: checkIn.id },
         data: { status: CheckInStatus.COMPLETED, completedAt: new Date(), optional: true },
@@ -2761,8 +2755,11 @@ from finishing at all.`;
      * Her record is written from it (the one writer), and it is never waited for: the save answers as quickly as before.
      */
     if (theirOwnWords || theyAnswered || theAnchorIsOn) {
+      const words = (dto.leadsOwnWords ?? []).map((t) => (typeof t === 'string' ? t.trim() : '')).filter((t) => t && !t.startsWith('[Document:') && !t.startsWith('[Situation picked'));
       const setupGiven = {
-        words: (dto.leadsOwnWords ?? []).map((t) => (typeof t === 'string' ? t.trim() : '')).filter((t) => t && !t.startsWith('[Document:') && !t.startsWith('[Situation picked')),
+        words,
+        /* The question each answered, from the conversation as she had it, so the read sees what she was answering. */
+        asked: theQuestionEachAnswered(words, theConversation),
         given: [
           ...(dto.contributors ?? []).map((c) => `${c.displayName?.trim() || c.email || 'Somebody'}${c.context?.trim() ? `: ${c.context.trim()}` : ''}${c.note?.trim() ? ` (note: ${c.note.trim()})` : ''}`),
           ...(dto.cadence ? [`How often: ${dto.cadence}`] : []),
@@ -3347,3 +3344,22 @@ function withoutTheGoodbyeOrTheirLeaving(reply: string, theirLast: string): stri
     return !(t && theirs && (t === theirs || t === theirs.replace(/\bi\b/g, 'you')));
   }).join(' ').trim();
 }
+
+/**
+ * THE QUESTION GROUNDWORK HAD JUST ASKED BEFORE EACH OF HER SETUP MESSAGES, read from the conversation as she had it: the same message,
+ * in order, and the assistant's turn before it. Null where she wrote first or the message is not in the conversation.
+ */
+export function theQuestionEachAnswered(words: string[], conversation: { role: string; content: string }[]): (string | null)[] {
+  let from = 0;
+  return words.map((w) => {
+    for (let i = from; i < conversation.length; i++) {
+      if (conversation[i].role !== 'user' || String(conversation[i].content ?? '').trim() !== w) continue;
+      from = i + 1;
+      const before = conversation[i - 1];
+      return before && before.role === 'assistant' ? stripTheCloseMarkerOf(String(before.content ?? '')) || null : null;
+    }
+    return null;
+  });
+}
+const stripTheCloseMarkerOf = (t: string): string => stripCloseMarker(t).text.trim();
+
