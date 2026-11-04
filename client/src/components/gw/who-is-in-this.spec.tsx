@@ -117,19 +117,19 @@ describe('the permission stays in the service', () => {
     expect(code('WhoIsInThis.tsx')).not.toMatch(/peersVisible|restrictExternalVisibility|hidePeers/)
   })
 
-  it('and the pages build the roster from the payload rather than from a role', () => {
-    const part = code('../../pages/grounds/GroundParticipantPage.tsx')
-    expect(part).toMatch(/whoIsInThisParties = \(ground\.participants \?\? \[\]\)/)
+  /*
+   * 4 November 2026: the party's page no longer draws a roster of its own. Since Release 1B's switch went, her People and
+   * setup tab is <YourPeopleAndSetup />, the B8 member page, which is exactly what GET /grounds/:id/people-and-setup serves
+   * a member (api people-and-setup.ts: no other person's details), so who may be seen is decided in the service and
+   * nowhere on the page. These two cases now pin that: the page draws what it is served and has no peer rule of its own.
+   */
+  it('and the party\'s page draws what the service serves her, rather than a roster built from a role', () => {
+    expect(code('../../pages/grounds/GroundParticipantPage.tsx')).toContain("{tab === 'settings' && <YourPeopleAndSetup groundId={id ?? ''} />}")
+    expect(code('../../pages/grounds/YourPeopleAndSetup.tsx')).toContain('groundsApi.peopleAndSetup(groundId)')
   })
 
-  it('and both pages pass the check-in\'s peer rule, so an empty roster can explain itself', () => {
-    /**
-     * FOUND BY BITE-CHECK. Removing this wiring from the participant page left all 550 tests
-     * green: the component's own behaviour was pinned and the fact that anything passes it was
-     * not. A prop nothing supplies is a feature nobody gets.
-     */
-    expect(code('../../pages/grounds/GroundParticipantPage.tsx'))
-      .toMatch(/peersHidden=\{\(ground as any\)\.peersVisibleEffective === false\}/)
+  it('and that page has no peer rule of its own, so the rule exists in one place', () => {
+    expect(code('../../pages/grounds/YourPeopleAndSetup.tsx')).not.toMatch(/peersVisible|participants|restrictExternalVisibility|hidePeers/)
   })
 
   /**
