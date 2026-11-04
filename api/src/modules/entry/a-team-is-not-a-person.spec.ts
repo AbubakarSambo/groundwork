@@ -39,7 +39,8 @@ describe('a team is not a person, and the opener may not be theirs', () => {
      * condition would sit permanently false and the warning would vanish for everyone, which is
      * worse than either behaviour it was choosing between.
      */
-    expect(SRC).toContain('const needsPeople = !extracted.peopleNamed?.length;');
+    /* Read from the one reading of setup now (what-setup-knows, fix plan group 5), which holds this turn's people and those known before. */
+    expect(SRC).toContain('needsPeople: !known.peopleNamed?.length');
   });
 
   it('stops reading the product’s own opening sentence as anybody’s account', () => {

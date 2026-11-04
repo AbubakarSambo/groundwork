@@ -31,20 +31,21 @@ describe('the setup conversation reads you first', () => {
     expect(SRC).toMatch(/Do not defend the question and do not\n   apologise/);
   });
 
-  it('asks one thing, and never announces what it needs', () => {
-    expect(SRC).toMatch(/ONE QUESTION, AND SAY WHY IT HELPS/);
+  /*
+   * CHANGED 4 November 2026 (fix plan, release batch 1, group 5). These pinned "ONE QUESTION, AND SAY WHY IT HELPS", her example "It helps
+   * to keep a definition of what clear success looks like" and two or three example answers for every abstract question. Copied word for
+   * word into every setup, they are what round 39's leads called a chatbot ("It helps to know what else you would look for, like feedback
+   * from schools"), and the law firm got sales examples. The rule is gone; one question at a time, plainly, stays.
+   */
+  it('asks one thing, plainly, and never announces what it needs', () => {
+    expect(SRC).toMatch(/ASK FOR ONE THING, PLAINLY, THE WAY A COLLEAGUE WOULD/);
     expect(SRC).toMatch(/Never "I need to know"/);
   });
 
-  it('gives the reason the question is worth answering', () => {
-    /* Her own example of what this sounds like. */
-    expect(SRC).toContain('It helps to keep a definition of what clear');
-  });
-
-  it('and shows what an answer could look like, from their world', () => {
-    expect(SRC).toMatch(/AND SHOW WHAT AN ANSWER COULD LOOK LIKE/);
-    expect(SRC).toMatch(/A distributor list, a photo from a shop\n     visit, an invoice/);
-    expect(SRC).toMatch(/pipeline, conversion and sign-ups are somebody else's/);
+  it('gives no reason for the question and no list of example answers', () => {
+    expect(SRC).not.toContain('It helps to keep a definition of what clear');
+    expect(SRC).not.toMatch(/AND SHOW WHAT AN ANSWER COULD LOOK LIKE|ONE QUESTION, AND SAY WHY IT HELPS/);
+    expect(SRC).not.toMatch(/# A question carries its reason/);
   });
 
   it('never builds a sentence by joining two of their phrases', () => {
@@ -95,15 +96,6 @@ describe('the check-in after setup does not start again', () => {
   it('treats everything setup settled as answered', () => {
     expect(SRC).toMatch(/# Setup is finished, and everything in it is answered/);
     expect(SRC).toMatch(/Not\s+one of those may be asked for again/);
-  });
-
-  /* Hafsah, 30 October 2026 (the first experience): the rule stays, and its quoted examples went, because the model said them
-     back word for word ("watching how it lands", a "migration" asked of a trucking company). It says what to do, never what to say. */
-  it('carries the reason and the examples there too, where the conversation actually is, and quotes no example to repeat', () => {
-    expect(SRC).toMatch(/# A question carries its reason, and an abstract one carries examples/);
-    expect(SRC).toMatch(/two or three concrete options from their own world, never from another kind of business/);
-    expect(SRC).not.toMatch(/A distributor list, a photo from a shop visit, an invoice/);
-    expect(SRC).not.toMatch(/are you running it, doing some of it, or\s+watching/);
   });
 
   it('and stops asking after two I-do-not-knows', () => {

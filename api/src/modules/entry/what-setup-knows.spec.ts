@@ -1,4 +1,4 @@
-import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-already-knows-travels-with-it';
+import { knownDontAsk as whatIsSettledAndWhatIsNot, whatSetupKnowsNow, type WhatSetupHasSoFar } from './what-setup-knows';
 import { whatTheyAlreadyHave } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 
 /**
@@ -30,7 +30,7 @@ describe('the settled block', () => {
   });
 
   it('says not to ask for any of it again', () => {
-    expect(whatIsSettledAndWhatIsNot(soFar)).toMatch(/Do not ask for any of it again/i);
+    expect(whatIsSettledAndWhatIsNot(soFar)).toMatch(/do not ask for any of it again, in any words/i);
   });
 
   /*
@@ -42,7 +42,7 @@ describe('the settled block', () => {
   it('says what the reading has not found yet, and that an answer in any words is an answer', () => {
     const block = whatIsSettledAndWhatIsNot({ initial: 'Fintech payments SDK migration', peopleNamed: ['Tunde'] });
     expect(block).toContain('NOT READ FROM THEIR WORDS YET: Who else is in it; What they want out of it.');
-    expect(block).toContain('If they have already answered one, in any');
+    expect(block).toContain('If they have already answered one, in any words');
     expect(block).not.toMatch(/not finished while|none of them is optional/i);
   });
 
@@ -103,5 +103,47 @@ describe('what a signed-in lead already has', () => {
     const block = whatTheyAlreadyHave({ theirCheckIns: many });
     expect(block).toContain('Check-in 5');
     expect(block).not.toContain('Check-in 6');
+  });
+});
+
+/*
+ * ONE READING, BUILT ON THE SERVER EACH TURN (fix plan, release batch 1, group 5). The panel shows it and the model is told it as known.
+ * Each case is a loop a lead in round 39 named: the team given with numbers, asked for again; a number cut short; the kind asked again.
+ */
+describe('what setup knows now', () => {
+  it('keeps what was known when this turn read nothing new, and takes what this turn read when it did', () => {
+    const before = { initial: 'School fees app adoption', goals: ['20 schools and 1000 parents paying in three months'], cadence: 'WEEKLY' };
+    const now = whatSetupKnowsNow(before, { initial: 'School fees app in Uganda, adoption is slow', peopleNamed: ['Mugisha Okello'] });
+    expect(now).toMatchObject({ initial: 'School fees app in Uganda, adoption is slow', goals: ['20 schools and 1000 parents paying in three months'], cadence: 'WEEKLY', peopleNamed: ['Mugisha Okello'] });
+  });
+
+  it('keeps each person with their email and number, and never replaces a whole number with part of it', () => {
+    const before = { peopleNamed: ['Brian Otieno', 'Aisha Mohamed'], peoplePhones: { 'Brian Otieno': '+254 712 345 678' }, peopleEmails: { 'Aisha Mohamed': 'aisha@law.test' } };
+    const now = whatSetupKnowsNow(before, { peopleNamed: ['Brian Otieno', 'Aisha Mohamed'], peoplePhones: { 'brian otieno': '712 345' } });
+    expect(now.peoplePhones).toEqual({ 'Brian Otieno': '+254 712 345 678' });
+    expect(now.peopleEmails).toEqual({ 'Aisha Mohamed': 'aisha@law.test' });
+  });
+
+  it('reads the kind once and names it from the one owner of situation names', () => {
+    const first = whatSetupKnowsNow(null, { classifiedScenario: 'PULSE_CHECK' });
+    expect(first).toMatchObject({ classifiedScenario: 'PULSE_CHECK', kindName: 'Keep a read on live work' });
+    expect(whatSetupKnowsNow(first, { classifiedScenario: 'OKR_ALIGNMENT' }).classifiedScenario).toBe('PULSE_CHECK');
+  });
+
+  it('tells the model the team as she gave it, whole, and that it is known', () => {
+    const block = whatIsSettledAndWhatIsNot(whatSetupKnowsNow(null, {
+      initial: 'Track user adoption for the school fees app',
+      peopleNamed: ['Mugisha Okello', 'Aisha Nakato'],
+      peopleEmails: { 'Mugisha Okello': 'mugisha@startup.test' },
+      peoplePhones: { 'Mugisha Okello': '+256-772-332372' },
+      peopleRoles: { 'Mugisha Okello': 'signs up schools and parents' },
+      goals: ['20 schools signed up', '1000 parents making payments'],
+      classifiedScenario: 'PULSE_CHECK',
+    }));
+    expect(block).toContain('WHAT SETUP KNOWS, FROM WHAT THEY HAVE SAID. This is known: do not ask for any of it again, in any words.');
+    expect(block).toContain('  - Mugisha Okello, mugisha@startup.test, +256-772-332372, signs up schools and parents');
+    expect(block).toContain('  - Aisha Nakato');
+    expect(block).toContain('- The kind of check-in: Keep a read on live work');
+    expect(block).toContain('- What they want out of it: 20 schools signed up, 1000 parents making payments');
   });
 });

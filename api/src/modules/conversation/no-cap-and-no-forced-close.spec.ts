@@ -31,7 +31,7 @@ describe('no question limit and no forced close', () => {
   });
 
   it('setup reads back what it set up and asks whether anything is wrong before it finishes', () => {
-    expect(HOW_SETUP_ENDS).toMatch(/say back in plain full sentences what you have set up, from ALREADY SETTLED above and nothing else, and ask "Is anything wrong\?"/);
+    expect(HOW_SETUP_ENDS).toMatch(/say back in plain full sentences what you have set up, from WHAT SETUP KNOWS above and nothing else, and ask "Is anything wrong\?"/); /* The heading is now WHAT SETUP KNOWS, the one reading (fix plan, group 5). */
   });
 
   it('both are said every turn, in code: the check-in with its system prompt, setup with its own', () => {

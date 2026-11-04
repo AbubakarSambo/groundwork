@@ -33,7 +33,7 @@ describe('the three things', () => {
     const at = ENTRY.indexOf('theThingsThatCannotBeMissed(');
     expect(at).toBeGreaterThan(-1);
     /* Appended after the settled block, which is itself appended after the situation pack. */
-    expect(ENTRY.indexOf('theThingsThatCannotBeMissed(', at)).toBeGreaterThan(ENTRY.indexOf('whatIsSettledAndWhatIsNot('));
+    expect(ENTRY.indexOf('theThingsThatCannotBeMissed(', at)).toBeGreaterThan(ENTRY.indexOf('knownDontAsk('));
   });
 
   /**
