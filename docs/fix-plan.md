@@ -1,4 +1,113 @@
-# Fix plan: by root cause, not by symptom
+# Fix plan, release batch 1, by root cause (DRAFT, 4 November 2026)
+
+Drafted from `docs/issues-next.md` items 1 to 38, the cast run (round 38) and the smoke test (round 37). It is final only once the first-experience run (round 39) and the 120 adversarial cases have joined the list. The batch must be better than live (staging 237a36837, measured once) on every release-bar measure. Groups are in order of harm.
+
+## 1. Setup is stored as the lead's first check-in (privacy). Closes 28 and 30.
+- **Cause.**
+  - `entry.service.ts:2626-2646` copies the setup chat (`dto.history`) into the lead's session-1 turns.
+  - `assess-the-conversation.ts:103-108` then tags those turns `check-in`, so the guard in `the-record-from-the-assessment.ts:81-83` can't tell them from check-in words.
+  - A second way in: `the-assessment.ts:239-247` makes only team, risks and private notes lead-only, and `mayRead` (`the-facts-on-record.ts:62-69`) never checks `inSetup`.
+  - `mayRead` also ignores `whoSeesTargets`.
+- **One fix.**
+  - Delete the copy into session 1, so setup reaches the assessment only as setup.
+  - Every `setup.*` section belongs to whoever runs the check-in. Targets, rules and expectations reach the team only through their own places.
+  - `mayRead` honours the target setting: under THEIR_OWN, a person's words about their own target are read only by them and the lead.
+  - A one-time script removes record lines already written from copied setup turns.
+  - Update `the-anchor-leads-aims-stay-hers-in-the-report:61-64`, which pins the leak.
+- **Proof.** Read each member's board, My work, own report, shared report, the "Against the target" band and Ask on a bed. New privacy specs cover setup words and the copied-turn path.
+- **Ships to staging separately.** Staging and production most likely have the same breach.
+
+## 2. One figure, two owners. Closes 35 and the figure lines in 22 and 32.
+- **Cause.**
+  - A target's progress is both the stored `groundObjective.count` (`a-measure-that-goes-down-is-still-going-well.ts:201`) and the model's `suggestedCount` (`BoardPage.tsx:4298`).
+  - Reports build their own session clock inputs (`reports.service.ts:6555-6565`, compared with `this-sessions-count.ts:165-167`).
+  - The client has its own fallback count (`GroundAdminPage.tsx:1827`).
+- **One fix.**
+  - A target's figure is read from the record, with "said" and "proven" shown as such. The stored count is used only when a person set it.
+  - Reports read `theSessionAndItsCount`, and the client fallback is deleted.
+- **Proof.** None of round 38's 15 disagreeing measures returns.
+
+## 3. Words nobody said, and facts lost on the way. Closes 22 (quotes), 32 (stitched quotes), 33, 23 and 36.
+- **Cause.**
+  - A live check-in remembers earlier sessions only as its last 6 record lines (`conversation.service.ts:4486-4495`).
+  - Ask keeps only 45 days and 40 facts per person (`a-question-is-answered-from-the-documents.ts:127, 143, 174`).
+  - Quote marks go around model-written words.
+- **One fix.**
+  - The check-in reads the person's open items through `theFactsOnRecord`.
+  - Ask drops the window, and never cuts setup facts or open items.
+  - Only `saidWordForWord` facts may be shown in quote marks.
+- **Proof.** No denial of something said earlier; Ask answers 6 of 6 setup questions; no quote that wasn't typed.
+
+## 4. Honest people flagged. Closes 37 (flags).
+- **Cause.**
+  - Judgements made outside layer 2: missed check-ins (`missed-check-ins.ts:330-337`) count rounds on a clock that disagrees with itself.
+  - Per-person PatternDetection rows.
+  - The claims rule misses proof elsewhere on the record (`patterns-across-the-assessments.ts:201-223, 324`).
+- **One fix.**
+  - Read the instances behind each flag first.
+  - Missed check-ins read the one clock and count only rounds due to that person.
+  - Any proof on the record settles a claim. No threshold changes.
+- **Proof.** 0 honest people flagged, with patterns caught kept at 10 of 12 or better.
+
+## 5. Setup loops and sounds like a chatbot. Closes 19, 20, 27 and 15.
+- **Cause.**
+  - The model never gets setup's own reading of what is known; the panel builds it on the client (`entry.service.ts:1505-1543`).
+  - Word matchers catch repeats after the fact (`asked-twice-and-told-no-twice.ts:51-60`, `entry.service.ts:1690-1700`).
+  - A reason-and-example rule is copied word for word (`entry.service.ts:1076-1078`, `prompt-library.ts:689`).
+  - The situation name lives in three places.
+  - The packs say "KEEP IT SHORT".
+- **One fix.**
+  - One server reading of what setup knows, each turn. The panel shows it, and the model gets it as "known, don't ask".
+  - Delete the matchers, the rule, the copies and the length lines.
+  - Prove the running prompt version by its `promptVersionId`.
+- **Proof.** Three leads walked in the browser: nothing asked twice, no "It helps to…", no sales examples for the law firm, phone numbers kept whole, and the walk ends on "Send N invitations".
+
+## 6. One voice, "I". Closes 18 and 34.
+- **Cause.**
+  - The document line "Here is the context we have from" is written in `what-a-document-holds.ts:196` and matched by regex in `grounds.service.ts:3954` and `ContextPage.tsx:1006, 1033`.
+  - Fixed headings say "we".
+  - The check-in instructions let the model say "we".
+- **One fix.**
+  - The document line becomes one field, which the two strippers read.
+  - Reword the headings.
+  - Put the voice rule in the one stored system instruction.
+- **Proof.** `oneVoice.groundworkSaysWe` is 0.
+
+## 7. Agreed builds in batch 1
+- **3b**, Check-in opens the chat directly.
+- **3**, desktop full width, like Slack. The phone layout is unchanged.
+- **1**, openers prepared in advance, which removes the roughly 7 s of opening calls and probably item 38.
+- **Proof.** Screenshots at web and phone width; the opener appears with no model call.
+
+## 8. The rest in batch 1
+- 9 and 17: every spec that already fails is made to pass.
+- 6: the report's state has one owner.
+
+## Waits for batch 2
+- **2**, sentence-by-sentence streaming. Every "Correction:" is an untrue line already read.
+- **4**, the boards matching the prototype.
+- Waits and how long they've been open.
+- **5**, the read-back's second reading.
+- 8, 10, 25, 26, and the follow-ups in 37.
+- `shownToPersonAt`, which nothing ever writes.
+- Removing the target-number matcher.
+- **16**, the marketing site's copy.
+
+## Decisions Hafsah owes
+1. With setup no longer copied in, the lead has her own session 1 (decision 28). Decision 133's premise falls away. Confirm.
+2. Should PatternDetection's patterns shown to the person themselves be retired too, leaving one pattern layer?
+3. Item 7: should "Set the context" and "Add people" come back to the check-in screen?
+4. Item 11: should the logo on a signed-in production screen go to the marketing site or to Today?
+5. Item 14: should the approved "five minutes" WhatsApp templates be resubmitted?
+6. Item 12: drop the leftover test databases.
+
+## Test tooling, before the live baseline
+The privacy judge's brief now follows the four rules (done 4 November, `~/Desktop/assessment-test/harness/score.ts`). Round 38 will be re-scored with it, so live and plan are counted the same way.
+
+---
+
+# Earlier plan (28 October 2026)
+
 
 Written 28 October 2026 from the quarter test (https://claude.ai/artifact/1CxdqG5seigytMJScvkKKj). Every finding is in exactly one pattern below. No single finding inside a pattern is fixed on its own. The patterns are fixed in order of harm: wrong numbers and untrue lines (patterns 1 and 2), broken flows (3), dates (4), commitments (5), messages (6), wording (7) and phone layout (8). Each fix comes with tests that would have caught the whole pattern, and removes the one-off patches it replaces.
 
