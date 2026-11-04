@@ -21,7 +21,7 @@
  * as `startsAt` is the vocabulary, so the filter calls this only for the screens' own routes.
  */
 
-export const SOMETHING_WENT_WRONG = 'Something went wrong on our side. Please try again in a minute, and if it happens again, tell us.';
+export const SOMETHING_WENT_WRONG = 'Something went wrong on my side. Please try again in a minute, and if it happens again, tell me.';
 
 const BY_DEFAULT: Record<string, string> = {
   'bad request': 'That could not be done as it was sent, so check what you typed and try again.',

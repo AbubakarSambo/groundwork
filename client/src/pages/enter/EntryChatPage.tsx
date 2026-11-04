@@ -4604,7 +4604,7 @@ export function EntryChatPage() {
             {reportFailed && (
               <div className="gwui-ec-savecard-retry">
                 <div className="gwui-ec-savecard-retry-text">
-                  We could not generate your report. Your responses are saved.
+                  I could not write your report. What you said is saved.
                 </div>
                 <Button kind="secondary" size="small" onClick={() => generateSessionReport(reportTurnsForRetry)}>
                   Retry
@@ -4808,7 +4808,7 @@ export function EntryChatPage() {
                 <div className="gwui-ec-savecard-helper">
                   {/* U.6 review: it promised the invites went out on opening the link, which a later start (or a
                       seat, or an admin who must accept it) makes untrue. The same sentences as after saving. */}
-                  {`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(peopleOnTheList, startsLater ? checkInBy : null)}`}
+                  {`I'll email you a confirmation link. ${whatOpeningTheLinkDoes(peopleOnTheList, startsLater ? checkInBy : null)}`}
                 </div>
 
                 {/* SIGNING UP WITH GOOGLE, AT THE MOMENT SIGNING UP HAPPENS.
@@ -4880,7 +4880,7 @@ export function EntryChatPage() {
                 className="gwui-ec-savecard-confirm-box"
               >
                 <div className="gwui-ec-savecard-confirm-title">Check your email</div>
-                <div className="gwui-ec-savecard-confirm-body">We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
+                <div className="gwui-ec-savecard-confirm-body">I sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
                 {inviteAdded.length > 0 ? (
                   <div className="gwui-ec-savecard-confirm-sub">
                     {whoIsWaiting()} Nobody is invited before you confirm your email.

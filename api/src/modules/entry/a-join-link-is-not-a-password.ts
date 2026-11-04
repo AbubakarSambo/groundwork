@@ -54,7 +54,7 @@ export function whatToSayAfterAsking(email: string): WhatWeSay {
     sent: true,
     to: email,
     says:
-      `We have sent a link to ${email}. Opening it starts your check-in. `
+      `I have sent a link to ${email}. Opening it starts your check-in. `
       + 'If it does not arrive in a minute or two, check the address above and try again.',
   };
 }
@@ -72,6 +72,6 @@ export function whyThisDidNotWork(reason: WhyNotJoined): string {
     case 'that link has already been used':
       return 'That link has already been used. If you are signed out, sign in with the address you used.';
     default:
-      return 'That link is not one we recognise. Check you copied all of it, or ask whoever sent it for a new one.';
+      return 'That link is not one I recognise. Check you copied all of it, or ask whoever sent it for a new one.';
   }
 }

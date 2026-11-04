@@ -251,7 +251,7 @@ describe('the board, as each reader reads it', () => {
 /**
  * U.10 (c1): THE SWITCHBOARD'S SECTIONS SIT IN THE SHARED PAGE RHYTHM, NOT WRAPPED AWAY FROM IT.
  *
- * Her review found the sections had no space between them - "'What we are aiming for' touches the
+ * Her review found the sections had no space between them - "'What the team is aiming for' touches the
  * panel above it" - because a wrapping div around the whole page escaped the shared Page frame's
  * own 30px child spacing (`.wrap > * + *`). Fixed by giving each switchboard section its
  * own heading AND content together, as one `<Section>`, so each is a direct child of the page wrap

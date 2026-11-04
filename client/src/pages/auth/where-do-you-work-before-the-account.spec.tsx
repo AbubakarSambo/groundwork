@@ -44,7 +44,7 @@ beforeEach(() => {
 /* "Your email is confirmed" comes first, then "Where do you work?" (the natural order). */
 async function pastTheConfirmation() {
   expect(await screen.findByRole('heading', { name: 'Your email is confirmed' })).toBeTruthy()
-  expect(screen.getByText(/sign-in links and reports to/).textContent).toBe('We’ll send sign-in links and reports to ama@coamana.test.')
+  expect(screen.getByText(/sign-in links and reports to/).textContent).toBe('I’ll send sign-in links and reports to ama@coamana.test.')
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
   await screen.findByRole('heading', { name: 'Where do you work?' })
 }

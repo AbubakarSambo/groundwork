@@ -34,8 +34,8 @@ describe('the unsubscribe page', () => {
   })
 
   it('reads an older API that answers one sentence and no question', async () => {
-    open({ success: true, data: { ok: true, already: true, says: 'That link is not one we recognise, which usually means these emails have already stopped.' } })
-    expect(await screen.findByText(/That link is not one we recognise/)).toBeTruthy()
+    open({ success: true, data: { ok: true, already: true, says: 'That link is not one I recognise, which usually means these emails have already stopped.' } })
+    expect(await screen.findByText(/That link is not one I recognise/)).toBeTruthy()
     expect(screen.queryByText('That did not go through')).toBeNull()
   })
 
@@ -53,8 +53,8 @@ describe('the unsubscribe page', () => {
    * title, and the false reply claim is gone.
    */
   it('an unknown link says plainly that the link was not recognised, with a way to Settings, never "broken"', async () => {
-    open({ success: true, data: { known: false, stopped: true, title: 'That link is not one we recognise', says: ['Nothing has been changed. If emails you do not want are still arriving, reply to one and we will stop them by hand.'] } })
-    expect(await screen.findByRole('heading', { name: 'That link is not one we recognise' })).toBeTruthy()
+    open({ success: true, data: { known: false, stopped: true, title: 'That link is not one I recognise', says: ['Nothing has been changed. If emails you do not want are still arriving, reply to one and I will stop them by hand.'] } })
+    expect(await screen.findByRole('heading', { name: 'That link is not one I recognise' })).toBeTruthy()
     expect(screen.queryByText(/reply to one/i)).toBeNull()
     expect(screen.getByText('Nothing has been changed.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Sign in to change your emails in Settings' })).toBeTruthy()
@@ -66,8 +66,8 @@ describe('the unsubscribe page', () => {
    */
   it('an unknown link, signed in, offers Settings without "sign in"', async () => {
     useAuthStore.setState({ isAuthenticated: true, user: { id: 'u1' }, token: 't' } as any)
-    open({ success: true, data: { known: false, stopped: true, title: 'That link is not one we recognise', says: ['Nothing has been changed.'] } })
-    await screen.findByRole('heading', { name: 'That link is not one we recognise' })
+    open({ success: true, data: { known: false, stopped: true, title: 'That link is not one I recognise', says: ['Nothing has been changed.'] } })
+    await screen.findByRole('heading', { name: 'That link is not one I recognise' })
     expect(screen.getByRole('link', { name: 'Change your emails in Settings' })).toBeTruthy()
     expect(screen.queryByText(/Sign in to change/i)).toBeNull()
     useAuthStore.setState({ isAuthenticated: false, user: null, token: null } as any)
@@ -77,7 +77,7 @@ describe('the unsubscribe page', () => {
      heading - the server's own current wording for this exact case, not this page's borrowed one. */
   it('falls back to the server\'s own current wording when an older response sends no title', async () => {
     open({ success: true, data: { known: false, stopped: true, says: ['Nothing has been changed.'] } })
-    expect(await screen.findByRole('heading', { name: 'That link is not one we recognise' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'That link is not one I recognise' })).toBeTruthy()
   })
 
   it('pressing "Turn off" posts to the unsubscribe link and then shows the served answer', async () => {

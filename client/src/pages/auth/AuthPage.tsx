@@ -329,7 +329,7 @@ export function AuthPage() {
       // No response at all, or the server broke. Neither says anything about whether
       // this address has an account.
       if (!status || status >= 500) {
-        setError('That did not send, because something went wrong on our side. Please try again.')
+        setError('That did not send, because something went wrong on my side. Please try again.')
         return
       }
       if (status === 429) {
@@ -386,7 +386,7 @@ export function AuthPage() {
     onError: (err: any) => {
       const status = err?.response?.status
       if (!status || status >= 500) {
-        setError('That did not send, because something went wrong on our side. Please try again.')
+        setError('That did not send, because something went wrong on my side. Please try again.')
         return
       }
       if (status === 429) {
@@ -586,7 +586,7 @@ export function AuthPage() {
                 <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgTouched(true); setOrgName(v); clearNotices() }} />
                 <p className="gwui-field-help">
                   {!orgTouched && suggestedOrg && orgName === suggestedOrg
-                    ? 'We suggested this from your email address. You can change it now or later.'
+                    ? 'I suggested this from your email address. You can change it now or later.'
                     : 'What your organisation will be called. You can change it later.'}
                 </p>
               </div>
@@ -670,7 +670,7 @@ export function AuthPage() {
     )
   }
   return (
-    <AuthCard title="Forgot your password?" sub="We’ll email you a link to choose a new one. It works for an hour.">
+    <AuthCard title="Forgot your password?" sub="I’ll email you a link to choose a new one. It works for an hour.">
       <form noValidate onSubmit={(e) => { e.preventDefault(); setError(''); { const wrong = whatIsWrongWithTheAddress(email); if (wrong) { setError(wrong); return } } sendReset.mutate() }}>
         <Stack gap={10}>
           {/* "Email", not the prototype's "Work email": which label to use is waiting for Hafsah. */}

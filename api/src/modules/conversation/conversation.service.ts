@@ -5286,7 +5286,7 @@ export class ConversationService {
 
 This was inferred because: ${noStandInLabelIn(inference.reason ?? '', calledHere)}
 
-Open the session by naming this specific inference directly. Do NOT ask the standard opener. Instead say something like: "In your last report, we wrote that [inference text]. You said that wasn't accurate. Tell me what was actually happening." Then use the standard probes and extraction rules. Record only what they explicitly say. Do not re-infer. The goal is to replace the inferred claim with the participant's own words.`;
+Open the session by naming this specific inference directly. Do NOT ask the standard opener. Instead say something like: "In your last report, I wrote that [inference text]. You said that wasn't accurate. Tell me what was actually happening." Then use the standard probes and extraction rules. Record only what they explicitly say. Do not re-infer. The goal is to replace the inferred claim with the participant's own words.`;
       }
     }
 

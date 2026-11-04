@@ -72,6 +72,8 @@ describe('what the model is told on each turn', () => {
     expect(system).toContain('  - Nalule Kazibwe, nalule@startup.test, +256-771-222275');
     expect(system).toContain('- What they want out of it: 20 schools signed up, 1000 parents making payments');
     expect(system).toContain('from WHAT SETUP KNOWS above and nothing else');
+    /* One voice, "I" (group 6): setup has its own instructions, so it reads the same rule the stored system instruction carries. */
+    expect(system).toContain('ONE VOICE: "I". You speak as one voice, "I", in every reply');
   });
 
   it('no reason-and-example rule, no sales example, and no pushback directive from a word list', async () => {

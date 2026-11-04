@@ -393,7 +393,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
         the sentence right underneath ("If one is wrong, say so.") and the press on every row.
       */}
       {said.length > 0 && (
-        <Block n={next()} label="What you said" shownAs={light ? 'What you told us' : undefined}>
+        <Block n={next()} label="What you said" shownAs={light ? 'What you told me' : undefined}>
           <p className="gw-small" style={{ margin: '0 0 10px', color: 'var(--gw-sub)', maxWidth: '68ch' }}>
             These were taken from what you wrote, not typed by you. If one is wrong, say so.
           </p>
@@ -745,8 +745,8 @@ function OwnReportAsPictured({ didWell, story, toldUs, toThinkAbout, correctIt }
       )}
       {story && <p className="gw-story">{story}</p>}
       {toldUs.length > 0 && (
-        <section aria-label="What you told us">
-          <h2 className="t-h3 gw-mb-4">What you told us</h2>
+        <section aria-label="What you told me">
+          <h2 className="t-h3 gw-mb-4">What you told me</h2>
           {toldUs.map((x) => (
             <div key={x.key} className="gw-told-row">
               <span className="gw-mt-4"><ProofMark mark={x.mark} /></span>

@@ -1483,7 +1483,7 @@ export function CreateGroundPage() {
                         * Now the general ground genuinely exists, so the sentence is true - and it names
                         * the trade rather than glossing it.
                       */}
-                      We could not tell which of the situations above this is closest to, so we will open an
+                      I could not tell which of the situations above this is closest to, so I will open an
                       <b> open read</b>: each person answers privately and the report shows where
                       they differ. That works when the shape is genuinely unclear. If one of the cards above
                       does fit, pick it instead, because a named situation asks sharper questions than this

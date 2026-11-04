@@ -68,7 +68,7 @@ export function whatTheyAlreadyHave(theirs?: WhatTheyAlreadyHaveHere | null): st
   const lines = [
     'WHO YOU ARE TALKING TO. They are signed in, and the product already knows this much about them.',
     'Most of it will have nothing to do with what they are setting up today, and that is fine - it is',
-    'here so you do not ask for something they have already told us, and so you can recognise a',
+    'here so you do not ask for something they have already told you, and so you can recognise a',
     'situation they have been in before. Never read it back as a summary, and never assume this new',
     'situation is one of these.',
     '',

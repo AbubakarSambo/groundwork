@@ -233,7 +233,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
   if (isError) {
     return (
       <Note tone="error">
-        We could not load your people just now. Nobody has been removed. Reload the page, and if it keeps happening, tell us.
+        I could not load your people just now. Nobody has been removed. Reload the page, and if it keeps happening, email hello@myground.work.
       </Note>
     )
   }

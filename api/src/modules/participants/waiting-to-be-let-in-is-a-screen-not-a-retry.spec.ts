@@ -18,7 +18,7 @@ describe('accept', () => {
   it('and an unknown token says the true thing, not "already been used"', () => {
     const link = strip(readFileSync(join(__dirname, 'an-invite-link-still-opens.ts'), 'utf8'));
     expect(link).not.toContain('This link has already been used');
-    expect(link).toContain('We do not recognise that link.');
+    expect(link).toContain('I do not recognise that link.');
   });
 });
 

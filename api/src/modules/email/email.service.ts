@@ -2349,7 +2349,7 @@ function decodeEntities(t: string): string {
 
 /** Appended to every mail we decided to send. The link works with no sign-in (round-digest.service.ts#unsubscribe). */
 export const UNSUBSCRIBE_FOOTER = (url: string) =>
-  `<p style="font-size:13px;color:#4E4236;margin-top:28px;">If you would rather not get the emails we decide to send, you can <a href="${url}" style="color:#4E4236;">stop them here</a>.</p>`;
+  `<p style="font-size:13px;color:#4E4236;margin-top:28px;">If you would rather not get the emails I decide to send, you can <a href="${url}" style="color:#4E4236;">stop them here</a>.</p>`;
 
 /** Takes out `<!-- ... -->` comments. A conditional comment for a mail client (`<!--[if`) is left alone. */
 export function withoutDeveloperComments(html: string): string {

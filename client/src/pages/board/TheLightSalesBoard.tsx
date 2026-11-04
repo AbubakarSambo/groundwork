@@ -66,7 +66,7 @@ export const FOLDS: Fold[] = [
   { key: 'deals', box: 'work', name: 'Every deal, day by day', line: 'deals', parts: [/^Every deal, day by day$/], openOnALaptop: true },
   { key: 'assumes', box: 'work', name: 'What the target assumes', parts: [/^What the target of .+ assumes$/], onePerBlock: true },
   { key: 'reported', box: 'work', name: 'Reported, stage by stage', line: 'reported', parts: [/^Reported, stage by stage$/] },
-  { key: 'overTime', box: 'work', name: 'Targets over time', line: 'targetsOverTime', parts: [/^Over time$/, /^What we are aiming for$/, /^What success looks like$/] },
+  { key: 'overTime', box: 'work', name: 'Targets over time', line: 'targetsOverTime', parts: [/^Over time$/, /^What the team is aiming for$/, /^What success looks like$/] },
   { key: 'heading', box: 'work', name: 'Where this is heading', line: 'whereHeading', parts: [/^Where this is heading$/] },
   { key: 'forecast', box: 'work', name: 'Where this could end up', line: 'forecast', parts: [/^Where this could end up$/] },
   { key: 'likelyEnd', box: 'work', name: 'Where the sales numbers are likely to end up', line: 'likelyEnd', parts: [/^Where the .+ numbers are likely to end up$/] },

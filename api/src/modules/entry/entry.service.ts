@@ -52,7 +52,7 @@ import { alreadyEstablished } from '../conversation/setup-already-asked-this';
 import { aNameAPersonGave, aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
 import { theBusinessTheyNamed } from './the-business-they-named';
 import { isAMadeUpWorkspaceName } from '../assistant/ask-name';
-import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE } from '../conversation/prompt-library';
+import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, ONE_VOICE } from '../conversation/prompt-library';
 import { PLAIN_WORDS } from '../conversation/plain-words';
 import { forHumans, whatIsNewSince, theFinishedPart } from '../presentation/outbound';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
@@ -829,6 +829,8 @@ export class EntryService {
      * was told it back ("Got it, 120 units by October 30th, with 30 for each of..."), and was then asked "who is on the team?". Said first.
      */
     const ONBOARD_SYSTEM = `${OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE}
+
+${ONE_VOICE}
 
 YOUR FIRST REPLY SHOWS YOU UNDERSTOOD, AND NOTHING ELSE. In one sentence, in their own terms, say what their team does, where it stands and what they want to see, and ask "Is that right?". No other question in that reply, and no sentence about how setup works. This is the one reply that says their words back; after it, never say their answer back to them.
 

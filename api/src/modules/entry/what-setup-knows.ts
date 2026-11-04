@@ -141,8 +141,10 @@ function onePerson(name: string, k: WhatSetupKnows): string {
  * The block the model reads above the transcript: everything setup knows, and what it has not read from their words yet. Empty on the
  * first turn, when there is nothing known and a heading saying so would be noise.
  */
-export function knownDontAsk(known?: WhatSetupKnows | null): string {
-  if (!known) return '';
+export function knownDontAsk(soFar?: WhatSetupKnows | null): string {
+  if (!soFar) return '';
+  /* Read through the same merge, so a reading handed back without the kind's name still names it. */
+  const known = whatSetupKnowsNow(soFar, null);
   const settled = WHAT_EACH_ONE_IS.filter((f) => itIsThere(known[f.key]));
   const people = known.peopleNamed ?? [];
   if (!settled.length && !people.length) return '';
@@ -156,7 +158,8 @@ export function knownDontAsk(known?: WhatSetupKnows | null): string {
   ];
   if (known.noAimAndTheySaidSo) lines.push('- They have said there is no target to work to. Do not ask for one again.');
 
-  const missing = WHAT_SETUP_IS_FOR.filter((k) => !itIsThere(known[k]))
+  /* The team they named answers who else is in it. */
+  const missing = WHAT_SETUP_IS_FOR.filter((k) => !itIsThere(known[k]) && !(k === 'whoInvolved' && people.length))
     .map((k) => WHAT_EACH_ONE_IS.find((f) => f.key === k)!.said);
   if (missing.length) {
     /* Not read yet is not the same as not answered (round 5, 1 November 2026): the reading runs a turn behind and keeps only what it is sure of. */

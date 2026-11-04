@@ -833,7 +833,7 @@ export class UsersService {
       where: { id, organizationId, deletedAt: null },
       select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true },
     });
-    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    if (!user) throw new NotFoundException('I could not find that sign-in, so sign in again and try once more.');
     return user;
   }
 
@@ -954,7 +954,7 @@ export class UsersService {
      * and with which role here.
      */
     const found = await this.prisma.user.findFirst({ where: { id, OR: [{ organizationId }, { memberships: { some: { organizationId } } }] } });
-    if (!found) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    if (!found) throw new NotFoundException('I could not find that sign-in, so sign in again and try once more.');
     const here = found.organizationId === organizationId
       ? null
       : await Promise.resolve((this.prisma as any).organizationMembership?.findFirst?.({ where: { userId: id, organizationId }, select: { role: true } })).catch(() => null);
@@ -1047,7 +1047,7 @@ export class UsersService {
 
   async resendInvite(id: string, organizationId: string) {
     const user = await this.prisma.user.findFirst({ where: { id, organizationId }, include: { organization: { select: { name: true } } } });
-    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    if (!user) throw new NotFoundException('I could not find that sign-in, so sign in again and try once more.');
     if (user.isEmailVerified && user.passwordHash) throw new BadRequestException('That person has already joined, so there is nothing to activate.');
 
     await this.prisma.emailVerificationToken.updateMany({
@@ -1066,7 +1066,7 @@ export class UsersService {
 
   async leaveOrg(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    if (!user) throw new NotFoundException('I could not find that sign-in, so sign in again and try once more.');
 
     await this.prisma.user.update({
       where: { id: userId },
@@ -1106,7 +1106,7 @@ export class UsersService {
       : null;
     /* No membership here and not pointed here either: not somebody this organisation can remove. */
     if (!user || (!here && user.organizationId !== organizationId)) {
-      throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+      throw new NotFoundException('I could not find that sign-in, so sign in again and try once more.');
     }
     /* Their role HERE: `User.role` is their role in whichever organisation they are looking at. */
     const roleHere = (here?.role ?? user.role) as string;
@@ -1177,7 +1177,7 @@ export class UsersService {
       where: { id: userId },
       select: { id: true, email: true, firstName: true, lastName: true },
     });
-    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    if (!user) throw new NotFoundException('I could not find that sign-in, so sign in again and try once more.');
 
     // Collect all participant links for this user.
     const participantLinks = await this.prisma.groundParticipant.findMany({
@@ -1258,7 +1258,7 @@ export class UsersService {
    */
   async eraseAccount(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    if (!user) throw new NotFoundException('I could not find that sign-in, so sign in again and try once more.');
 
     const anonymisedEmail = `deleted-${userId}@deleted`;
 

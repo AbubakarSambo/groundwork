@@ -50,7 +50,7 @@ describe('choosing "With a password" at sign-up', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
     await screen.findByRole('heading', { name: 'Check your email' })
     expect(screen.getByText(/Your password is saved/)).toBeTruthy()
-    expect(screen.queryByText('We sent a sign-in link to ama@gmail.com. Open it on any device.')).toBeNull()
+    expect(screen.queryByText('I sent a sign-in link to ama@gmail.com. Open it on any device.')).toBeNull()
   })
 
   it('reads the plain link sentence when "With a link" is chosen instead', async () => {
@@ -61,6 +61,6 @@ describe('choosing "With a password" at sign-up', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
     await screen.findByRole('heading', { name: 'Check your email' })
     expect(screen.queryByText(/Your password is saved/)).toBeNull()
-    expect(screen.getByText(/We sent a sign-in link to/)).toBeTruthy()
+    expect(screen.getByText(/I sent a sign-in link to/)).toBeTruthy()
   })
 })

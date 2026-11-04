@@ -41,7 +41,9 @@ describe('the settled block', () => {
    */
   it('says what the reading has not found yet, and that an answer in any words is an answer', () => {
     const block = whatIsSettledAndWhatIsNot({ initial: 'Fintech payments SDK migration', peopleNamed: ['Tunde'] });
-    expect(block).toContain('NOT READ FROM THEIR WORDS YET: Who else is in it; What they want out of it.');
+    /* Changed 4 November 2026 (group 5): a named team answers who else is in it, so only the aim is still unread here. */
+    expect(block).toContain('NOT READ FROM THEIR WORDS YET: What they want out of it.');
+    expect(whatIsSettledAndWhatIsNot({ initial: 'Fintech payments SDK migration' })).toContain('NOT READ FROM THEIR WORDS YET: Who else is in it; What they want out of it.');
     expect(block).toContain('If they have already answered one, in any words');
     expect(block).not.toMatch(/not finished while|none of them is optional/i);
   });
@@ -127,6 +129,7 @@ describe('what setup knows now', () => {
   it('reads the kind once and names it from the one owner of situation names', () => {
     const first = whatSetupKnowsNow(null, { classifiedScenario: 'PULSE_CHECK' });
     expect(first).toMatchObject({ classifiedScenario: 'PULSE_CHECK', kindName: 'Keep a read on live work' });
+    expect(whatIsSettledAndWhatIsNot({ initial: 'A read on the work', classifiedScenario: 'PULSE_CHECK' })).toContain('- The kind of check-in: Keep a read on live work');
     expect(whatSetupKnowsNow(first, { classifiedScenario: 'OKR_ALIGNMENT' }).classifiedScenario).toBe('PULSE_CHECK');
   });
 

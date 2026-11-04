@@ -68,7 +68,7 @@ describe('the footer link, for everyone', () => {
   it.each(['lena@x.test', 'pia@x.test', 'gus@x.test'])('is on a mail we decided to send to %s, and says what it covers', async (to) => {
     const w = world();
     const m = await w.mail(to, 'sendNudge');
-    expect(withoutDeveloperComments(m.html)).toContain('If you would rather not get the emails we decide to send, you can <a href="https://app.test/unsubscribe/');
+    expect(withoutDeveloperComments(m.html)).toContain('If you would rather not get the emails I decide to send, you can <a href="https://app.test/unsubscribe/');
     expect(m.html).toContain('>stop them here</a>.');
     expect(m.headers['List-Unsubscribe']).toMatch(/^<https:\/\/api\.test\/api\/v1\/unsubscribe\/[\w-]+>$/);
     expect(m.headers['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click');
@@ -86,7 +86,7 @@ describe('what the link asks, as each reader reads it', () => {
     const w = world();
     const t = w.tokenIn(await w.mail('lena@x.test', 'sendNudge'));
     const q: any = await w.controller.whatWouldStop(t);
-    expect(q.title).toBe('Do you want to stop the emails from Groundwork that we decide to send?');
+    expect(q.title).toBe('Do you want to stop the emails Groundwork decides to send?');
     expect(q.says).toEqual([LEAD_LOSES, THE_TEAM_CONSEQUENCE, WHAT_STILL_ARRIVES]);
     expect(LEAD_LOSES).toBe("If you turn these emails off, you won't receive Groundwork's email insights about team progress, stalled engagement, emerging differences, people who may need attention, positive contributions or recommendations for what to do next, and reminders that your check-in is open or running out of time. You can still access Groundwork directly.");
     expect([q.keepLabel, q.stopLabel]).toEqual(['Keep email insights', 'Turn off email insights']);
@@ -113,9 +113,9 @@ describe('what the link asks, as each reader reads it', () => {
   it('says a kind sentence to a link it does not know, never that it is broken', async () => {
     const w = world();
     const q: any = await w.controller.whatWouldStop('nope');
-    expect(q).toMatchObject({ known: false, stopped: false, title: 'That link is not one we recognise' });
-    expect(q.says).toEqual(['Nothing has been changed. If emails you do not want are still arriving, reply to one and we will stop them by hand.']);
-    expect(((await w.controller.stop('nope')) as any).title).toBe('That link is not one we recognise');
+    expect(q).toMatchObject({ known: false, stopped: false, title: 'That link is not one I recognise' });
+    expect(q.says).toEqual(['Nothing has been changed. If emails you do not want are still arriving, reply to one and I will stop them by hand.']);
+    expect(((await w.controller.stop('nope')) as any).title).toBe('That link is not one I recognise');
   });
 });
 
@@ -205,7 +205,7 @@ describe('the one-click header, and the address in it', () => {
 describe('the Settings words', () => {
   it('one name everywhere, and a detail that says what it covers', async () => {
     const { THE_SETTINGS_LABEL } = await import('./the-ways-to-stop-mail');
-    expect(THE_SETTINGS_LABEL.title).toBe('Emails from Groundwork that we decide to send');
+    expect(THE_SETTINGS_LABEL.title).toBe('Emails Groundwork decides to send');
     expect(THE_SETTINGS_LABEL.detail).toBe('Reminders, summaries and insights Groundwork sends without being asked.');
   });
 });

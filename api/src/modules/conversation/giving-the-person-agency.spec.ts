@@ -64,10 +64,10 @@ describe('what an answer agreed to, read from the conversation', () => {
 describe('the question that gives them the lead is owed until it has been asked', () => {
   const t = (role: string, content: string) => ({ role, content });
   it('is not owed on their first answer', () => {
-    expect(whatIsStillOwedToThem([t('AI', 'What moved since we last spoke?')])).toBe('');
+    expect(whatIsStillOwedToThem([t('AI', 'What moved since you last checked in?')])).toBe('');
   });
   it('is owed from their second answer on, until it has been asked', () => {
-    const owed = whatIsStillOwedToThem([t('AI', 'What happened with Kano?'), t('PERSON', 'Nothing yet.'), t('AI', 'What moved since we last spoke?')]);
+    const owed = whatIsStillOwedToThem([t('AI', 'What happened with Kano?'), t('PERSON', 'Nothing yet.'), t('AI', 'What moved since you last checked in?')]);
     expect(owed).toContain('You have not yet asked what THEY think could happen next.');
     expect(owed).toContain('until they have answered it');
   });
@@ -80,10 +80,10 @@ describe('the question that gives them the lead is owed until it has been asked'
     expect(whatIsStillOwedToThem([t('AI', 'Would you like me to write down "x" as something you will do?'), t('PERSON', 'Ok'), t('AI', 'What happened?')])).toBe('');
   });
   it('reaches the model last, in a real turn, once two answers have been given', async () => {
-    const w = aWeek({ answer: 'It is three days late.', turns: [{ role: 'AI', content: 'What moved since we last spoke?' }, { role: 'PERSON', content: 'Kano is still missing.' }, { role: 'AI', content: 'What happened with Kano?' }] });
+    const w = aWeek({ answer: 'It is three days late.', turns: [{ role: 'AI', content: 'What moved since you last checked in?' }, { role: 'PERSON', content: 'Kano is still missing.' }, { role: 'AI', content: 'What happened with Kano?' }] });
     const { prompt } = await w.say();
-    expect(prompt.endsWith(whatIsStillOwedToThem([{ role: 'AI', content: 'What happened with Kano?' }, { role: 'PERSON', content: 'Kano is still missing.' }, { role: 'AI', content: 'What moved since we last spoke?' }]))).toBe(true);
-    const first = aWeek({ answer: 'Kano is still missing.', turns: [{ role: 'AI', content: 'What moved since we last spoke?' }] });
+    expect(prompt.endsWith(whatIsStillOwedToThem([{ role: 'AI', content: 'What happened with Kano?' }, { role: 'PERSON', content: 'Kano is still missing.' }, { role: 'AI', content: 'What moved since you last checked in?' }]))).toBe(true);
+    const first = aWeek({ answer: 'Kano is still missing.', turns: [{ role: 'AI', content: 'What moved since you last checked in?' }] });
     expect((await first.say()).prompt).not.toContain('# Still owed to them in this check-in');
   });
 });
@@ -171,7 +171,7 @@ function aWeek(o: { answer: string; turns: { role: string; content: string }[]; 
   return { say: async () => { const out = await service.sendMessage('ci2', 'u1', o.answer); return { out, prompt: seen[0] ?? '' }; }, created };
 }
 
-const history = [{ role: 'AI', content: 'What moved since we last spoke?' }, { role: 'PERSON', content: IDEA }, { role: 'AI', content: OFFER }];
+const history = [{ role: 'AI', content: 'What moved since you last checked in?' }, { role: 'PERSON', content: IDEA }, { role: 'AI', content: OFFER }];
 
 describe('anchor piece 17: through a real turn of the person\'s check-in', () => {
   it('their yes writes their own words as something they will do, once, and the model is told so', async () => {

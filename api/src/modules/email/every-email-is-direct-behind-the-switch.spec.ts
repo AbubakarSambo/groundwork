@@ -160,7 +160,7 @@ describe('with the direct morning off, every email reads word for word as the ni
       'You can also check in on WhatsApp. Send Hi to +44 7700 900123.',
       'Connect WhatsApp',
       'You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.',
-      'Would you rather we stopped reminding you? Stop the reminders. Your invitation keeps working, and nothing is recorded either way.',
+      'Would you rather I stopped reminding you? Stop the reminders. Your invitation keeps working, and nothing is recorded either way.',
     ].join('\n\n'));
   });
 
@@ -181,7 +181,7 @@ describe('with the direct morning off, every email reads word for word as the ni
       'It shows where what you each said agrees, where it differs, and what is still open. It is open to you now, and nothing else is needed from you to read it.',
       'View your report →',
       'Groundwork is where the people involved in a piece of work each give their own account of it, and get one shared record back. The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Groundwork stay private.',
-      'If you would rather not get the emails we decide to send, you can stop them here.',
+      'If you would rather not get the emails I decide to send, you can stop them here.',
     ].join('\n\n'));
   });
 
@@ -190,11 +190,11 @@ describe('with the direct morning off, every email reads word for word as the ni
       'Your check-in for Litigation team daily is still open. It takes about ten minutes, and your answers go into the report everyone reads.',
       'They have already shared their side. Yours is the last one we are waiting for.',
       'Check in',
-      'Would you rather we stopped reminding you? Stop the reminders. Your invitation keeps working, and nothing is recorded either way.',
+      'Would you rather I stopped reminding you? Stop the reminders. Your invitation keeps working, and nothing is recorded either way.',
       'You can also check in on WhatsApp. Send Hi to +44 7700 900123.',
       'Connect WhatsApp',
       'Groundwork is where the people involved in a piece of work each give their own account of it, and get one shared record back. The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Muchemi & Co (test) stay private.',
-      'If you would rather not get the emails we decide to send, you can stop them here.',
+      'If you would rather not get the emails I decide to send, you can stop them here.',
     ].join('\n\n'));
   });
 
@@ -242,7 +242,7 @@ describe('with the direct morning on, every email says what happened and nothing
       'Start my check-in →',
       'You can also check in on WhatsApp. Send Hi to +44 7700 900123.',
       'Connect WhatsApp',
-      'Would you rather we stopped reminding you? Stop the reminders.',
+      'Would you rather I stopped reminding you? Stop the reminders.',
     ].join('\n\n'));
   });
 
@@ -259,7 +259,7 @@ describe('with the direct morning on, every email says what happened and nothing
   });
 
   it('Kevin, the report has been ready a while', () => {
-    expect(m.stillWaiting!.text).toBe(['Your report for Sales team, Q4 has been ready since Monday 12 October.', 'Read the report →', 'If you would rather not get the emails we decide to send, you can stop them here.'].join('\n\n'));
+    expect(m.stillWaiting!.text).toBe(['Your report for Sales team, Q4 has been ready since Monday 12 October.', 'Read the report →', 'If you would rather not get the emails I decide to send, you can stop them here.'].join('\n\n'));
   });
 
   it('David, the reminder: the check-in, how long, and that he is the last', () => {
@@ -268,10 +268,10 @@ describe('with the direct morning on, every email says what happened and nothing
       'Your check-in for Litigation team daily is still open. It takes about ten minutes.',
       'Everyone else has checked in. Yours is the last one.',
       'Check in',
-      'Would you rather we stopped reminding you? Stop the reminders.',
+      'Would you rather I stopped reminding you? Stop the reminders.',
       'You can also check in on WhatsApp. Send Hi to +44 7700 900123.',
       'Connect WhatsApp',
-      'If you would rather not get the emails we decide to send, you can stop them here.',
+      'If you would rather not get the emails I decide to send, you can stop them here.',
     ].join('\n\n'));
   });
 

@@ -84,7 +84,7 @@ describe('the page the link opens, case by case', () => {
 })
 
 describe('the line before saving (U.6 review)', () => {
-  /* It said "We'll email you a confirmation link. Your report is saved and your invites go out the
+  /* It said "I'll email you a confirmation link. Your report is saved and your invites go out the
      moment you open it." with a start of 5 October. It follows the start now. */
   it('says nobody is invited before the start, when the start is later', async () => {
     const { readFileSync } = await import('fs')
@@ -92,8 +92,8 @@ describe('the line before saving (U.6 review)', () => {
     const src = readFileSync(join(__dirname, '..', 'enter', 'EntryChatPage.tsx'), 'utf8')
     expect(src).not.toContain('your invites go out the moment you open it')
     /* UPDATED (Hafsah's blocker, 31 October 2026): the count includes the people in the team box, which the save takes. */
-    expect(src).toContain("{`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(peopleOnTheList, startsLater ? checkInBy : null)}`}")
-    expect(`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(1, '2026-10-05')}`)
-      .toBe("We'll email you a confirmation link. Opening it saves your check-in. Then you see who was invited and who has to wait. Nobody is invited before Monday 5 October.")
+    expect(src).toContain("{`I'll email you a confirmation link. ${whatOpeningTheLinkDoes(peopleOnTheList, startsLater ? checkInBy : null)}`}")
+    expect(`I'll email you a confirmation link. ${whatOpeningTheLinkDoes(1, '2026-10-05')}`)
+      .toBe("I'll email you a confirmation link. Opening it saves your check-in. Then you see who was invited and who has to wait. Nobody is invited before Monday 5 October.")
   })
 })

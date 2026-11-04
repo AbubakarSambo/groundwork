@@ -138,7 +138,7 @@ import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { theCountAsServed } from './the-count-as-served';
 import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, theDatesToKeep, theSameWords, theNumberAsWritten, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExactQuestion, theLeadsOwnQuestionIfAddressedToThem, THE_EXACT_QUESTION_PROMPT, THE_EXACT_QUESTION_TOOL, whatGroundworkWillAsk, type AQuestionForAPerson } from './a-question-asked-word-for-word';
-import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
+import { whoThisNameIs, theNameWeUseFor, theDocumentLine } from '../documents/what-a-document-holds';
 import { theAssessmentOf } from '../conversation/assess-the-conversation';
 import type { TheAssessment } from '../conversation/the-assessment';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
@@ -3951,7 +3951,6 @@ export class GroundsService {
     if (!plainYes) return null;
     /* Only where the thing being agreed to is the sentence this product wrote about a sheet. */
     const lastAsked = [...(history ?? [])].reverse().find((h) => h.role === 'assistant')?.content ?? '';
-    if (!/Here is the context we have from /i.test(lastAsked)) return null;
     const me = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId: requestingUserId }, select: { id: true } });
     if (!me) return null;
     const docs = await this.prisma.groundDocument.findMany({
@@ -3964,6 +3963,8 @@ export class GroundsService {
       const holds = (d.holds ?? {}) as any;
       const waiting: { name: string; target: number; ownerParticipantId: string | null }[] = Array.isArray(holds.waiting) ? holds.waiting : [];
       if (holds.takenAt || !waiting.length) continue;
+      /* Only where the thing agreed to is this document's own line, read from its one field, not a pattern of its words. */
+      if (!lastAsked.includes(theDocumentLine(holds.fileName ?? d.fileName, holds.whatItIs))) continue;
       return writeADocumentsNumbers(this.prisma, {
         groundId,
         documentId: d.id,
@@ -6312,7 +6313,7 @@ export class GroundsService {
         ...theInvitedRowAsServed(existing),
         devUrl: emailResult?.devUrl,
         alreadyInvited: true,
-        saying: `${dto.email.toLowerCase()} was already invited and has not opened it yet. We have sent the invitation again - it uses the same link.`,
+        saying: `${dto.email.toLowerCase()} was already invited and has not opened it yet. I have sent the invitation again - it uses the same link.`,
       };
     }
 
@@ -7349,7 +7350,7 @@ export class GroundsService {
       }
       const when = dto.startsAt ? new Date(dto.startsAt) : null;
       if (dto.startsAt && Number.isNaN(when!.getTime())) {
-        throw new BadRequestException('That is not a date we can read. Pick one from the calendar.');
+        throw new BadRequestException('That is not a date I can read. Pick one from the calendar.');
       }
     }
 

@@ -4412,7 +4412,7 @@ export class BoardService {
           pattern: 'unrecognised',
           pole: null,
           label: 'Also worth your attention',
-          why: 'This came back outside the patterns we name, so it is shown as it was read.',
+          why: 'This came back outside the patterns I name, so it is shown as it was read.',
         };
 
         // ENFORCED, not merely requested. The prompt forbids quoting and

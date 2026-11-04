@@ -91,6 +91,6 @@ export function whatToSayAboutADatabaseError(
    */
   return {
     status: HttpStatus.INTERNAL_SERVER_ERROR,
-    message: 'Something went wrong on our side. Nothing was changed, so please try again in a minute.',
+    message: 'Something went wrong on my side. Nothing was changed, so please try again in a minute.',
   };
 }

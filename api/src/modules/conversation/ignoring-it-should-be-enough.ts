@@ -30,17 +30,17 @@
 /* With the direct morning on (email/a-direct-email.ts) the way out is the link alone, without the note about what is recorded. */
 export const STOP_LINE = (url: string, direct = false): string =>
   `<p style="font-size:13px;color:#4E4236;margin-top:22px;">` +
-  `Would you rather we stopped reminding you? <a href="${url}" style="color:#4E4236;">Stop the reminders</a>.` +
+  `Would you rather I stopped reminding you? <a href="${url}" style="color:#4E4236;">Stop the reminders</a>.` +
   (direct ? '' : ` Your invitation keeps working, and nothing is recorded either way.`) +
   `</p>`;
 
 /** And what the page says back, once. It has to be believable to somebody who has had enough. */
 export const WHAT_WE_SAY_WHEN_THEY_ASK =
-  'No more reminders about this from us. We have recorded nothing about whether you are taking part, ' +
+  'No more reminders about this from me. I have recorded nothing about whether you are taking part, ' +
   'and your invitation still works if you change your mind.';
 
 export const ALREADY_STOPPED =
-  'We had already stopped. No reminders about this are going to you.';
+  'I had already stopped. No reminders about this are going to you.';
 
 export const NOT_A_LINK_WE_KNOW =
   'That link does not match anything, which usually means the reminders were already stopped or the ' +

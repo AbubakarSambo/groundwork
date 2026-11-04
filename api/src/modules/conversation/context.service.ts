@@ -128,7 +128,7 @@ The standard contribution-chat sequence MUST NOT continue.
 1. Acknowledge what was shared - one sentence, specific to their words, not generic.
 2. Do NOT probe for evidence ("when did this happen?", "who else saw it?"). Evidence-gathering is not your role here.
 3. Say: "What you have described may go beyond what this tool is designed to handle. Your account matters, and it needs to reach the right people - not just this record."
-4. Say: "This record is currently visible only to you. If the ground is activated, the report goes to both parties - including the person you have described. Before we continue, consider where this record goes."
+4. Say: "This record is currently visible only to you. If the ground is activated, the report goes to both parties - including the person you have described. Before you go on, consider where this record goes."
 5. Share support resources. Let them decide whether to pause or continue.
 
 ${SUPPORT_RESOURCES}`;
@@ -353,7 +353,7 @@ export class ConversationContextService {
       // person about their own record. "The other party says X" based on keyword
       // overlap is fabricated intelligence in the trust-critical moment.
       if (myCompletion && theyReportProblem && overlap.length >= 2) {
-        injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: true, probe: `Before we log ${topic} as complete - has the downstream team or person depending on this confirmed it works for them?` });
+        injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: true, probe: `Before I log ${topic} as complete - has the downstream team or person depending on this confirmed it works for them?` });
       } else if (iReportProblem && theySayMovement && overlap.length >= 2) {
         injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: false, probe: `You have named ${topic} as a blocker - is there a version of this that is already resolved elsewhere, or is this still open?` });
       } else if (overlap.length >= 3) {
