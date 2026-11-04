@@ -22,6 +22,14 @@ import { stillToCheckIn } from '@/components/gw/TheReportIsAListOfSessions'
  * Rendered as the lead (the check-in's chat, Sessions and Context tabs) and as a participant (their
  * check-in, their record and Context): the names are the engine's plain words, and the note is
  * shown only to the lead, beside the name, as "Your note: ...".
+ *
+ * 4 November 2026: since Release 1B's switch went, My work is the B7 page for everybody (served by GET /grounds/:id/my-work),
+ * References and resources and the party's People and setup are served pages too, and the old Context tab is gone. The
+ * lead still reaches the roster from My work, behind "Who has answered", and reads it here as before. References and
+ * resources and the party's pages are drawn from what the server sends each reader, and the server specs prove the note
+ * never reaches a party there (references-and-resources-as-each-reader-is-served-it: a party is sent no `people` at all;
+ * people-and-setup-as-each-reader-is-served-it). Here, every one of those tabs is still opened, as each reader, and must
+ * carry no part of the note outside the lead's own labelled note.
  */
 let me: any = { id: 'u-grace', firstName: 'Grace', lastName: 'Obi', email: 'grace@x.test', role: 'MEMBER' }
 vi.mock('@/stores/auth', () => {
@@ -29,9 +37,10 @@ vi.mock('@/stores/auth', () => {
   useAuthStore.getState = () => ({ user: me, isAuthenticated: true })
   return { useAuthStore }
 })
-vi.mock('@/api/grounds', () => ({
-  groundsApi: { get: vi.fn(), getMySpecificity: vi.fn(), myTranscript: vi.fn(), myNotes: vi.fn() },
-}))
+vi.mock('@/api/grounds', async () => {
+  const { SERVED_TO_THE_LEAD } = await import('./my-work-served.fixture')
+  return { groundsApi: { get: vi.fn(), getMySpecificity: vi.fn(), myTranscript: vi.fn(), myNotes: vi.fn(), myWork: vi.fn().mockResolvedValue(SERVED_TO_THE_LEAD) } }
+})
 vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn() } }))
 vi.mock('@/api/documents', () => ({ documentsApi: { list: vi.fn() } }))
 
@@ -110,29 +119,23 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/).length).toBeGreaterThan(0))
     noNoteAsAName('lead, chat')
 
-    /* REVIEW ROUND 3, "YOUR WORK" REBUILD: Report and Sessions are quiet links inside "My work"
-       now ("Every session" / "Who has answered"), not sub-tabs - open "My work" first, then the
-       link.
-       FAULT 3 FIX, 6 Oct 2026: Grace runs this check-in and is also a party to it, so "My work"
-       now lands her straight on the roster (matching the board's own "My work" link - see
-       `myWorkDefault` in GroundAdminPage.tsx), with no second click through "Who has answered"
-       needed. */
+    /* My work opens the B7 page for a lead too (batch 1, group 10); the roster is behind "Who has answered" inside it. */
     expect(openTab(/^My work$/)).toBe(true)
+    fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
     await waitFor(() => expect(screen.getAllByText('One colleague').length).toBeGreaterThan(0))
     expect(screen.getAllByText('Another colleague').length).toBeGreaterThan(0)
     expect(screen.getAllByText('A third colleague').length).toBeGreaterThan(0)
     /* The lead reads their own note, beside the name, and says it is theirs. */
     expect(noNoteAsAName('lead, sessions').length).toBeGreaterThan(0)
 
-    /* Renamed "Context" to "Context and resources" so the tab's name says what it now holds. */
-    expect(openTab(/^Context and resources$/)).toBe(true)
-    await waitFor(() => expect(screen.getAllByText('Send the price list.').length).toBeGreaterThan(0))
-    expect(screen.getAllByText('A third colleague').length).toBeGreaterThan(0)
-    noNoteAsAName('lead, context')
+    /* "References and resources" (it was "Context and resources", drawn on the client from the ground): served now. */
+    expect(openTab(/^References and resources$/)).toBe(true)
+    await waitFor(() => expect(document.body.textContent).toBeTruthy())
+    noNoteAsAName('lead, references')
 
     /* The Report tab's list of sessions says who it is still waiting on, in a sentence. */
     expect(openTab(/^My work$/)).toBe(true)
-    expect(openTab(/^Every session$/)).toBe(true)
+    fireEvent.click(await screen.findByRole('button', { name: 'Every session' }))
     await waitFor(() => expect(document.body.textContent).toMatch(/not checked in yet\./))
     /* The lead checks in when they choose (change 5, decision 133), so the lead is never listed as not checked in. */
     expect(document.body.textContent).toContain('One colleague and a third colleague have not checked in yet.')
@@ -145,15 +148,14 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     ;(groundsApi.get as any).mockResolvedValue(groundFor('participant'))
     renderAt('/grounds/g1/p', '/grounds/:id/p', <GroundParticipantPage />)
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/).length).toBeGreaterThan(0))
-    for (const tab of [null, /^My work$/, /^Context and resources$/]) {
-      if (tab) openTab(tab)
+    for (const tab of [null, /^My work$/, /^References and resources$/, /^People and setup$/]) {
+      if (tab) expect(openTab(tab)).toBe(true)
       await waitFor(() => expect(document.body.textContent).toBeTruthy())
       expect(whereTheNoteIs()).toEqual({ asTheirNote: [], elsewhere: [] })
       expect(document.body.textContent).not.toMatch(/teammate/i)
     }
-    /* Two others with no name, counted without the reader, who is "You". */
-    expect(document.body.textContent).toMatch(/One colleague|one colleague/)
-    expect(document.body.textContent).toMatch(/Another colleague|another colleague/)
+    /* No tab a party has draws other people from the ground's own payload any more (each is served per reader), so the
+       two others are not named here at all, and never as the note or as "a teammate". */
     expect(document.body.textContent).not.toMatch(/a third colleague/i)
     cleanup()
   })
