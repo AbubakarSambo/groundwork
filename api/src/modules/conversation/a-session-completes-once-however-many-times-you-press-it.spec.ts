@@ -41,24 +41,34 @@ describe('the shape of finishing', () => {
     const writes = [...CODE.matchAll(/status:\s*CheckInStatus\.COMPLETED/g)].filter((m) =>
       /\bdata:\s*\{/.test(CODE.slice(Math.max(0, m.index! - 200), m.index!)),
     );
-    /* Two since missed check-ins were redone (0d9dd8ad2): finishing, and closeAsMissed for a session nobody opened. Both are claims
-       guarded in their where, so neither can complete a session twice. */
-    expect(writes).toHaveLength(2);
+    /* Three since one state for a session (29 October): itIsFinished, the moment it closes, from IN_PROGRESS or NOT_STARTED only; the
+       record's stamp, once, where completedAt is still empty; and closeAsMissed for a session nobody opened. Each is a claim guarded in
+       its where, so none can complete a session twice. */
+    expect(writes).toHaveLength(3);
     const around = writes.map((w) => CODE.slice(w.index! - 200, w.index!));
-    expect(around.some((a) => /updateMany\(\{\s*where: \{ id: checkIn\.id, status: \{ not: CheckInStatus\.COMPLETED \} \}/.test(a))).toBe(true);
+    expect(around.some((a) => /updateMany\(\{ where: \{ id: checkInId, status: \{ in: \[CheckInStatus\.IN_PROGRESS, CheckInStatus\.NOT_STARTED\] \} \}/.test(a))).toBe(true);
+    expect(around.some((a) => /updateMany\(\{\s*where: \{ id: checkIn\.id, completedAt: null \}/.test(a))).toBe(true);
     expect(around.some((a) => /updateMany\(\{\s*where: \{ id: checkInId, status: CheckInStatus\.NOT_STARTED, turns: \{ none: \{ role: TurnRole\.PERSON \} \} \}/.test(a))).toBe(true);
   });
 
-  it('ISSUE 6 stands: the record is extracted before the write, and the event is emitted after it', () => {
+  /* Changed for one source, part 2: the record is written from the conversation's assessment after the close, so ISSUE 6 is kept
+     by the readers waiting for the assessment instead of by the order of the close. The card is still ready before the write. */
+  it('ISSUE 6, on the assessment: the card is ready before the write, the record is written from the assessment before it is said to be ready, and the readers of the record wait for that', () => {
     const at = CODE.indexOf('private async finishTheSession(');
     const body = CODE.slice(at, at + 9000);
-    /* Since the end card (task 2.7) the record is written through writeTheRecordAtTheEnd: the card's lines, or a fresh read. */
-    const extract = body.indexOf('writeTheRecordAtTheEnd(');
+    const card = body.indexOf('theEndCardAtTheEnd(');
     const write = body.indexOf('checkIn.updateMany(');
     const emit = body.indexOf('GroundworkEvents.CHECK_IN_COMPLETED');
-    expect(extract).toBeGreaterThan(0);
-    expect(extract).toBeLessThan(write);
+    expect(card).toBeGreaterThan(0);
+    expect(card).toBeLessThan(write);
     expect(write).toBeLessThan(emit);
+    const assess = CODE.slice(CODE.indexOf('async assessAndThenRead('), CODE.indexOf('private async readTheLinesJustWritten('));
+    expect(assess.indexOf('writeTheRecordFromTheAssessment(')).toBeGreaterThan(0);
+    expect(assess.indexOf('writeTheRecordFromTheAssessment(')).toBeLessThan(assess.indexOf('theAssessmentIsReady('));
+    const listens = (file: string) => readFileSync(join(__dirname, '..', file), 'utf8');
+    expect(listens('board/board.service.ts')).toMatch(/@OnEvent\(GroundworkEvents\.ASSESSMENT_READY\)\s*async warmOnCheckInCompleted/);
+    expect(listens('board/the-persons-record.service.ts')).toMatch(/@OnEvent\(GroundworkEvents\.ASSESSMENT_READY\)\s*async onCheckInCompleted/);
+    expect(listens('board/board.listener.ts')).toMatch(/theRoundIsClosed\(e\.groundId, e\.sessionNumber\)/);
   });
 });
 
@@ -76,6 +86,8 @@ describe('behaviourally', () => {
         findUnique: jest.fn(async () => ({ ...row })),
         updateMany: jest.fn(async (args: any) => {
           if (args.where.status?.not === CheckInStatus.COMPLETED && row.status === CheckInStatus.COMPLETED) return { count: 0 };
+          if (args.where.completedAt === null && row.completedAt) return { count: 0 };
+          if (args.where.status?.in && !args.where.status.in.includes(row.status)) return { count: 0 };
           Object.assign(row, args.data);
           return { count: 1 };
         }),
@@ -86,7 +98,7 @@ describe('behaviourally', () => {
       groundParticipant: { findMany: jest.fn(async () => []) },
     };
     const svc: any = new ConversationService(prisma, {} as any, {} as any, {} as any, { emit: jest.fn((...a: any[]) => { emitted.push(a); return true; }) } as any, {} as any, {} as any, {} as any, { emit: jest.fn(async () => undefined) } as any, { get: () => undefined } as any);
-    for (const m of ['scoreSessionSpecificity', 'writeTheRecordAtTheEnd', 'extractRecordEntries', 'anchorRecordToDocuments', 'extractDependencies', 'extractWorkMentions', 'extractExpectations', 'extractAlignment', 'extractWhatTheySayHappened', 'extractProgress', 'extractOperatingDifferences', 'extractObjection', 'reviseDetectedFunction', 'observeForCoaching', 'rememberStyle', 'buildSoloArtifact', 'ensureNextSession']) {
+    for (const m of ['scoreSessionSpecificity', 'theEndCardAtTheEnd', 'assessAndThenRead', 'anchorRecordToDocuments', 'extractDependencies', 'extractWorkMentions', 'extractExpectations', 'extractAlignment', 'extractWhatTheySayHappened', 'extractOperatingDifferences', 'extractObjection', 'reviseDetectedFunction', 'observeForCoaching', 'rememberStyle', 'buildSoloArtifact', 'ensureNextSession']) {
       svc[m] = jest.fn(async () => null);
     }
     const completions = () => emitted.filter((a) => a[0] === GroundworkEvents.CHECK_IN_COMPLETED);
@@ -108,8 +120,9 @@ describe('behaviourally', () => {
     await svc.closeByTheClock('ci');
     expect(prisma.checkIn.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: CheckInStatus.COMPLETED, closedReason: CLOSED_BY_THE_CLOCK }) }));
     expect(completions()[0][1]).toMatchObject({ checkInId: 'ci', source: 'auto-close' });
-    /* And it does what a person's completion does: the record, the artifact, the next session. */
-    expect(svc.writeTheRecordAtTheEnd).toHaveBeenCalledTimes(1);
+    /* And it does what a person's completion does: the card, the assessment (which writes the record), the next session. */
+    expect(svc.theEndCardAtTheEnd).toHaveBeenCalledTimes(1);
+    expect(svc.assessAndThenRead).toHaveBeenCalledTimes(1);
     expect(svc.ensureNextSession).toHaveBeenCalledTimes(1);
   });
 

@@ -33,7 +33,11 @@ const platform = (orgs: { id: string; name: string }[], handle: any = async () =
     sendMessage: jest.fn(async (_to: string, text: string) => { sent.push(text); return { sent: true }; }),
   };
   const picks: any = { findUnique: jest.fn(async () => kept), upsert: jest.fn(async () => ({})), update: jest.fn(async () => ({})) };
-  const prisma: any = { whatsAppOrganisationPick: picks };
+  const told: any[] = [];
+  const prisma: any = {
+    whatsAppOrganisationPick: picks,
+    whatsAppSend: { findFirst: jest.fn(async ({ where }: any) => told.find((t) => t.phone === where.phone && t.kind.startsWith(where.kind.startsWith)) ?? null), create: jest.fn(async ({ data }: any) => { told.push(data); return data; }) },
+  };
   const inboundHandler: any = { handle: jest.fn(handle) };
   const c = new WhatsAppController({ get: () => undefined } as any, prisma, whatsapp, inboundHandler);
   return { c, sent, inboundHandler, whatsapp, picks };
@@ -52,7 +56,12 @@ describe('the platform handler', () => {
     await c.receive(inbound('hello') as any);
     expect(inboundHandler.handle).not.toHaveBeenCalled();
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toBe('Groundwork does not know this number yet. If you use Groundwork, add this number under Settings, or ask your admin to add it, then write again.');
+    /* Changed 3 November 2026 (Hafsah: one polite reply asking them to link it from the app or the link they were sent, one reply only). */
+    expect(sent[0]).toBe('Groundwork does not know this number yet, and it cannot act on what you send from it. To use this number, add it in the Groundwork app under Settings, or through the link you were sent, and then write again.');
+    await c.receive(inbound('hello again') as any);
+    await c.receive(inbound('are you there?') as any);
+    expect(sent).toHaveLength(1);
+    expect(inboundHandler.handle).not.toHaveBeenCalled();
   });
 
   it('a number on two rosters is asked which, as a numbered list, and nothing is guessed', async () => {
@@ -103,8 +112,12 @@ describe('the organisation handler', () => {
   it('wraps the open-and-answer path in a try whose catch says the sentence, as the finish branch already did', () => {
     const at = SRC.indexOf("const r = await this.conversation.sendMessage(current.id, userId!, text, { door: 'whatsapp' });");
     expect(at).toBeGreaterThan(0);
-    const before = SRC.slice(at - 600, at);
-    const after = SRC.slice(at, at + 700);
+    /* 700, not 600 (engine test, second run): the open path now also follows today's session when the one asked for had a round
+       that had closed, which put the try a few characters further back. Still the one try around the open and the answer. */
+    /* 1100 (20 October): the words that switch are now said through theWordsOnce, and the direct morning's own opening is read on the same path. Still the one try. */
+    const before = SRC.slice(at - 1100, at);
+    // Changed 26 October 2026 (Hafsah: item 3): 1500, not 700: an engine close now ends the check-in on the phone inside the same try, which put the catch further on.
+    const after = SRC.slice(at, at + 1500);
     expect(before).toMatch(/try \{/);
     expect(after).toMatch(/catch \(e: any\) \{[\s\S]*await say\(/);
   });
@@ -113,7 +126,8 @@ describe('the organisation handler', () => {
     const at = SRC.indexOf('private async sendTheReport(');
     const body = SRC.slice(at, SRC.indexOf('private async readLanguageOnce('));
     /* sendOn: the same send, on the number the person last wrote to (survey item 8). */
-    expect(body.match(/this\.whatsapp\.sendOn\(/g)).toHaveLength(2);
+    /* Changed 18 October (Drop Access run 1, items 22 and 23): a third send, the thank-you when the report has nothing in it yet, which goes inside the 24 hours only. */
+    expect(body.match(/this\.whatsapp\.sendOn\(/g)).toHaveLength(3);
     expect(body.match(/this\.reports\.sessionReport\(/g)).toHaveLength(1);
   });
 

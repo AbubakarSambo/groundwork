@@ -30,8 +30,14 @@ export function theDayTheyMeant(said: string | null | undefined, saidOn: Date): 
   const t = (said ?? '').toLowerCase().replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!t) return null;
   const today = dayOf(saidOn);
-  if (/\b(today|tonight|end of (the )?day|eod)\b/.test(t)) return new Date(today);
+  if (/\b(today|tonight)\b/.test(t)) return new Date(today);
   if (/\btomorrow\b/.test(t)) return new Date(today + DAY);
+  /*
+   * "BY END OF DAY TOMORROW" IS TOMORROW, AND "BY END OF DAY WEDNESDAY" IS WEDNESDAY (Drop Access, second night run: Kevin's "I'll call
+   * them by end of day tomorrow" on Monday 19 October, and Mercy's "by end of day Wednesday" on Monday 12 October, were both read as the
+   * day they were said). "End of day" on its own is the day it was said.
+   */
+  const endOfTheDay = /\b(end of (the )?day|eod)\b/.test(t);
   for (let i = 0; i < 7; i++) {
     if (new RegExp(`\\b${WEEKDAYS[i]}\\b|\\b${WEEKDAY_SHORT[i].toLowerCase()}\\b`).test(t)) {
       const now = new Date(today).getUTCDay();
@@ -47,7 +53,7 @@ export function theDayTheyMeant(said: string | null | undefined, saidOn: Date): 
   const hit = dayFirst && monthAt(dayFirst[2]) >= 0
     ? { d: +dayFirst[1], m: monthAt(dayFirst[2]) }
     : monthFirst && monthAt(monthFirst[1]) >= 0 ? { d: +monthFirst[2], m: monthAt(monthFirst[1]) } : null;
-  if (!hit || hit.d < 1 || hit.d > 31) return null;
+  if (!hit || hit.d < 1 || hit.d > 31) return endOfTheDay ? new Date(today) : null;
   const y = new Date(today).getUTCFullYear();
   let candidate = Date.UTC(y, hit.m, hit.d);
   if (new Date(candidate).getUTCMonth() !== hit.m) return null;

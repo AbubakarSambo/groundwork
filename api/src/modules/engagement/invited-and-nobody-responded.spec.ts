@@ -10,7 +10,8 @@ const NOW = new Date('2026-10-25T08:00:00.000Z');
 
 function sweep(nudged: Record<string, Date | null>) {
   const lead = { email: 'wairimu@x.test', firstName: 'Wairimu' };
-  const ground = { label: 'Kenya launch', organizationId: 'org', initiatorId: 'u-w', brief: null, chaseAfterDays: [3, 7, 14], chasingStopped: false, tellTheLead: true, initiator: lead };
+  /* Since one calendar for each check-in (29 October), no days given is Monday to Friday, and this test's clock is a Sunday: the team says it works every day, so the test stays about what it was written for. */
+  const ground = { label: 'Kenya launch', organizationId: 'org', initiatorId: 'u-w', brief: null, workingDays: [0, 1, 2, 3, 4, 5, 6], chaseAfterDays: [3, 7, 14], chasingStopped: false, tellTheLead: true, initiator: lead };
   const people = [['Omar', 'omar@x.test'], ['Vera', 'vera@x.test'], ['Bisi', 'bisi@x.test'], ['Femi', 'femi@x.test']];
   const rows = people.map(([name, email], i) => ({
     id: `c${i}`, createdAt: new Date('2026-10-05T08:00:00.000Z'), sessionNumber: 1, availableFrom: null, participantId: `p${i}`, groundId: 'g1', leadToldAt: null, ground,

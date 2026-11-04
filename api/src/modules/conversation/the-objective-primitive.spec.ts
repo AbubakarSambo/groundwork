@@ -24,7 +24,7 @@ const SERVICE = fs
   .replace(/^\s*\/\/.*$/gm, '');
 
 const EXTRACT = (() => {
-  const from = SERVICE.indexOf('async extractExpectations(');
+  const from = SERVICE.indexOf('private async readTheAimsAndExpectations(');
   expect(from).toBeGreaterThan(-1);
   const to = SERVICE.indexOf('\n  async ', from + 10);
   expect(to).toBeGreaterThan(from);

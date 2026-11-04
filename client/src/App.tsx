@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PageCrash } from '@/components/gw/PageCrash'
 import EveryReportSideBySide from '@/pages/preview/EveryReportSideBySide'
+import { Release4Boards } from '@/pages/preview/Release4Boards'
 import PartsSamplePage from '@/pages/dev/PartsSamplePage'
 import ConversationPreviewPage from '@/pages/dev/ConversationPreviewPage'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Link } from 'react-router-dom'
@@ -8,7 +9,7 @@ import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
-import { MARKETING_URL, MARKETING_URL_WAS_CONFIGURED, thisIsTheProductionApp } from '@/lib/marketing'
+import { MARKETING_URL, OUR_OWN_ROOT } from '@/lib/marketing'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
 import { useWhoTheServerSaysYouAre } from '@/lib/who-the-server-says-you-are'
 import { AuthPage } from '@/pages/auth/AuthPage'
@@ -73,11 +74,17 @@ import { FinancePage } from '@/pages/suites/FinancePage'
 import { TodosPage } from '@/pages/suites/TodosPage'
 import { CustomersPage } from '@/pages/suites/CustomersPage'
 import { EquipmentPage } from '@/pages/suites/EquipmentPage'
+import { DirectionPage } from '@/pages/direction/DirectionPage'
+import { PolicyBoardPage } from '@/pages/policy/PolicyBoardPage'
+import { SetUpFromYourDocumentsPage } from '@/pages/policy/SetUpFromYourDocumentsPage'
+import { TemplatesPage } from '@/pages/templates/TemplatesPage'
 import { AskPage } from '@/pages/ask/AskPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
 import WeeklyReportPage from '@/pages/report/WeeklyReportPage'
+import { ThePersonPage } from '@/pages/board/ThePersonPage'
+import { WhereTheBlockerStarted } from '@/pages/board/WhereTheBlockerStarted'
 import { BoardPage } from '@/pages/board/BoardPage'
 import EndingPage from '@/pages/grounds/EndingPage'
 import { TeamBoardsPage } from '@/pages/boards/TeamBoardsPage'
@@ -149,6 +156,7 @@ import { StopMailPage } from '@/pages/mail/StopMailPage'
 import { HelpModal } from '@/components/gw/HelpModal'
 import { OfflineNote } from '@/components/gw/OfflineNote'
 import { AppShell } from '@/components/gw/AppShell'
+import { Page } from '@/components/gw/ui/Page'
 import { TalkToUsPage } from '@/pages/talk/TalkToUsPage'
 import type { JSX } from 'react'
 
@@ -203,13 +211,12 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', color: 'var(--gw-text)' }}>
             This part is for Groundwork staff
           </div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', marginBottom: 18 }}>
             It is not part of your organisation's admin, and there is nothing here that affects your
             check-ins. Being an admin in your own organisation does not include it.
           </div>
-          <Link
+          <Link className="btn pri"
             to="/grounds"
-            style={{ display: 'inline-block', padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}
           >Go to my check-ins</Link>
         </div>
       </div>
@@ -263,6 +270,11 @@ function AdminsOnly({ children, what = 'add people to your organisation' }: { ch
  * is not a wall. Nobody waiting ever renders what is behind any of them; they are sent to "Almost
  * in" (`/join/waiting`) every time, until they are let in.
  */
+/** A page's shell with nothing in it: the frame a person sees while the wall decides, with no data and no requests behind it. */
+function TheEmptyPage() {
+  return <Page><div aria-busy="true" /></Page>
+}
+
 export function RequireOrgSetup({ children }: { children: JSX.Element }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const waiting = useQuery({ queryKey: ['my-waiting'], queryFn: authApi.myWaiting, enabled: isAuthenticated, retry: false })
@@ -294,9 +306,14 @@ export function RequireOrgSetup({ children }: { children: JSX.Element }) {
    * only once `isFetching` says the read for THIS mount has actually settled - never off a value
    * that might be the one that got them stuck here in the first place.
    */
-  if (waiting.isLoading) return null
+  /*
+   * (c) THE EMPTY FRAME WHILE IT DECIDES, NOT A WHITE PAGE (plan round 32: Today was blank the next morning). The page's own shell is
+   * drawn with nothing in it, so nothing behind the wall renders and nothing behind it is asked for; AppShell draws the rail's empty
+   * frame for the same moment. The wall itself is exactly as (a) and (b) say.
+   */
+  if (waiting.isLoading) return <TheEmptyPage />
   if (!waiting.isError && waiting.data?.waiting === true) {
-    if (waiting.isFetching) return null
+    if (waiting.isFetching) return <TheEmptyPage />
     return <Navigate to="/join/waiting" replace />
   }
   return children
@@ -316,23 +333,21 @@ function AFrontDoorOfItsOwn() {
         <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.4, color: 'var(--gw-navy)', marginBottom: 12 }}>
           GROUNDWORK
         </div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 8px', letterSpacing: '-.02em' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)', margin: '0 0 8px', letterSpacing: '-.02em' }}>
           This is not the live site.
         </h1>
-        <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 18px' }}>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '24px', margin: '0 0 18px' }}>
           It is a test build of the product, with its own database. A sign-in from the live site does
           not work here.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <a
+          <a className="btn pri"
             href="/start"
-            style={{ display: 'inline-block', background: 'var(--gw-navy)', color: 'white', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
           >
             Start a check-in
           </a>
-          <a
+          <a className="btn sec"
             href="/auth"
-            style={{ display: 'inline-block', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
           >
             Sign in
           </a>
@@ -371,7 +386,8 @@ function RootRoute() {
      * front door instead - sign in, or start a check-in, which is the whole product from a standing
      * start - and says plainly that it is not the live site.
      */
-    if (!MARKETING_URL_WAS_CONFIGURED && !thisIsTheProductionApp()) {
+    /* Whether this build has a marketing site at all is decided once, in lib/marketing.ts, for the logo as well as for here. */
+    if (MARKETING_URL === OUR_OWN_ROOT) {
       return <AFrontDoorOfItsOwn />
     }
     window.location.replace(MARKETING_URL)
@@ -393,16 +409,16 @@ function RootRoute() {
           <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.4, color: 'var(--gw-navy)', marginBottom: 10 }}>
             GROUNDWORK
           </div>
-          <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 12px' }}>
+          <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '24px', margin: '0 0 12px' }}>
             Taking you to <strong>{MARKETING_URL.replace(/^https?:\/\//, '')}</strong>. If nothing
             happens, follow the link.
           </p>
           <p style={{ margin: 0 }}>
-            <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', fontSize: 14.5 }}>Continue →</a>
+            <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', fontSize: 14 }}>Continue →</a>
             {' · '}
             {/* The way back into the product itself, for somebody who landed here and wanted to
                 sign in rather than read about it. */}
-            <a href="/auth" style={{ color: 'var(--gw-sub)', fontSize: 14.5 }}>Sign in</a>
+            <a href="/auth" style={{ color: 'var(--gw-sub)', fontSize: 14 }}>Sign in</a>
           </p>
         </div>
       </div>
@@ -570,6 +586,13 @@ export default function App() {
             <Route path="/company/context" element={<RequireOrgSetup><CompanyContextPage /></RequireOrgSetup>} />
             {/* THE SUITES PAGE (E, U.17). What each reader is given is the server's (GET /suites). */}
             <Route path="/settings/suites" element={<RequireOrgSetup><SuitesPage /></RequireOrgSetup>} />
+            {/* Release 4: the template library (B1, #/templates). */}
+            <Route path="/templates" element={<RequireOrgSetup><TemplatesPage /></RequireOrgSetup>} />
+            {/* Release 6: the company's direction. */}
+            <Route path="/direction" element={<RequireOrgSetup><DirectionPage /></RequireOrgSetup>} />
+            {/* Release 9: the policy board, and setting up from documents. */}
+            <Route path="/policies" element={<RequireOrgSetup><PolicyBoardPage /></RequireOrgSetup>} />
+            <Route path="/policies/setup" element={<RequireOrgSetup><SetUpFromYourDocumentsPage /></RequireOrgSetup>} />
             <Route path="/suite/onboard" element={<RequireOrgSetup><OnboardingBoardPage /></RequireOrgSetup>} />
             <Route path="/suite/mine" element={<RequireOrgSetup><YourRequestsPage /></RequireOrgSetup>} />
             <Route path="/suite/leave/new" element={<RequireOrgSetup><LeaveRequestNewPage /></RequireOrgSetup>} />
@@ -623,6 +646,8 @@ export default function App() {
               tool, so it sits behind the same gate as the rest of the platform back office.
             */}
             <Route path="/preview/reports" element={<RequirePlatformAdmin><EveryReportSideBySide /></RequirePlatformAdmin>} />
+            {/* Release 4's boards from their hand-written test organisations: development builds only, never in production. */}
+            {import.meta.env.DEV && <Route path="/release-4-preview" element={<Release4Boards />} />}
             {/*
               THE SHARED PARTS' SAMPLE PAGE (design-audit.md section 4, step 1), development only.
               `import.meta.env.DEV` is false in a built, production app, so this route does not
@@ -638,6 +663,10 @@ export default function App() {
             {import.meta.env.DEV && <Route path="/dev/conversation" element={<ConversationPreviewPage />} />}
             <Route path="/boards" element={<RequireOrgSetup><TeamBoardsPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
+            {/* One person in a check-in, for whoever runs it (person-page.jpg), opened from "The team today". */}
+            <Route path="/grounds/:id/person/:participantId" element={<RequireOrgSetup><ThePersonPage /></RequireOrgSetup>} />
+            {/* Where a blocker started, step by step (where-a-blocker-started.jpg), from "See where it started". */}
+            <Route path="/grounds/:id/trace" element={<RequireOrgSetup><WhereTheBlockerStarted /></RequireOrgSetup>} />
             {/* U.11: "How does this end?", where the lead decides, with a reason. */}
             <Route path="/grounds/:id/end" element={<RequireOrgSetup><EndingPage /></RequireOrgSetup>} />
             {/*

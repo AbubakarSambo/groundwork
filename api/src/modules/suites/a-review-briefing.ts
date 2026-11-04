@@ -1,6 +1,7 @@
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import type { PrismaService } from '../prisma/prisma.service';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
-import { PATTERN_ROW_SELECT, seenAgainAfterTalk, servedPatterns, type APatternRow } from '../patterns/who-reads-a-pattern';
+import { theNewestRecordOfEachPerson, theRecordAsServedPatterns } from '../patterns/what-the-record-shows-the-lead';
 import type { ARecordLine } from './the-record-read-for-a-review';
 
 /**
@@ -40,8 +41,8 @@ export interface APatternInTheBriefing {
   howOften: string;
   /** The check-in it came up in. */
   checkIn: string;
-  /** The person's answer, in the prototype's words: "Kwame’s answer: “...”", or "Kwame hasn’t answered this yet." */
-  theirAnswer: string;
+  /** The next step for it (layer 3), for whoever runs the check-in, or null when none is open. */
+  nextStep: string | null;
 }
 
 export interface ABriefing {
@@ -49,8 +50,6 @@ export interface ABriefing {
   /** The counts, as sentences. Null when this reader is in no check-in where the person made a commitment. */
   counts: string | null;
   patterns: APatternInTheBriefing[];
-  /** Said when there are patterns: they come only after three check-ins, the person sees them first. */
-  patternsNote: string | null;
   changedAfterEarlierConversations: string[];
   corrections: { line: string; said: string; whatIsTrue: string }[];
   /** Groundwork gives evidence and patterns; a person decides, with reasons. */
@@ -96,6 +95,8 @@ export async function thePatternsForTheBriefing(
   input: { organizationId: string; personUserId: string | null; readerUserId: string; first: string; now?: Date },
 ): Promise<{ patterns: APatternInTheBriefing[]; talkedThrough: string[] }> {
   if (!input.personUserId || input.personUserId === input.readerUserId) return { patterns: [], talkedThrough: [] };
+  /* Judgements of a person off for the organisation: no pattern about them in the briefing (organisation/person-judgements.ts). */
+  if (!(await thePersonJudgementsAreOn(prisma, input.organizationId))) return { patterns: [], talkedThrough: [] };
   const db = prisma as any;
   const theirs: any[] = ((await db.groundParticipant?.findMany?.({
     where: {
@@ -105,29 +106,21 @@ export async function thePatternsForTheBriefing(
     select: { id: true, groundId: true, ground: { select: { label: true } } },
   }).catch(() => [])) ?? []);
   if (!theirs.length) return { patterns: [], talkedThrough: [] };
-  const rows: (APatternRow & { talkedAboutBy?: string | null })[] = ((await db.patternDetection?.findMany?.({
-    where: { participantId: { in: theirs.map((t) => t.id) } },
-    select: { ...PATTERN_ROW_SELECT, talkedAboutBy: true },
-  }).catch(() => [])) ?? []);
+  /* What the record shows about the person (layer 2), from the check-ins this reader runs (F2, 2 November 2026). */
   const labelOf = new Map(theirs.map((t) => [t.id, String(t.ground?.label ?? '').trim()]));
-  const talkers = [...new Set(rows.map((r) => r.talkedAboutBy).filter((x): x is string => !!x && x !== input.readerUserId))];
+  const people = await theNewestRecordOfEachPerson(prisma, { participantIds: theirs.map((t) => t.id) });
+  const served = theRecordAsServedPatterns(people);
+  const talkers = [...new Set(people.flatMap((one) => Object.values(one.marks)).map((m) => m.by).filter((x): x is string => !!x && x !== input.readerUserId))];
   const names: any[] = talkers.length ? ((await db.user?.findMany?.({ where: { id: { in: talkers } }, select: { id: true, firstName: true } }).catch(() => [])) ?? []) : [];
   const nameOf = new Map(names.map((u) => [u.id, (u.firstName ?? '').trim()]));
   const patterns: APatternInTheBriefing[] = [];
   const talkedThrough: string[] = [];
-  /* The one place that decides who reads a pattern: this reader runs the check-in, and is not the person. */
-  const served = servedPatterns(rows, { participantId: null, runsIt: true }, { firstNameOf: () => input.first, now: input.now });
   for (const p of served) {
-    const row = rows.find((r) => r.id === p.id)!;
-    patterns.push({
-      heading: p.heading, whatHappened: p.whatHappened, howOften: p.howOften, checkIn: labelOf.get(p.participantId) ?? '',
-      theirAnswer: p.theirWords ? `${input.first}’s answer: ${inQuotes(p.theirWords)}` : `${input.first} hasn’t answered this yet.`,
-    });
-    if (row.talkedAboutAt) {
-      const who = !row.talkedAboutBy || row.talkedAboutBy === input.readerUserId ? 'You' : nameOf.get(row.talkedAboutBy) || 'Somebody who runs the check-in';
-      const again = seenAgainAfterTalk(row);
-      const after = again ? ` It came up again in ${plural(again, 'check-in', 'check-ins')} after that.` : ' It has not come up since.';
-      talkedThrough.push(`${who} talked with ${input.first} about “${p.heading}” on ${said(row.talkedAboutAt)}.${after}`);
+    patterns.push({ heading: p.heading, whatHappened: p.whatHappened, howOften: p.howOften, checkIn: labelOf.get(p.participantId) ?? '', nextStep: p.askThem });
+    const marked = people.find((one) => one.participantId === p.participantId)?.marks[p.id];
+    if (marked?.talkedAboutAt) {
+      const who = !marked.by || marked.by === input.readerUserId ? 'You' : nameOf.get(marked.by) || 'Somebody who runs the check-in';
+      talkedThrough.push(`${who} talked with ${input.first} about this on ${said(marked.talkedAboutAt)}. ${p.heading}`);
     }
   }
   return { patterns, talkedThrough };
@@ -171,5 +164,3 @@ export function theBriefingsHeading(readerWrites: boolean, first: string): strin
   return readerWrites ? `Your briefing for ${first}’s review` : `The briefing for ${first}’s review`;
 }
 
-export const PATTERNS_NOTE = (first: string) =>
-  `These only appear after three check-ins. ${capital(first)} sees them first and can answer, and they never go anywhere on their own.`;

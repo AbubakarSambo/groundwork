@@ -1,3 +1,4 @@
+import { theThingWaitedFor } from '../board/a-wait-said-in-full';
 import { aPartyOutside, theSameThing } from '../board/a-thing-is-not-somebody';
 import { someOfThemHave } from './some-of-them-has-or-have';
 /**
@@ -283,6 +284,8 @@ export function aCommitmentSaid(
     who: string; what: string; when: string | null; statedInSession: number | null; restatedIn: number[];
     status: string; theySaidIt: boolean; settledBy?: string | null; fromAPaste?: boolean; leadLabel?: string;
     saidWordForWord?: boolean; whenSaidWordForWord?: boolean;
+    /** Somebody else said it happened (board/somebody-said-it-happened.ts): who, the day, and their words where this reader may read them. */
+    saidHappened?: { who: string; day: string | null; words: string | null } | null;
   },
   sessionsSoFar: number,
 ): string {
@@ -333,7 +336,7 @@ export function aCommitmentSaid(
   } else if (aFragmentOfTheirs) {
     /* "In session 1, you said, "send the data room". The time you gave for it was "on Wednesday"." is two clipped quotes. A piece of
        theirs that is not a sentence is said as what they said they would do, with the time inside it (request 136 item 3). */
-    const theTime = c.when && (quoteWhen || looksLikeATimeOrADate(c.when)) && !whenAlreadySaidIn(c.when, c.what) ? ` ${c.when.trim().replace(/[.!?]+$/, '')}` : '';
+    const theTime = c.when && looksLikeATimeOrADate(c.when) && !whenAlreadySaidIn(c.when, c.what) ? ` ${c.when.trim().replace(/[.!?]+$/, '')}` : '';
     whenIsInTheSentence = true;
     out.push(stated !== null
       ? `In session ${stated}, ${mid} said ${who === 'You' ? 'you' : 'they'} would ${clause}${theTime}.`
@@ -353,12 +356,20 @@ export function aCommitmentSaid(
   const flat = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
   const whenAlreadySaid = !!c.when && !!flat(c.when) && ` ${flat(c.what ?? '')} `.includes(` ${flat(c.when)} `) && (quoteWhat || !!clause);
   if (whenAlreadySaid || whenIsInTheSentence) { /* said in the words above */ }
-  else if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was "${c.when}".`);
+  /* Quoted or not, only words that read as a time are said as the time (messages test, 19 October, finding 11): "given their histories",
+     kept word for word as the time Wanjiru gave, is a reason and is left out. */
+  else if (c.when && quoteWhen && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was "${c.when}".`);
   else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was ${c.when}.`);
   if (c.restatedIn.length) {
     out.push(`${who} said it again in ${c.restatedIn.length === 1 ? `session ${c.restatedIn[0]}` : `sessions ${listed(c.restatedIn)}`}.`);
   }
-  if (open) {
+  if (open && c.saidHappened) {
+    /* NEVER "NOBODY HAS SAID" WHEN SOMEBODY DID (messages test, 19 October, finding 4). It stays open: only its maker settles it. */
+    const by = c.saidHappened.who;
+    const on = c.saidHappened.day ? ` on ${c.saidHappened.day}` : '';
+    const words = String(c.saidHappened.words ?? '').trim().replace(/"/g, '\u201d');
+    out.push(words ? `${by} said${on}, "${/[.!?]$/.test(words) ? words : `${words}.`}"` : `${by} said${on} that it happened.`);
+  } else if (open) {
     out.push(sessionsOpen !== null && sessionsOpen > 0
       ? `It has been open for ${sessionsOpen} ${sessionsOpen === 1 ? 'session' : 'sessions'}, and nobody has said whether it happened.`
       : 'Nobody has said yet whether it happened.');
@@ -401,6 +412,8 @@ export interface ADependencyRow {
   escalatedAt: Date | null;
   /** What they said they had done about it, in their own words, where they said anything. */
   triedSaid?: string | null;
+  /** Taken above the person it was with, or round them, as the assessment read their words. */
+  takenFurther?: boolean | null;
   /** The session the person was in when they first said it. */
   statedInSession?: number | null;
 }
@@ -927,6 +940,20 @@ export function overTimeAsServed(
   opts: { sessionsSoFar?: number | null; meetingsOnRecord?: boolean } = {},
 ): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
+  /*
+   * A wait stored before it was written without "her" (Drop Access run 1, A7; theThingWaitedFor) reads as it is written now:
+   * Grace read "Joseph Kariuki is waiting on you for her approval" from the report kept before the fix.
+   */
+  if (Array.isArray(it.dependencies)) {
+    it = {
+      ...it,
+      dependencies: it.dependencies.map((d: any) => {
+        if (!d || typeof d.what !== 'string' || !d.onParticipantId) return d;
+        const what = theThingWaitedFor(d.what, d.onParticipantId);
+        return what === d.what ? d : { ...d, what, ...(typeof d.say === 'string' ? { say: d.say.split(d.what).join(what) } : {}) };
+      }),
+    };
+  }
   const sessionsSoFar = opts.sessionsSoFar && opts.sessionsSoFar > 0 ? opts.sessionsSoFar : (it.sessions ?? 0);
   /* The sentence is rebuilt from the row, so a report stored before it was rewritten reads it too. */
   const commitments = (it.commitments ?? []).map((c) => (c && typeof c.what === 'string' && typeof c.who === 'string' && typeof c.theySaidIt === 'boolean'
@@ -1010,10 +1037,11 @@ export function theRecordOverTime(o: {
 export function overTimeForThisReader(
   it: WhatTheRecordShowsOverTime | null | undefined,
   viewer: { isLead: boolean; participantId: string | null },
-  opts: { meetingsOnRecord?: boolean } = {},
+  opts: { meetingsOnRecord?: boolean; judgements?: boolean } = {},
 ): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
-  if (viewer.isLead) return overTimeAsServed(it, { meetingsOnRecord: opts.meetingsOnRecord });
+  /* Judgements of a person off for the organisation (organisation/person-judgements.ts): the lead reads no pattern about anybody. */
+  if (viewer.isLead) { const served = overTimeAsServed(it, { meetingsOnRecord: opts.meetingsOnRecord }); return served && opts.judgements === false ? { ...served, patterns: [] } as any : served; }
   const mine = viewer.participantId;
   if (!mine) return null;
   return {

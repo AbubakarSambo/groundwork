@@ -104,4 +104,8 @@ describe('the board at a glance: facts from the board as served', () => {
     expect(g3.lines.landing).toBe('1 person whose work is landing with others, 1 person taking on others’ work');
     expect(g3.lines.landing).not.toMatch(/Miriam|Brian/);
   });
+  it('reads the furthest stage reached, never Lost (Grace read "Lost: 4 said, 0 with proof", 18 October)', () => {
+    const g = theBoardAtAGlance({ reportedAgainstCriteria: { stages: [{ stage: 'Won', reported: 5, met: 4 }, { stage: 'Lost', reported: 4 }] } } as any, { readerCheckedInThisRound: null });
+    expect(g.lines.reported).toBe('Won: 5 said, 4 met');
+  });
 });

@@ -43,6 +43,7 @@ export function TheCheckInHeader({
   id,
   title,
   cadence,
+  cadenceDays,
   plannedSessions,
   currentSession,
   endsAt,
@@ -58,6 +59,8 @@ export function TheCheckInHeader({
   id: string
   title: string
   cadence?: GroundCadence | null
+  /** The days a weekly check-in meets on, when more than one: the cadence line reads them. */
+  cadenceDays?: number[] | null
   plannedSessions?: number | null
   currentSession?: number | null
   endsAt?: string | null
@@ -112,7 +115,7 @@ export function TheCheckInHeader({
    * ("from 4pm") this product does not keep as a fact about the ground, so that part is not
    * invented - the rhythm, the session count and the end date are.
    */
-  const cadenceWords = cadence ? cadenceLabel(cadence) : null
+  const cadenceWords = cadence ? cadenceLabel(cadence, cadenceDays) : null
   const spineWords = phaseSpineSentence(
     currentSession ? { startsAt: null, endsAt: endsAt ?? null, currentSession } : null,
     plannedSessions ?? null,
@@ -124,13 +127,14 @@ export function TheCheckInHeader({
    * `canRunThisCheckIn`. board-as-participant.txt shows "People and setup" on a party's own board
    * too, which agrees: kept unconditional here, matching that file rather than my first guess.
    */
-  const myWorkTab = canRunThisCheckIn ? 'sessions' : 'record'
+  /* My work is one page for the lead and each person in it (MyWorkPage.tsx, B7), so every tab row sends it to one key. */
+  const myWorkTab = 'record'
   const tabs: { key: string; label: string; to?: string }[] = tabsOverride ?? [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
     /* Someone who neither runs this check-in nor is in it (an admin who only reads) has no
        conversation here: the prototype's read-only view (read-only-view.txt) has three tabs. */
     ...(canRunThisCheckIn || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),
-    { key: 'context', label: 'Context and resources', to: `/grounds/${id}?tab=context` },
+    { key: 'context', label: 'References and resources', to: `/grounds/${id}?tab=context` },
     ...(canRunThisCheckIn || isAParty ? [{ key: myWorkTab, label: 'My work', to: `/grounds/${id}?tab=${myWorkTab}` }] : []),
     { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
   ]
@@ -141,21 +145,21 @@ export function TheCheckInHeader({
         "Check-ins / Sales team, Q3" (board-as-lead.txt). "Check-ins" is a link in the prototype -
         underlined navy - not plain grey text (picture-check round 6, item B).
       */}
-      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 6 }}>
-        {/* SCREEN FAULT 10: 16px tall on a phone - `.gwui-tap-40` (gw-ui.css) gives it the same
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>
+        {/* SCREEN FAULT 10: 16px tall on a phone - `.gwui-tap-44` (gw-ui.css) gives it the same
             40px floor every other tappable link on this header already has, without touching its
             size or look at any other width. */}
-        <Link to="/grounds" className="gwui-tap-40" style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>Check-ins</Link>
+        <Link to="/grounds" className="gwui-tap-44" style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>Check-ins</Link>
         {' / '}{title}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontFamily: 'var(--gw-font-name)', fontSize: 30, fontWeight: 600, color: 'var(--gw-text)', margin: 0, lineHeight: 1.15 }}>
+          <h1 style={{ fontFamily: 'var(--gw-font-name)', fontSize: 30, fontWeight: 700, color: 'var(--gw-text)', margin: 0, lineHeight: '35px' }}>
             {title}
           </h1>
           {cadenceLine && (
-            <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.5, margin: '6px 0 0' }}>{cadenceLine}</p>
+            <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.5, margin: '6px 0 0' }}>{cadenceLine}</p>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>

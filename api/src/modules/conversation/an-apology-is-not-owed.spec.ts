@@ -15,12 +15,13 @@ describe('an apology is not owed, and it is not met with silence', () => {
   });
 
   it('the line is plain, and the product’s own', () => {
-    expect(NOTHING_TO_APOLOGISE_FOR).toBe('No need to say sorry here. This is a record of where things are, not a judgement of you.');
+    expect(NOTHING_TO_APOLOGISE_FOR).toBe('No need to say sorry.');
   });
 
   it('goes in front of the close on both paths, and never on a close that is still asking', () => {
     /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
-    expect(SRC.match(/if \(close\.ready && !close\.ask && isAnApology\(message\)\) close\.sayFirst = NOTHING_TO_APOLOGISE_FOR;/g)).toHaveLength(1);
+    /* Changed 20 Oct 2026: with the direct morning on the shorter line goes instead (the-check-ins-own-lines-are-direct.spec.ts); still one place. */
+    expect(SRC.match(/if \(close\.ready && !close\.ask && isAnApology\(message\)\) close\.sayFirst = directClose \? NOTHING_TO_APOLOGISE_FOR_DIRECTLY : NOTHING_TO_APOLOGISE_FOR;/g)).toHaveLength(1);
     expect(theStreamedRouteRunsThePlainRoute(SRC)).toBe(true);
   });
 });

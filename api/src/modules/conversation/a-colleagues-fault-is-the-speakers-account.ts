@@ -14,7 +14,7 @@
  * THE CHECK IS CODE, NOT A MODEL, and it reads only Groundwork's own words: anything in quotation marks is what somebody said and is never
  * touched, and a clause that already says whose account it is ("Hassan Mwenda said the wrong mix was sent") stays as it is. A sentence that
  * states a named colleague's (or the lead's) fault, lateness or blocking as fact, or a delivery's fault with nobody named, is rewritten as
- * the speaker's account with the note beside it (theNoteBesideTheClaim: "Tried: ..." or "Not backed: no attempt to unblock mentioned."),
+ * the speaker's account with the note beside it (whatTheyTriedInFull: what they said they tried, or nothing),
  * unless the record confirms it: the wait is confirmed (theWaitIsConfirmed, the colleague's own promise names it), or the colleague's own
  * words own up to it. Where the speaker is not known, the sentence is kept as the account of whoever in the record gave that blame
  * ("Hassan Mwenda says ..."), with the note. Blame is never removed (Hafsah, 12 October): only text stating blame that nobody in the
@@ -26,7 +26,7 @@
 
 import { intoSentences } from './nothing-invented-reaches-them';
 import { labelsForParties } from '../reports/party-labels';
-import { NOT_BACKED, theNoteBesideTheClaim, theConfirmedWaits, theirOwnPromiseNamesIt } from '../grounds/a-wait-is-the-speakers-account';
+import { whatTheyTriedInFull, theConfirmedWaits, theirOwnPromiseNamesIt } from '../grounds/a-wait-is-the-speakers-account';
 
 export interface AWaitAsTheRecordHoldsIt {
   /** The speaker's name as it is served. */
@@ -124,14 +124,14 @@ const PLAIN_START = /^(?:It|The|On|This|That|These|Those|Their|His|Her|Your|Stoc
 const lowerTheStart = (s: string) => (PLAIN_START.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 const plural = (subj: string) => /\band\b|,/.test(subj) || /^(?:you|they)$/i.test(subj.trim());
 
-/** The note beside the claim, read from the speaker's own words about it, naming who could have done what (theNoteBesideTheClaim). */
+/** The note beside the claim, with a space before it: what the speaker said they tried, from the record, or nothing (whatTheyTriedInFull). */
 function theNote(by: string | null, on: string | null, held: WhatTheRecordHoldsForBlame): string {
   const rows = (held.waits ?? []).filter((w) => !by || sameOne(w.by, by));
   const row = rows.find((w) => !on || sameOne(w.on, on)) ?? rows[0];
   const reader = held.speaker?.isTheReader ? held.speaker.name : null;
-  const asRead = (n: string | null | undefined) => (n && reader && sameOne(n, reader) ? 'you' : n ?? null);
-  const names = { by: asRead(by ?? row?.by), on: asRead(on ?? row?.on), lead: asRead(held.lead) };
-  return theNoteBesideTheClaim({ what: row?.what ?? null, triedSaid: row?.triedSaid ?? null }, names);
+  const who = by ?? row?.by ?? null;
+  const tried = whatTheyTriedInFull({ triedSaid: row?.triedSaid ?? null }, who && reader && sameOne(who, reader) ? 'you' : who);
+  return tried ? ` ${tried}` : '';
 }
 
 /**
@@ -185,7 +185,7 @@ function readOne(sentence: string, held: WhatTheRecordHoldsForBlame, patterns: R
       const start = hit.index;
       const verbEnd = blanked.indexOf('waiting', start) + 'waiting'.length;
       const rewritten = body.slice(0, start) + said + body.slice(verbEnd);
-      const note = withNote ? ` ${theNote(by, whoIsSomebody, held)}` : '';
+      const note = withNote ? theNote(by, whoIsSomebody, held) : '';
       return rewritten.replace(/\s+$/, '') + note + tail;
     }
     /* Whose account it is: the speaker's, or, where that is not known, whoever in the record gave this blame. Nobody: it is blame nobody gave, and it goes. */
@@ -195,7 +195,7 @@ function readOne(sentence: string, held: WhatTheRecordHoldsForBlame, patterns: R
     })();
     if (!claimant) return null;
     const theyFor = claimant.isTheReader ? 'you' : claimant.name;
-    const note = withNote ? ` ${theNote(claimant.name, kind === 'named' ? whoIsSomebody : null, held)}` : '';
+    const note = withNote ? theNote(claimant.name, kind === 'named' ? whoIsSomebody : null, held) : '';
     if (clauseStart > 0) {
       /* "..., and on one occasion the mix was not right" -> "..., and you said that on one occasion the mix was not right". */
       const rewritten = `${body.slice(0, clauseStart)}${theyFor} said that ${lowerTheStart(body.slice(clauseStart))}`;

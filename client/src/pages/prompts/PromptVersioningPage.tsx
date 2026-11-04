@@ -151,12 +151,12 @@ function ProtectedBlock({ header, body }: { header: string; body: string }) {
   return (
     <div style={{ marginBottom: 6 }}>
       {header && (
-        <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#FFF8E7', border: '1px solid #F0C040', borderRadius: 4, padding: '4px 10px', margin: '0 0 2px 0', color: '#8A6C00' }}>
+        <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 4, padding: '4px 10px', margin: '0 0 2px 0', color: 'var(--gw-amber-t)' }}>
           {header}
         </pre>
       )}
-      <div style={{ fontSize: 10, color: '#8A6C00', fontWeight: 600, marginBottom: 2, paddingLeft: 2 }}>🔒 Protected</div>
-      <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#FFF8E7', border: '1px solid #F0C040', borderRadius: 4, padding: '8px 10px', margin: 0 }}>
+      <div style={{ fontSize: 10, color: 'var(--gw-amber-t)', fontWeight: 700, marginBottom: 2, paddingLeft: 2 }}>🔒 Protected</div>
+      <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 4, padding: '8px 10px', margin: 0 }}>
         {body}
       </pre>
     </div>
@@ -195,14 +195,14 @@ function DiffView({ oldContent, newContent }: { oldContent: string; newContent: 
   if (!hasChanges) return <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '8px 0' }}>No changes from active version.</div>
 
   return (
-    <div style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: 1.5, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--gw-border)' }}>
+    <div style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: '17px', borderRadius: 4, overflow: 'hidden', border: '1px solid var(--gw-border)' }}>
       {lines.map((line, i) => (
         <div
           key={i}
           style={{
             padding: '1px 10px',
-            background: line.type === 'added' ? '#E8F7EF' : line.type === 'removed' ? '#FEECEC' : 'white',
-            color: line.type === 'added' ? '#1A7A4A' : line.type === 'removed' ? '#991B1B' : 'var(--gw-text)',
+            background: line.type === 'added' ? 'var(--gw-green-bg)' : line.type === 'removed' ? 'var(--gw-red-bg)' : 'white',
+            color: line.type === 'added' ? 'var(--gw-green-t)' : line.type === 'removed' ? 'var(--gw-red-t)' : 'var(--gw-text)',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
             borderLeft: `3px solid ${line.type === 'added' ? 'var(--gw-green-b)' : line.type === 'removed' ? 'var(--gw-red-b-soft)' : 'transparent'}`,
@@ -250,12 +250,12 @@ function VersionRow({
         onClick={onToggle}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', flexShrink: 0 }}>v{v.version}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', flexShrink: 0 }}>v{v.version}</span>
           {v.isActive && (
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#1A7A4A', background: '#E8F7EF', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>Active</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>Active</span>
           )}
           {v.isDraft && (
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>Draft</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>Draft</span>
           )}
           <span style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>{fmtDate(v.activatedAt ?? v.createdAt)}</span>
           {v.activatedBy && (
@@ -269,8 +269,7 @@ function VersionRow({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
           {!v.isActive && confirmActivateId !== v.id && (
-            <button
-              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: '1px solid var(--gw-navy)', background: 'white', color: 'var(--gw-navy)', cursor: 'pointer', fontWeight: 500 }}
+            <button className="btn sec sm"
               onClick={() => onActivateClick(v.id)}
               disabled={activating}
             >
@@ -282,15 +281,13 @@ function VersionRow({
               <span style={{ fontSize: 11, color: 'var(--gw-text)' }}>
                 Activate v{v.version}? In-progress check-ins keep their version.
               </span>
-              <button
-                style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer', fontWeight: 600 }}
+              <button className="btn pri sm"
                 onClick={() => onConfirm(v.id)}
                 disabled={activating}
               >
                 Confirm
               </button>
-              <button
-                style={{ fontSize: 11, padding: '4px 10px', borderRadius: 4, border: '1px solid var(--gw-border)', background: 'white', color: '#666', cursor: 'pointer' }}
+              <button className="btn sec sm"
                 onClick={onCancel}
               >
                 Cancel
@@ -306,14 +303,12 @@ function VersionRow({
           {/* Diff toggle - only show for non-active versions when there's an active to compare to */}
           {!v.isActive && activeContent && (
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-              <button
-                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 4, border: '1px solid var(--gw-border)', background: showDiff ? 'var(--gw-navy)' : 'white', color: showDiff ? 'white' : '#666', cursor: 'pointer' }}
+              <button className={`gwui-choice${!showDiff ? ' gwui-choice-on' : ''}`}
                 onClick={() => setShowDiff(false)}
               >
                 Content
               </button>
-              <button
-                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 4, border: '1px solid var(--gw-border)', background: showDiff ? 'white' : 'white', color: !showDiff ? '#666' : 'var(--gw-navy)', cursor: 'pointer', borderColor: showDiff ? 'var(--gw-navy)' : 'var(--gw-border)' }}
+              <button className={`gwui-choice${showDiff ? ' gwui-choice-on' : ''}`}
                 onClick={() => setShowDiff(true)}
               >
                 Diff vs active
@@ -382,7 +377,7 @@ function DraftEditor({
       if (data?.error === 'invariant_violation' && Array.isArray(data?.missing)) {
         setInvariantError(data.missing as string[])
       } else {
-        toast.error('The draft did not save. What you typed is still here - try again.')
+        toast.error('The draft didn’t save. Try again.')
       }
     },
   })
@@ -427,22 +422,20 @@ function DraftEditor({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>Draft - v{draft.version}</span>
-          <span style={{ fontSize: 11, color: saveStatus === 'saved' ? '#1A7A4A' : saveStatus === 'saving' ? '#8A6C00' : '#991B1B' }}>
+          <span style={{ fontSize: 11, color: saveStatus === 'saved' ? 'var(--gw-green-t)' : saveStatus === 'saving' ? 'var(--gw-amber-t)' : 'var(--gw-red-t)' }}>
             {saveStatus === 'saved' ? '● Saved' : saveStatus === 'saving' ? '○ Saving…' : '○ Unsaved'}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {!confirmPublish ? (
             <>
-              <button
-                style={{ fontSize: 12, padding: '5px 12px', borderRadius: 4, border: '1px solid var(--gw-border)', background: 'white', color: '#991B1B', cursor: 'pointer' }}
+              <button className="btn sec sm red"
                 onClick={() => discard.mutate()}
                 disabled={discard.isPending}
               >
                 {discard.isPending ? 'Discarding…' : 'Discard draft'}
               </button>
-              <button
-                style={{ fontSize: 12, fontWeight: 600, padding: '5px 14px', borderRadius: 4, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer', opacity: saveStatus === 'unsaved' ? 0.6 : 1 }}
+              <button className="btn pri sm"
                 onClick={() => setConfirmPublish(true)}
                 disabled={saveStatus === 'unsaved' || save.isPending}
                 title={saveStatus === 'unsaved' ? 'Save changes before publishing' : ''}
@@ -451,17 +444,15 @@ function DraftEditor({
               </button>
             </>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#FEF9EC', border: '1px solid #F0C040', borderRadius: 4, padding: '6px 12px' }}>
-              <span style={{ fontSize: 12, color: '#8A6C00' }}>Publish v{draft.version} live for new conversations?</span>
-              <button
-                style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 4, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer' }}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 4, padding: '6px 12px' }}>
+              <span style={{ fontSize: 12, color: 'var(--gw-amber-t)' }}>Publish v{draft.version} live for new conversations?</span>
+              <button className="btn pri sm"
                 onClick={() => activate.mutate()}
                 disabled={activate.isPending}
               >
                 {activate.isPending ? 'Publishing…' : 'Confirm'}
               </button>
-              <button
-                style={{ fontSize: 12, padding: '4px 10px', borderRadius: 4, border: '1px solid var(--gw-border)', background: 'white', color: '#666', cursor: 'pointer' }}
+              <button className="btn sec sm"
                 onClick={() => setConfirmPublish(false)}
               >
                 Cancel
@@ -473,11 +464,11 @@ function DraftEditor({
 
       {/* Change summary */}
       <div style={{ marginBottom: 14 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-text)', display: 'block', marginBottom: 4 }}>
+        <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)', display: 'block', marginBottom: 4 }}>
           Change summary
         </label>
-        <input
-          style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 4, padding: '8px 10px', fontFamily: 'inherit' }}
+        <input className="gwui-input"
+          style={{ width: '100%' }}
           value={summary}
           onChange={(e) => { setSummary(e.target.value); scheduleAutoSave() }}
           placeholder="What changed and why?"
@@ -491,14 +482,14 @@ function DraftEditor({
             return (
               <div key={i} style={{ marginBottom: 6 }}>
                 {block.header && (
-                  <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#FFF8E7', border: '1px solid #F0C040', borderRadius: 4, padding: '4px 10px', margin: '0 0 2px 0', color: '#8A6C00' }}>
+                  <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 4, padding: '4px 10px', margin: '0 0 2px 0', color: 'var(--gw-amber-t)' }}>
                     {block.header}
                   </pre>
                 )}
-                <div style={{ fontSize: 10, color: '#8A6C00', fontWeight: 600, marginBottom: 2, paddingLeft: 2 }}>
+                <div style={{ fontSize: 10, color: 'var(--gw-amber-t)', fontWeight: 700, marginBottom: 2, paddingLeft: 2 }}>
                   🔒 Protected - cannot be edited here.
                 </div>
-                <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: '#FFF8E7', border: '1px solid #F0C040', borderRadius: 4, padding: '8px 10px', margin: 0 }}>
+                <pre style={{ fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 4, padding: '8px 10px', margin: 0 }}>
                   {block.body}
                 </pre>
               </div>
@@ -533,8 +524,8 @@ function DraftEditor({
       </div>
 
       {invariantError && (
-        <div style={{ background: '#FEF2F2', border: '1px solid var(--gw-red-b)', borderRadius: 4, padding: '10px 14px', marginTop: 12, fontSize: 12, color: '#991B1B' }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>These protected strings must be present:</div>
+        <div style={{ background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b)', borderRadius: 4, padding: '10px 14px', marginTop: 12, fontSize: 12, color: 'var(--gw-red-t)' }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>These protected strings must be present:</div>
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {invariantError.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
@@ -576,11 +567,11 @@ function TestRunner({ version, promptKey }: { version: PromptVersion; promptKey:
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 6, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 500 }}>
       {/* Banner */}
-      <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid #F0C040', padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#8A6C00' }}>
+      <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-b)', padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-amber-t)' }}>
           TEST MODE - {version.isDraft ? `Draft v${version.version}` : `v${version.version} (active)`} · {promptKey}
         </span>
-        <span style={{ fontSize: 11, color: '#8A6C00' }}>Not a real conversation · No data written</span>
+        <span style={{ fontSize: 11, color: 'var(--gw-amber-t)' }}>Not a real conversation · No data written</span>
       </div>
 
       {/* Messages */}
@@ -601,7 +592,7 @@ function TestRunner({ version, promptKey }: { version: PromptVersion; promptKey:
               borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
               padding: '8px 12px',
               fontSize: 13,
-              lineHeight: 1.6,
+              lineHeight: '21px',
               whiteSpace: 'pre-wrap',
             }}
           >
@@ -623,16 +614,14 @@ function TestRunner({ version, promptKey }: { version: PromptVersion; promptKey:
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
           disabled={loading}
         />
-        <button
+        <button className="btn pri sm"
           onClick={send}
           disabled={loading || !input.trim()}
-          style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 16, height: 36, opacity: loading || !input.trim() ? 0.5 : 1 }}
         >
           ↑
         </button>
-        <button
+        <button className="btn sec sm"
           onClick={() => setMessages([])}
-          style={{ padding: '0 10px', borderRadius: 6, background: 'white', color: 'var(--gw-muted)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 11, height: 36 }}
         >
           Clear
         </button>
@@ -776,7 +765,7 @@ export function PromptVersioningPage() {
                   {k}
                 </span>
                 <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                  {hasDraft && <span style={{ fontSize: 9, fontWeight: 700, color: '#8A6C00', background: 'var(--gw-amber-bg)', borderRadius: 6, padding: '1px 5px' }}>draft</span>}
+                  {hasDraft && <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 6, padding: '1px 5px' }}>draft</span>}
                   {activeVer !== null && (
                     <span style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'var(--gw-bg)', borderRadius: 8, padding: '1px 6px', fontWeight: 500 }}>v{activeVer}</span>
                   )}
@@ -797,12 +786,12 @@ export function PromptVersioningPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-text)' }}>{selectedKey}</span>
                   {activeVersion && (
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#1A7A4A', background: '#E8F7EF', borderRadius: 10, padding: '3px 10px' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 10, padding: '3px 10px' }}>
                       v{activeVersion.version} active
                     </span>
                   )}
                   {draft && (
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '3px 10px' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '3px 10px' }}>
                       draft v{draft.version}
                     </span>
                   )}
@@ -815,24 +804,18 @@ export function PromptVersioningPage() {
                     if (tab === 'test' && !testVersion) return null
                     const labels = { view: 'Active', draft: 'Edit draft', test: 'Test' }
                     return (
-                      <button
+                      <button className={`gwui-choice${activePanel === tab ? ' gwui-choice-on' : ''}`}
                         key={tab}
                         onClick={() => setActivePanel(tab)}
-                        style={{
-                          fontSize: 12, fontWeight: 500, padding: '6px 14px', borderRadius: 4, border: '1px solid var(--gw-border)', cursor: 'pointer',
-                          background: activePanel === tab ? 'var(--gw-navy)' : 'white',
-                          color: activePanel === tab ? 'white' : '#666',
-                        }}
                       >
                         {labels[tab]}
                       </button>
                     )
                   })}
                   {!draft && activeVersion && (
-                    <button
+                    <button className="btn pri sm"
                       onClick={() => startDraft.mutate()}
                       disabled={startDraft.isPending}
-                      style={{ fontSize: 12, fontWeight: 600, padding: '6px 14px', borderRadius: 4, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer' }}
                     >
                       {startDraft.isPending ? 'Starting…' : 'Start draft'}
                     </button>

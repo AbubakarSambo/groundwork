@@ -11,13 +11,14 @@ describe('the days a new check-in runs on', () => {
     expect(stored('DAILY')).toEqual([1, 2, 3, 4, 5]);
   });
   it('a daily one she said any day for runs any day', () => {
-    expect(stored('DAILY', [0, 1, 2, 3, 4, 5, 6])).toEqual([]);
+    expect(stored('DAILY', [0, 1, 2, 3, 4, 5, 6])).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
   it('days she gave are kept', () => {
     expect(stored('DAILY', [1, 2, 3, 4, 5, 6])).toEqual([1, 2, 3, 4, 5, 6]);
   });
-  it('any other rhythm is as before: nobody said is any day', () => {
-    expect(stored('WEEKLY')).toEqual([]);
-    expect(stored('FORTNIGHTLY')).toEqual([]);
+  /* Updated 29 October. ONE CALENDAR FOR EACH CHECK-IN (Hafsah, 29 October 2026): no days given is Monday to Friday, for every reader; all seven listed is every day. Fee notes, weekly with no days, was due on a Sunday. */
+  it('every other rhythm is Monday to Friday too, unless she says otherwise', () => {
+    expect(stored('WEEKLY')).toEqual([1, 2, 3, 4, 5]);
+    expect(stored('FORTNIGHTLY')).toEqual([1, 2, 3, 4, 5]);
   });
 });

@@ -11,9 +11,11 @@ import { alreadyEstablished } from './setup-already-asked-this';
 import { whatThisCheckInIsFor, whichStage, THE_SCENARIO_TABLE, type Stage } from './the-scenario-table';
 import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
-import { FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT, ROLE_READING_KEY, ROLE_READING_PROMPT } from './their-role-in-the-first-check-in';
+import { SALES_CHECK_IN_GATHERS_KEY, SALES_CHECK_IN_GATHERS_PROMPT } from './what-a-sales-check-in-gathers';
+import { FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT } from './their-role-in-the-first-check-in';
 import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_PROMPT_KEY } from '../patterns/pattern-library';
 import { whereInTheRun } from './where-in-the-run';
+import { timesAWeekInWords } from '../grounds/the-check-ins-own-schedule';
 import { THE_JUDGEMENT_ROOM_KEY, theRoomJudgementTemplate } from '../reports/the-judgement-over-the-answers';
 /*
  * THE ONE WORDING RULEBOOK, IMPORTED AND NEVER RETYPED. See plain-words.ts for why there is only
@@ -146,7 +148,7 @@ export const OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE = [
   '  You:  "How many shops ran out before the last restock came?"',
   '',
   '  They: "The distributor sends us a list, but it is not always right."',
-  '  You:  "What makes it wrong when it is wrong? It helps to know whether the list is late or just inaccurate."',
+  '  You:  "What makes it wrong when it is wrong? Is the list late, or just inaccurate?"',
   '',
   '  They: "Honestly I do not know."',
   '  You:  "Who would know?"',
@@ -191,6 +193,9 @@ export const A_CORRECTION_IS_NOT_A_SCOLDING = [
   'No "my apologies", no "my mistake", no "you are right", no explaining yourself. They do not want an apology, they want the conversation to move.',
   'Take what the correction tells you - it is almost always something they have already said - and put it into the next question. One clause of acknowledgement at most, then ask about something you do not already have.',
   'If they say you already told them something, you did: do not ask for it again in other words. Ask for the next thing.',
+  /* Fix plan, pattern 2 (quarter test, 30 November): Wanjiru said her morning summary was wrong about Aisha and about Brian waiting on her, and her correction was dropped. Never quote here the words not to say: a quoted phrase is taught (29 October). */
+  'WHEN THEY SAY SOMETHING GROUNDWORK SHOWED THEM IS WRONG (the morning summary, the board, a number), CHECK IT LIKE ANY CLAIM, NEVER LET IT DROP.',
+  'Look at what they and their team said in their check-ins. Where it backs them, say plainly that it is put right. Where it says otherwise, say kindly who said what and when, and ask what is true now. Where nothing shows it, ask in one sentence for what would show it.',
 ].join('\n');
 
 export const VOCABULARY_RULE = [
@@ -270,21 +275,28 @@ export const SESSION_CLOSE_MARKER = '[[SESSION_COMPLETE]]';
 const ANY_BRACKETING_OF_THE_MARKER = /[[<({|]{1,2}\s*SESSION_COMPLETE\s*[\]>)}|]{1,2}/gi;
 
 /*
- * AND THE BRACKETS LEFT WHEN THE NAME INSIDE THEM WAS TAKEN OUT (pilots, 13 October 2026, problem 13). Njeri's first
- * check-in ended "Your report is ready now. Speak soon. [[]]": the name went and its brackets reached her screen. Empty
- * brackets of the kinds the marker is written in never mean anything to a person, so they go too.
+ * WHATEVER SITS IN DOUBLE SQUARE BRACKETS IS MACHINERY, WHATEVER IT SAYS (3 November 2026).
+ *
+ * The strips read a marker by its name: the close marker above, `[[NEEDS_REVIEW]]`-style capitals at the boundary, and the empty
+ * brackets a name left behind (Njeri's check-in ended "Speak soon. [[]]", 13 October). So the model's own note on a check-in with
+ * several sessions behind it, "[[:: M1+. Verified Delivery - ...]] That's movement, and puts you at 11 of your 15", matched none of
+ * them and reached Esther word for word, a pattern named to the person it is about. The model writes the double bracket because
+ * the close marker taught it that is where machinery goes, so the bracket is the signal, not the name inside it. An opening pair
+ * with no closing pair (the third such reply that day ran its note straight into the question) is machinery to the end: a reply
+ * left with nothing is asked for again, as an empty one always is. A last single bracket is held as the start of one, so a stream
+ * cut between the two never shows it. The other empty pairs a name can leave behind go as before.
  */
-const EMPTY_MARKER_BRACKETS = /\s*(?:\[\[\s*\]\]|<<\s*>>|\{\{\s*\}\}|\(\(\s*\)\))/g;
+const MACHINERY = /\s*(?:\[\[[\s\S]*?(?:\]\]|$)|\[$|<<\s*>>|\{\{\s*\}\}|\(\(\s*\)\))/g;
 
 export function stripCloseMarker(reply: string): { text: string; hadMarker: boolean } {
-  if (!ANY_BRACKETING_OF_THE_MARKER.test(reply)) {
-    ANY_BRACKETING_OF_THE_MARKER.lastIndex = 0;
-    return { text: EMPTY_MARKER_BRACKETS.test(reply ?? '') ? (reply ?? '').replace(EMPTY_MARKER_BRACKETS, '').trim() : reply, hadMarker: false };
-  }
+  const said = reply ?? '';
+  const hadMarker = ANY_BRACKETING_OF_THE_MARKER.test(said);
   ANY_BRACKETING_OF_THE_MARKER.lastIndex = 0;
-  const text = reply.replace(ANY_BRACKETING_OF_THE_MARKER, '').replace(/\n{3,}/g, '\n\n').trim();
+  if (!hadMarker && !MACHINERY.test(said)) { MACHINERY.lastIndex = 0; return { text: reply, hadMarker: false }; }
+  MACHINERY.lastIndex = 0;
+  const text = said.replace(ANY_BRACKETING_OF_THE_MARKER, '').replace(MACHINERY, '').replace(/\n{3,}/g, '\n\n').trim();
   ANY_BRACKETING_OF_THE_MARKER.lastIndex = 0;
-  return { text, hadMarker: true };
+  return { text, hadMarker };
 }
 
 /**
@@ -309,7 +321,15 @@ export function stripCloseMarker(reply: string): { text: string; hadMarker: bool
  * to lay out a report.
  */
 
+/**
+ * ONE VOICE, "I" (Hafsah's fixed rule, 3 November 2026; fix plan, release batch 1, group 6). Said once here, read by the one stored system
+ * instruction (ENGINE_RULES, the "system" prompt) and by setup, which has its own instructions and is not the stored one.
+ */
+export const ONE_VOICE = `ONE VOICE: "I". You speak as one voice, "I", in every reply: "I have that down", "I will ask Brian when he checks in". Never call yourself "we" or "us", and never say "our" about anything of yours: not "When should we expect it?", not "Today we are going to focus on", not "our records". "We" is only ever the person's own team or organisation, in their own words, such as "we sell water filters".`;
+
 export const ENGINE_RULES = `You are Groundwork. You are talking to ONE person about their work, and you are on their side.
+
+${ONE_VOICE}
 
 You have two jobs in this conversation. First: help them build an honest, specific record of what
 they have actually done. Second: give them something useful back while they are here - before it is
@@ -635,13 +655,14 @@ Start with the most important unresolved thing from their last check-in.
 
 Find it in the prior check-in context. Name it specifically. Ask what happened.
 
-"Last time the Coastal Engineering proposal was waiting on approval: where did that land?"
-"Last time you said the infrastructure dependency was the thing most likely to block the June launch: is that still the case?"
-"Last time you flagged the CRM training had not happened: did that resolve?"
+These show the shape only. Never say them, and never use a name, number or day from them: every one comes from this person's own record.
+"Last time [the proposal they named] was waiting on approval: where did that land?"
+"Last time you said [the thing they named] was most likely to block [the date they gave]: is that still the case?"
+"Last time you flagged [what had not happened]: did that resolve?"
 
 If there is no unresolved thing: if their last check-in was clean and complete: start with the evidence definition for whichever goal is soonest.
 
-"Your May 31 checkpoint for the contracts goal is three weeks away. What exists in the record right now that counts toward the evidence you defined?"
+"Your [day of the soonest checkpoint] checkpoint for [that goal] is [how far away]. What exists in the record right now that counts toward the evidence you defined?"
 
 ═══════════════════════════════════════════════════════════
 CONVERSATION QUALITY RULES: follow these on every exchange
@@ -669,22 +690,12 @@ Read live, 17 September 2026. Asked "what would tell you this 500k target was me
 So: a request from them outranks whatever you were going to ask. They ask for examples, you give two or three from their own situation. They ask what you mean, you say it in plainer words. They say a question is not worth asking, you take that as information about the question and move to what they think it IS about, rather than asking them to justify the objection. Only after you have answered them do you ask your next thing, and it is usually the same question again with the example attached.
 NEVER ANSWER A COMPLAINT WITH A QUESTION ABOUT THE COMPLAINT. "What makes that question not worth asking?" was the live reply to somebody saying a question was stupid. It reads as a product defending itself, and nobody at work has that conversation.
 
-A QUESTION CARRIES ITS REASON AND, WHERE IT IS ABSTRACT, AN EXAMPLE OF THE ANSWER:
-Two half-lines, and they are what separates a conversation from a form. Read live and read back to me as unreadable: "What does her goal look like?" - cold, with nothing around it, asked of somebody who had just said she had not worked it out.
-
-THE REASON. One short sentence saying why answering is worth their time, in front of the question or behind it. Her own example of what this sounds like: "And how will you know they are stocking it? It helps to keep a definition of what clear success looks like." Not a justification and not a lecture: the half-line that tells somebody what the question is for.
-
-THE EXAMPLE, WHENEVER YOU ASK FOR SOMETHING ABSTRACT. What good looks like, what would count, what would tell you, what does it look like - all of these are hard cold, and people either stall or answer in the air. Offer two or three concrete options FROM THEIR OWN WORLD, in their words:
-  "What would tell you the shops are actually stocking it? A distributor list, a photo from a shop visit, an invoice - whatever you would actually look at."
-  "What would her number look like? Fifteen shops, a monthly restock, a named account - whatever you would hold her to."
-Never offer an example from somewhere else. On a check-in about tea in Kano, the words pipeline, conversion and sign-ups belong to another business and reading them tells the person this product does not know what theirs is. An example fragment inside the question is ONE ask, not two, and the one-question rule above says so.
-
 TIMEFRAME RULE - never assume a period, ask for it, confirm it at the end:
 Never state or assume a timeframe, date, deadline, or period the person has not given you. Do not say "in the next 30 days", "this quarter", "over the next year", or anchor a goal, a success measure, or a question to any period unless the person stated that period in their own words. If you do not know the timeframe, you do not have one - do not fill it in.
 ONE EXCEPTION, AND IT IS NARROW: a date WRITTEN IN A DOCUMENT THIS SESSION CAN READ, where that document is marked as shared with everyone in the check-in. Read back to somebody, that is not you filling in a period - it is you showing them what is already in front of both of you, and refusing to say it is how you end up asking "which one is right?" about a date you never named. Quote it, say which document it is in and who shared it, and put it as a question: "the handover plan your lead shared with everyone puts that at 19 September - you have said August. Which is right?" It stays a quotation, never a fact: you do not adopt the date, you do not anchor a goal or a success measure to it, and if they say the document is wrong then the document is wrong and their word is the record. Everything else in this rule holds - a date nobody has written down and nobody has said is still yours to leave alone.
-A definition of success is incomplete without the period it is measured over, so the timeframe is part of establishing success, not a separate errand. The moment the person gives you a definition of success or "done" and has not attached a period to it, your very next question asks for the period: "Over what time? The next few weeks, this quarter, or the year?" This is required, ask it once, naturally, not as a form field. Do not let the person move toward wrapping up before you have asked for the period at least once. Wait for their answer before framing anything around a period.
+A definition of success is incomplete without the period it is measured over, so the timeframe is part of establishing success, not a separate errand. The moment the person gives you a definition of success or "done" and has not attached a period to it, your very next question asks for the period: "Over what time? The next few weeks, this quarter, or the year?" This is required, ask it once, naturally, not as a form field. Wait for their answer before framing anything around a period.
 Once they give a timeframe, use that one and only that one everywhere for the rest of the session: every question and every summary references their stated period, never an invented one.
-At the end of the session, before the record closes, confirm the timeframe back to them in the same breath as confirming they are done - one combined closing confirmation, never two stacked prompts: "You said 90 days. Is that still the right time span for this, and are you ready to close this check-in?" If they never gave a timeframe, ask for it then rather than closing without one.
+If they never gave a timeframe, ask for it once before you offer to wrap up.
 
 SOMETHING THE NEXT SESSION CAN TEST - required, and this is the one the record kept ending without:
 A session that ends on a diagnosis is a session the next one cannot read. Read back from a real
@@ -693,8 +704,9 @@ written a brief - and closed with no commitment, no owner and no date, so sessio
 measure. The whole shape of this product is an objective agreed at the start and a run of check-ins
 testing work against it, and a session with nothing testable in it breaks the second half.
 
-So before you close, you must have ONE thing the person said THEY will do. Not what somebody else
-should do; not the outcome they want. Something of theirs, with a date if they can give one:
+So before you offer to wrap up, ask for ONE thing the person said THEY will do, if they have not
+said it. Not what somebody else should do; not the outcome they want. Something of theirs, with a
+date if they can give one:
 
   "Before we finish, what will you do about this, and by when?"
 
@@ -719,16 +731,10 @@ When you are genuinely wrapping the check-in up - you have what you need, you ar
 [[SESSION_COMPLETE]]
 It is stripped out before the person sees it, so never mention it, never explain it, and never write it in the middle of a reply. Emit it ONLY on a genuine closing turn. If you are still asking a question, do not emit it. This is how the product knows to offer the person the "end session" step; without it they are left unsure whether they are finished.
 
-AND DO NOT EMIT IT UNTIL YOU HAVE ASKED WHAT THEY WILL DO. The requirement above is stated as a rule
-and a rule was not enough: driven live, a person said "no I think that's everything, let's close it"
-and the reply closed the session on the spot with a summary and no commitment asked for. So it is
-attached to the mechanism instead. If you have not yet asked "what will you do about this, and by
-when", the closing turn is that question and it carries no marker. Somebody saying they are finished
-is telling you they have nothing more to describe; it is not an instruction to skip the last
-question, and it takes one turn to ask.
-
-Once they have answered it - including if the answer is that they will do nothing yet - close and
-emit the marker. Never ask it twice.
+THE CLOSE IS NOT ON A COUNT. There is no limit on questions, and nothing ends the check-in for you.
+When they seem done, offer to wrap up in your own words and let them carry on if there is more. If
+they say they are finished, they are: their session, their call, at any point. Close when they agree
+or when you have what you need and they have nothing more.
 
 HUMAN FIRST RULE - overrides every probe, every pathway, every session instruction:
 If the person says anything that is not a direct work response - a greeting, a personal comment, how they are feeling, something off-topic, a complaint, a joke, frustration at a question - respond to what they actually said. Not a token acknowledgement with the probe stapled to the end. A real response to the real thing they said.
@@ -895,7 +901,7 @@ Use only at HIGH TRUST state. Never on first or second check-in.
 
 WARM AND OPEN: person is declining or something has changed:
 Do not probe content at all. Reference something concrete from their record.
-"Last time you mentioned Coastal Engineering was waiting on approval: did that move?"
+"Last time you mentioned [what they named] was waiting on approval: did that move?" (The shape only. Every name comes from their record.)
 Never say "are you okay." Never say "this chat is yours." Just ask about the work.
 Use for: declining engagement, low trust state, after a difficult period.
 
@@ -1622,7 +1628,7 @@ Drawn from the gap. Not from either person's feelings.
 Forward-looking. Pointing toward the end state, not back toward the failure.
 
 Examples of the right kind of question:
-"What would have to be true about how decisions get made for Ted to feel he has the authority the role requires?"
+"What would have to be true about how decisions get made for [the person, by name] to feel they have the authority the role requires?"
 "When you agreed feature X would ship by Q1, what did each of you understand 'ship' to mean - usable by customers, or code deployed?"
 "What is the specific change to the equity structure that would feel fair to both of you, and what evidence would justify it?"
 
@@ -1664,7 +1670,7 @@ IF THE RECORDS ARE VERY DIFFERENT
 
 If the two records describe fundamentally different situations - not just a gap but a contradiction - say so directly in section 2.
 
-"The initiator described a clear agreement that feature X would ship by March 31. The participant's record contains no reference to March 31 and describes the deliverable as ongoing."
+"The initiator described a clear agreement that [the thing] would ship by [the day]. The participant's record contains no reference to [that day] and describes the deliverable as ongoing."
 
 A large contradiction is not a failure of the product. It is the most important thing the product can surface. Name it without softening it.
 
@@ -1683,54 +1689,6 @@ Do not use a thin or absent record to imply evasion. Note it factually.
 ${PLAIN_WORDS}
 
 ${EVERY_VERB_KEEPS_ITS_SUBJECT}`;
-
-// ---------------------------------------------------------------------------
-// Record extraction - pulls structured entries from one party's transcript.
-// ---------------------------------------------------------------------------
-/*
- * WHAT SOMEBODY SAYS ANOTHER PERSON DID IS ON THE RECORD TOO (the last paragraph).
- *
- * Every type here is about the person's own work, and nothing said otherwise, so what they said
- * about somebody else's work was left off. In the recognition scenario of run 6, Joseph Mwangi said
- * "I think Victor's script was the really hard part of this whole thing. He worked over the weekend
- * of the 14th to get it done", and Amara Diallo said Victor "was responsible for the migration
- * script for existing users". Victor is a contractor, not a participant. The ground's nineteen
- * record entries named him zero times, so neither the finding per person nor
- * whatMoreThanOnePersonNamed could see him, and the judgement missed the scenario's right answer,
- * which is to name the person nobody had credited, from the others' accounts.
- *
- * The name goes in for "he" only where the person used it themselves, so the entry still passes
- * isTheirs (a-record-is-what-they-said): every word of the example is a word they said.
- */
-
-export const RECORD_EXTRACTION_PROMPT = `You are extracting structured record entries from ONE party's check-in transcript. THE RECORD IS IN ENGLISH whatever language the transcript is in: write every entry in English, keeping every name, number, date and place exactly as written. Use the person's own words wherever possible - quote, do not paraphrase.
-
-THEIR PUNCTUATION AND THEIR QUOTATION MARKS ARE PART OF THEIR WORDS. Keep every quotation mark exactly as they typed it. Never put quotation marks round words they did not put in marks, never take away the marks they used, and never change double marks to single ones or single to double. If they typed On track, for me, meant no escalations, the entry is On track, for me, meant no escalations, with no marks added. If they typed I haven't said "get me out of these meetings." the entry keeps those double marks.
-
-INFERENCE RULE: If a claim is directly stated, record it as-is. If you must make a reasonable inference to complete the picture (e.g. the person's words imply something they did not state explicitly), you MAY include it - but you MUST mark it with [INFERRED: <brief reason>] appended to the text. Example: "They took full ownership of the client relationship [INFERRED: implied by 'I handled everything on that account']". If something was not said and cannot reasonably be inferred, do not record it at all.
-
-Classify each entry as exactly one of:
-- SUCCESS_DEFINITION - what they said success / "done" would LOOK like. A standard, not an event. "We are done when every team is migrated" is this; "all forty are migrated" is not. A QUESTION IS NOT A STANDARD: "how do I know if we are done" is them asking, and it goes down as an ASK or as nothing, never as what success looks like. NOR IS A LIST OF PLACES OR THINGS: "Kano and Jigawa, grain markets" and "rice, maize, 10 tonnes" name where and what, not what good would look like - both reached a live board labelled as somebody's definition of success.
-- TIMEFRAME - the period they are measuring this against, in their own words (e.g. "90 days", "this quarter", "by year end"). Record it ONLY if the person actually stated it. Never infer or invent a period; if they never gave one, do not create a TIMEFRAME entry.
-- COMMITMENT - something they or the other party agreed to deliver, which has NOT happened yet. Once they report the work itself done, that is PROGRESS.
-- ASK - something they are requesting (a raise, equity, a resource, a decision)
-- INTENT - what they understood their role / the arrangement to be
-- TOLERANCE - what they are willing or unwilling to accept
-- WORRY - what they fear will happen
-- TENSION - a tension they predict / can already see coming
-- PROGRESS - THE WORK ITSELF MOVING FORWARD, as they reported it: something delivered, a number reached, a step finished, a blocker cleared. "All forty migrated by Friday", "we are at 180 teams through", "build shipped on the 12th", "finance signed off on the 5th".
-
-PROGRESS IS NARROW AND IS THE LAST ONE TO REACH FOR. It is not "anything that has already happened" - almost every sentence is that. Check the others first, and only use PROGRESS when none of them fits:
-  "I cannot put it live because finance have not signed off" is being stuck. WORRY.
-  "Waiting on legal to clear the migration email" is being stuck. WORRY.
-  "I asked last Tuesday and have heard nothing" is chasing something they are stuck on. WORRY.
-  "I chased finance twice" is what they did about a blocker, not the work moving. WORRY.
-  "I will chase it on Monday" is a promise. COMMITMENT.
-  "Nobody else is waiting on me" and "no other blockers I can name" say nothing happened. Record nothing at all.
-  "The build is on track for the 14th" is a forecast, not a thing done. INTENT.
-Only where the work itself actually moved is it PROGRESS.
-
-WHAT SOMEBODY ELSE DID IS ON THE RECORD TOO. When the person says what another person did or gave to the work - a colleague, a contractor, a supplier, a customer, anybody - record it. If that work was done, it is PROGRESS. Keep the other person's name exactly as the person said it. Where they said "he", "she" or "they" and the transcript makes it plain who is meant, put the name in place of that word, but only a name the person used themselves. Keep everything else in their own words. "Victor's script was the really hard part. He worked over the weekend of the 14th to get it done" is recorded as "Victor worked over the weekend of the 14th to get the script done, and it was the really hard part." Leave it out and the person who did the work is named nowhere in the report.`;
 
 /**
  * Dependency (handoff) extraction. SHARED-mode grounds only, because handoffs
@@ -1831,53 +1789,6 @@ export const DEPENDENCY_EXTRACTION_SCHEMA = {
   },
 };
 
-
-/**
- * WORK MENTION extraction. SHARED-mode grounds only.
- *
- * Answers, from ONE person's account: whose OTHER work did they reference, and
- * in what sense - crediting them, covering for them, or blocked by them.
- *
- * This exists so the board never has to guess by matching names against text.
- * The model names the person as the speaker referred to them; the service then
- * resolves that to a participant id and DROPS anything that does not resolve.
- */
-export const WORK_MENTION_PROMPT = `From ONE person's check-in transcript, find every place they referred to work connected to ANOTHER named person.
-
-For each one give:
-- personName: the other person's name, exactly as the speaker said it.
-- kind: one of
-  CREDIT - the speaker says this other person did something, moved something, or unblocked them. Crediting them.
-  COVERAGE - the speaker describes doing work that sounds like it belongs to the other person, or picking something up on their behalf.
-  BLOCKED_BY - the speaker says they are waiting on or held up by this other person.
-- text: the short piece of the speaker's own words that shows it.
-
-Only include a reference to a real named person. Do not include the speaker themselves. Do not include organisations, teams, or customers. If the speaker mentions someone with no work attached ("I spoke to Dana"), that is not a work mention.
-
-Be conservative. An empty list is a correct answer.`;
-
-export const WORK_MENTION_SCHEMA = {
-  name: 'emit_work_mentions',
-  description: "Emit references in this person's account to another person's work.",
-  input_schema: {
-    type: 'object',
-    properties: {
-      mentions: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            personName: { type: 'string' },
-            kind: { type: 'string', enum: ['CREDIT', 'COVERAGE', 'BLOCKED_BY'] },
-            text: { type: 'string' },
-          },
-          required: ['personName', 'kind', 'text'],
-        },
-      },
-    },
-    required: ['mentions'],
-  },
-};
 
 /**
  * DO THESE TWO VIEWS CONNECT? GW-EXP-3.
@@ -1997,17 +1908,15 @@ export const ALIGNMENT_SCHEMA = {
  * remark is worse than a missing one: it becomes a thing somebody is measured against that nobody
  * actually said.
  */
-export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING this check-in, capture two things.
+/**
+ * HOW AN AIM IS READ: one plain sentence about whoever holds it, the number only where they said one, one aim per thing they are after.
+ * One home for the rules: the conversation's assessment reads the aims by them (THE_ASSESSMENT_PROMPT's `targets`).
+ */
+export const READ_THE_AIMS = `   One item per aim, keeping what they said it is for.
 
-Anything under THEY ATTACHED "filename" is a document they gave us, and it counts as theirs the same as a sentence they typed. A sheet of names and numbers is where a manager usually keeps the targets, so read it for them.
+   - aim: the aim as one plain, full sentence about whoever holds it, by name. It is read on its own beside the other aims, by the speaker and by everybody else on the check-in, so somebody who reads only this sentence should know who is aiming at what. "Bisi is aiming for 40 approved facilities this quarter", "The team is aiming for 500 trucks sold by the end of the year". Not "Sales objective", not "Sell 500 trucks" and not "approved facilities".
 
-The first line, THE PERSON SPEAKING, gives the name of the person who said all of this.
-
-1. groundAims: what this check-in as a whole is aiming at, keeping what they said it is for. One entry per aim.
-
-   - name: the aim as one plain, full sentence about whoever holds it, by name. It is read on its own beside the other aims, by the speaker and by everybody else on the check-in, so somebody who reads only this sentence should know who is aiming at what. "Bisi is aiming for 40 approved facilities this quarter", "The team is aiming for 500 trucks sold by the end of the year". Not "Sales objective", not "Sell 500 trucks" and not "approved facilities".
-
-     Never "I", "we", "my", "the person" or "the speaker": the speaker is called by their first name, from THE PERSON SPEAKING. "I stop being invited to every single call" is "Nadia stops being invited to every single call". Where the aim is the whole team's, say "The team".
+     Never "I", "we", "my", "the person" or "the speaker": the speaker is called by their first name, as the first line gives it. "I stop being invited to every single call" is "Nadia stops being invited to every single call". Where the aim is the whole team's, say "The team".
 
      Write every number the way a person reads it: "120 million naira", not "N120m" or "120000000"; "254,000", not "254k".
 
@@ -2030,11 +1939,18 @@ The first line, THE PERSON SPEAKING, gives the name of the person who said all o
    are genuinely different stay as two.
 
    Only what they actually said it is for. If they never said, return an empty list.
+`;
 
-2. theirOwnTarget: the number the SPEAKER said they themselves are aiming at, where they said one for themselves.
+export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING this check-in, capture two things. What the check-in as a whole is aiming at is read by the conversation's assessment, not here.
+
+Anything under THEY ATTACHED "filename" is a document they gave us, and it counts as theirs the same as a sentence they typed. A sheet of names and numbers is where a manager usually keeps the targets, so read it for them.
+
+The first line, THE PERSON SPEAKING, gives the name of the person who said all of this.
+
+1. theirOwnTarget: the number the SPEAKER said they themselves are aiming at, where they said one for themselves.
 
    "150 each and i have a target of 50" is 150 for each of the others and 50 for the speaker. That
-   line was read live and the 50 was dropped: the whole of section 3 below is about other people, so
+   line was read live and the 50 was dropped: the whole of section 2 below is about other people, so
    a lead's own number had nowhere to go and was the only one on the board that went missing.
 
    - name: one plain, full sentence about the speaker by their first name, saying what the number is for. "Bisi is aiming for 50 contracts", not "Contracts".
@@ -2043,7 +1959,11 @@ The first line, THE PERSON SPEAKING, gives the name of the person who said all o
    Leave it out entirely where they did not give themselves one. A lead who sets targets for a team
    and none for themselves is a normal thing and not a gap.
 
-3. expectations: for each OTHER person they named, what they said they expect of that person.
+   - corrects: where their targets on record are listed and this number is a new number for one of
+     them ("My target is actually 30 units, not 10", or a target they changed), the id of that one.
+     Leave it out when it is a target of a different thing.
+
+2. expectations: for each OTHER person they named, what they said they expect of that person.
    - personName: the other person's name exactly as the speaker said it.
    - expectation: what they expect of that person, as a STANDALONE STATEMENT OF THE WORK. Keep their
      wording - concrete where they were concrete, and never paraphrased into something sharper than
@@ -2057,8 +1977,8 @@ The first line, THE PERSON SPEAKING, gives the name of the person who said all o
      group. A lead said exactly that - "150 each and i have a target of 50" - and what was stored was
      one aim with no numbers at all. Split it. Their own number goes on their own name.
 
-     Leave it out where no number was said for that person. A total for the whole group belongs in
-     groundAims, not here.
+     Leave it out where no number was said for that person. A total for the whole group is the
+     team's aim, not one person's, and does not go here.
 
    - awareness: whether that person has been told, on the speaker's own account.
        TOLD - the speaker says they have told them, and can say roughly when or how.
@@ -2243,131 +2163,19 @@ export const THEY_SAY_HAPPENED_SCHEMA = {
   },
 } as const;
 
-export const PROGRESS_PROMPT = `You are given a person's check-in and the promises already on their record.
-
-Find what they said they have DONE against those promises. Nothing else.
-
-For each one:
-   - promise: the promise it is about, copied exactly from the list you were given.
-   - whatTheyDid: what they said they did, in their own words, one sentence.
-   - finished: true ONLY if they plainly said the whole promise is complete.
-
-RULES.
-Only against a promise on the list. If it matches none of them, leave it out.
-Only what they say they DID. A plan is not progress. "I am going to" and "I will" are not this.
-Started is not finished. Half of it is not finished. "Nearly there" is not finished.
-If they described doing some of it, record that as progress with finished false. That is the common case.
-Never infer that something is finished because time has passed or because they sound positive.
-Do not turn a difficulty into progress, and do not turn progress into a difficulty.
-Be conservative. An empty list is a correct answer and usually the right one.`;
-
-export const PROGRESS_SCHEMA = {
-  name: 'emit_progress',
-  description: 'What the person says they did against their own promises.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      progress: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            promise: { type: 'string' },
-            whatTheyDid: { type: 'string' },
-            finished: { type: 'boolean' },
-          },
-          required: ['promise', 'whatTheyDid'],
-        },
-      },
-    },
-    required: ['progress'],
-  },
-} as const;
-
-export const OWN_PROMISE_PROMPT = `You are reading one person's check-in and writing down the promises they made about their OWN work.
-
-Return only things THIS PERSON said THEY would do. Their words, not a tidier version of them.
-
-For each one:
-   - promise: what they said they would do, in their own words, one sentence.
-   - kind:
-       TODO - something they will do, done or not.
-       COMMITMENT - a to-do a NAMED OTHER PERSON on this check-in is waiting on. Put that person in owedTo.
-       TARGET - a number has to cross a line. "Three proposals", "£150k of pipeline".
-       GOAL - a direction judged rather than counted, over a period.
-   - check: how anybody would know it had happened.
-       DONE_OR_NOT, A_NUMBER, A_JUDGEMENT, or NOT_CHECKABLE.
-   - dueKind: A_DATE if they named a day or deadline, A_CYCLE for a quarter or sprint, STANDING if
-     it has no end, NOT_SAID if they did not say.
-   - dueSaid: their own words for the deadline - "Thursday", "end of October". Empty otherwise.
-   - owedTo: for COMMITMENT only, the name of the person waiting on it. Empty otherwise.
-   - target and measure: ONLY when the promise is checked by a number and that number is
-     unambiguous. "Three proposals" is target 3, measure "proposals". "£150k of pipeline" is target
-     "150k", measure "pipeline". Leave BOTH empty for anything judged rather than counted, and for
-     a number you had to work out - a promise nobody stated as a number does not become one here.
-
-RULES.
-Only what they said about their own work. Never what they expect of somebody else - that is not theirs to set.
-Never sharpen a vague promise. "I will get on top of the pipeline" is what it says, and its check is A_JUDGEMENT.
-NOT_CHECKABLE IS A REAL ANSWER. If nothing they said could be checked, say so rather than inventing a measure.
-A wish is not a promise. "It would be good to have three proposals out" is not "I will produce three proposals".
-An aim they set for their own number IS a promise, and it is a TARGET: "I am aiming for 3 shops in Kilimani" is target 3, measure "shops in Kilimani".
-Something they said they had ALREADY done is not a promise. It belongs to the record of what happened, not to this.
-Do not turn a worry or a complaint into a commitment.
-Be conservative. An empty list is usually correct.`;
-
-export const OWN_PROMISE_SCHEMA = {
-  name: 'emit_own_promises',
-  description: 'What the person said they themselves will do.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      promises: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            promise: { type: 'string' },
-            kind: { type: 'string', enum: ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'] },
-            check: { type: 'string', enum: ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'] },
-            dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
-            dueSaid: { type: 'string' },
-            owedTo: { type: 'string' },
-            target: { type: 'string' },
-            measure: { type: 'string' },
-          },
-          required: ['promise', 'kind', 'check', 'dueKind'],
-        },
-      },
-    },
-    required: ['promises'],
-  },
-} as const;
-
 export const EXPECTATION_SCHEMA = {
   name: 'emit_expectations',
-  description: "Emit what the lead said this check-in is aiming at, and what they expect of each named person.",
+  description: "Emit the lead's own number and what they expect of each named person.",
   input_schema: {
     type: 'object',
     properties: {
-      groundAims: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            name: { type: 'string', description: 'The aim as one plain, full sentence about whoever holds it, by first name, or "The team". Never "I", "we", "the person" or "the speaker", never a heading and never a fragment. Numbers as a person reads them: "120 million naira", "254,000".' },
-            target: { type: 'number', description: 'The number they are aiming at. Omit where no number was said.' },
-            by: { type: 'string', description: 'When it should be true by, in their words. Omit where not said.' },
-          },
-          required: ['name'],
-        },
-      },
       theirOwnTarget: {
         type: 'object',
         description: "The number the speaker said they themselves are aiming at. Omit where they gave themselves none.",
         properties: {
           name: { type: 'string', description: 'One plain, full sentence about the speaker by first name, saying what the number is for. "Bisi is aiming for 50 contracts", not "Contracts".' },
           target: { type: 'number' },
+          corrects: { type: 'string', description: 'The id of their target on record this is a new number for, where it is one. Omit for a target of a different thing.' },
         },
         required: ['name', 'target'],
       },
@@ -2453,7 +2261,7 @@ export const EXPECTATION_SCHEMA = {
         },
       },
     },
-    required: ['groundAims', 'expectations'],
+    required: ['expectations'],
   },
 };
 
@@ -3019,9 +2827,37 @@ That last question matters: a target quietly rewritten is not progress, and it i
 
 BE SPECIFIC: "things are busy" is not an answer. A named obstacle, a named person waiting, a number that moved or did not.
 
-KEEP IT SHORT: about five minutes. This is a standing read, not a deep account - it earns its value by happening every week, so it must never feel like a review.
-
 RECORD: The record should show what this person owns and is working to, what moved against it since last time, what is stuck and on whom, and any change to the target itself and who agreed it. Across sessions the useful signal is the same thing stuck three reads running, and work that is busy but not against anything anyone agreed.`;
+
+/**
+ * COLLECT WHAT'S OWED (COLLECTIONS, release plan, Release 2). Reached only where the organisation's Release 2 switch is on, and
+ * only by a new check-in. It is the recurring read's shape (PULSE_CHECK_PACK) about named bills: the exception the release plan
+ * allows the conversation is what it gathers, so it asks about each open bill by name for what the collections board will need,
+ * once each, and nothing else (release plan, Part 0 and Part 1A). No sales question is ever asked here.
+ */
+const COLLECTIONS_PACK = `MOMENT: A regular read on what is owed and whether it is being paid.
+
+PURPOSE: The lead wants to know which bills are due, why each one is due, what has been paid with proof, and what is in the way. A bill is whatever this organisation calls it: an invoice, a fee note, or a loan repayment. Use the word the person uses.
+
+WHO ANSWERS: either the people who follow up the clients who owe, or the people who owe, checking in for themselves. Read which from the context and from what they say, and speak to them as that.
+
+FIRST SESSION - ESTABLISH WHAT THIS PERSON FOLLOWS UP OR OWES. Ask which bills are theirs, by name: the client or the matter, and the amount of each.
+
+EVERY SESSION - FOR EACH OPEN BILL, BY NAME, ONLY WHAT IS MISSING:
+- the amount, in full, not a part of it;
+- what makes it due: a date, or an event (for example a filing or a hearing), and whether that has happened;
+- what has been paid, and the proof of it: a record in the accounting system, a bank slip or a mobile money message;
+- any date the client promised to pay by, in the client's own words;
+- what is in the way, in their own words.
+Ask once per missing item. Never ask again for what is already on record.
+
+PAID MEANS PROOF. A payment somebody says came in, with no record, is what they said, not paid. Ask for the record once, and if there is none, keep it as said.
+
+A PROMISE IS THE PROMISE OF WHOEVER MADE IT. A client's promise to pay belongs to that bill, not to the person checking in. The person checking in is responsible only for what they said they would do.
+
+NEVER RAISE OR WRITE A BILL. Groundwork does not raise or draft a bill. If a bill should have gone out and did not, record that, and who would raise it.
+
+RECORD: The record should show each bill this person follows up or owes, by name, with its amount, what makes it due, what has been paid and the proof, any promised date in the client's words, what is in the way, and what this person said they would do next, with its day.`;
 
 /**
  * GET UPDATES FROM YOUR TEAM. THE LIGHTEST SITUATION IN THE PRODUCT, AND THE ONLY ONE WHERE THE
@@ -3072,8 +2908,8 @@ EVERY LATER PERIOD, OPEN FROM THE LAST ONE: "Last time you said X. What has move
 standing update is the difference between two of them, and a period that reads as though the last
 one never happened throws that away.
 
-TWO TO FOUR EXCHANGES IS THE WHOLE SESSION. It is an update, not an interview. Close as soon as you
-have their answer and something checkable in it, or their honest word that there is nothing yet.`;
+IT IS AN UPDATE, NOT AN INTERVIEW. Offer to wrap up once you have their answer and something checkable
+in it, or their honest word that there is nothing yet.`;
 
 const SNAPSHOT_PACK = `MOMENT: One honest read from everyone, once.
 
@@ -3551,6 +3387,7 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   SNAPSHOT: SNAPSHOT_PACK,
   DISCOVERY: DISCOVERY_PACK,
   TEAM_UPDATES: TEAM_UPDATES_PACK,
+  COLLECTIONS: COLLECTIONS_PACK,
   REALIGN_TEAM: REALIGN_TEAM_PACK,
   OPEN_READ: OPEN_READ_PACK,
   PIP: PIP_PACK,
@@ -3774,6 +3611,10 @@ function theScenariosOwnPack(
     case GroundScenario.TEAM_UPDATES:
       return TEAM_UPDATES_PACK;
 
+    /* The same pack for both sides: the lead follows up bills too, and the board reads everybody's bills the same way. */
+    case GroundScenario.COLLECTIONS:
+      return COLLECTIONS_PACK;
+
     case GroundScenario.REALIGN_TEAM:
       return REALIGN_TEAM_PACK;
 
@@ -3899,6 +3740,8 @@ export interface PromptContext {
   // it is asking the person to commit to - the cadence was agreed at setup and
   // the model was never told what it was.
   cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL' | null;
+  /** The weekdays a weekly check-in meets on, when more than one (Ground.cadenceDays): "twice a week, on Monday and Thursday". */
+  cadenceDays?: number[] | null;
   /**
    * How long the run is, in days. Passed so the engine can tell a fortnight from a year: without it,
    * "reaching an end" and "at the start" read identically on a two-week ground.
@@ -4056,6 +3899,7 @@ function resolveRelationshipHistory(
     case GroundScenario.OKR_ALIGNMENT:
     case GroundScenario.WORKPLAN_BUDGET:
     case GroundScenario.PULSE_CHECK:
+    case GroundScenario.COLLECTIONS:
     case GroundScenario.REALIGN_TEAM:
     case GroundScenario.BOARD_STRATEGY:
     case GroundScenario.COHORT_CHECK:
@@ -4085,6 +3929,7 @@ function relationshipTypeFromScenario(scenario: GroundScenario): string {
     case GroundScenario.OKR_ALIGNMENT: return 'okr_alignment';
     case GroundScenario.WORKPLAN_BUDGET: return 'workplan_budget';
     case GroundScenario.PULSE_CHECK: return 'pulse_check';
+    case GroundScenario.COLLECTIONS: return 'collections';
     case GroundScenario.REALIGN_TEAM: return 'team_realignment';
     case GroundScenario.BOARD_STRATEGY: return 'board_strategy';
     case GroundScenario.COHORT_CHECK: return 'cohort_member';
@@ -4214,7 +4059,10 @@ One opening block. One question. Wait for a response before asking anything else
   return withTheScenarioUnderneath(`SESSION ${sessionNumber} CONTINUITY: Open with one statement naming what is in the record and what is not. Then ask one question: "Before the report is prepared - is there anything in the record that is not fully captured yet that you want to name now?" One statement. One question.`);
 }
 
-function cadenceLabel(cadence: PromptContext['cadence']): string {
+function cadenceLabel(cadence: PromptContext['cadence'], days: number[] | null | undefined): string {
+  /* Twice or more a week, said with its days, the one wording the server uses (assessment test, 2 November). */
+  const often = timesAWeekInWords({ cadence, days });
+  if (often) return often;
   switch (cadence) {
     case 'DAILY': return 'daily';
     case 'WEEKLY': return 'weekly';
@@ -4402,6 +4250,7 @@ export function registerFor(scenario: GroundScenario): string {
       );
     case GroundScenario.SNAPSHOT:
     case GroundScenario.PULSE_CHECK:
+    case GroundScenario.COLLECTIONS:
     /* Two minutes of somebody's day, answering one question from their own manager. If any register
        in this file must not read as a form, it is this one. */
     case GroundScenario.TEAM_UPDATES:
@@ -4499,7 +4348,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
       moment: ctx.moment ?? null,
       timelineDays: ctx.timelineDays ?? null,
     }),
-    `CADENCE: ${cadenceLabel(ctx.cadence)}`,
+    `CADENCE: ${cadenceLabel(ctx.cadence, ctx.cadenceDays)}`,
     `RESOLUTION_STATE: ${ctx.resolutionState ?? 'not yet defined'}`,
     /*
      * A TARGET WORDED AS A SENTENCE IS SAID AS ONE (decision 69). The check-in passes each target as a
@@ -5154,76 +5003,14 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: IDEA_SPOTTING_KEY, content: THE_IDEA_SPOTTING_PROMPT },
   /* What reads a check-in for patterns (decision 128): the version stored here is the one that runs, and each pattern records which one read it. */
   { key: PATTERN_DETECTION_PROMPT_KEY, content: PATTERN_DETECTION_PROMPT },
-  /* A person's first check-in also learns their job (decision 129): what the conversation is told, and what reads their words afterwards. The version stored is the one that runs. */
+  /* A person's first check-in also learns their job (decision 129): what the conversation is told. What they said is read from the conversation's assessment. The version stored is the one that runs. */
   { key: FIRST_CHECK_IN_ROLE_KEY, content: FIRST_CHECK_IN_ROLE_PROMPT },
-  { key: ROLE_READING_KEY, content: ROLE_READING_PROMPT },
   /* The judgement over a check-in's people (change 4): seeded, so the version stored is the one that runs and the judgement's promptVersionId names it. Filled with fillTheJudgement, as the code text is. */
   { key: THE_JUDGEMENT_ROOM_KEY, content: theRoomJudgementTemplate() },
+  /* What a sales check-in gathers for the board (Hafsah, 16 October 2026): the version stored here is the one that runs, and the turn hands its id back. */
+  { key: SALES_CHECK_IN_GATHERS_KEY, content: SALES_CHECK_IN_GATHERS_PROMPT },
   ...buildPartySeeds(),
 ];
-
-/**
- * WHAT THIS SESSION SHOWED, AGAINST THIS PERSON'S OWN ROLE MAP. (G42)
- *
- * The coaching machine can hold state, offer one step and shrink it when it does
- * not land, and none of that is worth anything without an honest answer to "did
- * this session actually show one of these behaviours". This is that answer, and it
- * is a model call for the same reason record extraction is: the question is about
- * meaning, and a regex over a transcript cannot tell "I did the demo myself
- * because they were not ready" from "I did the demo myself again".
- *
- * THE DEFAULT IS NONE, and the prompt says so three times, because a model asked
- * to pick from a list will pick from the list. Most sessions show nothing, and a
- * coach that finds something every week is a product with an opinion about you
- * every week.
- *
- * THE REASON IS QUOTED FROM THE TRANSCRIPT, in the person's own terms. Without it
- * the step arrives as a verdict, and the machine refuses to offer a step with no
- * reason precisely so this cannot be skipped.
- */
-export const COACHING_OBSERVATION_PROMPT = `You are reading ONE person's check-in transcript against a list of behaviours for their kind of work.
-
-Your job is to say whether the transcript SHOWS one of the listed behaviours, and if so which one and why.
-
-RULES.
-1. The normal answer is none. Most check-ins show none of these. Answer none unless the transcript plainly shows one.
-2. Never pick the closest match. If nothing plainly fits, answer none.
-3. The reason must come from what the person actually said, in their own terms, in one sentence. No reason means answer none.
-4. You are describing what a session showed, never what a person is. Do not write anything about their character, attitude or ability.
-5. If the transcript shows the person doing the opposite - handling the thing well - answer none. This list is only used to offer help, and there is nothing to help with.
-6. If the person is describing a step they were asked to try last session, say what became of it: done, not done, did more, or sideways (they addressed it a different way). Otherwise leave that empty.
-7. If the person is ASKING FOR the very thing the paired success behaviour describes, or says they want it, or is already trying it, set theyAskedForThisThemselves true. Somebody who says "I want Eli to review my PRs again" must not be told to bring reviewers in.
-
-Return JSON only.`;
-
-export const COACHING_OBSERVATION_SCHEMA = {
-  name: 'emit_coaching_observation',
-  description: 'Which behaviour from the supplied list the transcript shows, if any, with the reason in the person\'s own terms, and what became of the last step.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      index: {
-        type: ['integer', 'null'],
-        description: 'Zero-based position in the supplied behaviour list, or null for none. Null is the normal answer.',
-      },
-      reason: {
-        type: ['string', 'null'],
-        description: "One sentence from what the person said, in their own terms. Null if index is null.",
-      },
-      theyAskedForThisThemselves: {
-        type: 'boolean',
-        description: 'True if the person themselves asked for, wants, or is already trying to do the paired success behaviour. A step must never tell somebody to do the thing they just asked for.',
-      },
-      lastStepOutcome: {
-        type: ['string', 'null'],
-        enum: ['done', 'not done', 'did more', 'sideways', null],
-        description: 'Only when the transcript says what became of a step they were asked to try. Otherwise null.',
-      },
-    },
-    required: ['index', 'reason', 'lastStepOutcome'],
-  },
-} as const;
-
 
 /**
  * A DOCUMENT HAS TO CHANGE SOMETHING.

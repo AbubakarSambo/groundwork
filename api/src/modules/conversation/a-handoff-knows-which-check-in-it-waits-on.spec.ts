@@ -1,6 +1,7 @@
 import { DependencyStatus } from '@prisma/client';
 import { ConversationService } from './conversation.service';
 import { theCheckInItWaitsOn } from './which-check-in-it-waits-on';
+import { anAssessmentHolding } from './an-assessment-for-a-spec';
 
 /**
  * REQUEST 18 (a) AND THE FIRST HALF OF (b): A HANDOFF NAMES THE OTHER CHECK-IN IT WAITS ON ONLY WHEN
@@ -47,6 +48,8 @@ describe('the handoff the conversation records', () => {
   const scaffold = (said: { dependencies: any[] }, others = [sales, finance, ops], transcript = 'PERSON: I am waiting on Finance for credit terms for Westgate Deli. They said by Friday.') => {
     const created: any[] = [];
     const prisma: any = {
+      /* The waits come from the conversation's assessment now (one source, 1 November 2026), not a call of the writer's own. */
+      checkIn: { findUnique: async () => ({ completedAt: new Date('2026-11-16T09:00:00Z'), sessionReport: anAssessmentHolding({ blockers: said.dependencies }) }) },
       ground: {
         findUnique: async () => ({ mode: 'SHARED', scenario: 'OKR_ALIGNMENT', organizationId: 'org-baridi', participants: [{ id: 'p-miriam', email: 'miriam@baridi.test', user: { firstName: 'Miriam', lastName: 'Wanjiku' } }] }),
         findMany: async () => others,
@@ -63,7 +66,7 @@ describe('the handoff the conversation records', () => {
     };
     const svc = Object.create(ConversationService.prototype) as any;
     svc.prisma = prisma;
-    svc.anthropic = { extract: async () => said };
+    svc.anthropic = { extract: async () => { throw new Error('the waits are read from the assessment, never a call of their own'); } };
     svc.events = { emit: () => {} };
     svc.logger = { log: () => {}, warn: () => {} };
     svc.prompts = { getActive: async () => { throw new Error('none'); } };
@@ -112,5 +115,35 @@ describe('the handoff the conversation records', () => {
     await svc.extractDependencies('c1', 'p-other', 'sales');
     expect(created[0].waitingOnGroundId).toBeNull();
     expect(DependencyStatus.WAITING).toBe('WAITING');
+  });
+
+  /*
+   * A COLLEAGUE NAMED AS THE LABEL IS THAT COLLEAGUE (polish round 15, F4). Brian's wait was kept on the label "Njeri", not on Njeri,
+   * so when Njeri said "I recorded the FN-004 payment today." nothing could end it, and Wanjiru's board said for a week "Brian Otieno
+   * has been waiting on Njeri for the record of what has been paid".
+   */
+  it('a wait whose label is the name of somebody in the check-in is on that person', async () => {
+    const { svc, created } = scaffold({ dependencies: [{ ...finance18, onLabel: 'Miriam' }] });
+    await svc.extractDependencies('c1', 'p-other', 'sales');
+    expect(created[0].onParticipantId).toBe('p-miriam');
+    expect(created[0].onLabel).toBeNull();
+  });
+
+  /*
+   * A WAIT IS DATED FROM THEIR OWN "SINCE" (assessment test, 2 November). Aisha said on 16 November that she asked Wanjiru for the
+   * write-off sign-off on 5 November, and the board said "waiting since 16 November", the day of the session.
+   */
+  it('is dated from the day they said it started, and from the session only when they did not say', async () => {
+    const since = scaffold({ dependencies: [{ ...finance18, since: 'on 5 November', sinceDay: '2026-11-05' }] });
+    await since.svc.extractDependencies('c1', 'p-miriam', 'sales');
+    expect(since.created[0].createdAt.toISOString().slice(0, 10)).toBe('2026-11-05');
+
+    const unsaid = scaffold({ dependencies: [finance18] });
+    await unsaid.svc.extractDependencies('c1', 'p-miriam', 'sales');
+    expect(unsaid.created[0].createdAt.toISOString().slice(0, 10)).toBe('2026-11-16');
+
+    const later = scaffold({ dependencies: [{ ...finance18, sinceDay: '2026-11-20' }] });
+    await later.svc.extractDependencies('c1', 'p-miriam', 'sales');
+    expect(later.created[0].createdAt.toISOString().slice(0, 10)).toBe('2026-11-16');
   });
 });

@@ -107,7 +107,11 @@ export function onboardingIsReady(got: WhatSetupGot, scenario?: string | null): 
    * does not cost anything to make.
    */
   void scenario;
-  return !!(got.mode && got.initial && got.decision);
+  /* WHY NOW DOES NOT HOLD SETUP OPEN (first experience, round 2, 31 October 2026). A sales lead answered "We are behind on our
+     quarterly target" and was asked what makes this the right time three more times: the extraction read her answer as a
+     restatement, the gate stayed shut, and the block that lists what is missing told the model to ask again each turn, over
+     "twice is enough". Setup's instructions still ask it once; its answer is kept when given. */
+  return !!(got.mode && got.initial);
 }
 
 /** What setup never got, named for the log and for the block that tells the model what is missing. */
@@ -115,7 +119,6 @@ export function whatSetupNeverGot(got: WhatSetupGot, scenario?: string | null): 
   const missing: string[] = [];
   if (!got.mode) missing.push('what kind of situation this is');
   if (!got.initial) missing.push('what it is about');
-  if (!got.decision) missing.push('what makes now the right time');
   if (!theAimIsSettled(got, scenario)) missing.push('an aim to read the work against');
   return missing;
 }

@@ -1,6 +1,6 @@
 import { CheckInStatus, PartyType } from '@prisma/client';
 import { checksInOnlyWhenTheyChoose, whoASessionCounts } from './the-lead-checks-in-when-they-choose';
-import { whoIsExpected, whoIsInTheRound, howManyOfThemAnswered } from '../reports/how-many-have-answered';
+import { whoHasAnswered, whoIsInTheRound } from '../reports/how-many-have-answered';
 import { whoIsLeftToCheckIn } from '../email/who-has-not-checked-in-yet';
 import { whoIsStillExpected } from '../conversation/the-last-one-we-are-waiting-for';
 import { whyNotNudge } from '../conversation/who-is-worth-nudging';
@@ -22,14 +22,15 @@ const brian = (checkIns: any[] = []) => ({ id: 'p-brian', partyType: PartyType.P
 describe('the lead checks in when they choose', () => {
   it('is never waited on in a session she skipped, in the first round or any later one', () => {
     for (const n of [1, 2, 5]) {
-      expect(whoIsExpected([wairimu(), brian()] as any, n).map((p: any) => p.id)).toEqual(['p-brian']);
+      expect(whoHasAnswered([wairimu(), brian()] as any, n).onTheCheckIn).toEqual(['p-brian']);
       expect(whoIsInTheRound([wairimu(), brian()] as any, n).map((p: any) => p.id)).toEqual(['p-brian']);
     }
-    expect(howManyOfThemAnswered([wairimu(), brian(answered(2))] as any, 2)).toMatchObject({ answered: 1, expected: 1, waitingOn: [] });
+    /* The one count (1 November 2026). */
+    expect(whoHasAnswered([wairimu(), brian(answered(2))] as any, 2)).toMatchObject({ answered: ['p-brian'], onTheCheckIn: ['p-brian'], notYet: [] });
   });
 
   it('counts in a session\'s numbers when she checked in that session', () => {
-    expect(howManyOfThemAnswered([wairimu(answered(3)), brian()] as any, 3)).toMatchObject({ answered: 1, expected: 2, waitingOn: ['p-brian'] });
+    expect(whoHasAnswered([wairimu(answered(3)), brian()] as any, 3)).toMatchObject({ answered: ['p-wairimu'], onTheCheckIn: ['p-wairimu', 'p-brian'], notYet: ['p-brian'] });
     expect(whoIsInTheRound([wairimu(answered(3)), brian()] as any, 3).map((p: any) => p.id)).toEqual(['p-wairimu', 'p-brian']);
   });
 

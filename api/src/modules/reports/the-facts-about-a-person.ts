@@ -1,3 +1,5 @@
+import { numbersWithUnits } from '../conversation/what-does-not-add-up';
+import { theCustomerALineIsAbout } from '../board/a-deals-units-are-not-a-target';
 /**
  * WHAT THE RECORD HOLDS ABOUT ONE PERSON, AS FACTS RATHER THAN AS A PARAGRAPH.
  *
@@ -31,6 +33,12 @@ export interface APersonToWriteUp {
   isLead: boolean;
   said: AThingOnRecord[];
   targets: ATargetTheyHold[];
+  /**
+   * On a sales check-in, the customers on record and the first names of the people in it (what-does-not-add-up's `customers` and
+   * `people`): a figure about one customer is only set against a figure about the same customer. Absent everywhere else.
+   */
+  customers?: string[] | null;
+  people?: string[];
 }
 
 /** One number this person holds, and where it came from. */
@@ -183,9 +191,28 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
   const withNumber = progress.filter((s) => carriesANumber(s.text));
   const stand = latest(withNumber) ?? latest(progress);
   /* And the figure they gave before it, where it differs. See the field's note. */
-  const nowSays = new Set(stand ? theNumbersIn(stand.text) : []);
+  /*
+   * EVERYTHING SAID IN THAT LATEST SESSION IS WHAT THEY SAY NOW (engine test, Drop Access). Kevin said "Kilele Hotel bought 40 units"
+   * in sessions 2, 3, 4 and 6, and in session 6 also gave a 6-unit sale. Only the 6-unit line was read as now, so the 40 from session 4
+   * was handed over as an earlier figure, and the team report said "the 40-unit sale is no longer mentioned". A figure said again in
+   * the latest session is not an earlier one.
+   */
+  /* Counts, not money: "40 units, KES 200,000" said again as "40 units" is the same count said again. */
+  const counts = (t: string): number[] => {
+    const withoutMoney = String(t ?? '').replace(/\b(?:KES|KSh|Ksh|NGN|USD|GHS|ZAR|TZS|UGX|RWF)\s?\d[\d,]*(?:\.\d+)?\s*(?:k|m|million|thousand)?/gi, ' ');
+    const c = numbersWithUnits(withoutMoney).filter((n) => n.unit !== 'money' && n.unit !== 'percent').map((n) => n.value);
+    return c.length ? c : theNumbersIn(t);
+  };
+  const nowSays = new Set(stand ? withNumber.filter((s) => s.session === stand.session).flatMap((s) => counts(s.text)) : []);
+  /*
+   * ONE CUSTOMER'S FIGURE IS NEVER AN EARLIER FIGURE FOR ANOTHER CUSTOMER (engine test, second run, Drop Access). On a sales check-in,
+   * Kevin's "Ngong Road Minimart wants 5 units" on Friday was handed over beside "I sent Ali the quote for KES 25,000" and, before that,
+   * "Savannah Cafe is a go! Jane said yes to 6 units": three deals, read as one figure changing. The earlier figure is only one about
+   * the same customer as where they stand now.
+   */
+  const aboutWhom = (t: string) => (p.customers ? theCustomerALineIsAbout(t, p.customers) ?? '' : '');
   const earlier = stand
-    ? latest(withNumber.filter((s) => s.session < stand.session && theNumbersIn(s.text).some((n) => !nowSays.has(n))))
+    ? latest(withNumber.filter((s) => s.session < stand.session && counts(s.text).some((n) => !nowSays.has(n)) && aboutWhom(s.text) === aboutWhom(stand.text)))
     : undefined;
 
   /*
@@ -259,7 +286,14 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
     numbers.push({ what: clean(t.name), target: t.target as number, soFar: t.count ?? null, setBy: 'them' });
   }
 
-  const diffs = whatDoesNotAddUp({ said, thisSession, targets: p.targets, sessionsLeft: null, aiTurnsThisSession: [] });
+  /*
+   * ON A SALES CHECK-IN, ONE CUSTOMER'S UNITS ARE THAT DEAL'S (engine test, second run, Drop Access, Thursday 15 October). Without the
+   * customers, Kevin's "The Kilele Hotel order is for 40 units." on Monday was set against "Ngong Road Minimart is 5 units." on Thursday,
+   * and handed to the report as "That is 40 units then 5: down 88%". Every rep then read "The record shows Kevin Omondi's sales at 40
+   * units, but this has been revised down to 5", and Grace's board said "This means Kevin Omondi's reporting has been inaccurate". The
+   * same customers the synthesis is already given (whatDoesNotAddUpPerPerson), so a figure is only set against the same customer's.
+   */
+  const diffs = whatDoesNotAddUp({ said, thisSession, targets: p.targets, sessionsLeft: null, aiTurnsThisSession: [], customers: p.customers ?? null, people: p.people ?? [] });
   const doesNotAddUp = diffs.slice(0, 2).map((d) => clean(d.lines[2] ?? d.lines[0] ?? '')).filter(Boolean);
 
   /* A difference between how the work runs and how it is supposed to run is something the lead

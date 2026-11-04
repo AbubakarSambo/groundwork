@@ -33,6 +33,8 @@ export interface GroundDocument {
    */
   numbersWaiting?: number
   theContextWeHave?: string | null
+  /** The block's first line ("Here is what I took from team-plan.txt."), one field, so a page that names the document can show the rest. */
+  theDocumentLine?: string | null
   /**
    * Who can read it. Absent on deployments with CONTEXT_ENABLED off, where every
    * document is private to its uploader and there is nothing to choose.
@@ -67,13 +69,21 @@ export const documentsApi = {
    * record of a conversation is taken on the uploader's word and the assumption is said back in the
    * response as `assumed` (product-owner decision, 11 September 2026). Kept so nothing breaks.
    */
-  upload: (groundId: string, file: File, consentConfirmed = false, uploaderNote?: string) => {
+  /** Read a file during setup, before a check-in exists: its text comes back, and nothing is stored. */
+  readForSetup: async (file: File): Promise<{ name: string; text: string }> => {
+    const form = new FormData()
+    form.append('file', file)
+    return (await apiClient.post<{ name: string; text: string }>('/documents/read', form, { headers: { 'Content-Type': 'multipart/form-data' } })).data
+  },
+  upload: (groundId: string, file: File, consentConfirmed = false, uploaderNote?: string, opts: { fromTheCheckIn?: boolean } = {}) => {
     const form = new FormData()
     form.append('file', file)
     if (consentConfirmed) form.append('consentConfirmed', 'true')
+    /* Release 1B: added in the person's own check-in, so the server may file it as evidence on its item. */
+    if (opts.fromTheCheckIn) form.append('fromTheCheckIn', 'true')
     /* What they want looked for in it. Optional, and kept in their words. */
     if (uploaderNote?.trim()) form.append('uploaderNote', uploaderNote.trim())
-    return apiClient.post<GroundDocument & { assumed?: string }>(`/grounds/${groundId}/documents`, form, {
+    return apiClient.post<GroundDocument & { assumed?: string; filedAsEvidence?: { on: string | null } }>(`/grounds/${groundId}/documents`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)
   },

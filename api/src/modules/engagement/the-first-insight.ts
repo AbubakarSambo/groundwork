@@ -2,6 +2,7 @@ import { aNumberInWords } from './a-number-in-words';
 import { saysTheSame } from './a-sentence-said-twice';
 import { theConversationWorthHavingSaying } from '../grounds/what-is-sent-in-simpler-words';
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
+import { A_LINE_WE_COULD_NOT_RESTATE } from '../reports/said-in-its-own-words';
 
 /**
  * THE FIRST MEANINGFUL INSIGHT IS IN THE MAIL (engagement spec section 7; section 36, journey 5).
@@ -28,6 +29,21 @@ export interface TheInsight {
 
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 
+/*
+ * WHAT EACH PERSON SAID, NEVER "YOUR ACCOUNT STATES" (Hafsah, 19 October, point 5: "Never ... 'your account states' to the person who
+ * runs it."). Grace's shared-picture email of Tuesday 13 October opened "Your account states that no sales have been confirmed with proof
+ * of payment, while Kevin Omondi's account states that a 40-unit sale has been closed and paid for". A person said it: "You said that no
+ * sales have been confirmed with proof of payment, while Kevin Omondi said that a 40-unit sale has been closed and paid for". For every
+ * reader, since "account" is never said about what a person said.
+ */
+const AN_ACCOUNT_VERB = '(?:states|says|shows|describes|reports|indicates|notes|mentions|claims)';
+export function whatEachPersonSaid(t: string): string {
+  return String(t ?? '')
+    .replace(new RegExp(`\\b((?:[A-Z][\\p{L}'’-]+)(?:\\s+[A-Z][\\p{L}'’-]+)*)['’]s accounts? ${AN_ACCOUNT_VERB}(?:\\s+that)?\\s+`, 'gu'), '$1 said that ')
+    .replace(new RegExp(`\\bYour accounts? ${AN_ACCOUNT_VERB}(?:\\s+that)?\\s+`, 'g'), 'You said that ')
+    .replace(new RegExp(`\\byour accounts? ${AN_ACCOUNT_VERB}(?:\\s+that)?\\s+`, 'g'), 'you said that ');
+}
+
 /** What the report names as still open, cleaned: no full stop or colon at its end, and not longer than a line. */
 export function anOpenThing(t: unknown): string | null {
   const x = String(t ?? '').replace(/\s+/g, ' ').trim().replace(/[.:;,\s]+$/, '');
@@ -36,13 +52,27 @@ export function anOpenThing(t: unknown): string | null {
   return x.length <= 400 ? x : `${x.slice(0, 400).replace(/\s+\S*$/, '')}...`;
 }
 
+/**
+ * A STAND-IN IS NEVER SAID AS A FINDING (engine test, second run, Muchemi & Co, Wednesday 14 October). A difference whose words could not
+ * be restated without repeating somebody's own is stored as "[One line here repeated somebody's exact words ...]", and Wanjiru's
+ * shared-picture email opened with that line, "[...], and one more difference is still open.". It still counts as a difference; it is
+ * never the one named, and where it is the only one, the mail says how many the picture found.
+ */
+export const isAStandIn = (t: string): boolean => {
+  const x = String(t ?? '').trim();
+  return x.includes(A_LINE_WE_COULD_NOT_RESTATE.slice(1, 40)) || /^\[[^\]]*\]\.?$/.test(x);
+};
+/** The things open, the ones that can be named first, so a stand-in is never the one said. */
+const nameableFirst = (open: string[]) => [...open.filter((t) => !isAStandIn(t)), ...open.filter(isAStandIn)];
+
 /** A thing the report names, as it is quoted. */
 export function aTopicQuoted(t: unknown): string | null {
   const x = anOpenThing(t);
   return x ? `"${x}"` : null;
 }
 
-const LOWER_AFTER_A_COMMA = /^(?:The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/;
+/* "You", "Your", "We", "They" and the other words that are not names too (messages test, 19 October, finding 8: In "Sales team, Q4", You and the team ...). */
+const LOWER_AFTER_A_COMMA = /^(?:The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its|You|Your|We|They|There|It|Everyone|Nobody|Each|Both|Some|All|No|None|Participants?)\b/;
 const lowerFirstOfAClause = (s: string) => (LOWER_AFTER_A_COMMA.test(s) ? `${s.charAt(0).toLowerCase()}${s.slice(1)}` : s);
 
 /**
@@ -72,29 +102,33 @@ const cutLabel = (label: string, max: number) => (label.length <= max ? label : 
  * The insight for one reader from the report they are served. Null where the report has nothing settled and nothing open yet (it is still forming, or
  * nobody has said enough to name either), so nothing is claimed.
  */
+/**
+ * The finding, and what to do about it, and nothing else. No count of things settled and still open, no "a conversation worth having"
+ * before the question, and "the report", never "the shared picture".
+ */
 export function theFirstInsight(report: any, label: string, reader: { isTheLead: boolean; simplerWords?: boolean | null }): TheInsight | null {
   const stand = report?.whereThingsStand;
   if (!stand || report?.withheldUntilYouAnswer) return null;
   const settled = Array.isArray(stand.settled) ? stand.settled.length : Number(stand.agreed) || 0;
-  const open: string[] = (Array.isArray(stand.differences) ? stand.differences : Array.isArray(stand.open) ? stand.open : []).map(anOpenThing).filter((t: string | null): t is string => !!t);
+  const open: string[] = (Array.isArray(stand.differences) ? stand.differences : Array.isArray(stand.open) ? stand.open : []).map(anOpenThing).filter((t: string | null): t is string => !!t).map(whatEachPersonSaid);
   if (settled === 0 && open.length === 0) return null;
 
   const lines: string[] = [];
   const name = cutLabel(label, 60);
-  if (open.length) lines.push(firstOpenSaid(name, open, true));
-  else lines.push(`${capital(aNumberInWords(settled))} ${settled === 1 ? 'thing' : 'things'} in "${name}" ${settled === 1 ? 'is' : 'are'} settled, and none are still open.`);
-  if (open.length) {
-    lines.push(
-      `${capital(aNumberInWords(settled))} ${settled === 1 ? 'thing is' : 'things are'} settled and ${aNumberInWords(open.length)} ${open.length === 1 ? 'is' : 'are'} still open.`,
-    );
-  }
-  const question = String(report?.theConversationWorthHaving ?? '').replace(/\s+/g, ' ').trim();
+  const ordered = nameableFirst(open);
+  const noneNameable = open.length > 0 && isAStandIn(ordered[0]);
+  const theCount = (l: string) => `The report for "${l}" found ${aNumberInWords(open.length)} ${open.length === 1 ? 'difference' : 'differences'} still open`;
+  if (open.length) lines.push(noneNameable ? `${theCount(name)}.` : firstOpenSaid(name, ordered, true));
+  else lines.push(`Nothing in the report for "${name}" is still open.`);
+  const question = whatEachPersonSaid(String(report?.theConversationWorthHaving ?? '').replace(/\s+/g, ' ').trim());
   /* What the report writes about one finding can say it in all three places; a line that repeats one already in the mail is left out (a-sentence-said-twice.ts). */
-  if (question && !lines.some((l) => saysTheSame(l, question))) lines.push(`${theConversationWorthHavingSaying(reader.simplerWords)} ${question}`);
+  if (question && !lines.some((l) => saysTheSame(l, question))) lines.push(/[.!?]$/.test(question) ? question : `${question}.`);
 
   if (reader.isTheLead && open.length) {
-    const first = (Array.isArray(stand.openWithReasons) ? stand.openWithReasons : [])[0];
-    const settledBy = String(first?.settledBy ?? '').replace(/\s+/g, ' ').trim();
+    /* What would settle the one named first, never a stand-in's. */
+    const reasons: any[] = Array.isArray(stand.openWithReasons) ? stand.openWithReasons : [];
+    const first = noneNameable ? null : reasons.find((r) => !isAStandIn(String(r?.topic ?? '')) && anOpenThing(r?.topic) === anOpenThing(ordered[0])) ?? reasons.find((r) => !isAStandIn(String(r?.topic ?? '')));
+    const settledBy = whatEachPersonSaid(String(first?.settledBy ?? '').replace(/\s+/g, ' ').trim());
     if (settledBy && lines.some((l) => saysTheSame(l, settledBy))) {
       /* It says what the mail already says, so it is not said again. */
     } else {
@@ -108,7 +142,7 @@ export function theFirstInsight(report: any, label: string, reader: { isTheLead:
 
   return {
     hasAFinding: open.length > 0,
-    subjectForTheLead: reader.isTheLead && open.length ? aSubjectThatFits(firstOpenSaid(cutLabel(label, 40), open, false), `The shared picture for "${cutLabel(label, 40)}" found ${aNumberInWords(open.length)} ${open.length === 1 ? 'difference' : 'differences'} still open`) : null,
+    subjectForTheLead: reader.isTheLead && open.length ? (noneNameable ? theCount(cutLabel(label, 40)) : aSubjectThatFits(firstOpenSaid(cutLabel(label, 40), ordered, false), theCount(cutLabel(label, 40)))) : null,
     lines,
   };
 }
@@ -122,7 +156,7 @@ export function theFirstOpenDifference(report: any): string | null {
   const open: unknown[] = Array.isArray(report.whereThingsStand.differences) ? report.whereThingsStand.differences : Array.isArray(report.whereThingsStand.open) ? report.whereThingsStand.open : [];
   for (const t of open) {
     const x = anOpenThing(t);
-    if (x) return isAWholeSentence(x) ? lowerFirstOfAClause(x) : `the people differ on "${x}"`;
+    if (x && !isAStandIn(x)) return isAWholeSentence(x) ? lowerFirstOfAClause(x) : `the people differ on "${x}"`;
   }
   return null;
 }
@@ -136,8 +170,8 @@ export function theFirstOpenDifference(report: any): string | null {
 export function theFindingOnItsOwn(report: any, label: string): { finding: string; moreStillOpen: number; conversationWorthHaving: string | null } | null {
   if (!report?.whereThingsStand || report?.withheldUntilYouAnswer) return null;
   const open: string[] = (Array.isArray(report.whereThingsStand.differences) ? report.whereThingsStand.differences : Array.isArray(report.whereThingsStand.open) ? report.whereThingsStand.open : []).map(anOpenThing).filter((t: string | null): t is string => !!t);
-  if (!open.length) return null;
-  const first = open[0];
+  const first = open.find((t) => !isAStandIn(t));
+  if (!first) return null;
   const finding = isAWholeSentence(first) ? `${capital(first)}.` : `The people in "${cutLabel(label, 60)}" differ on "${first}".`;
   const question = String(report.theConversationWorthHaving ?? '').replace(/\s+/g, ' ').trim();
   return { finding, moreStillOpen: open.length - 1, conversationWorthHaving: question || null };

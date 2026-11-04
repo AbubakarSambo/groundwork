@@ -8,10 +8,13 @@ import { PartyType } from '@prisma/client';
  * nothing recorded what somebody promised about their own work, so a new hire's "three proposals by
  * the thirtieth" - the exact thing the next check-in most needs to return to - stayed as loose text
  * in a transcript and no later question could be built from it.
+ *
+ * Changed 2 November 2026: their own aims come from their conversation's assessment (its `targets`), not from a separate model
+ * read, so the input here is the assessment's items. Its targets hold aims only, so a to-do or a commitment never reaches this.
  */
 const WED = new Date(Date.UTC(2026, 10, 4)); /* Wednesday 4 November 2026. */
 
-function makeService(promises: any[], participants: any[] = []) {
+function makeService(aims: any[], participants: any[] = []) {
   const written: any[] = [];
   const prisma: any = {
     personObjective: {
@@ -20,21 +23,20 @@ function makeService(promises: any[], participants: any[] = []) {
       update: jest.fn(async (a: any) => { written.push(a.data); return { id: 'o1' }; }),
     },
   };
-  const anthropic: any = { extract: jest.fn(async () => ({ promises })) };
   const svc = Object.create(ConversationService.prototype) as any;
   svc.prisma = prisma;
-  svc.anthropic = anthropic;
   svc.logger = { log: () => {}, warn: () => {} };
+  svc.aims = aims.map((a) => ({ target: null, unit: null, by: null, ...a }));
   return { svc, written, prisma };
 }
 
 const run = (svc: any, participants: any[] = []) =>
-  svc.writeTheirOwnPromises('abu', 'g1', 'PERSON: ...', WED, participants);
+  svc.keepTheirOwnAims('abu', 'g1', svc.aims, `PERSON: ${svc.aims.map((a: any) => a.words).join(' ')}`, WED, participants);
 
 describe('a promise somebody made about their own work', () => {
   it('is written against them, in their words, authored by them', async () => {
     const { svc, written } = makeService([
-      { promise: 'Get three proposals out', kind: 'TARGET', check: 'A_NUMBER', dueKind: 'A_DATE', dueSaid: 'end of November' },
+      { words: 'Get three proposals out', target: 3, unit: 'proposals', by: 'end of November' },
     ]);
     await run(svc);
     expect(written[0].text).toBe('Get three proposals out');
@@ -44,7 +46,7 @@ describe('a promise somebody made about their own work', () => {
 
   it('carries the date their words meant, alongside the words', async () => {
     const { svc, written } = makeService([
-      { promise: 'Get three proposals out', kind: 'TARGET', check: 'A_NUMBER', dueKind: 'A_DATE', dueSaid: 'end of November' },
+      { words: 'Get three proposals out', target: 3, unit: 'proposals', by: 'end of November' },
     ]);
     await run(svc);
     expect(written[0].dueSaid).toBe('end of November');
@@ -54,7 +56,7 @@ describe('a promise somebody made about their own work', () => {
   it('and leaves the date empty when the words do not carry one', async () => {
     /* "Soon" is a real answer. A guess here becomes a missed deadline they never agreed to. */
     const { svc, written } = makeService([
-      { promise: 'Sort out the pipeline', kind: 'TODO', check: 'A_JUDGEMENT', dueKind: 'NOT_SAID', dueSaid: 'soon' },
+      { words: 'Sort out the pipeline', by: 'soon' },
     ]);
     await run(svc);
     expect(written[0].dueSaid).toBe('soon');
@@ -64,32 +66,13 @@ describe('a promise somebody made about their own work', () => {
   it('counts as seen, because they said it themselves', async () => {
     /* `seenBySubject` stops somebody being read against an expectation they never saw. That risk
        is real for something a lead wrote about them and a nonsense for their own sentence. */
-    const { svc, written } = makeService([{ promise: 'Ship the deck', kind: 'TODO', check: 'DONE_OR_NOT', dueKind: 'NOT_SAID' }]);
+    const { svc, written } = makeService([{ words: 'Ship three decks', target: 3, unit: 'decks' }]);
     await run(svc);
     expect(written[0].seenBySubject).toBe(true);
   });
 });
 
 describe('what it refuses', () => {
-  it('demotes a commitment with nobody waiting to a to-do', async () => {
-    /* Somebody waiting is the whole difference between the two. */
-    const { svc, written } = makeService([
-      { promise: 'Send the pricing', kind: 'COMMITMENT', check: 'DONE_OR_NOT', dueKind: 'NOT_SAID', owedTo: 'Nobody Here' },
-    ]);
-    await run(svc, []);
-    expect(written[0].kind).toBe('TODO');
-    expect(written[0].owedToParticipantId).toBeNull();
-  });
-
-  it('keeps it a commitment when the person waiting is really here', async () => {
-    const { svc, written } = makeService([
-      { promise: 'Send the pricing', kind: 'COMMITMENT', check: 'DONE_OR_NOT', dueKind: 'A_DATE', dueSaid: 'Friday', owedTo: 'Hafsah' },
-    ], [{ id: 'ceo', managingOnly: false, email: 'h@x.test', roleAsDescribed: null, user: { firstName: 'Hafsah', lastName: null } }]);
-    await run(svc, [{ id: 'ceo', managingOnly: false, email: 'h@x.test', roleAsDescribed: null, user: { firstName: 'Hafsah', lastName: null } }]);
-    expect(written[0].kind).toBe('COMMITMENT');
-    expect(written[0].owedToParticipantId).toBe('ceo');
-  });
-
   it('writes nothing at all when there is nothing to write', async () => {
     const { svc, written } = makeService([]);
     await run(svc);
@@ -97,14 +80,14 @@ describe('what it refuses', () => {
   });
 
   it('drops a promise with no words in it', async () => {
-    const { svc, written } = makeService([{ promise: '   ', kind: 'TODO', check: 'DONE_OR_NOT', dueKind: 'NOT_SAID' }]);
+    const { svc, written } = makeService([{ words: '   ' }]);
     await run(svc);
     expect(written).toHaveLength(0);
   });
 
   it('restating the same kind revises rather than piling up', async () => {
     /* "Make that four proposals, not three" is one promise, changed - not two promises. */
-    const { svc, prisma } = makeService([{ promise: 'Four proposals', kind: 'TARGET', check: 'A_NUMBER', dueKind: 'NOT_SAID' }]);
+    const { svc, prisma } = makeService([{ words: 'Four proposals', target: 4, unit: 'proposals' }]);
     prisma.personObjective.findFirst = jest.fn(async () => ({ id: 'existing' }));
     await run(svc);
     expect(prisma.personObjective.update).toHaveBeenCalled();

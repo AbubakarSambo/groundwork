@@ -50,11 +50,13 @@ describe('Button', () => {
     expect(screen.getByRole('button', { name: 'Start it' })).toBeDisabled()
   })
 
-  it('is at least a thumb tall, and at least 40px on a phone even when small', () => {
+  // UPDATED 20 October (the kit's design everywhere): a tap target on a phone is 44px, the small
+  // button included. It was 40px; only the size changed, nothing a person reads.
+  it('is at least a thumb tall, and 44px on a phone even when small', () => {
     expect(CSS).toMatch(/\.gw-b \{[^}]*min-height: 44px/)
-    expect(CSS).toMatch(/\.gw-b-small \{ min-height: 40px; \}/)
-    // and that 40px rule is the phone one, not a second desktop size
-    expect(CSS.indexOf('.gw-b-small { min-height: 40px; }')).toBeGreaterThan(CSS.lastIndexOf('@media (max-width: 640px)', CSS.indexOf('.gw-b-small { min-height: 40px; }')))
+    expect(CSS).toMatch(/\.gw-b-small \{ min-height: 44px; \}/)
+    // and that 44px rule is the phone one, not a second desktop size
+    expect(CSS.indexOf('.gw-b-small { min-height: 44px; }')).toBeGreaterThan(CSS.lastIndexOf('@media (max-width: 640px)', CSS.indexOf('.gw-b-small { min-height: 44px; }')))
   })
 
   it('wraps a long label on a phone instead of pushing the page sideways', () => {
@@ -82,7 +84,7 @@ describe('Tag', () => {
 
   it('every tone has a style, and none is smaller than 13', () => {
     for (const t of ['proven', 'attention', 'action', 'concern', 'plain']) expect(CSS).toContain(`.gw-tag-${t}`)
-    expect(CSS).toMatch(/\.gw-tag \{[^}]*font-size: 13\.5px/)
+    expect(CSS).toMatch(/\.gw-tag \{[^}]*font-size: 14px/)
   })
 })
 

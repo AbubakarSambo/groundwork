@@ -95,8 +95,8 @@ describe('"Your check-in" in the header', () => {
     renderPage()
     const button = await screen.findByRole('button', { name: 'Your check-in' })
     await userEvent.click(button)
-    /* BetweenCheckIns' own header, B3 - the Check-in tab's "nothing open" state. */
-    expect(await screen.findByText('No check-in open right now')).toBeTruthy()
+    /* Changed in F5 (stage 11): the lead's Check-in tab with nothing open is "Check in yourself"; the ask box is gone (one Ask, from the header). */
+    expect(await screen.findByRole('button', { name: 'Check in yourself' })).toBeTruthy()
   })
 
   /*

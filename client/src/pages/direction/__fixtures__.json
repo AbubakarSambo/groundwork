@@ -1,0 +1,198 @@
+{
+ "read": {
+  "on": true,
+  "mayChange": false,
+  "direction": {
+   "version": 2,
+   "setOn": "15 September",
+   "setBy": "Amani Njoroge",
+   "now": [
+    {
+     "title": "What we’re trying to achieve",
+     "says": "Keep the customers we have, and get paid on time."
+    },
+    {
+     "title": "Why it matters",
+     "says": "Late payments are costing us more than lost orders. Cash, not sales, is what is holding us back."
+    },
+    {
+     "title": "What we currently believe",
+     "says": "Customers pay late mostly when something went wrong after the sale. This is a belief we are testing."
+    },
+    {
+     "title": "What we’ve learned so far",
+     "says": "Of 14 late payers, 9 had a problem with delivery or installation first."
+    },
+    {
+     "title": "What matters most right now",
+     "says": "Hearing about unhappy customers before payment is due."
+    },
+    {
+     "title": "Who owns what",
+     "says": "Amani owns the direction. Wairimu owns sales, Lucy delivery, Grace collections."
+    }
+   ],
+   "whatChanged": [
+    {
+     "n": 1,
+     "label": "What we assumed.",
+     "says": "More sales would fix our cash."
+    },
+    {
+     "n": 2,
+     "label": "What showed it wasn’t true.",
+     "says": "Sales grew 12% in August, but cash in the bank fell."
+    },
+    {
+     "n": 3,
+     "label": "What we learned.",
+     "says": "Late payments, not too few sales, are the problem. Most late payers had a problem after the sale."
+    },
+    {
+     "n": 4,
+     "label": "What we decided.",
+     "says": "Move from winning new customers to keeping and getting paid by the ones we have."
+    },
+    {
+     "n": 5,
+     "label": "The new direction.",
+     "says": "Keep the customers we have, and get paid on time."
+    }
+   ],
+   "teams": [
+    {
+     "groundId": "g-sales",
+     "title": "Sales",
+     "says": "Ask about payment history before promising terms. Fewer new small accounts this quarter.",
+     "tag": "Wairimu approved",
+     "approved": true,
+     "youLeadIt": true
+    },
+    {
+     "groundId": "g-delivery",
+     "title": "Delivery",
+     "says": "Tell finance the same day when a customer is unhappy.",
+     "tag": "Lucy approved",
+     "approved": true
+    },
+    {
+     "groundId": "g-finance",
+     "title": "Finance",
+     "says": "Call about the fridge before calling about the money.",
+     "tag": "Grace approved",
+     "approved": true
+    },
+    {
+     "groundId": "g-ops",
+     "title": "Operations",
+     "says": "Check stock before sales promises a date. This depends on sales sharing orders a day earlier.",
+     "tag": "Waiting for Njeri",
+     "approved": false
+    }
+   ],
+   "realigned": [
+    {
+     "title": "Teams that have not agreed what it means for them",
+     "says": "Operations is waiting for Njeri."
+    },
+    {
+     "title": "Commitments that no longer make sense",
+     "says": "Miriam’s target, 20 new small shops a month, is still on the board, though Sales's brief stops it. It is suggested to them as one to stop or change."
+    },
+    {
+     "title": "Goals nobody has looked at since the change",
+     "says": "Miriam’s target, 20 new small shops a month, has not been continued, changed or stopped yet."
+    }
+   ],
+   "nextCheckOn": "13 October",
+   "revisions": [
+    {
+     "version": 1,
+     "setOn": "1 July",
+     "says": "Win 200 new shops this year."
+    }
+   ]
+  }
+ },
+ "brief": {
+  "team": "Sales",
+  "lead": "Wairimu",
+  "says": "Move from winning new customers to keeping and getting paid by the ones we have. This is because sales grew 12% in August, but cash in the bank fell.",
+  "items": [
+   {
+    "verb": "Stop",
+    "says": "Chasing 20 new small shops a month (Miriam)",
+    "tone": "con"
+   },
+   {
+    "verb": "Continue",
+    "says": "Supermarket renewals (Wairimu)",
+    "tone": "rec"
+   },
+   {
+    "verb": "Continue, changed",
+    "says": "Corporate accounts, with payment checked first (Daniel)",
+    "tone": "rec"
+   },
+   {
+    "verb": "Reassign",
+    "says": "Kisumu follow-ups, from Brian to Miriam, since Brian is overloaded",
+    "tone": "att"
+   }
+  ],
+  "unclear": "Who calls a customer after installation is not clear.",
+  "approvedSays": "Wairimu approved the change for the team on 16 September.",
+  "questionsNow": [
+   "“Which of your customers are at risk of paying late, and what are you doing about it?” replaces “How many new shops did you visit?”"
+  ],
+  "mayChange": true,
+  "raw": {
+   "items": [
+    {
+     "verb": "Stop",
+     "what": "Chasing 20 new small shops a month",
+     "who": "Miriam Wanjiku",
+     "whoParticipantId": "p-miriam"
+    },
+    {
+     "verb": "Continue",
+     "what": "Supermarket renewals",
+     "who": "Wairimu Kamau",
+     "whoParticipantId": "p-wairimu"
+    },
+    {
+     "verb": "Continue, changed",
+     "what": "Corporate accounts, with payment checked first",
+     "who": "Daniel Otieno",
+     "whoParticipantId": "p-daniel"
+    },
+    {
+     "verb": "Reassign",
+     "what": "Kisumu follow-ups, from Brian to Miriam, since Brian is overloaded",
+     "who": null
+    }
+   ],
+   "unclear": "Who calls a customer after installation is not clear",
+   "questionsNow": [
+    {
+     "asks": "Which of your customers are at risk of paying late, and what are you doing about it?",
+     "replaces": "How many new shops did you visit?"
+    }
+   ],
+   "approvedAt": "2026-09-16T09:00:00.000Z"
+  }
+ },
+ "mine": {
+  "goals": [
+   {
+    "id": "o-miriam",
+    "groundId": "g-sales",
+    "name": "20 new small shops a month",
+    "target": 20,
+    "team": "Sales",
+    "decided": null
+   }
+  ],
+  "stopped": []
+ }
+}

@@ -17,7 +17,7 @@ import { aPromiseInsideASentence } from './a-promise-inside-a-sentence';
  * Only for a check-in started from the anchor link, and only while the anchor switch is on. Every other nudge is
  * exactly what it was.
  */
-export const IT_HAS_BEEN_A_FEW_DAYS = "It's been a few days since we spoke. What's changed since then?";
+export const IT_HAS_BEEN_A_FEW_DAYS = "It's been a few days since you last checked in. What's changed since then?";
 
 /** The line, from their own open promise said in "you", or the plain one where there is none. */
 export function theAnchorNudgeLine(theirOwnPromise: string | null | undefined): string {

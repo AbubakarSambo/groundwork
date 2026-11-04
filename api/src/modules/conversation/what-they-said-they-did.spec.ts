@@ -1,4 +1,4 @@
-import { ConversationService } from './conversation.service';
+import { ReportsService } from '../reports/reports.service';
 
 /**
  * HEARING WHAT SOMEBODY SAYS THEY HAVE DONE.
@@ -9,85 +9,51 @@ import { ConversationService } from './conversation.service';
  * That made the report unfair, not just thin: the reading that "the agreed thing is not being done"
  * rests on nothing being recorded as done, so an empty progress list turned every passed date into
  * that reading - for somebody who had been getting on with it and saying so.
+ *
+ * Changed 2 November 2026: a separate model read (extractProgress) filed a check-in's progress against
+ * an aim. The conversation's assessment already puts every line of progress on the record (work that
+ * moved, figures that changed, what happened to a promise), so the report reads that record, with
+ * what they added themselves. This now checks what the report says, for both cases.
  */
-const promises = [
-  { id: 'o1', text: 'Get three proposals out' },
-  { id: 'o2', text: 'Meet the Bayer team' },
-];
+const AN_AIM_PAST_ITS_DATE = { participantId: 'ed', text: 'Get three proposals out', dueDate: new Date(Date.UTC(2026, 9, 1)), dueSaid: 'by 1 October', status: 'OPEN', seenBySubject: true, awareness: 'TOLD', kind: 'TARGET' };
 
-const svc = (over: { progress?: any[]; open?: any[]; said?: string } = {}) => {
-  const deliveries: any[] = [];
-  const updates: any[] = [];
-  const s = Object.create(ConversationService.prototype) as any;
-  s.logger = { warn: () => {} };
-  s.anthropic = { extract: async () => ({ progress: over.progress ?? [] }) };
-  s.prisma = {
-    personObjective: {
-      findMany: async () => over.open ?? promises,
-      update: async (a: any) => { updates.push({ id: a.where.id, ...a.data }); return {}; },
-    },
-    conversationTurn: { findMany: async () => [{ content: over.said ?? 'x'.repeat(200) }] },
-    delivery: { create: async (a: any) => { deliveries.push(a.data); return {}; } },
+async function whatTheReportSays(progressOnTheRecord: { participantId: string; text: string }[], addedThemselves: { participantId: string; text: string }[] = []) {
+  const prisma: any = {
+    personObjective: { findMany: async () => [AN_AIM_PAST_ITS_DATE] },
+    groundDependency: { findMany: async () => [] },
+    delivery: { findMany: async () => addedThemselves },
+    recordEntry: { findMany: async (a: any) => (a.where.type === 'PROGRESS' ? progressOnTheRecord : []) },
+    checkIn: { findMany: async () => [] },
+    ground: { findUnique: async () => ({ organizationId: 'org' }) },
+    interaction: { findMany: async () => [] },
+    productMetric: { findMany: async () => [] },
   };
-  return { s, deliveries, updates };
-};
+  const svc = Object.create(ReportsService.prototype) as any;
+  svc.prisma = prisma;
+  svc.logger = { log: () => {}, warn: () => {} };
+  return svc.whatTheRecordShows('g1', new Map([['ed', 'Ed']])) as Promise<string>;
+}
 
 describe('what they said they did', () => {
-  it('is written against the promise it is about', async () => {
-    const { s, deliveries } = svc({ progress: [{ promise: 'Get three proposals out', whatTheyDid: 'Sent two of them' }] });
-    await s.extractProgress('c1', 'ed', 'g1');
-    expect(deliveries[0].objectiveId).toBe('o1');
-    expect(deliveries[0].text).toBe('Sent two of them');
+  it('is read from the record their check-in wrote, so a passed date with work said is late, not untouched', async () => {
+    const says = await whatTheReportSays([{ participantId: 'ed', text: 'Sent two of the three proposals to Bayer on Tuesday.' }]);
+    expect(says).toContain('Ed: "Get three proposals out".');
+    expect(says).toContain('there is progress recorded against it, so this is late rather than untouched');
+    expect(says).not.toContain('Nothing has been recorded as done');
   });
 
-  it('and does not mark the promise finished for partial progress', async () => {
-    /* Two of three is progress. Marking it done would lose him the credit for the third. */
-    const { s, updates } = svc({ progress: [{ promise: 'Get three proposals out', whatTheyDid: 'Sent two of them', finished: false }] });
-    await s.extractProgress('c1', 'ed', 'g1');
-    expect(updates).toHaveLength(0);
+  it('counts what they added themselves too', async () => {
+    const says = await whatTheReportSays([], [{ participantId: 'ed', text: 'Sent two proposals' }]);
+    expect(says).toContain('late rather than untouched');
   });
 
-  it('marks it met only when they plainly said it was done', async () => {
-    const { s, updates } = svc({ progress: [{ promise: 'Meet the Bayer team', whatTheyDid: 'Met them on Tuesday', finished: true }] });
-    await s.extractProgress('c1', 'ed', 'g1');
-    expect(updates[0]).toMatchObject({ id: 'o2', status: 'MET' });
-    expect(updates[0].statusChangedAt).toBeInstanceOf(Date);
-  });
-});
-
-describe('what it refuses', () => {
-  it('progress that matches no promise on the record', async () => {
-    /* Filed against the wrong promise is worse than filed against nothing: it marks the wrong
-       thing as moving and leaves the real one looking untouched. */
-    const { s, deliveries } = svc({ progress: [{ promise: 'Something else entirely', whatTheyDid: 'Did a thing' }] });
-    await s.extractProgress('c1', 'ed', 'g1');
-    expect(deliveries).toHaveLength(0);
+  it('and says nothing has been recorded as done only when nothing has', async () => {
+    const says = await whatTheReportSays([]);
+    expect(says).toContain('Nothing has been recorded as done either, which is worth asking about directly.');
   });
 
-  it('anything at all when they have no open promises', async () => {
-    const { s, deliveries } = svc({ open: [], progress: [{ promise: 'x', whatTheyDid: 'y' }] });
-    await s.extractProgress('c1', 'ed', 'g1');
-    expect(deliveries).toHaveLength(0);
-  });
-
-  it('a check-in with barely anything in it', async () => {
-    const { s, deliveries } = svc({ said: 'Fine thanks', progress: [{ promise: 'Get three proposals out', whatTheyDid: 'Sent two' }] });
-    await s.extractProgress('c1', 'ed', 'g1');
-    expect(deliveries).toHaveLength(0);
-  });
-
-  it('and an empty description of what they did', async () => {
-    const { s, deliveries } = svc({ progress: [{ promise: 'Get three proposals out', whatTheyDid: '   ' }] });
-    await s.extractProgress('c1', 'ed', 'g1');
-    expect(deliveries).toHaveLength(0);
-  });
-});
-
-describe('only what is still open', () => {
-  it('never reopens or re-marks something already finished', async () => {
-    /* The query asks for OPEN only, so a met promise is not in the list to match against. */
-    const { s, deliveries } = svc({ open: [], progress: [{ promise: 'Get three proposals out', whatTheyDid: 'Sent two' }] });
-    await s.extractProgress('c1', 'ed', 'g1');
-    expect(deliveries).toHaveLength(0);
+  it('never counts somebody else\'s progress as theirs', async () => {
+    const says = await whatTheReportSays([{ participantId: 'amina', text: 'Closed the Bayer deal.' }]);
+    expect(says).toContain('Nothing has been recorded as done either');
   });
 });

@@ -34,8 +34,6 @@ import { notTheWordParty } from '../reports/not-the-word-party';
  * feature produced it. WHAT DOES NOT: judgement calls about wording, which belong in prompts.
  */
 
-/** A control marker the model is told to emit. Never a thing a person should read. */
-const CONTROL_MARKERS = [/\[\[[A-Z_]+\]\]/g];
 
 /**
  * MARKDOWN IS STRIPPED, NOT RENDERED, AND THAT IS A DELIBERATE CHOICE.
@@ -239,9 +237,29 @@ export function aFragmentNotASentence(sentence: string): boolean {
   if (!t) return true;
   /* Opens on a verb or a conjunction with no subject before it. */
   if (/^(?:is|are|was|were|has|have|had|does|do|did|which|whom)\b/i.test(t)) return true;
+  /* Or is a subject and nothing else: "It clearly." (Drop Access run 1, item 29). */
+  if (isOnlyASubject(t)) return true;
   /* Or trails off on the word the removed half was going to complete. */
   if (/(?:,\s*(?:and|but|or|which|that|it|so)|\band it|\bwhich)\s*[.!?]?$/i.test(t)) return true;
   return false;
+}
+
+/*
+ * A SUBJECT AND NOTHING ELSE IS NOT A SENTENCE (Drop Access run 1, item 29). Mercy read "That is delivered and confirmed. It
+ * clearly. What is the day Mama Mboga Mart will buy?": a strip had taken the rest of the sentence ("It clearly, your record shows
+ * that." loses its narration and leaves "It clearly."). A sentence that is only a pronoun, with at most one word such as
+ * "clearly" or "also" after it, says nothing and reads as the product being broken. It goes, wherever it is, when the reply has
+ * something else in it.
+ */
+const ONLY_A_SUBJECT = /^(?:it|this|that|they|he|she|we|there|which)(?:\s+(?:\w+ly|also|still|just|now|already|too|then))?\s*[.!]?$/i;
+export function isOnlyASubject(sentence: string): boolean {
+  return ONLY_A_SUBJECT.test(String(sentence ?? '').trim());
+}
+export function withoutASubjectAndNothingElse(text: string): string {
+  const sentences = sentencesIn(text);
+  if (sentences.length < 2 || !sentences.some(isOnlyASubject)) return text;
+  const kept = sentences.filter((x) => !isOnlyASubject(x));
+  return kept.length ? kept.join(' ').trim() : text;
 }
 
 export function withoutAFragmentAtTheFront(text: string): string {
@@ -440,8 +458,10 @@ export function saysWhatTheySaid(text: string): string {
 export function forHumans(text: string | null | undefined): string {
   if (!text) return '';
   let out = stripCloseMarker(text).text;
+  /* A closing quote mark at the start of a line or a sentence is left over from a cut (Kevin's openings of 15 and 19 October read
+     "” What's the latest"), so it goes, on turns saved before the opening's own check existed too (26 October 2026). */
+  out = out.replace(/(^|\n|[.!?]\s+)\s*[”]\s+/g, '$1');
   out = noFullStopInsideAName(out);
-  for (const m of CONTROL_MARKERS) out = out.replace(m, '');
   out = withoutMarkdown(out);
   /**
    * ONE ANSWER ON THE DASH, AND IT IS THE COMMA.
@@ -480,6 +500,8 @@ export function forHumans(text: string | null | undefined): string {
   out = withoutRecordNarration(out);
   /** After the narration strip: a mark and a narration often share the same sentence. */
   out = withoutTheMark(out);
+  /* And the debris a strip can leave behind: "It clearly." on its own (Drop Access run 1, item 29). */
+  out = withoutASubjectAndNothingElse(out);
   /*
    * AND A REPLY THAT OPENS MID-SENTENCE.
    *
@@ -555,6 +577,17 @@ export function withoutQuotedQuestions(text: string): string {
  * cleaning still begins with what was shown, the new part is the tail. When it does not, nothing is
  * new yet - the earlier text moved under us - and the final reply, cleaned whole, sets the record.
  */
+/**
+ * HOW MUCH OF A REPLY STILL BEING WRITTEN MAY BE CLEANED AND SHOWN (plan round 32, the law firm lead: "What makes this the right time to
+ * set up a check, i"). A word still arriving is not a word yet: "check-i" read as a dash and became "check, i", and once shown the rest of
+ * the reply no longer followed it, so the screen stopped mid-sentence. Only whole words go out, and never the room the close marker may
+ * still need. The one owner for the setup stream and the check-in stream.
+ */
+export function theFinishedPart(raw: string, holdBack: number): number {
+  const lastSpace = Math.max(raw.lastIndexOf(' '), raw.lastIndexOf('\n'));
+  return Math.max(0, Math.min(raw.length - holdBack, lastSpace));
+}
+
 export function whatIsNewSince(shownSoFar: string, cleanedNow: string): string {
   if (cleanedNow.startsWith(shownSoFar)) return cleanedNow.slice(shownSoFar.length);
   return '';

@@ -35,7 +35,7 @@ describe('what a document holds', () => {
      * quarterly sales target sheet, by rep."). `aSentence` now turns a phrase with no verb of its own
      * into a full sentence in the product's voice - see what-a-document-holds.ts.
      */
-    expect(said.startsWith('Here is the context we have from Sales team Q3 2026.xlsx. It looks like a quarterly sales target sheet, by rep.')).toBe(true);
+    expect(said.startsWith('Here is what I took from Sales team Q3 2026.xlsx. It looks like a quarterly sales target sheet, by rep.')).toBe(true);
     expect(said).toContain('For everyone in this check-in, the target for Team sales is 153m.');
     /* Changed (B-014): the limit's name opens the sentence, so its capital is never mid-sentence. */
     expect(said).toContain('Credit ceiling must stay at or under 35 for everyone in this check-in.');
@@ -187,5 +187,19 @@ describe('a first name finds somebody invited by address alone (found in the bro
   it('two people sharing a first name match neither', () => {
     const two = [invited('amani.wekesa@kito.test'), invited('amani.bello@kito.test')];
     expect(whoThisNameIs('Amani', two)).toBeNull();
+  });
+});
+
+describe('an action and a name, said properly (26 October 2026)', () => {
+  const { aSentence } = require('./what-a-document-holds');
+  it('"Hold this as a record" is something Groundwork will do, not a guess', () => {
+    expect(aSentence('Hold this as a record of the transaction between the two parties')).toBe('I will hold this as a record of the transaction between the two parties.');
+    expect(aSentence('use this to establish the cost of van hire')).toBe('I will use this to establish the cost of van hire.');
+  });
+  it('a company name keeps its capital', () => {
+    expect(aSentence('Drop Access Ltd hired a delivery van from Kisumu Motors Ltd for 3 days')).toBe('It looks like Drop Access Ltd hired a delivery van from Kisumu Motors Ltd for 3 days.');
+  });
+  it('a fragment is still a guess, as before', () => {
+    expect(aSentence('A price list for the 600L cookers')).toBe('It looks like a price list for the 600L cookers.');
   });
 });

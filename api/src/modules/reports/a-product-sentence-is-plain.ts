@@ -49,11 +49,8 @@ export function withoutTheirWords(line: string): string {
 
 export function whatIsNotPlainIn(line: string, opts: { readerIsLead?: boolean; whole?: boolean } = {}): ANotPlain[] {
   if (!line || typeof line !== 'string') return [];
-  /*
-   * The note beside a claim about a colleague, "Not backed: no attempt to unblock mentioned." or "Tried: ...", is Hafsah's own
-   * wording (change 4, 11 October 2026), so its colon is let through. Only those two openings of a sentence are; any other colon is still caught.
-   */
-  const mine = withoutTheirWords(line).replace(/\s+/g, ' ').trim().replace(/(^|[.?!] )(Not backed|Tried): /g, '$1$2 ');
+  /* The note beside a claim about a colleague is a full sentence now (3 November), so no colon is let through. */
+  const mine = withoutTheirWords(line).replace(/\s+/g, ' ').trim();
   const found: ANotPlain[] = [];
   for (const { rule, pattern } of RULES) {
     const p = new RegExp(pattern.source, pattern.flags.includes('g') || pattern.source.startsWith('^') ? pattern.flags : `${pattern.flags}g`);
@@ -78,7 +75,7 @@ export function whatIsNotPlainIn(line: string, opts: { readerIsLead?: boolean; w
   /* A whole sentence starts with a capital and ends its thought. */
   if (opts.whole) {
     if (/^[a-z]/.test(mine)) found.push({ rule: 'a sentence that starts in lower case', found: mine.slice(0, 40) });
-    if (!/[.?!"”')]$/.test(mine)) found.push({ rule: 'a sentence with no end', found: mine.slice(-40) });
+    if (!/(?:[.?!"”')]|QUOTE)$/.test(mine)) found.push({ rule: 'a sentence with no end', found: mine.slice(-40) });
   }
   for (const h of whatIsWrongWith(line)) if (!/ (?:and|but) reports$/.test(h.found)) found.push({ rule: h.what, found: h.found });
   return found;

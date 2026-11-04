@@ -110,7 +110,7 @@ export function TheJudgement({ it, hideWhatThisCannotTellYou }: {
               {it.whatTheNumbersSay.map((l, i) => (
                 <Row key={i} columns="1fr" inset="kicker">
                   <div className="gwui-pt-11 gwui-pb-11">
-                    <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{l.says}</div>
+                    <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: '23px' }}>{l.says}</div>
                     {l.soWhat && <div className="gwui-mt-3"><Note>{l.soWhat}</Note></div>}
                   </div>
                 </Row>
@@ -132,15 +132,15 @@ export function TheJudgement({ it, hideWhatThisCannotTellYou }: {
                     <div className="gwui-gap-10" style={{ display: 'flex', alignItems: 'baseline' }}>
                       <span className="gwui-fs-13 gwui-ink-white" style={{
                         flexShrink: 0, width: 18, height: 18, borderRadius: 9, background: 'var(--gw-navy)',
-                        fontWeight: 800, textAlign: 'center', lineHeight: '18px',
+                        fontWeight: 700, textAlign: 'center', lineHeight: '18px',
                       }}>{i + 1}</span>
                       <span className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700, lineHeight: 1.5 }}>{m.move}</span>
                     </div>
-                    <div className="gwui-fs-15 gwui-ink-sub gwui-mt-5 gwui-pl-28" style={{ lineHeight: 1.55 }}>
+                    <div className="gwui-fs-15 gwui-ink-sub gwui-mt-5 gwui-pl-28" style={{ lineHeight: '23px' }}>
                       {m.because}
                     </div>
                     {m.startWith && (
-                      <div className="gwui-fs-15 gwui-ink-text gwui-mt-3 gwui-pl-28" style={{ lineHeight: 1.55 }}>
+                      <div className="gwui-fs-15 gwui-ink-text gwui-mt-3 gwui-pl-28" style={{ lineHeight: '23px' }}>
                         {startWith(m.startWith)}
                       </div>
                     )}
@@ -160,8 +160,8 @@ export function TheJudgement({ it, hideWhatThisCannotTellYou }: {
             <RowList label="What this cannot tell you">
               {it.whatThisCannotTellYou.map((w, i) => (
                 <Row key={i} columns="1fr" inset="kicker">
-                  <div className="gwui-pt-9 gwui-pb-9 gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>
-                    <div style={{ fontWeight: 600 }}>{w.about}</div>
+                  <div className="gwui-pt-9 gwui-pb-9 gwui-fs-15 gwui-ink-text" style={{ lineHeight: '23px' }}>
+                    <div style={{ fontWeight: 700 }}>{w.about}</div>
                     {w.why && <div className="gwui-mt-2">{w.why}</div>}
                     {w.toKnow && <div className="gwui-ink-sub gwui-mt-2">{w.toKnow}</div>}
                   </div>

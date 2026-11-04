@@ -55,12 +55,13 @@ describe('other mail that is not written to the person who said something', () =
   });
 });
 
-describe('mail to the person who answered still carries it', () => {
-  it('the reminder and the report notice do, as before', async () => {
+/* Changed 4 November 2026 (release batch 1, Hafsah: no explainer lines and no privacy notes in messages): no mail carries the paragraph now. */
+describe('mail to the person who answered no longer carries it', () => {
+  it('the reminder and the report notice do not', async () => {
     const d = door();
     await d.email.sendNudge('omar@x.test', 'Kenya launch', 'https://app.test/c', undefined, undefined, null, 'p1');
     await d.email.sendReportReady('omar@x.test', 'Kenya launch', 'https://app.test/r');
     expect(d.sent).toHaveLength(2);
-    for (const m of d.sent) expect(m.html).toMatch(/Groundwork is where the people involved/);
+    for (const m of d.sent) expect(m.html).not.toMatch(/Groundwork is where the people involved/);
   });
 });

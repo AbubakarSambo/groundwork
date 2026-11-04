@@ -66,19 +66,25 @@ describe('Grace, an admin, sets up spending approvals by talking', () => {
     expect(await o.says('u-grace', 'yes')).toBe(`I have set it up, and spending requests are switched on. ${THE_RULES_SAID} You can change any of it by telling me, or on the Suites page.`);
     const grace = o.as('u-grace');
     const page: any = await o.suites.forReader(grace);
-    expect(page.groups.flatMap((g: any) => g.suites).find((s: any) => s.key === 'spend')).toMatchObject({ on: true, answers: { currency: 'KES', limit: 20000, above: 'u-grace' } });
-    expect((await o.suites.workflows(grace)).suites.find((s) => s.key === 'spend')).toMatchObject({
-      set: true,
-      steps: [['manager', 'admin'], ['finance', 'admin']],
-      stepsAbove: [['departmentHead', 'admin'], ['chiefExecutive', 'admin']],
-      escalateAfter: 3,
-    });
+    /* Who approves is written once, as the steps by amount (Hafsah's plan of 2 November, step 0): for any amount the manager and then
+       finance, and over 20,000 the head and then the chief executive. The settings card reads its limit from them; only the days stay
+       in the workflows. */
+    const card = page.groups.flatMap((g: any) => g.suites).find((s: any) => s.key === 'spend');
+    expect(card).toMatchObject({ on: true, answers: { currency: 'KES', limit: 20000 } });
+    expect(card.answers.above).toBeUndefined();
+    expect((await o.suites.spendRules(grace)).rules.thresholds).toEqual([
+      { above: 0, steps: [['manager', 'admin'], ['finance', 'admin']] },
+      { above: 20000, steps: [['departmentHead', 'admin'], ['chiefExecutive', 'admin']] },
+    ]);
+    expect((await o.suites.workflows(grace)).suites.find((s) => s.key === 'spend')).toMatchObject({ set: true, escalateAfter: 3 });
     expect((await o.suites.duties(grace)).said).toEqual(['Omar Said looks after finance.', 'Grace Achieng is the chief executive.', 'Omar Said heads Finance.', 'Fatuma Hassan heads Operations.', 'Wairimu Kamau heads Sales.']);
     expect((await o.assistant.theSetUpAsStored(grace, 'spend')).join(' ')).toBe(THE_RULES_SAID);
-    expect(o.changes.map((c) => [c.suite, c.changedById])).toEqual([['spend', 'u-grace'], ['duties', 'u-grace'], ['workflows', 'u-grace']]);
+    /* The steps by amount are their own change in the history (the spending rules), written once, after the suite is switched on. */
+    expect(o.changes.map((c) => [c.suite, c.changedById])).toEqual([['spend', 'u-grace'], ['spendRules', 'u-grace'], ['duties', 'u-grace'], ['workflows', 'u-grace']]);
     expect((await o.suites.rulesHistory(grace)).changes.map((c) => c.said)).toEqual([
       'Grace changed the approval steps on 3 October.',
       'Grace changed who holds each duty on 3 October.',
+      'Grace changed the spending rules on 3 October.',
       'Grace switched on spending and budgets on 3 October.',
     ]);
   });
@@ -127,7 +133,7 @@ describe('Grace, an admin, sets up spending approvals by talking', () => {
     expect(o.writes).toEqual([]);
     await o.says('u-grace', 'yes');
     const grace = o.as('u-grace');
-    expect((await o.suites.workflows(grace)).suites.find((s) => s.key === 'spend')!.stepsAbove).toEqual([['finance', 'admin']]);
+    expect((await o.suites.spendRules(grace)).rules.thresholds?.find((t) => t.above === 50000)?.steps).toEqual([['finance', 'admin']]);
     /* The heads Grace named on the way are no longer used, so they are not kept. */
     expect((await o.suites.duties(grace)).said).toEqual(['Omar Said looks after finance.', 'Fatuma Hassan heads Operations.']);
     expect(await o.assistant.theSetUpAsStored(grace, 'spend')).toContain('A request to spend of more than KES 50,000 goes to Omar, who looks after finance.');

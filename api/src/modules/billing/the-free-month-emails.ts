@@ -3,10 +3,11 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
-import { PricingService, freePlanApplies } from './pricing.service';
+import { PricingService } from './pricing.service';
 import { BillingService } from './billing.service';
 import { dollarsOf, type AMonth } from './what-a-month-costs';
-import { whatCoversThem } from '../../common/subscription';
+import { whereTheTrialStands, WHAT_COVER_READS, type TheGrace } from '../../common/subscription';
+import { theGraceInForce, theGraceSetting, filledIn, theTimeLeft, TOLD_ABOUT_PAYING, type TheGraceWords, type TrialGraceSetting } from './the-trial-grace';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE, isAZone } from '../../common/the-organisations-own-day';
 import { onceAcrossCopies, theHour } from '../prisma/once-across-copies';
@@ -14,28 +15,28 @@ import { hasBeenToldOnce, nowToldOnce, isAlreadyHeld } from '../engagement/a-mes
 import { theirRoutineMessagesToday } from '../engagement/one-routine-message-a-day';
 
 /**
- * THE FREE MONTH'S TWO EMAILS (Hafsah, 15 October 2026).
+ * THE FREE MONTH'S EMAILS, AND THE FOUR WEEKS AFTER IT (Hafsah, 15 October and 2 November 2026).
  *
  *   1. Three days before an organisation's free month ends, counted in the organisation's own day: what it will pay from
  *      then, worked out exactly as Plan and billing works out a month (the plan, each extra seat, WhatsApp for each person
- *      who used it, and the total), and the link to Plan and billing.
- *   2. Once the free month has ended: what happens now, and the same link.
+ *      who used it, and the total), and the link to Plan and billing. To its admins, and the admin's one routine message that day.
+ *   2. Once the free month has ended, the four weeks (`pricing.trialGrace`, see the-trial-grace.ts): everything keeps working,
+ *      and the admins and leads are told how long is left and how to pay. One email a week, at the start of each week, and
+ *      one a day in the last week, counting down ("Groundwork pauses in 5 days") to the last day. Then Groundwork pauses, and
+ *      nothing more is sent about it. Team members are told nothing.
  *
- * To the organisation's admins, by name. Only while `pricing.freeTrial` is on (it goes on at production's release), and
- * only for a free month: the free trial's (`freeTrialStartedAt`) or the month every organisation already here was given
- * (`freeMonthOfReleaseAt`). A free run given by hand is not a free month and is not written about.
+ * Only while `pricing.freeTrial` is on (it goes on at production's release), and only for a free month: the free trial's
+ * (`freeTrialStartedAt`) or the month every organisation already here was given (`freeMonthOfReleaseAt`). A free run given by
+ * hand is not a free month and is not written about. Where the organisation stands is `whereTheTrialStands`, the same answer
+ * every gate and door reads.
  *
- * ONCE. Each admin is sent each email once for each free month (its end day is in the key), remembered in the
- * once-only record (`a-message-sent-once.ts`) only when it went or is held to go. ONE A DAY. Each is that admin's one
- * routine message that day: an admin who has already had one today is not sent it, and is tried again on a later run.
- * The sweep runs every hour and writes only in the organisation's working day (9 in the morning to 6 in the evening).
+ * ONCE. Each person is sent each email once (the week, or the day, is in the key), remembered in the once-only record
+ * (`a-message-sent-once.ts`) only when it went or is held to go. The sweep runs every hour and writes only in the
+ * organisation's working day (from the setting's hour, 9 by default, to 6 in the evening).
  */
 export const ENDS_SOON = 'sendFreeMonthEndsSoon';
-export const ENDED = 'sendFreeMonthEnded';
+export const PAUSES_SOON = 'sendGroundworkPausesSoon';
 const DAYS_BEFORE = 3;
-/** An ended free month is written about for a week after it ended, and never later: a month that ended long ago is old news. */
-const ENDED_FOR_DAYS = 7;
-const FIRST_HOUR = 9;
 const LAST_HOUR = 18;
 const DAY = 24 * 3600 * 1000;
 
@@ -76,28 +77,9 @@ export function whatItWillCost(orgName: string, after: { month: AMonth; planLabe
   return out;
 }
 
-/**
- * What happens once the free month is over and nobody has chosen a plan, as the gates decide it: an organisation the free
- * plan still applies to moves to it; one it has stopped for (new since the trial's switch went on) is paused until it
- * subscribes. `when` is 'ahead' for the reminder and 'now' once the month has ended.
- */
-export function whatHappensWithoutAPlan(
-  orgName: string,
-  when: 'ahead' | 'now',
-  free: { applies: boolean; checkIns: number; people: number },
-  seats: number,
-): string {
-  const ahead = when === 'ahead';
-  const tooMany = `${orgName} has ${seats} people, which is more than the free plan covers, so choose a plan for all of them.`;
-  if (!free.applies) {
-    return ahead
-      ? `If you do not choose a plan by then, check-ins at ${orgName} will pause until you do. Nothing is deleted, and every record stays readable.`
-      : `Check-ins at ${orgName} are paused until you choose a plan. Nothing is deleted, and every record stays readable.`;
-  }
-  const lead = ahead ? `If you do not choose a plan by then, ${orgName} moves to the free plan` : `${orgName} is on the free plan now`;
-  return seats <= free.people
-    ? `${lead}, which keeps ${free.checkIns} check-ins free for teams of ${free.people} or fewer people.`
-    : `${lead}, which is for teams of ${free.people} or fewer people. ${tooMany}`;
+/** What happens once the free month is over and nobody has chosen a plan: the four weeks, then the pause. */
+export function whatHappensWithoutAPlan(orgName: string, weeks: number): string {
+  return `If you do not choose a plan by then, everything at ${orgName} keeps working for ${theTimeLeft(weeks * 7)} after that, and then Groundwork pauses until you do. Nothing is deleted.`;
 }
 
 export interface TheWords { subject: string; lines: string[]; linkLabel: string }
@@ -117,17 +99,29 @@ export function theReminder(a: { firstName: string | null; orgName: string; ends
   };
 }
 
-export function theEnding(a: { firstName: string | null; orgName: string; endedOn: string; cost: string[] | null; withoutAPlan: string }): TheWords {
+/**
+ * THE FOUR WEEKS' EMAIL, from the setting's words. `daysLeft` is counted in the organisation's own days to the day it pauses.
+ * A week's email before the last days, a day's email in them, and the last day's on the day before the pause.
+ */
+export function thePausesSoonEmail(a: {
+  firstName: string | null; orgName: string; endedOn: string; pausesOn: string; daysLeft: number; dailyForTheLastDays: number;
+  isAdmin: boolean; adminNames: string | null; words: TheGraceWords;
+}): TheWords {
+  const w = a.words;
+  const blanks = { organisation: a.orgName, endDay: a.endedOn, pauseDay: a.pausesOn, days: a.daysLeft, timeLeft: theTimeLeft(a.daysLeft), admins: a.adminNames || `An admin at ${a.orgName}` };
+  const last = a.daysLeft <= 1;
+  const daily = a.daysLeft <= a.dailyForTheLastDays;
+  const subject = last ? w.lastDaySubject : daily ? w.daySubject : w.weekSubject;
+  const opening = last ? w.lastDayOpening : daily ? w.dayOpening : w.weekOpening;
   return {
-    subject: `Your free month at ${a.orgName} has ended`,
+    subject: filledIn(subject, blanks),
     lines: [
       a.firstName ? `Hello ${a.firstName},` : 'Hello,',
-      `Your free month at ${a.orgName} ended on ${a.endedOn}. Nothing has been charged.`,
-      a.withoutAPlan,
-      ...(a.cost ? ['This is what you will pay each month when you choose a plan.', ...a.cost] : []),
-      'You can choose a plan, and see every plan, on Plan and billing.',
+      filledIn(opening, blanks),
+      filledIn(w.whilePaused, blanks),
+      filledIn(a.isAdmin ? w.howToPayAdmin : w.howToPayLead, blanks),
     ],
-    linkLabel: 'Open Plan and billing',
+    linkLabel: filledIn(w.linkLabel, blanks),
   };
 }
 
@@ -147,24 +141,29 @@ export class TheFreeMonthEmails {
     await onceAcrossCopies(this.prisma, 'free-month-emails', theHour(), () => this.sweep());
   }
 
-  /** One pass. Says how many emails it sent or held, for the tests and the log. */
-  async sweep(now: Date = new Date()): Promise<{ endsSoon: number; ended: number }> {
-    const done = { endsSoon: 0, ended: 0 };
+  /** One pass. Says how many organisations were written to, for the tests and the log. */
+  async sweep(now: Date = new Date()): Promise<{ endsSoon: number; pausesSoon: number }> {
+    const done = { endsSoon: 0, pausesSoon: 0 };
     const trial = await this.pricing.getFreeTrial().catch(() => null);
     if (!trial?.on) return done;
+    const [grace, setting] = await Promise.all([theGraceInForce(this.prisma), theGraceSetting(this.prisma)]);
+    /* Every organisation whose free month ends within the next few days or ended within its four weeks. The four weeks may have
+       started later than the month's end (`notBefore`), so then every ended month is read and the arithmetic decides. */
+    const weeksAgo = new Date(now.getTime() - (setting.weeks * 7 + 1) * DAY);
+    const stillInTheirWeeks = grace?.notBefore && now.getTime() < grace.notBefore.getTime() + setting.weeks * 7 * DAY;
     const orgs = await this.prisma.organization.findMany({
       where: {
-        freeUntil: { gt: new Date(now.getTime() - ENDED_FOR_DAYS * DAY), lt: new Date(now.getTime() + (DAYS_BEFORE + 2) * DAY) },
+        freeUntil: { ...(stillInTheirWeeks ? {} : { gt: weeksAgo }), lt: new Date(now.getTime() + (DAYS_BEFORE + 2) * DAY) },
         freePlan: { not: null },
         OR: [{ freeTrialStartedAt: { not: null } }, { freeMonthOfReleaseAt: { not: null } }],
       },
-      select: { id: true, name: true, createdAt: true, freeUntil: true, subscriptionPlan: true, subscriptionStatus: true },
+      select: { id: true, name: true, createdAt: true, ...WHAT_COVER_READS },
     });
     for (const org of orgs) {
       try {
-        const r = await this.forOne(org as any, trial, now);
+        const r = await this.forOne(org as any, grace, setting, now);
         if (r === ENDS_SOON) done.endsSoon++;
-        if (r === ENDED) done.ended++;
+        if (r === PAUSES_SOON) done.pausesSoon++;
       } catch (err: any) {
         this.logger.warn(`The free-month email for ${org.id} could not be sent: ${err?.message}`);
       }
@@ -172,36 +171,28 @@ export class TheFreeMonthEmails {
     return done;
   }
 
-  private async forOne(
-    org: { id: string; name: string | null; createdAt: Date; freeUntil: Date; subscriptionPlan: unknown; subscriptionStatus: string | null },
-    trial: Awaited<ReturnType<PricingService['getFreeTrial']>>,
-    now: Date,
-  ): Promise<string | null> {
-    /* A team that has subscribed pays as it chose; there is nothing to tell it about the free month. */
-    if (whatCoversThem(org as any, now).covers === 'paid') return null;
+  private async forOne(org: any, grace: TheGrace | null, setting: TrialGraceSetting, now: Date): Promise<string | null> {
+    const where = whereTheTrialStands(org, grace, now);
+    if (where.stands !== 'in its trial' && where.stands !== 'after its trial') return null;
     const named = await theOrganisationsZone(this.prisma as any, org.id).catch(() => null);
     const zone = isAZone(named) ? named : THE_PRODUCTS_OWN_ZONE;
     const hour = theLocalHour(now, zone);
-    if (hour < FIRST_HOUR || hour >= LAST_HOUR) return null;
-
-    const until = new Date(org.freeUntil);
-    const ended = until.getTime() <= now.getTime();
-    const daysLeft = daysLeftInItsDay(until, now, zone);
-    if (!ended && daysLeft > DAYS_BEFORE) return null;
-    if (ended && now.getTime() - until.getTime() > ENDED_FOR_DAYS * DAY) return null;
-    const kind = ended ? ENDED : ENDS_SOON;
-
+    if (hour < setting.fromHour || hour >= LAST_HOUR) return null;
     const orgName = org.name?.trim() || 'your organisation';
+    return where.stands === 'in its trial'
+      ? this.theMonthEndsSoon(org, orgName, zone, setting, now)
+      : this.groundworkPausesSoon(org, orgName, zone, setting, where.trialEnded!, where.pausesAt!, now);
+  }
+
+  /** Three days before the free month ends: what it will cost, to the admins. The admin's one routine message that day. */
+  private async theMonthEndsSoon(org: any, orgName: string, zone: string, setting: TrialGraceSetting, now: Date): Promise<string | null> {
+    const until = new Date(org.freeUntil);
+    const daysLeft = daysLeftInItsDay(until, now, zone);
+    if (daysLeft > DAYS_BEFORE) return null;
     const day = whenItWas(until, 'dayAndMonthLong', zone);
     const after = await this.billing.theMonthAfterTheFreeMonth(org.id).catch(() => null);
     const cost = after ? whatItWillCost(orgName, after) : null;
-    const seats = after?.people ?? (await this.billing.seatsTaken(org.id));
-    const withoutAPlan = whatHappensWithoutAPlan(
-      orgName,
-      ended ? 'now' : 'ahead',
-      { applies: freePlanApplies(trial, org.createdAt), checkIns: await this.pricing.getFreeGroundLimit(), people: await this.pricing.getFreeMemberLimit() },
-      seats,
-    );
+    const withoutAPlan = whatHappensWithoutAPlan(orgName, setting.weeks);
 
     const admins = await this.prisma.user.findMany({
       where: { organizationId: org.id, role: UserRole.ADMIN, deletedAt: null },
@@ -210,22 +201,60 @@ export class TheFreeMonthEmails {
     let any = false;
     for (const admin of admins) {
       if (!admin.email) continue;
-      const what = `free-month.${kind}.${org.id}.${until.toISOString().slice(0, 10)}.${admin.id}`;
+      const what = `free-month.${ENDS_SOON}.${org.id}.${until.toISOString().slice(0, 10)}.${admin.id}`;
       if (await hasBeenToldOnce(this.prisma, what)) continue;
-      if (await isAlreadyHeld(this.prisma, kind, admin.email)) continue;
+      if (await isAlreadyHeld(this.prisma, ENDS_SOON, admin.email)) continue;
       /* Their one routine message today has gone already: tried again on a later run, not counted as told. */
       const had = await theirRoutineMessagesToday(this.prisma as any, { email: admin.email }, now);
       if (had.email + had.whatsapp >= 1) continue;
-      const firstName = admin.firstName?.trim() || null;
-      const words = ended
-        ? theEnding({ firstName, orgName, endedOn: day, cost, withoutAPlan })
-        : theReminder({ firstName, orgName, endsOn: day, daysLeft, cost, withoutAPlan });
-      const went = ended
-        ? await this.email.sendFreeMonthEnded(admin.email, words.subject, words.lines, words.linkLabel)
-        : await this.email.sendFreeMonthEndsSoon(admin.email, words.subject, words.lines, words.linkLabel);
-      await nowToldOnce(this.prisma, what, went, { sender: kind, to: admin.email });
+      const words = theReminder({ firstName: admin.firstName?.trim() || null, orgName, endsOn: day, daysLeft, cost, withoutAPlan });
+      const went = await this.email.sendFreeMonthEndsSoon(admin.email, words.subject, words.lines, words.linkLabel);
+      await nowToldOnce(this.prisma, what, went, { sender: ENDS_SOON, to: admin.email });
       if (went !== 'suppressed') any = true;
     }
-    return any ? kind : null;
+    return any ? ENDS_SOON : null;
   }
+
+  /**
+   * THE FOUR WEEKS: one email at the start of each week before the last days, then one a day, to the admins and the leads. A week's
+   * email missed on its first day (out of hours, or the sweep did not run) goes on the next run that week; a day's email goes that
+   * day or not at all, so the number of days it says is always true.
+   */
+  private async groundworkPausesSoon(org: any, orgName: string, zone: string, setting: TrialGraceSetting, endedAt: Date, pausesAt: Date, now: Date): Promise<string | null> {
+    const daysLeft = daysLeftInItsDay(pausesAt, now, zone);
+    if (daysLeft <= 0) return null;
+    const startedAt = new Date(pausesAt.getTime() - setting.weeks * 7 * DAY);
+    const which = daysLeft <= setting.dailyForTheLastDays
+      ? `day-${daysLeft}`
+      : `week-${Math.floor(daysLeftInItsDay(now, startedAt, zone) / 7) + 1}`;
+    const pausesOn = whenItWas(pausesAt, 'dayAndMonthLong', zone);
+    const endedOn = whenItWas(endedAt, 'dayAndMonthLong', zone);
+
+    const people = await this.prisma.user.findMany({
+      where: TOLD_ABOUT_PAYING(org.id),
+      select: { id: true, email: true, firstName: true, lastName: true, role: true },
+    });
+    const adminNames = theNamesOf(people.filter((p: any) => p.role === UserRole.ADMIN));
+    let any = false;
+    for (const person of people) {
+      if (!person.email) continue;
+      const what = `trial-grace.${org.id}.${pausesAt.toISOString().slice(0, 10)}.${which}.${person.id}`;
+      if (await hasBeenToldOnce(this.prisma, what)) continue;
+      const words = thePausesSoonEmail({
+        firstName: person.firstName?.trim() || null, orgName, endedOn, pausesOn, daysLeft, dailyForTheLastDays: setting.dailyForTheLastDays,
+        isAdmin: person.role === UserRole.ADMIN, adminNames, words: setting.words,
+      });
+      const went = await this.email.sendGroundworkPausesSoon(person.email, words.subject, words.lines, words.linkLabel);
+      await nowToldOnce(this.prisma, what, went, { sender: PAUSES_SOON, to: person.email });
+      if (went !== 'suppressed') any = true;
+    }
+    return any ? PAUSES_SOON : null;
+  }
+}
+
+/** "Grace Achieng", "Grace Achieng and Otieno", "Grace, Otieno and Wanjiru". Null when nobody has a name. */
+function theNamesOf(people: { firstName?: string | null; lastName?: string | null }[]): string | null {
+  const names = people.map((p) => [p.firstName, p.lastName].filter((x) => x && x.trim()).join(' ').trim()).filter(Boolean);
+  if (!names.length) return null;
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }

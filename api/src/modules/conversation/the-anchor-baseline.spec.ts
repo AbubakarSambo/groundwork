@@ -3,6 +3,7 @@ import { ConversationService } from './conversation.service';
 import { ConversationContextService } from './context.service';
 import { ANCHOR_BASELINE_PROMPT, ANCHOR_BASELINE_PROMPT_KEY, THE_BASELINE_GUIDANCE, THE_BASELINE_REMINDER, theAnchorBaselineGuidance } from './the-anchor-baseline';
 import { READ_THIS_LAST } from './the-anchor-lead-conversation';
+import { withTheOpeningLine } from './the-opening-line';
 import { whatToDoAboutTheirDeadline } from './a-period-is-not-a-day';
 import { THE_NINE, withoutAnExampleAnswer, THE_BASELINE_CLOSING_REMINDER, everythingIsLearned, whatIsLearnedFrom } from './the-baseline-so-far';
 
@@ -139,7 +140,8 @@ describe('the team baseline says nothing of the lead\'s own conversation, and do
 
   it('opens a person on the lead\'s team on a question about their work, never "are you the person this check-in is about"', async () => {
     const out = await opened({ startedFrom: 'anchor', switchOn: true });
-    expect(out.reply).toBe('Thank you. What is taking most of your attention now?');
+    // Changed 26 October 2026 (Hafsah: item 1): a team member's first session is a check-in, so the opening line is in front of the same question.
+    expect(out.reply).toBe(withTheOpeningLine('Thank you. What is taking most of your attention now?'));
     expect(out.reply).not.toMatch(/is this check-in about you/);
   });
 
@@ -301,11 +303,11 @@ describe('the team baseline is never held at its close (6 October)', () => {
     expect(await (world.service as any).mayClose('ci2')).toEqual({ ready: false });
   });
 
-  it('still holds an ordinary first session once, as before', async () => {
+  /* Changed 3 November 2026 (Hafsah: no question limits and no forced close): an ordinary first session is no longer held once for
+     "What will you do, and by when?". It closes like the baseline does. */
+  it('an ordinary first session is not held either', async () => {
     /* An ordinary scenario: the anchor's own is the anchor's even when startedFrom is empty (decision 114). */
-    const held = await theClose(null, GroundScenario.NEW_PROJECT);
-    expect(held.ready).toBe(false);
-    expect(held.ask).toMatch(/one more question|What will you do|by when/i);
+    expect(await theClose(null, GroundScenario.NEW_PROJECT)).toEqual({ ready: true });
   });
 });
 

@@ -329,7 +329,7 @@ export function AuthPage() {
       // No response at all, or the server broke. Neither says anything about whether
       // this address has an account.
       if (!status || status >= 500) {
-        setError('That did not send, because something went wrong on our side. Please try again.')
+        setError('That did not send, because something went wrong on my side. Please try again.')
         return
       }
       if (status === 429) {
@@ -386,7 +386,7 @@ export function AuthPage() {
     onError: (err: any) => {
       const status = err?.response?.status
       if (!status || status >= 500) {
-        setError('That did not send, because something went wrong on our side. Please try again.')
+        setError('That did not send, because something went wrong on my side. Please try again.')
         return
       }
       if (status === 429) {
@@ -482,7 +482,7 @@ export function AuthPage() {
 
         <form noValidate onSubmit={submitPassword}>
           {trap.field}
-          <Stack gap={10}>
+          <Stack gap={8}>
             {/* "Email", not the prototype's "Your work email": which label to use is waiting for Hafsah. */}
             <AuthField
               id="signin-email"
@@ -501,7 +501,7 @@ export function AuthPage() {
               onChange={v => { setPassword(v); clearNotices() }}
             />
             {error && <AuthError>{error}</AuthError>}
-            <Button type="submit" wide disabled={signIn.isPending}>
+            <Button type="submit" wide size="big" disabled={signIn.isPending}>
               {signIn.isPending ? 'Signing you in…' : 'Sign in'}
             </Button>
             {/*
@@ -511,14 +511,14 @@ export function AuthPage() {
               It sends a link to the address typed above, through the same door as every sign-in
               link, and gives the same answer whether or not the address has an account.
             */}
-            <Button kind="secondary" wide disabled={sendLink.isPending} onClick={askForALink}>
+            <Button kind="secondary" wide size="big" disabled={sendLink.isPending} onClick={askForALink}>
               {sendLink.isPending ? 'Sending…' : 'Email me a sign-in link instead'}
             </Button>
             {googleButton('Sign in with Google')}
           </Stack>
         </form>
 
-        <div className="gwui-button-row">
+        <div className="signlinks">
           <Button kind="quiet" onClick={() => { clearNotices(); setView('forgot') }}>Forgot password?</Button>
           <Button kind="quiet" onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</Button>
         </div>
@@ -586,7 +586,7 @@ export function AuthPage() {
                 <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgTouched(true); setOrgName(v); clearNotices() }} />
                 <p className="gwui-field-help">
                   {!orgTouched && suggestedOrg && orgName === suggestedOrg
-                    ? 'We suggested this from your email address. You can change it now or later.'
+                    ? 'I suggested this from your email address. You can change it now or later.'
                     : 'What your organisation will be called. You can change it later.'}
                 </p>
               </div>
@@ -670,7 +670,7 @@ export function AuthPage() {
     )
   }
   return (
-    <AuthCard title="Forgot your password?" sub="We’ll email you a link to choose a new one. It works for an hour.">
+    <AuthCard title="Forgot your password?" sub="I’ll email you a link to choose a new one. It works for an hour.">
       <form noValidate onSubmit={(e) => { e.preventDefault(); setError(''); { const wrong = whatIsWrongWithTheAddress(email); if (wrong) { setError(wrong); return } } sendReset.mutate() }}>
         <Stack gap={10}>
           {/* "Email", not the prototype's "Work email": which label to use is waiting for Hafsah. */}

@@ -4,7 +4,8 @@
   "description": "Playwright journeys that drive Groundwork the way a person does.",
   "scripts": {
     "ground1": "playwright test ground1.spec.ts --reporter=list",
-    "ground2": "playwright test ground2.spec.ts --reporter=list"
+    "ground2": "playwright test ground2.spec.ts --reporter=list",
+    "journeys": "playwright test journey-1-admin journey-2-lead journey-3-participant journey-4-admin-decides --workers=1 --reporter=list"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1"

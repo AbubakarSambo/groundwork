@@ -81,6 +81,9 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not send. Try again.'),
   })
   if (!answered.size) return null
+  /* Nobody else has answered, so there is nobody to send it to: said by nothing, never as "0 people have answered" beside the
+     row's own "1 of 3 checked in" (first-experience round 3, Hafsah, 30 October 2026). */
+  if (!reachable.length && !declined.length && !everybodyAlreadyTold) return null
   /* Nothing left for the button to do: either nobody here may be sent it, or the last press
      already reached everybody it could. Either way, say so instead of offering a press that can
      only repeat the same answer. */
@@ -88,14 +91,14 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
   return (
     <section aria-label="Send the report to everyone" style={{ marginTop: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <p style={{ fontSize: 13.5, color: 'var(--gw-text)', margin: 0 }}>
+        <p style={{ fontSize: 14, color: 'var(--gw-text)', margin: 0 }}>
           {/*
             ANSWERING IS NOT ASKING (real-user walk, Kijani Foods, fault 6). "2 people answered and
             asked for the report" was not true: everyone who answers is counted here, whether or not
             they asked for anything - `wantsTheReport !== false` is the default, not something a
             person had to request. Two full sentences in place of one joined with a semicolon.
           */}
-          {reachable.length} {reachable.length === 1 ? 'person has' : 'people have'} answered.{declined.length ? ` ${declined.length} ${declined.length === 1 ? 'person' : 'people'} said no thanks.` : ''} Each gets a link to this session's report, once.
+          {reachable.length ? `${reachable.length === 1 ? 'One person who answered gets' : `${reachable.length} people who answered get`} a link to this session's report, once.` : ''}{declined.length ? ` ${declined.length} ${declined.length === 1 ? 'person' : 'people'} said no thanks.` : ''}
           {everybodyAlreadyTold && ' Everybody who asked for it already has it.'}
         </p>
         {!nothingLeftToSend && (
@@ -106,7 +109,7 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
       </div>
       {reachable.length > 0 && (
         <fieldset style={{ border: 0, padding: 0, margin: '12px 0 0' }}>
-          <legend style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', padding: 0 }}>What they receive</legend>
+          <legend style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', padding: 0 }}>What they receive</legend>
           {([
             { v: 'NAMED' as const, title: 'Named', says: 'People see who said what, by name and organisation, the same way you do.' },
             { v: 'ANONYMOUS' as const, title: 'Anonymised', says: 'Names and organisations are taken out of their copy, including inside quotes. It cannot take out somebody describing themselves. Yours stays named.' },
@@ -115,8 +118,8 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
               <input id={`share-${o.v}`} type="radio" name="how-it-is-shared" value={o.v} checked={how === o.v}
                 onChange={() => setHow(o.v)} style={{ marginTop: 3 }} />
               <span>
-                <span style={{ fontSize: 13, fontWeight: 600, display: 'block' }}>{o.title}</span>
-                <span style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{o.says}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>{o.title}</span>
+                <span style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{o.says}</span>
               </span>
             </label>
           ))}
@@ -124,8 +127,8 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
       )}
       {reachable.length > 0 && (
         <details style={{ marginTop: 8 }}>
-          <summary style={{ fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer' }}>Who gets it</summary>
-          <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-sub)' }}>
+          <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>Who gets it</summary>
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--gw-sub)' }}>
             {/* A name and an address joined by a dot read as two fragments stapled together
                 (real-user walk, Kijani Foods, fault 6): "Esther Adeyemi (esther@kijani.test)". */}
             {reachable.map((p) => <li key={p.id}>{nameOf(p) ? `${nameOf(p)} (${p.email})` : p.email}</li>)}

@@ -43,7 +43,9 @@ describe('the report a session ended on', () => {
     for (const k of keys) expect(dto).toMatch(new RegExp(`\\b${k}\\??:`));
     expect(service).toMatch(/if \(!merged\.report && merged\.reportSummary\) \{\s*merged\.report = merged\.reportSummary;/);
     const page = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'client', 'src', 'pages', 'enter', 'EntryChatPage.tsx'), 'utf8');
-    expect(page).toMatch(/reportSummary: sessionReport \?\? undefined/);
+    /* Since 0e649a61a (a correction on the setup card is saved with it), the page sends the report it showed only when it was made
+       from the whole conversation; otherwise the save makes it from the conversation and the team's names (dd2344ad5). */
+    expect(page).toMatch(/reportSummary: sessionReport && reportMadeFrom === history\.length \? sessionReport : undefined/);
   });
 
   it('never goes into the column the background summary owns', () => {

@@ -39,39 +39,28 @@ export function InferenceReviewPanel({ groundId, inferences }: Props) {
 
   return (
     // GROUP 3'S REVIEW, BATCH A FAULT 6: "INFERENCES" IS JARGON. Said plainly instead.
-    <Folded summary="What we worked out from what you said" note={active.length === 1 ? 'There is one for you to check.' : `There are ${active.length} for you to check.`}>
-      <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '0 0 12px', lineHeight: 1.6 }}>
+    <Folded summary="What I worked out from what you said" note={active.length === 1 ? 'There is one for you to check.' : `There are ${active.length} for you to check.`}>
+      <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '0 0 12px', lineHeight: '21px' }}>
         These claims are not direct quotes from your session. They were inferred from what you said. If anything is not right, you can correct it through a short follow-up session.
       </p>
 
       {active.map((inf) => (
         <div key={inf.id} style={{ padding: '10px 0', borderTop: '1px solid var(--gw-border)' }}>
-          <p style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, margin: '0 0 4px' }}>
+          <p style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '20px', margin: '0 0 4px' }}>
             "{inf.text}"
           </p>
           <p style={{ fontSize: 12, color: 'var(--gw-muted)', margin: '0 0 10px', lineHeight: 1.5 }}>
             Inferred because: {inf.reason}
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button
+            <button className="btn sec sm"
               onClick={() => setDismissed(prev => new Set([...prev, inf.id]))}
-              style={{
-                fontSize: 12, fontWeight: 600, color: 'var(--gw-green-t)',
-                background: 'var(--gw-green-bg)', border: '1px solid #BFE6D4',
-                borderRadius: 7, padding: '5px 12px', cursor: 'pointer',
-              }}
             >
               This is right
             </button>
-            <button
+            <button className="btn sec sm"
               onClick={() => clarifyMut.mutate(inf.id)}
               disabled={clarifyMut.isPending}
-              style={{
-                fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)',
-                background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)',
-                borderRadius: 7, padding: '5px 12px', cursor: 'pointer',
-                opacity: clarifyMut.isPending ? 0.6 : 1,
-              }}
             >
               {clarifyMut.isPending ? 'Loading...' : 'Correct this'}
             </button>

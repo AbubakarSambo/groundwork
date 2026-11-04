@@ -69,8 +69,9 @@ describe('nothing that describes the mechanism assumes two parties', () => {
      * names only the session number, never a party count.
      */
     expect(code).not.toMatch(/`Session \$\{sessionNumber\}`/)
-    expect(code).toMatch(/[Cc]losing session \$\{sessionNumber\}/)
-    expect(code).toMatch(/[Cc]orrecting session \$\{correctingSession\}/)
+    /* Changed 3 November evening: the page no longer says anything about the session itself (no line under the header or above the
+       box); a closing or correcting session is named by the engine's first message. So nothing here can assume two parties. */
+    expect(code).not.toMatch(/[Cc]losing session \$\{sessionNumber\}|[Cc]orrecting session \$\{correctingSession\}/)
     expect(code).not.toMatch(/Private until/)
   })
 

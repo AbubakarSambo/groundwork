@@ -11,7 +11,9 @@ const OLD = [
   /what held or ran this period that nobody would have noticed/i,
   /is that still the period you want this measured against/i,
 ];
-const NEW = ['Is there anything you two agreed without ever saying it?', 'What did you keep running since last time that nobody else saw?', 'Is that still the right time span for this'];
+/* Changed 3 November 2026: the third, "Is that still the right time span for this", lived only in the scripted closing confirmation
+   ("... and are you ready to close this check-in?"), which went with the forced close. Its old wording stays out (OLD, above). */
+const NEW = ['Is there anything you two agreed without ever saying it?', 'What did you keep running since last time that nobody else saw?'];
 const ROLE_MAPS = readFileSync(join(__dirname, '..', 'board', 'role-maps.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 const ALL = SEED_PROMPTS.map((p) => p.content).join('\n') + ROLE_MAPS;
 

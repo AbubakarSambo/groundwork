@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
+import { addThroughTheTeamBox, saveWithMyEmail } from './a-team-read-in-a-spec'
 import { authApi } from '@/api/auth'
 import { toast } from 'sonner'
 
@@ -31,6 +32,7 @@ import { toast } from 'sonner'
 vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn().mockResolvedValue({ draftToken: 'd-token' }) } }))
 vi.mock('@/api/entry', () => ({
   entryApi: {
+    peopleOnLines: vi.fn(async (t: string) => (await import('./a-team-read-in-a-spec')).readLikeTheServer(t)),
     opener: vi.fn().mockResolvedValue({ reply: '' }),
     chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn(),
     patchDraft: vi.fn().mockResolvedValue({ ok: true }),
@@ -95,6 +97,8 @@ async function openInviteBlock(anchor: boolean) {
     return
   }
   const emailInput = await screen.findByPlaceholderText('your@email.com')
+  /* The save step asks "Your name" now (local test of staging, 15 October). */
+  { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
   fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
   fireEvent.submit(emailInput.closest('form')!)
   await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
@@ -151,24 +155,24 @@ describe('the people step, for an anchor draft', () => {
     expect(screen.queryByText('Who needs to be part of this?')).toBeNull()
   })
 
-  it('adds up to the shrunk mayAdd of 2, then refuses the next one with the engine’s own sentence', async () => {
+  /* UPDATED (Hafsah, 31 October 2026): people are added through the one team box, in one press, with no per-person step. */
+  /* UPDATED again (Hafsah's blocker, 31 October 2026): a third person stops the save with the engine's own sentence, and nobody is
+     dropped: the save goes nowhere until the box holds no more than the room. */
+  it('saves up to the shrunk mayAdd of 2, and stops a save of three with the engine’s own sentence', async () => {
     await openInviteBlock(true)
-    for (let i = 0; i < 2; i++) {
-      fireEvent.change(await screen.findByPlaceholderText('name@company.com'), { target: { value: `person${i}@example.test` } })
-      fireEvent.click(screen.getByText('Add'))
-      await screen.findByText('What do they do, and why are they part of this?')
-      fireEvent.click(screen.getByText('Skip'))
-      await waitFor(() => expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull())
-    }
+    await screen.findByLabelText('Your team, one per line')
+    addThroughTheTeamBox('person0@example.test\nperson1@example.test\nperson2@example.test')
+    expect(screen.getByText('This one-month Groundwork holds up to 20 people besides you.')).toBeTruthy()
+    saveWithMyEmail()
+    await waitFor(() => expect(screen.getByText('This one-month Groundwork holds up to 20 people besides you.')).toBeTruthy())
+    expect(authApi.entrySave).not.toHaveBeenCalled()
+    /* Said on the page, where it stays, not in a passing toast. */
     expect(toast.error).not.toHaveBeenCalled()
-    // A third other person reaches the same context prompt (asking what somebody does is not
-    // itself adding them), but "Skip" refuses to add them: the limit is enforced the moment
-    // somebody is actually added, with the engine's own sentence.
-    fireEvent.change(await screen.findByPlaceholderText('name@company.com'), { target: { value: 'person2@example.test' } })
-    fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do, and why are they part of this?')
-    fireEvent.click(screen.getByText('Skip'))
-    expect(toast.error).toHaveBeenCalledWith('This one-month Groundwork holds up to 20 people besides you.')
+    addThroughTheTeamBox('person0@example.test\nperson1@example.test')
+    saveWithMyEmail()
+    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
+    const [, body] = vi.mocked(authApi.entrySave).mock.calls[0] as any[]
+    expect(body.payload.contributors.map((c: any) => c.email)).toEqual(['person0@example.test', 'person1@example.test'])
   })
 })
 
@@ -182,12 +186,11 @@ describe('the limit is enforced at every place a contributor is actually added',
    */
   const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'EntryChatPage.tsx'), 'utf8')
 
-  it('queueColleague (the colleague picker, one at a time) checks the limit first', () => {
-    expect(src).toMatch(/function queueColleague\([^)]*\) \{\s*\n\s*if \(!mayAddOneMorePerson\(\)\) return/)
-  })
-
-  it('the colleague picker\'s multi-select slices to the room actually left, not once per item', () => {
-    expect(src).toContain('const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : picked.length')
+  /* REWRITTEN (round 6): the colleague picker writes into the one team box, so queueColleague is gone. The picker still takes only the
+     room actually left, counted as everybody on the list and in the box; and a box over the limit stops the save (readTheTeamBox). */
+  it('the colleague picker takes only the room actually left, counting the box too', () => {
+    expect(src).toContain('const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - peopleOnTheList) : picked.length')
+    expect(src).not.toMatch(/function queueColleague/)
   })
 
   it('submitInviteContext (the "Add person" button) checks the limit first', () => {
@@ -198,8 +201,10 @@ describe('the limit is enforced at every place a contributor is actually added',
     expect(src).toContain('if (inviteAdded.includes(inviteContextFor) || mayAddOneMorePerson()) {')
   })
 
-  it('the pasted-list "Add all" button slices to the room actually left', () => {
-    expect(src).toContain('const room = isAnchorDraft() ? Math.max(0, thePeopleStepRules.mayAdd - inviteAdded.length) : allEmails.length')
+  /* The pasted list's "Add all" is the one team box now (Hafsah, 31 October 2026); it counts the room left the same way. */
+  /* UPDATED (Hafsah's blocker, 31 October 2026): the box is read by the save, which stops rather than dropping anybody past the room. */
+  it('the team box is counted against the room actually left before anything is saved', () => {
+    expect(src).toContain('if (isAnchorDraft() && inviteAdded.length + read.entries.filter((e) => !onTheList(e)).length > thePeopleStepRules.mayAdd) {')
   })
 })
 

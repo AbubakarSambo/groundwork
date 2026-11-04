@@ -8,7 +8,8 @@ import './gw-ui.css'
  * including a green not in the palette, is not carried over.
  */
 export function Avatar({ initials, size = 34 }: { initials: string; size?: number }) {
-  const fontSize = Math.round((size / 2.8) * 10) / 10
+  /* A whole pixel, so the initials are never drawn at a fractional size (crisp text, 25 October). */
+  const fontSize = Math.round(size / 2.8)
   /* B-066: a plain neutral mark, never initials made out of a placeholder sentence's own first
      words ("Someone who has not given a name yet" read as "SW"). `initialsOf` (people-here.ts)
      returns '' for that case; this is the one spot that turns it into something to look at. */

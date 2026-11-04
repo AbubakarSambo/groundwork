@@ -22,7 +22,7 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: me }) 
 vi.mock('@/api/board', () => ({
   boardApi: { get: vi.fn() },
   KIND_OF_WORK_OPTIONS: [
-    'sales org', 'engineering release', 'support desk', 'distribution operations',
+    'sales team', 'sales org', 'engineering release', 'support desk', 'distribution operations',
     'trader training programme', "founder's own check-in", 'asset loans',
     'MarketView where next', 'MarketView Q4', 'a law firm matter', 'a government programme',
   ],
@@ -45,12 +45,12 @@ const base = {
   workRecords: [],
 }
 
-function renderBoard(payload: any) {
+function renderBoard(payload: any, at = '/grounds/g1/board') {
   ;(boardApi.get as any).mockResolvedValue(payload)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/grounds/g1/board']}>
+      <MemoryRouter initialEntries={[at]}>
         <Routes><Route path="/grounds/:id/board" element={<BoardPage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -61,23 +61,27 @@ beforeEach(() => vi.clearAllMocks())
 
 describe('the kind-of-work dialog, scoped to kindsOffered', () => {
   it('lists only the offered kind when the check-in has no kind yet', async () => {
-    renderBoard({ ...base, kindOfWork: null, kindsOffered: ['sales org'] })
+    /* As the server offers sales since Release 1: a sales team, or a sales organisation of several teams. */
+    renderBoard({ ...base, kindOfWork: null, kindsOffered: ['sales team', 'sales org'] })
     await screen.findByText('Nobody has said what kind of work this check-in is about yet. Choose one, so its board can keep the right kind of record.')
     await userEvent.click(await screen.findByRole('button', { name: 'Choose the kind of work' }))
     const select = screen.getByLabelText('Kind of work') as HTMLSelectElement
     const labels = Array.from(select.options).map((o) => o.textContent)
-    expect(labels).toContain('A sales team and its deals')
+    expect(labels).toContain('One sales team and its deals')
+    expect(labels).toContain('A sales organisation of several teams, and its deals')
     expect(labels).not.toContain('A law firm matter')
     expect(labels).not.toContain("A founder's own check-in, about their own commitments and decisions")
   })
 
+  /* Screen match, 16 October: a law firm matter's lead first reads matter-board.jpg's own board, which has neither; both hold, unchanged, on "See every other part of this board" (?whole=1). */
   it('still lists the check-in’s own kind even when it is not offered, so it can still be saved', async () => {
-    renderBoard({ ...base, kindOfWork: 'a law firm matter', kindsOffered: ['sales org'] })
+    renderBoard({ ...base, kindOfWork: 'a law firm matter', kindsOffered: ['sales team', 'sales org'] }, '/grounds/g1/board?whole=1')
     await userEvent.click(await screen.findByRole('button', { name: 'Change the kind of work' }))
     const select = screen.getByLabelText('Kind of work') as HTMLSelectElement
     const labels = Array.from(select.options).map((o) => o.textContent)
     expect(labels).toContain('A law firm matter')
-    expect(labels).toContain('A sales team and its deals')
+    expect(labels).toContain('One sales team and its deals')
+    expect(labels).toContain('A sales organisation of several teams, and its deals')
     expect(labels).not.toContain("A founder's own check-in, about their own commitments and decisions")
   })
 
@@ -87,6 +91,7 @@ describe('the kind-of-work dialog, scoped to kindsOffered', () => {
     const select = screen.getByLabelText('Kind of work') as HTMLSelectElement
     const labels = Array.from(select.options).map((o) => o.textContent)
     expect(labels).toContain('A law firm matter')
-    expect(labels).toContain('A sales team and its deals')
+    expect(labels).toContain('One sales team and its deals')
+    expect(labels).toContain('A sales organisation of several teams, and its deals')
   })
 })

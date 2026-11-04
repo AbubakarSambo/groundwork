@@ -1,5 +1,4 @@
 import { GroundsCron } from '../grounds/grounds.cron';
-import { sendTheLeadsDailySummaries } from './the-leads-daily-summary';
 import { organisationsThatTurnedWhatsAppOn } from './only-where-whatsapp-is-turned-on';
 
 /*
@@ -43,16 +42,6 @@ describe('nothing new on WhatsApp reaches an organisation that has not turned it
   it('sends nothing to anybody while the platform switch is off, even for an organisation that turned it on', async () => {
     const { cron, sendFor } = aCron(['org-old'], false);
     await cron.sendWhatsAppRemindersInner();
-    expect(sendFor).not.toHaveBeenCalled();
-  });
-  it('sends no daily summary to a lead in an organisation that has not turned WhatsApp on', async () => {
-    const sendFor = jest.fn();
-    const prisma: any = {
-      ground: { findMany: jest.fn(async () => [{ id: 'g-1', label: 'Sales', organizationId: 'org-old', overWhatsApp: null, initiatorId: 'u-1' }]) },
-      organization: { findMany: jest.fn(async () => []) },
-    };
-    const r = await sendTheLeadsDailySummaries({ prisma, whatsapp: { isEnabled: async () => true, sendFor } as any, boards: {} as any, frontendUrl: '' });
-    expect(r.tried).toBe(0);
     expect(sendFor).not.toHaveBeenCalled();
   });
   it('knows which organisations turned it on, and none while the platform switch is off', async () => {

@@ -36,7 +36,6 @@ describe('request 110: an aim a person set for themselves, kept only as their pr
     expect(b.yourShare).toEqual([{
       objectiveId: 'their-own-aim-po-femi',
       says: 'Your own aim is 12 approved. You said, "I\'m aiming for the full 12 approved facilities. I expect to hit that by the end of the quarter". Nothing has been counted against it yet.',
-      whoSees: 'Only you and Bisi Adeyemi see your share.',
     }]);
     expect(b.yourShareSays).toBeUndefined();
     expect(JSON.stringify(b)).not.toMatch(/Ngozi Eze set|targeting 14/);
@@ -63,10 +62,11 @@ describe('request 110: an aim a person set for themselves, kept only as their pr
     expect(JSON.stringify(b)).not.toMatch(/12 approved facilities|Femi/);
   });
 
-  it('where the lead chose that everybody sees every number, her share says so, and her own board still holds only her own aim (request 105, part 3)', async () => {
+  /* Changed 4 November 2026 (release batch 1, Hafsah: no privacy notes on screens): the share carries no note about who else sees it. Who may read it is unchanged. */
+  it('where the lead chose that everybody sees every number, her own board still holds only her own aim (request 105, part 3)', async () => {
     const b = await boardAs({ ...ONLY_AS_PROMISES, whoSeesTargets: 'EVERYBODY' }, ...NGOZI);
     expect(names(b)).toEqual(['Your own aim is 14 approved. You said, "I\'m targeting 14 approved facilities".']);
-    expect(b.yourShare[0].whoSees).toBe('Everybody in this check-in sees your share.');
+    expect(b.yourShare[0].whoSees).toBeUndefined();
   });
 
   it('Kwame, who set no number of his own, is sent an empty share and a sentence that says so', async () => {

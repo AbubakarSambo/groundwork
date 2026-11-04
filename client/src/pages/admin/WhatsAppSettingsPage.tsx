@@ -13,11 +13,10 @@ import { whatsAppSettingsApi, type OurWhatsAppSettings, type SaveOurWhatsAppSett
  * here (RequirePlatformAdmin, and PlatformAdminGuard on every route behind it).
  */
 
-const small = { fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55 } as const
+const small = { fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' } as const
 const label = { fontSize: 13, fontWeight: 700, display: 'block', marginBottom: 4 } as const
-const input = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', fontSize: 14, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit', background: 'white', color: 'var(--gw-text)' } as const
-const btn = { fontSize: 13, padding: '7px 14px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' } as const
-const primary = { ...btn, background: 'var(--gw-navy)', color: 'white', border: 'none', fontWeight: 600 } as const
+/* The kit's field (app.css .input). */
+const input = { width: '100%', boxSizing: 'border-box', padding: '12px 16px', fontSize: 16, border: '1px solid var(--rule2-crisp)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)', fontFamily: 'inherit' } as const
 const card = { border: '1px solid var(--gw-border)', borderRadius: 8, padding: 16, marginTop: 16, background: 'var(--gw-card)' } as const
 
 type Plain = 'displayNumber' | 'phoneNumberId' | 'businessAccountId'
@@ -114,7 +113,7 @@ function TheForm({ page }: { page: OurWhatsAppSettings }) {
           <div key={key} style={{ marginTop: 14 }}>
             <label htmlFor={`wa-${key}`} style={label}>
               {name}{' '}
-              <span style={{ fontWeight: 600, color: s.state === 'set' ? 'var(--gw-green-t)' : 'var(--gw-sub)' }}>{s.state === 'set' ? 'Set' : 'Not set'}</span>
+              <span style={{ fontWeight: 700, color: s.state === 'set' ? 'var(--gw-green-t)' : 'var(--gw-sub)' }}>{s.state === 'set' ? 'Set' : 'Not set'}</span>
             </label>
             <input
               id={`wa-${key}`}
@@ -128,7 +127,7 @@ function TheForm({ page }: { page: OurWhatsAppSettings }) {
             />
             <div style={{ ...small, marginTop: 4 }}>{hint} {s.saying}</div>
             {s.from === 'here' && (
-              <button type="button" style={{ ...btn, marginTop: 6 }} onClick={() => remove.mutate(key)} disabled={remove.isPending}>
+              <button type="button" className="btn sec sm" style={{ marginTop: 6 }} onClick={() => remove.mutate(key)} disabled={remove.isPending}>
                 Remove the saved {name.toLowerCase()}
               </button>
             )}
@@ -137,7 +136,7 @@ function TheForm({ page }: { page: OurWhatsAppSettings }) {
       })}
 
       <div style={{ marginTop: 18, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <button type="button" style={primary} onClick={submit} disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</button>
+        <button type="button" className="btn pri sm" onClick={submit} disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</button>
         {message && <span style={{ fontSize: 13, color: message.ok ? 'var(--gw-green-t)' : 'var(--gw-red-t)' }}>{message.text}</span>}
       </div>
     </div>
@@ -152,11 +151,11 @@ function TheConnection() {
       {connection.isLoading && <p style={small}>Asking Meta…</p>}
       {connection.error && <p style={{ ...small, color: 'var(--gw-red-t)' }}>{said(connection.error, 'Groundwork could not check the connection. Try again.')}</p>}
       {connection.data && (
-        <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: 1.6, color: connection.data.connected ? 'var(--gw-green-t)' : 'var(--gw-text)' }}>
+        <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: '22px', color: connection.data.connected ? 'var(--gw-green-t)' : 'var(--gw-text)' }}>
           <strong>{connection.data.connected ? 'Connected' : 'Not connected'}.</strong> {connection.data.saying.replace(/^(Connected|Not connected)\.\s*/, '')}
         </p>
       )}
-      <button type="button" style={{ ...btn, marginTop: 10 }} onClick={() => connection.refetch()} disabled={connection.isFetching}>Check again</button>
+      <button type="button" className="btn sec sm" style={{ marginTop: 10 }} onClick={() => connection.refetch()} disabled={connection.isFetching}>Check again</button>
     </div>
   )
 }
@@ -184,7 +183,7 @@ function TheTest() {
           aria-label="The number to send the test message to"
           style={{ ...input, flex: '1 1 220px', width: 'auto' }}
         />
-        <button type="button" style={primary} onClick={() => test.mutate(to)} disabled={test.isPending || !to.trim()}>
+        <button type="button" className="btn pri sm" onClick={() => test.mutate(to)} disabled={test.isPending || !to.trim()}>
           {test.isPending ? 'Sending…' : 'Send a test message'}
         </button>
       </div>
@@ -202,16 +201,16 @@ export function WhatsAppSettingsPage() {
   const page = settings.data
 
   return (
-    <section className="gw-page" style={{ maxWidth: 820, margin: '0 auto', padding: '24px 16px 80px' }}>
+    <section style={{ maxWidth: 820, margin: '0 auto', padding: '24px 16px 80px' }}>
       <button
         type="button"
         onClick={() => navigate('/admin')}
-        style={{ fontSize: 12.5, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+        style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
       >
         ← Back office
       </button>
       <h1 style={{ fontSize: 24, margin: '10px 0 0' }}>Groundwork's WhatsApp number</h1>
-      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 8 }}>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px', marginTop: 8 }}>
         This is the one WhatsApp number every organisation uses, unless it has connected a number of its own.
         Type in the number and its keys from Meta, give Meta the webhook address below, check that it is
         connected, and send yourself a test message. Nothing goes to anybody until WhatsApp is switched on
@@ -225,7 +224,7 @@ export function WhatsAppSettingsPage() {
         <>
           <div style={card}>
             <h2 style={{ fontSize: 15, margin: 0 }}>Is WhatsApp on?</h2>
-            <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: 1.6 }}>{page.switch.saying}</p>
+            <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: '22px' }}>{page.switch.saying}</p>
           </div>
 
           <TheConnection />
@@ -233,11 +232,11 @@ export function WhatsAppSettingsPage() {
 
           <div style={card}>
             <h2 style={{ fontSize: 15, margin: 0 }}>The webhook address to give Meta</h2>
-            <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: 1.6, wordBreak: 'break-all' }}>{page.webhook.saying}</p>
+            <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: '22px', wordBreak: 'break-all' }}>{page.webhook.saying}</p>
             {page.webhook.address && (
               <button
                 type="button"
-                style={{ ...btn, marginTop: 10 }}
+                className="btn sec sm" style={{ marginTop: 10 }}
                 onClick={() => { navigator.clipboard?.writeText(page.webhook.address ?? '').then(() => setCopied(true)).catch(() => undefined) }}
               >{copied ? 'Copied' : 'Copy the address'}</button>
             )}

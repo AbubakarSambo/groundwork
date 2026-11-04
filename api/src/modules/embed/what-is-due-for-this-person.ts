@@ -1,3 +1,5 @@
+import { howLongItTakes } from '../assistant/what-it-takes-to-start';
+
 /**
  * WHAT IS DUE FOR THE PERSON THE PANEL IS SIGNED IN AS.
  *
@@ -96,7 +98,7 @@ export function openingOnWhatIsDue(due: WhatIsDue, firstName: string): {
   const thread = c.leftOpen.length ? ` Last time you left this open: "${c.leftOpen[0]}".` : '';
   return {
     /* "Released with everybody else's" only where there is somebody else (decision 82, item 5). */
-    line: `${firstName}, ${which} on "${c.label}" is open. ${c.aboutOnePerson ? 'It takes about ten minutes.' : "About ten minutes, and what you say is released with everybody else's, not before."}${thread}${more}`,
+    line: `${firstName}, ${which} on "${c.label}" is open. ${howLongItTakes(c.aboutOnePerson)}${thread}${more}`,
     source: 'session_open',
     suggestions: ['What is due?', 'What did I commit to?'],
     acts: [{ label: 'Start it', kind: 'open_a_check_in', id: c.checkInId }],

@@ -118,6 +118,16 @@ export const SCENARIO_LABELS = {
 
 export type ScenarioKey = keyof typeof SCENARIO_LABELS
 
+/**
+ * THE NAMES OF SITUATIONS OFFERED ONLY WHERE AN ORGANISATION'S SWITCH IS ON. Kept out of SCENARIO_LABELS, which both pickers build
+ * every card from, so with the switch off nothing is offered that was not before. The name is the server's scenario table's
+ * (the-scenario-table.ts), as every other one is.
+ */
+export const LABELS_BEHIND_A_SWITCH = {
+  /* Release 2, working label. */
+  COLLECTIONS: 'Collect what’s owed',
+} as const
+
 /** Every situation, in the order a person is most likely to be looking for it. */
 export const SCENARIO_KEYS = Object.keys(SCENARIO_LABELS) as ScenarioKey[]
 
@@ -151,6 +161,9 @@ export function scenarioLabel(key: string, brief?: string | null): string {
    * `SCENARIO_LABELS` keeps it out of `SCENARIO_KEYS`, which both pickers build their cards from.
    */
   if (key === 'HELP_TEAM_UNDERSTAND') return 'Help my team understand'
+  /* Collect what's owed (Release 2) is offered only where its switch is on, so it is kept out of SCENARIO_LABELS for the same reason (lib/collect-whats-owed.ts). */
+  const behindASwitch = (LABELS_BEHIND_A_SWITCH as Record<string, string>)[key]
+  if (behindASwitch) return behindASwitch
   const known = (SCENARIO_LABELS as Record<string, string>)[key]
   if (known) return known
   return key.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
@@ -301,7 +314,7 @@ export const COACH_CARD = {
   question: 'You want somebody experienced helping you steer your team through it, not just the software.',
   label: 'Ask to speak to a coach',
   moment: 'You know what you are dealing with. You want a person in it with you.',
-  whatHappens: 'Nothing is created and nobody on your team is contacted. You tell us what you are dealing with, we email you back, and a coach picks it up from there.',
+  whatHappens: 'Nothing is created and nobody on your team is contacted. You tell me what you are dealing with, I email you back, and a coach picks it up from there.',
   /*
    * THE SAME NUMBERS THE PRICING PAGE SHOWS, and they were not. This card said $5,000 and $500
    * while the site said $7,500 and $700 - two prices for one thing, one of them inside the product

@@ -23,14 +23,17 @@ describe('there is no admin setting for who a pattern reaches (decision 86)', ()
     }
   });
 
-  /* Nothing reads the row any more, so the lead's read is the same whatever a database holds. */
-  it('with no setting in force at all, the lead reads a pattern after the person has answered', () => {
+  /* Nothing reads the row any more, so the reach is the same whatever a database holds. */
+  it('with no setting in force at all, only the person reads their pattern; the lead reads none of it, even after the person answered', () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const row = {
       id: 'pd1', participantId: 'p-ngozi', code: 'B11', observationText: null, seenInSessions: [1, 2, 3], periodsObserved: 3,
       readyAt: new Date('2026-09-20'), shownToPersonAt: new Date('2026-09-20'),
       personAnswer: 'The committee only meets once a month.', personAnsweredAt: new Date('2026-09-21'),
     };
     const asTheLead = patterns.servedPatterns([row], { participantId: 'p-lead', runsIt: true }, { on: true, now: new Date('2026-09-28'), firstNameOf: () => 'Ngozi' });
-    expect(asTheLead.map((p) => p.whoSeesIt)).toEqual(['Ngozi saw this first and said what is behind it.']);
+    expect(asTheLead).toEqual([]);
+    const asNgozi = patterns.servedPatterns([row], { participantId: 'p-ngozi', runsIt: false }, { on: true, now: new Date('2026-09-28'), leadName: 'Tunde' });
+    expect(asNgozi.map((p) => p.theirWords)).toEqual(['The committee only meets once a month.']);
   });
 });

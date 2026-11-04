@@ -1,0 +1,818 @@
+{
+ "_from": "Cut from ~/Desktop/engine-test/run2/raw/record.json (second night run): the last capture, Tuesday 20 October, morning (the end), as the API served each reader.",
+ "grace": {
+  "myWork": {
+   "on": true,
+   "view": "self",
+   "checkInName": "Sales team, Q4",
+   "person": {
+    "participantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+    "name": "Grace Achieng",
+    "firstName": "Grace"
+   },
+   "heading": "Grace’s work",
+   "topLine": "What you need to do, what you’ve done, and how to get better. Grace sees this page too.",
+   "numbers": [
+    {
+     "value": "0",
+     "label": "sold, 0 with proof"
+    },
+    {
+     "value": "1 of 2",
+     "label": "promises kept"
+    }
+   ],
+   "focus": {
+    "line": "Try one thing before you raise a blocker, and say what you tried.",
+    "why": "You raised 5 blockers and said what you had tried first on 0 of them."
+   },
+   "focusEmpty": "Nothing needs work yet. Your focus will show here once your check-ins show something to work on.",
+   "toDo": {
+    "othersNeed": [
+     {
+      "id": "cf1ee764-daa2-4325-b043-875b91eb6a25",
+      "text": "Peter is waiting on you for a specific area to focus on.",
+      "when": "Since 15 October"
+     }
+    ],
+    "own": [
+     {
+      "id": "2f4d4ce5-8e2a-4dec-8deb-e6481bbe3504",
+      "text": "Follow up with Mr. Kiprop",
+      "when": "It was due on 19 October.",
+      "done": false,
+      "late": true,
+      "whose": null
+     },
+     {
+      "id": "847eed3f-ea6d-41c5-94be-9e3dff4d6797",
+      "text": "Send a reminder email on Monday, in addition to calling him",
+      "when": "It was due on 19 October.",
+      "done": false,
+      "late": true,
+      "whose": null
+     },
+     {
+      "id": "a79213f6-2062-402c-857b-88872f515542",
+      "text": "My main responsibility is to support the team in hitting those targets and to close my own deals.",
+      "when": "Right now",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "9390c994-af29-402f-ac0f-fc7eddccb004",
+      "text": "Do that now.",
+      "when": null,
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "58b82876-64a5-4040-86fc-0174ac31f36c",
+      "text": "Follow up with him",
+      "when": "Next week",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "762de7f7-15d9-4427-b510-8cf21ab15fa7",
+      "text": "Contact Mr. Kiprop to confirm the details for the site visit.",
+      "when": null,
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "84b470a2-5700-4f3d-9a1c-d43bf4c9de56",
+      "text": "Call Mr. Kiprop on Monday if he doesn't respond tomorrow.",
+      "when": null,
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "40accaf7-78da-450a-82aa-f7f12f102c44",
+      "text": "Be in touch with Mr. Kiprop to confirm the exact time and make arrangements for that.",
+      "when": "Next Tuesday",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "0d93129d-ec30-4cd5-85a6-08239933039f",
+      "text": "My plan for tomorrow is to focus on getting the 60 units from the warehouse and booking the delivery van.",
+      "when": "Done on 16 October.",
+      "done": true,
+      "late": false,
+      "whose": null
+     }
+    ],
+    "emptySays": "Nothing to do yet. What you say you will do in a check-in shows here."
+   },
+   "achieved": {
+    "items": [
+     {
+      "text": "Colleagues mentioned your help in 2 check-ins.",
+      "proof": "Their check-ins"
+     },
+     {
+      "text": "You kept 1 of 2 promises.",
+      "proof": "Your check-ins"
+     }
+    ],
+    "note": "In this check-in",
+    "emptySays": "Nothing yet. What you finish, with its proof, shows here."
+   },
+   "performing": {
+    "note": "The same seven behaviours in every check-in. Each one shows once the check-ins give enough to read.",
+    "behaviours": [
+     {
+      "key": "keeping-promises",
+      "name": "Keeping promises",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "planning-ahead",
+      "name": "Planning ahead",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "handling-blockers",
+      "name": "Handling blockers",
+      "verdict": "Needs work",
+      "happened": "You raised 5 blockers and said what you had tried first on 0 of them.",
+      "means": "Raising blockers without trying to clear them can look like excuses.",
+      "toImprove": "Try one thing before you raise a blocker, and say what you tried.",
+      "basedOn": "5 blockers raised between 12 and 19 October"
+     },
+     {
+      "key": "working-on-the-right-things",
+      "name": "Working on the right things",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "backing-claims-with-proof",
+      "name": "Backing claims with proof",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "helping-your-team",
+      "name": "Helping your team",
+      "verdict": "Strength",
+      "happened": "Kevin and Peter mentioned your help in 2 check-ins.",
+      "means": "Helping teammates is what strong team players do.",
+      "toImprove": null,
+      "basedOn": "Their check-ins"
+     },
+     {
+      "key": "check-in-quality",
+      "name": "Check-in quality",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     }
+    ],
+    "libraryNote": "What each behaviour means and how to improve come from the behaviour and pattern library, so the words are the same in every check-in."
+   },
+   "coaching": {
+    "better": [],
+    "keep": [
+     "Helping your teammates."
+    ],
+    "betterEmpty": "Nothing yet. Lines show here from Grace’s coaching for the team and from what keeps coming up in your check-ins.",
+    "keepEmpty": "Your strengths will show here once your check-ins show them."
+   },
+   "checkIns": {
+    "heading": "Your check-ins",
+    "due": 0,
+    "done": 0,
+    "onTime": 0,
+    "specific": 0,
+    "emptySays": "No check-in has been due yet."
+   },
+   "reports": {
+    "heading": "Your reports",
+    "items": [],
+    "emptySays": "Your own report for each check-in will show here once you finish one."
+   },
+   "items": {
+    "heading": "Your deals",
+    "note": "1 open",
+    "itemWord": "deal",
+    "rows": [
+     {
+      "id": "dbfefc1a-6647-47fc-b524-3f268f49a2cb",
+      "name": "Lavington Business Park",
+      "stage": "Pitched",
+      "next": "Site visit confirmed for tomorrow, Tuesday, at 10, by next week",
+      "nextBooked": true,
+      "proof": "None yet",
+      "proven": false
+     }
+    ],
+    "emptySays": "You have no deals on the board yet."
+   },
+   "people": [
+    {
+     "participantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+     "name": "Peter Njoroge"
+    },
+    {
+     "participantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+     "name": "You"
+    },
+    {
+     "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+     "name": "Kevin Omondi"
+    },
+    {
+     "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+     "name": "Joseph Kariuki"
+    },
+    {
+     "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+     "name": "Mercy Wairimu"
+    }
+   ]
+  },
+  "peopleAndSetup": {
+   "on": true,
+   "view": "lead",
+   "howItRuns": "5 people answer every weekday, until 30 October, here.",
+   "problems": [
+    {
+     "participantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+     "says": "Nobody has described Peter Njoroge's role here, so Peter gets the general questions.",
+     "fix": "add-their-role"
+    }
+   ],
+   "sessions": "6 of 15 sessions done. Sessions already done are never removed.",
+   "joinedWithTheLink": "Nobody has answered with it yet.",
+   "kindOfWork": "sales team",
+   "kindsOffered": [
+    "sales team",
+    "sales org",
+    "engineering release"
+   ],
+   "othersWithAccess": "The people above and the admins of Drop Access (test) can see it. So can a lead in the same department, once the team's report is shared.",
+   "runsIt": "Grace Achieng",
+   "organisationName": "Drop Access (test)",
+   "roleDescribed": {
+    "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f": false,
+    "9594ee31-5f40-41d2-97fe-e87527405712": false,
+    "9f2e58a4-06d8-4a0a-bddc-03cd96df027c": true,
+    "2274e6af-8d37-4388-bd39-8a7aeb582d7b": true,
+    "5632caa0-593e-48d5-910e-5c9ea5bc4fb2": true
+   }
+  },
+  "references": {
+   "on": true,
+   "view": "lead",
+   "checkInName": "Sales team, Q4",
+   "leadName": "Grace Achieng",
+   "topLine": "Your team’s reference for this work. They can read it, except People. Only you can add to it.",
+   "mayAdd": true,
+   "itemWord": "deal",
+   "about": {
+    "purpose": "This check-in is about your sales for water dispensers in Nairobi. It is for reviewing daily how sales are progressing with hotels, supermarkets, offices, and shops.",
+    "whose": "Groundwork wrote this from Grace’s words at setup.",
+    "keyFacts": [],
+    "alsoWorthKnowing": [],
+    "emptySays": null,
+    "yourOwnWords": "A daily check-in for my sales team: deals in progress, what was sold with proof, and what each rep does next. We sell water dispensers to hotels, supermarkets, offices and shops in Nairobi at KES 5,000 a unit. The target is 120 units sold by 30 October, 30 for each of the four reps. A sale counts only with proof of payment or a signed order."
+   },
+   "howWeWork": {
+    "rules": [],
+    "stageNeeds": [
+     {
+      "id": "template-stage-0",
+      "text": "Qualified: need, budget, decision maker and buying date.",
+      "fromTheTemplate": true
+     },
+     {
+      "id": "template-stage-1",
+      "text": "Quoted: the customer has the quote, with a photo or the email.",
+      "fromTheTemplate": true
+     },
+     {
+      "id": "template-stage-2",
+      "text": "Won: a signed order or a payment, with proof.",
+      "fromTheTemplate": true
+     }
+    ],
+    "coaching": [],
+    "risks": [
+     {
+      "id": "template-risk-0",
+      "text": "A deal marked won without a signed order or payment.",
+      "fromTheTemplate": true
+     }
+    ],
+    "startingSetSays": "Lines marked as Groundwork’s are the starting set for a sales team."
+   },
+   "documents": {
+    "total": 0,
+    "items": [],
+    "notOpenToYou": false
+   },
+   "evidence": {
+    "total": 2,
+    "page": 1,
+    "pageSize": 25,
+    "items": [
+     {
+      "id": "d111faf2-9ef2-47cf-914e-95601f6bba79",
+      "readAs": "A payment",
+      "shows": "RBT7Y3KQ2P Confirmed.",
+      "belongsTo": "Savannah Cafe",
+      "addedBy": "Kevin",
+      "addedById": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+      "addedOn": "16 October",
+      "on": "2026-10-16",
+      "countsAsProof": true,
+      "group": "Payments"
+     },
+     {
+      "id": "59169452-90ea-4909-b7a9-d9e2cd01671b",
+      "readAs": "A payment",
+      "shows": "QJK4TL2MX9 Confirmed.",
+      "belongsTo": "Not filed on a deal yet",
+      "addedBy": "Kevin",
+      "addedById": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+      "addedOn": "12 October",
+      "on": "2026-10-12",
+      "countsAsProof": true,
+      "group": "Payments"
+     }
+    ],
+    "people": [
+     {
+      "id": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+      "name": "Kevin"
+     }
+    ]
+   },
+   "evidenceSays": "Photos, slips and documents your team added as proof. Each also shows on the board.",
+   "questions": {
+    "total": 0,
+    "items": [],
+    "emptySays": "Nobody has asked about this work yet. Questions asked with Ask about this work will show here, with their answers."
+   },
+   "suggested": [
+    {
+     "id": "19fb916f-cf23-4639-ae86-1a55bfe0f83f",
+     "what": "a goal",
+     "from": "From your check-in, 12 October",
+     "says": "Grace is aiming to sell 20 units. The number is 20.",
+     "saidAs": "I'm preparing a proposal for 20 units for Mr."
+    },
+    {
+     "id": "4a8387da-e6d8-4db7-91ad-3b3649e40396",
+     "what": "a goal",
+     "from": "From your check-in, 13 October",
+     "says": "Grace is aiming for 20 units. The number is 20.",
+     "saidAs": "Kiprop would need to accept the proposal and either provide proof of payment or a signed order for the 20 units."
+    },
+    {
+     "id": "0ddbe6f2-c869-4876-8cd0-76113a98aedb",
+     "what": "a goal",
+     "from": "From your check-in, 15 October",
+     "says": "Grace is aiming to get 60 units from the warehouse. The number is 60.",
+     "saidAs": "Kiprop hasn't responded by tomorrow, my plan for tomorrow is to focus on getting the 60 units from the warehouse and booking the delivery van."
+    },
+    {
+     "id": "47becd75-42dc-4c16-b4d3-7b769d906cd6",
+     "what": "a goal",
+     "from": "From your check-in, 16 October",
+     "says": "The team is aiming for each sales representative to sell 30 units. The number is 30.",
+     "saidAs": "The 30 units per rep is their individual sales target."
+    },
+    {
+     "id": "6b8f42fe-dc0f-4559-8437-b7947ac8b7ac",
+     "what": "a goal",
+     "from": "From your check-in, 19 October",
+     "says": "Grace is aiming for 30 units. The number is 30.",
+     "saidAs": "The target is still 30 units for each rep, so 120 total."
+    }
+   ],
+   "people": [
+    {
+     "participantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+     "name": "Peter Njoroge",
+     "role": "Sales rep",
+     "note": null,
+     "helpWith": null,
+     "earlier": []
+    },
+    {
+     "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+     "name": "Kevin Omondi",
+     "role": "Sales rep",
+     "note": null,
+     "helpWith": null,
+     "earlier": []
+    },
+    {
+     "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+     "name": "Joseph Kariuki",
+     "role": "Sales rep",
+     "note": null,
+     "helpWith": null,
+     "earlier": []
+    },
+    {
+     "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+     "name": "Mercy Wairimu",
+     "role": "Sales rep",
+     "note": null,
+     "helpWith": null,
+     "earlier": []
+    }
+   ]
+  }
+ },
+ "kevin": {
+  "myWork": {
+   "on": true,
+   "view": "self",
+   "checkInName": "Sales team, Q4",
+   "person": {
+    "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+    "name": "Kevin Omondi",
+    "firstName": "Kevin"
+   },
+   "heading": "Kevin’s work",
+   "topLine": "What you need to do, what you’ve done, and how to get better. Grace sees this page too.",
+   "numbers": [
+    {
+     "value": "3",
+     "label": "sold, 2 with proof"
+    },
+    {
+     "value": "49 of 30",
+     "label": "your target"
+    },
+    {
+     "value": "0 of 1",
+     "label": "promises kept"
+    }
+   ],
+   "focus": {
+    "line": "Add the photo, slip or link when you say something is done.",
+    "why": "2 of your 3 sales have proof."
+   },
+   "focusEmpty": "Nothing needs work yet. Your focus will show here once your check-ins show something to work on.",
+   "toDo": {
+    "othersNeed": [],
+    "own": [
+     {
+      "id": "209f20fc-78ce-4819-99d7-3be0f33631e0",
+      "text": "Call her tomorrow morning.",
+      "when": "It was due on 14 October.",
+      "done": false,
+      "late": true,
+      "whose": null
+     },
+     {
+      "id": "b0635515-dfa6-4db4-9e48-b71bd98828ba",
+      "text": "Call them",
+      "when": "It was due on 19 October.",
+      "done": false,
+      "late": true,
+      "whose": null
+     },
+     {
+      "id": "bce79180-35c9-4488-8a14-c24355a0d072",
+      "text": "Follow up soon.",
+      "when": "Soon",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "923025c6-07cd-4d79-9ce6-d7a7f680382c",
+      "text": "Follow up with him",
+      "when": "Next week",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "3bf11ce7-27d7-468d-b40b-c66be0988dda",
+      "text": "I can get it for you.",
+      "when": "Right now",
+      "done": false,
+      "late": false,
+      "whose": null
+     },
+     {
+      "id": "7e673a98-940c-4dbe-ab3f-5fee10dc7ed6",
+      "text": "I'm going to follow up with a few new leads I have for hotels in the CBD.",
+      "when": null,
+      "done": false,
+      "late": false,
+      "whose": null
+     }
+    ],
+    "emptySays": "Nothing to do yet. What you say you will do in a check-in shows here."
+   },
+   "achieved": {
+    "items": [
+     {
+      "text": "Savannah Cafe was won, for KES 15,000 deposit.",
+      "proof": "A payment"
+     },
+     {
+      "text": "Kilele Hotel was won, for KES 200,000.",
+      "proof": "A payment record"
+     },
+     {
+      "text": "Roysambu Gym was won, for KES 15,000.",
+      "proof": "Said in a check-in"
+     },
+     {
+      "text": "Grace mentioned your help in 1 check-in.",
+      "proof": "Grace’s check-ins"
+     },
+     {
+      "text": "You kept 0 of 1 promises.",
+      "proof": "Your check-ins"
+     }
+    ],
+    "note": "In this check-in",
+    "emptySays": "Nothing yet. What you finish, with its proof, shows here."
+   },
+   "performing": {
+    "note": "The same seven behaviours in every check-in, read from your last 6 check-ins.",
+    "behaviours": [
+     {
+      "key": "keeping-promises",
+      "name": "Keeping promises",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "planning-ahead",
+      "name": "Planning ahead",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "handling-blockers",
+      "name": "Handling blockers",
+      "verdict": "Strength",
+      "happened": "You raised 2 blockers and said what you had tried first on 1 of them. 1 of them is cleared now.",
+      "means": "Clearing blockers yourself shows ownership.",
+      "toImprove": null,
+      "basedOn": "2 blockers raised between 14 and 15 October"
+     },
+     {
+      "key": "working-on-the-right-things",
+      "name": "Working on the right things",
+      "verdict": "Not enough yet",
+      "happened": "Not enough check-ins show this yet.",
+      "means": null,
+      "toImprove": null,
+      "basedOn": null
+     },
+     {
+      "key": "backing-claims-with-proof",
+      "name": "Backing claims with proof",
+      "verdict": "Needs work",
+      "happened": "2 of your 3 sales have proof.",
+      "means": "Claims without proof can be read as guesses.",
+      "toImprove": "Add the photo, slip or link when you say something is done.",
+      "basedOn": "Your deals"
+     },
+     {
+      "key": "helping-your-team",
+      "name": "Helping your team",
+      "verdict": "Strength",
+      "happened": "Grace mentioned your help in 1 check-in.",
+      "means": "Helping teammates is what strong team players do.",
+      "toImprove": null,
+      "basedOn": "Grace’s check-ins"
+     },
+     {
+      "key": "check-in-quality",
+      "name": "Check-in quality",
+      "verdict": "Strength",
+      "happened": "You did 6 of 6 check-ins on time. 6 of 6 were specific.",
+      "means": "Specific, on-time check-ins make your work visible.",
+      "toImprove": null,
+      "basedOn": "6 check-ins"
+     }
+    ],
+    "libraryNote": "What each behaviour means and how to improve come from the behaviour and pattern library, so the words are the same in every check-in."
+   },
+   "coaching": {
+    "better": [],
+    "keep": [
+     "Trying one thing yourself before you raise a blocker.",
+     "Helping your teammates.",
+     "Specific, on-time check-ins."
+    ],
+    "betterEmpty": "Nothing yet. Lines show here from Grace’s coaching for the team and from what keeps coming up in your check-ins.",
+    "keepEmpty": "Your strengths will show here once your check-ins show them."
+   },
+   "checkIns": {
+    "heading": "Your check-ins",
+    "due": 6,
+    "done": 6,
+    "onTime": 6,
+    "specific": 6,
+    "emptySays": null
+   },
+   "reports": {
+    "heading": "Your reports",
+    "items": [
+     {
+      "checkInId": "58c94007-d435-45c0-bdb0-83677b2954a3",
+      "when": "Monday 19 October",
+      "line": "“Delivery for Savannah Cafe's 6 units was this morning.”"
+     },
+     {
+      "checkInId": "8445497a-a503-4775-abf8-af89d6aa0557",
+      "when": "Friday 16 October",
+      "line": "“Ngong Road Minimart wants 5 units. Ali confirmed that to me after I sent the initial quote.”"
+     },
+     {
+      "checkInId": "fdf46c23-df9a-4bd2-b1f7-861f7794433c",
+      "when": "Thursday 15 October",
+      "line": "“Savannah Cafe is still a go.”"
+     }
+    ],
+    "emptySays": "Your own report for each check-in will show here once you finish one."
+   },
+   "items": {
+    "heading": "Your deals",
+    "note": "1 open",
+    "itemWord": "deal",
+    "rows": [
+     {
+      "id": "e5b19e67-d361-4894-bc23-ccbf51e0319a",
+      "name": "Ngong Road Minimart",
+      "stage": "Quoted",
+      "next": "Paid on delivery on Wednesday, by next week",
+      "nextBooked": true,
+      "proof": "None yet",
+      "proven": false
+     },
+     {
+      "id": "c685918b-5034-46bc-b918-df1a1294177d",
+      "name": "Savannah Cafe",
+      "stage": "Won",
+      "next": "Savannah Cafe pays on Friday 16 October",
+      "nextBooked": true,
+      "proof": "A payment",
+      "proven": true
+     },
+     {
+      "id": "8d06bea2-468a-4c89-ab09-eb1dd8d7cb28",
+      "name": "Kilele Hotel",
+      "stage": "Won",
+      "next": "Nothing booked",
+      "nextBooked": false,
+      "proof": "A payment record",
+      "proven": true
+     },
+     {
+      "id": "f2958f15-b8ef-4078-8ecd-9ffffc5025e4",
+      "name": "Roysambu Gym",
+      "stage": "Won",
+      "next": "Faith is working on getting approval",
+      "nextBooked": true,
+      "proof": "None yet",
+      "proven": false
+     }
+    ],
+    "emptySays": "You have no deals on the board yet."
+   }
+  },
+  "peopleAndSetup": {
+   "on": true,
+   "view": "member",
+   "howItRuns": "5 people answer every weekday, until 30 October, here.",
+   "yourRole": "You have not described your role yet. You can add your job title on your profile.",
+   "status": "ACTIVE",
+   "yourSessionsDone": 6,
+   "sessionsPlanned": 15,
+   "runsIt": "Grace Achieng",
+   "whoSeesWhat": "Grace knows who is here. You see the team's report once it's shared, with names."
+  },
+  "references": {
+   "on": true,
+   "view": "member",
+   "checkInName": "Sales team, Q4",
+   "leadName": "Grace Achieng",
+   "topLine": "Your team’s reference for this work, kept by Grace.",
+   "mayAdd": false,
+   "itemWord": "deal",
+   "about": {
+    "purpose": "This check-in is about your sales for water dispensers in Nairobi. It is for reviewing daily how sales are progressing with hotels, supermarkets, offices, and shops.",
+    "whose": "Groundwork wrote this from Grace’s words at setup.",
+    "keyFacts": [],
+    "alsoWorthKnowing": [],
+    "emptySays": null
+   },
+   "howWeWork": {
+    "rules": [],
+    "stageNeeds": [
+     {
+      "id": "template-stage-0",
+      "text": "Qualified: need, budget, decision maker and buying date.",
+      "fromTheTemplate": true
+     },
+     {
+      "id": "template-stage-1",
+      "text": "Quoted: the customer has the quote, with a photo or the email.",
+      "fromTheTemplate": true
+     },
+     {
+      "id": "template-stage-2",
+      "text": "Won: a signed order or a payment, with proof.",
+      "fromTheTemplate": true
+     }
+    ],
+    "coaching": [],
+    "risks": [
+     {
+      "id": "template-risk-0",
+      "text": "A deal marked won without a signed order or payment.",
+      "fromTheTemplate": true
+     }
+    ],
+    "startingSetSays": "Lines marked as Groundwork’s are the starting set for a sales team."
+   },
+   "documents": {
+    "total": 0,
+    "items": [],
+    "notOpenToYou": false
+   },
+   "evidence": {
+    "total": 2,
+    "page": 1,
+    "pageSize": 25,
+    "items": [
+     {
+      "id": "d111faf2-9ef2-47cf-914e-95601f6bba79",
+      "readAs": "A payment",
+      "shows": "RBT7Y3KQ2P Confirmed.",
+      "belongsTo": "Savannah Cafe",
+      "addedBy": "You",
+      "addedById": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+      "addedOn": "16 October",
+      "on": "2026-10-16",
+      "countsAsProof": true,
+      "group": "Payments"
+     },
+     {
+      "id": "59169452-90ea-4909-b7a9-d9e2cd01671b",
+      "readAs": "A payment",
+      "shows": "QJK4TL2MX9 Confirmed.",
+      "belongsTo": "Not filed on a deal yet",
+      "addedBy": "You",
+      "addedById": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+      "addedOn": "12 October",
+      "on": "2026-10-12",
+      "countsAsProof": true,
+      "group": "Payments"
+     }
+    ],
+    "people": []
+   },
+   "evidenceSays": "Proof you added in your check-ins. Each also shows on the board.",
+   "questions": {
+    "total": 0,
+    "items": [],
+    "emptySays": "Nobody has asked about this work yet. Ask about this work, and the question and its answer will show here."
+   }
+  }
+ }
+}

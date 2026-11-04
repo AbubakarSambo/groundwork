@@ -95,7 +95,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
           : 'Your choice is recorded.',
       )
     },
-    onError: () => toast.error('That did not save. Your outcome and reason are still here, so you can try again.'),
+    onError: () => toast.error('That didn’t save. Try again.'),
   })
 
   const leadDecides = !!data?.leadDecides
@@ -160,12 +160,12 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
       {resolution.reason && (
         <>
           <div className={subheadingClass} style={subheadingStyle}>{viewerIsLead ? 'Your reason' : leadName ? possessive(leadName) + ' reason' : 'The reason'}</div>
-          <div className="gwui-fs-13-5 gwui-ink-text" style={{ lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{resolution.reason}</div>
+          <div className="gwui-fs-13-5 gwui-ink-text" style={{ lineHeight: '22px', whiteSpace: 'pre-wrap' }}>{resolution.reason}</div>
         </>
       )}
       {!viewerIsLead && viewerIsParty && (
         <div className="gwui-mt-12">
-          <Note>Your words are kept, and you can still correct them.</Note>
+          <Note>You can still correct your words.</Note>
         </div>
       )}
     </Panel>
@@ -232,17 +232,17 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
               background: picked === o.value ? 'var(--gw-blue-bg)' : 'white',
             }}
           >
-            <div className="gwui-ink-text" style={{ fontWeight: 600 }}>{o.label}</div>
+            <div className="gwui-ink-text" style={{ fontWeight: 700 }}>{o.label}</div>
             {o.description && (
-              <div className="gwui-fs-13 gwui-ink-sub gwui-mt-3" style={{ lineHeight: 1.45 }}>{o.description}</div>
+              <div className="gwui-fs-13 gwui-ink-sub gwui-mt-3" style={{ lineHeight: '19px' }}>{o.description}</div>
             )}
           </button>
         ) : (
           /* A person who does not decide sees the outcomes as a list, never as buttons to press. */
           <div key={o.value} className="gwui-rule gwui-fs-13 gwui-pt-8 gwui-pr-12 gwui-pb-8 gwui-pl-12" style={{ borderRadius: 8 }}>
-            <div className="gwui-ink-text" style={{ fontWeight: 600 }}>{o.label}</div>
+            <div className="gwui-ink-text" style={{ fontWeight: 700 }}>{o.label}</div>
             {o.description && (
-              <div className="gwui-fs-13 gwui-ink-sub gwui-mt-3" style={{ lineHeight: 1.45 }}>{o.description}</div>
+              <div className="gwui-fs-13 gwui-ink-sub gwui-mt-3" style={{ lineHeight: '19px' }}>{o.description}</div>
             )}
           </div>
         ))}
@@ -258,7 +258,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
             maxLength={1000}
             rows={3}
             className="gwui-rule gwui-fs-13 gwui-pt-9 gwui-pr-11 gwui-pb-9 gwui-pl-11"
-            style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, fontFamily: 'inherit', lineHeight: 1.5 }}
+            style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, fontFamily: 'inherit', lineHeight: '20px' }}
           />
           <div className="gwui-mt-4 gwui-mb-12">
             <Note>{whoElse} reads this with the outcome.</Note>
@@ -271,15 +271,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
           type="button"
           onClick={() => picked && setConfirming(true)}
           disabled={!picked || !why.trim() || proposeMut.isPending}
-          className={`gwui-rule gwui-fs-13 gwui-pt-10 gwui-pr-18 gwui-pb-10 gwui-pl-18 ${picked && why.trim() ? 'gwui-ink-white' : 'gwui-ink-subd'}`}
-          style={{
-            borderRadius: 7, fontFamily: 'inherit', fontWeight: 700,
-            /* A BUTTON WAITING FOR A CHOICE IS STILL A BUTTON SOMEBODY HAS TO READ.
-               Paper with a line round it says "not yet" and the words stay legible. */
-            background: picked && why.trim() ? 'var(--gw-dark)' : 'white',
-            borderColor: picked && why.trim() ? 'var(--gw-dark)' : undefined,
-            cursor: picked && why.trim() && !proposeMut.isPending ? 'pointer' : 'default',
-          }}
+          className="btn pri"
         >
           {proposeMut.isPending ? 'Saving…' : leadDecides ? 'Save the outcome and end it' : 'This is my answer'}
         </button>
@@ -298,13 +290,13 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
 
       {viewerIsLead && (
         <>
-          <div className="gwui-fs-13 gwui-ink-sub gwui-mt-12" style={{ lineHeight: 1.6 }}>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mt-12" style={{ lineHeight: '21px' }}>
             {oneOther
               ? `Ending means nobody can add to it. Both of you keep your own history, and ${oneOther} can still correct what they said.`
               : 'Ending means nobody can add to it. Everyone keeps their own history, and can still correct what they said.'}
           </div>
           <div className={subheadingClass} style={subheadingStyle}>{oneOther ? `What ${oneOther} sees now` : 'What everyone else sees now'}</div>
-          <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.6 }}>“{`These are the outcomes this check-in can reach. ${leadNameAsOthersReadIt} ${decidesVerb(leadNameAsOthersReadIt)} which one it is. Your words are kept either way, and you can still correct or add to them.`}”</div>
+          <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: '21px' }}>“{`These are the outcomes this check-in can reach. ${leadNameAsOthersReadIt} ${decidesVerb(leadNameAsOthersReadIt)} which one it is. Your words are kept either way, and you can still correct or add to them.`}”</div>
         </>
       )}
 

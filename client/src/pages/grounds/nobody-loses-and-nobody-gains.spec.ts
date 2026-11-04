@@ -60,9 +60,11 @@ describe('nobody loses and nobody gains', () => {
   it('NOBODY GAINS: the view that runs it will not render a record for a non-party', () => {
     /*
      * `groundTabs` leaves the tab out, which hides the door. `?tab=record` typed into the address
-     * bar reaches the branch anyway, so the branch checks too.
+     * bar reaches the branch anyway, so the branch checks too. Since the Release 1B switch went (4 November 2026) there is one
+     * My work branch, and the person's own record inside it is drawn only for a party.
      */
-    expect(RUNS_IT).toMatch(/tab === 'myrecord' && viewerIsAParty &&/)
+    expect(RUNS_IT).toMatch(/tab === 'myrecord' && \(isInitiator \|\| viewerIsAParty\) &&/)
+    expect(RUNS_IT).toMatch(/\{viewerIsAParty && \(\s*<YourWork/)
   })
 
   it('and does not fetch a record it has no business fetching', () => {
@@ -73,8 +75,8 @@ describe('nobody loses and nobody gains', () => {
   })
 
   it('the tab itself is offered only to somebody who is in the check-in', () => {
-    const asParty = groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: true })
-    const notAParty = groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: false })
+    const asParty = groundTabs({ canRunThisCheckIn: true, isAParty: true })
+    const notAParty = groundTabs({ canRunThisCheckIn: true, isAParty: false })
     expect(asParty.map(t => t.key)).toContain('record')
     expect(notAParty.map(t => t.key)).not.toContain('record')
   })

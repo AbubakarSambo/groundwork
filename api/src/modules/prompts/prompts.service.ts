@@ -519,6 +519,8 @@ export class PromptsService implements OnModuleInit {
         careFeeStatus: true,
         createdAt: true,
         isInternal: true,
+        release1SalesBoardOn: true,
+        release2CollectionsOn: true,
         _count: { select: { grounds: true } },
       },
     });
@@ -551,6 +553,10 @@ export class PromptsService implements OnModuleInit {
       billingActive: org.careFeeStatus === 'ACTIVE',
       careFeeStatus: org.careFeeStatus,
       isInternal: org.isInternal,
+      /* Release 1's sales board, switched on per organisation by staff (Admin, Orgs). */
+      release1SalesBoardOn: org.release1SalesBoardOn === true,
+      /* Release 2, collect what's owed, switched on per organisation by staff (Admin, Orgs). */
+      release2CollectionsOn: (org as any).release2CollectionsOn === true,
       groundCount: org._count.grounds,
       userCount: seats.get(org.id) ?? 0,
       lastActivity: lastActivityMap[org.id] ?? null,

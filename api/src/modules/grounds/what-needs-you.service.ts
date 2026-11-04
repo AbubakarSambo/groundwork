@@ -1,3 +1,5 @@
+import { eachQuestionOnce, aDirectionPastItsDay } from './today-says-each-thing-once';
+import { theInvoicesLateToRaiseFor } from '../board/raising-invoices-on-time';
 import { Injectable, Optional } from '@nestjs/common';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { ModuleRef } from '@nestjs/core';
@@ -28,6 +30,7 @@ import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-in
 import { everythingOutstandingFor } from '../engagement/the-leads-daily-nudge';
 import { whatTheLeadIsToldOnToday, type WhatTheLeadIsToldOnToday } from '../engagement/what-the-lead-is-told-on-today';
 import { TheWeeklyReportService } from '../reports/the-weekly-report.service';
+import { whatTodayReads } from '../reports/what-today-reads-from-the-record';
 import { theSameWaitInOtherWords } from '../board/reads';
 import { whatThePersonIsToldAboutMissing, keepTheirReason } from './missed-check-ins';
 
@@ -83,7 +86,16 @@ export class WhatNeedsYouService {
     const read = await Promise.all(mine.map((g) =>
       Promise.resolve().then(() => board.get(g.id, userId)).then((b) => whatTheBoardAsksOfTheLead(b, g)).catch(() => [] as Need[]),
     ));
-    return read.flat();
+    /* One question, once, naming the check-ins it is for (today-says-each-thing-once.ts). */
+    return eachQuestionOnce(read.flat());
+  }
+
+  /** For an admin, who sets the company's direction: its aim's day has passed, so what is it now (today-says-each-thing-once.ts). */
+  private async aDirectionPastItsDayFor(organizationId: string, role: string): Promise<Need[]> {
+    if (role !== 'ADMIN') return [];
+    const d = await Promise.resolve((this.prisma as any).directionVersion?.findFirst?.({ where: { organizationId }, orderBy: { version: 'desc' }, select: { now: true, setAt: true } })).catch(() => null);
+    const need = aDirectionPastItsDay(d ?? null, organizationId, new Date());
+    return need ? [need] : [];
   }
 
   /**
@@ -166,7 +178,7 @@ export class WhatNeedsYouService {
       kind: 'decide' as const,
       title: all === 1 ? 'One approved request to spend is waiting for you in finance.' : `${Word(all)} approved requests to spend are waiting for you in finance.`,
       detail,
-      action: { label: 'Open them', to: '/suite/spend' },
+      action: { label: 'Open them', to: '/suite/spend/finance' },
       groundId: '',
       organizationId,
     }];
@@ -247,7 +259,7 @@ export class WhatNeedsYouService {
   }
 
   async forReader(userId: string, email: string, organizationId: string, role: string): Promise<WhatNeedsYou> {
-    const [list, waiting, me, toApprove, reviews, leaveQuestions, spendQuestions, finance, hours, letIn] = await Promise.all([
+    const [list, waiting, me, toApprove, reviews, leaveQuestions, spendQuestions, finance, hours, letIn, directionPast] = await Promise.all([
       this.grounds.list(organizationId, userId, email, role),
       role === 'ADMIN' ? this.grounds.listAwaitingApproval(organizationId, userId) : Promise.resolve([]),
       /**
@@ -265,6 +277,7 @@ export class WhatNeedsYouService {
       this.financeFor(userId, organizationId),
       this.hoursFor(userId, organizationId),
       this.peopleWaitingToBeLetIn(userId, organizationId, role),
+      this.aDirectionPastItsDayFor(organizationId, role),
     ]);
     /*
      * ONLY THIS ORGANISATION'S (U.5 review). The list also carries check-ins in other organisations
@@ -293,7 +306,7 @@ export class WhatNeedsYouService {
     }
     /* On approved leave today (week 23): their own check-in says the round does not wait for them. Dates only. */
     const awayUntil = (await whoIsAwayOn(this.prisma, [userId], organizationId).catch(() => new Map<string, string>())).get(userId) ?? null;
-    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...(await this.whatTheirBoardsAsk(userId, here as any[])), ...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance, ...hours, ...letIn]);
+    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...(await this.whatTheirBoardsAsk(userId, here as any[])), ...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance, ...hours, ...letIn, ...directionPast]);
     /* A net: no address stands in for a name in any sentence on Today (week 12c). */
     const called = new Map<string, string>();
     for (const g of here as any[]) {
@@ -315,13 +328,23 @@ export class WhatNeedsYouService {
     /* Their own missed check-ins, told to them first (decision 136). Read only for this reader, about their own rows. */
     const missed = await this.missedCheckInsOf(userId, organizationId).catch(() => [] as Need[]);
     if (missed.length) { told.needs = [...missed, ...told.needs]; told.count = told.needs.length; }
+    /* RELEASE 3: each fee note late to raise in the check-ins this reader runs, in the same sentence as the morning summary (board/raising-invoices-on-time). Off, none. */
+    const runs = ((await Promise.resolve((this.prisma as any).ground?.findMany?.({ where: { organizationId, initiatorId: userId, scenario: 'COLLECTIONS' }, select: { id: true } })).catch(() => [])) ?? []) as { id: string }[];
+    const lateToRaise = runs.length ? await theInvoicesLateToRaiseFor(this.prisma as any, organizationId, runs.map((g) => g.id)).catch(() => []) : [];
+    if (lateToRaise.length) {
+      const asNeeds: Need[] = lateToRaise.map((l) => {
+        const [first, ...rest] = l.text.split(/(?<=\.)\s+/);
+        return { key: `late-to-raise-${l.billId}`, kind: 'look' as const, title: first, detail: rest.join(' '), action: { label: 'Open the board', to: `/grounds/${l.groundId}/board` }, groundId: l.groundId, organizationId } as any;
+      });
+      told.needs = [...asNeeds, ...told.needs];
+      told.count = told.needs.length;
+    }
     const onWhatsApp = await this.checkInOnWhatsAppFor(userId, email, organizationId, told.needs);
     if (onWhatsApp) (told as any).checkInOnWhatsApp = onWhatsApp;
-    /* An admin whose organisation is on its free trial reads one line about it (Hafsah, 12 October). */
-    if (role === 'ADMIN') {
-      const trial = await theFreeTrialLine(this.prisma as any, organizationId).catch(() => null);
-      if (trial) (told as any).freeTrial = trial;
-    }
+    /* An admin whose organisation is on its free trial reads one line about it (Hafsah, 12 October). Once the free month has ended,
+       admins and leads read the quiet note about the four weeks and the pause after them (2 November); a team member reads nothing. */
+    const trial = await theFreeTrialLine(this.prisma as any, organizationId, userId, role).catch(() => null);
+    if (trial) (told as any).freeTrial = trial;
     const weekly = this.moduleRef?.get(TheWeeklyReportService, { strict: false });
     const outstanding = await this.outstanding(userId, organizationId, told.needs).catch(() => null);
     const alreadySaid = [
@@ -333,6 +356,16 @@ export class WhatNeedsYouService {
       { userId, role, organizationId },
       { alreadySaid, weeklyReport: weekly ? (groundId, at) => weekly.read(groundId, { userId, role, organizationId }, at) : undefined },
     ).catch(() => null);
+    /* SINCE YESTERDAY (C1, today-lead): what moved since the round before, for the check-in the line is about, read from the record the
+       latest report reads (no model, nothing written). Only for the person who runs it. */
+    if (told.lineGroundId) {
+      const g = await (this.prisma as any).ground.findUnique({ where: { id: told.lineGroundId }, select: { initiatorId: true, cadence: true, cadenceDays: true } }).catch(() => null);
+      if (g?.initiatorId === userId) {
+        const read = await whatTodayReads(this.prisma as any, told.lineGroundId, { userId, isAdmin: false }).catch(() => ({} as any));
+        if (read?.sinceLast?.says) told.sinceYesterday = { heading: g.cadence === 'DAILY' ? 'Since yesterday' : 'Since the last check-in', says: read.sinceLast.says, also: read.sinceLast.also ?? null };
+      }
+    }
+    delete (told as any).lineGroundId;
     return forTheLead ? { ...told, forTheLead } : told;
   }
 

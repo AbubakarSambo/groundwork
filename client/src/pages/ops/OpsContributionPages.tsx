@@ -47,7 +47,7 @@ export function OpsContributionPage() {
   })
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name="Commercial contribution"
         answers="What has each person actually created, and what share of new revenue came from them?"
@@ -55,20 +55,11 @@ export function OpsContributionPage() {
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
         {WINDOWS.map((w) => (
-          <button
+          <button className={`gwui-choice${w.key === window.key ? ' gwui-choice-on' : ''}`}
             key={w.key}
             type="button"
             onClick={() => setWindow(w)}
             aria-pressed={w.key === window.key}
-            style={{
-              border: '1px solid var(--gw-border)',
-              borderRadius: 20,
-              padding: '3px 11px',
-              fontSize: 12,
-              cursor: 'pointer',
-              background: w.key === window.key ? 'var(--gw-navy)' : 'white',
-              color: w.key === window.key ? 'white' : 'var(--gw-navy)',
-            }}
           >
             {w.label}
           </button>
@@ -78,12 +69,12 @@ export function OpsContributionPage() {
       {share.data && (
         <section style={{ ...CARD, marginBottom: 14 }}>
           <p style={LABEL}>Share of new revenue created</p>
-          <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '4px 0 10px' }}>{share.data.says}</p>
+          <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '4px 0 10px' }}>{share.data.says}</p>
 
           {(share.data.rows ?? []).map((r) => (
             <div key={r.personKey} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '4px 0' }}>
-              <span style={{ fontSize: 13.5, width: 120, flex: 'none' }}>{r.person}</span>
-              <span style={{ fontSize: 13.5, fontWeight: 700, width: 90, flex: 'none', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ fontSize: 14, width: 120, flex: 'none' }}>{r.person}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, width: 90, flex: 'none', fontVariantNumeric: 'tabular-nums' }}>
                 {money(r.revenue)}
               </span>
               <div style={{ flex: 1, background: 'rgba(12,68,124,0.08)', borderRadius: 4, height: 8 }}>
@@ -99,7 +90,7 @@ export function OpsContributionPage() {
              * number smaller than the company actually made, and the gap - which
              * is the thing somebody should be closing - is invisible.
              */
-            <p style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '10px 0 0' }}>
+            <p style={{ fontSize: 12, color: 'var(--gw-red-t)', margin: '10px 0 0' }}>
               {money(share.data.unattributed)} is not attributed to anybody. Until somebody says who
               created it, these shares are of {money(share.data.total)} rather than of everything.
             </p>
@@ -127,7 +118,7 @@ export function OpsContributionPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 10 }}>
             <div>
-              <p style={{ ...LABEL, fontSize: 9.5 }}>Originated</p>
+              <p style={{ ...LABEL, fontSize: 10 }}>Originated</p>
               <p style={{ fontSize: 13, margin: '4px 0 0' }}>
                 {l.origination.payingClients} paying client
                 {l.origination.payingClients === 1 ? '' : 's'} · {money(l.origination.cashCollected)} cash
@@ -140,7 +131,7 @@ export function OpsContributionPage() {
               </p>
             </div>
             <div>
-              <p style={{ ...LABEL, fontSize: 9.5 }}>Market access</p>
+              <p style={{ ...LABEL, fontSize: 10 }}>Market access</p>
               {/*
                 The whole funnel, because "ten introductions" and "ten
                 introductions that produced two clients" are different facts and
@@ -161,7 +152,7 @@ export function OpsContributionPage() {
           {l.origination.clients.length > 0 && (
             <ul style={{ listStyle: 'none', margin: '10px 0 0', padding: 0 }}>
               {l.origination.clients.map((c) => (
-                <li key={c.opportunity} style={{ fontSize: 12.5, color: 'var(--gw-sub)', padding: '2px 0' }}>
+                <li key={c.opportunity} style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '2px 0' }}>
                   {c.company} - {money(c.cash)} · {c.credit}
                 </li>
               ))}
@@ -176,7 +167,7 @@ export function OpsContributionPage() {
           */}
           <p
             style={{
-              fontSize: 12.5,
+              fontSize: 12,
               margin: '10px 0 0',
               paddingTop: 8,
               borderTop: '1px solid var(--gw-border)',
@@ -190,7 +181,7 @@ export function OpsContributionPage() {
           </p>
 
           {l.notCounting.length > 0 && (
-            <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '8px 0 0' }}>
+            <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '8px 0 0' }}>
               {l.notCounting.length} not counting: {l.notCounting[0].why}
             </p>
           )}
@@ -238,7 +229,7 @@ export function OpsPositioningPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name="Market access"
         answers="Whose relationships and networks are opening doors, and what came of them?"
@@ -288,7 +279,7 @@ export function OpsAttributionPage() {
     r === 'OPPORTUNITY_ORIGINATOR' ? 'Opportunity originator' : 'Positioning source'
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name="Attribution review"
         answers="Who says they created what, and is that right?"
@@ -298,17 +289,17 @@ export function OpsAttributionPage() {
         <section key={c.id} style={{ ...CARD, marginBottom: 12 }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
             <strong style={{ fontSize: 15, color: 'var(--gw-navy)' }}>{c.claimant}</strong>
-            <span style={{ fontSize: 13.5 }}> - {c.company}</span>
-            <span style={{ ...LABEL, fontSize: 9.5, marginLeft: 'auto' }}>{readRole(c.role)}</span>
+            <span style={{ fontSize: 14 }}> - {c.company}</span>
+            <span style={{ ...LABEL, fontSize: 10, marginLeft: 'auto' }}>{readRole(c.role)}</span>
           </div>
 
-          <p style={{ fontSize: 13.5, margin: '8px 0 0' }}>{c.opportunity}</p>
+          <p style={{ fontSize: 14, margin: '8px 0 0' }}>{c.opportunity}</p>
           <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '4px 0 0' }}>
             <strong>Claim: </strong>
             {c.claimedBasis}
           </p>
           {c.evidenceUrl && (
-            <a href={c.evidenceUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12.5 }}>
+            <a href={c.evidenceUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>
               evidence
             </a>
           )}
@@ -570,7 +561,7 @@ export function OpsCommercialPipelinePage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name="Commercial pipeline"
         answers="What are we selling, who created each one, and what has actually been paid?"
@@ -597,7 +588,7 @@ export function OpsCommercialPipelinePage() {
       />
 
       {/* Said once, on the page where somebody would otherwise assume otherwise. */}
-      <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', maxWidth: '64ch', marginBottom: 12 }}>
+      <p style={{ fontSize: 12, color: 'var(--gw-sub)', maxWidth: '64ch', marginBottom: 12 }}>
         Opening a record here does not make it yours. Whoever created the opportunity claims it, and
         somebody else approves - running the process afterwards is not origination.
       </p>

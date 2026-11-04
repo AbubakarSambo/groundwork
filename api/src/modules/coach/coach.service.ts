@@ -60,10 +60,10 @@ export class CoachService {
      */
     const preferredAt = input.preferredAt ? new Date(input.preferredAt) : null;
     if (preferredAt && Number.isNaN(preferredAt.getTime())) {
-      throw new BadRequestException('That does not look like a date. Leave it empty and we will come back to you to agree a time.');
+      throw new BadRequestException('That does not look like a date. Leave it empty and I will come back to you to agree a time.');
     }
     if (preferredAt && preferredAt.getTime() < Date.now()) {
-      throw new BadRequestException('That time has already passed. Pick one that has not, or leave it empty and we will agree a time with you.');
+      throw new BadRequestException('That time has already passed. Pick one that has not, or leave it empty and I will agree a time with you.');
     }
 
     /**
@@ -72,7 +72,7 @@ export class CoachService {
      */
     if (intention.length < MIN_INTENTION_LENGTH) {
       throw new BadRequestException(
-        'Tell us a little more about what you want help with, because a line or two is enough for the first reply to be written from.',
+        'Tell me a little more about what you want help with, because a line or two is enough for the first reply to be written from.',
       );
     }
 

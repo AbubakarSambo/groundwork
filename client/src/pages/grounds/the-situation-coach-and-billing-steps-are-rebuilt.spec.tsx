@@ -78,7 +78,7 @@ function expectNoBannedInlineStyles(container: HTMLElement) {
 }
 
 function expectAtMostOnePrimaryButton(container: HTMLElement) {
-  const primaries = container.querySelectorAll('.gwui-btn-primary')
+  const primaries = container.querySelectorAll('.btn.pri')
   expect(primaries.length, `expected at most one primary button, found ${primaries.length}`).toBeLessThanOrEqual(1)
 }
 

@@ -1,4 +1,8 @@
+import { theClocksSessionIn, type TheCountAsServed } from './the-count-as-served';
+import { A_CHECK_IN_TAKES } from '../../common/how-long-a-check-in-takes';
 import { theDayInWords } from '../board/the-day-in-words';
+import { aQuietSessionOnADayTheyCheckedIn, theDayIn, theDaysTheyCheckedIn } from '../board/a-day-they-checked-in';
+import { THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { namesTheyCanTellApart } from '../../common/check-ins-you-can-tell-apart';
 import { theAwayLine } from '../suites/who-is-away';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
@@ -27,6 +31,11 @@ import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
  * and times are not: the server does not know the reader's clock, so "Tomorrow, 4pm" is left to the
  * screen, which gets the moment itself.
  */
+
+/** Today's one line while the lead holds her invitations, in Hafsah's words (3 November 2026). */
+export const theInvitationsReadyToSend = (n: number) => (n === 1 ? '1 invitation ready to send' : `${n} invitations ready to send`);
+/** The button beside it, the same words as setup's own (client FillsInAsYouTalk). */
+export const sendTheInvitations = (n: number) => (n === 1 ? 'Send 1 invitation' : `Send ${n} invitations`);
 
 export type NeedKind = 'ready' | 'decide' | 'look' | 'your_turn';
 
@@ -80,6 +89,16 @@ export interface WhatNeedsYou {
   freeTrial?: string | null;
   /** "You can also check in on WhatsApp.", with "Connect WhatsApp", when one of the reader's own check-ins is there to answer (fix list, item 5). */
   checkInOnWhatsApp?: { says: string; link: string; label: string } | null;
+  /** The check-in the line is about, when the reader runs it. */
+  lineGroundId?: string | null;
+  /** The one person the line names as not checked in yet, for the lead who runs it: the board's own nudge, offered beside the line. */
+  lineNudge?: { groundId: string; participantId: string; firstName: string } | null;
+  /** Who the line says was invited and has not joined yet, for the lead who runs it: their invitation, sent again on her press. */
+  lineResend?: { groundId: string; participantIds: string[]; firstNames: (string | null)[] } | null;
+  /** The invitations the lead held ready while she checked in on her own first: the line says how many, and "Send N invitations" sends them. */
+  lineReadyToSend?: { groundId: string; count: number; label: string } | null;
+  /** "Since yesterday": what moved since the round before, for the check-in the line is about. */
+  sinceYesterday?: { heading: string; says: string; also: string | null } | null;
 }
 
 /** The parts of a check-ins list row this reads. Everything else on the row is ignored. */
@@ -96,7 +115,16 @@ export interface ListedCheckIn {
   resolvedAt?: string | Date | null;
   endsAt?: string | Date | null;
   reportWaitingForMe?: boolean;
+  /** The one count, as the list serves it (the-count-as-served.ts). */
+  theCount?: TheCountAsServed | null;
   latestSummary?: string | null;
+  cadence?: string | null;
+  /** When the team report was last shared, as the list serves it. */
+  report?: { releasedAt?: string | Date | null } | null;
+  /** The report's first difference, by name, where this reader may read the report: "Jane and John see the Westgate deal differently." */
+  whoDiffers?: string | null;
+  /** How many invitations the lead holds ready until she sends them; served only to whoever runs it. */
+  readyToSend?: number | null;
   participants?: { id: string; userId?: string | null; notLetIn?: boolean; user?: { firstName?: string | null } | null }[];
   checkIns?: {
     id: string;
@@ -231,6 +259,10 @@ export function whatNeedsYou(
   const comingUp: ComingUp[] = [];
   let myOpenTurn: string | null = null;
   let line: { people: number; text: string } | null = null;
+  let lineGroundId: string | null = null;
+  let lineNudge: WhatNeedsYou['lineNudge'] = null;
+  let lineResend: WhatNeedsYou['lineResend'] = null;
+  let lineReadyToSend: WhatNeedsYou['lineReadyToSend'] = null;
 
   for (const g of list) {
     if ((g.status ?? '') === 'AWAITING_APPROVAL' || (g.status ?? '') === 'DECLINED') continue;
@@ -254,6 +286,9 @@ export function whatNeedsYou(
      * calls "released" - not yet something to hand somebody who has not been let into the reader.
      */
     const heldFromMyOwn = !!reader.notLetIn;
+
+    /* READY, NOT SENT (Hafsah, 3 November 2026): until the lead sends the invitations she held, the line is how many are ready to send. */
+    if (!over && iRunIt && (g.readyToSend ?? 0) > 0 && !lineReadyToSend) lineReadyToSend = { groundId: g.id, count: g.readyToSend!, label: sendTheInvitations(g.readyToSend!) };
 
     /* Your turn: the earliest open session of yours that is not done. Being two behind is one thing to do. */
     if (!over && me && !heldFromMyOwn) {
@@ -287,7 +322,7 @@ export function whatNeedsYou(
              */
             ? `${theAwayLine('the person', null, reader.awayUntil)} You can still answer it if you want to.`
             : [
-              next.sessionNumber === 1 && iRunIt ? 'About ten minutes. Everyone else’s answers are read against yours.' : 'About ten minutes.',
+              `${A_CHECK_IN_TAKES}.`,
               /* The day it opened, never a count of days from the reading (request 117, part 9). */
               days > A_WHILE && opened ? `It opened on ${theDayInWords(new Date(opened), new Date(at))}.` : null,
             ].filter(Boolean).join(' '),
@@ -318,8 +353,10 @@ export function whatNeedsYou(
       reports.push({
         key: `report-${g.id}`,
         kind: 'ready',
-        title: `The report for ${g.label} is ready`,
-        detail: firstSentence(g.latestSummary),
+        /* "Today’s report for deal progress is ready." (the approved journey, stage 8): a daily check-in's report shared today is today's. */
+        title: `${aReportOfToday(g, at) ? 'Today’s report' : 'The report'} for ${g.label} is ready`,
+        /* Who differs, from the report (stage 8), or else the report's first sentence. */
+        detail: g.whoDiffers ?? firstSentence(g.latestSummary),
         action: { label: 'Read it', to: myLatest ? `/checkin/${myLatest.id}/report` : `/grounds/${g.id}/report` },
         ...base,
       });
@@ -349,7 +386,7 @@ export function whatNeedsYou(
           key: `own-${g.id}`,
           kind: 'ready',
           title: `Your own report for ${g.label}`,
-          detail: 'Only you see it.',
+          detail: null,
           action: { label: 'Read it', to: `/checkin/${last.id}/report` },
           ...base,
         });
@@ -358,7 +395,9 @@ export function whatNeedsYou(
 
     /* Who has checked in, for whoever runs it or an admin. The check-in with the most people wins. */
     if (!over && mayName) {
-      const n = teamRound;
+      /* The session the one count is about, where the list serves it (Hafsah, 30 October 2026, first-experience round 3). */
+      const served = g.theCount?.said ? theClocksSessionIn(g.theCount) : null;
+      const n = served ? g.theCount!.session : teamRound;
       /* Somebody an admin has not let in cannot be asked, so is neither counted nor named (request 95, decision 77). */
       const notLetInIds = new Set((g.participants ?? []).filter(isNotLetInYet).map((p) => p.id));
       const rows = sessions.filter((c) => c.sessionNumber === n && !notLetInIds.has(c.participantId));
@@ -371,9 +410,22 @@ export function whatNeedsYou(
       const counted = g.glance?.progress;
       const useCounted = !!counted && typeof counted.ofPeople === 'number' && Array.isArray(counted.waitingOn);
       const heldOut = useCounted ? counted!.waitingOn!.filter((id) => notLetInIds.has(id)).length : 0;
-      const total = useCounted ? counted!.ofPeople! - heldOut : rows.length;
-      const answered = useCounted ? counted!.answeredThisRound ?? 0 : rows.filter((c) => c.status === 'COMPLETED').length;
-      const waitingIds = useCounted ? counted!.waitingOn!.filter((id) => !notLetInIds.has(id)) : rows.filter((c) => c.status !== 'COMPLETED').map((c) => c.participantId);
+      const total = served ? served.onTheCheckIn.length : useCounted ? counted!.ofPeople! - heldOut : rows.length;
+      const answered = served ? served.answered.length : useCounted ? counted!.answeredThisRound ?? 0 : rows.filter((c) => c.status === 'COMPLETED').length;
+      /*
+       * NOBODY IS WAITED ON FOR A SESSION THAT HAS NOT OPENED, OR ON A DAY THEY CHECKED IN (polish round 15; board/a-day-they-checked-in.ts).
+       * Wanjiru's Today read "Aisha has not checked in yet" every evening that week, about the next day's session written ahead of time, on
+       * days Aisha had answered. On a check-in that opens each working day, answering any session today is checking in today.
+       */
+      const theirSessions = (pid: string) => sessions.filter((c) => c.participantId === pid).map((c: any) => ({
+        ...c, answers: Array.isArray(c.turns) ? c.turns.length : null, firstAnsweredAt: Array.isArray(c.turns) ? c.turns[0]?.createdAt ?? null : null,
+      }));
+      const opensDaily = String((g as any).cadence ?? '').toUpperCase() === 'DAILY';
+      const theDay = theDayIn(new Date(at), THE_PRODUCTS_OWN_ZONE);
+      const checkedInToday = (pid: string) => opensDaily && theDaysTheyCheckedIn(theirSessions(pid), THE_PRODUCTS_OWN_ZONE).has(theDay);
+      const notOpenYet = (pid: string) => rows.some((c) => c.participantId === pid && c.status === 'NOT_STARTED' && (time(c.availableFrom) ?? 0) > at);
+      const waitingIds = (useCounted ? counted!.waitingOn!.filter((id) => !notLetInIds.has(id)) : rows.filter((c) => c.status !== 'COMPLETED').map((c) => c.participantId))
+        .filter((id) => !notOpenYet(id) && !checkedInToday(id));
       /*
        * NOBODY LEFT WHO CAN BE ASKED (request 118, 1). The count people read ("4 of 5") is the round header's;
        * who is still waited on is the round-closing rule's, which also leaves out somebody not let in yet or
@@ -391,6 +443,8 @@ export function whatNeedsYou(
         .filter((c: any) => !c.optional && wasAQuietClose(c) && !waitingIds.includes(c.participantId))
         .filter((c) => !checksInOnlyWhenTheyChoose(byId.get(c.participantId) as any))
         .filter((c) => !rows.some((o: any) => o.participantId === c.participantId && o.status === 'COMPLETED' && !wasAQuietClose(o)))
+        /* A session left quiet on a day they answered another is no miss: that day they checked in. */
+        .filter((c: any) => !opensDaily || !aQuietSessionOnADayTheyCheckedIn({ ...c, answers: Array.isArray(c.turns) ? c.turns.length : null }, theirSessions(c.participantId), THE_PRODUCTS_OWN_ZONE))
         .map((c) => c.participantId))];
       if (n > 0 && total > 1 && answered < total && (waitingIds.length > 0 || missedIds.length > 0) && (!line || total > line.people)) {
         const who = (id: string) => {
@@ -402,9 +456,24 @@ export function whatNeedsYou(
         /* Invited, not joined yet: named apart, never as missed and never in the count (decision 8 redone). */
         const notJoined = theNotJoinedYetLine((g.participants ?? []).filter((p: any) => p.notJoinedYet && !p.notLetIn && !p.managingOnly).map((p: any) => p?.user?.firstName?.trim() || null));
         const said = [whoHasNotYet(missing), whoDidNotCheckIn(missed), notJoined].filter(Boolean).join(' ');
+        lineGroundId = iRunIt ? g.id : null;
+        lineNudge = iRunIt && waitingIds.length === 1 && !missedIds.length && missing[0]?.name && !missing[0].isMe
+          ? { groundId: g.id, participantId: waitingIds[0], firstName: missing[0].name }
+          : null;
+        /* "Send it to them again" (stage 8): the invitation sent again to whoever was invited and has not joined yet, by the lead's own press. */
+        const notJoinedIds = served ? served.notJoined.filter((id) => !notLetInIds.has(id)) : [];
+        lineResend = iRunIt && notJoinedIds.length
+          ? { groundId: g.id, participantIds: notJoinedIds, firstNames: notJoinedIds.map((id) => byId.get(id)?.user?.firstName?.trim() || (byId.get(id) as any)?.nameGiven?.trim() || null) }
+          : null;
         line = {
           people: total,
-          text: answered === 0
+          /* The one count's own sentence, then who it is waiting on by name: "In the Weekly Sales Check-in, one of the three people has
+             answered session 1. Two more ... have not joined yet. Sarah and David have not checked in yet." The same words the board and
+             the check-in's page say (this-sessions-count.ts). */
+          text: served
+            /* Where the count names who is missing (whoSays), it is the whole line; where it names nobody, who it waits on is said after it. */
+            ? `In ${g.label}, ${g.theCount!.said!.says.charAt(0).toLowerCase()}${g.theCount!.said!.says.slice(1)}${g.theCount!.said!.whoSays ? '' : [whoHasNotYet(missing), whoDidNotCheckIn(missed)].filter(Boolean).map((x) => ` ${x}`).join('')}`
+            : answered === 0
             ? `In ${g.label}, nobody has checked in for ${theSession(n)}${missing.length ? ' yet' : ''}.${missed.length ? ` ${whoDidNotCheckIn(missed)}` : ''}${notJoined ? ` ${notJoined}` : ''}`
             : `In ${g.label}, ${answered} of ${total} have checked in for ${theSession(n)}. ${said}`,
         };
@@ -488,11 +557,21 @@ export function whatNeedsYou(
 
   decisions.push(...toApprove);
   const needs = [...firstTurns, ...lateTurns, ...reports, ...decisions, ...otherTurns, ...ownReports];
-  const said = (line as { text: string } | null)?.text ?? (myOpenTurn ? `Your check-in for ${myOpenTurn} is open.` : null);
+  const said = lineReadyToSend
+    ? theInvitationsReadyToSend(lineReadyToSend.count)
+    : (line as { text: string } | null)?.text ?? (myOpenTurn ? `Your check-in for ${myOpenTurn} is open.` : null);
   return {
     needs,
     count: needs.length,
     line: said,
+    ...(lineReadyToSend ? { lineGroundId: lineReadyToSend.groundId, lineReadyToSend } : line ? { lineGroundId, lineNudge, lineResend } : {}),
     comingUp: comingUp.sort((a, b) => time(a.at)! - time(b.at)!).slice(0, 5),
   };
+}
+
+
+/** A daily check-in whose team report was shared on the reader's day, in the product's own zone: "Today’s report". */
+function aReportOfToday(g: ListedCheckIn, at: number): boolean {
+  const shared = time(g.report?.releasedAt);
+  return String(g.cadence ?? '').toUpperCase() === 'DAILY' && shared != null && theDayIn(new Date(shared), THE_PRODUCTS_OWN_ZONE) === theDayIn(new Date(at), THE_PRODUCTS_OWN_ZONE);
 }

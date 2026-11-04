@@ -50,7 +50,7 @@ describe('request 108 (d): where this is heading, as Bisi, who runs it, reads it
       whatWouldSettleIt: ['Whether to take the credit committee delays to the Head of Credit.'],
       whatWouldSettleItSays: 'You wrote this down as still to decide.',
       whoDecides: 'You decide.',
-      groundworkDoesNotChoose: 'Groundwork lays out the outcomes and the proof. It doesn’t choose.',
+      groundworkDoesNotChoose: '',
       recordTheDecision: 'Record the decision',
       decided: null,
     });
@@ -108,9 +108,14 @@ describe('request 108 (d): who else reads it', () => {
     expect(JSON.stringify(b)).not.toMatch(/Record the decision|credit committee delays/);
   });
 
-  it('on a performance plan nobody is sent it, where the outcomes would be about a person (decision 6)', async () => {
+  /* Was: nobody was sent it on a performance plan. Hafsah's answer 3, 16 October 2026: on an evaluation check-in the lead reads
+     where it is heading; the person sees the facts, then the decision with its reasons once made (decision 6); nobody else reads it. */
+  it('on a performance plan only Bisi, the lead, is sent it, since the outcomes are about a person (decision 6, answer 3)', async () => {
     const pip: Setup = { ...RUN, scenario: GroundScenario.PIP, createdByUserId: 'u-setup', report: A_RELEASED_REPORT };
-    for (const reader of [BISI, SETUP_ADMIN, FEMI, KWAME]) {
+    const bisi = await boardAs(pip, ...BISI);
+    expect(bisi.whereThisIsHeading?.heading).toBe('Where this is heading');
+    expect((bisi.whereThisIsHeading?.outcomes ?? []).length).toBeGreaterThan(0);
+    for (const reader of [SETUP_ADMIN, FEMI, KWAME]) {
       const b = await boardAs(pip, reader[0], reader[1]);
       expect(b.whereThisIsHeading).toBeUndefined();
       expect(JSON.stringify(b)).not.toMatch(/Separation agreed|Performance concern resolved/);

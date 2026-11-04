@@ -112,7 +112,7 @@ export function WhatSuccessLooksLike({
     const line = data.stated ? withSentenceCase(data.stated) : data.saying
     if (!line) return null
     return (
-      <div className={`gwui-fs-13 ${data.stated ? 'gwui-ink-text' : 'gwui-ink-muted'}`} style={{ lineHeight: 1.65 }}>
+      <div className={`gwui-fs-13 ${data.stated ? 'gwui-ink-text' : 'gwui-ink-muted'}`} style={{ lineHeight: '21px' }}>
         <span className="gwui-ink-text" style={{ fontWeight: 700 }}>What success looks like. </span>
         {line}
       </div>
@@ -126,7 +126,7 @@ export function WhatSuccessLooksLike({
     return (
       <div>
         {!headingIsTheCallers && <Heading>What success looks like</Heading>}
-        <div className="gwui-fs-13 gwui-ink-muted" style={{ lineHeight: 1.65 }}>{data.saying}</div>
+        <div className="gwui-fs-13 gwui-ink-muted" style={{ lineHeight: '21px' }}>{data.saying}</div>
       </div>
     )
   }
@@ -152,7 +152,7 @@ export function WhatSuccessLooksLike({
         )}
 
       {data.stated ? (
-        <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.65 }}>
+        <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: '21px' }}>
           {/* B-141: this is the same stated aim BaselinePanel.tsx reads back, lower-cased exactly as
               typed until this reads it. Only the first letter is touched (an-aim-reads-as-a-sentence.ts) */}
           {withSentenceCase(data.stated)}
@@ -164,7 +164,7 @@ export function WhatSuccessLooksLike({
           ) : null}
         </div>
       ) : (
-        <div className="gwui-fs-13 gwui-ink-muted" style={{ lineHeight: 1.65 }}>{data.saying}</div>
+        <div className="gwui-fs-13 gwui-ink-muted" style={{ lineHeight: '21px' }}>{data.saying}</div>
       )}
 
       {conditions.length > 0 && (
@@ -175,14 +175,14 @@ export function WhatSuccessLooksLike({
               <div key={i} className="gwui-gap-9" style={{ display: 'flex', alignItems: 'flex-start' }}>
                 <div className="gwui-mt-6" style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, flexShrink: 0 }} />
                 <div style={{ minWidth: 0 }}>
-                  <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.5 }}>{c.text}</div>
+                  <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: '20px' }}>{c.text}</div>
                   {/*
                     THE MATCH IS SHOWN, NEVER JUST ASSERTED. A condition is put in a state by a line
                     somebody actually wrote, and that line is printed under it - so a reader who
                     thinks the match is wrong can see that it is wrong, rather than being told a
                     condition is moving and having to take the product's word for it.
                   */}
-                  <div className="gwui-fs-13 gwui-tone gwui-mt-1" style={{ lineHeight: 1.5, ['--gwui-tone' as any]: s.tone }}>
+                  <div className="gwui-fs-13 gwui-tone gwui-mt-1" style={{ lineHeight: '20px', ['--gwui-tone' as any]: s.tone }}>
                     {c.why ? <>{s.word}{c.who ? ` · ${c.who}` : ''}: “{c.why}”</> : s.word}
                   </div>
                 </div>
@@ -199,7 +199,7 @@ export function WhatSuccessLooksLike({
         answered.
       */}
       {data.counting === 'only-yours' && conditions.length > 0 && (
-        <div className="gwui-fs-13 gwui-ink-muted gwui-mt-9" style={{ lineHeight: 1.5 }}>
+        <div className="gwui-fs-13 gwui-ink-muted gwui-mt-9" style={{ lineHeight: '20px' }}>
           This is what you said against it. What everybody else has said arrives with the report.
         </div>
       )}
@@ -236,8 +236,8 @@ export function WhatSuccessLooksLike({
                * for 3 shops in Kilimani.""
                */
               return (
-                <div key={i} className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.55 }}>
-                  <span className="gwui-ink-text" style={{ fontWeight: 600 }}>{who}</span>{' '}
+                <div key={i} className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: '20px' }}>
+                  <span className="gwui-ink-text" style={{ fontWeight: 700 }}>{who}</span>{' '}
                   said, “{d.text}”
                 </div>
               )

@@ -2,7 +2,7 @@ import type { KeyboardEvent, ReactNode } from 'react'
 
 /**
  * THE CHECK-IN'S FOOTER BAR (B3, docs/prototype/source/app.css: `.ci-c`, `.ci-sq`; s29.js's
- * `ciFocus`): a "+" square button, "Type, or hold to speak", and a navy send button with an up
+ * `ciFocus`): a "+" square button, "Type your answer", and a navy send button with an up
  * arrow.
  *
  * `.ci-c{padding:12px 16px;border-top:1px solid var(--rule);display:flex;gap:8px;align-items:
@@ -20,8 +20,9 @@ export function Composer({
   disabled, sendDisabled, plusDisabled, plusLabel = 'Add a photo, a document or some text',
   sendLabel = 'Send',
   sendText, plusGlyph = '+',
-  inputRef, placeholder = 'Type, or hold to speak', ariaLabel = 'Your answer', maxLength, autoFocus,
-  rows = 1,
+  /* Not "or hold to speak": there is no voice yet, so the box promised what it could not do (26 October 2026). */
+  inputRef, placeholder = 'Type your answer', ariaLabel = 'Your answer', maxLength, autoFocus,
+  rows = 1, variant = 'checkin',
 }: {
   value: string
   onChange: (value: string) => void
@@ -59,53 +60,39 @@ export function Composer({
    * FAULT 7 (live walk, 6 October 2026): A LONGER PLACEHOLDER WAS CLIPPED AT 375px.
    *
    * The setup composer's own placeholder ("Type your response, or add a document.") is longer
-   * than the check-in composer's ("Type, or hold to speak") and shares the same single-row box,
+   * than the check-in composer's ("Type your answer") and shares the same single-row box,
    * which only ever shows one line - at a narrow width, with the wide "+ Doc" and "Send" buttons
    * beside it, the placeholder wrapped onto a second line nobody could see. Given only by the
    * caller with the longer placeholder; every other `Composer` keeps the default `rows={1}` it
    * already had.
    */
   rows?: number
+  /** Which of the prototype's two composers this is. */
+  variant?: 'checkin' | 'ask'
 }) {
   const plusWide = plusGlyph.length > 1
+  const ask = variant === 'ask'
+  /* The prototype's two composers: the check-in's (.ci-c: "+", the field, "↑") and Ask's (.asst-comp: the paperclip,
+     the field, "Send"). The field is the prototype's .input, kept a textarea so a pasted plan keeps its line breaks. */
   return (
-    <div style={{ padding: '12px 16px', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 8, alignItems: 'center', background: 'var(--gw-page)', position: 'relative' }}>
-      {plusOpen && plusMenu && (
-        <div style={{ position: 'absolute', bottom: '100%', left: 16, marginBottom: 8, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6, zIndex: 20, width: 260, maxWidth: 'calc(100vw - 40px)' }}>
-          {plusMenu}
-        </div>
-      )}
+    <div className={ask ? 'asst-comp gw-composer' : 'ci-c gw-composer'}>
+      {plusOpen && plusMenu && <div className="gw-composer-menu">{plusMenu}</div>}
+      {/* One box to type in, with the attach button and send inside it (Hafsah, 3 November evening). */}
+      <div className={ask ? 'gw-composer-row' : 'gw-composer-box'}>
       {onPlus && (
         <button
           type="button"
           onClick={onPlus}
           disabled={plusDisabled ?? disabled}
-          /* Only when the glyph is a plain icon (the check-in's own "+") does it need an aria-label
-             standing in for its name - a readable glyph like "+ Doc" already is one, and
-             overriding it would hide the very text a person just read on the button. */
+          /* Only when the glyph is a plain icon does it need an aria-label standing in for its name. */
           aria-label={plusWide ? undefined : plusLabel}
           aria-expanded={plusMenu ? plusOpen : undefined}
           title={plusLabel}
-          style={plusWide ? {
-            padding: '0 12px', height: 48, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', borderRadius: 10, background: 'white', border: '1.5px solid var(--gw-rule-2)', color: 'var(--gw-navy)',
-            cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-          } : {
-            width: 48, height: 48, padding: 0, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 20, borderRadius: 10, background: 'white', border: '1.5px solid var(--gw-rule-2)', color: 'var(--gw-text)',
-            cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-          }}
+          className={ask ? 'attach' : plusWide ? 'btn sec' : 'btn sec ci-sq'}
         >
-          {plusGlyph}
+          {ask ? <PaperClip /> : plusGlyph}
         </button>
       )}
-      {/*
-        REVIEW ROUND 3, ITEM 7: THE PROTOTYPE'S BORDERED WHITE BOX, NOT A BARE, BORDERLESS FIELD.
-        The prototype's own `.input` (docs/prototype/source/app.css): a 1.5px rule-coloured
-        border, white, 10px corners - the same box every text field in the prototype uses. This
-        sat transparent, blended into the footer bar's own background, with no field to see at
-        all until you clicked inside it.
-      */}
       <textarea
         ref={inputRef}
         value={value}
@@ -117,31 +104,27 @@ export function Composer({
         maxLength={maxLength}
         autoFocus={autoFocus}
         rows={rows}
-        style={{
-          flex: 1, minWidth: 0, resize: 'none', outline: 'none',
-          border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'white',
-          fontFamily: 'inherit', fontSize: 16, lineHeight: 1.5, color: 'var(--gw-text)', padding: '11px 16px', maxHeight: 120,
-        }}
+        className="input"
       />
       <button
         type="button"
         onClick={onSend}
         disabled={disabled || sendDisabled}
         aria-label={sendLabel}
-        style={sendText ? {
-          padding: '0 16px', height: 48, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, fontWeight: 700, borderRadius: 10, background: 'var(--gw-navy)', color: 'white', border: 'none',
-          cursor: (disabled || sendDisabled) ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-          opacity: (disabled || sendDisabled) ? 0.6 : 1,
-        } : {
-          width: 48, height: 48, padding: 0, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 20, borderRadius: 10, background: 'var(--gw-navy)', color: 'white', border: 'none',
-          cursor: (disabled || sendDisabled) ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-          opacity: (disabled || sendDisabled) ? 0.6 : 1,
-        }}
+        className={ask || sendText ? 'btn pri' : 'btn pri ci-sq'}
       >
-        {sendText ?? '↑'}
+        {ask ? (sendText ?? 'Send') : (sendText ?? '↑')}
       </button>
+      </div>
     </div>
+  )
+}
+
+/* The prototype's paperclip, drawn as it draws it. */
+function PaperClip() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
   )
 }

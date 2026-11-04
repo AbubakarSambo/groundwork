@@ -1,3 +1,6 @@
+import { THE_ORGANISATION_SWITCHES, isAnOrganisationSwitch } from './the-organisation-switches';
+import { DAILY_USAGE_KEY, DailyUsageSetting, isAnHour, theDailyUsageSetting, theHourSaid } from '../back-office/the-daily-usage-summary';
+import { recipients, theBackOfficeRoster } from '../back-office/the-team-is-told';
 import {
   Injectable,
   NotFoundException,
@@ -23,6 +26,7 @@ import {
   thresholdsInForce, type SuggestionThresholds,
 } from '../suggestions/thresholds';
 import { fullNameToCall } from '../engagement/a-name-to-call-them';
+import { DELIVERY_ALERT_KEY, anEmailAddress, theDeliveryAlertAddress } from '../engagement/the-daily-delivery-alert';
 
 @Injectable()
 export class AdminService implements OnApplicationBootstrap {
@@ -85,6 +89,56 @@ export class AdminService implements OnApplicationBootstrap {
   // ---------------------------------------------------------------------------
 
   /**
+   * RELEASE 1'S SALES BOARD FOR ONE ORGANISATION (board/release-one-sales-board). Writes the one column and nothing else. Said
+   * back in a full sentence, for the Orgs tab to show as it is given.
+   */
+  /** Every switch of one organisation, as the ops team reads them (the-organisation-switches). Staff only, by the admin controller's guard. */
+  async theSwitchesOf(organizationId: string): Promise<{ id: string; name: string; switches: { key: string; name: string; on: boolean }[] }> {
+    const select = Object.fromEntries([['id', true], ['name', true], ...THE_ORGANISATION_SWITCHES.map((s) => [s.key, true])]);
+    const org: any = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: select as any });
+    if (!org) throw new NotFoundException('That organisation could not be found, so refresh the list and try again.');
+    return { id: org.id, name: org.name, switches: THE_ORGANISATION_SWITCHES.map((s) => ({ key: s.key, name: s.name, on: !!org[s.key] })) };
+  }
+
+  /** One switch of one organisation, on or off. Only the switches in the list; nothing else on the organisation is written. */
+  async setASwitch(organizationId: string, key: string, on: boolean) {
+    if (!isAnOrganisationSwitch(key)) throw new BadRequestException('That is not a switch an organisation has.');
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true } });
+    if (!org) throw new NotFoundException('That organisation could not be found, so refresh the list and try again.');
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { [key]: on } as any });
+    return this.theSwitchesOf(organizationId);
+  }
+
+  async setReleaseOneSalesBoard(organizationId: string, on: boolean): Promise<{ id: string; name: string; release1SalesBoardOn: boolean; says: string }> {
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true } });
+    if (!org) throw new NotFoundException('That organisation could not be found, so refresh the list and try again.');
+    const row = await this.prisma.organization.update({ where: { id: organizationId }, data: { release1SalesBoardOn: on }, select: { id: true, name: true, release1SalesBoardOn: true } });
+    return {
+      ...row,
+      says: on
+        ? `${row.name} now has the new sales board. Its board, team report and weekly report show it from the next time they are opened.`
+        : `${row.name} is back on its previous board. Nothing it has said or added is lost.`,
+    };
+  }
+
+  /**
+   * RELEASE 2 FOR ONE ORGANISATION (grounds/release-2-collections): "Collect what's owed" in the picker, the switchboard's
+   * Release 2 rows and the type in "What it is". Writes the one column and nothing else. Said back in a full sentence, for the
+   * Orgs tab to show as it is given.
+   */
+  async setRelease2Collections(organizationId: string, on: boolean): Promise<{ id: string; name: string; release2CollectionsOn: boolean; says: string }> {
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true } });
+    if (!org) throw new NotFoundException('That organisation could not be found, so refresh the list and try again.');
+    const row = await this.prisma.organization.update({ where: { id: organizationId }, data: { release2CollectionsOn: on }, select: { id: true, name: true, release2CollectionsOn: true } });
+    return {
+      ...row,
+      says: on
+        ? `${row.name} can now start a check-in to collect what is owed, and its leads confirm each check-in's type in People and setup. No existing check-in changes.`
+        : `${row.name} is back to what it had before. No new check-in can be started to collect what is owed, and nothing is lost.`,
+    };
+  }
+
+  /**
    * THE FIRST COACHING OUTPUTS, WITH THEIR INPUT. Nothing here reaches a person until the
    * coaching_live setting is true; this is where somebody reads a batch before deciding that.
    */
@@ -144,6 +198,49 @@ export class AdminService implements OnApplicationBootstrap {
       update: { value: live, updatedBy: adminUserId },
     });
     return { live };
+  }
+
+  /**
+   * WHERE THE DAILY DELIVERY ALERT GOES (engagement/the-daily-delivery-alert.ts): one address, saved here, else the server setting
+   * DELIVERY_ALERT_EMAIL. Empty by default, and nothing is sent while it is empty.
+   */
+  async getDeliveryAlert(): Promise<{ email: string | null; from: 'here' | 'server' | null }> {
+    return theDeliveryAlertAddress(this.prisma);
+  }
+
+  /** An empty value clears the saved address, and the server setting is used again if there is one. */
+  async setDeliveryAlert(raw: unknown, adminUserId: string): Promise<{ email: string | null; from: 'here' | 'server' | null }> {
+    const given = typeof raw === 'string' ? raw.trim() : '';
+    const email = given ? anEmailAddress(given) : '';
+    if (email === null) throw new BadRequestException('That needs to be one email address, for example ops@myground.work.');
+    await this.prisma.platformSetting.upsert({
+      where: { key: DELIVERY_ALERT_KEY },
+      create: { key: DELIVERY_ALERT_KEY, value: email, updatedBy: adminUserId },
+      update: { value: email, updatedBy: adminUserId },
+    });
+    return theDeliveryAlertAddress(this.prisma);
+  }
+
+  /**
+   * THE DAILY USAGE SUMMARY (back-office/the-daily-usage-summary.ts): whether it goes and at which hour in Lagos. It goes to the
+   * back-office roster, the same people told about each new sign-up, so the page says who that is today rather than asking for an address.
+   */
+  async getDailyUsage(): Promise<DailyUsageSetting & { to: string[]; hours: string[] }> {
+    const [setting, roster] = await Promise.all([theDailyUsageSetting(this.prisma), theBackOfficeRoster(this.prisma)]);
+    return { ...setting, to: recipients(roster), hours: Array.from({ length: 24 }, (_, h) => theHourSaid(h)) };
+  }
+
+  async setDailyUsage(body: { on?: unknown; hour?: unknown }, adminUserId: string): Promise<DailyUsageSetting & { to: string[]; hours: string[] }> {
+    const now = await theDailyUsageSetting(this.prisma);
+    if (body?.on !== undefined && typeof body.on !== 'boolean') throw new BadRequestException('Say whether the daily usage summary is on or off.');
+    if (body?.hour !== undefined && !isAnHour(body.hour)) throw new BadRequestException('The hour is a whole number from 0 to 23, in Lagos time.');
+    const value = { on: (body?.on as boolean | undefined) ?? now.on, hour: (body?.hour as number | undefined) ?? now.hour };
+    await this.prisma.platformSetting.upsert({
+      where: { key: DAILY_USAGE_KEY },
+      create: { key: DAILY_USAGE_KEY, value, updatedBy: adminUserId },
+      update: { value, updatedBy: adminUserId },
+    });
+    return this.getDailyUsage();
   }
 
   async getCorrectionWindow(): Promise<{ days: number; default: number; max: number }> {
@@ -228,7 +325,7 @@ export class AdminService implements OnApplicationBootstrap {
       { table: 'deliveries', writer: 'progress extractor, and the person\'s own board' },
       { table: 'proposed_changes', writer: 'a change asked for against an objective', needs: 'a customer system asking for a change against an objective, through the API' },
       { table: 'interactions', writer: 'what-they-say-happened extractor, and the API', needs: 'the what-they-say-happened extractor, or the API' },
-      { table: 'person_objectives', writer: 'own-promise extractor, and objective setup' },
+      { table: 'person_objectives', writer: "a person's own aims from their assessment, and objective setup" },
       { table: 'ground_documents', writer: 'uploads' },
       { table: 'participant_notes', writer: 'between-session notes' },
       { table: 'lead_context_notes', writer: 'the lead\'s context chat' },
@@ -534,7 +631,7 @@ export class AdminService implements OnApplicationBootstrap {
         scenario: true,
         moment: true,
         status: true,
-        cadence: true,
+        cadence: true, cadenceDays: true,
         timelineDays: true,
         runsUntilEnded: true,
         startsAt: true,

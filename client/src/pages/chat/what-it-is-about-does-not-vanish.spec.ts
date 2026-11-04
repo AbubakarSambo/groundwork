@@ -26,7 +26,6 @@ import path from 'path'
  */
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-const PAGE = strip(readFileSync(path.join(__dirname, 'ChatPage.tsx'), 'utf8'))
 const API = strip(readFileSync(path.join(__dirname, '../../api/conversation.ts'), 'utf8'))
 const SERVICE = strip(
   readFileSync(path.join(__dirname, '../../../../api/src/modules/conversation/conversation.service.ts'), 'utf8'),
@@ -66,32 +65,6 @@ describe('what this check-in is about', () => {
     expect(API).toMatch(/TranscriptResponse[\s\S]{0,400}brief\?: CheckInBrief \| null/)
   })
 
-  it('and is set from it, not only from the call that opens the session', () => {
-    /* Two assignments now. One was the whole defect. */
-    const sets = PAGE.match(/setBrief\(/g) ?? []
-    expect(sets.length).toBeGreaterThanOrEqual(2)
-    expect(PAGE).toContain('if (t.brief) setBrief(t.brief)')
-  })
-
-  it('outside the turns check, because an unanswered session has a subject too', () => {
-    /* And that is the load where somebody most needs to read it - before they type anything. */
-    const at = PAGE.indexOf('if (t.brief) setBrief(t.brief)')
-    const turns = PAGE.indexOf('if (t.turns && t.turns.length > 0)')
-    expect(at).toBeGreaterThan(-1)
-    expect(at).toBeLessThan(turns)
-  })
-
-  it('and renders when the lead wrote a description but set no objectives', () => {
-    /**
-     * The condition tested `subject` and `objectives` while the body also rendered `says`, so a
-     * brief that held only the lead's own description drew nothing. `says` is a declared field on
-     * `CheckInBrief` now rather than something read through a cast, so the condition no longer
-     * needs `(brief as any)`. Same rule, same three parts: the panel shows when any one of them
-     * exists. See the-band-says-why-the-list-is-short.
-     *
-     * ROUND 6, ITEM 2: THE CONDITION MOVED INTO ITS OWN CONST, `hasAboutContent` - read both by
-     * the quiet link (is there anything to open) and the panel it opens.
-     */
-    expect(PAGE).toMatch(/const hasAboutContent = !!brief && !!\(brief\.subject \|\| brief\.says \|\| brief\.objectives\.length > 0\)/)
-  })
+  /* The page no longer draws the brief during the check-in (Hafsah, 3 November evening: no side panels or explanation lines), so the
+     three tests that read where the page set and drew it are deleted; what the server sends, above, is unchanged. */
 })

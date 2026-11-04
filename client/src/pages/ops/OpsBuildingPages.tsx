@@ -99,7 +99,7 @@ export function OpsRoadmapPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Roadmap" answers="What are we building, and in what order?" />
 
       {/* Both at the top, where somebody adding work will see them. The freeze
@@ -170,7 +170,7 @@ export function OpsReadinessPage() {
     {
       head: 'Company',
       cell: (u) => (
-        <Link to={`/ops/companies/${u.company.key}`} style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>
+        <Link to={`/ops/companies/${u.company.key}`} style={{ color: 'var(--gw-navy)', fontWeight: 700 }}>
           {u.company.name}
         </Link>
       ),
@@ -249,7 +249,7 @@ export function OpsReadinessPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name="Readiness"
         answers="Whose use case are we not supporting, and what would it take?"
@@ -313,7 +313,7 @@ function workItemColumns(kind: 'tech' | 'ux'): Column<OpsWorkItem>[] {
 export function OpsTechPage() {
   const tech = useQuery({ queryKey: ['ops', 'tech'], queryFn: opsApi.tech, retry: false })
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Tech" answers="What is in my way, and what is holding a client up?" />
       <Adder
         title="Raise something"
@@ -352,7 +352,7 @@ export function OpsTechPage() {
 export function OpsUXPage() {
   const ux = useQuery({ queryKey: ['ops', 'ux'], queryFn: opsApi.ux, retry: false })
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="UX" answers="What is hard to use, and where did we notice?" />
       <Adder
         title="Record an interface problem"

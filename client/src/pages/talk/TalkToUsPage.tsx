@@ -97,20 +97,21 @@ export function TalkToUsPage() {
 
   const label = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 5 } as const
   const field = {
-    width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid var(--gw-border)',
-    borderRadius: 8, fontFamily: 'inherit', boxSizing: 'border-box' as const, marginBottom: 14,
+    /* The kit's field (app.css .input). */
+    width: '100%', padding: '12px 16px', fontSize: 16, border: '1px solid var(--rule2-crisp)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)',
+    fontFamily: 'inherit', boxSizing: 'border-box' as const, marginBottom: 14,
   }
 
   if (said === 'sent') {
     return (
-      <section className="gw-page" style={{ maxWidth: 520, margin: '0 auto', padding: '56px 20px 80px' }}>
+      <section style={{ maxWidth: 520, margin: '0 auto', padding: '56px 20px 80px' }}>
         <BackOffThisPage />
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 10px' }}>We have your request</h1>
-        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--gw-navy)', margin: '0 0 10px' }}>We have your request</h1>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '24px' }}>
           Somebody reads these and will come back to you within two working days. We have emailed you
           a copy so you know it arrived.
         </p>
-        <p style={{ fontSize: 13, color: 'var(--gw-muted)', lineHeight: 1.7 }}>
+        <p style={{ fontSize: 13, color: 'var(--gw-muted)', lineHeight: '22px' }}>
           Nothing has been created in Groundwork and nobody on your team has been contacted.
         </p>
       </section>
@@ -118,9 +119,9 @@ export function TalkToUsPage() {
   }
 
   return (
-    <section className="gw-page" style={{ maxWidth: 520, margin: '0 auto', padding: '48px 20px 80px' }}>
+    <section style={{ maxWidth: 520, margin: '0 auto', padding: '48px 20px 80px' }}>
       <BackOffThisPage />
-      <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 8px' }}>Request a call</h1>
+      <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--gw-navy)', margin: '0 0 8px' }}>Request a call</h1>
       {/*
         THE REASSURANCE IS GONE. Her call.
 
@@ -128,7 +129,7 @@ export function TalkToUsPage() {
         had arrived with. A page that opens by promising it will not do something puts the thought
         there. The sentence that remains is the one a person actually wants: when somebody replies.
       */}
-      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 22 }}>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '24px', marginBottom: 22 }}>
         Tell us what you need and somebody will come back to you within two working days.
       </p>
 
@@ -185,15 +186,9 @@ export function TalkToUsPage() {
 
         {said && said !== 'sent' && <p className="gw-er" role="alert" style={{ fontSize: 13, marginBottom: 12 }}>{said}</p>}
 
-        <button
+        <button className="btn pri"
           type="submit"
           disabled={send.isPending || !longEnough}
-          style={{
-            background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 8,
-            padding: '12px 24px', fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
-            cursor: send.isPending || !longEnough ? 'default' : 'pointer',
-            opacity: send.isPending || !longEnough ? 0.6 : 1,
-          }}
         >
           {send.isPending ? 'Sending…' : 'Send the request'}
         </button>

@@ -58,7 +58,7 @@ describe('"Where each target stands" with no headline', () => {
     renderBoard()
     await screen.findByRole('heading', { name: 'The partnerships work has gone quiet' })
     const heading = screen.getByText('Where each target stands')
-    const panel = heading.closest('.gwui-panel') as HTMLElement
+    const panel = heading.closest('.panel') as HTMLElement
     expect(within(panel).getByText('We want to expand our market reach through strategic alliances.')).toBeTruthy()
     expect(within(panel).getByText('Nothing has been counted for it yet.')).toBeTruthy()
   })

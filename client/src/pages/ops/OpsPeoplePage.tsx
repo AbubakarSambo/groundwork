@@ -31,7 +31,7 @@ function TheirAgreement({ personKey }: { personKey: string }) {
 
   const a = agreement.data
   return (
-    <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '6px 0 0' }}>
+    <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '6px 0 0' }}>
       {a?.originatorSharePercent
         ? `Agreed: ${Number(a.originatorSharePercent)}% originator share${
             a.originatorShareMonths ? ` for ${a.originatorShareMonths} months` : ''
@@ -62,23 +62,13 @@ function Capability({
 
   return (
     <>
-      <button
+      <button className={`gwui-choice${held ? ' gwui-choice-on' : ''}`}
         type="button"
         onClick={() => change.mutate()}
         disabled={change.isPending || !person.active}
         aria-pressed={held}
         title={held ? `Take ${capability} away from ${person.displayName}` : `Give ${person.displayName} ${capability}`}
-        style={{
-          border: '1px solid var(--gw-border)',
-          borderRadius: 20,
-          padding: '2px 9px',
-          margin: '0 4px 4px 0',
-          fontSize: 11,
-          cursor: person.active ? 'pointer' : 'default',
-          background: held ? 'var(--gw-navy)' : 'white',
-          color: held ? 'white' : 'var(--gw-sub)',
-          opacity: person.active ? 1 : 0.5,
-        }}
+        style={{ margin: '0 4px 4px 0' }}
       >
         {capability}
       </button>
@@ -88,7 +78,7 @@ function Capability({
         does not say which of them it is about.
       */}
       {refusal && (
-        <p role="alert" style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '4px 0 6px' }}>
+        <p role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', margin: '4px 0 6px' }}>
           {refusal}
         </p>
       )}
@@ -125,7 +115,7 @@ export default function OpsPeoplePage() {
   })
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="The team" answers="Who is here, and what can each of them actually do?" />
 
       <Adder
@@ -183,17 +173,17 @@ export default function OpsPeoplePage() {
             {p.holdsNothing && p.active && (
               <span style={{ fontSize: 12, color: 'var(--gw-red-t)' }}>holds nothing at all</span>
             )}
-            <button
+            <button className="btn sec sm"
               type="button"
               onClick={() => setActive.mutate({ key: p.key, active: !p.active })}
-              style={{ ...CARD, padding: '3px 10px', fontSize: 11.5, cursor: 'pointer', marginLeft: 'auto' }}
+              style={{ marginLeft: 'auto' }}
             >
               {p.active ? 'They have left' : 'They are back'}
             </button>
           </div>
 
           {p.email && (
-            <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '3px 0 0' }}>{p.email}</p>
+            <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '3px 0 0' }}>{p.email}</p>
           )}
 
           {/*
@@ -231,7 +221,7 @@ export default function OpsPeoplePage() {
           <div style={{ marginTop: 10 }}>
             {groupCapabilities(capabilities.data ?? []).map(([domain, caps]) => (
               <div key={domain} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4 }}>
-                <span style={{ ...LABEL, fontSize: 9.5, width: 72, flex: 'none', paddingTop: 3 }}>
+                <span style={{ ...LABEL, fontSize: 10, width: 72, flex: 'none', paddingTop: 3 }}>
                   {domain}
                 </span>
                 <div style={{ flex: 1 }}>

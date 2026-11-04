@@ -50,9 +50,7 @@ function Row({ request }: { request: ApiAccessRequest }) {
       setError(e?.response?.data?.message ?? 'That could not be recorded.'),
   })
 
-  const small = { fontSize: 12.5, color: 'var(--gw-sub)' } as const
-  const btn = { fontSize: 13, padding: '7px 14px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' } as const
-  const primary = { ...btn, background: 'var(--gw-navy)', color: 'white', border: 'none', fontWeight: 600 } as const
+  const small = { fontSize: 12, color: 'var(--gw-sub)' } as const
 
   return (
     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: 16, marginBottom: 12, background: 'var(--gw-card)' }}>
@@ -63,10 +61,10 @@ function Row({ request }: { request: ApiAccessRequest }) {
       </div>
 
       {/* WHAT THEY SAID THEY WOULD BUILD, which is the whole basis for the decision. In full. */}
-      <p style={{ fontSize: 14, margin: '10px 0 0', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{request.whatFor}</p>
+      <p style={{ fontSize: 14, margin: '10px 0 0', lineHeight: '22px', whiteSpace: 'pre-wrap' }}>{request.whatFor}</p>
 
       {(request.lastDay || request.flags.length > 0) && (
-        <div style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.55 }}>
+        <div style={{ marginTop: 10, fontSize: 12, lineHeight: '19px' }}>
           {request.lastDay && (
             <div style={small}>Last 24 hours: {plural(request.lastDay.calls, 'call')}, {plural(request.lastDay.reads, 'read')}, {plural(request.lastDay.writes, 'write')}.</div>
           )}
@@ -76,7 +74,7 @@ function Row({ request }: { request: ApiAccessRequest }) {
                 <strong>{f.kind.replace(/-/g, ' ')}</strong> · {whenItWas(f.raisedAt, 'dayAndTime')}
                 <div style={{ color: 'var(--gw-text)' }}>{f.detail}</div>
               </div>
-              <button type="button" onClick={() => clearFlag.mutate(f.id)} disabled={clearFlag.isPending} style={btn}>Looked at</button>
+              <button type="button" onClick={() => clearFlag.mutate(f.id)} disabled={clearFlag.isPending} className="btn sec sm">Looked at</button>
             </div>
           ))}
         </div>
@@ -94,35 +92,35 @@ function Row({ request }: { request: ApiAccessRequest }) {
       <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
         {request.status === 'PENDING' && !asking && (
           <>
-            <button type="button" style={primary} onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
-            <button type="button" style={btn} onClick={() => setAsking('DECLINED')}>Decline</button>
+            <button type="button" className="btn pri sm" onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
+            <button type="button" className="btn sec sm" onClick={() => setAsking('DECLINED')}>Decline</button>
           </>
         )}
         {(request.status === 'DECLINED' || request.status === 'WITHDRAWN') && !asking && (
-          <button type="button" style={primary} onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
+          <button type="button" className="btn pri sm" onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
         )}
         {request.status === 'APPROVED' && !asking && (
-          <button type="button" style={btn} onClick={() => setAsking('WITHDRAWN')}>Withdraw access</button>
+          <button type="button" className="btn sec sm" onClick={() => setAsking('WITHDRAWN')}>Withdraw access</button>
         )}
         {asking && (
           <>
-            <input
+            <input className="gwui-input"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder={asking === 'DECLINED' ? 'Why it is declined. They will read this.' : 'Why it is withdrawn. They will read this.'}
               aria-label="Why"
               autoFocus
-              style={{ flex: '1 1 260px', padding: '7px 10px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
+              style={{ flex: '1 1 260px' }}
             />
-            <button type="button" style={primary} onClick={() => decide.mutate(asking)} disabled={decide.isPending || !note.trim()}>
+            <button type="button" className="btn pri sm" onClick={() => decide.mutate(asking)} disabled={decide.isPending || !note.trim()}>
               {asking === 'DECLINED' ? 'Decline' : 'Withdraw'}
             </button>
-            <button type="button" style={btn} onClick={() => { setAsking(null); setNote('') }}>Cancel</button>
+            <button type="button" className="btn sec sm" onClick={() => { setAsking(null); setNote('') }}>Cancel</button>
           </>
         )}
       </div>
 
-      {error && <p style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>{error}</p>}
+      {error && <p style={{ fontSize: 12, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>{error}</p>}
     </div>
   )
 }
@@ -138,16 +136,16 @@ export function ApiAccessPage() {
   const flagged = decided.filter((r) => r.flags.length > 0)
 
   return (
-    <section className="gw-page" style={{ maxWidth: 820, margin: '0 auto', padding: '24px 20px 80px' }}>
+    <section style={{ maxWidth: 820, margin: '0 auto', padding: '24px 20px 80px' }}>
       <button
         type="button"
         onClick={() => navigate('/admin/dashboard')}
-        style={{ fontSize: 12.5, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+        style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
       >
         ← Admin dashboard
       </button>
       <h1 style={{ fontSize: 24, margin: '10px 0 0' }}>Who has asked to connect</h1>
-      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 8 }}>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px', marginTop: 8 }}>
         One request per organisation covers the API, the panel on their own pages and a WhatsApp number
         of theirs. They said what they intend to build and accepted the terms; you read it and let
         them in or say why not. Every machine call they make afterwards is counted and watched here.
@@ -170,7 +168,7 @@ export function ApiAccessPage() {
         <button
           type="button"
           onClick={() => setShowDecided((s) => !s)}
-          style={{ fontSize: 12.5, fontWeight: 400, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+          style={{ fontSize: 12, fontWeight: 400, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
         >
           {showDecided ? 'Hide' : `Show ${decided.length} (${connected} connected)`}
         </button>

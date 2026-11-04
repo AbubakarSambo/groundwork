@@ -126,11 +126,11 @@ describe('commit falls back to the server-side draft (the vanish fix)', () => {
      */
     /* CHANGED 11 OCTOBER (decision 133): the transcript is the check-in that followed setup, which is
        the lead's first check-in, so it is written onto session 1. Setup itself is never in it. */
-    /* Each turn now carries its own time, in order (E5, 13 October 2026). */
-    expect(prisma.conversationTurn.createMany).toHaveBeenCalledWith({ data: [
-      { checkInId: 'ci1', content: 'my side of it', role: 'PERSON', createdAt: expect.any(Date) },
-      { checkInId: 'ci1', content: 'noted', role: 'AI', createdAt: expect.any(Date) },
-    ] });
+    /* CHANGED 4 NOVEMBER (Hafsah: one conversation on screen, stored in two parts). The transcript is not copied onto session 1 as
+       check-in turns any more, because its assessment then read setup's words as said in a check-in and the team read them. Session 1
+       is still closed as her first check-in, from the draft's transcript, and her words reach her assessment once, as setup. */
+    expect(prisma.conversationTurn.createMany).not.toHaveBeenCalled();
+    expect(prisma.checkIn.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'ci1' }, data: expect.objectContaining({ status: 'COMPLETED' }) }));
     expect(grounds.addParticipant).toHaveBeenCalledTimes(1); // contributor from the DRAFT
     expect(res.groundId).toBe('g-new');
   });

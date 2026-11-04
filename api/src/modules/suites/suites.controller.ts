@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpStatus, Param, Post, Put, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Param, Post, Put, Query, Res, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { CurrentUser, CurrentUserData } from '../../common';
 import { SuitesService } from './suites.service';
@@ -122,6 +123,9 @@ class TimeRulesDto {
   @IsOptional() @IsNumber() hoursAWeek?: number | null;
   @IsOptional() @IsObject() cutOff?: Record<string, unknown> | null;
   @IsOptional() @IsObject() billable?: Record<string, unknown> | null;
+  /** Release 9: from a policy approved on the policy board. */
+  @IsOptional() @IsNumber() mostHoursADay?: number | null;
+  @IsOptional() @IsString() @MaxLength(10) weekLocksOn?: string | null;
 }
 
 /**
@@ -315,6 +319,12 @@ export class SuitesController {
     return this.suites.setTimeRules({ userId: user.id, organizationId: user.organizationId }, dto);
   }
 
+  @Post('time/weeks/:weekOf/reopen')
+  @ApiOperation({ summary: 'Release 9: reopen a week that locked, by its Monday. For an admin, or whoever looks after finance.' })
+  reopenAWeek(@CurrentUser() user: CurrentUserData, @Param('weekOf') weekOf: string) {
+    return this.suites.reopenAWeek({ userId: user.id, organizationId: user.organizationId }, weekOf);
+  }
+
   @Get('time/billing/export')
   @ApiOperation({ summary: 'Approved billable hours as a CSV or Excel file (format=csv or format=xlsx, from and to as YYYY-MM-DD). For an admin, or whoever looks after finance. For billing only.' })
   async timeBillingExport(@CurrentUser() user: CurrentUserData, @Query('format') format: string, @Query('from') from: string, @Query('to') to: string, @Res() res: Response) {
@@ -341,6 +351,12 @@ export class SuitesController {
   @ApiOperation({ summary: 'The person who writes the review with them starts it' })
   startReview(@Param('dueId') dueId: string, @CurrentUser() user: CurrentUserData) {
     return this.reviews.start({ userId: user.id, organizationId: user.organizationId }, dueId);
+  }
+
+  @Post('reviews/start-now/:personExternalId')
+  @ApiOperation({ summary: 'The person who would write it starts a review today for someone nothing has fallen due for' })
+  startReviewNow(@Param('personExternalId') personExternalId: string, @CurrentUser() user: CurrentUserData) {
+    return this.reviews.startNow({ userId: user.id, organizationId: user.organizationId }, personExternalId);
   }
 
   @Get('reviews/mine')
@@ -373,10 +389,23 @@ export class SuitesController {
     return this.reviews.writeWords({ userId: user.id, organizationId: user.organizationId }, id, dto.text);
   }
 
+  /** Release 7: the person drafts their own view from their running record. Nothing is kept until they save it. */
+  @Get('reviews/:id/self-review-draft')
+  @ApiOperation({ summary: 'Draft your own view of your review from your running record (Release 7). Only the person reviewed' })
+  selfReviewDraft(@CurrentUser() user: CurrentUserData, @Param('id') id: string) {
+    return this.reviews.selfReviewDraft({ userId: user.id, organizationId: user.organizationId }, id);
+  }
+
   @Put('reviews/:id/view')
   @ApiOperation({ summary: 'The person’s own view of their work' })
   reviewView(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: WordsDto) {
     return this.reviews.writeView({ userId: user.id, organizationId: user.organizationId }, id, dto.text);
+  }
+
+  @Post('reviews/:id/update-from-the-record')
+  @ApiOperation({ summary: 'The person, or whoever writes the review, reads the record again for a review in progress. Opening a review never does this.' })
+  updateAReviewFromTheRecord(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.reviews.updateFromTheRecord({ userId: user.id, organizationId: user.organizationId }, id);
   }
 
   @Post('reviews/:id/lines/:key/correction')
@@ -539,6 +568,14 @@ export class SuitesController {
   @ApiOperation({ summary: 'What the payment request form may offer a person asking to spend: the categories, and the currency. Names only.' })
   spendForm(@CurrentUser() user: CurrentUserData) {
     return this.suites.spendForm({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Post('spend/requests/:id/attachment')
+  @ApiOperation({ summary: 'The person who asked attaches a receipt or a proforma to their own request while it waits. Its name and words are kept, no file.' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  attachToSpend(@CurrentUser() user: CurrentUserData, @Param('id') id: string, @UploadedFile() file: Express.Multer.File, @Body() body: { kind?: string }) {
+    return this.filed.attachToSpending({ userId: user.id, organizationId: user.organizationId }, id, body?.kind, file);
   }
 
   @Post('spend/requests')

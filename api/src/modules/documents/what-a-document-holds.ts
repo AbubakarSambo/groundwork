@@ -183,6 +183,24 @@ const sameName = (a?: string | null, b?: string | null): boolean =>
 export const isTheReader = (row: { who: string; ownerParticipantId?: string | null }, reader?: WhoIsReading | null): boolean =>
   !!reader && ((!!reader.participantId && row.ownerParticipantId === reader.participantId) || sameName(row.who, reader.name));
 
+/**
+ * THE LINE THAT SAYS WHERE IT CAME FROM, ONE FIELD (fix plan, release batch 1, group 6; Hafsah's one voice, 3 November 2026). It read
+ * "Here is the context we have from team-plan.txt", Groundwork calling itself "we", and two places cut it off the front of the block with
+ * a pattern of its words. It is written here once, served beside the block, and read by whatever needs the block without it.
+ */
+export function theDocumentLine(fileName: string, whatItIs?: string | null): string {
+  const what = aSentence(whatItIs ?? null);
+  return `Here is what I took from ${fileName}.${what ? ` ${what}` : ''}`;
+}
+
+/** The block without its first line, for a page that already names the document. */
+export function whatTheDocumentHolds(held: WhatLanded, opts: { reader?: WhoIsReading | null } = {}): string | null {
+  const all = theContextWeHave(held, opts);
+  if (!all) return null;
+  const line = theDocumentLine(held.fileName, held.whatItIs);
+  return all.startsWith(line) ? all.slice(line.length).trim() : all;
+}
+
 export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean; willNoteIt?: { visibility?: string | null }; reader?: WhoIsReading | null } = {}): string | null {
   const something = held.forOnePerson.length || held.forEverybody.length || held.dates.length || held.unmatched.length;
   if (!something) return null;
@@ -192,8 +210,7 @@ export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean; wil
    * "cookers delivered, 3, by by 9 October" because the document's own "by 9 October" was given a
    * second "by". The document's words for what a number is of stay exactly as it wrote them.
    */
-  const whatItIs = aSentence(held.whatItIs);
-  const lines: string[] = [`Here is the context we have from ${held.fileName}.${whatItIs ? ` ${whatItIs}` : ''}`];
+  const lines: string[] = [theDocumentLine(held.fileName, held.whatItIs)];
   if (held.forEverybody.length) {
     lines.push('');
     for (const t of held.forEverybody) {
@@ -261,7 +278,7 @@ export function byWhen(by?: string | null): string {
  *
  * `whatItIs` is asked of the model as a full sentence (see WHAT_A_DOCUMENT_HOLDS_PROMPT), but a read
  * from before that wording, or a PromptVersion override that has not caught up, can still hand back a
- * bare noun phrase - "A Q4 sales target sheet". Put straight after "Here is the context we have from
+ * bare noun phrase - "A Q4 sales target sheet". Put straight after "Here is what I took from
  * Q4 targets.xlsx.", that fragment read as two sentences that did not join up. So it is turned into a
  * sentence here, in code, which is the one guarantee that does not depend on the model getting it
  * right: a phrase with no verb of its own is given one, in the product's own voice ("It looks like a
@@ -285,8 +302,14 @@ export const aSentence = (t: string | null | undefined): string | null => {
   if (HAS_A_VERB.test(s) || /^I(\s|'|\u2019)/.test(s) || /\b(will|shall|can|should|must)\b/i.test(s)) return `${s}.`;
   /* The first letter is made small only where the first word is an ordinary one: not an "I", not an acronym such as OKR or KPI. */
   const first = s.split(/\s+/)[0];
-  const keepsItsCapital = first === 'I' || /^[A-Z]{2,}\b/.test(first) || /^[A-Z][a-z]*[A-Z]/.test(first);
+  /* A name of two capitalised words ("Drop Access Ltd") keeps its capital too: it read "drop Access Ltd" (26 October 2026). */
+  const keepsItsCapital = first === 'I' || /^[A-Z]{2,}\b/.test(first) || /^[A-Z][a-z]*[A-Z]/.test(first) || /^[A-Z][a-z]+\s+[A-Z]/.test(s);
   const lower = keepsItsCapital ? s : `${s.charAt(0).toLowerCase()}${s.slice(1)}`;
+  /*
+   * AN ACTION IS SAID AS ONE (26 October 2026). "What I will do with it" read "It looks like hold this as a record of the transaction":
+   * a line that starts with what will be done is an action, never a guess, so it is "I will hold this as a record ...".
+   */
+  if (/^(?:hold|use|keep|add|file|link|store|treat|compare|check|note|attach|track|record|save|match|flag|ask|send|show|put)\b/i.test(s)) return `I will ${lower}.`;
   return `It looks like ${lower}.`;
 };
 

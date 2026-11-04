@@ -1,6 +1,6 @@
 import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
-import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
+import { whoHasAnswered } from '../reports/how-many-have-answered';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { theEngagementMoment } from './the-engagement-release-moment';
 import { nameToCall, namesWithTheRestCounted } from './a-name-to-call-them';
@@ -60,6 +60,7 @@ function theDoneByOne(c: AQuietCheckIn): string | null {
   return `${capital(aNumberInWords(n))} ${n === 1 ? 'thing people said they would do was' : 'things people said they would do were'} done, ${n === 1 ? 'by' : n === 2 ? 'both by' : 'all by'} ${c.closedAllBy.name}`;
 }
 
+/** Who has not answered and what to do, without defending the check-in. */
 export function theTeamWords(firstName: string | null | undefined, c: AQuietCheckIn) {
   const n = quietIn(c);
   /* THE POSITIVE IS NOT LEFT OUT WHEN MOST OF A TEAM IS QUIET (spec sections 16 and 21, journey 7): "seven have not answered" and, as a plain fact on its own, who did
@@ -72,7 +73,6 @@ export function theTeamWords(firstName: string | null | undefined, c: AQuietChec
       `Hello ${firstName?.trim() || 'there'}. ${capital(aNumberInWords(n))} of the ${aNumberInWords(c.ofHowMany)} people on "${c.label}" have not answered the latest check-in, which opened more than a week ago.`,
       `${capital(theKinds(c))}.`,
       ...(done ? [`${done}.`] : []),
-      'Most of the team has not answered, so this is a pattern across the team and not about one person. Groundwork has not changed or shortened the check-in.',
       'If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
     ],
     linkLabel: 'See who has answered',
@@ -100,7 +100,7 @@ export function theAcrossWords(firstName: string | null | undefined, cs: AQuietC
       /* One check-in is named once, in the subject and the first line, not again in every sentence. */
       ...quiet.map((c) => (one ? `${capital(theKinds(c))}.` : `In "${c.label}", ${theKinds(c)}.`)),
       ...positives,
-      'Groundwork has not changed or shortened any of them. If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
+      'If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
     ],
     linkLabel: one ? 'See who has answered' : 'See your check-ins',
   };
@@ -123,7 +123,21 @@ export function theQuietIn(rows: any[], label: string, leadUserId: string, now: 
     const had = newestOf.get(r.participantId);
     if (!had || (r.sessionNumber ?? 0) > (had.sessionNumber ?? 0)) newestOf.set(r.participantId, r);
   }
-  const counted = [...newestOf.values()].filter((r) => !r.participant?.managingOnly && !r.participant?.leftAt && !isNotLetInYet(r.participant) && r.participant?.userId !== leadUserId && !away.has(r.participantId));
+  /*
+   * "OF THE THREE PEOPLE" IS THE ONE COUNT (how-many-have-answered.ts, 1 November 2026): everybody its newest session counts, as the
+   * board and the report count them. Today said "Two of the three people" while the Check-ins page said "4 people.". The lead, who
+   * checks in when she chooses, is never quiet.
+   */
+  const people = [...newestOf.values()].filter((r) => !r.participant?.leftAt).map((r) => ({
+    id: r.participantId, userId: r.participant?.userId ?? null, managingOnly: r.participant?.managingOnly ?? false,
+    partyType: r.participant?.userId && r.participant.userId === leadUserId ? 'INITIATOR' : 'PARTICIPANT',
+    user: r.participant?.user ?? null, awayUntil: away.has(r.participantId) ? 'away' : null,
+    checkIns: rows.filter((x) => x.participantId === r.participantId),
+  }));
+  const latest = Math.max(...people.flatMap((p) => p.checkIns.map((c: any) => c.sessionNumber ?? 0)), 0);
+  const one = whoHasAnswered(people, latest);
+  const on = new Set(one.onTheCheckIn);
+  const counted = [...newestOf.values()].filter((r) => on.has(r.participantId) && r.participant?.userId !== leadUserId);
   if (!counted.length) return null;
   /* Answered means they said something: a session the clock closed with nothing said is a missed one, not an answer
      (night quality run 1, Jared Okoth: two clock-closed sessions read as answered, so he was never counted as quiet). */
@@ -139,7 +153,7 @@ export function theQuietIn(rows: any[], label: string, leadUserId: string, now: 
     else never++;
   }
   if (never === 0 && !stopped.length) return null;
-  return { label, ofHowMany: counted.length, neverAnswered: never, stoppedAfterAnswering: stopped.filter((n) => !!n) };
+  return { label, ofHowMany: one.onTheCheckIn.length, neverAnswered: never, stoppedAfterAnswering: stopped.filter((n) => !!n) };
 }
 
 export async function sendWhoHasGoneQuiet(
@@ -186,7 +200,7 @@ export async function sendWhoHasGoneQuiet(
       }
       const total = found.reduce((n, c) => n + quietIn(c), 0);
       if (total < 3) continue;
-      const user = await prisma.user.findUnique({ where: { id: leadId }, select: { email: true, firstName: true, deletedAt: true, isActive: true } });
+      const user = await prisma.user.findUnique({ where: { id: leadId }, select: { email: true, firstName: true, deletedAt: true, isActive: true, organizationId: true } });
       if (!user?.email || user.deletedAt || user.isActive === false) continue;
       const mostOf = found.find(mostOfTheTeamIs);
       if (await isAlreadyHeld(prisma, QUIET_SENDER, user.email)) continue;

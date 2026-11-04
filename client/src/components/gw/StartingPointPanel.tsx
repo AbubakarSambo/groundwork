@@ -71,7 +71,7 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
           <>
             <ul style={{ margin: 0, paddingLeft: 17, display: 'flex', flexDirection: 'column', gap: 5 }}>
               {entries.map((e, i) => (
-                <li key={i} style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+                <li key={i} style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px' }}>
                   {e.text}
                   {/**
                     * The session it was captured in, shown only when it is not the first. A line added
@@ -84,11 +84,11 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
                 </li>
               ))}
             </ul>
-            <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 9 }}>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', marginTop: 9 }}>
               {data?.frozenReason}
             </div>
             {!data?.canShowMovement && (
-              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 6 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginTop: 6 }}>
                 {/**
                   * `canShowMovement` is the module's own gate. One session is a position, not a
                   * movement, and saying what has changed off a single session would be inventing an arc.
@@ -98,7 +98,7 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
             )}
           </>
         ) : (
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>
             Nothing recorded yet. Without it the report can say where things stand, but not what has
             moved since the beginning.
           </div>
@@ -107,9 +107,9 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
       </Section>
 
       {canRecord && !picking && (
-        <button
+        <button type="button" className="gw-link t-small"
           onClick={() => setPicking(true)}
-          style={{ marginTop: 10, padding: '9px 14px', borderRadius: 8, background: 'none', border: '1px solid var(--gw-border)', fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ marginTop: 10 }}
         >
           {entries.length ? 'Add to the starting point →' : 'Record where this stood →'}
         </button>
@@ -118,16 +118,16 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
       {canRecord && picking && (
         <div style={{ marginTop: 10 }}>
           <Panel>
-            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
               From your first session, in your own words
             </div>
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginBottom: 10 }}>
               Tick the ones that describe where things actually stood. Nothing here is rewritten, and once
               recorded it stays as written.
             </div>
 
             {candidates.length === 0 ? (
-              <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.6 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px' }}>
                 {/**
                   * Two different empties, and they need different sentences: a ground whose first
                   * session has not happened, and one where everything said has already been recorded.
@@ -149,23 +149,21 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
                       onChange={() => toggle(c.text)}
                       style={{ marginTop: 3, flexShrink: 0 }}
                     />
-                    <span style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55 }}>{c.text}</span>
+                    <span style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '20px' }}>{c.text}</span>
                   </label>
                 ))}
               </div>
             )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button
+              <button className="btn pri sm"
                 onClick={() => record.mutate()}
                 disabled={!chosen.size || record.isPending}
-                style={{ padding: '9px 16px', borderRadius: 7, background: chosen.size ? 'var(--gw-navy)' : 'var(--gw-border)', color: chosen.size ? 'white' : 'var(--gw-muted)', border: 'none', fontSize: 13, fontWeight: 700, cursor: chosen.size ? 'pointer' : 'default', fontFamily: 'inherit' }}
               >
                 {record.isPending ? 'Recording…' : `Record ${chosen.size || ''} as the starting point`.trim()}
               </button>
-              <button
+              <button className="btn sec sm"
                 onClick={() => { setPicking(false); setChosen(new Set()) }}
-                style={{ padding: '9px 16px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>

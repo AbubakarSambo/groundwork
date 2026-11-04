@@ -93,8 +93,9 @@ describe('the pin and the rename pencil on a sidebar row', () => {
   })
 
   it('both are the full height of the row, so a thumb does not have to be exact', () => {
-    expect(px(declsFor('gw-pin').height)).toBe(36)
-    expect(px(declsFor('gw-rename').height)).toBe(36)
+    /* 44px since 21 October (Hafsah's 44px rule for everything you can tap), and the row is 44px with them. */
+    expect(px(declsFor('gw-pin').height)).toBe(44)
+    expect(px(declsFor('gw-rename').height)).toBe(44)
   })
 
   it('and until the row is pointed at or focused they take no width from the name', () => {

@@ -1,3 +1,4 @@
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 /**
  * A WAIT ON A COLLEAGUE IS THE SPEAKER'S ACCOUNT, NOT A FACT ABOUT THE COLLEAGUE (decision 137;
  * decision 139, must-fix 4).
@@ -18,8 +19,7 @@
  * WHAT CONFIRMS IT, structurally: the colleague's own promise in this check-in names the same thing.
  * They said, in their own check-in, that they will do it, so they agree it is theirs to give. Or the
  * speaker's attempt to unblock it is in the record (Hafsah, 12 October): what they said they did
- * (`triedSaid`) or their own words of the wait name an attempt, read with the same check the note
- * beside the claim uses (anAttemptIsOnRecord). They tried and it is on record, so it is a block. A wait
+ * (`triedSaid`, anAttemptIsOnRecord). They tried and it is on record, so it is a block. A wait
  * being cleared does not confirm it (the speaker can clear their own row), and the speaker saying it
  * again, louder, or for longer, never confirms it.
  */
@@ -100,76 +100,71 @@ export async function theConfirmedWaits(
     }) ?? [],
   ).catch(() => []);
   for (const w of onSomebody) if (theWaitIsConfirmed(w, Array.isArray(promises) ? promises : [])) confirmed.add(w.id);
+  /*
+   * OR THEY SAID IT IS THEIRS, IN THEIR OWN WORDS (messages test, fourth run). Joseph's week on Thursday 15 October said "Mercy Wairimu says
+   * the work is waiting for "the sample units he promised" from you ... That is what Mercy Wairimu said, and you have not said it yourself."
+   * On Wednesday he had said "I wish I had remembered the samples for Mercy. I've had them ready since Monday." A line of the colleague's own
+   * that names the thing and the person waiting confirms it.
+   */
+  const left = onSomebody.filter((w) => !confirmed.has(w.id));
+  if (!left.length) return confirmed;
+  try {
+    const fromOf = new Map<string, string | null>(left.filter((w) => (w as any).fromParticipantId).map((w) => [w.id, (w as any).fromParticipantId]));
+    const unknown = left.filter((w) => !fromOf.has(w.id)).map((w) => w.id);
+    if (unknown.length) {
+      const rows: any[] = (await Promise.resolve(prisma?.groundDependency?.findMany?.({ where: { id: { in: unknown } }, select: { id: true, fromParticipantId: true } })).catch(() => [])) ?? [];
+      for (const r of Array.isArray(rows) ? rows : []) fromOf.set(r.id, r.fromParticipantId ?? null);
+    }
+    const fromIds = [...new Set([...fromOf.values()].filter((x): x is string => !!x))];
+    if (!fromIds.length) return confirmed;
+    const people: any[] = (await Promise.resolve(prisma?.groundParticipant?.findMany?.({ where: { id: { in: fromIds } }, select: { id: true, nameGiven: true, user: { select: { firstName: true } } } })).catch(() => [])) ?? [];
+    const firstOf = new Map<string, string>((Array.isArray(people) ? people : []).map((p) => [p.id, String(p.user?.firstName ?? p.nameGiven ?? '').trim().split(/\s+/)[0] ?? '']));
+    const lines: any[] = (await Promise.resolve(prisma?.recordEntry?.findMany?.({ where: { participantId: { in: [...new Set(left.map((w) => w.onParticipantId as string))] }, disputedAt: null }, select: { participantId: true, text: true } })).catch(() => [])) ?? [];
+    for (const w of left) {
+      const first = firstOf.get(fromOf.get(w.id) ?? '') ?? '';
+      if (first.length < 2) continue;
+      const them = new RegExp(`\\b${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      if ((Array.isArray(lines) ? lines : []).some((l) => l.participantId === w.onParticipantId && them.test(String(l.text ?? '')) && theirOwnPromiseNamesIt(w.what, String(l.text ?? '')))) confirmed.add(w.id);
+    }
+  } catch {
+    /* Not being able to read it confirms nothing. */
+  }
   return confirmed;
 }
 
 /*
- * THE NOTE BESIDE A CLAIM ABOUT A COLLEAGUE (Hafsah, change 4, 11 October 2026).
- *
- * Every claim about a colleague stays where it shows today, in the speaker's own words. Beside it goes one plain note, read in code from the
- * speaker's own words about it (what they said they did, `triedSaid`, and the stored wait text): what they tried to unblock it, or that they
- * have not said. It is a fact about the record, never a label on either person. The "Tried:" and "Not backed:" forms are Hafsah's own wording.
+ * WHAT THEY SAID THEY TRIED (Hafsah, 2 November 2026: silence is never a finding). The record's `triedSaid` is the model's reading of
+ * what the speaker said they did to unblock it. Where it holds something tried, that is said in full with its day; where it holds
+ * nothing, nothing is said beside the claim. "Not backed: no attempt to unblock mentioned" and the word list that read attempts out of
+ * the wait's own text are gone: the absence of a word was never evidence about a person.
  */
-const AN_ATTEMPT = /\b(nudg\w*|chas\w*|follow\w*[ -]up|followed up|asked (?:again|twice|him|her|them|\w+ again)|re-?asked|remind\w*|call(?:ed)?|phon\w*|rang|email\w*|messag\w*|text\w*|whatsapp\w*|wrote|sent (?:him|her|them|a)\b|raised it|took it (?:to|above)|escalat\w*|spoke (?:to|with)|talked (?:to|with)|went to (?:see|his|her|their))\b/i;
 
-export const NOT_BACKED = 'Not backed: no attempt to unblock mentioned.';
-
-/** The speaker's words of an attempt to unblock it, from what they said they did, then their own words of the wait; null when there are none. */
-function theAttemptSaid(w: { what?: string | null; triedSaid?: string | null }): string | null {
-  for (const said of [w.triedSaid, w.what]) {
-    const text = String(said ?? '').replace(/\s+/g, ' ').trim();
-    if (text && AN_ATTEMPT.test(text)) return text;
-  }
-  return null;
+/*
+ * WHAT THEY SAID THEY TRIED FIRST, WHERE THEY SAID ANYTHING (Drop Access, second night run). Peter's "I haven't done anything about that
+ * yet" was kept as what he had tried, and My work counted it as something tried first. Words that say nothing was tried are not.
+ */
+const NOTHING_TRIED = /\b(?:haven['’]t|have not|hasn['’]t|has not|didn['’]t|did not|not yet|nothing|no one|nobody)\b|^\s*no\b|^\s*none\b/i;
+export function saidWhatTheyTried(triedSaid: string | null | undefined): boolean {
+  const t = String(triedSaid ?? '').trim();
+  return !!t && !NOTHING_TRIED.test(t);
 }
 
-/** Is the speaker's attempt to unblock it in the record? The same check the note uses, so a wait the note says they tried is confirmed. */
-export function anAttemptIsOnRecord(w: { what?: string | null; triedSaid?: string | null }): boolean {
-  return theAttemptSaid(w) !== null;
+/** Is the speaker's attempt to unblock it in the record? What they said they did, as the record keeps it. */
+export function anAttemptIsOnRecord(w: { triedSaid?: string | null }): boolean {
+  return saidWhatTheyTried(w.triedSaid);
 }
 
 /**
- * Who the note names, each already as this reader may read them: "You" or "you" for the reader, a name where the reader may read it,
- * "a colleague" where not. Left out, the plain words stand in: "They", "the colleague", "the lead".
+ * WHAT THEY TRIED, IN A FULL SENTENCE, OR NOTHING: the one note beside a claim about a colleague, on the board, in reports and in
+ * messages (Drop Access run 1, item 18). "Joseph said on Friday 23 October, “I've asked Grace about the price.”" Read from every time
+ * the wait was said (dedupeDependencies keeps the fullest words and the day).
  */
-export interface WhoTheNoteNames {
-  /** The speaker, who says the work is waiting. */
-  by?: string | null;
-  /** The colleague they say they wait on. */
-  on?: string | null;
-  /** The person who runs the check-in. */
-  lead?: string | null;
-}
-
-const theSame = (a: string, b: string) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
-
-/** "Hassan Mwenda could have messaged Amina Otieno, asked again, or raised it with Esther Awuor." What anybody could do, never a label. */
-export function whatTheyCouldHaveDone(names: WhoTheNoteNames = {}): string {
-  const plain = (x: string | null | undefined) => String(x ?? '').replace(/\s+/g, ' ').trim();
-  let by = plain(names.by) || 'They';
-  by = /^you$/i.test(by) ? 'You' : by.charAt(0).toUpperCase() + by.slice(1);
-  let on = plain(names.on) || 'the colleague';
-  on = /^you$/i.test(on) ? 'you' : /^(?:A|Another|One) colleague\b/.test(on) ? on.charAt(0).toLowerCase() + on.slice(1) : on;
-  let lead = plain(names.lead) || 'the lead';
-  lead = /^you$/i.test(lead) ? 'you' : lead;
-  /* The lead is the one waited on, or the one waiting: there is nobody above them here to raise it with. */
-  if (theSame(on, lead) || theSame(by, lead)) return `${by} could have messaged ${on} or asked again.`;
-  return `${by} could have messaged ${on}, asked again, or raised it with ${lead}.`;
-}
-
-/**
- * The note beside a claim about a colleague: what the speaker said they tried, or, where they said nothing of trying, that it is not
- * backed and what they could have done to unblock it themselves (Hafsah, 12 October: the claim always stays, and this goes beside it).
- */
-export function theNoteBesideTheClaim(w: { what?: string | null; triedSaid?: string | null }, names: WhoTheNoteNames = {}): string {
-  const text = theAttemptSaid(w);
-  if (text) {
-    /* Their words from the attempt on, shortened at a word, said in the third person's place as they said it. */
-    const from = text.slice(text.search(AN_ATTEMPT));
-    const words = from.split(' ');
-    let short = words.slice(0, 12).join(' ').replace(/[.,;:!?\s]+$/, '');
-    if (words.length > 12) short = short.replace(/\s+\S*$/, '') || short;
-    return `Tried: ${short.charAt(0).toLowerCase() === short.charAt(0) ? short : short.charAt(0).toLowerCase() + short.slice(1)}.`;
-  }
-  return `${NOT_BACKED} ${whatTheyCouldHaveDone(names)}`;
+export function whatTheyTriedInFull(w: { triedSaid?: string | null; triedSaidAt?: Date | string | null; createdAt?: Date | string | null }, by: string | null | undefined): string {
+  if (!anAttemptIsOnRecord(w)) return '';
+  const who = String(by ?? '').trim() || 'They';
+  const Who = /^you$/i.test(who) ? 'You' : who.charAt(0).toUpperCase() + who.slice(1);
+  const at = w.triedSaidAt ?? w.createdAt ?? null;
+  const day = at ? whenItWas(at, 'weekdayAndDay') : null;
+  const words = String(w.triedSaid).replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, '');
+  return `${Who} said${day ? ` on ${day}` : ''}, “${words.charAt(0).toUpperCase()}${words.slice(1)}.”`;
 }

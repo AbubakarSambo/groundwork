@@ -55,7 +55,7 @@ export function HowSpecificThisSessionWas({ level, spots }: {
           <div
             key={s}
             style={{
-              flex: 1, textAlign: 'center', fontSize: 10.5,
+              flex: 1, textAlign: 'center', fontSize: 10,
               padding: '5px 2px', borderRadius: 5, fontWeight: 700,
               /* AN UNFILLED STEP IS NOT GREY TEXT ON A GREY BLOCK. It was --gw-muted on --gw-bg,
                  which is 4.5:1 at 9px uppercase - passing on a calculator and unreadable on a
@@ -73,14 +73,14 @@ export function HowSpecificThisSessionWas({ level, spots }: {
       {spots && spots.length > 0 ? (
         <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
           {spots.map((sp, i) => (
-            <div key={i} style={{ fontSize: 11.5, lineHeight: 1.55, maxWidth: '68ch' }}>
+            <div key={i} style={{ fontSize: 12, lineHeight: '19px', maxWidth: '68ch' }}>
               <span style={{ color: 'var(--gw-text)' }}>{sp.line}</span>{' '}
               <span style={{ color: 'var(--gw-muted)' }}>{sp.wouldRaiseIt}</span>
             </div>
           ))}
         </div>
       ) : (
-      <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 6, lineHeight: 1.5 }}>
+      <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 6, lineHeight: '17px' }}>
         {/* What would move it, rather than what it is. A bar with no next step is a grade. */}
         {at === 2
           ? 'Dates, numbers and named work, rather than impressions.'

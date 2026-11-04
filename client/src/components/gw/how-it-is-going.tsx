@@ -110,7 +110,9 @@ function answeredSentence(progress: Glance['progress'], readerIsTheOnlyPerson?: 
  * it is actually going. Falls back to the brief only where no round has finished - a check-in
  * nobody has answered has no picture yet and still has to say what it is for.
  */
-export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingToBeLetIn, readerIsTheOnlyPerson }: {
+export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingToBeLetIn, readerIsTheOnlyPerson, theCountSays }: {
+  /** The one count's sentence for the session, where the server serves it (api this-sessions-count.ts); said in place of a count of its own. */
+  theCountSays?: string | null
   summary?: string | null
   brief?: string | null
   glance?: Glance | null
@@ -162,14 +164,15 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingTo
             */}
             <span className="gwui-how-strong">{roundsSentence(glance.progress)}</span>
             {glance.progress.ofPeople > 0 && (
-              <span className="gwui-how-people"> {answeredSentence(glance.progress, readerIsTheOnlyPerson)}</span>
+              <span className="gwui-how-people"> {theCountSays || answeredSentence(glance.progress, readerIsTheOnlyPerson)}</span>
             )}
           </div>
           {/* Decision 77: beside the count, never inside it - a fact about the organisation's own
               door, not about how far through this round is. */}
           {waitingToBeLetIn && <div className="gwui-how-people">{waitingToBeLetIn}</div>}
           {/* Who the count leaves out because they have not joined yet, said beside it (reviewer, 14 October). */}
-          {glance.progress.notJoinedSays && <div className="gwui-how-people">{glance.progress.notJoinedSays}</div>}
+          {/* The one count's sentence already says it, where it is served. */}
+          {!theCountSays && glance.progress.notJoinedSays && <div className="gwui-how-people">{glance.progress.notJoinedSays}</div>}
           <div>
             {late
               ? (

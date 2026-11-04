@@ -7,6 +7,10 @@
  * report that existed.
  *
  * Long is a blemish. Nothing is a loss.
+ *
+ * Changed 2 November 2026: being too long is one more fault in the one re-ask the report makes
+ * (faultsIn), not a re-ask of its own, so a long report with another fault costs one more call, not
+ * two. The same three things hold, now on that one re-ask.
  */
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -15,28 +19,29 @@ const CODE = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/^\s*\/\/.*$/gm, '');
 
-/** The brevity block: from the word-count test to the end of the retry. */
-const brevity = (() => {
-  const start = CODE.indexOf('if (wordCount > 500)');
+/** The one re-ask: from the faults found to the end of adopting the second attempt. */
+const reAsk = (() => {
+  const start = CODE.indexOf('const faults = faultsIn(result);');
   expect(start).toBeGreaterThan(-1);
-  return CODE.slice(start, start + 900);
+  return CODE.slice(start, start + 1600);
 })();
 
-describe('the shorter-version pass', () => {
-  it('cannot throw the report away', () => {
-    expect(brevity).toMatch(/\.catch\(/);
+describe('the one re-ask, which also asks for shorter', () => {
+  it('counts over 500 words as a fault, and has no re-ask of its own for length', () => {
+    expect(CODE).toMatch(/const faultsIn = \(r: SynthesisResult\) => \{[\s\S]{0,300}if \(wordCount > 500\) faults\.push\(/);
+    expect(CODE.match(/wordCount > 500/g) ?? []).toHaveLength(1);
   });
 
-  it('keeps what it had when the retry fails', () => {
-    /* The catch returns null, and null is not adopted - so `result` stays the long version. */
-    expect(brevity).toMatch(/return null/);
-    /* Changed 3 October 2026: a retry is adopted only through keepWhatTheFirstFound, so a shorter
-       version cannot lose a difference or an agreement either. See a-second-ask-keeps-what-the-first-found. */
-    expect(brevity).toMatch(/if \(retry\) \{\s*const kept = keepWhatTheFirstFound\(result, retry\)/);
-    expect(brevity).toMatch(/result = kept\.report/);
+  it('cannot throw the report away', () => {
+    expect(reAsk).toMatch(/\.catch\(\(\) => null\)/);
+  });
+
+  it('keeps what it had when the retry fails, and never adopts one that lost a finding', () => {
+    expect(reAsk).toMatch(/if \(secondPass && faultsIn\(secondPass\)\.length < faults\.length\) \{[\s\S]{0,200}const kept = keepWhatTheFirstFound\(result, secondPass\)/);
+    expect(reAsk).toMatch(/result = kept\.report/);
   });
 
   it('and says so, rather than failing silently', () => {
-    expect(brevity).toMatch(/logger\?\.warn\?\./);
+    expect(reAsk).toMatch(/logger\?\.warn\?\./);
   });
 });

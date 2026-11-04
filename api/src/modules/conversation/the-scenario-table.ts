@@ -226,6 +226,21 @@ export const THE_SCENARIO_TABLE: Partial<Record<GroundScenario, AScenarioRow>> =
       last: 'Reflect on what happened and what is next.',
     },
   },
+  /* Collect what's owed (Release 2, working label): offered only where the organisation's Release 2 switch is on. */
+  [GroundScenario.COLLECTIONS]: {
+    name: 'Collect what’s owed',
+    description: 'Which bills are due, what has been paid with proof, and what is in the way.',
+    lead: {
+      first: 'Get a starting picture of what is owed, who follows each one up, and what counts as paid.',
+      second: 'See what has been paid with proof, what is still owed, and where support is needed.',
+      last: 'See what was collected in that period and what is still owed.',
+    },
+    participant: {
+      first: 'Share each bill they follow up or owe, with its amount and what makes it due.',
+      second: 'Share what has been paid, with its proof, and what is in the way of the rest.',
+      last: 'Reflect on what was paid and what is still owed.',
+    },
+  },
   [GroundScenario.COHORT_CHECK]: {
     name: 'Check how the same role is going',
     description: 'Understand how people doing similar work are experiencing it.',

@@ -234,22 +234,26 @@ describe('the sidebar, as a participant and as an admin read it', () => {
    * take part in - but there was no door to it in her side menu or her More menu. This used to be
    * folded into the list above, pinning that gap; it is its own assertion now, with the reason.
    */
-  it('a participant also has "Boards", reaching the check-ins they take part in', () => {
+  /* THE SIDEBAR IS THE PROTOTYPE'S (Hafsah, 25 October): Boards, Connections, All check-ins and Plan and billing are in the organisation
+     menu; the sidebar itself is the check-ins, then Today, Company, You, People for an admin, and Suites, with no heading of its own. */
+  const openTheOrgMenu = (rail: HTMLElement) => { fireEvent.click(rail.querySelector('.gw-rl-org') as HTMLElement); return rail.querySelector('.gw-rl-menu-org') as HTMLElement }
+  it('a participant reaches Boards from the organisation menu, not the sidebar', () => {
     const { rail } = shell({ ...LEAD, id: 'u-other', firstName: 'Adam', lastName: 'Grunewald' })
-    expect(within(rail).getByRole('link', { name: 'Boards' })).toHaveAttribute('href', '/boards')
+    expect(within(rail.querySelector('.gw-rl-scroll') as HTMLElement).queryByRole('link', { name: 'Boards' })).toBeNull()
+    expect(within(openTheOrgMenu(rail)).getByRole('link', { name: 'Boards' })).toHaveAttribute('href', '/boards')
   })
 
-  it('an admin also sees Boards, and the organisation\'s pages under its name', () => {
+  it('an admin reads People and Suites in the one list, and the rest in the organisation menu', () => {
     const { rail } = shell({ ...LEAD, role: 'ADMIN' }, [{ id: 'o1', name: 'Coamana', role: 'ADMIN', active: true }])
-    expect(within(rail).getByRole('link', { name: 'Boards' })).toHaveAttribute('href', '/boards')
     const headings = [...rail.querySelectorAll('.gw-rl-h')].map(h => h.textContent)
-    expect(headings).toEqual(['Check-ins', 'Coamana'])
-    for (const [name, href] of [['People', '/org/members'], ['Connections', '/settings/connections'], ['Suites', '/settings/suites'], ['Plan and billing', '/billing']]) {
-      expect(within(rail).getByRole('link', { name })).toHaveAttribute('href', href)
+    expect(headings).toEqual(['Check-ins'])
+    const list = rail.querySelector('.gw-rl-scroll') as HTMLElement
+    for (const [name, href] of [['People', '/org/members'], ['Suites', '/settings/suites']]) expect(within(list).getByRole('link', { name })).toHaveAttribute('href', href)
+    for (const name of ['Boards', 'Connections', 'Plan and billing', 'All check-ins']) expect(within(list).queryByRole('link', { name })).toBeNull()
+    const menu = openTheOrgMenu(rail)
+    for (const [name, href] of [['All check-ins', '/grounds'], ['Boards', '/boards'], ['Connections', '/settings/connections'], ['Plan and billing', '/billing']]) {
+      expect(within(menu).getByRole('link', { name })).toHaveAttribute('href', href)
     }
-    /* U.17: Suites sits under the organisation's name, between Connections and Plan and billing, as today-admin.txt has it. */
-    const orgPages = [...rail.querySelectorAll('.gw-rl-h + .gw-rl-list a')].map(a => a.textContent)
-    expect(orgPages.slice(-4)).toEqual(['People', 'Connections', 'Suites', 'Plan and billing'])
     expect((rail.querySelector('.gw-rl-org') as HTMLElement)).toHaveTextContent('Admin')
   })
 })

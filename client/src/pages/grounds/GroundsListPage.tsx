@@ -6,8 +6,10 @@ import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { useHelpStore } from '@/stores/help'
 import {
-  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, TextArea, TextField, CheckInsTable, CheckInRow,
+  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, TextArea, TextField, CheckInsTable, CheckInRow, EdgeList,
 } from '@/components/gw/ui'
+import { useAnUnfinishedSetup } from '@/pages/auth/entry-handover'
+import { TheSetupNotSavedYet } from '@/components/gw/TheSetupNotSavedYet'
 import { cadenceLabel } from '@/lib/cadence'
 import { howARowReads, isFinished, type ListRow } from './how-a-row-reads'
 import { YouAreIn } from '@/pages/today/YouAreIn'
@@ -72,6 +74,9 @@ export function GroundsListPage() {
   const qc = useQueryClient()
   const [searchParams] = useSearchParams()
   const user = useAuthStore(s => s.user)
+  /* THE SETUP NOT SAVED YET, FROM THE SAME READER AS TODAY (round 5: Today said "Finish setting up" while this page said "No check-ins
+     yet", and the field lead believed his check-in had vanished). */
+  const unfinished = useAnUnfinishedSetup()
   const isAdmin = user?.role === 'ADMIN'
   const justSetUp = searchParams.get('welcome') === '1'
   const orgName = user?.organizationName ?? 'your organisation'
@@ -166,7 +171,7 @@ export function GroundsListPage() {
                 {/* A number the product chose is said to be one, so the admin approving it knows what
                     was decided and what was assumed (B13, P6-002). */}
                 {a.timelineDays ? ` It runs for ${a.timelineDays} days${a.timelineStated === false ? ', which Groundwork suggested' : ''}.` : ''}
-                {a.cadence ? ` ${a.cadence === 'SEQUENTIAL' ? 'People check in when the lead chooses' : `People check in ${cadenceLabel(a.cadence as never).toLowerCase()}`}${a.cadenceStated === false ? ', which Groundwork suggested' : ''}.` : ''}
+                {a.cadence ? ` ${a.cadence === 'SEQUENTIAL' ? 'People check in when the lead chooses' : `People check in ${cadenceLabel(a.cadence as never, (a as any).cadenceDays).toLowerCase()}`}${a.cadenceStated === false ? ', which Groundwork suggested' : ''}.` : ''}
               </p>
               {declining === a.id ? (
                 <div className="gwui-waiting-acts">
@@ -202,12 +207,18 @@ export function GroundsListPage() {
 
       {!isLoading && isError && (
         /* Could not load. Say which of the two things happened, and offer the one that helps. */
-        <Empty title="We could not load your check-ins" action={<Button kind="secondary" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Trying…' : 'Try again'}</Button>}>
+        <Empty title="I could not load your check-ins" action={<Button kind="secondary" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Trying…' : 'Try again'}</Button>}>
           This is a connection problem, not a lost record. Nothing you have written is affected.
         </Empty>
       )}
 
-      {!isLoading && !isError && grounds.length === 0 && (
+      {unfinished && (
+        <Section heading="Not saved yet">
+          <EdgeList label="Not saved yet"><TheSetupNotSavedYet unfinished={unfinished} /></EdgeList>
+        </Section>
+      )}
+
+      {!isLoading && !isError && grounds.length === 0 && !unfinished && (
         <>
           {/*
            * TWO EMPTY STATES, FROM THE PROTOTYPE (F4-small-states/states.txt, "No check-ins yet,
@@ -271,7 +282,7 @@ export function GroundsListPage() {
       )}
       {/* An admin or a lead who runs none and is in none: said, so the list does not open on someone else's heading (U.5 review). */}
       {others.length > 0 && youRun.length === 0 && youreIn.length === 0 && (
-        <Note>You do not run any check-ins, and you are not in any yet.</Note>
+        <Note>No check-ins yet. Start one.</Note>
       )}
       {others.length > 0 && (
         <Section heading={`Other check-ins in ${orgName}`} note={`${others.length} open`}>

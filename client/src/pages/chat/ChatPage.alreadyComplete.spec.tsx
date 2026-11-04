@@ -85,13 +85,13 @@ describe('finishing a check-in the engine already closed', () => {
     ;(conversationApi.complete as any).mockRejectedValue(alreadyCompleteError())
     renderChat()
 
-    fireEvent.click(await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 }))
-    fireEvent.click(await screen.findByRole('button', { name: /That’s right, finish/i }))
+    /* Changed 26 October: End session ends it at once; there is no confirm card in between. */
+    fireEvent.click(await screen.findByText('End session', {}, { timeout: 4000 }))
 
     // THE REGRESSION. The button lived on forever, and pressing it again only
     // produced the same refusal.
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /That’s right, finish/i })).toBeNull()
+      expect(screen.queryByText('End session')).toBeNull()
     })
   }, 15_000)
 
@@ -118,17 +118,15 @@ describe('finishing a check-in the engine already closed', () => {
     })
     renderChat()
 
-    fireEvent.click(await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 }))
-    const finish = await screen.findByRole('button', { name: /That’s right, finish/i })
-    fireEvent.click(finish)
+    /* Changed 26 October: End session ends it at once; there is no confirm card in between. */
+    fireEvent.click(await screen.findByText('End session', {}, { timeout: 4000 }))
 
     await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalled())
     // The card comes down, the server's own sentence is never shown, and the plain explanation
     // and a live composer take its place.
     expect(await screen.findByText(/I need a little more from you before this check-in can close/i)).toBeTruthy()
     expect(screen.queryByText(/Not enough on record to close this session yet/i)).toBeNull()
-    expect(screen.queryByRole('button', { name: /That’s right, finish/i })).toBeNull()
-    expect((screen.getByPlaceholderText('Type, or hold to speak') as HTMLTextAreaElement).disabled).toBe(false)
+    expect((screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement).disabled).toBe(false)
   }, 15_000)
 
   it('a failure that is not a 400 (network down, a server error) keeps the confirm button up', async () => {
@@ -137,25 +135,24 @@ describe('finishing a check-in the engine already closed', () => {
     })
     renderChat()
 
-    fireEvent.click(await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 }))
-    const finish = await screen.findByRole('button', { name: /That’s right, finish/i })
-    fireEvent.click(finish)
+    /* Changed 26 October: End session ends it at once; there is no confirm card in between. */
+    fireEvent.click(await screen.findByText('End session', {}, { timeout: 4000 }))
 
     // A failure that is not the gate refusing a thin record must keep the way forward open - the
     // person has nothing new to add, and hiding the button would strand them.
     await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalled())
-    expect(await screen.findByRole('button', { name: /That’s right, finish/i })).toBeTruthy()
+    expect(await screen.findByText('End session')).toBeTruthy()
   }, 15_000)
 
   it('still finishes normally when the server accepts the completion', async () => {
     ;(conversationApi.complete as any).mockResolvedValue({ status: 'completed' })
     renderChat()
 
-    fireEvent.click(await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 }))
-    fireEvent.click(await screen.findByRole('button', { name: /That’s right, finish/i }))
+    /* Changed 26 October: End session ends it at once; there is no confirm card in between. */
+    fireEvent.click(await screen.findByText('End session', {}, { timeout: 4000 }))
 
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /That’s right, finish/i })).toBeNull()
+      expect(screen.queryByText('End session')).toBeNull()
     })
   }, 15_000)
 })

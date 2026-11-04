@@ -37,7 +37,7 @@ export function WhatYouGaveUs({ it }: { it: WhatYouGave | null | undefined }) {
         WHAT YOU GAVE US
       </div>
       {/* The count first, because it is the part they can check against their own answers. */}
-      <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+      <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px' }}>
         {all > 0 && (
           <div style={{ marginBottom: it.theStrongest.length || it.worthAdding.length ? 8 : 0 }}>
             <strong>{it.checkable}</strong> of {all} things you said can be checked by somebody who was not here.
@@ -45,7 +45,7 @@ export function WhatYouGaveUs({ it }: { it: WhatYouGave | null | undefined }) {
         )}
         {it.theStrongest.length > 0 && (
           <div style={{ marginBottom: it.worthAdding.length ? 8 : 0 }}>
-            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginBottom: 3 }}>A reader can stand on these:</div>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 3 }}>A reader can stand on these:</div>
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {it.theStrongest.map((s, i) => <li key={i} style={{ marginBottom: 2 }}>{s}</li>)}
             </ul>
@@ -53,7 +53,7 @@ export function WhatYouGaveUs({ it }: { it: WhatYouGave | null | undefined }) {
         )}
         {it.worthAdding.length > 0 && (
           <div>
-            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginBottom: 3 }}>One detail would make these usable:</div>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 3 }}>One detail would make these usable:</div>
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {it.worthAdding.map((w, i) => (
                 <li key={i} style={{ marginBottom: 2 }}>{w.said}: needs {w.needs}</li>

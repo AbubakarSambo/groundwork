@@ -1,5 +1,6 @@
 import { isSessionShared } from '@/lib/session-rows'
 import { useId } from 'react'
+import { useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate, Link } from 'react-router-dom'
 import { theClosingAfterYourFirstCheckIn } from '@/lib/the-closing-after-your-first-check-in'
@@ -16,7 +17,7 @@ import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { THE_FIVE, wasItThere } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
-import { whenTheNextOneOpens, theNextOpenCheckInId, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { theNextOne, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
 
 /**
  * THE DONE PAGE (B3, docs/prototype/screens/B3-the-check-in/done.txt).
@@ -53,7 +54,9 @@ const SHOW_THE_COUNT = false
 
 /** The two report cards - see the comment above where this is called for why the heading above
     it is conditional while this panel is not. */
-function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, teamReportReleased, onCorrect, correcting }: {
+function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, teamReportReleased, onCorrect, correcting, direct = false }: {
+  /** The direct morning (lib/the-direct-morning.tsx): no "Only you" tag. Who reads it is the backend's rule, the same either way. */
+  direct?: boolean
   checkInId: string
   groundId: string
   sessionNumber: number
@@ -67,7 +70,7 @@ function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, te
       <div style={{ padding: '14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
           <h3 className="gwui-panel-text" style={{ fontWeight: 700 }}>Your own report</h3>
-          <Tag tone="plain">Only you</Tag>
+          {!direct && <Tag tone="plain">Only you</Tag>}
         </div>
         <p className="gwui-panel-text">What you said today and what it shows. Ready now.</p>
         <div style={{ marginTop: 10 }}>
@@ -85,7 +88,7 @@ function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, te
            * it read as an extra button the prototype's own card does not have.
            */
           className="gwui-plain-link"
-          style={{ background: 'none', border: 'none', padding: 0, marginTop: 10, color: 'var(--gw-navy)', fontSize: 12.5, cursor: correcting ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+          style={{ background: 'none', border: 'none', padding: 0, marginTop: 10, color: 'var(--gw-navy)', fontSize: 12, cursor: correcting ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
         >
           {correcting ? 'Opening…' : 'Something here isn’t right'}
         </button>
@@ -172,8 +175,10 @@ export function TheDonePage({
   })
 
   const g: any = ground.data
-  const leadName = whoElseAnswers(g)
-  const next = whenTheNextOneOpens(mine.data?.checkIns, checkInId, new Date(), mine.data)
+  /* The direct morning (lib/the-direct-morning.tsx): from the page that holds this one, or from the check-in read here. */
+  const direct = useTheDirectMorning() || isTheDirectMorningOn(g)
+  const leadName = direct ? null : whoElseAnswers(g)
+  const { says: next, openId: nextOpenId } = theNextOne(mine.data?.checkIns, checkInId, new Date(), mine.data)
   /*
    * RE-REVIEW: "YOUR NEXT CHECK-IN IS OPEN NOW." NEEDS A DOOR TO WALK THROUGH.
    * This showed with no link at all - and, before `whenTheNextOneOpens` learned to treat an
@@ -181,7 +186,6 @@ export function TheDonePage({
    * Sunday" about a session already running. Both are fixed together: the sentence and the
    * link agree on the same rule, in what-the-end-of-a-check-in-can-say.ts.
    */
-  const nextOpenId = theNextOpenCheckInId(mine.data?.checkIns, checkInId)
   /*
    * A PLAIN YES/NO FROM THE SERVER, NOT A COUNT OF `g.participants` (U.8 fifth review). That array
    * is reduced to this reader's own row alone on a check-in that hides peers from each other, so
@@ -217,7 +221,7 @@ export function TheDonePage({
         subtitle={`Your check-in is saved.${next ? ` ${next}` : ''}`}
       />
       {nextOpenId && (
-        <p style={{ margin: '-16px 0 0', fontSize: 13.5 }}>
+        <p style={{ margin: '-16px 0 0', fontSize: 14 }}>
           <Link to={`/checkin/${nextOpenId}`} style={{ color: 'var(--gw-navy)', fontWeight: 700, textDecoration: 'underline' }}>
             Go to it
           </Link>
@@ -229,7 +233,7 @@ export function TheDonePage({
       {isInitiator && sessionNumber === 1 && g && (() => {
         const c = theClosingAfterYourFirstCheckIn(g)
         return (
-          <p data-testid="the-leads-first-closing" style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}>
+          <p data-testid="the-leads-first-closing" style={{ margin: 0, fontSize: 15, lineHeight: '23px' }}>
             {c.before}
             <Link to={`/grounds/${groundId}?tab=settings`} style={{ color: 'var(--gw-navy)', fontWeight: 700, textDecoration: 'underline' }}>{c.link}</Link>
             {c.after}
@@ -264,10 +268,10 @@ export function TheDonePage({
         */}
       {aTeamReport ? (
         <Section heading="Two reports come from this">
-          <OwnAndTeamReports checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport teamReportReleased={teamReportReleased} onCorrect={() => correct.mutate()} correcting={correct.isPending} />
+          <OwnAndTeamReports direct={direct} checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport teamReportReleased={teamReportReleased} onCorrect={() => correct.mutate()} correcting={correct.isPending} />
         </Section>
       ) : (
-        <OwnAndTeamReports checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport={false} teamReportReleased={teamReportReleased} onCorrect={() => correct.mutate()} correcting={correct.isPending} />
+        <OwnAndTeamReports direct={direct} checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport={false} teamReportReleased={teamReportReleased} onCorrect={() => correct.mutate()} correcting={correct.isPending} />
       )}
 
       {changed.length > 0 && (
@@ -305,9 +309,11 @@ export function TheDonePage({
               <span className="gwui-panel-text">{five.filter(f => f.there).length} of 5</span>
             </div>
           )}
-          <p className="gwui-panel-text">
-            Groundwork looked for these five things. It may have missed some of what you said.
-          </p>
+          {!direct && (
+            <p className="gwui-panel-text">
+              Groundwork looked for these five things. It may have missed some of what you said.
+            </p>
+          )}
           <ul style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'grid', gap: 6 }}>
             {/*
               REVIEW ROUND 3, ITEM 8: THE PROTOTYPE'S SHORT ITEMS - ONE LINE EACH, WITH THE TICK
@@ -321,7 +327,7 @@ export function TheDonePage({
               difference; a sighted reader now sees the prototype's own short line.
             */}
             {five.map(f => (
-              <li key={f.key} style={{ display: 'flex', gap: 8, fontSize: 13.5, lineHeight: 1.45, color: f.there ? 'var(--gw-text)' : 'var(--gw-sub)' }}>
+              <li key={f.key} style={{ display: 'flex', gap: 8, fontSize: 14, lineHeight: '20px', color: f.there ? 'var(--gw-text)' : 'var(--gw-sub)' }}>
                 <span aria-hidden style={{ width: 14, flexShrink: 0, color: f.there ? 'var(--gw-green-t)' : 'var(--gw-sub-d)', fontWeight: 700 }}>{f.there ? '✓' : '○'}</span>
                 <span>
                   {f.there ? f.met : f.missing}
@@ -330,7 +336,7 @@ export function TheDonePage({
               </li>
             ))}
           </ul>
-          <p className="gwui-panel-text-muted" style={{ marginTop: 10 }}>This is about the check-in. Only you see it.</p>
+          {!direct && <p className="gwui-panel-text-muted" style={{ marginTop: 10 }}>This is about the check-in. Only you see it.</p>}
         </FoldedLine>
       )}
 

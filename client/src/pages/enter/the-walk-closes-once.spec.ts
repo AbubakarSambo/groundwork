@@ -1,27 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { theReplyAlreadySaidGoodbye, fallbackGroundName, effectiveFallbackGroundName } from './EntryChatPage'
+import { fallbackGroundName, effectiveFallbackGroundName } from './EntryChatPage'
 
-/**
- * NIGHT QUALITY RUN 1, THE LEAD'S WALK. Esther's setup chat ended "... You will send this to Collins,
- * Hassan, Jared, and Amina this Friday. Your report is ready now. Speak soon." and the card under it
- * then said "This session has reached a natural close. Would you like to end and see your report?"
- * The chat closed twice. Now the card says nothing more and only offers "End and see your report".
- */
+/* The setup chat closes once (night quality run 1): the card that asked "This session has reached a natural close..." under a reply
+   that had already said goodbye is gone with every other card (Hafsah, 3 November evening), so the goodbye check it needed and its
+   three tests are deleted; End session is in the header and the reply's own words close it. */
 describe('the setup chat closes once', () => {
-  it("knows Esther's last reply already said goodbye", () => {
-    expect(theReplyAlreadySaidGoodbye('You will send this to Collins, Hassan, Jared, and Amina this Friday. Your report is ready now. Speak soon.')).toBe(true)
-  })
-
-  it('and a reply that has not still gets the question', () => {
-    expect(theReplyAlreadySaidGoodbye('You will send this to Collins, Hassan, Jared, and Amina this Friday.')).toBe(false)
-  })
-
-  it('the close question is only shown when the reply has not said goodbye', () => {
-    const src = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8').replace(/\s+/g, ' ')
-    expect(src).toMatch(/\{!theReplyAlreadySaidGoodbye\([^)]*\)[^}]*\) && \( <Callout tone="info"> This session has reached a natural close\./)
-    expect(src).toContain("'End and see your report' : 'End session'")
+  it('has no natural-close card left to ask a second time', () => {
+    const src = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
+    expect(src).not.toMatch(/>\s*This session has reached a natural close/)
   })
 })
 

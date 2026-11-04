@@ -28,7 +28,8 @@ export const clockStartsAt = (g: HasAClock): Date => g.startsAt ?? g.createdAt;
 
 export function deadlineOf(g: HasAClock): Date | null {
   if (g.runsUntilEnded) return null;
-  if (g.endsAt) return new Date(g.endsAt);
+  /* An end chosen as a day ("until 30 October") is kept as that day's midnight: it runs to the end of that day, not its first second (fix plan, pattern 4). */
+  if (g.endsAt) { const e = new Date(g.endsAt); return e.getUTCHours() === 0 && e.getUTCMinutes() === 0 && e.getUTCSeconds() === 0 && e.getUTCMilliseconds() === 0 ? new Date(e.getTime() + 86_400_000 - 1) : e; }
   if (!g.timelineDays || g.timelineDays <= 0) return null;
   /* No start date AND no creation date is a row nobody has a clock for, and "1 January 1970 plus
      ninety days" is worse than saying nothing. It threw here the first time a caller passed a row

@@ -122,7 +122,7 @@ describe('adding a document from the page', () => {
     draw('lead', 'u-lead')
     const file = new File(['x'], 'Sales playbook.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
     fireEvent.change(document.getElementById('ga-doc-upload') as HTMLInputElement, { target: { files: [file] } })
-    expect(await screen.findByText('Add it to Context and resources')).toBeTruthy()
+    expect(await screen.findByText('Add it to References and resources')).toBeTruthy()
     expect(documentsApi.upload).toHaveBeenCalledWith('g1', file, false, undefined)
     expect(screen.getByText('Who can read it')).toBeTruthy()
   })
@@ -193,7 +193,7 @@ describe('Otieno, an admin who is not in the check-in, and its documents', () =>
   it('reads one plain sentence in the documents band, no toast, and the page never asks for them', async () => {
     ;(documentsApi.list as any).mockRejectedValue({ response: { status: 403 } })
     draw('admin', 'u-otieno')
-    expect(screen.getByText('Documents here are shared by the people in this check-in, so you cannot open them from here.')).toBeTruthy()
+    expect(screen.getByText('You can’t open these documents from here.')).toBeTruthy()
     expect(documentsApi.list).not.toHaveBeenCalled()
     expect(toast.error).not.toHaveBeenCalled()
     expect(screen.queryByText('Add a document')).toBeNull()
@@ -209,7 +209,7 @@ describe('Otieno, an admin who is not in the check-in, and its documents', () =>
   it('a refusal that still comes is said in the band, not as a toast', async () => {
     ;(documentsApi.list as any).mockRejectedValue({ response: { status: 403 } })
     draw('party', 'u-aisha')
-    expect(await screen.findByText('Documents here are shared by the people in this check-in, so you cannot open them from here.')).toBeTruthy()
+    expect(await screen.findByText('You can’t open these documents from here.')).toBeTruthy()
     expect(documentsApi.list).toHaveBeenCalledTimes(1)
     expect(toast.error).not.toHaveBeenCalled()
   })
@@ -234,7 +234,7 @@ describe('the banner an admin reads over a check-in somebody else leads', () => 
 describe('a document card, as each reader sees it', () => {
   const read = {
     assessment: { suggests: ['It sets the lowest price for each freezer.'], willDo: [] },
-    theContextWeHave: 'Here is the context we have from Q3 price list.pdf.\n\nFor the whole check-in:\n- Lowest price for the 600L: 76,000',
+    theDocumentLine: 'Here is what I took from Q3 price list.pdf.', theContextWeHave: 'Here is what I took from Q3 price list.pdf.\n\nFor the whole check-in:\n- Lowest price for the 600L: 76,000',
     holds: { forEverybody: [{ what: 'Lowest price for the 600L', target: 76000 }], forOnePerson: [], dates: [], unmatched: [] },
   }
   const face = (id: string) => {

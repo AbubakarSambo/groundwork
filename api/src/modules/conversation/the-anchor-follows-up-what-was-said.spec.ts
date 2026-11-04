@@ -1,3 +1,4 @@
+import { NOTHING_KEPT_YET_COME_BACK } from './a-finish-too-soon-is-said-plainly';
 import { GroundScenario, PartyType, CheckInStatus } from '@prisma/client';
 import { ConversationService } from './conversation.service';
 import { ConversationContextService } from './context.service';
@@ -209,17 +210,28 @@ describe('"finish" closes an anchor check-in as it closes any other (final check
     expect(out.sessionComplete).toBe(true);
   });
   it('an anchor reply that asks nothing, when it was not told to close, is still given its question as before', async () => {
-    const w = worldReading({ turns: FIVE, answer: 'Getting the trucks out on time.' }, { learned: { workingOn: true } });
+    /* Changed 26 October 2026 (polish round 2): from the fifth answer a normal day is told to close, so this reads the third. */
+    const w = worldReading({ turns: FIVE.slice(0, 5), answer: 'Getting the trucks out on time.' }, { learned: { workingOn: true } });
     (w.service as any).anthropic.respond = jest.fn(async () => 'Thank you for telling me that.');
     const out: any = await w.service.sendMessage('ci2', 'user-1', 'Getting the trucks out on time.');
     expect(out.reply).toContain('?');
     expect(out.sessionComplete).toBe(false);
   });
-  it('too early, the plain sentence asking for one or two more answers, and nothing is kept', async () => {
+  /* Changed 3 November 2026 (Hafsah: no question limits and no forced close): there is no floor, so "finish" is never answered with
+     "Please answer one or two more questions". With nothing said yet there is nothing to keep: it says so in one plain sentence and the
+     check-in stays open. */
+  it('as the very first answer, nothing is kept and it stays open, with no count asked for', async () => {
     const w = worldReading({ turns: [{ role: 'AI', content: 'What are you working on right now?' }], answer: 'finish' }, {});
+    /* The turns as the database holds them once "finish" is saved, read by role as Postgres would. */
+    const rows = [{ id: 't0', role: 'AI', content: 'What are you working on right now?', createdAt: new Date(2026, 9, 1, 9, 0) }, { id: 't1', role: 'PERSON', content: 'finish', createdAt: new Date(2026, 9, 1, 9, 1) }];
+    w.seed.conversationTurn.findMany = jest.fn(async (a: any) => {
+      const t = a?.where?.role ? rows.filter((r) => r.role === a.where.role) : rows;
+      return a?.orderBy?.createdAt === 'desc' ? [...t].reverse().slice(0, a.take ?? 99) : t;
+    });
     const out: any = await w.service.sendMessage('ci2', 'user-1', 'finish');
-    expect(out.reply).toBe('I need a little more from you before this check-in can close. Please answer one or two more questions, then write "finish" again.');
-    expect(w.seen.length).toBe(0);
+    expect(out.reply).not.toMatch(/one or two more questions|I need a little more from you/);
+    expect(out.reply).toBe(NOTHING_KEPT_YET_COME_BACK);
+    expect(out.sessionComplete).toBe(false);
   });
   it('the closing reminder for nine learned is untouched', () => {
     expect(THE_BASELINE_CLOSING_REMINDER).toContain('all nine things are learned');

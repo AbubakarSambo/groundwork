@@ -254,6 +254,8 @@ export interface SessionReportInputs {
   notJoinedYet?: number;
   /** Commitments this session that carry both somebody's name and a date. */
   commitmentsWithOwnerAndDate?: number;
+  /** Release 1's switch is on for the check-in's organisation (release-one-sales-board). */
+  releaseOne?: boolean;
 }
 
 /**
@@ -276,7 +278,7 @@ function storedTitleOf(x: unknown): string | null {
 }
 
 /** The title a reader sees: the stored title without any field joined onto it (journey walk rows 1 and 2; no-field-names-on-the-page.ts). */
-function titleOf(x: unknown): string | null {
+export function titleOf(x: unknown): string | null {
   const stored = storedTitleOf(x);
   return stored ? splitAtFieldNames(stored).head || stored : null;
 }
@@ -306,6 +308,18 @@ const ofTypes = (
   entries: SessionReportInputs['entries'],
   types: RecordEntryType[],
 ): SaidThing[] => entries.filter((e) => types.includes(e.type)).map(said);
+
+const COUNT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+const inWords = (n: number) => (n >= 0 && n < COUNT_WORDS.length ? COUNT_WORDS[n] : String(n));
+
+/** "People agree on three things, and differ on one." / "People differ on one thing." / "People agree on two things, and differ on nothing." */
+export function theCountsInASentence(settled: number, open: number): string {
+  const things = (n: number) => `${inWords(n)} ${n === 1 ? 'thing' : 'things'}`;
+  if (settled > 0 && open > 0) return `People agree on ${things(settled)}, and differ on ${inWords(open)}.`;
+  if (open > 0) return `People differ on ${things(open)}.`;
+  if (settled > 0) return `People agree on ${things(settled)}, and differ on nothing.`;
+  return 'Nothing is settled yet, and nothing is still open.';
+}
 
 /** What a person reads on another person's row, before the team's report is shared with them. The words are walled, and nobody is said to have said nothing. */
 export const WHAT_THEY_SAID_OPENS_WHEN_SHARED = 'This person has answered, and what they said opens to you when the team\'s report is shared.';
@@ -370,7 +384,8 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
         /* Never "everybody" while somebody invited has not joined (reviewer, 14 October): the team had not been contacted yet. */
         ? (input.notJoinedYet ? `Everybody who has joined has answered. ${notJoinedSaid(input.notJoinedYet)}` : 'Everybody has answered. The report has not yet found anything they agree or differ on.')
         : 'Not everyone has answered yet, so there is nothing to agree or differ with.'
-      : `${agreed} settled, ${stillOpen} still open.`;
+      /* A whole sentence, its numbers in words (messages test, 19 October: "3 settled, 3 still open." reached Mercy and Joseph on WhatsApp). */
+      : theCountsInASentence(agreed, stillOpen);
 
   const commitmentsNow = ofTypes(input.entries, [RecordEntryType.COMMITMENT]);
 
@@ -661,6 +676,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     stillOpen,
     commitments: commitmentsNow.length,
     commitmentsWithOwnerAndDate: input.commitmentsWithOwnerAndDate ?? 0,
+    releaseOne: !!input.releaseOne,
   });
 
   /*

@@ -101,10 +101,10 @@ describe('"What was agreed at the start" as an object (request 123)', () => {
     expect(screen.queryByText('By day 60')).toBeNull()
     expect(screen.queryByText('After day 90')).toBeNull()
 
+    /* Screen match, 16 October: each step is a card with the goal in its own words, as kwame-board.jpg draws it
+       ("By day 90 / 4 new accounts with a first order"); a commitment, which has no words of its own, keeps its sentence. */
     expect(screen.getByText('In session 1, Tobi Adewale said, "I will read the contract for each of the five clients."')).toBeTruthy()
-    expect(screen.getByText('A goal was agreed for Tobi Adewale, to be met by day 30.')).toBeTruthy()
     expect(screen.getByText('Know the five biggest clients and what each one buys')).toBeTruthy()
-    expect(screen.getByText('A goal was agreed for Tobi Adewale, to be met by day 90.')).toBeTruthy()
     expect(screen.getByText('Own the relationship with all five clients')).toBeTruthy()
   })
 

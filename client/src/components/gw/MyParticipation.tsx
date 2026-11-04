@@ -68,7 +68,7 @@ export function MyParticipation({
   return (
     <>
           <div style={{ order: 1, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gw-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, fontWeight: 800, flexShrink: 0 }}>
+            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gw-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
               {(viewer?.firstName?.[0] ?? '?').toUpperCase()}
             </div>
             <div>
@@ -79,11 +79,11 @@ export function MyParticipation({
 
           <div style={{ order: 2, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
             <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Check-in</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>Check-in</div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.label}</div>
             </div>
             <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Situation</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>Situation</div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
                 {ground.scenario ? scenarioLabel(ground.scenario, ground.brief) : ''}
               </div>
@@ -100,12 +100,12 @@ export function MyParticipation({
             */}
             {myParticipant?.roleAsDescribed ? (
               <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your role</div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>Your role</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{myParticipant.roleAsDescribed}</div>
               </div>
             ) : null}
             <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Status</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>Status</div>
               {/*
                 THE ENUM WAS BEING SHOWN TO A PERSON. "Status / AWAITING_PARTIES", in capitals, on
                 Zainab's own Setup tab - the database's word for the row, leaving her to guess which
@@ -114,7 +114,7 @@ export function MyParticipation({
               <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{statusSentence(whatThisStatusMeans(ground.status))}</div>
             </div>
             <div style={{ padding: '13px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Sessions completed</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>Sessions completed</div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{sessionsCompletedSentence(completedCount, totalSessions)}</div>
             </div>
           </div>

@@ -17,38 +17,22 @@ import { join } from 'path'
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
 const CHAT = strip(readFileSync(join(__dirname, 'ChatPage.tsx'), 'utf8'))
 
+/*
+ * CHANGED 3 NOVEMBER EVENING (Hafsah: "No ... explanation lines"; "the opening line ... is part of the first message"). The page no
+ * longer prints a line about the correction under the header or above the box. What the old tests guarded, that a correction says which
+ * session it is correcting and that nothing is overwritten, is said where the person reads it first: in the engine's opening message
+ * for a correction, which these now read.
+ */
+const ENGINE = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'api', 'src', 'modules', 'conversation', 'conversation.service.ts'), 'utf8'))
+
 describe('a correction session', () => {
-  it('takes the fact from the check-in rather than from navigation state', () => {
-    expect(CHAT).toContain('(t.checkIn as any)?.isSelfCorrection')
-    expect(CHAT).toContain('selfCorrectionTargetSession')
+  it('opens by saying which session it is correcting, and that the original answers are kept', () => {
+    expect(ENGINE).toContain('Open in one sentence by saying you are back on session ${correctingSession}')
+    expect(ENGINE).toContain('Their original answers are not deleted or edited; this is recorded alongside them.')
   })
 
-  it('names the session it is correcting, in every place the number is shown', () => {
-    /* Three places until the "what happens to what you write" gate was deleted - its header was one
-       of them. Two remain: the page header and the composer footer. */
-    expect((CHAT.match(/Correcting session \$\{correctingSession\}/g) ?? []).length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('and says the original is not overwritten, where somebody is about to add to it', () => {
-    expect(CHAT).toContain('nothing is overwritten - this is recorded alongside what you said then')
-  })
-
-  it('while an ordinary session shows no lone number, and a correction still says its own', () => {
-    /*
-     * U.8 REVIEW: THE LONE NUMBER ITSELF WENT, NOT ONLY ITS PRIVACY TAG.
-     *
-     * "No privacy tag since 10 Sep 2026: the number is the whole label" was true right up until the
-     * U.8 review found that bare label sitting at the bottom of an ordinary session with nothing to
-     * say - the prototype's own check-in screens (docs/prototype/screens/B3-the-check-in/*.txt)
-     * never print a lone session number there at all. `privacyLabel` is `null` for an ordinary
-     * session now, and the bottom bar shows nothing in that spot rather than "Session 3".
-     *
-     * What this test was actually guarding - that a CORRECTION still says which session it is
-     * correcting - is unweakened: it is checked twice above already ("names the session it is
-     * correcting, in every place the number is shown"), and pinned here too so this file keeps its
-     * own honest name.
-     */
+  it('and the page adds no line of its own about it, and no lone session number', () => {
+    expect(CHAT).not.toMatch(/Correcting session/)
     expect(CHAT).not.toContain('`Session ${sessionNumber}`')
-    expect(CHAT).toMatch(/[Cc]orrecting session \$\{correctingSession\}/)
   })
 })

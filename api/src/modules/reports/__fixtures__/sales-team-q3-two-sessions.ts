@@ -61,7 +61,7 @@ export function salesTeamQ3(kind: 'sales' | 'review' = 'sales') {
   };
   const ground: any = {
     id: 'g1', organizationId: 'org1', initiatorId: 'u-rukia', createdByUserId: 'u-grace',
-    scenario: sales ? 'OKR_ALIGNMENT' : 'PIP', cadence: 'WEEKLY', brief: null, label: sales ? 'Sales team, Q3' : 'Amani, the next 60 days',
+    scenario: sales ? 'OKR_ALIGNMENT' : 'PIP', cadence: 'WEEKLY', reportSharesAt: sales ? '18:30' : null, brief: null, label: sales ? 'Sales team, Q3' : 'Amani, the next 60 days',
     status: 'ACTIVE', approvedById: null, peersVisibleToEachOther: null, whoSeesTargets: 'EVERYBODY', timelineDays: 84, runsUntilEnded: false,
     groundAuditLog: null, participants, report, objectives: [], expectThemToUnblock: true,
   };

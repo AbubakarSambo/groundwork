@@ -1,4 +1,4 @@
-import { whoIsExpected, whoIsInTheRound, howManyInTheRoundAnswered } from './how-many-have-answered';
+import { whoHasAnswered, whoIsInTheRound, howManyInTheRoundAnswered } from './how-many-have-answered';
 
 /**
  * A LEAD WHO ONLY MANAGES IS NEVER COUNTED AS SOMEONE THE REPORT WAITS ON.
@@ -18,7 +18,8 @@ describe('a lead who only manages', () => {
 
   it('is not waited on, and not in the count, for a session she did not answer', () => {
     const people = [lead, ...team];
-    expect(whoIsExpected(people, 2, 'OKR_ALIGNMENT').map((p) => p.id)).toEqual(['amani', 'juma']);
+    /* The one count (1 November 2026): who a session counts and who it is still waiting on are read from the same function. */
+    expect(whoHasAnswered(people, 2, 'OKR_ALIGNMENT')).toMatchObject({ onTheCheckIn: ['amani', 'juma'], answered: ['amani'], notYet: ['juma'] });
     expect(whoIsInTheRound(people, 2, 'OKR_ALIGNMENT').map((p) => p.id)).toEqual(['amani', 'juma']);
     expect(howManyInTheRoundAnswered(people, 2, 'OKR_ALIGNMENT')).toEqual({ answered: 1, ofPeople: 2 });
   });
@@ -31,6 +32,6 @@ describe('a lead who only manages', () => {
   it('where the lead only asks, is never counted, even after answering', () => {
     const people = [{ ...lead, checkIns: [answered(2)] }, ...team];
     expect(whoIsInTheRound(people, 2, 'TEAM_UPDATES').map((p) => p.id)).toEqual(['amani', 'juma']);
-    expect(whoIsExpected(people, 2, 'TEAM_UPDATES').map((p) => p.id)).toEqual(['amani', 'juma']);
+    expect(whoHasAnswered(people, 2, 'TEAM_UPDATES').onTheCheckIn).toEqual(['amani', 'juma']);
   });
 });

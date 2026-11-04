@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
+import { isASalesKind } from '@/lib/a-sales-kind'
 import { documentsApi } from '@/api/documents'
 import { askApi } from '@/api/ask'
 import { toast } from 'sonner'
 import { personLabel, peopleLabels, firstNameOrLabel, atTheStart } from '@/lib/utils'
-import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices, SubHeading, FoldedLine, SmallMenu } from '@/components/gw/ui'
+import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices, SubHeading, FoldedLine, SmallMenu, RowList, Row } from '@/components/gw/ui'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { scrollToId } from '@/lib/scroll-to'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
@@ -68,10 +69,19 @@ const THE_WAY_IN: Record<string, string> = {
   NOTE: 'Worth knowing: ',
 }
 
+/** What a document holds, without the line that says where it came from: the card already names the document. Read from the served field. */
+export function withoutItsFirstLine(doc: { theContextWeHave?: string | null; theDocumentLine?: string | null }): string | null {
+  const all = doc.theContextWeHave?.trim()
+  if (!all) return null
+  const line = doc.theDocumentLine?.trim()
+  return line && all.startsWith(line) ? all.slice(line.length).trim() || null : all
+}
+
 export function ContextPage({
   ground,
   role,
   viewerUserId,
+  only,
 }: {
   ground: any
   /** 'lead' is whoever runs this check-in, including an org admin reading with their eyes. */
@@ -94,6 +104,13 @@ export function ContextPage({
    */
   role: 'lead' | 'admin' | 'party'
   viewerUserId?: string | null
+  /**
+   * RELEASE 1B (pull request 3 of 3): ONLY THE PARTS THAT MOVE TO MY WORK. With Release 1B's switch on, References and resources
+   * no longer draws the targets, the plan as agreed, each person's card and what people are down as doing ("progress and
+   * promises, which belong on the board and in My work"), so My work draws them, here, by this same code, with the same words,
+   * controls and rules. Left out, the page is exactly as before.
+   */
+  only?: 'what-moved-to-my-work'
 }) {
   const id: string = ground.id
   const qc = useQueryClient()
@@ -208,7 +225,7 @@ export function ContextPage({
       setBriefDraft(null)
       toast.success('Saved. Everyone in this check-in now reads this.')
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save - try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   const uploadDoc = useMutation({
@@ -267,7 +284,7 @@ export function ContextPage({
     mutationFn: ({ itemId, status }: { itemId: string; status: 'DONE' | 'NOT_DONE' | 'DROPPED' }) =>
       groundsApi.setMyCommitment(id, itemId, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again in a moment.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   /*
@@ -286,7 +303,7 @@ export function ContextPage({
       toast.success('Added')
       qc.invalidateQueries({ queryKey: ['ground', id] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save - what you typed is still here, try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   const changeLine = useMutation({
@@ -440,7 +457,7 @@ export function ContextPage({
    * one-line fact on each folded part is counted from what the server sent this reader (the ground
    * read, the documents read), never read off the screen, and says only what those hold.
    */
-  const light = (ground as any).kindOfWork === 'sales org'
+  const light = isASalesKind((ground as any).kindOfWork)
   const onAPhone = useIsAPhone()
   const thePageAtAGlance = (() => {
     const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
@@ -677,6 +694,25 @@ export function ContextPage({
 
     </>
   )
+  /*
+   * THE PLAN, AS AGREED (Hafsah, 18 October; the prototype's full Context page: "10 new leads a week", "Samuel, Weekly"). The
+   * server builds each line from the record (confirmed plan cards, and targets a person carries on a cadence) and sends only what
+   * this reader may read. With nothing on record it sends none, and the section is left out: the prototype has no empty wording.
+   */
+  const planAsAgreed: { id: string; what: string; who: string; when: string }[] = (ground as any).planAsAgreed ?? []
+  const thePlanRows = planAsAgreed.length > 0 ? (
+      <Panel pad={false}>
+        <RowList label="The plan, as agreed">
+          {planAsAgreed.map((l) => (
+            <Row key={l.id} columns="1fr auto" inset="panel">
+              <span>{l.what}</span>
+              <Note tone="muted">{`${l.who}, ${l.when}`}</Note>
+            </Row>
+          ))}
+        </RowList>
+      </Panel>
+  ) : null
+  const partPlan = thePlanRows ? <><Section heading="The plan, as agreed" />{thePlanRows}</> : null
   const partE = (
     <>
             {/*
@@ -864,7 +900,7 @@ export function ContextPage({
             <Section heading="Resources" note="Shared, read, and what each checks" />
             {documentsAreNotOpenToYou && (
               <p data-gw-documents-not-open className="gwui-note">
-                Documents here are shared by the people in this check-in, so you cannot open them from here.
+                You can’t open these documents from here.
               </p>
             )}
 
@@ -975,11 +1011,11 @@ export function ContextPage({
                     const suggests = Array.isArray((doc as any).assessment?.suggests) ? (doc as any).assessment.suggests : []
                     const whatWeRead = suggests.length > 0
                       ? suggests.join(' ')
-                      : (doc.theContextWeHave ? doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '').trim() : null)
+                      : withoutItsFirstLine(doc)
                     if (!whatWeRead) return null
                     return (
                       <div className="gwui-mt-5">
-                        <SubHeading>What we read from it</SubHeading>
+                        <SubHeading>What I read in it</SubHeading>
                         <p className="gwui-panel-text-muted gwui-pre-line">{whatWeRead}</p>
                       </div>
                     )
@@ -1002,7 +1038,7 @@ export function ContextPage({
                           element inside another of the same kind - invalid HTML, and a console error
                           on the participant's Context tab. A <div> carries the same text classes. */}
                       <div className="gwui-panel-text gwui-pre-line gwui-mt-6">
-                        {doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '')}
+                        {withoutItsFirstLine(doc)}
                         {(doc.holds?.forOnePerson?.length || doc.holds?.forEverybody?.length) ? (
                           <Note>These are on the board and in the report, against the people who hold them.</Note>
                         ) : null}
@@ -1047,7 +1083,7 @@ export function ContextPage({
                         visibility: e.target.value as 'OPEN' | 'OWN' | 'CLOSED',
                       })}
                       aria-label={`Who can read ${doc.name}`}
-                      className={`gwui-tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'gwui-tag-proven' : 'gwui-tag-plain'}`}
+                      className={`tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'rec' : 'plain'}`}
                     >
                       <option value="OPEN">Everyone</option>
                       <option value="OWN">Only you</option>
@@ -1076,7 +1112,7 @@ export function ContextPage({
                       title={(doc as any).visibility === 'OPEN'
                         ? 'Everyone in this check-in can read this. Click to make it yours only.'
                         : 'Only you can read this. Click to share it with everyone in this check-in.'}
-                      className={`gwui-tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'gwui-tag-proven' : 'gwui-tag-plain'}`}
+                      className={`tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'rec' : 'plain'}`}
                     >
                       {/* THE DESTINATION IN WORDS, as the design has it. "Everyone" and "Only me"
                           are what a person is choosing between; an icon or a switch makes them
@@ -1089,7 +1125,7 @@ export function ContextPage({
                       Delete was drawn on everybody's OPEN files and answered "Document not found".
                       Only the uploader may delete, so only the uploader is offered it. */}
                   {(doc as any).mine !== false && (
-                    <button onClick={() => deleteDoc.mutate(doc.id)} className="gwui-btn gwui-btn-quiet gwui-btn-small gwui-ink-red">Delete</button>
+                    <button onClick={() => deleteDoc.mutate(doc.id)} className="btn quiet sm gwui-ink-red">Delete</button>
                   )}
                 </div>
                 </div>
@@ -1435,6 +1471,17 @@ export function ContextPage({
     </>
   )
 
+  if (only === 'what-moved-to-my-work') {
+    return (
+      <div data-gw-moved-to-my-work>
+        {partD}
+        {partPlan}
+        {partF}
+        {partH}
+      </div>
+    )
+  }
+
   return (
     <div>
             {/*
@@ -1469,6 +1516,7 @@ export function ContextPage({
                 {partG}
                 {partH}
                 {partI}
+                {partPlan}
               </>
             )}
             {/*
@@ -1494,6 +1542,9 @@ export function ContextPage({
                   )}
                   {(isTheLead || theBuckets.some((b) => b.lines.length > 0)) && (
                     <FoldedLine name="How we work" fact={thePageAtAGlance.howWeWork}>{partI}</FoldedLine>
+                  )}
+                  {partPlan && (
+                    <FoldedLine name="The plan, as agreed" fact={planAsAgreed.length === 1 ? '1 line agreed' : `${planAsAgreed.length} lines agreed`}>{thePlanRows}</FoldedLine>
                   )}
                   <FoldedLine name="Documents" fact={thePageAtAGlance.documents}>{partG}</FoldedLine>
                   {isLead && <FoldedLine name="Each person’s card" fact={thePageAtAGlance.people}>{partF}</FoldedLine>}

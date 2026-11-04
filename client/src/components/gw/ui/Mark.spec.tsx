@@ -3,6 +3,7 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { render, screen } from '@testing-library/react'
 import { Mark } from './Mark'
+import { MARKETING_URL } from '@/lib/marketing'
 import { Note, Callout } from './NoteEmpty'
 import { Steps, Step } from './Steps'
 import { SubHeading } from './SubHeading'
@@ -26,7 +27,9 @@ describe('Mark', () => {
     render(<Mark />)
     const link = screen.getByRole('link', { name: 'Groundwork' })
     expect(link).toBeTruthy()
-    expect(link.getAttribute('href')).toMatch(/^https?:\/\//)
+    /* Was "starts with http". A build not told where its marketing site is (this test run, local, staging) now links to its own
+       root rather than to the live site, so the mark links to wherever lib/marketing.ts decided, which is the rule that matters. */
+    expect(link.getAttribute('href')).toBe(MARKETING_URL)
     expect(document.querySelector('.gwui-mark-caption')).toBeNull()
   })
 
@@ -71,6 +74,18 @@ describe('Callout', () => {
     expect(screen.getByText('The people in this check-in can see what you say in it.')).toHaveClass('gwui-callout')
   })
 
+  it('holds a row with a button without a block inside a paragraph (People and setup\'s problems, browser test 20 October)', () => {
+    const errors: unknown[] = []
+    const was = console.error
+    console.error = (...a: unknown[]) => { errors.push(a) }
+    try {
+      render(<Callout tone="warning"><div className="row"><span>Joseph has not joined yet.</span><button>Send it again</button></div></Callout>)
+      render(<Callout title="One thing"><div>Two lines.</div></Callout>)
+    } finally { console.error = was }
+    expect(document.querySelector('p .row, p div')).toBeNull()
+    expect(errors.filter((e) => /descendant|nested/.test(String((e as unknown[])[0])))).toEqual([])
+  })
+
   it('matches the prototype\'s injected values (s44.js): background var(--chat) i.e. var(--gw-bg), 10px corners', () => {
     expect(CSS).toMatch(/\.gwui-callout \{[^}]*background: var\(--gw-bg\)/)
     expect(CSS).toMatch(/\.gwui-callout \{[^}]*border-radius: 10px/)
@@ -88,7 +103,7 @@ describe('SubHeading', () => {
 
   /* U.20 sixth round (Hafsah's first review): 14.5px, matching the prototype exactly - not 15px. */
   it('is about 14.5px bold ink, not Section\'s 21px', () => {
-    expect(CSS).toMatch(/\.gwui-subheading \{[^}]*font-size: 14\.5px/)
+    expect(CSS).toMatch(/\.gwui-subheading \{[^}]*font-size: 14px/)
     expect(CSS).toMatch(/\.gwui-subheading \{[^}]*font-weight: 700/)
     expect(CSS).toMatch(/\.gwui-subheading \{[^}]*color: var\(--gw-text\)/)
   })

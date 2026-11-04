@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, isAnAcknowledgement, theOneThingNeverAsked } from './the-close-is-held-once';
+import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, isAnAcknowledgement, asAQuestion, ONE_MORE_QUESTION } from './the-close-is-held-once';
 import { numbersNobodySaid, screen, SentenceGate, askInsteadOfInventing, hitLogLine } from './nothing-invented-reaches-them';
 import { detectFunction } from '../board/function-detection';
 import { buildRoleProbeBlock, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
@@ -139,14 +139,10 @@ describe('a refused close does not keep its goodbye', () => {
 describe('the bar, since 20 September 2026', () => {
   const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const service = strip(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
-  it('reads every answer of the session, not the last one', () => {
-    expect(service).toContain("const concrete = whatIsConcreteIn(personSaid.join('\\n'), attached);");
-    expect(service).not.toMatch(/whatIsConcreteIn\(last,/);
-  });
-  it('never holds a one-time session', () => {
-    expect(service).toContain('const oneTime = (row as any)?.ground?.cadence === Cadence.ONE_TIME;');
-    expect(service).toContain('if (oneTime || concrete.length || verdict.ready) return noDecision ? { ready: true, sayFirst: NO_DECISION_YET } : { ready: true };');
-    /* And the close chases nothing: no "put a date or a number on that" is appended any more. */
+  /* Changed 3 November 2026 (Hafsah: no forced close): the close is no longer held for a concrete thing, on any session, one-time or not. */
+  it('holds no close for a date, a number or a document, on any session', () => {
+    const mayClose = service.slice(service.indexOf('private async mayClose('), service.indexOf('private closesInOtherWords('));
+    expect(mayClose).not.toMatch(/whatIsConcreteIn\(|THE_ONE_CONCRETE_THING|NO_DECISION_YET|closeReadiness/);
     expect(service).not.toContain('return { ready: false, ask: THE_ONE_CONCRETE_THING };');
   });
   it('answers a bare acknowledgement rather than saying it did not come out right', () => {
@@ -157,14 +153,20 @@ describe('the bar, since 20 September 2026', () => {
   });
 });
 
-describe('the close is held once for the thing the session was for', () => {
+/* Changed 3 November 2026 (Hafsah: no forced close): the product no longer holds a close with "I have one more question before we finish."
+   The thing the session was for is still asked as one plain question when the conversation asks it (a refusal moving on, for one). */
+describe('the thing the session was for is one plain question, and never a held close', () => {
   it('says it to the person, first sentence only', () => {
     /* A question, not a label after a colon (Hafsah, 21 Sep 2026: "the conversation had weird colons"). */
-    expect(theOneThingNeverAsked('how they are making their number. Not the total: what kind of sales or work, on what terms, with whom.'))
-      .toBe('I have one more question before we finish. How are you making your number?');
-    expect(theOneThingNeverAsked('what they need from other people')).toBe('I have one more question before we finish. What do you need from other people?');
-    expect(theOneThingNeverAsked('what they are answerable for')).toBe('I have one more question before we finish. What are you answerable for?');
-    expect(theOneThingNeverAsked('the part of the plan that is theirs to do')).toBe('I have one more question before we finish. Which part of the plan is yours to do?');
+    expect(asAQuestion('how they are making their number. Not the total: what kind of sales or work, on what terms, with whom.')).toBe('How are you making your number?');
+    expect(asAQuestion('what they need from other people')).toBe('What do you need from other people?');
+    expect(asAQuestion('what they are answerable for')).toBe('What are you answerable for?');
+    expect(asAQuestion('the part of the plan that is theirs to do')).toBe('Which part of the plan is yours to do?');
+  });
+  it('the check-in never puts "I have one more question before we finish" under a close', () => {
+    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    expect(src).not.toMatch(/ONE_MORE_QUESTION|theOneThingNeverAsked|THE_CLOSE_WAS_HELD/);
+    expect(ONE_MORE_QUESTION).toBe('I have one more question before we finish.');
   });
 });
 

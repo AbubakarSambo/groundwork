@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
 
@@ -12,6 +12,11 @@ import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
  * `null` to clear it. This reuses the same day picker setup already offers (`AnchorDayPicker.tsx`,
  * pulled out of `TheSetup.tsx`), shown only to whoever `mayChangeSetup` says may change this
  * check-in's setup.
+ *
+ * 4 November 2026: People and setup is the B8 page for everybody now (Release 1B's switch went). There the picker sits
+ * open under "How often" in "When it runs" for whoever may change the setup (no "Change" to press first), and the day goes
+ * to the server with the rest of the timeframe when "Save changes" is pressed. A reader who may not change it reads the
+ * day in the served "How this check-in runs" line (people-and-setup.ts, "every Monday"), which the api specs cover.
  */
 function ground(over: Record<string, any> = {}) {
   return {
@@ -80,47 +85,44 @@ function renderWith(over: Record<string, any> = {}) {
 }
 
 describe('the day check-ins land on, from People and setup', () => {
-  it('a weekly check-in offers the day-of-week picker once "How often" is opened', async () => {
+  it('a weekly check-in offers the day-of-week picker under "How often"', async () => {
     renderWith()
-    await waitFor(() => expect(screen.getByText("Wairimu's check-in")).toBeTruthy())
-    fireEvent.click(screen.getByText('How often').closest('.gwui-field-row')!.querySelector('button')!)
-    expect(await screen.findByText('Which day of the week should check-ins open? (optional)')).toBeTruthy()
+    await screen.findByText('When it runs')
+    expect(screen.getByRole('combobox', { name: 'How often' })).toBeTruthy()
+    expect(screen.getByText('Which day of the week should check-ins open? (optional)')).toBeTruthy()
   })
 
   it('choosing Monday calls setAnchorDayDraft(1)', async () => {
     const props = renderWith()
-    fireEvent.click(screen.getByText('How often').closest('.gwui-field-row')!.querySelector('button')!)
     await screen.findByText('Which day of the week should check-ins open? (optional)')
     fireEvent.click(screen.getByTitle('Monday'))
     expect(props.setAnchorDayDraft).toHaveBeenCalledWith(1)
   })
 
-  it('"Save timeframe" sends cadenceAnchorDay in the PATCH', async () => {
+  it('"Save changes" sends cadenceAnchorDay in the PATCH', async () => {
     const props = renderWith({ theTimeframeChanged: true, anchorDayDraft: 1 })
-    fireEvent.click(screen.getByText('How often').closest('.gwui-field-row')!.querySelector('button')!)
-    const save = await screen.findByRole('button', { name: 'Save timeframe' })
-    fireEvent.click(save)
+    fireEvent.click(await screen.findByRole('button', { name: 'Save changes' }))
     expect(props.saveSetup.mutate).toHaveBeenCalledWith(expect.objectContaining({ cadenceAnchorDay: 1 }))
   })
 
   it('a monthly check-in offers the day-of-month picker, 1st to 31st', async () => {
     renderWith({ cadenceDraft: 'MONTHLY', ground: ground({ cadence: 'MONTHLY' }) })
-    fireEvent.click(screen.getByText('How often').closest('.gwui-field-row')!.querySelector('button')!)
     const select = await screen.findByLabelText('Which day of the month should check-ins open? (optional)')
     const options = [...select.querySelectorAll('option')].map(o => o.textContent)
     expect(options[0]).toBe('No fixed day')
     expect(options).toContain('31st of the month')
   })
 
-  it('"How often" already shows the chosen day', async () => {
-    renderWith({ ground: ground({ cadence: 'WEEKLY', cadenceAnchorDay: 1 }) })
-    expect(await screen.findByText(/Lands on Mondays\./)).toBeTruthy()
+  it('the picker already shows the chosen day', async () => {
+    renderWith({ ground: ground({ cadence: 'WEEKLY', cadenceAnchorDay: 1 }), anchorDayDraft: 1 })
+    expect((await screen.findByTitle('Monday')).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTitle('Tuesday').getAttribute('aria-pressed')).toBe('false')
   })
 
   it('is not offered to someone who may not change the setup', async () => {
     renderWith({ ground: ground({ mayChangeSetup: false }) })
-    await waitFor(() => expect(screen.getByText("Wairimu's check-in")).toBeTruthy())
-    const row = screen.getByText('How often').closest('.gwui-field-row') as HTMLElement
-    expect(row.querySelector('button')).toBeNull()
+    await screen.findByText('When it runs')
+    expect(screen.queryByText('Which day of the week should check-ins open? (optional)')).toBeNull()
+    expect(screen.queryByRole('combobox', { name: 'How often' })).toBeNull()
   })
 })

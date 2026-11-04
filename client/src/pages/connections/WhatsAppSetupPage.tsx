@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { copy } from '@/components/gw/copying-can-fail'
 import { OnlyAnAdmin } from './ConnectionsPage'
 import { WhatsAppKeysNeedTypingAgainNote } from './WhatsAppKeysNeedTypingAgain'
+import { THIS_IS_FOR_YOUR_OWN_NUMBER, WithPeopleAndSetupLinked } from './a-team-members-number-goes-on-people-and-setup'
 import {
   Page, PageTitle, Section, Panel, Stack, Button, Tag, TextField, FieldLabel, Note,
 } from '@/components/gw/ui'
@@ -44,7 +45,8 @@ type StepInfo = { n: number; title: string; done: boolean }
 export function stepsFor(c: WhatsAppConnection | null, canStart: boolean): StepInfo[] {
   return [
     { n: 1, title: 'What you need first', done: !!c },
-    { n: 2, title: 'Paste three things from Meta', done: !!c },
+    /* Five, not the prototype's three (Drop Access, 21 October): a connection is saved only with every key, so it is never half set up. */
+    { n: 2, title: 'Paste five things from Meta', done: !!c },
     { n: 3, title: 'Tell Meta where to send replies', done: !!c?.webhookProvenAt },
     { n: 4, title: 'Send yourself a test', done: !!c?.lastOutboundAt },
     { n: 5, title: 'Approve the reminder messages', done: !!c && canStart },
@@ -89,6 +91,8 @@ export function WhatsAppSetupPage() {
   const [display, setDisplay] = useState('')
   const [business, setBusiness] = useState('')
   const [to, setTo] = useState('')
+  /* Why nothing was saved, on the page and not only in a toast that goes (Drop Access, 21 October). */
+  const [refused, setRefused] = useState<string | null>(null)
   const save = useMutation({
     mutationFn: () => integrationsApi.connectWhatsapp({
       phoneNumberId: numberId.trim() || c?.phoneNumberId || '',
@@ -97,8 +101,8 @@ export function WhatsAppSetupPage() {
       accessToken: token.trim() || undefined,
       appSecret: secret.trim() || undefined,
     }),
-    onSuccess: () => { setToken(''); setSecret(''); refresh(); toast.success('Connected. Now point Meta at the webhook address below.') },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not connect.'),
+    onSuccess: () => { setToken(''); setSecret(''); setRefused(null); refresh(); toast.success('Connected. Now point Meta at the webhook address below.') },
+    onError: (e: any) => setRefused(e?.response?.data?.message ?? `Nothing was saved. ${THIS_IS_FOR_YOUR_OWN_NUMBER}`),
   })
   const test = useMutation({
     mutationFn: () => integrationsApi.testWhatsapp(to),
@@ -120,7 +124,8 @@ export function WhatsAppSetupPage() {
 
   const callback = `${API_ORIGIN}${data?.webhookPath ?? ''}`
   const firstTime = !c
-  const mayConnect = firstTime ? !!numberId.trim() && !!token.trim() && !!secret.trim() : true
+  /* Anything typed may be sent: the server says what is missing, in a sentence on the page, rather than a button that stays grey with no reason. */
+  const mayConnect = firstTime ? [numberId, token, secret, display, business].some(v => !!v.trim()) : true
 
   if (!isAdmin) return <OnlyAnAdmin />
 
@@ -137,6 +142,7 @@ export function WhatsAppSetupPage() {
         return (
           <form onSubmit={e => { e.preventDefault(); if (mayConnect) save.mutate() }}>
             <Stack gap={12}>
+              <p className="gwui-panel-text-muted"><WithPeopleAndSetupLinked text={THIS_IS_FOR_YOUR_OWN_NUMBER} /></p>
               <div>
                 <FieldLabel htmlFor="wa-number-id">Phone number ID</FieldLabel>
                 <TextField id="wa-number-id" value={numberId} onChange={e => setNumberId(e.target.value)} placeholder={c?.phoneNumberId ?? ''} inputMode="numeric" />
@@ -153,13 +159,15 @@ export function WhatsAppSetupPage() {
                 <p className="gwui-field-help">You find it in Meta, under your app, then Settings, then Basic.</p>
               </div>
               <div>
-                <FieldLabel htmlFor="wa-display">The number, as people will see it (optional)</FieldLabel>
+                <FieldLabel htmlFor="wa-display">The number, as people will see it</FieldLabel>
                 <TextField id="wa-display" value={display} onChange={e => setDisplay(e.target.value)} placeholder={c?.displayNumber ?? ''} />
               </div>
               <div>
-                <FieldLabel htmlFor="wa-business">Your WhatsApp Business account ID, if you have one</FieldLabel>
-                <TextField id="wa-business" value={business} onChange={e => setBusiness(e.target.value)} placeholder={c?.businessAccountId ?? ''} />
+                <FieldLabel htmlFor="wa-business">Your WhatsApp Business account ID</FieldLabel>
+                <TextField id="wa-business" value={business} onChange={e => setBusiness(e.target.value)} placeholder={c?.businessAccountId ?? ''} inputMode="numeric" />
+                <p className="gwui-field-help">You find it in Meta Business, under WhatsApp accounts.</p>
               </div>
+              {refused && <Note tone="error" role="alert"><WithPeopleAndSetupLinked text={refused} /></Note>}
               <Button kind="primary" type="submit" disabled={!mayConnect || save.isPending}>{save.isPending ? 'Connecting…' : firstTime ? 'Connect' : 'Save'}</Button>
             </Stack>
           </form>

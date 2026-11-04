@@ -107,7 +107,7 @@ describe('B-129 / B-201: a check-in a stranger cannot reach is the same plain re
     expect(screen.getByRole('link', { name: 'Go to Check-ins' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
     expect(screen.queryByText(/Groundwork is writing/)).toBeNull()
-    expect(screen.queryByPlaceholderText(/Type, or hold to speak/)).toBeNull()
+    expect(screen.queryByPlaceholderText(/Type your answer/)).toBeNull()
   })
 
   it('a made-up id (404) shows the identical GroundGone screen, never the server\'s own "could not be found" sentence', async () => {

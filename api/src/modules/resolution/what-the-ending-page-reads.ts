@@ -1,13 +1,12 @@
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { ForbiddenException } from '@nestjs/common';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForAnAdmin, ForTheLead, ForThePerson } from '../suggestions/a-suggestion-told-like-a-signal';
 import {
   PATTERN_ROW_SELECT,
-  markShownToThePerson,
   runsItForAPattern,
   servedPatterns,
-  theOnesTheyAreSeeingFirst,
   whoIsWhoIn,
   type AServedPattern,
 } from '../patterns/who-reads-a-pattern';
@@ -51,7 +50,6 @@ export interface AnEndingSignal {
   howOften: string;
   /** What the person said is behind it, in their own words, once they have said it. */
   theirWords: string | null;
-  whoSeesIt: string;
 }
 
 export interface AQuestionToAsk {
@@ -91,7 +89,6 @@ const asASignal = (p: AServedPattern): AnEndingSignal => ({
   whatHappened: p.whatHappened,
   howOften: p.howOften,
   theirWords: p.theirWords,
-  whoSeesIt: p.whoSeesIt,
 });
 
 export interface Deps { prisma: PrismaService; suggestions?: SuggestionsService | null }
@@ -101,7 +98,7 @@ export async function theEndingPageFor(deps: Deps, groundId: string, userId: str
   const ground: any = await prisma.ground.findUnique({
     where: { id: groundId },
     select: {
-      id: true, organizationId: true, initiatorId: true, createdByUserId: true, cadence: true,
+      id: true, organizationId: true, initiatorId: true, createdByUserId: true, cadence: true, cadenceDays: true,
       participants: {
         where: { managingOnly: false },
         select: {
@@ -133,13 +130,11 @@ export async function theEndingPageFor(deps: Deps, groundId: string, userId: str
 
   /* The signals: the patterns this reader may read on this check-in, through the one rule. */
   let signals: AnEndingSignal[] = [];
-  if (PATTERNS_ARE_SERVED && (mine || runsIt)) {
+  if (PATTERNS_ARE_SERVED && (mine || runsIt) && (await thePersonJudgementsAreOn(prisma, ground.organizationId))) {
     const names = whoIsWhoIn(parties, ground.initiatorId, ground.cadence);
     const served = servedPatterns(ground.patternDetections ?? [], { participantId: mine?.id ?? null, runsIt }, names);
     const worded = await wordPatternEvidence(served, names.firstNameOf ?? (() => null), rememberedCompose(prisma, async () => null, false)).catch(() => served);
     signals = worded.map(asASignal);
-    /* A person reading their own for the first time starts the clock on when the lead may read it. */
-    await markShownToThePerson(prisma as any, theOnesTheyAreSeeingFirst(ground.patternDetections ?? [], served));
   }
 
   if (reader === 'lead') {

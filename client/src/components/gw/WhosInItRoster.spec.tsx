@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { WhosInItRoster } from './WhosInItRoster'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { WhosInItRoster, whatStopsThem, whosInItSays } from './WhosInItRoster'
 
 /**
  * "NOT LET IN" IN THE ROSTER (U.4 re-review, item 2b and 2c).
@@ -79,16 +80,20 @@ function renderRoster(sessionParties?: { id: string; done: boolean; isSelf: bool
  * sentence - both against the wording rule in CLAUDE.md.
  */
 describe('the "add a person" panel reads plain sentences (fault 5, live walk, 6 October 2026)', () => {
+  /* In a QueryClientProvider, as the app draws it: the add panel now asks whether WhatsApp is on, for the sentence under its
+     "Phone number" field (Hafsah, 30 October 2026). The words checked below are unchanged. */
   function renderAddPanel(isOrgAdmin: boolean) {
     return render(
-      <MemoryRouter>
-        <WhosInItRoster
-          {...baseProps()}
-          isOrgAdmin={isOrgAdmin}
-          ground={{ initiatorId: 'lead-1', createdAt: '2026-09-27T09:00:00.000Z', participants: [] }}
-          showAdd
-        />
-      </MemoryRouter>,
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <WhosInItRoster
+            {...baseProps()}
+            isOrgAdmin={isOrgAdmin}
+            ground={{ initiatorId: 'lead-1', createdAt: '2026-09-27T09:00:00.000Z', participants: [] }}
+            showAdd
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
     )
   }
 
@@ -98,9 +103,12 @@ describe('the "add a person" panel reads plain sentences (fault 5, live walk, 6 
     expect(document.body.textContent).not.toContain('until the report releases')
   })
 
-  it('for an admin, says adding is the approval and nobody waits in a queue, as two sentences', () => {
+  /* Says what happens, not how approval works (Hafsah, 30 October 2026: plain language for an
+     impatient first-time lead; "all the approval they need" explained the product instead). */
+  it('for an admin, says what happens to somebody she adds, in plain sentences', () => {
     renderAddPanel(true)
-    expect(screen.getByText(/You are an admin here, so adding someone here is all the approval they need\. Nobody waits in a queue\./)).toBeTruthy()
+    expect(screen.getByText('Anybody you add can check in straight away. Somebody from outside your organisation also appears on your People page, where you can take them off again.')).toBeTruthy()
+    expect(document.body.textContent).not.toContain('all the approval they need')
     expect(document.body.textContent).not.toContain('is the approval - there is no queue')
   })
 })
@@ -269,5 +277,25 @@ describe('People and setup, with the journey round 4 people', () => {
     expect(text).toContain('Dara Delta has not checked in for this session yet.')
     expect(screen.getByText('Not joined yet')).toBeTruthy()
     expect(text).not.toMatch(/Eli Epsilon has (not )?checked in/)
+  })
+})
+
+/*
+ * THE LINE ABOVE THE ROSTER SAYS WHAT EACH PERSON NEEDS (Hafsah, 30 October 2026, first-experience
+ * round 1: "3 need something before they can start" told an impatient lead nothing). It is counted
+ * from the same reason each row's tag reads, so the two cannot disagree.
+ */
+describe('the count above the roster', () => {
+  it('names each reason somebody cannot check in yet, from the one reason the rows read', () => {
+    const people = [
+      { id: 'a', userId: 'u-a' },
+      { id: 'b', userId: null, notJoinedYet: true },
+      { id: 'c', userId: null, notJoinedYet: true },
+      { id: 'd', userId: 'u-d', user: { awaitingOrgApproval: true } },
+      { id: 'e', userId: null, inviteDeliveryStatus: 'BOUNCED' },
+    ]
+    expect(people.map(whatStopsThem)).toEqual([null, 'notJoined', 'notJoined', 'admin', 'bounced'])
+    expect(whosInItSays(people)).toBe('5 people. 1 is checking in. 2 have not joined yet. 1 is waiting for an admin to let them in. 1 did not get the invitation, because the email bounced.')
+    expect(whosInItSays(people)).not.toMatch(/need something|needs something/)
   })
 })

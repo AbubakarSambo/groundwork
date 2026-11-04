@@ -70,3 +70,13 @@ describe('no guard\'s cut ever leaves a fragment to send', () => {
     expect(src).toMatch(/whatIsLeftToSend\(screened\.text, promiseNobodyMade, closingNow\)/);
   });
 });
+
+describe('a cut that leaves a reply starting mid-sentence (real-model run, 25 October)', () => {
+  it('is a fragment, so the reply goes as it was', () => {
+    const before = 'You sent Paul the quote on Friday, and he said he will decide next week. Paul hasn\'t confirmed receiving it, or do you have a read receipt for the email?';
+    const after = 'hasn\'t confirmed receiving it, or do you have a read receipt for the email?';
+    expect(isAFragment(after)).toBe(true);
+    expect(aCutThatLeavesAFragment(before, after)).toBe(true);
+    expect(isAFragment('Has Paul confirmed receiving it, or do you have a read receipt for the email?')).toBe(false);
+  });
+});

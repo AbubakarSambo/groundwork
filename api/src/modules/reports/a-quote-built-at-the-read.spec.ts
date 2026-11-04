@@ -35,7 +35,7 @@ describe('renewal: the lead reads "what to ask" Yemi, and the quote in it is the
   const TIDIED = "'On track', for me, meant that there weren't any major disruptions or escalations.";
   const YEMI_SAID = 'My role is really to oversee the relationship and make sure everything is running smoothly, you know, keeping things on track.';
   const built = whatToProbe({
-    who: 'Yemi Ojo', participantId: 'p-yemi', role: null, answeredThisSession: true, patterns: [],
+    who: 'Yemi Ojo', participantId: 'p-yemi', role: null, answeredThisSession: true,
     waitingOn: [], holdingUp: [], concrete: [TIDIED], documentsAttached: 0,
     sessionNumber: 1, totalSessions: 6, scenario: 'CONTRACT_RENEWAL',
   });
@@ -55,7 +55,7 @@ describe('renewal: the lead reads "what to ask" Yemi, and the quote in it is the
 
   const HIS_WORDS = 'On track, for me, meant that there were no major disruptions or escalations.';
   const quoted = whatToProbe({
-    who: 'Yemi Ojo', participantId: 'p-yemi', role: null, answeredThisSession: true, patterns: [],
+    who: 'Yemi Ojo', participantId: 'p-yemi', role: null, answeredThisSession: true,
     waitingOn: [], holdingUp: [], concrete: [HIS_WORDS], concreteWordForWord: [HIS_WORDS], documentsAttached: 0,
     sessionNumber: 1, totalSessions: 6, scenario: 'CONTRACT_RENEWAL',
   });

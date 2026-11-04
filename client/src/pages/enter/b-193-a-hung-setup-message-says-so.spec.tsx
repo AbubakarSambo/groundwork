@@ -60,7 +60,7 @@ describe('the set-up chat: a stream that never answers', () => {
    */
   it('says so after 45 seconds of silence, and puts the words back in the box', async () => {
     openStart()
-    const field = await screen.findByPlaceholderText('For example: our sales targets this quarter')
+    const field = await screen.findByLabelText('What do you need updates on, or want to track?')
     fireEvent.change(field, { target: { value: 'A new hire starting Monday' } })
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
 

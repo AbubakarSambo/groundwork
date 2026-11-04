@@ -1,13 +1,17 @@
-import { createContext, useContext, useState } from 'react'
+import { ItsEvidence } from '@/components/gw/ItsEvidence'
+import { ThatsNotRight } from '@/components/gw/ThatsNotRight'
+import { createContext, useContext, useState, type ReactNode } from 'react'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { boardApi, KIND_OF_WORK_OPTIONS, type AServedWorkSection, type AServedWorkRow, type KindOfWork, type WorkItemInput } from '@/api/board'
+import { isASalesKind } from '@/lib/a-sales-kind'
 import { groundsApi } from '@/api/grounds'
 import { Link } from 'react-router-dom'
 import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack, Note, SubHeading, Folded } from '@/components/gw/ui'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { useTheDirectMorning } from '@/lib/the-direct-morning'
 
 /**
  * THE KIND OF WORK, SAID AS A SENTENCE (request 76). The eleven names the server stores are short
@@ -23,7 +27,8 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * two can ever be on screen at once.
  */
 const KIND_OF_WORK_SENTENCE: Record<KindOfWork, string> = {
-  'sales org': "This check-in is about a sales team and its deals.",
+  'sales team': 'This check-in is about a sales team and its deals.',
+  'sales org': 'This check-in is about a sales organisation of several teams, and its deals.',
   'engineering release': 'This check-in is about an engineering release.',
   'support desk': 'This check-in is about a support desk and its tickets.',
   'distribution operations': 'This check-in is about distribution operations.',
@@ -36,6 +41,9 @@ const KIND_OF_WORK_SENTENCE: Record<KindOfWork, string> = {
   'MarketView Q4': 'This check-in is about subscriptions, what was said and what was paid.',
   'a law firm matter': 'This check-in is about a law firm matter.',
   'a government programme': 'This check-in is about a government programme.',
+  leadership: 'This check-in is about a leadership team and its priorities.',
+  'a funded project': 'This check-in is about a funded or client project, its milestones, money and stakeholders.',
+  'client delivery': 'This check-in is about work delivered to a client, with its milestones, money and the client.',
 }
 
 /**
@@ -47,8 +55,9 @@ const KIND_OF_WORK_SENTENCE: Record<KindOfWork, string> = {
  * sends is still one of the engine's own eleven names (`KIND_OF_WORK_OPTIONS`) - only the label a
  * person reads changes.
  */
-const KIND_OF_WORK_OPTION_LABEL: Record<KindOfWork, string> = {
-  'sales org': 'A sales team and its deals',
+export const KIND_OF_WORK_OPTION_LABEL: Record<KindOfWork, string> = {
+  'sales team': 'One sales team and its deals',
+  'sales org': 'A sales organisation of several teams, and its deals',
   'engineering release': 'An engineering release',
   'support desk': 'A support desk and its tickets',
   'distribution operations': 'Distribution operations',
@@ -61,6 +70,9 @@ const KIND_OF_WORK_OPTION_LABEL: Record<KindOfWork, string> = {
   'MarketView Q4': 'Subscriptions, said and paid',
   'a law firm matter': 'A law firm matter',
   'a government programme': 'A government programme',
+  leadership: 'A leadership team',
+  'a funded project': 'A funded or client project',
+  'client delivery': 'Client delivery',
 }
 
 /**
@@ -74,6 +86,10 @@ const ITEM_KINDS_FOR_HOLDS: Record<string, { value: string; label: string }[]> =
   'deals': [{ value: 'deal', label: 'Deal' }],
   'releases and tasks': [{ value: 'release', label: 'Release' }, { value: 'task', label: 'Task' }],
   'tickets': [{ value: 'ticket', label: 'Ticket' }],
+  'the priorities across the teams': [{ value: 'priority', label: 'Priority' }],
+  'milestones': [{ value: 'milestone', label: 'Milestone' }],
+  'money in and out, by month': [{ value: 'money', label: 'A month' }],
+  'stakeholders': [{ value: 'stakeholder', label: 'Stakeholder' }],
   'incidents': [{ value: 'incident', label: 'Incident' }],
   'trader groups': [{ value: 'group', label: 'Trader group' }],
   'commitments and decisions': [{ value: 'commitment', label: 'Commitment' }, { value: 'decision', label: 'Decision' }],
@@ -100,6 +116,7 @@ const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
      (docs/prototype/screens/B5-the-board/board-as-lead.txt, "Every deal, day by day") is the one
      this component actually draws for - WorkRecordsSections is only ever called from the Board
      page (BoardPage.tsx), never from the G1 example-check-ins screen the old heading quoted. */
+  'sales team': 'Every deal, day by day',
   'sales org': 'Every deal, day by day',
   /* Phase 2 of the board task, 1 October: the prototype's own eng example
      (docs/prototype/screens/G1-example-check-ins/eng.txt) heads this table "Every task, and
@@ -117,6 +134,9 @@ const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
   'asset loans': 'Every trader, and what shows it',
   'MarketView Q4': 'Every subscription, and what shows it',
   'a government programme': 'Every county, and what shows it',
+  leadership: 'Every priority, and what shows it',
+  'a funded project': 'Every milestone, and what shows it',
+  'client delivery': 'Every milestone, and what shows it',
 }
 const WORK_PLAN_HEADING: Partial<Record<KindOfWork, string>> = {
   /* THE FOUNDER'S OWN CHECK-IN BOARD (founder.txt): the prototype's own heading for this table is
@@ -132,6 +152,7 @@ const WORK_PLAN_HEADING: Partial<Record<KindOfWork, string>> = {
  * `note` (Section's own slot for it) and the-prototype-count tests can't drift apart.
  */
 const DEAL_GRID_NOTE: Partial<Record<KindOfWork, string>> = {
+  'sales team': 'Grouped by what the proof says about closing this quarter.',
   'sales org': 'Grouped by what the proof says about closing this quarter.',
 }
 
@@ -192,6 +213,7 @@ const THEMES_NOTE: Partial<Record<KindOfWork, string>> = {
 
 /** The word for one row's kind, at the head of its own column ("Deal", "Task", "Item", "Trader"...). */
 const ITEM_NOUN_FOR_KIND: Record<KindOfWork, string> = {
+  'sales team': 'Deal',
   'sales org': 'Deal',
   'engineering release': 'Task',
   'support desk': 'Ticket',
@@ -208,10 +230,14 @@ const ITEM_NOUN_FOR_KIND: Record<KindOfWork, string> = {
   /* Board review, 30 September, item 3: this section holds counties AND their projects (kind
      "county" or "project" rows, side by side) - "County" alone was wrong for half the rows. */
   'a government programme': 'County or project',
+  leadership: 'Priority',
+  'a funded project': 'Milestone',
+  'client delivery': 'Milestone',
 }
 
 /** The word for whose it is, at the head of the owner column ("Rep" for sales, "Agent" for support desk...). */
 const OWNER_LABEL_FOR_KIND: Record<KindOfWork, string> = {
+  'sales team': 'Rep',
   'sales org': 'Rep',
   'engineering release': 'Owner',
   'support desk': 'Agent',
@@ -223,6 +249,9 @@ const OWNER_LABEL_FOR_KIND: Record<KindOfWork, string> = {
   'MarketView Q4': 'Owner',
   'a law firm matter': 'Owner',
   'a government programme': 'Owner',
+  leadership: 'Owner',
+  'a funded project': 'Owner',
+  'client delivery': 'Owner',
 }
 
 /**
@@ -312,7 +341,7 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit, ki
       setOpen(false)
       qc.invalidateQueries({ queryKey: ['board', groundId] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Nothing has changed, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   const sentence = kindOfWork
@@ -325,7 +354,7 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit, ki
 
   return (
     <div className="gwui-gap-10 gwui-mt-8" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
-      <p className="gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>{sentence}</p>
+      <p className="gwui-fs-15 gwui-ink-text" style={{lineHeight: '23px'}}>{sentence}</p>
       {canEdit && (
         <Button kind="quiet" size="small" onClick={() => setOpen(true)} aria-label={kindOfWork ? 'Change the kind of work' : 'Choose the kind of work'}>
           {kindOfWork ? 'Change' : 'Choose'}
@@ -384,11 +413,11 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit, ki
 function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
   if (row.from === 'lead') {
     const addedBy = readerIsLead ? 'You' : (leadFirstName ?? 'The person running this check-in')
-    return <p className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>{`${addedBy} added it.`}</p>
+    return <p className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: '20px'}}>{`${addedBy} added it.`}</p>
   }
   const saidBy = row.saidBy?.trim()
   return (
-    <div className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>
+    <div className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: '20px'}}>
       <div>{row.saidByLine?.trim() || (saidBy ? `In ${saidBy}'s words,` : 'In the words of someone in this check-in,')}</div>
       {row.said && <p className="gwui-mt-2" style={{fontStyle: 'italic'}}>{`“${row.said}”`}</p>}
     </div>
@@ -398,7 +427,7 @@ function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow
 /** `WhatShowsIt`, with its usual small top margin - written once, since every list that draws a
     record (the generic table, the sales deal grid, the timeline, the parties, the themes list)
     wrapped it in the exact same one-off class. */
-function WhatShowsItBlock(props: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
+export function WhatShowsItBlock(props: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
   return <div className="gwui-mt-4"><WhatShowsIt {...props} /></div>
 }
 
@@ -604,6 +633,7 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
           <div key={label} className="gwui-note gwui-mt-2">{`The ${label.toLowerCase()} is ${value}.`}</div>
         ))}
         <DueLine due={row.due} />
+        <ThatsNotRight line={[row.name, ...fieldEntries.map(([label, value]) => `The ${label.toLowerCase()} is ${value}.`)].join('. ')} />
       </div>
       <div className="gwui-fs-15 gwui-ink-text">
         {row.owner ?? (
@@ -684,7 +714,7 @@ function SalesDealGridHead() {
  * (the engine's own `groupsNote`), so a tick here would be invented, not read off the record.
  */
 function DealDetail({ row, groundId }: { row: AServedWorkRow; groundId: string }) {
-  const hasDetail = !!row.groupSays || !!row.contactHistory?.length || !!row.theirRead || !!row.valueSays
+  const hasDetail = !!row.groupSays || !!row.contactHistory?.length || !!row.theirRead || !!row.valueSays || !!row.evidence?.length
   if (!hasDetail) return null
   return (
     <Folded summary="Why it’s here">
@@ -705,6 +735,7 @@ function DealDetail({ row, groundId }: { row: AServedWorkRow; groundId: string }
             {row.contactHistorySays && <Note tone="muted">{row.contactHistorySays}</Note>}
           </div>
         )}
+        <ItsEvidence evidence={row.evidence} />
         {row.theirRead && (
           <div>
             <SubHeading as="h3">{row.theirRead.says}</SubHeading>
@@ -1009,7 +1040,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   const claimItem = useMutation({
     mutationFn: (v: { itemId: string; yes: boolean }) => boardApi.claimWorkItem(groundId, v.itemId, v.yes),
     onSuccess: (data) => { invalidate(); if (data?.saidBack) toast.success(data.saidBack) },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Nothing has changed, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   const heading = sectionHeading(kindOfWork, section)
@@ -1058,7 +1089,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       : `No ${holdsWord} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`
     return (
       <Section heading={heading} note={note}>
-        <p className="gwui-ink-sub gwui-fs-15" style={{lineHeight: 1.55}}>
+        <p className="gwui-ink-sub gwui-fs-15" style={{lineHeight: '23px'}}>
           {sentence}
         </p>
         {canAdd && (
@@ -1096,7 +1127,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   /* BOARD REVIEW, SALES PIECE C: the sales org's own Deal grid draws its own head and row shape
      (item 3 a, c, d - see `SalesDealGridHead`/`SalesDealGridRow`), not the generic table every
      other kind of work shares. */
-  const isSalesDealGrid = isDealGrid && kindOfWork === 'sales org'
+  const isSalesDealGrid = isDealGrid && isASalesKind(kindOfWork)
   /*
    * PROJECT BOARD REVIEW 1, FIX 10: "NOT RIGHT? TELL THE CHECK-IN" ON THE ENGINEERING GRID TOO.
    * eng.txt's own grid carries this line under its rows ("Something here wrong? Anyone can
@@ -1203,6 +1234,18 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       {isSalesDealGrid ? <Stack gap={12}><DealGridKey rows={dealGridRows} />{dealGridContent}</Stack> : dealGridContent}
 
       {/*
+        LOST DEALS, AND WHY (Hafsah, 18 October: a Lost stage). Never in a group or an open total; one line each, in the
+        server's own sentences: what happened and why, in the rep's words, what shows it, and a lesson only where the record has one.
+      */}
+      {isSalesDealGrid && 'lost' in section && (section.lost ?? []).length > 0 && (
+        <Stack gap={6}>
+          <SubHeading>Lost deals, and why</SubHeading>
+          <Note tone="muted">A reason with no source stays unverified. An unknown reason is flagged, because it can’t be learned from.</Note>
+          {(section.lost ?? []).map((l) => <Note key={`lost-${l.id}`}>{[l.says, l.reasonFrom, l.lesson].filter(Boolean).join(' ')}</Note>)}
+        </Stack>
+      )}
+
+      {/*
         REQUEST 112 (a): WHAT THE RECORD CANNOT SUPPORT, SAID PLAINLY ONCE UNDER THE GRID
         ("Nothing on record says what a deal must show at each stage..."). Never claimed by a
         group's own heading or reason - said once, here, so no group reads as more than it is.
@@ -1253,7 +1296,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       )}
 
       {canAdd && (
-        <div className="gwui-mt-14">
+        <div className="pb-add-record">
           {/* Board review, 1 October, item 8: this only opens the form below (a fold) - the real
               mutation is that form's own submit button, which stays a real button. A boxed
               secondary button here counted as a second control for one action. */}
@@ -1295,6 +1338,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 /** The prototype's own heading for this reader's own records (board-as-participant.txt: "Your
     deals, day by day"), where it has one - otherwise the same shape every other kind uses. */
 const YOUR_OWN_HEADING: Partial<Record<KindOfWork, string>> = {
+  'sales team': 'Your deals, day by day',
   'sales org': 'Your deals, day by day',
 }
 
@@ -1305,15 +1349,17 @@ export function YourOwnRecordsSections({ groundId, kindOfWork, sections, myParti
   myParticipantId: string | null
   leadFirstName: string | null
 }) {
+  /* The direct morning (lib/the-direct-morning.tsx): no "Only yours." note. Which rows are hers is the backend's rule, the same either way. */
+  const direct = useTheDirectMorning()
   if (!sections?.length || !myParticipantId) return null
   const itemNoun = (kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item').toLowerCase()
   const heading = (kindOfWork ? YOUR_OWN_HEADING[kindOfWork] : undefined) ?? `Your own ${itemNoun}s, day by day`
-  const isSalesDeals = kindOfWork === 'sales org'
+  const isSalesDeals = isASalesKind(kindOfWork)
   const mine = sections
     .filter((s): s is Extract<AServedWorkSection, { state: 'filled' | 'none-yet' }> => s.state !== 'not-known')
     .flatMap((s) => (s.rows ?? []).filter((r) => r.ownerParticipantId === myParticipantId))
   return (
-    <Section heading={heading} note="Only yours.">
+    <Section heading={heading} note={direct ? undefined : 'Only yours.'}>
       {/*
         BOARD FIX (sales B, item 3b): A READER WITH NO ROWS STILL READS A SENTENCE, NOT A MISSING
         SECTION. The engine itself sends every row ever said about this reader's own work (request
@@ -1393,14 +1439,14 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
 
   if (collapseWhenAllNotKnown) {
     return (
-      <div className="gwui-page-wrap">
+      <div className="gw-stack-30">
         <Note tone="muted">{(sections[0] as { why: string }).why}</Note>
       </div>
     )
   }
 
   return (
-    <div className="gwui-page-wrap">
+    <div className="gw-stack-30">
       {sections.map((s) => (
         <WorkRecordSectionBlock
           key={s.section}
@@ -1425,7 +1471,7 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
  */
 function TheShapeOfTheWork({ stages, counts, itemNoun }: { stages: string[]; counts: Record<string, number>; itemNoun: string }) {
   return (
-    <div className="gwui-mt-14">
+    <div className="pb-add-record">
       <p className="gwui-mb-8 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
       <StageTrack stages={stages} counts={counts} itemNoun={itemNoun} />
     </div>
@@ -1445,4 +1491,68 @@ export function TheShapeOfTheWorkStrip({ kindOfWork, sections }: { kindOfWork?: 
   for (const row of section.rows) { const st = row.stageSays ?? row.stage; if (st) stageCounts[st] = (stageCounts[st] ?? 0) + 1 }
   const itemNoun = kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item'
   return <TheShapeOfTheWork stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
+}
+
+/**
+ * CHANGING A DEAL, CONFIRMING WHOSE IT IS, AND ADDING ONE, FOR THE BOARD AS PICTURED (screen match, 16
+ * October; pictured/ThePicturedSalesBoard.tsx). The same mutations and the same form as the deal grid
+ * above, so nothing the lead could do on the old grid is lost: "Change" (with "Remove this record"),
+ * the claim's yes and no (decision 76, item 3), and "Add a record".
+ */
+export function TheDealsCanBeChanged({ groundId, section, participants, canEdit, children }: {
+  groundId: string
+  section: Extract<AServedWorkSection, { rows: AServedWorkRow[] }>
+  participants: { id: string; name: string | null }[]
+  canEdit: boolean
+  children: (api: { edit: (row: AServedWorkRow) => void; claim: (row: AServedWorkRow, yes: boolean) => void; claimPending: boolean }) => ReactNode
+}) {
+  const qc = useQueryClient()
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['board', groundId] })
+  const [adding, setAdding] = useState(false)
+  const [editingRow, setEditingRow] = useState<AServedWorkRow | null>(null)
+  const addItem = useMutation({
+    mutationFn: (dto: WorkItemInput) => boardApi.addWorkItem(groundId, dto),
+    onSuccess: () => { setAdding(false); invalidate() },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That record was not added. What you typed is still here, so try again.'),
+  })
+  const updateItem = useMutation({
+    mutationFn: (v: { itemId: string; dto: WorkItemInput }) => boardApi.updateWorkItem(groundId, v.itemId, v.dto),
+    onSuccess: () => { setEditingRow(null); invalidate() },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That change was not saved. Nothing has changed, so try again.'),
+  })
+  const removeItem = useMutation({
+    mutationFn: (itemId: string) => boardApi.deleteWorkItem(groundId, itemId),
+    onSuccess: () => { setEditingRow(null); invalidate() },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That record was not removed. Nothing has changed, so try again.'),
+  })
+  const claimItem = useMutation({
+    mutationFn: (v: { itemId: string; yes: boolean }) => boardApi.claimWorkItem(groundId, v.itemId, v.yes),
+    onSuccess: (data) => { invalidate(); if (data?.saidBack) toast.success(data.saidBack) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
+  })
+  const canAdd = canEdit && !!ITEM_KINDS_FOR_HOLDS[section.holds]?.length
+  return (
+    <>
+      {children({ edit: setEditingRow, claim: (row, yes) => claimItem.mutate({ itemId: row.id, yes }), claimPending: claimItem.isPending })}
+      {canAdd && (
+        <div className="pb-add-record">
+          <button onClick={() => setAdding(true)} className="gwui-plain-link">Add a record</button>
+        </div>
+      )}
+      {adding && (
+        <WorkItemForm section={section} participants={participants} editing={null} onClose={() => setAdding(false)} onSaved={(dto) => addItem.mutate(dto)} />
+      )}
+      {editingRow && (
+        <WorkItemForm
+          section={section}
+          participants={participants}
+          editing={editingRow}
+          onClose={() => setEditingRow(null)}
+          onSaved={(dto) => updateItem.mutate({ itemId: editingRow.id, dto })}
+          onRemove={canEdit ? () => removeItem.mutate(editingRow.id) : undefined}
+          removing={removeItem.isPending}
+        />
+      )}
+    </>
+  )
 }

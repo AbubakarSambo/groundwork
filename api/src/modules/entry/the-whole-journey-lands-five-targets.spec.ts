@@ -41,15 +41,19 @@ describe('the whole journey lands every target', () => {
     expect(src).toMatch(/extractExpectations\(checkIn\.id, participant\.id, ground\.id, dto\.history\)/);
   });
 
-  it('waits for it, so the report and the board are not built before the targets exist', () => {
+  /* Changed 3 November 2026: the save no longer waits for the reading (Hafsah's speed brief). The board is warmed again when it lands,
+     so it is still built with the targets; this pins that instead of the wait. */
+  it('runs after the save has answered, and the board is built again when the targets land', () => {
     const at = src.indexOf('.extractExpectations(checkIn.id, participant.id, ground.id, dto.history)');
     expect(at).toBeGreaterThan(-1);
-    expect(src.slice(Math.max(0, at - 400), at)).toMatch(/await this\.conversation/s);
+    expect(src.slice(Math.max(0, at - 400), at)).toMatch(/void readUntilItLands\(/);
+    expect(src.slice(at, at + 600)).toMatch(/GroundworkEvents\.SETUP_READ/);
   });
 
-  it('and a failure there never loses the session', () => {
+  /* Changed 3 November 2026: a failure is tried again rather than caught and dropped; readUntilItLands never throws. */
+  it('and a failure there never loses the session, and is tried again', () => {
     const at = src.indexOf('extractExpectations(');
-    expect(src.slice(at, at + 220)).toMatch(/\.catch\(/);
+    expect(src.slice(Math.max(0, at - 400), at)).toMatch(/readUntilItLands\(/);
   });
 
   it('is only attempted when something was actually said', () => {

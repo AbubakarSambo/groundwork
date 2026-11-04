@@ -48,22 +48,22 @@ export const CLOSE_SHEET = `
 .gw-close .gw-head .gwui-plain-link { color: rgba(255,255,255,.85); }
 .gw-close .gw-foot { padding: 13px var(--pad); border-top: 1px solid var(--gw-border); display: grid; gap: 9px; }
 
-.gw-close .gw-title { font-size: 15px; font-weight: 800; color: var(--gw-text); line-height: 1.3; }
+.gw-close .gw-title { font-size: 15px; font-weight: 700; color: var(--gw-text); line-height: 1.3; }
 .gw-close .gw-stamp { font-size: 11px; }
 /* One plain sentence, one line - no number, no capitals, no second line under it. */
 .gw-close .gw-lbl {
   margin-bottom: 9px; font-size: 13px; font-weight: 700; color: var(--gw-sub-d);
 }
 
-.gw-close .gw-big   { font-size: 14px;   line-height: 1.5; font-weight: 600; }
+.gw-close .gw-big   { font-size: 14px;   line-height: 1.5; font-weight: 700; }
 .gw-close .gw-p     { font-size: 13px;   line-height: var(--lead); }
 /* The ways through. Its own ground so it reads as offered rather than as part of the list above it,
    and never grey ink on a grey field - the border carries the separation, the text stays full. */
 .gw-close .gw-try   { border-left: 2px solid var(--gw-border); padding-left: 12px; }
 .gw-close .gw-said  { font-size: 13px;   line-height: var(--lead); }
 .gw-close .gw-small { font-size: 12px;   line-height: 1.55; }
-.gw-close .gw-mini  { font-size: 11.5px; line-height: 1.5; }
-.gw-close .gw-link  { font-size: 12.5px; }
+.gw-close .gw-mini  { font-size: 12px; line-height: 1.5; }
+.gw-close .gw-link  { font-size: 12px; }
 .gw-close .gw-quotes { display: grid; gap: 13px; }
 
 /* Rows: dot, text, then the state word. */
@@ -85,8 +85,8 @@ export const CLOSE_SHEET = `
   .gw-close .gw-stamp { font-size: 11px; }
   .gw-close .gw-lbl   { margin-bottom: 11px; font-size: 15px; }
   .gw-close .gw-big   { font-size: 17px; line-height: 1.45; }
-  .gw-close .gw-p     { font-size: 15.5px; }
-  .gw-close .gw-said  { font-size: 15.5px; }
+  .gw-close .gw-p     { font-size: 16px; }
+  .gw-close .gw-said  { font-size: 16px; }
   .gw-close .gw-small { font-size: 14px; line-height: 1.6; }
   .gw-close .gw-mini  { font-size: 13px; line-height: 1.55; }
   .gw-close .gw-link  { font-size: 15px; }

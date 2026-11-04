@@ -1,3 +1,4 @@
+import { useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { groundsApi } from '@/api/grounds'
@@ -66,7 +67,7 @@ function CommitmentMark({ done }: { done: boolean }) {
       aria-hidden
       style={{
         width: 15, height: 15, borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 10, fontWeight: 800, marginTop: 2,
+        fontSize: 10, fontWeight: 700, marginTop: 2,
         background: done ? 'var(--gw-green-bg)' : 'white',
         color: done ? 'var(--gw-green-t)' : 'var(--gw-sub-d)',
         border: '1px solid ' + (done ? 'var(--gw-green-b)' : 'var(--gw-border)'),
@@ -100,7 +101,7 @@ function CorrectionsYouHaveMade({ groundId }: { groundId: string }) {
             <span className="gwui-panel-text">
               Session {c.correctionOf ?? c.sessionNumber}. Corrected on {whenItWas(c.date, 'full')}.
             </span>
-            <Link to={`/checkin/${c.checkInId}`} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Details</Link>
+            <Link to={`/checkin/${c.checkInId}`} style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Details</Link>
           </div>
         ))}
       </Panel>
@@ -164,13 +165,23 @@ export interface YourWorkProps {
    * this page still gets the plain per-session link.
    */
   onReadTeamReport?: () => void
+  /**
+   * RELEASE 1B (pull request 3 of 3): THE REST OF TODAY'S PAGE, UNDER THE NEW MY WORK. Where the organisation's switch is on,
+   * MyWorkPage.tsx draws the person's name and numbers, To do (what you said you'd do), and Your reports, so this draws
+   * everything else today's page holds, by the same code: what keeps coming up (with its answer box), what you are carrying
+   * forward, how checkable your record is, your record, your check-ins, what success looks like, what you delivered,
+   * corrections, what to walk in with, and the lead's two links. Left out, the page is exactly as before.
+   */
+  asTheRestOfMyWork?: boolean
 }
 
 export function YourWork({
   groundId, ground, myRecord, mySoloReport, refetchSoloReport, specificity, report,
   totalSessions, completedCount, myFinishedSessions, sessionDots, myParticipant, myName, leadFirstName,
-  otherParties, postReportGuide, aTeamReportComes, onSeeEverySession, onReadTeamReport, onSeeRoster,
+  otherParties, postReportGuide, aTeamReportComes, onSeeEverySession, onReadTeamReport, onSeeRoster, asTheRestOfMyWork,
 }: YourWorkProps) {
+  /* The direct morning (lib/the-direct-morning.tsx): no "Only you see this page." Who reads it is the backend's rule, the same either way. */
+  const direct = useTheDirectMorning() || isTheDirectMorningOn(ground)
   const myCommitments = ((ground?.commitments ?? []) as any[]).filter((c) => c.participantId === myParticipant?.id)
   /* Their own files, the WhatsApp photos and pins included, from the same list and cache the Context tab reads. */
   const { data: docsOnTheCheckIn } = useQuery({
@@ -181,19 +192,9 @@ export function YourWork({
   })
   const myFiles = ((docsOnTheCheckIn ?? []) as any[]).filter((d) => d.participantId === myParticipant?.id || d.mine === true)
 
-  /* "Promises kept this month": of the commitments settled this calendar month, how many were
-     DONE. Undefined (not zero) while nothing has settled yet this month, so the tile does not
-     draw a false "0 of 0". */
-  const keptThisMonth = (() => {
-    const now = new Date()
-    const settled = myCommitments.filter((c) => {
-      if (!c.settledAt) return false
-      const d = new Date(c.settledAt)
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-    })
-    if (settled.length === 0) return null
-    return { kept: settled.filter((c) => c.status === 'DONE').length, of: settled.length }
-  })()
+  /* What happened to what they said they would do, as the server says it from the one count (plan round 32: "0/2 promises kept this
+     month" was a score on a person, counted here from the commitments on its own). */
+  const whatHappenedToThePromises: string | null = (myRecord as any)?.promises ?? null
 
   const patterns = (((myRecord as any)?.insightsLocked ? [] : ((myRecord as any)?.patterns ?? [])) as ServedPattern[])
     .filter((p) => p.yours !== false)
@@ -206,7 +207,8 @@ export function YourWork({
      something to show, one full-width column when only one side does, and a single stacked column
      once the page is too narrow for 320px twice - the same rule this page already follows for
      its own responsive rows, not a new one invented for this fix. */
-  const sideColumn = (patterns.length > 0 || myCommitments.length > 0 || myFinishedSessions.length > 0) && (
+  const rest = !!asTheRestOfMyWork
+  const sideColumn = (patterns.length > 0 || (!rest && (myCommitments.length > 0 || myFinishedSessions.length > 0))) && (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {patterns.length > 0 && (
         <Section heading="Something that keeps coming up">
@@ -218,7 +220,7 @@ export function YourWork({
         </Section>
       )}
 
-      {myCommitments.length > 0 && (
+      {!rest && myCommitments.length > 0 && (
         <Section heading="What you said you’d do">
           <Panel pad={false}>
             {/*
@@ -250,7 +252,7 @@ export function YourWork({
         </Section>
       )}
 
-      {myFinishedSessions.length > 0 && (
+      {!rest && myFinishedSessions.length > 0 && (
         <Section heading="Your reports">
           <Panel pad={false}>
             {myFinishedSessions.slice(0, 5).map((s, i) => {
@@ -259,15 +261,15 @@ export function YourWork({
                 <div key={s.id} style={{ padding: '11px 16px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                     <span className="gwui-panel-text">Session {s.sessionNumber}, your own</span>
-                    <Link to={`/checkin/${s.id}/report`} className="gwui-tap-40" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>
+                    <Link to={`/checkin/${s.id}/report`} className="gwui-tap-44" style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>
                   </div>
                   {aTeamReportComes && (
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
                       <span className="gwui-panel-text">Session {s.sessionNumber}, the team’s</span>
                       {teamReleased
                         ? (onReadTeamReport
-                          ? <button type="button" onClick={onReadTeamReport} className="gwui-tap-40" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>Read</button>
-                          : <Link to={`/grounds/${groundId}/session/${s.sessionNumber}`} className="gwui-tap-40" style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>)
+                          ? <button type="button" onClick={onReadTeamReport} className="gwui-tap-44" style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>Read</button>
+                          : <Link to={`/grounds/${groundId}/session/${s.sessionNumber}`} className="gwui-tap-44" style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}>Read</Link>)
                         : <Tag tone="attention">Not shared yet</Tag>}
                     </div>
                   )}
@@ -282,17 +284,19 @@ export function YourWork({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <PageTitle
+      {!rest && <PageTitle
         eyebrow={ground?.label}
         title="Your work"
         subtitle={
-          patterns.length > 0
+          direct
+            ? 'Everything you’ve said, and what the proof shows.'
+            : patterns.length > 0
             ? 'Everything you’ve said, and what the proof shows. Only you see this page, apart from the pattern below.'
             : 'Everything you’ve said, and what the proof shows. Only you see this page.'
         }
-      />
+      />}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 20, alignItems: 'start' }}>
+      {rest ? sideColumn : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 20, alignItems: 'start' }}>
         <div>
           {/* THE NUMBER TILES THE SERVED DATA SUPPORTS. my-record.jpg shows a row of three; this
               check-in's own scenario decides how many of them mean anything here. */}
@@ -307,12 +311,12 @@ export function YourWork({
               <div className="gwui-panel-text-muted">You check in when you choose. Use Check in yourself any time.</div>
             </Panel>
           )}
-          {!myParticipant?.managingOnly && (totalSessions != null || keptThisMonth) && (
+          {!myParticipant?.managingOnly && (totalSessions != null || whatHappenedToThePromises) && (
             <Panel>
               <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
                 {totalSessions != null && (
                   <div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)' }}>{completedCount} of {totalSessions}</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)' }}>{completedCount} of {totalSessions}</div>
                     {/* RE-REVIEW: "check-ins of 12" repeated the number already above it and read as
                         a clipped fragment rather than a caption. "Sessions so far" says what the
                         number is without saying it twice. "Session" is the one word for a single
@@ -320,12 +324,7 @@ export function YourWork({
                     <div className="gwui-panel-text-muted">sessions so far</div>
                   </div>
                 )}
-                {keptThisMonth && (
-                  <div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)' }}>{keptThisMonth.kept}/{keptThisMonth.of}</div>
-                    <div className="gwui-panel-text-muted">promises kept this month</div>
-                  </div>
-                )}
+                {whatHappenedToThePromises && <p className="gwui-panel-text" style={{ margin: 0, flexBasis: '100%' }}>{whatHappenedToThePromises}</p>}
               </div>
             </Panel>
           )}
@@ -333,7 +332,7 @@ export function YourWork({
         </div>
 
         {sideColumn}
-      </div>
+      </div>}
 
       {/* B-080: she never checks in, so there is no record of her own to carry forward, and "This
           appears once you finish your first check-in." would never stop being true. */}

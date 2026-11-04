@@ -147,13 +147,27 @@ const aNumberIsNotTwoSentences = (t: string) => t.replace(/(\d)\.\s+(\d+%)/g, '$
  * rendered line. Not here, where it rewrites text that is already right.
  */
 
+/*
+ * MORE THAN THE TARGET IS NEVER "49 OF YOUR 30" (night run 2, 20 October). Kevin's own report said "Roysambu Gym is your third sale, 49 of
+ * your 30 units." The record holds 49 units sold against his target of 30, so "49 of your 30" says something that cannot be. Only where the
+ * first number is the larger: "49 units, 19 more than your 30". A count within the target is left exactly as it was written.
+ */
+export function moreThanTheTargetSaidSo(text: string): string {
+  return text.replace(/\b(\d[\d,]*) of your (\d[\d,]*)(?: ([a-z]+))?\b/g, (m, a: string, b: string, word?: string) => {
+    const n = Number(a.replace(/,/g, ''));
+    const t = Number(b.replace(/,/g, ''));
+    if (!(t > 0 && n > t)) return m;
+    return `${a}${word ? ` ${word}` : ''}, ${(n - t).toLocaleString('en-US')} more than your ${b}`;
+  });
+}
+
 export function aStoredSentenceReadsRight(text: string, names?: readonly string[]): string {
   if (!text || typeof text !== 'string') return text;
   return theQuotesKept(aWaitSaidOnce(text), (outside) => {
     /* Inside the callback, so it never touches what somebody actually said (Hafsah, 26 September:
        people's own words stay exactly as they said them). My first version ran it over the whole
        string, quotations included, which that decision forbids. */
-    outside = aNumberIsNotTwoSentences(outside);
+    outside = moreThanTheTargetSaidSo(aNumberIsNotTwoSentences(outside));
     const plain = aLabelEndsWithoutAFullStop(oldWordingPutPlain(outside));
     /* A name is not said again in the sentence about that person (requests 129, 133, 135): "Amani Wekesa says Amani paid ...". */
     return names?.length ? aNameSaidAgainInOneSentence(plain, names) : plain;

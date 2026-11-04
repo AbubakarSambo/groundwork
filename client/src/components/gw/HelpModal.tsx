@@ -1,3 +1,4 @@
+import { SETUP_TAKES } from '@/lib/how-long-setup-takes'
 import { useAuthStore } from '@/stores/auth'
 import { useHelpStore } from '@/stores/help'
 import { HOW_TO_STEPS } from './how-a-check-in-is-run'
@@ -57,7 +58,7 @@ function Tab0({ onNext, mayStart }: { onNext: () => void; mayStart: boolean }) {
         {mayStart && (
           <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-navy)' }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>1. Start a check-in</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Pick the situation, set how long it runs and how often people check in, then add the people. Takes about two minutes.</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>Pick the situation, set how long it runs and how often people check in, then add the people. Takes {SETUP_TAKES}.</div>
           </div>
         )}
         <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-green-b)' }}>
@@ -67,11 +68,11 @@ function Tab0({ onNext, mayStart }: { onNext: () => void; mayStart: boolean }) {
             * "Nobody sees anybody else's answers, including you" was not true: the report shows
             * everybody's answers, word for word, to everybody in that check-in once it is ready.
             */}
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Each person gets a link and answers Groundwork one to one. What you say may be quoted word for word to the other people in your check-in, in its report.</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>Each person gets a link and answers Groundwork one to one. What you say may be quoted word for word to the other people in your check-in, in its report.</div>
         </div>
         <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-amber-b)' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>{mayStart ? '3. ' : ''}Read the report together</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>It releases to everyone at once and shows where people agree and where they do not. The gaps are the conversation.</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>It releases to everyone at once and shows where people agree and where they do not. The gaps are the conversation.</div>
         </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
@@ -114,7 +115,7 @@ function Tab1({ onBack, onNext, mayStart }: { onBack: () => void; onNext: () => 
             <div style={{ width: 26, height: 26, background: 'var(--gw-navy)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'white', flexShrink: 0 }}>{i + 1}</div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>{s.title}</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{s.body}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' }}>{s.body}</div>
             </div>
           </div>
         ))}
@@ -144,7 +145,7 @@ function Tab2({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
           <div key={i} style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: '14px 16px', borderLeft: `3px solid ${c.accent}` }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: c.accentText, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>{c.label}</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>{c.title}</div>
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{c.body}</div>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' }}>{c.body}</div>
           </div>
         ))}
       </div>
@@ -174,16 +175,16 @@ function Tab3({ onBack, onNext, mayStart, onClose }: { onBack: () => void; onNex
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: i < 4 ? 'var(--gw-navy)' : 'var(--gw-green-b)', flexShrink: 0, marginTop: 5 }} />
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>{r.title}</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{r.body}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' }}>{r.body}</div>
             </div>
           </div>
         ))}
       </div>
       <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: 14, marginBottom: 20 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 8 }}>Resolution states available</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 8 }}>Resolution states available</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {RES_PILLS.map((p) => (
-            <span key={p.label} style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 4, background: p.bg, color: p.color }}>{p.label}</span>
+            <span key={p.label} style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: p.bg, color: p.color }}>{p.label}</span>
           ))}
         </div>
       </div>
@@ -233,7 +234,7 @@ const TRY_IT = [
 function Tab4({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
   return (
     <div style={{ padding: 24 }}>
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 16 }}>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', marginBottom: 16 }}>
         A check-in needs two people to produce a report, so trying it alone means being two. About an
         hour, using a situation you actually have.
       </div>
@@ -243,7 +244,7 @@ function Tab4({ onBack, onClose }: { onBack: () => void; onClose: () => void }) 
             <div style={{ width: 26, height: 26, background: 'var(--gw-navy)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'white', flexShrink: 0 }}>{i + 1}</div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>{s.title}</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{s.body}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' }}>{s.body}</div>
             </div>
           </div>
         ))}
@@ -251,7 +252,7 @@ function Tab4({ onBack, onClose }: { onBack: () => void; onClose: () => void }) 
       {/* The one thing that decides whether the hour was worth anything, and the easiest to get
           wrong: answering as yourself twice produces two identical accounts and no report worth
           reading. */}
-      <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 14, marginTop: 16, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+      <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 14, marginTop: 16, fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' }}>
         Answer as the other person would, not as yourself. If both sides say the same thing there is
         nothing for the report to find.
       </div>
@@ -277,7 +278,7 @@ export function HelpModal() {
       onClick={(e) => { if (e.target === e.currentTarget) hide() }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.75)', zIndex: 9000, overflowY: 'auto', padding: '20px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}
     >
-      <div style={{ background: 'white', borderRadius: 14, width: '100%', maxWidth: 560, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', margin: '0 auto' }}>
+      <div style={{ background: 'white', borderRadius: 14, width: '100%', maxWidth: 560, overflow: 'hidden', boxShadow: 'var(--gw-shadow-modal)', margin: '0 auto' }}>
 
         {/* Header */}
         <div style={{ background: 'var(--gw-dark)', padding: '24px 24px 20px', position: 'relative' }}>
@@ -301,7 +302,7 @@ export function HelpModal() {
             SCREEN FAULT 5: "START A CHECK-IN, ADD THE PEOPLE IN IT" IS NOT SOMETHING A MEMBER
             CAN DO. Gated the same way Tab0's own "1. Start a check-in" already is.
           */}
-          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65 }}>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: '23px' }}>
             {mayStart
               ? 'Start a check-in, add the people in it, and everyone answers on their own. You get one report showing where those versions agree and where they differ.'
               : 'Each check-in asks you questions on your own, in your own words. Once everyone has answered, you get one report showing where your answers and theirs agree and where they differ.'}

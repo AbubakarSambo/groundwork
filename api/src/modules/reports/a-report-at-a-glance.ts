@@ -47,7 +47,10 @@ export function theSessionReportAtAGlance(r: any): ASessionReportAtAGlance {
   if (firstLine) out.picture = firstLine;
   const quiet = firstSentence(r.whatWentQuiet);
   if (quiet) out.notRaisedAgain = quiet;
-  const definitions = Array.isArray(r.againstSuccess?.definitions) ? r.againstSuccess.definitions.length : 0;
+  /* People, not lines: one person's three lines are one person (polish round 15, U29: "15 people said it" in a check-in of six). */
+  const definitions = Array.isArray(r.againstSuccess?.definitions)
+    ? new Set((r.againstSuccess.definitions as any[]).map((d, i) => String(d?.who ?? '').trim().toLowerCase() || `#${i}`)).size
+    : 0;
   if (definitions) out.goodLooksLike = `${plural(definitions, 'person', 'people')} said it in their own words`;
   else if (r.againstSuccess) {
     const said = firstSentence(r.againstSuccess.saying);

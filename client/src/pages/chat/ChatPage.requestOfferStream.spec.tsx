@@ -66,7 +66,7 @@ describe('the stream carries the request offer through', () => {
     // unrelated to the stream fix below - keeps the same allowance every other ChatPage
     // spec gives it (see ChatPage.resume.spec.tsx).
     await screen.findByText('What moved this week?', {}, { timeout: 6000 })
-    const box = screen.getByPlaceholderText(/Type, or hold to speak/i)
+    const box = screen.getByPlaceholderText(/Type your answer/i)
     fireEvent.change(box, { target: { value: "I'm taking Friday off." } })
     fireEvent.click(screen.getByRole('button', { name: /Send message/i }))
 
@@ -95,7 +95,7 @@ describe('the stream carries the request offer through', () => {
     renderChat()
     // Same jitter, same allowance as above - this wait is on the opening transcript load too.
     await screen.findByRole('button', { name: 'Yes' }, { timeout: 6000 })
-    const box = screen.getByPlaceholderText(/Type, or hold to speak/i)
+    const box = screen.getByPlaceholderText(/Type your answer/i)
     fireEvent.change(box, { target: { value: 'Yes' } })
     fireEvent.click(screen.getByRole('button', { name: /Send message/i }))
 
@@ -132,7 +132,7 @@ describe('the screen keeps up with a stream that never yields', () => {
     // Same jitter, same allowance as the tests above - this wait is on the opening
     // transcript load, which has nothing to do with the stream this test is about.
     await screen.findByText('What moved this week?', {}, { timeout: 6000 })
-    const box = screen.getByPlaceholderText(/Type, or hold to speak/i)
+    const box = screen.getByPlaceholderText(/Type your answer/i)
     fireEvent.change(box, { target: { value: 'I shipped the report.' } })
     fireEvent.click(screen.getByRole('button', { name: /Send message/i }))
 

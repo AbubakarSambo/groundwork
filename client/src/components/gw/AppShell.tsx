@@ -30,6 +30,7 @@ import { sidebarWasFolded, rememberSidebarFolded } from './where-the-sidebar-was
 import { pinnedFor, togglePin } from './pinned-check-ins'
 import { recentlyOpenedFor } from './recently-opened-check-ins'
 import { whatTheRowSays } from './what-a-sidebar-row-says'
+import { theClocksSessionSaid } from '@/lib/the-one-count'
 import { OrganisationChoices } from './OrganisationChoices'
 import { initialsOf, roleWord } from './your-organisations'
 import { JumpTo } from './JumpTo'
@@ -177,9 +178,14 @@ function FeedbackWidget() {
    * as People; "Send feedback" on the person's own menu (and "More" on a phone) still opens the
    * same panel.
    */
-  const hideTrigger = location.pathname === '/more' || location.pathname.startsWith('/checkin/')
+  /* The prototype has no floating Feedback pill: "Send feedback" on the person's own menu opens it (Hafsah, 24 October: fewer buttons). */
+  const hideTrigger = true || location.pathname === '/more' || location.pathname.startsWith('/checkin/')
     || location.pathname === '/chat' || location.pathname === '/settings/suites' || location.pathname === '/org/members'
     || location.pathname === '/settings'
+    /* BROWSER TEST, 20 OCTOBER: AND A CHECK-IN'S "PEOPLE AND SETUP", FOR THE SAME REASON AS PEOPLE. At 1280 by 900 the
+       trigger's bottom-right corner sat on "Add people" as the page opened, and a click meant for it opened Feedback; the
+       page has a dozen more controls down the same right edge. "Send feedback" on the person's own menu still opens it. */
+    || (/^\/grounds\/[^/]+$/.test(location.pathname) && new URLSearchParams(location.search).get('tab') === 'settings')
     || isGroundsBoard
     || (location.pathname === '/start' && fillsInPanelShowing)
     || askOpen
@@ -530,7 +536,7 @@ function FeedbackWidget() {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
           className="gw-fb-overlay"
         >
-          <div ref={panelRef} className="gw-fb-panel" role="dialog" aria-modal="true" aria-label="Feedback" style={{ background: 'white', borderRadius: 12, padding: 20, width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 18px 48px rgba(10,22,40,.28)' }}>
+          <div ref={panelRef} className="gw-fb-panel" role="dialog" aria-modal="true" aria-label="Feedback" style={{ background: 'white', borderRadius: 12, padding: 20, width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', boxShadow: 'var(--gw-shadow-modal)' }}>
             {/* Tabs */}
             <div style={{ display: 'flex', borderBottom: '1px solid var(--gw-border)', marginBottom: 16 }}>
               {(['reaction', 'build', 'wrong'] as FbTab[]).map(t => (
@@ -540,9 +546,9 @@ function FeedbackWidget() {
                   style={{
                     flex: 1, padding: '10px 4px', background: 'none', border: 'none',
                     borderBottom: tab === t ? '2px solid var(--gw-navy)' : '2px solid transparent',
-                    fontSize: 11, fontWeight: 600,
+                    fontSize: 11, fontWeight: 700,
                     color: tab === t ? 'var(--gw-text)' : 'rgba(0,0,0,.38)',
-                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center', lineHeight: 1.3,
+                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center', lineHeight: '14px',
                   }}
                 >
                   {tabLabel[t]}
@@ -557,7 +563,7 @@ function FeedbackWidget() {
                 ref={thankYouRef}
                 tabIndex={-1}
                 role="status"
-                style={{ textAlign: 'center', padding: '20px 0', color: 'var(--gw-green-t)', fontWeight: 600, fontSize: 14, outline: 'none' }}
+                style={{ textAlign: 'center', padding: '20px 0', color: 'var(--gw-green-t)', fontWeight: 700, fontSize: 14, outline: 'none' }}
               >
                 Thank you. We have your note.
               </div>
@@ -567,23 +573,17 @@ function FeedbackWidget() {
                   <>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                       {REACTION_OPTIONS.map(o => (
-                        <button
+                        <button className={`gwui-choice${reaction === o ? ' gwui-choice-on' : ''}`}
                           key={o}
                           onClick={() => setReaction(o)}
-                          style={{
-                            padding: '6px 11px', borderRadius: 20, fontSize: 12,
-                            border: '1px solid rgba(0,0,0,.14)', background: reaction === o ? 'var(--gw-navy)' : 'none',
-                            color: reaction === o ? 'white' : 'rgba(0,0,0,.55)',
-                            cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1.3,
-                          }}
                         >
                           {o}
                         </button>
                       ))}
                     </div>
                     <input type="email" placeholder="Your email, if you'd like a reply" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
-                      className="gwui-fb-field"
-                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10 }} />
+                      className="gwui-fb-field gwui-input"
+                      style={{ boxSizing: 'border-box', marginBottom: 10 }} />
                   </>
                 )}
 
@@ -591,15 +591,9 @@ function FeedbackWidget() {
                   <>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                       {BUILD_OPTIONS.map(o => (
-                        <button
+                        <button className={`gwui-choice${buildPick === o ? ' gwui-choice-on' : ''}`}
                           key={o}
                           onClick={() => setBuildPick(o)}
-                          style={{
-                            padding: '6px 11px', borderRadius: 20, fontSize: 12,
-                            border: '1px solid rgba(0,0,0,.14)', background: buildPick === o ? 'var(--gw-navy)' : 'none',
-                            color: buildPick === o ? 'white' : 'rgba(0,0,0,.55)',
-                            cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1.3,
-                          }}
                         >
                           {BUILD_OPTION_LABELS[o] ?? o}
                         </button>
@@ -617,21 +611,21 @@ function FeedbackWidget() {
                       className="gwui-fb-field"
                       style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', minHeight: 100, boxSizing: 'border-box', marginBottom: 10 }} />
                     <input type="email" placeholder="Your email, if you'd like a reply" value={contactEmail} onChange={e => setContactEmail(e.target.value)}
-                      className="gwui-fb-field"
-                      style={{ width: '100%', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10 }} />
+                      className="gwui-fb-field gwui-input"
+                      style={{ boxSizing: 'border-box', marginBottom: 10 }} />
                   </>
                 )}
 
                 <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                  <button onClick={() => hidePanel()}
-                    style={{ padding: '11px 16px', background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', borderRadius: 6, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <button className="btn sec" onClick={() => hidePanel()}
+                    >
                     Cancel
                   </button>
                   {whyNotValid() && (
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', width: '100%', marginBottom: 6 }}>{whyNotValid()}</div>
+                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', width: '100%', marginBottom: 6 }}>{whyNotValid()}</div>
                   )}
-                  <button onClick={submit} disabled={!valid()}
-                    style={{ flex: 1, padding: 11, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: valid() ? 1 : 0.38 }}>
+                  <button className="btn pri" onClick={submit} disabled={!valid()}
+                    style={{ flex: 1 }}>
                     Send
                   </button>
                 </div>
@@ -959,8 +953,14 @@ export function AppSidebar() {
 
   /* ONE GATE. Every door below comes out of `navItemsFor`, and is only sorted into its part here. */
   const items = navItemsFor(user, navOpts)
-  const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings')
-  const adminItems = items.filter(i => (i as any).adminOnly)
+  /*
+   * THE SIDEBAR IS THE PROTOTYPE'S (Hafsah, 25 October): your check-ins, then Today, Company, You, People for an admin, and Suites, as one
+   * list. Boards, Connections, All check-ins and Plan and billing are in the organisation menu, under its name at the top.
+   */
+  const IN_THE_ORG_MENU = ['/boards', '/settings/connections', '/billing']
+  const pages = items.filter(i => !(i as any).adminOnly && !(i as any).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings' && !IN_THE_ORG_MENU.includes(i.to))
+  const adminItems = items.filter(i => (i as any).adminOnly && !IN_THE_ORG_MENU.includes(i.to))
+  const orgMenuItems = [{ to: '/grounds', label: hiddenCount > 0 ? `All check-ins (${grounds.length})` : 'All check-ins' }, ...items.filter(i => IN_THE_ORG_MENU.includes(i.to)).map(i => ({ to: i.to, label: i.label }))]
   const staffItems = items.filter(i => (i as any).platformAdminOnly)
   /* "Jump to" offers only what this reader already sees: these check-ins and these doors. */
   const jumpItems = whatYouCanJumpTo(grounds as any, user?.id, items)
@@ -976,7 +976,7 @@ export function AppSidebar() {
        when it started - is said after the name; a label that is already unique is left alone. */
     const apart = whatTellsItApart(inRail, g)
     const nameRead = apart ? `${g.label}, ${apart}` : g.label
-    const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions ?? (g as any).totalSessions)
+    const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions ?? (g as any).totalSessions, (g as any)?.cadenceDays)
     const mine = attention.kind === 'yours' || attention.kind === 'overdue'
     /* The room the row's buttons need when they show over its right, and whether the row must keep it
        (a badge is wider than the buttons and hides while they show, so a row with one already has it). */
@@ -998,6 +998,7 @@ export function AppSidebar() {
       roundsDone: (g as any).roundsDone,
       alignment: (g as any).alignment,
       closed: isClosed(g),
+      countSays: theClocksSessionSaid(g)?.says ?? null,
     })
     return (
       <li key={g.id}>
@@ -1138,6 +1139,10 @@ export function AppSidebar() {
             </button>
             {orgOpen && (
               <div className="gw-rl-menu gw-rl-menu-org" style={{ left: collapsed ? 70 : 10 }}>
+                {orgMenuItems.map(item => (
+                  <NavLink key={item.to} to={item.to} className="gw-rl-menu-item" onClick={() => setOrgOpen(false)}>{item.label}</NavLink>
+                ))}
+                <hr />
                 <div className="gw-rl-menu-h">Organisations</div>
                 <OrganisationChoices />
               </div>
@@ -1216,7 +1221,7 @@ export function AppSidebar() {
                   <p className="gw-rl-empty">Nothing in progress yet.</p>
                 )}
                 {listFailed && !listLoaded && (
-                  <p className="gw-rl-empty" role="alert">Your check-ins did not load. Reload the page to try again.</p>
+                  <p className="gw-rl-empty" role="alert">Your check-ins didn’t load. Reload the page.</p>
                 )}
                 {/* The heading stays, because it is the way to the whole list, and says why it is empty. */}
                 {unpinned.length === 0 && pinned.length > 0 && (
@@ -1227,9 +1232,7 @@ export function AppSidebar() {
                     anything out - with how many there are only when they did. ALWAYS shown (Hafsah,
                     6 October): an admin with nothing waiting and nothing opened has no rows, and
                     this is then her way to every check-in. */}
-                <NavLink to="/grounds" className="gw-rl-nav">
-                  {hiddenCount > 0 ? `All check-ins (${grounds.length})` : 'All check-ins'}
-                </NavLink>
+                {/* "All check-ins" is in the organisation menu now, and the "Check-ins" heading above goes to the whole list. */}
                 {closed.length > 0 && (
                   <>
                     <button
@@ -1271,7 +1274,6 @@ export function AppSidebar() {
                     behind them is admin-only on the server too. */}
                 {adminItems.length > 0 && (
                   <>
-                    <div className="gw-rl-h"><span>{orgName}</span></div>
                     <ul className="gw-rl-list">
                       {adminItems.map(item => (
                         <li key={item.to}>
@@ -1476,6 +1478,20 @@ function GroundworkBars() {
   )
 }
 
+/**
+ * THE RAIL'S EMPTY FRAME, WHILE THE WALL DECIDES (B-202's wall is unchanged; plan round 32, Today blank). The same fixed column the
+ * sidebar takes, with nothing in it: no organisation, no doors, and none of AppSidebar's requests, until `my-waiting` has answered.
+ */
+function TheRailWhileItDecides() {
+  return (
+    <aside
+      className="gw-sidebar-desktop gw-rl"
+      aria-hidden="true"
+      style={{ position: 'fixed', top: 0, left: 0, width: 'var(--gw-sidebar-w, 256px)', height: '100vh', display: 'flex', flexDirection: 'column', zIndex: 40 }}
+    />
+  )
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   /**
    * THE ROUTER'S LOCATION, NOT THE BROWSER'S. This is why the menu was never there.
@@ -1574,6 +1590,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isBareCheckInRoute = /^\/checkin\/[^/]+$/.test(location.pathname)
   const checkInFocused = useCheckInFocusStore(s => s.focused)
   const onConversationPage = isBareCheckInRoute && checkInFocused
+  /* The prototype marks a focused check-in on the body (body.focus): on a phone its card then fills the screen. */
+  useEffect(() => {
+    document.body.classList.toggle('focus', onConversationPage)
+    return () => document.body.classList.remove('focus')
+  }, [onConversationPage])
   const consumePendingAskMessage = useAskStore(s => s.consumePendingMessage)
   /* Decision 65: a check-in's own Context and resources page tells Ask which one it was opened from. */
   const pendingAskOpenedFromGroundId = useAskStore(s => s.openedFromCheckInSetupGroundId)
@@ -1689,10 +1710,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * the app, not an endless blank wall.
    */
   const waitingQuery = useQuery({ queryKey: ['my-waiting'], queryFn: authApi.myWaiting, enabled: isAuthenticated, retry: false })
-  const stillWaitingOrUnknown = isAuthenticated
-    && (waitingQuery.isLoading || (!waitingQuery.isError && waitingQuery.data?.waiting === true))
+  /* While the answer is not in yet, the rail's frame is drawn empty (TheRailWhileItDecides): no names, no doors, no requests. Once it
+     says the person is waiting, nothing is drawn, as before. */
+  const deciding = isAuthenticated && waitingQuery.isLoading
+  const stillWaiting = isAuthenticated && !waitingQuery.isLoading && !waitingQuery.isError && waitingQuery.data?.waiting === true
   const showSidebar =
-    isAuthenticated && !stillWaitingOrUnknown && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail && !aPageAskedForNoRail
+    isAuthenticated && !stillWaiting && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail && !aPageAskedForNoRail
 
   if (!showSidebar) return <main id="main">{children}</main>
 
@@ -1708,14 +1731,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         *
         * The link is visually hidden until it takes focus, which is the one case it exists for.
         */}
-      <AppSidebar />
+      {deciding ? <TheRailWhileItDecides /> : <AppSidebar />}
       <main id="main" className={onConversationPage ? 'gw-main-content gw-focus' : 'gw-main-content'}>
         {children}
       </main>
       {isAuthenticated && askOpen && (
         <div className="gw-ask-drawer" style={{
           position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '100vw', zIndex: 45,
-          boxShadow: '-8px 0 24px rgba(26, 25, 22, 0.08)',
+          boxShadow: 'var(--gw-shadow-sheet)',
         }}>
           <AskGroundwork
             onClose={hideAsk}

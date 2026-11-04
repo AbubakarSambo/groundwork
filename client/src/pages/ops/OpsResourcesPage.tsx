@@ -46,7 +46,7 @@ function Checks({ checks }: { checks: OpsResourceCheck[] }) {
             {c.claim}
           </span>
           <span style={{ color: 'var(--gw-sub)' }}> - {VERDICT_SAID[c.verdict]}</span>
-          <div style={{ color: 'var(--gw-sub)', fontSize: 12.5, marginTop: 2, lineHeight: 1.5 }}>
+          <div style={{ color: 'var(--gw-sub)', fontSize: 12, marginTop: 2, lineHeight: 1.5 }}>
             {c.says}
           </div>
         </li>
@@ -79,15 +79,15 @@ function Row({ resource }: { resource: OpsResource }) {
           {resource.categoryDetail ?? CATEGORY_LABEL.get(resource.category) ?? resource.category}
         </span>
         {resource.url && (
-          <a href={resource.url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5 }}>
+          <a href={resource.url} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>
             open it
           </a>
         )}
       </div>
 
-      <p style={{ fontSize: 13.5, margin: '8px 0 0', lineHeight: 1.6 }}>{resource.standing.says}</p>
+      <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: '22px' }}>{resource.standing.says}</p>
       {resource.checkSays && (
-        <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '4px 0 0', lineHeight: 1.55 }}>
+        <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '4px 0 0', lineHeight: '19px' }}>
           {resource.checkSays}
         </p>
       )}
@@ -98,10 +98,10 @@ function Row({ resource }: { resource: OpsResource }) {
       {resource.stale && (
         <p
           style={{
-            fontSize: 12.5,
+            fontSize: 12,
             color: 'var(--gw-amber-t)',
             margin: '8px 0 0',
-            lineHeight: 1.55,
+            lineHeight: '19px',
           }}
         >
           {resource.stale}
@@ -151,14 +151,14 @@ export function OpsResourcesPage() {
   const register = useQuery({ queryKey: ['ops', 'resources'], queryFn: opsApi.resources, retry: false })
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name="Resources"
         answers="What are we putting in front of people, and does it match what we sell?"
       />
 
       {register.data && (
-        <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.6 }}>
+        <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: '21px' }}>
           Checked against version {register.data.checkedAgainst.version} of what we say we are:{' '}
           <em>{register.data.checkedAgainst.headline}</em>
         </p>

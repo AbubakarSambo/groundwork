@@ -1,7 +1,8 @@
+import type React from 'react'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
-import { Section, Panel } from '@/components/gw/ui'
+import { Section, Panel, FoldedLine } from '@/components/gw/ui'
 import { toast } from 'sonner'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { withSentenceCase } from '@/lib/an-aim-reads-as-a-sentence'
@@ -32,7 +33,9 @@ import { withSentenceCase } from '@/lib/an-aim-reads-as-a-sentence'
  * read against is the last thing that should be private from them, and if it moved mid-ground, the
  * move is the part they most need to see.
  */
-export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundId: string; canState: boolean; groundStartedAt?: string | null }) {
+export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
+  /** One folded line under About this work, as the kit draws the page; its own section elsewhere. */
+  asFold?: boolean; groundId: string; canState: boolean; groundStartedAt?: string | null }) {
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
   const [success, setSuccess] = useState('')
@@ -68,22 +71,25 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
   })
 
   return (
-    <Section heading="What doing well looks like">
-      <Panel>
+    <Outer asFold={asFold} fact={current?.successLooksLike ? withSentenceCase(current.successLooksLike) : 'Not stated yet.'}>
+      <Inner asFold={asFold}>
         {current ? (
           <>
-            <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.65 }}>
+            {/* Folded, the line itself is the fold's own fact, so it is not said twice. */}
+            {!asFold && (
+            <div style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: '23px' }}>
               {current.successLooksLike ? withSentenceCase(current.successLooksLike) : 'Not stated yet.'}
             </div>
+            )}
             {current.conditions.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>What that rests on</div>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>What that rests on</div>
                 <ul style={{ margin: 0, paddingLeft: 17 }}>
                   {current.conditions.map((c, i) => (
-                    <li key={i} style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 2 }}>{c}</li>
+                    <li key={i} style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px', marginBottom: 2 }}>{c}</li>
                   ))}
                 </ul>
-                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 6 }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', marginTop: 6 }}>
                   Named now, the record can show which of these held. Unnamed, a missed outcome reads as
                   somebody underperforming.
                 </div>
@@ -97,7 +103,7 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
               * moved was stored, required, and shown nowhere. Found by rendering the panel on a ground
               * that had actually been restated, not by reading the code.
               */}
-            <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10, lineHeight: 1.55 }}>
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10, lineHeight: '17px' }}>
               {/**
                 * B-141: version 1 is never a restatement, so its date is the check-in's own start
                 * date, not whenever the version-1 row happened to be written on the record
@@ -114,7 +120,7 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
             </div>
           </>
         ) : (
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>
             {/**
               * The reason to fill it in, in the lead's own terms. Not "this field is empty": what the
               * report will and will not be able to answer, which is the same framing
@@ -124,7 +130,7 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
             whether things went well, because nothing has said what well would look like.
           </div>
         )}
-      </Panel>
+      </Inner>
 
       {/* Earlier versions. The arc is the point: what was believed then, against what is held now. */}
       {earlier.length > 0 && (
@@ -133,7 +139,7 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
           <Panel>
             {earlier.map(v => (
               <div key={v.version} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid var(--gw-border)' }}>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{withSentenceCase(v.successLooksLike)}</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>{withSentenceCase(v.successLooksLike)}</div>
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 4 }}>
                   Version {v.version}, until it was restated
                   {v.changeReason ? `. Changed because: ${v.changeReason}` : '.'}
@@ -146,9 +152,9 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
       )}
 
       {canState && !open && (
-        <button
+        <button type="button" className={asFold ? 'gw-link t-small' : 'btn sec sm'}
           onClick={() => setOpen(true)}
-          style={{ marginTop: 10, background: 'none', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 14px', fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ marginTop: 10 }}
         >
           {current ? 'This has changed →' : 'Say what doing well looks like →'}
         </button>
@@ -162,48 +168,46 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
               * correction, and a corrected baseline stops being a record of what was believed at the
               * start. The old statement is above, to be read rather than overwritten.
               */}
-            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>What would doing well look like?</div>
-            <textarea
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>What would doing well look like?</div>
+            <textarea className="gwui-input"
               value={success}
               onChange={e => setSuccess(e.target.value)}
               rows={3}
               placeholder="In your own words. Not a target for one person - what would make you say, at the end, that this went the way it should have."
-              style={{ width: '100%', padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.55 }}
+              style={{ width: '100%' }}
             />
-            <div style={{ fontSize: 12.5, fontWeight: 700, margin: '12px 0 4px' }}>What has to be true for it? One per line.</div>
-            <textarea
+            <div style={{ fontSize: 12, fontWeight: 700, margin: '12px 0 4px' }}>What has to be true for it? One per line.</div>
+            <textarea className="gwui-input"
               value={conditions}
               onChange={e => setConditions(e.target.value)}
               rows={3}
               placeholder={'Things that are not in their hands.\nA decision from somebody else, a tool, another team’s work.'}
-              style={{ width: '100%', padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.55 }}
+              style={{ width: '100%' }}
             />
             {current && (
               <>
-                <div style={{ fontSize: 12.5, fontWeight: 700, margin: '12px 0 4px' }}>Why is this changing?</div>
-                <input
+                <div style={{ fontSize: 12, fontWeight: 700, margin: '12px 0 4px' }}>Why is this changing?</div>
+                <input className="gwui-input"
                   value={reason}
                   onChange={e => setReason(e.target.value)}
                   placeholder="The priorities moved, the role changed, we got it wrong the first time"
-                  style={{ width: '100%', padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  style={{ width: '100%' }}
                 />
-                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 6 }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', marginTop: 6 }}>
                   The version above stays on the record either way. A yardstick that moved with no reason
                   given reads worse than either version does on its own.
                 </div>
               </>
             )}
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button
+              <button className="btn pri sm"
                 onClick={() => state.mutate()}
                 disabled={state.isPending || (!success.trim() && !conditions.trim())}
-                style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: state.isPending ? 0.6 : 1 }}
               >
                 {state.isPending ? 'Recording…' : current ? 'Record as a new version' : 'Record it'}
               </button>
-              <button
+              <button className="btn sec sm"
                 onClick={() => setOpen(false)}
-                style={{ padding: '9px 16px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>
@@ -211,6 +215,17 @@ export function BaselinePanel({ groundId, canState, groundStartedAt }: { groundI
           </Panel>
         </div>
       )}
-    </Section>
+    </Outer>
   )
+}
+
+/* The two wrappers live outside the panel, so typing in its form keeps the same text box: built inside the render, they were new
+   components on every keystroke, and the box lost focus after one letter (restored, 30 October 2026). */
+function Outer({ asFold, fact, children }: { asFold?: boolean; fact: string; children: React.ReactNode }) {
+  return asFold
+    ? <FoldedLine name="What doing well looks like" fact={fact}>{children}</FoldedLine>
+    : <Section heading="What doing well looks like">{children}</Section>
+}
+function Inner({ asFold, children }: { asFold?: boolean; children: React.ReactNode }) {
+  return asFold ? <div>{children}</div> : <Panel>{children}</Panel>
 }

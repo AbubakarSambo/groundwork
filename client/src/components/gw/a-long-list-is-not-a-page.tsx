@@ -38,7 +38,7 @@ export function ShowAFew<T>({
           onClick={() => setAll(true)}
           style={{
             display: 'block', width: '100%', textAlign: 'left', padding: '9px 13px',
-            fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', background: 'none',
+            fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'none',
             border: 'none', borderTop: '1px solid var(--gw-line)', cursor: 'pointer', fontFamily: 'inherit',
           }}
         >
@@ -50,7 +50,7 @@ export function ShowAFew<T>({
           onClick={() => setAll(false)}
           style={{
             display: 'block', width: '100%', textAlign: 'left', padding: '9px 13px',
-            fontSize: 12.5, color: 'var(--gw-sub)', background: 'none',
+            fontSize: 12, color: 'var(--gw-sub)', background: 'none',
             border: 'none', borderTop: '1px solid var(--gw-line)', cursor: 'pointer', fontFamily: 'inherit',
           }}
         >

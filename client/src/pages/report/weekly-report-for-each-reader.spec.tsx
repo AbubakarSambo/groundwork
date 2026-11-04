@@ -105,3 +105,63 @@ describe('the weekly report, for each reader', () => {
     expect(reportsApi.week).toHaveBeenCalledWith('g1', '2026-08-10')
   })
 })
+
+describe('the weekly report as pictured, and the report as it was one tap away', () => {
+  const WEEK = {
+    weekStart: '2026-09-21', builtAt: '2026-09-23T10:00:00.000Z', heading: 'This week, 21 to 23 Sep, so far',
+    inNumbers: [{ figure: '67%', of: 'of check-ins made this week', says: '2 of the 3 check-ins due this week were made.' }],
+    eachPerson: [], acrossTheTeam: [], threeInARow: [],
+    forNextWeek: [{ do: 'Agree what “qualified” means.', why: 'Then count the sales again.', comesFrom: 'This comes from a disagreement in the team.' }],
+  }
+  beforeEach(() => {
+    vi.mocked(groundsApi.get).mockResolvedValue({ id: 'g1', label: 'Sales team, Q3' } as any)
+    vi.mocked(reportsApi.week).mockResolvedValue(WEEK as any)
+  })
+  it('draws each number large with what it counts, each thing to do with where it comes from, and not the number’s own sentence', async () => {
+    renderWeek()
+    expect(await screen.findByText('67%')).toBeTruthy()
+    expect(screen.getByText('of check-ins made this week')).toBeTruthy()
+    expect(screen.queryByText('2 of the 3 check-ins due this week were made.')).toBeNull()
+    expect(screen.getByText('This comes from a disagreement in the team.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'See every other part of this report' })).toBeTruthy()
+  })
+  it('on ?whole=1, reads each number’s own sentence, as before', async () => {
+    renderWeek('/grounds/g1/report/week?whole=1')
+    expect(await screen.findByText('2 of the 3 check-ins due this week were made.')).toBeTruthy()
+  })
+  /* weekly-report.jpg: three things to do, each from a different place; every one is still on ?whole=1. */
+  const MANY = [
+    { do: 'Sort out a rule for old leads.', why: 'Samuel is waiting on you for it.', comesFrom: 'This comes from a blocker that keeps coming back.' },
+    { do: 'Talk with David about the tasks.', why: 'David has seen this.', comesFrom: 'From a pattern' },
+    { do: 'Talk with Brian about the visits.', why: 'Brian has seen this.', comesFrom: 'From a pattern' },
+    { do: 'Settle the difference between what Brian and you said.', why: 'Mama Fresh.', comesFrom: 'This comes from a disagreement in the team.' },
+    { do: 'Decide whether to hire a second driver.', why: 'You wrote this down as still to decide.', comesFrom: 'Decision needed' },
+  ]
+  it('the lead reads three things to do next week, each from a different place, and every one on ?whole=1', async () => {
+    vi.mocked(reportsApi.week).mockResolvedValue({ ...WEEK, forNextWeek: MANY } as any)
+    renderWeek()
+    expect(await screen.findByText('Sort out a rule for old leads.')).toBeTruthy()
+    expect(screen.getByText('Talk with David about the tasks.')).toBeTruthy()
+    expect(screen.getByText('Settle the difference between what Brian and you said.')).toBeTruthy()
+    expect(screen.queryByText('Talk with Brian about the visits.')).toBeNull()
+    expect(screen.queryByText('Decide whether to hire a second driver.')).toBeNull()
+  })
+  it('on ?whole=1 the lead reads every thing to do next week', async () => {
+    vi.mocked(reportsApi.week).mockResolvedValue({ ...WEEK, forNextWeek: MANY } as any)
+    renderWeek('/grounds/g1/report/week?whole=1')
+    expect(await screen.findByText('Talk with Brian about the visits.')).toBeTruthy()
+    expect(screen.getByText('Decide whether to hire a second driver.')).toBeTruthy()
+  })
+})
+
+describe('a week nothing has come into yet (faith90-weekly-report.jpg, screen 58)', () => {
+  it('reads as the check-in, "Nothing here yet.", and "It fills in once people start checking in.", with "Your check-in"', async () => {
+    vi.mocked(groundsApi.get).mockResolvedValue({ id: 'g1', label: 'Faith, first 90 days', cadence: 'WEEKLY', cadenceAnchorDay: 1, participants: [{}, {}], checkIns: [{ sessionNumber: 1 }] } as any)
+    vi.mocked(reportsApi.week).mockResolvedValue({ weekStart: '2026-09-21', heading: 'This week', eachPerson: [], inNumbers: [], threeInARow: [], saying: 'No check-in has come in this week yet, so there is nothing to say yet about what people named.' } as any)
+    renderWeek()
+    expect(await screen.findByText('Nothing here yet.')).toBeTruthy()
+    expect(screen.getByText('It fills in once people start checking in.')).toBeTruthy()
+    expect(screen.getByText('2 people. Weekly, Mondays.')).toBeTruthy()
+    expect(screen.getAllByRole('link', { name: 'Your check-in' }).every((a) => a.getAttribute('href') === '/grounds/g1')).toBe(true)
+  })
+})

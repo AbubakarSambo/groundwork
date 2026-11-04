@@ -24,48 +24,22 @@ export const READ_WHAT_HAPPENED = [
   '',
   'For each numbered thing, say what THEY said happened to it in this check-in:',
   '  - "DONE" only when they plainly said it already happened, in the past tense ("I sent it on Tuesday", "that is done", "they placed the order yesterday"). For DONE, also give "words": their own words that say it happened, copied exactly from what they said.',
-  '  - "NOT_DONE" only when they plainly said they did not do it. They also gave no new time for it. For example: "I did not get to it", "I never called her".',
-  '  - "OPEN" for everything else: they did not mention it, they gave a new date or time, they said it is in progress or partly done, or you are not sure.',
+  '  - "NOT_DONE" when they plainly said they did not do it. For example: "I did not get to it", "I never called her". It is also NOT_DONE when its day has passed and they promise it again for a later day. The promise slipped, and what they promise now is a new promise. For NOT_DONE, "words" are their words that say so.',
+  '  - "OPEN" for everything else: they did not mention it, its day has not passed yet and they gave a new date or time, they said it is in progress or partly done, or you are not sure.',
   '',
   'RULES:',
   '  - Use only this person\'s own words. Never decide from what somebody else did or what the interviewer said.',
   '  - Some answers come with the question they answered, in brackets before them. The question only tells you what a short answer is about ("I have not done anything further" after a question about following up is about the follow-up). Decide from their answer, never from the question.',
-  '  - A new date or a new plan for the same thing is OPEN, never NOT_DONE.',
+  '  - Each promise comes with the day it was said. You are given the day of this conversation too. Work out whether its day has passed. A new date for the same thing is OPEN while its day has not passed. A new date is NOT_DONE once its day has passed. A report promised on Monday 2 March for Friday, and promised again on 9 March for this week, was not kept.',
   '  - A plan, a promise, an expectation, or something they say will count when it happens is OPEN, never DONE: it has not happened yet. For example, "Donholm placing a 100-bag order this week counts as a new account" is OPEN until they say the order came.',
   '  - When in doubt, OPEN.',
 ].join('\n');
 
-export const WHAT_HAPPENED_SCHEMA = {
-  name: 'what_happened_to_what_they_said',
-  description: 'For each numbered commitment, whether this person said it was done, not done, or neither.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      outcomes: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            item: { type: 'integer', description: 'The number of the commitment, as given.' },
-            happened: { type: 'string', enum: ['DONE', 'NOT_DONE', 'OPEN'] },
-            words: { type: 'string', description: 'For DONE only: their own words that say it already happened, copied exactly.' },
-          },
-          required: ['item', 'happened'],
-        },
-      },
-    },
-    required: ['outcomes'],
-  },
-} as const;
+/* The read's own schema is gone: these rules are part of the conversation's assessment now (the-assessment.ts), which is given the open promises by id. */
 
 /** One thing they said, with the question it answered where there was one. */
 export type AnAnswer = string | { asked?: string | null; said: string };
 
-export function thePrompt(open: readonly { text: string; whenSaid?: string | null }[], said: readonly AnAnswer[]): string {
-  const things = open.map((c, i) => `${i + 1}. ${c.text}${c.whenSaid ? ` (${c.whenSaid})` : ''}`).join('\n');
-  const answer = (a: AnAnswer) => (typeof a === 'string' ? a : a.asked ? `(Asked: "${a.asked}") ${a.said}` : a.said);
-  return `WHAT THEY SAID THEY WOULD DO:\n${things}\n\nWHAT THEY SAID IN THIS CHECK-IN, in order:\n${said.map((x, n) => `${n + 1}. ${answer(x)}`).join('\n')}`;
-}
 
 /**
  * THE SAME COMMITMENT, WRITTEN TWICE. Ngozi's "I will follow up with Mr. Adebayo again" and "I will

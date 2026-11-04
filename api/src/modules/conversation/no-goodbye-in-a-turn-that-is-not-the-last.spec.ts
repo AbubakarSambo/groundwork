@@ -38,7 +38,8 @@ describe('no goodbye in a turn that is not the last', () => {
 
   it('both the turn and the stream take it off when the product does not close', () => {
     /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
-    const both = SERVICE.match(/else if \(!close\.ready && hasAGoodbye\(/g) ?? [];
+    /* Changed 3 November 2026: the held-close branch went, so this is the first branch now, an `if` and not an `else if`. */
+    const both = SERVICE.match(/if \(!close\.ready && hasAGoodbye\(/g) ?? [];
     expect(both.length).toBe(1);
     expect((SERVICE.match(/withAQuestion\(withoutTheGoodbye\(/g) ?? []).length).toBeGreaterThanOrEqual(1);
     expect(theStreamedRouteRunsThePlainRoute(SERVICE)).toBe(true);

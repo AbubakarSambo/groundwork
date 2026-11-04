@@ -6,6 +6,7 @@ import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, statusWord, A_FAILURE, whatRemovingSays } from './people-here'
+import { useSaveTheirNumber } from './their-number'
 import { Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, ChoiceCards, Tag, Button, TextField, Select, Note } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-cannot-read-without-access'
@@ -125,11 +126,7 @@ export function OnePersonPage() {
     onSuccess: (_r, v) => { refresh(); toast.success(`${v.first}’s role has changed.`) },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? A_FAILURE),
   })
-  const phone = useMutation({
-    mutationFn: (number: string) => apiClient.patch(`/users/${id}`, { phoneNumber: number }),
-    onSuccess: () => { refresh(); toast.success('Saved.') },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That number did not save. Nothing else changed.'),
-  })
+  const phone = useSaveTheirNumber(id ?? '')
   const handOver = useMutation({
     mutationFn: () => apiClient.patch('/users/organization/owner', { userId: id }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['org-owner'] }); toast.success('Handed over. They now own this organisation.') },
@@ -148,7 +145,7 @@ export function OnePersonPage() {
   if (isError) {
     return (
       <Page>
-        <Note>We could not load this person just now. Reload the page, and if it keeps happening, tell us.</Note>
+        <Note>That didn’t load. Reload the page.</Note>
       </Page>
     )
   }
@@ -253,16 +250,16 @@ export function OnePersonPage() {
           <FieldRow label="Now" value={status === 'Checking in' ? <Tag tone="proven">Checking in</Tag> : status} />
           {/* A guest with an account takes a seat too (U.4 re-review); one held for a seat does not yet. */}
           {!m.awaitingOrgApproval && <FieldRow label="Seat" value={m.heldForASeat ? 'No seat on your plan' : 'Holds a seat'} />}
-          {whatsappOn && (
-            <EditableField
-              label="WhatsApp"
-              inputLabel={`WhatsApp number for ${first}`}
-              value={m.phoneNumber ?? ''}
-              empty="Not set"
-              saving={phone.isPending}
-              onSave={(v) => phone.mutate(v)}
-            />
-          )}
+          {/* Their phone number is always here to add or change, whether WhatsApp is on or off (Hafsah, 30 October 2026). Only what
+              is said about WhatsApp, the line below, waits until it is on (her rule of 26 September). */}
+          <EditableField
+            label="Phone number"
+            inputLabel={`Phone number for ${first}`}
+            value={m.phoneNumber ?? ''}
+            empty="Not set"
+            saving={phone.isPending}
+            onSave={(v) => phone.mutate(v)}
+          />
           {/* Where they are on WhatsApp, from the record (pilots on WhatsApp, 14 October). Saving an empty number removes it. */}
           {whatsappOn && m.whatsappSays && <FieldRow label="On WhatsApp" value={m.whatsappSays} />}
         </FieldRows>

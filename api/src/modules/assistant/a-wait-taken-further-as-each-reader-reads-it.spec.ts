@@ -103,6 +103,8 @@ function aWait(groundId: string, from: string, on: string | { label: string }, w
     fromParticipantId: fromRow.id, onParticipantId: onRow?.id ?? null, onLabel: typeof on === 'string' ? null : on.label,
     what, status: extra.status ?? 'WAITING', createdAt: at(day), groundId,
     escalatedAt: extra.escalated ? at(extra.escalated) : null, triedSaid: extra.triedSaid ?? null,
+    /* The assessment's reading of their words (F2, 2 November 2026): taken above the person it was with. */
+    takenFurther: /took it to the head of/.test(extra.triedSaid ?? ''),
     ground: g,
     fromParticipant: asParty(g, from),
     onParticipant: typeof on === 'string' ? asParty(g, on) : null,
@@ -310,7 +312,7 @@ describe('the same wait said twice', () => {
     const base = { fromParticipantId: 'p1', onParticipantId: null, onLabel: 'the finance office', status: 'WAITING', groundId: 'g', groundLabel: SALES, fromPersonKey: 'femi@baridi.test', onPersonKey: null };
     const [w] = whatThePlaceIsWaitingOn([
       { ...base, what: 'the approved budget for the Karen shop', createdAt: at('10'), escalatedAt: null, triedSaid: 'I emailed them.' },
-      { ...base, what: 'the approved budget for the Karen shop', createdAt: at('20'), escalatedAt: at('25'), triedSaid: 'I took it to the head of finance.' },
+      { ...base, what: 'the approved budget for the Karen shop', createdAt: at('20'), escalatedAt: at('25'), triedSaid: 'I took it to the head of finance.', takenFurther: true },
     ], at('30'));
     expect(w.escalatedAt).toEqual(at('25'));
     expect(w.triedSaid).toBe('I took it to the head of finance.');

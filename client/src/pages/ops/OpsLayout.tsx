@@ -88,7 +88,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
 
   if (me.isError) {
     return (
-      <section className="gw-page" style={{ padding: 40, maxWidth: 640 }}>
+      <section style={{ padding: 40, maxWidth: 640 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>This is not your system</h1>
         {/*
           * IT DID NOT SAY WHICH ACCOUNT IT MEANT.
@@ -161,7 +161,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
    */
   if (me.isPending) {
     return (
-      <section className="gw-page" style={{ padding: 40 }}>
+      <section style={{ padding: 40 }}>
         <p style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Opening the back office…</p>
       </section>
     )
@@ -178,16 +178,16 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
   const notYours = whyThisIsNotYours(location.pathname, me.data?.capabilities ?? [])
   if (notYours) {
     return (
-      <section className="gw-page" style={{ padding: 40, maxWidth: 620 }}>
+      <section style={{ padding: 40, maxWidth: 620 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>That part is not yours to open</h1>
-        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '23px', marginBottom: 8 }}>
           {notYours.because === 'no capability'
             ? 'There is no such page in the back office.'
             : <>Opening <strong>{notYours.page}</strong> needs <code>{notYours.because}</code>, which you do not hold.</>}
         </p>
         {/* A setting, not a judgement — and the person who can change it, because a refusal with
             no next step reads as the product being broken. */}
-        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 20 }}>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '23px', marginBottom: 20 }}>
           This is how your grants are set, not anything about you. Whoever runs the back office can change it.
         </p>
         <a className="gw-btn" href="/ops" style={{ textDecoration: 'none' }}>Back to your board</a>
@@ -252,7 +252,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
           if (pages.length === 0) return null
           return (
             <div key={group} style={{ marginBottom: 16 }}>
-              <p style={{ ...LABEL, fontSize: 9.5, marginBottom: 5 }}>{group}</p>
+              <p style={{ ...LABEL, fontSize: 10, marginBottom: 5 }}>{group}</p>
               {pages.map((p) => {
                 const here = location.pathname === p.path
                 return (
@@ -261,15 +261,20 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
                     to={p.path}
                     aria-current={here ? 'page' : undefined}
                     style={{
-                      display: 'block',
-                      padding: '5px 8px',
+                      /* The kit's rail (app.css .nav, .nav.on): the page you are on is the surface
+                         with a hairline and bold words, not a navy fill. */
+                      display: 'flex',
+                      alignItems: 'center',
+                      minHeight: 44,
+                      padding: '0 8px',
                       marginLeft: -8,
-                      borderRadius: 6,
-                      fontSize: 13,
+                      borderRadius: 8,
+                      fontSize: 14,
                       textDecoration: 'none',
-                      fontWeight: here ? 700 : 500,
-                      color: here ? 'white' : 'var(--gw-navy)',
-                      background: here ? 'var(--gw-navy)' : 'transparent',
+                      fontWeight: here ? 700 : 400,
+                      color: 'var(--gw-text)',
+                      background: here ? 'var(--gw-card)' : 'transparent',
+                      boxShadow: here ? 'inset 0 0 0 1px var(--gw-border)' : 'none',
                     }}
                   >
                     {p.name}
@@ -333,10 +338,10 @@ export function OpsHeader({ name, answers }: { name: string; answers: string }) 
   return (
     <header style={{ marginBottom: 18 }}>
       <p style={LABEL}>The team's operating system</p>
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
         {name}
       </h1>
-      <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: 0 }}>{answers}</p>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: 0 }}>{answers}</p>
     </header>
   )
 }

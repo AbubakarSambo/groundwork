@@ -40,15 +40,17 @@ describe('a refusal that asks must be answerable', () => {
     expect(COMPLETE.length).toBeGreaterThan(500);
   });
 
-  it('both thin-record refusals say they can be answered', () => {
+  it('both refusals left say they can be answered', () => {
     const flagged = COMPLETE.match(/canContinue: true/g) ?? [];
+    // Changed 26 October 2026 (Hafsah: item 2): a third refusal, an end with nothing said yet, keeps the check-in open, so it is answerable too.
+    // Changed 3 November 2026 (no forced close): the thin-turn refusal went with the floor of answers, so two are left, both answerable.
     expect(flagged).toHaveLength(2);
+    expect(COMPLETE.slice(COMPLETE.indexOf('Nothing has been said yet'), COMPLETE.indexOf('Nothing has been said yet') + 300)).toContain('canContinue: true');
   });
 
-  it('the thin-turn refusal is one of them', () => {
-    const i = COMPLETE.indexOf('I need a little more from you before this check-in can close');
-    expect(i).toBeGreaterThan(-1);
-    expect(COMPLETE.slice(i, i + 400)).toContain('canContinue: true');
+  it('there is no thin-turn refusal any more: no count of answers is asked for', () => {
+    expect(COMPLETE).not.toContain('I need a little more from you before this check-in can close');
+    expect(COMPLETE).not.toMatch(/one or two more questions|minTurns/);
   });
 
   it('the no-substance refusal is the other', () => {

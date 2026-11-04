@@ -113,9 +113,6 @@ export function asAQuestion(what: string): string {
   return /^(what|how|who|where|which)\b/i.test(t) ? `Tell me ${t}.` : `Tell me about ${t}.`;
 }
 
-export const theOneThingNeverAsked = (what: string): string =>
-  `${ONE_MORE_QUESTION} ${asAQuestion(what)}`;
-
 /**
  * WHEN THE MODEL WILL NOT LET A QUESTION GO, THE PRODUCT MOVES THE CONVERSATION ON. Smoke run, 20 Sep
  * 2026: "how many acres" was asked five times in five wordings, the third-ask guard fired, the retry
@@ -125,17 +122,15 @@ export const theOneThingNeverAsked = (what: string): string =>
 export const takenAsSaidAndOn = (next: string | null): string =>
   next ? `That goes down as you put it. ${asAQuestion(next)}` : 'That goes down as you put it.';
 
-/** The line the model gets on the turn after the hold, so it does not ask a second time. */
-export const THE_CLOSE_WAS_HELD =
-  'THE CLOSE WAS HELD ONCE, by the product, for a date, a number or a document. They have now answered that. Whatever they gave, do not ask for it again: it is recorded as what they said. If you were closing, close now, in the shortest turn of the session, with the marker.';
-
 /**
  * THE LAST THING THEY SAID, NOT THE LAST THING THEY TYPED. A closing turn is usually "no, we are good"
  * or "yes that's everything", which carries no date because it is not an answer to anything. The bar
  * reads back past those to the last turn with something in it.
  */
 const AN_ACKNOWLEDGEMENT = /^\s*(?:(?:no|yes|yeah|yep|ok|okay|sure|fine|good|great|perfect|done|understood|noted|alright|right|that'?s (?:it|all|everything)|we are good|we're good|i'?m good|nothing (?:else|more)|no,? (?:we are|we're|that'?s) (?:good|it|all|fine)|nope|all good|ready|let'?s close(?: it)?|thank you|thanks)[\s.!,]*){1,3}$/i;
-export const isAnAcknowledgement = (turn: string): boolean => AN_ACKNOWLEDGEMENT.test((turn ?? '').trim());
+/* A thank-you or a goodbye in a few more words is one too (polish round 3: "Thanks! Have a good one everyone." was answered "That did not come out right"). */
+const A_THANK_YOU_OR_GOODBYE = /^\s*(?:thank(?:s| you)|cheers|bye|goodbye|ok(?:ay)?,? thanks?)\b[^?]{0,80}$/i;
+export const isAnAcknowledgement = (turn: string): boolean => AN_ACKNOWLEDGEMENT.test((turn ?? '').trim()) || A_THANK_YOU_OR_GOODBYE.test((turn ?? '').trim());
 
 export function lastSubstantiveTurn(personSaid: string[]): string {
   for (let i = personSaid.length - 1; i >= 0; i--) {

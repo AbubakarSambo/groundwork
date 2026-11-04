@@ -279,17 +279,16 @@ export function ContextChat({ groundId }: { groundId: string }) {
         account - which is the sentence that makes a person willing to use it at all.
       */
       <div style={{ background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
           The context chat
         </div>
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 11 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginBottom: 11 }}>
           Talk through what this check-in is for, what each person is working to, and what you know
           about how it is going - or paste it all in at once. It fills in this page as you go, and
           what lands here guides the check-ins and the coaching. Nothing is written until you say so.
         </div>
-        <button
+        <button className="btn pri sm"
           onClick={start}
-          style={{ background: 'var(--gw-navy)', border: 'none', borderRadius: 7, padding: '9px 15px', fontSize: 13, fontWeight: 700, color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           Start the conversation
         </button>
@@ -339,7 +338,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
         What stays true and is worth saying: nothing is written until you say so, and nothing you
         write about a person is ever quoted to them or in a report.
       */}
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginBottom: 14 }}>
         {/*
           GROUP 3'S REVIEW, BATCH A FAULT 6: "SAY IT, PASTE IT, OR ATTACH IT: WHAT LANDS HERE..."
           JOINED TWO SENTENCES WITH A COLON.
@@ -366,7 +365,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
               paddingLeft: 12,
               color: m.role === 'user' ? 'var(--gw-dark)' : 'var(--gw-text)',
               fontWeight: m.role === 'user' ? 600 : 400,
-              fontSize: 13.5,
+              fontSize: 14,
               lineHeight: 1.65,
               whiteSpace: 'pre-wrap',
             }}
@@ -389,18 +388,16 @@ export function ContextChat({ groundId }: { groundId: string }) {
         */}
       {proposal && (
         <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
-          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 10, whiteSpace: 'pre-wrap' }}>{proposal.say}</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '20px', marginBottom: 10, whiteSpace: 'pre-wrap' }}>{proposal.say}</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button
+            <button className="btn pri sm"
               onClick={() => confirm.mutate()}
               disabled={confirm.isPending}
-              style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit' }}
             >
               {confirm.isPending ? 'Saving…' : 'Yes, set it'}
             </button>
-            <button
+            <button className="btn sec sm"
               onClick={() => setProposal(null)}
-              style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit' }}
             >
               Not that
             </button>
@@ -454,12 +451,12 @@ export function ContextChat({ groundId }: { groundId: string }) {
             onKeyDown={e => { if (e.key === 'Enter') submit() }}
             data-gw-context-chat-input
             placeholder="Type your answer…"
-            style={{ flex: 1, padding: '8px 4px', border: 'none', fontSize: 13.5, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
+            style={{ flex: 1, minHeight: 44, padding: '8px 4px', border: 'none', fontSize: 16, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
           />
-          <button
+          <button className="btn pri sm"
             onClick={submit}
             disabled={!text.trim() || send.isPending}
-            style={{ padding: '8px 16px', borderRadius: 8, background: text.trim() ? 'var(--gw-navy)' : 'var(--gw-bg)', color: text.trim() ? 'white' : 'var(--gw-muted)', border: 'none', cursor: text.trim() ? 'pointer' : 'default', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', flexShrink: 0 }}
+            style={{ flexShrink: 0 }}
           >
             Send
           </button>
@@ -484,7 +481,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
               setText('')
               qc.removeQueries({ queryKey: ['context-chat-opening', groundId] })
             }}
-            style={{ fontSize: 11.5, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+            style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
             title="Clear this conversation and start again. Anything already saved stays."
           >
             Start this conversation over

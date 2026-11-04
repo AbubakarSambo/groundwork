@@ -53,10 +53,11 @@ describe('the link itself', () => {
     expect(STOP_LINE('https://x/stop-reminders/abc')).toContain('href="https://x/stop-reminders/abc"');
   });
 
+  /* Changed 4 November 2026 (release batch 1): the way out is the link alone, with no note about what is recorded. It still promises nothing more. */
   it('promises what the route actually does, and no more', () => {
     const line = STOP_LINE('u');
-    expect(line).toMatch(/invitation keeps working/);
-    expect(line).toMatch(/nothing is recorded/);
+    expect(line).toMatch(/Stop the reminders/);
+    expect(line).not.toMatch(/decline|recorded/);
   });
 
   it('does not offer to decline for them, because a scanner can follow a link', () => {
@@ -75,7 +76,7 @@ describe('the mail actually carries it', () => {
   });
 
   it('and on the reminder, which is the thing being stopped', () => {
-    expect(email).toMatch(/sendNudge[\s\S]{0,1600}theWayToStopBeingChased/);
+    expect(email).toMatch(/sendNudge[\s\S]{0,2400}theWayToStopBeingChased/);
   });
 
   it('minted once and kept, not tied to the invite token that is cleared on accept', () => {

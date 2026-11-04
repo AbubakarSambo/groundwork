@@ -82,7 +82,7 @@ describe('the thin-record refusal is said in the conversation, not only in a toa
     renderChat()
 
     await screen.findByText(/Sent the proposal\./i, {}, { timeout: 4000 })
-    const box = screen.getByPlaceholderText(/Type, or hold to speak/i)
+    const box = screen.getByPlaceholderText(/Type your answer/i)
     fireEvent.change(box, { target: { value: 'Followed up with the client.' } })
     fireEvent.click(screen.getByRole('button', { name: /Send message/i }))
 
@@ -102,7 +102,7 @@ describe('the thin-record refusal is said in the conversation, not only in a toa
     // The end card is gone, and the answer box is back and focused.
     expect(screen.queryByRole('button', { name: /That’s right, finish/i })).toBeNull()
     await waitFor(() => {
-      const box = screen.getByPlaceholderText(/Type, or hold to speak/i)
+      const box = screen.getByPlaceholderText(/Type your answer/i)
       expect(box).not.toBeDisabled()
       expect(box).toHaveFocus()
     })

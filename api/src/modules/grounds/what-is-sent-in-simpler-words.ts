@@ -1,3 +1,5 @@
+import { ABOUT_HOW_LONG, A_CHECK_IN_TAKES } from '../../common/how-long-a-check-in-takes';
+
 /**
  * WHAT IS SENT AFTERWARDS, IN THE PLAINER FORM, FOR A CHECK-IN SET TO "USE SIMPLER WORDS".
  *
@@ -17,11 +19,15 @@
 export const THE_REPORT_IN_SIMPLER_WORDS =
   'THIS CHECK-IN USES SIMPLER WORDS, FOR EVERYBODY IN IT. Write every sentence of the report in short sentences, one idea in each, using everyday words that a person with basic English knows. Use no idioms and no figures of speech. Keep every fact, number, name and quote exactly as it is: simpler words never mean fewer facts.';
 
-/** What WhatsApp says when the person writes "finish" and the check-in is closed. */
+/**
+ * What WhatsApp says when the person writes "finish" and the check-in is closed. Only what has happened (a Pulse check on
+ * production, 15 October): "Your report follows in a moment" was followed by "The shared picture is made once everyone
+ * has answered", so the first was untrue. The message after this one says what comes next, whichever it is.
+ */
 export function theCheckInIsCompleteSaying(simplerWords?: boolean | null): string {
   return simplerWords
-    ? 'Your check-in is finished, and your answers are saved. Your report will come in a moment.'
-    : 'Your check-in is complete and on record. Your report follows in a moment.';
+    ? 'Your check-in is finished, and your answers are saved.'
+    : 'Your check-in is complete and on record.';
 }
 
 /** What WhatsApp adds when there is enough to close and the person has not said "finish". */
@@ -45,14 +51,14 @@ export function theConversationWorthHavingSaying(simplerWords?: boolean | null):
  * approval: until one is approved the person is sent the approved body, and that is true to say.
  */
 export const THE_REMINDERS_IN_SIMPLER_WORDS: Record<string, string> = {
-  'checkin-open': 'Hi {{1}}, your check-in for {{2}} is open. It takes about ten minutes. You can answer here. Write START to begin.',
-  'checkin-catch-up': 'Hi {{1}}, your check-in for {{2}} is open. It takes about ten minutes. You can answer here. Write START to begin.',
+  'checkin-open': `Hi {{1}}, your check-in for {{2}} is open. It takes ${ABOUT_HOW_LONG}. You can answer here. Write START to begin.`,
+  'checkin-catch-up': `Hi {{1}}, your check-in for {{2}} is open. It takes ${ABOUT_HOW_LONG}. You can answer here. Write START to begin.`,
   'due-tomorrow': 'Hi {{1}}, your check-in for {{2}} is due tomorrow, {{3}}. You can answer here at any time before then.',
   'opens-soon': 'Hi {{1}}, your check-in for {{2}} opens in one hour, at {{3}}. Write here when it opens, and we will start.',
-  'closes-soon': 'Hi {{1}}, your check-in for {{2}} closes in one hour, at {{3}}. Please answer now. It takes about ten minutes. Then your answers go into the report.',
+  'closes-soon': `Hi {{1}}, your check-in for {{2}} closes in one hour, at {{3}}. Please answer now. It takes ${ABOUT_HOW_LONG}. Then your answers go into the report.`,
   overdue: 'Hi {{1}}, your check-in for {{2}} is late. It is still open. You can answer here now.',
   'team-almost-in': 'Hi {{1}}, {{2}} of {{3}} people have answered the check-in for {{4}}. You have not answered yet. When you answer, your answers go into the report.',
-  'your-view-matters': 'Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} see what is in your way and where they can help. It takes about ten minutes. You can answer here.',
+  'your-view-matters': `Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} see what is in your way and where they can help. It takes ${ABOUT_HOW_LONG}. You can answer here.`,
   'anchor-follow-up': 'Hi {{1}}, last time you said you would {{2}}. How did it go? Your check-in for {{3}} is open. You can answer here.',
 };
 
@@ -60,14 +66,14 @@ export const THE_REMINDERS_IN_SIMPLER_WORDS: Record<string, string> = {
  * OUR OWN WORDS INSIDE THE 24 HOURS (Hafsah, 14 October 2026: "Never change, rename or add to the WhatsApp templates that
  * Meta has approved, not even their wording. Anything that needs different words goes in normal messages, sent within 24
  * hours of the person writing, or by email."). Three approved templates say five minutes. Inside the 24 hours the message
- * is a normal one, so it says about ten minutes here, with the same blanks in the same order; outside them, the approved
+ * is a normal one, so it says the one owner's length here (common/how-long-a-check-in-takes.ts), with the same blanks in the same order; outside them, the approved
  * template goes exactly as approved (a-message-outside-the-window.ts).
  */
 export const THE_REMINDERS_IN_OUR_OWN_WORDS: Record<string, string> = {
-  'checkin-open': 'Hi {{1}}, your check-in for {{2}} is open. It takes about ten minutes, and you can answer right here. Reply START to begin.',
-  'checkin-catch-up': 'Hi {{1}}, your check-in for {{2}} is open. It takes about ten minutes, and you can answer right here. Reply START to begin.',
-  'closes-soon': 'Hi {{1}}, your check-in for {{2}} closes in an hour, at {{3}}. About ten minutes now means your view is part of this round.',
-  'your-view-matters': "Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} understand what's in your way, and where they can help. It takes about ten minutes, and you can answer here.",
+  'checkin-open': `Hi {{1}}, your check-in for {{2}} is open. It takes ${ABOUT_HOW_LONG}, and you can answer right here. Reply START to begin.`,
+  'checkin-catch-up': `Hi {{1}}, your check-in for {{2}} is open. It takes ${ABOUT_HOW_LONG}, and you can answer right here. Reply START to begin.`,
+  'closes-soon': `Hi {{1}}, your check-in for {{2}} closes in an hour, at {{3}}. ${A_CHECK_IN_TAKES} now means your view is part of this round.`,
+  'your-view-matters': `Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} understand what's in your way, and where they can help. It takes ${ABOUT_HOW_LONG}, and you can answer here.`,
 };
 
 /**
@@ -86,9 +92,11 @@ export const THE_EMAILS = {
   /** "Your check-in for X is still open." and the line when the other person has already answered. */
   nudge: (simplerWords?: boolean | null) =>
     simplerWords
-      ? { stillOpen: 'is still open. It takes about ten minutes. Your answers go into the report.', theOtherHasAnswered: 'The other person has already answered. Yours is the last answer we need.' }
-      : { stillOpen: 'is still open. About ten minutes now puts your view into the shared picture, and you read it too.', theOtherHasAnswered: 'They have already shared their side. Yours is the last one we are waiting for.' },
+      ? { stillOpen: `is still open. It takes ${ABOUT_HOW_LONG}. Your answers go into the report.`, theOtherHasAnswered: 'The other person has already answered. Yours is the last answer we need.' }
+      : { stillOpen: `is still open. It takes ${ABOUT_HOW_LONG}, and your answers go into the report everyone reads.`, theOtherHasAnswered: 'They have already shared their side. Yours is the last one we are waiting for.' },
+  /** The same, with the direct morning on (email/a-direct-email.ts): how long it takes, and that everybody else is in, and nothing about a shared picture. */
+  nudgeDirect: () => ({ stillOpen: `is still open. It takes ${ABOUT_HOW_LONG}.`, theOtherHasAnswered: 'Everyone else has checked in. Yours is the last one.' }),
   /** "A new check-in is ready for X." */
   nextCheckInOpen: (simplerWords?: boolean | null) =>
-    simplerWords ? { before: 'Your next check-in for', after: ' is open. It takes about ten minutes. Your answers go into the report.' } : { before: 'A new check-in is ready for', after: '. Answering keeps the picture you and your team read up to date.' },
+    simplerWords ? { before: 'Your next check-in for', after: ` is open. It takes ${ABOUT_HOW_LONG}. Your answers go into the report.` } : { before: 'A new check-in is ready for', after: `. It takes ${ABOUT_HOW_LONG}, and your answers keep the report you and your team read up to date.` },
 } as const;

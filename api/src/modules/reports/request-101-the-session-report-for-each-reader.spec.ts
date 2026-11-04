@@ -62,7 +62,7 @@ describe('request 101 (a) and (b): the shared picture carries no reading about a
 
   it('Amani reads the picture of session 1 as plain sentences', async () => {
     const read = await bothSessionsAs('sales', 'u-amani');
-    expect(read.one.pictureLines[0]).toBe('4 of 4 people have answered this session. There is enough here to talk about, and not enough to settle anything.');
+    expect(read.one.pictureLines[0]).toBe('4 of 4 people have answered this session. There is enough here to talk about.');
     for (const line of read.one.pictureLines) expect(line).toMatch(/^[A-Z0-9].*[.?]$/);
   });
 

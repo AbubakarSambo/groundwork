@@ -1,0 +1,28 @@
+Warehouse move project plan (Ikeja to Sagamu). Owner: me (Tolu Bakare). Target go live 15 November, hard stop because the Ikeja lease ends 30 November.
+
+Workstreams and tasks:
+1. Site readiness (Ibrahim Danjuma): racking installed by 24 October, power backup tested by 31 October, fire certificate from the state by 7 November. Ibrahim said he would get the racking quote approved this week.
+2. Stock count and labelling (Zainab Musa): full count of 4,200 SKUs by 20 October, label every pallet by 3 November. She needs 6 temporary staff, not approved yet, budget N1.2m.
+3. Systems (Chinedu Obi): inventory system cut-over rehearsal on 8 November, final cut-over night of 14 November. Chinedu to confirm the vendor, Kellon Systems, has two engineers available.
+4. Customers (Tolu): tell the top 30 customers by 20 October that deliveries pause 14 to 16 November. 
+5. Transport (nobody yet): need two trucks booked for the weekend of 8 November. Someone has to own this. Maybe Ibrahim, maybe Zainab, not decided.
+
+Budget: total N14.5m, spent so far N3.1m. Contingency 10%. Do not go over N15m.
+
+RISKS: 
+- fire certificate delayed (high, state office closed for the elections period)
+- Kellon engineers not available (medium)
+- staff approval late so the count slips (high, owner Zainab)
+- truck prices go up at month end (low)
+- power at Sagamu unreliable. Mr Adewale at the power company says 3 weeks to connect, nothing in writing.
+- stock damage in the move, insurance quote still needed from Grace Eze at the broker.
+
+Decisions already made: we move in one weekend not two. We keep Ikeja open for returns until 15 December.
+Decision needed: do we pay for night shift overtime or hire contractors? Not decided.
+
+Ways we work: Monday stand-up at 9, risks reviewed every Friday, anything red goes to me the same day.
+
+Milestones: 24 Oct racking, 31 Oct power, 7 Nov fire certificate, 8 Nov rehearsal, 14 Nov cut-over, 15 Nov go live, 30 Nov lease ends.
+
+Ibrahim - is the fire inspector booked for a date yet?
+Zainab - how many of the 4,200 SKUs are actually counted so far?

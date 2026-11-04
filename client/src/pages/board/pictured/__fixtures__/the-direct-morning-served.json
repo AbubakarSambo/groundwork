@@ -1,0 +1,346 @@
+{
+ "drop": {
+  "theMorning": {
+   "groundId": "a0cdc357-32d0-4df4-bece-692b27e5511f",
+   "kind": "sales",
+   "parts": [
+    {
+     "key": "target",
+     "heading": "Will we reach 120 units sold by 30 October?",
+     "lines": [
+      "75 of 120 sold, 47 paid.",
+      "None of the open deals is likely by 30 October.",
+      "You're 45 short, and the open deals cover only 40 of them, so the team needs new leads this week."
+     ]
+    },
+    {
+     "key": "needsYou",
+     "heading": "What needs you today",
+     "lines": [
+      "Juja Hardware wants 5 units at KES 4,500 instead of 5,000, and Joseph is waiting for a yes or no from Management, so get it for Joseph.",
+      "Peter has been waiting on you since Thursday for a specific area to focus on.",
+      "Peter is waiting for a list of leads for this week, and nobody has been named to give it, so send it or say who will."
+     ]
+    },
+    {
+     "key": "closing",
+     "heading": "About to close",
+     "lines": [
+      "Ngong Road Minimart pays KES 25,000 for 5 units on delivery tomorrow."
+     ]
+    },
+    {
+     "key": "team",
+     "heading": "Your team today",
+     "lines": [
+      "Kevin's sale to Roysambu Gym has no proof yet, so ask Kevin for the payment record.",
+      "Mercy has 2 sales with proof, so tell Mercy well done."
+     ],
+     "about": [
+      {
+       "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c"
+      },
+      {
+       "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2"
+      }
+     ]
+    }
+   ]
+  },
+  "workRecords": [
+   {
+    "section": "Deal grid",
+    "rows": [
+     {
+      "id": "dbfefc1a-6647-47fc-b524-3f268f49a2cb",
+      "kind": "deal",
+      "name": "Lavington Business Park",
+      "stage": "Pitched",
+      "owner": "Grace Achieng",
+      "ownerParticipantId": "9594ee31-5f40-41d2-97fe-e87527405712",
+      "fields": {
+       "Need": "20 units",
+       "Units": "20",
+       "Contact": "Mr. Kiprop",
+       "Next step": "Site visit confirmed for tomorrow, Tuesday, at 10.",
+       "Next step by": "next week"
+      },
+      "group": "possible",
+      "notAnsweringSince": null,
+      "buyingDate": null,
+      "value": null,
+      "mark": "said",
+      "paymentRecord": false,
+      "signedOrder": false,
+      "nextStep": "Site visit confirmed for tomorrow, Tuesday, at 10, by next week"
+     },
+     {
+      "id": "c685918b-5034-46bc-b918-df1a1294177d",
+      "kind": "deal",
+      "name": "Savannah Cafe",
+      "stage": "Won",
+      "owner": "Kevin Omondi",
+      "ownerParticipantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+      "fields": {
+       "Need": "6 units",
+       "Units": "6",
+       "Value": "KES 15,000 deposit",
+       "Quoted": "KES 30,000",
+       "Contact": "Jane",
+       "Next step": "pay the deposit tomorrow",
+       "Next step by": "Friday",
+       "Decision maker": "Jane Mwende, the owner",
+       "Quote accepted": "2026-10-14"
+      },
+      "group": "won",
+      "notAnsweringSince": null,
+      "buyingDate": "2026-10-16",
+      "value": "KES 15,000 deposit",
+      "mark": "proven",
+      "paymentRecord": true,
+      "signedOrder": false,
+      "nextStep": "Savannah Cafe pays on Friday 16 October."
+     },
+     {
+      "id": "8d06bea2-468a-4c89-ab09-eb1dd8d7cb28",
+      "kind": "deal",
+      "name": "Kilele Hotel",
+      "stage": "Won",
+      "owner": "Kevin Omondi",
+      "ownerParticipantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+      "fields": {
+       "Units": "40",
+       "Value": "KES 200,000"
+      },
+      "group": "won",
+      "notAnsweringSince": null,
+      "buyingDate": null,
+      "value": "KES 200,000",
+      "mark": "proven",
+      "paymentRecord": true,
+      "signedOrder": false
+     },
+     {
+      "id": "0af2a831-887b-45d0-811e-261bb5b57637",
+      "kind": "deal",
+      "name": "Sunrise Primary School",
+      "stage": "Contacted",
+      "owner": "Mercy Wairimu",
+      "ownerParticipantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+      "fields": {
+       "Contact": "The head teacher",
+       "Budget stated": "no budget until January",
+       "Decision maker": "The school board"
+      },
+      "group": "possible",
+      "notAnsweringSince": null,
+      "buyingDate": null,
+      "value": null,
+      "mark": "said",
+      "paymentRecord": false,
+      "signedOrder": false
+     },
+     {
+      "id": "aa1a3250-a055-420b-9ab7-da06fccd7c35",
+      "kind": "deal",
+      "name": "Greenfield Supermarket",
+      "stage": "Won",
+      "owner": "Mercy Wairimu",
+      "ownerParticipantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+      "fields": {
+       "Need": "25 units",
+       "Units": "25",
+       "Value": "KES 125,000",
+       "Quoted": "KES 125,000",
+       "Contact": "Mrs. Achola",
+       "Next step": "call Mrs. Achola first thing Monday to get the manager's name and an estimated time for the sign-off",
+       "Next step by": "next week",
+       "Decision maker": "her manager"
+      },
+      "group": "won",
+      "notAnsweringSince": null,
+      "buyingDate": null,
+      "value": "KES 125,000",
+      "mark": "proven",
+      "paymentRecord": false,
+      "signedOrder": true,
+      "nextStep": "Call Mrs. Achola first thing Monday to get the manager's name and an estimated time for the sign-off, by next week"
+     },
+     {
+      "id": "ea37eec6-0a3a-43c7-b21d-e359f3fe9f18",
+      "kind": "deal",
+      "name": "Mama Pima Stores",
+      "stage": "Contacted",
+      "owner": "Joseph Kariuki",
+      "ownerParticipantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+      "fields": {
+       "Units": "10",
+       "Contact": "Mrs. Atieno"
+      },
+      "group": "possible",
+      "notAnsweringSince": null,
+      "buyingDate": null,
+      "value": null,
+      "mark": "said",
+      "paymentRecord": false,
+      "signedOrder": false,
+      "nextStep": "Waiting on Mrs Atieno for her final decision on the number of units and confirmation of payment"
+     },
+     {
+      "id": "0a1c1cfa-4aef-4b9c-8d1f-1e621a4e0cf2",
+      "kind": "deal",
+      "name": "Upper Hill Offices",
+      "stage": "Contacted",
+      "owner": "Peter Njoroge",
+      "ownerParticipantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+      "fields": {
+       "Contact": "the receptionist",
+       "Next step": "if no reply, I'll drop it",
+       "Next step by": "Monday"
+      },
+      "group": "possible",
+      "notAnsweringSince": "2026-10-14",
+      "buyingDate": null,
+      "value": null,
+      "mark": "said",
+      "paymentRecord": false,
+      "signedOrder": false,
+      "nextStep": "If no reply, I'll drop it, by Monday"
+     },
+     {
+      "id": "e5b19e67-d361-4894-bc23-ccbf51e0319a",
+      "kind": "deal",
+      "name": "Ngong Road Minimart",
+      "stage": "Quoted",
+      "owner": "Kevin Omondi",
+      "ownerParticipantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+      "fields": {
+       "Need": "5 units",
+       "Units": "5",
+       "Value": "KES 25,000",
+       "Quoted": "KES 25,000",
+       "Contact": "Ali",
+       "Next step": "paid on delivery on Wednesday",
+       "Next step by": "next week"
+      },
+      "group": "possible",
+      "notAnsweringSince": null,
+      "buyingDate": null,
+      "value": "KES 25,000",
+      "mark": "said",
+      "paymentRecord": false,
+      "signedOrder": false,
+      "nextStep": "Paid on delivery on Wednesday, by next week"
+     },
+     {
+      "id": "e34cec71-fecf-4193-89f3-a43c29a081cb",
+      "kind": "deal",
+      "name": "Juja Hardware",
+      "stage": "Quoted",
+      "owner": "Joseph Kariuki",
+      "ownerParticipantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+      "fields": {
+       "Need": "5 units",
+       "Units": "5",
+       "Contact": "The owner",
+       "Next step": "will sign on Monday",
+       "Price each": "KES 4,500",
+       "Value": "KES 22,500"
+      },
+      "group": "possible",
+      "notAnsweringSince": null,
+      "buyingDate": null,
+      "value": "KES 22,500",
+      "mark": "memory",
+      "paymentRecord": false,
+      "signedOrder": false,
+      "nextStep": "Get that price to Juja Hardware"
+     },
+     {
+      "id": "f2958f15-b8ef-4078-8ecd-9ffffc5025e4",
+      "kind": "deal",
+      "name": "Roysambu Gym",
+      "stage": "Won",
+      "owner": "Kevin Omondi",
+      "ownerParticipantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+      "fields": {
+       "Need": "3 units",
+       "Units": "3",
+       "Value": "KES 15,000",
+       "Quoted": "KES 15,000",
+       "Contact": "Faith",
+       "Next step": "Faith is working on getting approval"
+      },
+      "group": "said-won",
+      "notAnsweringSince": null,
+      "buyingDate": null,
+      "value": "KES 15,000",
+      "mark": "memory",
+      "paymentRecord": false,
+      "signedOrder": false,
+      "nextStep": "Faith is working on getting approval"
+     },
+     {
+      "id": "b774d335-c659-4e15-8c82-5fc5811186a8",
+      "kind": "deal",
+      "name": "Mama Rose's Kiosk",
+      "stage": "Won",
+      "owner": "Mercy Wairimu",
+      "ownerParticipantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+      "fields": {
+       "Units": "1",
+       "Value": "KES 5,000",
+       "Next step": "arrange for her dispenser to be delivered",
+       "Price each": "KES 5,000"
+      },
+      "group": "won",
+      "notAnsweringSince": null,
+      "buyingDate": null,
+      "value": "KES 5,000",
+      "mark": "proven",
+      "paymentRecord": true,
+      "signedOrder": false,
+      "nextStep": "Arrange for her dispenser to be delivered"
+     }
+    ]
+   }
+  ]
+ },
+ "fees": {
+  "theMorning": {
+   "groundId": "549a4a9e-4686-4a5f-a612-ebdba4f22c93",
+   "kind": "collections",
+   "parts": [
+    {
+     "key": "target",
+     "heading": "What is owed, and what is paid",
+     "lines": [
+      "KES 180,000 is owed on 3 fee notes, and 2 of them have no amount on record. Nothing is paid with proof yet.",
+      "FN-006 for Baraka Hardware, FN-009 for Upendo Schools and FN-004 for Kasarani Foods are marked paid, KES 670,000 in all, with no proof filed.",
+      "No fee note fell due today."
+     ]
+    },
+    {
+     "key": "needsYou",
+     "heading": "What needs you today",
+     "lines": [
+      "Nyota Logistics disputes FN-008, saying the contract review was billed twice, and Brian follows it up, so decide whether to correct it.",
+      "Brian has been waiting on you since 12 October for guidance on how to proceed with the double-billing claim.",
+      "You marked FN-004 for Kasarani Foods paid, so file the bank slip or the M-Pesa message."
+     ]
+    },
+    {
+     "key": "closing",
+     "heading": "Who to chase",
+     "lines": [
+      "FN-005 for Kasarani Foods v. Tumaini Traders fell due on 14 October, when the reply was filed, and nothing is paid yet. Brian follows it up.",
+      "Jamii Clinics owes KES 180,000 on FN-007, and Aisha follows it up.",
+      "Ask Njeri for the proof that FN-006 for Baraka Hardware is paid.",
+      "Ask Njeri for the proof that FN-009 for Upendo Schools is paid."
+     ]
+    }
+   ]
+  },
+  "workRecords": []
+ }
+}

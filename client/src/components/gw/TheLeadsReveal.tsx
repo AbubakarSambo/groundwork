@@ -26,7 +26,7 @@ export function TheLeadsReveal({ reveal }: { reveal: TheLeadsRevealShape | null 
   return (
     <div className="gwui-stack-18">
       <div>
-        <div className="gwui-section-title" style={{ fontSize: 22, fontWeight: 800 }}>{reveal.title}</div>
+        <div className="t-h2" style={{ fontSize: 22, fontWeight: 700 }}>{reveal.title}</div>
         <p className="gwui-panel-text" style={{ margin: '2px 0 0', color: 'var(--gw-sub)' }}>{reveal.subtitle}</p>
       </div>
 
@@ -78,7 +78,7 @@ export function TheLeadsReveal({ reveal }: { reveal: TheLeadsRevealShape | null 
         )}
 
         {(reveal.whatGroundworkWillExplore ?? []).length > 0 && (
-          <Panel heading="What Groundwork will explore">
+          <Panel heading="What it will ask about">
             <Stack gap={6}>
               {reveal.whatGroundworkWillExplore.map((s, i) => (
                 <p key={i} className="gwui-panel-text">{s}</p>

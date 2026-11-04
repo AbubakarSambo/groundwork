@@ -28,7 +28,8 @@ describe('the opener for an open link', () => {
   /* The whole point: no prompt composed, no model called, no guard re-run. */
   it('and costs nothing to serve', () => {
     const open = CONV.slice(CONV.indexOf('async open(checkInId: string'), CONV.indexOf('private async whatTheDocumentWaitsFor('));
-    expect(open).toMatch(/const openerSystem = alreadyWritten\s*\n?\s*\? ''/);
+    /* Changed 4 November 2026: an opener prepared in advance costs nothing to serve either (the-opening-prepared-in-advance). */
+    expect(open).toMatch(/const openerSystem = alreadyWritten(?:\s*\|\|\s*prepared)?\s*\n?\s*\? ''/);
     expect(open).toMatch(/const reply = alreadyWritten\s*\n?\s*\? alreadyWritten/);
     expect(open).toMatch(/const held = alreadyWritten\s*\n?\s*\? forHumans\(reply\)/);
   });
@@ -43,7 +44,9 @@ describe('the opener for an open link', () => {
   it('and what is stored is what the guards passed', () => {
     const open = CONV.slice(CONV.indexOf('async open(checkInId: string'), CONV.indexOf('private async whatTheDocumentWaitsFor('));
     expect(open).toMatch(/theOpener: aiTurn\.content/);
-    expect(open).toMatch(/content: opening,/);
+    /* Changed 26 October 2026 (Hafsah: the opening line): what the guards passed is stored, with the line about how long it takes in front (not for a self-correction). */
+    /* And not for a check-in opened by Add something, whose first line is "What would you like to add?" (26 October 2026). */
+    expect(open).toMatch(/content: \(checkIn as any\)\.isSelfCorrection \|\| alreadyWritten === WHAT_WOULD_YOU_LIKE_TO_ADD \? opening : withTheOpeningLine\(opening\),/);
   });
 
   /*

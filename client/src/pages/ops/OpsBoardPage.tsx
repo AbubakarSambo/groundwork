@@ -56,7 +56,7 @@ function Rows({ rows }: { rows: Array<Record<string, unknown>> }) {
 
   return (
     <div style={{ overflowX: 'auto', marginTop: 10 }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12.5 }}>
+      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
         <thead>
           <tr>
             {columns.map((c) => (
@@ -99,8 +99,8 @@ function Number({ number }: { number: OpsNumber }) {
 
   const face = (
     <>
-      <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)' }}>{readable(number)}</div>
-      <div style={{ fontSize: 12.5, color: 'var(--gw-navy)', marginTop: 2, fontWeight: 600 }}>
+      <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--gw-navy)' }}>{readable(number)}</div>
+      <div style={{ fontSize: 12, color: 'var(--gw-navy)', marginTop: 2, fontWeight: 700 }}>
         {number.label}
       </div>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{number.says}</div>
@@ -167,10 +167,10 @@ function YourStanding({ personKey }: { personKey: string }) {
       <p style={LABEL}>What you brought</p>
       {targets.map((t) => (
         <div key={t.periodKey + String(t.isTargetListExpectation)} style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gw-navy)' }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)' }}>
             {t.countedSoFar} of {t.targetCount}
           </div>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
             {t.isTargetListExpectation ? 'this list' : t.period} · by{' '}
             {whenItWas(t.dueDate, 'day')}
           </div>
@@ -254,11 +254,10 @@ function YourTodos({ personKey }: { personKey: string }) {
       <ul style={{ listStyle: 'none', margin: '8px 0 0', padding: 0 }}>
         {open.map((t) => (
           <li key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '4px 0' }}>
-            <button
+            <button className="btn sec sm"
               type="button"
               onClick={() => close.mutate(t.id)}
               aria-label={`Mark "${t.title}" done`}
-              style={{ ...CARD, padding: '2px 8px', fontSize: 11.5, cursor: 'pointer' }}
             >
               Done
             </button>
@@ -325,11 +324,10 @@ function WaitingOnYou() {
             <div style={{ fontSize: 13 }}>{a.requestSummary}</div>
             <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
               {(['APPROVED', 'CHANGES_REQUESTED', 'REJECTED'] as const).map((status) => (
-                <button
+                <button className="btn sec sm"
                   key={status}
                   type="button"
                   onClick={() => decide.mutate({ id: a.id, status })}
-                  style={{ ...CARD, padding: '3px 9px', fontSize: 11.5, cursor: 'pointer' }}
                 >
                   {status === 'APPROVED' ? 'Approve' : status === 'REJECTED' ? 'No' : 'Changes'}
                 </button>
@@ -359,7 +357,7 @@ export default function OpsBoardPage() {
 
   if (me.isError) {
     return (
-      <section className="gw-page" style={{ padding: 40, maxWidth: 640 }}>
+      <section style={{ padding: 40, maxWidth: 640 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>This is not your system</h1>
         <p style={{ fontSize: 14, color: 'var(--gw-sub)' }}>
           You are signed in, but you are not set up in the Groundwork team's operating system. That is
@@ -370,13 +368,13 @@ export default function OpsBoardPage() {
   }
 
   return (
-    <section className="gw-page" style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+    <section style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
       <header style={{ marginBottom: 18 }}>
         <p style={LABEL}>The team's operating system</p>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
           {board.data?.name ?? 'Loading'}
         </h1>
-        <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: 0 }}>{board.data?.answers}</p>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: 0 }}>{board.data?.answers}</p>
       </header>
 
       {/*
@@ -388,31 +386,22 @@ export default function OpsBoardPage() {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
         {(listing.data?.boards ?? []).length > 1 &&
           (listing.data?.boards ?? []).map((b) => (
-            <button
+            <button className={`gwui-choice${b.key === boardKey ? ' gwui-choice-on' : ''}`}
               key={b.key}
               type="button"
               onClick={() => setChosen(b.key)}
               aria-current={b.key === boardKey}
-              style={{
-                ...CARD,
-                padding: '6px 12px',
-                cursor: 'pointer',
-                fontSize: 12.5,
-                fontWeight: b.key === boardKey ? 700 : 500,
-                background: b.key === boardKey ? 'var(--gw-navy)' : 'white',
-                color: b.key === boardKey ? 'white' : 'var(--gw-navy)',
-              }}
             >
               {b.name}
             </button>
           ))}
 
-        <label style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--gw-sub)' }}>
+        <label style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--gw-sub)' }}>
           Period{' '}
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            style={{ fontSize: 12.5, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
+            style={{ fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
           >
             {(periods.data ?? []).map((p) => (
               <option key={p.key} value={p.key}>

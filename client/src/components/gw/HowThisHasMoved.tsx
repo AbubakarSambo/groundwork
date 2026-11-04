@@ -33,7 +33,7 @@ export function HowThisHasMoved({ groundId, viewerRunsThisCheckIn }: { groundId:
       <div className="gwui-fs-14-5 gwui-ink-navy gwui-mb-2" style={{ fontWeight: 700 }}>
         How this has moved
       </div>
-      <div className="gwui-fs-13-5 gwui-ink-muted gwui-mb-12" style={{ lineHeight: 1.55, maxWidth: 560 }}>
+      <div className="gwui-fs-13-5 gwui-ink-muted gwui-mb-12" style={{ lineHeight: '22px', maxWidth: 560 }}>
         What the report said at the end of each session, as it stood then. Nothing here has been
         rewritten since.
       </div>
@@ -89,7 +89,7 @@ export function HowThisHasMoved({ groundId, viewerRunsThisCheckIn }: { groundId:
              * this check-in and says nothing here for anybody else.
              */}
             {viewerRunsThisCheckIn && (
-              <div className="gwui-fs-14-5 gwui-ink-text" style={{ lineHeight: 1.6 }}>{m.says}</div>
+              <div className="gwui-fs-14-5 gwui-ink-text" style={{ lineHeight: '22px' }}>{m.says}</div>
             )}
             {m.amended && (
               <div className="gwui-fs-13-5 gwui-ink-amber gwui-mt-5" style={{ lineHeight: 1.5 }}>

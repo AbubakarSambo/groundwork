@@ -1,4 +1,4 @@
-import { sendTheParticipantsWeeks, theirWeekInWords } from './the-participants-week';
+import { sendTheParticipantsWeeks, theirWeekInWords, theDayTheCountBegins } from './the-participants-week';
 import { ROUTINE_EMAILS } from './one-routine-message-a-day';
 import { ENGAGEMENT_MOMENT_KEY } from './the-engagement-release-moment';
 import { whatThisMailIs } from '../email/nothing-goes-out-that-was-turned-off';
@@ -10,7 +10,8 @@ import { whatThisMailIs } from '../email/nothing-goes-out-that-was-turned-off';
  * board holds her own promises, and two requests waiting on her. She reads her own words and counts; the subject carries no name; nothing from
  * Old pilot; and a colleague's own promises are never in it, because the board never holds them.
  */
-const NOW = new Date();
+/* Pinned (25 October): with the real clock the "since" day in Vera's line moved with each day the suite ran, and failed. */
+const NOW = new Date('2026-10-24T09:00:00Z');
 const recent = new Date(NOW.getTime() - 5 * 86_400_000);
 const board = (over: any = {}) => ({
   saidYoudDo: [
@@ -62,9 +63,14 @@ describe('what Vera reads', () => {
       to: 'vera@x.test',
       subject: 'You kept three of the four things you said you would do; two requests are waiting on you',
       lines: [
-        'Hello Vera. Here is your week in Groundwork. Only you can read this.',
-        'You kept three of the four things you said you would do in the last four weeks.',
-        'Two things you said you would do are still open, "Send the deck to Kofi" and "Call the bank".',
+        'Hello Vera. Here is your week.',
+        /* Her four promises were all said five days ago, so the count says since that day, not "in the last four weeks" (engine test, Mercy's week). */
+        `You kept three of the four things you said you would do since ${theDayTheCountBegins([{ createdAt: recent }], NOW)}.`,
+        /* Changed 19 October (messages test, finding 14): each open thing is said on its own with the check-in it was said in, the latest
+           first, where it was a list of loose quotes. Her board here carries no day for them, so none is said. */
+        'Two things you said you would do are still open.',
+        'In "Kenya launch", you said "Call the bank".',
+        'In "Sales team, Q4", you said "Send the deck to Kofi".',
         'You are waiting for "the budget to be approved" from Lucy.',
         'James is waiting for "The pricing sheet" from you in "Kenya launch".',
         'Somebody is waiting for "The venue contract" from you in "Sales team, Q4".',
@@ -184,18 +190,47 @@ describe('what Fatuma reads when Kevin says he is waiting on her', () => {
     await w.run();
     expect(w.sent[0].subject).toBe('One request is waiting on you');
     expect(w.sent[0].lines).toEqual([
-      'Hello Fatuma. Here is your week in Groundwork. Only you can read this.',
+      'Hello Fatuma. Here is your week.',
       'Imani Hassan is waiting for "the purchase request for the phone" from you in "Duka pilot".',
-      'Kevin Odhiambo says the work is waiting for "the final prices" from you in "Duka pilot". That is what Kevin Odhiambo said, and you have not said it yourself. Say in your check-in whether it is yours to give. Not backed: no attempt to unblock mentioned. Kevin Odhiambo could have messaged you, asked again, or raised it with the lead.',
+      'Kevin Odhiambo says the work is waiting for "the final prices" from you in "Duka pilot". That is what Kevin Odhiambo said, and you have not said it yourself. Say in your check-in whether it is yours to give.',
     ]);
     expect(w.sent[0].lines.join(' ')).not.toMatch(/Kevin Odhiambo is waiting/);
-    /* The note's colon is Hafsah's own format; no other colon. */
-    expect(w.sent[0].lines.join(' ').replace('Not backed: ', '')).not.toMatch(/:/);
+    /* No colon anywhere: the note beside a claim is a full sentence or nothing (changed 3 November, F2). */
+    expect(w.sent[0].lines.join(' ')).not.toMatch(/:/);
   });
 
   it('once she says the prices are hers to send, it is a request waiting on her', async () => {
     const w = fatumasWorld([{ groundId: 'g1', participantId: 'pf', text: 'I will send the updated prices on Friday.' }]);
     await w.run();
     expect(w.sent[0].lines).toContain('Kevin Odhiambo is waiting for "the final prices" from you in "Duka pilot".');
+  });
+});
+
+/*
+ * DAVID'S THREE WAITS ARE ONE, SAID IN HIS OWN PERSON (messages test after the fixes, 19 October, finding 11). "Your week" to David
+ * Mwangi, Thursday 15 October, from the run's own rows: on Monday he said "I don't know who my supervisor is yet.", and on Wednesday
+ * "I don't know my supervisor."
+ */
+describe('what David reads about what he is waiting for', () => {
+  const DAVIDS = {
+    kept: null, open: [], waitingOnYou: [],
+    waitingOn: [
+      { what: 'a clear role defined for the Jamii Clinics employment claim', from: 'my supervisor' },
+      { what: 'the name of their supervisor', from: null },
+      { what: 'a clear role for this claim', from: null },
+    ],
+    theirOwnWords: ["I don't have a clear role defined for this claim yet.", "I don't know who my supervisor is yet.", "I don't know my supervisor."],
+  };
+  it('now: one line, in his own person', () => {
+    const lines = theirWeekInWords('David', DAVIDS as any)!.lines.filter((l) => l.startsWith('You are waiting for'));
+    expect(lines).toEqual(['You are waiting for "a clear role defined for the Jamii Clinics employment claim" from your supervisor, and for the name of your supervisor.']);
+  });
+  it('two waits with different customers are never one', () => {
+    const lines = theirWeekInWords('Mercy', { kept: null, open: [], waitingOnYou: [], waitingOn: [{ what: 'the signed order for Greenfield', from: null }, { what: 'the signed order for Tuskys', from: null }] } as any)!.lines.filter((l) => l.startsWith('You are waiting for'));
+    expect(lines).toEqual(['You are waiting for "the signed order for Greenfield".', 'You are waiting for "the signed order for Tuskys".']);
+  });
+  it('"their" stays where their own words do not say "my" of it', () => {
+    const lines = theirWeekInWords('Njeri', { kept: null, open: [], waitingOnYou: [], waitingOn: [{ what: 'their payment for FN-006', from: 'Baraka Hardware' }], theirOwnWords: ['I raise the fee notes.'] } as any)!.lines.filter((l) => l.startsWith('You are waiting for'));
+    expect(lines).toEqual(['You are waiting for "their payment for FN-006" from Baraka Hardware.']);
   });
 });

@@ -40,16 +40,22 @@ describe('the slow step', () => {
     // No percentage, no "almost there". Nothing here knows how far along it is.
     expect(CLOSING_STEPS.join(' ')).not.toMatch(/almost|nearly|%|finishing up/i)
   })
+
+  /* Hafsah, 30 October 2026: plain language for an impatient first-time lead. */
+  it('says each step in plain words, and never how long it takes', () => {
+    expect(CLOSING_STEPS).toEqual(['Reading what you said', 'Finding what is still open', 'Writing your report'])
+    expect(CLOSING_STEPS.join(' ')).not.toMatch(/stand on|record|minute|seconds/i)
+  })
 })
 
 describe('both places that close a session use it', () => {
   const read = (p: string) => readFileSync(join(__dirname, p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
   it('the signed-in finish, which used to say only Saving', () => {
-    expect(read('../../pages/chat/ChatPage.tsx')).toContain('<SlowStep steps={CLOSING_STEPS}')
+    expect(read('../../pages/chat/ChatPage.tsx')).toContain('<SlowStep steps={CLOSING_STEPS} />')
   })
 
   it('and the entry flow, which is where it started', () => {
-    expect(read('../../pages/enter/EntryChatPage.tsx')).toContain('<SlowStep steps={CLOSING_STEPS}')
+    expect(read('../../pages/enter/EntryChatPage.tsx')).toContain('<SlowStep steps={CLOSING_STEPS} />')
   })
 })

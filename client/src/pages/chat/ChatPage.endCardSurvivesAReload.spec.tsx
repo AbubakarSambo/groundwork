@@ -13,7 +13,7 @@ import { conversationApi } from '@/api/conversation'
  * which only happens once they press "That's right, finish"). Reloading the page at that exact
  * point used to lose the end card entirely: `t.endCard` was stored, but nothing set `done`, so the
  * card (gated on `done && !completed && !declined`) did not render, the header fell back to its
- * default "About two minutes" instead of "That's everything for today", and the only control left
+ * default "About ten minutes" instead of "That's everything for today", and the only control left
  * on screen was the small manual "Finish my check-in now" fallback - a real card, replaced by a
  * single link, every time somebody reloaded mid-close.
  */
@@ -60,10 +60,11 @@ describe('reloading a check-in the engine has already closed, but not yet confir
     expect(screen.queryByText(/Finish my check-in now/i)).toBeNull()
   }, 15_000)
 
-  it('keeps the header consistent with the card, not "About two minutes"', async () => {
+  /* Changed 3 November evening: the header has no line under the name at all now, so nothing there can disagree with the card. */
+  it('keeps the header consistent with the card: no "About ten minutes" and no line under the name', async () => {
     renderChat()
     await screen.findByRole('button', { name: /That’s right, finish/i }, { timeout: 4000 })
-    expect(screen.getByText('That’s everything for today')).toBeTruthy()
-    expect(screen.queryByText('About two minutes')).toBeNull()
+    expect(screen.queryByText('That’s everything for today')).toBeNull()
+    expect(screen.queryByText('About ten minutes')).toBeNull()
   }, 15_000)
 })

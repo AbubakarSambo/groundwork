@@ -1,3 +1,7 @@
+import { withTheirCountNow } from '../board/an-aim-is-counted-now';
+import { theRunningRecordFrom, type TheRunningRecord } from '../suites/the-running-record';
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
+import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
@@ -17,8 +21,9 @@ import { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForThePerson } from '../suggestions/a-suggestion-told-like-a-signal';
 import { askedOfYou, type AskedOfYou } from './asked-of-you';
 import { theDayIn } from './when-a-handoff-is-due';
+import { thePromisesAsTheRecordKeepsThem } from './a-promise-said-done-is-read-the-same-everywhere';
 import {
-  PATTERN_ROW_SELECT, servedPatterns, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson,
+  PATTERN_ROW_SELECT, servedPatterns, whoIsWhoIn,
   type APatternRow,
 } from '../patterns/who-reads-a-pattern';
 
@@ -47,6 +52,8 @@ export class YourBoardService {
     askedFor?: string | null,
   ): Promise<YourBoard & { suggestionsAboutYou?: ForThePerson[]; askedOfYou?: AskedOfYou }> {
     if (askedFor && askedFor !== reader.userId) throw new ForbiddenException(NOT_YOURS);
+    /* Judgements of a person off for this organisation: no coaching step and no pattern about the reader (organisation/person-judgements.ts). */
+    const judged = await thePersonJudgementsAreOn(this.prisma, reader.organizationId);
 
     const list = ((await this.grounds.list(reader.organizationId, reader.userId, reader.email, reader.role)) ?? []) as any[];
     /* Only the check-ins in this organisation that you run or take part in, and only your own place in each. */
@@ -65,7 +72,7 @@ export class YourBoardService {
       participantIds.length
         ? this.prisma.personObjective.findMany({
             where: { groundId: { in: groundIds }, participantId: { in: participantIds } },
-            select: { id: true, groundId: true, participantId: true, text: true, kind: true, status: true, authoredBy: true, dueSaid: true, awareness: true, createdAt: true },
+            select: { id: true, groundId: true, participantId: true, text: true, kind: true, status: true, statusChangedAt: true, authoredBy: true, dueSaid: true, awareness: true, createdAt: true },
             orderBy: { createdAt: 'asc' },
           /* A goal the lead has not told you about is not on your board until they have. The lead of
              that check-in still reads it. See a-goal-not-told-stays-with-the-lead.
@@ -81,7 +88,7 @@ export class YourBoardService {
               const lead = (g?.participants ?? []).find((p: any) => p.userId === g?.initiatorId);
               const leadName = theFirstNameOfAParticipant(lead) || 'Your lead';
               const area = await areaOfGoalOrFallback(this.prisma, o.text);
-              return { ...o, text: whatThePersonReadsAfterAWeek(leadName, area) };
+              return { ...o, text: whatThePersonReadsAfterAWeek(leadName, area, { releaseOne: await theReleaseOneSalesBoardIsOn(this.prisma, g?.organizationId ?? reader.organizationId).catch(() => false) }) };
             })))
         : none,
       participantIds.length
@@ -98,7 +105,7 @@ export class YourBoardService {
             orderBy: { createdAt: 'asc' },
           })
         : none,
-      participantIds.length
+      participantIds.length && judged
         ? this.prisma.coachingState.findMany({
             where: { participantId: { in: participantIds } },
             select: { participantId: true, currentStep: true, updatedAt: true },
@@ -131,7 +138,7 @@ export class YourBoardService {
        * below still runs it through the one rule (patterns/who-reads-a-pattern.ts) rather than
        * trusting that, so three check-ins and a plain name are still required.
        */
-      participantIds.length
+      participantIds.length && judged
         ? this.prisma.patternDetection.findMany({
             where: { participantId: { in: participantIds } },
             select: {
@@ -153,6 +160,14 @@ export class YourBoardService {
         : none,
     ]);
 
+    /*
+     * WHAT THE RECORD SAYS IS DONE IS NOT LISTED AS OPEN (messages test, third run, item 4). Mercy said on Monday "I'll follow up with
+     * Joseph again", and on Wednesday "I called Joseph yesterday about the samples, and he said he'll have them ready by Thursday." Her
+     * week on Thursday listed it under "Two things you said you would do are still open". The same reading the lead's summary uses
+     * (a-promise-said-done-is-kept) is applied here, as served: nothing is written, and only her own promises are read.
+     */
+    const { commitments: commitmentsRead, objectives: objectivesRead } = await thePromisesAsTheRecordKeepsThem(this.prisma as any, commitments as any[], objectives as any[]);
+
     /* Groundwork's suggestions about you, in the shape the person it is about may read (facts and
        the decision with its reasons, never the verdict). Left off when there are none. */
     const aboutYou = this.suggestions ? await this.suggestions.aboutYou({ userId: reader.userId, organizationId: reader.organizationId }) : [];
@@ -164,16 +179,18 @@ export class YourBoardService {
           select: { groundId: true, participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
         })
       : [];
-    const targetsYouMayRead = (ownedTargets as any[]).filter((t) => {
+    /* Each target's number as it is counted now, the way the board and My work count it (board/an-aim-is-counted-now.ts). */
+    const ownedCountedNow = await this.theTargetsCountedNow(ownedTargets as any[]);
+    const targetsYouMayRead = ownedCountedNow.filter((t) => {
       const g = mine.find((x) => x.id === t.groundId);
       const runsIt = theyRunThisCheckIn(reader.userId, g as any);
       return withoutWhatTheLeadHasNotToldThemAbout([t], untoldRows.filter((r) => r.groundId === t.groundId), (g?.participants ?? []) as any[], runsIt).kept.length === 1;
     });
 
     const board = yourBoard(mine, { userId: reader.userId, organizationId: reader.organizationId }, {
-      objectives: objectives as any,
+      objectives: objectivesRead as any,
       ownedTargets: this.onlyYours(targetsYouMayRead, participantIds),
-      commitments: commitments as any,
+      commitments: commitmentsRead as any,
       coaching: coaching as any,
       todos: todos as any,
       leave: await theirApprovedLeave(this.prisma as any, reader.userId, reader.organizationId),
@@ -188,6 +205,8 @@ export class YourBoardService {
      * written from your own answers, and only through the link that reads it, which is yours alone.
      */
     const ownReportsHeld = await this.theOwnReportsOfCheckInsHeldForASeat(reader);
+    /* RELEASE 7: your running record, from every check-in you are in, for you alone (this page is only ever yours). Off, nothing new. */
+    const runningRecord = await this.theRunningRecordFor(reader.organizationId, participantIds, mine).catch(() => null);
     const withHeld = ownReportsHeld.length
       ? { ...board, ownReports: [...board.ownReports, ...ownReportsHeld.filter((h) => !board.ownReports.some((r) => r.to === h.to))].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? '')) }
       : board;
@@ -197,7 +216,28 @@ export class YourBoardService {
       ...(aboutYou.length ? { suggestionsAboutYou: aboutYou } : {}),
       ...(asked ? { askedOfYou: asked } : {}),
       ...(patterns.length ? { patterns } : {}),
+      ...(runningRecord ? { runningRecord } : {}),
     };
+  }
+
+  /** Owned targets with the number counted now (board/an-aim-is-counted-now.ts), one check-in at a time. */
+  private async theTargetsCountedNow<T extends { id: string; groundId: string; name: string; count?: number | null; ownerParticipantId?: string | null }>(targets: T[]): Promise<T[]> {
+    const byGround = new Map<string, T[]>();
+    for (const t of targets) byGround.set(t.groundId, [...(byGround.get(t.groundId) ?? []), t]);
+    const out: T[] = [];
+    for (const [groundId, aims] of byGround) {
+      const g = await Promise.resolve((this.prisma as any).ground?.findUnique?.({ where: { id: groundId }, select: { id: true, organizationId: true, kindOfWork: true, workStages: true } })).catch(() => null);
+      out.push(...(g ? await withTheirCountNow(this.prisma as any, g, aims).catch(() => aims) : aims));
+    }
+    return targets.map((t) => out.find((o) => o.id === t.id) ?? t);
+  }
+
+  /** RELEASE 7: the running record of your own commitments, proof and goal changes, across your check-ins. Null with Release 7 off. */
+  private async theRunningRecordFor(organizationId: string, participantIds: string[], mine: any[]): Promise<TheRunningRecord | null> {
+    const on = await Promise.resolve((this.prisma as any).organization?.findUnique?.({ where: { id: organizationId }, select: { release7PeopleOn: true } })).catch(() => null);
+    if (on?.release7PeopleOn !== true || !participantIds.length) return null;
+    const label = new Map(mine.map((g: any) => [g.id, String(g.label ?? 'a check-in')]));
+    return theRunningRecordFrom(this.prisma as any, participantIds, label);
   }
 
   /** Your own latest finished session on each check-in you are held for a seat on: its name, when it finished, and where your own report is. Nobody else's, nothing more. */
@@ -237,16 +277,12 @@ export class YourBoardService {
     }
 
     const list: YourPattern[] = [];
-    const shownIds: string[] = [];
     for (const g of byGround.values()) {
       const participantId = g.rows[0]?.participantId;
       if (!participantId) continue;
       const served = servedPatterns(g.rows, { participantId, runsIt: false }, whoIsWhoIn(g.participants, g.initiatorId));
-      shownIds.push(...theOnesTheyAreSeeingFirst(g.rows, served));
       for (const p of served) list.push({ ...p, checkIn: g.label });
     }
-    /* The person reading their own for the first time starts the clock on when the lead may read it. */
-    await markShownToThePerson(this.prisma as any, shownIds);
     return list;
   }
 

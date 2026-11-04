@@ -37,6 +37,8 @@ export interface WhatItRestsOn {
   /** Commitments made this session, and how many of them carry an owner and a date. */
   commitments: number;
   commitmentsWithOwnerAndDate: number;
+  /** Release 1's switch is on for the check-in's organisation: the count of commitments reads as a sentence ("1 of the 5 commitments has"). */
+  releaseOne?: boolean;
 }
 
 export interface Confidence {
@@ -107,7 +109,10 @@ export function howMuchThereIsToGoOn(input: WhatItRestsOn): Confidence {
   } else if (r.commitmentsWithOwnerAndDate < r.commitments) {
     const loose = r.commitments - r.commitmentsWithOwnerAndDate;
     reasons.push(
-      `${loose} of ${r.commitments} ${loose === 1 ? 'commitment has' : 'commitments have'} no owner or no date. Naming one of each would make ${loose === 1 ? 'it' : 'them'} checkable.`,
+      /* "1 of the 5 commitments has", never "1 of 5 commitment has" (Drop Access short run, item 12), where Release 1's switch is on; off, as before. */
+      input.releaseOne
+        ? `${r.commitments === 1 ? 'The one commitment has' : loose === r.commitments ? `All ${r.commitments} commitments have` : `${loose} of the ${r.commitments} commitments ${loose === 1 ? 'has' : 'have'}`} no owner or no date. Naming one of each would make ${loose === 1 ? 'it' : 'them'} checkable.`
+        : `${loose} of ${r.commitments} ${loose === 1 ? 'commitment has' : 'commitments have'} no owner or no date. Naming one of each would make ${loose === 1 ? 'it' : 'them'} checkable.`,
     );
   }
 
@@ -131,12 +136,12 @@ export function howMuchThereIsToGoOn(input: WhatItRestsOn): Confidence {
     band === 'solid'
       ? 'There is enough here to act on.'
       : band === 'partial'
-        ? 'There is enough here to talk about, and not enough to settle anything.'
-        : 'There is not much here yet. Treat it as a starting point rather than a finding.';
+        ? 'There is enough here to talk about.'
+        : 'There is not much here yet.';
 
   /* A perfect report still says why it is one, rather than showing an empty list. */
   if (score >= 67 && !somethingToActOn) {
-    reasons.push('Well evidenced, and still only something to talk about: nothing here has an owner and a date yet.');
+    reasons.push('Nothing here has an owner and a date yet.');
   }
   if (!reasons.length) {
     reasons.push('Everybody answered, what was said is anchored to documents, and the commitments have owners and dates.');

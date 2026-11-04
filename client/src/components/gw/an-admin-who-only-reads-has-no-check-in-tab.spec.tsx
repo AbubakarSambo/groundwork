@@ -20,8 +20,8 @@ describe('the check-in header for someone who only reads', () => {
   it('shows the read-only three tabs, and no way into a check-in', () => {
     header(false, false)
     const tabs = screen.getAllByRole('link').map((a) => a.textContent)
-    /* "Context" renamed to "Context and resources" so the tab's name says what it now holds. */
-    expect(tabs).toEqual(expect.arrayContaining(['Board', 'Context and resources', 'People and setup']))
+    /* "Context" renamed to "References and resources" so the tab's name says what it now holds. */
+    expect(tabs).toEqual(expect.arrayContaining(['Board', 'References and resources', 'People and setup']))
     expect(tabs).not.toContain('Check-in')
     expect(tabs).not.toContain('My work')
     expect(screen.queryByText('Your check-in')).toBeNull()

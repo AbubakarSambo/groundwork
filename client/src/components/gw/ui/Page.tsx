@@ -18,8 +18,8 @@ export function Page({ narrow, children }: { narrow?: boolean; children: React.R
    * element itself, so the look is identical.
    */
   return (
-    <div className="gwui-page-main">
-      <div className={narrow ? 'gwui-page-narrow' : 'gwui-page-wrap'}>{children}</div>
+    <div className="main">
+      <div className={narrow ? 'gwui-page-narrow' : 'wrap gw-stack'}>{children}</div>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { setDisplayTimezone } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE STORED USER IS A COPY FROM THE DAY THEY SIGNED IN.
@@ -44,6 +45,9 @@ export function useWhoTheServerSaysYouAre() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const userId = useAuthStore(s => s.user?.id ?? null)
   const askedFor = useRef<string | null>(null)
+  /* Dates on the screens are said in the organisation's own day, as the engine's sentences are (B-094; browser test, 20 October). */
+  const zone = useAuthStore(s => s.user?.organizationTimeZone ?? null)
+  if (zone) setDisplayTimezone(zone)
 
   useEffect(() => {
     if (!hydrated || !isAuthenticated || !userId || askedFor.current === userId) return

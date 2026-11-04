@@ -1,3 +1,4 @@
+import { timesAWeekInWords } from './the-check-ins-own-schedule';
 import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from '../conversation/plain-words';
 import { stillNeedsSomethingInWriting } from './what-the-documents-say';
 import { CADENCE_WORDS, CADENCES, type Cadence } from './what-the-context-chat-heard';
@@ -129,6 +130,8 @@ const WORTH_COUNTING = new Set([
   'NEW_PROJECT', 'HELP_TEAM_UNDERSTAND', 'ROLE_HANDOVER', 'NEW_COFOUNDER', 'OKR_ALIGNMENT', 'WORKPLAN_BUDGET',
   'BOARD_STRATEGY', 'PULSE_CHECK', 'COHORT_CHECK', 'NEW_HIRE', 'NEW_MANAGER', 'NEW_ADVISOR',
   'PIP', 'CONTRACT_RENEWAL', 'RECOGNITION', 'IMPLEMENTATION_TRACKING',
+  /* Collect what's owed (Release 2): amounts and dates, so it counts. */
+  'COLLECTIONS',
 ]);
 
 export function contextGaps(g: ContextGaps): ContextGap[] {
@@ -360,7 +363,7 @@ export function contextChatPrompt(
  * already hold does not need a model call to say correctly, and a sentence written here cannot drift
  * from what a re-run of the model would have said.
  */
-export function openingLine(timelineDays: number | null, cadence: string | null, runsUntilEnded = false, workingDays: number[] | null = null): string | null {
+export function openingLine(timelineDays: number | null, cadence: string | null, runsUntilEnded = false, workingDays: number[] | null = null, cadenceDays: number[] | null = null): string | null {
   const parts: string[] = [];
   if (runsUntilEnded) {
     parts.push('runs until you end it');
@@ -371,7 +374,8 @@ export function openingLine(timelineDays: number | null, cadence: string | null,
   const c = (cadence ?? '').toUpperCase().trim();
   if (CADENCES.includes(c as Cadence)) {
     /* A daily rhythm on weekdays only is said as such, never "every day" (setup page review). */
-    parts.push(`people check in ${c === 'DAILY' ? everyDayThatTheyWork(workingDays) : CADENCE_WORDS[c as Cadence]}`);
+    /* Twice or more a week is said with its days (assessment test, 2 November). */
+    parts.push(`people check in ${c === 'DAILY' ? everyDayThatTheyWork(workingDays) : timesAWeekInWords({ cadence: c, days: cadenceDays }) ?? CADENCE_WORDS[c as Cadence]}`);
   }
   if (!parts.length) return null;
   /* "This check-in people check in every two weeks." was not a sentence: with no length to say,

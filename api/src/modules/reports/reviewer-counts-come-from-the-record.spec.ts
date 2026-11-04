@@ -41,14 +41,14 @@ describe('the session digest email counts accounts given, not sessions closed', 
   const facts = { groundLabel: 'Sales daily', sessionNumber: 2, participantCount: 3, needsAttention: 0, permalink: 'http://x/grounds/g' };
 
   it('says how many of how many checked in when only the lead did', () => {
-    const body = digestBody({ ...facts, accountsGiven: 1 }, 'http://x/u');
+    const body = digestBody({ ...facts, accountsGiven: 1 });
     expect(body).toContain('Session 2 of Sales daily has closed.');
     expect(body).toContain('1 of 3 people checked in. Nothing is flagged for attention.');
     expect(body).not.toMatch(/Everyone has checked in|took part/);
   });
 
   it('says everyone has checked in only when everyone gave an account', () => {
-    const body = digestBody({ ...facts, accountsGiven: 3 }, 'http://x/u');
+    const body = digestBody({ ...facts, accountsGiven: 3 });
     expect(body).toContain('Everyone has checked in for session 2 of Sales daily.');
     expect(body).toContain('3 people took part.');
   });

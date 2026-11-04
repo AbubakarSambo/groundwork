@@ -1,5 +1,9 @@
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import { theDayZone } from '../../common/the-organisations-own-day';
 import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
-import { theNoteBesideTheClaim, WhoTheNoteNames } from '../grounds/a-wait-is-the-speakers-account';
+import { aQuietSessionOnADayTheyCheckedIn } from './a-day-they-checked-in';
+import { THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
+import { whatTheyTriedInFull } from '../grounds/a-wait-is-the-speakers-account';
 import { theWaitSaid, aHolderThatIsOnlyTheThing, PLAIN_WORDS } from './a-wait-said-in-full';
 import { howManyGoalsAreNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { holdsItSaid, theReaderSaidAsYou, aThingWithoutItsHolder } from './a-holder-in-their-own-words';
@@ -53,6 +57,19 @@ export interface WhoIsReading {
   nameOf: (participantId: string) => string | null;
   /** Said when this reader may not read the person's name: 'A colleague'. */
   aColleague: (participantId: string | null | undefined) => string;
+  /**
+   * Whether a claim about a colleague carries what the speaker said they tried beside it. The kit's sales board has neither: its
+   * blockers say "What the proof shows" and "Would clear it" on their own lines (Hafsah, 18 October, answer 5: "The board follows my
+   * kit."). False on Release 1's sales board; left out, the note stays, as on every other kind of board.
+   */
+  noteBesideTheClaim?: boolean;
+}
+
+/** What the speaker said they tried, beside a claim about a colleague, where this board carries it, with a space before it; nothing where they said nothing. */
+function theNoteHere(d: { triedSaid?: string | null; createdAt?: Date | string | null }, r: WhoIsReading | undefined, who: string): string {
+  if (r?.noteBesideTheClaim === false) return '';
+  const tried = whatTheyTriedInFull(d, who);
+  return tried ? ` ${tried}` : '';
 }
 
 export interface ACommitment {
@@ -72,6 +89,8 @@ export interface ACommitment {
   saidWordForWord: boolean;
   whenSaidWordForWord: boolean;
   createdAt: Date | string;
+  /** Somebody else in the check-in said, after it was made, that it happened (somebody-said-it-happened.ts). Open all the same. */
+  saidHappened?: { participantId: string | null; text: string; createdAt?: Date | string | null } | null;
 }
 
 export interface AHandoff {
@@ -111,6 +130,9 @@ export interface ASession {
   sessionNumber: number;
   status: string;
   completedAt: Date | string | null;
+  /** When it opened, to tell the day a quiet session was for (board/a-day-they-checked-in.ts). */
+  availableFrom?: Date | string | null;
+  createdAt?: Date | string | null;
   isSetup?: boolean;
   /** With `turns` (their first word, if any): a session the clock closed with nothing said was MISSED, never answered. */
   closedReason?: string | null;
@@ -215,18 +237,12 @@ export function whoIsWaitedOn(r: WhoIsReading, d: { onParticipantId?: string | n
  */
 /*
  * A WAIT ON A COLLEAGUE ONLY THE SPEAKER CLAIMS (decision 137; change 4). Said as their account, in their words, with the note beside it,
- * and nothing counted against the colleague: "Kevin Odhiambo says the work is waiting on Fatuma Bello for the final prices. Not backed: no
- * attempt to unblock mentioned." A confirmed wait reads as it always did.
+ * and nothing counted against the colleague: "Kevin Odhiambo says the work is waiting on Fatuma Bello for the final prices." with what
+ * Kevin said he tried beside it, where he said anything. A confirmed wait reads as it always did.
  */
 export const aClaimOnlyTheSpeakerMakes = (d: { onParticipantId?: string | null; confirmed?: boolean }): boolean => !!d.onParticipantId && d.confirmed === false;
-export function theirAccountOfTheWait(who: string, on: string, what: string, d: { what?: string | null; triedSaid?: string | null }, r?: WhoIsReading): string {
-  return `${who} ${who === 'You' ? 'say' : 'says'} the work is waiting on ${on} for ${what.replace(/[.\s]+$/, '')}. ${theNoteBesideTheClaim(d, theNamesInTheNote(r, who, on))}`;
-}
-
-/** The people the note names, as this reader may read them: the lead is "you" to the lead, a name where it may be read, else "the lead". */
-export function theNamesInTheNote(r: WhoIsReading | undefined, by: string, on: string | null): WhoTheNoteNames {
-  const lead = !r?.theLeadsId ? null : r.meId && r.theLeadsId === r.meId ? 'you' : r.nameOf(r.theLeadsId);
-  return { by, on, lead };
+export function theirAccountOfTheWait(who: string, on: string, what: string, d: { triedSaid?: string | null; createdAt?: Date | string | null }, r?: WhoIsReading): string {
+  return `${who} ${who === 'You' ? 'say' : 'says'} the work is waiting on ${on} for ${what.replace(/[.\s]+$/, '')}.${theNoteHere(d, r, who)}`;
 }
 
 export function thatWaitsOn(d: { what: string; onLabel?: string | null; onParticipantId?: string | null }): string {
@@ -303,8 +319,17 @@ export function theWorkPlan(
         leadLabel,
         saidWordForWord: c.saidWordForWord === true,
         whenSaidWordForWord: c.whenSaidWordForWord === true,
+        /* Who said it happened, never "nobody has said" (messages test, 19 October, finding 4). Their words only to a reader who reads everyone's. */
+        saidHappened: c.saidHappened?.participantId && r.personMayBeRead(c.saidHappened.participantId)
+          ? {
+            who: whoIs(r, c.saidHappened.participantId),
+            day: c.saidHappened.createdAt ? whenItWas(c.saidHappened.createdAt, 'dayAndMonthLong', theDayZone()) : null,
+            words: r.mayReadEveryone ? c.saidHappened.text : null,
+          }
+          : null,
       }, so);
-      const when = c.whenSaid && (c.whenSaidWordForWord === true || looksLikeATimeOrADate(c.whenSaid)) ? c.whenSaid.trim() : null;
+      /* Only words that read as a time, quoted or not (messages test, 19 October, finding 11). */
+      const when = c.whenSaid && looksLikeATimeOrADate(c.whenSaid) ? c.whenSaid.trim() : null;
       return { id: c.id, participantId: c.participantId, who, says, when, state: stateOf(c.status), statedInSession: c.statedInSession ?? null };
     })
     /* What is still open first, then what ended, each in the order it was said. */
@@ -446,7 +471,7 @@ export function theTimeline(
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
     const what = inASentence(on ? aThingWithoutItsHolder(d.what, d.onLabel) : d.what);
-    push(d.createdAt, `${on ? `${who} said the work was waiting on ${on} for ${what}.` : `${who} said the work was waiting for ${what}.`}${thatWaitsOn(d)}${on && aClaimOnlyTheSpeakerMakes(d) ? ` ${theNoteBesideTheClaim(d, theNamesInTheNote(r, who, on))}` : ''}`);
+    push(d.createdAt, `${on ? `${who} said the work was waiting on ${on} for ${what}.` : `${who} said the work was waiting for ${what}.`}${thatWaitsOn(d)}${on && aClaimOnlyTheSpeakerMakes(d) ? theNoteHere(d, r, who) : ''}`);
     if (d.clearedAt) push(d.clearedAt, `The wait for ${inASentence(d.what)} was cleared.`);
   }
   if (closedAt) push(closedAt, 'The check-in was closed.');
@@ -475,6 +500,8 @@ export function thePersonHistory(
   handoffs: AHandoff[],
   sessions: ASession[],
   r: WhoIsReading,
+  /** The check-in opens a session each working day (cadence DAILY). */
+  opensDaily = false,
 ): APersonHistory[] {
   const out: APersonHistory[] = [];
   for (const p of people) {
@@ -485,7 +512,14 @@ export function thePersonHistory(
     const who = whoIs(r, p.id);
     const mine = sessions.filter((s) => s.participantId === p.id && !s.isSetup).sort((a, b) => a.sessionNumber - b.sessionNumber);
     const done = mine.filter(answered);
-    const gone = mine.filter(missed);
+    /*
+     * NO MISS ON A DAY THEY CHECKED IN (polish round 15; a-day-they-checked-in.ts). Kevin's own page read "You have missed 1 session. In session
+     * 2, you did not check in before it closed." about Tuesday's session, opened from his email the evening before and closed by the clock that
+     * morning, when he answered that afternoon in the next one. On a check-in that opens each working day, that day he checked in.
+     */
+    const asItHappened = (s: ASession) => ({ ...s, answers: Array.isArray(s.turns) ? s.turns.length : null, firstAnsweredAt: Array.isArray(s.turns) ? (s.turns[0] as any)?.createdAt ?? null : null });
+    const theirs = mine.map(asItHappened);
+    const gone = mine.filter(missed).filter((s) => !opensDaily || !aQuietSessionOnADayTheyCheckedIn(asItHappened(s), theirs, THE_PRODUCTS_OWN_ZONE));
     if (!done.length && !gone.length) continue;
     const theirCommitments = commitments.filter((c) => c.participantId === p.id);
     const theirWaits = handoffs.filter((d) => d.fromParticipantId === p.id);
@@ -724,7 +758,7 @@ export function theLeadActions(
       says: (howMany.get(g.participantId) ?? 1) > 1
         ? `${needs} to talk ${who} through the ${howMany.get(g.participantId)} goals ${leadInASentence} set for this work, because ${who} has not been told about them yet.`
         : `${needs} to talk ${who} through a goal ${leadInASentence} set for this work, because ${who} has not been told about it yet.`,
-      because: 'The goal still counts, and Groundwork will not tell its number until it has been talked through.',
+      because: 'The goal counts. Its number is told once it’s talked through.',
     });
   }
 
@@ -807,7 +841,7 @@ export interface AForecast {
 }
 
 export const WHAT_A_FORECAST_CANNOT_TELL_YOU =
-  'This carries the pace so far forward in a straight line. It is not a promise, and anything that changes the pace changes where it ends.';
+  'This carries the pace so far forward in a straight line.';
 
 /**
  * A team's number only (decided for Hafsah to confirm, 1 October): a target with an owner is about one
@@ -905,7 +939,7 @@ export function whoWaitedOnWhom(handoffs: AHandoff[], r: WhoIsReading): AWait[] 
           : (since
             ? `${who} ${who === 'You' ? 'say' : 'says'} the work has been waiting${onWhom} for ${what} since ${saidAsDate(since)}.`
             : `${who} ${who === 'You' ? 'say' : 'says'} the work is waiting${onWhom} for ${what}.`);
-        return { id: d.id, says: `${account}${thatWaitsOn(d)} ${theNoteBesideTheClaim(d, theNamesInTheNote(r, who, on))}`, startedAt: since, clearedAt: cleared ? clearedOn : null, days: null };
+        return { id: d.id, says: `${account}${thatWaitsOn(d)}${theNoteHere(d, r, who)}`, startedAt: since, clearedAt: cleared ? clearedOn : null, days: null };
       }
       const says = cleared
         ? (since && clearedOn && days === 0
@@ -1070,4 +1104,38 @@ export function theQuestionsForTheLead(
   }
 
   return out.slice(0, MOST_QUESTIONS);
+}
+
+/**
+ * WHERE THE TIME WENT (the switchboard's purple section for a new hire, drift, a plan to get back on track and a contract renewal;
+ * Release 8). Read from what each person said they would do across the run, grouped by the piece of work each commitment names
+ * (a deal, a client, a milestone on this check-in's records). Never hours: hours from time sheets stay out of anything about a person.
+ * One sentence a person, the biggest first. Only for whoever runs the check-in, and only commitments the reader may read.
+ */
+export interface WhereTheTimeWent { participantId: string | null; who: string; says: string }
+
+export function whereTheTimeWent(commitments: ACommitment[], items: string[], r: WhoIsReading): WhereTheTimeWent[] {
+  const words = (t: string) => ` ${t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ')} `;
+  const named = (text: string) => items.find((i) => i.trim().length >= 3 && words(text).includes(words(i)));
+  const byPerson = new Map<string, { pid: string | null; counts: Map<string, number>; total: number; sessions: Set<number> }>();
+  for (const c of commitments) {
+    if (!r.commitmentMayBeRead(c) || !c.participantId) continue;
+    const k = c.participantId;
+    const e = byPerson.get(k) ?? { pid: c.participantId, counts: new Map(), total: 0, sessions: new Set() };
+    const item = named(c.text) ?? 'other work';
+    e.counts.set(item, (e.counts.get(item) ?? 0) + 1);
+    e.total += 1;
+    if (c.statedInSession) e.sessions.add(c.statedInSession);
+    byPerson.set(k, e);
+  }
+  const NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  const n = (x: number) => (x < NUM.length ? NUM[x] : String(x));
+  return [...byPerson.values()].filter((e) => e.total >= 2).map((e) => {
+    const who = whoIs(r, e.pid);
+    const top = [...e.counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+    const parts = top.map(([item, k], i) => (i === 0 ? `${n(k)} ${k === 1 ? 'was' : 'were'} about ${item}` : `${n(k)} about ${item}`));
+    const list = parts.length <= 1 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+    const over = e.sessions.size ? ` over ${n(e.sessions.size)} check-in${e.sessions.size === 1 ? '' : 's'}` : '';
+    return { participantId: e.pid, who, says: `Of ${who === 'You' ? 'your' : `${who}’s`} ${n(e.total)} commitments${over}, ${list}.` };
+  }).sort((a, b) => b.says.length - a.says.length);
 }

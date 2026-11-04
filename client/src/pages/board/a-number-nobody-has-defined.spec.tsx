@@ -107,13 +107,13 @@ describe('a target row\'s own buttons, not three buttons', () => {
     const raise = screen.getAllByRole('button', { name: /One more/ })
     const remove = screen.getAllByRole('button', { name: /Remove target/ })
     for (const b of [...lower, ...raise]) {
-      expect(b.className).toContain('gwui-btn-secondary')
-      expect(b.className).toContain('gwui-btn-small')
+      expect(b.className).toContain('sec')
+      expect(b.className).toContain('sm')
     }
     for (const b of remove) {
-      expect(b.className).toContain('gwui-btn-quiet')
-      expect(b.className).toContain('gwui-btn-small')
-      expect(b.className.endsWith('gwui-btn-danger')).toBe(false)
+      expect(b.className).toContain('quiet')
+      expect(b.className).toContain('sm')
+      expect(b.className.endsWith('danger')).toBe(false)
     }
   })
 })

@@ -39,7 +39,12 @@ const READS_AS_A_DATE = new RegExp(
   + '|\\b(mon|tues|wednes|thurs|fri|satur|sun)day\\s+(the\\s+)?(\\d+)'
   + '|\\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?\\s+(\\d+)'
   + '|(\\d+)\\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*'
-  + '|\\b(by|on)\\s+the\\s+(\\d+)',
+  + '|\\b(by|on)\\s+the\\s+(\\d+)'
+  /* A TIME OF DAY IS NOT A TARGET EITHER (messages test, fourth run). Kevin said "I'm visiting Kasarani Gym tomorrow at 10 to discuss
+     their 3 units." and was asked "This check-in is aiming at 120. You said 10. Is that your own part of it?" He had never said 10; Grace
+     had set him 40. "at 10", "at 10:30", "10am" and "10 o'clock" are times. */
+  + '|\\bat\\s+(\\d{1,2})(?:[:.](\\d{2}))?\\s*(?:am|pm|a\\.m\\.|p\\.m\\.|o[\'’]clock)?(?=\\s*(?:$|[.;!?)]|,(?!\\d)|to\\b|in the\\b|on\\b|tomorrow|today|tonight|this\\b|and\\b|sharp\\b))'
+  + '|\\b(\\d{1,2})(?:[:.](\\d{2}))?\\s*(?:am|pm|a\\.m\\.|p\\.m\\.|o[\'’]clock)(?![a-z])',
   'gi',
 );
 
@@ -73,6 +78,9 @@ export function theNumbersIn(said: string): number[] {
     /* A SPAN OF TIME OR A HEADCOUNT IS NOT A PART OF A TARGET. "Greenfield's terms are 30 days" was read
        as 30 against 180,000,000 (smoke run 7). */
     if (/^\s*(days?|weeks?|months?|years?|hours?|minutes?|people|persons?|reps?|dealers?|accounts?|customers?|clients?|calls?|visits?|farmers?|members?|staff|of (?:the|them|my|our))\b/i.test(tail)) continue;
+    /* NOR A COUNT OF PLACES OR LEADS TO VISIT (final real-model check, item 16). Mercy said "around 5-10 more kiosks in Kawangware" and
+       was told "This check-in is aiming at 120. You said 10." A number of kiosks, shops, schools or leads is not a part of the units. */
+    if (/^\s*(?:more\s+|other\s+|new\s+|small\s+)?(?:kiosks?|shops?|stores?|outlets?|schools?|offices?|businesses|business|leads?|deals?|prospects?|sites?|branches|households?|families|groups?|demos?|meetings?)\b/i.test(tail)) continue;
     if (dated.has(n)) continue;
     /*
      * A FOUR-DIGIT NUMBER IN YEAR RANGE IS USUALLY A YEAR AND SOMETIMES A TARGET.

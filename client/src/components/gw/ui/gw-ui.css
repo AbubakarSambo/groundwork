@@ -13,6 +13,7 @@
  * file uses them; where they do not (the --gw-muted / "faint" trap the audit found), it defines its
  * own token instead of silently reusing the wrong one.
  */
+:where(button, summary, select, [role="button"], [role="switch"], [role="tab"]):not(.gwui-in-a-sentence) { min-height: 44px; }
 
 .gwui-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
@@ -63,7 +64,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
  * strictly needs costs nothing - a little extra white space at the foot of a page - while reserving
  * too little is the bug this fixes.
  */
-.gwui-page-main { padding: 32px 48px 110px; min-width: 0; }
+
 .gwui-page-wrap { max-width: 1150px; }
 /* THE PAGE'S OWN FULL-HEIGHT BACKGROUND (group 3, piece 5): no prototype class (the prototype's
    `body` itself is the cream colour); for the rare page that renders outside `Page` altogether -
@@ -78,15 +79,12 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    file) has the same specificity as a plain ".gwui-page-narrow > * + *" and would otherwise win
    the cascade and cancel the gap - live on the expired-link page, whose foot line touched the
    button above it. */
-.gwui-page-wrap.gwui-page-wrap > * + *, .gwui-page-narrow.gwui-page-narrow > * + * { margin-top: 30px; }
+.wrap.gw-stack > * + *, .gwui-page-narrow.gwui-page-narrow > * + * { margin-top: 30px; }
 /* THE WHITE CARD BEHIND SIGN-UP AND THE OTHER NARROW ACCOUNT SCREENS (group 3 review, batch B;
    signup.jpg, verify-expired.jpg): `AuthCard` (auth-kit.tsx) now wraps its mark, heading and form
    in a `Panel`, one level deeper inside `Page narrow` than before - this gives that panel's own
    direct children the same 30px rhythm the rule above gives a bare `Page narrow`. */
 .gwui-auth-card.gwui-auth-card > * + * { margin-top: 30px; }
-@media (max-width: 860px) {
-  .gwui-page-main { padding: 20px 18px 140px; }
-}
 
 /* ── STACK (the invitation and its hand-off screens: tighter groups inside Page's 30px stack) ── */
 /* The doubled class (".gwui-stack-18.gwui-stack-18") raises specificity above a plain single-class
@@ -106,26 +104,14 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 .gwui-stack-30.gwui-stack-30 > * + * { margin-top: 30px; }
 
 /* ── PAGE TITLE (prototype: .t-title, .crumb, .t-small, .av at 56px) ────── */
-.gwui-pt-eyebrow { font-size: 14.5px; color: var(--gw-sub); margin: 0 0 6px; }
-.gwui-pt-crumb { font-size: 14px; color: var(--gw-sub); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0 0 6px; }
+
 /*
  * PHONE CHECK, ITEM 9: THE "CHECK-INS" CRUMB WAS A LINE OF TEXT, NO TALLER THAN ITS OWN TYPE. Padding
  * plus an equal negative margin grows the tap area to 40px without moving the crumb row itself or
  * widening the gap to "/" and the title beside it - the same technique used for a plain text link
  * that must not shift the layout around it.
  */
-.gwui-pt-crumb a { color: var(--gw-navy); text-decoration: underline; display: inline-block; padding: 9px 0; margin: -9px 0; }
-.gwui-pt-crumb .gwui-pt-sep { margin: 0 6px; }
-.gwui-pt-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
-.gwui-pt-head { display: flex; align-items: center; gap: 16px; min-width: 0; }
-.gwui-pt-headtext { min-width: 0; }
-.gwui-pt-title {
-  font-family: var(--gw-font-name); font-size: 30px; line-height: 1.18; font-weight: 500;
-  color: var(--gw-text); margin: 0;
-}
-@media (max-width: 640px) {
-  .gwui-pt-title { font-size: 24px; }
-}
+
 .gwui-pt-sub { font-size: 16px; line-height: 1.5; color: var(--gw-sub); margin-top: 6px; }
 /* "Almost in", "Out of time", "This link has expired" (prototype): the line under the title is ink, not muted. */
 .gwui-pt-sub-ink { color: var(--gw-text); }
@@ -133,13 +119,29 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    while something loads, replacing a page's own one-off gwui-pt-sub paragraph with a centring inline
    style. */
 .gwui-title-centre { text-align: center; }
-.gwui-title-centre .gwui-pt-row { justify-content: center; }
-.gwui-title-centre .gwui-pt-head { justify-content: center; width: 100%; }
+
+/* ── THE 44px FLOOR AND THE TAP TARGET (Hafsah, 21 October) ──────────────── */
+/*
+ * THE 44px FLOOR COVERS EVERYTHING YOU CAN TAP (Hafsah, 21 October): buttons, links in lists, chips and switches. Links inside a
+ * sentence are the only exception. Every button, folding summary, picker and control by role is at least 44px tall unless its own
+ * class says more; `:where` keeps this at no weight, so any class that sets its own height of 44px or more still wins. A control
+ * whose drawn shape must stay small (a switch, a tag you can tap, a coloured initial) keeps its shape and takes a 44px tap target
+ * instead (`.gwui-tap-target` and the list beside it, below). A button that sits inside a sentence takes `.gwui-in-a-sentence`.
+ */
+
+/* A TAP TARGET 44px TALL AROUND A SMALL DRAWN SHAPE: an invisible layer, centred on the control, at least 44px tall, so nothing drawn
+   moves or grows. Only as wide as the control itself, so it never reaches over the one beside it. */
+.gwui-tap-target, .gwui-toggle, button.tag, .gw-rl-ini { position: relative; }
+/* The switches and a hand-drawn small control keep the height they are drawn at; the floor above would otherwise stretch them. */
+.gwui-tap-target, .gwui-toggle { min-height: 0; }
+.gwui-tap-target::after, .gwui-toggle::after, button.tag::after, .gw-rl-ini::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max(100%, 44px); transform: translateY(-50%);
+}
 
 /* ── MARK (prototype: the three bars and "Groundwork", .brand) ──────────── */
 .gwui-mark {
   display: inline-flex; align-items: center; gap: 9px; color: var(--gw-navy); text-decoration: none;
-  font-size: 18px; font-weight: 700; letter-spacing: -.01em; min-height: 32px;
+  font-size: 18px; font-weight: 700; letter-spacing: -.01em; min-height: 44px;
 }
 .gwui-mark:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 3px; border-radius: 4px; }
 /* GROUP 3 REVIEW, BATCH B: the mark, with one action beside it - a signed-out reader's "Sign in"
@@ -153,27 +155,27 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 
 /* ── CALLOUT (prototype: a tinted line injected above the invitation's H1, s44.js:
    `background:var(--chat);border-radius:10px;padding:10px 14px`, class `t-small`) ─────────── */
-.gwui-callout { background: var(--gw-bg); color: var(--gw-text); border-radius: 10px; padding: 10px 14px; font-size: 14.5px; line-height: 1.45; margin: 0; }
+.gwui-callout { background: var(--gw-bg); color: var(--gw-text); border-radius: 10px; padding: 10px 14px; font-size: 14px; line-height: 20px; margin: 0; }
 .gwui-callout-success { background: var(--gw-green-bg); color: var(--gw-green-t); }
 
 /* ── SUB-HEADING (join-invite.jpg: "What it asks", "Who sees your answers") ─────────── */
-.gwui-subheading { font-family: var(--gw-font-ui); font-size: 14.5px; font-weight: 700; color: var(--gw-text); margin: 0 0 6px; }
+.gwui-subheading { font-family: var(--gw-font-ui); font-size: 14px; font-weight: 700; color: var(--gw-text); margin: 0 0 6px; }
 .gwui-subheading-list { display: grid; gap: 20px; }
 /* SUB-HEADING'S DARK TONE (group 3, piece 5): a faint label on a dark panel, replacing kit.tsx's
    `Sec title=... on="dark"` (same rgba(255,255,255,.45) the old part used). */
 .gwui-subheading-dark { color: rgba(255, 255, 255, .45); }
-.gwui-subheading-kicker { font-size: 13.5px; color: var(--gw-sub); letter-spacing: .1px; margin: 18px 0 7px; }
+.gwui-subheading-kicker { font-size: 14px; color: var(--gw-sub); letter-spacing: .1px; margin: 18px 0 7px; }
 
 /* ── PANEL TEXT (prototype: a fact's body, inside a panel - 14.5px, 21px line) ─────────── */
-.gwui-panel-text { font-size: 14.5px; line-height: 21px; color: var(--gw-text); margin: 0; }
-.gwui-panel-text-muted { font-size: 14.5px; line-height: 21px; color: var(--gw-sub); margin: 0; }
+.gwui-panel-text { font-size: 14px; line-height: 21px; color: var(--gw-text); margin: 0; }
+.gwui-panel-text-muted { font-size: 14px; line-height: 21px; color: var(--gw-sub); margin: 0; }
 /* A plain list inside a Panel - the You board's own "Your goals"/"Your to-dos"/"What you contributed". */
 .gwui-panel-list { list-style: none; margin: 0; padding: 0; }
-.gwui-panel-list li { padding: 8px 0; border-top: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+.gwui-panel-list li { padding: 8px 0; border-top: 1px solid var(--gw-border); font-size: 14px; line-height: 20px; color: var(--gw-text); }
 .gwui-panel-list li:first-child { border-top: none; padding-top: 0; }
 
 /* ── FINE PRINT (prototype: the sentence under a button, e.g. "About two minutes…") ─────── */
-.gwui-fine { font-size: 13px; line-height: 1.5; color: var(--gw-sub); margin: 0; }
+.gwui-fine { font-size: 13px; line-height: 20px; color: var(--gw-sub); margin: 0; }
 .gwui-fine-centre { text-align: center; }
 
 /* ── FOOT DIVIDER (a "not right now"/decline footer, set off by a rule above it) ─────────── */
@@ -185,14 +187,14 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    trailing it on the same line - `display: block` here does the same, since the caller passes
    this as a `<span>` next to the value's own text. */
 .gwui-field-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
-.gwui-field-help { display: block; font-size: 14.5px; color: var(--gw-sub); margin: 2px 0 0; }
+.gwui-field-help { display: block; font-size: 14px; color: var(--gw-sub); margin: 2px 0 0; }
 .gwui-form-actions { margin-top: 20px; }
 
 /* ── STEPS (a numbered list of what has and has not happened yet, join-waiting.jpg) ───────────
    Reads as a Panel: 12px corners, 20px top/bottom and 22px sides inside, rows on a 38px pitch,
    the mark bold 16px (green ✓ for a done step, amber ○ for the one still to come). */
 .gwui-steps { list-style: none; margin: 0; padding: 20px 22px; border: 1px solid var(--gw-border); border-radius: 12px; background: var(--gw-card); display: grid; }
-.gwui-step { display: flex; align-items: center; gap: 12px; min-height: 38px; font-size: 15px; line-height: 1.45; color: var(--gw-text); }
+.gwui-step { display: flex; align-items: center; gap: 12px; min-height: 38px; font-size: 15px; line-height: 22px; color: var(--gw-text); }
 .gwui-step-mark { width: 18px; flex: none; font-size: 16px; font-weight: 700; color: var(--gw-amber-t); }
 .gwui-step-done .gwui-step-mark { color: var(--gw-green-t); }
 
@@ -251,30 +253,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 }
 .gwui-tab-on { color: var(--gw-text); font-weight: 700; border-bottom-color: var(--gw-navy); }
 
-/* ── SECTION (prototype: section.sec, .sec-h, .note) ─────────────────────
-   Headings are never navy (design-audit.md item 5). */
-/* B-221: a direct link to a section (`#your-data`) must not land under the app's own sticky
-   header - the same offset `.cg-group` already uses in index.css, for the same reason. */
-.gwui-section { display: flex; flex-direction: column; scroll-margin-top: calc(var(--gw-hdr-h) + 12px); }
-.gwui-section-h {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap;
-}
-.gwui-section-title {
-  font-family: var(--gw-font-ui); font-size: 21px; line-height: 1.25; font-weight: 700;
-  color: var(--gw-text); margin: 0;
-}
-.gwui-section-note { font-size: 14.5px; color: var(--gw-sub); }
-.gwui-section-action { display: flex; gap: 10px; flex-wrap: wrap; }
-.gwui-section-h:has(.gwui-section-action) { align-items: center; }
-.gwui-section-body { margin-top: 14px; }
-.gwui-section-foot { margin-top: 14px; font-size: 13.5px; color: var(--gw-sub); }
-
-/* ── PANEL (prototype: .panel, .pad) ─────────────────────────────────────── */
-.gwui-panel {
-  background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px;
-}
-.gwui-panel-pad { padding: 20px 22px; }
-.gwui-panel-heading { font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--gw-text); margin: 0 0 8px; }
+/* SECTION, PANEL, BUTTON AND TAG are the prototype's own classes now (styles/prototype.css). */
 /* PANEL'S DARK TONE (group 3, piece 5): the same radius and padding, `--gw-dark` fill and white
    text, for the one place a panel sits on dark rather than white - a person's private report,
    previewed on the lead's own roster after they have shared it (`GroundAdminPage.tsx`'s check-ins
@@ -284,7 +263,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    drift list, piece 1): a quiet badge, not a Tag - a Tag is a short fact about a thing, and this is
    a footnote on where a sentence came from. No prototype class for it; kept at the 13px floor
    rather than the one-off 11px it replaces. */
-.gwui-inferred-mark { margin-left: 6px; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--gw-border); font-size: 13px; color: var(--gw-sub); white-space: nowrap; }
+.gwui-inferred-mark { margin-left: 6px; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--gw-border); font-size: 13px; color: var(--gw-sub); white-space: nowrap; line-height: 20px;}
 /* THE PRIVATE HALF OF A SESSION'S REPORT (SessionReportPage.tsx, group 3 drift list, piece 1): a
    Panel, inset and tinted, so a reader's own report does not read as the same card as the shared
    report below it - a deliberate distinction this page already drew (own-report.txt has no prototype
@@ -292,21 +271,12 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 .gwui-panel-private { background: var(--gw-paper-2); border-radius: 14px; }
 
 /* ── EDGE LIST / EDGE ROW (prototype: .list, .item, .sp) ─────────────────── */
-.gwui-edge-list { border-top: 1px solid var(--gw-border); list-style: none; margin: 0; padding: 0; }
-.gwui-edge-row {
-  display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: 16px;
-  padding: 16px 0; border-bottom: 1px solid var(--gw-border); align-items: center;
-}
-.gwui-edge-sp { align-self: stretch; border-radius: 2px; }
-.gwui-edge-sp-ready  { background: var(--gw-green-t); }
-.gwui-edge-sp-decide { background: var(--gw-navy); }
-.gwui-edge-sp-look   { background: var(--gw-amber-t); }
-.gwui-edge-sp-concern{ background: var(--gw-red-t); }
-.gwui-edge-h { font-size: 17px; font-weight: 700; line-height: 1.3; color: var(--gw-text); overflow-wrap: anywhere; }
-.gwui-edge-s { font-size: 15px; color: var(--gw-sub); margin-top: 2px; overflow-wrap: anywhere; }
+
+.gwui-edge-h { font-size: 17px; font-weight: 700; line-height: 22px; color: var(--gw-text); overflow-wrap: anywhere; }
+
 .gwui-edge-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 640px) {
-  .gwui-edge-row { grid-template-columns: 4px minmax(0, 1fr); }
+  
   .gwui-edge-acts { grid-column: 2; }
 }
 
@@ -326,8 +296,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 .gwui-people-table { overflow-x: auto; }
 .gwui-people-head {
   display: grid; padding: 10px 18px; font-size: 13px; color: var(--gw-sub);
-  border-bottom: 1px solid var(--gw-border); justify-items: start;
-}
+  border-bottom: 1px solid var(--gw-border); justify-items: start; line-height: 20px;}
 .gwui-person-row {
   display: grid; padding: 12px 18px; border-top: 1px solid var(--gw-border); align-items: center;
   text-decoration: none; color: inherit;
@@ -344,15 +313,16 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    BBBB...B") overflowed its column and clipped over the row's other text instead of wrapping,
    the same overflow `.gwui-person-email` already guards against below. */
 .gwui-person-name { font-size: 16px; font-weight: 700; color: var(--gw-text); overflow-wrap: anywhere; }
-.gwui-person-level { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
-.gwui-person-email { font-size: 14.5px; color: var(--gw-sub); margin-top: 2px; overflow-wrap: anywhere; }
+.gwui-person-level { font-size: 13px; color: var(--gw-sub); margin-top: 2px; line-height: 20px;}
+.gwui-person-email { font-size: 14px; color: var(--gw-sub); margin-top: 2px; overflow-wrap: anywhere; }
 .gwui-person-help {
   grid-column: 1 / -1; margin-top: 12px; padding: 12px 16px; border-radius: 10px;
   display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
-  font-size: 14.5px;
+  font-size: 14px;
 }
-.gwui-person-help-look { background: var(--gw-amber-bg); color: var(--gw-amber-t); }
-.gwui-person-help-concern { background: var(--gw-red-bg); color: var(--gw-red-t); }
+/* B8: what a person still needs reads as a line in their row, in its colour, with no box of its own. */
+.gwui-person-help-look { color: var(--gw-amber-t); background: none; padding: 0; }
+.gwui-person-help-concern { color: var(--gw-red-t); background: none; padding: 0; }
 /* The heading goes where the rows stack (1180px, below), not only on a phone: at 1024 the rows were
    cards under a heading that still named five columns, the last cut off (live walk, 6 October). */
 @media (max-width: 1180px) {
@@ -407,7 +377,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-folded { background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; }
 .gwui-folded-summary {
   list-style: none; cursor: pointer; padding: 20px 22px; display: flex; align-items: baseline;
-  gap: 10px; flex-wrap: wrap; min-height: 26px;
+  gap: 10px; flex-wrap: wrap; min-height: 44px; box-sizing: border-box;
 }
 .gwui-folded-summary::-webkit-details-marker { display: none; }
 /* The prototype's small ▶ before the title, since this opens - a picture check found the marker
@@ -420,11 +390,10 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    wraps onto the title's own line, never a line of its own. */
 .gwui-folded-summary b::before {
   content: '▶'; display: inline-block; font-size: 13px; color: var(--gw-sub);
-  transition: transform .15s ease; margin-right: 10px;
-}
+  transition: transform .15s ease; margin-right: 10px; line-height: 20px;}
 .gwui-folded[open] .gwui-folded-summary b::before { transform: rotate(90deg); }
 .gwui-folded-summary b { font-size: 16px; color: var(--gw-text); }
-.gwui-folded-note { font-size: 14.5px; color: var(--gw-sub); }
+.gwui-folded-note { font-size: 14px; color: var(--gw-sub); }
 .gwui-folded[open] .gwui-folded-summary { border-bottom: 1px solid var(--gw-border); }
 .gwui-folded-body { padding: 16px 22px 20px; }
 /*
@@ -441,7 +410,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    admin") ─────────────────────────────────────────────────────────────── */
 .gwui-switch-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .gwui-switch-row-title { font-size: 16px; font-weight: 700; color: var(--gw-text); }
-.gwui-switch-row-detail { font-size: 14.5px; color: var(--gw-sub); margin-top: 4px; }
+.gwui-switch-row-detail { font-size: 14px; color: var(--gw-sub); margin-top: 4px; }
 
 /* ── BUTTON ROW (group 3, piece 5): two or more Buttons side by side, left-aligned, wrapping on a
    narrow screen - a panel's own "Add participant" beside "Dismiss", the confirm beside the cancel
@@ -455,22 +424,20 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 /* Regular weight, not bold (a picture check found "Team", "Role" and "All teams" bold when the
    prototype has them as an ordinary label, the same weight as the field beside them). */
 .gwui-inline-label { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 400; color: var(--gw-text); }
-.gwui-tree { margin: 0; padding-left: 18px; font-size: 15px; color: var(--gw-text); }
+.gwui-tree { margin: 0; padding-left: 18px; font-size: 15px; color: var(--gw-text); line-height: 23px;}
 .gwui-tree ul { padding-left: 18px; }
-.gwui-tree-level { font-size: 13px; color: var(--gw-sub); }
+.gwui-tree-level { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
 .gwui-open-link {
-  font-size: 14.5px; font-weight: 400; color: var(--gw-navy); background: none; border: 0;
+  font-size: 14px; font-weight: 400; color: var(--gw-navy); background: none; border: 0;
   padding: 0; cursor: pointer; font-family: inherit; text-decoration: none;
 }
 .gwui-open-link:hover { text-decoration: underline; }
 /*
  * SCREEN FAULT 10: People's "Open" links were 34x22 on a phone - under the 40px floor every other
- * tappable row control already has. Same technique as `.gwui-tap-40`/`.gwui-plain-link` just
+ * tappable row control already has. Same technique as `.gwui-tap-44`/`.gwui-plain-link` just
  * above, on this class's own name since every caller already uses it unchanged.
  */
-@media (max-width: 640px) {
-  .gwui-open-link { min-height: 40px; display: inline-flex; align-items: center; }
-}
+.gwui-open-link { min-height: 44px; display: inline-flex; align-items: center; }
 /* A plain text link that still does something (not a navigation), for a control that must not
    compete with the page's one real primary button (Hafsah, 30 September, item 2). Same look as
    .gwui-open-link, under its own name for anywhere that isn't a list row. */
@@ -484,9 +451,9 @@ a.gwui-person-row:hover { background: var(--gw-page); }
  * tap.
  */
 .gwui-plain-link {
-  font-size: 14.5px; font-weight: 700; color: var(--gw-navy); background: none; border: 0;
+  font-size: 14px; font-weight: 700; color: var(--gw-navy); background: none; border: 0;
   padding: 0; cursor: pointer; font-family: inherit; text-decoration: underline;
-  min-height: 40px; display: inline-flex; align-items: center;
+  min-height: 44px; display: inline-flex; align-items: center;
 }
 /*
  * RELEASE WALKTHROUGH, 5 OCTOBER: THE SAME 40px FLOOR, FOR A CONTROL THAT CANNOT TAKE
@@ -496,38 +463,32 @@ a.gwui-person-row:hover { background: var(--gw-page); }
  * "Change this", a target row's muted one, "Attach it" / "Attach something" at 11.5px). This is
  * the same `min-height` plus `inline-flex`/`align-items: center` technique under its own name, so
  * any such control can take the same floor without borrowing a look that was not its own. Scoped
- * to phone width, same as the board's own small-button fix (`.gwui-btn-small` below) - above
+ * to phone width, same as the board's own small-button fix (`.btn.sm` below) - above
  * 640px these already clear 40px or sit beside enough else on the row that the extra room is not
  * needed.
  */
-@media (max-width: 640px) {
-  .gwui-tap-40 { min-height: 40px; display: inline-flex; align-items: center; }
-}
+/* 21 OCTOBER: 44px, AT EVERY WIDTH. Hafsah's 44px rule covers everything you can tap, links in lists and chips as well as buttons,
+   so the floor this comment describes is now 44px and no longer only on a phone (the class was `.gwui-tap-40`). */
+.gwui-tap-44 { min-height: 44px; display: inline-flex; align-items: center; }
 /*
  * THE CONTEXT CHAT'S "ATTACH A DOCUMENT" BUTTON (ContextChat.tsx), 34px SQUARE AT EVERY WIDTH
- * BEFORE THIS. Needs its own class, not `.gwui-tap-40`, because it grows in both directions, not
+ * BEFORE THIS. Needs its own class, not `.gwui-tap-44`, because it grows in both directions, not
  * just height - a fixed inline `width`/`height` cannot be widened by a later CSS rule, inline
  * styles always win over a stylesheet's `min-width`/`min-height`. Same 34px icon, same 8px corner,
  * at every width above 640px; a 40px square floor at phone width, same reasoning as
- * `.gwui-tap-40` just above.
+ * `.gwui-tap-44` just above.
  */
 .gwui-icon-btn {
-  width: 34px; height: 34px; border-radius: 8px; background: none; border: none;
+  width: 44px; height: 44px; border-radius: 8px; background: none; border: none;
   color: var(--gw-sub); font-size: 16px; cursor: pointer; font-family: inherit; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-}
-@media (max-width: 640px) {
-  .gwui-icon-btn { width: 40px; height: 40px; }
 }
 /*
  * SCREEN FAULT 5: THE HELP MODAL'S OWN CLOSE BUTTON WAS A FIXED 28px CIRCLE AT EVERY WIDTH.
  * Same floor as `.gwui-icon-btn` just above, on its own name because HelpModal.tsx sets this
  * button's other styles (position, background, colour) inline rather than through that class.
  */
-.gwui-help-close { width: 28px; height: 28px; }
-@media (max-width: 640px) {
-  .gwui-help-close { width: 40px; height: 40px; }
-}
+.gwui-help-close { width: 44px; height: 44px; }
 .gwui-invite-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
 /* A FIELD BESIDE ITS BUTTON, EVEN ON A PHONE (group 1 review, "Add it, switched off"): `.gwui-input`
    is `width: 100%` on its own, which inside a flex row computes a wide flex-basis and pushes the
@@ -538,7 +499,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-invite-answer { margin-top: 16px; }
 .gwui-invite-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--gw-border); }
 .gwui-invite-link-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
-.gwui-invite-link-address { font-size: 14.5px; color: var(--gw-text); overflow-wrap: anywhere; }
+.gwui-invite-link-address { font-size: 14px; color: var(--gw-text); overflow-wrap: anywhere; }
 /*
  * WIDTH CHECK, ITEM 4: "CONNECT YOUR OWN TOOLS" AT 960-1280. Two examples side by side at 280px
  * each left plenty of room on a phone, but on a genuinely two-column layout - a `Panel` holding the
@@ -563,8 +524,8 @@ a.gwui-person-row:hover { background: var(--gw-page); }
  * nothing empty above or below it; the two captions no longer force-align when the illustrations
  * are genuinely different heights, which is honest rather than papering over the difference.
  */
-.gwui-two-up > .gwui-panel:has(figure) { align-self: start; }
-.gwui-two-up > .gwui-panel > figure { margin: 0; }
+.gwui-two-up > .panel:has(figure) { align-self: start; }
+.gwui-two-up > .panel > figure { margin: 0; }
 
 /* ── PANEL ROW (more than one fact inside one Panel(pad=false), a line between each -
    "Who can join": the domain switch and the invite link, in one white panel) ─────────────────── */
@@ -580,6 +541,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    same specificity as `.gwui-input`'s own `width: 100%` (defined later in this file), which would
    otherwise win the cascade by source order and put Save back underneath a full-width field. ──── */
 .gwui-narrow-field.gwui-narrow-field { width: 260px; max-width: 100%; }
+.gwui-invite-actions > input.gwui-input.gwui-narrow-field { flex: 0 1 260px; }
 
 /* ── FLUSH FIELD ROWS: no longer needed for spacing (every FieldRow sits flush now, `srow` has no
    side padding at all - see FIELD ROW below), kept as a harmless no-op so the `flush` prop on
@@ -635,10 +597,9 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    one above the other, which is what the prototype and the name "stacked" both mean. */
 .gwui-choices-stacked { flex-direction: column; }
 .gwui-choice {
-  min-height: 40px; padding: 0 14px; border-radius: 8px; border: 0;
-  box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); background: var(--gw-card);
-  font: inherit; font-family: var(--gw-font-ui); font-size: 15px; color: var(--gw-text); cursor: pointer;
-}
+  min-height: 44px; padding: 0 14px; border-radius: 8px; border: 0;
+  box-shadow: inset 0 0 0 1px var(--rule2-crisp); background: var(--gw-card);
+  font: inherit; font-family: var(--gw-font-ui); font-size: 15px; color: var(--gw-text); cursor: pointer; line-height: 23px;}
 .gwui-choice-on { background: var(--gw-navy); color: #fff; box-shadow: none; font-weight: 700; }
 /* The chosen option, marked without a second navy button on the page (walkthrough pass 2, item 4:
    sign-up's own "Create account" is already the one navy button). Same ink-outline mark "Choice
@@ -648,8 +609,8 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   min-height: 0; height: auto; text-align: left; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px;
   width: 100%;
 }
-.gwui-choice-stacked .gwui-choice-title { font-weight: 700; font-size: 15px; }
-.gwui-choice-stacked .gwui-choice-desc { font-size: 14.5px; color: var(--gw-sub); }
+.gwui-choice-stacked .gwui-choice-title { font-weight: 700; font-size: 15px; line-height: 23px;}
+.gwui-choice-stacked .gwui-choice-desc { font-size: 14px; color: var(--gw-sub); }
 .gwui-choice-stacked.gwui-choice-on .gwui-choice-desc { color: rgba(255,255,255,.8); }
 
 /* ── SETUP BLOCK (prototype: `blk` on the setup screen, B1-starting-a-check-in/setup.jpg:
@@ -660,9 +621,9 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 28px;
   padding: 24px 0; border-top: 1px solid var(--gw-border);
 }
-.gwui-setup-block-title { font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--gw-text); margin: 0; }
-.gwui-setup-block-help { font-size: 14.5px; line-height: 1.45; color: var(--gw-sub); margin: 4px 0 0; }
-.gwui-setup-block-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+.gwui-setup-block-title { font-family: var(--gw-font-ui); font-size: 18px; line-height: 23px; font-weight: 700; color: var(--gw-text); margin: 0; }
+.gwui-setup-block-help { font-size: 14px; line-height: 20px; color: var(--gw-sub); margin: 4px 0 0; }
+.gwui-setup-block-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; font-size: 14px; line-height: 20px; color: var(--gw-text); }
 /* The blocks follow the width they are given, not the screen's: the same setup sits on a wide page
    and inside the 640px card at the end of the lead's first check-in. Under 720px of room the heading
    sits above its controls, the prototype's own phone layout. */
@@ -680,7 +641,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 }
 .gwui-choice-card-on { box-shadow: inset 0 0 0 2px var(--gw-text); }
 .gwui-choice-card-title { font-size: 16px; font-weight: 700; color: var(--gw-text); }
-.gwui-choice-card-desc { font-size: 15px; color: var(--gw-sub); margin-top: 4px; }
+.gwui-choice-card-desc { font-size: 15px; color: var(--gw-sub); margin-top: 4px; line-height: 23px;}
 
 /* ── TOGGLE (prototype: a switch, on = --rec / green) ─────────────────────── */
 .gwui-toggle {
@@ -699,14 +660,11 @@ a.gwui-person-row:hover { background: var(--gw-page); }
  * extends the HIT area 6px past the pill on every side, 40px tall, without widening or heightening
  * what is actually drawn.
  */
-@media (max-width: 640px) {
-  .gwui-toggle::after { content: ''; position: absolute; inset: -6px; }
-}
 
 /* ── FORM FIELDS (prototype: label.f, .input) ─────────────────────────────── */
-.gwui-field-label { display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; font-weight: 700; color: var(--gw-text); }
+.gwui-field-label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 700; color: var(--gw-text); }
 .gwui-input {
-  min-height: 48px; border-radius: 10px; border: 1.5px solid var(--gw-rule-2); background: var(--gw-card);
+  min-height: 48px; border-radius: 10px; border: 1px solid var(--rule2-crisp); background: var(--gw-card);
   padding: 0 16px; font: inherit; font-family: var(--gw-font-ui); font-size: 16px; color: var(--gw-text);
   width: 100%; min-width: 0;
 }
@@ -740,69 +698,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-ci-assessment-textarea { font-size: 16px; }
 }
 
-/* ── BUTTON (prototype: .btn, plus a `danger` kind) ───────────────────────── */
-.gwui-btn {
-  min-height: 44px; padding: 0 18px; border-radius: 8px; border: 0;
-  font: inherit; font-family: var(--gw-font-ui); font-size: 16px; font-weight: 700; line-height: 1.2;
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  cursor: pointer; white-space: nowrap; text-decoration: none; text-align: center;
-}
-.gwui-btn:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
-/* A button that cannot be pressed yet stays readable (setup page review, 13 October: a pale "Add"
-   on beige). It was the same button at 55% opacity, which put white on a washed-out navy and pale
-   text on beige. Now it reads as an outlined button in the secondary ink, dark on white. */
-.gwui-btn:disabled, .gwui-btn[aria-disabled="true"] { cursor: not-allowed; }
-.gwui-btn-primary:disabled, .gwui-btn-primary[aria-disabled="true"],
-.gwui-btn-secondary:disabled, .gwui-btn-secondary[aria-disabled="true"] {
-  background: var(--gw-card); color: var(--gw-sub); box-shadow: inset 0 0 0 1.5px var(--gw-rule-2);
-}
-.gwui-btn-quiet:disabled, .gwui-btn-quiet[aria-disabled="true"] { color: var(--gw-sub); }
-.gwui-btn-primary { background: var(--gw-navy); color: #fff; }
-.gwui-btn-primary:hover:not(:disabled) { background: var(--gw-navy-d); }
-.gwui-btn-secondary { background: var(--gw-card); color: var(--gw-text); box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); }
-.gwui-btn-quiet { background: transparent; color: var(--gw-navy); padding: 0 8px; }
-.gwui-btn-quiet:hover:not(:disabled) { text-decoration: underline; }
-/* the danger kind (app.css: .btn.danger{background:var(--con);color:#fff}) - solid red, the
-   prototype's only danger style. 30 September (Hafsah): was a secondary-styled outline, with a
-   second "dangerSolid" flag for the one place that actually matched the prototype; the outline
-   and the "quiet danger" red-text variant are both gone now, so every danger button reads the
-   same weight the prototype gives it. */
-.gwui-btn-danger { background: var(--gw-red-t); color: #fff; }
-/* The prototype's own "End this check-in" (s41.js): an ordinary secondary button, white with its
-   thin grey outline, whose words are red. Not a fifth kind: the secondary kind with red text. */
-.gwui-btn-secondary.gwui-btn-red-text { color: var(--gw-red-t); }
-.gwui-btn-big { min-height: 54px; font-size: 17px; padding: 0 22px; }
-.gwui-btn-small { min-height: 36px; font-size: 14.5px; padding: 0 12px; }
-/*
- * FAULT D1 (reviewer, third round): THE FORK BUTTON'S TEXT WAS CLIPPED ON THE LEFT AT 1024px
- * ("heck in once…"). `.gwui-btn`'s own `white-space: nowrap` already had a mobile-only exception
- * (`@media (max-width: 640px)`, below) for exactly this - a long sentence on a button narrower
- * than its own one-line width - but a wide button's fork sits in a column only 346px wide even on
- * a 1024px screen (it is 82% of the messages column, not of the viewport), so the same overflow
- * happened above 640px with nothing to catch it. `wide` already means "a full sentence is likely
- * long enough to need its own line or three", at any width, so it gets this directly rather than
- * only below the phone breakpoint; a short wide button (most of them) still reads as one line,
- * since nothing here forces a break where the text does not already need one.
- */
-.gwui-btn-wide { width: 100%; white-space: normal; }
-@media (max-width: 640px) {
-  .gwui-btn { white-space: normal; }
-  .gwui-btn-small { min-height: 40px; }
-}
-
-/* ── TAG (prototype: .tag, .tag.rec/.att/.act/.con/.plain) ────────────────── */
-.gwui-tag {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 10px;
-  border-radius: 13px; font-size: 13.5px; font-weight: 700; white-space: nowrap;
-}
-.gwui-tag-proven    { background: var(--gw-green-bg); color: var(--gw-green-t); box-shadow: inset 0 0 0 1px var(--gw-green-b); }
-.gwui-tag-attention { background: var(--gw-amber-bg); color: var(--gw-amber-t); box-shadow: inset 0 0 0 1px var(--gw-amber-b); }
-.gwui-tag-action    { background: var(--gw-blue-bg);  color: var(--gw-blue-t);  box-shadow: inset 0 0 0 1px var(--gw-blue-b); }
-.gwui-tag-concern   { background: var(--gw-red-bg);   color: var(--gw-red-t);   box-shadow: inset 0 0 0 1px var(--gw-red-b); }
-.gwui-tag-plain     { background: var(--gw-bg);       color: var(--gw-text); }
-
 /* ── NOTE / EMPTY (prototype: .note, an empty sentence, a locked door) ────── */
-.gwui-note { font-size: 13.5px; color: var(--gw-sub); }
+.gwui-note { font-size: 14px; color: var(--gw-sub); }
 .gwui-note-error { color: var(--gw-red-t); }
 /* A check-in's own one-sentence state above its tabs - "Your turn. It is 1 day late.", "Ended
    well." - in the same amber/green/navy ink Tag's own tones already draw from (group 3's
@@ -819,14 +716,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    for the badges beside it (a guest check-in's own org, how it ended) (group 3's drift-list
    review, part 2; replaces GroundParticipantPage.tsx's own gwui-fs-13/gwui-ink-muted/gwui-pt-10/
    gwui-pb-12 combination). */
-.gwui-status-row { font-size: 13px; color: var(--gw-sub); padding: 10px 0 12px; }
+.gwui-status-row { font-size: 13px; color: var(--gw-sub); padding: 10px 0 12px; line-height: 20px;}
 /* A centred Note, for the sign-up screen's own "or with your email" divider between Google and the
    email form (signup.jpg), replacing the page-only gwui-auth-or (group 3 drift list, piece 1). */
 .gwui-note-centre { text-align: center; }
-.gwui-empty-line { font-size: 14.5px; color: var(--gw-sub); }
+.gwui-empty-line { font-size: 14px; color: var(--gw-sub); }
 .gwui-empty-panel { max-width: 640px; }
 .gwui-empty-panel-title {
-  font-family: var(--gw-font-ui); font-size: 21px; line-height: 1.25; font-weight: 700; color: var(--gw-text); margin: 0 0 8px;
+  font-family: var(--gw-font-ui); font-size: 21px; line-height: 26px; font-weight: 700; color: var(--gw-text); margin: 0 0 8px;
 }
 .gwui-empty-panel-body { font-size: 16px; line-height: 1.5; color: var(--gw-sub); margin: 0; }
 .gwui-empty-panel-action { margin-top: 16px; }
@@ -835,8 +732,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-toast {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: 90px; z-index: 60;
   background: var(--gw-text); color: #fff; padding: 12px 18px; border-radius: 10px; font-size: 15px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.2); max-width: 90vw;
-}
+  box-shadow: var(--gw-shadow-toast); max-width: 90vw; line-height: 23px;}
 
 /* ── MODAL (prototype: .modal-bg, .modal) ────────────────────────────────── */
 .gwui-modal-bg {
@@ -851,19 +747,20 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-modal-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
 }
-.gwui-modal-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--gw-text); line-height: 1.35; }
+.gwui-modal-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--gw-text); line-height: 22px; }
 .gwui-modal-close {
   flex-shrink: 0; background: none; border: none; padding: 4px 0; font-family: inherit;
-  font-size: 13px; font-weight: 700; color: var(--gw-navy); cursor: pointer; text-decoration: underline;
-}
+  font-size: 13px; font-weight: 700; color: var(--gw-navy); cursor: pointer; text-decoration: underline; line-height: 20px;}
 
 /* ── CONVERSATION CARD (prototype: .ci-focus, .ci-card, app.css) ─────────── */
-.gwui-conv-outer { max-width: 560px; margin: 0 auto; }
-.gwui-conv-back-row { padding: 8px 12px 10px; flex-shrink: 0; }
-.gwui-conv-card {
-  flex: 1; min-height: 0; display: flex; flex-direction: column; background: white;
-  border: 1px solid var(--gw-border); border-radius: 16px; overflow: hidden;
-}
+
+/* The way back is the check-in's name in the header, on the same line as End session (TheCheckInHeader.tsx, 3 November 2026):
+   the name keeps the header's bold, the arrow is the link colour, and the whole name is the button, at least 44px tall. */
+.ci-h-back { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.ci-h-back:hover { text-decoration: underline; }
+.ci-h-back:focus-visible { outline: 2px solid var(--act); outline-offset: 2px; border-radius: 4px; }
+.ci-h-arrow { color: var(--act); }
+
 /*
   REVIEW ROUND 3, ITEM 7: AT 375 WIDE, THE CARD RUNS FULL WIDTH.
   The prototype's own rule (app.css, `body.focus .ci-card` at <=860px): no side gutters, no
@@ -871,11 +768,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   a framed box inside them. `.gwui-conv-outer` drops its own max-width/margin at the same
   breakpoint so nothing above the card re-adds the gutter it just removed.
 */
-@media (max-width: 640px) {
-  .gwui-conv-outer { max-width: none; margin: 0; }
-  .gwui-conv-back-row { padding-left: 16px; padding-right: 16px; }
-  .gwui-conv-card { border-radius: 0; border-left: none; border-right: none; }
-}
 
 /* ── EXAMPLE EXCHANGE (fault 5 of the live walk of the suites: "How people ask"/"How people use
    it" on the leave and spending boards) - the shared Bubble stacked in a flex column, the same
@@ -894,14 +786,10 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-stage-track-item {
   display: flex; flex-direction: column; align-items: center; gap: 1px; text-align: center;
   font-size: 13px; padding: 5px 8px; border-radius: 11px; white-space: nowrap;
-  background: var(--gw-bg); color: var(--gw-sub);
-}
+  background: var(--gw-bg); color: var(--gw-sub); line-height: 20px;}
 .gwui-stage-track-name  { font-weight: 700; }
 .gwui-stage-track-count { font-weight: 500; }
 .gwui-stage-track-done    { background: var(--gw-green-bg); color: var(--gw-green-t); }
-.gwui-stage-track-current { background: var(--gw-navy); color: white; }
-.gwui-stage-track-current .gwui-stage-track-name,
-.gwui-stage-track-current .gwui-stage-track-count { font-weight: 700; }
 
 /* ── UTILITY SCALE (design-audit.md section 4, the guard test) ───────────────
    For a page on REBUILT_PAGES: no inline fontSize, color, margin*, padding*, border
@@ -923,13 +811,13 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    13.5px is its `.note` (a muted aside). Nothing below 13 is defined here at all now, and
    the guard (the-rebuilt-pages-use-only-the-new-parts.spec.ts) fails the build if a listed
    page - or this file - ever sets one. */
-.gwui-fs-13   { font-size: 13px; }
-.gwui-fs-13-5 { font-size: 13.5px; }
+.gwui-fs-13   { font-size: 13px; line-height: 20px;}
+.gwui-fs-13-5 { font-size: 14px; }
 .gwui-fs-14   { font-size: 14px; }
-.gwui-fs-14-5 { font-size: 14.5px; }
-.gwui-fs-15   { font-size: 15px; }
+.gwui-fs-14-5 { font-size: 14px; }
+.gwui-fs-15   { font-size: 15px; line-height: 23px;}
 .gwui-fs-16   { font-size: 16px; }
-.gwui-fs-17   { font-size: 17px; }
+.gwui-fs-17   { font-size: 17px; line-height: 26px;}
 .gwui-fs-18   { font-size: 18px; }
 
 /* Ink (colour only). Named after the token, not the place it is used. */
@@ -947,20 +835,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ink-clay  { color: var(--gw-clay); }
 /* ReportPage.tsx's own centred-column layout (ReportBody, unmounted today - see the file's own
    comment) - a straight rename of its repeated `maxWidth: 1040, margin: '0 auto'` inline style. */
-.gwui-report-wrap { max-width: 1040px; margin-left: auto; margin-right: auto; }
-.gwui-rule-right      { border-right: 1px solid var(--gw-border); }
-.gwui-rule-right-none { border-right: none; }
-.gwui-pt-34 { padding-top: 34px; }
-.gwui-pb-60 { padding-bottom: 60px; }
-.gwui-pt-1 { padding-top: 1px; } .gwui-pb-1 { padding-bottom: 1px; }
-.gwui-pl-5 { padding-left: 5px; } .gwui-pr-5 { padding-right: 5px; }
-.gwui-pl-3 { padding-left: 3px; } .gwui-pr-3 { padding-right: 3px; }
+
+ 
+ 
+ 
 .gwui-pl-30 { padding-left: 30px; }
 /* where-to-focus.tsx's own list grid gap (row, column), kept as its own class for the same reason
    as .gwui-gap-6-20 above - a row/column pair, not a single value. */
 .gwui-gap-12-20 { gap: 12px 20px; }
 /* Bullet's own dot, nudged down to sit on the text's baseline rather than its cap height. */
-.gwui-mt-055em { margin-top: .55em; }
 
 /* Spacing (margin-top/right/bottom/left, padding-top/right/bottom/left, gap), the exact
    pixel values the board already used - a plain numeric scale, not a redesign. */
@@ -983,22 +866,22 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-pt-8 { padding-top: 8px; } .gwui-pt-9 { padding-top: 9px; } .gwui-pt-10 { padding-top: 10px; }
 .gwui-pt-11 { padding-top: 11px; } .gwui-pt-12 { padding-top: 12px; } .gwui-pt-13 { padding-top: 13px; }
 .gwui-pt-14 { padding-top: 14px; }
-.gwui-pt-16 { padding-top: 16px; } .gwui-pt-18 { padding-top: 18px; } .gwui-pt-22 { padding-top: 22px; }
+.gwui-pt-16 { padding-top: 16px; }  
 .gwui-pr-0 { padding-right: 0; } .gwui-pr-8 { padding-right: 8px; } .gwui-pr-9 { padding-right: 9px; }
 .gwui-pr-10 { padding-right: 10px; } .gwui-pr-13 { padding-right: 13px; } .gwui-pr-14 { padding-right: 14px; }
 .gwui-pr-15 { padding-right: 15px; } .gwui-pr-16 { padding-right: 16px; } .gwui-pr-18 { padding-right: 18px; }
 .gwui-pr-20 { padding-right: 20px; }
-.gwui-pr-22 { padding-right: 22px; } .gwui-pr-24 { padding-right: 24px; }
+.gwui-pr-22 { padding-right: 22px; } 
 .gwui-pb-0 { padding-bottom: 0; } .gwui-pb-2 { padding-bottom: 2px; } .gwui-pb-6 { padding-bottom: 6px; }
 .gwui-pb-7 { padding-bottom: 7px; } .gwui-pb-8 { padding-bottom: 8px; } .gwui-pb-9 { padding-bottom: 9px; }
 .gwui-pb-10 { padding-bottom: 10px; } .gwui-pb-11 { padding-bottom: 11px; } .gwui-pb-12 { padding-bottom: 12px; }
 .gwui-pb-14 { padding-bottom: 14px; }
-.gwui-pb-16 { padding-bottom: 16px; } .gwui-pb-18 { padding-bottom: 18px; } .gwui-pb-22 { padding-bottom: 22px; }
+.gwui-pb-16 { padding-bottom: 16px; }  
 .gwui-pl-0 { padding-left: 0; } .gwui-pl-8 { padding-left: 8px; } .gwui-pl-9 { padding-left: 9px; }
 .gwui-pl-10 { padding-left: 10px; } .gwui-pl-13 { padding-left: 13px; } .gwui-pl-14 { padding-left: 14px; }
 .gwui-pl-15 { padding-left: 15px; } .gwui-pl-16 { padding-left: 16px; } .gwui-pl-18 { padding-left: 18px; }
 .gwui-pl-20 { padding-left: 20px; }
-.gwui-pl-22 { padding-left: 22px; } .gwui-pl-24 { padding-left: 24px; } .gwui-pl-28 { padding-left: 28px; }
+.gwui-pl-22 { padding-left: 22px; }  .gwui-pl-28 { padding-left: 28px; }
 .gwui-p-0 { padding: 0; }
 
 .gwui-gap-3  { gap: 3px; }
@@ -1016,10 +899,10 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-rule-none  { border: none; }
 .gwui-rule-blue  { border: 1px solid var(--gw-blue-b); }
 .gwui-rule-amber { border: 1px solid var(--gw-amber-b); }
-.gwui-rule-dark  { border: 1.5px solid var(--gw-dark); }
+
 .gwui-rule-dashed { border: 1px dashed var(--gw-border); }
 .gwui-rule-top       { border-top: 1px solid var(--gw-border); }
-.gwui-rule-top-none  { border-top: none; }
+
 .gwui-rule-top-dashed { border-top: 1px dashed var(--gw-border); }
 /* A repeated inner list row (an item inside a wider card, e.g. a per-person panel's own
    lines, or a poll option): a line above every row but the first, without an `i === 0`
@@ -1047,7 +930,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-pt-40 { padding-top: 40px; }
 .gwui-rule-bottom { border-bottom: 1px solid var(--gw-border); }
 .gwui-rule-bottom-none { border-bottom: none; }
-.gwui-rule-square { border: 1.5px solid var(--gw-border); }
+.gwui-rule-square { border: 1px solid var(--rule2-crisp); }
 
 /* GROUP 3, PIECE 2 (the reports, ReportPage.tsx/SessionReportPage.tsx): additional box-model and
    ink values generated from those two files' own former inline styles - the same numeric scale,
@@ -1058,17 +941,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-fs-22 { font-size: 22px; }
 .gwui-fs-30 { font-size: 30px; }
 .gwui-ink-green-soft { color: var(--gw-green-t-soft); }
-.gwui-mt-24 { margin-top: 24px; } .gwui-mt-30 { margin-top: 30px; } .gwui-mt-32 { margin-top: 32px; }
-.gwui-mt-40 { margin-top: 40px; }
-.gwui-mb-1  { margin-bottom: 1px; } .gwui-mb-3  { margin-bottom: 3px; } .gwui-mb-5  { margin-bottom: 5px; }
-.gwui-mb-11 { margin-bottom: 11px; } .gwui-mb-20 { margin-bottom: 20px; } .gwui-mb-22 { margin-bottom: 22px; }
-.gwui-mb-34 { margin-bottom: 34px; }
-.gwui-pt-24 { padding-top: 24px; }
+  
+
+ .gwui-mb-3  { margin-bottom: 3px; } 
+.gwui-mb-11 { margin-bottom: 11px; }  
+
 .gwui-pl-17 { padding-left: 17px; }
 .gwui-gap-2 { gap: 2px; } .gwui-gap-18 { gap: 18px; }
 .gwui-rule-left       { border-left: 3px solid var(--gw-border); }
-.gwui-rule-left-amber { border-left: 3px solid var(--gw-amber-b); }
-.gwui-rule-left-green { border-left: 3px solid var(--gw-green-b); }
+
 /* A soft-tint rule, for a surface whose own tint is the point (the "did this feel fair" feedback
    buttons' equal green/amber weight; see their own comment for why they are plain buttons, not
    the shared Button, whose four kinds are all navy/white/text/red). */
@@ -1080,7 +961,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ink-white-55 { color: rgba(255, 255, 255, .55); }
 .gwui-ink-white-75 { color: rgba(255, 255, 255, .75); }
 .gwui-ink-white-90 { color: rgba(255, 255, 255, .9); }
-.gwui-rule-white-16 { border: 1px solid rgba(255, 255, 255, .16); }
+
 /* "In their own voice" quote box (board): their own words when given, else a muted placeholder. */
 /* A colour picked from data at render time (WhatSuccessLooksLike's moving/stuck/unspoken tone),
    never a fixed design value - `color` still has to come from a class (the guard bans the inline
@@ -1089,13 +970,12 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ownvoice { background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); color: var(--gw-blue-t); }
 .gwui-ownvoice-none { border: 1px dashed var(--gw-border); color: var(--gw-muted); }
 /* The "words only / with a bar" toggle (board coverage variant), chosen vs not. */
-.gwui-toggle-chip-on  { border: 1px solid var(--gw-dark); background: var(--gw-dark); color: #fff; }
-.gwui-toggle-chip-off { border: 1px solid var(--gw-border); background: #fff; color: var(--gw-sub); }
+
 /* The poll's winning option, picked out from the rest (board: "Find a time"). */
 .gwui-win-row { background: var(--gw-green-bg); border-radius: 9px; margin: 2px -8px; }
 /* The poll's own "I can make this" toggle, picked vs not. */
 .gwui-poll-chip-on  { background: var(--gw-blue-bg); color: var(--gw-blue-t); border: 1px solid var(--gw-blue-b); }
-.gwui-poll-chip-off { background: #F1F2F5; color: var(--gw-sub); border: 1px solid var(--gw-border); }
+.gwui-poll-chip-off { background: var(--gw-bg); color: var(--gw-sub); border: 1px solid var(--gw-border); }
 /* "The picture" - a blue accent stripe on a panel's left edge (WhatTheNetworkSaid). */
 .gwui-accent-left-blue { border-left: 3px solid var(--gw-blue-b); }
 /* The prototype's wide outlined "Every session" button (board-as-lead.jpg): white, a visible dark
@@ -1103,7 +983,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    so it stays its own class rather than joining Button's own kinds. */
 .gwui-wide-outline-btn {
   display: block; text-align: center; text-decoration: none;
-  border: 1.5px solid var(--gw-dark); border-radius: 8px;
+  border: 1px solid var(--gw-dark); border-radius: 8px;
   background: white; color: var(--gw-dark); font-weight: 700; font-family: inherit;
 }
 
@@ -1112,41 +992,41 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    `.t-title` at 32px, over "Will we reach 25 sales by 30 September?"'s small label) - not a quiet
    12.5px aside. Each ink comes from a CSS custom property the caller sets (light ground or the
    board's dark header), never an inline `color` - see how-it-is-going.tsx. */
-.gwui-how-story  { font-family: var(--gw-font-name); font-size: 32px; line-height: 1.28; font-weight: 500; margin: 0 0 10px; color: var(--gwui-how-story); }
-.gwui-how-brief  { font-size: 14.5px; line-height: 1.5; margin: 0 0 10px; color: var(--gwui-how-brief); }
-.gwui-how-glance { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; font-size: 14.5px; }
-.gwui-how-strong { font-weight: 600; color: var(--gwui-how-strong); }
+.gwui-how-story  { font-family: var(--gw-font-name); font-size: 32px; line-height: 41px; font-weight: 500; margin: 0 0 10px; color: var(--gwui-how-story); }
+.gwui-how-brief  { font-size: 14px; line-height: 1.5; margin: 0 0 10px; color: var(--gwui-how-brief); }
+.gwui-how-glance { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; font-size: 14px; }
+.gwui-how-strong { font-weight: 700; color: var(--gwui-how-strong); }
 .gwui-how-people { color: var(--gwui-how-people); }
-.gwui-how-warn   { font-weight: 600; color: var(--gwui-how-warn); }
+.gwui-how-warn   { font-weight: 700; color: var(--gwui-how-warn); }
 
 /* ── WHAT TO SETTLE TOGETHER (board review, 30 September) ─────────────────────────────────── */
-.gwui-settle-label { font-size: 13px; font-weight: 700; margin-bottom: 3px; color: var(--gwui-settle-label); }
-.gwui-settle-body  { font-size: 13px; line-height: 1.6; max-width: 68ch; color: var(--gwui-settle-body); }
-.gwui-settle-note  { font-size: 13.5px; margin-top: 6px; color: var(--gwui-settle-note); }
+.gwui-settle-label { font-size: 13px; font-weight: 700; margin-bottom: 3px; color: var(--gwui-settle-label); line-height: 20px;}
+.gwui-settle-body  { font-size: 13px; line-height: 21px; max-width: 68ch; color: var(--gwui-settle-body); }
+.gwui-settle-note  { font-size: 14px; margin-top: 6px; color: var(--gwui-settle-note); }
 
 /* ── A SECOND PRESS BEFORE IT IS GONE (board review, 30 September) ────────────────────────── */
 .gwui-confirm { padding: 10px 12px; border-radius: 8px; margin-top: 8px; }
 .gwui-confirm-danger  { background: var(--gw-red-bg); border: 1px solid var(--gw-red-b-soft); }
 .gwui-confirm-caution { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b-soft); }
-.gwui-confirm-saying { font-size: 14.5px; line-height: 1.5; margin-bottom: 8px; }
+.gwui-confirm-saying { font-size: 14px; line-height: 1.5; margin-bottom: 8px; }
 .gwui-confirm-saying-danger  { color: var(--gw-red-t); }
 .gwui-confirm-saying-caution { color: var(--gw-amber-t); }
 .gwui-confirm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .gwui-confirm-btn {
-  padding: 7px 12px; border-radius: 6px; border: none; font-size: 14.5px; font-weight: 700;
+  padding: 7px 12px; border-radius: 6px; border: none; font-size: 14px; font-weight: 700;
   font-family: inherit; cursor: pointer;
 }
 .gwui-confirm-btn:disabled { cursor: wait; }
 .gwui-confirm-btn-danger  { background: var(--gw-red-t); color: white; }
 .gwui-confirm-btn-caution { background: var(--gw-navy); color: white; }
-.gwui-confirm-btn-keep { border: 1px solid var(--gw-border); background: white; color: var(--gw-sub); font-weight: 600; }
+.gwui-confirm-btn-keep { border: 1px solid var(--gw-border); background: white; color: var(--gw-sub); font-weight: 700; }
 
 /* ── THE OTHER BOARDS YOU ARE IN (board review, 30 September) ─────────────────────────────── */
 .gwui-boards-switcher { position: relative; }
 .gwui-boards-trigger {
   display: flex; align-items: center; gap: 8px;
   background: white; border: 1px solid var(--gw-border); color: var(--gw-text);
-  border-radius: 8px; padding: 6px 10px; font-size: 14.5px; font-weight: 600;
+  border-radius: 8px; padding: 6px 10px; font-size: 14px; font-weight: 700;
   cursor: pointer; font-family: inherit;
 }
 /*
@@ -1161,22 +1041,22 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: auto;
   min-width: 260px; max-width: min(360px, calc(100vw - 36px));
   background: white; border: 1px solid var(--gw-border); border-radius: 10px; padding: 6px;
-  box-shadow: 0 10px 30px rgba(20, 24, 40, .18); max-height: 320px; overflow-y: auto;
+  box-shadow: var(--gw-shadow-menu); max-height: 320px; overflow-y: auto;
 }
 .gwui-boards-option {
   display: block; width: 100%; text-align: left; background: none; border: none;
-  color: var(--gw-text); font-size: 14.5px; padding: 8px 10px; border-radius: 7px;
+  color: var(--gw-text); font-size: 14px; padding: 8px 10px; border-radius: 7px;
   cursor: pointer; font-family: inherit;
 }
-.gwui-boards-option-title { font-weight: 600; }
-.gwui-boards-option-finding { color: var(--gw-sub); font-size: 13px; line-height: 1.4; margin-top: 2px; }
+.gwui-boards-option-title { font-weight: 700; }
+.gwui-boards-option-finding { color: var(--gw-sub); font-size: 13px; line-height: 18px; margin-top: 2px; }
 
 /* ── GROUP 1 REBUILD: settings, billing, connections, tools, more ─────────────────────────── */
 
 /* A row of counted facts (WhatsApp's "6 people checking in", "212 check-ins this month"). */
 .gwui-stat-row { display: flex; gap: 28px; flex-wrap: wrap; }
 .gwui-stat-num { font-family: var(--gw-font-name); font-size: 26px; color: var(--gw-text); margin: 0; }
-.gwui-stat-label { font-size: 13.5px; color: var(--gw-sub); margin: 2px 0 0; }
+.gwui-stat-label { font-size: 14px; color: var(--gw-sub); margin: 2px 0 0; }
 
 /* The plan cards on Plan and billing (prototype: `.g3`, `PLANS.map` in s20.js/s21.js - three cards
    to a row, not five; the chosen plan's card carries the navy outline and a "Your plan" tag; the
@@ -1189,14 +1069,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-plan-card-enterprise { background: var(--gw-bg); }
 .gwui-plan-name { font-size: 16px; font-weight: 700; color: var(--gw-text); margin: 0; }
 .gwui-plan-price { font-family: var(--gw-font-name); font-size: 24px; color: var(--gw-text); margin: 0; }
-.gwui-plan-price span { font-size: 14.5px; color: var(--gw-sub); font-family: var(--gw-font-ui); }
-.gwui-plan-cap { font-size: 14.5px; color: var(--gw-sub); margin: 0; }
+.gwui-plan-price span { font-size: 14px; color: var(--gw-sub); font-family: var(--gw-font-ui); }
+.gwui-plan-cap { font-size: 14px; color: var(--gw-sub); margin: 0; }
 /* The plans as a table (fix list item 6; the light prototype's s73 .pb-table): each plan's price, seats, extra seat, WhatsApp and
    what it costs for your people. Scrolls sideways inside its own box on a phone, never the page. */
 .gwui-plan-table-wrap { overflow-x: auto; background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; }
 .gwui-plan-table { width: 100%; min-width: 640px; border-collapse: collapse; }
-.gwui-plan-table th { text-align: left; font-size: 13px; font-weight: 400; color: var(--gw-sub); padding: 12px 14px; border-bottom: 1px solid var(--gw-border); }
-.gwui-plan-table td { padding: 12px 14px; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); border-top: 1px solid var(--gw-border); vertical-align: middle; }
+.gwui-plan-table th { text-align: left; font-size: 13px; font-weight: 400; color: var(--gw-sub); padding: 12px 14px; border-bottom: 1px solid var(--gw-border); line-height: 20px;}
+.gwui-plan-table td { padding: 12px 14px; font-size: 14px; line-height: 20px; color: var(--gw-text); border-top: 1px solid var(--gw-border); vertical-align: middle; }
 .gwui-plan-table tbody tr:first-child td { border-top: none; }
 .gwui-plan-table-mine td { background: var(--gw-bg); }
 .gwui-plan-table-mine td:first-child { box-shadow: inset 3px 0 0 var(--gw-navy); }
@@ -1205,27 +1085,27 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* A block of example code, in the developer pages. */
 .gwui-code-block {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 21px;
   background: var(--gw-navy); color: #fff; border-radius: 10px; padding: 14px 16px;
   overflow-x: auto; white-space: pre; margin: 0;
 }
 .gwui-code-block-light {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 21px;
   background: var(--gw-bg); border: 1px solid var(--gw-border); color: var(--gw-text);
   border-radius: 8px; padding: 12px 14px; overflow-x: auto; white-space: pre; margin: 0;
 }
-.gwui-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+.gwui-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 20px;}
 
 /* A secret shown once (a new key, a signing secret). */
 .gwui-secret-box { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b); border-radius: 8px; padding: 12px 14px; }
-.gwui-secret-box-label { font-size: 13px; font-weight: 700; color: var(--gw-amber-t); margin: 0 0 6px; }
-.gwui-secret-box-value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; color: var(--gw-text); margin: 0; }
+.gwui-secret-box-label { font-size: 13px; font-weight: 700; color: var(--gw-amber-t); margin: 0 0 6px; line-height: 20px;}
+.gwui-secret-box-value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; color: var(--gw-text); margin: 0; line-height: 20px;}
 
 /* A list of checkboxes with a sentence under each (webhook events, key scopes). */
 .gwui-check-list { display: flex; flex-direction: column; gap: 12px; }
-.gwui-check-row { display: flex; align-items: flex-start; gap: 10px; font-size: 14.5px; color: var(--gw-text); cursor: pointer; }
+.gwui-check-row { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--gw-text); cursor: pointer; }
 .gwui-check-row input { margin-top: 4px; flex-shrink: 0; }
-.gwui-check-row-sub { display: block; font-size: 13.5px; color: var(--gw-sub); margin-top: 2px; }
+.gwui-check-row-sub { display: block; font-size: 14px; color: var(--gw-sub); margin-top: 2px; }
 
 /* "More", the phone menu. */
 .gwui-more-list { list-style: none; margin: 0; padding: 0; }
@@ -1236,10 +1116,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 .gwui-more-row + .gwui-more-row { border-top: 1px solid var(--gw-border); }
 .gwui-more-row b { font-size: 16px; font-weight: 700; }
-.gwui-more-org-row { display: flex; align-items: center; gap: 12px; padding: 14px 22px; }
-.gwui-more-org-row + .gwui-more-org-row { border-top: 1px solid var(--gw-border); }
-.gwui-more-org-name { font-size: 16px; font-weight: 700; color: var(--gw-text); flex: 1; min-width: 0; }
-.gwui-more-org-check { color: var(--gw-green-t); font-weight: 700; }
 
 /* A numbered set of steps, each opened as its own turn comes (Connect WhatsApp). Unlike `Steps`
    (a closed checklist of done/not-done facts), each step here carries its own body and a number
@@ -1249,14 +1125,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-numstep:first-child { border-top: none; padding-top: 0; }
 .gwui-numstep-num {
   flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-size: 14.5px; font-weight: 700; background: var(--gw-card); border: 1px solid var(--gw-border); color: var(--gw-sub);
+  font-size: 14px; font-weight: 700; background: var(--gw-card); border: 1px solid var(--gw-border); color: var(--gw-sub);
 }
 .gwui-numstep-num-done { background: var(--gw-green-t); border-color: var(--gw-green-t); color: #fff; }
 .gwui-numstep-num-now { background: var(--gw-navy); border-color: var(--gw-navy); color: #fff; }
 .gwui-numstep-body { flex: 1; min-width: 0; }
 .gwui-numstep-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .gwui-numstep-title { font-size: 16px; font-weight: 700; color: var(--gw-text); margin: 0; }
-.gwui-numstep-title-btn { background: none; border: none; padding: 0; font: inherit; font-size: 16px; font-weight: 700; color: var(--gw-text); cursor: pointer; text-align: left; }
+
 .gwui-numstep-content { margin-top: 12px; }
 
 /* ── OPS CONSOLE EXAMPLE (F1-connections/tools.jpg, connections.jpg: "How it looks inside your
@@ -1267,38 +1143,38 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-console { border: 1px solid var(--gw-border); border-radius: 12px; overflow: hidden; background: #fff; }
 .gwui-console-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  background: var(--gw-navy); color: #fff; padding: 12px 16px; font-size: 14.5px; font-weight: 700;
+  background: var(--gw-navy); color: #fff; padding: 12px 16px; font-size: 14px; font-weight: 700;
 }
 .gwui-console-body { display: flex; min-height: 0; }
 .gwui-console-nav {
   width: 128px; flex-shrink: 0; background: var(--gw-bg); border-right: 1px solid var(--gw-border);
   padding: 10px 0; display: flex; flex-direction: column;
 }
-.gwui-console-nav-item { padding: 9px 14px; font-size: 13.5px; color: var(--gw-sub); }
+.gwui-console-nav-item { padding: 9px 14px; font-size: 14px; color: var(--gw-sub); }
 .gwui-console-nav-item-active { background: #fff; color: var(--gw-text); font-weight: 700; border-right: 2px solid var(--gw-navy); }
 .gwui-console-main { flex: 1; min-width: 0; padding: 16px 18px; }
 .gwui-console-main-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.gwui-console-main-title { font-size: 15px; font-weight: 700; color: var(--gw-text); margin: 0; }
-.gwui-console-main-from { font-size: 13px; color: var(--gw-sub); }
-.gwui-console-main-sub { font-size: 13.5px; color: var(--gw-sub); margin: 4px 0 14px; }
+.gwui-console-main-title { font-size: 15px; font-weight: 700; color: var(--gw-text); margin: 0; line-height: 23px;}
+.gwui-console-main-from { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
+.gwui-console-main-sub { font-size: 14px; color: var(--gw-sub); margin: 4px 0 14px; }
 .gwui-console-deal { padding: 12px 0; border-top: 1px solid var(--gw-border); }
 .gwui-console-deal:first-of-type { border-top: none; padding-top: 0; }
-.gwui-console-deal-company { font-size: 14.5px; font-weight: 700; color: var(--gw-text); }
-.gwui-console-deal-person { font-size: 13px; color: var(--gw-sub); margin: 0 0 8px; }
+.gwui-console-deal-company { font-size: 14px; font-weight: 700; color: var(--gw-text); }
+.gwui-console-deal-person { font-size: 13px; color: var(--gw-sub); margin: 0 0 8px; line-height: 20px;}
 .gwui-console-dots { display: flex; align-items: center; gap: 8px; margin: 6px 0 4px; }
 .gwui-console-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gw-border); flex-shrink: 0; }
 .gwui-console-dot-on { background: var(--gw-green-t); }
 .gwui-console-dot-line { flex: 1; height: 2px; background: var(--gw-border); }
 .gwui-console-dot-line-on { background: var(--gw-green-t); }
 .gwui-console-stage-names { display: flex; justify-content: space-between; gap: 4px; }
-.gwui-console-stage-name { font-size: 13px; color: var(--gw-sub); flex: 1; text-align: center; }
-.gwui-console-foot { font-size: 13px; color: var(--gw-sub); padding: 12px 16px; border-top: 1px solid var(--gw-border); }
+.gwui-console-stage-name { font-size: 13px; color: var(--gw-sub); flex: 1; text-align: center; line-height: 20px;}
+.gwui-console-foot { font-size: 13px; color: var(--gw-sub); padding: 12px 16px; border-top: 1px solid var(--gw-border); line-height: 20px;}
 .gwui-console-frame { padding: 20px; }
 
 /* ── EMBED WIDGET EXAMPLE (tools.txt: "Show Groundwork inside your own tool") ────────────────── */
 .gwui-embed-split { display: flex; min-height: 0; }
 .gwui-embed-host { flex: 1.4; min-width: 0; padding: 16px 18px; border-right: 1px solid var(--gw-border); background: var(--gw-bg); }
-.gwui-embed-host-title { font-size: 14.5px; font-weight: 700; color: var(--gw-text); margin: 0 0 10px; }
+.gwui-embed-host-title { font-size: 14px; font-weight: 700; color: var(--gw-text); margin: 0 0 10px; }
 .gwui-embed-table { display: flex; flex-direction: column; }
 /*
  * WIDTH CHECK, ITEM 4: FOUR CELLS WITH NOWHERE TO GO READ AS ONE GARBLED WORD ("Qualified$4,200"),
@@ -1310,16 +1186,16 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  */
 .gwui-embed-row { display: flex; flex-wrap: wrap; row-gap: 2px; gap: 10px; padding: 7px 0; border-top: 1px solid var(--gw-border); }
 .gwui-embed-row:first-child { border-top: none; }
-.gwui-embed-cell { font-size: 13px; color: var(--gw-sub); flex: 1; min-width: 0; }
+.gwui-embed-cell { font-size: 13px; color: var(--gw-sub); flex: 1; min-width: 0; line-height: 20px;}
 .gwui-embed-cell-name { color: var(--gw-text); font-weight: 700; flex: 1.4; }
 .gwui-embed-cell-stage { color: var(--gw-amber-t); font-weight: 700; }
 .gwui-embed-cell-stage-on { color: var(--gw-green-t); }
 .gwui-embed-widget { flex: 1; min-width: 0; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
-.gwui-embed-widget-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--gw-sub); }
+.gwui-embed-widget-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--gw-sub); line-height: 20px;}
 .gwui-embed-widget-brand { font-weight: 700; color: var(--gw-navy); letter-spacing: 0.04em; }
-.gwui-embed-widget-msg { font-size: 13.5px; line-height: 1.5; color: var(--gw-text); background: var(--gw-bg); border-radius: 10px; padding: 12px 14px; margin: 0; }
+.gwui-embed-widget-msg { font-size: 14px; line-height: 1.5; color: var(--gw-text); background: var(--gw-bg); border-radius: 10px; padding: 12px 14px; margin: 0; }
 .gwui-embed-widget-replies { display: flex; gap: 8px; flex-wrap: wrap; }
-.gwui-embed-widget-reply { font-size: 13px; font-weight: 700; color: var(--gw-navy); border: 1px solid var(--gw-border); border-radius: 20px; padding: 6px 12px; }
+.gwui-embed-widget-reply { font-size: 13px; font-weight: 700; color: var(--gw-navy); border: 1px solid var(--gw-border); border-radius: 20px; padding: 6px 12px; line-height: 20px;}
 @media (max-width: 640px) {
   .gwui-embed-split { flex-direction: column; }
   .gwui-embed-host { border-right: none; border-bottom: 1px solid var(--gw-border); }
@@ -1329,11 +1205,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * VIEWPORT'S. A plain `@media` query above only sees the viewport - at 960-1280px wide the viewport
  * is nowhere near 640px, but `.gwui-two-up` (above) can still be sitting this example at ~565px or
  * less once there are two of them side by side, which is exactly the width this split needs to
- * stack. `.gwui-panel` becomes this query's own container (scoped to a panel that actually holds
+ * stack. `.panel` becomes this query's own container (scoped to a panel that actually holds
  * this split, so no other panel is affected), and the rules are the same ones the viewport query
  * already uses.
  */
-.gwui-panel:has(.gwui-embed-split) { container-type: inline-size; }
+.panel:has(.gwui-embed-split) { container-type: inline-size; }
 @container (max-width: 520px) {
   .gwui-embed-split { flex-direction: column; }
   .gwui-embed-host { border-right: none; border-bottom: 1px solid var(--gw-border); }
@@ -1346,11 +1222,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.2);
   display: flex; align-items: center; justify-content: center; font-weight: 700;
 }
-.gwui-wa-org { font-size: 14.5px; font-weight: 700; margin: 0; }
-.gwui-wa-sub { font-size: 13px; margin: 1px 0 0; opacity: .8; }
+.gwui-wa-org { font-size: 14px; font-weight: 700; margin: 0; }
+.gwui-wa-sub { font-size: 13px; margin: 1px 0 0; opacity: .8; line-height: 20px;}
 .gwui-wa-body { background: var(--gw-bg); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 .gwui-wa-bubble {
-  max-width: 82%; padding: 10px 14px; border-radius: 14px; font-size: 14.5px; line-height: 1.45; margin: 0;
+  max-width: 82%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 20px; margin: 0;
 }
 .gwui-wa-bubble-them { align-self: flex-start; background: #fff; color: var(--gw-text); border-bottom-left-radius: 4px; }
 .gwui-wa-bubble-mine { align-self: flex-end; background: #DCF8C6; color: var(--gw-text); border-bottom-right-radius: 4px; }
@@ -1367,16 +1243,10 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 
 /* ── GREETING (prototype: .t-greet, app.css - Today's own big heading, C1, U.5 group 2) ────── */
-.gwui-greet-block { margin: 0; }
-.gwui-greet { font-family: var(--gw-font-name); font-size: clamp(30px, 4vw, 38px); line-height: 1.12; font-weight: 500; letter-spacing: -.01em; margin: 0 0 8px; color: var(--gw-text); }
-.gwui-greet-sub { font-size: 17px; line-height: 1.5; color: var(--gw-sub); margin: 0; }
-@media (max-width: 860px) {
-  .gwui-greet { font-size: 30px; }
-}
 
 /* ── TODAY'S TWO-COLUMN LAYOUT (prototype: .side, app.css line 78: "minmax(0,1fr) 340px", gap
    44px; the check-ins list, board and other screens share the same shape) ─────────────────── */
-.gwui-side { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 44px; align-items: start; }
+.gwui-side { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 48px; align-items: start; }
 @media (max-width: 1100px) {
   .gwui-side { grid-template-columns: minmax(0, 1fr); }
 }
@@ -1388,47 +1258,42 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 
 /* ── COMING UP (prototype: Today's own sidebar list, app.css) ───────────────────────────────── */
-.gwui-comingup-h { margin: 0 0 12px; font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--gw-text); }
-.gwui-comingup-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
-.gwui-comingup-list li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; }
-.gwui-comingup-list b { color: var(--gw-text); }
-.gwui-comingup-list a { color: var(--gw-text); text-decoration: none; }
-.gwui-comingup-list a:hover, .gwui-comingup-list a:focus-visible { text-decoration: underline; }
+.gwui-comingup-h { margin: 0 0 12px; font-family: var(--gw-font-ui); font-size: 18px; line-height: 23px; font-weight: 700; color: var(--gw-text); }
 
 /* ── WELCOME CARD AND "GET <ORGANISATION> GOING" (prototype: the admin's first-run doors and
    checklist, C1/A3, U.3 and U.5) ────────────────────────────────────────────────────────────── */
 .gwui-first-run { display: grid; gap: 14px; }
 .gwui-welcome-card { display: grid; gap: 12px; padding: 16px 20px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 2px var(--gw-text); }
 .gwui-welcome-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.gwui-welcome-card-head h2 { margin: 0; font-family: var(--gw-font-name); font-size: 20px; font-weight: 600; color: var(--gw-text); }
-.gwui-welcome-card-line { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--gw-sub); }
+.gwui-welcome-card-head h2 { margin: 0; font-family: var(--gw-font-name); font-size: 20px; font-weight: 700; color: var(--gw-text); }
+.gwui-welcome-card-line { margin: 0; font-size: 14px; line-height: 1.5; color: var(--gw-sub); }
 .gwui-welcome-doors { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
 .gwui-welcome-door { display: block; padding: 12px 14px; border: 1px solid var(--gw-border); border-radius: 10px; text-decoration: none; color: var(--gw-text); }
 .gwui-welcome-door:hover, .gwui-welcome-door:focus-visible { background: var(--gw-page); }
-.gwui-welcome-door b { display: block; font-size: 15.5px; }
-.gwui-welcome-door span { display: block; margin-top: 2px; font-size: 13.5px; color: var(--gw-sub); }
+.gwui-welcome-door b { display: block; font-size: 16px; }
+.gwui-welcome-door span { display: block; margin-top: 2px; font-size: 14px; color: var(--gw-sub); }
 .gwui-get-going { padding: 16px 20px; border: 1px solid var(--gw-border); border-radius: 12px; background: #fff; }
 .gwui-get-going-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-.gwui-get-going-head h2 { margin: 0; font-family: var(--gw-font-name); font-size: 20px; font-weight: 600; color: var(--gw-text); }
-.gwui-get-going-head span { font-size: 14.5px; color: var(--gw-sub); }
+.gwui-get-going-head h2 { margin: 0; font-family: var(--gw-font-name); font-size: 20px; font-weight: 700; color: var(--gw-text); }
+.gwui-get-going-head span { font-size: 14px; color: var(--gw-sub); }
 .gwui-get-going ul { list-style: none; margin: 0; padding: 0; }
 .gwui-get-going li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; border-top: 1px solid var(--gw-border); }
-.gwui-get-going-title { font-size: 15.5px; font-weight: 700; color: var(--gw-text); }
+.gwui-get-going-title { font-size: 16px; font-weight: 700; color: var(--gw-text); }
 
 /* ── CHECK-INS TABLE (prototype: check-ins.txt, C1, U.5 group 2) ────────────────────────────── */
 .gwui-ci-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.gwui-ci-table th { text-align: left; font-size: 13px; font-weight: 400; color: var(--gw-sub); padding: 12px 18px; border-bottom: 1px solid var(--gw-border); }
+.gwui-ci-table th { text-align: left; font-size: 13px; font-weight: 400; color: var(--gw-sub); padding: 12px 18px; border-bottom: 1px solid var(--gw-border); line-height: 20px;}
 .gwui-ci-table th:nth-child(1) { width: 34%; }
 .gwui-ci-table th:nth-child(2) { width: 26%; }
 .gwui-ci-table th:nth-child(3) { width: 19%; }
-.gwui-ci-table td { padding: 16px 18px; vertical-align: middle; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); border-top: 1px solid var(--gw-border); overflow-wrap: anywhere; }
+.gwui-ci-table td { padding: 16px 18px; vertical-align: middle; font-size: 14px; line-height: 20px; color: var(--gw-text); border-top: 1px solid var(--gw-border); overflow-wrap: anywhere; }
 .gwui-ci-table tbody tr:first-child td { border-top: none; }
 .gwui-ci-table tbody tr { cursor: pointer; }
 .gwui-ci-table tbody tr:hover td { background: var(--gw-page); }
-.gwui-ci-table-name { display: block; font-size: 17px; font-weight: 700; color: var(--gw-text); text-decoration: none; }
+.gwui-ci-table-name { display: block; font-size: 17px; font-weight: 700; color: var(--gw-text); text-decoration: none; line-height: 26px;}
 .gwui-ci-table-name:hover, .gwui-ci-table-name:focus-visible { text-decoration: underline; }
-.gwui-ci-table-about { margin-top: 2px; font-size: 14.5px; color: var(--gw-sub); }
-.gwui-ci-table-also { margin-top: 2px; font-size: 13px; color: var(--gw-sub); }
+.gwui-ci-table-about { margin-top: 2px; font-size: 14px; color: var(--gw-sub); }
+.gwui-ci-table-also { margin-top: 2px; font-size: 13px; color: var(--gw-sub); line-height: 20px;}
 .gwui-ci-table td a { color: var(--gw-text); }
 /*
  * WIDTH CHECK, ITEM 6: "YOUR REPORT IS READY" RAN ON INTO "NEXT: 12 OCTOBER". The "Needs you"
@@ -1444,7 +1309,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-ci-table th:nth-child(1) { width: 30%; }
   .gwui-ci-table th:nth-child(2) { width: 22%; }
   .gwui-ci-table th:nth-child(3) { width: 15%; }
-  .gwui-ci-table td:nth-child(3) .gwui-tag { white-space: normal; }
+  .gwui-ci-table td:nth-child(3) .tag { white-space: normal; }
 }
 @media (max-width: 860px) {
   .gwui-ci-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -1458,11 +1323,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* ── WAITING FOR YOU (prototype: an admin's check-ins list, awaiting approval, C1, U.5 group 2) ── */
 .gwui-panel-caution { background: var(--gw-amber-bg); border-color: var(--gw-amber-b-soft); }
-.gwui-panel-caution h2 { margin: 0 0 4px; font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--gw-amber-t); }
+.gwui-panel-caution h2 { margin: 0 0 4px; font-family: var(--gw-font-ui); font-size: 18px; line-height: 23px; font-weight: 700; color: var(--gw-amber-t); }
 .gwui-waiting-one { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 12px 14px; }
 .gwui-waiting-one + .gwui-waiting-one { margin-top: 8px; }
 .gwui-waiting-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
-.gwui-waiting-acts textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--gw-border); font: inherit; font-size: 14.5px; resize: vertical; }
+.gwui-waiting-acts textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--gw-border); font: inherit; font-size: 14px; resize: vertical; }
 
 /* ── CARD GRIDS (the You board, C2, U.12: "Your goals"/"Your to-dos"/"What you contributed" in
    three, "Worth knowing now"/"noticed"/"coaching over time" in two) ────────────────────────────── */
@@ -1490,7 +1355,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* ── ROW LIST / ROW (the You board's own lists, C2, U.12) ───────────────────────────────────── */
 .gwui-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
-.gwui-row { display: grid; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+.gwui-row { display: grid; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14px; line-height: 20px; color: var(--gw-text); }
 .gwui-row a { color: var(--gw-navy); font-weight: 700; text-decoration: none; }
 .gwui-row a:hover, .gwui-row a:focus-visible { text-decoration: underline; }
 /* A BUTTON STANDING ALONE AS A ROW'S OWN CHILD KEEPS ITS OWN WIDTH, NOT THE GRID'S (board task,
@@ -1500,14 +1365,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    `div` of stacked content to reach the row's own width), so a bare `Button` sitting beside that
    content - "Change", on one of "What we are aiming for"'s own targets, with nothing else on its
    line - stretched edge to edge and its own `justify-content: center` then centred the word
-   "Change" in the middle of the row, not under the name above it. Scoped to `.gwui-btn` only, so
+   "Change" in the middle of the row, not under the name above it. Scoped to `.btn` only, so
    every row still stretches its ordinary block content exactly as it did. */
-.gwui-row > .gwui-btn { justify-self: start; }
+.gwui-row > .btn { justify-self: start; }
 /* THE SAME SYMPTOM, FOR A BARE TAG (fault 8 of the live walk of the suites, YourRequestsPage at
    375): "Waiting"/"Approved" sat as `Row`'s own second column, which stretched it edge to edge the
    same way a lone Button did above, once the row's grid collapses to its single narrow-width
-   column. Scoped to `.gwui-tag` only, for the same reason the Button rule is scoped. */
-.gwui-row > .gwui-tag { justify-self: start; }
+   column. Scoped to `.tag` only, for the same reason the Button rule is scoped. */
+.gwui-row > .tag { justify-self: start; }
 /* Row's own named side insets (board task, batch 3, part 5) - see the doc comment in Rows.tsx. */
 .gwui-row-inset-panel { padding-left: 22px; padding-right: 22px; }
 .gwui-row-inset-list { padding-left: 15px; padding-right: 15px; }
@@ -1531,13 +1396,13 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* "Named by more than one team" (company.jpg): each team's own column, set off by a thick top
    rule - the product's own shape, no dedicated prototype class. */
 .gwui-team-col { border-top: 3px solid var(--gw-text); padding-top: 8px; }
-.gwui-team-col p { margin: 4px 0 0; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+.gwui-team-col p { margin: 4px 0 0; font-size: 14px; line-height: 20px; color: var(--gw-text); }
 /* "What you say, and where the time goes" (company.jpg): a plain comparison table - the prototype
    itself never draws a real `<table>` (app.css has no table rule at all, only a mobile note that
    "tables become stacked cards"), so this is the product's own shape, at the same sizes
    `gwui-rows`/`gwui-row` already use for a plain list, with real table semantics so "You said" and
    "The check-ins show" read as column headers. */
-.gwui-compare-table { width: 100%; border-collapse: collapse; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+.gwui-compare-table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px; color: var(--gw-text); }
 .gwui-compare-table th, .gwui-compare-table td { text-align: left; padding: 12px 8px 12px 0; border-top: 1px solid var(--gw-border); vertical-align: top; }
 .gwui-compare-table th { font-weight: 700; }
 @media (max-width: 900px) {
@@ -1561,11 +1426,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * card is only a fraction of the page, and a long name ("Performance reviews") or sentence can
  * leave the switch with nowhere to go. A viewport breakpoint cannot see a CARD's own width here -
  * the same viewport holds one card full-width or three squeezed ones - so this queries the card
- * itself: `.gwui-panel` becomes this one query's own container (scoped to a panel that actually
+ * itself: `.panel` becomes this one query's own container (scoped to a panel that actually
  * holds a suite head, so no other panel anywhere is affected), and below ~420px of ITS width the
  * switch drops under the text instead of squeezing beside it.
  */
-.gwui-panel:has(> .gwui-suite-head) { container-type: inline-size; }
+.panel:has(> .gwui-suite-head) { container-type: inline-size; }
 @container (max-width: 420px) {
   .gwui-suite-head { grid-template-columns: minmax(0, 1fr); row-gap: 10px; }
   .gwui-suite-switch { justify-self: start; }
@@ -1579,12 +1444,13 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-suite-q { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 /* A record table (time sheets, equipment, spending, customers, the role map): the product's own
    shape, no dedicated prototype class - the prototype draws each of these by hand per screen. */
-.gwui-record-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.gwui-record-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .gwui-record-table th, .gwui-record-table td { text-align: left; vertical-align: top; padding: 12px 16px; border-top: 1px solid var(--gw-border); }
-.gwui-record-table thead th { border-top: 0; font-weight: 500; font-size: 13px; color: var(--gw-sub); }
-.gwui-record-table tbody th { font-weight: 600; }
+.gwui-record-table thead th { border-top: 0; font-weight: 500; font-size: 13px; color: var(--gw-sub); line-height: 20px;}
+.gwui-record-table tbody th { font-weight: 700; }
 .gwui-record-table .gwui-nobody { color: var(--gw-red-t); }
-.gwui-record-table select, .gwui-record-table input { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--gw-border); border-radius: 7px; background: var(--gw-card); color: var(--gw-text); max-width: 100%; }
+/* The prototype's field (.input): 1.5px hairline in the rule colour, 10px corners, 16px type. Compact in a table row, still 44px to tap. */
+.gwui-record-table select, .gwui-record-table input { font: inherit; font-size: 16px; min-height: 44px; padding: 0 12px; border: 1px solid var(--rule2-crisp); border-radius: 10px; background: var(--gw-card); color: var(--gw-text); max-width: 100%; }
 @media (max-width: 860px) {
   .gwui-record-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .gwui-record-table, .gwui-record-table tbody, .gwui-record-table tr, .gwui-record-table th, .gwui-record-table td { display: block; width: auto; }
@@ -1599,17 +1465,17 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  */
 .gwui-record-table-label { display: none; }
 @media (max-width: 860px) {
-  .gwui-record-table-label { display: block; font-size: 13px; font-weight: 600; color: var(--gw-sub); margin-bottom: 2px; }
+  .gwui-record-table-label { display: block; font-size: 13px; font-weight: 700; color: var(--gw-sub); margin-bottom: 2px; line-height: 20px;}
 }
 /* ── PROOF MARK (ProofMark.tsx; prototype: .mk/.mk-proven etc., app.css) - carried over unchanged
    from kit.tsx's gw-mk-*. ───────────────────────────────────────────────────────────────────── */
 .gwui-mk { width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex: none; vertical-align: -2px; }
 .gwui-mk-lg { width: 18px; height: 18px; }
 .gwui-mk-proven    { background: var(--gw-green-t); }
-.gwui-mk-confirmed { background: var(--gw-green-t); box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--gw-green-t); width: 10px; height: 10px; margin: 2px; }
+.gwui-mk-confirmed { background: var(--gw-green-t); box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--gw-green-t); width: 10px; height: 10px; margin: 2px; }
 .gwui-mk-said      { box-shadow: inset 0 0 0 2px var(--gw-text); }
 .gwui-mk-memory    { border: 2px dashed var(--gw-muted); }
-.gwui-mk-none      { box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); }
+.gwui-mk-none      { box-shadow: inset 0 0 0 1px var(--rule2-crisp); }
 /* A review's own quoted words (what a person wrote): the product's own shape, carried over
    unchanged from gw-review-said. */
 .gwui-quoted-text { font-family: var(--gw-font-name); font-size: 16px; line-height: 1.5; margin: 0; }
@@ -1638,8 +1504,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    on the whole board a reader is meant to remember - blue like "info", but at panel-level padding
    and a larger, bolder body, the exact values the one-off box this replaces already carried. */
 .gwui-callout-emphasis { background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); padding: 20px 22px; }
-.gwui-callout-emphasis .gwui-callout-title { font-size: 13.5px; color: var(--gw-navy); letter-spacing: .4px; margin-bottom: 5px; }
-.gwui-callout-emphasis .gwui-callout-body { font-size: 16px; color: var(--gw-text); font-weight: 600; line-height: 1.55; }
+.gwui-callout-emphasis .gwui-callout-title { font-size: 14px; color: var(--gw-navy); letter-spacing: .4px; margin-bottom: 5px; }
+.gwui-callout-emphasis .gwui-callout-body { font-size: 16px; color: var(--gw-text); font-weight: 700; line-height: 25px; }
 /* AuthNotice's own two-line shape, inside the same tinted box: a title above the sentence under
    it (signin.jpg's passwordless notice, "Check your email" over the sentence that follows). */
 .gwui-callout-title { font-weight: 700; margin: 0 0 2px; }
@@ -1651,37 +1517,37 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-password-show {
   position: absolute; top: 2px; right: 2px; bottom: 2px; min-width: 64px; padding: 0 12px;
   border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 15px;
-  font-weight: 700; color: var(--gw-navy); cursor: pointer;
-}
+  font-weight: 700; color: var(--gw-navy); cursor: pointer; line-height: 23px;}
 .gwui-password-show:hover { text-decoration: underline; }
 .gwui-password-show:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: -3px; }
 
 /* THE RULES A NEW PASSWORD HAS TO MEET, AND THE STRENGTH BAR MADE ONLY OF THEM (auth-kit.tsx's
    `PasswordRules`/`PasswordStrength`; password.jpg, signup.jpg, reset.jpg). */
 .gwui-rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.gwui-rules li { display: flex; align-items: center; gap: 8px; font-size: 14.5px; line-height: 1.4; color: var(--gw-sub); }
+.gwui-rules li { display: flex; align-items: center; gap: 8px; font-size: 14px; line-height: 20px; color: var(--gw-sub); }
 /* The ticked state, folded into PasswordField's own rules list (group 3 drift list, piece 1); named
    for what it belongs to rather than the generic gwui-rule-met one-off it replaces. */
 .gwui-rules li.gwui-password-rule-met { color: var(--gw-green-t); }
 .gwui-strength-bar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; margin-bottom: 8px; }
 .gwui-strength-bar span { height: 5px; border-radius: 3px; background: var(--gw-rule-2); }
 .gwui-strength-bar span.gwui-strength-on { background: var(--gw-green-t); }
-.gwui-strength-ok { font-size: 14.5px; font-weight: 700; color: var(--gw-green-t); margin: 0; }
+.gwui-strength-ok { font-size: 14px; font-weight: 700; color: var(--gw-green-t); margin: 0; }
 
 /* THE SIGN-IN SCREEN'S SPLIT LAYOUT (SplitPage.tsx; signin.jpg, the one A2 screen drawn this way). */
 /* The left half is the page colour (signin.jpg), not --gw-bg's soft-fill beige - that was the one
    real fault a picture check found here (coordinator, after the first pass): rgb(247, 241, 229)
    painted over #FDFBF6. */
 .gwui-split { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--gw-page); }
-.gwui-split-form { padding: clamp(24px, 6vw, 96px); display: flex; flex-direction: column; }
-.gwui-split-body { max-width: 420px; width: 100%; margin: auto 0; padding-top: 32px; }
+/* A2 (the prototype's sign-in): the form's column is padded 56px 96px, the mark at its top, the heading 80px under it. */
+.gwui-split-form { padding: 56px 96px; display: flex; flex-direction: column; gap: 28px; }
+.gwui-split-body { max-width: 420px; width: 100%; margin: 80px 0 0; }
 /* The split form's own top-level rhythm (signin.jpg's source, s1.js: the form's outer column is
    `gap:24px` between its heading, its fields and the line under them) - clear space between the
    subtitle and the first field, the fault a picture check found here (coordinator, after the
    first pass): the heading and the form used to sit with no gap at all. */
-.gwui-split-body > * + * { margin-top: 24px; }
+.gwui-split-body > * + * { margin-top: 28px; }
 .gwui-split-panel { background: var(--gw-dark); color: #fff; padding: clamp(24px, 5vw, 72px); display: flex; flex-direction: column; justify-content: center; }
-.gwui-split-panel-line { font-family: var(--gw-font-name); font-size: 28px; line-height: 1.35; margin: 0 0 22px; max-width: 540px; }
+.gwui-split-panel-line { font-family: var(--gw-font-name); font-size: 28px; line-height: 38px; margin: 0 0 22px; max-width: 540px; }
 .gwui-split-panel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; font-size: 16px; }
 .gwui-split-panel-list li { display: flex; align-items: center; gap: 12px; }
 .gwui-split-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
@@ -1689,9 +1555,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-split-dot-proven { background: var(--gw-green-b); }
 @media (max-width: 860px) {
   .gwui-split { grid-template-columns: minmax(0, 1fr); }
-  .gwui-split-panel { display: none; }
-  .gwui-split-form { padding: 24px 16px 40px; }
-  .gwui-split-body { margin: 0; padding-top: 28px; }
+  /* On a phone the prototype keeps the dark half, under the form. */
+  .gwui-split-form { padding: 56px 18px 28px; }
+  .gwui-split-panel { padding: 56px 18px; }
 }
 
 /* THE TWO SMALL TEXT ACTIONS UNDER A SIGN-IN FORM (signin.jpg: "Forgot password?" / "New here?
@@ -1707,42 +1573,37 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    place, the same as every other rebuilt page. */
 
 /* The header strip (check-in-start.jpg): the check-in's name, the line under it, and Pause. */
-.gwui-ci-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--gw-border); background: #fff; flex-shrink: 0; }
-.gwui-ci-header-text { min-width: 0; }
-.gwui-ci-header-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--gw-text); line-height: 1.35; overflow-wrap: anywhere; }
-.gwui-ci-header-sub { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
+
 .gwui-ci-pause-wrap { position: relative; flex-shrink: 0; }
-.gwui-ci-pause-btn { background: none; border: none; padding: 6px 4px; font-size: 14px; font-weight: 700; color: var(--gw-navy); cursor: pointer; font-family: inherit; min-height: 36px; }
-.gwui-ci-menu { position: absolute; right: 0; top: 40px; z-index: 30; background: #fff; border: 1px solid var(--gw-border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 6px; width: 260px; }
+
+.gwui-ci-menu { position: absolute; right: 0; top: 40px; z-index: 30; background: #fff; border: 1px solid var(--gw-border); border-radius: 12px; box-shadow: var(--gw-shadow-menu); padding: 6px; width: 260px; }
 .gwui-ci-menu-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 10px 12px; border-radius: 8px; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; text-align: left; }
 .gwui-ci-menu-item-title { font-weight: 700; color: var(--gw-text); }
-.gwui-ci-menu-item-note { font-size: 13px; color: var(--gw-sub); line-height: 1.45; }
+.gwui-ci-menu-item-note { font-size: 13px; color: var(--gw-sub); line-height: 19px; }
 
 /* A banner between the header and the scrolling conversation: a clarification notice, or that the
    session failed to open. */
-.gwui-ci-banner-info { background: var(--gw-blue-bg); border-bottom: 1px solid var(--gw-blue-b); padding: 10px 16px; font-size: 13px; color: var(--gw-navy); line-height: 1.55; }
+.gwui-ci-banner-info { background: var(--gw-blue-bg); border-bottom: 1px solid var(--gw-blue-b); padding: 10px 16px; font-size: 13px; color: var(--gw-navy); line-height: 20px; }
 .gwui-ci-banner-warn { padding: 12px 16px; background: var(--gw-amber-bg); border-bottom: 1px solid var(--gw-amber-b); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
-.gwui-ci-banner-warn-text { font-size: 13px; color: var(--gw-amber-t); line-height: 1.4; }
-.gwui-ci-banner-warn-btn { padding: 6px 14px; border-radius: 6px; background: var(--gw-amber-t); color: #fff; font-size: 13px; font-weight: 700; border: none; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+.gwui-ci-banner-warn-text { font-size: 13px; color: var(--gw-amber-t); line-height: 18px; }
+.gwui-ci-banner-warn-btn { padding: 6px 14px; border-radius: 6px; background: var(--gw-amber-t); color: #fff; font-size: 13px; font-weight: 700; border: none; cursor: pointer; font-family: inherit; flex-shrink: 0; line-height: 20px;}
 .gwui-ci-banner-warn-btn[disabled] { opacity: .6; }
 
 /* "What this check-in is about" link, above the first turn. */
-.gwui-ci-about-link { background: none; border: none; padding: 0; font-size: 13px; color: var(--gw-navy); cursor: pointer; font-family: inherit; text-decoration: underline; margin-bottom: 4px; }
 
 /* The read-only recap of an earlier session (correcting it). */
 .gwui-ci-prior { border: 1px dashed var(--gw-border); border-radius: 10px; padding: 10px 12px; margin-bottom: 4px; background: var(--gw-bg); }
-.gwui-ci-prior-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--gw-muted); margin-bottom: 8px; }
+.gwui-ci-prior-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--gw-muted); margin-bottom: 8px; line-height: 20px;}
 .gwui-ci-prior-list { display: flex; flex-direction: column; gap: 8px; opacity: .72; }
-.gwui-ci-prior-bubble { max-width: 85%; font-size: 13px; line-height: 1.5; color: var(--gw-text); border: 1px solid var(--gw-border); border-radius: 8px; padding: 7px 10px; }
+.gwui-ci-prior-bubble { max-width: 85%; font-size: 13px; line-height: 20px; color: var(--gw-text); border: 1px solid var(--gw-border); border-radius: 8px; padding: 7px 10px; }
 .gwui-ci-prior-bubble-mine { align-self: flex-end; background: var(--gw-blue-bg); }
 .gwui-ci-prior-bubble-theirs { align-self: flex-start; background: #fff; }
-.gwui-ci-prior-foot { font-size: 13px; color: var(--gw-muted); margin-top: 8px; line-height: 1.5; }
+.gwui-ci-prior-foot { font-size: 13px; color: var(--gw-muted); margin-top: 8px; line-height: 20px; }
 
 /* The waiting dots in an assistant bubble, and the note once it has taken a while. */
-.gwui-ci-dots { display: inline-flex; align-items: center; gap: 8px; }
-.gwui-ci-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--gw-sub); animation: gwDotBounce 1.2s ease-in-out infinite; }
+
 @keyframes gwDotBounce { 0%, 80%, 100% { transform: translateY(0); opacity: .4; } 40% { transform: translateY(-5px); opacity: 1; } }
-.gwui-ci-dot-note { font-size: 13px; color: var(--gw-sub); }
+.gwui-ci-dot-note { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
 .gwui-ci-caret { display: inline-block; width: 2px; height: 1em; background: var(--gw-navy); margin-left: 2px; vertical-align: text-bottom; animation: blink .7s step-end infinite; }
 
 /* GroundworkIsWriting.tsx: "<name> is writing…", shown from the moment a reply is asked for until
@@ -1755,73 +1616,72 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 
 /* "Finish my check-in now", once enough has been said. */
-.gwui-ci-finish-link { font-size: 13px; color: var(--gw-navy); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; min-height: 32px; }
 
 /* Declining the session, and confirming it first. */
 .gwui-ci-settled-box { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 16px 18px; }
 .gwui-ci-settled-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
-.gwui-ci-settled-body { font-size: 13px; color: var(--gw-sub); line-height: 1.65; }
-.gwui-ci-back-link { font-size: 13px; color: var(--gw-sub); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; }
+.gwui-ci-settled-body { font-size: 13px; color: var(--gw-sub); line-height: 21px; }
+.gwui-ci-back-link { font-size: 13px; color: var(--gw-sub); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; line-height: 20px;}
 .gwui-ci-confirm-box { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b); border-radius: 10px; padding: 16px 18px; }
 .gwui-ci-confirm-title { font-size: 14px; font-weight: 700; color: var(--gw-amber-t); margin-bottom: 6px; }
-.gwui-ci-confirm-list { font-size: 13px; color: var(--gw-sub); line-height: 1.7; margin: 0 0 12px; padding-left: 18px; }
+.gwui-ci-confirm-list { font-size: 13px; color: var(--gw-sub); line-height: 22px; margin: 0 0 12px; padding-left: 18px; }
 
 /* "You have finished": the note about where the two reports live, and the row of links under it. */
-.gwui-ci-finished-note { max-width: 460px; margin: 12px auto 0; font-size: 13px; color: var(--gw-sub); line-height: 1.6; text-align: center; }
+.gwui-ci-finished-note { max-width: 460px; margin: 12px auto 0; font-size: 13px; color: var(--gw-sub); line-height: 21px; text-align: center; }
 .gwui-ci-finished-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; padding-top: 12px; }
 
 /* The composer's own footer strip: the privacy sentence, and the lead's "Set the context"/"Add
    people" links. */
-.gwui-ci-footer-strip { padding: 4px 14px 0; font-size: 13px; color: var(--gw-sub); line-height: 1.4; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.gwui-ci-footer-strip { padding: 4px 14px 0; font-size: 13px; color: var(--gw-sub); line-height: 18px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .gwui-ci-footer-note { flex: 1; min-width: 200px; }
 .gwui-ci-footer-links { display: flex; gap: 12px; flex-shrink: 0; }
-.gwui-ci-footer-link { background: none; border: none; padding: 0; font-size: 13px; color: var(--gw-navy); cursor: pointer; font-family: inherit; text-decoration: underline; }
-.gwui-ci-signin-note { padding: 0 14px 10px; font-size: 13px; color: var(--gw-sub); text-align: center; }
+.gwui-ci-footer-link { background: none; border: none; padding: 0; font-size: 13px; color: var(--gw-navy); cursor: pointer; font-family: inherit; text-decoration: underline; line-height: 20px;}
+.gwui-ci-signin-note { padding: 0 14px 10px; font-size: 13px; color: var(--gw-sub); text-align: center; line-height: 20px;}
 
 /* The "+" menu's own two choices and the privacy line under them. */
 .gwui-ci-attach-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--gw-text); background: none; border: none; width: 100%; text-align: left; font-family: inherit; }
-.gwui-ci-attach-note { padding: 6px 12px 8px; font-size: 13px; color: var(--gw-sub); line-height: 1.45; border-top: 1px solid var(--gw-border); margin-top: 4px; }
+.gwui-ci-attach-note { padding: 6px 12px 8px; font-size: 13px; color: var(--gw-sub); line-height: 19px; border-top: 1px solid var(--gw-border); margin-top: 4px; }
 
 /* The two bottom sheets (paste text, what a document shows). */
 .gwui-ci-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 9100; display: flex; align-items: flex-end; justify-content: center; }
 .gwui-ci-sheet { background: #fff; border-radius: 14px 14px 0 0; padding: 20px 20px 32px; width: 100%; max-width: 560px; }
 .gwui-ci-sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--gw-border); margin: 0 auto 16px; }
-.gwui-ci-sheet-title { font-size: 13px; font-weight: 600; color: var(--gw-text); margin-bottom: 4px; }
-.gwui-ci-sheet-note { font-size: 13px; color: var(--gw-sub); margin-bottom: 12px; line-height: 1.55; }
-.gwui-ci-sheet-label { display: block; font-size: 13px; color: var(--gw-sub); margin-bottom: 4px; }
-.gwui-ci-sheet-field { width: 100%; padding: 8px 12px; font-size: 13px; border: 1px solid var(--gw-border); border-radius: 8px; font-family: inherit; outline: none; box-sizing: border-box; margin-bottom: 8px; }
-.gwui-ci-sheet-textarea { width: 100%; resize: none; min-height: 140px; padding: 10px 12px; font-size: 13px; line-height: 1.55; border: 1px solid var(--gw-border); border-radius: 8px; font-family: inherit; outline: none; box-sizing: border-box; margin-bottom: 10px; }
+.gwui-ci-sheet-title { font-size: 13px; font-weight: 700; color: var(--gw-text); margin-bottom: 4px; line-height: 20px;}
+.gwui-ci-sheet-note { font-size: 13px; color: var(--gw-sub); margin-bottom: 12px; line-height: 20px; }
+.gwui-ci-sheet-label { display: block; font-size: 13px; color: var(--gw-sub); margin-bottom: 4px; line-height: 20px;}
+.gwui-ci-sheet-field { width: 100%; padding: 8px 12px; font-size: 13px; border: 1px solid var(--gw-border); border-radius: 8px; font-family: inherit; outline: none; box-sizing: border-box; margin-bottom: 8px; line-height: 20px;}
+.gwui-ci-sheet-textarea { width: 100%; resize: none; min-height: 140px; padding: 10px 12px; font-size: 13px; line-height: 20px; border: 1px solid var(--gw-border); border-radius: 8px; font-family: inherit; outline: none; box-sizing: border-box; margin-bottom: 10px; }
 .gwui-ci-sheet-textarea-short { min-height: 80px; }
 .gwui-ci-sheet-actions { display: flex; gap: 8px; }
-.gwui-ci-sheet-cancel { padding: 10px 16px; border-radius: 8px; background: none; border: 1px solid var(--gw-border); color: var(--gw-sub); font-size: 13px; cursor: pointer; font-family: inherit; }
-.gwui-ci-sheet-submit { flex: 1; padding: 10px 16px; border-radius: 8px; background: var(--gw-navy); color: #fff; font-size: 13px; font-weight: 700; border: none; cursor: pointer; font-family: inherit; }
+.gwui-ci-sheet-cancel { padding: 10px 16px; border-radius: 8px; background: none; border: 1px solid var(--gw-border); color: var(--gw-sub); font-size: 13px; cursor: pointer; font-family: inherit; line-height: 20px;}
+.gwui-ci-sheet-submit { flex: 1; padding: 10px 16px; border-radius: 8px; background: var(--gw-navy); color: #fff; font-size: 13px; font-weight: 700; border: none; cursor: pointer; font-family: inherit; line-height: 20px;}
 .gwui-ci-sheet-submit[disabled] { cursor: not-allowed; opacity: .5; }
 
 /* A document's "what this suggests / what I will do with it" card, and its own correction form. */
 .gwui-ci-assessment { border: 1px solid var(--gw-border); border-radius: 10px; padding: 12px 14px; background: #fff; max-width: 82%; align-self: flex-start; }
-.gwui-ci-assessment-title { font-size: 13px; font-weight: 700; color: var(--gw-navy); margin-bottom: 8px; }
-.gwui-ci-assessment-label { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-sub); margin-bottom: 4px; }
-.gwui-ci-assessment-list { margin: 0 0 10px; padding-left: 18px; font-size: 13px; line-height: 1.6; }
+.gwui-ci-assessment-title { font-size: 13px; font-weight: 700; color: var(--gw-navy); margin-bottom: 8px; line-height: 20px;}
+.gwui-ci-assessment-label { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-sub); margin-bottom: 4px; line-height: 20px;}
+.gwui-ci-assessment-list { margin: 0 0 10px; padding-left: 18px; font-size: 13px; line-height: 21px; }
 .gwui-ci-assessment-list-last { margin: 0; }
-.gwui-ci-assessment-link { margin-top: 10px; font-size: 13px; color: var(--gw-navy); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; padding: 0; }
-.gwui-ci-assessment-textarea { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid var(--gw-border); border-radius: 6px; font-family: inherit; outline: none; box-sizing: border-box; resize: vertical; margin-bottom: 8px; }
+.gwui-ci-assessment-link { margin-top: 10px; font-size: 13px; color: var(--gw-navy); background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit; padding: 0; line-height: 20px;}
+.gwui-ci-assessment-textarea { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid var(--gw-border); border-radius: 6px; font-family: inherit; outline: none; box-sizing: border-box; resize: vertical; margin-bottom: 8px; line-height: 20px;}
 .gwui-ci-assessment-actions { display: flex; gap: 8px; }
-.gwui-ci-assessment-save { padding: 7px 14px; border-radius: 6px; background: var(--gw-navy); color: #fff; border: none; cursor: pointer; font-size: 13px; font-weight: 700; font-family: inherit; }
+.gwui-ci-assessment-save { padding: 7px 14px; border-radius: 6px; background: var(--gw-navy); color: #fff; border: none; cursor: pointer; font-size: 13px; font-weight: 700; font-family: inherit; line-height: 20px;}
 .gwui-ci-assessment-save[disabled] { opacity: .6; }
-.gwui-ci-assessment-cancel { padding: 7px 14px; border-radius: 6px; background: none; color: var(--gw-sub); border: 1px solid var(--gw-border); cursor: pointer; font-size: 13px; font-family: inherit; }
+.gwui-ci-assessment-cancel { padding: 7px 14px; border-radius: 6px; background: none; color: var(--gw-sub); border: 1px solid var(--gw-border); cursor: pointer; font-size: 13px; font-family: inherit; line-height: 20px;}
 
 /* The end card (check-in-end-card.jpg): "What is now in your record", "Why answering matters",
    "What happens next". */
 .gwui-ci-endcard { display: grid; gap: 12px; padding: 4px 0 8px; }
 .gwui-ci-endcard-box { border: 1px solid var(--gw-border); border-radius: 12px; padding: 14px 16px; background: #fff; }
 .gwui-ci-endcard-heading { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: var(--gw-text); }
-.gwui-ci-endcard-body { margin: 0; font-size: 14px; line-height: 1.55; color: var(--gw-text); }
+.gwui-ci-endcard-body { margin: 0; font-size: 14px; line-height: 22px; color: var(--gw-text); }
 .gwui-ci-endcard-list { list-style: none; margin: 0; padding: 0; }
 .gwui-ci-endcard-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; }
 .gwui-ci-endcard-row + .gwui-ci-endcard-row { border-top: 1px solid var(--gw-border); }
 .gwui-ci-endcard-markcol { width: 16px; flex-shrink: 0; padding-top: 3px; }
-.gwui-ci-endcard-line { display: block; font-size: 14px; font-weight: 700; color: var(--gw-text); line-height: 1.45; }
-.gwui-ci-endcard-how { display: block; font-size: 13px; color: var(--gw-sub); line-height: 1.45; margin-top: 2px; }
+.gwui-ci-endcard-line { display: block; font-size: 14px; font-weight: 700; color: var(--gw-text); line-height: 20px; }
+.gwui-ci-endcard-how { display: block; font-size: 13px; color: var(--gw-sub); line-height: 19px; margin-top: 2px; }
 /* GROUP 3 REVIEW, BATCH B: a real <ul> of <li>, but Tailwind's preflight resets every list to
    `list-style:none`, so this read with no marker at all - the prototype's own "What happens
    next" (s44.js) types a literal "• " before each line. `list-style: disc` restores the bullet
@@ -1839,7 +1699,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ci-finish-wrap { text-align: center; padding: 6px 0; }
 .gwui-ci-record-line { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
 .gwui-ci-record-list { display: flex; flex-direction: column; gap: 8px; }
-.gwui-ci-subject { font-size: 14.5px; line-height: 21px; color: var(--gw-text); margin: 0; font-weight: 700; }
+.gwui-ci-subject { font-size: 14px; line-height: 21px; color: var(--gw-text); margin: 0; font-weight: 700; }
 .gwui-ci-about { display: flex; flex-direction: column; }
 
 /* ── SETTING UP A CHECK-IN (group 3, piece 4, B1-starting-a-check-in) ───────
@@ -1860,8 +1720,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    one-group, one-question, one-grid shape as a situation group. */
 .gwui-situation-group { margin-top: 28px; }
 .gwui-situation-group-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.gwui-situation-group-head h3 { font-size: 16px; font-weight: 800; margin: 0; letter-spacing: -.01em; color: var(--gw-text); }
-.gwui-situation-group-q { font-size: 13px; color: var(--gw-sub); line-height: 1.55; margin: 4px 0 12px; max-width: 62ch; }
+.gwui-situation-group-head h3 { font-size: 16px; font-weight: 700; margin: 0; letter-spacing: -.01em; color: var(--gw-text); }
+.gwui-situation-group-q { font-size: 13px; color: var(--gw-sub); line-height: 20px; margin: 4px 0 12px; max-width: 62ch; }
 .gwui-situation-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
 @media (min-width: 700px)  { .gwui-situation-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1000px) { .gwui-situation-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -1882,27 +1742,27 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* AN EMPTY CIRCLE ON EVERY CARD READ AS A CHECKBOX LIST. It is a radio: one card, and picking one
    decides the step, so there is not even a selected state to show on the entry chat's own door.
    Space is held either way, or the heading jumps when a card is chosen. */
-.gwui-situation-check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid transparent; flex-shrink: 0; transition: all 0.15s; }
+.gwui-situation-check { width: 18px; height: 18px; border-radius: 50%; border: 1px solid transparent; flex-shrink: 0; transition: all 0.15s; }
 .gwui-situation-card-selected .gwui-situation-check {
   background: var(--gw-navy); border-color: var(--gw-navy);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' viewBox='0 0 10 8'%3E%3Cpath d='M1 4l3 3 5-6' stroke='white' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: center;
 }
-.gwui-situation-title { font-size: 14.5px; font-weight: 700; line-height: 1.3; }
+.gwui-situation-title { font-size: 14px; font-weight: 700; line-height: 18px; }
 /* The left rule replaces a heading - it says "this is an example" without a label. */
-.gwui-situation-moment { font-size: 13px; color: var(--gw-text); font-style: italic; line-height: 1.5; margin: 0; padding-left: 9px; border-left: 2px solid var(--gw-border); }
+.gwui-situation-moment { font-size: 13px; color: var(--gw-text); font-style: italic; line-height: 20px; margin: 0; padding-left: 9px; border-left: 2px solid var(--gw-border); }
 .gwui-situation-card-selected .gwui-situation-moment { border-left-color: var(--gw-navy); }
-.gwui-situation-more { align-self: flex-start; background: none; border: none; padding: 2px 0; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--gw-navy); }
+.gwui-situation-more { align-self: flex-start; background: none; border: none; padding: 2px 0; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--gw-navy); line-height: 20px;}
 .gwui-situation-more:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; border-radius: 3px; }
 .gwui-situation-arc { margin: 6px 0 0; padding: 10px 11px; background: var(--gw-paper-2); border-radius: 6px; display: grid; gap: 8px; }
-.gwui-situation-arc dt { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-muted); margin-bottom: 1px; }
-.gwui-situation-arc dd { margin: 0; font-size: 13px; color: var(--gw-sub); line-height: 1.5; }
+.gwui-situation-arc dt { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-muted); margin-bottom: 1px; line-height: 20px;}
+.gwui-situation-arc dd { margin: 0; font-size: 13px; color: var(--gw-sub); line-height: 20px; }
 .gwui-situation-arc-warn dt { color: var(--gw-amber-t); }
 /* Cadence, length and count: three numbers a lead compares between two cards. */
 .gwui-situation-meta { display: flex; margin-top: auto; padding-top: 9px; border-top: 1px solid var(--gw-border); }
 .gwui-situation-meta > div { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
-.gwui-situation-meta dt { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-muted); margin: 0 0 1px; line-height: 1.3; min-height: 24px; }
-.gwui-situation-meta dd { font-size: 13px; font-weight: 600; color: var(--gw-text); margin: 0; font-variant-numeric: tabular-nums; }
+.gwui-situation-meta dt { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-muted); margin: 0 0 1px; line-height: 17px; min-height: 24px; }
+.gwui-situation-meta dd { font-size: 13px; font-weight: 700; color: var(--gw-text); margin: 0; font-variant-numeric: tabular-nums; line-height: 20px;}
 @media (max-width: 620px) {
   .gwui-situation-grid { grid-template-columns: 1fr; }
   .gwui-situation-meta { flex-wrap: wrap; gap: 8px; }
@@ -1920,9 +1780,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 @keyframes gwuiSpin { to { transform: rotate(360deg); } }
 .gwui-spinner { display: flex; align-items: center; gap: 10px; padding: 32px 0; color: var(--gw-sub); }
 .gwui-spinner-dot { width: 18px; height: 18px; border: 2px solid var(--gw-border); border-top-color: var(--gw-navy); border-radius: 50%; animation: gwuiSpin 0.7s linear infinite; }
-.gwui-situation-extra-note { font-size: 13px; color: var(--gw-navy); font-weight: 600; margin-top: 2px; }
+.gwui-situation-extra-note { font-size: 13px; color: var(--gw-navy); font-weight: 700; margin-top: 2px; line-height: 20px;}
 .gwui-cg-dimmed { opacity: 0.55; pointer-events: none; }
-.gwui-cg-checkbox-row { font-size: 13.5px; color: var(--gw-sub); display: flex; gap: 7px; align-items: flex-start; }
+.gwui-cg-checkbox-row { font-size: 14px; color: var(--gw-sub); display: flex; gap: 7px; align-items: flex-start; }
 
 /* ── THE DOOR (group 3, piece 4d-1, B1-starting-a-check-in: start.jpg, new.jpg) ─────────────
    TheDoor.tsx: one box, one question. serif heading at the prototype's own clamp, then help text,
@@ -1934,16 +1794,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-phase-steps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; }
 .gwui-phase-step { display: flex; align-items: center; gap: 5px; }
 .gwui-phase-step-mark {
-  width: 20px; height: 20px; border-radius: 50%; font-size: 13px; font-weight: 800;
+  width: 20px; height: 20px; border-radius: 50%; font-size: 13px; font-weight: 700;
   display: inline-flex; align-items: center; justify-content: center;
-  background: var(--gw-border); color: var(--gw-muted);
-}
+  background: var(--gw-border); color: var(--gw-muted); line-height: 20px;}
 .gwui-phase-step-mark.gwui-phase-step-current { background: var(--gw-navy); color: white; }
 .gwui-phase-step-mark.gwui-phase-step-done { background: var(--gw-green-b); color: white; }
-.gwui-phase-step-label { font-size: 13px; font-weight: 500; color: var(--gw-muted); }
+.gwui-phase-step-label { font-size: 13px; font-weight: 500; color: var(--gw-muted); line-height: 20px;}
 .gwui-phase-step-label-current { font-weight: 700; color: var(--gw-text); }
-.gwui-phase-step-arrow { color: var(--gw-border); font-size: 13px; margin-left: 3px; }
-.gwui-phase-steps-hint { font-size: 13px; color: var(--gw-sub); margin: 4px 0 0; }
+.gwui-phase-step-arrow { color: var(--gw-border); font-size: 13px; margin-left: 3px; line-height: 20px;}
+.gwui-phase-steps-hint { font-size: 13px; color: var(--gw-sub); margin: 4px 0 0; line-height: 20px;}
 
 /* ── THE ENTRY CHAT'S OWN FRAME (group 3, piece 4d-1) ───────────────────────────────────────
    EntryChatPage.tsx: the outer frame, the session header, the start-over bar, the sessions-upgrade
@@ -1979,7 +1838,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-session-back { flex-shrink: 0; }
 .gwui-ec-session-name-row { flex: 1 1 200px; min-width: 0; }
 .gwui-ec-session-name { font-size: 14px; font-weight: 700; color: var(--gw-text); }
-.gwui-ec-session-status { font-size: 13px; color: var(--gw-sub); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.gwui-ec-session-status { font-size: 13px; color: var(--gw-sub); display: flex; align-items: center; gap: 6px; margin-top: 2px; line-height: 20px;}
 .gwui-ec-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gw-green-live); display: inline-block; flex-shrink: 0; }
 .gwui-ec-sessions-count { flex-shrink: 0; text-align: right; }
 /*
@@ -2006,7 +1865,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 .gwui-ec-bar { padding: 6px 20px; border-bottom: 1px solid var(--gw-border); background: white; display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
 .gwui-ec-bar-onboarding { padding: 12px 20px; justify-content: space-between; }
-.gwui-ec-confirm-clear { font-size: 13px; color: var(--gw-sub); display: flex; align-items: center; gap: 10px; }
+.gwui-ec-confirm-clear { font-size: 13px; color: var(--gw-sub); display: flex; align-items: center; gap: 10px; line-height: 20px;}
 .gwui-ec-picked-row { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 /*
  * FAULT C4 (reviewer, third round): "START OVER" WRAPPED ONTO TWO LINES AT 390px - or, once this
@@ -2026,13 +1885,12 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 .gwui-ec-messages-wide { max-width: 1080px; }
 .gwui-ec-messages-narrow { max-width: 680px; }
-.gwui-ec-picked-chip { align-self: flex-end; font-size: 13px; color: var(--gw-sub); padding: 6px 12px; border: 1px solid var(--gw-border); border-radius: 999px; background: white; }
-
+.gwui-ec-picked-chip { align-self: flex-end; font-size: 13px; color: var(--gw-sub); padding: 6px 12px; border: 1px solid var(--gw-border); border-radius: 999px; background: white; line-height: 20px;}
 
 .gwui-ec-doc-panel { padding: 12px 16px; border-bottom: 1px solid var(--gw-border); background: var(--gw-paper-2); }
 .gwui-ec-doc-panel-inner { max-width: 680px; margin: 0 auto; }
 .gwui-ec-doc-panel-tabs { display: flex; gap: 6px; margin-bottom: 8px; align-items: center; }
-.gwui-ec-doc-upload-label { display: block; border: 1px dashed var(--gw-border); border-radius: 8px; padding: 14px; text-align: center; font-size: 13px; color: var(--gw-sub); cursor: pointer; margin-bottom: 8px; background: white; }
+.gwui-ec-doc-upload-label { display: block; border: 1px dashed var(--gw-border); border-radius: 8px; padding: 14px; text-align: center; font-size: 13px; color: var(--gw-sub); cursor: pointer; margin-bottom: 8px; background: white; line-height: 20px;}
 
 .gwui-ec-composer-wrap { border-top: 1px solid var(--gw-border); background: white; flex-shrink: 0; }
 .gwui-ec-composer-inner { padding: 10px 16px; position: relative; z-index: 101; }
@@ -2048,8 +1906,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 @media (max-width: 640px) {
   .gwui-ec-door-slot { padding-bottom: 64px; }
 }
-.gwui-ec-thinking { margin-right: 6px; font-style: normal; color: var(--gw-muted); font-size: 13px; }
-.gwui-ec-fork { display: flex; flex-direction: column; gap: 8px; max-width: 82%; align-self: flex-start; margin-top: 4px; }
+
 /*
  * FAULT 7 (live review, 390px walk), THEN FAULT C3 (reviewer, third round): THE FLOATING
  * FEEDBACK TRIGGER STILL COVERED THE END OF "I CHECK IN ONCE TO SET THE CONTEXT, THEN ONLY THEY
@@ -2062,12 +1919,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * same number this container now reserves, so the fork can never end inside it, however long the
  * conversation above it runs.
  */
-@media (max-width: 640px) {
-  .gwui-ec-fork { padding-bottom: 148px; }
-}
-.gwui-ec-fork-note { font-weight: 700; margin-top: 8px; }
-.gwui-ec-sofar-heading { font-size: 13px; font-weight: 700; letter-spacing: .3px; color: var(--gw-sub); margin-bottom: 5px; }
-.gwui-ec-sofar-row { display: flex; gap: 7px; font-size: 13px; line-height: 1.5; margin-bottom: 3px; }
+
 /*
  * FAULT 6 (live review): A 56px LABEL COLUMN WRAPPED "What you are aiming for" ONE WORD AT A TIME
  * ("What / you are / aiming / for"), AND THE CLAMP ON ITS VALUE THEN CUT THE ANSWER OFF ON A PHONE
@@ -2076,7 +1928,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * its value instead of beside it once the screen is too narrow to keep that width, and the clamp is
  * gone - the point of the card is to show what is on the record, not to hide part of it.
  */
-.gwui-ec-sofar-label { color: var(--gw-sub); font-weight: 700; flex: 0 0 160px; }
+
 /*
  * FAULT D2 (reviewer, third round): THE VALUE COLUMN HELD ONLY 2 OR 3 WORDS A LINE AT 1024px.
  * The card sits in a chat bubble with no width of its own (`Bubble.tsx`'s `maxWidth: '82%'`, no
@@ -2088,7 +1940,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * column a real preferred width to claim from that remaining space, the same way the label column
  * already claims its own 160px, rather than leaving it to guess.
  */
-.gwui-ec-sofar-value { color: var(--gw-text); flex: 1 1 320px; min-width: 0; }
+
 /*
  * AND THE CARD ITSELF: a flex-basis on the value column alone could not widen it, because the
  * bubble around this card (`Bubble.tsx`) has no width of its own - only `max-width: 82%` - so
@@ -2098,14 +1950,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
  * calculation has to honour going back up that chain - still capped by the bubble's own 82% and
  * the viewport beneath it, so it never forces the card wider than the screen actually allows.
  */
-@media (min-width: 900px) {
-  .gwui-ec-sofar { min-width: 480px; }
-}
-@media (max-width: 480px) {
-  .gwui-ec-sofar-row { flex-direction: column; gap: 1px; }
-  .gwui-ec-sofar-label { flex-basis: auto; }
-}
-.gwui-ec-sofar-missing { font-size: 13px; line-height: 1.55; margin-top: 6px; color: var(--gw-amber-t); }
+
 .gwui-ec-doc-panel-spacer { flex: 1; }
 
 /* 4D-2: the natural-close prompt, the quick-action chips, the attached-doc pill, and the actions
@@ -2114,7 +1959,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-natural-close .gwui-callout { flex: 1; }
 .gwui-ec-natural-close-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .gwui-ec-quick-actions { padding: 8px 16px; border-top: 1px solid var(--gw-border); display: flex; gap: 7px; flex-wrap: wrap; flex-shrink: 0; background: white; align-items: center; }
-.gwui-ec-quick-action { padding: 5px 12px; border-radius: 20px; font-size: 13px; border: 1px solid var(--gw-border); background: transparent; color: var(--gw-sub); cursor: pointer; font-family: inherit; }
+.gwui-ec-quick-action { padding: 5px 12px; border-radius: 20px; font-size: 13px; border: 1px solid var(--gw-border); background: transparent; color: var(--gw-sub); cursor: pointer; font-family: inherit; line-height: 20px;}
 .gwui-ec-quick-action:disabled { opacity: .5; cursor: default; }
 .gwui-ec-quick-action-attach { display: inline-flex; align-items: center; }
 .gwui-ec-quick-actions-end { margin-left: auto; }
@@ -2130,9 +1975,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 @media (max-width: 640px) {
   .gwui-ec-quick-actions-end { margin-left: 0; }
 }
-.gwui-ec-quick-action-navy { color: var(--gw-navy); font-weight: 600; }
+.gwui-ec-quick-action-navy { color: var(--gw-navy); font-weight: 700; }
 .gwui-ec-doc-pill { padding: 6px 16px; background: var(--gw-blue-bg); border-top: 1px solid var(--gw-blue-b); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.gwui-ec-doc-pill-name { font-size: 13px; color: var(--gw-navy); flex: 1; }
+.gwui-ec-doc-pill-name { font-size: 13px; color: var(--gw-navy); flex: 1; line-height: 20px;}
 .gwui-ec-modal-actions { display: flex; gap: 8px; margin-top: 14px; }
 .gwui-ec-modal-actions > * { flex: 1; }
 
@@ -2140,90 +1985,93 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-savecard-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50; overflow-y: auto; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px 48px; transition: opacity .3s, visibility .3s; }
 .gwui-ec-savecard-overlay-hidden { opacity: 0; pointer-events: none; visibility: hidden; }
 .gwui-ec-savecard-overlay-shown { opacity: 1; pointer-events: auto; visibility: visible; }
-.gwui-ec-savecard { width: 100%; max-width: 640px; background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.22); }
+.gwui-ec-savecard { width: 100%; max-width: 640px; background: white; border-radius: var(--gw-radius-pop); overflow: clip; box-shadow: var(--gw-shadow-modal); }
 .gwui-ec-savecard-header { background: var(--gw-dark); color: white; padding: 20px 22px 16px; }
-.gwui-ec-savecard-eyebrow { font-size: 13px; color: var(--gw-green-b); font-weight: 700; margin-bottom: 6px; }
-.gwui-ec-savecard-title { font-size: 18px; font-weight: 800; letter-spacing: -.01em; line-height: 1.2; }
+.gwui-ec-savecard-eyebrow { font-size: 13px; color: var(--gw-green-b); font-weight: 700; margin-bottom: 6px; line-height: 20px;}
+.gwui-ec-savecard-title { font-size: 18px; font-weight: 700; letter-spacing: -.01em; line-height: 22px; }
 .gwui-ec-savecard-venn-row { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; }
 .gwui-ec-savecard-venn-icon { flex-shrink: 0; margin-top: 2px; background: white; border-radius: 4px; padding: 2px 3px; }
-.gwui-ec-savecard-venn-text { font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.5; }
+.gwui-ec-savecard-venn-text { font-size: 13px; color: rgba(255,255,255,.6); line-height: 20px; }
 .gwui-ec-savecard-venn-text b { color: rgba(255,255,255,.85); }
 .gwui-ec-savecard-stat-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
-.gwui-ec-savecard-stat { font-size: 13px; color: rgba(255,255,255,.55); }
+.gwui-ec-savecard-stat { font-size: 13px; color: rgba(255,255,255,.55); line-height: 20px;}
 .gwui-ec-savecard-body { padding: 18px 20px 28px; }
 .gwui-ec-savecard-status { margin-bottom: 18px; }
 .gwui-ec-savecard-retry { background: var(--gw-clay-bg); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; display: flex; align-items: center; gap: 12px; }
-.gwui-ec-savecard-retry-text { flex: 1; font-size: 13px; color: var(--gw-clay); line-height: 1.5; }
-.gwui-ec-savecard-add-pending { font-size: 13px; color: var(--gw-green-t); font-weight: 600; margin-top: 6px; }
+.gwui-ec-savecard-retry-text { flex: 1; font-size: 13px; color: var(--gw-clay); line-height: 20px; }
+.gwui-ec-savecard-add-pending { font-size: 13px; color: var(--gw-green-t); font-weight: 700; margin-top: 6px; line-height: 20px;}
 .gwui-ec-savecard-add-row { display: flex; gap: 6px; margin-top: 6px; }
-.gwui-ec-savecard-add-error { font-size: 13px; color: var(--gw-red-t); margin-top: 4px; }
-.gwui-ec-savecard-whatnext { background: #F0F4FA; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+.gwui-ec-savecard-add-error { font-size: 13px; color: var(--gw-red-t); margin-top: 4px; line-height: 20px;}
+.gwui-ec-savecard-whatnext { background: var(--gw-blue-bg); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
 /* SCREEN FAULT 10 (FINAL WALK): "WHAT HAPPENS NEXT" IN CAPITALS. The prototype's own end-card
    (check-in-end-card.txt) writes this heading in sentence case, not as a small label - so the
    uppercase transform is dropped; the rest of the heading's own styling (size, weight, colour,
    spacing) is unchanged. */
-.gwui-ec-savecard-whatnext-title { font-size: 13px; font-weight: 600; color: var(--gw-navy); margin-bottom: 8px; letter-spacing: .06em; }
+.gwui-ec-savecard-whatnext-title { font-size: 13px; font-weight: 700; color: var(--gw-navy); margin-bottom: 8px; letter-spacing: .06em; line-height: 20px;}
 .gwui-ec-savecard-whatnext-list { display: flex; flex-direction: column; gap: 8px; }
 .gwui-ec-savecard-whatnext-row { display: flex; gap: 10px; align-items: flex-start; }
-.gwui-ec-savecard-whatnext-num { width: 22px; height: 22px; border-radius: 50%; background: var(--gw-navy); color: white; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
-.gwui-ec-savecard-whatnext-text { font-size: 13px; color: var(--gw-text); line-height: 1.55; }
+.gwui-ec-savecard-whatnext-num { width: 22px; height: 22px; border-radius: 50%; background: var(--gw-navy); color: white; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; line-height: 20px;}
+.gwui-ec-savecard-whatnext-text { font-size: 13px; color: var(--gw-text); line-height: 20px; }
 .gwui-ec-savecard-section { margin-bottom: 20px; }
-.gwui-ec-savecard-helper { font-size: 13px; color: var(--gw-muted); line-height: 1.5; text-align: center; padding-top: 8px; }
-.gwui-ec-savecard-clear-row { text-align: center; padding-top: 6px; font-size: 13px; color: var(--gw-muted); }
+/* SAVE STAYS IN VIEW (round 5: at phone width the signed-in lead's Save was far below the team box, and impatient leads left without
+   finding it). The section that holds it, the one with "Start over instead", is pinned to the foot of the card while the setup above it
+   scrolls. The card clips rather than hides its overflow, so it is not a scroller of its own and the pin follows the page's scroll. */
+.gwui-ec-savecard-section:has(> .gwui-ec-savecard-clear-row) { position: sticky; bottom: 0; z-index: 1; background: white; margin: 0 -20px 20px; padding: 12px 20px; border-top: 1px solid var(--gw-border); }
+.gwui-ec-savecard-helper { font-size: 13px; color: var(--gw-muted); line-height: 20px; text-align: center; padding-top: 8px; }
+.gwui-ec-savecard-clear-row { text-align: center; padding-top: 6px; font-size: 13px; color: var(--gw-muted); line-height: 20px;}
 .gwui-ec-savecard-clear-confirm { display: inline-flex; gap: 10px; align-items: center; }
-.gwui-ec-savecard-clear-danger { color: var(--gw-red-t); font-weight: 600; }
+.gwui-ec-savecard-clear-danger { color: var(--gw-red-t); font-weight: 700; }
 .gwui-ec-savecard-field { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
 .gwui-ec-savecard-field-error { border-color: var(--gw-danger); }
-.gwui-ec-savecard-error { font-size: 13px; color: var(--gw-red-t); margin-bottom: 6px; }
+.gwui-ec-savecard-error { font-size: 13px; color: var(--gw-red-t); margin-bottom: 6px; line-height: 20px;}
 .gwui-ec-savecard-or-row { display: flex; align-items: center; gap: 8px; padding: 12px 0 8px; }
-.gwui-ec-savecard-or-text { font-size: 13px; color: var(--gw-muted); }
-.gwui-ec-savecard-confirm-box { position: sticky; top: 8px; z-index: 5; background: var(--gw-green-bg); border: 1px solid var(--gw-green-b-soft); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.gwui-ec-savecard-or-text { font-size: 13px; color: var(--gw-muted); line-height: 20px;}
+.gwui-ec-savecard-confirm-box { position: sticky; top: 8px; z-index: 5; background: var(--gw-green-bg); border: 1px solid var(--gw-green-b-soft); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; }
 .gwui-ec-savecard-confirm-title { font-size: 14px; font-weight: 700; color: var(--gw-green-t); margin-bottom: 4px; }
-.gwui-ec-savecard-confirm-body { font-size: 13px; color: var(--gw-green-t); line-height: 1.6; }
-.gwui-ec-savecard-confirm-sub { font-size: 13px; color: var(--gw-green-t); line-height: 1.6; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gw-green-b-soft); }
+.gwui-ec-savecard-confirm-body { font-size: 13px; color: var(--gw-green-t); line-height: 21px; }
+.gwui-ec-savecard-confirm-sub { font-size: 13px; color: var(--gw-green-t); line-height: 21px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gw-green-b-soft); }
 .gwui-ec-savecard-divider { border-top: 1px solid var(--gw-border); margin-bottom: 18px; }
 .gwui-ec-savecard-name-block { margin-bottom: 14px; }
-.gwui-ec-savecard-name-label { font-size: 13px; font-weight: 600; color: var(--gw-sub); margin-bottom: 6px; }
-.gwui-ec-savecard-name-hint { font-size: 13px; color: var(--gw-sub); line-height: 1.5; }
+.gwui-ec-savecard-name-label { font-size: 13px; font-weight: 700; color: var(--gw-sub); margin-bottom: 6px; line-height: 20px;}
+.gwui-ec-savecard-name-hint { font-size: 13px; color: var(--gw-sub); line-height: 20px; }
 .gwui-ec-savecard-invite-block { border-bottom: 1px solid var(--gw-border); margin-bottom: 16px; padding-bottom: 16px; }
-.gwui-ec-savecard-invite-subtext { font-size: 13px; color: var(--gw-muted); line-height: 1.55; margin-bottom: 10px; }
-.gwui-ec-savecard-invite-banner { font-size: 13px; color: var(--gw-navy); background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); border-radius: 8px; padding: 8px 11px; line-height: 1.5; margin-bottom: 10px; }
-.gwui-ec-savecard-invite-later { font-size: 13px; color: var(--gw-sub); line-height: 1.55; margin-bottom: 10px; }
-.gwui-ec-savecard-invite-notice { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; color: var(--gw-amber-t); line-height: 1.55; }
+.gwui-ec-savecard-invite-subtext { font-size: 13px; color: var(--gw-muted); line-height: 20px; margin-bottom: 10px; }
+.gwui-ec-savecard-invite-banner { font-size: 13px; color: var(--gw-navy); background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); border-radius: 8px; padding: 8px 11px; line-height: 20px; margin-bottom: 10px; }
+.gwui-ec-savecard-invite-later { font-size: 13px; color: var(--gw-sub); line-height: 20px; margin-bottom: 10px; }
+.gwui-ec-savecard-invite-notice { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; color: var(--gw-amber-t); line-height: 20px; }
 .gwui-ec-savecard-invite-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
-.gwui-ec-savecard-invite-chip { font-size: 13px; color: var(--gw-green-t); background: var(--gw-green-bg); border-radius: 6px; padding: 5px 10px; }
+.gwui-ec-savecard-invite-chip { font-size: 13px; color: var(--gw-green-t); background: var(--gw-green-bg); border-radius: 6px; padding: 5px 10px; line-height: 20px;}
 .gwui-ec-savecard-invite-context { background: var(--gw-paper-2); border: 1px solid var(--gw-border); border-radius: 10px; padding: 12px 14px; }
 .gwui-ec-savecard-invite-context-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-.gwui-ec-savecard-invite-context-name { font-size: 13px; font-weight: 600; color: var(--gw-text); }
-.gwui-ec-savecard-invite-context-more { font-size: 13px; color: var(--gw-muted); }
-.gwui-ec-savecard-invite-context-ask { font-size: 13px; color: var(--gw-sub); margin-bottom: 8px; line-height: 1.5; }
+.gwui-ec-savecard-invite-context-name { font-size: 13px; font-weight: 700; color: var(--gw-text); line-height: 20px;}
+.gwui-ec-savecard-invite-context-more { font-size: 13px; color: var(--gw-muted); line-height: 20px;}
+.gwui-ec-savecard-invite-context-ask { font-size: 13px; color: var(--gw-sub); margin-bottom: 8px; line-height: 20px; }
 .gwui-ec-savecard-row-gap8 { display: flex; gap: 8px; }
 .gwui-ec-savecard-row-gap8-grow-last > *:last-child { flex: 1; }
-.gwui-ec-savecard-row-gap8-mb { display: flex; gap: 8px; margin-bottom: 8px; }
+
 .gwui-ec-savecard-invite-add-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .gwui-ec-savecard-invite-add-row > :first-child { flex: 1; }
 .gwui-ec-savecard-link-row { display: flex; align-items: center; gap: 8px; }
-.gwui-ec-savecard-link-box { flex: 1; font-size: 13px; color: var(--gw-navy); background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); border-radius: 7px; padding: 8px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gwui-ec-savecard-link-box { flex: 1; font-size: 13px; color: var(--gw-navy); background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); border-radius: 7px; padding: 8px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 20px;}
 .gwui-ec-savecard-done { text-align: center; padding-top: 8px; }
-.gwui-ec-savecard-done-text { font-size: 13px; color: var(--gw-muted); padding-top: 8px; line-height: 1.6; }
+.gwui-ec-savecard-done-text { font-size: 13px; color: var(--gw-muted); padding-top: 8px; line-height: 21px; }
 
 /* 4D-4: the closed-session invite bar, and the check-in composer's own centred width (the
    message list above it centres the same way, still with its own inline maxWidth/margin until
    that part of this rebuild reaches it). */
 .gwui-ec-invite-bar { border-top: 1px solid var(--gw-border); background: white; flex-shrink: 0; padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
 .gwui-ec-invite-bar-text { flex: 1; }
-.gwui-ec-invite-bar-title { font-size: 13px; font-weight: 600; color: var(--gw-text); }
-.gwui-ec-invite-bar-sub { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
+.gwui-ec-invite-bar-title { font-size: 13px; font-weight: 700; color: var(--gw-text); line-height: 20px;}
+.gwui-ec-invite-bar-sub { font-size: 13px; color: var(--gw-sub); margin-top: 2px; line-height: 20px;}
 .gwui-ec-checkin-composer-wrap { max-width: 680px; width: 100%; margin: 0 auto; }
 .gwui-ec-fills-in { width: 300px; flex-shrink: 0; padding: 18px 20px 18px 0; overflow-y: auto; }
 .gwui-ec-checkin { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .gwui-ec-checkin-notice { background: var(--gw-amber-bg); border-bottom: 1px solid var(--gw-amber-b-soft); padding: 8px 16px; flex-shrink: 0; }
-.gwui-ec-checkin-notice-inner { max-width: 680px; margin: 0 auto; font-size: 13px; color: var(--gw-amber-t); line-height: 1.5; }
+.gwui-ec-checkin-notice-inner { max-width: 680px; margin: 0 auto; font-size: 13px; color: var(--gw-amber-t); line-height: 20px; }
 .gwui-ec-checkin-messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; max-width: 680px; width: 100%; margin: 0 auto; box-sizing: border-box; }
-.gwui-ec-checkin-starting { font-size: 13px; color: var(--gw-sub); text-align: center; padding: 24px; }
-.gwui-ec-checkin-seam { display: flex; align-items: center; gap: 10px; padding: 2px 12px 10px; }
-.gwui-ec-checkin-seam-text { font-size: 13px; color: var(--gw-sub); font-weight: 700; white-space: nowrap; }
-.gwui-ec-checkin-note { font-size: 13px; color: var(--gw-sub); text-align: center; padding: 4px 12px 8px; line-height: 1.5; }
+.gwui-ec-checkin-starting { font-size: 13px; color: var(--gw-sub); text-align: center; padding: 24px; line-height: 20px;}
+
+.gwui-ec-checkin-note { font-size: 13px; color: var(--gw-sub); text-align: center; padding: 4px 12px 8px; line-height: 20px; }
 .gwui-ec-checkin-note-row { display: flex; align-items: center; gap: 8px; justify-content: center; padding: 0 12px 10px; }
 
 /* The lead's own first-check-in briefing (showAdminBriefing - see the note above where this
@@ -2231,15 +2079,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-briefing { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--gw-page); padding: 24px 20px; }
 .gwui-ec-briefing-inner { max-width: 480px; width: 100%; }
 .gwui-ec-briefing-brand { margin-bottom: 24px; }
-.gwui-ec-briefing-wordmark { font-size: 13px; font-weight: 700; color: var(--gw-navy); letter-spacing: -.01em; }
-.gwui-ec-briefing-title { font-size: 22px; font-weight: 800; color: var(--gw-text); line-height: 1.2; margin-bottom: 8px; }
-.gwui-ec-briefing-sub { font-size: 14px; color: var(--gw-sub); line-height: 1.7; margin-bottom: 24px; }
+.gwui-ec-briefing-wordmark { font-size: 13px; font-weight: 700; color: var(--gw-navy); letter-spacing: -.01em; line-height: 20px;}
+.gwui-ec-briefing-title { font-size: 22px; font-weight: 700; color: var(--gw-text); line-height: 26px; margin-bottom: 8px; }
+.gwui-ec-briefing-sub { font-size: 14px; color: var(--gw-sub); line-height: 24px; margin-bottom: 24px; }
 .gwui-ec-briefing-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
 .gwui-ec-briefing-card { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; background: white; border-radius: 10px; border: 1px solid var(--gw-border); }
 .gwui-ec-briefing-icon { font-size: 16px; flex-shrink: 0; }
-.gwui-ec-briefing-card-body { font-size: 13px; color: var(--gw-sub); line-height: 1.55; }
-.gwui-ec-field-label { font-size: 13px; font-weight: 600; color: var(--gw-sub); margin-bottom: 4px; }
-.gwui-ec-card-title { font-size: 13px; font-weight: 600; color: var(--gw-text); margin-bottom: 2px; }
+.gwui-ec-briefing-card-body { font-size: 13px; color: var(--gw-sub); line-height: 20px; }
+.gwui-ec-field-label { font-size: 13px; font-weight: 700; color: var(--gw-sub); margin-bottom: 4px; line-height: 20px;}
+.gwui-ec-card-title { font-size: 13px; font-weight: 700; color: var(--gw-text); margin-bottom: 2px; line-height: 20px;}
 .gwui-ec-card-title-700 { font-weight: 700; }
 .gwui-ec-rule { flex: 1; height: 1px; background: var(--gw-border); }
 
@@ -2259,20 +2107,20 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-setrow-more { margin-top: 4px; }
 
 /* The correction thread inside the report's own dark card (TheReportYouSawAtTheEnd's correctionSlot). */
-.gwui-ec-correction-intro { font-size: 13px; color: rgba(255,255,255,.75); margin-bottom: 6px; }
+.gwui-ec-correction-intro { font-size: 13px; color: rgba(255,255,255,.75); margin-bottom: 6px; line-height: 20px;}
 .gwui-ec-correction-thread { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-.gwui-ec-correction-bubble { max-width: 88%; padding: 7px 10px; border-radius: 8px; font-size: 13px; line-height: 1.5; }
+.gwui-ec-correction-bubble { max-width: 88%; padding: 7px 10px; border-radius: 8px; font-size: 13px; line-height: 20px; }
 .gwui-ec-correction-bubble-user { align-self: flex-end; background: var(--gw-green-b); color: var(--gw-dark); }
 .gwui-ec-correction-bubble-assistant { align-self: flex-start; background: rgba(255,255,255,.1); color: rgba(255,255,255,.9); }
-.gwui-ec-correction-field { width: 100%; min-height: 64px; padding: 8px 10px; font-size: 13px; line-height: 1.55; border: none; border-radius: 7px; font-family: inherit; outline: none; box-sizing: border-box; resize: vertical; background: rgba(255,255,255,.94); color: var(--gw-text); }
+.gwui-ec-correction-field { width: 100%; min-height: 64px; padding: 8px 10px; font-size: 13px; line-height: 20px; border: none; border-radius: 7px; font-family: inherit; outline: none; box-sizing: border-box; resize: vertical; background: rgba(255,255,255,.94); color: var(--gw-text); }
 .gwui-ec-correction-actions { display: flex; gap: 8px; margin-top: 8px; }
 
 /* The two small centred confirmation dialogs (New scenario conflict, and End this session - the
    second one Modal'd already in 4d-2). Both read the same way: a sentence, then two ways out. */
 .gwui-ec-confirm-overlay { position: fixed; inset: 0; background: rgba(10,22,40,0.55); z-index: 40; display: flex; align-items: center; justify-content: center; padding: 0 16px; }
 .gwui-ec-confirm-box { background: white; border-radius: 12px; padding: 24px; max-width: 380px; width: 100%; }
-.gwui-ec-confirm-title { font-size: 16px; font-weight: 800; color: var(--gw-dark); margin-bottom: 8px; }
-.gwui-ec-confirm-body { font-size: 13px; color: var(--gw-sub); line-height: 1.65; margin-bottom: 18px; }
+.gwui-ec-confirm-title { font-size: 16px; font-weight: 700; color: var(--gw-dark); margin-bottom: 8px; }
+.gwui-ec-confirm-body { font-size: 13px; color: var(--gw-sub); line-height: 21px; margin-bottom: 18px; }
 .gwui-ec-confirm-actions { display: flex; gap: 8px; }
 .gwui-ec-confirm-actions > * { flex: 1; }
 
@@ -2296,18 +2144,18 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    one-line sentence beside its name, set off from the page by the same fill a dropzone and an empty
    state already use. */
 .gwui-group-head { background: var(--gw-bg); padding: 10px 16px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-/* A PILL THAT IS ALSO A CONTROL: `.gwui-tag`'s own shape (26px, round, 13.5px bold) on a `<select>`
+/* A PILL THAT IS ALSO A CONTROL: `.tag`'s own shape (26px, round, 13.5px bold) on a `<select>`
    or `<button>` instead of a `<span>` - who can read a document, toggled or chosen on the row
    itself. Resets the native element's own border, font and pointer so only the tag's look shows. */
 /*
- * WIDTH CHECK, ITEM 10: THE VISIBILITY SELECT OVERFLOWING INTO THE NEXT CARD. `.gwui-tag`'s own
+ * WIDTH CHECK, ITEM 10: THE VISIBILITY SELECT OVERFLOWING INTO THE NEXT CARD. `.tag`'s own
  * `white-space: nowrap` is right for a short fixed word ("Everyone", "Only you"), but this is also
  * the lead's `<select>`, whose longest option reads "Whoever runs this check-in" - inside
  * `.gwui-doc-grid`'s own narrow `minmax(200px, 1fr)` card, nowrap let that text run past the
  * select's own rounded pill and over the document card beside it rather than ever being capped at
  * the card's own edge.
  */
-.gwui-tag-control { border: 0; font: inherit; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.gwui-tag-control { min-height: 44px; border: 0; font: inherit; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 /* A CONTROL WHILE IT IS WORKING: the upload dropzone while a file is on its way in - the prototype
    never shows this state (nothing in it takes long enough to need one), so this is the product's
    own addition, not a value carried over from an old page. */
@@ -2330,14 +2178,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-sr { overflow: hidden; }
 .gwui-sr-head     { padding: 16px 20px; }
 .gwui-sr-head-title { font-size: 14px; line-height: 1.5; color: var(--gw-text); }
-.gwui-sr-head-shared { font-size: 13.5px; color: var(--gw-sub); margin-top: 2px; }
+.gwui-sr-head-shared { font-size: 14px; color: var(--gw-sub); margin-top: 2px; }
 .gwui-sr-counted  { border-top: 1px solid var(--gw-border); padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 6px 20px; }
-.gwui-sr-counted-item { font-size: 13px; color: var(--gw-text); }
+.gwui-sr-counted-item { font-size: 13px; color: var(--gw-text); line-height: 20px;}
 .gwui-sr-counted-item.gwui-sr-muted { color: var(--gw-sub); }
 .gwui-sr-finding  { border-top: 1px solid var(--gw-border); padding: 16px 20px; background: var(--gw-amber-bg); }
-.gwui-sr-finding-label { font-size: 13px; font-weight: 700; color: var(--gw-amber-t); margin-bottom: 8px; }
-.gwui-sr .gwui-find     { font-size: 16.5px; line-height: 1.4; font-weight: 600; color: var(--gw-text); margin: 0; max-width: 58ch; }
-.gwui-sr .gwui-find-why { font-size: 13px; line-height: 1.6; color: var(--gw-amber-t); display: block; }
+.gwui-sr-finding-label { font-size: 13px; font-weight: 700; color: var(--gw-amber-t); margin-bottom: 8px; line-height: 20px;}
+.gwui-sr .gwui-find     { font-size: 16px; line-height: 22px; font-weight: 700; color: var(--gw-text); margin: 0; max-width: 58ch; }
+.gwui-sr .gwui-find-why { font-size: 13px; line-height: 21px; color: var(--gw-amber-t); display: block; }
 .gwui-sr .gwui-find-why-basis { margin-top: 8px; }
 .gwui-sr .gwui-find-why-also  { margin-top: 6px; opacity: .85; }
 .gwui-sr-row      { border-top: 1px solid var(--gw-border); padding: 16px 20px; }
@@ -2347,27 +2195,27 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* U.9 THIRD REVIEW: ONE CLASS, FOR ONE SENTENCE, NOT A FIGURE CLASS AND A CAPTION CLASS. Each tile
    used to be a big figure over a small caption; it is one sentence now, set at a size that reads
    as body text rather than as a scoreboard digit. */
-.gwui-sr .gwui-tile-txt { font-size: 13px; font-weight: 600; line-height: 1.5; color: var(--gw-text); }
+.gwui-sr .gwui-tile-txt { font-size: 13px; font-weight: 700; line-height: 20px; color: var(--gw-text); }
 .gwui-sr .gwui-tile-good  { color: var(--gw-green-t); }
 .gwui-sr .gwui-tile-watch { color: var(--gw-amber-t); }
-.gwui-sr-parent   { margin: 0 0 6px; font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--gw-text); }
-.gwui-sr-why      { margin: 0; font-size: 13.5px; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; }
+.gwui-sr-parent   { margin: 0 0 6px; font-size: 15px; font-weight: 700; line-height: 20px; color: var(--gw-text); }
+.gwui-sr-why      { margin: 0; font-size: 14px; color: var(--gw-sub); max-width: 68ch; line-height: 22px; }
 .gwui-sr-quotes   { display: grid; gap: 12px; }
-.gwui-sr-quote    { font-size: 13.5px; font-style: italic; color: var(--gw-text); max-width: 68ch; line-height: 1.6; }
-.gwui-sr-cite     { font-size: 13px; color: var(--gw-muted); margin-top: 6px; }
-.gwui-sr-statement{ margin: 0; font-size: 13.5px; color: var(--gw-text); max-width: 68ch; line-height: 1.6; }
-.gwui-sr-position { margin: 0; font-size: 13px; color: var(--gw-text); max-width: 68ch; line-height: 1.6; }
-.gwui-sr-caption-label { margin: 0 0 2px; font-size: 13px; color: var(--gw-sub); }
-.gwui-sr-caption-text  { margin: 0; font-size: 13px; color: var(--gw-text); max-width: 68ch; line-height: 1.6; }
-.gwui-sr-source-line   { margin: 0; font-size: 13px; font-style: italic; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; }
+.gwui-sr-quote    { font-size: 14px; font-style: italic; color: var(--gw-text); max-width: 68ch; line-height: 22px; }
+.gwui-sr-cite     { font-size: 13px; color: var(--gw-muted); margin-top: 6px; line-height: 20px;}
+.gwui-sr-statement{ margin: 0; font-size: 14px; color: var(--gw-text); max-width: 68ch; line-height: 22px; }
+.gwui-sr-position { margin: 0; font-size: 13px; color: var(--gw-text); max-width: 68ch; line-height: 21px; }
+.gwui-sr-caption-label { margin: 0 0 2px; font-size: 13px; color: var(--gw-sub); line-height: 20px;}
+.gwui-sr-caption-text  { margin: 0; font-size: 13px; color: var(--gw-text); max-width: 68ch; line-height: 21px; }
+.gwui-sr-source-line   { margin: 0; font-size: 13px; font-style: italic; color: var(--gw-sub); max-width: 68ch; line-height: 21px; }
 .gwui-sr-toggle-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-.gwui-sr-muted-inline { font-size: 13px; color: var(--gw-sub); }
-.gwui-sr-item-title { font-size: 13px; font-weight: 700; color: var(--gw-text); margin-bottom: 6px; }
-.gwui-sr-muted-prose { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; }
-.gwui-sr-section-note { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; margin-top: 8px; }
-.gwui-sr-person-saying { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; }
-.gwui-sr-person-finding { font-size: 13px; color: var(--gw-text); margin-top: 6px; padding: 8px 10px; max-width: 68ch; line-height: 1.6; }
-.gwui-sr-footer   { font-size: 13px; color: var(--gw-sub); line-height: 1.6; }
+.gwui-sr-muted-inline { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
+.gwui-sr-item-title { font-size: 13px; font-weight: 700; color: var(--gw-text); margin-bottom: 6px; line-height: 20px;}
+.gwui-sr-muted-prose { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 21px; }
+.gwui-sr-section-note { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 21px; margin-top: 8px; }
+.gwui-sr-person-saying { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 21px; }
+.gwui-sr-person-finding { font-size: 13px; color: var(--gw-text); margin-top: 6px; padding: 8px 10px; max-width: 68ch; line-height: 21px; }
+.gwui-sr-footer   { font-size: 13px; color: var(--gw-sub); line-height: 21px; }
 .gwui-sr-footer-line { display: block; margin-bottom: 4px; }
 .gwui-sr-definitions { display: grid; gap: 12px; margin-top: 12px; }
 .gwui-sr-agree-wrap { margin-top: 12px; }
@@ -2377,12 +2225,12 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-sr-built-from { margin-top: 10px; }
 .gwui-sr-rests-on-item { margin-top: 12px; }
 @media (max-width: 640px) {
-  .gwui-sr .gwui-find     { font-size: 15px; line-height: 1.5; font-weight: 600; }
-  .gwui-sr .gwui-find-why { font-size: 13px; }
+  .gwui-sr .gwui-find     { font-size: 15px; line-height: 23px; font-weight: 700; }
+  .gwui-sr .gwui-find-why { font-size: 13px; line-height: 20px;}
   /* Stacked, the divider is the rule ABOVE each tile, not a stripe down its left edge. */
   .gwui-sr .gwui-tile     { padding: 12px 16px; }
   .gwui-sr .gwui-tile-n   { border-left: none; border-top: 1px solid var(--gw-border); }
-  .gwui-sr .gwui-tile-txt { font-size: 13.5px; }
+  .gwui-sr .gwui-tile-txt { font-size: 14px; }
 }
 
 /* ── ASK'S "ABOUT" PICKER, AT 390 (B-231) ─────────────────
@@ -2392,9 +2240,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    because a plain <select> clips rather than wraps. The row itself already wraps (`flexWrap:
    'wrap'`); this gives the select the full row to itself there, instead of a squeezed remainder
    beside "About". Written up in docs/the-parts-against-the-prototype.md. */
-@media (max-width: 420px) {
-  .gwui-ask-about-select { flex-basis: 100% !important; }
-}
 
 /* ── A CHECK-IN'S OWN HEADER, WHEN IT IS NEVER THE LAST THING ON THE SCREEN (B-231) ──
    .gwui-page-main's own bottom padding (140px on a phone) is right for a page that ends there,
@@ -2403,15 +2248,18 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    roughly 150px empty gap above a check-in's own failure note before a single word of it (Dov's
    own account, review6/shots/b226-dov-mywork-390.png). Zeroed at narrow widths, where the gap was
    measured; written up in docs/the-parts-against-the-prototype.md. */
-@media (max-width: 640px) {
-  .gwui-ground-header-wrap .gwui-page-main { padding-bottom: 0; }
+/* At every width now (wip/ui, 24 October): on a computer the same 110px left an empty band above
+   My work. And the body under it starts at the header's own left edge, not 32px further left. */
+
+@media (min-width: 641px) {
+  .gwui-ground-header-wrap + .gw-bd { padding-left: 48px; padding-right: 48px; }
 }
 
 /* ===== THE LIGHT PARTS (light prototype, 13 October 2026; docs/light-rebuild/sales-first.md,
    "Shared pieces"). Each is written up in docs/the-parts-against-the-prototype.md. ===== */
 /* "Updated Wed 23 Sep, 6pm ⓘ", the full sentence one tap away */
 .gwui-upd { display: inline-block; margin-top: 12px; font-size: 14px; color: var(--gw-sub); }
-.gwui-upd > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; }
+.gwui-upd > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
 .gwui-upd > summary::-webkit-details-marker { display: none; }
 .gwui-upd > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
 .gwui-upd-full { display: block; margin-top: 4px; line-height: 1.5; max-width: 70ch; }
@@ -2428,11 +2276,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-fold-chev { justify-self: end; font-size: 18px; color: var(--gw-sub); transition: transform .15s; }
 .gwui-fold[open] > summary .gwui-fold-chev, .gwui-box[open] > summary .gwui-fold-chev { transform: rotate(90deg); }
 .gwui-fold-body { padding: 4px 18px 18px; display: flex; flex-direction: column; gap: 12px; overflow-x: auto; }
-.gwui-fold-body > .gwui-section { margin-top: 0; }
-.gwui-fold-body .gwui-section-h { margin-bottom: 8px; }
+.gwui-fold-body > .sec { margin-top: 0; }
+.gwui-fold-body .sec-h { margin-bottom: 8px; }
 /* Inside a folded line, a card is not a card again (light-layer.css: ".ctx-inner .panel"). */
-.gwui-fold-body .gwui-panel { border: 0; background: none; }
-.gwui-fold-body .gwui-panel-pad { padding-left: 0; padding-right: 0; }
+.gwui-fold-body .panel { border: 0; background: none; }
+.gwui-fold-body .panel.pad { padding-left: 0; padding-right: 0; }
 /* The box: a group of folded lines with its two most useful facts */
 .gwui-boxes { display: flex; flex-direction: column; gap: 10px; }
 .gwui-box { border: 1px solid var(--gw-border); border-radius: 12px; background: var(--gw-card); overflow: hidden; }
@@ -2441,7 +2289,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-box > summary:hover { background: var(--gw-paper-2); }
 .gwui-box > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: -2px; }
 .gwui-box[open] > summary { border-bottom: 1px solid var(--gw-border); }
-.gwui-box-name { font-weight: 700; font-size: 17px; color: var(--gw-text); }
+.gwui-box-name { font-weight: 700; font-size: 17px; color: var(--gw-text); line-height: 26px;}
 .gwui-box-facts { font-size: 14px; color: var(--gw-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gwui-box-body { display: flex; flex-direction: column; }
 .gwui-box-body > .gwui-fold > summary.gwui-fold-sum { padding-left: 30px; }
@@ -2451,43 +2299,43 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-needs { border: 1px solid var(--gw-border); border-radius: 12px; background: var(--gw-card); overflow: hidden; }
 .gwui-need { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 14px 18px; }
 .gwui-need + .gwui-need { border-top: 1px solid var(--gw-border); }
-.gwui-need-what { font-weight: 700; font-size: 16px; line-height: 1.35; color: var(--gw-text); }
-.gwui-need-from { font-size: 14px; color: var(--gw-sub); margin-top: 3px; line-height: 1.45; }
+.gwui-need-what { font-weight: 700; font-size: 16px; line-height: 22px; color: var(--gw-text); }
+.gwui-need-from { font-size: 14px; color: var(--gw-sub); margin-top: 3px; line-height: 20px; }
 .gwui-need-why { margin-top: 6px; }
 .gwui-need-why > summary { cursor: pointer; font-size: 14px; color: var(--gw-navy); list-style: none; font-weight: 700; }
 .gwui-need-why > summary::-webkit-details-marker { display: none; }
 .gwui-need-why > summary::before { content: "› "; }
-.gwui-need-quote { font-size: 15px; margin-top: 4px; color: var(--gw-text); line-height: 1.5; }
+.gwui-need-quote { font-size: 15px; margin-top: 4px; color: var(--gw-text); line-height: 23px; }
 .gwui-need-btns { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .gwui-need-btn-main, .gwui-need-btn-quiet { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 /* "Show all" after three */
-.gwui-show-all { background: none; border: 0; color: var(--gw-navy); font: inherit; font-weight: 700; font-size: 14px; padding: 8px 0; cursor: pointer; align-self: flex-start; min-height: 40px; }
+.gwui-show-all { background: none; border: 0; color: var(--gw-navy); font: inherit; font-weight: 700; font-size: 14px; padding: 8px 0; cursor: pointer; align-self: flex-start; min-height: 44px; }
 .gwui-show-all:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
 /* Number tiles that swipe on a phone */
 .gwui-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .gwui-tile { border: 1px solid var(--gw-border); border-radius: 10px; padding: 12px 14px; background: var(--gw-card); }
-.gwui-tile-label { font-size: 13px; color: var(--gw-sub); }
+.gwui-tile-label { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
 .gwui-tile-value { font-size: 20px; margin-top: 4px; color: var(--gw-text); font-weight: 700; }
-.gwui-tile-sub { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
+.gwui-tile-sub { font-size: 13px; color: var(--gw-sub); margin-top: 2px; line-height: 20px;}
 /* A small menu button for grouped actions */
 .gwui-menu { position: relative; display: inline-block; }
 .gwui-menu > summary { list-style: none; cursor: pointer; }
 .gwui-menu > summary::-webkit-details-marker { display: none; }
-.gwui-menu-btn { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: 14px; box-sizing: border-box; }
+.gwui-menu-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: 14px; box-sizing: border-box; }
 .gwui-menu-btn::after { content: " ▾"; white-space: pre; }
 .gwui-menu-btn-main { background: var(--gw-navy); border-color: var(--gw-navy); color: #fff; }
 .gwui-menu-btn:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
-.gwui-menu-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 4px; min-width: 220px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12); }
+.gwui-menu-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 4px; min-width: 220px; box-shadow: var(--gw-shadow-menu); }
 .gwui-menu-pop-left { left: 0; right: auto; }
 /* One page header on a phone: no breadcrumb, the main action small beside the title */
 @media (max-width: 640px) {
-  .gwui-cih .gwui-pt-crumb { display: none; }
-  .gwui-cih .gwui-pt-row { flex-wrap: nowrap; align-items: flex-start; gap: 10px; }
-  .gwui-cih .gwui-pt-sub { font-size: 13px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  
+  
+  .gwui-cih .gwui-pt-sub { font-size: 13px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 20px;}
   .gwui-fold > summary.gwui-fold-sum, .gwui-box > summary.gwui-box-sum { grid-template-columns: minmax(0, 44%) minmax(0, 1fr) 16px; gap: 8px; padding: 12px 14px; }
   .gwui-box-body > .gwui-fold > summary.gwui-fold-sum, .gwui-box-body > .gwui-fold > .gwui-fold-body { padding-left: 22px; }
-  .gwui-fold-name, .gwui-box-name { font-size: 15px; }
-  .gwui-fold-fact, .gwui-box-facts { font-size: 13px; }
+  .gwui-fold-name, .gwui-box-name { font-size: 15px; line-height: 23px;}
+  .gwui-fold-fact, .gwui-box-facts { font-size: 13px; line-height: 20px;}
   .gwui-fold-body { padding: 2px 14px 14px; }
   .gwui-need { grid-template-columns: 1fr; }
   .gwui-need-btns { justify-content: flex-start; }
@@ -2501,14 +2349,14 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-light-slot:empty, .gwui-light-folds:empty { display: none; }
 .gwui-light-needs { display: flex; flex-direction: column; gap: 16px; margin-top: 22px; }
 .gwui-light-needs:not(:has(.gwui-light-slot > *)) { display: none; }
-.gwui-light-needs > .gwui-light-slot > .gwui-section .gwui-section-title { font-size: 22px; }
+.gwui-light-needs > .gwui-light-slot > .sec .sec-h .t-h2 { font-size: 22px; }
 .gwui-light-else { margin-top: 28px; }
 /* A line, a box or a summary with nothing in it for this reader is not drawn: nothing says more than what is inside. */
 .gwui-fold:has(> .gwui-fold-body > .gwui-light-part):not(:has(.gwui-light-part > *)) { display: none; }
 .gwui-box:not(:has(.gwui-light-part > *, .gwui-light-folds > *)) { display: none; }
 /* The main section's heading is the line's own name, so it is not said twice; nor its note, when the note is the line's fact. */
-.gwui-light-part[data-main] > .gwui-light-sec > .gwui-section > .gwui-section-h > .gwui-section-title { display: none; }
-.gwui-light-sec[data-note-is-fact] > .gwui-section > .gwui-section-h > .gwui-section-note { display: none; }
+.gwui-light-part[data-main] > .gwui-light-sec > .sec > .sec-h > .sec-h .t-h2 { display: none; }
+.gwui-light-sec[data-note-is-fact] > .sec > .sec-h > .sec-h .t-small { display: none; }
 .gwui-light-part[data-main] .gwui-assumes-title { display: none; }
 .gwui-light-part + .gwui-light-part:not(:empty) { margin-top: 18px; }
 .gwui-light-folds { display: flex; flex-direction: column; }
@@ -2521,15 +2369,16 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-light-glance-row { display: grid; grid-template-columns: minmax(170px, 240px) minmax(0, 1fr); gap: 12px; padding: 12px 18px; align-items: baseline; }
 .gwui-light-glance-row + .gwui-light-glance-row { border-top: 1px solid var(--gw-border); }
 .gwui-light-glance-name { font-weight: 700; font-size: 16px; color: var(--gw-text); }
-.gwui-light-glance-fact { font-size: 14px; color: var(--gw-sub); line-height: 1.45; }
+.gwui-light-glance-fact { font-size: 14px; color: var(--gw-sub); line-height: 20px; }
+.gwui-light-glance-line { display: block; }
 .gwui-light-full { margin-top: 18px; }
-.gwui-light-full > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: 14px; box-sizing: border-box; }
+.gwui-light-full > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: 14px; box-sizing: border-box; }
 .gwui-light-full > summary::-webkit-details-marker { display: none; }
 .gwui-light-full > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
 .gwui-light-full-body { margin-top: 4px; }
 /* The deal key, behind ⓘ for a team member (sales-first.md, section 1) */
 .gwui-key-info { display: inline-block; }
-.gwui-key-info > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; font-size: 16px; color: var(--gw-sub); }
+.gwui-key-info > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; font-size: 16px; color: var(--gw-sub); }
 .gwui-key-info > summary::-webkit-details-marker { display: none; }
 .gwui-key-info > summary:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; }
 .gwui-key-info[open] > .gwui-key-info-body { margin-top: 4px; }
@@ -2547,35 +2396,34 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* ===== THE LIGHT REPORTS (docs/light-rebuild/sales-first.md, section 2; s60, s62 and the share menu in s71) ===== */
 .gwui-light-report-part { display: flex; flex-direction: column; gap: 12px; }
-.gwui-light-report-h { font-size: 21px; font-weight: 700; line-height: 1.3; color: var(--gw-text); margin: 0; }
+.gwui-light-report-h { font-size: 21px; font-weight: 700; line-height: 27px; color: var(--gw-text); margin: 0; }
 .gwui-light-report-more-h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.gwui-light-report-note { font-size: 14.5px; color: var(--gw-sub); }
+.gwui-light-report-note { font-size: 14px; color: var(--gw-sub); }
 .gwui-light-report-share { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-.gwui-menu-item { display: block; width: 100%; text-align: left; background: none; border: 0; border-radius: 6px; padding: 10px 12px; font: inherit; font-size: 14.5px; color: var(--gw-text); cursor: pointer; min-height: 40px; }
+.gwui-menu-item { display: block; width: 100%; text-align: left; background: none; border: 0; border-radius: 6px; padding: 10px 12px; font: inherit; font-size: 14px; color: var(--gw-text); cursor: pointer; min-height: 44px; }
 .gwui-menu-item:hover { background: var(--gw-paper-2); }
 .gwui-menu-item:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: -2px; }
 .gwui-menu-item:disabled { color: var(--gw-sub); cursor: default; }
 .gwui-light-report-do { font-weight: 700; }
-.gwui-light-report-from { font-size: 13px; color: var(--gw-sub); margin: 2px 0 0; }
+.gwui-light-report-from { font-size: 13px; color: var(--gw-sub); margin: 2px 0 0; line-height: 20px;}
 /* "Where each target stands" on the sales goals board: each target's figure on the right (sales-first.md, section 3) */
 .gwui-target-figure { margin-left: auto; text-align: right; }
 
 /* ===== THE LIGHT CONTEXT PAGE (docs/light-rebuild/sales-first.md, section 4; s56, s63, s72) ===== */
-.gwui-ctx-same > .gwui-section:first-child > .gwui-section-h > .gwui-section-title { display: none; }
+.gwui-ctx-same > .sec:first-child > .sec-h > .sec-h .t-h2 { display: none; }
 .gwui-ctx-light { display: flex; flex-direction: column; gap: 28px; margin-top: 8px; }
-.gwui-ctx-light .gwui-section + .gwui-folds { margin-top: 14px; }
+.gwui-ctx-light .sec + .gwui-folds { margin-top: 14px; }
 .gwui-ctx-actions { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
 .gwui-ctx-actions > .gwui-menu .gwui-menu-pop { min-width: min(320px, calc(100vw - 32px)); }
-
 
 /* THE END CARD, LIGHT (sales-first.md, section 5): the next opening as one line, and the fold. */
 .gwui-ci-endcard-row { align-items: flex-start; }
 .gwui-ci-endcard-text { flex: 1; min-width: 0; }
-.gwui-ci-endcard-nextopens { font-weight: 600; }
+.gwui-ci-endcard-nextopens { font-weight: 700; }
 .gwui-ci-endcard-more-body { display: grid; gap: 12px; }
 /* THE DONE PAGE'S "FOR TOMORROW" (sales-first.md, section 5), the soft green panel it had as "That's saved". */
 .gwui-done-tomorrow { background: var(--gw-green-bg); border: 1px solid var(--gw-green-b); border-radius: 12px; padding: 15px 17px; display: grid; gap: 10px; }
-.gwui-done-tomorrow-heading { margin: 0; font-size: 15px; font-weight: 700; color: var(--gw-green-t); }
+.gwui-done-tomorrow-heading { margin: 0; font-size: 15px; font-weight: 700; color: var(--gw-green-t); line-height: 23px;}
 /* THE LIGHT OWN REPORT (sales-first.md, sections 2 and 5): the mark on each of their lines. */
 .gwui-own-mark { display: inline-flex; align-items: center; align-self: center; }
 .gwui-own-more { display: grid; gap: 8px; }
@@ -2587,3 +2435,45 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-done-changed .gw-ladder-stages { gap: 4px; letter-spacing: -0.01em; }
   .gwui-done-changed .gw-ladder-stages li { overflow-wrap: normal; word-break: normal; }
 }
+
+/* THE PROTOTYPE'S DENSITY, AS CLASSES (wip/ui, 24 October): rows divided by thin rules, not boxes. */
+.gwui-stack-32 { display: flex; flex-direction: column; gap: 32px; }
+.gwui-three-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.gwui-field-with-label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.gwui-setup-problem { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-bd); border-radius: 8px; padding: 4px 12px; font-size: 14px; color: var(--gw-text); }
+.gwui-ruled { border-top: 1px solid var(--gw-rule); }
+.gwui-ruled-row { border-bottom: 1px solid var(--gw-rule); }
+.gwui-person-part { border-bottom: 1px solid var(--gw-rule); padding: 18px 0; }
+.gwui-person-part-name { margin: 0; font-size: 17px; font-weight: 700; color: var(--gw-text); line-height: 26px;}
+.gwui-session-row-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 10px 0; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 400; color: var(--gw-text); text-align: left; line-height: 23px;}
+.gwui-session-row-open { font-size: 14px; color: var(--gw-navy); font-weight: 700; flex-shrink: 0; }
+.gwui-session-row-body { padding: 4px 0 16px; display: flex; flex-direction: column; gap: 12px; }
+/* B7's three numbers: small chips, the number in Literata beside its words. */
+.gwui-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.gwui-chip { display: inline-flex; align-items: baseline; gap: 6px; background: var(--gw-card); border: 1px solid var(--gw-rule); border-radius: 8px; padding: 6px 12px; }
+.gwui-chip-value { font-family: var(--gw-font-name); font-weight: 500; font-size: 19px; font-variant-numeric: lining-nums; color: var(--gw-text); line-height: 29px;}
+.gwui-chip-label { font-size: 14px; color: var(--gw-sub); }
+/* B7's focus this week: the one dark band, its line in Literata. */
+.gwui-focus-band { background: var(--gw-navy-d); color: #fff; border-radius: 12px; padding: 16px 18px; }
+.gwui-focus-line { margin: 0; font-family: var(--gw-font-name); font-size: 19px; font-weight: 500; line-height: 26px; color: #fff; }
+.gwui-focus-why { margin: 6px 0 0; font-size: 14px; color: var(--gw-blue-b); }
+/* B6, References and resources: the top band, a suggestion's compact row, and How we work's four parts side by side. */
+.gwui-ref-band { background: var(--gw-blue-bg); border-radius: 8px; padding: 10px 16px; }
+.gwui-suggestion-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-bd); border-radius: 8px; padding: 10px 14px; }
+@media (max-width: 640px) { .gwui-suggestion-row { grid-template-columns: 1fr; } }
+.gwui-four-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; align-items: start; }
+.gwui-composer-aside { padding: 4px 16px 8px; }
+/* B8, People and setup: the summary line in Literata, and a field's label small and quiet above it. */
+.gwui-b8-line { margin: 0; font-family: var(--gw-font-name); font-size: 19px; font-weight: 500; line-height: 26px; color: var(--gw-text); }
+.gwui-b8-field-label { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
+/* B6, B7 and B8 (References and resources, My work, People and setup): section headings in Literata, as the pictures draw them. */
+.gwui-b-tab .sec-h .t-h2 { font-family: var(--gw-font-name); font-weight: 500; font-size: 22px; line-height: 28px; }
+
+/* On a phone the setup summary is one line above the conversation ("4 people · Sales team"), which opens it. */
+.gwui-ec-panel-line { flex: none; margin: 8px 20px 0; max-height: 60vh; overflow-y: auto; }
+.gwui-ec-panel-line > summary {
+  cursor: pointer; list-style: none; padding: 10px 14px; border: 1px solid var(--gw-border); border-radius: 10px;
+  background: var(--gw-surface, #fff); color: var(--gw-text); font-size: 15px; font-weight: 600; min-height: 44px; box-sizing: border-box;
+}
+.gwui-ec-panel-line > summary::-webkit-details-marker { display: none; }
+.gwui-ec-panel-line[open] > summary { margin-bottom: 8px; }

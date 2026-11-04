@@ -1,0 +1,860 @@
+{
+ "about": "Test data only. yourTeam as the API serves it (api board/your-team-person-by-person.ts) to Grace (Drop Access (test), Sales team, Q4) and Wanjiru (Muchemi & Co (test), Fee notes), from the second night run (gw_night_run2) and each person's record as the run would have kept it, on Tuesday 20 October 2026 in the morning. Written by api board/zz scratch on 21 October; the API spec your-team-person-by-person-as-each-reader-reads-it.spec.ts reads the same lines.",
+ "drop": {
+  "heading": "Your team, person by person",
+  "note": "Each person’s part is read from what they said in their check-ins and what is on file. It changes only when something new comes in. Only you see this.",
+  "people": [
+   {
+    "participantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+    "name": "Peter Njoroge",
+    "role": null,
+    "delivered": {
+     "heading": "What Peter won, with proof",
+     "proven": [],
+     "onlySaid": [],
+     "empty": "Peter has no deal won on record yet."
+    },
+    "record": {
+     "heading": "Peter’s record in Sales team, Q4",
+     "note": "This is read from what Peter said in Peter’s check-ins and what is on file. It changes only when something new comes in.",
+     "parts": [
+      {
+       "heading": "Promises",
+       "says": "Peter made one promise that came due, and it was not kept. Peter said later it was not done.",
+       "toChange": "Promising less, and saying early when a date will move, would change this.",
+       "evidence": [
+        "Peter promised “I'll follow up with Upper Hill Offices.” on Tuesday 13 October, and said later it was not done."
+       ]
+      },
+      {
+       "heading": "Blockers",
+       "says": "Peter raised two blockers and said what had been tried first on none of them.",
+       "toChange": "Trying one thing before raising a blocker, and saying what was tried, would change this.",
+       "evidence": [
+        "On Thursday 15 October Peter raised a blocker, waiting for a specific area to focus on, and did not say what had been tried first.",
+        "On Monday 19 October Peter raised a blocker, waiting for a list of leads for this week, and did not say what had been tried first."
+       ]
+      },
+      {
+       "heading": "Peter’s check-ins",
+       "says": "Peter did six of six check-ins, all on time. Five of them named the item, what changed and the day.",
+       "toChange": null,
+       "evidence": [
+        "On Tuesday 13 October, the check-in did not name the item, what changed and the day."
+       ]
+      }
+     ],
+     "coaching": [
+      {
+       "said": "After Peter’s check-in on Monday 19 October, Groundwork told Peter “Try one thing before you raise a blocker, and say what you tried.”",
+       "since": "No check-in since then shows whether it has changed yet."
+      }
+     ],
+     "coachingEmpty": "Groundwork has not coached Peter on anything yet."
+    },
+    "whereTheyStand": {
+     "standing": "needs coaching",
+     "says": "Peter needs coaching on trying something before raising a blocker.",
+     "evidence": [
+      "Peter raised two blockers and said what had been tried first on none of them.",
+      "After Peter’s check-in on Monday 19 October, Groundwork told Peter “Try one thing before you raise a blocker, and say what you tried.”",
+      "No check-in since then shows whether it has changed yet."
+     ],
+     "about": "blockers"
+    },
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Peter",
+      "does": "Keeps your words in Peter’s record, where Peter reads them on My work and in Peter’s own report. No message is sent.",
+      "suggested": "Well done on your work this month."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Peter with, here and under People on References and resources. Only you read it, and nothing is sent to Peter.",
+      "suggested": "Help Peter with trying something before raising a blocker."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Peter’s records. It shows on that record on your board, and nothing is sent to Peter.",
+      "items": [
+       {
+        "id": "0a1c1cfa-4aef-4b9c-8d1f-1e621a4e0cf2",
+        "name": "Upper Hill Offices",
+        "due": null
+       }
+      ]
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign leads",
+      "does": "Gives one of Peter’s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [
+       {
+        "id": "0a1c1cfa-4aef-4b9c-8d1f-1e621a4e0cf2",
+        "name": "Upper Hill Offices",
+        "due": null
+       }
+      ],
+      "to": [
+       {
+        "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+        "name": "Kevin"
+       },
+       {
+        "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+        "name": "Joseph"
+       },
+       {
+        "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+        "name": "Mercy"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+    "name": "Kevin Omondi",
+    "role": "Sales rep",
+    "delivered": {
+     "heading": "What Kevin won, with proof",
+     "proven": [
+      "Savannah Cafe is won for 6 units at KES 30,000, and the M-Pesa code RCD8M1LS4W shows it.",
+      "Kilele Hotel is won for 40 units at KES 200,000, and a document Kevin added shows it."
+     ],
+     "onlySaid": [
+      "Kevin said Roysambu Gym is won for KES 15,000, and nothing on file shows it yet."
+     ],
+     "empty": null
+    },
+    "record": {
+     "heading": "Kevin’s record in Sales team, Q4",
+     "note": "This is read from what Kevin said in Kevin’s check-ins and what is on file. It changes only when something new comes in.",
+     "parts": [
+      {
+       "heading": "What Kevin said and what shows it",
+       "says": "Kevin said four times that something was sold, paid or signed. Three of them have proof on file.",
+       "toChange": null,
+       "evidence": [
+        "On Monday 12 October Kevin said “Just closed a big one today... proof of payment for Kilele Hotel.” A document Kevin added shows it.",
+        "On Friday 16 October Kevin said “Jane paid the KES 15,000 deposit for Savannah Cafe today.” A payment record shows it.",
+        "On Monday 19 October Kevin said “Roysambu Gym signed the order for 3 units today.” Nothing on file shows it yet.",
+        "On Monday 19 October Kevin said “Jane paid the remaining KES 15,000 balance for the 6 Savannah Cafe units. The M-Pesa confirmation code is RCD8M1LS4W.” The M-Pesa code RCD8M1LS4W shows it."
+       ]
+      },
+      {
+       "heading": "Promises",
+       "says": "Kevin kept one of the two promises that came due. One was not done.",
+       "toChange": null,
+       "evidence": [
+        "Kevin promised “I'll call Paul.” on Monday 12 October, and said later it was not done.",
+        "Kevin promised “I'll call her tomorrow morning.” on Tuesday 13 October, and it was done by Wednesday 14 October."
+       ]
+      },
+      {
+       "heading": "Figures that changed",
+       "says": "Kevin put a figure right without being asked.",
+       "toChange": null,
+       "evidence": [
+        "Kevin put the figure for Ngong Road Minimart right without being asked, from 4 units to 5, on Wednesday 14 October."
+       ]
+      },
+      {
+       "heading": "Blockers",
+       "says": "Kevin raised two blockers and said what had been tried first on one of them.",
+       "toChange": null,
+       "evidence": [
+        "On Wednesday 14 October Kevin raised a blocker, waiting for a reply to my calls, and said what had been tried, “I've tried Paul a couple of times”.",
+        "On Thursday 15 October Kevin raised a blocker, waiting for the deposit, and did not say what had been tried first."
+       ]
+      },
+      {
+       "heading": "Kevin’s check-ins",
+       "says": "Kevin did six of six check-ins, all on time. Six of them named the item, what changed and the day.",
+       "toChange": null,
+       "evidence": []
+      }
+     ],
+     "coaching": [],
+     "coachingEmpty": "Groundwork has not coached Kevin on anything yet."
+    },
+    "whereTheyStand": {
+     "standing": "doing well",
+     "says": "Kevin is doing well.",
+     "evidence": [
+      "Kevin said four times that something was sold, paid or signed. Three of them have proof on file.",
+      "Kevin kept one of the two promises that came due. One was not done.",
+      "Kevin did six of six check-ins, all on time. Six of them named the item, what changed and the day."
+     ]
+    },
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Kevin",
+      "does": "Keeps your words in Kevin’s record, where Kevin reads them on My work and in Kevin’s own report. No message is sent.",
+      "suggested": "Well done on the 2 deals you won with proof."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Kevin with, here and under People on References and resources. Only you read it, and nothing is sent to Kevin."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Kevin’s records. It shows on that record on your board, and nothing is sent to Kevin.",
+      "items": [
+       {
+        "id": "e5b19e67-d361-4894-bc23-ccbf51e0319a",
+        "name": "Ngong Road Minimart",
+        "due": null
+       },
+       {
+        "id": "03193094-1822-4fd5-8998-ec86c9546a2f",
+        "name": "Kamau Electricals",
+        "due": null
+       }
+      ]
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign leads",
+      "does": "Gives one of Kevin’s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [
+       {
+        "id": "e5b19e67-d361-4894-bc23-ccbf51e0319a",
+        "name": "Ngong Road Minimart",
+        "due": null
+       },
+       {
+        "id": "03193094-1822-4fd5-8998-ec86c9546a2f",
+        "name": "Kamau Electricals",
+        "due": null
+       }
+      ],
+      "to": [
+       {
+        "participantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+        "name": "Peter"
+       },
+       {
+        "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+        "name": "Joseph"
+       },
+       {
+        "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+        "name": "Mercy"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+    "name": "Joseph Kariuki",
+    "role": "Sales rep",
+    "delivered": {
+     "heading": "What Joseph won, with proof",
+     "proven": [],
+     "onlySaid": [],
+     "empty": "Joseph has no deal won on record yet."
+    },
+    "record": {
+     "heading": "Joseph’s record in Sales team, Q4",
+     "note": "This is read from what Joseph said in Joseph’s check-ins and what is on file. It changes only when something new comes in.",
+     "parts": [
+      {
+       "heading": "What Joseph said and what shows it",
+       "says": "Joseph said three times that something was sold, paid or signed. None of them has proof on file, and Joseph took two back later.",
+       "toChange": "Adding the photo, slip or link when Joseph says something is done would change this.",
+       "evidence": [
+        "On Monday 12 October Joseph said “I've got some big deals in the pipeline that are basically closed.” Nothing on file shows it yet.",
+        "On Monday 12 October Joseph said “That 10-unit deal for Mama Pima is definitely part of my 30-unit target. It's basically closed.” On Friday 16 October Joseph said “The Mama Pima deposit hasn't actually come through yet, she's still choosing.”",
+        "On Wednesday 14 October Joseph said “Mama Pima paid a deposit.” On Friday 16 October Joseph said “The Mama Pima deposit hasn't actually come through yet, she's still choosing.”"
+       ]
+      },
+      {
+       "heading": "Promises",
+       "says": "Neither of the two promises Joseph made that came due was kept. Two were not done.",
+       "toChange": "Promising less, and saying early when a date will move, would change this.",
+       "evidence": [
+        "Joseph promised “I'll get it to him.” on Tuesday 13 October, and said later it was not done.",
+        "Joseph promised “I'll follow up on that.” on Friday 16 October, and said later it was not done."
+       ]
+      },
+      {
+       "heading": "Figures that changed",
+       "says": "One figure Joseph gave changed from one check-in to the next, with nothing said about why.",
+       "toChange": "Saying so at once when a figure changes, with what shows the new one, would change this.",
+       "evidence": [
+        "On Monday 12 October Joseph said 10 units for Mama Pima Stores, and on Tuesday 13 October Joseph said 15 units."
+       ]
+      },
+      {
+       "heading": "Where Joseph’s time went",
+       "says": "Juja Hardware cannot buy now, and Joseph has not spent a check-in on it since.",
+       "toChange": null,
+       "evidence": [
+        "On Monday 19 October Joseph said “The KES 4,500 price was for Juja Hardware, and they've decided to wait until November.”"
+       ]
+      },
+      {
+       "heading": "Blockers",
+       "says": "Joseph raised four blockers and said what had been tried first on none of them.",
+       "toChange": "Trying one thing before raising a blocker, and saying what was tried, would change this.",
+       "evidence": [
+        "On Wednesday 14 October Joseph raised a blocker, waiting for a decision on whether to offer a unit at KES 4,500, and did not say what had been tried first.",
+        "On Wednesday 14 October Joseph raised a blocker, waiting for the M-Pesa payment, and did not say what had been tried first.",
+        "On Friday 16 October Joseph raised a blocker, waiting for the signed agreement from Juja Hardware, and did not say what had been tried first.",
+        "On Friday 16 October Joseph raised a blocker, waiting for a decision on the KES 4,500 price, and did not say what had been tried first."
+       ]
+      },
+      {
+       "heading": "Joseph’s check-ins",
+       "says": "Joseph did six of six check-ins, four of them on time. Five of them named the item, what changed and the day.",
+       "toChange": "Naming the item, what changed and the day, every time, would change this.",
+       "evidence": [
+        "On Friday 16 October, the check-in was done more than a day after it opened.",
+        "On Monday 19 October, the check-in was done more than a day after it opened.",
+        "On Tuesday 20 October, the check-in did not name the item, what changed and the day."
+       ]
+      }
+     ],
+     "coaching": [
+      {
+       "said": "After Joseph’s check-in on Monday 12 October, Groundwork told Joseph “Add the photo, slip or link when you say something is done.”",
+       "since": "Backing what Joseph says with proof has stayed the same since then."
+      }
+     ],
+     "coachingEmpty": "Groundwork has not coached Joseph on anything yet."
+    },
+    "whereTheyStand": {
+     "standing": "needs a hard conversation",
+     "says": "Joseph needs a hard conversation about saying things were done with nothing on file to show it.",
+     "evidence": [
+      "Joseph said three times that something was sold, paid or signed. None of them has proof on file, and Joseph took two back later.",
+      "After Joseph’s check-in on Monday 12 October, Groundwork told Joseph “Add the photo, slip or link when you say something is done.”",
+      "Backing what Joseph says with proof has stayed the same since then."
+     ],
+     "about": "proof"
+    },
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Joseph",
+      "does": "Keeps your words in Joseph’s record, where Joseph reads them on My work and in Joseph’s own report. No message is sent.",
+      "suggested": "Well done on your work this month."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Joseph with, here and under People on References and resources. Only you read it, and nothing is sent to Joseph.",
+      "suggested": "Help Joseph with adding proof when saying something is done."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Joseph’s records. It shows on that record on your board, and nothing is sent to Joseph.",
+      "items": [
+       {
+        "id": "ea37eec6-0a3a-43c7-b21d-e359f3fe9f18",
+        "name": "Mama Pima Stores",
+        "due": null
+       },
+       {
+        "id": "e34cec71-fecf-4193-89f3-a43c29a081cb",
+        "name": "Juja Hardware",
+        "due": null
+       }
+      ]
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign leads",
+      "does": "Gives one of Joseph’s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [
+       {
+        "id": "ea37eec6-0a3a-43c7-b21d-e359f3fe9f18",
+        "name": "Mama Pima Stores",
+        "due": null
+       },
+       {
+        "id": "e34cec71-fecf-4193-89f3-a43c29a081cb",
+        "name": "Juja Hardware",
+        "due": null
+       }
+      ],
+      "to": [
+       {
+        "participantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+        "name": "Peter"
+       },
+       {
+        "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+        "name": "Kevin"
+       },
+       {
+        "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+        "name": "Mercy"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2",
+    "name": "Mercy Wairimu",
+    "role": "Sales rep",
+    "delivered": {
+     "heading": "What Mercy won, with proof",
+     "proven": [
+      "Greenfield Supermarket is won for 25 units at KES 125,000, and a document Mercy added shows it.",
+      "Mama Rose's Kiosk is won for 1 unit at KES 5,000, and a document Mercy added shows it."
+     ],
+     "onlySaid": [],
+     "empty": null
+    },
+    "record": {
+     "heading": "Mercy’s record in Sales team, Q4",
+     "note": "This is read from what Mercy said in Mercy’s check-ins and what is on file. It changes only when something new comes in.",
+     "parts": [
+      {
+       "heading": "What Mercy said and what shows it",
+       "says": "Mercy said five times that something was sold, paid or signed, and every one has proof on file.",
+       "toChange": null,
+       "evidence": [
+        "On Friday 16 October Mercy said “Mama Rose's Kiosk bought one unit today for KES 5,000 cash.” A document Mercy added shows it.",
+        "On Monday 19 October Mercy said “We have the signed purchase order.” A document Mercy added shows it.",
+        "On Monday 19 October Mercy said “It confirms the order for 25 units from Greenfield Supermarket at KES 125,000, and it's signed.” A document Mercy added shows it.",
+        "On Monday 19 October Mercy said “Greenfield signed the order today!” A document Mercy added shows it.",
+        "On Monday 19 October Mercy said “Mama Rose's Kiosk already paid for her unit last Friday.” A document Mercy added shows it."
+       ]
+      },
+      {
+       "heading": "Promises",
+       "says": "Mercy kept five of the seven promises that came due, one of them late. Two were not done.",
+       "toChange": null,
+       "evidence": [
+        "Mercy promised “I'll follow up with the remaining Kawangware kiosks this week to see if any are ready to commit.” on Monday 12 October, and said later it was not done.",
+        "Mercy promised “I need to call Mrs. Achola at Greenfield Supermarket.” on Monday 12 October, and said later it was not done.",
+        "Mercy promised “I'll also try to call Mrs. Achola at Greenfield.” on Wednesday 14 October, and it was done by Monday 19 October.",
+        "Mercy promised “I'll check in with them.” on Wednesday 14 October, and it was done by Friday 16 October.",
+        "Mercy promised “I'll follow up with Mrs. Achola on Friday if I haven't heard from her by then to see if she's reviewed the quote and is ready to sign.” for Friday 16 October, and it was done on Monday 19 October.",
+        "Mercy promised “I'll call Mrs. Achola first thing Monday to get the manager's name and an estimated time for the sign-off.” on Friday 16 October, and it was done by Monday 19 October.",
+        "Mercy promised “I'll get it from Mrs. Achola on Monday.” on Friday 16 October, and it was done by Monday 19 October."
+       ]
+      },
+      {
+       "heading": "Where Mercy’s time went",
+       "says": "Sunrise Primary School cannot buy now, and Mercy talked about it in two check-ins after that was on record.",
+       "toChange": null,
+       "evidence": [
+        "On Wednesday 14 October Mercy said “At Sunrise Primary... they still have no budget this year.”"
+       ]
+      },
+      {
+       "heading": "Blockers",
+       "says": "Mercy raised one blocker, and did not say what had been tried first.",
+       "toChange": null,
+       "evidence": [
+        "On Friday 16 October Mercy raised a blocker, waiting for her manager's sign-off, and did not say what had been tried first."
+       ]
+      },
+      {
+       "heading": "Mercy’s check-ins",
+       "says": "Mercy did six of six check-ins, five of them on time. Six of them named the item, what changed and the day.",
+       "toChange": null,
+       "evidence": [
+        "On Wednesday 14 October, the check-in was done more than a day after it opened."
+       ]
+      }
+     ],
+     "coaching": [],
+     "coachingEmpty": "Groundwork has not coached Mercy on anything yet."
+    },
+    "whereTheyStand": {
+     "standing": "doing well",
+     "says": "Mercy is doing well.",
+     "evidence": [
+      "Mercy said five times that something was sold, paid or signed, and every one has proof on file.",
+      "Mercy kept five of the seven promises that came due, one of them late. Two were not done.",
+      "Mercy did six of six check-ins, five of them on time. Six of them named the item, what changed and the day."
+     ]
+    },
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Mercy",
+      "does": "Keeps your words in Mercy’s record, where Mercy reads them on My work and in Mercy’s own report. No message is sent.",
+      "suggested": "Well done on the 2 deals you won with proof."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Mercy with, here and under People on References and resources. Only you read it, and nothing is sent to Mercy."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Mercy’s records. It shows on that record on your board, and nothing is sent to Mercy.",
+      "items": [
+       {
+        "id": "0af2a831-887b-45d0-811e-261bb5b57637",
+        "name": "Sunrise Primary School",
+        "due": null
+       }
+      ]
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign leads",
+      "does": "Gives one of Mercy’s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [
+       {
+        "id": "0af2a831-887b-45d0-811e-261bb5b57637",
+        "name": "Sunrise Primary School",
+        "due": null
+       }
+      ],
+      "to": [
+       {
+        "participantId": "dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f",
+        "name": "Peter"
+       },
+       {
+        "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c",
+        "name": "Kevin"
+       },
+       {
+        "participantId": "2274e6af-8d37-4388-bd39-8a7aeb582d7b",
+        "name": "Joseph"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "fees": {
+  "heading": "Your team, person by person",
+  "note": "Each person’s part is read from what they said in their check-ins and what is on file. It changes only when something new comes in. Only you see this.",
+  "people": [
+   {
+    "participantId": "87dc90a9-acf2-4cdd-9c33-a2fde7126ada",
+    "name": "Njeri Wambui",
+    "role": "Accounts",
+    "delivered": {
+     "heading": "What Njeri recorded as paid, with proof",
+     "proven": [
+      "On Monday 12 October Njeri said “FN-004 is paid. I received a bank slip today for the KES 250,000 remittance from Kasarani Foods and have recorded the payment.” A document Njeri added shows it."
+     ],
+     "onlySaid": [],
+     "empty": null
+    },
+    "record": {
+     "heading": "Njeri’s record in Fee notes",
+     "note": "This is read from what Njeri said in Njeri’s check-ins and what is on file. It changes only when something new comes in.",
+     "parts": [
+      {
+       "heading": "Blockers",
+       "says": "Njeri raised one blocker, and did not say what had been tried first.",
+       "toChange": null,
+       "evidence": [
+        "On Monday 12 October Njeri raised a blocker, waiting for word that the reply is filed for FN-005, and did not say what had been tried first."
+       ]
+      },
+      {
+       "heading": "Njeri’s check-ins",
+       "says": "Njeri did two of two check-ins, all on time. Two of them named the item, what changed and the day.",
+       "toChange": null,
+       "evidence": []
+      }
+     ],
+     "coaching": [],
+     "coachingEmpty": "Groundwork has not coached Njeri on anything yet."
+    },
+    "whereTheyStand": {
+     "standing": "doing well",
+     "says": "Njeri is doing well.",
+     "evidence": [
+      "Njeri said once that something was sold, paid or signed, and it has proof on file.",
+      "Njeri did two of two check-ins, all on time. Two of them named the item, what changed and the day."
+     ]
+    },
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Njeri",
+      "does": "Keeps your words in Njeri’s record, where Njeri reads them on My work and in Njeri’s own report. No message is sent.",
+      "suggested": "Well done on backing what you said with proof."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Njeri with, here and under People on References and resources. Only you read it, and nothing is sent to Njeri."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Njeri’s records. It shows on that record on your board, and nothing is sent to Njeri.",
+      "items": [
+       {
+        "id": "aa6a9edc-c624-41dc-bf45-a976b1ad8af9",
+        "name": "FN-007",
+        "due": null
+       }
+      ]
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign work",
+      "does": "Gives one of Njeri’s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [
+       {
+        "id": "aa6a9edc-c624-41dc-bf45-a976b1ad8af9",
+        "name": "FN-007",
+        "due": null
+       }
+      ],
+      "to": [
+       {
+        "participantId": "069181e0-bb64-46bb-a603-a7f5eb2a90fe",
+        "name": "Aisha"
+       },
+       {
+        "participantId": "06c97be4-47d8-4260-b223-090a9b8365f9",
+        "name": "Brian"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "participantId": "069181e0-bb64-46bb-a603-a7f5eb2a90fe",
+    "name": "Aisha Kamau",
+    "role": "Associate",
+    "delivered": {
+     "heading": "What Aisha collected, with proof",
+     "proven": [],
+     "onlySaid": [
+      "On Monday 12 October Aisha said “Baraka Hardware actually paid last week; Mr. Baraka told me personally.” Nothing on file shows it yet.",
+      "On Monday 12 October Aisha said “I think they've paid, I believe it went through on Friday.” On Monday 19 October Aisha said “I was mistaken; Jamii Clinics hasn't actually paid yet.”",
+      "On Monday 12 October Aisha said “the bursar at Upendo Schools confirmed it's sorted.” Nothing on file shows it yet.",
+      "On Monday 19 October Aisha said “FN-006 for Baraka Hardware has been paid.” Nothing on file shows it yet."
+     ],
+     "empty": null
+    },
+    "record": {
+     "heading": "Aisha’s record in Fee notes",
+     "note": "This is read from what Aisha said in Aisha’s check-ins and what is on file. It changes only when something new comes in.",
+     "parts": [
+      {
+       "heading": "Promises",
+       "says": "Neither of the two promises Aisha made that came due was kept. Two are past their day with nothing said about them yet.",
+       "toChange": "Promising less, and saying early when a date will move, would change this.",
+       "evidence": [
+        "Aisha promised “I can ask them for the slip.” for Monday 12 October, and nothing Aisha has said since shows it done.",
+        "Aisha promised “I'll follow up with Mr. Baraka.” for Monday 19 October, and nothing Aisha has said since shows it done."
+       ]
+      },
+      {
+       "heading": "Aisha’s check-ins",
+       "says": "Aisha did two of two check-ins, all on time. Two of them named the item, what changed and the day.",
+       "toChange": null,
+       "evidence": []
+      }
+     ],
+     "coaching": [
+      {
+       "said": "After Aisha’s check-in on Monday 12 October, Groundwork told Aisha “Add the photo, slip or link when you say something is done. For FN-009, that would be the payment slip, the bank statement or the M-Pesa message.”",
+       "since": "Backing what Aisha says with proof has stayed the same since then."
+      }
+     ],
+     "coachingEmpty": "Groundwork has not coached Aisha on anything yet."
+    },
+    "whereTheyStand": {
+     "standing": "needs a hard conversation",
+     "says": "Aisha needs a hard conversation about saying things were done with nothing on file to show it.",
+     "evidence": [
+      "Aisha said four times that something was sold, paid or signed. None of them has proof on file, and Aisha took one back later.",
+      "After Aisha’s check-in on Monday 12 October, Groundwork told Aisha “Add the photo, slip or link when you say something is done. For FN-009, that would be the payment slip, the bank statement or the M-Pesa message.”",
+      "Backing what Aisha says with proof has stayed the same since then."
+     ],
+     "about": "proof"
+    },
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Aisha",
+      "does": "Keeps your words in Aisha’s record, where Aisha reads them on My work and in Aisha’s own report. No message is sent.",
+      "suggested": "Well done on your work this month."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Aisha with, here and under People on References and resources. Only you read it, and nothing is sent to Aisha.",
+      "suggested": "Help Aisha with adding proof when saying something is done."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Aisha’s records. It shows on that record on your board, and nothing is sent to Aisha.",
+      "items": [
+       {
+        "id": "167ee476-5519-4f30-8b06-d1c3b2bed567",
+        "name": "Upendo Schools",
+        "due": null
+       }
+      ]
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign work",
+      "does": "Gives one of Aisha’s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [
+       {
+        "id": "167ee476-5519-4f30-8b06-d1c3b2bed567",
+        "name": "Upendo Schools",
+        "due": null
+       }
+      ],
+      "to": [
+       {
+        "participantId": "87dc90a9-acf2-4cdd-9c33-a2fde7126ada",
+        "name": "Njeri"
+       },
+       {
+        "participantId": "06c97be4-47d8-4260-b223-090a9b8365f9",
+        "name": "Brian"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "participantId": "06c97be4-47d8-4260-b223-090a9b8365f9",
+    "name": "Brian Otieno",
+    "role": "Associate",
+    "delivered": {
+     "heading": "What Brian collected, with proof",
+     "proven": [],
+     "onlySaid": [],
+     "empty": "Nothing Brian said was paid, signed or done is on record yet."
+    },
+    "record": {
+     "heading": "Brian’s record in Fee notes",
+     "note": "This is read from what Brian said in Brian’s check-ins and what is on file. It changes only when something new comes in.",
+     "parts": [
+      {
+       "heading": "Promises",
+       "says": "Brian made one promise that came due, and it was not kept. It is past its day, with nothing said about it yet.",
+       "toChange": "Promising less, and saying early when a date will move, would change this.",
+       "evidence": [
+        "Brian promised “I will ask Njeri about it today, during our check-in.” for Monday 19 October, and nothing Brian has said since shows it done."
+       ]
+      },
+      {
+       "heading": "Blockers",
+       "says": "Brian raised one blocker, and did not say what had been tried first.",
+       "toChange": null,
+       "evidence": [
+        "On Monday 12 October Brian raised a blocker, waiting for guidance on how to proceed with the double-billing claim, and did not say what had been tried first."
+       ]
+      },
+      {
+       "heading": "Brian’s check-ins",
+       "says": "Brian did two of two check-ins, all on time. Two of them named the item, what changed and the day.",
+       "toChange": null,
+       "evidence": []
+      }
+     ],
+     "coaching": [
+      {
+       "said": "After Brian’s check-in on Monday 12 October, Groundwork told Brian “Try one thing before you raise a blocker, and say what you tried.”",
+       "since": "No check-in since then shows whether it has changed yet."
+      }
+     ],
+     "coachingEmpty": "Groundwork has not coached Brian on anything yet."
+    },
+    "whereTheyStand": {
+     "standing": "needs coaching",
+     "says": "Brian needs coaching on trying something before raising a blocker.",
+     "evidence": [
+      "Brian raised one blocker, and did not say what had been tried first.",
+      "After Brian’s check-in on Monday 12 October, Groundwork told Brian “Try one thing before you raise a blocker, and say what you tried.”",
+      "No check-in since then shows whether it has changed yet."
+     ],
+     "about": "blockers"
+    },
+    "fromYou": [],
+    "actions": [
+     {
+      "kind": "praise",
+      "label": "Praise Brian",
+      "does": "Keeps your words in Brian’s record, where Brian reads them on My work and in Brian’s own report. No message is sent.",
+      "suggested": "Well done on your work this month."
+     },
+     {
+      "kind": "plan",
+      "label": "Start a plan",
+      "does": "Keeps what you want to help Brian with, here and under People on References and resources. Only you read it, and nothing is sent to Brian.",
+      "suggested": "Help Brian with trying something before raising a blocker."
+     },
+     {
+      "kind": "deadline",
+      "label": "Set a deadline",
+      "does": "Puts a due day on one of Brian’s records. It shows on that record on your board, and nothing is sent to Brian.",
+      "items": [
+       {
+        "id": "c6ff370e-e682-4e6a-a4e2-00d3440173c4",
+        "name": "FN-008",
+        "due": null
+       },
+       {
+        "id": "118c7ed8-8991-44da-873b-7f6a39f29e69",
+        "name": "FN-005",
+        "due": "2026-10-14"
+       }
+      ]
+     },
+     {
+      "kind": "reassign",
+      "label": "Reassign work",
+      "does": "Gives one of Brian’s records to somebody else on the team. From then on it is theirs on the board and in their check-ins. Nothing is sent to either of them.",
+      "items": [
+       {
+        "id": "c6ff370e-e682-4e6a-a4e2-00d3440173c4",
+        "name": "FN-008",
+        "due": null
+       },
+       {
+        "id": "118c7ed8-8991-44da-873b-7f6a39f29e69",
+        "name": "FN-005",
+        "due": "2026-10-14"
+       }
+      ],
+      "to": [
+       {
+        "participantId": "87dc90a9-acf2-4cdd-9c33-a2fde7126ada",
+        "name": "Njeri"
+       },
+       {
+        "participantId": "069181e0-bb64-46bb-a603-a7f5eb2a90fe",
+        "name": "Aisha"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

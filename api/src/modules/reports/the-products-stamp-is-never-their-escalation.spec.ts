@@ -24,7 +24,8 @@ const withoutComments = (t: string): string => t.replace(/\/\*[\s\S]*?\*\//g, ''
 const NOW = new Date('2026-10-30T09:00:00Z');
 const FIFTEEN_DAYS_AGO = new Date('2026-10-15T07:00:00Z');
 const STAMP_ONLY = { escalatedAt: FIFTEEN_DAYS_AGO, triedSaid: null };
-const THEY_SAID_SO = { escalatedAt: FIFTEEN_DAYS_AGO, triedSaid: 'I took it to the head of finance on Monday.' };
+/* takenFurther is the assessment's reading of those words (F2, 2 November 2026), kept on the wait in place of a word list. */
+const THEY_SAID_SO = { escalatedAt: FIFTEEN_DAYS_AGO, triedSaid: 'I took it to the head of finance on Monday.', takenFurther: true };
 
 const probeFor = (escalated: boolean) => whatToProbe({
   who: 'Kevin Odhiambo', participantId: 'p-kevin', role: null, answeredThisSession: true, patterns: [],
@@ -75,6 +76,7 @@ describe('the product\'s own stamp is never read as the person taking it higher'
   it('the check-in reads escalation from their own words, never from the stamp', () => {
     const svc = withoutComments(fs.readFileSync(path.join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8'));
     expect(svc).not.toMatch(/escalated:\s*!!\w+\.escalatedAt/);
-    expect(svc).toMatch(/escalated:\s*itWasTakenFurther\(\{\s*triedSaid:/);
+    expect(svc).toMatch(/escalated:\s*itWasTakenFurther\(d\)/);
+    expect(svc).toMatch(/triedSaid: true, takenFurther: true/);
   });
 });

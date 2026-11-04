@@ -44,12 +44,12 @@ describe('the three messages for somebody who stopped halfway', () => {
   it('off: the sentences are the ones already sent', () => {
     expect(carryOnSaying('Amani', 'X', false)).toBe('Hi Amani, your check-in for "X" is still open, and everything you have said so far is kept. Reply here to carry on whenever you are ready.');
     expect(closesInHalfAnHourSaying('X')).toBe('Your check-in for "X" closes in 30 minutes if nothing else is said. Add anything you still want on the record now.');
-    expect(closedByTheClockSaying('X', null)).toBe('Your check-in for "X" has closed, because nothing was said for twelve hours. Everything you said is kept on the record, and your report follows in a moment.');
+    expect(closedByTheClockSaying('X', null)).toBe('Your check-in for "X" has closed, because nothing was said for twelve hours. Everything you said is kept on the record.');
   });
   it('on: the plainer forms', () => {
     expect(carryOnSaying('Amani', 'X', true)).toBe('Hi Amani, your check-in for "X" is still open. Everything you have said is saved. Write here to carry on when you are ready.');
     expect(closesInHalfAnHourSaying('X', true)).toBe('Your check-in for "X" will close in 30 minutes if you say nothing more. Add anything you still want saved now.');
-    expect(closedByTheClockSaying('X', true)).toBe('Your check-in for "X" has closed, because nothing was said for twelve hours. Everything you said is saved. Your report will come in a moment.');
+    expect(closedByTheClockSaying('X', true)).toBe('Your check-in for "X" has closed, because nothing was said for twelve hours. Everything you said is saved.');
   });
   it('the reminder reads the check-in\'s own switch', async () => {
     for (const simplerWords of [false, true]) {
@@ -79,14 +79,16 @@ describe('the emails', () => {
     await call(e);
     return sent[0].html.replace(/<\/p>/g, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
   }
-  it('the reminder: off is the old sentence, on is the plainer one', async () => {
+  /* Changed 4 November 2026 (release batch 1): the reminder has one wording, the direct morning's, which is already plain, with or without simpler words. */
+  it('the reminder: one plain wording, with simpler words or without', async () => {
     const nudge = (s?: boolean) => (e: any) => e.sendNudge('a@k.test', 'Sales team, Q4', 'https://x/y', undefined, true, null, 'p1', s);
-    expect(await render(nudge())).toBe('Your check-in for Sales team, Q4 is still open. About ten minutes now puts your view into the shared picture, and you read it too. They have already shared their side. Yours is the last one we are waiting for. Check in');
-    expect(await render(nudge(true))).toBe('Your check-in for Sales team, Q4 is still open. It takes about ten minutes. Your answers go into the report. The other person has already answered. Yours is the last answer we need. Check in');
+    expect(await render(nudge())).toBe('Your check-in for Sales team, Q4 is still open. It takes about ten minutes. Everyone else has checked in. Yours is the last one. Check in');
+    expect(await render(nudge(true))).toBe(await render(nudge()));
   });
   it('the next check-in: off is the old sentence, on is the plainer one', async () => {
     const ready = (s?: boolean) => (e: any) => e.sendSessionReady('a@k.test', 'Sales team, Q4', 'https://x/y', s);
-    expect(await render(ready())).toBe('A new check-in is ready for Sales team, Q4. Answering keeps the picture you and your team read up to date. Check in');
+    /* Changed 18 October (Drop Access run 1, item 11): the opening says how long a check-in takes, about ten minutes. */
+    expect(await render(ready())).toBe('A new check-in is ready for Sales team, Q4. It takes about ten minutes, and your answers keep the report you and your team read up to date. Check in');
     expect(await render(ready(true))).toBe('Your next check-in for Sales team, Q4 is open. It takes about ten minutes. Your answers go into the report. Check in');
   });
 });
@@ -96,12 +98,16 @@ describe('what Amani is told when she writes "finish", and about the report', ()
   const src = strip(require('fs').readFileSync(require('path').join(__dirname, '..', 'public-api', 'whatsapp-for-an-organisation.service.ts'), 'utf8'));
   it('each takes the check-in\'s own switch', () => {
     expect(src).toContain('theCheckInIsCompleteSaying(current.simplerWords)');
-    expect(src).toContain('enoughToCloseSaying(current.simplerWords)');
-    expect(src).toContain('reportAsText(report, c.label, c.simplerWords)');
+    // Changed 26 October 2026 (Hafsah: item 3): an engine close no longer asks for "finish"; it says the check-in is complete, with the same switch, on every path that ends it.
+    expect(src).not.toContain('enoughToCloseSaying(current.simplerWords)');
+    /* Two since 29 October: the second way to the same close ("I am done", theirOwnWordsClosedIt) went; the engine's close says it. */
+    expect((src.match(/theCheckInIsCompleteSaying\(current\.simplerWords\)/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    /* Changed 4 November 2026 (release batch 1): the report on the phone has one wording, so it takes no switch. */
+    expect(src).toContain('reportAsText(report, c.label)');
   });
   it('and with the switch off the words are the ones always sent', () => {
     const { theCheckInIsCompleteSaying, enoughToCloseSaying } = require('../grounds/what-is-sent-in-simpler-words');
-    expect(theCheckInIsCompleteSaying(false)).toBe('Your check-in is complete and on record. Your report follows in a moment.');
+    expect(theCheckInIsCompleteSaying(false)).toBe('Your check-in is complete and on record.');
     expect(enoughToCloseSaying(undefined)).toBe('That is enough to close this check-in. Reply "finish" to complete it, or keep going.');
   });
 });

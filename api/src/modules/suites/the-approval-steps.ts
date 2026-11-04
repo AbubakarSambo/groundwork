@@ -17,9 +17,12 @@ import type { ARule, Rule, Step, WhoDecides } from './who-may-decide';
  * suite's own answers) never loses it. An admin sets it for every suite; whoever holds the HR duty for
  * leave, and whoever holds the finance duty for time sheets and spending (`SuitesService.setWorkflows`).
  *
- * NOTHING CHANGES BY ITSELF. With nothing kept, every suite has the one step it had before (the
- * manager, else an admin; for spending above the limit, the budget holder, then finance, then the
- * person named, then an admin), and nothing is ever passed on: escalation runs only for a suite whose
+ * SPENDING IS NOT SET HERE. Who approves a request to spend is its steps by amount
+ * (the-spending-rules.ts), the one place that says it. Only its working days before a request is
+ * passed on are kept here.
+ *
+ * NOTHING CHANGES BY ITSELF. With nothing kept, leave and time sheets have the one step they had
+ * before (the manager, else an admin), and nothing is ever passed on: escalation runs only for a suite whose
  * number of working days an admin has set.
  */
 export const WORKFLOWS_ROW = 'workflows';
@@ -28,10 +31,8 @@ export type StepSuite = 'leave' | 'time' | 'spend';
 export const STEP_SUITES: StepSuite[] = ['leave', 'time', 'spend'];
 
 export interface AWorkflow {
-  /** The steps, in order. For spending, the steps up to the most a manager may approve on their own. */
+  /** The steps, in order. Not for spending: its steps are its steps by amount (the-spending-rules.ts), the one place that says who approves it. */
   steps?: Step[];
-  /** For spending only: the steps above that limit. */
-  stepsAbove?: Step[];
   /** Working days a request may wait for one person before it is passed to the next rule. Unset: never. */
   escalateAfter?: number;
 }
@@ -51,16 +52,25 @@ export const WORKFLOWS_REFUSED = {
   notYourSuite: 'Whoever looks after HR sets the approval steps for leave, and whoever looks after finance sets them for time sheets and spending. An admin sets them all.',
   badSteps: `Give between one and ${MAX_STEPS} steps, each a list of who decides, chosen from the person's manager, the head of their team, whoever holds their team's budget, finance, HR, the chief executive and an admin.`,
   badDays: `Give the number of working days as a whole number from 1 to ${MAX_DAYS}, or nothing to never pass a request on.`,
-  notForThisSuite: 'Only spending has separate steps above the limit.',
+  spendIsByAmount: 'Who approves a request to spend is set by amount, on the spending page. Only the days before a request is passed on are set here.',
 };
 
-export function stepsFrom(v: unknown): Step[] | null {
+/**
+ * Steps as given, or null when any is not valid. `mayName`: a step may also name one person (`{ named }`), which only spending's
+ * steps by amount do, because its settings ask "Who approves anything above that?" and name a person (Hafsah's plan of 2 November).
+ */
+export function stepsFrom(v: unknown, mayName = false): Step[] | null {
   if (!Array.isArray(v) || v.length < 1 || v.length > MAX_STEPS) return null;
   const out: Step[] = [];
+  const named = (r: any) => mayName && !!r && typeof r === 'object' && typeof r.named === 'string' && !!r.named.trim();
   for (const s of v) {
     if (!Array.isArray(s) || s.length < 1 || s.length > MAX_RULES_IN_A_STEP) return null;
-    if (!s.every((r) => typeof r === 'string' && (RULES_AN_ADMIN_MAY_SET as string[]).includes(r))) return null;
-    out.push([...new Set(s as Rule[])]);
+    if (!s.every((r) => (typeof r === 'string' && (RULES_AN_ADMIN_MAY_SET as string[]).includes(r)) || named(r))) return null;
+    const seen = new Set<string>();
+    out.push((s as ARule[]).map((r) => (typeof r === 'object' ? { named: r.named.trim() } : r)).filter((r) => {
+      const k = typeof r === 'object' ? `@${r.named}` : r;
+      return seen.has(k) ? false : (seen.add(k), true);
+    }));
   }
   return out;
 }
@@ -75,10 +85,9 @@ export function workflowsFrom(answers: unknown): Workflows {
     const w = a[suite];
     if (!w || typeof w !== 'object' || Array.isArray(w)) continue;
     const kept: AWorkflow = {};
-    const steps = stepsFrom(w.steps);
+    /* Spending keeps only its days here: who approves it is its steps by amount, and nothing else (the-spending-rules.ts). */
+    const steps = suite === 'spend' ? null : stepsFrom(w.steps);
     if (steps) kept.steps = steps;
-    const above = suite === 'spend' ? stepsFrom(w.stepsAbove) : null;
-    if (above) kept.stepsAbove = above;
     const days = daysFrom(w.escalateAfter);
     if (days) kept.escalateAfter = days;
     if (Object.keys(kept).length) out[suite] = kept;
@@ -100,8 +109,9 @@ export async function readWorkflow(prisma: PrismaService, organizationId: string
 }
 
 /**
- * An admin's change, laid over what is kept. For each suite given, `steps`, `stepsAbove` and
- * `escalateAfter` given as null are cleared, and left out are kept. Returns the workflows to keep, or
+ * An admin's change, laid over what is kept. For each suite given, `steps` and `escalateAfter` given
+ * as null are cleared, and left out are kept. Spending's steps are refused here: they are its steps by
+ * amount, set through `setSpendRules`, so there is one place that says who approves a request to spend. Returns the workflows to keep, or
  * the refusal.
  */
 export function changeWorkflows(kept: Workflows, input: unknown): { workflows: Workflows } | { refused: string } {
@@ -113,13 +123,15 @@ export function changeWorkflows(kept: Workflows, input: unknown): { workflows: W
     if (g === null) { delete next[suite]; continue; }
     if (typeof g !== 'object' || Array.isArray(g)) return { refused: WORKFLOWS_REFUSED.badSteps };
     const w: AWorkflow = { ...(next[suite] ?? {}) };
-    for (const key of ['steps', 'stepsAbove'] as const) {
-      if (g[key] === undefined) continue;
-      if (key === 'stepsAbove' && suite !== 'spend') return { refused: WORKFLOWS_REFUSED.notForThisSuite };
-      if (g[key] === null) { delete w[key]; continue; }
-      const steps = stepsFrom(g[key]);
-      if (!steps) return { refused: WORKFLOWS_REFUSED.badSteps };
-      w[key] = steps;
+    if ((g.steps != null || g.stepsAbove != null) && suite === 'spend') return { refused: WORKFLOWS_REFUSED.spendIsByAmount };
+    if (g.stepsAbove != null) return { refused: WORKFLOWS_REFUSED.badSteps };
+    if (g.steps !== undefined) {
+      if (g.steps === null) delete w.steps;
+      else {
+        const steps = stepsFrom(g.steps);
+        if (!steps) return { refused: WORKFLOWS_REFUSED.badSteps };
+        w.steps = steps;
+      }
     }
     if (g.escalateAfter !== undefined) {
       if (g.escalateAfter === null) delete w.escalateAfter;
@@ -159,16 +171,14 @@ export function stepsSaid(steps: Step[]): string {
 const WHAT: Record<StepSuite, string> = { leave: 'A leave request', time: 'A week of hours', spend: 'A request to spend' };
 const PLURAL: Record<StepSuite, string> = { leave: 'leave requests', time: 'hours', spend: 'requests to spend' };
 
-/** The workflow of one suite said back to the admin, in full sentences. */
-export function aWorkflowSaid(suite: StepSuite, steps: Step[], stepsAbove: Step[] | null, escalateAfter: number | undefined): string[] {
+/** The workflow of one suite said back to the admin, in full sentences. Spending's steps are its steps by amount, said where they are set. */
+export function aWorkflowSaid(suite: StepSuite, steps: Step[], escalateAfter: number | undefined): string[] {
   const said: string[] = [];
-  if (suite === 'spend' && stepsAbove) {
-    said.push(`${WHAT.spend} up to the most a manager may approve on their own ${stepsSaid(steps)}.`);
-    said.push(`${WHAT.spend} above it ${stepsSaid(stepsAbove)}.`);
-  } else {
+  if (suite === 'spend') said.push('Who approves a request to spend is set by amount, on the spending page.');
+  else {
     said.push(`${WHAT[suite]} ${stepsSaid(steps)}.`);
+    if (steps.length > 1) said.push('Each approval sends it to the next step, and only the last step ends it. A decline ends it at any step.');
   }
-  if (steps.length > 1 || (stepsAbove?.length ?? 0) > 1) said.push('Each approval sends it to the next step, and only the last step ends it. A decline ends it at any step.');
   said.push(escalateAfter
     ? `If the person it waits for has not answered after ${escalateAfter} working ${escalateAfter === 1 ? 'day' : 'days'}, or is on approved leave that day, it goes to the next person on that step’s list.`
     : `Groundwork never passes ${PLURAL[suite]} on by itself. An admin can set a number of working days after which it does.`);

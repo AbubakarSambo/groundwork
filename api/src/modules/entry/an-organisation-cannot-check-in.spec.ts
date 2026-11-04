@@ -58,10 +58,9 @@ describe('the who-is-involved question', () => {
     expect(PROMPT).toMatch(/never invent a name/);
   });
 
-  it('and the wrap-up rule is unchanged, so the closer still cannot ask a question', () => {
-    // The instruction sits next to the closing rule. If it had displaced it, setup
-    // would end on a question the person cannot answer, which is a bug this file
-    // already fixed once.
-    expect(PROMPT).toMatch(/NO question mark anywhere/);
+  it('and the end of setup is still not the model\'s, so it never closes on a question the person cannot answer', () => {
+    // 8990ad46d made the product the one owner of setup's last line (SETUP_IS_DONE) and removed the prompt's own closer,
+    // which carried "NO question mark anywhere". What this guarded still holds: the model is told it never closes setup.
+    expect(PROMPT).toMatch(/THE END OF SETUP IS THE PRODUCT'S, NOT YOURS/);
   });
 });

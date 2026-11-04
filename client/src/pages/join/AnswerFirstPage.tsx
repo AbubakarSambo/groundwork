@@ -1,3 +1,4 @@
+import { useACheckInTakes, inASentence } from '@/lib/how-long-setup-takes'
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { openLinkApi } from '@/api/entry'
@@ -6,6 +7,8 @@ import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 import { Mark } from '@/components/gw/ui'
 import { MARKETING_URL } from '@/lib/marketing'
 import { useAuthStore } from '@/stores/auth'
+import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
+import { keepTheNumberForWhenTheySignIn } from '@/lib/a-number-given-before-signing-in'
 
 /**
  * ANSWER FIRST, SAY WHO YOU ARE AT THE END.
@@ -78,6 +81,9 @@ export function AnswerFirstPage() {
     try { return window.localStorage.getItem(`gw-answer-${token}`) ? 'talking' : 'reading' } catch { return 'reading' }
   })
   const [email, setEmail] = useState('')
+  /* Optional, always asked (Hafsah, 30 October 2026); saved to them through PATCH /auth/me when that address signs in here. */
+  const [phone, setPhone] = useState('')
+  const takes = useACheckInTakes()
   const [name, setName] = useState('')
   /* WHO THEY ANSWERED FOR. On a link sent across a network the organisation is the unit the whole
      report is about, and this asked for a name and an address and nothing else. */
@@ -159,6 +165,7 @@ export function AnswerFirstPage() {
     try {
       /* The name goes either way; the address and the wish for the report only where they said yes. */
       const done = await openLinkApi.finish(key, withEmail ? email.trim() : undefined, name.trim() || undefined, withEmail, org.trim() || undefined)
+      if (withEmail) keepTheNumberForWhenTheySignIn(email, phone)
       setSentTo(done.at)
       /* What we measured about their own answers, told to them. See WhatYouGaveUs. */
       if ((done as any)?.whatYouGave) setWhatYouGave((done as any).whatYouGave as WhatYouGave)
@@ -192,8 +199,9 @@ export function AnswerFirstPage() {
     minHeight: '100dvh', display: 'flex', flexDirection: 'column',
   }
   const field: React.CSSProperties = {
-    width: '100%', padding: '11px 16px', fontSize: 15, borderRadius: 21,
-    border: '1px solid var(--gw-border)', fontFamily: 'inherit', outline: 'none', background: 'white',
+    /* The kit's field (app.css .input), as the check-in's own composer draws it. */
+    width: '100%', padding: '12px 16px', fontSize: 16, border: '1px solid var(--rule2-crisp)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)',
+    fontFamily: 'inherit', outline: 'none',
   }
 
   /*
@@ -220,20 +228,20 @@ export function AnswerFirstPage() {
       <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)', marginTop: 18 }}>That link didn’t work</h1>
       <p style={{ color: 'var(--gw-sub)', marginTop: 8, lineHeight: 1.5 }}>{problem}</p>
       {signedIn ? (
-        <p style={{ marginTop: 18, fontSize: 14.5 }}>
+        <p style={{ marginTop: 18, fontSize: 14 }}>
           <button
             type="button"
             onClick={() => navigate('/today')}
-            style={{ color: 'var(--gw-navy)', fontWeight: 600, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}
+            style={{ color: 'var(--gw-navy)', fontWeight: 700, background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}
           >
             Go to Today
           </button>
         </p>
       ) : (
-        <p style={{ marginTop: 18, fontSize: 14.5 }}>
-          <a href="/auth" style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>Sign in</a>
+        <p style={{ marginTop: 18, fontSize: 14 }}>
+          <a href="/auth" style={{ color: 'var(--gw-navy)', fontWeight: 700 }}>Sign in</a>
           {', or '}
-          <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>go to the Groundwork home page</a>.
+          <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', fontWeight: 700 }}>go to the Groundwork home page</a>.
         </p>
       )}
     </div>
@@ -262,7 +270,7 @@ export function AnswerFirstPage() {
               <>
                 {/* A sentence, and their name as they gave it (U.6 review). It was a label in capitals,
                     "U6G ASKED", over the question. */}
-                <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: 0 }}>
+                <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: 0 }}>
                   {what.askedBy ? `${what.askedBy} asked you this.` : 'You have been asked this.'}
                 </p>
                 <h1 style={{ fontSize: 20, margin: '6px 0 0', lineHeight: 1.3 }}>{what.theQuestion}</h1>
@@ -272,11 +280,11 @@ export function AnswerFirstPage() {
                 {what.askedBy ? `${what.askedBy} invited you to “${what.groundLabel}”` : `You were invited to “${what.groundLabel}”`}
               </h1>
             )}
-            {what.schedule && <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: '6px 0 0' }}>{what.schedule}</p>}
+            {what.schedule && <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: '6px 0 0' }}>{what.schedule}</p>}
           </div>
         ) : (
           <details style={{ marginBottom: 14 }}>
-            <summary style={{ fontSize: 12.5, color: 'var(--gw-sub)', cursor: 'pointer', listStyle: 'none' }}>
+            <summary style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', listStyle: 'none' }}>
               {what.theQuestion ? (what.askedBy ? `What ${what.askedBy} asked. Tap to read it again.` : 'What you were asked. Tap to read it again.') : `This is “${what.groundLabel}”. Tap to read it again.`}
             </summary>
             <p style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--gw-text)', margin: '8px 0 0' }}>
@@ -287,7 +295,7 @@ export function AnswerFirstPage() {
 
         {phase === 'reading' && (
           <div>
-            <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+            <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px' }}>
               {/*
                 WHAT IT USED TO SAY: "nobody sees what you write". That is not true and it is not a
                 small untruth - the person who sent this link reads every answer, and the report
@@ -295,16 +303,16 @@ export function AnswerFirstPage() {
                 made in the second before somebody types is the worst place in the product to be
                 wrong. Hafsah, 23 September 2026.
               */}
-              Answer in your own words. It takes about ten minutes. The answers help everybody get a
+              Answer in your own words.{takes ? ` It takes ${inASentence(takes)}.` : ''} The answers help everybody get a
               shared picture, and you will receive the consolidated report at the end.
             </p>
-            <button onClick={begin} disabled={busy}
-              style={{ marginTop: 16, padding: '12px 22px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button className="btn pri" onClick={begin} disabled={busy}
+              style={{ marginTop: 16 }}>
               {busy ? 'Starting...' : 'Start'}
             </button>
             {/* The reason, where the button is. See begin() for the hundred people this is for. */}
             {problem && (
-              <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13.5, marginTop: 12, lineHeight: 1.5 }}>{problem}</div>
+              <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 14, marginTop: 12, lineHeight: 1.5 }}>{problem}</div>
             )}
           </div>
         )}
@@ -314,7 +322,7 @@ export function AnswerFirstPage() {
             {turns.map((t, i) => (
               <div key={i} style={{
                 alignSelf: t.who === 'them' ? 'flex-end' : 'flex-start',
-                maxWidth: '86%', padding: '10px 14px', borderRadius: 14, fontSize: 14.5, lineHeight: 1.5,
+                maxWidth: '86%', padding: '10px 14px', borderRadius: 14, fontSize: 14, lineHeight: 1.5,
                 background: t.who === 'them' ? 'var(--gw-navy)' : 'white',
                 color: t.who === 'them' ? '#fff' : 'var(--gw-text)',
                 border: t.who === 'them' ? 'none' : '1px solid var(--gw-border)',
@@ -326,7 +334,7 @@ export function AnswerFirstPage() {
 
         {/* Said only where the page opened straight into a conversation nobody can see the start of. */}
         {phase === 'talking' && turns.length === 0 && (
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', marginBottom: 12 }}>
             You had already started this. Everything you said is saved - carry on below, or press
             &ldquo;I am done&rdquo; to finish.
           </div>
@@ -359,22 +367,18 @@ export function AnswerFirstPage() {
                 placeholder="Type your answer" style={{ ...field, flex: 1, resize: 'none', minWidth: 0, maxHeight: 140 }}
               />
               <button onClick={say} disabled={busy || !input.trim()} aria-label="Send"
-                style={{ width: 42, height: 42, borderRadius: '50%', border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 18, cursor: 'pointer', flexShrink: 0, opacity: busy || !input.trim() ? .5 : 1 }}>
+                style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 18, cursor: 'pointer', flexShrink: 0, opacity: busy || !input.trim() ? .5 : 1 }}>
                 ↑
               </button>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, gap: 10 }}>
-              <button onClick={() => setPhase('address')}
-                style={{
-                  background: 'white', border: '1px solid var(--gw-border)', borderRadius: 20,
-                  color: 'var(--gw-navy)', fontSize: 13.5, fontWeight: 600, padding: '8px 15px',
-                  cursor: 'pointer', fontFamily: 'inherit', minHeight: 40,
-                }}>
+              <button className="btn sec" onClick={() => setPhase('address')}
+                >
                 I am done
               </button>
               {/* What pressing it does, so nobody presses it wondering whether it throws away the
                   answers they have just given. */}
-              <span style={{ fontSize: 11.5, color: 'var(--gw-muted)', textAlign: 'right', lineHeight: 1.4 }}>
+              <span style={{ fontSize: 12, color: 'var(--gw-muted)', textAlign: 'right', lineHeight: '17px' }}>
                 Finish and say where to send the report
               </span>
             </div>
@@ -406,27 +410,29 @@ export function AnswerFirstPage() {
               that giving them makes you identifiable. The labels say what each one is for.
             */}
             <div style={{ display: 'grid', gap: 8 }}>
-              <label htmlFor="open-name" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Your name</label>
+              <label htmlFor="open-name" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Your name</label>
               <input id="open-name" type="text" autoComplete="name" value={name}
                 onChange={e => { setName(e.target.value); setProblem('') }}
                 placeholder="Your name" style={field} />
-              <label htmlFor="open-org" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Your organisation</label>
+              <label htmlFor="open-org" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Your organisation</label>
               <input id="open-org" type="text" autoComplete="organization" value={org}
                 onChange={e => { setOrg(e.target.value); setProblem('') }}
                 placeholder="Where you work" style={field} />
-              <label htmlFor="open-email" style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Where to send the report</label>
+              <label htmlFor="open-email" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Where to send the report</label>
               <input id="open-email" type="email" autoComplete="email" value={email}
                 onChange={e => { setEmail(e.target.value); setProblem('') }}
                 placeholder="you@work.com" style={field} />
+              {/* Nobody is signed in on this page, so nothing here says WhatsApp (useWhatsAppIsOn answers off until somebody is). */}
+              <PhoneNumberField id="open-phone" value={phone} onChange={setPhone} whose="yours" whatsappOn={false} />
             </div>
             {problem && <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13, marginTop: 8 }}>{problem}</div>}
             {/* U.6 review: "Done" waits for all three, and now it says so. The same three are needed. */}
             {(!email.trim() || !name.trim() || !org.trim()) && (
-              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 10 }}>{whatIsStillNeeded(name, org, email)}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 10 }}>{whatIsStillNeeded(name, org, email)}</div>
             )}
             <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-              <button onClick={() => finish(true)} disabled={busy || !email.trim() || !name.trim() || !org.trim()}
-                style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: busy || !email.trim() || !name.trim() || !org.trim() ? .5 : 1 }}>
+              <button className="btn pri" onClick={() => finish(true)} disabled={busy || !email.trim() || !name.trim() || !org.trim()}
+                >
                 Done
               </button>
             </div>
@@ -438,7 +444,7 @@ export function AnswerFirstPage() {
             {/* "on the record" is our word for what the product does, and she read it five times
                 in one conversation. See words-we-do-not-use on the API. */}
             <h2 style={{ fontSize: 18, margin: '0 0 8px' }}>That is everything. Thank you.</h2>
-            <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 }}>
+            <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px', margin: 0 }}>
               {sentTo
                 ? `The consolidated report goes to ${sentTo} at the end.`
                 : 'Your answers are saved.'}

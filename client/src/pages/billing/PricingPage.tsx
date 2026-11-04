@@ -128,13 +128,13 @@ export function PricingPage() {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12 }}>
             Pricing
           </div>
-          <h1 style={{ fontSize: 32, fontWeight: 800, color: 'var(--gw-navy)', letterSpacing: '-.02em', marginBottom: 16, lineHeight: 1.2 }}>
+          <h1 style={{ fontSize: 32, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.02em', marginBottom: 16, lineHeight: '38px' }}>
             Pricing
           </h1>
-          <p style={{ fontSize: 15, color: 'var(--gw-sub)', maxWidth: 520, margin: '0 auto', lineHeight: 1.65 }}>
+          <p style={{ fontSize: 15, color: 'var(--gw-sub)', maxWidth: 520, margin: '0 auto', lineHeight: '25px' }}>
             {trialSentence ?? `Start free with ${freeGrounds} check-ins, for teams of ${freeTeam} or fewer, including you.`} Subscribe as your team grows. Unlimited sessions and reports on every plan.
           </p>
         </div>
@@ -145,24 +145,24 @@ export function PricingPage() {
           true. Its offer is said in the one shared sentence; the numbers are the setting's.
         */}
         {trialSentence && livePricing?.trial && (
-          <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-navy)', borderRadius: 14, padding: '28px 32px', marginBottom: 32 }}>
+          <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-navy)', borderRadius: 14, padding: '28px 32px', marginBottom: 32 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 220 }}>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-navy)', margin: '0 0 4px' }}>{trialLength} free</h2>
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 10 }}>{`Teams of fewer than ${livePricing.trial.teamsUnder} people`}</div>
-                <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 }}>
+                <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', margin: 0 }}>
                   {oneMonth
                     ? `Everything on every plan, WhatsApp included, free for your first month. No card required. Unlimited check-ins, sessions and reports. After your free month, subscribe to keep going. Teams of ${livePricing.trial.teamsUnder} or more start on a plan.`
                     : `${trialSentence} After ${trialLength}, subscribe to keep going.`}
                 </p>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--gw-navy)' }}>{`$0 for ${trialLength}`}</div>
+                <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>{`$0 for ${trialLength}`}</div>
                 {!user && (
-                  <button
+                  <button className="btn pri"
                     type="button"
                     onClick={() => navigate('/auth?next=/pricing')}
-                    style={{ marginTop: 12, fontSize: 13, fontWeight: 600, background: 'var(--gw-navy)', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 16px', cursor: 'pointer' }}
+                    style={{ marginTop: 12 }}
                   >
                     {oneMonth ? 'Start your free month' : `Start your free ${trialLength}`}
                   </button>
@@ -177,17 +177,17 @@ export function PricingPage() {
           trial's: while it is off the free plan is offered as today; once it is on, the trial above is
           the only free period and new organisations pay, so the free plan is not offered to anybody.
         */}
-        {!trialSentence && <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '28px 32px', marginBottom: 32 }}>
+        {!trialSentence && <div style={{ background: 'var(--gw-card)', border: '1px solid var(--rule2-crisp)', borderRadius: 14, padding: '28px 32px', marginBottom: 32 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 220 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-navy)' }}>Free</span>
-                <span style={{ fontSize: 11, background: 'var(--gw-green-bg)', color: 'var(--gw-green)', border: '1px solid var(--gw-green-b)', borderRadius: 6, padding: '2px 8px', fontWeight: 600 }}>Always</span>
+                <span style={{ fontSize: 11, background: 'var(--gw-green-bg)', color: 'var(--gw-green)', border: '1px solid var(--gw-green-b)', borderRadius: 6, padding: '2px 8px', fontWeight: 700 }}>Always</span>
               </div>
-              <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
+              <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', marginBottom: 12 }}>
                 Create up to {freeGrounds} check-ins for free, for teams of {freeTeam} or fewer including you. No card required. Unlimited sessions and reports on every check-in.
               </p>
-              <ul style={{ fontSize: 12, color: 'var(--gw-sub)', paddingLeft: 16, margin: 0, lineHeight: 1.8 }}>
+              <ul style={{ fontSize: 12, color: 'var(--gw-sub)', paddingLeft: 16, margin: 0, lineHeight: '22px' }}>
                 {/* "Templates" was listed here and on the marketing pricing page. There
                     is no templates feature anywhere in the product - the only
                     match in the codebase is "More templates" in a feature-REQUEST
@@ -199,7 +199,7 @@ export function PricingPage() {
               </ul>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--gw-navy)' }}>$0</div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>$0</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>forever</div>
               {/*
                 * A CARD WITH NO STATE AND NO BUTTON READS AS UNAVAILABLE.
@@ -229,7 +229,7 @@ export function PricingPage() {
         <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 8 }}>
           Subscribe as your team grows
         </h2>
-        <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.6 }}>
+        <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: '21px' }}>
           {seatCents != null
             ? `Every person with a Groundwork account counts as a seat. Each plan includes a number of seats; add more any time for +${formatDollars(seatCents)} a seat a month. Unlimited check-ins, sessions and reports.`
             : 'Every person with a Groundwork account in your organisation counts toward your plan. One flat monthly rate, unlimited everything.'}
@@ -237,21 +237,20 @@ export function PricingPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 48 }}>
           {PLANS.map((plan) => (
-            <div key={plan} style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '24px 20px', display: 'flex', flexDirection: 'column' }}>
+            <div key={plan} style={{ background: 'var(--gw-card)', border: '1px solid var(--rule2-crisp)', borderRadius: 14, padding: '24px 20px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>{PLAN_LABELS[plan]}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 4 }}>{priceLabel(plan)}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>{priceLabel(plan)}</div>
               <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 12, minHeight: 15 }}>
                 {capLabel(plan)}
                 {seatCents != null && <><br /><b>{`+${formatDollars(seatCents)} per extra seat`}</b></>}
                 {personCents != null && <><br />{`WhatsApp: +${formatDollars(personCents)} a month per person who uses it`}</>}
               </div>
-              <p style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16, flexGrow: 1 }}>
+              <p style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginBottom: 16, flexGrow: 1 }}>
                 {PLAN_DESCRIPTIONS[plan]}
               </p>
-              <button
+              <button className="btn pri"
                 onClick={() => handleSubscribe(plan)}
                 disabled={subscribeMut.isPending && subscribingPlan === plan}
-                style={{ fontSize: 13, fontWeight: 600, background: 'var(--gw-navy)', color: '#fff', border: 'none', borderRadius: 9, padding: '10px 0', cursor: 'pointer', opacity: subscribeMut.isPending && subscribingPlan === plan ? 0.6 : 1 }}
               >
                 {subscribeMut.isPending && subscribingPlan === plan ? 'Loading...' : 'Subscribe'}
               </button>
@@ -261,9 +260,9 @@ export function PricingPage() {
 
         {/* WhatsApp, explained once (fix list item 6, the light prototype's s74, word for word). */}
         {personCents != null && (
-          <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '20px 24px', marginBottom: 32 }}>
+          <div style={{ background: 'var(--gw-card)', border: '1px solid var(--rule2-crisp)', borderRadius: 14, padding: '20px 24px', marginBottom: 32 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>WhatsApp check-ins, on any plan</div>
-            <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 }}>
+            <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', margin: 0 }}>
               {`Your team can check in on WhatsApp instead of the app. You pay only for people who use it: ${formatDollars(personCents)} a person a month, on any plan, never more than your seats.${trialSentence ? ' It is included in your free month.' : ''}`}
             </p>
           </div>
@@ -272,14 +271,14 @@ export function PricingPage() {
         {/* Enterprise: the prototype's in-product plans page paints this panel with its --chat
             cream (docs/prototype/source/s16.js), which is our --gw-bg (#F7F1E5). #FAF5EA (--band) is
             the marketing site's alone. */}
-        <div style={{ background: 'var(--gw-bg)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '24px 28px', marginBottom: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
+        <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--rule2-crisp)', borderRadius: 14, padding: '24px 28px', marginBottom: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>Enterprise</div>
-            <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 0 }}>
+            <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', marginBottom: 0 }}>
               {PLAN_DESCRIPTIONS.ENTERPRISE}
             </p>
           </div>
-          <a href="mailto:hello@myground.work" style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-navy)', borderRadius: 9, padding: '10px 20px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+          <a className="btn sec" href="mailto:hello@myground.work" >
             Contact us
           </a>
         </div>

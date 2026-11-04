@@ -18,6 +18,7 @@ import { PublicApiModule } from './modules/public-api/public-api.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { ParticipantsModule } from './modules/participants';
 import { ConversationModule } from './modules/conversation';
+import { TheEngineModule } from './modules/conversation/the-engine.module';
 import { ReportsModule } from './modules/reports';
 import { PatternsModule } from './modules/patterns';
 import { LearningModule } from './modules/learning/learning.module';
@@ -25,6 +26,7 @@ import { BoardModule } from './modules/board';
 import { ResolutionModule } from './modules/resolution';
 import { SuggestionsModule } from './modules/suggestions';
 import { SuitesModule } from './modules/suites';
+import { PolicyModule } from './modules/policy/policy.module';
 import { RoleInterviewModule } from './modules/suites/the-role-interview.module';
 import { BillingModule } from './modules/billing';
 import { IntelligenceModule } from './modules/intelligence';
@@ -76,6 +78,7 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
     PublicApiModule,
     WebhooksModule,
     ParticipantsModule,
+    TheEngineModule,
     ConversationModule,
     KnowledgeModule,
     WhatsAppModule,
@@ -86,6 +89,7 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
     ResolutionModule,
     SuggestionsModule,
     SuitesModule,
+    PolicyModule,
     RoleInterviewModule,
     BillingModule,
     IntelligenceModule,

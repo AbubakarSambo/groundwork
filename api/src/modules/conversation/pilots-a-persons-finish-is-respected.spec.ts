@@ -1,12 +1,13 @@
 import { ConversationService } from './conversation.service';
-import { tooFewAnswersToFinish, NOT_ENOUGH_YET_TO_FINISH_HERE } from './close-readiness';
-import { theFloorFor } from './how-short-a-check-in-may-be';
+/* Changed 3 November 2026 (Hafsah: no question limits and no forced close): there is no floor of answers before a finish, and none before Groundwork's own close. */
+import * as closeReadinessModule from './close-readiness';
+import * as howShort from './how-short-a-check-in-may-be';
 
 /**
  * PILOTS, 13 OCTOBER 2026, PROBLEM 4. Kevin answered four questions on WhatsApp, wrote "Nothing else today.", then
  * "finish", and was told three times in a row "I need a little more from you before this check-in can close."
- * The plan wants three to five short messages. A person's own finish is honoured once they have answered three
- * times; Groundwork still asks its questions up to its own close at five.
+ * The plan wants three to five short messages. Since 3 November 2026 a person's own finish is honoured at any point
+ * once anything real is said, and Groundwork closes when it has what it needs, on no count.
  */
 const KEVIN = [
   'Visited both shops, Wema Mini Mart and Baraka Stores.',
@@ -27,27 +28,34 @@ function kevinsCheckIn(answers: string[]) {
   return { svc, finished };
 }
 
-describe("a person's finish is respected after three answers", () => {
+describe("a person's finish is respected at any point", () => {
   it('Kevin, four answers and "finish": the check-in completes, and nothing asks him for more', async () => {
     const { svc, finished } = kevinsCheckIn(KEVIN);
     await expect(svc.complete('c-4', 'u-kevin', { waitForTheCard: false })).resolves.toEqual({ status: 'completed' });
     expect(finished).toEqual(['c-4']);
   });
 
-  it('the word "finish" in the app is no longer refused at four answers', () => {
-    expect(tooFewAnswersToFinish(4, false, null)).toBe(false);
-    expect(tooFewAnswersToFinish(3, false, null)).toBe(false);
+  it('with two answers it completes too: no count holds it', async () => {
+    const { svc, finished } = kevinsCheckIn(KEVIN.slice(0, 2));
+    await expect(svc.complete('c-4', 'u-kevin', { waitForTheCard: false })).resolves.toEqual({ status: 'completed' });
+    expect(finished).toEqual(['c-4']);
   });
 
-  it('with two answers it still asks for one more, which the person can give', async () => {
-    const { svc } = kevinsCheckIn(KEVIN.slice(0, 2));
-    await expect(svc.complete('c-4', 'u-kevin', {})).rejects.toMatchObject({ response: { canContinue: true } });
-    expect(tooFewAnswersToFinish(2, false, null)).toBe(true);
-    expect(NOT_ENOUGH_YET_TO_FINISH_HERE).toMatch(/^I need a little more from you/);
+  it('with one real answer and "I am done", what he said is kept', async () => {
+    const { svc, finished } = kevinsCheckIn([KEVIN[0], 'I am done']);
+    await expect(svc.complete('c-4', 'u-kevin', { waitForTheCard: false })).resolves.toEqual({ status: 'completed' });
+    expect(finished).toEqual(['c-4']);
   });
 
-  it('Groundwork still asks its own questions up to five before it closes on its own', () => {
-    expect(theFloorFor(false, null)).toBe(5);
+  it('with nothing said, there is nothing to keep, and it stays open for when he comes back', async () => {
+    const { svc } = kevinsCheckIn([]);
+    await expect(svc.complete('c-4', 'u-kevin', { theyAskedToFinish: true })).rejects.toMatchObject({ response: { canContinue: true } });
+  });
+
+  it('no floor is left: neither "I need a little more from you" nor a count before Groundwork closes', () => {
+    expect(Object.keys(closeReadinessModule)).not.toContain('tooFewAnswersToFinish');
+    expect(Object.keys(closeReadinessModule)).not.toContain('NOT_ENOUGH_YET_TO_FINISH_HERE');
+    expect(Object.keys(howShort)).not.toContain('theFloorFor');
   });
 });
 
@@ -70,13 +78,13 @@ describe('a person saying they are done closes the check-in, whatever the model 
     expect(closed).not.toContain('?');
   });
 
-  it('the product closes on their word once three answers are in, not only when the model stops asking', () => {
+  it('the product closes on their word at any point, not only when the model stops asking', () => {
     const src = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
-    /* Since the reviewer's 14 October pass, leaving before three answers closes too (leavingEarly). */
-    expect(src).toContain("const theyAreLeaving = (!answeringAnOffer && askedToFinish([message]) && !tooFewAnswersToFinish(personTurnCount + 1");
-    expect(src).toContain('|| leavingEarly;');
+    /* Changed 3 November 2026: no count of answers before their word is honoured, and no close on a count of Groundwork's own. */
+    expect(src).toContain('const theyAreLeaving = !answeringAnOffer && askedToFinish([message]);');
     expect(src).toContain('(hadCloseMarker || theyAreLeaving || this.closesInOtherWords(reply, message))');
-    expect(src).toContain("const sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));");
+    expect(src).not.toMatch(/timeToClose|leavingEarly\b/);
+    expect(src).toContain("let sessionComplete = close.ready && (theyAreLeaving || !stillAsking(aiTurn.content ?? ''));");
   });
 });
 
@@ -162,24 +170,25 @@ describe('the question just asked is never the next one (reviewer, 14 October)',
   });
 });
 
-import { WHAT_YOU_SAID_IS_KEPT, NOTHING_KEPT_YET_COME_BACK } from './a-finish-too-soon-is-said-plainly';
+import * as aFinishTooSoonModule from './a-finish-too-soon-is-said-plainly';
+import { NOTHING_KEPT_YET_COME_BACK } from './a-finish-too-soon-is-said-plainly';
 import { askedToFinish as leaving, isTheWordFinish as theWord } from './close-readiness';
 
-/* REVIEWER, 14 OCTOBER: "I am done" and "I have to go" before three answers close the check-in, and nothing more is asked. */
-describe('leaving before three answers is honoured', () => {
-  it('"I am done" and "I have to go" are leaving; the bare word "finish" still asks for the rest', () => {
+/* REVIEWER, 14 OCTOBER: "I am done" and "I have to go" early close the check-in, and nothing more is asked. Since 3 November the bare word
+   "finish" is leaving too: no answers are asked for first. */
+describe('leaving early is honoured', () => {
+  it('"I am done", "I have to go" and the bare word "finish" are all leaving', () => {
     for (const m of ['I am done', 'I have to go']) { expect(leaving([m])).toBe(true); expect(theWord(m)).toBe(false); }
     expect(theWord('finish')).toBe(true);
+    expect(leaving(['finish'])).toBe(true);
   });
-  it('what they read is one plain sentence with no question', () => {
-    expect(WHAT_YOU_SAID_IS_KEPT('DAILY')).toBe('Thanks. I have what you said so far, and you can add more later today.');
-    expect(WHAT_YOU_SAID_IS_KEPT('WEEKLY')).toBe('Thanks. I have what you said so far, and you can add more in your next check-in.');
-    expect(`${WHAT_YOU_SAID_IS_KEPT('DAILY')} ${NOTHING_KEPT_YET_COME_BACK}`).not.toMatch(/\?/);
+  it('with nothing said, what they read is one plain sentence with no question', () => {
+    expect(NOTHING_KEPT_YET_COME_BACK).not.toMatch(/\?/);
+    expect(Object.keys(aFinishTooSoonModule)).not.toContain('WHAT_YOU_SAID_IS_KEPT');
   });
-  it('the conversation closes on it and puts that sentence in place of the model\'s question', () => {
+  it('the conversation puts that sentence in place of the model\'s question only when nothing real was said', () => {
     const src = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
-    expect(src).toMatch(/const leavingEarly = !answeringAnOffer && askedToFinish\(\[message\]\) && !isTheWordFinish\(message\)/);
-    expect(src).toMatch(/if \(leavingEarly\) \{[\s\S]{0,1200}content: close\.ready \? WHAT_YOU_SAID_IS_KEPT\(theirCadence\) : NOTHING_KEPT_YET_COME_BACK/);
+    expect(src).toMatch(/if \(theyAreLeaving && !close\.ready\) \{[\s\S]{0,600}if \(nothingRealWasSaid\([\s\S]{0,300}content: NOTHING_KEPT_YET_COME_BACK/);
   });
 });
 
@@ -204,8 +213,7 @@ describe('"That\'s all." after a real answer is never told it is not enough', ()
   });
   it('the "not enough" sentence is used only when nothing was said, and otherwise the conversation carries on as before', () => {
     const src = withoutComments(readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8'));
-    expect(src).toMatch(/const saidNothing = nothingRealWasSaid\(/);
-    expect(src).toMatch(/if \(close\.ready \|\| saidNothing\) \{[\s\S]{0,400}content: close\.ready \? WHAT_YOU_SAID_IS_KEPT\(theirCadence\) : NOTHING_KEPT_YET_COME_BACK/);
+    expect(src).toMatch(/if \(nothingRealWasSaid\(theirTurns\.length \? theirTurns : \[message\]\)\)/);
     expect(src).toMatch(/if \(!sessionComplete && !leavingEarlyHandled && isADeadEnd\(/);
   });
 });

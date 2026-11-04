@@ -33,7 +33,7 @@ describe('the end date is never read as the day it was made', () => {
       .toBe('Check-ins open on Mon 12 October, Tue 13, Wed 14, Thu 15, Fri 16 and on from there, until 11 October 2027, 261 check-ins in all.')
   })
   it('the invitation says it too, and keeps the prototype\'s "until 30 September" in the same year', () => {
-    expect(whereAndUntil({ organisationName: 'Brightloom', endsAt: '2027-10-11T00:00:00.000Z', today: SUNDAY })).toBe('This runs at Brightloom until 11 October 2027.')
+    expect(whereAndUntil({ organisationName: 'Brightloom', endsAt: '2027-10-11T00:00:00.000Z', today: SUNDAY })).toBe('Brightloom, until 11 October 2027.') /* F5: the target journey's words */
     expect(theLastDay('2026-09-30T00:00:00.000Z', new Date(2026, 5, 30))).toBe('30 September')
   })
   it('People and setup reads "12 October to 11 October 2027"', () => {

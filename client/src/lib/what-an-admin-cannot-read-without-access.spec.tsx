@@ -38,10 +38,14 @@ describe('one sentence for what an admin cannot read without access', () => {
      OnePersonPage.spec.tsx, which needs a full people list and a matched :id route this file does
      not set up. Not duplicated here. */
 
-  it('Today’s welcome card uses it', async () => {
+  /* Changed on 3 November 2026 (F5): the welcome card no longer carries the sentence. The paragraph left Today's first screen on
+     31 October (7ac13936e: four of four impatient admins called it a waste, and the prototype's Today has none), and the standards
+     of 2 November forbid privacy notes on screens. It stays in the guide above and on a person's own page. */
+  it('Today’s welcome card does not repeat it', async () => {
     useAuthStore.setState({ user: { id: 'u1', role: 'ADMIN', organizationName: 'Kijani Foods' } } as any)
     ;(apiClient.get as any).mockResolvedValue({ data: { data: { people: 1, admins: 1, checkIns: 0, paying: false, connected: false } } })
     render(withQueryClient(<AdminFirstRun />))
-    expect(await screen.findByText(new RegExp(`never ${WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} unless given access`))).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'Welcome' })).toBeTruthy()
+    expect(document.body.textContent).not.toContain(WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS)
   })
 })

@@ -83,3 +83,18 @@ describe('request 123: what was agreed at the start, as each reader reads it', (
     expect(b.startingState).toBeNull();
   });
 });
+
+/* kwame-board.jpg, "What was agreed at the start: Confirmed by both on day 1". */
+describe('what was agreed says when both confirmed it on day 1', () => {
+  const confirmedOnDayOne = (o: any) => ({ ...o, awareness: 'CONFIRMED', createdAt: new Date('2026-09-01T09:00:00Z') });
+  const CONFIRMED = { ...SETUP, personObjectives: SETUP.personObjectives.filter((o: any) => o.awareness !== 'NOT_TOLD').map(confirmedOnDayOne) };
+  it('Amina and Tobi each read "Confirmed by both on day 1" where every goal was written on day 1 and Tobi confirmed it', async () => {
+    expect((await boardAs(CONFIRMED, 'u-amina', 'MEMBER')).startingState.confirmed).toBe('Confirmed by both on day 1');
+    expect((await boardAs(CONFIRMED, 'u-tobi', 'MEMBER')).startingState.confirmed).toBe('Confirmed by both on day 1');
+  });
+  it('a goal only told, or written later, means it is not said', async () => {
+    expect((await boardAs(SETUP, 'u-amina', 'MEMBER')).startingState.confirmed).toBeUndefined();
+    const later = { ...CONFIRMED, personObjectives: CONFIRMED.personObjectives.map((o: any, i: number) => (i === 0 ? { ...o, createdAt: new Date('2026-09-10T09:00:00Z') } : o)) };
+    expect((await boardAs(later, 'u-amina', 'MEMBER')).startingState.confirmed).toBeUndefined();
+  });
+});

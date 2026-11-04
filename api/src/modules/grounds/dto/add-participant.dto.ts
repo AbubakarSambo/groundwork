@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, IsOptional, MaxLength, IsDateString, ValidateIf } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, IsOptional, MaxLength, IsDateString, ValidateIf, IsBoolean } from 'class-validator';
 
 export class AddParticipantDto {
   @ApiProperty({ example: 'ada@acme.com' })
@@ -65,6 +65,12 @@ export class AddParticipantDto {
   @IsOptional()
   @IsDateString()
   startsAt?: string;
+
+  /** The lead checks in on their own first: the invitation is ready and held until they press "Send N invitations" (Hafsah, 3 November 2026). */
+  @ApiPropertyOptional({ description: 'Hold the invitation, ready, until the lead sends it.' })
+  @IsOptional()
+  @IsBoolean()
+  heldUntilSent?: boolean;
 
   @ApiPropertyOptional({ description: 'Pre-generated invite token from the anonymous entry flow. If absent, a new token is generated.' })
   @IsOptional()

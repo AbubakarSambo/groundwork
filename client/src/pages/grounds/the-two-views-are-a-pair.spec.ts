@@ -92,8 +92,12 @@ describe('the two views of a check-in are a pair', () => {
      * GroundParticipantPage's own Setup tab is unaffected and still renders `<MyParticipation>`
      * directly, for a participant reading their own check-in.
      */
-    const PEOPLE_AND_SETUP = readFileSync(join(__dirname, 'CheckInPeopleAndSetup.tsx'), 'utf8')
-    expect(PEOPLE_AND_SETUP).toMatch(/Your role/)
+    /* 4 November 2026: People and setup is the B8 page for everybody (PeopleAndSetupAsPictured.tsx) since Release 1B's switch
+       went. The lead's role is in her own row of "Who's in it", first in the list, under "Their role here"; her status and
+       sessions are still "Your status" and "Your sessions" in "When it runs". */
+    const PEOPLE_AND_SETUP = readFileSync(join(__dirname, 'PeopleAndSetupAsPictured.tsx'), 'utf8')
+    expect(PEOPLE_AND_SETUP).toMatch(/'Their role here'/)
+    expect(PEOPLE_AND_SETUP).toMatch(/a\.userId === g\?\.initiatorId \? -1/)
     expect(PEOPLE_AND_SETUP).toMatch(/Your status/)
     expect(PEOPLE_AND_SETUP).toMatch(/Your sessions/)
   })

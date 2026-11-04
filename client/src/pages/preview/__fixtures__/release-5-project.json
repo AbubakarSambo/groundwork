@@ -1,0 +1,114 @@
+{
+ "renders": true,
+ "mode": "live",
+ "family": "project",
+ "groundId": "mastercard-test",
+ "title": "Mastercard market study",
+ "kindOfWork": "a funded project",
+ "releaseFiveProjects": true,
+ "project": {
+  "plan": [
+   {
+    "id": "m1",
+    "title": "Milestone 1, the inception report",
+    "says": "Due 30 November. 30% of the contract is paid when it is accepted. It is started.",
+    "tone": "act"
+   },
+   {
+    "id": "m2",
+    "title": "Milestone 2, field data from 6 markets",
+    "says": "Due 31 January. 40% of the contract is paid when it is accepted.",
+    "tone": "act"
+   },
+   {
+    "id": "m3",
+    "title": "Milestone 3, the final report and workshop",
+    "says": "Due 15 March. 30% of the contract is paid when it is accepted.",
+    "tone": "act"
+   }
+  ],
+  "money": {
+   "months": [
+    {
+     "month": "November",
+     "says": "What is left of the start-up grant comes in, KES 1,000,000. Hiring the field team goes out, KES 650,000.",
+     "tightest": false
+    },
+    {
+     "month": "December",
+     "says": "Travel to 6 markets goes out, KES 560,000.",
+     "tightest": true
+    },
+    {
+     "month": "January",
+     "says": "40% of the contract on approval comes in, KES 2,400,000.",
+     "tightest": false
+    }
+   ],
+   "tightestSays": "The tightest month is December, KES 210,000 short if nothing else comes in by then."
+  },
+  "stakeholders": [
+   {
+    "id": "s1",
+    "title": "The Mastercard programme lead",
+    "says": "Mercy keeps in touch with them. They need monthly updates, evidence over opinion.",
+    "tone": "rec"
+   },
+   {
+    "id": "s2",
+    "title": "County trade officers in 6 counties",
+    "says": "Brian keeps in touch with them. What they need is still to be learned.",
+    "tone": "att"
+   }
+  ],
+  "comingUp": [
+   {
+    "id": "update-s1",
+    "title": "Update for The Mastercard programme lead in 10 days",
+    "says": "Groundwork has gathered what they asked last time and where the plan and the money stand, and drafted a brief.",
+    "tone": "act",
+    "brief": "The update for The Mastercard programme lead. Last time they asked: “How many traders have you spoken to, and in which markets?” Milestone 1, the inception report, is started, due 30 November. Milestone 2, field data from 6 markets, is planned, due 31 January. Milestone 3, the final report and workshop, is planned, due 15 March. The tightest month is December, KES 210,000 short if nothing else comes in by then. They need monthly updates, evidence over opinion.",
+    "rehearse": true
+   },
+   {
+    "id": "invoice-m1",
+    "title": "The inception report, and its invoice",
+    "says": "When it is accepted, Brian is told the amount and terms, so the invoice goes out the same day.",
+    "tone": "act"
+   }
+  ],
+  "offTrack": [
+   "The tightest month is December, KES 210,000 short if nothing else comes in by then.",
+   "County trade officers in 6 counties could be at risk. Brian keeps in touch with them. What they need is still to be learned."
+  ],
+  "offTrackSays": "When the plan changes, the recovery goes through the same loop as any change of direction, so nobody is judged against the old plan."
+ },
+ "participants": [
+  {
+   "id": "p-wanjiku",
+   "name": "Wanjiku Mwangi"
+  },
+  {
+   "id": "p-mercy",
+   "name": "Mercy Wanjiru"
+  },
+  {
+   "id": "p-brian",
+   "name": "Brian Otieno"
+  },
+  {
+   "id": "p-joseph",
+   "name": "Joseph Kamau"
+  },
+  {
+   "id": "p-amina",
+   "name": "Amina Hassan"
+  }
+ ],
+ "myParticipantId": "p-wanjiku",
+ "lastChangedAt": "2026-11-01T06:00:00Z",
+ "workRecords": [],
+ "objectives": [],
+ "checkInGrid": null,
+ "whatMovedEachDay": {}
+}

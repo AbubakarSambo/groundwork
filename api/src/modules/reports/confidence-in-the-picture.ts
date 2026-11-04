@@ -53,7 +53,7 @@ export function confidenceInThePicture(scoredSessions: number, meanLevel: number
     if ((also.failed ?? 0) > 0) {
       return {
         band: 'nothing yet',
-        line: 'The scoring did not run for the sessions here, so this part of the picture has not been read. That is a fault on our side, not a fact about anybody.',
+        line: 'The scoring did not run for the sessions here, so this part of the picture has not been read. That is a fault on my side, not a fact about anybody.',
       };
     }
     return {
@@ -79,7 +79,7 @@ export function confidenceInThePicture(scoredSessions: number, meanLevel: number
   return {
     band: 'thin',
     // The sentence that used to say "low specificity" about a person.
-    line: `We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. ${WHERE_IT_WAS_READ_FROM}`,
+    line: `I am not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. ${WHERE_IT_WAS_READ_FROM}`,
   };
 }
 
@@ -106,7 +106,7 @@ export function provenanceLine(p: Provenance): string {
   const where = p.firstSeenSession ? ` (session ${p.firstSeenSession})` : '';
 
   if (p.contradicted) {
-    return `Described differently by more than one person${where}. People said different things about it, so it is not settled.`;
+    return `People said different things about this${where}.`;
   }
   if (p.accounts >= 2) {
     return `Described independently by ${p.accounts} people${where}.`;
@@ -158,8 +158,7 @@ export function selfContradictionLine(c: SelfContradiction): string {
  * that presents itself as final invites people to argue with it instead of
  * adding to it, which is the opposite of what it is for.
  */
-export const CURRENT_BEST_READING =
-  'This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.';
+export const CURRENT_BEST_READING = '';
 
 /**
  * THE FIVE READINGS A SESSION IS SCORED ON, AND ONLY THOSE (review of 1 October 2026).

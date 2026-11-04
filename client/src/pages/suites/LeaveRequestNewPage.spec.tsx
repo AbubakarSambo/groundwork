@@ -172,7 +172,7 @@ describe('Request leave', () => {
   it('on a 5xx loading the form, shows the form with a "Try again", not just an error note', async () => {
     ;(fileARequestApi.leaveForm as any).mockRejectedValue(refusal(500))
     open()
-    await screen.findByText('That did not load, and nothing has changed.')
+    await screen.findByText('That didn’t load. Try again.')
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
     expect(screen.getByLabelText('Start date')).toBeInTheDocument()
     expect(screen.getByLabelText('End date')).toBeInTheDocument()
@@ -182,7 +182,7 @@ describe('Request leave', () => {
   it('on a network fault loading the form, shows the form with a "Try again", not just an error note', async () => {
     ;(fileARequestApi.leaveForm as any).mockRejectedValue(new Error('Network Error'))
     open()
-    await screen.findByText('That did not load, and nothing has changed.')
+    await screen.findByText('That didn’t load. Try again.')
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
     expect(screen.getByLabelText('Start date')).toBeInTheDocument()
   })
@@ -191,7 +191,7 @@ describe('Request leave', () => {
     ;(fileARequestApi.leaveForm as any).mockRejectedValueOnce(refusal(500)).mockResolvedValueOnce({ kinds: [], standIns: [] })
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
-    await waitFor(() => expect(screen.queryByText('That did not load, and nothing has changed.')).toBeNull())
+    await waitFor(() => expect(screen.queryByText('That didn’t load. Try again.')).toBeNull())
     expect(fileARequestApi.leaveForm).toHaveBeenCalledTimes(2)
   })
 })

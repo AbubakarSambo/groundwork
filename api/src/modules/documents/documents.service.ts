@@ -1,3 +1,4 @@
+import { fileTheProofOnItsItem } from './proof-filed-on-its-item';
 import { theNumberAsWritten, theSameWords } from '../grounds/a-dump-is-many-things';
 import { theFigureAsWritten } from './a-number-keeps-its-unit';
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
@@ -17,7 +18,7 @@ import { AnthropicService } from '../conversation/anthropic.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { originFromTheFile, looksGeneratedByAModel, type DocumentOrigin } from './what-kind-of-thing-a-document-is';
 import { DOCUMENT_ORIGIN_PROMPT, DOCUMENT_ORIGIN_SCHEMA, DESCRIPTION_CHECK_PROMPT, DESCRIPTION_CHECK_SCHEMA } from '../conversation/prompt-library';
-import { DocumentVisibility, RecordEntryType } from '@prisma/client';
+import { CheckInStatus, DocumentVisibility, RecordEntryType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
 import { aReceiptOrAnInvoice } from './a-receipt-is-not-a-conversation';
@@ -32,7 +33,7 @@ import {
 import { assertInviteLinkStillOpens } from '../participants/an-invite-link-still-opens';
 import {
   WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ,
-  theContextWeHave, BANK_DETAILS_LEFT_OUT, whoThisNameIs, theNameWeUseFor, aSentence, type WhatADocumentHolds, type WhatLanded,
+  theContextWeHave, theDocumentLine, BANK_DETAILS_LEFT_OUT, whoThisNameIs, theNameWeUseFor, aSentence, type WhatADocumentHolds, type WhatLanded,
 } from './what-a-document-holds';
 
 const ALLOWED_MIME = [
@@ -132,6 +133,8 @@ export function toDocShape(
        sentence the chat said rather than a filename and a date. See what-a-document-holds. */
     holds: doc.holds ?? null,
     theContextWeHave: doc.holds ? theContextWeHave(doc.holds as any, { reader: { participantId: viewerParticipantId } }) : null,
+    /* Its first line, one field: a page that already names the document shows the block without it (theDocumentLine). */
+    theDocumentLine: doc.holds ? theDocumentLine((doc.holds as any).fileName, (doc.holds as any).whatItIs) : null,
     /* The same sentence with the question on it, for the conversation that is waiting on the read. */
     askingAboutIt: doc.holds ? theContextWeHave(doc.holds as any, { asking: true, willNoteIt: { visibility: (doc as any).visibility }, reader: { participantId: viewerParticipantId } }) : null,
     /* ITEM BY ITEM, WITH PAGES (week 14, request 6c): what it took, and what it left out and why.
@@ -205,10 +208,16 @@ export class DocumentsService {
    * AN UPLOAD HAS TO CHANGE SOMETHING. The person's record lines are read against what they just
    * attached, so a line the document backs stops being recall. Best effort, after the row exists.
    */
+  /*
+   * ONCE, NOT TWICE (2 November 2026). An upload while their check-in is open is read at that check-in's close, which reads every
+   * line against every document once the check-in's own lines exist (readTheLinesJustWritten), so it is not read here as well.
+   * An upload with no check-in open, such as on the Context tab, is read now.
+   */
   private anchorAfterUpload(participantId: string, groundId: string) {
-    this.conversation.anchorRecordToDocuments(participantId, groundId).catch((err) =>
-      this.logger.warn(`Anchoring after upload failed for participant ${participantId}: ${err?.message}`),
-    );
+    Promise.resolve(this.prisma.checkIn?.findFirst?.({ where: { participantId, status: CheckInStatus.IN_PROGRESS }, select: { id: true } }))
+      .catch(() => null)
+      .then((open) => (open ? undefined : this.conversation.anchorRecordToDocuments(participantId, groundId)))
+      .catch((err) => this.logger.warn(`Anchoring after upload failed for participant ${participantId}: ${err?.message}`));
   }
 
   /**
@@ -239,6 +248,18 @@ export class DocumentsService {
       })),
     );
     return deckToText(slides);
+  }
+
+  /**
+   * A FILE READ DURING SETUP, BEFORE ANY CHECK-IN EXISTS (a new company's lead, 26 October 2026: "the lead couldn't upload docs"). The
+   * same reading every upload gets (PDF, Word, Excel, PowerPoint, photos, text), for the person signed in, and nothing is stored. Bank details are hidden
+   * the same way as every upload, and the text goes back to the setup conversation, which reads it and says what it found.
+   */
+  async readForSetup(file: Express.Multer.File | undefined): Promise<{ name: string; text: string }> {
+    if (!file?.buffer?.length) throw new BadRequestException('Choose a file to add.');
+    const text = (await this.extractContent(file)).trim();
+    if (!text) throw new BadRequestException('Nothing could be read from that file. Paste the text instead.');
+    return { name: file.originalname, text: text.slice(0, 40_000) };
   }
 
   /**
@@ -412,7 +433,7 @@ export class DocumentsService {
      * choosing to share it, so it is kept already opened to the check-in, the same state an app upload
      * reaches when its uploader opens it. Never set by the app's upload, which keeps the private default.
      */
-    opts: { sharedWithTheCheckIn?: boolean } = {},
+    opts: { sharedWithTheCheckIn?: boolean; fromTheCheckIn?: boolean } = {},
   ) {
     this.refuseWhatCannotBeRead(file);
 
@@ -514,6 +535,17 @@ export class DocumentsService {
     void this.readTheRestOfIt(doc.id, groundId, participant.id, content, doc.fileName);
     const held = null as any;
 
+    /*
+     * PROOF ADDED IN A CHECK-IN, FILED ON ITS ITEM (Release 1B, pull request 2 of 3). Only a file added in a check-in (the web
+     * check-in says so; a file sent on WhatsApp during one is), only while the organisation's Release 1B switch is on, and from
+     * the words just taken out of it, with no model call. Awaited, so the check-in's next turn can say where it was filed; a
+     * failure here is never why somebody could not attach a file. See proof-filed-on-its-item.ts.
+     */
+    const filed = (opts.fromTheCheckIn || opts.sharedWithTheCheckIn)
+      ? await fileTheProofOnItsItem(this.prisma as any, { id: doc.id, groundId, participantId: participant.id, fileName: doc.fileName, mimeType: doc.mimeType, uploaderNote: (doc as any).uploaderNote ?? null, content })
+        .catch((err: any) => { this.logger?.warn?.(`Could not file ${doc.fileName} as evidence: ${err?.message}`); return null; })
+      : null;
+
     // Extract structured claims from the document content and write them as
     // RecordEntry rows so they flow into the report corpus automatically.
     // Fire-and-forget - a failure here must not block the upload response.
@@ -531,6 +563,7 @@ export class DocumentsService {
       /* What it holds, and the product's own words for it, so every page says the same sentence. */
       holds: held ?? null,
       theContextWeHave: held ? theContextWeHave(held) : null,
+      theDocumentLine: held ? theDocumentLine(held.fileName, held.whatItIs) : null,
       /*
        * AND THE SAME SENTENCE WITH THE QUESTION ON IT, for the conversation that attached it.
        *
@@ -543,6 +576,8 @@ export class DocumentsService {
       numbersWaiting: (held as any)?.waiting?.length ?? 0,
       /* Kept, but nothing in it could be read: the person is asked to say what it shows. */
       couldNotRead: weCouldNotReadIt(content),
+      /* Release 1B: where it was filed as evidence, when it was added in a check-in with the switch on. Absent otherwise. */
+      ...(filed ? { filedAsEvidence: { on: filed.itemName ?? null } } : {}),
     };
   }
 
@@ -985,6 +1020,7 @@ export class DocumentsService {
       ...(isConversation ? { assumed: THE_ASSUMPTION_WHEN_UPLOADING } : {}),
       holds: held ?? null,
       theContextWeHave: held ? theContextWeHave(held) : null,
+      theDocumentLine: held ? theDocumentLine(held.fileName, held.whatItIs) : null,
     };
   }
 

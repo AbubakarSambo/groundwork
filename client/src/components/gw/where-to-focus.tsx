@@ -56,7 +56,7 @@ export function WhereToFocus({ direction }: { direction: TheDirectionOnThePage |
   return (
     <div className="gwui-rule gwui-pt-14 gwui-pb-14 gwui-pl-16 gwui-pr-16 gwui-mb-16" style={{ borderRadius: 8, background: 'var(--gw-card)' }}>
       <div className={LABEL_CLASS} style={{ textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700 }}>Where to focus</div>
-      <div className="gwui-fs-13 gwui-ink-text gwui-mb-12" style={{ lineHeight: 1.6, maxWidth: '68ch' }}>
+      <div className="gwui-fs-13 gwui-ink-text gwui-mb-12" style={{ lineHeight: '21px', maxWidth: '68ch' }}>
         {direction.saying?.trim() || `What ${outOf || 'the'} account${outOf === 1 ? '' : 's'} named, most-named first. The number is how many named it.`}
       </div>
       <div className="gwui-gap-12-20" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
@@ -65,7 +65,7 @@ export function WhereToFocus({ direction }: { direction: TheDirectionOnThePage |
             <div className={LABEL_CLASS} style={{ textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700 }}>{l.title}</div>
             <ol className="gwui-m-0 gwui-pl-0" style={{ listStyle: 'none' }}>
               {l.items.slice(0, 6).map((item, i) => (
-                <li key={`${l.key}-${i}`} className="gwui-gap-8 gwui-fs-13 gwui-ink-text" style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1.5 }}>
+                <li key={`${l.key}-${i}`} className="gwui-gap-8 gwui-fs-13 gwui-ink-text" style={{ display: 'flex', alignItems: 'baseline', lineHeight: '20px' }}>
                   <span className="gwui-ink-navy" style={{ minWidth: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{item.namedBy.length}</span>
                   <span>
                     {item.name}
@@ -82,7 +82,7 @@ export function WhereToFocus({ direction }: { direction: TheDirectionOnThePage |
         <div className="gwui-rule-top gwui-mt-14 gwui-pt-12">
           <div className={LABEL_CLASS} style={{ textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700 }}>Where the room split</div>
           {direction.splits.map((s, i) => (
-            <div key={i} className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6, maxWidth: '68ch' }}>{s.saying}</div>
+            <div key={i} className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: '21px', maxWidth: '68ch' }}>{s.saying}</div>
           ))}
         </div>
       )}

@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { Controller, Get, Post, Param, Body, Req, UseGuards, HttpCode, BadRequestException } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
@@ -83,7 +84,9 @@ export class DetectorsController {
     });
     /* The same fence `structuredFindings` applies over this same table: a credential bound to some
        people does not see findings about the others. A finding about no person in particular passes. */
-    const rows = all.filter((r) => !r.personExternalId || mayTouch(req.machine, r.personExternalId));
+    /* Judgements of a person off for this organisation: no finding about a person is served (organisation/person-judgements.ts). */
+    const judged = await thePersonJudgementsAreOn(this.prisma, req.machine.organizationId);
+    const rows = all.filter((r) => !r.personExternalId || (judged && mayTouch(req.machine, r.personExternalId)));
     return {
       /* Named so a customer can tell "none found" from "not built yet" - the same reasoning as
          only offering webhook events that can fire. */

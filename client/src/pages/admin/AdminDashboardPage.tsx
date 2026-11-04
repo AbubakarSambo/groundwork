@@ -14,7 +14,7 @@ const SL: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--g
 function Stat({ val, label, accent }: { val: string | number; label: string; accent?: boolean }) {
   return (
     <div style={{ ...C, flex: 1, minWidth: 100 }}>
-      <div style={{ fontSize: 22, fontWeight: 800, color: accent ? 'var(--gw-navy)' : 'var(--gw-navy)' }}>{val}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: accent ? 'var(--gw-navy)' : 'var(--gw-navy)' }}>{val}</div>
       <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 3 }}>{label}</div>
     </div>
   )
@@ -214,9 +214,9 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
       onKeyDown={e => { if (e.key === 'Escape' && !loading) onClose() }}
     >
-      <div style={{ background: 'white', borderRadius: 10, padding: '24px 24px 20px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6 }}>{title}</div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 20 }}>{description}</div>
+      <div style={{ background: 'white', borderRadius: 10, padding: '24px 24px 20px', maxWidth: 400, width: '100%', boxShadow: 'var(--gw-shadow-modal)' }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6 }}>{title}</div>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', marginBottom: 20 }}>{description}</div>
 
         {step === 'request' ? (
           <>
@@ -224,17 +224,16 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
               A 6-digit verification code will be sent to your email address.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
+              <button className="btn pri"
                 ref={first}
                 onClick={handleRequestOtp}
                 disabled={loading}
-                style={{ flex: 1, padding: '10px 0', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: 'inherit' }}
+                style={{ flex: 1 }}
               >
                 {loading ? 'Sending…' : 'Send code'}
               </button>
-              <button
+              <button className="btn sec"
                 onClick={onClose}
-                style={{ padding: '10px 16px', borderRadius: 7, background: 'var(--gw-bg)', color: 'var(--gw-text)', fontSize: 13, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>
@@ -242,7 +241,7 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
           </>
         ) : (
           <>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-muted)', marginBottom: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 6 }}>
               Enter the 6-digit code sent to your email
             </div>
             <input
@@ -258,16 +257,15 @@ function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModa
             />
             {error && <div style={{ fontSize: 12, color: 'var(--gw-danger)', marginBottom: 10 }}>{error}</div>}
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
+              <button className="btn danger"
                 onClick={handleConfirm}
                 disabled={loading || otp.length < 6}
-                style={{ flex: 1, padding: '10px 0', borderRadius: 7, background: 'var(--gw-danger)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: (loading || otp.length < 6) ? 'not-allowed' : 'pointer', opacity: (loading || otp.length < 6) ? 0.7 : 1, fontFamily: 'inherit' }}
+                style={{ flex: 1 }}
               >
                 {loading ? 'Confirming…' : 'Confirm'}
               </button>
-              <button
+              <button className="btn sec"
                 onClick={onClose}
-                style={{ padding: '10px 16px', borderRadius: 7, background: 'var(--gw-bg)', color: 'var(--gw-text)', fontSize: 13, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>
@@ -321,11 +319,11 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
   return (
     <section>
       <div style={SL}>Access codes</div>
-      <input
+      <input className="gwui-input"
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Filter by code or creator…"
-        style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 10, boxSizing: 'border-box' }}
+        style={{ width: '100%', marginBottom: 10 }}
       />
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
@@ -346,23 +344,22 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
                   <td style={{ padding: '8px 10px', color: 'var(--gw-text)' }}>{c.creatorEmail}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{whenItWas(c.createdAt, 'day')}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{c.expiresAt ? whenItWas(c.expiresAt, 'day') : '-'}</td>
-                  <td style={{ padding: '8px 10px', fontWeight: 600, color: expired ? 'var(--gw-danger)' : dl === '∞' ? 'var(--gw-muted)' : Number(dl) <= 7 ? 'var(--gw-amber-b)' : 'var(--gw-text)' }}>{dl}</td>
+                  <td style={{ padding: '8px 10px', fontWeight: 700, color: expired ? 'var(--gw-danger)' : dl === '∞' ? 'var(--gw-muted)' : Number(dl) <= 7 ? 'var(--gw-amber-b)' : 'var(--gw-text)' }}>{dl}</td>
                   <td style={{ padding: '8px 10px' }}>
                     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.active ? 'var(--gw-green-bg)' : 'var(--gw-bg)', color: c.active ? 'var(--gw-green-t)' : 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>
                       {c.active ? 'Active' : 'Disabled'}
                     </span>
                   </td>
                   <td style={{ padding: '8px 10px' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.allowCodeCreation ? '#EEF3FB' : 'var(--gw-bg)', color: c.allowCodeCreation ? 'var(--gw-navy)' : 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.allowCodeCreation ? 'var(--gw-blue-bg)' : 'var(--gw-bg)', color: c.allowCodeCreation ? 'var(--gw-navy)' : 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>
                       {c.allowCodeCreation ? 'Yes' : 'No'}
                     </span>
                   </td>
-                  <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{c.redemptionCount}</td>
+                  <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--gw-navy)', textAlign: 'right' }}>{c.redemptionCount}</td>
                   <td style={{ padding: '8px 10px' }}>
                     {c.active && (
-                      <button
+                      <button className="btn sec sm red"
                         onClick={() => onDisable(c.id)}
-                        style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 5, background: '#fff0f0', color: 'var(--gw-danger)', border: '1px solid #f5c6cb', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                       >
                         Disable
                       </button>
@@ -529,7 +526,7 @@ function FeedbackSection({ feedback }: { feedback: AdminFeedback[] }) {
                 <span style={{ fontSize: 11, color: 'var(--gw-muted)', whiteSpace: 'nowrap', marginLeft: 12 }}>{timeAgo(f.createdAt)}</span>
               </div>
               {f.note && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, fontStyle: 'italic', marginTop: 4 }}>"{f.note}"</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', fontStyle: 'italic', marginTop: 4 }}>"{f.note}"</div>
               )}
             </div>
           ))}
@@ -590,14 +587,13 @@ function AdminManagementSection({
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderTop: '1px solid var(--gw-border)' }}
           >
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{a.email}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>{a.email}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
                 {[a.firstName, a.lastName].filter(Boolean).join(' ') || 'no name on the account'}
               </div>
             </div>
-            <button
+            <button className="btn sec sm"
               onClick={() => setRemoving(a)}
-              style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Take off
             </button>
@@ -611,24 +607,23 @@ function AdminManagementSection({
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 14 }}>
-          <input
+          <input className="gwui-input"
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder="them@example.com"
             required
-            style={{ flex: 1, padding: '9px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', outline: 'none' }}
+            style={{ flex: 1 }}
             onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
             onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
           />
-          <button
+          <button className="btn pri sm"
             type="submit"
-            style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
           >
             Add them
           </button>
         </form>
-        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 8 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 8 }}>
           They have to have a Groundwork account already - this promotes one, it does not create one.
         </div>
       </div>
@@ -761,10 +756,9 @@ function OpsAccessSection() {
               It has not been set up here yet. This writes the periods, the workstreams and the six
               people, and is safe to run twice.
             </div>
-            <button
+            <button className="btn pri sm"
               onClick={() => run(adminApi.setUpOps)}
               disabled={busy}
-              style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit' }}
             >
               Set it up
             </button>
@@ -787,17 +781,17 @@ function OpsAccessSection() {
           <div key={p.key} style={{ padding: '9px 0', borderTop: '1px solid var(--gw-border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>
                   {p.displayName}
                   {!p.active && <span style={{ fontWeight: 400, color: 'var(--gw-sub)' }}> · not active</span>}
                 </div>
-                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
                   {p.functionalRole.replace(/_/g, ' ').toLowerCase()}
                   {!p.linkedAccount && ' · no account connected'}
                 </div>
                 {/* ONE PERSON, SEVERAL ADDRESSES. Each one is its own way in and comes off on its own. */}
                 {[p.linkedAccount, ...(p.otherAccounts ?? [])].filter((a): a is string => !!a).map(a => (
-                  <div key={a} style={{ fontSize: 11.5, color: 'var(--gw-sub)', display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                  <div key={a} style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', gap: 8, alignItems: 'baseline' }}>
                     <span>{a}</span>
                     <button
                       onClick={() => run(() => adminApi.unlinkOpsAccount(p.key, a))}
@@ -809,10 +803,9 @@ function OpsAccessSection() {
                   </div>
                 ))}
               </div>
-              <button
+              <button className="btn sec sm"
                 onClick={() => setLinking(p.key)}
                 disabled={busy}
-                style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 {p.linkedAccount ? 'Connect another' : 'Connect an account'}
               </button>
@@ -826,19 +819,18 @@ function OpsAccessSection() {
                 }}
                 style={{ display: 'flex', gap: 8, marginTop: 8 }}
               >
-                <input
+                <input className="gwui-input"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="the Groundwork account they sign in with"
                   required
                   autoFocus
-                  style={{ flex: 1, padding: '8px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', outline: 'none' }}
+                  style={{ flex: 1 }}
                 />
-                <button
+                <button className="btn pri sm"
                   type="submit"
                   disabled={busy}
-                  style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   Connect
                 </button>
@@ -875,11 +867,11 @@ function UserUsageSection({ users }: { users: UserUsage[] }) {
   return (
     <section>
       <div style={SL}>What each person has done</div>
-      <input
+      <input className="gwui-input"
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Filter by email…"
-        style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 10, boxSizing: 'border-box' }}
+        style={{ width: '100%', marginBottom: 10 }}
       />
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
@@ -894,9 +886,9 @@ function UserUsageSection({ users }: { users: UserUsage[] }) {
             {sorted.map(u => (
               <tr key={u.userId} style={{ borderBottom: '1px solid var(--gw-border)' }}>
                 <td style={{ padding: '8px 10px', color: 'var(--gw-text)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</td>
-                <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.groundCount}</td>
-                <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.codeCount}</td>
-                <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.redemptionCount}</td>
+                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.groundCount}</td>
+                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.codeCount}</td>
+                <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.redemptionCount}</td>
                 <td style={{ padding: '8px 10px', color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>{timeAgo(u.lastActive)}</td>
               </tr>
             ))}
@@ -957,27 +949,24 @@ export function AdminDashboardPage() {
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-bg)', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Admin Dashboard</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Admin Dashboard</div>
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>Codes · Billing · Users · Feedback</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button
+            <button className="btn sec sm"
               onClick={() => navigate('/admin')}
-              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Platform console →
             </button>
-            <button
+            <button className="btn sec sm"
               onClick={() => navigate('/ops')}
-              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Our own system →
             </button>
             {/* Access to the API is granted here rather than bought. Our own
                 organisation appears on that list like anybody else's. */}
-            <button
+            <button className="btn sec sm"
               onClick={() => navigate('/admin/api-access')}
-              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               API access →
             </button>

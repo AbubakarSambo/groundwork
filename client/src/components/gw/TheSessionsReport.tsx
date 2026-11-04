@@ -1,3 +1,4 @@
+import { useTheDirectMorning } from '@/lib/the-direct-morning'
 import { createContext, useContext, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -562,7 +563,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
    * live: "4 of 5" here beside "4 of 6" on the check-in's own header, because the session report's
    * count and the rest of the product count differently). That is the server's read to fix; on
    * this screen, when the host page already knows the true total (the same figure the check-in's
-   * header uses, via `whoIsInRound`), it is passed in here and used instead of `counting.length`
+   * header uses, the served one count), it is passed in here and used instead of `counting.length`
    * whenever the two disagree, so a reader is never shown two different totals for one check-in.
    */
   totalInThisRound?: number | null
@@ -576,6 +577,8 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
   light?: boolean
 }) {
   const [byPerson, setByPerson] = useState(false)
+  /* The direct morning (lib/the-direct-morning.tsx): "What to do next", and no line that says who sees it or that nothing decides. */
+  const direct = useTheDirectMorning()
   const { data, isLoading, isError } = useQuery({
     queryKey: ['session-shaped-report', groundId, sessionNumber],
     queryFn: () => reportsApi.sessionReport(groundId, sessionNumber),
@@ -981,12 +984,12 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
               shout on a heading that already reads plainly as a sentence in itself. `next()` still
               advances `step`, which the "nothing yet" empty state below reads. */}
           {(() => { next(); return null })()}
-          <Callout tone="info" title="The conversation worth having now">
+          <Callout tone="info" title={direct ? 'What to do next' : 'The conversation worth having now'}>
             {readableWithoutFieldNames(d.theConversationWorthHaving)}
           </Callout>
         </div>
       ) : d.whyNoQuestion ? (
-        <Row n={next()} label="The conversation worth having now">
+        <Row n={next()} label={direct ? 'What to do next' : 'The conversation worth having now'}>
           <p className="gwui-sr-muted-prose">{d.whyNoQuestion}</p>
         </Row>
       ) : null}
@@ -1109,7 +1112,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
                   </div>
                 </FoldedLine>
                 {themed.length > 0 && <FoldedLine name="What each person did" fact={glance.eachPersonDid ?? null}>{saidJSX}</FoldedLine>}
-                {rest.length > 0 && <FoldedLine name="The picture from everybody" fact={glance.picture ?? null}>{pictureJSX}</FoldedLine>}
+                {rest.length > 0 && <FoldedLine name={direct ? 'What everybody said' : 'The picture from everybody'} fact={glance.picture ?? null}>{pictureJSX}</FoldedLine>}
                 {d.whatWentQuiet && <FoldedLine name="Not raised again" fact={glance.notRaisedAgain ?? null}>{quietJSX}</FoldedLine>}
                 {d.againstSuccess && (
                   <FoldedLine name="What everybody said good looks like" fact={glance.goodLooksLike ?? null}>
@@ -1130,6 +1133,13 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
         {!final && lastChangedLine && !light && (
           <span className="gwui-sr-footer-line">{lastChangedLine}</span>
         )}
+        {direct
+          ? (!final
+            ? 'People are still answering.'
+            : amended
+              ? `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''} and updated since, when somebody corrected their own check-in.`
+              : `Closed ${d.takenAt ? whenItWas(d.takenAt, 'day') : ''}.`)
+          : <>
         {!final
           ? 'People are still answering, so this moves. '
           : amended
@@ -1138,6 +1148,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
         {d.showsEverybody
           ? 'Everybody in this check-in reads this same report. Nothing here decides who is right.'
           : 'Until the shared report is out, the words above are your own. The counts are from everybody’s answers. Nobody else’s wording reaches you and yours does not reach them.'}
+          </>}
       </div>
     </Panel>
   )

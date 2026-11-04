@@ -24,7 +24,7 @@ export function SectionFailed({ what, error, retry }: { what: string; error: unk
       border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 12,
       /* The palette variable, not the hex the report page uses: a second copy of a colour is how
          two pages start disagreeing about what amber means. */
-      padding: '12px 14px', fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5,
+      padding: '12px 14px', fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.5,
       display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
     }}>
       <span>{what} did not load - {because}.</span>

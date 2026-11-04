@@ -196,7 +196,7 @@ export function howGoodIsThis(read: AFieldRead): AnAssessment {
   if (asked && neverReached / asked > 0.5) {
     return {
       fieldId: field.id, standing: 'WE_NEVER_ASKED',
-      because: `${neverReached} of ${asked} conversations never reached this. That is a gap in how we ran the check-in, not a finding about anybody.`,
+      because: `${neverReached} of ${asked} conversations never reached this. That is a gap in how I ran the check-in, not a finding about anybody.`,
     };
   }
   if (answered + couldNotSay && couldNotSay >= answered) {
@@ -435,7 +435,7 @@ export function theJudgementTemplate(): string {
     '',
     '4. WHAT THIS CANNOT TELL YOU. Every field the table marks THIN or SPLIT, and what it would take to know. A reader who cannot see the edge of the data calls the whole thing abstract.',
     '',
-    '5. WHAT WE FAILED TO ASK. Every field marked WE_NEVER_ASKED, with the number of conversations that missed it. This is our failure, said plainly, and it is the instruction for the next round.',
+    '5. WHAT I FAILED TO ASK. Every field marked WE_NEVER_ASKED, with the number of conversations that missed it. This is my failure, said plainly, and it is the instruction for the next round.',
     '',
     NEVER_A_PRONOUN_FOR_A_PERSON,
     '',

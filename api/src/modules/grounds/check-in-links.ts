@@ -127,10 +127,11 @@ export function checkInLinks(
       const said = (r.onLabel ?? '').trim() || null;
       return {
         id: r.id,
-        team: other ? labelOf(other) || said : said,
+        /* The team as the person named it here ("Operations"), as board-as-lead.txt reads; the way in still goes to that check-in's board. */
+        team: said || (other ? labelOf(other) : null),
         what: r.what.trim(),
         asked: new Date(r.createdAt).toISOString(),
-        open: other && labelOf(other) ? { label: labelOf(other), to: `/grounds/${other.id}/board` } : null,
+        open: other && labelOf(other) ? { label: said || labelOf(other), to: `/grounds/${other.id}/board` } : null,
         ...theDueFields(r, today),
       };
     });

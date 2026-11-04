@@ -37,7 +37,7 @@ import { Button as UIButton, Stack } from '@/components/gw/ui'
 const cardClass = 'gwui-fs-13-5 gwui-ink-text gwui-pt-16 gwui-pr-18 gwui-pb-16 gwui-pl-18 gwui-mb-18'
 const cardStyle: React.CSSProperties = { background: 'white', borderRadius: 12, lineHeight: 1.6, borderStyle: 'solid', borderWidth: 2, borderColor: 'var(--gw-text)' }
 const h3Class = 'gwui-fs-16 gwui-mb-8'
-const h3Style: React.CSSProperties = { fontWeight: 800 }
+const h3Style: React.CSSProperties = { fontWeight: 700 }
 const subClass = 'gwui-fs-13 gwui-mt-12 gwui-mb-2'
 const subStyle: React.CSSProperties = { fontWeight: 700 }
 const quietClass = 'gwui-fs-13 gwui-ink-sub gwui-mt-4 gwui-mb-4'
@@ -71,7 +71,7 @@ function TheAppealOutcome({ d, yours }: { d: TheAppealDecision; yours?: boolean 
   )
 }
 
-const DIDNT_SAVE = 'That did not save. What you wrote is still here, so you can try again.'
+const DIDNT_SAVE = 'That didn’t save. Try again.'
 
 /* ============================================================================ the lead */
 
@@ -81,7 +81,7 @@ const DIDNT_SAVE = 'That did not save. What you wrote is still here, so you can 
  * the check-in ends; on the ending page, the ones that are. Anybody else reads nothing here: the
  * person reads theirs on their own You board, and an admin reads appeals on Today.
  */
-export function SuggestionsForTheLead({ groundId, where }: { groundId: string; where: 'board' | 'ending' }) {
+export function SuggestionsForTheLead({ groundId, where, alsoTold }: { groundId: string; where: 'board' | 'ending'; alsoTold?: string[] }) {
   const { data } = useQuery({
     queryKey: ['suggestions', groundId],
     queryFn: () => suggestionsApi.onCheckIn(groundId),
@@ -91,10 +91,10 @@ export function SuggestionsForTheLead({ groundId, where }: { groundId: string; w
     .filter(isForTheLead)
     .filter(s => (where === 'ending') === s.aboutTheEnding)
   if (!mine.length) return null
-  return <>{mine.map(s => <ASuggestionForTheLead key={s.id} s={s} groundId={groundId} />)}</>
+  return <>{mine.map(s => <ASuggestionForTheLead key={s.id} s={s} groundId={groundId} alsoTold={alsoTold} />)}</>
 }
 
-function ASuggestionForTheLead({ s, groundId }: { s: SuggestionForTheLead; groundId: string }) {
+function ASuggestionForTheLead({ s, groundId, alsoTold }: { s: SuggestionForTheLead; groundId: string; alsoTold?: string[] }) {
   const qc = useQueryClient()
   const [mode, setMode] = useState<'none' | 'agree' | 'else'>('none')
   const [changing, setChanging] = useState(false)
@@ -202,6 +202,8 @@ function ASuggestionForTheLead({ s, groundId }: { s: SuggestionForTheLead; groun
       {s.decision && !changing && s.mayChangeTheDecision && (
         <div className={rowClass} style={rowStyle}><Button kind="quiet" size="small" onClick={() => setChanging(true)}>Change my decision</Button></div>
       )}
+      {/* danielpip-board.jpg: what the person was already shown on their own board, under the card, only when the board says they saw it first. */}
+      {(alsoTold ?? []).map((t) => <div key={t} className={quietClass}>{t}</div>)}
     </section>
   )
 }
@@ -231,7 +233,7 @@ function WhereYouStand({ s }: { s: SuggestionForThePerson }) {
   const busy = side.isPending || appeal.isPending
 
   return (
-    <section className="gwui-panel gwui-panel-pad" aria-label="Where you stand" style={{ borderStyle: 'solid', borderWidth: 2, borderColor: 'var(--gw-text)' }}>
+    <section className="panel pad" aria-label="Where you stand" style={{ borderStyle: 'solid', borderWidth: 2, borderColor: 'var(--gw-text)' }}>
       <h3 className={h3Class} style={h3Style}>Where you stand</h3>
       <div className={quietClass}>About your work in {s.checkIn.label}.</div>
       <div>{s.facts}</div>

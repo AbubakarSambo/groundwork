@@ -61,7 +61,27 @@ const A_DECISION_LABEL = /^(?:a|an|the)\s+(?:decision|approval|answer|response|r
 export function aHolderThatIsOnlyTheThing(holder: string | null | undefined, what: string | null | undefined): boolean {
   const h = THE_WORDS((holder ?? '').trim());
   const t = THE_WORDS((what ?? '').trim());
-  return !!h && !!t && /^(?:the|a|an)\s/i.test((holder ?? '').trim()) && (h === t || t.endsWith(h) || t.startsWith(`${h} `) || h.endsWith(t) || h.startsWith(`${t} `));
+  if (!h || !t) return false;
+  if (/^(?:the|a|an)\s/i.test((holder ?? '').trim()) && (h === t || t.endsWith(h) || t.startsWith(`${h} `) || h.endsWith(t) || h.startsWith(`${t} `))) return true;
+  /*
+   * A HOLDER THAT ONLY SAYS WHAT KIND OF THING IT IS (Drop Access run 1, A8). Grace read "What has been tried to get the M-Pesa
+   * message from M-Pesa, which Kevin Omondi is waiting for?": the holder "M-Pesa" is only the word before "message". Where the
+   * thing waited for is the holder's name and one word more ("the M-Pesa message", "the KRA certificate"), the holder is the thing.
+   */
+  return t.startsWith(`${h} `) && t.slice(h.length + 1).split(' ').length === 1;
+}
+
+/*
+ * WHAT IS WAITED FOR, NEVER "HER" OR "HIS" ABOUT THE PERSON WAITED ON (Drop Access run 1, A7). Joseph's wait on Grace was kept as
+ * "her approval for the KES 4,500 price for Juja Hardware", and Grace read "Joseph Kariuki is waiting on you for her approval".
+ * On a wait on somebody in the check-in, a "her", "his" or "their" at the start is that person's, and the sentence already names
+ * them, so it is not kept: "approval for the KES 4,500 price for Juja Hardware". Every reader then reads it right: "waiting on you
+ * for approval", "waiting on Grace for approval". Used when a wait is written, and by scripts/the-waits-said-without-her.ts.
+ */
+export function theThingWaitedFor(what: string, onParticipantId: string | null | undefined): string {
+  const t = String(what ?? '').trim();
+  if (!onParticipantId) return t;
+  return t.replace(/^(?:her|his|their)\s+(?=\S)/i, '');
 }
 
 export function theWaitSaid(

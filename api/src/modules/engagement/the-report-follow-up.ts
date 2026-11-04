@@ -42,6 +42,7 @@ export function cutAtAWord(label: string, max: number): string {
 const things = (n: number, one: string, many: string) => `${aNumberInWords(n)} ${n === 1 ? one : many}`;
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 
+/** The finding is said as "The report found", never "the shared picture". */
 export function theFollowUpWords(firstName: string | null | undefined, label: string, wentOut: Date, c: WhatChangedSinceTheReport) {
   const changed: string[] = [];
   if (c.done > 0) changed.push(`${things(c.done, 'thing people said they would do was', 'things people said they would do were')} done`);
@@ -62,7 +63,7 @@ export function theFollowUpWords(firstName: string | null | undefined, label: st
   /* THE FINDING, WHERE THERE IS ONE (engagement spec section 11). The message goes only when no next session has been opened, so no picture has been made since
      and the difference the report found has not been looked at again: that is said as what it is, and not as "still unresolved". */
   const looked = c.difference
-    ? [`The shared picture found that ${c.difference}. No check-in has been held since, so that has not been looked at again.`]
+    ? [`The report found that ${c.difference}. No check-in has been held since, so that has not been looked at again.`]
     : [];
   const lines = [
     `Hello ${firstName?.trim() || 'there'}. The report for "${label}" went out on ${whenItWas(wentOut, 'day')}.`,

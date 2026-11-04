@@ -51,7 +51,8 @@ describe('a period is not a day', () => {
        deadline question and, since the same day, the numbers question. Both are about what the
        PERSON said, which is why they are appended here rather than run as retries afterwards. */
     /* The team baseline is the one conversation that leaves it out: it learns how their work looks and does not turn a period they gave into a date to confirm. */
-    expect(src).toMatch(/const fullSystem = \[composed, (?:inTheBaseline \? null : )?aboutTheirDeadline/);
+    // Changed 26 October 2026 (Hafsah: item 4): the short-day block now sits between the composed prompt and the deadline question.
+    expect(src).toMatch(/const fullSystem = \[composed, (?:inTheBaseline \? null : A_SHORT_DAY, )?(?:inTheBaseline \? null : )?aboutTheirDeadline/);
   });
 
   it('and the probe that had two specs and no callers now has one', () => {

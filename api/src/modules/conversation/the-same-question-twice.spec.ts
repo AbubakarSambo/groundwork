@@ -125,7 +125,7 @@ describe('the note that merges onto what is already held', () => {
 
   /* Two or three seconds, not fifteen: it reads one answer and quotes it back into fields. */
   it('and the note runs on the fast model with nothing to deliberate about', () => {
-    const notes = SRC.slice(SRC.indexOf('private async noteWhatTheySaidNow('), SRC.indexOf('async extractRecordEntries('));
+    const notes = SRC.slice(SRC.indexOf('private async noteWhatTheySaidNow('), SRC.indexOf('async writeTheRecordFromTheAssessment('));
     expect(notes).toMatch(/\{ fast: true, thinkingBudget: 0 \}/);
   });
 });
@@ -164,7 +164,7 @@ describe('what the answer was about, read rather than matched', () => {
 
   /* An id nobody put in the brief would silently retire a subject that is still owed. */
   it('and only ids that are really in the brief are taken', () => {
-    const notes = SRC.slice(SRC.indexOf('private async noteWhatTheySaidNow('), SRC.indexOf('async extractRecordEntries('));
+    const notes = SRC.slice(SRC.indexOf('private async noteWhatTheySaidNow('), SRC.indexOf('async writeTheRecordFromTheAssessment('));
     expect(notes).toMatch(/const real = new Set\(subjects\.map\(\(s\) => s\.id\)\)/);
     expect(notes).toMatch(/\(read\.covered \?\? \[\]\)\.filter\(\(id\) => real\.has\(id\)\)/);
   });
@@ -180,7 +180,7 @@ describe('what the answer was about, read rather than matched', () => {
  */
 describe('the bookkeeping for what was put to them', () => {
   const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  const notes = SRC.slice(SRC.indexOf('private async noteWhatTheySaidNow('), SRC.indexOf('async extractRecordEntries('));
+  const notes = SRC.slice(SRC.indexOf('private async noteWhatTheySaidNow('), SRC.indexOf('async writeTheRecordFromTheAssessment('));
 
   it('nothing is marked once the conversation has closed', () => {
     expect(notes).toMatch(/const putLastTurn = row\.completedAt \? null : theChallengeWorthPutting\(/);

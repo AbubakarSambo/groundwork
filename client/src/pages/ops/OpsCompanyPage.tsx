@@ -51,9 +51,9 @@ export default function OpsCompanyPage() {
 
   if (detail.isError) {
     return (
-      <section className="gw-page" style={PAGE}>
+      <section style={PAGE}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>No company called {key}</h1>
-        <Link to="/ops/target-companies" style={{ fontSize: 13.5 }}>
+        <Link to="/ops/target-companies" style={{ fontSize: 14 }}>
           Back to the target list
         </Link>
       </section>
@@ -61,18 +61,18 @@ export default function OpsCompanyPage() {
   }
 
   const d = detail.data
-  if (!d) return <section className="gw-page" style={PAGE}><p style={NOTHING}>Working it out…</p></section>
+  if (!d) return <section style={PAGE}><p style={NOTHING}>Working it out…</p></section>
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <header style={{ marginBottom: 18 }}>
         <Link to="/ops/target-companies" style={{ ...LABEL, textDecoration: 'none', display: 'inline-block' }}>
           ← Target companies
         </Link>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', margin: '6px 0 2px' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-navy)', margin: '6px 0 2px' }}>
           {d.company.name}
         </h1>
-        <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: 0 }}>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: 0 }}>
           {readEnum(d.company.stage)}
           {d.company.owner ? ` · ${d.company.owner} owns it` : ' · nobody owns it'}
           {d.company.source ? ` · came from ${d.company.source}` : ''}
@@ -89,7 +89,7 @@ export default function OpsCompanyPage() {
           <p style={{ fontSize: 14, margin: 0 }}>
             <strong>Next:</strong> {d.company.nextAction}{' '}
             {d.company.nextActionDueAt && (
-              <span style={{ fontSize: 12.5 }}>
+              <span style={{ fontSize: 12 }}>
                 (<DueDate value={d.company.nextActionDueAt} />)
               </span>
             )}
@@ -217,7 +217,7 @@ export default function OpsCompanyPage() {
                 invalidate={[['ops']]}
               />
               {b.sourceDetail && (
-                <span style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-sub)' }}>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)' }}>
                   {b.sourceDetail}
                 </span>
               )}
@@ -268,7 +268,7 @@ export default function OpsCompanyPage() {
               {readEnum(o.stage)} · {money(o.estimatedValue)}
               {o.campaign ? ` · from ${o.campaign.title}` : ''}
               {o.lostReason && (
-                <span style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-sub)' }}>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)' }}>
                   Lost: {o.lostReason}
                 </span>
               )}

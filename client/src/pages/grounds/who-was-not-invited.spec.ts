@@ -61,24 +61,29 @@ describe('and both pages are wired to it', () => {
   const read = (rel: string) =>
     fs.readFileSync(path.join(__dirname, rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-  it('the conversation writes it down as well as toasting', () => {
+  it('the conversation writes it down as well as toasting, before it goes to the board', () => {
     /*
      * IT USED TO BE THE WIZARD. `/grounds/new` is a picker that hands over to the setup
      * conversation, and that conversation's save is the only thing that creates a check-in now, so
      * this rule moved with it rather than being deleted with the screen that held it.
+     *
+     * 4 November 2026: "Send N invitations" lands on the board now (the approved journey, stage 9), not the check-in's
+     * page, so the board must say it too (next case). Found by this spec: the board said nothing.
      */
     const chat = read('../enter/EntryChatPage.tsx')
     expect(chat).toContain('rememberWhoWasNotInvited(res.groundId, refused)')
     /* Before the navigation, or the page it is for never sees it. */
-    expect(chat.indexOf('rememberWhoWasNotInvited(res.groundId')).toBeLessThan(
-      chat.indexOf('navigate(`/grounds/${res.groundId}`, { replace: true })'),
-    )
+    const goes = chat.indexOf('navigate(`/grounds/${res.groundId}/board`, { replace: true })')
+    expect(goes).toBeGreaterThan(-1)
+    expect(chat.indexOf('rememberWhoWasNotInvited(res.groundId')).toBeLessThan(goes)
   })
 
-  it('and the check-in page reads it, names them, and can clear it', () => {
-    const page = read('GroundAdminPage.tsx')
-    expect(page).toContain('whoWasNotInvited(id)')
-    expect(page).toContain('whatToSayAboutThem(notInvited)')
-    expect(page).toContain('thatIsDealtWith(id!)')
+  it('and the check-in page and its board read it, for the lead, through the one callout', () => {
+    expect(read('GroundAdminPage.tsx')).toContain('<TheyWereNotInvited groundId={id} />')
+    expect(read('../board/BoardPage.tsx')).toContain('viewerRunsThisCheckIn && id && <TheyWereNotInvited groundId={id} />')
+    const callout = read('TheyWereNotInvited.tsx')
+    expect(callout).toContain('whoWasNotInvited(groundId)')
+    expect(callout).toContain('whatToSayAboutThem(notInvited)')
+    expect(callout).toContain('thatIsDealtWith(groundId)')
   })
 })

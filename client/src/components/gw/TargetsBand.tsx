@@ -67,7 +67,7 @@ export function TargetsBand({
       setDraft('')
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. What you wrote is still here, so try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
 
   const lead = participants.find((p: any) => p.partyType === 'INITIATOR')
@@ -127,7 +127,7 @@ export function TargetsBand({
             {onChangeTarget && (
               <button
                 onClick={() => onChangeTarget(t)}
-                className="gwui-fs-13 gwui-ink-sub gwui-p-0 gwui-rule-none gwui-tap-40"
+                className="gwui-fs-13 gwui-ink-sub gwui-p-0 gwui-rule-none gwui-tap-44"
                 style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Change this
@@ -136,7 +136,7 @@ export function TargetsBand({
           </div>
           {/* A number nobody has defined is not an agreed number, said beside the number. */}
           {t.notSettled && (
-            <div className="gwui-fs-13 gwui-ink-amber gwui-mt-4" style={{ lineHeight: 1.5, maxWidth: '62ch' }}>{t.notSettled}</div>
+            <div className="gwui-fs-13 gwui-ink-amber gwui-mt-4" style={{ lineHeight: '20px', maxWidth: '62ch' }}>{t.notSettled}</div>
           )}
           {assumes.length > 0 && editing !== t.id && (
             <WhatTheTargetAssumes figure={figure} name={t.name} assumes={assumes} />
@@ -163,11 +163,9 @@ export function TargetsBand({
                 placeholder="One thing on each line."
               />
               <div className="gwui-gap-8 gwui-mt-8" style={{ display: 'flex' }}>
-                <button
+                <button className="btn pri sm"
                   onClick={() => saveAssumes.mutate({ id: t.id, lines: draft.split('\n').map((l) => l.trim()).filter(Boolean) })}
                   disabled={saveAssumes.isPending}
-                  className="gwui-fs-13 gwui-ink-white gwui-pt-7 gwui-pr-13 gwui-pb-7 gwui-pl-13 gwui-rule-none"
-                  style={{ borderRadius: 7, background: 'var(--gw-navy)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   {saveAssumes.isPending ? 'Saving…' : 'Save'}
                 </button>
@@ -192,7 +190,7 @@ export function TargetsBand({
           with the others. The link sits at its right, as in the prototype. */}
       {isTheLead && (
         <div className="gwui-mb-8" style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <a href={`/grounds/${groundId}?tab=settings`} className="gwui-fs-13 gwui-ink-navy" style={{ fontWeight: 600 }}>
+          <a href={`/grounds/${groundId}?tab=settings`} className="gwui-fs-13 gwui-ink-navy" style={{ fontWeight: 700 }}>
             Change who sees them
           </a>
         </div>
@@ -242,7 +240,7 @@ export function WhatTheTargetAssumes({ figure, assumes, assumesSays }: {
       </div>
       {assumes.length ? (
         <>
-          <ul className="gwui-m-0 gwui-pl-18 gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6 }}>
+          <ul className="gwui-m-0 gwui-pl-18 gwui-fs-13 gwui-ink-text" style={{ lineHeight: '21px' }}>
             {assumes.map((a, k) => <li key={k}>{a}</li>)}
           </ul>
           <div className="gwui-mt-6">

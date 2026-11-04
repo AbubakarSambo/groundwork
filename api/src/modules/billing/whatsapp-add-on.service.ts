@@ -10,6 +10,7 @@ import { whatsappPeopleCharged } from './what-a-month-costs';
 import { seatsIn } from '../../common/seats';
 import { StripeService } from './stripe.service';
 import { whatCoversThem, isSubscribed } from '../../common/subscription';
+import { theGraceInForce } from './the-trial-grace';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
 /**
@@ -125,7 +126,7 @@ export interface WhatsAppStanding {
 
 const ORG_FIELDS = {
   id: true, createdAt: true, subscriptionPlan: true, subscriptionStatus: true, subscriptionStripeId: true, subscriptionPeriodEnd: true,
-  freeUntil: true, freePlan: true, freeTrialStartedAt: true, whatsappAddOnOn: true, whatsappAddOnItemId: true, whatsappFreeUntil: true,
+  freeUntil: true, freePlan: true, freeTrialStartedAt: true, freeMonthOfReleaseAt: true, careFeeStatus: true, whatsappAddOnOn: true, whatsappAddOnItemId: true, whatsappFreeUntil: true,
   whatsappPeopleItemId: true, whatsappFlatAddOnKept: true,
 } as const;
 
@@ -173,8 +174,9 @@ export class WhatsAppAddOnService {
       this.prisma.pricingPlan.findMany(),
       this.prisma.whatsAppMonthlyUse.findUnique({ where: { organizationId_month: { organizationId, month: monthOf(now) } } }),
     ]);
-    const cover = whatCoversThem(org, now);
-    const inAFreeRun = !!org.freeUntil && new Date(org.freeUntil).getTime() > now.getTime() && !!org.freePlan;
+    const cover = whatCoversThem(org, now, await theGraceInForce(this.prisma).catch(() => null));
+    /* The four weeks after a free month are part of it for WhatsApp too: everything keeps working until the pause (2 November). */
+    const inAFreeRun = (!!org.freeUntil && new Date(org.freeUntil).getTime() > now.getTime() && !!org.freePlan) || !!cover.afterItsTrial;
     const switchOn = trial.on;
     const onTheFreePlan = cover.covers === 'free tier' && freePlanApplies(trial, org.createdAt);
 
@@ -215,7 +217,7 @@ export class WhatsAppAddOnService {
       switchOn,
       plan,
       inAFreeRun,
-      freeTrial: inAFreeRun && org.freeTrialStartedAt ? { months: trial.months, endsOn: new Date(org.freeUntil as Date) } : null,
+      freeTrial: inAFreeRun && org.freeTrialStartedAt && !cover.afterItsTrial ? { months: trial.months, endsOn: new Date(org.freeUntil as Date) } : null,
       onTheFreePlan,
       whatsappFreeUntil: org.whatsappFreeUntil ? new Date(org.whatsappFreeUntil) : null,
       inTheFreeWhatsAppMonth: freeMonth,
@@ -553,6 +555,10 @@ export class WhatsAppAddOnService {
     };
     return {
       on: s.addOnOn,
+      /* WHETHER WHATSAPP IS ON FOR THE ORGANISATION, ONE FACT FOR EVERY PAGE (local test of staging, 15 October). `on` is the
+         add-on switch alone, so in the free month Connections read it and said "Your organisation has not turned on WhatsApp"
+         while this page said "WhatsApp is on for your organisation during its free month". This is the fact `onOrOff` says. */
+      onForTheOrganisation: s.addOnOn || s.inTheFreeWhatsAppMonth,
       /* Never a plan's name or price for an organisation on the free plan; its limit is in `use`. */
       plan: s.onTheFreePlan ? null : s.plan,
       price: s.onTheFreePlan ? null : s.flatKept ? (s.addOnCents === null ? null : { amountCents: s.addOnCents, currency: 'USD' }) : (s.personCents == null ? null : { amountCents: s.personCents, currency: 'USD', perPerson: true }),

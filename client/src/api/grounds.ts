@@ -25,6 +25,13 @@ export interface PlanCard {
   note?: string
   whichWay?: string
   directionSuggested?: string
+  /** One of the targets read from the lead's own check-in: shown together, as one card (Hafsah, 18 October). */
+  fromYourCheckIn?: boolean
+  /** The day she said it, as YYYY-MM-DD. */
+  saidOn?: string | null
+  /** Groundwork's own suggestion, quoting nobody: no quotation and no Edit (the stall rule, standing decision 4). */
+  suggested?: boolean
+  fields?: { what?: string; number?: number; personName?: string; personOnTheCheckIn?: string; participantId?: string }
 }
 
 export type GroundScenario =
@@ -40,6 +47,21 @@ export type GroundScenario =
   | 'OPEN_READ'
   // One honest read from everybody, once. The only situation with no run and no board.
   | 'SNAPSHOT'
+  /** Collect what's owed (Release 2): offered only where the organisation's Release 2 switch is on. Mirrors the server enum. */
+  | 'COLLECTIONS'
+
+/**
+ * RELEASE 2: THE TYPE IN "WHAT IT IS", served only where the organisation's Release 2 switch is on and the scenario has types
+ * of its own: the types offered, in the B8 picture's words; the one on record or read for the lead to confirm; whether she has;
+ * one sentence saying where it came from; and whether this reader may confirm it (the lead only).
+ */
+export interface TheTypeInWhatItIs {
+  offered: { type: string; label: string }[]
+  type: string | null
+  confirmed: boolean
+  says: string
+  mayConfirm: boolean
+}
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 export type GroundCadence = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL' | 'ONE_TIME'
@@ -51,6 +73,8 @@ export interface CreateGroundBody {
   timelineDays?: number
   cadence?: GroundCadence
   cadenceAnchorDay?: number
+  /** Twice or more a week: the weekdays a weekly check-in meets on, 0 = Sunday. */
+  cadenceDays?: number[]
   /** Rounds where every party has completed their check-in. W13-6. */
   roundsDone?: number
   startsAt?: string
@@ -198,6 +222,27 @@ export const groundsApi = {
       .patch<{ id: string; kindOfWork: string | null; kindOfWorkSetBy: string | null; workStages: string[] | null }>(`/grounds/${id}/kind-of-work`, body)
       .then(r => r.data),
 
+  /**
+   * RELEASE 2: THE LEAD CONFIRMS THE TYPE in "What it is" on People and setup, one of the types the check-in's scenario offers.
+   * Only the lead; only where the organisation's Release 2 switch is on. A refusal is a full sentence, shown as the server gives it.
+   */
+  confirmTheType: (id: string, type: string) =>
+    apiClient
+      .patch<{ id: string; checkInType: string | null; checkInTypeConfirmedAt: string | null }>(`/grounds/${id}/check-in-type`, { type })
+      .then(r => r.data),
+
+  /** RELEASE 4: the thirteen templates, where the organisation has Release 4 on (`on: false` and none otherwise). */
+  templates: () =>
+    apiClient.get<{ on: boolean; templates: ATemplate[] }>('/grounds/templates').then(r => ((r.data as any)?.data ?? r.data) as { on: boolean; templates: ATemplate[] }),
+
+  /** RELEASE 4: the lead attaches one of the thirteen templates (its id), or takes it off (null). A refusal is the server's sentence. */
+  setTemplate: (id: string, template: string | null) =>
+    apiClient.patch<{ id: string; templateId: string | null; workStages: string[] | null }>(`/grounds/${id}/template`, { template }).then(r => r.data),
+
+  /** RELEASE 2: whether this organisation may start a check-in to collect what is owed. The server asks again on create. */
+  situationsOffered: () =>
+    apiClient.get<{ collections: boolean }>('/grounds/situations-offered').then(r => (r.data as any)?.data ?? r.data),
+
   setExpectThemToUnblock: (id: string, expect: boolean) =>
     apiClient
       .patch<{ id: string; expectThemToUnblock: boolean }>(`/grounds/${id}/expect-them-to-unblock`, { expect })
@@ -310,6 +355,10 @@ export const groundsApi = {
   resendParticipantInvite: (groundId: string, participantId: string) =>
     apiClient.post(`/grounds/${groundId}/participants/${participantId}/resend-invite`).then(r => r.data),
 
+  /** "Send N invitations" on Today: the invitations the lead held ready while she checked in on her own first (Hafsah, 3 November 2026). */
+  sendTheInvitationsReadyToSend: (groundId: string) =>
+    apiClient.post<{ sent: number }>(`/grounds/${groundId}/invitations/send`).then(r => r.data),
+
   /** D1 and D2 (13 October, evening): whoever runs the check-in adds somebody's WhatsApp number. */
   /** Each person's WhatsApp number and where they are on it (whoever runs the check-in, or an admin). */
   whereEachPersonIsOnWhatsApp: (groundId: string) =>
@@ -317,8 +366,36 @@ export const groundsApi = {
   addTheirWhatsAppNumber: (groundId: string, participantId: string, phone: string) =>
     apiClient.patch<{ said: string }>(`/grounds/${groundId}/participants/${participantId}/whatsapp-number`, { phone }).then(r => r.data),
 
+  /** Each person from their invitation to coming back on their own (whoever runs the check-in, or an admin). */
+  whereEachPersonIsGettingStarted: (groundId: string) =>
+    apiClient.get<{ stages: string[]; people: { participantId: string; name: string; team: string | null; reached: number; says: string; needsYou?: { what: 'the address'; email: string | null } }[] }>(`/grounds/${groundId}/participants/getting-started`).then(r => (r.data as any)?.data ?? r.data),
+  /** People and setup as this reader may read it (Release 1B, pull request 1 of 3). `{ on: false }` while the switch is off. */
+  peopleAndSetup: (groundId: string) =>
+    apiClient.get<PeopleAndSetup>(`/grounds/${groundId}/people-and-setup`).then(r => (r.data as any)?.data ?? r.data),
+
+  /** References and resources as this reader may read it (Release 1B, pull request 2 of 3). `{ on: false }` while the switch is off. */
+  referencesAndResources: (groundId: string) =>
+    apiClient.get<ReferencesAndResources>(`/grounds/${groundId}/references-and-resources`).then(r => (r.data as any)?.data ?? r.data),
+  /** One page of the evidence this reader may read: 25 to a page, newest first, with search and filters. */
+  referencesEvidence: (groundId: string, q: { page?: number; q?: string; group?: string; person?: string; when?: string }) =>
+    apiClient.get<AnEvidencePage | { on: false }>(`/grounds/${groundId}/references-and-resources/evidence`, { params: q }).then(r => (r.data as any)?.data ?? r.data),
+  /** The lead adds a line (the server refuses anybody else). */
+  addAReference: (groundId: string, body: { kind: AReferenceKind; text: string; label?: string; aboutParticipantId?: string }) =>
+    apiClient.post(`/grounds/${groundId}/references-and-resources/lines`, body).then(r => (r.data as any)?.data ?? r.data),
+  /** The lead rewords or removes a line (the server refuses anybody else). */
+  changeAReference: (groundId: string, lineId: string, body: { text?: string; label?: string; closed?: boolean }) =>
+    apiClient.patch(`/grounds/${groundId}/references-and-resources/lines/${lineId}`, body).then(r => (r.data as any)?.data ?? r.data),
+
+  /** My work: one person's page in this check-in, for that person or the lead (Release 1B, pull request 3 of 3). `{ on: false }` while the switch is off. */
+  myWork: (groundId: string, person?: string | null) =>
+    apiClient.get<MyWork>(`/grounds/${groundId}/my-work`, { params: person ? { person } : {} }).then(r => (r.data as any)?.data ?? r.data),
+
   getMediatorBrief: (groundId: string) =>
     apiClient.get(`/grounds/${groundId}/mediator-brief`).then(r => r.data),
+
+  /** Whether the team's report shares itself at a time of day ("18:30"); null is off (Hafsah, 18 October 2026). */
+  setReportSharesAt: (groundId: string, time: string | null) =>
+    apiClient.patch<{ id: string; reportSharesAt: string | null }>(`/grounds/${groundId}/report-shares-at`, { time }).then(r => r.data),
 
   setPeopleWorkTogether: (groundId: string, together: boolean) =>
     apiClient.patch<{ id: string; peopleWorkTogether: boolean }>(`/grounds/${groundId}/people-work-together`, { together }).then(r => r.data),
@@ -592,8 +669,9 @@ export const groundsApi = {
     apiClient.post(`/grounds/${groundId}/plan/proposals/${cardId}/confirm`, direction ? { direction } : {}).then(r => r.data),
   planCardNotNow: (groundId: string, cardId: string) =>
     apiClient.post(`/grounds/${groundId}/plan/proposals/${cardId}/not-now`).then(r => r.data),
-  editPlanCard: (groundId: string, cardId: string, says: string) =>
-    apiClient.patch<PlanCard>(`/grounds/${groundId}/plan/proposals/${cardId}`, { says }).then(r => r.data),
+  /** One card changed while it waits: its sentence (`says`), or a target's own values as she types them (`fields`). */
+  editPlanCard: (groundId: string, cardId: string, change: { says: string } | { fields: { what: string; number: number | null } }) =>
+    apiClient.patch<PlanCard>(`/grounds/${groundId}/plan/proposals/${cardId}`, change).then(r => r.data),
 
   contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient
@@ -605,4 +683,102 @@ export const groundsApi = {
         proposal: { gap: string; say: string } | null
       }>(`/grounds/${groundId}/context-chat`, { history })
       .then(r => r.data),
+}
+
+/** People and setup, as the server serves it to this reader (api grounds/people-and-setup.ts). */
+export type ASetupProblem = { participantId: string; says: string; fix: 'fix-the-address' | 'add-a-number' | 'add-their-role' | 'let-them-in' | 'view-plans' | null }
+export type PeopleAndSetup =
+  | { on: false }
+  | { on: true; view: 'member'; howItRuns: string; yourRole: string; status: string; yourSessionsDone: number; sessionsPlanned: number | null; runsIt: string | null; whoSeesWhat: string }
+  | { on: true; view: 'reader'; howItRuns: string; runsIt: string | null }
+  | { on: true; view: 'lead' | 'admin'; howItRuns: string; problems: ASetupProblem[]; sessions: string; joinedWithTheLink: string; kindOfWork: string | null; kindsOffered: string[]; othersWithAccess: string; runsIt: string | null; organisationName: string; roleDescribed: Record<string, boolean>; checkInType?: TheTypeInWhatItIs }
+
+/** References and resources, as the server serves it to this reader (api grounds/references-and-resources.ts). */
+export type AReferenceKind = 'RULE' | 'STAGE_NEEDS' | 'COACHING' | 'RISK' | 'KEY_FACT' | 'PERSON_NOTE' | 'HELP_WITH'
+export type AReferenceLine = { id: string; text: string; fromTheTemplate?: boolean; onlyYou?: boolean }
+export type APieceOfEvidence = { id: string; readAs: string; shows: string | null; summary?: string | null; usedFor?: string | null; belongsTo: string; addedBy: string; addedById: string | null; addedOn: string; on: string; countsAsProof: boolean; group: 'Orders and quotes' | 'Payments' | 'Photos' | 'Other documents' | 'Court filings' | 'Client letters' }
+export type AnEvidencePage = { total: number; page: number; pageSize: number; items: APieceOfEvidence[]; people: { id: string; name: string }[] }
+export type AReferenceDocument = { id: string; name: string; added: string; addedOn: string; summary: string | null; usedFor?: string | null; whoCanSee: string; kind: 'Photos' | 'Spreadsheets' | 'PDFs' | 'Documents' }
+export type ReferencesAndResources =
+  | { on: false }
+  | {
+      on: true
+      view: 'lead' | 'member' | 'admin' | 'reader'
+      checkInName: string
+      leadName: string | null
+      topLine: string
+      mayAdd: boolean
+      itemWord: string
+      about: { purpose: string | null; whose: string | null; keyFacts: { id: string; label: string; fact: string }[]; alsoWorthKnowing: AReferenceLine[]; emptySays: string | null; yourOwnWords?: string }
+      suggested?: { id: string; what: string; from: string; says: string; saidAs: string }[]
+      howWeWork: { rules: AReferenceLine[]; stageNeeds: AReferenceLine[]; coaching: AReferenceLine[]; risks: AReferenceLine[]; startingSetSays: string | null }
+      documents: { total: number; items: AReferenceDocument[]; notOpenToYou: boolean } | null
+      evidence: AnEvidencePage | null
+      evidenceSays: string
+      /** The evidence groups to filter by, where they are not the usual four (a "Collect what’s owed" check-in, Release 2). */
+      evidenceGroups?: APieceOfEvidence['group'][]
+      questions: { total: number; items: { asked: string; answer: string; who: string }[]; emptySays: string }
+      people?: { participantId: string; name: string; role: string | null; note: AReferenceLine | null; helpWith: AReferenceLine | null; earlier: string[] }[]
+      /** Who else sees People, as the server says it ("Otieno, the admin who set up this check-in"), or empty where nobody else does. */
+      peopleAlsoSeenBy?: string
+    }
+
+/** A person's record and the coaching Groundwork gave them, in the server's own words (api board/the-persons-record-in-words.ts). */
+export type ThePersonsRecordServed = {
+  heading: string
+  note: string
+  parts: { heading: string; says: string; toChange: string | null; evidence: string[] }[]
+  coaching: { said: string; since: string }[]
+  coachingEmpty: string | null
+  /** The person's own page alone. */
+  acrossYourCheckIns?: { heading: string; lines: string[] }
+  /** What the lead praised them for, from her board. The person's own page and report alone. */
+  fromYourLead?: { heading: string; lines: string[] }
+}
+/** My work, as the server serves it to this reader (api board/my-work.ts). */
+export type ABehaviourRead = { key: string; name: string; verdict: 'Strength' | 'Needs work' | 'Not enough yet'; happened: string; means: string | null; toImprove: string | null; basedOn: string | null }
+export type MyWork =
+  | { on: false }
+  | {
+      on: true
+      /** False where the organisation keeps judgements of a person off: no behaviours, focus, coaching about the person, strengths, or on-time and specific counts are served. */
+      judgements?: false
+      view: 'self' | 'lead'
+      checkInName: string
+      person: { participantId: string; name: string; firstName: string }
+      people?: { participantId: string; name: string }[]
+      heading: string
+      topLine: string
+      numbers: { value: string; label: string }[]
+      focus: { line: string; why: string } | null
+      focusEmpty: string
+      toDo: {
+        othersNeed: { id: string; text: string; when: string }[]
+        own: { id: string; text: string; when: string | null; done: boolean; late: boolean; whose: string | null }[]
+        emptySays: string
+      }
+      achieved: { items: { text: string; proof: string }[]; note: string; emptySays: string }
+      performing: { note: string; behaviours: ABehaviourRead[]; libraryNote: string }
+      coaching: { better: { text: string; from: string }[]; keep: string[]; betterEmpty: string; keepEmpty: string }
+      checkIns: { heading: string; due: number; done: number; onTime: number; specific: number; emptySays: string | null }
+      reports: { heading: string; items: { checkInId: string; when: string; line: string }[]; emptySays: string; private?: string }
+      items: { heading: string; note: string; itemWord: string; rows: { id: string; name: string; stage: string | null; next: string; nextBooked: boolean; proof: string; proven: boolean }[]; emptySays: string }
+      /** Only where the organisation's direct morning and judgements of a person are on. */
+      record?: ThePersonsRecordServed
+    }
+
+/** RELEASE 4: one of the thirteen templates (api board/the-thirteen-templates.ts), as the library and a board read it. */
+export interface ATemplate {
+  id: string
+  name: string
+  aim: string
+  shape: string
+  unitOfWork: string
+  rollsUpBy: string
+  verifiedBy: string
+  stallRule: string
+  ladder: { stage: string; needs: string; verifiedBy: string; asks: string }[]
+  targets: { name: string; reads: string; value: string }[]
+  howClaimsGetInflated: { name: string; says: string }[]
+  rulesALeadMightSay: { said: string; means: string }[]
 }

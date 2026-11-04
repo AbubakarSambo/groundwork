@@ -27,7 +27,7 @@ export type RowResult =
   | 'not an email' /* Kept out here rather than failing at the send. */
   | 'no seat';     /* The plan has no room. The whole reason a preview exists. */
 
-export interface Row { email: string; result: RowResult; /** The name typed beside the address, so the preview can show what was read. */ name?: string }
+export interface Row { email: string; result: RowResult; /** The name typed beside the address, so the preview can show what was read. */ name?: string; /** The phone number typed on the same line (Hafsah, 30 October 2026). */ phone?: string; /** Why that number was not saved, in the refusal's own words, when it was not. */ phoneNotSaved?: string }
 
 /**
  * How many addresses one paste may carry.
@@ -69,7 +69,16 @@ const A_NAME = /^[\p{L}][\p{L}\p{M}' .-]*$/u;
  * somebody called Oops.
  */
 const aFullName = (name: string, fromAColumn: boolean) => A_NAME.test(name) && (fromAColumn || name.includes(' '));
-function aPersonOnALine(line: string): { name: string; email: string } | null {
+/*
+ * "ONE PER LINE: A NAME AND AN EMAIL, OR A WHATSAPP NUMBER" (A4 people.txt:224). A phone number on the line is that person's,
+ * read with their name and address and taken out before the address is read, so it is never mistaken for an address. Hafsah,
+ * 30 October 2026: phone numbers are added with the team, not one by one afterwards.
+ */
+const A_PHONE = /(?:^|(?<=[\s,;\t]))(\+?\d[\d ()-]{6,}\d)(?=$|[\s,;\t])/;
+const theNumberOn = (line: string): string | null => line.match(A_PHONE)?.[1]?.trim() ?? null;
+const withoutTheNumber = (line: string): string => line.replace(A_PHONE, ' ');
+function aPersonOnALine(raw: string): { name: string; email: string } | null {
+  const line = withoutTheNumber(raw);
   if (/<[^>]+>/.test(line)) return null;
   const fromAColumn = line.includes('\t');
   const parts = line.split(/[,;\t]+|\s{2,}/).map((p) => p.trim()).filter(Boolean);
@@ -87,8 +96,34 @@ function aPersonOnALine(line: string): { name: string; email: string } | null {
 function withNamesWritten(pasted: string): string {
   return (pasted ?? '').split(/\r?\n/).map((line) => {
     const p = aPersonOnALine(line);
-    return p ? `${p.name} <${p.email}>` : line;
+    return p ? `${p.name} <${p.email}>` : withoutTheNumber(line);
   }).join('\n');
+}
+
+/**
+ * ONE PERSON ON EACH LINE: NAME, EMAIL, PHONE NUMBER, ANY OF THEM MISSING (Hafsah, 31 October 2026: "make adding a team quick and easy
+ * for an impatient lead ... get their whole team in, with phone numbers, without repeating themselves"). The one reader of a team typed
+ * one per line, for the organisation's invite box, the setup's save card and a check-in's People and setup alike. A line with a name and
+ * a number but no address is still that person, so a lead who named her team with their numbers adds only the addresses.
+ */
+export interface APersonOnALine { name: string | null; email: string | null; phone: string | null }
+export function peopleOnLines(pasted: string): APersonOnALine[] {
+  const out: APersonOnALine[] = [];
+  for (const line of (pasted ?? '').split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const phone = theNumberOn(line);
+    const p = aPersonOnALine(line);
+    const email = p?.email ?? withoutTheNumber(line).match(/[^\s,;<>\t]+@[^\s,;<>\t]+/)?.[0] ?? null;
+    const name = p?.name ?? (email ? null : withoutTheNumber(line).replace(/[,;\t]+/g, ' ').replace(/\s+/g, ' ').trim()) ?? null;
+    if (!name && !email && !phone) continue;
+    out.push({ name: name && A_NAME.test(name) ? name : null, email: email ? email.trim().toLowerCase() : null, phone });
+  }
+  return out;
+}
+
+/** The phone number typed on the same line as an address, by address. */
+export function numbersIn(pasted: string): Map<string, string> {
+  return new Map(peopleOnLines(pasted).filter((p) => p.email && p.phone).map((p) => [p.email!, p.phone!]));
 }
 
 /** The names given beside addresses, by address, for the accounts the invitations make. */
@@ -135,9 +170,11 @@ export function planFor(
   const rows: Row[] = [];
 
   const names = namesIn(pasted);
+  const numbers = numbersIn(pasted);
   for (const email of addressesIn(pasted)) {
     const name = names.get(email);
-    const withName = (result: RowResult): Row => (name ? { email, result, name } : { email, result });
+    const phone = numbers.get(email);
+    const withName = (result: RowResult): Row => ({ email, result, ...(name ? { name } : {}), ...(phone ? { phone } : {}) });
     if (seen.has(email)) { rows.push(withName('repeated')); continue; }
     seen.add(email);
 

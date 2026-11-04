@@ -87,69 +87,40 @@ export function HomePage() {
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
         <div style={{ width: '100%', maxWidth: 480 }}>
-          <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+          <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
             Contribution intelligence
           </div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.2, marginBottom: 8, letterSpacing: '-.02em' }}>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--gw-text)', lineHeight: '31px', marginBottom: 8, letterSpacing: '-.02em' }}>
             What are you working on?
           </h1>
-          <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 24 }}>
+          <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '23px', marginBottom: 24 }}>
             Name the situation and who is involved. Groundwork builds a record from both sides.
           </p>
 
           {/* The mode pills went with the situation cards: Setup asks whether this is starting or underway itself. */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            <textarea
+            <textarea className="gwui-input"
               ref={taRef}
               value={text}
               onChange={autoResize}
               onKeyDown={handleKey}
               placeholder={PLACEHOLDERS[mode]}
               rows={2}
-              style={{
-                flex: 1,
-                padding: '10px 12px',
-                fontSize: 14,
-                lineHeight: 1.55,
-                border: '1px solid var(--gw-border)',
-                borderRadius: 8,
-                background: 'white',
-                color: 'var(--gw-text)',
-                fontFamily: 'inherit',
-                outline: 'none',
-                transition: 'border-color 0.1s',
-                resize: 'none',
-                overflow: 'hidden',
-              }}
+              style={{ flex: 1, resize: 'none', overflow: 'hidden', minHeight: 48 }}
               onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
               onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
             />
-            <button
+            <button className="btn pri"
               onClick={handleSubmit}
               disabled={faqMutation.isPending}
-              style={{
-                padding: '0 14px',
-                borderRadius: 8,
-                background: 'var(--gw-navy)',
-                color: 'white',
-                border: 'none',
-                cursor: faqMutation.isPending ? 'not-allowed' : 'pointer',
-                fontSize: 18,
-                flexShrink: 0,
-                height: 44,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: faqMutation.isPending ? 0.6 : 1,
-                fontFamily: 'inherit',
-              }}
+              style={{ flexShrink: 0 }}
             >
               {faqMutation.isPending ? '…' : '↑'}
             </button>
           </div>
 
           {faqAnswer && (
-            <div style={{ marginTop: 10, padding: '12px 14px', background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, fontSize: 14, lineHeight: 1.65, color: 'var(--gw-text)' }}>
+            <div style={{ marginTop: 10, padding: '12px 14px', background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, fontSize: 14, lineHeight: '23px', color: 'var(--gw-text)' }}>
               {faqAnswer}
             </div>
           )}

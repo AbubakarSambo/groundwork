@@ -13,9 +13,11 @@ describe('a check-in set for Mondays', () => {
       expect(weekday).toBe('Monday');
     });
   }
-  it('without the day she named, it would have been the Sunday it was set up (the fault)', () => {
+  /* Updated 29 October: without the day she named it is no longer the Sunday it was set up, because a check-in's calendar is Monday to
+     Friday unless she says otherwise (one calendar for each check-in). */
+  it('without the day she named, it lands on the next working day, never the Sunday it was set up', () => {
     const startedAt = new Date('2026-10-11T07:00:00Z');
     const next = whenTheNextSessionOpens({ cadence: 'WEEKLY' as any, anchorDay: null, workingDays: null, startedAt, zone: 'Africa/Nairobi' }, startedAt, startedAt);
-    expect(new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Africa/Nairobi' }).format(next)).toBe('Sunday');
+    expect(new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Africa/Nairobi' }).format(next)).toBe('Monday');
   });
 });

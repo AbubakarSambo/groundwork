@@ -76,7 +76,7 @@ export function TwoAccountsSideBySide({ difference }: { difference: ADifference 
         {sides.map((p, i) => (
           <div key={i}>
             <div className={CITE_CLASS} style={{ fontFamily: MONO, letterSpacing: '.08em', textTransform: 'uppercase' }}>{whoseAccount(p)}</div>
-            <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6, maxWidth: '68ch' }}>{p.view}</div>
+            <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: '21px', maxWidth: '68ch' }}>{p.view}</div>
           </div>
         ))}
       </div>
@@ -85,18 +85,18 @@ export function TwoAccountsSideBySide({ difference }: { difference: ADifference 
         <div className="gwui-mt-12">
           <div className={CITE_CLASS} style={{ fontFamily: MONO, letterSpacing: '.08em', textTransform: 'uppercase' }}>What this rests on</div>
           {evidenceLines.map((line, i) => (
-            <div key={i} className={`gwui-fs-13 gwui-ink-sub ${i ? 'gwui-mt-4' : 'gwui-mt-0'}`} style={{ lineHeight: 1.6, maxWidth: '68ch' }}>{line}</div>
+            <div key={i} className={`gwui-fs-13 gwui-ink-sub ${i ? 'gwui-mt-4' : 'gwui-mt-0'}`} style={{ lineHeight: '21px', maxWidth: '68ch' }}>{line}</div>
           ))}
         </div>
       )}
       {asText(difference.atStake) && (
         <div className="gwui-mt-12">
           <div className={CITE_CLASS} style={{ fontFamily: MONO, letterSpacing: '.08em', textTransform: 'uppercase' }}>Why it matters</div>
-          <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.6, maxWidth: '68ch' }}>{asText(difference.atStake)}</div>
+          <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: '21px', maxWidth: '68ch' }}>{asText(difference.atStake)}</div>
         </div>
       )}
       {asText(difference.note) && (
-        <div className="gwui-fs-13 gwui-ink-sub gwui-mt-10" style={{ lineHeight: 1.6, maxWidth: '68ch' }}>
+        <div className="gwui-fs-13 gwui-ink-sub gwui-mt-10" style={{ lineHeight: '21px', maxWidth: '68ch' }}>
           {asText(difference.note)}
         </div>
       )}

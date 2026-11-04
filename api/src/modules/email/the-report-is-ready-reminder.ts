@@ -6,10 +6,14 @@
  * released months before. Now at most two go for a person and a report. After that the report appears only in the person's regular
  * summary, "your week" (engagement/the-participants-week.ts).
  *
+ * ONCE, NOT TWICE (Hafsah, 19 October: "Stop the second "your report is ready" reminder. Don't start recording reads."). In the messages
+ * test Brian was sent "Your report for "Litigation team daily" is ready to view" and Aisha the same, with the same words, on two days
+ * running. The first stays; no second goes. Nothing new is recorded about who opened what.
+ *
  * Counted from what was really sent, the record of messages (`Notification`), by this sender, to this address, with this subject, so
  * it needs no new column and survives a restart. A message held for quiet hours is counted when it goes, not when it is held.
  */
-export const THE_MOST_REPORT_READY_REMINDERS = 2;
+export const THE_MOST_REPORT_READY_REMINDERS = 1;
 export const REPORT_READY_REMINDER_SENDER = 'sendActivationRevealReminder';
 
 /** The one subject of the reminder, so that the sender and the count read the same words. */

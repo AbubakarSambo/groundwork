@@ -25,19 +25,14 @@ function run(participants: any[], justCheckedIn: string) {
 const text = (html: string) => html.replace(/<[^>]+>/g, '\n').replace(/\n+/g, '\n').trim();
 
 describe('when James finishes and two have not', () => {
-  it('Wairimu is told three of five are in, who, that it is not the team\'s view, and who is missing', async () => {
+  /* Changed 18 October (Drop Access run 1, item 24; the standing decision that the lead's morning summary is her one routine message): the
+     partial count is no longer emailed. Grace had eighteen "N of four people have checked in ... not the whole team's view yet" emails in
+     ten days. Who has checked in is on the board, and she is emailed when everybody is in. */
+  it('Wairimu is not emailed a partial count: three of five in is on her board and in her summary, not in an email', async () => {
     const lead = person('p-w', 'Wairimu', true);
     const w = run([lead, person('p-a', 'Abigail', true), person('p-j', 'James', true), person('p-o', 'Omar', false), person('p-v', 'Vera', false)], 'p-j');
     await w.go();
-    expect(w.sent).toHaveLength(1);
-    expect(w.sent[0].to).toBe('wairimu@x.test');
-    expect(w.sent[0].subject).toBe('Three of five people have checked in on "Kenya launch", and it is not the whole team\'s view yet');
-    const body = text(w.sent[0].html);
-    expect(body).toContain('You, Abigail and James have checked in so far, three of the five people in it.');
-    expect(body).toContain("That is not yet the whole team's view, so Groundwork has not drawn any conclusion about the team from it.");
-    expect(body).toContain('Omar and Vera have not checked in yet.');
-    expect(body).toContain('The shared picture is made once everyone is in.');
-    expect(body).not.toMatch(/ahead|behind|strong|weak|best|worst/i);
+    expect(w.sent).toHaveLength(0);
   });
 
   it('when the last one is in, it is the ordinary message that says everybody is', async () => {
@@ -58,12 +53,9 @@ describe('the words', () => {
     expect(thePartialPicture('Kenya launch', { answered: ['you'], ofHowMany: 3 }).lines[0]).toBe('You have checked in so far, one of the three people in it.');
     expect([p.subject, ...p.lines].join(' ')).not.toMatch(/:/);
   });
-  it('a person waiting to be let in is not one of the people in it', async () => {
-    const lead = person('p-w', 'Wairimu', true);
-    const waiting = person('p-x', 'Juma', false, { user: { email: 'juma@x.test', firstName: 'Juma', lastName: 'Test', isActive: true, deletedAt: null, awaitingOrgApproval: true } });
-    const w = run([lead, person('p-a', 'Abigail', true), person('p-o', 'Omar', false), waiting], 'p-a');
-    await w.go();
-    expect(text(w.sent[0].html)).toContain('three people in it');
+  it('a person waiting to be let in is not one of the people in it', () => {
+    /* Changed 18 October: the partial email is no longer sent (item 24); the count it would say is read here. */
+    expect(thePartialPicture('Kenya launch', { answered: ['Abigail'], ofHowMany: 3 }).lines[0]).toContain('three people in it');
   });
 });
 
@@ -73,18 +65,11 @@ describe('the words', () => {
  * people left leaves out the lead, who is the one reading, and nothing said she is one of them.
  */
 describe('when the lead has not checked in herself either', () => {
-  it('Grace is told so, and the counts add up: one in, seven others, and her', async () => {
-    const lead = person('p-g', 'Grace', false);
-    const others = ['Chidi', 'Zawadi', 'Juma', 'Neema', 'Fatuma', 'Sade', 'Imani'].map((n) => person(`p-${n}`, n, false));
-    const sent: any[] = [];
-    const prisma: any = { ground: { findUnique: jest.fn(async () => ({ label: 'Q4 priorities', initiator: { email: 'grace@x.test' }, participants: [lead, person('p-amani', 'Amani', true), ...others] })) } };
-    const email: any = new EmailService({ get: () => undefined } as any, {} as any, prisma);
-    email.sendEmail = jest.fn(async (o: any) => { sent.push(o); });
-    const listener: any = new ReportsListener(prisma, {} as any, {} as any, email, { get: () => 'https://app.test' } as any);
-    await listener.notifyAdminOnCheckIn({ groundId: 'g1', sessionNumber: 1, participantId: 'p-amani' });
-    const body = text(sent[0].html);
+  /* Changed 18 October (item 24): not emailed any more; the words, if read, still add up. */
+  it('Grace is told so, and the counts add up: one in, seven others, and her', () => {
+    const p = thePartialPicture('Q4 priorities', { answered: ['Amani'], ofHowMany: 9, youAreStillToAnswer: true }, { names: [], count: 7 });
+    const body = p.lines.join('\n');
     expect(body).toContain('Amani has checked in so far, one of the nine people in it.');
-    expect(body).toContain('Seven people have not checked in yet.');
     expect(body).toContain('Your own check-in is still open too.');
     expect(body).not.toContain('either');
   });

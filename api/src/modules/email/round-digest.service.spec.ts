@@ -38,7 +38,8 @@ describe('one mail per round', () => {
     expect(sent[0].subject).toBe('Renewal push - session 3 is complete');
     expect(sent[0].body).toMatch(/4 people took part/);
     expect(sent[0].body).toMatch(/https:\/\/app\/grounds\/g1/);
-    expect(sent[0].body).toMatch(/https:\/\/app\/unsubscribe\/tok/);
+    /* Changed 4 November 2026 (batch 1: the direct words for everybody): the way to stop these is in the footer every such mail carries, not said twice in the body. */
+    expect(sent[0].body).not.toMatch(/To stop these emails/);
   });
 
   it('and sends nothing to somebody it cannot tie to a preference', async () => {

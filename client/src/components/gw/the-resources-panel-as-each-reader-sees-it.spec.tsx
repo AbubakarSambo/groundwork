@@ -18,7 +18,7 @@ vi.mock('@/components/gw/DeliveredPanel', () => ({ DeliveredPanel: () => null })
  * THE RESOURCES PANEL, IN THE PROTOTYPE'S SHAPE, ONE LEVEL DOWN FROM THE COMPANY (docs/prototype/
  * screens/B2-context/company-context.txt, around "Resources / Shared, read, and what each checks").
  * The Documents band on a check-in's own Context and resources page carries the same heading, the
- * same note, and the same two extra lines per document - "What we read from it" and "Used to check"
+ * same note, and the same two extra lines per document - "What I read in it" and "Used to check"
  * - drawn only where the server actually sends them. Everything else about the band (the cards, the
  * upload control, who may set a document's visibility) is unchanged; this spec is about the heading
  * and the two new lines, and about a private document staying private.
@@ -65,32 +65,32 @@ describe('the Resources panel', () => {
     }])
     draw('lead', 'u-lead')
     await screen.findByText('Strategy v2.pdf')
-    expect(screen.getByText('What we read from it')).toBeTruthy()
+    expect(screen.getByText('What I read in it')).toBeTruthy()
     expect(screen.getByText('The three priorities and the reasoning.')).toBeTruthy()
     expect(screen.getByText('Used to check')).toBeTruthy()
     expect(screen.getByText('Whether goals still match')).toBeTruthy()
   })
 
-  it('leaves out "Used to check" and "What we read from it" rather than inventing them, where the server sent neither', async () => {
+  it('leaves out "Used to check" and "What I read in it" rather than inventing them, where the server sent neither', async () => {
     ;(documentsApi.list as any).mockResolvedValue([
       { id: 'd1', name: 'Board deck, Q3.pdf', uploadedAt: '2026-09-01T10:00:00Z', visibility: 'OPEN', mine: false },
     ])
     draw('party', 'u-aisha')
     await screen.findByText('Board deck, Q3.pdf')
-    expect(screen.queryByText('What we read from it')).toBeNull()
+    expect(screen.queryByText('What I read in it')).toBeNull()
     expect(screen.queryByText('Used to check')).toBeNull()
   })
 
   it('falls back to what the read holds when there is no assessment, and still leaves out "Used to check" it was never sent', async () => {
     ;(documentsApi.list as any).mockResolvedValue([{
       id: 'd1', name: 'Delivery log.csv', uploadedAt: '2026-09-01T10:00:00Z', visibility: 'OPEN', mine: false,
-      theContextWeHave: 'Here is the context we have from Delivery log.csv.\n\nEvery project and its dates.',
+      theDocumentLine: 'Here is what I took from Delivery log.csv.', theContextWeHave: 'Here is what I took from Delivery log.csv.\n\nEvery project and its dates.',
     }])
     draw('party', 'u-aisha')
     await screen.findByText('Delivery log.csv')
-    /* "Every project and its dates." appears twice: once on the face, under "What we read from it",
+    /* "Every project and its dates." appears twice: once on the face, under "What I read in it",
        and again inside "What Groundwork took from it", the fuller itemised read folded below it. */
-    expect(within(screen.getByText('What we read from it').parentElement as HTMLElement).getByText('Every project and its dates.')).toBeTruthy()
+    expect(within(screen.getByText('What I read in it').parentElement as HTMLElement).getByText('Every project and its dates.')).toBeTruthy()
     expect(screen.getAllByText('Every project and its dates.').length).toBe(2)
     expect(screen.queryByText('Used to check')).toBeNull()
   })

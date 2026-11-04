@@ -145,7 +145,7 @@ export function SharedReportForAParty({
             >
               <span style={{ textAlign: 'left' }}>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Open the team board</span>
-                <span style={{ display: 'block', fontSize: 11.5, color: 'rgba(255,255,255,.6)', marginTop: 2 }}>
+                <span style={{ display: 'block', fontSize: 12, color: 'rgba(255,255,255,.6)', marginTop: 2 }}>
                   The same picture for everyone, built from what each person said. Never a verdict.
                 </span>
               </span>
@@ -201,9 +201,9 @@ export function SharedReportForAParty({
                 An explicit `gap`, and letting the row wrap rather than force both halves onto one
                 line, keeps them apart whatever the width.
               */}
-              <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '4px 12px' }}>
+              <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '4px 12px' }}>
                 <span>Your sessions</span>
-                <span style={{ fontSize: 11.5 }}>
+                <span style={{ fontSize: 12 }}>
                   {mySessions.length === 1 ? 'You have one finished session, with its own report.' : `You have ${mySessions.length} finished sessions, each with its own report.`}
                 </span>
               </summary>
@@ -226,11 +226,11 @@ export function SharedReportForAParty({
                     >
                       <span>
                         <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
-                        <span style={{ fontSize: 11.5, color: 'var(--gw-sub)', display: 'block' }}>
+                        <span style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'block' }}>
                           {ci.completedAt ? `You checked in on ${whenItWas(ci.completedAt, 'day')}.` : 'You checked in.'}
                         </span>
                         {checkable && (
-                          <span style={{ fontSize: 11.5, color: 'var(--gw-sub)', display: 'block' }}>{checkable}</span>
+                          <span style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'block' }}>{checkable}</span>
                         )}
                       </span>
                       <span aria-hidden style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
@@ -272,7 +272,7 @@ export function SharedReportForAParty({
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
                 There is a picture forming, and you have not answered yet
               </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-blue-body)', lineHeight: 1.6 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-blue-body)', lineHeight: '19px' }}>
                 {(report as any).saying}
               </div>
             </div>
@@ -331,9 +331,9 @@ export function SharedReportForAParty({
                the picture stays one click away, and open where there is no board to stand in for it. */
             boardRenders ? (
               <details ref={sharedPictureRef} open={openReportByDefault || undefined} style={{ marginTop: 4 }}>
-                <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', justifyContent: 'space-between' }}>
+                <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', justifyContent: 'space-between' }}>
                   <span>The shared picture</span>
-                  <span style={{ fontSize: 11.5 }}>The written report, shared with everyone.</span>
+                  <span style={{ fontSize: 12 }}>The written report, shared with everyone.</span>
                 </summary>
                 <div style={{ marginTop: 6 }}><TheSharedPictureAPartyReads report={report} /></div>
               </details>

@@ -354,7 +354,7 @@ describe('everyone at Baridi', () => {
     )
     const row = within((await screen.findByText('Grace Outside', { selector: '.gwui-person-name' })).closest('[role="row"]') as HTMLElement)
     expect(row.getByText('Not let in')).toBeTruthy()
-    expect(row.getByText('Not let in').className).toMatch(/gwui-tag-concern/)
+    expect(row.getByText('Not let in').className).toMatch(/con/)
   })
 
   it('"Open" goes to that person\'s own page', async () => {

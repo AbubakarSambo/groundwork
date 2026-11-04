@@ -122,6 +122,14 @@ export const CronLock = {
   HALFWAY_REMINDERS: 920_013,
   /** The nightly clean-up of words held on WhatsApp for a yes or no past their ten minutes. See public-api/a-held-request-does-not-outlive-its-ten-minutes.cron.ts. */
   HELD_REQUESTS: 920_014,
+  /** WhatsApp messages held for quiet hours, sent at seven in the organisation's morning. See whatsapp/held-for-the-night.cron.ts. */
+  HELD_WHATSAPP: 920_015,
+  /** The daily delivery alert to Groundwork's own address. See email/the-daily-delivery-alert.cron.ts. */
+  DELIVERY_ALERT: 920_016,
+  /** The daily usage summary to the back-office team. See back-office/the-daily-usage-summary.cron.ts. */
+  DAILY_USAGE: 920_017,
+  /** The writes to the record a check-in still owes, tried again. See conversation/the-owed-writes.cron.ts. */
+  OWED_WRITES: 920_018,
 } as const;
 
 /**

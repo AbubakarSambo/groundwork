@@ -73,12 +73,12 @@ export class WhoIsWaitingAtTheDoorService {
      */
     const ownDomain = effectiveJoinDomain((request.organization as any) ?? { email: null, joinDomain: null });
     const onTheOrganisationsOwnAddress = !!ownDomain && theDomainOf((request as any).email) === ownDomain;
-    const asked = admin ? ` We’ve asked ${[admin.firstName, admin.lastName].filter(Boolean).join(' ').trim() || 'the admins there'}.` : ' We’ve asked the admins there.';
+    const asked = admin ? ` I’ve asked ${[admin.firstName, admin.lastName].filter(Boolean).join(' ').trim() || 'the admins there'}.` : ' I’ve asked the admins there.';
     const adminName = admin ? [admin.firstName, admin.lastName].filter(Boolean).join(' ').trim() : '';
     const says = !seats.allowed
       ? `${request.organization.name} has no free seat right now, so an admin there has to make room before you can start.${asked}`
       : onTheOrganisationsOwnAddress
-        ? `${request.viaInvitation && inviter?.firstName ? `${inviter.firstName} invited you. ` : ''}${adminName ? `${adminName}, an admin, has` : 'An admin has'} to add you to ${request.organization.name} first.${adminName ? '' : ' We’ve asked the admins there.'}`
+        ? `${request.viaInvitation && inviter?.firstName ? `${inviter.firstName} invited you. ` : ''}${adminName ? `${adminName}, an admin, has` : 'An admin has'} to add you to ${request.organization.name} first.${adminName ? ''  : ' I’ve asked the admins there.'}`
         : `You’re from outside ${request.organization.name}, so an admin there has to let you in.${asked}`;
     return {
       waiting: true as const,
@@ -268,8 +268,18 @@ export class WhoIsWaitingAtTheDoorService {
       }
     });
 
+    /* By name, which check-in, and who let them in (messages test, 19 October, finding 15). */
+    const [them, admin, theCheckIn] = await Promise.all([
+      Promise.resolve((this.prisma as any).user?.findUnique?.({ where: { id: request.userId }, select: { firstName: true, lastName: true } })).catch(() => null),
+      Promise.resolve((this.prisma as any).user?.findUnique?.({ where: { id: adminUserId }, select: { firstName: true, lastName: true } })).catch(() => null),
+      request.groundId ? Promise.resolve((this.prisma as any).ground?.findUnique?.({ where: { id: request.groundId }, select: { label: true } })).catch(() => null) : Promise.resolve(null),
+    ]);
     this.email
-      .sendYouAreInNow(request.email, request.organization.name)
+      .sendYouAreInNow(request.email, request.organization.name, {
+        firstName: (them as any)?.firstName ?? null,
+        checkInLabel: (theCheckIn as any)?.label ?? null,
+        letInBy: [(admin as any)?.firstName, (admin as any)?.lastName].filter(Boolean).join(' ').trim() || null,
+      })
       .catch((err: any) => this.logger.warn(`Could not tell ${request.email} they were approved: ${err.message}`));
 
     /* And whoever invited them (U.4): the People page promises both are told. */

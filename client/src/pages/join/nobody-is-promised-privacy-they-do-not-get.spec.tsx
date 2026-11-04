@@ -32,12 +32,11 @@ describe('what the page promises before somebody types', () => {
     expect(CODE).toMatch(/The answers help everybody get a\s*\n?\s*shared picture, and you will receive the consolidated report at the end/)
   })
 
-  /* Two minutes was never true of a conversation that asks four or five questions. */
-  it('and does not undersell how long it takes', () => {
-    expect(CODE).not.toMatch(/about two minutes/)
-    /* About ten minutes wherever a check-in's length is said (Hafsah's fix list, item 4, 14 October). */
-    expect(CODE).not.toMatch(/about five minutes/)
-    expect(CODE).toMatch(/about ten minutes/)
+  /* Changed in F5: the length is the measured one, from its one owner (how-long-setup-takes.ts: a team member's check-in, median
+     1.9 minutes on gw_loop_round16), as the approved journey says it (stage 6), not a figure written here. */
+  it('says how long it takes from the one measured figure', () => {
+    expect(CODE).toMatch(/It takes \$\{inASentence\(takes\)\}\./)
+    expect(CODE).not.toMatch(/about ten minutes|about two minutes/)
   })
 })
 

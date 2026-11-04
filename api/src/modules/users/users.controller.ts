@@ -201,6 +201,21 @@ export class UsersController {
     return this.usersService.setTheTimeZone(organizationId, body?.timeZone ?? null);
   }
 
+  /** THE ORGANISATION'S OWN WORD FOR A BILL (Release 2): "fee note", or "invoice" where nobody has said. */
+  @Get('organization/word-for-the-bill')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'The word this organisation uses for a bill, such as fee note or invoice' })
+  async theWordForTheBill(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.theWordForTheBill(organizationId);
+  }
+
+  @Patch('organization/word-for-the-bill')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Name the word this organisation uses for a bill, or clear it back to invoice' })
+  async setTheWordForTheBill(@CurrentUser('organizationId') organizationId: string, @Body() body: { word?: unknown }) {
+    return this.usersService.setTheWordForTheBill(organizationId, body?.word ?? null);
+  }
+
   @Get('organization/check-ins')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Who may open a check-in here, and whether one waits for approval' })

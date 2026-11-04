@@ -66,7 +66,7 @@ export function WhatTheRecordShows({ it }: { it: TheRecordOverTime | null | unde
           <Head>Settle these before deciding anything</Head>
           <div className="gwui-rule-blue gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14" style={{ background: 'var(--gw-blue-bg)', borderRadius: 10 }}>
             {it.toSettleFirst.map((q, i) => (
-              <div key={i} className="gwui-fs-15 gwui-ink-text gwui-pt-5 gwui-pb-5" style={{ lineHeight: 1.55 }}>{q}</div>
+              <div key={i} className="gwui-fs-15 gwui-ink-text gwui-pt-5 gwui-pb-5" style={{ lineHeight: '23px' }}>{q}</div>
             ))}
           </div>
         </>

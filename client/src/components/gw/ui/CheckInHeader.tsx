@@ -14,7 +14,7 @@ import './gw-ui.css'
 export const CHECK_IN_TABS = [
   { key: 'board', label: 'Board' },
   { key: 'checkin', label: 'Check-in' },
-  { key: 'context', label: 'Context and resources' },
+  { key: 'context', label: 'References and resources' },
   { key: 'mywork', label: 'My work' },
   { key: 'people', label: 'People and setup' },
 ] as const

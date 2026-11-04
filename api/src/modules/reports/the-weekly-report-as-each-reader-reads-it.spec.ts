@@ -35,6 +35,26 @@ const ROWS = [
   { participantId: 'p-baraka', type: 'PROGRESS', text: 'Green Mart asked about the price, maybe 30 units.', anchoredDocumentId: null, recallBased: true },
   { participantId: 'p-baraka', type: 'PROGRESS', text: 'We sold 5 units at the market.', anchoredDocumentId: null, recallBased: true },
 ];
+/* The same five things, as the people's assessments hold them: what each person said reaches the week through the one reader of the
+   assessments (conversation/the-facts-on-record.ts, 1 November 2026). An item noted for the lead never does. */
+const said = (words: string, extra: Record<string, unknown> = {}, whoMaySee = 'the people in this check-in') => ({ id: words.slice(0, 6), words, from: [1], whoMaySee, saidWordForWord: true, ...extra });
+const anAssessment = (participantId: string, who: string, endedAt: string, parts: Record<string, unknown>) => ({
+  kind: 'assessment', version: 1,
+  about: { checkInId: `c-${participantId}`, groundId: 'g1', participantId, who, isTheLead: false, sessionNumber: 5, endedAt },
+  summary: '', setup: null, comparedWithLastTime: {}, ...parts,
+});
+const ASSESSED: Record<string, unknown> = {
+  'c-a5': anAssessment('p-aisha', 'Aisha', '2026-09-22T09:00:00Z', {
+    workUpdates: [said('I met Green Mart and they want a quote.')],
+    claims: [said('Nyama Choma Palace bought 12 freezers.', { proof: 'proved' })],
+    promises: [said('I will send the quote on Friday.')],
+    observations: [said('I think the week went fine.', {}, 'the lead only')],
+  }),
+  'c-b5': anAssessment('p-baraka', 'Baraka', '2026-09-23T08:00:00Z', {
+    numbers: [said('Green Mart asked about the price, maybe 30 units.')],
+    claims: [said('We sold 5 units at the market.', { proof: 'said' })],
+  }),
+};
 const OBJECTIVES = [
   { id: 'o-sold', name: 'Freezers sold', target: 40, count: 17, prevCount: 12, direction: 'AIM', ownerParticipantId: null, setByParticipantId: null, sortOrder: 0, isADecisionAboutAPerson: false },
   { id: 'o-spend', name: 'Spending this quarter', target: 180000, count: 254000, prevCount: 200000, direction: 'LIMIT', ownerParticipantId: null, setByParticipantId: null, sortOrder: 1, isADecisionAboutAPerson: false },
@@ -79,8 +99,10 @@ function aCheckIn(scenario = 'SALES_TEAM_CHECK', leave: { userId: string; starts
   const prisma: any = {
     ground: { findUnique: jest.fn(async () => ground) },
     checkIn: {
-      findMany: jest.fn(async ({ where }: any) =>
-        where?.status === 'COMPLETED' && where?.completedAt
+      findMany: jest.fn(async ({ where, select }: any) =>
+        select?.sessionReport
+          ? CHECK_INS.filter((c) => c.completedAt && c.completedAt >= where.completedAt.gte && c.completedAt <= where.completedAt.lte).map((c) => ({ sessionReport: ASSESSED[c.id] ?? null }))
+          : where?.status === 'COMPLETED' && where?.completedAt
           ? CHECK_INS.filter((c) => c.status === 'COMPLETED' && c.completedAt! >= where.completedAt.gte)
           : CHECK_INS),
     },
@@ -124,6 +146,7 @@ describe('what is kept when a check-in comes in', () => {
     const json = JSON.stringify(stored().eachPerson);
     for (const n of ['Wairimu', 'Aisha', 'Baraka', 'Chidi']) expect(json).not.toContain(n);
     for (const call of prisma.recordEntry.findMany.mock.calls) expect(JSON.stringify(call[0])).not.toMatch(/verifiab|specificity/i);
+    expect(json).not.toContain('I think the week went fine');
   });
 
   it('opening the page builds nothing and reads no record line', async () => {
@@ -161,25 +184,24 @@ describe('the lead reads the whole week', () => {
   it('reads each person, and what came up across the team, by name', async () => {
     const { r } = await served(LEAD);
     expect(r.eachPerson.map((e) => `${e.who}. ${e.says}`)).toEqual([
-      'Aisha. Aisha named Green Mart and Nyama Choma Palace this week, and gave a next step and a date. One of them has a document behind it.',
-      "Baraka. Baraka named Green Mart this week, but gave no next step or date, so it is not yet clear what happens next.",
+      'Aisha. This week Aisha said “I will send the quote on Friday” and “I met Green Mart and they want a quote”. One more thing Aisha said is on the record. One thing Aisha said has proof behind it.',
+      'Baraka. This week Baraka said “Green Mart asked about the price, maybe 30 units” and “We sold 5 units at the market”.',
       'Chidi. Chidi has not checked in this week, so there is nothing here yet about what Chidi is working on.',
     ]);
     expect(r.acrossTheTeam).toEqual(['Green Mart came up in what Aisha and Baraka said this week.']);
   });
 
-  it('reads only the pattern whose person has had their turn, said as what happened', async () => {
+  it('reads no stored pattern about anybody, even one whose person has had their turn', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const { r } = await served(LEAD);
-    expect(r.threeInARow).toEqual([
-      { who: 'Baraka', isYou: false, says: 'The work stops until there is another call. This came up in 3 check-ins, in sessions 3, 4 and 5.' },
-    ]);
-    expect(JSON.stringify(r.threeInARow)).not.toMatch(/RIGHT|Two separate reads|A lot of communicating/);
+    expect(r.threeInARow).toEqual([]);
+    expect(JSON.stringify(r)).not.toMatch(/The work stops until there is another call|RIGHT|Two separate reads|A lot of communicating/);
   });
 
   it('reads what was said and what the proof shows, as totals', async () => {
     const { r } = await served(LEAD);
     expect(r.saidAndProof).toBe(
-      'This week, people said 5 things in their check-ins. 1 of them has a photo or document behind it. 1 number was given as an estimate, and 1 number was given from memory with nothing attached, so they cannot be checked yet. It is worth confirming them before acting on them.',
+      'This week, people said 5 things in their check-ins. 1 of them has a photo or document behind it. 1 number was given as an estimate, and 1 number was given from memory with nothing attached, so they cannot be checked yet.',
     );
   });
 
@@ -189,7 +211,7 @@ describe('the lead reads the whole week', () => {
       /* Settled on her word alone, so it is her claim (night quality run 1, problem 3). */
       'Aisha committed to call Mama Fresh by Thursday, and says it is done. Nothing has been shown to back it yet.',
       /* Change 4: Baraka's wait on the lead is his account; the lead never promised the price list (night quality run 1, problem 2). */
-      'Baraka said the work was waiting on you for the price list, and it is no longer waiting. Not backed: no attempt to unblock mentioned. Baraka could have messaged you or asked again.',
+      'Baraka said the work was waiting on you for the price list, and it is no longer waiting.',
     ]);
     expect(r.whatChanged!.dropped).toEqual(['Baraka committed to visit Kwik Stores, and it has been dropped.']);
     expect(r.whatChanged!.result).toEqual([
@@ -198,19 +220,21 @@ describe('the lead reads the whole week', () => {
     ]);
   });
 
-  it('reads what to do next week, each with where it comes from', async () => {
+  it('reads what to do next week, each with where it comes from, and nothing from a stored pattern', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const { r } = await served(LEAD);
-    expect(r.forNextWeek).toEqual(expect.arrayContaining([
+    expect(r.forNextWeek).toEqual([
       { do: 'Decide whether a price range counts as a budget.', why: 'Aisha is waiting on you for it.', comesFrom: 'This comes from a blocker.' },
-      { do: 'Talk with Baraka about “The work stops until there is another call”.', why: 'Baraka has seen this and has not answered yet.', comesFrom: 'This comes from something that kept happening.' },
-      { do: 'Decide whether to hire a second driver.', why: 'You wrote this down as still to decide.', comesFrom: 'This comes from something you wrote down to decide.' },
-    ]));
+      { do: 'Decide whether to hire a second driver.', why: 'You wrote this down as still to decide.', comesFrom: 'Decision needed' },
+    ]);
   });
 
-  it('is never nudged about a pattern the person has not had their turn on', async () => {
+  it('is never nudged about a stored pattern, whether or not the person has had their turn on it', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const { r } = await served(LEAD);
-    expect(r.forNextWeek).toHaveLength(3);
+    expect((r.forNextWeek ?? []).filter((f: any) => f.comesFrom === 'From a pattern')).toEqual([]);
     expect(JSON.stringify(r)).not.toContain('A lot of communicating');
+    expect(JSON.stringify(r)).not.toContain('Talk with Baraka about');
   });
 
   it('never carries a label, a rating word, or a report label', async () => {
@@ -239,7 +263,7 @@ describe('a check-in still waiting is counted as due, from the record (night qua
 describe('a person reads only what is about them, and the team\'s own counts', () => {
   it('Baraka reads his own sentence, his own patterns first, and nothing of Aisha\'s', async () => {
     const { r } = await served(BARAKA);
-    expect(r.eachPerson).toEqual([{ who: 'You', isYou: true, says: 'You named Green Mart this week, but gave no next step or date, so it is not yet clear what happens next.' }]);
+    expect(r.eachPerson).toEqual([{ who: 'You', isYou: true, says: 'This week you said “Green Mart asked about the price, maybe 30 units” and “We sold 5 units at the market”.' }]);
     expect(r.inNumbers).toEqual([
       { figure: '67%', of: 'of check-ins made this week', says: '2 of the 3 check-ins due this week were made.' },
       { figure: '0', of: 'things you said this week with a photo or document behind them', says: 'None of the 2 things you said this week have a photo or document behind them yet.' },
@@ -252,10 +276,10 @@ describe('a person reads only what is about them, and the team\'s own counts', (
     ]);
     expect(r.threeInARow!.every((p) => p.isYou && p.who === 'You')).toBe(true);
     expect(r.saidAndProof).toBe(
-      'This week, you said 2 things in your check-ins. None of them has a photo or document behind it yet. 1 number was given as an estimate, and 1 number was given from memory with nothing attached, so they cannot be checked yet. It is worth confirming them before acting on them.',
+      'This week, you said 2 things in your check-ins. None of them has a photo or document behind it yet. 1 number was given as an estimate, and 1 number was given from memory with nothing attached, so they cannot be checked yet.',
     );
     expect(r.whatChanged).toEqual({
-      moved: ['You said the work was waiting on Wairimu for the price list, and it is no longer waiting. Not backed: no attempt to unblock mentioned. You could have messaged Wairimu or asked again.'],
+      moved: ['You said the work was waiting on Wairimu for the price list, and it is no longer waiting.'],
       dropped: ['You committed to visit Kwik Stores, and it has been dropped.'],
       result: [
         "The team's freezers sold went from 12 to 17 this week.",
@@ -263,7 +287,7 @@ describe('a person reads only what is about them, and the team\'s own counts', (
       ],
     });
     expect(r.forNextWeek).toEqual([
-      { do: 'Send Green Mart the price list on Monday.', why: 'You said this week that you would do this, and it is still open.', comesFrom: 'This comes from what you said you would do.' },
+      { do: 'Send Green Mart the price list on Monday.', why: 'You said this week that you would do this, and it is still open.', comesFrom: 'From your commitments' },
     ]);
     expect(r.acrossTheTeam).toEqual([]);
     const all = JSON.stringify(r);
@@ -278,7 +302,7 @@ describe('a person reads only what is about them, and the team\'s own counts', (
     expect(r.whatChanged!.moved).toEqual(['You committed to call Mama Fresh by Thursday, and you say it is done. Nothing has been shown to back it yet.']);
     expect(r.whatChanged!.dropped).toEqual(['Nothing was dropped this week.']);
     expect(r.forNextWeek).toEqual([
-      { do: 'Send the quote on Friday.', why: 'You said this week that you would do this, and it is still open.', comesFrom: 'This comes from what you said you would do.' },
+      { do: 'Send the quote on Friday.', why: 'You said this week that you would do this, and it is still open.', comesFrom: 'From your commitments' },
     ]);
     expect(JSON.stringify(r)).not.toMatch(/Baraka|Kwik|The work stops|second driver|Chidi/);
   });
@@ -318,12 +342,14 @@ describe('the parts on their own', () => {
     expect(theWeeksHeading('2026-09-21', '2026-09-23T08:00:00Z', new Date('2026-09-23T10:00:00Z'))).toBe('This week, 21 to 23 Sep, so far');
     expect(theWeeksHeading('2026-09-28', '2026-10-02T08:00:00Z', new Date('2026-10-06T10:00:00Z'))).toBe('The week of 28 Sep to 2 Oct');
     expect(theWeeksHeading('2026-09-21', '2026-09-21T08:00:00Z', new Date('2026-09-21T10:00:00Z'))).toBe('This week, 21 Sep, so far');
+    /* A week still going runs to today, whenever its last check-in was (screen match, 16 October). */
+    expect(theWeeksHeading('2026-09-21', '2026-09-21T08:00:00Z', new Date('2026-09-23T10:00:00Z'))).toBe('This week, 21 to 23 Sep, so far');
   });
 
-  it('does not read "maybe 30 units" as a date', () => {
+  it('says "maybe 30 units" as they said it, never as a date or a count of its own', () => {
     const { theSentenceAbout } = jest.requireActual('./the-weekly-sentence-about-each-person');
-    expect(theSentenceAbout({ label: 'Participant A', checkedIn: true, lines: [{ text: 'Green Mart wants maybe 30 units.', type: 'PROGRESS', documented: false }] }))
-      .toBe('Participant A named Green Mart this week, but gave no next step or date, so it is not yet clear what happens next.');
+    expect(theSentenceAbout({ label: 'Participant A', checkedIn: true, lines: [{ text: 'Green Mart wants maybe 30 units.', type: 'numbers', documented: false }] }))
+      .toBe('This week Participant A said “Green Mart wants maybe 30 units”.');
   });
 
   it('reads a target with no direction set by the words of its name (decision 69)', () => {
@@ -371,8 +397,19 @@ describe('aims and limits follow the check-in\'s setting, for a person in it (de
 });
 
 describe('every earlier week stays readable, and a new week never overwrites an old one (decision 73)', () => {
+  const NEXT_WEEK = new Date(AT.getTime() + 7 * 24 * 3600 * 1000);
   function withEveryWeekKept() {
     const c = aCheckIn();
+    /* Baraka also checks in next week, so next week has something said in it (the week is built from what was said). */
+    const thisWeeks = c.prisma.checkIn.findMany;
+    c.prisma.checkIn.findMany = jest.fn(async (a: any) => {
+      const got = await thisWeeks(a);
+      const nextWeek = a?.where?.completedAt?.gte && a.where.completedAt.gte > AT;
+      if (!nextWeek) return got;
+      return a.select?.sessionReport
+        ? [{ sessionReport: anAssessment('p-baraka', 'Baraka', NEXT_WEEK.toISOString(), { claims: [said('We sold 3 more units.')] }) }]
+        : [{ participantId: 'p-baraka', sessionNumber: 6, completedAt: NEXT_WEEK, isSetup: false }];
+    });
     const rows = new Map<string, any>();
     c.prisma.weeklyReport = {
       upsert: jest.fn(async ({ where, create, update }: any) => {
@@ -386,7 +423,6 @@ describe('every earlier week stays readable, and a new week never overwrites an 
     };
     return { ...c, rows };
   }
-  const NEXT_WEEK = new Date(AT.getTime() + 7 * 24 * 3600 * 1000);
 
   it('building next week adds a row and leaves this week\'s exactly as it was', async () => {
     const c = withEveryWeekKept();
@@ -481,11 +517,12 @@ describe('the check-ins made, said the way a person says a count', () => {
  * report carries a pattern only to the person it is about". There is no such reach now: with nothing
  * put in force, the lead reads Baraka's pattern once he has had his turn, and is nudged to talk it through.
  */
-describe('with no setting at all, the lead reads Baraka’s pattern in the week (decision 86)', () => {
-  it('the lead reads the pattern Baraka has had his turn on, and a nudge to talk it through', async () => {
+describe('with no setting at all, only Baraka reads Baraka’s pattern in the week (decision 86, then Hafsah, 2 November 2026)', () => {
+  it('the lead reads neither the pattern Baraka has had his turn on nor a nudge to talk it through', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const { r } = await served(LEAD);
-    expect(JSON.stringify(r.threeInARow)).toContain('The work stops until there is another call');
-    expect((r.forNextWeek ?? []).filter((f: any) => f.comesFrom === 'This comes from something that kept happening.').length).toBeGreaterThan(0);
+    expect(JSON.stringify(r)).not.toContain('The work stops until there is another call');
+    expect((r.forNextWeek ?? []).filter((f: any) => f.comesFrom === 'From a pattern')).toEqual([]);
   });
 
   it('an admin who does not run the check-in reads none', async () => {
@@ -527,8 +564,12 @@ describe('somebody an admin has not let in yet, as the lead reads the week', () 
     expect(JSON.stringify(r)).not.toMatch(/Chidi has not checked in/);
   });
 
-  /* Night quality run 3 (decision 8 redone): invited and never joined is the same as not let in for the count, never "due" and never absent. */
-  it('invited and never joined (never accepted, nothing opened): not due, and nothing about him not checking in', async () => {
+  /*
+   * Night quality run 3 (decision 8 redone) left somebody invited and never joined out of the count. CHANGED 1 NOVEMBER 2026: Hafsah
+   * approved counting everyone on the check-in, as the prototype does ("5 of 6 have checked in today; Omar hasn't yet"), and the week
+   * reads the one count (how-many-have-answered.ts). So his check-in is due; he is still never written up as absent.
+   */
+  it('invited and never joined (never accepted, nothing opened): counted as due, and nothing about him not checking in', async () => {
     const c = aCheckIn();
     /* Joined means accepted the invitation (13 October): the week page reads that from its own read of the people, as the database returns it. A sign-in is not joining. */
     const ground = await c.prisma.ground.findUnique();
@@ -537,7 +578,7 @@ describe('somebody an admin has not let in yet, as the lead reads the week', () 
     c.prisma.emailVerificationToken = { findMany: jest.fn(async () => []) };
     await c.svc.build('g1', AT);
     const r = await c.svc.read('g1', LEAD, AT);
-    expect(r.inNumbers?.[0]?.says).toBe('Both check-ins due this week were made.');
+    expect(r.inNumbers?.[0]?.says).toBe('2 of the 3 check-ins due this week were made.');
     expect(JSON.stringify(r)).not.toMatch(/Chidi has not checked in/);
   });
 
@@ -591,5 +632,43 @@ describe('a check-in the clock closed with nothing said is due and not made, as 
     expect(r.inNumbers?.[0]?.says).toBe('2 of the 3 check-ins due this week were made.');
     expect(r.eachPerson.find((e) => e.who === 'Chidi')?.says).toBe('Chidi has not checked in this week, so there is nothing here yet about what Chidi is working on.');
     expect(JSON.stringify(r)).not.toMatch(/All 3 check-ins|Wairimu has not checked in|You have not checked in/);
+  });
+});
+
+/*
+ * THE WEEK'S "CHECK-INS MADE" READS THE ONE COUNT (Hafsah, 31 October 2026: "The weekly 'check-ins made this week' tile stays (my 18
+ * October decision). Make it read the one server count like every other count."). A sales lead read "100% of check-ins made this
+ * week" beside "1 of 3" on Today, the board and the check-in's page. The tile's due and made are now theCountOfASession for each of
+ * the week's sessions, the rule the open session's count (the board, Today, the page, Ask) reads, so the two cannot disagree.
+ */
+import { theSessionAndItsCount } from '../grounds/this-sessions-count';
+
+describe('the check-ins made this week, and the one count', () => {
+  it('say the same people and the same number for the session this week', async () => {
+    const { r } = await served(LEAD);
+    const { count } = theSessionAndItsCount({ participants: PARTIES, checkIns: CHECK_INS, scenario: 'SALES_TEAM_CHECK', cadence: 'WEEKLY', timelineDays: null }, { now: AT });
+    expect(count.session).toBe(5);
+    expect([count.answered, count.ofPeople]).toEqual([2, 3]);
+    expect(count.says).toBe('2 of 3 have checked in.'); /* F5: the approved journey's words */
+    expect(r.inNumbers![0]).toEqual({ figure: '67%', of: 'of check-ins made this week', says: '2 of the 3 check-ins due this week were made.' });
+  });
+
+  it('counts somebody whose session has not opened for them yet, as the one count does, never "100%" over one', async () => {
+    /* Round 3: Aisha (the lead) answered on Saturday; Sarah's and David's session opens on Monday. */
+    const sat = new Date('2026-09-26T08:00:00Z');
+    const rows = [
+      { id: 'r1', participantId: 'p-lead', sessionNumber: 1, status: 'COMPLETED', completedAt: sat, availableFrom: sat, createdAt: sat, isSetup: false },
+      { id: 'r2', participantId: 'p-aisha', sessionNumber: 1, status: 'NOT_STARTED', completedAt: null, availableFrom: new Date('2026-09-28T06:00:00Z'), createdAt: sat, isSetup: false },
+      { id: 'r3', participantId: 'p-baraka', sessionNumber: 1, status: 'NOT_STARTED', completedAt: null, availableFrom: new Date('2026-09-28T06:00:00Z'), createdAt: sat, isSetup: false },
+    ];
+    const people = PARTIES.filter((p) => p.id !== 'p-chidi');
+    const c = aCheckIn();
+    c.prisma.checkIn.findMany = jest.fn(async () => rows);
+    c.prisma.ground.findUnique = jest.fn(async () => ({ ...(await (aCheckIn().prisma.ground.findUnique())), participants: people }));
+    await c.svc.build('g1', new Date('2026-09-26T10:00:00Z'));
+    const week = await c.svc.read('g1', LEAD, new Date('2026-09-26T10:00:00Z'));
+    const { count } = theSessionAndItsCount({ participants: people, checkIns: rows, scenario: 'SALES_TEAM_CHECK', cadence: 'WEEKLY', timelineDays: null }, { now: new Date('2026-09-26T10:00:00Z') });
+    expect([count.answered, count.ofPeople]).toEqual([1, 3]);
+    expect(week.inNumbers![0]).toEqual({ figure: '33%', of: 'of check-ins made this week', says: '1 of the 3 check-ins due this week was made.' });
   });
 });

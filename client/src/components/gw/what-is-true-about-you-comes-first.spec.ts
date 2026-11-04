@@ -53,9 +53,18 @@ describe('what is true about you comes first', () => {
     expect(Math.min(...mine)).toBeLessThan(Math.min(...panels))
   })
 
-  it('and the page still renders it inside the flex column that gives order meaning', () => {
-    const tab = PAGE.slice(PAGE.indexOf("{tab === 'settings' && ("))
-    expect(tab.slice(0, 400)).toMatch(/display: 'flex', flexDirection: 'column'/)
-    expect(tab).toMatch(/<MyParticipation/)
+  /* 4 November 2026: since Release 1B's switch went, the party's Setup tab is one element, <YourPeopleAndSetup />, the B8
+     member page served by GET /grounds/:id/people-and-setup, and <MyParticipation> is no longer drawn there. The rule it
+     guarded still holds on that page: what is true about you (your role, your status, your sessions) comes first, before
+     who runs it and the line on who sees what. */
+  it('and the party\'s page puts what is true about her first', () => {
+    expect(PAGE).toContain("{tab === 'settings' && <YourPeopleAndSetup")
+    const YOURS = read('../../pages/grounds/YourPeopleAndSetup.tsx')
+    const member = YOURS.slice(YOURS.indexOf('const m = data as Member'))
+    const at = (s: string) => { const i = member.indexOf(s); expect(i, s).toBeGreaterThan(-1); return i }
+    expect(at('label="Your role"')).toBeLessThan(at('label="Your status"'))
+    expect(at('label="Your status"')).toBeLessThan(at('label="Your sessions"'))
+    expect(at('label="Your sessions"')).toBeLessThan(at('label="Runs it"'))
+    expect(at('label="Runs it"')).toBeLessThan(at('m.whoSeesWhat'))
   })
 })

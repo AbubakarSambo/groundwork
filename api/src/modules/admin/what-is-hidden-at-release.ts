@@ -1,3 +1,5 @@
+import { theRelease4TeamsIsOn } from '../board/release-4-teams';
+import { theRelease5ProjectsIsOn } from '../board/release-5-projects';
 /**
  * WHAT THE RELEASE HIDES, AND THE THREE SETTINGS THAT HIDE IT (decisions 78, 88 and 90).
  *
@@ -32,14 +34,14 @@ export const WHATSAPP_HALFWAY_MESSAGES_KEY = 'release.whatsappHalfwayMessages';
 
 /**
  * The kinds of work a NEW check-in may be given at release (decision 91, item 3). The paid client
- * needs sales, onboarding and projects. Of the eleven kinds a board keeps records for, two serve
- * them: "sales org" (deals) and "engineering release" (the project board's tasks and releases, the
+ * needs sales, onboarding and projects. Of the kinds a board keeps records for, these serve
+ * them: "sales team" and "sales org" (deals, one sales board for both until Release 4) and "engineering release" (the project board's tasks and releases, the
  * prototype's engineering example). Onboarding and project boards are chosen by the situation
  * (NEW_HIRE, NEW_MANAGER, NEW_ADVISOR and NEW_PROJECT, see board-families.ts), not by a kind, so a
  * new onboarding or project check-in gets its board whether or not it holds a kind. Every other kind
  * stays hidden until the screens workspace marks its board done.
  */
-export const KINDS_OFFERED_AT_RELEASE: readonly string[] = ['sales org', 'engineering release'];
+export const KINDS_OFFERED_AT_RELEASE: readonly string[] = ['sales team', 'sales org', 'engineering release'];
 
 type Reader = { platformSetting?: { findUnique: (a: any) => Promise<{ value: unknown } | null> } } | any;
 
@@ -68,9 +70,18 @@ export async function theKindsOfWorkOffered(prisma: Reader): Promise<string[]> {
   return kinds ? kinds : [...KINDS_OFFERED_AT_RELEASE];
 }
 
-/** Of the eleven, those a new check-in may be given. */
-export async function theBoardKindsOffered(prisma: Reader): Promise<KindOfWork[]> {
+/**
+ * Of the twelve, those a new check-in may be given. A sales team is served the same sales board as a sales organisation
+ * (THE_SALES_KINDS), so wherever "sales org" is offered, "sales team" is offered too: a stored row written before "sales
+ * team" existed (`{ "kinds": ["sales org", ...] }`) keeps meaning "sales is offered", and no row has to be rewritten.
+ */
+export async function theBoardKindsOffered(prisma: Reader, organizationId?: string | null): Promise<KindOfWork[]> {
   const offered = (await theKindsOfWorkOffered(prisma)).map((k) => k.trim().toLowerCase());
+  if (offered.includes('sales org') && !offered.includes('sales team')) offered.push('sales team');
+  /* Release 4: leadership is offered only to an organisation with Release 4 on. */
+  if (organizationId && !offered.includes('leadership') && (await theRelease4TeamsIsOn(prisma, organizationId))) offered.push('leadership');
+  /* Release 5: a funded project is offered only to an organisation with Release 5 on. */
+  if (organizationId && !offered.includes('a funded project') && (await theRelease5ProjectsIsOn(prisma, organizationId))) offered.push('a funded project', 'client delivery');
   return KINDS_OF_WORK.filter((k) => offered.includes(k.toLowerCase()));
 }
 
@@ -78,9 +89,9 @@ export async function theBoardKindsOffered(prisma: Reader): Promise<KindOfWork[]
  * Whether this kind may be given to a check-in. A check-in that already has it is never asked: the
  * caller passes what the check-in holds now, and keeps it.
  */
-export async function aKindMayBeGiven(prisma: Reader, kind: string, whatItHoldsNow?: string | null): Promise<boolean> {
+export async function aKindMayBeGiven(prisma: Reader, kind: string, whatItHoldsNow?: string | null, organizationId?: string | null): Promise<boolean> {
   if (whatItHoldsNow && whatItHoldsNow.toLowerCase() === kind.toLowerCase()) return true;
-  return (await theBoardKindsOffered(prisma)).some((k) => k.toLowerCase() === kind.toLowerCase());
+  return (await theBoardKindsOffered(prisma, organizationId)).some((k) => k.toLowerCase() === kind.toLowerCase());
 }
 
 async function aSwitch(prisma: Reader, key: string): Promise<boolean> {

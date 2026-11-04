@@ -152,7 +152,8 @@ describe('a request is said back, and only a yes to that request sends it', () =
   })
 
   it('shows the server’s own words when it refuses', async () => {
-    ;vi.mocked(askApi.ask).mockRejectedValue({ response: { data: { message: 'You are not part of this check-in.' } } })
+    /* A refusal comes with its 4xx status, as the server sends it; whatTheServerSaid (5d1cbb40e) shows a server's words only for a 4xx. */
+    ;vi.mocked(askApi.ask).mockRejectedValue({ response: { status: 403, data: { message: 'You are not part of this check-in.' } } })
     panel(MIRIAMS)
     await screen.findByPlaceholderText(CAPTION)
     fireEvent.change(screen.getByPlaceholderText(CAPTION), { target: { value: 'what is stuck?' } })
@@ -215,10 +216,11 @@ describe('two check-ins on "About" share one label', () => {
 describe('the starter questions, under the greeting', () => {
   const asked = () => within(screen.getByRole('group', { name: 'Questions you could ask' })).getAllByRole('button').map(b => b.textContent)
 
-  it('Wairimu, who has asked nothing yet, reads the greeting and then the six starters, served in decision 101’s order', async () => {
+  /* Three, as the prototype's Ask (Hafsah, 25 October: the prototype wins on every detail), the first three of decision 101's order. */
+  it('Wairimu, who has asked nothing yet, reads the greeting and then the first three starters, in decision 101’s order', async () => {
     panel(WAIRIMUS, '/grounds/g-sales/board')
     await screen.findByText(WELCOME)
-    expect(asked()).toEqual(STARTERS_WITH_A_CHECK_IN)
+    expect(asked()).toEqual(STARTERS_WITH_A_CHECK_IN.slice(0, 3))
   })
 
   it('pressing one asks it as her own question, about the check-in she is reading, and the starters go away', async () => {
@@ -236,10 +238,13 @@ describe('the starter questions, under the greeting', () => {
     expect(asked()).toEqual(STARTERS_WITH_NO_CHECK_IN)
   })
 
-  it('Miriam, who has asked before, reads her own questions and not the starters', async () => {
+  /* The prototype's Ask shows its question chips whatever was asked before (Hafsah, 25 October: add back what the prototype has):
+     after her own earlier questions, until she asks something this visit. */
+  it('Miriam, who has asked before, reads her own questions, then the starters after them', async () => {
     panel(MIRIAMS)
-    await screen.findByText('Green Mart said January, in writing.')
-    expect(screen.queryByRole('group', { name: 'Questions you could ask' })).toBeNull()
+    const answer = await screen.findByText('Green Mart said January, in writing.')
+    const chips = screen.getByRole('group', { name: 'Questions you could ask' })
+    expect(answer.compareDocumentPosition(chips) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('Tom, whom Ask Groundwork cannot answer yet, reads why and is offered no question', async () => {
@@ -305,7 +310,8 @@ describe('where it opens', () => {
     authApi.myWaiting (not mocked in this file) would be asked for real. */
     qc.setQueryData(['my-waiting'], { waiting: false })
     render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/chat']}><AskPage /></MemoryRouter></QueryClientProvider>)
-    expect(screen.getByRole('heading', { level: 1, name: 'Ask Baridi' })).toBeInTheDocument()
+    /* UPDATED 24 October: the prototype's #/chat is titled "Chat"; the panel under it is named for the organisation. */
+    expect(screen.getByRole('heading', { level: 1, name: 'Chat' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { level: 2, name: 'Ask Baridi' })).toBeInTheDocument()
     expect(await screen.findByText('Why is Green Mart next quarter?')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()

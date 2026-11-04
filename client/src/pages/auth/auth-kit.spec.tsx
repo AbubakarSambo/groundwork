@@ -23,9 +23,9 @@ describe('AuthCard and AuthSplit', () => {
   it('draws its content inside the shared white panel, as the prototype does', () => {
     render(<AuthCard title="That link has expired" sub="Nothing is lost; ask for a fresh one." />)
     const heading = screen.getByRole('heading', { level: 1, name: 'That link has expired' })
-    const panel = heading.closest('.gwui-panel')
+    const panel = heading.closest('.panel')
     expect(panel).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Groundwork' }).closest('.gwui-panel')).toBe(panel)
+    expect(screen.getByRole('link', { name: 'Groundwork' }).closest('.panel')).toBe(panel)
   })
 
   it('the split screen carries the prototype\'s panel, word for word', () => {

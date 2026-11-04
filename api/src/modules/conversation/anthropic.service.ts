@@ -8,6 +8,8 @@ import { withoutTheEmptyOnes } from './an-item-the-model-left-empty-is-not-an-it
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { theModelStandInIsOn, theStandInReply, THE_STAND_IN_READ_NO_FILE } from './a-stand-in-for-the-model';
+import { TheFixedInstructions, asACachedAsk } from './the-fixed-instructions-are-cached';
 
 
 /**
@@ -57,7 +59,13 @@ export function worthWaitingOut(err: any): boolean {
    * A slow call and a busy one are the same fact from our side, and the same answer works for both:
    * stop waiting, ask again. The retry is ours, not theirs - they typed once.
    */
-  return /resource[ _]exhausted|rate limit|too many requests|overloaded|unavailable|timed out|did not open|stalled/i.test(said);
+  /*
+   * AND A LINE THAT DROPPED IS THE SAME (assessment test, 1 November 2026). One network blip at a setup's save failed the record and
+   * the promise read with "fetch failed" within a second, and neither was asked again: 21 of the run's failures came from it. A
+   * connection that dropped, reset or could not be found is not a bad request, so it is waited out like a busy one.
+   */
+  if (/^(ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE|UND_ERR_\w+)$/.test(String(err?.code ?? err?.cause?.code ?? ''))) return true;
+  return /resource[ _]exhausted|rate limit|too many requests|overloaded|unavailable|timed out|did not open|stalled|fetch failed|network|socket hang up|connection (?:reset|closed|refused)/i.test(said);
 }
 
 /** Short, and short enough that nobody is left staring at a composer. */
@@ -261,11 +269,17 @@ export class AnthropicService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AnthropicService.name);
   private client: GoogleGenAI;
   private model: string;
+  /** A local browser test's stand-in for the model (a-stand-in-for-the-model.ts). Never on in production. */
+  private readonly standIn: boolean;
   /** What a person in a conversation talks to. See geminiConfig.conversationModel. */
   private conversationModel: string;
   private maxTokens: number;
+  /** The engine's fixed rules, cached once per text and sent by name (the-fixed-instructions-are-cached.ts). */
+  private readonly fixedInstructions = new TheFixedInstructions(() => this.client.caches as any, () => this.conversationModel, (s) => this.logger.warn(s));
 
   constructor(private config: ConfigService) {
+    this.standIn = theModelStandInIsOn();
+    if (this.standIn) this.logger.warn('THE MODEL STAND-IN IS ON (GROUNDWORK_MODEL_STAND_IN=fixed-questions): no model is called; every reply is a fixed question. Local test only.');
     const inlineJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
     if (inlineJson) {
       const keyPath = path.join(os.tmpdir(), 'gcp-service-account.json');
@@ -394,15 +408,18 @@ export class AnthropicService implements OnApplicationBootstrap {
    */
   private async healthCheck(): Promise<{ ok: boolean; latencyMs: number; model: string; models: { conversation: string; reports: string }; lastRebuildAt: Date | null; error?: string }> {
     const started = Date.now();
+    if (this.standIn) return { ok: true, latencyMs: 0, model: this.model, models: this.modelsInUse(), lastRebuildAt: this.lastRebuildAt, error: 'the model stand-in is on (local test only); no model was called' };
     try {
+      /*
+       * ON THE CONVERSATION MODEL, THE CHEAPER OF THE TWO WE USE (3 November 2026). Both are reached through this one
+       * client, project and region, so one answer from either proves the engine is up; this was a reports-model call
+       * with thinking, every five minutes, and now it is the conversation turn's own setting. Real headroom still: a
+       * tiny cap would make a working engine report unhealthy, the trap the maxTokens floor guards against.
+       */
       const res = await this.client.models.generateContent({
-        model: this.model,
+        model: this.conversationModel,
         contents: [{ role: 'user', parts: [{ text: 'Reply with the single word: ok' }] }],
-        // Real headroom, and the LOWEST thinking budget this model accepts
-        // (2.5-pro rejects 0). A tiny cap gets eaten by thinking tokens before
-        // any text is produced, which makes a WORKING engine report unhealthy -
-        // the same trap the maxTokens floor in the constructor guards against.
-        config: { maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: 128 } },
+        config: { maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
       });
       const ok = !!res?.text;
       if (ok) this.noteSuccess();
@@ -431,10 +448,12 @@ export class AnthropicService implements OnApplicationBootstrap {
    * accumulated text at the end, which catches a double hyphen split across deltas.
    */
   async *respondStream(systemPrompt: string, history: ChatTurn[]): AsyncGenerator<string, void, unknown> {
+    if (this.standIn) { yield theStandInReply(history); return; }
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: t.content }],
     }));
+    const cached = this.fixedInstructions.for(systemPrompt);
     /*
      * A STREAM THAT NEVER ARRIVES USED TO WAIT FOR EVER.
      *
@@ -451,8 +470,14 @@ export class AnthropicService implements OnApplicationBootstrap {
     const stream = await withADeadline(
       this.client.models.generateContentStream({
         model: this.conversationModel,
-        contents,
-        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
+        ...this.withTheFixedInstructions(systemPrompt, contents, cached),
+        config: { ...this.theSystemOrTheCache(systemPrompt, cached), maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
+      }).catch((err: any) => {
+        /* A cache Gemini no longer has is forgotten, and this reply is asked the plain way. */
+        if (!cached) throw err;
+        this.fixedInstructions.forget(cached.name);
+        this.logger.warn(`respondStream() with the cached instructions failed (${err?.message ?? err}); asking with them whole.`);
+        return this.client.models.generateContentStream({ model: this.conversationModel, contents, config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } } });
       }),
       OPENING_A_STREAM_WAITS,
       'Gemini respondStream() did not open',
@@ -496,6 +521,22 @@ export class AnthropicService implements OnApplicationBootstrap {
     return /flash/.test(this.conversationModel) ? 0 : CONVERSATION_THINKING_BUDGET;
   }
 
+  /**
+   * THE ENGINE'S FIXED RULES, SAID ONCE (the-fixed-instructions-are-cached.ts). Whoever composes a conversation's prompt names the part
+   * of it that is the same for every reply of its kind; it is cached in the background, and from then on a reply whose prompt starts
+   * with it sends only the rest.
+   */
+  keepTheFixedInstructions(fixed: string): void {
+    if (this.standIn) return;
+    this.fixedInstructions.keep(fixed);
+  }
+  private withTheFixedInstructions(systemPrompt: string, contents: { role: string; parts: { text: string }[] }[], cached: { fixed: string } | null) {
+    return { contents: cached ? asACachedAsk(systemPrompt, cached.fixed, contents) : contents };
+  }
+  private theSystemOrTheCache(systemPrompt: string, cached: { name: string } | null): { systemInstruction?: string; cachedContent?: string } {
+    return cached ? { cachedContent: cached.name } : { systemInstruction: systemPrompt };
+  }
+
   /** For logs and the health page. */
   modelsInUse() {
     return { conversation: this.conversationModel, reports: this.model };
@@ -508,12 +549,14 @@ export class AnthropicService implements OnApplicationBootstrap {
    * gets). Every existing caller passes nothing and keeps the model's own default behaviour.
    */
   async respond(systemPrompt: string, history: ChatTurn[], options: { temperature?: number; seed?: number } = {}): Promise<string> {
+    if (this.standIn) return theStandInReply(history);
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: t.content }],
     }));
 
     let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
+    const cached = this.fixedInstructions.for(systemPrompt);
     /* A 429 under load is "not this second", not an outage - see tryAgainIfItIsJustBusy. The
        deadline sits INSIDE the retry, so a slow call is cut off and asked again rather than
        being waited out once and handed to the person as a failure. */
@@ -522,9 +565,9 @@ export class AnthropicService implements OnApplicationBootstrap {
         () => withADeadline(
           this.client.models.generateContent({
             model: this.conversationModel,
-            contents,
+            ...this.withTheFixedInstructions(systemPrompt, contents, cached),
             config: {
-              systemInstruction: systemPrompt,
+              ...this.theSystemOrTheCache(systemPrompt, cached),
               maxOutputTokens: this.maxTokens,
               thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() },
               ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
@@ -538,6 +581,12 @@ export class AnthropicService implements OnApplicationBootstrap {
       );
       this.noteSuccess();
     } catch (err: any) {
+      /* A cache Gemini no longer has is forgotten, and the reply is asked once more with the instructions whole. */
+      if (cached) {
+        this.fixedInstructions.forget(cached.name);
+        this.logger.warn(`respond() with the cached instructions failed (${err?.message ?? err}); asking with them whole.`);
+        return this.respond(systemPrompt, history, options);
+      }
       this.logger.error(`respond() Gemini call failed: ${err.message}`);
       this.noteFailure('respond', err);
       throw engineUnavailable(err);
@@ -557,6 +606,7 @@ export class AnthropicService implements OnApplicationBootstrap {
    * through separate OCR/parsing libraries.
    */
   async respondWithMedia(systemPrompt: string, prompt: string, media: { mimeType: string; base64: string }): Promise<string> {
+    if (this.standIn) return THE_STAND_IN_READ_NO_FILE;
     let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
     try {
       res = await tryAgainIfItIsJustBusy(
@@ -592,6 +642,11 @@ export class AnthropicService implements OnApplicationBootstrap {
    * fields out of a short conversation while a person waits, and with the model's default budget
    * that pull took longer than the reply it followed (28s observed, against 2s for the reply).
    * Report synthesis leaves it unset and keeps the deeper default.
+   *
+   * A `fast` read thinks as much as a conversation turn does unless its caller says otherwise (3 November
+   * 2026). Measured on one check-in: the suggested answers, the session plan and Ask's reading of a
+   * question each ran on the fast model with its own default thinking, 500 to 1,800 tokens of it, and took
+   * 2 to 12 seconds while a person waited. A fast read is a small one by definition.
    */
   async extract<T = any>(
     systemPrompt: string,
@@ -599,11 +654,14 @@ export class AnthropicService implements OnApplicationBootstrap {
     tool: { name: string; description: string; input_schema: any },
     options: { thinkingBudget?: number; fast?: boolean; patient?: boolean; temperature?: number; seed?: number } = {},
   ): Promise<T | null> {
+    /* The stand-in finds nothing, as a model that found nothing would. */
+    if (this.standIn) return null;
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: t.content }],
     }));
 
+    const thinkingBudget = options.thinkingBudget ?? (options.fast ? this.conversationThinkingBudget() : undefined);
     let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
     /* Same treatment as respond(): an extraction lost to a burst is a report built from less. */
     try {
@@ -650,7 +708,7 @@ export class AnthropicService implements OnApplicationBootstrap {
            */
           ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
           ...(options.seed !== undefined ? { seed: options.seed } : {}),
-          ...(options.thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } } : {}),
+          ...(thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget } } : {}),
           tools: [{ functionDeclarations: [this.convertTool(tool)] }],
           toolConfig: {
             functionCallingConfig: {

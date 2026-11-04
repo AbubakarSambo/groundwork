@@ -38,6 +38,8 @@ interface Setup {
   items: any[];
   lines: { id: string; participantId: string; text: string; disputedAt?: Date | null }[];
   objectives?: any[];
+  /** Release 1's sales board, switched on for the organisation (release-one-sales-board). Off unless set. */
+  releaseOneSalesBoard?: boolean;
 }
 
 const item = (id: string, kind: string, name: string, more: Record<string, any> = {}) => ({
@@ -62,6 +64,7 @@ function boardAs(setup: Setup, userId: string, role: string) {
   const prisma = new Proxy({
     ground: model({ findUnique: jest.fn(async () => JSON.parse(JSON.stringify(ground))) }),
     user: model({ findUnique: jest.fn(async () => ({ role, organizationId: 'org-1' })) }),
+    organization: model({ findUnique: jest.fn(async () => (setup.releaseOneSalesBoard ? { id: 'org-1', release1SalesBoardOn: true, timeZone: null } : null)) }),
     checkIn: model({ findMany: jest.fn(async () => JSON.parse(JSON.stringify(CHECK_INS))) }),
     recordEntry: model({
       findMany: jest.fn(async (args: any) => {
@@ -102,9 +105,31 @@ const SALES: Setup = {
   ],
 };
 
+/* Since Hafsah's answer to Needs Hafsah 7 (17 October), with Release 1's sales board on, each deal carries its four criteria ticked as the kit ticks them and the stages its record meets (a-deals-four-criteria). */
+const NONE_OF_THE_FOUR = {
+  criteria: [
+    { criterion: 'need', label: 'Need', met: false, says: 'Not on record yet.' },
+    { criterion: 'budget', label: 'Budget the customer stated', met: false, says: 'Not on record yet.' },
+    { criterion: 'decision maker', label: 'Decision maker', met: false, says: 'Not on record yet.' },
+    { criterion: 'buying date', label: 'Buying date', met: false, says: 'Not on record yet.' },
+  ],
+  criteriaSays: 'None of the four criteria is on record yet.',
+  paymentRecord: false,
+  /* Added 18 October with Hafsah's answer 2 (Won is a signed order or a payment): each deal also says whether a signed order backs it. */
+  signedOrder: false,
+};
+
 describe('a sales check-in: deals and their stages', () => {
-  it('Amina, who runs it, is served kindOfWork, every deal with its stage and whose it is, and the forecast as not known', async () => {
+  it('with Release 1\'s sales board switched off, Amina reads the sentence the board had before it, since nothing counts from the deals', async () => {
     const board = await boardAs(SALES, ...AMINA);
+    expect(section(board, 'Deal grid').groups.find((g: any) => g.group === 'said-won').reason)
+      .toBe('Somebody said each of these was won, in their own words. Nothing has been shown to back them yet, so they are not counted as won.');
+  });
+
+  it('Amina, who runs it, is served kindOfWork, every deal with its stage and whose it is, and the forecast as not known', async () => {
+    /* With Release 1's sales board switched on, where a deal said to be won counts in what is sold as their word (release-one-sales-board).
+       Since Hafsah's points 4 and 6 (17 October), each deal says its buying date (the customer's) and whether a next step is booked. */
+    const board = await boardAs({ ...SALES, releaseOneSalesBoard: true }, ...AMINA);
     expect(board.kindOfWork).toBe('sales org');
     expect(section(board, 'Deal grid')).toEqual({
       section: 'Deal grid',
@@ -116,38 +141,41 @@ describe('a sales check-in: deals and their stages', () => {
           id: 'w-1', kind: 'deal', name: 'Nyama Choma Palace', stage: 'Won', owner: 'Rukia Mwangi', ownerParticipantId: 'p-rukia',
           /* Since 12 October a deal said to be won with nothing behind it says so beside its stage (baefa3f50). */
           stageSays: 'Said to be won, not shown yet',
-          due: null, fields: { Value: 'KES 90K' }, from: 'said', said: 'Nyama Choma Palace paid KES 90K on 22 September, so that one is won.',
+          due: null, evidence: [], fields: { Value: 'KES 90K' }, from: 'said', said: 'Nyama Choma Palace paid KES 90K on 22 September, so that one is won.',
           saidBy: 'Rukia', saidByParticipantId: 'p-rukia', saidByLine: "In Rukia's words,",
           known: 'said', knownSays: 'Someone said it.', mark: 'memory', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
-          lastSaidOn: null, group: 'said-won', groupSays: 'It rests on what somebody said, with no proof yet. No date has been given for it. Nobody has spoken about it in a check-in yet. Nobody has said what happens next.',
+          lastSaidOn: null, group: 'said-won', groupSays: 'None of the four criteria is on record yet. Nobody has spoken about it in a check-in yet. No next step is booked.',
+          ...NONE_OF_THE_FOUR, stagesMet: ['Contacted'], stageMet: 'Contacted',
           /* Request 115 (b): its value as said, the days it was spoken about, and the owner's own read where there is one. */
-          value: 'KES 90K', valueSays: null, contactHistory: [], contactHistorySays: 'Each date is a day somebody spoke about this deal in a check-in. Nothing on record holds each contact with the customer.', notAnsweringSince: null, theirRead: null,
+          value: 'KES 90K', valueSays: null, buyingDate: null, contactHistory: [], contactHistorySays: 'Each date is a day this deal came up in a check-in.', notAnsweringSince: null, theirRead: null,
         },
         {
           id: 'w-2', kind: 'deal', name: 'Eastside Foods', stage: 'Qualified', owner: 'Baraka Otieno', ownerParticipantId: 'p-baraka',
-          due: null, fields: {}, from: 'said', said: 'Eastside Foods wants a second freezer and the owner has agreed the budget.',
+          due: null, evidence: [], fields: {}, from: 'said', said: 'Eastside Foods wants a second freezer and the owner has agreed the budget.',
           saidBy: 'Baraka', saidByParticipantId: 'p-baraka', saidByLine: "In Baraka's words,",
           known: 'said', knownSays: 'Someone said it.', mark: 'said', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
-          lastSaidOn: null, group: 'possible', groupSays: 'It rests on what somebody said, with no proof yet. No date has been given for it. Nobody has spoken about it in a check-in yet. Nobody has said what happens next.',
-          value: null, valueSays: 'Nobody has said what this deal is worth yet.', contactHistory: [], contactHistorySays: 'Each date is a day somebody spoke about this deal in a check-in. Nothing on record holds each contact with the customer.', notAnsweringSince: null, theirRead: null,
+          lastSaidOn: null, group: 'possible', groupSays: 'None of the four criteria is on record yet. Nobody has spoken about it in a check-in yet. No next step is booked.',
+          ...NONE_OF_THE_FOUR, stagesMet: ['Contacted'], stageMet: 'Contacted',
+          value: null, valueSays: 'Nobody has said what this deal is worth yet.', buyingDate: null, contactHistory: [], contactHistorySays: 'Each date is a day this deal came up in a check-in.', notAnsweringSince: null, theirRead: null,
         },
         {
-          id: 'w-3', kind: 'deal', name: 'Karen Butchery', stage: 'Contacted', owner: null, ownerParticipantId: null, due: null, fields: {}, from: 'lead', saidBy: null, saidByParticipantId: null, saidByLine: null,
+          id: 'w-3', kind: 'deal', name: 'Karen Butchery', stage: 'Contacted', owner: null, ownerParticipantId: null, due: null, evidence: [], fields: {}, from: 'lead', saidBy: null, saidByParticipantId: null, saidByLine: null,
           known: 'lead', knownSays: 'You added it on the board.', mark: 'none', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
-          lastSaidOn: null, group: 'possible', groupSays: 'It was added on the board, not said in a check-in. No date has been given for it. Nobody has spoken about it in a check-in yet. Nobody has said what happens next.',
-          value: null, valueSays: 'Nobody has said what this deal is worth yet.', contactHistory: [], contactHistorySays: 'Each date is a day somebody spoke about this deal in a check-in. Nothing on record holds each contact with the customer.', notAnsweringSince: null, theirRead: null,
+          lastSaidOn: null, group: 'possible', groupSays: 'None of the four criteria is on record yet. Nobody has spoken about it in a check-in yet. No next step is booked.',
+          ...NONE_OF_THE_FOUR, stagesMet: [], stageMet: null,
+          value: null, valueSays: 'Nobody has said what this deal is worth yet.', buyingDate: null, contactHistory: [], contactHistorySays: 'Each date is a day this deal came up in a check-in.', notAnsweringSince: null, theirRead: null,
         },
       ],
       /* Request 112 (a): each deal in its group, from its own record. This check-in has no end date. */
       groups: [
         { group: 'possible', heading: 'Possible', reason: 'Each of these is still open. This check-in has no end date, so none can be said to be likely before the end.', rowIds: ['w-2', 'w-3'] },
         /* Night quality run 1, problem 3: a deal at Won on somebody's word alone is their claim, never counted as won. */
-        { group: 'said-won', heading: 'Said to be won, not shown yet', reason: 'Somebody said each of these was won, in their own words. Nothing has been shown to back them yet, so they are not counted as won.', rowIds: ['w-1'] },
+        { group: 'said-won', heading: 'Said to be won, not shown yet', reason: 'Somebody said each of these was won, in their own words. Nothing has been shown to back them yet, so they count in what is sold as their word, not as sales with proof of payment.', rowIds: ['w-1'] },
       ],
       groupsNote: [
-        'Nothing on record says what a deal must show at each stage, so no group here says whether a criterion is met.',
-        /* The stall rule is applied now, from the record (pilots after fixes, A4). */
-        'A deal is stalled when a check-in says the customer has not answered and 3 working days have passed, with nothing said since that they answered.',
+        /* The stage rules are on record now (Needs Hafsah 7), so the note that no criterion is checked is not said with the switch on. */
+        /* Changed 18 October (Hafsah's standing decision 4): this run has no stall rule set by the lead, so none is applied, and the note says so. */
+        'No stall rule set yet, so no deal is marked cold for going quiet.',
         'This check-in has no end date, so no deal can be said to be likely by the end, or to fall after it.',
       ],
     });
@@ -155,7 +183,7 @@ describe('a sales check-in: deals and their stages', () => {
       section: 'Forecast',
       holds: 'where the sales numbers are likely to end up',
       state: 'not-known',
-      why: 'Groundwork does not keep this yet. It needs numbers from another system, such as payment records.',
+      why: '',
     });
   });
 
@@ -229,7 +257,7 @@ describe('an engineering check-in: releases and tasks', () => {
       stages: ['Built', 'Reviewed', 'Shipped'],
       rows: [{
         id: 'w-1', kind: 'release', name: 'Release 2.4', stage: 'Reviewed', owner: 'Rukia Mwangi', ownerParticipantId: 'p-rukia',
-        due: '2026-09-24', fields: {}, from: 'said', said: 'Release 2.4 is reviewed and waits for the production test on 24 September.',
+        due: '2026-09-24', evidence: [], fields: {}, from: 'said', said: 'Release 2.4 is reviewed and waits for the production test on 24 September.',
         saidBy: 'Rukia', saidByParticipantId: 'p-rukia', saidByLine: "In Rukia's words,",
         known: 'said', knownSays: 'Someone said it.', mark: 'memory', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
         lastSaidOn: null,
@@ -268,7 +296,7 @@ describe('a law firm matter: deadlines and parties', () => {
     ]);
     expect(section(board, 'Obligations')).toEqual({
       section: 'Obligations', holds: 'the parties', state: 'filled',
-      rows: [{ id: 'w-3', kind: 'party', name: 'Pwani Mills', stage: null, owner: null, ownerParticipantId: null, due: null, fields: { Side: 'The other side' }, from: 'lead', saidBy: null, saidByParticipantId: null, saidByLine: null, known: 'lead', knownSays: 'You added it on the board.', mark: 'none', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.', lastSaidOn: null }],
+      rows: [{ id: 'w-3', kind: 'party', name: 'Pwani Mills', stage: null, owner: null, ownerParticipantId: null, due: null, evidence: [], fields: { Side: 'The other side' }, from: 'lead', saidBy: null, saidByParticipantId: null, saidByLine: null, known: 'lead', knownSays: 'You added it on the board.', mark: 'none', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.', lastSaidOn: null }],
     });
   });
 
@@ -295,7 +323,7 @@ describe('a check-in whose kind of work nobody knows', () => {
     expect(board.kindOfWork).toBeNull();
     expect(board.workRecords.every((s: any) => s.state === 'not-known')).toBe(true);
     expect(board.workRecords.map((s: any) => s.section)).toEqual(['Deal grid', 'Forecast', 'Themes', 'Work plan', 'Timeline', 'Obligations']);
-    expect(board.workRecords[0].why).toBe('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.');
+    expect(board.workRecords[0].why).toBe('');
   });
 
   it('a stored kind that is not one of the eleven is served as none', async () => {
@@ -306,7 +334,7 @@ describe('a check-in whose kind of work nobody knows', () => {
   it('a kind Groundwork keeps records for, with none yet, is none-yet rather than not known', () => {
     expect(theRecordSections('support desk', null, [])).toEqual([
       { section: 'Deal grid', holds: 'tickets', state: 'none-yet', rows: [] },
-      { section: 'Themes', holds: 'ticket volume and causes from the helpdesk', state: 'not-known', why: 'Groundwork does not keep this yet. It needs the ticket counts from the helpdesk itself.' },
+      { section: 'Themes', holds: 'ticket volume and causes from the helpdesk', state: 'not-known', why: '' },
     ]);
   });
 });
@@ -348,7 +376,8 @@ describe('records are read from what somebody said, and never invented', () => {
       { lineId: 'e2', kind: 'deal', name: 'Made Up Traders', stage: 'Won' },
     ] })) };
     await new BoardListener(prisma, anthropic).onCheckInCompleted({ checkInId: 'c1', groundId: 'g-1', participantId: 'p-rukia', sessionNumber: 1 });
-    expect(created).toEqual([{ groundId: 'g-1', kind: 'deal', name: 'Eastside Foods', stage: 'Qualified', dueAt: null, fields: {}, sourceEntryId: 'e1', ownerParticipantId: 'p-rukia' }]);
+    /* The stage it came onto the record at is kept with its day, so a later move can be counted (a-deals-stages-are-kept). */
+    expect(created).toEqual([{ groundId: 'g-1', kind: 'deal', name: 'Eastside Foods', stage: 'Qualified', dueAt: null, fields: { _stages: [{ stage: 'Qualified', on: expect.any(String), by: 'check-in' }] }, sourceEntryId: 'e1', ownerParticipantId: 'p-rukia' }]);
     /* Karen Butchery had nobody's name on it. Rukia saying it moved is a claim, put to the lead; it does not
        make the deal Rukia's (decision 76, item 3). */
     expect(updated).toHaveLength(1);
@@ -356,6 +385,8 @@ describe('records are read from what somebody said, and never invented', () => {
     expect(rest).toEqual({ stage: 'Pitched', sourceEntryId: 'e2' });
     expect(fields.Value).toBe('KES 40K');
     expect(fields._ownerClaim).toMatchObject({ participantId: 'p-rukia', sourceEntryId: 'e2' });
+    /* Karen Butchery had no stage kept; it was at none, so its first stage on record is Pitched, not a move. */
+    expect(fields._stages).toEqual([{ stage: 'Pitched', on: expect.any(String), by: 'check-in' }]);
   });
 
   it('a deal added on the board with nobody\'s name on it is not made the deal of whoever says it is theirs, but put to the lead, and a named one keeps its owner (decision 76, item 3)', async () => {

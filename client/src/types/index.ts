@@ -9,6 +9,8 @@ export interface UserOrganization {
 }
 
 export interface User {
+  /** The organisation's own time zone, the day its dates are said in (B-094). From GET /auth/me. */
+  organizationTimeZone?: string | null
   id: string
   email: string
   firstName: string
@@ -77,6 +79,8 @@ export type GroundScenario =
   | 'COHORT_CHECK'
   | 'ACUTE_SHOCK'
   | 'OPEN_READ'
+  /** Collect what's owed (Release 2): offered only where the organisation's Release 2 switch is on. */
+  | 'COLLECTIONS'
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 

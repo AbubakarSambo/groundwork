@@ -52,6 +52,10 @@ const NOT_COPY = [
    * only job they have. Same reason this list already excludes the prompt library.
    */
   'reading-what-they-just-said.ts',
+  /* Fix plan, 28 October 2026: two more model instructions, read by the model and never by a person. Ask's reading of what a message means and its
+     correction check (ask-understands-with-the-model.ts), and the reading of what someone said they would do (what-they-said-they-would-do-next.ts). */
+  'ask-understands-with-the-model.ts',
+  'what-they-said-they-would-do-next.ts',
   /*
    * AND THE CONTEXT CHAT'S OWN PROMPT, for the same reason and by the same test.
    *

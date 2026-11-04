@@ -73,23 +73,96 @@ export function isKnownStatus(value: string | null | undefined): value is Subscr
  */
 export type WhatCovers = 'paid' | 'on the house' | 'free tier';
 
-export function whatCoversThem<T extends {
+/**
+ * THE FOUR WEEKS AFTER A FREE TRIAL, AND THE PAUSE AFTER THEM (Hafsah, 2 November 2026).
+ *
+ * "Every organisation on a free trial gets 4 more weeks after its trial ends, then Groundwork pauses until they pay." This is the
+ * one place that says where an organisation stands, by arithmetic on its own dates, exactly as the free run above: nothing writes
+ * "paused" on a row, so paying lifts it the moment the subscription is recorded, and a longer setting moves every date at once.
+ *
+ *   - a customer: it pays, or it has paid before (any subscription status at all, or a care fee). Unchanged by any of this.
+ *   - not on a trial: no free month, or the free trial's switch is off.
+ *   - in its trial: its free month is running.
+ *   - after its trial: the four weeks. Everything keeps working, on the trial's plan.
+ *   - paused: past the four weeks. No check-in opens and nothing Groundwork starts goes out, until it pays. Nothing is deleted.
+ *
+ * A FREE MONTH is the free trial's (`freeTrialStartedAt`) or the month every organisation already here was given
+ * (`freeMonthOfReleaseAt`), the same two the free-month emails write about. A free run staff gave by hand is not a free month.
+ *
+ * NOBODY IS PAUSED WITHOUT THEIR FOUR WEEKS. The weeks start when the free month ends, or when the rule came in (`notBefore`: the
+ * later of the moment the grace setting was written and the moment the free trial's switch went on), whichever is later. So an
+ * organisation whose free month ended long before the rule existed gets its four weeks, and its emails, from the day it arrived.
+ */
+export interface TheGrace {
+  weeks: number;
+  notBefore: Date | null;
+}
+
+export type WhereTheTrialStands = 'a customer' | 'not on a trial' | 'in its trial' | 'after its trial' | 'paused';
+
+/** The fields an organisation is read with to know what covers it and where its trial stands. */
+export const WHAT_COVER_READS = {
+  subscriptionPlan: true, subscriptionStatus: true, careFeeStatus: true,
+  freeUntil: true, freePlan: true, freeTrialStartedAt: true, freeMonthOfReleaseAt: true,
+} as const;
+
+type CoverFields = {
   subscriptionPlan: unknown;
   subscriptionStatus: string | null | undefined;
-  freeUntil?: Date | null;
+  careFeeStatus?: string | null;
+  freeUntil?: Date | string | null;
   freePlan?: unknown;
-}>(org: T, now: Date = new Date()): { covers: WhatCovers; plan: NonNullable<T['subscriptionPlan']> | null; until: Date | null } {
+  freeTrialStartedAt?: Date | string | null;
+  freeMonthOfReleaseAt?: Date | string | null;
+};
+
+const DAY = 24 * 3600 * 1000;
+
+export function whereTheTrialStands(
+  org: CoverFields,
+  grace: TheGrace | null | undefined,
+  now: Date = new Date(),
+): { stands: WhereTheTrialStands; trialEnded: Date | null; pausesAt: Date | null } {
+  const none = { trialEnded: null, pausesAt: null };
+  if (isSubscribed(org) || !!org.subscriptionStatus || org.careFeeStatus === 'ACTIVE') return { stands: 'a customer', ...none };
+  const until = org.freeUntil ? new Date(org.freeUntil) : null;
+  const aFreeMonth = !!until && !Number.isNaN(until.getTime()) && (!!org.freeTrialStartedAt || !!org.freeMonthOfReleaseAt);
+  if (!aFreeMonth) return { stands: 'not on a trial', ...none };
+  if (until!.getTime() > now.getTime()) return { stands: 'in its trial', ...none };
+  if (!grace) return { stands: 'not on a trial', ...none };
+  const from = Math.max(until!.getTime(), grace.notBefore ? grace.notBefore.getTime() : 0);
+  const pausesAt = new Date(from + grace.weeks * 7 * DAY);
+  return { stands: now.getTime() < pausesAt.getTime() ? 'after its trial' : 'paused', trialEnded: until, pausesAt };
+}
+
+export function isPaused(org: CoverFields, grace: TheGrace | null | undefined, now: Date = new Date()): boolean {
+  return whereTheTrialStands(org, grace, now).stands === 'paused';
+}
+
+/**
+ * `grace`, where it is given, is what the four weeks are: inside them the organisation is covered on its trial's plan until the day
+ * it pauses, exactly as during the trial. A caller that has not read the grace setting sees the trial end on its own day.
+ */
+export function whatCoversThem<T extends CoverFields>(
+  org: T,
+  now: Date = new Date(),
+  grace?: TheGrace | null,
+): { covers: WhatCovers; plan: NonNullable<T['subscriptionPlan']> | null; until: Date | null; afterItsTrial?: true } {
   if (isSubscribed(org)) return { covers: 'paid', plan: org.subscriptionPlan as any, until: null };
   const until = org.freeUntil ? new Date(org.freeUntil) : null;
   if (until && until.getTime() > now.getTime() && org.freePlan) {
     return { covers: 'on the house', plan: org.freePlan as any, until };
   }
+  const stands = grace ? whereTheTrialStands(org, grace, now) : null;
+  if (stands?.stands === 'after its trial' && org.freePlan) {
+    return { covers: 'on the house', plan: org.freePlan as any, until: stands.pausesAt, afterItsTrial: true };
+  }
   return { covers: 'free tier', plan: null, until: null };
 }
 
 /** Whether anything at all covers them beyond the free tier. The read most gates want. */
-export function isCovered<T extends Parameters<typeof whatCoversThem>[0]>(org: T, now?: Date): boolean {
-  return whatCoversThem(org, now).covers !== 'free tier';
+export function isCovered<T extends Parameters<typeof whatCoversThem>[0]>(org: T, now?: Date, grace?: TheGrace | null): boolean {
+  return whatCoversThem(org, now, grace).covers !== 'free tier';
 }
 
 /** The last day of a free run, from the day it is taken up. Whole months, so three means three. */

@@ -139,9 +139,11 @@ describe('the board, as each reader reads it', () => {
     me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
     renderBoard(AS_AN_ADMIN)
     expect(await screen.findByRole('tab', { name: 'Board' })).toBeTruthy()
-    /* "Context" renamed to "Context and resources" so the tab's name says what it now holds. */
-    expect(screen.getByRole('tab', { name: 'Context and resources' })).toBeTruthy()
+    /* "Context" renamed to "Context and resources", then "References and resources" for everybody once Release 1B's switch
+       went (eb43a349d). The three tabs are now asserted as the whole tab list, so nothing else can slip in. */
+    expect(screen.getByRole('tab', { name: 'References and resources' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'People and setup' })).toBeTruthy()
+    expect(screen.getAllByRole('tab').map((t) => t.textContent?.trim())).toEqual(['Board', 'References and resources', 'People and setup'])
     expect(screen.queryByRole('tab', { name: 'Check-in' })).toBeNull()
     expect(screen.queryByRole('tab', { name: 'My work' })).toBeNull()
     expect(screen.queryByText('Your check-in')).toBeNull()
@@ -251,9 +253,9 @@ describe('the board, as each reader reads it', () => {
 /**
  * U.10 (c1): THE SWITCHBOARD'S SECTIONS SIT IN THE SHARED PAGE RHYTHM, NOT WRAPPED AWAY FROM IT.
  *
- * Her review found the sections had no space between them - "'What we are aiming for' touches the
+ * Her review found the sections had no space between them - "'What the team is aiming for' touches the
  * panel above it" - because a wrapping div around the whole page escaped the shared Page frame's
- * own 30px child spacing (`.gwui-page-wrap > * + *`). Fixed by giving each switchboard section its
+ * own 30px child spacing (`.wrap > * + *`). Fixed by giving each switchboard section its
  * own heading AND content together, as one `<Section>`, so each is a direct child of the page wrap
  * again. This does not compute CSS in jsdom; it pins the DOM shape the rule depends on, so the
  * escape hatch cannot come back quietly.
@@ -272,7 +274,7 @@ describe('the switchboard sections sit directly in the page rhythm', () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     const { container } = renderBoard(AS_THE_LEAD)
     await screen.findByRole('heading', { name: 'The team today' })
-    const wrap = container.querySelector('.gwui-page-wrap')
+    const wrap = container.querySelector('.wrap')
     expect(wrap).toBeTruthy()
     const sections = wrap!.querySelectorAll(':scope > section')
     const headings = Array.from(sections).map((s) => s.querySelector('h2')?.textContent)
@@ -527,5 +529,45 @@ describe('the alignment feed', () => {
     renderBoard({ ...AS_AN_ADMIN, sections: ['objectives'] })
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.queryByText('Alignment feed')).toBeNull()
+  })
+})
+
+/* Polish round 1 dead end (25 October): a target can be given its unit on screen, and the unit is sent with it. */
+describe('a target with its unit, as Wairimu adds it', () => {
+  it('"Units sold by 30 October", 120, "units" goes to the server with its unit', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    const create = vi.fn().mockResolvedValue({});
+    (boardApi as any).createObjective = create
+    renderBoard(AS_THE_LEAD)
+    expect(await screen.findByText(LAST_UPDATED)).toBeTruthy()
+    fireEvent.change(screen.getByPlaceholderText('Add a target, e.g. Paying companies'), { target: { value: 'Units sold by 30 October' } })
+    fireEvent.change(screen.getByPlaceholderText('how many'), { target: { value: '120' } })
+    fireEvent.change(screen.getByLabelText('Unit'), { target: { value: 'units' } })
+    fireEvent.click(screen.getByText('Add target'))
+    await waitFor(() => expect(create).toHaveBeenCalledWith(expect.any(String), { name: 'Units sold by 30 October', target: 120, unit: 'units' }))
+  })
+})
+
+/* Polish round 1 dead end (25 October): the lead names whose goal a target is; nobody named is hers, as she runs it. Miriam is offered no choice. */
+describe('whose goal a target is', () => {
+  it('Wairimu can name somebody, or leave it as hers', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    const update = vi.fn().mockResolvedValue({});
+    (boardApi as any).updateObjective = update
+    renderBoard(AS_THE_LEAD)
+    expect(await screen.findByText(LAST_UPDATED)).toBeTruthy()
+    const whose = screen.getAllByLabelText('Whose goal')[0] as HTMLSelectElement
+    expect(whose.options[0].text).toBe('Yours, as you run this check-in')
+    if (whose.options.length > 1) {
+      fireEvent.change(whose, { target: { value: whose.options[1].value } })
+      await waitFor(() => expect(update).toHaveBeenCalledWith(expect.any(String), expect.any(String), { ownerParticipantId: whose.options[1].value }))
+    }
+  })
+
+  it('Miriam is offered no choice', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    renderBoard(AS_MIRIAM)
+    expect(await screen.findByText(LAST_UPDATED)).toBeTruthy()
+    expect(screen.queryByLabelText('Whose goal')).toBeNull()
   })
 })

@@ -8,7 +8,7 @@ import { GroundsCron } from '../grounds/grounds.cron';
  * production went out, nobody whose company had added their number was told on WhatsApp that their check-in was open:
  * the opening went on WhatsApp only to people who had already written from their number. Three people at Kilima:
  *   - Mercy, connected (she has written from her number): told on WhatsApp only;
- *   - Juma, whose number the company added and who has never written: told on WhatsApp AND by email;
+ *   - Juma, whose number the company added and who has never written: told on WhatsApp (and by email only if that did not go: one channel, 18 October);
  *   - Wanjiku, with no number: told by email only.
  */
 type Who = 'mercy' | 'juma' | 'wanjiku';
@@ -42,11 +42,13 @@ async function toldOnWhatsApp(who: Who): Promise<boolean> {
   return sendFor.mock.calls.length === 1;
 }
 
-async function toldByEmail(who: Who): Promise<boolean> {
+async function toldByEmail(who: Who, o: { whatsAppOpening?: 'went' | 'did-not-go'; minutesSinceItOpened?: number } = {}): Promise<boolean> {
+  const opened = new Date(Date.now() - (o.minutesSinceItOpened ?? 0) * 60_000);
   const prisma: any = {
     ...prismaFor(who),
+    whatsAppSend: { findFirst: jest.fn(async () => null), findMany: jest.fn(async () => (o.whatsAppOpening ? [{ kind: 'checkin-open:template', sentAt: o.whatsAppOpening === 'went' ? new Date() : null }] : [])) },
     checkIn: {
-      findMany: jest.fn(async () => [{ id: `ci-${who}`, groundId: 'g-kilima', participant: { id: `gp-${who}`, email: `${who}@kilima.test`, userId: `u-${who}`, ground: { label: 'Kilima sales', simplerWords: false, organizationId: 'org-kilima' }, user: { phoneNumber: null } } }]),
+      findMany: jest.fn(async () => [{ id: `ci-${who}`, groundId: 'g-kilima', availableFrom: opened, participant: { id: `gp-${who}`, email: `${who}@kilima.test`, userId: `u-${who}`, ground: { label: 'Kilima sales', simplerWords: false, organizationId: 'org-kilima' }, user: { phoneNumber: null } } }]),
       update: jest.fn(async () => ({})),
     },
     ground: { findMany: jest.fn(async () => []) },
@@ -61,9 +63,14 @@ async function toldByEmail(who: Who): Promise<boolean> {
 }
 
 describe('a check-in opens, at an organisation with WhatsApp on', () => {
-  it('Juma, whose number the company added and who has never written, is told on WhatsApp and by email', async () => {
+  /* Changed 18 October (release plan Part 0, Hafsah's standing rule: "each opening goes on one channel only, WhatsApp if connected, otherwise
+     email"; Drop Access run 1, item 10). Juma was told on both. He is told on WhatsApp, and by email only when the WhatsApp opening did not go. */
+  it('Juma, whose number the company added and who has never written, is told on WhatsApp, and by email only if WhatsApp did not reach him', async () => {
     expect(await toldOnWhatsApp('juma')).toBe(true);
-    expect(await toldByEmail('juma')).toBe(true);
+    expect(await toldByEmail('juma', { whatsAppOpening: 'went' })).toBe(false);
+    expect(await toldByEmail('juma')).toBe(false);
+    expect(await toldByEmail('juma', { whatsAppOpening: 'did-not-go' })).toBe(true);
+    expect(await toldByEmail('juma', { minutesSinceItOpened: 45 })).toBe(true);
   });
   it('Mercy, who writes from her number, is told on WhatsApp only', async () => {
     expect(await toldOnWhatsApp('mercy')).toBe(true);

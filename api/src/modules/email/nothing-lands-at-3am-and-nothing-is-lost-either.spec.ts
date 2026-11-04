@@ -27,14 +27,17 @@ describe('the next allowed moment', () => {
 
 describe('every sender', () => {
   it('asks the one rule, and a refused mail is written down with its moment rather than dropped', () => {
-    expect(service).toMatch(/if \(sender && whatThisMailIs\(sender\) === 'we decided to send it'\) \{\s*const held = await this\.holdForTheMorning\(/);
+    /* Changed 18 October (Drop Access run 1, item 12): a mail somebody asked for is held in the night too ("Joseph Kariuki has checked in" went at 2:30am in Nairobi). Only the way back in and the running of the product go at any hour. */
+    /* Changed 2 November (the four weeks after a free trial): the mail about paying, split out of "asked for" so a pause never stops it, is held in the night exactly as it was. */
+    expect(service).toMatch(/if \(sender && \(whatThisMailIs\(sender\) === 'we decided to send it' \|\| whatThisMailIs\(sender\) === 'asked for' \|\| whatThisMailIs\(sender\) === 'about paying'\)\) \{\s*const held = await this\.holdForTheMorning\(/);
     expect(service).toMatch(/scheduledEmail\.create\(\{\s*data: \{ toAddress: options\.to, subject: options\.subject, html: options\.html, sender, context: [^,]+, notBefore \}/);
   });
   it('and the sweep sends what is due, once, under its own lock', () => {
     expect(cron).toMatch(/@Cron\('\*\/15 \* \* \* \*', \{ timeZone: 'UTC' \}\)/);
     expect(cron).toContain('CronLock.HELD_MAIL');
     expect(cron).toMatch(/where: \{ sentAt: null, notBefore: \{ lte: new Date\(\) \} \}/);
-    expect(cron).toMatch(/await this\.email\.deliverHeld\(row\);\s*await this\.prisma\.scheduledEmail\.update\(\{ where: \{ id: row\.id \}, data: \{ sentAt: new Date\(\) \} \}\)/);
+    /* Changed 19 October (point 7, finding 3): the row is taken first, only where nobody has taken it, and then sent, so two runs never both decide it. a-held-email-is-one-decision.spec.ts reads it run. */
+    expect(cron).toMatch(/const claimed = await this\.prisma\.scheduledEmail\.updateMany\(\{ where: \{ id: row\.id, sentAt: null \}, data: \{ sentAt: new Date\(\) \} \}\)[\s\S]*?if \(!claimed\?\.count\) continue;[\s\S]*?await this\.email\.deliverHeld\(row\);/);
   });
   it('the digest no longer drops a mail for the hour', () => {
     expect(digest).toMatch(/if \(refuse && refuse !== 'quiet_hours'\)/);

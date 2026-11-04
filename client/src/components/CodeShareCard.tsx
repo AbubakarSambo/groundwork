@@ -76,7 +76,7 @@ export function CodeShareCard({ code, expiresAt, daysRemaining, note, allowCodeC
       <div style={{
         fontFamily: 'monospace',
         fontSize: 32,
-        fontWeight: 800,
+        fontWeight: 700,
         letterSpacing: '.12em',
         color: 'white',
         textAlign: 'center',
@@ -105,7 +105,7 @@ export function CodeShareCard({ code, expiresAt, daysRemaining, note, allowCodeC
           background: 'rgba(255,255,255,.06)',
           borderRadius: 7,
           padding: '8px 12px',
-          lineHeight: 1.55,
+          lineHeight: '19px',
           textAlign: 'center',
         }}>
           {note}

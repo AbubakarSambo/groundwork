@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData, PANEL_RANGES, type PanelRange, type Rate, type ActivationFunnel, type ActivationStage, type ActivationNowBucket, type ActivationEmailOutcome, type ParticipantActivation, type ParticipantReachedStep, type ParticipantStuckBucket } from '@/api/prompts'
-import { adminApi, type PricingPlanRow, type InboundMessage, type CallRequestRow, type CoachingBatch } from '@/api/admin'
+import { adminApi, type DailyUsage, type PricingPlanRow, type InboundMessage, type CallRequestRow, type CoachingBatch } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { coachApi, type CoachRequestRow } from '@/api/coach'
 import { feedbackApi } from '@/api/feedback'
 import { formatMonthlyPrice, formatDollars, type SubscriptionPlan } from '@/api/billing'
 import { SectionFailed } from './a-section-that-failed-says-so'
+import { Button } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -36,7 +37,7 @@ const SL: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--g
 function Stat({ val, label, accent, of }: { val: string | number; label: string; accent?: boolean; of?: number | null }) {
   return (
     <div style={{ ...C, flex: 1, minWidth: 100 }}>
-      <div style={{ fontSize: 22, fontWeight: 800, color: accent ? 'var(--gw-navy)' : 'var(--gw-navy)' }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color: accent ? 'var(--gw-navy)' : 'var(--gw-navy)' }}>
         {val}{of != null && <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--gw-muted)', marginLeft: 5 }}>of {of}</span>}
       </div>
       <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 3 }}>{label}</div>
@@ -81,7 +82,7 @@ function WhatsAppToggle() {
               : 'Waiting on WhatsApp Business API credentials - toggling this on will have no effect until those are set.'}
           </div>
         </div>
-        <button
+        <button className="gwui-tap-target"
           onClick={() => toggle.mutate(!data.adminEnabled)}
           disabled={toggle.isPending}
           style={{
@@ -91,13 +92,13 @@ function WhatsAppToggle() {
           }}
           aria-label={data.adminEnabled ? 'Turn off WhatsApp' : 'Turn on WhatsApp'}
         >
-          <span style={{ position: 'absolute', top: 3, left: data.adminEnabled ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+          <span style={{ position: 'absolute', top: 3, left: data.adminEnabled ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
         </button>
       </div>
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
         {data.live ? 'Live' : data.adminEnabled ? 'On, but not live (credentials missing)' : 'Off'}
       </div>
-      <Link to="/admin/whatsapp" style={{ display: 'inline-block', fontSize: 12.5, marginTop: 8, color: 'var(--gw-navy)' }}>
+      <Link to="/admin/whatsapp" style={{ display: 'inline-block', fontSize: 12, marginTop: 8, color: 'var(--gw-navy)' }}>
         Set Groundwork's WhatsApp number, its keys and the webhook
       </Link>
     </div>
@@ -134,7 +135,7 @@ function CoachingSwitch() {
               : `${data.count} ${data.count === 1 ? 'read' : 'reads'} so far. Read them before turning this on.`}
           </div>
         </div>
-        <button
+        <button className="gwui-tap-target"
           type="button"
           onClick={() => toggle.mutate(!data.live)}
           disabled={toggle.isPending}
@@ -145,7 +146,7 @@ function CoachingSwitch() {
           }}
           aria-label={data.live ? 'Turn off coaching' : 'Turn on coaching'}
         >
-          <span style={{ position: 'absolute', top: 3, left: data.live ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+          <span style={{ position: 'absolute', top: 3, left: data.live ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
         </button>
       </div>
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.live ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
@@ -168,6 +169,98 @@ function CoachingSwitch() {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * WHERE THE DAILY DELIVERY ALERT GOES (api engagement/the-daily-delivery-alert.ts). One address, Groundwork's own. Empty means nothing is
+ * sent. Saved here wins over the server setting DELIVERY_ALERT_EMAIL; clearing it here falls back to that setting.
+ */
+function DeliveryAlertRow() {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['admin-delivery-alert'], queryFn: adminApi.getDeliveryAlert })
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+  const save = useMutation({
+    mutationFn: () => adminApi.setDeliveryAlert(value.trim()),
+    onSuccess: (res) => {
+      qc.setQueryData(['admin-delivery-alert'], res)
+      setEditing(false)
+      setErr(null)
+      toast.success(res.email ? `The daily delivery alert now goes to ${res.email}.` : 'No address is set now, so the daily delivery alert is not sent.')
+    },
+    onError: (e: any) => setErr(e?.response?.data?.message ?? e.message),
+  })
+  if (!data) return null
+  const now = data.email
+    ? (data.from === 'server' ? `It goes to ${data.email}, which is set on the server. An address saved here is used instead.` : `It goes to ${data.email}.`)
+    : 'No address is set, so nothing is sent.'
+  return (
+    <div style={{ ...C, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700 }}>Daily delivery alert</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>Every morning at half past seven in Nairobi (East Africa Time), this address is sent a list of the openings, reminders and morning summaries that did not go out the day before, for every client. Nothing is sent on a day when nothing went wrong. {now}</div>
+        {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
+      </div>
+      {editing ? (
+        <form onSubmit={(e) => { e.preventDefault(); save.mutate() }} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <input className="gwui-input" type="email" value={value} onChange={e => setValue(e.target.value)} placeholder="ops@myground.work" aria-label="Address for the daily delivery alert" style={{ width: 220, maxWidth: '100%' }} />
+          <button className="btn pri sm" type="submit" disabled={save.isPending} >Save</button>
+          <button type="button" onClick={() => { setEditing(false); setErr(null) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+        </form>
+      ) : (
+        <button className="btn sec sm" type="button" onClick={() => { setValue(data.from === 'here' ? data.email ?? '' : ''); setEditing(true) }} style={{ flexShrink: 0 }}>{data.email ? 'Change' : 'Set an address'}</button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * THE DAILY USAGE SUMMARY (api back-office/the-daily-usage-summary.ts). It goes to the back-office team, the same people told about each
+ * new sign-up, so there is no address to type here: the row says who it goes to, and lets it be turned off or moved to another hour.
+ */
+export function DailyUsageRow() {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['admin-daily-usage'], queryFn: adminApi.getDailyUsage })
+  const [err, setErr] = useState<string | null>(null)
+  const save = useMutation({
+    mutationFn: (body: { on?: boolean; hour?: number }) => adminApi.setDailyUsage(body),
+    onSuccess: (res: DailyUsage) => {
+      qc.setQueryData(['admin-daily-usage'], res)
+      setErr(null)
+      toast.success(res.on ? `The daily usage summary now goes at ${res.hours[res.hour]}, Lagos time.` : 'The daily usage summary is turned off now.')
+    },
+    onError: (e: any) => setErr(e?.response?.data?.message ?? e.message),
+  })
+  if (!data) return null
+  const who = data.to.length
+    ? `It goes to ${data.to.join(', ')}, everybody on the back-office team with a connected account, who are also told about each new sign-up.`
+    : 'Nobody on the back-office team has a connected account yet, so nobody receives it. Connect an account in the back office, under People.'
+  return (
+    <div style={{ ...C, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700 }}>Daily usage summary</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
+          {data.on
+            ? `Every day at ${data.hours[data.hour]}, Lagos time, an email lists every organisation that has signed up, with its usage, and the totals. It holds counts and organisation names only. `
+            : 'It is turned off, so no usage summary is sent. '}
+          {who}
+        </div>
+        {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        {data.on && (
+          <select className="gwui-input" aria-label="The hour the daily usage summary goes, Lagos time" value={data.hour} disabled={save.isPending}
+            onChange={e => save.mutate({ hour: Number(e.target.value) })} style={{ width: 'auto' }}>
+            {data.hours.map((said, h) => <option key={h} value={h}>{said}</option>)}
+          </select>
+        )}
+        <button className="btn sec sm" type="button" disabled={save.isPending} onClick={() => save.mutate({ on: !data.on })}>
+          {data.on ? 'Turn it off' : 'Turn it on'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -210,13 +303,13 @@ function CorrectionWindowRow() {
       {editing ? (
         <form onSubmit={(e) => { e.preventDefault(); save.mutate() }} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <input type="number" min={0} max={data.max} step={1} value={value} onChange={e => setValue(e.target.value)} aria-label="Days to correct a record" style={{ width: 70, padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }} />
-          <button type="submit" disabled={save.isPending} style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Save</button>
+          <button className="btn pri sm" type="submit" disabled={save.isPending} >Save</button>
           <button type="button" onClick={() => { setEditing(false); setErr(null) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
         </form>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.days}</span>
-          <button type="button" onClick={() => { setValue(String(data.days)); setEditing(true) }} style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>Edit</button>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.days}</span>
+          <button className="btn sec sm" type="button" onClick={() => { setValue(String(data.days)); setEditing(true) }} >Edit</button>
         </div>
       )}
     </div>
@@ -305,14 +398,14 @@ function PlanCentsField({ row, field, what }: { row: PricingPlanRow; field: 'ext
           <input autoFocus aria-label={`${what} on ${row.label}, dollars a month`} value={value} placeholder="not sold" onChange={e => setValue(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setEditing(false) }}
             style={{ width: 60, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 11, fontFamily: 'inherit' }} />
-          <button onClick={submit} disabled={save.isPending} style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 11, fontWeight: 700, border: 'none', cursor: save.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}>Save</button>
+          <button className="btn pri sm" onClick={submit} disabled={save.isPending} >Save</button>
           <button onClick={() => setEditing(false)} style={{ padding: '3px 8px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 11, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
         </>
       ) : (
         <>
           <span>{cents === null ? `${what} is not sold on this plan.` : `${what}: ${formatDollars(cents)} a month.`}</span>
-          <button onClick={() => { setValue(cents === null ? '' : centsForEditing(cents)); setEditing(true) }}
-            style={{ padding: '2px 7px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 11, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button className="btn sec sm" onClick={() => { setValue(cents === null ? '' : centsForEditing(cents)); setEditing(true) }}
+            >
             Edit
           </button>
         </>
@@ -401,15 +494,14 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
                 style={{ width: 74, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 11, fontFamily: 'inherit' }}
               />
               <span>people</span>
-              <button onClick={submitCap} disabled={saveCap.isPending} style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 11, fontWeight: 700, border: 'none', cursor: saveCap.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}>Save</button>
+              <button className="btn pri sm" onClick={submitCap} disabled={saveCap.isPending} >Save</button>
               <button onClick={() => setEditingCap(false)} style={{ padding: '3px 8px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 11, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
             </>
           ) : (
             <>
               <span>{row.memberCap === null ? 'Unlimited people' : `Up to ${row.memberCap.toLocaleString('en-US')} people`}</span>
-              <button
+              <button className="btn sec sm"
                 onClick={() => { setCapValue(row.memberCap === null ? '' : String(row.memberCap)); setEditingCap(true) }}
-                style={{ padding: '2px 7px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 11, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Edit cap
               </button>
@@ -430,10 +522,9 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
             style={{ width: 70, padding: '5px 7px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
           />
           <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>/mo</span>
-          <button
+          <button className="btn pri sm"
             onClick={submit}
             disabled={save.isPending}
-            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: save.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
           >
             Save
           </button>
@@ -446,13 +537,12 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)' }}>
             {row.amountCents === null ? 'Contact us' : formatMonthlyPrice(row.amountCents)}
           </span>
-          <button
+          <button className="btn sec sm"
             hidden={row.amountCents === null}
             onClick={() => { setValue(centsForEditing(row.amountCents ?? 0)); setEditing(true) }}
-            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Edit
           </button>
@@ -522,10 +612,9 @@ function FreeMemberLimitRow() {
             style={{ width: 64, padding: '5px 7px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
           />
           <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>people</span>
-          <button
+          <button className="btn pri sm"
             onClick={() => save.mutate()}
             disabled={save.isPending}
-            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: save.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
           >
             Save
           </button>
@@ -538,10 +627,9 @@ function FreeMemberLimitRow() {
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.freeMemberLimit}</span>
-          <button
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.freeMemberLimit}</span>
+          <button className="btn sec sm"
             onClick={() => { setValue(String(data.freeMemberLimit)); setEditing(true) }}
-            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Edit
           </button>
@@ -585,10 +673,10 @@ function FreeGroundLimitRow() {
     <div style={{ ...C, padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 700 }}>Free check-ins</div>
-        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 1 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 1 }}>
           Before an organisation needs a subscription. Zero means no free tier.
         </div>
-        {err && <div style={{ fontSize: 11.5, color: 'var(--gw-red-b)', marginTop: 4 }}>{err}</div>}
+        {err && <div style={{ fontSize: 12, color: 'var(--gw-red-b)', marginTop: 4 }}>{err}</div>}
       </div>
       {editing ? (
         <>
@@ -599,26 +687,23 @@ function FreeGroundLimitRow() {
             onChange={e => setValue(e.target.value)}
             style={{ width: 62, padding: '5px 8px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
           />
-          <button
+          <button className="btn pri sm"
             onClick={() => save.mutate()}
             disabled={save.isPending}
-            style={{ padding: '5px 11px', fontSize: 12, fontWeight: 700, borderRadius: 6, border: 'none', background: 'var(--gw-navy)', color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             {save.isPending ? 'Saving...' : 'Save'}
           </button>
-          <button
+          <button className="btn sec sm"
             onClick={() => { setEditing(false); setErr(null) }}
-            style={{ padding: '5px 9px', fontSize: 12, borderRadius: 6, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Cancel
           </button>
         </>
       ) : (
         <>
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.freeGroundLimit}</span>
-          <button
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.freeGroundLimit}</span>
+          <button className="btn sec sm"
             onClick={() => { setValue(String(data.freeGroundLimit)); setEditing(true) }}
-            style={{ padding: '5px 9px', fontSize: 12, borderRadius: 6, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Change
           </button>
@@ -655,6 +740,7 @@ function PricingPanel() {
       <FreeGroundLimitRow />
       <FreeMemberLimitRow />
       <FreeTrialRow />
+      <TrialGraceRow />
       <AnchorTrialRow />
     </div>
   )
@@ -692,7 +778,7 @@ export function FreeTrialRow() {
           </div>
           {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
         </div>
-        <button
+        <button className="gwui-tap-target"
           type="button"
           onClick={() => toggle.mutate(!data.on)}
           disabled={toggle.isPending}
@@ -703,11 +789,88 @@ export function FreeTrialRow() {
           }}
           aria-label={data.on ? 'Turn off the free trial' : 'Turn on the free trial'}
         >
-          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
         </button>
       </div>
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.on ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
         {data.on ? 'On' : 'Off'}
+      </div>
+    </div>
+  )
+}
+
+/** What each sentence is, for the person editing it. The blanks are filled in by the server. */
+const GRACE_WORDS_SAID: Record<string, string> = {
+  weekSubject: 'The weekly email, its subject',
+  weekOpening: 'The weekly email, its first sentence',
+  daySubject: 'The daily email, its subject',
+  dayOpening: 'The daily email, its first sentence',
+  lastDaySubject: 'The last day\u2019s email, its subject',
+  lastDayOpening: 'The last day\u2019s email, its first sentence',
+  whilePaused: 'What a pause means, in every email',
+  howToPayAdmin: 'How to pay, to an admin',
+  howToPayLead: 'How to pay, to a lead',
+  linkLabel: 'The link to Plan and billing',
+  noteAfterTrialAdmin: 'The note on Today during the weeks, for an admin',
+  noteAfterTrialLead: 'The note on Today during the weeks, for a lead',
+  notePausedAdmin: 'The note on Today once paused, for an admin',
+  notePausedLead: 'The note on Today once paused, for a lead',
+}
+
+/**
+ * THE WEEKS AFTER THE FREE TRIAL (Hafsah, 2 November 2026; `GET`/`PATCH /admin/pricing/trial-grace`): how long everything keeps
+ * working after a free month ends, the emails to admins and leads, and their words, before Groundwork pauses until they pay.
+ */
+export function TrialGraceRow() {
+  const qc = useQueryClient()
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['admin-trial-grace'], queryFn: adminApi.getTrialGrace })
+  const [draft, setDraft] = useState<{ weeks?: string; daily?: string; fromHour?: string; words: Record<string, string> }>({ words: {} })
+  const [err, setErr] = useState<string | null>(null)
+  const save = useMutation({
+    mutationFn: () => adminApi.setTrialGrace({
+      ...(draft.weeks !== undefined ? { weeks: Number(draft.weeks) } : {}),
+      ...(draft.daily !== undefined ? { dailyForTheLastDays: Number(draft.daily) } : {}),
+      ...(draft.fromHour !== undefined ? { fromHour: Number(draft.fromHour) } : {}),
+      ...(Object.keys(draft.words).length ? { words: draft.words } : {}),
+    }),
+    onSuccess: (res) => { qc.setQueryData(['admin-trial-grace'], res); setDraft({ words: {} }); setErr(null); toast.success('Saved.') },
+    onError: (e: any) => setErr(e?.response?.data?.message ?? e?.message ?? 'That did not save.'),
+  })
+  if (isLoading) return null
+  if (error || !data) return <SectionFailed what="The weeks after the free trial" error={error} retry={() => refetch()} />
+  const field = { fontSize: 12, padding: '6px 8px', border: '1px solid var(--gw-border)', borderRadius: 6, width: '100%' } as const
+  const changed = draft.weeks !== undefined || draft.daily !== undefined || draft.fromHour !== undefined || Object.keys(draft.words).length > 0
+  return (
+    <div style={{ ...C, padding: '14px 16px' }}>
+      <div style={{ fontSize: 13, fontWeight: 700 }}>After the free trial</div>
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
+        When a free month ends, everything keeps working for {data.weeks} {data.weeks === 1 ? 'week' : 'weeks'}, and then Groundwork pauses until the organisation chooses a plan.
+        Admins and leads get one email at the start of each week, and one a day in the last {data.dailyForTheLastDays} {data.dailyForTheLastDays === 1 ? 'day' : 'days'}, from {data.fromHour}:00 in the organisation{'\u2019'}s own day. This applies only while the free trial is on.
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginTop: 10 }}>
+        <label style={{ fontSize: 12 }}>Weeks after the trial
+          <input style={field} inputMode="numeric" value={draft.weeks ?? String(data.weeks)} onChange={(e) => setDraft({ ...draft, weeks: e.target.value })} />
+        </label>
+        <label style={{ fontSize: 12 }}>Days of daily emails
+          <input style={field} inputMode="numeric" value={draft.daily ?? String(data.dailyForTheLastDays)} onChange={(e) => setDraft({ ...draft, daily: e.target.value })} />
+        </label>
+        <label style={{ fontSize: 12 }}>First hour of the day
+          <input style={field} inputMode="numeric" value={draft.fromHour ?? String(data.fromHour)} onChange={(e) => setDraft({ ...draft, fromHour: e.target.value })} />
+        </label>
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 10, lineHeight: 1.5 }}>
+        In the sentences, Groundwork fills in {'{organisation}'}, {'{endDay}'}, {'{pauseDay}'}, {'{timeLeft}'}, {'{days}'} and {'{admins}'}.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+        {Object.keys(GRACE_WORDS_SAID).map((k) => (
+          <label key={k} style={{ fontSize: 12 }}>{GRACE_WORDS_SAID[k]}
+            <textarea style={{ ...field, minHeight: 44 }} value={draft.words[k] ?? data.words[k] ?? ''} onChange={(e) => setDraft({ ...draft, words: { ...draft.words, [k]: e.target.value } })} />
+          </label>
+        ))}
+      </div>
+      {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
+      <div style={{ marginTop: 10 }}>
+        <Button disabled={!changed || save.isPending} onClick={() => save.mutate()}>Save</Button>
       </div>
     </div>
   )
@@ -743,7 +906,7 @@ export function AnchorTrialRow() {
           </div>
           {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
         </div>
-        <button
+        <button className="gwui-tap-target"
           type="button"
           onClick={() => toggle.mutate(!data.on)}
           disabled={toggle.isPending}
@@ -754,7 +917,7 @@ export function AnchorTrialRow() {
           }}
           aria-label={data.on ? 'Turn off the anchor trial' : 'Turn on the anchor trial'}
         >
-          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+          <span style={{ position: 'absolute', top: 3, left: data.on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
         </button>
       </div>
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.on ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
@@ -807,8 +970,8 @@ function FreeRunsPanel() {
   if (error || !data) return <SectionFailed what="Free runs" error={error} retry={() => refetch()} />
 
   const field: React.CSSProperties = {
-    padding: '7px 10px', border: '1px solid var(--gw-border)', borderRadius: 7,
-    fontSize: 13, fontFamily: 'inherit', background: 'white', color: 'var(--gw-text)',
+    /* The kit's field (app.css .input). */
+    padding: '12px 16px', fontSize: 16, border: '1px solid var(--rule2-crisp)', borderRadius: 10, background: 'var(--gw-card)', color: 'var(--gw-text)', fontFamily: 'inherit',
   }
 
   return (
@@ -823,14 +986,12 @@ function FreeRunsPanel() {
         </select>
         <input id="free-run-note" value={note} onChange={e => setNote(e.target.value)}
                placeholder="why, for us" style={{ ...field, flex: '1 1 160px' }} />
-        <button
+        <button className="btn pri sm"
           onClick={() => grant.mutate()}
           disabled={!email.trim() || grant.isPending}
-          style={{ padding: '8px 14px', borderRadius: 7, border: 'none', background: 'var(--gw-navy)', color: '#fff',
-                   fontSize: 13, fontWeight: 600, cursor: email.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}
         >{grant.isPending ? 'Saving...' : 'Give them the months'}</button>
       </div>
-      {said && <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{said}</div>}
+      {said && <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{said}</div>}
       <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
         Months start when they sign up, not now. They see it on the sign-up screen and on their billing page.
       </div>
@@ -839,8 +1000,8 @@ function FreeRunsPanel() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
           {data.map(r => (
             <div key={r.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 10px',
-                                     border: '1px solid var(--gw-border)', borderRadius: 7, fontSize: 12.5, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 600 }}>{r.email}</span>
+                                     border: '1px solid var(--gw-border)', borderRadius: 7, fontSize: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700 }}>{r.email}</span>
               <span style={{ color: 'var(--gw-sub)' }}>{r.months} {r.months === 1 ? 'month' : 'months'}, {r.plan.replace('_', ' ').toLowerCase()}</span>
               <span style={{ color: r.state === 'running' ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
                 {r.state === 'waiting' ? 'waiting for them to sign up'
@@ -874,6 +1035,14 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
           <WhatsAppToggle />
           <CoachingSwitch />
           <StripeStatus />
+        </div>
+      </section>
+
+      <section>
+        <div style={SL}>Delivery</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <DeliveryAlertRow />
+          <DailyUsageRow />
         </div>
       </section>
 
@@ -922,7 +1091,7 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
             return (
               <div key={status} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 160, flexShrink: 0 }}>{fmt(status)}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{count}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{count}</div>
                 <Bar pct={pct} />
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 70, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}% of {total}</div>
               </div>
@@ -976,7 +1145,7 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
           {visible.map(row => (
             <div key={row.session} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', borderRadius: 4, padding: '2px 6px', minWidth: 26, textAlign: 'center', flexShrink: 0 }}>S{row.session}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 32, textAlign: 'right', flexShrink: 0 }}>{row.completed}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 32, textAlign: 'right', flexShrink: 0 }}>{row.completed}</div>
               <Bar pct={s1 > 0 ? (row.completed / s1) * 100 : 0} />
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 60, textAlign: 'right', flexShrink: 0 }}>
                 {row.session === 1 ? 'baseline' : row.dropOffRate != null ? `−${Math.round(row.dropOffRate * 100)}% of ${row.of}` : ' - '}
@@ -1023,7 +1192,7 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
                 {(data.avgSessionMinutes ?? []).map(row => (
                   <tr key={row.session}>
                     <td style={{ fontSize: 12, color: 'var(--gw-text)', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>S{row.session}</td>
-                    <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.avgMinutes ?? ' - '}</td>
+                    <td style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.avgMinutes ?? ' - '}</td>
                     <td style={{ fontSize: 12, color: 'var(--gw-muted)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.n}</td>
                   </tr>
                 ))}
@@ -1039,7 +1208,7 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
           {[...data.byScenario].sort((a, b) => b.count - a.count).map(row => (
             <div key={row.scenario} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 160, flexShrink: 0 }}>{fmt(row.scenario)}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{row.count}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{row.count}</div>
               <Bar pct={row.pct} />
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 70, textAlign: 'right', flexShrink: 0 }}>{row.pct.toFixed(0)}% of {row.of}</div>
             </div>
@@ -1055,7 +1224,7 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
             return (
               <div key={row.status} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 160, flexShrink: 0 }}>{fmt(row.status)}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{row.count}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{row.count}</div>
                 <Bar pct={pct} />
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 70, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}% of {row.of}</div>
               </div>
@@ -1113,7 +1282,7 @@ function ActivationSection({ activation }: { activation: ActivationFunnel | null
         <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {ACTIVATION_STAGE_ORDER.map((stage) => (
             <div key={stage} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 36, textAlign: 'right', flexShrink: 0 }}>{activation.reached[stage]}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 36, textAlign: 'right', flexShrink: 0 }}>{activation.reached[stage]}</div>
               <Bar pct={top > 0 ? (activation.reached[stage] / top) * 100 : 0} />
               <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 230, flexShrink: 0 }}>{ACTIVATION_STAGE_LABELS[stage]}</div>
             </div>
@@ -1190,7 +1359,7 @@ function ParticipantsSection({ participants }: { participants: ParticipantActiva
         <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {PARTICIPANT_REACHED_ORDER.map((step) => (
             <div key={step} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 36, textAlign: 'right', flexShrink: 0 }}>{participants.reached[step]}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', minWidth: 36, textAlign: 'right', flexShrink: 0 }}>{participants.reached[step]}</div>
               <Bar pct={top > 0 ? (participants.reached[step] / top) * 100 : 0} />
               <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 260, flexShrink: 0 }}>{PARTICIPANT_REACHED_LABELS[step]}</div>
             </div>
@@ -1233,16 +1402,16 @@ function PeopleInOrg({ organizationId }: { organizationId: string }) {
     queryFn: () => promptsApi.peopleIn(organizationId),
   })
 
-  if (isLoading) return <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', padding: '8px 0' }}>Loading the people…</div>
+  if (isLoading) return <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '8px 0' }}>Loading the people…</div>
   /* Said, not swallowed: an empty panel where a list should be reads as nobody being there. */
-  if (error) return <div style={{ fontSize: 11.5, color: 'var(--gw-red-t)', padding: '8px 0' }}>Could not load the people in this organisation.</div>
-  if (!data?.people?.length) return <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', padding: '8px 0' }}>Nobody has a login here yet.</div>
+  if (error) return <div style={{ fontSize: 12, color: 'var(--gw-red-t)', padding: '8px 0' }}>Could not load the people in this organisation.</div>
+  if (!data?.people?.length) return <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '8px 0' }}>Nobody has a login here yet.</div>
 
   return (
     <div style={{ display: 'grid', gap: 6, paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--gw-border)' }}>
       {(data.people ?? []).map((p) => (
         <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontSize: 12 }}>
-          <span style={{ fontWeight: 600, color: 'var(--gw-text)', minWidth: 110 }}>{p.name ?? '(no name given)'}</span>
+          <span style={{ fontWeight: 700, color: 'var(--gw-text)', minWidth: 110 }}>{p.name ?? '(no name given)'}</span>
           <a href={`mailto:${p.email}`} style={{ color: 'var(--gw-navy)' }}>{p.email}</a>
           {p.phoneNumber && <span style={{ color: 'var(--gw-sub)' }}>{p.phoneNumber}</span>}
           <span style={{ color: 'var(--gw-muted)', fontSize: 11 }}>{p.role.toLowerCase()}</span>
@@ -1250,6 +1419,114 @@ function PeopleInOrg({ organizationId }: { organizationId: string }) {
           {/* Whether the address works is the first thing support needs and the easiest to miss. */}
           {!p.isEmailVerified && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 20, background: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }}>email not verified</span>}
         </div>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * RELEASE 1'S SALES BOARD, ONE ORGANISATION AT A TIME (release plan, Part 0: test organisations first, then staging, then real
+ * clients one at a time once Hafsah says so). Off returns the organisation to its previous board with nothing lost.
+ */
+export function ReleaseOneSalesBoardSwitch({ org }: { org: Pick<OrgListItem, 'id' | 'name' | 'release1SalesBoardOn'> }) {
+  const qc = useQueryClient()
+  const on = org.release1SalesBoardOn === true
+  const toggle = useMutation({
+    mutationFn: (next: boolean) => adminApi.setReleaseOneSalesBoard(org.id, next),
+    onSuccess: (r) => {
+      qc.setQueryData(['platform-org-list'], (old: OrgListItem[] | undefined) => (old ?? []).map((o) => (o.id === r.id ? { ...o, release1SalesBoardOn: r.release1SalesBoardOn } : o)))
+      qc.invalidateQueries({ queryKey: ['platform-org-list'] })
+      toast.success(r.says)
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That could not be changed. Try again.'),
+  })
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--gw-border)' }}>
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>The new sales board</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
+          {on
+            ? `${org.name} has the new sales board. Switching it off returns them to their previous board, and nothing is lost.`
+            : `${org.name} has its previous board. Switch the new sales board on for a test organisation first, and for a real client only once Hafsah says so.`}
+        </div>
+      </div>
+      <button className="gwui-tap-target"
+        type="button"
+        onClick={() => toggle.mutate(!on)}
+        disabled={toggle.isPending}
+        style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', background: on ? 'var(--gw-navy)' : 'var(--gw-border)', position: 'relative', flexShrink: 0 }}
+        aria-label={on ? `Switch the new sales board off for ${org.name}` : `Switch the new sales board on for ${org.name}`}
+        aria-pressed={on}
+      >
+        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
+      </button>
+    </div>
+  )
+}
+
+
+/**
+ * RELEASE 2, COLLECT WHAT'S OWED, ONE ORGANISATION AT A TIME (release plan, Release 2: test organisations first, then Muchemi &
+ * Co once Hafsah says so). Off returns the organisation to what it had, with nothing lost.
+ */
+export function Release2CollectionsSwitch({ org }: { org: Pick<OrgListItem, 'id' | 'name' | 'release2CollectionsOn'> }) {
+  const qc = useQueryClient()
+  const on = org.release2CollectionsOn === true
+  const toggle = useMutation({
+    mutationFn: (next: boolean) => adminApi.setRelease2Collections(org.id, next),
+    onSuccess: (r) => {
+      qc.setQueryData(['platform-org-list'], (old: OrgListItem[] | undefined) => (old ?? []).map((o) => (o.id === r.id ? { ...o, release2CollectionsOn: r.release2CollectionsOn } : o)))
+      qc.invalidateQueries({ queryKey: ['platform-org-list'] })
+      toast.success(r.says)
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That could not be changed. Try again.'),
+  })
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--gw-border)' }}>
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>Collect what’s owed</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
+          {on
+            ? `${org.name} can start a check-in to collect what is owed. Switching it off returns them to what they had, and nothing is lost.`
+            : `${org.name} cannot start a check-in to collect what is owed. Switch it on for a test organisation first, and for a real client only once Hafsah says so.`}
+        </div>
+      </div>
+      <button className="gwui-tap-target"
+        type="button"
+        onClick={() => toggle.mutate(!on)}
+        disabled={toggle.isPending}
+        style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', background: on ? 'var(--gw-navy)' : 'var(--gw-border)', position: 'relative', flexShrink: 0 }}
+        aria-label={on ? `Switch collecting what is owed off for ${org.name}` : `Switch collecting what is owed on for ${org.name}`}
+        aria-pressed={on}
+      >
+        <span style={{ position: 'absolute', top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: 'var(--gw-hairline)' }} />
+      </button>
+    </div>
+  )
+}
+
+/**
+ * EVERY SWITCH OF ONE ORGANISATION, FOR GROUNDWORK'S OPS TEAM ONLY (Hafsah, 25 October 2026). Releases 1 to 9, direct language and the
+ * lead's read of each person, read and set here and nowhere a client can reach (the admin route, refused on the server to anyone
+ * who is not Groundwork staff).
+ */
+export function EverySwitchOf({ org }: { org: Pick<OrgListItem, 'id' | 'name'> }) {
+  const qc = useQueryClient()
+  const q = useQuery({ queryKey: ['org-switches', org.id], queryFn: () => adminApi.theSwitchesOf(org.id) })
+  const set = useMutation({
+    mutationFn: ({ key, on }: { key: string; on: boolean }) => adminApi.setASwitch(org.id, key, on),
+    onSuccess: (r) => { qc.setQueryData(['org-switches', org.id], r); qc.invalidateQueries({ queryKey: ['platform-org-list'] }) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That could not be changed. Try again.'),
+  })
+  if (!q.data) return null
+  return (
+    <div style={{ paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--gw-border)' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Every switch for {org.name}</div>
+      {q.data.switches.map((s) => (
+        <label key={s.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 12 }}>
+          <span>{s.name}</span>
+          <input type="checkbox" checked={s.on} disabled={set.isPending} onChange={(e) => set.mutate({ key: s.key, on: e.target.checked })} aria-label={`${s.name} for ${org.name}`} />
+        </label>
       ))}
     </div>
   )
@@ -1264,11 +1541,11 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
 
   return (
     <div>
-      <input
+      <input className="gwui-input"
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Search orgs…"
-        style={{ width: '100%', padding: '9px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 14, boxSizing: 'border-box' }}
+        style={{ width: '100%', marginBottom: 14 }}
       />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {filtered.map(org => (
@@ -1302,6 +1579,9 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
               </span>
             </div>
            </div>
+           {open === org.id && <ReleaseOneSalesBoardSwitch org={org} />}
+           {open === org.id && <Release2CollectionsSwitch org={org} />}
+           {open === org.id && <EverySwitchOf org={org} />}
            {open === org.id && <PeopleInOrg organizationId={org.id} />}
           </div>
         ))}
@@ -1349,7 +1629,7 @@ function UsageTab({ data }: { data: UsageStatsData }) {
                     transition: 'height .3s',
                   }}
                 />
-                <div style={{ fontSize: 8, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 8, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: '10px', whiteSpace: 'nowrap' }}>
                   {date.split(' ')[0]}
                 </div>
               </div>
@@ -1415,16 +1695,16 @@ function InAppFeedback() {
             <div key={f.id} style={{ ...C, borderLeft: `3px solid ${f.status === 'new' ? 'var(--gw-navy)' : 'var(--gw-border)'}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>{f.pill}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{f.pill}</div>
                   <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>
                     {f.tab.replace(/_/g, ' ')} · {timeAgo(f.createdAt)}
                   </div>
                 </div>
                 {f.status === 'new' ? (
-                  <button
+                  <button className="btn sec sm"
                     onClick={() => setStatus.mutate({ id: f.id, status: 'reviewed' })}
                     disabled={setStatus.isPending}
-                    style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+                    style={{ flexShrink: 0 }}
                   >
                     Mark read
                   </button>
@@ -1433,7 +1713,7 @@ function InAppFeedback() {
                 )}
               </div>
               {f.text && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 6, whiteSpace: 'pre-wrap' }}>{f.text}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginTop: 6, whiteSpace: 'pre-wrap' }}>{f.text}</div>
               )}
             </div>
           ))}
@@ -1485,7 +1765,7 @@ function FeedbackTab({ data }: { data: FeedbackSummaryData }) {
                   <span style={{ fontSize: 11, color: 'var(--gw-muted)', whiteSpace: 'nowrap', marginLeft: 12 }}>{timeAgo(f.createdAt)}</span>
                 </div>
                 {f.note && (
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, fontStyle: 'italic', marginTop: 4 }}>"{f.note}"</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', fontStyle: 'italic', marginTop: 4 }}>"{f.note}"</div>
                 )}
               </div>
             ))}
@@ -1503,7 +1783,7 @@ function ErrorsTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ ...C, borderLeft: '3px solid var(--gw-amber-b)' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>No error sink connected</div>
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' }}>
           Connect Sentry or add a <code style={{ fontSize: 11, background: 'var(--gw-bg)', padding: '1px 5px', borderRadius: 3 }}>POST /ops/errors</code> endpoint to surface recent exceptions here.
           The API already logs to console via NestJS Logger - redirect that output to a sink and expose it through the prompts controller.
         </div>
@@ -1533,12 +1813,12 @@ function ErrorsTab() {
 function PromptsTab({ navigate }: { navigate: (path: string) => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>
         Conversation prompts are versioned and stored in the database. Changes are logged with a summary and activation is deliberate - deactivating a version does not delete it. Outcome data is tracked per version so you can compare fairness rates across prompt iterations.
       </div>
-      <button
+      <button className="btn pri"
         onClick={() => navigate('/prompts')}
-        style={{ alignSelf: 'flex-start', padding: '10px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+        style={{ alignSelf: 'flex-start' }}
       >
         Open prompt management →
       </button>
@@ -1570,14 +1850,14 @@ function CoachTab({ rows, onChanged }: { rows: CoachRequestRow[]; onChanged: () 
     return <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 32 }}>Nobody has asked to speak to a coach yet.</div>
   }
   const chip = (text: string, bg: string, fg: string) => (
-    <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 7px', borderRadius: 4, background: bg, color: fg }}>{text}</span>
+    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 7px', borderRadius: 4, background: bg, color: fg }}>{text}</span>
   )
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {rows.map(r => (
         <div key={r.id} style={{ ...C, borderLeft: `3px solid ${r.status === 'new' ? 'var(--gw-navy)' : r.status === 'declined' ? 'var(--gw-border)' : 'var(--gw-green-b)'}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 5 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>
               {r.name} &middot; {r.orgName}
               {/* The public form stopped asking, so this row can be empty and " . people" is not a fact. */}
               {r.teamSize?.trim() && <span style={{ fontWeight: 500, color: 'var(--gw-sub)' }}> &middot; {r.teamSize} people</span>}
@@ -1606,21 +1886,20 @@ function CoachTab({ rows, onChanged }: { rows: CoachRequestRow[]; onChanged: () 
               {!r.confirmationSentAt && chip('no email sent', 'var(--gw-red-bg)', 'var(--gw-red-t)')}
             </div>
           </div>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 6 }}>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>
             <a href={`mailto:${r.email}`} style={{ color: 'var(--gw-navy)' }}>{r.email}</a>
             {r.triedAlready === true && <span> &middot; has already tried opening a check-in</span>}
             {r.triedAlready === false && <span> &middot; has not tried the product yet</span>}
             <span> &middot; {whenItWas(r.createdAt, 'day')}</span>
           </div>
-          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{r.intention}</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px', whiteSpace: 'pre-wrap' }}>{r.intention}</div>
           {NEXT[r.status] && NEXT[r.status].length > 0 && (
             <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
               {NEXT[r.status].map(next => (
-                <button
+                <button className="btn sec sm"
                   key={next}
                   type="button"
                   onClick={async () => { await coachApi.setStatus(r.id, next); onChanged() }}
-                  style={{ fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', padding: '4px 10px', borderRadius: 5, border: '1px solid var(--gw-blue-b)', background: 'none', color: 'var(--gw-navy)' }}
                 >
                   Mark {next}
                 </button>
@@ -1651,7 +1930,7 @@ function InboxTab({ data, onRead }: {
   const messages = data.messages ?? []
   if (!messages.length) {
     return (
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '22px' }}>
         Nothing has come in yet. Mail to hello@myground.work lands here once Resend is forwarding it
         to the webhook - until then it only reaches whoever owns the mailbox.
       </div>
@@ -1660,7 +1939,7 @@ function InboxTab({ data, onRead }: {
 
   return (
     <div>
-      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 12 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>
         {data.unread} unread of {messages.length}. Reply from your own mail - this is here so
         nothing sits unseen.
       </div>
@@ -1674,7 +1953,7 @@ function InboxTab({ data, onRead }: {
               <div style={{ fontSize: 13, fontWeight: m.readAt ? 600 : 800, color: 'var(--gw-navy)' }}>
                 {m.subject?.trim() || '(no subject)'}
               </div>
-              <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
                 {whenItWas(m.receivedAt, 'dayAndTime')}
               </div>
             </div>
@@ -1686,15 +1965,14 @@ function InboxTab({ data, onRead }: {
             </div>
             {m.body && (
               /* Their words, as text. The sender's HTML is never stored and never rendered. */
-              <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.65, whiteSpace: 'pre-wrap', marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: '20px', whiteSpace: 'pre-wrap', marginBottom: 8 }}>
                 {m.body}
               </div>
             )}
             {!m.readAt && (
-              <button
+              <button className="btn sec sm"
                 type="button"
                 onClick={() => onRead(m.id)}
-                style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 11px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
               >Mark read</button>
             )}
           </div>
@@ -1730,7 +2008,7 @@ function CallRequestsTab({ data, onAnswered }: {
   const requests = data.requests ?? []
   if (!requests.length) {
     return (
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '22px' }}>
         Nobody is waiting on a call. Requests arrive here from the pricing page, the Connect page and
         the coach card, and stay until somebody marks them answered.
       </div>
@@ -1739,7 +2017,7 @@ function CallRequestsTab({ data, onAnswered }: {
 
   return (
     <div>
-      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 12 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>
         {requests.length} waiting. Ring them, agree what it costs, and invoice it afterwards -
         nothing here charges anybody.
       </div>
@@ -1747,10 +2025,10 @@ function CallRequestsTab({ data, onAnswered }: {
         {requests.map(r => (
           <div key={r.id} style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', background: 'white' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 3 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-navy)' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>
                 {WHAT_IT_IS_ABOUT[r.about] ?? 'Something else'}
               </div>
-              <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
                 {whenItWas(r.askedAt, 'dayAndTime')}
               </div>
             </div>
@@ -1759,7 +2037,7 @@ function CallRequestsTab({ data, onAnswered }: {
               {r.email && <a href={`mailto:${r.email}`} style={{ color: 'var(--gw-navy)' }}>{r.email}</a>}
               {' · '}{r.orgName}
               <span style={{
-                marginLeft: 8, fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em',
+                marginLeft: 8, fontSize: 10, fontWeight: 700, letterSpacing: '.04em',
                 textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4,
                 background: r.paying ? 'var(--gw-green-bg)' : 'var(--gw-bg)',
                 color: r.paying ? 'var(--gw-green-t)' : 'var(--gw-sub)',
@@ -1767,14 +2045,13 @@ function CallRequestsTab({ data, onAnswered }: {
               }}>{r.paying ? 'Paying' : 'Free plan'}</span>
             </div>
             {r.note && (
-              <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.65, whiteSpace: 'pre-wrap', marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: '20px', whiteSpace: 'pre-wrap', marginBottom: 8 }}>
                 {r.note}
               </div>
             )}
-            <button
+            <button className="btn sec sm"
               type="button"
               onClick={() => onAnswered(r.id)}
-              style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 11px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
             >Mark answered</button>
           </div>
         ))}
@@ -1902,7 +2179,7 @@ export function AdminPage() {
       {/* Nav */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-bg)', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px' }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Groundwork ops</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Groundwork ops</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             {/*
               * THE OTHER HALF OF THE BACK OFFICE, WHICH NOTHING LINKED TO.

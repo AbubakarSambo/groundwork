@@ -22,74 +22,68 @@ function aTime(d: Date, zone?: string): string {
  */
 export interface WhatTheScheduleSays { nextOpensAt?: string | null; zone?: string | null }
 
+type ACheckInRow = { id: string; sessionNumber: number; status: string; availableFrom?: string | null }
+
 /**
- * When the next check-in opens, in one sentence: "Your next check-in opens tomorrow at 4pm."
- * (check-in-end-card.txt). Null when nothing is known yet, for example before the next one exists.
+ * THE NEXT CHECK-IN, ONCE (Hafsah, 30 October 2026, first-experience round 1). A clinic lead read "No check-in open right now"
+ * as the header and "Your next check-in is open now." under it, on one card, because the header was fixed words and the sentence
+ * was worked out here. This is the one owner of the next check-in: whether it is open now (and which row, so there is a door to
+ * it), and the one sentence about when it opens. The card's header, its sentence, the Done page's sentence and its link all read
+ * this, so none of them can say something the others do not.
+ *
+ *  - `openId`: the next check-in's id when it is open now, else null.
+ *  - `says`: "Your next check-in is open now.", "Your next check-in opens tomorrow at 4pm." (check-in-end-card.txt), or null when
+ *    nothing is known yet, for example before the next one exists.
  */
-export function whenTheNextOneOpens(
-  checkIns: { id: string; sessionNumber: number; status: string; availableFrom?: string | null }[] | null | undefined,
+export function theNextOne(
+  checkIns: ACheckInRow[] | null | undefined,
   thisCheckInId: string | null | undefined,
   now: Date = new Date(),
   schedule?: WhatTheScheduleSays | null,
-): string | null {
-  if (!checkIns) return null
+): { openId: string | null; says: string | null } {
+  const nothing = { openId: null, says: null }
+  if (!checkIns) return nothing
   const zone = schedule?.zone ?? undefined
   const later = checkIns
     .filter(c => c.id !== thisCheckInId && c.status !== 'COMPLETED' && c.status !== 'DECLINED')
     .sort((a, b) => a.sessionNumber - b.sessionNumber)
   /* No row for the next one yet (it is written when this one finishes): the schedule's own time, when the server has one. */
-  const next = later[0] ?? (schedule?.nextOpensAt ? { status: 'NOT_STARTED', availableFrom: schedule.nextOpensAt } : null)
-  if (!next) return null
-  /*
-   * A ROW WITH NO availableFrom IS NOT YET SCHEDULED, NOT ALREADY OPEN (U.8 review). The next
-   * session's row can exist before it has a date - lead-path-dates.spec.ts locks `availableFrom`
-   * as `null` in exactly that case - and this read `null` the same as "the date has passed",
-   * claiming "Your next check-in is open now." on a check-in that was not open, and might not be
-   * for weeks. Nothing is known yet, so nothing is said, same as when there is no next row at all.
-   */
-  /*
-   * AN IN_PROGRESS SESSION IS OPEN, WHATEVER ITS availableFrom SAYS - the same rule
-   * `myOpenOpensLater` uses on the ground pages (see GroundAdminPage.tsx/GroundParticipantPage.tsx):
-   * that date gates a session that has not started, not one already running. Without this, a lead
-   * whose next session had already been opened (for example by starting it early, or a clock
-   * skew) was told it "opens on Sunday" while it sat there, started, waiting for her.
-   */
-  if (next.status === 'IN_PROGRESS') return 'Your next check-in is open now.'
-  if (!next.availableFrom) return null
+  const next: (Partial<ACheckInRow> & { status: string }) | null = later[0] ?? (schedule?.nextOpensAt ? { status: 'NOT_STARTED', availableFrom: schedule.nextOpensAt } : null)
+  if (!next) return nothing
+  const openNow = { openId: next.id ?? null, says: 'Your next check-in is open now.' }
+  /* AN IN_PROGRESS SESSION IS OPEN, WHATEVER ITS availableFrom SAYS: that date gates a session that has not started. */
+  if (next.status === 'IN_PROGRESS') return openNow
+  /* A ROW WITH NO availableFrom IS NOT YET SCHEDULED, NOT ALREADY OPEN (U.8 review): nothing is known yet, so nothing is said. */
+  if (!next.availableFrom) return nothing
   const opens = new Date(next.availableFrom)
-  if (Number.isNaN(opens.getTime()) || opens.getTime() <= now.getTime()) {
-    return 'Your next check-in is open now.'
-  }
+  if (Number.isNaN(opens.getTime()) || opens.getTime() <= now.getTime()) return openNow
   const day = (d: Date) => whenItWas(d, 'day', zone)
   const tomorrow = new Date(now.getTime() + 86_400_000)
-  if (day(opens) === day(now)) return `Your next check-in opens today at ${aTime(opens, zone)}.`
-  if (day(opens) === day(tomorrow)) return `Your next check-in opens tomorrow at ${aTime(opens, zone)}.`
-  return `Your next check-in opens on ${whenItWas(opens, 'weekdayAndDay', zone)} at ${aTime(opens, zone)}.`
+  const says = day(opens) === day(now)
+    ? `Your next check-in opens today at ${aTime(opens, zone)}.`
+    : day(opens) === day(tomorrow)
+      ? `Your next check-in opens tomorrow at ${aTime(opens, zone)}.`
+      : `Your next check-in opens on ${whenItWas(opens, 'weekdayAndDay', zone)} at ${aTime(opens, zone)}.`
+  return { openId: null, says }
 }
 
-/**
- * THE ID TO LINK TO, WHEN whenTheNextOneOpens SAYS IT IS ALREADY OPEN.
- *
- * `whenTheNextOneOpens` only has words to give; a reader told "Your next check-in is open now."
- * with nowhere to click on it is being told about a door with no handle. Same rule, so the two
- * can never disagree about whether there is a next check-in to open.
- */
+/** When the next check-in opens, in one sentence, from `theNextOne`. */
+export function whenTheNextOneOpens(
+  checkIns: ACheckInRow[] | null | undefined,
+  thisCheckInId: string | null | undefined,
+  now: Date = new Date(),
+  schedule?: WhatTheScheduleSays | null,
+): string | null {
+  return theNextOne(checkIns, thisCheckInId, now, schedule).says
+}
+
+/** The id to link to when the next check-in is open now, from `theNextOne`, so the sentence and the link never disagree. */
 export function theNextOpenCheckInId(
-  checkIns: { id: string; sessionNumber: number; status: string; availableFrom?: string | null }[] | null | undefined,
+  checkIns: ACheckInRow[] | null | undefined,
   thisCheckInId: string | null | undefined,
   now: Date = new Date(),
 ): string | null {
-  if (!checkIns) return null
-  const later = checkIns
-    .filter(c => c.id !== thisCheckInId && c.status !== 'COMPLETED' && c.status !== 'DECLINED')
-    .sort((a, b) => a.sessionNumber - b.sessionNumber)
-  const next = later[0]
-  if (!next) return null
-  if (next.status === 'IN_PROGRESS') return next.id
-  if (!next.availableFrom) return null
-  const opens = new Date(next.availableFrom)
-  if (!Number.isNaN(opens.getTime()) && opens.getTime() <= now.getTime()) return next.id
-  return null
+  return theNextOne(checkIns, thisCheckInId, now).openId
 }
 
 /**

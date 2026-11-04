@@ -18,14 +18,22 @@ describe('a sale somebody said they made is their claim, not a sale won', () => 
   it('Collins\'s "I did eleven" is in its own group, in his words, and nothing is under Won', () => {
     const [sec] = grid([deal('d-collins', 'memory')]);
     expect(sec.groups).toEqual([
-      { group: 'said-won', heading: 'Said to be won, not shown yet', reason: 'Somebody said each of these was won, in their own words. Nothing has been shown to back them yet, so they are not counted as won.', rowIds: ['d-collins'] },
+      { group: 'said-won', heading: 'Said to be won, not shown yet', reason: 'Somebody said each of these was won, in their own words. Nothing has been shown to back them yet, so they count in what is sold as their word, not as sales with proof of payment.', rowIds: ['d-collins'] },
     ]);
     expect(sec.rows[0].said).toBe('I did eleven, all the deliveries are done.');
-    expect(sec.rows[0].groupSays).toMatch(/^It rests on what somebody said, with no proof yet\./);
+    expect(sec.rows[0].groupSays).toMatch(/^There is no proof yet\./);
   });
 
   it('a sale with proof, one a colleague confirmed, and one the lead put there on the board stay under Won', () => {
     const [sec] = grid([deal('d-proven', 'proven'), deal('d-confirmed', 'confirmed'), deal('d-lead', 'none', { from: 'lead' }), deal('d-said', 'said')]);
     expect(sec.groups.map((g: any) => [g.group, g.rowIds])).toEqual([['said-won', ['d-said']], ['won', ['d-proven', 'd-confirmed', 'd-lead']]]);
+  });
+});
+
+/** Kilele Hotel, polish round 2: its payment on record, no stage written, and the board said "Kevin has no deal won on record yet". */
+describe('a deal with its payment on record is won, whatever stage was written', () => {
+  it('goes under Won', () => {
+    const [sec] = grid([{ ...deal('d-kilele', 'proven'), stage: null, paymentRecord: true }]);
+    expect(sec.groups.map((g: any) => g.group)).toEqual(['won']);
   });
 });

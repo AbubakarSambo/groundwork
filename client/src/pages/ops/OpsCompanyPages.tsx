@@ -34,7 +34,7 @@ function TheRowsBehindIt({ rows }: { rows?: Array<Record<string, unknown>> }) {
         {open ? 'Hide what it is made of' : `What the ${rows.length} are`}
       </button>
       {open && (
-        <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-sub)' }}>
+        <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--gw-sub)' }}>
           {rows.map((row, i) => (
             <li key={i} style={{ marginBottom: 3 }}>
               {/* Empty fields left out. "owner: null" is not evidence, it is a
@@ -117,13 +117,13 @@ export function OpsQuarterPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Objectives" answers="What are we trying to achieve, and are we?" />
 
       <select
         value={period}
         onChange={(e) => setPeriod(e.target.value)}
-        style={{ marginBottom: 16, fontSize: 12.5, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
+        style={{ marginBottom: 16, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
       >
         {(periods.data ?? []).map((p) => (
           <option key={p.key} value={p.key}>
@@ -140,23 +140,23 @@ export function OpsQuarterPage() {
           style={{ ...CARD, marginBottom: 14, borderLeft: '3px solid var(--gw-amber-t)' }}
         >
           <p style={LABEL}>Before this period opens</p>
-          <p style={{ fontSize: 14, margin: '5px 0 0', lineHeight: 1.6 }}>{canOpen.data.says}</p>
+          <p style={{ fontSize: 14, margin: '5px 0 0', lineHeight: '22px' }}>{canOpen.data.says}</p>
         </section>
       )}
 
       {canOpen.data?.ready && mayOpen && (periods.data ?? []).find((p) => p.key === period)?.status !== 'OPEN' && (
         <section style={{ ...CARD, marginBottom: 14 }}>
           <p style={{ fontSize: 14, margin: 0 }}>{canOpen.data.says}</p>
-          <button
+          <button className="btn sec sm"
             type="button"
             onClick={() => open.mutate()}
             disabled={open.isPending}
-            style={{ marginTop: 10, fontSize: 13, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--gw-border)', cursor: 'pointer' }}
+            style={{ marginTop: 10 }}
           >
             {open.isPending ? 'Opening…' : 'Open this period'}
           </button>
           {open.isError && (
-            <p style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>
+            <p style={{ fontSize: 12, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>
               {(open.error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
                 'It could not be opened.'}
             </p>
@@ -175,7 +175,7 @@ export function OpsQuarterPage() {
             /* Said, never refused. Eight companies against three in the
                pipeline may be the target rather than a mistake — which it is
                belongs to whoever set it. */
-            <p key={d.objective} style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', margin: '8px 0 0', lineHeight: 1.6 }}>
+            <p key={d.objective} style={{ fontSize: 12, color: 'var(--gw-amber-t)', margin: '8px 0 0', lineHeight: '19px' }}>
               <strong>{d.objective}</strong> - {d.says}
             </p>
           ))}
@@ -313,7 +313,7 @@ export function OpsQuarterPage() {
           {o.keyResults.map((kr) => (
             <div key={kr.id} style={{ borderTop: '1px solid var(--gw-border)', padding: '9px 0 0', marginTop: 9 }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--gw-navy)', fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-navy)', fontVariantNumeric: 'tabular-nums' }}>
                   {/*
                     A target of zero is a HOLD, not a climb, and "1 / 0" reads
                     as a broken fraction. It is the same defect as the blank
@@ -335,7 +335,7 @@ export function OpsQuarterPage() {
                    * by side without saying which is which is one where the typed
                    * ones hide behind the computed.
                    */
-                  <span style={{ ...LABEL, fontSize: 9.5 }}>entered by hand</span>
+                  <span style={{ ...LABEL, fontSize: 10 }}>entered by hand</span>
                 )}
                 <span style={{ fontSize: 12, color: 'var(--gw-sub)', marginLeft: 'auto' }}>
                   by {readDate(kr.dueDate)}
@@ -354,7 +354,7 @@ export function OpsQuarterPage() {
                 </div>
               )}
               {kr.problem && (
-                <p style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '7px 0 0' }}>
+                <p style={{ fontSize: 12, color: 'var(--gw-red-t)', margin: '7px 0 0' }}>
                   {kr.problem}
                 </p>
               )}
@@ -364,7 +364,7 @@ export function OpsQuarterPage() {
               {/* The reasoning behind the number, beside it. Filed on another
                   screen it would be written once and read never. */}
               {(kr.justification || kr.approach) && (
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.6 }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: '19px' }}>
                   {kr.justification && <div>{kr.justification}</div>}
                   {kr.approach && <div style={{ marginTop: 2 }}>How: {kr.approach}</div>}
                 </div>
@@ -410,7 +410,7 @@ export function OpsCommitmentsPage() {
         <>
           {c.says}
           {c.typedByHand && (
-            <span style={{ ...LABEL, fontSize: 9.5, marginLeft: 8 }}>by hand</span>
+            <span style={{ ...LABEL, fontSize: 10, marginLeft: 8 }}>by hand</span>
           )}
         </>
       ),
@@ -508,12 +508,12 @@ export function OpsCommitmentsPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Commitments" answers="What did I say I would do this cycle, and what happened?" />
       <select
         value={period}
         onChange={(e) => setPeriod(e.target.value)}
-        style={{ marginBottom: 16, fontSize: 12.5, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
+        style={{ marginBottom: 16, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
       >
         {(periods.data ?? []).map((p) => (
           <option key={p.key} value={p.key}>
@@ -596,11 +596,11 @@ function WhatWasDecidedBefore({
       </button>
       {open &&
         (earlier.length === 0 ? (
-          <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '6px 0 0' }}>
+          <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '6px 0 0' }}>
             {history.isLoading ? 'Looking…' : 'Nothing. This is the first time it has been asked.'}
           </p>
         ) : (
-          <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-sub)' }}>
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--gw-sub)' }}>
             {earlier.map((d) => (
               <li key={d.id} style={{ marginBottom: 3 }}>
                 {readEnum(d.status)} on {readDate(d.decidedAt ?? d.createdAt)}
@@ -625,7 +625,7 @@ export function OpsApprovalsPage() {
   const days = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Approvals" answers="What is waiting on me, and how long has it waited?" />
       {(approvals.data ?? []).map((a) => (
         <section key={a.id} style={{ ...CARD, marginBottom: 10 }}>
@@ -649,11 +649,10 @@ export function OpsApprovalsPage() {
           )}
           <div style={{ display: 'flex', gap: 6 }}>
             {(['APPROVED', 'CHANGES_REQUESTED', 'REJECTED'] as const).map((status) => (
-              <button
+              <button className="btn sec sm"
                 key={status}
                 type="button"
                 onClick={() => decide.mutate({ id: a.id, status })}
-                style={{ ...CARD, padding: '4px 10px', fontSize: 12, cursor: 'pointer' }}
               >
                 {status === 'APPROVED' ? 'Approve' : status === 'REJECTED' ? 'No' : 'Ask for changes'}
               </button>
@@ -711,10 +710,10 @@ export function OpsSpendPage() {
           )}
           {/* RECORDED is not APPROVED, and the ledger must never imply it was. */}
           {e.status === 'RECORDED' && (
-            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>not reviewed by a second person</div>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>not reviewed by a second person</div>
           )}
           {e.rejectedReason && (
-            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>{e.rejectedReason}</div>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{e.rejectedReason}</div>
           )}
         </>
       ),
@@ -722,16 +721,16 @@ export function OpsSpendPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Spend" answers="What has the company claimed, and what is left?" />
 
       {balance.data && (
         <section style={{ ...CARD, marginBottom: 14 }}>
           <p style={LABEL}>The money</p>
-          <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--gw-navy)', margin: '4px 0 0' }}>
+          <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)', margin: '4px 0 0' }}>
             {money(balance.data.remaining)} left
           </p>
-          <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '2px 0 0' }}>
+          <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '2px 0 0' }}>
             {money(balance.data.earned)} earned · {money(balance.data.paid)} paid ·{' '}
             {money(balance.data.approvedNotPaid)} owed · {money(balance.data.awaitingDecision)} awaiting
             a decision
@@ -762,7 +761,7 @@ export function OpsSpendPage() {
           </div>
 
           {(balance.data.nobodyCanApprove ?? []).map((e) => (
-            <p key={e.id} style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>
+            <p key={e.id} style={{ fontSize: 12, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>
               {e.description} ({money(e.amount)}) - {e.why}
             </p>
           ))}
@@ -803,7 +802,7 @@ export function OpsFundraisePage() {
   const t = fundraise.data?.totals
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Fundraise" answers="Who might fund us, and what have I not chased?" />
 
       {t && (
@@ -817,8 +816,8 @@ export function OpsFundraisePage() {
             { v: t.overdue, l: 'overdue' },
           ].map((s) => (
             <div key={s.l} style={{ ...CARD, minWidth: 130 }}>
-              <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--gw-navy)' }}>{s.v}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>{s.l}</div>
+              <div style={{ fontSize: 19, fontWeight: 700, color: 'var(--gw-navy)' }}>{s.v}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{s.l}</div>
             </div>
           ))}
         </div>
@@ -951,7 +950,7 @@ export function OpsStrategyPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Strategy" answers="Which relationships could become something?" />
       <Adder
         title="Record a relationship"
@@ -986,7 +985,7 @@ export function OpsIntegrationPage() {
   const s = status.data
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader
         name="Groundwork"
         answers="Are we connected to our own product, and what did we last send?"
@@ -995,18 +994,17 @@ export function OpsIntegrationPage() {
       <section style={{ ...CARD, marginBottom: 12 }}>
         <p style={{ fontSize: 14, margin: 0 }}>{s?.says ?? 'Checking…'}</p>
         {s?.configured && (
-          <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '8px 0 0' }}>
+          <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '8px 0 0' }}>
             {s.baseUrl} · client {s.clientId} · secret {s.secretSet ? 'set' : 'missing'}
           </p>
         )}
       </section>
 
       {s?.enabled && (
-        <button
+        <button className="btn sec sm"
           type="button"
           onClick={() => push.mutate()}
           disabled={push.isPending}
-          style={{ ...CARD, cursor: 'pointer', fontSize: 13 }}
         >
           {push.isPending ? 'Sending…' : 'Send this period across'}
         </button>
@@ -1088,7 +1086,7 @@ export function OpsRequestsPage() {
   ]
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Requests" answers="What is somebody blocked on, and what would unblock them?" />
 
       <div style={{ marginBottom: 16 }}>
@@ -1149,10 +1147,10 @@ export function OpsDecisionsPage() {
   const settings = useQuery({ queryKey: ['ops', 'settings'], queryFn: opsApi.settings, retry: false })
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Decisions" answers="What has this system been told to assume?" />
 
-      <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 16, maxWidth: 620, lineHeight: 1.6 }}>
+      <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 16, maxWidth: 620, lineHeight: '21px' }}>
         Each of these is something a person chose and could choose differently. Nothing here is
         stored twice - changing one recomputes every number that depends on it, which is why the
         note says what choosing differently would change.
@@ -1173,7 +1171,7 @@ export function OpsDecisionsPage() {
             {setting.value}
           </p>
           {setting.note && (
-            <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '0 0 10px', lineHeight: 1.6 }}>
+            <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '0 0 10px', lineHeight: '19px' }}>
               {setting.note}
             </p>
           )}
@@ -1184,7 +1182,7 @@ export function OpsDecisionsPage() {
             invalidate={[['ops']]}
             submitLabel="Change it"
           />
-          <p style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 8 }}>
+          <p style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 8 }}>
             Last changed {readDate(setting.updatedAt)}
             {setting.updatedBy ? ` by ${setting.updatedBy}` : ''}
           </p>

@@ -29,11 +29,11 @@ export function QuickReplies({ items, onPick, disabled, label, stacked }: {
           onClick={() => onPick(item)}
           disabled={disabled}
           style={{
-            minHeight: 40,
+            minHeight: 44,
             padding: '0 14px',
             borderRadius: 20,
             background: 'var(--gw-card)',
-            boxShadow: 'inset 0 0 0 1.5px var(--gw-rule-2)',
+            boxShadow: 'inset 0 0 0 1px var(--rule2-crisp)',
             border: 'none',
             fontFamily: 'inherit',
             fontSize: 15,

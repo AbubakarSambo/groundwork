@@ -233,7 +233,9 @@ describe('the floating Feedback button', () => {
     useFeedbackStore.getState().hide()
   })
 
-  it('but it is still on every other page', () => {
+  /* UPDATED 24 October (Hafsah: fewer buttons; the prototype has no floating Feedback pill): no page draws it now.
+     "Send feedback" on More (above) and on the person's own menu opens the panel. */
+  it('and it is drawn on no other page either', () => {
     useAuthStore.setState({ user: PARTICIPANT, token: 't', isAuthenticated: true } as any)
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
     qc.setQueryData(['grounds'], [])
@@ -242,7 +244,7 @@ describe('the floating Feedback button', () => {
        cached answer before it mounts the sidebar (and the feedback trigger inside it) at all. */
     qc.setQueryData(['my-waiting'], { waiting: false })
     render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/grounds']}><AppShell><div /></AppShell></MemoryRouter></QueryClientProvider>)
-    expect(screen.getByRole('button', { name: /^Feedback\. Drag to move/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Feedback\. Drag to move/ })).toBeNull()
   })
 })
 

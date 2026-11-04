@@ -67,11 +67,12 @@ const keepOwnById = (map: any, viewerParticipantId: string | null): any => {
 /**
  * Strip other people's ratings out of a report before it reaches any reader, the lead included.
  *
- * What deliberately STAYS for everybody:
+ * What STAYS for the lead and an org admin:
  *   parties[] keeps sessions and whether each person contributed. That is
- *   participation, not quality, and a ground where somebody has not turned up is
- *   something the others are entitled to know - it is why their own account has
- *   nothing to be compared against yet.
+ *   participation, not quality. For a participant it is their own row only: each
+ *   row also counts that person's lines and documents, and sessionCounts their turns,
+ *   which is each person's load, private always (CLAUDE.md; Hafsah's quality pass of
+ *   18 October, R-7). Who checked in reaches a participant through the team picture.
  *
  * What goes, for every reader but the person it is about, the lead and an org admin included:
  *   specificityNotes, specificitySignal, pictureConfidence, specificityCauses,
@@ -193,6 +194,20 @@ function withoutOtherPeoplesRatings<T extends Record<string, any>>(
      colleagues' names. */
   /* `engagement` is this call's own copy, and the lead has already returned with it. */
   if (engagement) delete engagement.concernFlags;
+
+  /*
+   * EACH PERSON'S LOAD IS THEIR OWN (CLAUDE.md, "Private, always: ... each person's load across check-ins"; Hafsah's quality pass of
+   * 18 October, R-7). Mercy's own report carried every colleague's row in engagement.parties (sessions, lines, documents) and
+   * engagement.sessionCounts ("Kevin Omondi": 33, "Grace Achieng": 12). A participant keeps their own row and count only.
+   */
+  if (engagement) {
+    /* Their own row is under their label, or under "You" where the names are already in. */
+    const isTheirs = (label: unknown) => typeof label === 'string' && ((!!viewerLabel && label === viewerLabel) || label === 'You');
+    if (Array.isArray(engagement.parties)) engagement.parties = engagement.parties.filter((p: any) => isTheirs(p?.label));
+    if (engagement.sessionCounts && typeof engagement.sessionCounts === 'object' && !Array.isArray(engagement.sessionCounts)) {
+      engagement.sessionCounts = Object.fromEntries(Object.entries(engagement.sessionCounts).filter(([k]) => isTheirs(k)));
+    }
+  }
 
   /**
    * LEADERSHIP GAPS ARE ABOUT HOW ONE PERSON IS LEADING, AND THEY WERE GOING TO

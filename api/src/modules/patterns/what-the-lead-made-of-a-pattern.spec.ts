@@ -10,7 +10,7 @@
  * and which "seen again after the talk" is derived from.
  */
 
-import { seenAgainAfterTalk, patternTalkNudge, servedPatterns, type ALeadPatternMark } from './who-reads-a-pattern';
+import { seenAgainAfterTalk, servedPatterns, type ALeadPatternMark } from './who-reads-a-pattern';
 
 const NOW = Date.now();
 
@@ -58,14 +58,13 @@ describe('the lead marks a pattern right, wrong or not sure (decision 57, item 2
     }
   });
 
-  it('the lead can mark it, and never reads it back as their own rating', async () => {
-    const { svc, update } = serviceWith();
-    const served = await svc.markAsTheLead('pd2', 'u-tunde', 'WRONG');
-    expect(update.mock.calls[0][0].data.leadMark).toBe('WRONG');
-    expect(update.mock.calls[0][0].data.leadMarkedAt).toBeInstanceOf(Date);
-    expect(update.mock.calls[0][0].data.leadMarkedBy).toBe('u-tunde');
-    /* The reader here IS the lead, so the mark comes back to them. */
-    expect(served.leadMark).toBe('WRONG');
+  it('the lead’s mark on a pattern about somebody else is refused with 403, and nothing is written', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    for (const mark of ['RIGHT', 'WRONG', 'NOT_SURE'] as ALeadPatternMark[]) {
+      const { svc, update } = serviceWith();
+      await expect(svc.markAsTheLead('pd2', 'u-tunde', mark)).rejects.toHaveProperty('status', 403);
+      expect(update).not.toHaveBeenCalled();
+    }
   });
 
   it('is refused before the lead may already read the pattern (decision 39’s timing)', async () => {
@@ -85,14 +84,15 @@ describe('the lead marks a pattern right, wrong or not sure (decision 57, item 2
     await expect(svc.markAsTheLead('pd2', 'u-tunde', 'RIGHT')).rejects.toHaveProperty('status', 403);
   });
 
-  it('never served to the person it is about, or to a colleague, however it was marked', () => {
+  it('never served to the person it is about, a colleague or the lead, however it was marked', () => {
     const marked = { ...ROW, leadMark: 'WRONG' as ALeadPatternMark };
     const asFemi = servedPatterns([marked], { participantId: 'p-femi', runsIt: false }, { on: true, now: new Date(NOW) });
     expect(asFemi[0].leadMark).toBeNull();
     const asColleague = servedPatterns([marked], { participantId: 'p-ngozi', runsIt: false }, { on: true, now: new Date(NOW) });
     expect(asColleague).toEqual([]); // a colleague never reaches this row at all
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const asLead = servedPatterns([marked], { participantId: 'p-tunde', runsIt: true }, { on: true, now: new Date(NOW) });
-    expect(asLead[0].leadMark).toBe('WRONG');
+    expect(asLead).toEqual([]); // nor does the lead now
   });
 });
 
@@ -103,23 +103,22 @@ describe('the lead marks that they talked a pattern through (decision 57, item 3
     expect(update).not.toHaveBeenCalled();
   });
 
-  it('sets talkedAboutAt and an anchor period, which both readers may see as a plain fact', async () => {
+  it('the lead’s “talked it through” on a pattern about somebody else is refused with 403; the person still reads a talk already marked as a plain fact', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const { svc, update } = serviceWith();
-    const served = await svc.markTalkedAbout('pd2', 'u-tunde');
-    expect(update.mock.calls[0][0].data.talkedAboutAt).toBeInstanceOf(Date);
-    expect(update.mock.calls[0][0].data.talkedAboutBy).toBe('u-tunde');
-    expect(update.mock.calls[0][0].data.talkedAboutAtPeriod).toBe(3);
-    expect(served.talkedAbout).toBe(true);
+    await expect(svc.markTalkedAbout('pd2', 'u-tunde')).rejects.toHaveProperty('status', 403);
+    expect(update).not.toHaveBeenCalled();
     const asFemi = servedPatterns([{ ...ROW, talkedAboutAt: new Date(NOW) }], { participantId: 'p-femi', runsIt: false }, { on: true, now: new Date(NOW) });
     expect(asFemi[0].talkedAbout).toBe(true);
     /* The fact, never the verdict behind it. */
     expect(asFemi[0].leadMark).toBeNull();
   });
 
-  it('a second mark is a no-op, not an error', async () => {
+  it('a second mark on a pattern about somebody else is refused too, and writes nothing', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const already = { ...ROW, talkedAboutAt: new Date(NOW - 86400000), talkedAboutBy: 'u-tunde', talkedAboutAtPeriod: 3 };
     const { svc, update } = serviceWith(already);
-    await svc.markTalkedAbout('pd2', 'u-tunde');
+    await expect(svc.markTalkedAbout('pd2', 'u-tunde')).rejects.toHaveProperty('status', 403);
     expect(update).not.toHaveBeenCalled();
   });
 });
@@ -136,27 +135,28 @@ describe('"seen again after the talk", derived from the honest history (decision
   });
 });
 
-describe('the nudge to talk it through, once, in plain words (decision 57, item 3)', () => {
-  it('quotes the person’s own words when they have answered', () => {
-    const [served] = servedPatterns([ROW], { participantId: 'p-tunde', runsIt: true }, { on: true, now: new Date(NOW) });
-    const nudge = patternTalkNudge(served, 'Femi');
-    expect(nudge.decide).toBe('Talk with Femi about “Others describe doing work they described as theirs”.');
-    expect(nudge.why).toBe('Femi has seen it. Femi said, “I built the deck, Ngozi did the pricing.”');
+describe('no nudge to talk a stored pattern through reaches the lead (decision 57, item 3, replaced)', () => {
+  /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+  const asTunde = { participantId: 'p-tunde', runsIt: true };
+  it('the lead is served nothing to build a nudge from, so Femi’s own words never reach the lead', () => {
+    const served = servedPatterns([ROW], asTunde, { on: true, now: new Date(NOW) });
+    expect(served).toEqual([]);
+    expect(JSON.stringify(served)).not.toContain('I built the deck, Ngozi did the pricing');
   });
 
-  it('adds a single full stop when the person’s own words did not end with one', () => {
+  it('the same holds when the person’s words did not end with a full stop', () => {
     const noStop = { ...ROW, personAnswer: 'I built the deck, Ngozi did the pricing' };
-    const [served] = servedPatterns([noStop], { participantId: 'p-tunde', runsIt: true }, { on: true, now: new Date(NOW) });
-    const nudge = patternTalkNudge(served, 'Femi');
-    expect(nudge.why).toBe('Femi has seen it. Femi said, “I built the deck, Ngozi did the pricing”.');
+    expect(servedPatterns([noStop], asTunde, { on: true, now: new Date(NOW) })).toEqual([]);
   });
 
-  it('says plainly when the person has not answered, without inventing anything', () => {
+  it('and when the person has not answered; Femi still reads his own, unanswered, with a way to answer', () => {
     const unanswered = { ...ROW, personAnswer: null, personAnsweredAt: null };
-    const [served] = servedPatterns([unanswered], { participantId: 'p-tunde', runsIt: true }, { on: true, now: new Date(NOW) });
-    const nudge = patternTalkNudge(served, 'Femi');
-    expect(nudge.why).toBe('Femi has seen this and has not answered yet.');
+    expect(servedPatterns([unanswered], asTunde, { on: true, now: new Date(NOW) })).toEqual([]);
+    const [mine] = servedPatterns([unanswered], { participantId: 'p-femi', runsIt: false }, { on: true, now: new Date(NOW) });
+    expect(mine.theirWords).toBeNull();
+    expect(mine.canAnswer).toBe(true);
   });
+
 });
 
 /*
@@ -164,27 +164,28 @@ describe('the nudge to talk it through, once, in plain words (decision 57, item 
  * cannot mark a pattern they do not read". There is no such reach now: with nothing put in force, the
  * lead reads Femi's pattern after his turn, and can mark it and say they talked it through.
  */
-describe('with no setting at all, the lead reads the pattern after Femi’s turn and can mark it (decision 86)', () => {
-  it('marking it right, wrong or not sure is accepted and written', async () => {
+describe('even after Femi’s turn, the lead neither reads nor marks Femi’s stored pattern (decision 86, then Hafsah, 2 November 2026)', () => {
+  /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+  it('marking it right, wrong or not sure is refused and nothing is written', async () => {
     const { svc, update } = serviceWith();
-    await svc.markAsTheLead('pd2', 'u-tunde', 'RIGHT');
-    expect(update).toHaveBeenCalledTimes(1);
+    await expect(svc.markAsTheLead('pd2', 'u-tunde', 'RIGHT')).rejects.toHaveProperty('status', 403);
+    expect(update).not.toHaveBeenCalled();
   });
 
-  it('marking that they talked it through is accepted and written', async () => {
+  it('marking that they talked it through is refused and nothing is written', async () => {
     const { svc, update } = serviceWith();
-    await svc.markTalkedAbout('pd2', 'u-tunde');
-    expect(update).toHaveBeenCalledTimes(1);
+    await expect(svc.markTalkedAbout('pd2', 'u-tunde')).rejects.toHaveProperty('status', 403);
+    expect(update).not.toHaveBeenCalled();
   });
 
-  it('the lead is served it with the mark, and Femi is served his own without any mark, told Tunde reads it too', () => {
+  it('the lead is served nothing of it, and Femi is served his own without any mark', () => {
     const marked = { ...ROW, leadMark: 'WRONG' as ALeadPatternMark };
     const asTunde = servedPatterns([marked], { participantId: 'p-tunde', runsIt: true }, { on: true, now: new Date(NOW) });
-    expect(asTunde).toHaveLength(1);
-    expect(asTunde[0].leadMark).toBe('WRONG');
+    expect(asTunde).toEqual([]);
     const asFemi = servedPatterns([marked], { participantId: 'p-femi', runsIt: false }, { on: true, now: new Date(NOW) });
     expect(asFemi).toHaveLength(1);
     expect(asFemi[0].leadMark).toBeNull();
-    expect(asFemi[0].whoSeesIt).not.toContain('Only you see this');
+/* Hafsah, 2 November 2026: only the person reads a stored pattern now, so they are told only they see it. */
+    /* F5: no privacy note on the screen; who may read it is unchanged. */ expect('whoSeesIt' in asFemi[0]).toBe(false);
   });
 });

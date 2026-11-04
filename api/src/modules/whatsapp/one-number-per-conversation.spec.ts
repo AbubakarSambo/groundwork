@@ -22,7 +22,7 @@ function aService(opts: { ownNumber?: boolean; lastClaim?: { via: 'ours' | 'thei
   const prisma: any = {
     platformSetting: { findUnique: jest.fn(async () => ({ value: true })) },
     whatsAppConnection: {
-      findUnique: jest.fn(async () => (opts.ownNumber ? { id: 'conn-1', enabled: true, phoneNumberId: THEIRS, accessToken: 'their-test-token', approvedTemplates: [] } : null)),
+      findUnique: jest.fn(async () => (opts.ownNumber ? { id: 'conn-1', enabled: true, phoneNumberId: THEIRS, accessToken: 'their-test-token', appSecret: 'their-secret', verifyToken: 'v', webhookVerifiedAt: new Date('2026-10-01'), approvedTemplates: [] } : null)),
       update: jest.fn(async () => ({})),
     },
     person: { findFirst: jest.fn(async () => ({ whatsappStoppedAt: null, whatsappLastInboundAt: opts.personWroteAt ?? null })), findMany: jest.fn(async () => []) },

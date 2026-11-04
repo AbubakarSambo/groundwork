@@ -1,3 +1,4 @@
+import { useTheDirectMorning } from '@/lib/the-direct-morning'
 import { neverAnAddressAsAName } from './an-address-that-can-receive-mail'
 import { Panel, SubHeading, Tag, Note, Stack } from '@/components/gw/ui'
 
@@ -131,6 +132,8 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
   readerRunsIt?: boolean
 }) {
   const spotPeople = softSpots ? Object.entries(softSpots).filter(([, list]) => list.length) : []
+  /* The direct morning (lib/the-direct-morning.tsx): no disclaimer that this is not a read on anybody. What it holds is the same. */
+  const direct = useTheDirectMorning()
   /* Nothing to ask, nothing to weigh, nothing thin and nothing flagged is the only empty state. */
   if (!reads?.length && !weigh && spotPeople.length === 0 && !arcAdvisories?.length) return null
   return (
@@ -140,11 +143,13 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
           <SubHeading>{readerRunsIt ? 'What to ask each person' : 'What your lead is looking for'}</SubHeading>
           {readerRunsIt && <Tag>Yours as the lead</Tag>}
         </div>
+        {direct ? (!readerRunsIt && <Note>What your lead said they were looking for, and what has been said about it so far.</Note>) : (
         <Note>
           {readerRunsIt
             ? 'Built from the record, not from a read on anybody. Each person has already been asked to move the same things, so none of this will be news to them.'
             : 'Built from the record, not from a read on you. It is what your lead said they were looking for, and what has been said about it so far.'}
         </Note>
+        )}
 
         {weigh && (
           <Stack gap={10}>
@@ -166,7 +171,7 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
               <Block title="Where this stood at the start" lines={startedAt.map(s => s.session > 1 ? `${s.text} Added at session ${s.session}.` : s.text)} note="Written at the beginning and left as it was. Read what people shared above against it." />
             )}
             {restedOn && restedOn.length > 0 && (
-              <Block title={readerRunsIt ? 'What you said it rested on' : 'What your lead said it rested on'} lines={restedOn} note="These were not in their hands. Read anything unmet above against them first." />
+              <Block title={readerRunsIt ? 'What you said it rested on' : 'What your lead said it rested on'} lines={restedOn} note={direct ? 'Read anything unmet above against these first.' : 'These were not in their hands. Read anything unmet above against them first.'} />
             )}
             {/*
               TWO NOTES, NOT ONE. `weigh.note` is this ground's own reading of its gaps; `weighNote` is
@@ -181,7 +186,7 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
         {spotPeople.length > 0 && (
           <Stack gap={10}>
             <SubHeading as="h3">Where this picture is thin</SubHeading>
-            <Note>Not a mark on anybody. It is what the record cannot yet support, and what would settle it.</Note>
+            <Note>{direct ? 'What the record cannot yet support, and what would settle it.' : 'Not a mark on anybody. It is what the record cannot yet support, and what would settle it.'}</Note>
             {spotPeople.map(([participantId, list]) => (
               <div key={participantId}>
                 <SubHeading as="h3">{`In what ${nameFor ? nameFor(participantId) : 'a colleague'} said`}</SubHeading>
@@ -201,6 +206,7 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
         {arcAdvisories && arcAdvisories.length > 0 && (
           <Stack gap={10}>
             <SubHeading as="h3">For your review, about the record itself</SubHeading>
+            {/* Restored, 30 October 2026: it keeps a flag about the record from reading as a label on the person ("no labels on people"). */}
             <Note>A flag about how an account was given, never a judgement on the person who gave it.</Note>
             {arcAdvisories.map((a) => (
               <div key={a.participantId}>

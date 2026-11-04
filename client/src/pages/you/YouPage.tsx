@@ -1,3 +1,4 @@
+import { TheDirectMorning, useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -11,7 +12,7 @@ import {
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
 import { WhereYouStandFromSuggestions } from '@/components/gw/Suggestions'
-import { PatternPanel } from '@/components/gw/ui'
+import { PatternPanel, EdgeList, EdgeRow } from '@/components/gw/ui'
 
 /**
  * THE YOU BOARD (C2, #/you, group 2 piece 2). The wording is copied from
@@ -62,10 +63,12 @@ import { PatternPanel } from '@/components/gw/ui'
 /** "What's yours..." varies with how many check-ins this reader has, and whether they run one
  *  (you-board-daniel.txt/kwame.txt vs you-board-miriam.txt/wairimu.txt). One check-in or none reads
  *  as the shorter, plainer sentence; more than one names the scope, as the prototype does. */
-export function theYouSubtitle(checkIns: YourCheckIn[]): string {
-  if (checkIns.length <= 1) return 'What’s yours, across your check-ins. Only you see this page.'
+export function theYouSubtitle(checkIns: YourCheckIn[], direct = false): string {
+  /* The direct morning (lib/the-direct-morning.tsx): what the page holds, and no privacy note. Only you may read it either way (the backend's rule). */
+  const only = direct ? '' : ' Only you see this page.'
+  if (checkIns.length <= 1) return `What’s yours, across your check-ins.${only}`
   const scope = checkIns.some(c => c.youRunIt) ? `all ${checkIns.length} check-ins` : 'every check-in you’re in'
-  return `What’s yours across ${scope}: what you said you’d do, your own reports, and what keeps coming up about your part. Only you see this page.`
+  return `What’s yours across ${scope}: what you said you’d do, your own reports, and what keeps coming up about your part.${only}`
 }
 
 export function YouPage() {
@@ -81,23 +84,28 @@ export function YouPage() {
      (walkthrough pass 2, item 4), the same way the sidebar already does. */
   const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: !!user })
 
+  const direct = isTheDirectMorningOn(data)
   return (
+    <TheDirectMorning on={direct}>
     <Page>
-      <PageTitle title="You" subtitle={data ? theYouSubtitle(data.checkIns ?? []) : 'What’s yours, across your check-ins. Only you see this page.'} />
+      <PageTitle title="You" subtitle={data ? theYouSubtitle(data.checkIns ?? [], direct) : 'What’s yours, across your check-ins.'} />
 
       {isLoading && <Note>Loading…</Note>}
       {isError && (
         <div>
-          <Note tone="error">Your board did not load. Nothing you have written is affected.</Note>
+          <Note tone="error">Your board didn’t load. Try again.</Note>
           <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
         </div>
       )}
       {data && <TheBoard b={data} grounds={grounds.data} />}
     </Page>
+    </TheDirectMorning>
   )
 }
 
 function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; startsAt?: string | null; createdAt?: string | null }[] }) {
+  /* The direct morning (lib/the-direct-morning.tsx), as said for the page. */
+  const direct = useTheDirectMorning()
   const startOf = new Map((grounds ?? []).map(g => [g.id, { startsAt: g.startsAt, createdAt: g.createdAt }]))
   /* "Your work in each" (below) is the one list here that carries each check-in's own id, so it is
      the one list that can reliably be told apart when two share a label - the same check this
@@ -155,7 +163,6 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
             {b.noticed?.says && (
               <Panel as="section" heading="Something Groundwork noticed about your work">
                 <p className="gwui-panel-text">{b.noticed.says}</p>
-                {b.noticed.whoSees && <p className="gwui-panel-text-muted">{b.noticed.whoSees}</p>}
               </Panel>
             )}
             {b.coachingOverTime && (
@@ -213,7 +220,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
             {turns.map((t, i) => (
               <div key={t.key} className="gwui-welcome-card">
                 <div className="gwui-welcome-card-head">
-                  <span className="gwui-edge-h">{t.title}</span>
+                  <span className="t-h3">{t.title}</span>
                   <Button
                     kind={t.action.label === 'Start it' && i === turns.findIndex(m => m.action.label === 'Start it') ? 'primary' : 'secondary'}
                     size="small"
@@ -233,7 +240,7 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
       {!!askedOfYouItems.length && (
         <Section
           heading="Everything asked of you this week"
-          note="From every check-in you’re in. Only you see this."
+          note={direct ? 'From every check-in you’re in.' : 'From every check-in you’re in. Only you see this.'}
           foot={b.askedOfYou?.says}
         >
           <RowList label="Everything asked of you this week">
@@ -249,6 +256,9 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
           </RowList>
         </Section>
       )}
+
+      {/* RELEASE 7: your running record, from every check-in you are in (served with Release 7 on, to you alone). */}
+      {(b as any).runningRecord && <YourRunningRecord r={(b as any).runningRecord} />}
 
       {saidYoudDo.length > 0 && (
         <Section heading="What you said you’d do" note="From every check-in">
@@ -290,9 +300,9 @@ function TheBoard({ b, grounds }: { b: YourBoard; grounds?: { id: string; starts
                     <b>{r.checkIn}</b>
                     <span>{whenItWas(r.at, 'dayAndMonthLong')}</span>
                     {/* SCREEN FAULT 10: 30px tall on a phone, below the 40px tap floor -
-                        `.gwui-tap-40` (gw-ui.css), the same class YourWork.tsx's own "Read"
+                        `.gwui-tap-44` (gw-ui.css), the same class YourWork.tsx's own "Read"
                         links already use. */}
-                    <Link to={r.to} className="gwui-tap-40">Read</Link>
+                    <Link to={r.to} className="gwui-tap-44">Read</Link>
                   </Row>
                 ))}
               </RowList>
@@ -358,5 +368,26 @@ function YourData() {
       </div>
       {failed && <p role="alert" className="gwui-panel-text-muted">Your file did not download. Try again.</p>}
     </Panel>
+  )
+}
+
+/** RELEASE 7: what you said you would do in every check-in, what became of it, and what shows it; and how you adapted. */
+export function YourRunningRecord({ r }: { r: { heading: string; inShort: string; rows: { id: string; title: string; said: string; became: string; shows: string; tone: string }[]; more: number; adapted: string[] } }) {
+  const EDGE: Record<string, 'ready' | 'look' | 'concern' | 'decide'> = { rec: 'ready', att: 'look', con: 'concern', act: 'decide' }
+  return (
+    <Section heading={r.heading} note={r.inShort}>
+      <EdgeList label={r.heading}>
+        {r.rows.slice(0, 3).map((x) => <EdgeRow key={x.id} kind={EDGE[x.tone] ?? 'look'} reason={null} title={x.title} detail={`${x.became} ${x.shows}`} />)}
+      </EdgeList>
+      {(r.rows.length > 3 || r.more > 0) && (
+        <details className="pb-fold">
+          <summary>{`and ${r.rows.length - 3 + r.more} more`}</summary>
+          <EdgeList label="The rest of your record">
+            {r.rows.slice(3).map((x) => <EdgeRow key={x.id} kind={EDGE[x.tone] ?? 'look'} reason={null} title={x.title} detail={`${x.became} ${x.shows}`} />)}
+          </EdgeList>
+        </details>
+      )}
+      {r.adapted.map((a) => <p key={a} className="t-small">{a}</p>)}
+    </Section>
   )
 }

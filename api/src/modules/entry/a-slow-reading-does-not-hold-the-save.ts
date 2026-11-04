@@ -1,18 +1,33 @@
 /**
- * A SLOW READING OF WHAT THE LEAD SAID MUST NOT HOLD THE SAVE (known issue B4; screens request 174 item 2).
+ * A SLOW READING OF WHAT THE LEAD SAID MUST NOT HOLD THE SAVE (known issue B4, 6 October 2026; screens request 174 item 2; Hafsah's
+ * speed brief, 3 November 2026).
  *
- * Saving a check-in reads the setup conversation for its aims and targets with a model, after the people are on it, and the save
- * waited for the whole reading. A model that is slow (20 to 50 seconds on a local run) kept the page on "Saving..." past the point
- * where the screen gave up and opened the check-in a second time, which is how a lead came to read three opening questions and a
- * check-in with none of her set-up on it. The reading is still started at the same moment and still writes the same rows; the save now
- * waits for it for up to twenty seconds (it used to wait for as long as the model took, and every other step of the save is quick), and answers either way. A reading that has not finished by then finishes in the background.
+ * Saving a check-in reads the setup conversation for its aims and targets with a model, after the people are on it. The save used to
+ * wait for the whole reading, which kept the page on "Saving..." for 20 to 50 seconds. B4 capped that wait at twenty seconds; the
+ * reading usually took about twenty, so every save still waited about twenty seconds. The save now answers as soon as the check-in,
+ * its people and their invitations are made, and the reading runs after it, the same call on the same words, writing the same rows.
+ * The board is warmed again when it lands (GroundworkEvents.SETUP_READ), so what it shows is built with the targets.
+ *
+ * A reading that fails is not lost: it was logged and dropped before. It is tried again after half a minute, two minutes and ten
+ * minutes, which outlasts the model being busy or away for a while. The words it reads are kept on the check-in either way.
  */
-export const HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS = 20_000;
+export const THE_READING_IS_TRIED_AGAIN_AFTER_MS = [30_000, 120_000, 600_000];
 
-/** Waits for the work, or for the time to pass, whichever comes first. Never throws, and never stops the work. */
-export async function waitNoLongerThan(work: Promise<unknown>, ms: number): Promise<{ finished: boolean }> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeUp = new Promise<{ finished: boolean }>((resolve) => { timer = setTimeout(() => resolve({ finished: false }), ms); });
-  const done = work.then(() => ({ finished: true }), () => ({ finished: true }));
-  try { return await Promise.race([done, timeUp]); } finally { if (timer) clearTimeout(timer); }
+/** Runs the reading until it lands or the tries run out. Never throws. Resolves true when it landed. */
+export async function readUntilItLands(
+  read: () => Promise<unknown>,
+  onFailure: (err: any, tried: number, willTryAgain: boolean) => void,
+  waits: readonly number[] = THE_READING_IS_TRIED_AGAIN_AFTER_MS,
+): Promise<boolean> {
+  for (let tried = 1; ; tried++) {
+    try {
+      await read();
+      return true;
+    } catch (err: any) {
+      const willTryAgain = tried <= waits.length;
+      onFailure(err, tried, willTryAgain);
+      if (!willTryAgain) return false;
+      await new Promise((r) => { const t = setTimeout(r, waits[tried - 1]); (t as any).unref?.(); });
+    }
+  }
 }

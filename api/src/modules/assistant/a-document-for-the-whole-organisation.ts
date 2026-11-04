@@ -24,6 +24,13 @@ export const FOR_THE_ORGANISATION = 'organisation';
 /** Words that say the document is for everybody, not for one check-in. */
 export const SAYS_IT_IS_FOR_THE_ORGANISATION = /\b(?:whole\s+)?(?:organi[sz]ation|company|everyone|everybody|handbook|policy|policies)\b/i;
 
+/**
+ * SAID PLAINLY FOR THE WHOLE ORGANISATION, EVEN INSIDE A CHECK-IN'S SETUP CONVERSATION (local test of staging, 15 October).
+ * Narrower than the test above, which also takes "everyone" or "policy": inside a check-in those can mean its own people.
+ * "The whole organisation", "the entire company", "for the organisation" cannot.
+ */
+export const SAYS_IT_IS_FOR_THE_WHOLE_ORGANISATION = /\b(?:whole|entire)\s+(?:organi[sz]ation|company)\b|\bfor\s+the\s+(?:organi[sz]ation|company)\b/i;
+
 /** "Msingi Foods", or "your organisation" when there is no real name yet. */
 export function theOrganisation(name?: string | null): string {
   const n = (name ?? '').replace(/\s+/g, ' ').trim();
@@ -67,7 +74,10 @@ export function itsParts(title: string, text: string): { count: number; headings
 }
 
 /** What the admin reads after the file is read, before anything is kept. */
-export function whatTheDocumentSays(title: string, text: string, name?: string | null): { body: string; summary: string } {
+/* What is in it, said in two or three plain sentences by the model before anything else (26 October 2026: it said only how many parts). */
+export const WHAT_IS_IN_IT_PROMPT = 'Say in two or three short, plain sentences what this document holds: what it is, and the facts in it that matter. No introduction, no headings, no lists, no advice. Use "you" for the reader if you need to, never "the user".';
+
+export function whatTheDocumentSays(title: string, text: string, name?: string | null, whatIsInIt?: string | null): { body: string; summary: string } {
   const { count, headings } = itsParts(title, text);
   const shown = headings.slice(0, 6);
   const more = headings.length - shown.length;
@@ -76,7 +86,8 @@ export function whatTheDocumentSays(title: string, text: string, name?: string |
     : headings.length
       ? `It has ${count} parts. They cover ${inAList(more > 0 ? [...shown, `${more} more`] : shown)}.`
       : `It has ${count} parts.`;
-  const body = `I have read ${title}. ${parts}\n\nNothing is added yet. If you say yes, it becomes part of ${itsHandbook(name)}. ${askName(name)} answers from it, and check-ins are read with it in mind. If you say no, nothing from it is kept.`;
+  const inIt = String(whatIsInIt ?? '').replace(/\s+/g, ' ').trim().slice(0, 600);
+  const body = `I have read ${title}. ${inIt ? `${inIt} ` : ''}${parts}\n\nNothing is added yet. If you say yes, it becomes part of ${itsHandbook(name)}. ${askName(name)} answers from it, and check-ins are read with it in mind. If you say no, nothing from it is kept.`;
   return { body, summary: `Add ${title} to ${itsHandbook(name)}?` };
 }
 

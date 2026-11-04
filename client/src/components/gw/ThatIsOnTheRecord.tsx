@@ -31,14 +31,14 @@ export function ThatIsOnTheRecord({ groundId }: { groundId: string }) {
       setEditing(false)
       if (r.signInMoved) updateUser({ email: r.email })
     },
-    onError: (e: any) => setProblem(e?.response?.data?.message ?? 'That did not save. Try again.'),
+    onError: (e: any) => setProblem(e?.response?.data?.message ?? 'That didn’t save. Try again.'),
   })
   const at = nowAt ?? user?.email ?? null
 
   return (
     <section aria-label="Your answer is on the record" style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px', marginBottom: 14 }}>
       <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>That is on the record. Thank you.</div>
-      <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, margin: 0 }}>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px', margin: 0 }}>
         {at
           ? <>When everybody has answered, the report goes to <strong style={{ color: 'var(--gw-text)' }}>{at}</strong>.</>
           : 'When everybody has answered, one report goes out with what each person said.'}
@@ -55,22 +55,21 @@ export function ThatIsOnTheRecord({ groundId }: { groundId: string }) {
       )}
       {editing && (
         <div style={{ marginTop: 10 }}>
-          <label htmlFor="record-email" style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 4 }}>Where should your report go?</label>
+          <label htmlFor="record-email" style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)', marginBottom: 4 }}>Where should your report go?</label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <input
+            <input className="gwui-input"
               id="record-email" type="email" autoComplete="email" value={email}
               onChange={(e) => { setEmail(e.target.value); setProblem('') }}
               placeholder="you@work.com"
-              style={{ flex: '1 1 220px', padding: '9px 12px', fontSize: 14, borderRadius: 8, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
+              style={{ flex: '1 1 220px' }}
             />
-            <button
+            <button className="btn pri sm"
               onClick={() => { if (!looksLikeAnAddress(email)) { setProblem('That does not look like an email address.'); return } change.mutate() }}
               disabled={change.isPending || !email.trim()}
-              style={{ padding: '9px 14px', borderRadius: 8, border: 'none', background: 'var(--gw-navy)', color: 'white', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: change.isPending || !email.trim() ? .5 : 1 }}
             >
               {change.isPending ? 'Saving…' : 'Send it there'}
             </button>
-            <button onClick={() => setEditing(false)} style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-sub)', fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button className="btn sec sm" onClick={() => setEditing(false)} >
               Keep it
             </button>
           </div>

@@ -34,7 +34,11 @@ const GROUND = {
   ],
 }
 
-vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
+/* My work is the B7 page for everybody (batch 1, group 10), drawn from the server's answer; "Who has answered" is under it. */
+vi.mock('@/api/grounds', async () => {
+  const { SERVED_TO_THE_LEAD } = await import('./my-work-served.fixture')
+  return { groundsApi: { get: vi.fn(), myWork: vi.fn().mockResolvedValue(SERVED_TO_THE_LEAD) } }
+})
 vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn() } }))
 vi.mock('@/api/documents', () => ({ documentsApi: { list: vi.fn() } }))
 

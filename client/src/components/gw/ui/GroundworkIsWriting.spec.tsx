@@ -29,8 +29,8 @@ describe('GroundworkIsWriting', () => {
     const { container } = render(<GroundworkIsWriting />)
     // Bubble.tsx squares the bottom-left corner on Groundwork's own turn.
     const bubble = container.firstElementChild as HTMLElement
-    expect(bubble.style.borderRadius).toBe('16px 16px 16px 4px')
-    expect(bubble.style.background).toBe('var(--gw-bg)')
+    /* UPDATED 24 October: the prototype's .bub.them, whose values Bubble.spec.tsx pins. */
+    expect(bubble.className).toBe('bub them')
   })
 
   it('draws no bubble of its own when `wrap` is false, for a caller that already has one', () => {

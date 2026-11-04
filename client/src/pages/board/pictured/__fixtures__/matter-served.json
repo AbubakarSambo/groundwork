@@ -1,0 +1,1185 @@
+{
+  "matter": {
+    "wanjiru": {
+      "intro": "Two matters are on record in this check-in, Kasarani Foods v. Tumaini Traders and Jamii Clinics employment claim.",
+      "question": "Where the matters stand",
+      "matters": [
+        {
+          "key": "kasarani foods v tumaini traders",
+          "name": "Kasarani Foods v. Tumaini Traders",
+          "stands": "The hearing in Kasarani Foods v. Tumaini Traders is due on Thursday 12 November, and David has it. Nothing is in the way that has not been cleared.",
+          "fees": "There are three fee notes on this matter, for KES 750,000 in all. FN-004 is paid, with proof. FN-005 fell due on 20 October, when the reply was filed. The fee note not raised yet fell due on 21 October, when the hearing date was set.",
+          "feeMark": "none"
+        },
+        {
+          "key": "jamii clinics employment claim",
+          "name": "Jamii Clinics employment claim",
+          "stands": "The witness statements for the Jamii Clinics employment claim are due on Friday 30 October, and Aisha has it. Aisha has been waiting on Jamii Clinics since 19 October for the last witness statement.",
+          "fees": "There is one fee note on this matter, for KES 180,000. FN-007 was promised for 10 October, and the date passed.",
+          "feeMark": "none"
+        }
+      ],
+      "mattersEmpty": null,
+      "decide": {
+        "heading": "What you need to decide",
+        "rows": [],
+        "empty": "Nothing is waiting for a decision yet."
+      },
+      "changed": {
+        "heading": "What changed this week, and what it changed",
+        "rows": [
+          {
+            "id": "e-lit-aisha-3",
+            "who": "Aisha",
+            "matter": "Jamii Clinics employment claim",
+            "said": "“Jamii Clinics employment claim: the client sent two of the three witness statements.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": null
+          },
+          {
+            "id": "e-lit-david-3",
+            "who": "David",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "said": "“In Kasarani Foods v. Tumaini Traders, the hearing date is set, for 12 November.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": "It made the fee note for Kasarani Foods that is not raised yet due on 21 October."
+          },
+          {
+            "id": "e-lit-david-2",
+            "who": "David",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "said": "“Kasarani Foods: the mention date is set for 3 November.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": null
+          },
+          {
+            "id": "e-lit-brian-2",
+            "who": "Brian",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "said": "“In Kasarani Foods v. Tumaini Traders, the reply was filed on 20 October.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": "It made fee note FN-005 due on 20 October."
+          },
+          {
+            "id": "e-lit-david-1",
+            "who": "David",
+            "matter": "Jamii Clinics employment claim",
+            "said": "“The bundle for the Jamii Clinics employment claim is indexed.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": null
+          },
+          {
+            "id": "e-lit-aisha-1",
+            "who": "Aisha",
+            "matter": "Jamii Clinics employment claim",
+            "said": "“Jamii Clinics employment claim: the witness statements are still with the client.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": null
+          },
+          {
+            "id": "e-lit-brian-1",
+            "who": "Brian",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "said": "“In Kasarani Foods v. Tumaini Traders, the reply is drafted and goes to Wanjiru for review tomorrow.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": null
+          }
+        ],
+        "empty": null,
+        "legend": [
+          {
+            "mark": "proven",
+            "says": "A document shows it"
+          },
+          {
+            "mark": "said",
+            "says": "Said in a check-in, with no document yet"
+          }
+        ],
+        "note": "What each line changed is shown where the record holds it, such as a fee note that fell due when the event it waited for was reported."
+      },
+      "feesNote": "Each matter’s fees are read from the fee notes check-in."
+    },
+    "brian": {
+      "intro": "You have spoken about one matter in this check-in, Kasarani Foods v. Tumaini Traders.",
+      "question": "Where the matter stands",
+      "matters": [
+        {
+          "key": "kasarani foods v tumaini traders",
+          "name": "Kasarani Foods v. Tumaini Traders",
+          "stands": "No deadline of yours is on record for this matter yet. Nothing is in your way on this matter that has not been cleared.",
+          "fees": "You follow up three fee notes on this matter, for KES 750,000 in all. FN-004 is paid, with proof. FN-005 fell due on 20 October, when the reply was filed. The fee note not raised yet fell due on 21 October, when the hearing date was set.",
+          "feeMark": "none"
+        }
+      ],
+      "mattersEmpty": null,
+      "decide": null,
+      "changed": {
+        "heading": "What changed this week, and what it changed",
+        "rows": [
+          {
+            "id": "e-lit-brian-2",
+            "who": "You",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "said": "“In Kasarani Foods v. Tumaini Traders, the reply was filed on 20 October.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": "It made fee note FN-005 due on 20 October."
+          },
+          {
+            "id": "e-lit-brian-1",
+            "who": "You",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "said": "“In Kasarani Foods v. Tumaini Traders, the reply is drafted and goes to Wanjiru for review tomorrow.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": null
+          }
+        ],
+        "empty": null,
+        "legend": [
+          {
+            "mark": "proven",
+            "says": "A document shows it"
+          },
+          {
+            "mark": "said",
+            "says": "Said in a check-in, with no document yet"
+          }
+        ],
+        "note": "What each line changed is shown where the record holds it, such as a fee note that fell due when the event it waited for was reported."
+      },
+      "feesNote": "Each matter’s fees are read from the fee notes check-in, and you read only the fee notes you follow up."
+    },
+    "aisha": {
+      "intro": "You have spoken about one matter in this check-in, Jamii Clinics employment claim.",
+      "question": "Where the matter stands",
+      "matters": [
+        {
+          "key": "jamii clinics employment claim",
+          "name": "Jamii Clinics employment claim",
+          "stands": "The witness statements for the Jamii Clinics employment claim are due on Friday 30 October, and you have it. You have been waiting on Jamii Clinics since 19 October for the last witness statement.",
+          "fees": "You follow up one fee note on this matter, for KES 180,000. FN-007 was promised for 10 October, and the date passed.",
+          "feeMark": "none"
+        }
+      ],
+      "mattersEmpty": null,
+      "decide": null,
+      "changed": {
+        "heading": "What changed this week, and what it changed",
+        "rows": [
+          {
+            "id": "e-lit-aisha-3",
+            "who": "You",
+            "matter": "Jamii Clinics employment claim",
+            "said": "“Jamii Clinics employment claim: the client sent two of the three witness statements.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": null
+          },
+          {
+            "id": "e-lit-aisha-1",
+            "who": "You",
+            "matter": "Jamii Clinics employment claim",
+            "said": "“Jamii Clinics employment claim: the witness statements are still with the client.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": null
+          }
+        ],
+        "empty": null,
+        "legend": [
+          {
+            "mark": "proven",
+            "says": "A document shows it"
+          },
+          {
+            "mark": "said",
+            "says": "Said in a check-in, with no document yet"
+          }
+        ],
+        "note": "What each line changed is shown where the record holds it, such as a fee note that fell due when the event it waited for was reported."
+      },
+      "feesNote": "Each matter’s fees are read from the fee notes check-in, and you read only the fee notes you follow up."
+    },
+    "david": {
+      "intro": "You have spoken about two matters in this check-in, Kasarani Foods v. Tumaini Traders and Jamii Clinics employment claim.",
+      "question": "Where the matters stand",
+      "matters": [
+        {
+          "key": "kasarani foods v tumaini traders",
+          "name": "Kasarani Foods v. Tumaini Traders",
+          "stands": "The hearing in Kasarani Foods v. Tumaini Traders is due on Thursday 12 November, and you have it. Nothing is in your way on this matter that has not been cleared.",
+          "fees": "You do not follow up a fee note on this matter, so its fees are not shown to you.",
+          "feeMark": "none"
+        },
+        {
+          "key": "jamii clinics employment claim",
+          "name": "Jamii Clinics employment claim",
+          "stands": "No deadline of yours is on record for this matter yet. Nothing is in your way on this matter that has not been cleared.",
+          "fees": "You do not follow up a fee note on this matter, so its fees are not shown to you.",
+          "feeMark": "none"
+        }
+      ],
+      "mattersEmpty": null,
+      "decide": null,
+      "changed": {
+        "heading": "What changed this week, and what it changed",
+        "rows": [
+          {
+            "id": "e-lit-david-3",
+            "who": "You",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "said": "“In Kasarani Foods v. Tumaini Traders, the hearing date is set, for 12 November.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": null
+          },
+          {
+            "id": "e-lit-david-2",
+            "who": "You",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "said": "“Kasarani Foods: the mention date is set for 3 November.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": null
+          },
+          {
+            "id": "e-lit-david-1",
+            "who": "You",
+            "matter": "Jamii Clinics employment claim",
+            "said": "“The bundle for the Jamii Clinics employment claim is indexed.”",
+            "mark": "said",
+            "markSays": "Said in a check-in, with no document yet",
+            "itChanged": null
+          }
+        ],
+        "empty": null,
+        "legend": [
+          {
+            "mark": "proven",
+            "says": "A document shows it"
+          },
+          {
+            "mark": "said",
+            "says": "Said in a check-in, with no document yet"
+          }
+        ],
+        "note": "What each line changed is shown where the record holds it, such as a fee note that fell due when the event it waited for was reported."
+      },
+      "feesNote": "Each matter’s fees are read from the fee notes check-in, and you read only the fee notes you follow up."
+    }
+  },
+  "feeNotes": {
+    "wanjiruOnTuesday": {
+      "type": "invoices or fee notes",
+      "billWord": "fee note",
+      "question": "Are the fee notes being paid, and why not where they aren’t?",
+      "answer": "21% of what’s due is paid, on proof. A further KES 120,000 is paid on somebody’s word, with no proof yet. One fee note is behind, but the client is in touch.",
+      "answerFrom": "Payments count as proven where a bank slip, an M-Pesa message or the accounting system’s record is filed on the fee note; everything else is from what people said in their check-ins.",
+      "bar": {
+        "proven": 21,
+        "said": 10
+      },
+      "needsYou": {
+        "heading": "What needs you",
+        "rows": [
+          {
+            "title": "Jamii Clinics missed the date they promised to pay by",
+            "says": "Fee note FN-007 for Jamii Clinics, KES 180,000. The client promised to pay by 10 October, and nothing has come in. Aisha follows it up."
+          },
+          {
+            "title": "Fee note FN-005 for Kasarani Foods fell due on 20 October",
+            "says": "It falls due when the reply is filed. Brian said in Litigation team daily on 20 October, “In Kasarani Foods v. Tumaini Traders, the reply was filed on 20 October.” It is for KES 250,000, and nothing is paid yet. Brian follows it up."
+          },
+          {
+            "title": "Upendo Schools has not been heard from",
+            "says": "Fee note FN-009 for Upendo Schools, KES 300,000, fell due on 1 September. Nobody has heard from the client since. Aisha follows it up."
+          },
+          {
+            "title": "Nyota Logistics disputes fee note FN-008",
+            "says": "Fee note FN-008 for Nyota Logistics, KES 90,000. Brian said, “The client says the review was billed twice.” Brian follows it up."
+          },
+          {
+            "title": "Baraka Hardware’s payment has no proof yet",
+            "says": "Aisha says fee note FN-006 for Baraka Hardware is paid. A bank slip, an M-Pesa message or the accounting system’s record would show it."
+          },
+          {
+            "title": "A fee note for Kasarani Foods is not raised yet",
+            "says": "It falls due when the hearing date is set. It is for KES 250,000. Brian follows it up."
+          }
+        ],
+        "refs": [
+          "bill-w-fn007",
+          "bill-w-fn005",
+          "bill-w-fn009",
+          "bill-w-fn008",
+          "bill-w-fn006",
+          "bill-w-kasarani-3"
+        ],
+        "empty": null,
+        "toConfirm": [
+          {
+            "id": "w-kasarani-3:e-lit-david-2",
+            "title": "Did the fee note for Kasarani Foods that is not raised yet fall due on 20 October?",
+            "says": "It falls due when the hearing date is set. David said in Litigation team daily on 20 October, “Kasarani Foods: the mention date is set for 3 November.” Groundwork cannot tell whether this is the same event, so nothing has changed.",
+            "choices": [
+              {
+                "label": "Yes, it is due",
+                "route": {
+                  "method": "POST",
+                  "path": "/grounds/g-muchemi-fee-notes/board/due-on-an-event/answer",
+                  "body": {
+                    "itemId": "w-kasarani-3",
+                    "lineId": "e-lit-david-2",
+                    "yes": true
+                  }
+                }
+              },
+              {
+                "label": "No, it is not",
+                "route": {
+                  "method": "POST",
+                  "path": "/grounds/g-muchemi-fee-notes/board/due-on-an-event/answer",
+                  "body": {
+                    "itemId": "w-kasarani-3",
+                    "lineId": "e-lit-david-2",
+                    "yes": false
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "stand": {
+        "heading": "Where the fee notes stand",
+        "total": "8 fee notes",
+        "groups": [
+          {
+            "group": "paid",
+            "label": "Paid",
+            "count": 2,
+            "says": "One with proof, and one on somebody’s word only."
+          },
+          {
+            "group": "on-track",
+            "label": "Due and on track",
+            "count": 2,
+            "says": "One is not due yet, and one fell due on an event in the matter in the last three weeks."
+          },
+          {
+            "group": "behind-in-touch",
+            "label": "Behind, but in touch",
+            "count": 1,
+            "says": "Past the day it fell due or the day the client promised, and the client is in touch."
+          },
+          {
+            "group": "blocked",
+            "label": "Genuinely blocked",
+            "count": 1,
+            "says": "The client disputes it, or something stops it being paid."
+          },
+          {
+            "group": "not-heard",
+            "label": "Not heard from",
+            "count": 1,
+            "says": "Past due, and nobody has heard from the client for 3 weeks."
+          },
+          {
+            "group": "on-event",
+            "label": "Due when something happens",
+            "count": 0,
+            "says": "None at the moment."
+          },
+          {
+            "group": "not-raised",
+            "label": "Not yet raised",
+            "count": 1,
+            "says": "It should go out, and nobody has raised it yet."
+          }
+        ]
+      },
+      "every": {
+        "heading": "Every fee note, and what shows it",
+        "note": "Filled is proven; ringed is their word",
+        "columns": [
+          "Client and matter",
+          "Number",
+          "Amount",
+          "Who follows up",
+          "Falls due",
+          "Payment",
+          "What’s in the way, in their words",
+          "Next"
+        ],
+        "rows": [
+          {
+            "id": "w-fn007",
+            "group": "behind-in-touch",
+            "who": "Jamii Clinics",
+            "matter": "Jamii Clinics employment claim",
+            "number": "FN-007",
+            "amount": "KES 180,000",
+            "followsUp": "Aisha",
+            "fallsDue": "15 September, 36 days ago",
+            "payment": {
+              "says": "Promised for 10 October, and missed",
+              "mark": "none"
+            },
+            "inTheWay": "“They say the money is held up at their head office.”",
+            "next": "Call their finance office, by Thursday 22 October.",
+            "proof": []
+          },
+          {
+            "id": "w-fn009",
+            "group": "not-heard",
+            "who": "Upendo Schools",
+            "matter": "Upendo Schools land matter",
+            "number": "FN-009",
+            "amount": "KES 300,000",
+            "followsUp": "Aisha",
+            "fallsDue": "1 September, 50 days ago",
+            "payment": {
+              "says": "Not paid",
+              "mark": "none"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Nothing booked yet.",
+            "proof": []
+          },
+          {
+            "id": "w-fn008",
+            "group": "blocked",
+            "who": "Nyota Logistics",
+            "matter": "Nyota Logistics contract review",
+            "number": "FN-008",
+            "amount": "KES 90,000",
+            "followsUp": "Brian",
+            "fallsDue": "20 September, 31 days ago",
+            "payment": {
+              "says": "Not paid",
+              "mark": "none"
+            },
+            "inTheWay": "“The client says the review was billed twice.”",
+            "next": "Send them the engagement letter, by Friday 23 October.",
+            "proof": []
+          },
+          {
+            "id": "w-kasarani-3",
+            "group": "not-raised",
+            "who": "Kasarani Foods",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "number": null,
+            "amount": "KES 250,000",
+            "followsUp": "Brian",
+            "fallsDue": "When the hearing date is set",
+            "payment": {
+              "says": "Not paid",
+              "mark": "none"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Nothing booked yet.",
+            "proof": []
+          },
+          {
+            "id": "w-fn010",
+            "group": "on-track",
+            "who": "Baraka Hardware",
+            "matter": "Baraka Hardware lease",
+            "number": "FN-010",
+            "amount": "KES 60,000",
+            "followsUp": "Aisha",
+            "fallsDue": "30 October",
+            "payment": {
+              "says": "Not paid",
+              "mark": "none"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Nothing booked yet.",
+            "proof": []
+          },
+          {
+            "id": "w-fn005",
+            "group": "on-track",
+            "who": "Kasarani Foods",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "number": "FN-005",
+            "amount": "KES 250,000",
+            "followsUp": "Brian",
+            "fallsDue": "20 October, yesterday, when the reply was filed",
+            "payment": {
+              "says": "Not paid",
+              "mark": "none"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Tell accounts the day the reply is filed, by Friday 23 October.",
+            "proof": []
+          },
+          {
+            "id": "w-fn006",
+            "group": "paid",
+            "who": "Baraka Hardware",
+            "matter": "Baraka Hardware lease",
+            "number": "FN-006",
+            "amount": "KES 120,000",
+            "followsUp": "Aisha",
+            "fallsDue": "30 September",
+            "payment": {
+              "says": "Paid, as Aisha said",
+              "mark": "said"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Nothing more.",
+            "proof": []
+          },
+          {
+            "id": "w-fn004",
+            "group": "paid",
+            "who": "Kasarani Foods",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "number": "FN-004",
+            "amount": "KES 250,000",
+            "followsUp": "Brian",
+            "fallsDue": "5 October",
+            "payment": {
+              "says": "Paid on 20 October, with proof",
+              "mark": "proven"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Nothing more.",
+            "proof": [
+              "A payment record was added on 20 October. It reads, “Equity Bank remittance advice: KES 250,000 received from Kasarani Foods for FN-004.”"
+            ]
+          }
+        ],
+        "empty": null,
+        "foot": "All eight are shown. Each one’s proof is filed on it, from the slips and messages people added."
+      },
+      "patterns": {
+        "heading": "One client, one kind of work, or how we bill?",
+        "note": "Patterns named after three check-ins in a row",
+        "rows": [
+          {
+            "title": "Fee notes wait for events in the matter",
+            "says": "One fee note waits for something to happen before it falls due or is raised, said in 4 check-ins.",
+            "tag": "How we bill"
+          }
+        ],
+        "empty": null,
+        "foot": "Whether each is about one client, one kind of work or how you bill is yours to judge."
+      },
+      "followUp": {
+        "heading": "Follow-up given, and whether it helped",
+        "rows": [
+          {
+            "what": "A written reminder sent",
+            "howMany": "Two fee notes",
+            "whatFollowed": "One paid after it."
+          },
+          {
+            "what": "A call to a named person at the client",
+            "howMany": "Two fee notes",
+            "whatFollowed": "None paid after it yet."
+          },
+          {
+            "what": "A date the client promised to pay by",
+            "howMany": "Two promises",
+            "whatFollowed": "One kept, and one missed."
+          }
+        ],
+        "empty": null
+      },
+      "systems": {
+        "heading": "What the systems show",
+        "says": "Nothing is connected yet. When your accounting system or your bank is connected, what it shows will be here, beside what people said."
+      },
+      "heading": {
+        "heading": "Where this is heading",
+        "outcomes": [
+          {
+            "says": "Follow up the fee notes behind",
+            "more": "Two fee notes, KES 480,000."
+          },
+          {
+            "says": "Settle the disputed fee note",
+            "more": "One fee note, KES 90,000."
+          },
+          {
+            "says": "Raise the fee note not yet raised",
+            "more": "One fee note, in your own system. Groundwork never raises one."
+          },
+          {
+            "says": "Ask for proof of what is said to be paid",
+            "more": "One fee note, KES 120,000."
+          }
+        ],
+        "outcomesSays": null,
+        "signals": [
+          {
+            "says": "21% of what’s due is paid with proof",
+            "from": "From the slips and messages filed on each one",
+            "tone": "watch"
+          },
+          {
+            "says": "One promise to pay missed",
+            "from": "From what people said in their check-ins",
+            "tone": "concern"
+          },
+          {
+            "says": "One client not heard from for 3 weeks",
+            "from": "From what people said in their check-ins",
+            "tone": "concern"
+          }
+        ],
+        "signalsSays": null,
+        "whatWouldSettleIt": "A date from each client behind, and a slip, a message or the accounting system’s record for each payment said.",
+        "whoDecides": "You decide.",
+        "groundworkDoesNotChoose": "Groundwork lays out the outcomes and the proof. It doesn’t choose."
+      }
+    },
+    "wanjiru": {
+      "type": "invoices or fee notes",
+      "billWord": "fee note",
+      "question": "Are the fee notes being paid, and why not where they aren’t?",
+      "answer": "21% of what’s due is paid, on proof. A further KES 120,000 is paid on somebody’s word, with no proof yet. One fee note is behind, but the client is in touch.",
+      "answerFrom": "Payments count as proven where a bank slip, an M-Pesa message or the accounting system’s record is filed on the fee note; everything else is from what people said in their check-ins.",
+      "bar": {
+        "proven": 21,
+        "said": 10
+      },
+      "needsYou": {
+        "heading": "What needs you",
+        "rows": [
+          {
+            "title": "Jamii Clinics missed the date they promised to pay by",
+            "says": "Fee note FN-007 for Jamii Clinics, KES 180,000. The client promised to pay by 10 October, and nothing has come in. Aisha follows it up."
+          },
+          {
+            "title": "Fee note FN-005 for Kasarani Foods fell due on 20 October",
+            "says": "It falls due when the reply is filed. Brian said in Litigation team daily on 20 October, “In Kasarani Foods v. Tumaini Traders, the reply was filed on 20 October.” It is for KES 250,000, and nothing is paid yet. Brian follows it up."
+          },
+          {
+            "title": "Upendo Schools has not been heard from",
+            "says": "Fee note FN-009 for Upendo Schools, KES 300,000, fell due on 1 September. Nobody has heard from the client since. Aisha follows it up."
+          },
+          {
+            "title": "A fee note for Kasarani Foods fell due on 21 October, and it is not raised yet",
+            "says": "It falls due when the hearing date is set. David said in Litigation team daily on 21 October, “In Kasarani Foods v. Tumaini Traders, the hearing date is set, for 12 November.” It is for KES 250,000. Brian follows it up."
+          },
+          {
+            "title": "Nyota Logistics disputes fee note FN-008",
+            "says": "Fee note FN-008 for Nyota Logistics, KES 90,000. Brian said, “The client says the review was billed twice.” Brian follows it up."
+          },
+          {
+            "title": "Baraka Hardware’s payment has no proof yet",
+            "says": "Aisha says fee note FN-006 for Baraka Hardware is paid. A bank slip, an M-Pesa message or the accounting system’s record would show it."
+          }
+        ],
+        "refs": [
+          "bill-w-fn007",
+          "bill-w-fn005",
+          "bill-w-fn009",
+          "bill-w-kasarani-3",
+          "bill-w-fn008",
+          "bill-w-fn006"
+        ],
+        "empty": null
+      },
+      "stand": {
+        "heading": "Where the fee notes stand",
+        "total": "8 fee notes",
+        "groups": [
+          {
+            "group": "paid",
+            "label": "Paid",
+            "count": 2,
+            "says": "One with proof, and one on somebody’s word only."
+          },
+          {
+            "group": "on-track",
+            "label": "Due and on track",
+            "count": 2,
+            "says": "One is not due yet, and one fell due on an event in the matter in the last three weeks."
+          },
+          {
+            "group": "behind-in-touch",
+            "label": "Behind, but in touch",
+            "count": 1,
+            "says": "Past the day it fell due or the day the client promised, and the client is in touch."
+          },
+          {
+            "group": "blocked",
+            "label": "Genuinely blocked",
+            "count": 1,
+            "says": "The client disputes it, or something stops it being paid."
+          },
+          {
+            "group": "not-heard",
+            "label": "Not heard from",
+            "count": 1,
+            "says": "Past due, and nobody has heard from the client for 3 weeks."
+          },
+          {
+            "group": "on-event",
+            "label": "Due when something happens",
+            "count": 0,
+            "says": "None at the moment."
+          },
+          {
+            "group": "not-raised",
+            "label": "Not yet raised",
+            "count": 1,
+            "says": "It should go out, and nobody has raised it yet."
+          }
+        ]
+      },
+      "every": {
+        "heading": "Every fee note, and what shows it",
+        "note": "Filled is proven; ringed is their word",
+        "columns": [
+          "Client and matter",
+          "Number",
+          "Amount",
+          "Who follows up",
+          "Falls due",
+          "Payment",
+          "What’s in the way, in their words",
+          "Next"
+        ],
+        "rows": [
+          {
+            "id": "w-fn007",
+            "group": "behind-in-touch",
+            "who": "Jamii Clinics",
+            "matter": "Jamii Clinics employment claim",
+            "number": "FN-007",
+            "amount": "KES 180,000",
+            "followsUp": "Aisha",
+            "fallsDue": "15 September, 36 days ago",
+            "payment": {
+              "says": "Promised for 10 October, and missed",
+              "mark": "none"
+            },
+            "inTheWay": "“They say the money is held up at their head office.”",
+            "next": "Call their finance office, by Thursday 22 October.",
+            "proof": []
+          },
+          {
+            "id": "w-fn009",
+            "group": "not-heard",
+            "who": "Upendo Schools",
+            "matter": "Upendo Schools land matter",
+            "number": "FN-009",
+            "amount": "KES 300,000",
+            "followsUp": "Aisha",
+            "fallsDue": "1 September, 50 days ago",
+            "payment": {
+              "says": "Not paid",
+              "mark": "none"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Nothing booked yet.",
+            "proof": []
+          },
+          {
+            "id": "w-fn008",
+            "group": "blocked",
+            "who": "Nyota Logistics",
+            "matter": "Nyota Logistics contract review",
+            "number": "FN-008",
+            "amount": "KES 90,000",
+            "followsUp": "Brian",
+            "fallsDue": "20 September, 31 days ago",
+            "payment": {
+              "says": "Not paid",
+              "mark": "none"
+            },
+            "inTheWay": "“The client says the review was billed twice.”",
+            "next": "Send them the engagement letter, by Friday 23 October.",
+            "proof": []
+          },
+          {
+            "id": "w-kasarani-3",
+            "group": "not-raised",
+            "who": "Kasarani Foods",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "number": null,
+            "amount": "KES 250,000",
+            "followsUp": "Brian",
+            "fallsDue": "21 October, when the hearing date was set",
+            "payment": {
+              "says": "Not paid",
+              "mark": "none"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Nothing booked yet.",
+            "proof": []
+          },
+          {
+            "id": "w-fn010",
+            "group": "on-track",
+            "who": "Baraka Hardware",
+            "matter": "Baraka Hardware lease",
+            "number": "FN-010",
+            "amount": "KES 60,000",
+            "followsUp": "Aisha",
+            "fallsDue": "30 October",
+            "payment": {
+              "says": "Not paid",
+              "mark": "none"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Nothing booked yet.",
+            "proof": []
+          },
+          {
+            "id": "w-fn005",
+            "group": "on-track",
+            "who": "Kasarani Foods",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "number": "FN-005",
+            "amount": "KES 250,000",
+            "followsUp": "Brian",
+            "fallsDue": "20 October, yesterday, when the reply was filed",
+            "payment": {
+              "says": "Not paid",
+              "mark": "none"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Tell accounts the day the reply is filed, by Friday 23 October.",
+            "proof": []
+          },
+          {
+            "id": "w-fn006",
+            "group": "paid",
+            "who": "Baraka Hardware",
+            "matter": "Baraka Hardware lease",
+            "number": "FN-006",
+            "amount": "KES 120,000",
+            "followsUp": "Aisha",
+            "fallsDue": "30 September",
+            "payment": {
+              "says": "Paid, as Aisha said",
+              "mark": "said"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Nothing more.",
+            "proof": []
+          },
+          {
+            "id": "w-fn004",
+            "group": "paid",
+            "who": "Kasarani Foods",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "number": "FN-004",
+            "amount": "KES 250,000",
+            "followsUp": "Brian",
+            "fallsDue": "5 October",
+            "payment": {
+              "says": "Paid on 20 October, with proof",
+              "mark": "proven"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Nothing more.",
+            "proof": [
+              "A payment record was added on 20 October. It reads, “Equity Bank remittance advice: KES 250,000 received from Kasarani Foods for FN-004.”"
+            ]
+          }
+        ],
+        "empty": null,
+        "foot": "All eight are shown. Each one’s proof is filed on it, from the slips and messages people added."
+      },
+      "patterns": {
+        "heading": "One client, one kind of work, or how we bill?",
+        "note": "Patterns named after three check-ins in a row",
+        "rows": [
+          {
+            "title": "Fee notes wait for events in the matter",
+            "says": "One fee note waits for something to happen before it falls due or is raised, said in 4 check-ins.",
+            "tag": "How we bill"
+          }
+        ],
+        "empty": null,
+        "foot": "Whether each is about one client, one kind of work or how you bill is yours to judge."
+      },
+      "followUp": {
+        "heading": "Follow-up given, and whether it helped",
+        "rows": [
+          {
+            "what": "A written reminder sent",
+            "howMany": "Two fee notes",
+            "whatFollowed": "One paid after it."
+          },
+          {
+            "what": "A call to a named person at the client",
+            "howMany": "Two fee notes",
+            "whatFollowed": "None paid after it yet."
+          },
+          {
+            "what": "A date the client promised to pay by",
+            "howMany": "Two promises",
+            "whatFollowed": "One kept, and one missed."
+          }
+        ],
+        "empty": null
+      },
+      "systems": {
+        "heading": "What the systems show",
+        "says": "Nothing is connected yet. When your accounting system or your bank is connected, what it shows will be here, beside what people said."
+      },
+      "heading": {
+        "heading": "Where this is heading",
+        "outcomes": [
+          {
+            "says": "Follow up the fee notes behind",
+            "more": "Two fee notes, KES 480,000."
+          },
+          {
+            "says": "Settle the disputed fee note",
+            "more": "One fee note, KES 90,000."
+          },
+          {
+            "says": "Raise the fee note not yet raised",
+            "more": "One fee note, in your own system. Groundwork never raises one."
+          },
+          {
+            "says": "Ask for proof of what is said to be paid",
+            "more": "One fee note, KES 120,000."
+          }
+        ],
+        "outcomesSays": null,
+        "signals": [
+          {
+            "says": "21% of what’s due is paid with proof",
+            "from": "From the slips and messages filed on each one",
+            "tone": "watch"
+          },
+          {
+            "says": "One promise to pay missed",
+            "from": "From what people said in their check-ins",
+            "tone": "concern"
+          },
+          {
+            "says": "One client not heard from for 3 weeks",
+            "from": "From what people said in their check-ins",
+            "tone": "concern"
+          }
+        ],
+        "signalsSays": null,
+        "whatWouldSettleIt": "A date from each client behind, and a slip, a message or the accounting system’s record for each payment said.",
+        "whoDecides": "You decide.",
+        "groundworkDoesNotChoose": "Groundwork lays out the outcomes and the proof. It doesn’t choose."
+      }
+    },
+    "brian": {
+      "type": "invoices or fee notes",
+      "billWord": "fee note",
+      "question": "Are your fee notes being paid, and why not where they aren’t?",
+      "answer": "Of KES 590,000 due on your fee notes, KES 250,000 is paid with proof.",
+      "answerFrom": "Payments count as proven where a bank slip, an M-Pesa message or the accounting system’s record is filed on the fee note; everything else is from what people said in their check-ins.",
+      "bar": {
+        "proven": 42,
+        "said": 0
+      },
+      "needsYou": {
+        "heading": "What needs you",
+        "rows": [
+          {
+            "title": "Fee note FN-005 for Kasarani Foods fell due on 20 October",
+            "says": "It falls due when the reply is filed. You said in Litigation team daily on 20 October, “In Kasarani Foods v. Tumaini Traders, the reply was filed on 20 October.” It is for KES 250,000, and nothing is paid yet. You follow it up."
+          },
+          {
+            "title": "A fee note for Kasarani Foods fell due on 21 October, and it is not raised yet",
+            "says": "It falls due when the hearing date is set. David said in Litigation team daily on 21 October, “In Kasarani Foods v. Tumaini Traders, the hearing date is set, for 12 November.” It is for KES 250,000. You follow it up."
+          },
+          {
+            "title": "Nyota Logistics disputes fee note FN-008",
+            "says": "Fee note FN-008 for Nyota Logistics, KES 90,000. You said, “The client says the review was billed twice.” You follow it up."
+          }
+        ],
+        "empty": null
+      },
+      "stand": {
+        "heading": "Where your fee notes stand",
+        "total": "4 fee notes",
+        "groups": [
+          {
+            "group": "paid",
+            "label": "Paid",
+            "count": 1,
+            "says": "With proof."
+          },
+          {
+            "group": "on-track",
+            "label": "Due and on track",
+            "count": 1,
+            "says": "It fell due on an event in the matter in the last three weeks."
+          },
+          {
+            "group": "behind-in-touch",
+            "label": "Behind, but in touch",
+            "count": 0,
+            "says": "None at the moment."
+          },
+          {
+            "group": "blocked",
+            "label": "Genuinely blocked",
+            "count": 1,
+            "says": "The client disputes it, or something stops it being paid."
+          },
+          {
+            "group": "not-heard",
+            "label": "Not heard from",
+            "count": 0,
+            "says": "None at the moment."
+          },
+          {
+            "group": "on-event",
+            "label": "Due when something happens",
+            "count": 0,
+            "says": "None at the moment."
+          },
+          {
+            "group": "not-raised",
+            "label": "Not yet raised",
+            "count": 1,
+            "says": "It should go out, and nobody has raised it yet."
+          }
+        ]
+      },
+      "every": {
+        "heading": "Your fee notes, and what shows them",
+        "note": "Filled is proven; ringed is their word",
+        "columns": [
+          "Client and matter",
+          "Number",
+          "Amount",
+          "Who follows up",
+          "Falls due",
+          "Payment",
+          "What’s in the way, in their words",
+          "Next"
+        ],
+        "rows": [
+          {
+            "id": "w-fn008",
+            "group": "blocked",
+            "who": "Nyota Logistics",
+            "matter": "Nyota Logistics contract review",
+            "number": "FN-008",
+            "amount": "KES 90,000",
+            "followsUp": "You",
+            "fallsDue": "20 September, 31 days ago",
+            "payment": {
+              "says": "Not paid",
+              "mark": "none"
+            },
+            "inTheWay": "“The client says the review was billed twice.”",
+            "next": "Send them the engagement letter, by Friday 23 October.",
+            "proof": []
+          },
+          {
+            "id": "w-kasarani-3",
+            "group": "not-raised",
+            "who": "Kasarani Foods",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "number": null,
+            "amount": "KES 250,000",
+            "followsUp": "You",
+            "fallsDue": "21 October, when the hearing date was set",
+            "payment": {
+              "says": "Not paid",
+              "mark": "none"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Nothing booked yet.",
+            "proof": []
+          },
+          {
+            "id": "w-fn005",
+            "group": "on-track",
+            "who": "Kasarani Foods",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "number": "FN-005",
+            "amount": "KES 250,000",
+            "followsUp": "You",
+            "fallsDue": "20 October, yesterday, when the reply was filed",
+            "payment": {
+              "says": "Not paid",
+              "mark": "none"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Tell accounts the day the reply is filed, by Friday 23 October.",
+            "proof": []
+          },
+          {
+            "id": "w-fn004",
+            "group": "paid",
+            "who": "Kasarani Foods",
+            "matter": "Kasarani Foods v. Tumaini Traders",
+            "number": "FN-004",
+            "amount": "KES 250,000",
+            "followsUp": "You",
+            "fallsDue": "5 October",
+            "payment": {
+              "says": "Paid on 20 October, with proof",
+              "mark": "proven"
+            },
+            "inTheWay": "Nothing said.",
+            "next": "Nothing more.",
+            "proof": []
+          }
+        ],
+        "empty": null,
+        "foot": "All four are shown. Each one’s proof is filed on it, from the slips and messages people added."
+      },
+      "patterns": {
+        "heading": "One client, one kind of work, or how we bill?",
+        "note": "Patterns named after three check-ins in a row",
+        "rows": [
+          {
+            "title": "Fee notes wait for events in the matter",
+            "says": "One fee note waits for something to happen before it falls due or is raised, said in 4 check-ins.",
+            "tag": "How we bill"
+          }
+        ],
+        "empty": null,
+        "foot": null
+      },
+      "followUp": {
+        "heading": "Follow-up given, and whether it helped",
+        "rows": [
+          {
+            "what": "A written reminder sent",
+            "howMany": "One fee note",
+            "whatFollowed": "One paid after it."
+          },
+          {
+            "what": "A call to a named person at the client",
+            "howMany": "One fee note",
+            "whatFollowed": "None paid after it yet."
+          },
+          {
+            "what": "A date the client promised to pay by",
+            "howMany": "One promise",
+            "whatFollowed": "It was kept."
+          }
+        ],
+        "empty": null
+      },
+      "systems": {
+        "heading": "What the systems show",
+        "says": "Nothing is connected yet. When your accounting system or your bank is connected, what it shows will be here, beside what people said."
+      },
+      "heading": null
+    }
+  }
+}

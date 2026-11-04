@@ -11,7 +11,7 @@
  */
 export const IS_AN_APOLOGY = /\b(i'?m sorry|i am sorry|sorry|forgive me|my apologies|apologies|i apologise|i apologize)\b/i;
 
-export const NOTHING_TO_APOLOGISE_FOR = 'No need to say sorry here. This is a record of where things are, not a judgement of you.';
+export const NOTHING_TO_APOLOGISE_FOR = 'No need to say sorry.';
 
 export function isAnApology(said: string): boolean {
   return IS_AN_APOLOGY.test(said ?? '');

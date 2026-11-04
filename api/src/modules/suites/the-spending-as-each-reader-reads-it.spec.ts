@@ -66,9 +66,11 @@ function setup(opts: { on?: boolean } = {}) {
     return r[k] === v;
   });
   const prisma: any = {
+    /* The limit of 20,000 and Grace above it are the lowest of the steps by amount, where they are kept (Hafsah's plan of 2 November, step 0). */
     organizationSuite: { findUnique: jest.fn(async ({ where }: any) => (
-      where.organizationId_suite.organizationId === ORG && where.organizationId_suite.suite === 'spend'
-        ? { isOn: opts.on ?? true, answers: { currency: 'KES', limit: 20000, above: 'u-grace' } } : null)) },
+      where.organizationId_suite.organizationId !== ORG ? null
+        : where.organizationId_suite.suite === 'spend' ? { isOn: opts.on ?? true, answers: { currency: 'KES' } }
+          : where.organizationId_suite.suite === 'spendRules' ? { isOn: false, answers: { thresholds: [{ above: 20000, steps: [[{ named: 'u-grace' }]] }] } } : null)) },
     organizationMembership: { findUnique: jest.fn(async ({ where }: any) => {
       const { userId, organizationId } = where.userId_organizationId;
       return organizationId === ORG && roles[userId] ? { role: roles[userId] } : null;
@@ -137,7 +139,7 @@ describe('Grace, an admin', () => {
       /* Where it is, in a full sentence (decision 85, build step 4): one step, waiting for his lead. */
       where: 'It is waiting for Fatuma.',
       /* The spending rules (build step 9): none set, so no category and no evidence. */
-      category: null, needs: [],
+      category: null, needs: [], attached: null,
       /* Questions about it (build step 9): none asked. */
       questions: [],
     });

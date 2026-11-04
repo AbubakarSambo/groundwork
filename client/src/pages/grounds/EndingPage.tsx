@@ -127,11 +127,11 @@ export default function EndingPage() {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '20px 16px 60px' }}>
-      <Link to={`/grounds/${id}/board`} style={{ fontSize: 12.5, color: 'var(--gw-navy)', textDecoration: 'none' }}>
+      <Link to={`/grounds/${id}/board`} style={{ fontSize: 12, color: 'var(--gw-navy)', textDecoration: 'none' }}>
         &larr; Back to the board
       </Link>
       {ground?.label && (
-        <h1 style={{ fontSize: 22, fontWeight: 800, margin: '12px 0 16px' }}>{ground.label}</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, margin: '12px 0 16px' }}>{ground.label}</h1>
       )}
       {theEndOfTheMonth && (
         <div style={{ marginBottom: 24 }}>

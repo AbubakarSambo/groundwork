@@ -1,3 +1,4 @@
+import { aDealsFigure, theCustomerALineIsAbout } from '../board/a-deals-units-are-not-a-target';
 /**
  * WHAT DOES NOT ADD UP, WORKED OUT BY THE PRODUCT AND QUOTED TO THE MODEL.
  *
@@ -50,6 +51,14 @@ export interface WhatToCheck {
   sessionsLeft: number | null;
   /** The AI's own turns this session, so a difference already put to them is not put twice. */
   aiTurnsThisSession: string[];
+  /**
+   * On a sales check-in, the customers on record (its deals and leads). A number said about one customer is that customer's
+   * deal: it is only ever compared with a number about the same customer, and it is never their own target (Drop Access run 1,
+   * items 27 and 28; a-deals-units-are-not-a-target).
+   */
+  customers?: string[] | null;
+  /** The first names of the people in the check-in, so "with Grace" is a person and not a business. */
+  people?: string[];
 }
 
 export interface ADifference {
@@ -103,8 +112,21 @@ const STOP = new Set([
 
 const clean = (t: string): string => (t ?? '').replace(/\[VERIFIABILITY:\w+\]\s*/g, '').replace(/\[INFERRED:[^\]]*\]/g, '').trim();
 const AN_AIM = /\b(aim(?:ing)?(?: for)?|target|goal|hope|hoping|plan(?:ning)?|want(?:ed)? to|need(?:ed)? to|should|by the end|to have|to get|to reach)\b/i;
-/** The text with its aim clauses taken out: "500 birds, aiming for 400 eggs a day" leaves "500 birds". */
-const whatIsNotAnAimIn = (t: string): string => clean(t).split(/[,;]|\b(?:and|but)\b/i).filter((c) => !AN_AIM.test(c)).join(', ');
+/* On a sales check-in (customers on record are given), "wants to" and "needs to" are aims too (Drop Access run 1, items 27 and 28). Release 1, part 3: only where `customers` is given; the rest of the conversation keeps AN_AIM until its own part. */
+const AN_AIM_ON_A_SALES_CHECK_IN = /\b(aim(?:ing)?(?: for)?|target|goal|hope|hoping|plan(?:ning)?|wants? to|wanted to|needs? to|needed to|should|by the end|to have|to get|to reach)\b/i;
+/*
+ * ON A SALES CHECK-IN, A TARGET NAMED WITH ITS NUMBER IS NOT AN AIM CLAUSE (engine test, second run, Drop Access, Joseph). "That 10-unit
+ * deal for Mama Pima is definitely part of my 30-unit target." was left out whole because it has the word "target" in it, so his
+ * Mama Pima deal of 10 units on Monday was never set against "Mama Pima is 15 units now" on Tuesday, and the check-in answered
+ * "Fifteen units for Mama Pima is a real expansion". The target's own words are taken out ("my 30-unit target", "a target of 30
+ * units"); what is left is read as before. And "10-unit" is 10 units.
+ */
+const A_TARGET_WITH_ITS_NUMBER = /\b(?:my|our|the|his|her|their|your|a)\s+\d[\d,]*[-\s]?units?\s+(?:target|goal)\b|\b(?:target|goal)\s+of\s+\d[\d,]*\s*units?\b/gi;
+export const onASalesCheckInRead = (t: string): string => t.replace(A_TARGET_WITH_ITS_NUMBER, ' ').replace(/\b(\d[\d,]*)-(units?)\b/gi, '$1 $2');
+/** The text with its aim clauses taken out: "500 birds, aiming for 400 eggs a day" leaves "500 birds". A comma inside a number
+    ("KES 15,000 deposit") is not a clause: split there, "Jane will pay a KES 15,000 deposit" became "000 deposit", and the check-in
+    was handed "That is 0 deposits then 0: up 100%" (engine test, second run, Kevin). */
+const whatIsNotAnAimIn = (t: string, onASalesCheckIn = false): string => (onASalesCheckIn ? onASalesCheckInRead(clean(t)) : clean(t)).split(/(?<!\d),|,(?!\d{3}\b)|;|\b(?:and|but)\b/i).filter((c) => !(onASalesCheckIn ? AN_AIM_ON_A_SALES_CHECK_IN : AN_AIM).test(c)).join(', ');
 
 const quote = (t: string): string => `"${(t ?? '').replace(/\[VERIFIABILITY:\w+\]\s*/g, '').replace(/\[INFERRED:[^\]]*\]/g, '').replace(/\s+/g, ' ').trim()}"`;
 
@@ -122,6 +144,16 @@ function wordsOfTarget(name: string): string[] {
     .slice(0, 4) ?? [];
 }
 
+/* "They each want 1 unit", "1 unit each", "2 apiece", "1 unit per kiosk"; never "25 units at KES 5,000 each", whose "each" is the price's. */
+export function aFigureForEachOne(text: string, raw: string): boolean {
+  const t = String(text ?? '');
+  const at = t.indexOf(raw);
+  if (at === -1) return false;
+  const before = t.slice(Math.max(0, at - 20), at);
+  const after = t.slice(at + raw.length);
+  return /\beach\s+(?:\w+\s+){0,2}$/i.test(before) || /^\s*(?:each|apiece|per\s+(?:kiosk|shop|store|customer|outlet|school|person|head|site|branch))\b/i.test(after);
+}
+
 export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
   const out: ADifference[] = [];
   const said = input.said.filter((s) => s.text?.trim());
@@ -135,17 +167,43 @@ export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
        earlier count of anything; only a report of what is, or a worry about what happened, carries one. */
     if (!/^(PROGRESS|SUCCESS_DEFINITION|COMMITMENT|INTENT|WORRY)$/.test(s.type)) continue;
     if (/^\s*(to|aiming|aim|hoping|planning|target|goal)\b/i.test(clean(s.text))) continue;
-    for (const n of numbersWithUnits(whatIsNotAnAimIn(s.text))) {
+    /* One customer's units are compared only with the same customer's; a number about no customer only with another about none. */
+    const about = input.customers ? (theCustomerALineIsAbout(s.text, input.customers) ?? (aDealsFigure(s.text, input.customers, input.people ?? []) ? `a deal: ${s.text}` : '')) : '';
+    const read = whatIsNotAnAimIn(s.text, !!input.customers);
+    for (const n of numbersWithUnits(read)) {
       if (n.unit === 'money' || n.unit === 'percent') continue;
-      byUnit.set(n.unit, [...(byUnit.get(n.unit) ?? []), { value: n.value, session: s.session, text: s.text }]);
+      /*
+       * A FIGURE FOR EACH ONE IS NOT A COUNT (engine test, Drop Access). Mercy said on Monday 12 October of the Kawangware kiosks "They
+       * each want 1 unit", and on Wednesday "Greenfield Supermarket was interested in 25 units from the start". Her check-ins in
+       * sessions 2, 3, 5 and 6 asked her to settle "each want 1 unit" against "interested in 25 units", two customers read as one.
+       * A number said for each one ("each", "apiece", "per shop") is not a count of anything to set against another.
+       */
+      if (aFigureForEachOne(read, n.raw)) continue;
+      /* A target's own number said again is that target, not a count of anything (point 9; answer 7): "120 units sold in total". */
+      if (input.customers && input.targets.some((t) => t.target != null && t.target === n.value)) continue;
+      /*
+       * ON A SALES CHECK-IN, A FIGURE ABOUT NO CUSTOMER ON RECORD IS NOT SET AGAINST ANOTHER (polish round 1, 26 October 2026). Kevin was
+       * asked three days running which stood now: "you hit 30 units" (his own target) or "Jane will pay for 6 units" (a new customer), after
+       * proving the 40 units to Kilele. Two figures that name no known customer are as likely two deals as one deal told twice.
+       */
+      if (input.customers && !about) continue;
+      const key = about ? `${n.unit}\u0000${about.toLowerCase()}` : n.unit;
+      byUnit.set(key, [...(byUnit.get(key) ?? []), { value: n.value, session: s.session, text: s.text }]);
     }
   }
-  for (const [unit, xs] of byUnit) {
+  for (const [key, xs] of byUnit) {
+    const unit = key.split('\u0000')[0];
     const sessions = [...new Set(xs.map((x) => x.session))].sort((a, b) => a - b);
     if (sessions.length < 2) continue;
     const first = xs.filter((x) => x.session === sessions[0]).sort((a, b) => b.value - a.value)[0];
     const last = xs.filter((x) => x.session === sessions[sessions.length - 1]).sort((a, b) => b.value - a.value)[0];
     if (!first || !last || first.text === last.text) continue;
+    /*
+     * A FIGURE THEY PUT RIGHT THEMSELVES IS SETTLED (engine test, second run, Kevin). "Ali at Ngong Road Minimart wants 5 units, not 4."
+     * on Wednesday was put back to him on Thursday, Friday and Monday as "you quoted 4 units, then 5; which number stands now?". On a
+     * sales check-in, where any line of the later sessions says the new figure and the old one as not it, it is not asked about.
+     */
+    if (input.customers && xs.some((x) => x.session > sessions[0] && x.value === last.value && new RegExp(`\\bnot\\s+${first.value}\\b`, 'i').test(x.text))) continue;
     const change = pct(first.value, last.value);
     if (change < 20) continue;
     out.push({
@@ -161,7 +219,7 @@ export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
 
   /* 2. TWO NUMBERS FOR ONE TARGET: the lead's for them, and their own. */
   const setForThem = input.targets.filter((t) => t.yours && !t.setByThem && t.target != null);
-  const theirOwn = input.targets.filter((t) => t.yours && t.setByThem && t.target != null);
+  const theirOwn = input.targets.filter((t) => t.yours && t.setByThem && t.target != null && !(input.customers && aDealsFigure(t.name, input.customers, input.people ?? [])));
   for (const lead of setForThem) {
     const own = theirOwn.find((t) => t.target !== lead.target);
     if (!own) continue;
@@ -252,7 +310,18 @@ export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
       const text = line.text ?? '';
       /* Their sentence has to be about this target, not about some other number in their week. */
       if (!words.some((w) => text.toLowerCase().includes(w))) continue;
-      for (const n of numbersWithUnits(text)) {
+      /*
+       * ONLY A COUNT OF THE SAME THING, AND NEVER THE TARGET SAID AGAIN (Hafsah's answer 7, 18 October; point 9). On Drop Access this
+       * found "I'm aiming for 120 units." from Joseph and "The team target is still 120 units." from Grace (the team's 120, said
+       * again), and "Kilele Hotel bought 40 units for KES 200,000" (shillings, not units), and the report made of it a difference
+       * about how a sale is counted that nobody had. An aim is not a count, money is not units, and the target's own number is the
+       * target. One customer's units are that deal's, not a count against the team's.
+       */
+      if (input.customers && theCustomerALineIsAbout(text, input.customers)) continue;
+      /* Only on a sales check-in (customers given) for now, so every other check-in reads as it did (Release 1, part 3). */
+      for (const n of numbersWithUnits(input.customers ? whatIsNotAnAimIn(text, true) : text)) {
+        if (input.customers && (n.unit === 'money' || n.unit === 'percent')) continue;
+        if (input.customers && target.target != null && n.value === target.target) continue;
         if (n.value > recorded && n.value > 1) { found = { value: n.value, raw: n.raw, line: text }; break; }
       }
       if (found) break;

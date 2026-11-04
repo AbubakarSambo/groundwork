@@ -46,6 +46,7 @@ const GOV: Setup = {
   items: [item('w-1', 'county', 'Enugu', { ownerParticipantId: 'p-ngozi' }), item('w-2', 'project', 'Receipts on the new system', { fields: { County: 'Enugu' } })],
 };
 
+/* Expectations updated (Hafsah, 30 October 2026: plain language for an impatient first-time lead; a difference is said as what people said, with no "needs settling".) */
 describe('a government programme', () => {
   it('Stephen, who runs it, reads what each level understood, in their own words, after the aim he set', async () => {
     const b = await boardAs(GOV, ...LEAD);
@@ -59,7 +60,7 @@ describe('a government programme', () => {
         { participantId: 'p-musa', who: 'Musa Ibrahim', said: ['Musa Ibrahim said, "My understanding was that we were meant to get the new system installed and start using it for our daily operations."'] },
       ],
     });
-    expect(NO_LEVEL_ON_RECORD).toBe("Groundwork does not keep which level each person works at, so each person's own words are shown in the order they joined, after the aim that was set.");
+    expect(NO_LEVEL_ON_RECORD).toBe("Nobody’s level is on record, so each person’s words are in the order they joined.");
   });
 
   it('reads each county with its projects, and that no visit log is on record', async () => {
@@ -169,7 +170,7 @@ describe('a law firm matter', () => {
       says: ['The reply to the supplier is due on 2 October.', 'Nothing is in the way that has not been cleared.', '1 thing is waiting for a decision.'],
     });
     expect(b.whatYouNeedToDecide.heading).toBe('What you need to decide');
-    expect(b.whatYouNeedToDecide.items).toEqual([expect.objectContaining({ question: 'People in this check-in said different things about what the service agreement means, so it needs settling.', owner: 'You' })]);
+    expect(b.whatYouNeedToDecide.items).toEqual([expect.objectContaining({ question: 'People in this check-in said different things about what the service agreement means.', owner: 'You' })]);
     expect(b.whatChangedThisWeek).toEqual({
       heading: 'What changed this week, and what it changed',
       state: 'filled',
@@ -219,6 +220,29 @@ describe('MarketView where next', () => {
 
   it('Martin, who checks in, is served none of it', async () => {
     expect(kindsFields(await boardAs(WHERE_NEXT, 'u-martin', 'MEMBER'))).toEqual([]);
+  });
+
+  /* Screen match, 16 October (mvnext-board.jpg): where the lead has said who each person is, the people asked are grouped by those words. */
+  const DESCRIBED: Setup = {
+    ...WHERE_NEXT,
+    people: [
+      person('p-julia', 'u-lead', 'Julia', 'Fernandes', PartyType.INITIATOR),
+      { ...person('p-martin', 'u-martin', 'Martin', 'Vogel'), roleAsDescribed: 'Agroprocessor' } as any,
+      { ...person('p-ade', 'u-ade', 'Ade', 'Bello'), roleAsDescribed: 'Researcher' } as any,
+    ],
+  };
+  it('Julia reads the people grouped by who she said each one is, with how many in each answered', async () => {
+    const b = await boardAs(DESCRIBED, ...LEAD);
+    expect(b.byWhoTheyAre.state).toBe('filled');
+    expect(b.byWhoTheyAre.groups).toEqual([
+      { group: 'Agroprocessor', count: 1, answered: 1, says: '1 person, 1 answered.' },
+      { group: 'Researcher', count: 1, answered: 0, says: '1 person, 0 answered.' },
+    ]);
+  });
+  it('Martin, who checks in, is still served none of it, not even the lead’s words about who anybody is', async () => {
+    const b = await boardAs(DESCRIBED, 'u-martin', 'MEMBER');
+    expect(kindsFields(b)).toEqual([]);
+    expect(JSON.stringify(b)).not.toContain('Researcher');
   });
 });
 

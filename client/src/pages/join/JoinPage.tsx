@@ -5,6 +5,8 @@ import { LinkProblem } from '@/components/gw/LinkProblem'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { Page, Mark, PageTitle, Callout, Note, Button, FieldLabel, TextField, Stack } from '@/components/gw/ui'
+import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
+import { keepTheNumberForWhenTheySignIn } from '@/lib/a-number-given-before-signing-in'
 
 type Phase = 'loading' | 'start' | 'sent' | 'error'
 
@@ -25,7 +27,8 @@ type Phase = 'loading' | 'start' | 'sent' | 'error'
  */
 export function JoinPage() {
   const [params] = useSearchParams()
-  const joinToken = params.get('t') ?? ''
+  /* `token` too: the developer API's check-ins route handed links out as /join?token= until 26 October 2026, and those are still out there. */
+  const joinToken = params.get('t') ?? params.get('token') ?? ''
 
   const [phase, setPhase] = useState<Phase>('loading')
   const [ground, setGround] = useState<{ groundId: string; groundLabel: string; scenario: string; initiatorName: string } | null>(null)
@@ -36,6 +39,8 @@ export function JoinPage() {
   const [role, setRole] = useState('')
   /* Optional, beside their part. Never inferred; blank means blank. */
   const [department, setDepartment] = useState('')
+  /* Optional, always asked (Hafsah, 30 October 2026); saved to them through PATCH /auth/me once their link signs them in. */
+  const [phone, setPhone] = useState('')
   const [failure, setFailure] = useState('')
   /* Reached from a link shared with a whole cohort, and every submission mails a typed address: the same trap the account-creating forms carry. */
   const trap = useTheTrap()
@@ -75,6 +80,7 @@ export function JoinPage() {
         department: department.trim() || undefined,
         trapFilled: !!trap.filled,
       })
+      keepTheNumberForWhenTheySignIn(email, phone)
       setSentTo(res.to)
       setSentSays(res.says)
       setPhase('sent')
@@ -172,6 +178,8 @@ export function JoinPage() {
             Department
             <TextField id="join-department" value={department} onChange={e => setDepartment(e.target.value)} placeholder="Optional" />
           </FieldLabel>
+          {/* Nobody is signed in on this page, so nothing here says WhatsApp (useWhatsAppIsOn answers off until somebody is). */}
+          <PhoneNumberField id="join-phone" value={phone} onChange={setPhone} whose="yours" whatsappOn={false} />
           {failure && <Note tone="error">{failure}</Note>}
           <Button type="submit" wide disabled={joining || !looksLikeAnAddress(email) || !role.trim()}>
             {joining ? 'Sending…' : 'Email me my link'}

@@ -82,6 +82,13 @@ const T = RecordEntryType;
  * First is the starting point, middle is what changed, last is where it landed. Read down a stage
  * and it is one conversation; read across a role and it is three different jobs.
  */
+/**
+ * A NUMBER MADE UP OF WHAT EACH CUSTOMER TAKES: "Greenfield is secured for 25 units. And I've got Mama Mboga Mart wanting 2 units. So
+ * that's 27 units total." answers how they are making their number (Drop Access short run, item 12). Release 1, part 3: read by the
+ * board, behind Release 1's switch (board.service, stillUnanswered); the conversation's own rule below reads it too since Release 1, part 5.
+ */
+export const A_NUMBER_MADE_OF_ITS_CUSTOMERS = /\b\d+\s+(?:units?|pieces|bags|cartons|boxes)\b[\s\S]*?\b\d+\s+(?:units?|pieces|bags|cartons|boxes)\b/i;
+
 export const KEEP_THE_TEAM_ON_TRACK: Owed[] = [
   { id: 'aim', what: 'what this is trying to achieve', role: ['lead'], stage: ['first'], satisfiedBy: [T.SUCCESS_DEFINITION] },
   { id: 'targets', what: 'the goals or targets, as numbers or dates', role: ['lead'], stage: ['first'], satisfiedBy: [T.TIMEFRAME, T.SUCCESS_DEFINITION] },
@@ -119,7 +126,9 @@ export const KEEP_THE_TEAM_ON_TRACK: Owed[] = [
   /* A sales team hit its volume with 52% of it on credit and arrears at 14% against a brief that said 35% and 8%, and
      three sessions asked only for the total (adversarial run, 20 Sep 2026). A number has a make-up - what kind, on what
      terms, to whom - and where the aim named terms, the make-up is owed as much as the total. */
-  { id: 'how-the-number-is-made', what: 'how they are making their number. Not the total: what kind of sales or work, on what terms, with whom. This matters most where the aim set a condition on the mix.', role: ['member', 'partner'], stage: ['first', 'middle'], satisfiedBy: [T.PROGRESS, T.WORRY], saidAbout: /\b(credit|cash|terms|on account|arrears|mix|repay|invoice|upfront|deposit|instal|split|proportion|percent|%)/i },
+  { id: 'how-the-number-is-made', what: 'how they are making their number. Not the total: what kind of sales or work, on what terms, with whom. This matters most where the aim set a condition on the mix.', role: ['member', 'partner'], stage: ['first', 'middle'], satisfiedBy: [T.PROGRESS, T.WORRY],
+    /* Or the number made up of what each customer takes: "Greenfield is secured for 25 units. And I've got Mama Mboga Mart wanting 2 units. So that's 27 units total." (Drop Access short run, item 12: Mercy answered it on 13 October and the board still read "Mercy Wairimu has not answered it yet"). Never asked again once answered, for every check-in (Release 1, pull request 5). */
+    saidAbout: /\b(credit|cash|terms|on account|arrears|mix|repay|invoice|upfront|deposit|instal|split|proportion|percent|%)|\b\d+\s+(?:units?|pieces|bags|cartons|boxes)\b[\s\S]*?\b\d+\s+(?:units?|pieces|bags|cartons|boxes)\b/i },
   { id: 'off-track', what: 'what is off track', role: ['lead'], stage: ['middle'], satisfiedBy: [T.WORRY, T.TENSION] },
   { id: 'support', what: 'who needs support, and with what', role: ['lead'], stage: ['middle'], satisfiedBy: [T.ASK, T.WORRY] },
   { id: 'in-the-way', what: 'what is getting in the way', role: ['member', 'partner'], stage: ['middle'], satisfiedBy: [T.WORRY, T.TENSION, T.ASK] },

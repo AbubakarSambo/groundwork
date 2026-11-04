@@ -29,7 +29,7 @@ const ROWS = [
   row('p-lead', 1, 'answered', { optional: true }), ...[2, 3, 4, 5].map((n) => row('p-lead', n, 'missed', { optional: true })), row('p-lead', 6, 'open', { optional: true }),
 ];
 
-function aPrisma(role = 'MEMBER', settings = new Map<string, any>()) {
+function aPrisma(role = 'MEMBER', settings = new Map<string, any>(), more: { directMorningOn?: boolean; waits?: any[] } = {}) {
   const ground: any = {
     id: 'g-1', scenario: GroundScenario.OKR_ALIGNMENT, mode: GroundMode.SHARED, initiatorId: 'u-rukia', createdByUserId: 'u-rukia', organizationId: 'org-1',
     peopleWorkTogether: true, peersVisibleToEachOther: true, timelineDays: 90, cadence: 'WEEKLY', whoSeesTargets: 'EVERYONE', label: 'Sales team, Q3',
@@ -40,6 +40,8 @@ function aPrisma(role = 'MEMBER', settings = new Map<string, any>()) {
   return new Proxy({
     ground: model({ findUnique: jest.fn(async () => JSON.parse(JSON.stringify(ground))), findMany: jest.fn(async (a: any) => (a?.skip ? [] : [ground])) }),
     user: model({ findUnique: jest.fn(async (a: any) => ({ role, organizationId: 'org-1', firstName: 'Rukia', email: 'rukia@baridi.test', phoneNumber: null, deletedAt: null, isActive: true, id: a?.where?.id })) }),
+    organization: model({ findUnique: jest.fn(async () => ({ id: 'org-1', directMorningOn: more.directMorningOn === true })) }),
+    groundDependency: model({ findMany: jest.fn(async () => JSON.parse(JSON.stringify(more.waits ?? []))) }),
     groundParticipant: model({ findMany: jest.fn(async (a: any) => (a?.select?.checkIns ? PEOPLE.map((p) => ({ ...p, checkIns: ROWS.filter((r) => r.participantId === p.id) })) : [])) }),
     platformSetting: model({
       findUnique: jest.fn(async (a: any) => (settings.has(a.where.key) ? { value: settings.get(a.where.key) } : null)),
@@ -55,7 +57,7 @@ function aPrisma(role = 'MEMBER', settings = new Map<string, any>()) {
 
 const boardAs = (userId: string, role = 'MEMBER') => new BoardService(aPrisma(role), { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, Object.create(ReportsService.prototype) as ReportsService).get('g-1', userId) as Promise<any>;
 
-const RUKIA_READS = 'Brian has missed 3 of the last 4 check-ins. Brian gave this reason: "I was on the road to Kisumu with no signal." When someone stops checking in, the team loses their view, problems surface late, and the effort to keep everyone in step falls on you and the rest of the team. Speak to Brian this week.';
+const RUKIA_READS = 'Brian has missed 3 of the last 4 check-ins. Brian gave this reason: "I was on the road to Kisumu with no signal." Speak to Brian this week.';
 
 describe('missed check-ins on the board (decision 136)', () => {
   it('Rukia, who runs it, reads Brian\'s line with his reason beside it, and nothing about her own skipped sessions', async () => {
@@ -90,5 +92,40 @@ describe('missed check-ins in the lead\'s daily nudge (decision 136)', () => {
     const said = (email.sendTheLeadsDailyNudge.mock.calls as any[]).map((c) => JSON.stringify(c[2]));
     expect(said[0]).toContain('Brian has missed 3 of the last 4 check-ins');
     expect((said[1] ?? '')).not.toContain('Brian has missed');
+  });
+});
+
+/*
+ * WITH THE DIRECT MORNING ON (organizations.direct_morning_on), Rukia reads the fact, Brian's reason and what to do, on the board and in
+ * the 9am summary, without the sentence about what missing costs. A colleague's wait carries what was tried in full, or nothing, never
+ * "Not backed". With the switch off she reads exactly the lines above, which those tests still pin.
+ */
+describe('with the direct morning on', () => {
+  const DIRECT = 'Brian has missed 3 of the last 4 check-ins. Brian gave this reason: "I was on the road to Kisumu with no signal." Speak to Brian this week.';
+  const lead = { userId: 'u-rukia', organizationId: 'org-1', grounds: [{ id: 'g-1', label: 'Sales team, Q3', scenario: GroundScenario.OKR_ALIGNMENT, overWhatsApp: false, timelineDays: 90, cadence: 'WEEKLY' }] };
+  /* Amani says he is waiting on Brian for the stock count, due a week ago, and said nothing about trying to get it. */
+  const AMANI_WAITS = [{
+    id: 'w-1', groundId: 'g-1', what: 'the stock count for Kisumu', namedTheThing: true, onLabel: null, status: 'WAITING', createdAt: W(4), dueOn: W(5), blockerKind: null,
+    fromParticipantId: 'p-amani', onParticipantId: 'p-brian', triedSaid: null, sourceCheckInId: null, clearedAt: null,
+    fromParticipant: PEOPLE[2], onParticipant: PEOPLE[1],
+  }];
+  const board = (on: boolean) => new BoardService(aPrisma('MEMBER', new Map(), { directMorningOn: on }), { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, Object.create(ReportsService.prototype) as ReportsService).get('g-1', 'u-rukia') as Promise<any>;
+
+  it('on the board, Rukia reads the fact, the reason and what to do', async () => {
+    expect((await board(true)).missedCheckIns).toEqual([{ participantId: 'p-brian', name: 'Brian', text: DIRECT, reason: 'I was on the road to Kisumu with no signal.', suggestion: null }]);
+    expect((await board(false)).missedCheckIns[0].text).toBe(RUKIA_READS);
+  });
+
+  it('in the 9am summary, the same, and a colleague\'s wait says no "Not backed"', async () => {
+    const on = theNudgeParts(await whatIsOutstandingFor(aPrisma('MEMBER', new Map(), { directMorningOn: true, waits: AMANI_WAITS }), lead as any, { boards: {} as any, release: null }, NOW));
+    const off = theNudgeParts(await whatIsOutstandingFor(aPrisma('MEMBER', new Map(), { directMorningOn: false, waits: AMANI_WAITS }), lead as any, { boards: {} as any, release: null }, NOW));
+    console.log(`RUKIA'S 9AM SUMMARY, RISKS, ON:\n${on.risks.join('\n')}\nOFF:\n${off.risks.join('\n')}`);
+    expect(on.risks[0]).toBe(DIRECT.replace('check-ins.', 'check-ins on "Sales team, Q3".'));
+    expect(off.risks[0]).toBe(RUKIA_READS.replace('check-ins.', 'check-ins on "Sales team, Q3".'));
+    const onWait = on.risks.find((r) => r.includes('stock count'));
+    const offWait = off.risks.find((r) => r.includes('stock count'));
+    /* Changed 3 November (Hafsah, F2: silence is never a finding): "Not backed: no attempt to unblock mentioned" is gone everywhere, switch on or off. */
+    expect(offWait).toBe('Amani says the work is waiting on Brian for the stock count for Kisumu.');
+    expect(onWait).toBe('Amani says the work is waiting on Brian for the stock count for Kisumu.');
   });
 });

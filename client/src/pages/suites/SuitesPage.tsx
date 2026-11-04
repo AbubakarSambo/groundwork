@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { TheSpendingRoute } from './ApprovalStepsByAmount'
 import { suitesApi, reviewsApi, yourRequestsApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select, Modal } from '@/components/gw/ui'
 import { QueueLink } from './QueuePage'
+import { WhoLooksAfterWhat } from './WhoLooksAfterWhat'
 import { everySays } from './ReviewsBoardPage'
 
 /**
@@ -164,7 +166,7 @@ function ForALead({ page }: { page: SuitesForALead }) {
         <div className="gwui-cards-3">
           {page.suites.map(s => (
             <Panel as="section" key={s.key} aria-label={s.name}>
-              <h3 className="gwui-panel-heading">{s.name}</h3>
+              <h3 className="t-h3">{s.name}</h3>
               <SuiteLine s={s} />
               {BOARDS[s.key] && <Link className="gwui-plain-link" to={BOARDS[s.key].to}>Open its board</Link>}
             </Panel>
@@ -204,6 +206,8 @@ function ForAnAdmin({ page }: { page: SuitesForAnAdmin }) {
         </Section>
       ))}
 
+      <WhoLooksAfterWhat />
+
       <Section heading="Already part of Groundwork" note="These don’t need switching on. Here is where each one lives.">
         <RowList label="Already part of Groundwork">
           {ALREADY_PART.map(a => (
@@ -226,7 +230,7 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
   const [problem, setProblem] = useState<string | null>(null)
   const flip = useMutation({
     mutationFn: ({ on, given }: { on: boolean; given?: Answers }) => suitesApi.switch(s.key, on, given),
-    onSuccess: (page) => { setProblem(null); setAsking(false); qc.setQueryData(['suites'], page); qc.invalidateQueries({ queryKey: ['suites-on-for-you'] }) },
+    onSuccess: (page) => { setProblem(null); setAsking(false); qc.setQueryData(['suites'], page); qc.invalidateQueries({ queryKey: ['suites-on-for-you'] }); qc.invalidateQueries({ queryKey: ['spend-rules'] }) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
 
@@ -284,12 +288,13 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
     <Panel as="section" aria-label={s.name}>
       <div className="gwui-suite-head">
         <div>
-          <h3 className="gwui-panel-heading">{s.name}</h3>
+          <h3 className="t-h3">{s.name}</h3>
           <SuiteLine s={s} />
           {s.on && BOARDS[s.key] && <Link className="gwui-plain-link" to={forYou && s.key === 'spend' ? '/suite/spend/finance' : BOARDS[s.key].to}>{forYou && s.key === 'spend' ? 'Open the requests for finance' : 'Open its board'}</Link>}
           {s.on && s.questions.length > 0 && !asking && (
             <Button kind="quiet" size="small" onClick={openSettings}>See or change its settings</Button>
           )}
+          {s.on && s.key === 'spend' && !asking && <TheSpendingRoute />}
         </div>
         <div className="gwui-suite-switch">
           <Tag>{s.on ? 'On' : 'Off'}</Tag>

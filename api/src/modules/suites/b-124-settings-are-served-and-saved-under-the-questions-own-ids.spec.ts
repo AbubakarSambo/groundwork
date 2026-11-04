@@ -28,6 +28,7 @@ function setup(stored: Record<string, { isOn: boolean; answers: unknown }>) {
     },
     organizationSuite: {
       findMany: jest.fn(async ({ where }: any) => rows.filter((r) => r.organizationId === where.organizationId)),
+      findUnique: jest.fn(async ({ where }: any) => rows.find((r) => r.organizationId === where.organizationId_suite.organizationId && r.suite === where.organizationId_suite.suite) ?? null),
       upsert: jest.fn(async ({ where, create, update }: any) => {
         const k = where.organizationId_suite;
         const r = rows.find((x) => x.organizationId === k.organizationId && x.suite === k.suite);
@@ -46,7 +47,9 @@ const everyQuestionHasAnId = (s: any) => s.questions.every((q: any) => q.id in s
 describe('B-124: an admin reads the settings of leave, reviews and spending under the questions\' own ids', () => {
   const legacy = {
     leave: { isOn: true, answers: { approver: 'u-naomi', workflow: 'one_approver', daysAYear: 21 } },
-    spend: { isOn: true, answers: { approver: 'u-naomi', workflow: 'one_approver', limit: 100000, above: 'u-naomi', categories: ['Fuel'] } },
+    /* Spending's limit and who approves above it are kept as the lowest of its steps by amount (Hafsah's plan of 2 November, step 0). */
+    spend: { isOn: true, answers: { approver: 'u-naomi', workflow: 'one_approver', categories: ['Fuel'] } },
+    spendRules: { isOn: false, answers: { thresholds: [{ above: 100000, steps: [[{ named: 'u-naomi' }]] }] } },
     reviews: { isOn: true, answers: { approver: 'u-naomi', workflow: 'one_approver' } },
   };
   it('leave: the days a year read back as 21 and the approver as "An admin"', async () => {
@@ -62,7 +65,7 @@ describe('B-124: an admin reads the settings of leave, reviews and spending unde
     expect(s.answers).toMatchObject({ writer: 'An admin', every: '' });
     expect(everyQuestionHasAnId(s)).toBe(true);
   });
-  it('spending: the limit and who approves above it are read, and the currency is asked for', async () => {
+  it('spending: the limit and who approves above it are read from the steps by amount, and the currency is asked for', async () => {
     const { svc, admin } = setup(legacy);
     const s = suitePage(await svc.forReader(admin), 'spend');
     expect(s.answers).toMatchObject({ limit: 100000, above: 'u-naomi', currency: '' });
@@ -74,7 +77,9 @@ describe('B-124: an admin reads the settings of leave, reviews and spending unde
     const row = rows.find((r) => r.suite === 'leave');
     expect(row.answers).toEqual({ workflow: 'one_approver', days: 25, approver: 'Their manager' });
     await svc.switch(admin, 'spend', { on: true, answers: { currency: 'KES', limit: 150000, above: 'u-naomi' } });
-    expect(rows.find((r) => r.suite === 'spend').answers).toEqual({ workflow: 'one_approver', categories: ['Fuel'], currency: 'KES', limit: 150000, above: 'u-naomi' });
+    /* The limit and the person above it go to the steps by amount, and nowhere else. */
+    expect(rows.find((r) => r.suite === 'spend').answers).toEqual({ workflow: 'one_approver', categories: ['Fuel'], currency: 'KES' });
+    expect(rows.find((r) => r.suite === 'spendRules').answers).toEqual({ thresholds: [{ above: 150000, steps: [[{ named: 'u-naomi' }]] }] });
     const after = suitePage(await svc.forReader(admin), 'spend');
     expect(after.answers).toMatchObject({ currency: 'KES', limit: 150000 });
   });

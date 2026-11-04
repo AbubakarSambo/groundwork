@@ -24,6 +24,21 @@ export interface CoachingBatch {
   }[]
 }
 
+/** Where the daily delivery alert goes: saved here, from the server setting, or nowhere (nothing is sent). */
+export interface DeliveryAlert {
+  email: string | null
+  from: 'here' | 'server' | null
+}
+
+/** The daily usage summary: whether it goes, at which hour in Lagos (0 to 23), and the back-office team it goes to. */
+export interface DailyUsage {
+  on: boolean
+  hour: number
+  to: string[]
+  /** How each hour, 0 to 23, is said ("8 in the morning"), from the API so the page and the email say it the same way. */
+  hours: string[]
+}
+
 export interface CorrectionWindow {
   days: number
   default: number
@@ -31,6 +46,15 @@ export interface CorrectionWindow {
 }
 
 /** The regular free trial: whether it is on, the team size it is for, and how many months (decision 78: always 1 today). */
+/** The weeks after a free trial before Groundwork pauses, the timing of their emails, and their words (2 November 2026). */
+export interface AdminTrialGrace {
+  weeks: number
+  dailyForTheLastDays: number
+  fromHour: number
+  words: Record<string, string>
+  onSince?: string
+}
+
 export interface AdminFreeTrial {
   on: boolean
   teamsUnder: number
@@ -138,6 +162,19 @@ export const adminApi = {
   setCoachingLive: (live: boolean) =>
     apiClient.patch<{ live: boolean }>('/admin/coaching', { live }).then(r => r.data),
 
+  /** Release 1's sales board, switched on or off for one organisation (staff only). The server says back what changed. */
+  setReleaseOneSalesBoard: (organizationId: string, on: boolean) =>
+    apiClient.patch<{ id: string; name: string; release1SalesBoardOn: boolean; says: string }>(`/admin/organisations/${organizationId}/release-one-sales-board`, { on }).then(r => r.data),
+
+  setRelease2Collections: (organizationId: string, on: boolean) =>
+    apiClient.patch<{ id: string; name: string; release2CollectionsOn: boolean; says: string }>(`/admin/organisations/${organizationId}/release-2-collections`, { on }).then(r => r.data),
+
+  getDailyUsage: () => apiClient.get<DailyUsage>('/admin/daily-usage').then(r => r.data),
+  setDailyUsage: (body: { on?: boolean; hour?: number }) =>
+    apiClient.patch<DailyUsage>('/admin/daily-usage', body).then(r => r.data),
+  getDeliveryAlert: () => apiClient.get<DeliveryAlert>('/admin/delivery-alert').then(r => r.data),
+  setDeliveryAlert: (email: string) =>
+    apiClient.patch<DeliveryAlert>('/admin/delivery-alert', { email }).then(r => r.data),
   getCorrectionWindow: () => apiClient.get<CorrectionWindow>('/admin/correction-window').then(r => r.data),
   setCorrectionWindow: (days: number) =>
     apiClient.patch<CorrectionWindow>('/admin/correction-window', { days }).then(r => r.data),
@@ -181,6 +218,19 @@ export const adminApi = {
   /** Only `on` is switched here - every free run is one month (decision 78), so the months never change from this screen. */
   setFreeTrial: (on: boolean) =>
     apiClient.patch<AdminFreeTrial>('/admin/pricing/free-trial', { on }).then(r => r.data),
+
+  /** Every switch of one organisation (Groundwork staff only; the server refuses anyone else). */
+  theSwitchesOf: (organizationId: string) =>
+    apiClient.get<{ id: string; name: string; switches: { key: string; name: string; on: boolean }[] }>(`/admin/organisations/${organizationId}/switches`).then(r => r.data),
+
+  setASwitch: (organizationId: string, key: string, on: boolean) =>
+    apiClient.patch<{ id: string; name: string; switches: { key: string; name: string; on: boolean }[] }>(`/admin/organisations/${organizationId}/switches/${key}`, { on }).then(r => r.data),
+
+  getTrialGrace: () =>
+    apiClient.get<AdminTrialGrace>('/admin/pricing/trial-grace').then(r => r.data),
+
+  setTrialGrace: (change: Partial<Omit<AdminTrialGrace, 'onSince'>>) =>
+    apiClient.patch<AdminTrialGrace>('/admin/pricing/trial-grace', change).then(r => r.data),
 
   getAnchorTrial: () =>
     apiClient.get<AdminAnchorTrial>('/admin/pricing/anchor-trial').then(r => r.data),

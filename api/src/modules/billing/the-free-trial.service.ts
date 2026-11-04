@@ -6,7 +6,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PricingService } from './pricing.service';
 import { GroundworkEvents, type OrgSizeSaidEvent, type OrgSignedUpEvent, type AnchorCheckInStartedEvent } from '../../common/events';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
-import { aFreeRunEndsOn, whatCoversThem } from '../../common/subscription';
+import { aFreeRunEndsOn, whatCoversThem, WHAT_COVER_READS } from '../../common/subscription';
+import { theGraceInForce } from './the-trial-grace';
 import { seatsIn } from '../../common/seats';
 
 /**
@@ -63,9 +64,9 @@ export class TheFreeTrialService {
     try {
       const org = await this.prisma.organization.findUnique({
         where: { id: organizationId },
-        select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
+        select: WHAT_COVER_READS,
       });
-      if (!org || whatCoversThem(org, now).covers !== 'on the house') return;
+      if (!org || whatCoversThem(org, now, await theGraceInForce(this.prisma).catch(() => null)).covers !== 'on the house') return;
       const plans = await this.pricing.listPlans();
       const needed = (await this.pricing.getAnchorTrial()).people + 1;
       const holds = (plan: unknown) => {

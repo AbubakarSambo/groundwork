@@ -46,12 +46,12 @@ const base = {
   ],
 }
 
-function renderBoard(payload: any) {
+function renderBoard(payload: any, at = '/grounds/g1/board') {
   ;(boardApi.get as any).mockResolvedValue(payload)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/grounds/g1/board']}>
+      <MemoryRouter initialEntries={[at]}>
         <Routes><Route path="/grounds/:id/board" element={<BoardPage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -86,88 +86,70 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
 
   beforeEach(() => vi.clearAllMocks())
 
-  it('the lead reads the kind of work, the sales org’s own heading, one stage per row, the shape of the work, and the not-known Forecast under its own plain heading', async () => {
+  /*
+   * SCREEN MATCH, 16 OCTOBER: THE LEAD OF A SALES CHECK-IN READS THE BOARD AS PICTURED
+   * (board-as-lead.jpg; pictured/ThePicturedSalesBoard.tsx). Updated from the old grid, because the
+   * picture is the target now: the rep is named by first name ("Aisha, KES 110,000"), one open deal is
+   * shown in full below the grid (so its words appear once there), "Change" is on that open deal, not on
+   * every row, and there is no Forecast section (the headline says there are no chance-to-close
+   * percentages yet). What the old checks protected still holds: the kind of work and its "Change", the
+   * sales heading, one stage per row, "Nobody is named for it yet.", the person's own words in their own
+   * name, "You added it.", "Nothing booked", the key naming only marks the grid draws, never "proven",
+   * "Add a record", and "Remove this record" only behind "Change".
+   */
+  /* Release 1: Drop Access is one lead and three reps, a sales team. The same sales board, with its own sentence. */
+  it('the lead of a sales team reads the same sales board, said as a sales team', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard({ ...SALES_ORG, kindOfWork: 'sales team' })
+    expect(await screen.findByText('This check-in is about a sales team and its deals.')).toBeTruthy()
+    const dealGrid = screen.getByRole('region', { name: 'Every deal, day by day' })
+    expect(within(dealGrid).getAllByText('Nyama Choma Palace').length).toBeGreaterThan(0)
+    expect(within(dealGrid).getByText('Akinyi, KES 90K')).toBeTruthy()
+  })
+
+  it('the lead reads the kind of work, the sales org’s own heading, one stage per row, and the key only for marks drawn', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(SALES_ORG)
-    expect(await screen.findByText('This check-in is about a sales team and its deals.')).toBeTruthy()
+    expect(await screen.findByText('This check-in is about a sales organisation of several teams, and its deals.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Change the kind of work' })).toBeTruthy()
 
-    /* Board fix (sales B, item 1): the prototype's own heading for this screen is "Every
-       deal, day by day" (docs/prototype/screens/B5-the-board/board-as-lead.txt) - this component
-       is only ever drawn from the Board page, so that heading, not the G1 example-check-ins
-       page's different wording, is the one a reader of this board actually sees. */
     const dealGrid = screen.getByRole('region', { name: 'Every deal, day by day' })
-    expect(within(dealGrid).getByText('Nyama Choma Palace')).toBeTruthy()
-    /*
-     * BOARD REVIEW, SALES PIECE C, ITEM 3 (c): THE REP AND THE DEAL'S VALUE UNDER ITS NAME, AS
-     * ONE LINE - board-as-lead.txt's own shape ("Aisha, KES 110,000"), not a separate "Rep"
-     * column and a second "The value is..." sentence below it (board review, 30 September, item
-     * 3's old fix, now superseded by this one).
-     */
-    expect(within(dealGrid).getByText('Akinyi Otieno, KES 90K')).toBeTruthy()
+    expect(within(dealGrid).getAllByText('Nyama Choma Palace').length).toBeGreaterThan(0)
+    expect(within(dealGrid).getByText('Akinyi, KES 90K')).toBeTruthy()
     expect(within(dealGrid).queryByText('The value is KES 90K.')).toBeNull()
-    expect(within(dealGrid).queryByText('Akinyi Otieno', { exact: true })).toBeNull()
-    /* Item 3 (d): one sentence for an empty owner, not a width-dependent pair. */
     expect(within(dealGrid).getByText('Nobody is named for it yet.')).toBeTruthy()
     expect(within(dealGrid).queryByText('Nobody named yet.')).toBeNull()
-    /* One "Stage now" per row - a single tag, not the whole track. */
-    expect(within(dealGrid).getByText('Won', { selector: '.gwui-tag' })).toHaveClass('gwui-tag')
+    expect(within(dealGrid).getByText('Won', { selector: '.tag' })).toHaveClass('tag')
     expect(within(dealGrid).getByText('No stage said yet.')).toBeTruthy()
-    /* The person's own words, in their own name, never a colon join and never a status tag - now
-       part of the row's own detail (item 3 (c): "What shows it" has no column of its own here),
-       but still exactly the same words. */
+    /* The open deal (the first) says what shows it, in the person's own words. */
     expect(within(dealGrid).getByText('In the words of someone in this check-in,')).toBeTruthy()
     expect(within(dealGrid).getByText('“Nyama Choma Palace paid KES 90K on 22 September, so that one is won.”')).toBeTruthy()
     expect(within(dealGrid).queryByText("Someone's word")).toBeNull()
-    expect(within(dealGrid).getByText('You added it.')).toBeTruthy()
-    /* The "Next step" column, the prototype's own ("Nothing booked" for neither row). */
-    expect(within(dealGrid).getAllByText('Nothing booked').length).toBe(2)
-
-    /*
-     * BOARD REVIEW, SALES PIECE C, ITEM 3 (f): "THE SHAPE OF THE WORK" IS GONE FROM THE DEAL GRID.
-     * It repeated the same stage-by-stage count "Reported vs criteria met, stage by stage" already
-     * gives elsewhere on the board (this fixture does not serve `reportedAgainstCriteria`, so that
-     * section draws nothing here, but the deal grid's own copy is still gone - every other kind of
-     * work, which has no such section anywhere else, keeps it).
-     */
+    expect(within(dealGrid).getAllByText('Nothing booked').length).toBeGreaterThanOrEqual(2)
     expect(within(dealGrid).queryByText('The shape of the work')).toBeNull()
-    expect(screen.queryByText('Won', { selector: '.gwui-stage-track-name' })).toBeNull()
-    /* Never drawn as "proven" or "criteria met" - nothing served here says that. */
     expect(screen.queryByText(/proven/i)).toBeNull()
     expect(screen.queryByText(/criteria met/i)).toBeNull()
 
-    /*
-     * ITEM 3 (b): THE KEY NAMES ONLY THE TWO MARKS THIS GRID ACTUALLY DRAWS. "Next step booked"
-     * and "Follow-up, no reply" named states of the "Next step" column that carries no mark of its
-     * own (it is plain text, "Nothing booked" or the server's own sentence) - left out rather than
-     * promising a mark nothing on the grid shows.
-     *
-     * BOARD REVIEW, SALES PIECE D, ITEM 3: EACH KEY LINE, ONLY WHEN A ROW ACTUALLY CARRIES THAT
-     * MARK. This fixture used to serve both rows with no `mark` at all, yet still expected both
-     * key lines to show - exactly the defect the third review found on the sales board ("Contact
-     * with proof..." shown while every row was `mark: "none"`). `w-1` now carries `mark: 'said'`
-     * (it is in fact `from: 'said'`, with a quote behind it) and `w-2` carries `mark: 'none'` (it
-     * was added on the board, nothing behind it), so only the "in their words" line is earned.
-     */
     expect(within(dealGrid).queryByText(/Contact with proof: a photo, a quote, a payment/)).toBeNull()
     expect(within(dealGrid).getByText('Contact in their words')).toBeTruthy()
     expect(within(dealGrid).queryByText('Next step booked')).toBeNull()
     expect(within(dealGrid).queryByText('Follow-up, no reply')).toBeNull()
 
-    /* Not-known: the server's own reason, under a plain heading built from its own `holds`. */
-    const forecast = screen.getByRole('region', { name: 'Where the sales numbers are likely to end up' })
-    expect(within(forecast).getByText('Groundwork does not keep this yet. It needs numbers from another system, such as payment records or a helpdesk.')).toBeTruthy()
+    /* The deal she added herself, opened, says so. */
+    within(dealGrid).getByText('Naivas Karen').click()
+    expect(await within(dealGrid).findByText('You added it.')).toBeTruthy()
 
-    /* The lead can add a record; changing or removing one lives behind "Change". */
-    expect(within(dealGrid).getAllByRole('button', { name: 'Change' }).length).toBe(2)
+    expect(screen.queryByRole('region', { name: 'Where the sales numbers are likely to end up' })).toBeNull()
+
+    expect(within(dealGrid).getAllByRole('button', { name: 'Change' }).length).toBe(1)
     expect(within(dealGrid).getByRole('button', { name: 'Add a record' })).toBeTruthy()
     expect(within(dealGrid).queryByRole('button', { name: 'Remove this record' })).toBeNull()
   })
 
-  it('opening "Change" on a row offers "Remove this record", behind its own confirmation', async () => {
+  it('opening "Change" on the open deal offers "Remove this record", behind its own confirmation', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(SALES_ORG)
-    await screen.findByText('This check-in is about a sales team and its deals.')
+    await screen.findByText('This check-in is about a sales organisation of several teams, and its deals.')
     const dealGrid = screen.getByRole('region', { name: 'Every deal, day by day' })
     within(dealGrid).getAllByRole('button', { name: 'Change' })[0].click()
     expect(await screen.findByRole('button', { name: 'Remove this record' })).toBeTruthy()
@@ -179,7 +161,7 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
   it('a colleague reads the same kind of work and record, but gets no way to change either', async () => {
     me = { id: 'u-akinyi', firstName: 'Akinyi', role: 'MEMBER' }
     renderBoard({ ...SALES_ORG, myParticipantId: 'p-akinyi', canEditFrame: false })
-    expect(await screen.findByText('This check-in is about a sales team and its deals.')).toBeTruthy()
+    expect(await screen.findByText('This check-in is about a sales organisation of several teams, and its deals.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Change' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Choose' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Add a record' })).toBeNull()
@@ -207,9 +189,10 @@ describe('the law firm matter’s Timeline and Obligations, both without stages'
     ],
   }
 
+  /* Screen match, 16 October: a law firm matter's lead first reads matter-board.jpg's own board, which has neither; both hold, unchanged, on "See every other part of this board" (?whole=1). */
   it('the lead reads both under plain headings, deadlines in date order with the date in words, and who added a deadline', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
-    renderBoard(MATTER)
+    renderBoard(MATTER, '/grounds/g1/board?whole=1')
     expect(await screen.findByText('This check-in is about a law firm matter.')).toBeTruthy()
 
     const timeline = screen.getByRole('region', { name: 'Every deadline' })

@@ -12,15 +12,12 @@ import { Section, Panel, Stack, TextArea, Select, Button, Note, Tag } from '@/co
  * no seat), the page shows what would happen to each one and sends only after that is read. An
  * admin never emails half a company without knowing which half.
  *
- * WORDING LEFT AS THE PRODUCT'S OWN, ON PURPOSE (design-audit.md item 12). The prototype's text
- * offers "or a WhatsApp number" and "or a WhatsApp message", and a "Guest" role, here. Neither is
- * true of this product yet: the paste-many endpoint this form calls
- * (api/src/modules/users/putting-a-whole-company-on.ts) only ever reads email addresses, whatever
- * the organisation's own WhatsApp switch says, and inviting somebody straight into "Guest" throws on
- * the server (aRoleToInviteAs, inviting-with-a-role-and-a-name.spec.ts) - a guest is somebody a lead
- * adds to one check-in, not somebody an admin invites to the organisation. So this keeps the
- * product's true sentence rather than the prototype's, until WhatsApp invites and Guest-by-invite
- * both exist.
+ * A PHONE NUMBER, ALWAYS ASKED (Hafsah, 30 October 2026: "phone numbers are always shown and editable,
+ * whether WhatsApp is on or off"; this replaces decision 106 item 6). It is typed on each person's line,
+ * as A4 people.txt:224 draws it, and the server saves it to them once their invitation has gone, the same
+ * save People uses (putting-a-whole-company-on.ts numbersIn). Round 1 of the first experience: three of
+ * four leads were made to add each number one by one. A "Guest" role is still not offered: inviting somebody straight into it throws on the server
+ * (aRoleToInviteAs) - a guest is somebody a lead adds to one check-in.
  *
  * REBUILT FROM THE SHARED PARTS (item 11: the role choice, "Send their invitations" and "Upload a
  * list" sit on one line under the text box, which is the standard 16px `TextArea`). The sentence,
@@ -36,7 +33,7 @@ import { Section, Panel, Stack, TextArea, Select, Button, Note, Tag } from '@/co
  * address so the admin sees what was actually read, since the invitation itself begins with it
  * ("Hi Дмитрий,").
  */
-interface PastedRow { email: string; result: string; name?: string | null }
+interface PastedRow { email: string; result: string; name?: string | null; phone?: string | null; phoneNotSaved?: string | null }
 interface PasteAnswer { preview: boolean; seatsLeft: number | null; rows: PastedRow[]; summary: string }
 
 /*
@@ -70,7 +67,7 @@ export function InvitePeople() {
 
   const send = useMutation({
     mutationFn: () => pasteMany(pasted, false, role),
-    onSuccess: (a) => {
+    onSuccess: async (a) => {
       setAnswer(a)
       setPasted('')
       qc.invalidateQueries({ queryKey: ['org-members'] })
@@ -87,7 +84,7 @@ export function InvitePeople() {
       if (a.rows.length > 0 && a.rows.every((r) => r.result === 'invited')) send.mutate()
       else setAnswer(a)
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'We could not read that list. Try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'I could not read that list. Try again.'),
   })
 
   const canGo = answer?.preview ? answer.rows.filter((r) => r.result === 'invited').length : 0
@@ -99,14 +96,14 @@ export function InvitePeople() {
           <label htmlFor="invite-list" className="gwui-panel-text" style={{ display: 'block' }}>
             {/* FAULT I (reviewer, third round): a label built from a clipped fragment joined by a
                 colon reads as a filing instruction, not a sentence. */}
-            Write one person on each line, with their name and email. Or paste a list from a spreadsheet.
+            Write one person on each line, with their name, their email and their phone number. Or paste a list from a spreadsheet.
           </label>
           <TextArea
             id="invite-list"
             rows={4}
             value={pasted}
             onChange={(e) => { setPasted(e.target.value); setAnswer(null) }}
-            placeholder={'Faith Kerubo, faith@yourcompany.com\nJoseph Kiprono, joseph@yourcompany.com'}
+            placeholder={'Faith Kerubo, faith@yourcompany.com, +254 712 345 678\nJoseph Kiprono, joseph@yourcompany.com, +254 722 118 440'}
           />
           <div className="gwui-invite-actions">
             <label className="gwui-inline-label">
@@ -157,7 +154,7 @@ export function InvitePeople() {
               const tone = how.tone === 'good' ? 'proven' : how.tone === 'bad' ? 'concern' : 'plain'
               return (
                 <div key={`${r.email}-${i}`} className="gwui-invite-row">
-                  <span className="gwui-panel-text">{r.name?.trim() ? `${r.name.trim()}, ${r.email}` : r.email}</span>
+                  <span className="gwui-panel-text">{[r.name?.trim(), r.email, r.phone?.trim()].filter(Boolean).join(', ')}{r.phoneNotSaved ? ` ${r.phoneNotSaved} Their invitation went out; add their number on People.` : ''}</span>
                   <Tag tone={tone}>{answer.preview ? how.says : (how.sent ?? how.says)}</Tag>
                 </div>
               )

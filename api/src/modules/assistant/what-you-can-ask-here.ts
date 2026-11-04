@@ -60,7 +60,7 @@ export function whatYouCanAskSaid(f: WhatYouCanAskFacts): string {
     out.push(`${plural(f.waitingForYou, 'request waits', 'requests wait')} for you to approve. Ask me what is waiting for you to approve, or tell me to approve or decline one.`);
   }
 
-  out.push('You can also ask me what is due, who is off next week, and how we do things here, and you can tell me to add something to your to-do list.');
+  out.push('You can also ask me what is due, who is off next week, and how things are done here, and you can tell me to add something to your to-do list.');
   out.push(CONTEXT_FOR_A_CHECK_IN);
   out.push('Whatever you ask me stays between you and me.');
   return out.join('\n\n');

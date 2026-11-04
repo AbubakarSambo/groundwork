@@ -45,17 +45,18 @@ describe('an icon is not a target', () => {
      * CHANGED WITH THE LIGHT SIDEBAR (A1). The pencil was a 14x11 glyph widened by an ::after
      * reaching 15px either side. Once the pin sat beside it, that reach covered the pin, and a tap on
      * the pin opened the rename box (found by the reviewer with elementFromPoint). The button itself
-     * is now the target: 32 wide and the row's 36 tall, with no pseudo-element reaching past it.
+     * is now the target: 32 wide and the row's own height tall (44px since 21 October, Hafsah's 44px rule for everything you
+     * can tap), with no pseudo-element reaching past it.
      */
-    expect(CSS).toMatch(/\.gw-rail-row \.gw-pin, \.gw-rail-row \.gw-rename \{[^}]*width: 32px; height: 36px;/)
+    expect(CSS).toMatch(/\.gw-rail-row \.gw-pin, \.gw-rail-row \.gw-rename \{[^}]*width: 32px; height: 44px;/)
     expect(CSS).not.toMatch(/\.gw-rename::after\s*\{/)
   })
 
   it('and it is held to the row, not spilling into the check-ins above and below', () => {
-    /* The row is 36 tall; the pencil is exactly that, so it cannot steal a neighbour's tap. */
+    /* The row is 44 tall (21 October, the 44px rule); the pencil is exactly that, so it cannot steal a neighbour's tap. */
     const rule = CSS.match(/\.gw-rail-row \.gw-pin, \.gw-rail-row \.gw-rename \{([^}]*)\}/)![1]
-    expect(rule).toMatch(/height: 36px/)
-    expect(CSS).toMatch(/\.gw-ci-row \{[^}]*min-height: 36px/)
+    expect(rule).toMatch(/height: 44px/)
+    expect(CSS).toMatch(/\.gw-ci-row \{[^}]*min-height: 44px/)
   })
 
   it('the pencil is visible on a device that cannot hover', () => {

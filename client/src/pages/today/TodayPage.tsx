@@ -1,17 +1,21 @@
 import { CheckInOnWhatsApp } from '@/components/gw/CheckInOnWhatsApp'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { aSentenceAsARow } from '@/lib/a-sentence-as-a-row'
+import { boardApi } from '@/api/board'
+import { toast } from 'sonner'
 import { Link, useSearchParams } from 'react-router-dom'
 import { todayApi, type Need } from '@/api/today'
 import { outstandingNotAlreadyShown } from './outstanding-not-already-shown'
 import { withComingUpTellingTwoApart } from './tell-apart-coming-up'
 import { useAuthStore } from '@/stores/auth'
-import { Page, Stack, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp } from '@/components/gw/ui'
+import { Page, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp, Panel } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { AdminFirstRun } from '@/pages/grounds/an-admin-lands-on-a-check-in-list'
 import { partOfTheDay, whenItComes } from './when-it-comes'
 import { AppealsToDecide } from '@/components/gw/Suggestions'
 import { groundsApi } from '@/api/grounds'
 import { YouAreIn } from './YouAreIn'
+import { NameYourOrganisation } from './NameYourOrganisation'
 import { TheReasonYouMissed } from './TheReasonYouMissed'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { QueueLink } from '@/pages/suites/QueuePage'
@@ -20,6 +24,8 @@ import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 import { useEffect } from 'react'
 import { todayGreetingLine } from '@/lib/the-greeting-line-does-not-claim-what-needs-you-does-not'
+import { useAnUnfinishedSetup } from '@/pages/auth/entry-handover'
+import { TheSetupNotSavedYet } from '@/components/gw/TheSetupNotSavedYet'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -130,15 +136,8 @@ export function TodayPage() {
   /* Screen fault 4 (final walk): never claim "You have not checked in yet." beside "Nothing needs
      you right now." - see the-greeting-line-does-not-claim-what-needs-you-does-not.ts. */
   const greetingLine = todayGreetingLine(data?.line, needs.length)
-  /* A SUITE ITEM GOES TO THE QUEUE, NOT STRAIGHT TO THE BOARD (live walk at a hundred people, fault
-     2): with a hundred people waiting on one approver, the board behind "/suite/leave" or
-     "/suite/spend" is the whole organisation's, not filtered to this one thing. The queue
-     (`/suite/queue`) is filtered to what waits for this reader, so "Look at it"/"Look at them" on an
-     approval item goes there instead, with `?suite=` set so the right tab opens. */
-  const whereItGoes = (n: Need) =>
-    n.action.to === '/suite/leave' ? '/suite/queue?suite=leave'
-      : n.action.to === '/suite/spend' ? '/suite/queue?suite=spend'
-        : n.action.to
+  /* Where each item goes is the server's `to` alone (waiting-for-you-to-approve.ts, what-needs-you.service.ts): an approval opens the
+     queue filtered to this reader, and finance's item opens the requests for finance. */
   const comingUp = data?.comingUp ?? []
 
   /* The lead's daily nudge's own link (decision 120). Every sentence is already worded by the
@@ -151,19 +150,82 @@ export function TodayPage() {
   /* What the lead's mail also tells her (request 198, b): the server's own sentences and links, drawn once. Absent for everybody else. */
   const nobodyHasStarted = data?.forTheLead?.nobodyHasStarted ?? []
   const whatIWouldDo = data?.forTheLead?.whatIWouldDoThisWeek ?? []
+  /*
+   * ONE LIST, AS THE PROTOTYPE (C1): what needs you, what the lead's nudge adds, and what Groundwork would do, as rows of "What needs
+   * you", most important first, each said once. A row the list already has (the same title) is not added again.
+   */
+  type ARow = { key: string; kind: Need['kind']; title: string; detail?: string; action?: { label: string; to: string } }
+  /* A row is said once: the same title is not added again. Rows are never dropped for sharing words with another (restored, 30 October
+     2026: the word-overlap check dropped a different overdue item or risk, against "understand, don't match"). */
+  const seen = new Set<string>()
+  const once = (r: ARow) => {
+    const t = r.title.trim().toLowerCase()
+    if (seen.has(t)) return false
+    seen.add(t)
+    return true
+  }
+  needs.forEach((n: Need) => once({ key: n.key, kind: n.kind, title: n.title }))
+  const moreRows: ARow[] = [
+    ...nobodyHasStarted.map((n) => ({ key: `started-${n.groundId}`, kind: 'look' as const, title: n.subject, detail: n.lines[0], action: { label: n.linkLabel, to: n.to } })),
+    ...whatIWouldDo.map((w) => {
+      const things = w.lines.slice(1)
+      return { key: `week-${w.groundId}`, kind: 'look' as const, title: things[0] ?? w.lines[0], detail: things.length > 1 ? `In ${w.label}, and ${things.length - 1} more on its board.` : `In ${w.label}.`, action: { label: 'Open', to: `/grounds/${w.groundId}` } }
+    }),
+    ...[...outstandingNeedsYou, ...overdueOnYourTeam, ...risks].map((sentence) => ({ key: sentence, kind: 'look' as const, ...aSentenceAsARow(sentence) })),
+  ].filter(once)
+  /*
+   * A SETUP LEFT UNFINISHED IS THE FIRST THING THAT NEEDS YOU (Hafsah's blocker, 31 October 2026). Three leads in round 3 told the
+   * setup about their team, left before saving, and came back here to "Nothing needs you right now". The lead's setup, kept on the
+   * server and read by the one reader Check-ins also uses, is first, with the way back, on any device.
+   */
+  const unfinished = useAnUnfinishedSetup()
+  const allNeeds = needs.length + moreRows.length + (unfinished ? 1 : 0)
+  const lineNudge = data?.lineNudge ?? null
+  /* "Send it to them again" (the approved journey, stage 8): the invitation's own resend, for each person the line says has not
+     joined yet. The lead's own press, so nothing about when anything is sent changes. */
+  const lineResend = data?.lineResend ?? null
+  const resend = useMutation({
+    mutationFn: async () => { for (const pid of lineResend!.participantIds) await groundsApi.resendParticipantInvite(lineResend!.groundId, pid) },
+    onSuccess: () => toast.success(lineResend!.participantIds.length === 1 ? 'Invitation sent again.' : 'Invitations sent again.'),
+    onError: () => toast.error('It did not send again. The first invitation still works. Try again in a moment.'),
+  })
+  const resendLabel = lineResend
+    ? (lineResend.participantIds.length === 1 && lineResend.firstNames[0] ? `Send it to ${lineResend.firstNames[0]} again` : 'Send it to them again')
+    : ''
+  /* "Send N invitations" (Hafsah, 3 November 2026): the invitations the lead held ready while she checked in on her own first. */
+  const lineReadyToSend = data?.lineReadyToSend ?? null
+  const sendReady = useMutation({
+    mutationFn: () => groundsApi.sendTheInvitationsReadyToSend(lineReadyToSend!.groundId),
+    onSuccess: () => { toast.success(lineReadyToSend!.count === 1 ? 'The invitation has gone.' : 'The invitations have gone.'); refetch() },
+    onError: () => toast.error('The invitations did not send. They are still ready, so try again in a moment.'),
+  })
+  const nudge = useMutation({
+    mutationFn: () => boardApi.nudge(lineNudge!.groundId, lineNudge!.participantId),
+    onSuccess: () => toast.success(`Sent to ${lineNudge!.firstName}.`),
+    onError: () => toast.error('That didn’t send. Try again.'),
+  })
 
   return (
     <Page>
-      <div className="gwui-side">
-        <Stack gap={30}>
+      <div className="gwui-side gw-today">
+        <div className="gw-col-32">
           {params.get('welcome') === '1' && (
             <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} mayStart={user?.mayOpenCheckIns !== false} />
           )}
 
           <Greeting
             title={greeting}
-            subtitle={`${whenItWas(now, 'weekdayAndDay')}.${greetingLine ? ` ${greetingLine}` : ''}`}
+            subtitle={<>
+              {`${whenItWas(now, 'weekdayAndDay')}.${greetingLine ? ` ${greetingLine}` : ''}`}
+              {/* "Send it to him on WhatsApp" (C1), said with their name: the board's own nudge, for the one person not checked in yet. */}
+              {lineNudge && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => nudge.mutate()} disabled={nudge.isPending || nudge.isSuccess}>{nudge.isSuccess ? 'Sent.' : `Remind ${lineNudge.firstName}`}</button></>}
+              {lineResend && <>{' '}<button type="button" className="btn quiet sm gw-inline-btn gwui-in-a-sentence" onClick={() => resend.mutate()} disabled={resend.isPending || resend.isSuccess}>{resend.isSuccess ? 'Sent again.' : resendLabel}</button></>}
+              {lineReadyToSend && <>{' '}<button type="button" className="btn primary sm gw-inline-btn gwui-in-a-sentence" onClick={() => sendReady.mutate()} disabled={sendReady.isPending || sendReady.isSuccess}>{sendReady.isPending ? 'Sending…' : sendReady.isSuccess ? 'Sent.' : lineReadyToSend.label}</button></>}
+            </>}
           />
+
+          {/* An organisation still called by the name Groundwork made up ("Hafsah's workspace") is named here, by an admin (26 October). */}
+          <NameYourOrganisation />
 
           {/* The free trial, one line, for an admin while it runs (Hafsah, 12 October). The server decides who reads it. */}
           {/* With the way to Plan and billing beside it (fix list item 6). Only an admin is served the line. */}
@@ -172,17 +234,13 @@ export function TodayPage() {
           {/* Appeals to decide (C3, U.13): an admin's only. The server refuses anybody else. */}
           {user?.role === 'ADMIN' && <AppealsToDecide />}
 
-          <Section heading="What needs you" note={needs.length > 1 ? `${needs.length} things, most important first` : undefined}>
-            {isLoading && <Note>Loading…</Note>}
-            {isError && (
-              <div>
-                <Note tone="error">What needs you did not load. Nothing you have written is affected.</Note>
-                <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
-              </div>
-            )}
-            {data && needs.length === 0 && <Empty>Nothing needs you right now.</Empty>}
-            {needs.length > 0 && (
+          {/* ONE LIST, AS THE PROTOTYPE: what the lead's nudge adds (needs you, overdue on the team, risks) are rows in
+              "What needs you", most important first, never sections of their own. */}
+          <Section heading="What needs you" note={allNeeds > 1 ? `${allNeeds} things, most important first` : undefined}>
+            {data && allNeeds === 0 && <Empty>Nothing needs you right now.</Empty>}
+            {allNeeds > 0 && (
               <EdgeList label="What needs you">
+                {unfinished && <TheSetupNotSavedYet unfinished={unfinished} primary />}
                 {/* ONE NAVY BUTTON (Hafsah, 30 September): the prototype's own Today draws every "Start it"
                     navy, but with two check-ins open that is two navy buttons at once. Only the first,
                     the most important, is navy; the rest are white. */}
@@ -190,15 +248,28 @@ export function TodayPage() {
                   <EdgeRow
                     key={n.key}
                     kind={n.kind}
-                    title={n.title}
-                    detail={n.detail ?? undefined}
+                    /* One line of title: a second sentence goes to the detail line when there is none (Hafsah, 25 October). */
+                    title={aSentenceAsARow(n.title, n.detail).title}
+                    detail={aSentenceAsARow(n.title, n.detail).detail}
+                    to={n.action.to}
                     actions={<>
-                      <Button kind={n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={whereItGoes(n)}>{n.action.label}</Button>
+                      <Button kind={!unfinished && n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={n.action.to}>{n.action.label}</Button>
                       {n.missedReason && <TheReasonYouMissed checkInId={n.missedReason.checkInId} given={n.missedReason.given} />}
                     </>}
                   />
                 ))}
+                {moreRows.map((r) => (
+                  <EdgeRow key={r.key} kind={r.kind} title={r.title} detail={r.detail} to={r.action?.to}
+                    actions={r.action ? <Button kind="secondary" size="small" to={r.action.to}>{r.action.label}</Button> : undefined} />
+                ))}
               </EdgeList>
+            )}
+            {isLoading && <Note>Loading…</Note>}
+            {isError && (
+              <div>
+                <Note tone="error">What needs you didn’t load. Try again.</Note>
+                <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
+              </div>
             )}
             {/* Under what needs you, when one of those is a check-in to answer (fix list, item 5). The server decides. */}
             {data?.checkInOnWhatsApp && (
@@ -231,59 +302,13 @@ export function TodayPage() {
             </Section>
           )}
 
-          {/* The lead's daily nudge's own link (decision 120): "Needs you", "Overdue on your team"
-              and "Risks", each left out while its own list is empty. `null` for anybody who is not
-              a lead, or who has nothing outstanding, so a member's Today is unaffected. */}
-          {outstandingNeedsYou.length > 0 && (
-            <Section heading="Needs you">
-              <EdgeList label="Needs you">
-                {outstandingNeedsYou.map((sentence) => (
-                  <EdgeRow key={sentence} kind="look" title={sentence} />
-                ))}
-              </EdgeList>
-            </Section>
-          )}
-          {overdueOnYourTeam.length > 0 && (
-            <Section heading="Overdue on your team">
-              <EdgeList label="Overdue on your team">
-                {overdueOnYourTeam.map((sentence) => (
-                  <EdgeRow key={sentence} kind="look" title={sentence} />
-                ))}
-              </EdgeList>
-            </Section>
-          )}
-          {risks.length > 0 && (
-            <Section heading="Risks">
-              <EdgeList label="Risks">
-                {risks.map((sentence) => (
-                  <EdgeRow key={sentence} kind="look" title={sentence} />
-                ))}
-              </EdgeList>
-            </Section>
-          )}
-
-          {(nobodyHasStarted.length > 0 || whatIWouldDo.length > 0) && (
-            <Section heading="From Groundwork">
-              <EdgeList label="From Groundwork">
-                {nobodyHasStarted.map((n) => (
-                  <EdgeRow
-                    key={`started-${n.groundId}`}
-                    kind="look"
-                    title={n.subject}
-                    detail={n.lines.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
-                    actions={<Button kind="secondary" size="small" to={n.to}>{n.linkLabel}</Button>}
-                  />
-                ))}
-                {whatIWouldDo.map((w) => (
-                  <EdgeRow
-                    key={`week-${w.groundId}`}
-                    kind="look"
-                    title={w.lines[0]}
-                    detail={[`This is for ${w.label}.`, ...w.lines.slice(1)].map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
-                    actions={<Button kind="secondary" size="small" to={`/grounds/${w.groundId}`}>Open the check-in</Button>}
-                  />
-                ))}
-              </EdgeList>
+          {/* SINCE YESTERDAY (C1): what moved since the round before, for the check-in the line is about. */}
+          {data?.sinceYesterday && (
+            <Section heading={data.sinceYesterday.heading}>
+              <Panel>
+                <p className="t-body">{data.sinceYesterday.says}</p>
+                {data.sinceYesterday.also && <p className="t-small mut">{data.sinceYesterday.also}</p>}
+              </Panel>
             </Section>
           )}
 
@@ -296,7 +321,7 @@ export function TodayPage() {
             that changes every day comes first, and the one-time welcome comes after it.
           */}
           <AdminFirstRun />
-        </Stack>
+        </div>
 
         {comingUp.length > 0 && (
           <ComingUp items={withComingUpTellingTwoApart(comingUp).map(c => ({

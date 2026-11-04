@@ -1,3 +1,4 @@
+import { inASentence } from '@/lib/how-long-setup-takes'
 import { useRef, useState } from 'react'
 import { Choices, FieldLabel, Panel, Select, SetupBlock, SetupBlocks, Stack, Text, TextField } from '@/components/gw/ui'
 import { ordinal } from '@/components/gw/AnchorDayPicker'
@@ -133,7 +134,8 @@ export const THE_SETUP = {
   moreTimeLater: 'You can give it more time later.',
   /* Setup page, piece 3a: the rest of the prototype's own words (setup.txt, new.txt). */
   aName: 'A name',
-  twoMinutes: 'Each check-in takes about ten minutes.',
+  /** The length as the server serves it (lib/how-long-setup-takes.ts). */
+  twoMinutes: (takes: string) => `Each check-in takes ${inASentence(takes)}.`,
   whenIEndIt: 'When I end it',
   untilYouEndIt: 'It keeps going until you end it. There is no last date.',
   whosInIt: 'Who’s in it',
@@ -144,7 +146,7 @@ export const THE_SETUP = {
 
 /* The product's one set of names for how often (lib/cadence.ts), in the prototype's order. */
 export const HOW_OFTEN: [Cadence, string][] = (['ONE_TIME', 'DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'SEQUENTIAL'] as Cadence[])
-  .map((c) => [c, cadenceLabel(c as never)])
+  .map((c) => [c, cadenceLabel(c as never, null)])
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -257,6 +259,8 @@ export function TheSetup(p: {
   daysPicker: React.ReactNode
   /** The check-in's name, as a field, drawn as the first block ("A name", new.txt). */
   nameField?: React.ReactNode
+  /** How long each check-in takes, as the server serves it (useACheckInTakes); nothing is said until it is. */
+  takes?: string | null
   /** Who is in it: the page's own people step, drawn as the last block. */
   people?: React.ReactNode
   /** One sentence above the people step, such as that nobody is added yet. */
@@ -301,8 +305,8 @@ export function TheSetup(p: {
         {!p.people && <Text size="14-5" ink="sub" as="p">{THE_SETUP.invitationsWhenItStarts}</Text>}
       </SetupBlock>
 
-      <SetupBlock heading={THE_SETUP.howOften} help={THE_SETUP.twoMinutes}>
-        {!p.cadenceChosen && <Text size="14-5" ink="amber" as="p">{THE_SETUP.notChosen(cadenceLabel(p.cadence as never))}</Text>}
+      <SetupBlock heading={THE_SETUP.howOften} help={p.takes ? THE_SETUP.twoMinutes(p.takes) : undefined}>
+        {!p.cadenceChosen && <Text size="14-5" ink="amber" as="p">{THE_SETUP.notChosen(cadenceLabel(p.cadence as never, (p as any).cadenceDays))}</Text>}
         <Choices
           label={THE_SETUP.howOften}
           options={HOW_OFTEN.map(([c, label]) => ({ key: c, label }))}

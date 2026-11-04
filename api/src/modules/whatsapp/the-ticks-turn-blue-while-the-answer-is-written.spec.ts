@@ -54,11 +54,11 @@ describe('the read receipt and the typing indicator', () => {
 
   it("uses the organisation's own number when that is where the message arrived", async () => {
     const fetchMock = ok();
-    const connection = { organizationId: 'org-1', enabled: true, phoneNumberId: 'their-number', accessToken: 'their-token', appSecret: 's' };
+    const connection = { organizationId: 'org-1', enabled: true, phoneNumberId: '222222222', accessToken: 'their-token', appSecret: 's', verifyToken: 'v', webhookVerifiedAt: new Date('2026-10-01') };
     await aService(fetchMock, connection).weAreReadingThis('wamid.DEF', 'org-1', 'theirs');
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toContain('/their-number/messages');
+    expect(url).toContain('/222222222/messages');
     expect(init.headers.Authorization).toBe('Bearer their-token');
   });
 
@@ -89,13 +89,19 @@ describe('where it is called from', () => {
     const redelivery = inbound.indexOf('firstTimeWeSeeThis');
     const doubleTap = inbound.indexOf('notTheSameWordsJustNow');
     const receipt = inbound.indexOf('weAreReadingThis');
-    const theWork = inbound.indexOf('await this.route(');
-
     expect(receipt).toBeGreaterThan(-1);
     expect(receipt).toBeGreaterThan(redelivery);
     expect(receipt).toBeGreaterThan(doubleTap);
-    /* And before the model is asked, which is the wait it exists to cover. */
-    expect(receipt).toBeLessThan(theWork);
+    /* Changed 3 November 2026 (Hafsah: a number nobody has linked is sent nothing back but the one reply). The receipt is handed to
+       the routing as `reading`, which calls it once the sender is known to be somebody's, and before the model is asked, which is
+       the wait it exists to cover. */
+    const route = inbound.slice(inbound.indexOf('private async route('));
+    const known = route.indexOf('if (!who.personId && !who.userId)');
+    const reading = route.indexOf('await out.reading?.();');
+    expect(known).toBeGreaterThan(-1);
+    expect(reading).toBeGreaterThan(known);
+    expect(reading).toBeLessThan(route.indexOf("if (arrived.kind === 'other')"));
+    expect(reading).toBeLessThan(route.indexOf('this.conversation.sendMessage('));
   });
 
   it('passes the number the message arrived on, rather than assuming ours', () => {

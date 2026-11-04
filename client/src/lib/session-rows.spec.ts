@@ -1,3 +1,4 @@
+import { aServedCount } from './a-served-count-for-a-spec'
 import { describe, it, expect } from 'vitest'
 import { buildSessionRows, isSessionShared } from './session-rows'
 
@@ -142,6 +143,11 @@ describe('buildSessionRows: somebody not let in yet is not counted', () => {
         { id: 'c8', participantId: 'p-amani', sessionNumber: 2, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-30T12:30:00.000Z' },
       ],
       roundCompletions: [],
+      /* As the server counts it: Faraji, held at the door and not answered, is not counted. */
+      theCount: aServedCount({
+        1: { on: ['p-rukia', 'p-baraka', 'p-amani', 'p-neema', 'p-colleague'], answered: ['p-rukia', 'p-baraka', 'p-amani', 'p-neema'], notLetIn: ['p-faraji'] },
+        2: { on: ['p-rukia', 'p-baraka', 'p-amani', 'p-neema', 'p-colleague'], answered: ['p-rukia', 'p-amani'], notLetIn: ['p-faraji'] },
+      }),
     }
     const rows = buildSessionRows(ground, 'u-rukia', labelInASentence)
     const session1 = rows.find((r) => r.sessionNumber === 1)
@@ -172,6 +178,8 @@ describe('buildSessionRows: a restricted roster, given the full one from the boa
       { id: 'c2', participantId: 'p-tobi', sessionNumber: 2, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-26T16:05:00.000Z' },
     ],
     roundCompletions: [{ sessionNumber: 1, completedAt: '2026-09-26T16:01:40.000Z' }],
+    /* The server counts the whole check-in, whichever rows this reader was sent: both answered session 1, Tobi session 2. */
+    theCount: aServedCount({ 1: { on: ['p-tobi', 'p-director'], answered: ['p-tobi', 'p-director'] }, 2: { on: ['p-tobi', 'p-director'], answered: ['p-tobi'] } }),
   }
   const fullParticipants = [
     { id: 'p-tobi', managingOnly: false },
@@ -186,22 +194,23 @@ describe('buildSessionRows: a restricted roster, given the full one from the boa
     expect(session1?.total).toBe(2)
   })
 
-  it('draws no count for a restricted, still-open round', () => {
+  /* CHANGED 2 NOVEMBER 2026: the count is the server's (answeredBySession), so a still-open round's count is known, not guessed or
+     left out, and it no longer depends on which list of people this page was sent. */
+  it('reads "1 of 2" for a still-open round, from the server\'s count', () => {
     const rows = buildSessionRows(restrictedGround, 'u-tobi', labelInASentence, fullParticipants)
     const session2 = rows.find((r) => r.sessionNumber === 2)
     expect(session2?.closed).toBe(false)
-    expect(session2?.answered).toBeNull()
+    expect(session2?.answered).toBe(1)
     expect(session2?.total).toBe(2)
+    expect(session2?.waitingOn).toEqual(['a colleague'])
   })
 
-  it('behaves exactly as before when fullParticipants is not passed', () => {
+  it('reads the same count when the board\'s roster is not passed, and never "1 of 1"', () => {
     const rows = buildSessionRows(restrictedGround, 'u-tobi', labelInASentence)
     const session1 = rows.find((r) => r.sessionNumber === 1)
     const session2 = rows.find((r) => r.sessionNumber === 2)
-    expect(session1?.answered).toBe(1)
-    expect(session1?.total).toBe(1)
-    expect(session2?.answered).toBe(1)
-    expect(session2?.total).toBe(1)
+    expect([session1?.answered, session1?.total]).toEqual([2, 2])
+    expect([session2?.answered, session2?.total]).toEqual([1, 2])
   })
 })
 
@@ -210,7 +219,7 @@ describe('buildSessionRows: a restricted roster, given the full one from the boa
  * YET CHECKED IN", FOR THE SAME SESSION.
  *
  * Tendai joined the check-in after session 1 had already run. The server's own grid
- * (checkInGrid.rows[].cells) correctly says he is not on session 1 ("na"); `whoIsInRound` alone,
+ * (checkInGrid.rows[].cells) correctly says he is not on session 1 ("na"); the served count alone,
  * with no notion of when somebody joined, still counted him as somebody session 1's own round was
  * waiting on. `onSessionFromGrid`, built from that same grid, is what tells `buildSessionRows` the
  * true answer.
@@ -229,6 +238,8 @@ describe('buildSessionRows: agrees with the board’s own grid about who joined 
       { id: 'c3', participantId: 'p-tendai', sessionNumber: 2, status: 'NOT_STARTED', isSetup: false, completedAt: null },
     ],
     roundCompletions: [],
+    /* As the server counts it, which does not know when somebody joined: Tendai is counted on both sessions. */
+    theCount: aServedCount({ 1: { on: ['p-amani', 'p-tendai'], answered: ['p-amani'] }, 2: { on: ['p-amani', 'p-tendai'], answered: ['p-amani'] } }),
   }
   /* The server's own grid: Tendai is "na" on session 1 (never on it), and waiting on session 2. */
   const onSessionFromGrid = new Map<string, Set<number>>([
@@ -250,5 +261,25 @@ describe('buildSessionRows: agrees with the board’s own grid about who joined 
     expect(session1?.total).toBe(1)
     expect(session2?.waitingOn).toContain('Tendai Moyo')
     expect(session2?.total).toBe(2)
+  })
+})
+
+/* Screen match, 16 October: the board's roster also lists somebody an admin has not let in yet, whom the lead's own ground
+   leaves out (decision 77). That is not a restricted read: the lead's own count stays. */
+describe('buildSessionRows: a roster that is longer only by somebody not let in yet', () => {
+  it('still counts who has checked in, for the lead', () => {
+    const ground = {
+      participants: [
+        { id: 'p-w', userId: 'u-w', name: 'Wairimu', managingOnly: true },
+        { id: 'p-a', userId: 'u-a', name: 'Aisha', managingOnly: false },
+        { id: 'p-b', userId: 'u-b', name: 'Brian', managingOnly: false },
+      ],
+      checkIns: [{ id: 'c1', participantId: 'p-a', sessionNumber: 38, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-23T14:00:00.000Z' }],
+      roundCompletions: [],
+      theCount: aServedCount({ 38: { on: ['p-a', 'p-b'], answered: ['p-a'] } }),
+    }
+    const full = [...ground.participants, { id: 'p-peter', managingOnly: false }]
+    const row = buildSessionRows(ground, 'u-w', (p: any) => p.name ?? 'a colleague', full).find((r) => r.sessionNumber === 38)
+    expect(row?.answered).toBe(1)
   })
 })

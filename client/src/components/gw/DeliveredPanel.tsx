@@ -87,7 +87,7 @@ export function DeliveredPanel({
         participant with no way at all to say what they did.
       */}
       <details open={deliveries.length === 0} style={{ marginBottom: 14 }}>
-        <summary style={{ cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', listStyle: 'revert', marginBottom: 10 }}>
+        <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', listStyle: 'revert', marginBottom: 10 }}>
           Say what you delivered
         </summary>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
@@ -95,7 +95,8 @@ export function DeliveredPanel({
           <select
             value={against}
             onChange={e => setAgainst(e.target.value)}
-            style={{ padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', color: against ? 'var(--gw-text)' : 'var(--gw-muted)', background: 'white' }}
+            className="gwui-input"
+            style={{ width: 'auto', maxWidth: '100%', color: against ? 'var(--gw-text)' : 'var(--gw-muted)' }}
           >
             {/* Work nobody asked for belongs here too. It is exactly the contribution a report
                 built only from stated expectations cannot see. */}
@@ -105,24 +106,22 @@ export function DeliveredPanel({
             ))}
           </select>
         )}
-        <textarea
+        <textarea className="gwui-input"
           value={text}
           onChange={e => setText(e.target.value)}
           placeholder="What you did"
           rows={2}
-          style={{ padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', outline: 'none', resize: 'vertical' }}
+          style={{ resize: 'vertical' }}
         />
-        <input
+        <input className="gwui-input"
           value={evidence}
           onChange={e => setEvidence(e.target.value)}
           placeholder="Where someone can see it, for example a link, a document or a date"
-          style={{ padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
         />
         <div>
-          <button
+          <button className="btn pri sm"
             onClick={() => add.mutate()}
             disabled={!text.trim() || add.isPending}
-            style={{ padding: '9px 15px', borderRadius: 7, background: text.trim() ? 'var(--gw-navy)' : 'var(--gw-border)', color: text.trim() ? 'white' : 'var(--gw-muted)', border: 'none', cursor: text.trim() ? 'pointer' : 'default', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit' }}
           >
             {add.isPending ? 'Saving…' : 'Add it'}
           </button>
@@ -140,7 +139,7 @@ export function DeliveredPanel({
                 Against: {expectation}
               </div>
             )}
-            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{d.text}</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px' }}>{d.text}</div>
             {/*
               THE MISSING EVIDENCE IS NAMED, not left blank. A blank line reads as "fine"; the
               session is going to press on exactly this, so saying so here is fairer than the
@@ -158,7 +157,7 @@ export function DeliveredPanel({
               {!raised && (
                 <button
                   onClick={() => remove.mutate(d.id)}
-                  style={{ fontSize: 11.5, color: 'var(--gw-red-t)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                  style={{ fontSize: 12, color: 'var(--gw-red-t)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   Take it back
                 </button>
@@ -174,7 +173,7 @@ export function DeliveredPanel({
         sentence that makes this safe to use, and it belongs where the design puts it: under the
         thing it is about, in one line.
       */}
-      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 9 }}>
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', marginTop: 9 }}>
         This goes to your next check-in, which will ask you about it. What you say when it does
         is what becomes the record.
       </div>

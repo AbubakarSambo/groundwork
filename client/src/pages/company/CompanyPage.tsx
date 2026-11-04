@@ -1,3 +1,6 @@
+import { Link } from 'react-router-dom'
+import { directionApi } from '@/api/direction'
+import { policyApi } from '@/api/policy'
 import { useQuery } from '@tanstack/react-query'
 import { companyApi, type CompanyPage as Page, type CompanyPriority, type CompanyLevel } from '@/api/company'
 import { useAuthStore } from '@/stores/auth'
@@ -51,10 +54,17 @@ export function CompanyPage() {
   })
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
   const name = data?.name || user?.organizationName || 'Company'
+  const directionOn = useQuery({ queryKey: ['direction'], queryFn: directionApi.read, retry: false, staleTime: 60_000 }).data?.on === true
+  const policyOn = useQuery({ queryKey: ['policy'], queryFn: policyApi.board, retry: false, staleTime: 60_000 }).data?.on === true
 
   return (
     <PageFrame>
       <PageTitle title={name} />
+      {/* Release 6: the way to the company's direction, only where direction is switched on (the server says). */}
+      {/* Each on its own line (fix plan, pattern 8): side by side they ran into one, "...for each teamThe policy board...". */}
+      {directionOn && <p className="t-small gw-start"><Link to="/direction">The company’s direction, and what it means for each team</Link></p>}
+      {/* Release 9: the policy board, only where it is switched on (the server says). */}
+      {policyOn && <p className="t-small gw-start"><Link to="/policies">The policy board, every rule the organisation runs on</Link></p>}
 
       {isLoading && <Note>Loading…</Note>}
       {isError && (
@@ -103,7 +113,7 @@ function ThePage({ p }: { p: Page }) {
     <>
       <Section heading="Is the strategy moving?">
         {!p.priorities?.length ? (
-          <Empty>No priorities have come in from your organisation’s own systems yet.</Empty>
+          <Empty>No priorities yet.</Empty>
         ) : (
           <div className="gwui-cards-3">
             {p.priorities.map(pr => <Priority key={pr.id} pr={pr} />)}
@@ -128,8 +138,8 @@ function ThePage({ p }: { p: Page }) {
         <Section heading="Named by more than one team" note="Nobody on a single team would see this">
           {p.namedByTeams.map(n => (
             <Panel as="section" key={n.id} aria-label={n.title}>
-              <div className="gwui-section-h">
-                <h3 className="gwui-panel-heading">{n.title}</h3>
+              <div className="sec-h">
+                <h3 className="t-h3">{n.title}</h3>
                 {n.touches && <span className="gwui-ink-sub">{n.touches}</span>}
               </div>
               <div className="gwui-cards-3">
@@ -185,7 +195,7 @@ function Priority({ pr }: { pr: CompanyPriority }) {
         <span className="gwui-note">Priority {pr.number}</span>
         {tag && <Tag tone="attention">{tag}</Tag>}
       </div>
-      <h3 className="gwui-panel-heading">{pr.title}</h3>
+      <h3 className="t-h3">{pr.title}</h3>
       {pr.reading?.says && <p className="gwui-panel-text">{pr.reading.says}</p>}
       {pr.staleSays && <p className="gwui-panel-text-muted">{pr.staleSays}</p>}
       {pr.fedBy && <p className="gwui-panel-text-muted">{pr.fedBy}</p>}

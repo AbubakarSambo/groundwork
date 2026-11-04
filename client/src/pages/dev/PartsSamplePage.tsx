@@ -64,7 +64,7 @@ export default function PartsSamplePage() {
           items={[
             { key: 'board', label: 'Board' },
             { key: 'checkin', label: 'Check-in' },
-            { key: 'context', label: 'Context and resources' },
+            { key: 'context', label: 'References and resources' },
             { key: 'mywork', label: 'My work' },
             { key: 'people', label: 'People and setup' },
           ]}
@@ -239,7 +239,7 @@ export default function PartsSamplePage() {
       </Section>
 
       <Section heading="Note and empty" note="a plain sentence, or a locked door">
-        <Note>A quiet note under a heading, 13.5px.</Note>
+        <Note>A quiet note under a heading, 14px.</Note>
         <div style={{ height: 10 }} />
         <Empty>None</Empty>
         <div style={{ height: 14 }} />

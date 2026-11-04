@@ -83,7 +83,7 @@ describe('the chat is here at all', () => {
     const init = CODE.slice(CODE.indexOf('const [tab, setTab] = useState<Tab>'), CODE.indexOf('const goTab'))
     expect(init).toMatch(/searchParams\.get\('tab'\)/)
     expect(init).toMatch(/\?\? 'chat'|: 'chat'/)
-    expect(groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: true })[0].key).toBe('chat')
+    expect(groundTabs({ canRunThisCheckIn: true, isAParty: true })[0].key).toBe('chat')
   })
 
   it('the session list keeps its own tab rather than being replaced', () => {
@@ -97,8 +97,8 @@ describe('the chat is here at all', () => {
      */
     expect(CODE).toMatch(/tab === 'checkins'/)
     /* A lead who is also a party sees both: everyone's state, and their own account. */
-    expect(groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: true }).some(t => t.key === 'sessions')).toBe(true)
-    expect(groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: true }).some(t => t.key === 'record')).toBe(true)
+    expect(groundTabs({ canRunThisCheckIn: true, isAParty: true }).some(t => t.key === 'sessions')).toBe(true)
+    expect(groundTabs({ canRunThisCheckIn: true, isAParty: true }).some(t => t.key === 'record')).toBe(true)
   })
 })
 

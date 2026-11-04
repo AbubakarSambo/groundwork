@@ -47,6 +47,8 @@ const A_PARTICIPANTS_FIELDS = new Set([
   'risks', 'workPlan', 'timeline', 'personHistory', 'blockerCheck', 'evidenceIndex', 'obligations', 'whoWaitedOnWhom', 'contradictions',
   'whoOwnsWhat', 'contribution', 'patterns', 'workRecords', 'objectives', 'yourShare', 'blockers', 'dependencies', 'stillUnanswered',
   'coverage', 'teamPicture', 'byArea', 'reportedAgainstCriteria',
+  /* Whether the organisation has Release 1's sales board on: an organisation's switch, about nobody (Hafsah's point 6, 17 October). */
+  'releaseOneSalesBoard',
   /* Only once the team's picture is shared. */
   'divergence', 'whatTheAnswersSay', 'whatTheRoomIsAbout', 'whatTheRoomIsAboutNote', 'quickRead', 'forecast',
 ]);
@@ -60,7 +62,8 @@ describe('Femi, who checks in, where people see each other, before the team pict
 
   it('reads his own share, and the team\'s aim, and never Kwame\'s number', async () => {
     const b = await boardAs(RUN, ...FEMI);
-    expect(b.yourShare.map((s: any) => s.whoSees)).toEqual(['Only you and Bisi Adeyemi see your share.']);
+    /* Changed 4 November 2026 (release batch 1): no note about who else sees the share. */
+    expect(b.yourShare.map((s: any) => s.whoSees)).toEqual([undefined]);
     expect(b.objectives.map((o: any) => o.id).sort()).toEqual(['o-femi', 'o-team']);
     expect(allButThePeople(b)).not.toMatch(/Jos Grain|Plateau Foods|o-kwame/);
   });

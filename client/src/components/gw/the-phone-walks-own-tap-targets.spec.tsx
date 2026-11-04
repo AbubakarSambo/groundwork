@@ -11,7 +11,7 @@ import { TheCheckInHeader } from './TheCheckInHeader'
  *
  * Each of these drew correctly but could not be reliably tapped with a finger at 375-390px: the
  * check-ins list's own title link (25px), the report header's breadcrumb (16px) and its tabs
- * (32px), and People's "Open" link (34x22). Each now carries the shared 40px floor - `.gwui-tap-40`
+ * (32px), and People's "Open" link (34x22). Each now carries the shared 40px floor - `.gwui-tap-44`
  * where the call site can take a class, or the same technique added to the shared class itself
  * (`.gwui-open-link`, `.gwui-ci-tab`) where every caller already uses it unchanged. jsdom does not
  * lay out real pixels, so these are checked as class membership plus the CSS rule that gives that
@@ -32,7 +32,7 @@ describe('the check-ins list row title', () => {
         <CheckInRow to="/grounds/g1" name="Sales team, Q3" forWhat="OKRs" stands="Session 1" />
       </tbody></table>,
     )
-    expect(screen.getByRole('link', { name: 'Sales team, Q3' }).className).toContain('gwui-tap-40')
+    expect(screen.getByRole('link', { name: 'Sales team, Q3' }).className).toContain('gwui-tap-44')
   })
 })
 
@@ -43,25 +43,27 @@ describe('the check-in header', () => {
         id="g1" title="Sales team, Q3" canRunThisCheckIn isAParty active="chat"
       />,
     )
-    expect(screen.getByRole('link', { name: 'Check-ins' }).className).toContain('gwui-tap-40')
+    expect(screen.getByRole('link', { name: 'Check-ins' }).className).toContain('gwui-tap-44')
   })
 
-  it('.gwui-ci-tab carries a 40px floor on a phone in index.css', () => {
+  /* 44px at every width since 21 October: Hafsah's 44px rule covers links and tabs, not only buttons. */
+  it('.gwui-ci-tab carries a 44px floor in index.css', () => {
     const rule = INDEX_CSS.slice(INDEX_CSS.indexOf('.gwui-ci-tab {'))
-    expect(rule.slice(0, 700)).toContain('min-height: 40px')
+    expect(rule.slice(0, 700)).toContain('min-height: 44px')
   })
 })
 
 describe('People\'s "Open" link (.gwui-open-link)', () => {
-  it('carries a 40px floor on a phone in gw-ui.css', () => {
+  it('carries a 44px floor in gw-ui.css (21 October: links in lists are held to 44px too)', () => {
     const rule = GW_UI_CSS.slice(GW_UI_CSS.indexOf('.gwui-open-link {'))
-    expect(rule.slice(0, 700)).toContain('min-height: 40px')
+    expect(rule.slice(0, 900)).toContain('min-height: 44px')
   })
 })
 
 describe('the suites toggle and the feedback trigger (already fixed, proven here so nobody re-breaks them)', () => {
-  it('the toggle already answers 40px tall on a phone, past its own visible pill', () => {
-    expect(GW_UI_CSS).toContain('.gwui-toggle::after { content: \'\'; position: absolute; inset: -6px; }')
+  /* Since 21 October the switch answers 44px tall at every width, through the shared tap target in gw-ui.css. */
+  it('the toggle answers 44px tall, past its own visible pill', () => {
+    expect(GW_UI_CSS).toMatch(/\.gwui-toggle::after,[^{]*\{\s*content: ''; position: absolute; left: 0; right: 0; top: 50%; height: max\(100%, 44px\);/)
   })
 
   it('the page reserves room at the foot so the feedback trigger never covers the last line', () => {

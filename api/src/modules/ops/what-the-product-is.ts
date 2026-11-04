@@ -1,3 +1,5 @@
+import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
+
 /**
  * WHAT THIS PRODUCT IS, AND WHAT IT IS NOT.
  *
@@ -29,7 +31,7 @@ export const WHAT_WE_SAY_WE_ARE: ProductStatement = {
   isIt: [
     'Opened at a specific moment',
     'Closed when that moment resolves',
-    'Six to twelve check-ins a quarter, ten minutes each',
+    `Six to twelve check-ins a quarter, ${ABOUT_HOW_LONG} each`,
     'Private accounts, compared',
   ],
   isNotIt: [

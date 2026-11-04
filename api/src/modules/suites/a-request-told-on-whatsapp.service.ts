@@ -1,3 +1,5 @@
+import { whatsAppCouldNotTakeIt } from '../whatsapp/by-email-instead';
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -62,11 +64,17 @@ export class ARequestToldOnWhatsApp {
     for (const userId of approverUserIds) {
       try {
         const to = await this.reach(organizationId, userId);
-        if (!to.phone) continue;
         const said = aRequestIsWaiting(to.firstName, request.firstName, request.what);
-        const sent = await this.whatsapp.sendFor(organizationId, to.phone, said.text, { kind: said.kind, params: said.params });
+        const sent = to.phone ? await this.whatsapp.sendFor(organizationId, to.phone, said.text, { kind: said.kind, params: said.params }) : null;
         /* One record of who did what (decision 85, build step 5): told, only when it went. */
         if (sent?.sent) await recordIt(this.prisma, { organizationId, suite: SUITE_OF_A_REQUEST[request.kind], ref: request.ref, kind: 'told', toUserId: userId, basis: { message: said.kind } });
+        /*
+         * WHEN WHATSAPP CANNOT TAKE IT, BY EMAIL, STRAIGHT AWAY (Hafsah, 25 October: finance approvals must work every time). No number,
+         * a first message before Meta approves the first-contact template, outside the 24 hours with no template, or Meta refusing it:
+         * the approver is emailed now, and it is recorded as told, so the morning summary does not say it again. A STOP or "Not now" is
+         * the person's own word and is not overridden.
+         */
+        else if (!to.phone || whatsAppCouldNotTakeIt(sent?.error ?? null)) await this.emailOneRequest(organizationId, userId, to.firstName, said.text, request);
       } catch (err: any) {
         this.logger.warn(`Could not tell an approver about a ${request.kind} request: ${err?.message}`);
       }
@@ -103,6 +111,16 @@ export class ARequestToldOnWhatsApp {
    * the person's quiet hours, on leave, or when they said "Not now": the next morning tries again.
    * Each request it covers is recorded as told, so the next summary is only of what has not been said yet.
    */
+  /** One waiting request, by email, now. Recorded as told so the morning summary does not repeat it. */
+  private async emailOneRequest(organizationId: string, userId: string, firstName: string | null, text: string, request: AWaitingRequest): Promise<void> {
+    if (!this.mailer) return;
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, deletedAt: true } }).catch(() => null);
+    if (!user?.email || user.deletedAt) return;
+    const base = (this.config?.get<string>('resend.frontendUrl') || '').replace(/\/$/, '');
+    await this.mailer.sendApprovalsSummary(user.email, `${request.firstName} is waiting for you`, firstName ? `Hi ${firstName},` : 'Hello,', text.replace(/^Hi [^,]+, /, ''), `${base}/today`);
+    await recordIt(this.prisma, { organizationId, suite: SUITE_OF_A_REQUEST[request.kind], ref: request.ref, kind: 'told', toUserId: userId, basis: { message: 'request-waiting:email' } });
+  }
+
   async summarise(
     organizationId: string, userId: string,
     mine: { counts: { all: number; leave: number; spend: number; pastTheDeadline: number }; refs: { suite: 'leave' | 'spend'; id: string }[]; oldestWorkingDays: number },
@@ -112,9 +130,9 @@ export class ARequestToldOnWhatsApp {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, firstName: true, deletedAt: true } }).catch(() => null);
     if (!user || user.deletedAt) return 'nothing';
     if (fallsInLeave(now, await theirApprovedLeave(this.prisma, userId, organizationId))) return 'held';
-    /* Quiet hours are where the person is: their own time zone when the directory has one, Lagos otherwise (decision 83). */
+    /* Quiet hours are where the person is: their own time zone when the directory has one (decision 83), else the organisation's (release plan Part 0). */
     const reach = await this.reach(organizationId, userId);
-    if (itIsQuietNow(now, reach.timezone)) return 'held';
+    if (itIsQuietNow(now, reach.timezone ?? (await theOrganisationsZone(this.prisma as any, organizationId).catch(() => null)))) return 'held';
     /* Only what has not been said to this person yet. */
     const told = await this.prisma.suiteEvent.findMany({ where: { organizationId, kind: 'told', toUserId: userId, ref: { in: mine.refs.map((r) => r.id) } }, select: { ref: true } }).catch(() => []);
     const said = new Set((told ?? []).map((t) => t.ref));
@@ -165,8 +183,8 @@ export class ARequestToldOnWhatsApp {
    * Tell the person what was decided about their own request, and by whom. True when it went. A reason
    * given with a decline is said inside the 24 hours (decision 85, build step 7): "Hi Aisha, your request
    * for leave on Monday 5 October was declined by Wairimu. Wairimu said, “Sales is two short that day.”
-   * Open Groundwork to read it." Outside them the approved template goes as before, and the reason is
-   * read in the app.
+   * Open Groundwork to read it." Outside them, the template with the reason goes (request-decided-with-reason, round 1, 25 October),
+   * so the reason reaches them either way; an approval with a note says it too.
    */
   async decided(organizationId: string, request: AWaitingRequest, outcome: 'approved' | 'declined', deciderUserId: string, reason?: string | null): Promise<boolean> {
     if (!request.personUserId) return false;
@@ -186,10 +204,9 @@ export class ARequestToldOnWhatsApp {
       const person = await this.prisma.user.findUnique({ where: { id: request.personUserId }, select: { email: true, firstName: true, deletedAt: true } });
       if (!person || person.deletedAt) return;
       const decider = await this.prisma.user.findUnique({ where: { id: deciderUserId }, select: { firstName: true } }).catch(() => null);
-      const said = aRequestWasDecided(person.firstName?.trim() || request.firstName, request.what, outcome, decider?.firstName);
-      const sentence = outcome === 'declined' && reason?.trim()
-        ? said.text.replace(/ Open Groundwork to read it\.$/, ` ${aReasonSaid(decider?.firstName?.trim() || 'They', reason)} Open Groundwork to read it.`)
-        : said.text;
+      /* The reason, whenever one was given, approved or declined (round 1, 25 October). */
+      const said = aRequestWasDecided(person.firstName?.trim() || request.firstName, request.what, outcome, decider?.firstName, reason?.trim() ? aReasonSaid(decider?.firstName?.trim() || 'They', reason) : null);
+      const sentence = said.text;
       await this.mailer.sendRequestDecided(person.email, sentence, request.what, outcome);
       await recordIt(this.prisma, { organizationId, suite: SUITE_OF_A_REQUEST[request.kind], ref: request.ref, kind: 'told', toUserId: request.personUserId, basis: { message: `${said.kind}:email` } });
     } catch (err: any) {
@@ -203,10 +220,9 @@ export class ARequestToldOnWhatsApp {
       const to = await this.reach(organizationId, request.personUserId);
       if (!to.phone) return false;
       const decider = await this.prisma.user.findUnique({ where: { id: deciderUserId }, select: { firstName: true } }).catch(() => null);
-      const said = aRequestWasDecided(to.firstName ?? request.firstName, request.what, outcome, decider?.firstName);
-      const withReason = outcome === 'declined' && reason?.trim()
-        ? said.text.replace(/ Open Groundwork to read it\.$/, ` ${aReasonSaid(decider?.firstName?.trim() || 'They', reason)} Open Groundwork to read it.`)
-        : said.text;
+      /* The reason, whenever one was given, in the words and in the template, so it is said inside the 24 hours and outside them (round 1, 25 October). */
+      const said = aRequestWasDecided(to.firstName ?? request.firstName, request.what, outcome, decider?.firstName, reason?.trim() ? aReasonSaid(decider?.firstName?.trim() || 'They', reason) : null);
+      const withReason = said.text;
       const sent = (await this.whatsapp.sendFor(organizationId, to.phone, withReason, { kind: said.kind, params: said.params })).sent;
       /* One record of who did what (decision 85, build step 5): told, only when it went. */
       if (sent) await recordIt(this.prisma, { organizationId, suite: SUITE_OF_A_REQUEST[request.kind], ref: request.ref, kind: 'told', toUserId: request.personUserId, basis: { message: said.kind } });

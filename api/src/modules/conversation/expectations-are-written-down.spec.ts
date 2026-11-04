@@ -56,7 +56,6 @@ function makeService(over: {
   };
   const anthropic: any = {
     extract: jest.fn(async () => over.extraction ?? {
-      groundAims: [{ name: 'He owns delivery end to end in 90 days', target: 90 }],
       expectations: [{ personName: 'Abubakar', expectation: 'Own the weekly delivery call by week four', awareness: 'NOT_TOLD', awarenessDetail: 'I assumed Hafsah covered it' }],
     }),
   };
@@ -66,6 +65,9 @@ function makeService(over: {
   );
   return { svc, prisma, upsert, createMany, anthropic };
 }
+
+/* The aims are read by the lead's assessment now (one source, 2 November 2026) and kept by the one writer of the team's aims. */
+const herAimKept = (svc: any) => svc.keepTheTeamsAims('g1', 'lead', [{ name: 'He owns delivery end to end in 90 days', target: 90 }], ['I expect Abubakar to own the weekly call, and delivery end to end in 90 days.']);
 
 describe('GW-EXP-1b: the lead sets expectations OF people; a person records their own', () => {
   /*
@@ -139,14 +141,14 @@ describe('GW-EXP-1b: what gets written', () => {
 
   it('the check-in’s own aims fill the other empty table', async () => {
     const { svc, createMany } = makeService();
-    await svc.extractExpectations('c1', 'lead', 'g1');
+    await herAimKept(svc);
     expect(createMany).toHaveBeenCalled();
     expect((createMany.mock.calls[0][0] as any).data[0].name).toBe('He owns delivery end to end in 90 days');
   });
 
   it('with the number they said, which used to be thrown away', async () => {
     const { svc, createMany } = makeService();
-    await svc.extractExpectations('c1', 'lead', 'g1');
+    await herAimKept(svc);
     expect((createMany.mock.calls[0][0] as any).data[0].target).toBe(90);
   });
 
@@ -158,14 +160,14 @@ describe('GW-EXP-1b: what gets written', () => {
      */
     const { svc, prisma, createMany } = makeService();
     prisma.groundObjective.findMany = jest.fn(async () => [{ name: 'He owns delivery end to end in 90 days' }] as any[]);
-    await svc.extractExpectations('c1', 'lead', 'g1');
+    await herAimKept(svc);
     expect(createMany).not.toHaveBeenCalled();
   });
 
   it('but does write a new one alongside aims that already exist', async () => {
     const { svc, prisma, createMany } = makeService();
     prisma.groundObjective.findMany = jest.fn(async () => [{ name: 'Something else entirely' }] as any[]);
-    await svc.extractExpectations('c1', 'lead', 'g1');
+    await herAimKept(svc);
     expect(createMany).toHaveBeenCalled();
     expect((createMany.mock.calls[0][0] as any).data[0].name).toBe('He owns delivery end to end in 90 days');
   });
@@ -239,11 +241,8 @@ describe('GW-EXP-4: changed words are unseen words', () => {
 describe('a target the person never said is not written', () => {
   it('keeps the aim and drops the number', async () => {
     /* Run 4, 20 Sep 2026: "50kg bags" became a N50m target. */
-    const { svc, prisma, createMany } = makeService({
-      extraction: { groundAims: [{ name: 'N50m in sales to the northern dealers', target: 50_000_000 }], expectations: [] },
-    });
-    prisma.conversationTurn.findMany = jest.fn(async () => [{ role: TurnRole.PERSON, content: 'We moved about 50kg bags to the northern dealers.' }]);
-    await svc.extractExpectations('c1', 'lead', 'g1');
+    const { svc, createMany } = makeService();
+    await svc.keepTheTeamsAims('g1', 'lead', [{ name: 'N50m in sales to the northern dealers', target: 50_000_000 }], ['We moved about 50kg bags to the northern dealers.']);
     const written = (createMany.mock.calls[0]?.[0] as any)?.data?.[0];
     expect(written?.name).toBe('N50m in sales to the northern dealers');
     expect(written?.target).toBeNull();

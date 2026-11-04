@@ -123,7 +123,7 @@ describe('how a reference comes to exist at all', () => {
  */
 describe('what an update is allowed to destroy', () => {
   const extract = (() => {
-    const i = EXTRACT.indexOf('async extractExpectations(');
+    const i = EXTRACT.indexOf('private async readTheAimsAndExpectations(');
     return EXTRACT.slice(i, EXTRACT.indexOf('\n  }\n', i));
   })();
 

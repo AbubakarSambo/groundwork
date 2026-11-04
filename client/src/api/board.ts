@@ -154,6 +154,10 @@ export type TheBoardAtAGlance = {
 
 export type BoardPresent = {
   groundId: string
+  /** The collections board (Release 2), only where the switchboard picks it; walled and worded by the server. */
+  collections?: import('@/lib/collect-whats-owed').TheCollectionsBoard
+  /** The matter board (Release 2), only where the switchboard picks it; walled and worded by the server. */
+  matter?: import('@/lib/collect-whats-owed').TheMatterBoard
   atAGlance?: TheBoardAtAGlance | null
   renders: true
   withheldUntilYouCheckIn?: false
@@ -191,14 +195,22 @@ export type BoardPresent = {
    * server's own "Your own report is ready now.", or null when this reader has no report yet) while
    * it has not. Present only on a participant's own narrowed board - absent for the lead.
    */
-  teamPicture?: { shared: true } | { shared: false; says: string; yourOwnReport: string | null }
+  /** `forDay` and `yourReportFor`: the day the reports are for, where it is not today (quality pass, 18 October, R-1). */
+  teamPicture?: { shared: true; forDay?: string; yourReportFor?: string } | { shared: false; says: string; yourOwnReport: string | null; forDay?: string; yourReportFor?: string }
   /**
    * "YOUR SHARE" (request 107 c; board-as-participant.txt: "4 of your 5 sales so far; 3 paid. Only
    * you and Wairimu see your share."). Only this reader's own targets with a number set, each
    * already said as a full sentence (`says`) and already ending in who else may see it (`whoSees`).
    * Present only for a participant who owns at least one such target.
    */
-  yourShare?: { objectiveId: string; says: string; whoSees: string }[]
+  /** `whoSees` is left out where the direct morning is on: no note about who else sees it. */
+  yourShare?: { objectiveId: string; says: string; whoSees?: string }[]
+  /** RELEASE 4, the lead and an admin: under each team target, each person's own target of the same name ("4 of 40"). */
+  eachPersonsOwn?: { objectiveId: string; people: { participantId: string; name: string; says: string }[] }[]
+  /** RELEASE 4, the lead and an admin: where the team's figure and the people's own figures do not add up, said from the record. */
+  whyTheNumbersDoNotMatch?: { objectiveId: string; says: string }[]
+  /** RELEASE 4: the template the lead attached, or null. */
+  template?: import('./grounds').ATemplate | null
   /**
    * REQUEST 110 (a): the sentence to show beside an empty `yourShare` ("There is no number of yours
    * on this board yet, so there is no share to show."). Sent only when `yourShare` is `[]`.
@@ -463,12 +475,6 @@ export type BoardPresent = {
    */
   kindsOffered?: KindOfWork[]
   /**
-   * ANCHOR PIECE 24/25: whether a new anchor check-in can be started (`release.anchorScenario`).
-   * Off at release, so nothing drawn from it shows. Serves no other change to this board's own
-   * sections - only "Groundwork recommends" (BoardPage.tsx) reads it, and only for the lead.
-   */
-  anchorScenarioOn?: boolean
-  /**
    * ANCHOR PIECE 30/31, THE "ACTIVE" LINE (section 26; docs/answers-from-engine.md, "Request 149
    * (4 of 6)", `TheActiveLine`). Groundwork manages engagement itself, and the lead sees a status
    * line of its own words, for example "18/20 active · Groundwork has nudged the remaining 2."
@@ -477,11 +483,12 @@ export type BoardPresent = {
    * rebuilt from `active`/`total`/`nudged` on this side.
    */
   activeLine?: TheActiveLine
+  /** "Your full report is ready in a moment." Served to the lead only, while setup's report is still being written after the save. */
+  fullReportComing?: string
   /**
    * ANCHOR PIECES 12/13/20, THE MONTH BOARD, "Are we moving together?" (section 24;
    * docs/answers-from-engine.md, "Request 149 (5 of 6)", `TheMonthBoard`). Lead only: this is the
-   * lead's own board, served only to whoever runs this check-in, only while `anchorScenarioOn` is
-   * served true (see BoardPage.tsx, `theMonthBoardForTheLead`) - absent otherwise, and the section
+   * lead's own board, served only to whoever runs this check-in, (see BoardPage.tsx, `theMonthBoardForTheLead`) - absent otherwise, and the section
    * draws nothing then.
    */
   theMonthBoard?: TheMonthBoard
@@ -568,7 +575,13 @@ export type BoardPresent = {
   }
   /** What the person who runs the check-in needs to do. At most 10, for that reader only. */
   /** `action` is sent to the lead alone - see `AnAction`. */
-  leadActions?: { id: string; says: string; because: string | null; action?: AnAction }[]
+  /**
+   * `decision`, to the lead alone, where a wait on the lead is answered by a yes or a no ("Decide whether to agree to the
+   * KES 4,500 price for Juja Hardware"), with who asked and when; its `action` then carries "Yes, agree to it" and "No".
+   */
+  leadActions?: { id: string; says: string; because: string | null; decision?: { question: string; asked?: string; why: string; afterwards?: string }; action?: AnAction }[]
+  /** Each deal at the stall rule, grouped by whose it is, to the lead alone: "Mama Pima Stores has not answered Joseph since 12 October", "Ask Joseph". */
+  atTheStallRule?: { participantId: string; name: string; deals: string[]; title: string; detail: string; ask: string }[]
   /** MISSED CHECK-INS (decision 136), to the lead of this check-in alone: the whole line, already worded, with the reason the person gave and the next step suggested inside it. */
   missedCheckIns?: { participantId: string; name: string; text: string; reason: string | null; suggestion: string | null }[]
   /** What each side promised, and what somebody here still waits on that side for. One per person, then each outside party named. */
@@ -728,6 +741,8 @@ export type BoardPresent = {
     gap: number
     aim: string
     says: string
+    /** "To close the gap, two of these three", counted by what each deal holds in the aim's measure; null where none is needed. */
+    heading?: string | null
     deals: { id: string; name: string; owner: string | null; says: string }[]
   } | null
 
@@ -818,6 +833,9 @@ export type BoardPresent = {
     state: 'filled' | 'not-known'
     says?: string
     why?: string
+    /** Who each person is in the lead's own words, served to the lead alone. */
+    note?: string
+    groups?: { group: string; count: number; answered: number; says: string }[]
   }
 
   /**
@@ -861,8 +879,9 @@ export type BoardPresent = {
 
 export type BoardResponse = BoardAbsent | BoardWithheld | BoardPresent
 
-/** The eleven kinds of work Groundwork's board can draw records for, exactly as the server writes them. */
+/** The twelve kinds of work Groundwork's board can draw records for, exactly as the server writes them. */
 export const KIND_OF_WORK_OPTIONS = [
+  'sales team',
   'sales org',
   'engineering release',
   'support desk',
@@ -874,9 +893,14 @@ export const KIND_OF_WORK_OPTIONS = [
   'MarketView Q4',
   'a law firm matter',
   'a government programme',
+  'leadership',
+  'a funded project',
+  'client delivery',
 ] as const
 
 export type KindOfWork = (typeof KIND_OF_WORK_OPTIONS)[number]
+
+/* Whether a kind is one of the two sales kinds: isASalesKind in lib/a-sales-kind.ts, kept apart so a spec's mock of this file never hides it. */
 
 /** One row of a kind of work's record: a deal, a release, a ticket, a deadline, a party, and so on. */
 export interface AServedWorkRow {
@@ -939,6 +963,8 @@ export interface AServedWorkRow {
   /** Each day somebody spoke about it in a check-in, newest first - only lines this reader may read. */
   contactHistory?: { on: string; how: 'with proof' | 'in their words'; says: string }[]
   contactHistorySays?: string
+  /** Release 1B: the proof filed on this item, beside it. Only while the organisation's switch is on, only what this reader may read. */
+  evidence?: { id: string; documentId: string; readAs: string; countsAsProof: boolean; shows: string | null; addedOn: string; addedBy: string }[]
   /** The owner's own latest sentence that names it, word for word - null where they never named it, or this reader may not read their words. */
   theirRead?: { who: string; words: string; says: string } | null
 }
@@ -953,6 +979,12 @@ export type AServedWorkSection =
        * `rows`. Present only on the sales org's "Deal grid" section.
        */
       groups?: { group: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'said-won' | 'won'; heading: string; reason: string; rowIds: string[] }[]
+      /*
+       * LOST DEALS, AND WHY (Hafsah, 18 October: a Lost stage). A deal the customer said no to, or the rep gave up, one row each and
+       * never in a group or an open total: the reason in the rep's own words (null where none was given), what shows it, and what it
+       * teaches only where the record supports it. A rep is sent only their own.
+       */
+      lost?: { id: string; name: string; owner: string | null; ownerParticipantId: string | null; on: string; reason: string | null; reasonFrom: string; lesson: string | null; says: string }[]
       /** What the record cannot support, said plainly once under the grid - never claimed by a group. */
       groupsNote?: string[]
       /** Present only on a participant's own board, where this section already holds only their own rows ("Only yours."). */
@@ -969,7 +1001,52 @@ export interface WorkItemInput {
   fields?: Record<string, string>
 }
 
+/** "Nudge Peter" (api engagement/the-leads-own-nudge.ts): served to the lead alone, with the direct morning on. */
+export interface ANudgeServed {
+  participantId: string
+  firstName: string
+  /** "Nudge Peter", or "Nudged at 10:40" once she has today. */
+  says: string
+  nudgedAt: string | null
+}
+
+/**
+ * YOUR TEAM, PERSON BY PERSON (api board/your-team-person-by-person.ts): served to the lead who runs the check-in alone, with the direct
+ * morning on. Every sentence is the server's. `whereTheyStand` and `record` are absent where the organisation keeps judgements of a person off.
+ */
+export interface AnActionOnAPerson {
+  kind: 'praise' | 'plan' | 'deadline' | 'reassign'
+  label: string
+  does: string
+  suggested?: string
+  items?: { id: string; name: string; due: string | null }[]
+  to?: { participantId: string; name: string }[]
+}
+export interface APersonOnYourBoard {
+  participantId: string
+  name: string
+  role: string | null
+  delivered: { heading: string; proven: string[]; onlySaid: string[]; empty: string | null }
+  record: { heading: string; note: string; parts: { heading: string; says: string; toChange: string | null; evidence: string[] }[]; coaching: { said: string; since: string }[]; coachingEmpty: string | null } | null
+  whereTheyStand: { standing: 'doing well' | 'improving' | 'needs coaching' | 'needs a hard conversation' | 'too early to say'; says: string; evidence: string[] } | null
+  fromYou: string[]
+  actions: AnActionOnAPerson[]
+}
+export interface YourTeamServed {
+  heading: string
+  note: string
+  people: APersonOnYourBoard[]
+}
+
 export const boardApi = {
+  /** One tap of the lead on one person's part of her board. The server refuses anybody but the lead who runs the check-in. */
+  actOnAPerson: (groundId: string, participantId: string, body: { kind: AnActionOnAPerson['kind']; text?: string; itemId?: string; due?: string; toParticipantId?: string }) =>
+    apiClient.post<{ says: string }>(`/grounds/${groundId}/board/people/${participantId}/actions`, body).then((r) => r.data),
+
+  /** The lead's one-tap nudge. The server refuses anybody but the lead who runs the check-in. */
+  nudge: (groundId: string, participantId: string) =>
+    apiClient.post<{ nudged: boolean; at: string | null; says: string; channel?: 'whatsapp' | 'email' | null }>(`/grounds/${groundId}/board/nudge/${participantId}`).then((r) => r.data),
+
   get: (groundId: string, coverage?: CoverageVariant) =>
     apiClient
       .get<BoardResponse>(`/grounds/${groundId}/board`, {
@@ -1000,10 +1077,10 @@ export const boardApi = {
     }>(`/grounds/${groundId}/board/objectives/propose`, dto).then((r) => r.data),
 
   /** Initiator only: the lead's frame. A target, never an assessment of a person. */
-  createObjective: (groundId: string, dto: { name: string; target?: number | null }) =>
+  createObjective: (groundId: string, dto: { name: string; target?: number | null; unit?: string | null }) =>
     apiClient.post(`/grounds/${groundId}/board/objectives`, dto).then((r) => r.data),
 
-  updateObjective: (groundId: string, objectiveId: string, dto: { name?: string; target?: number | null; count?: number; assumes?: string[] }) =>
+  updateObjective: (groundId: string, objectiveId: string, dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; unit?: string | null; ownerParticipantId?: string | null }) =>
     apiClient.patch(`/grounds/${groundId}/board/objectives/${objectiveId}`, dto).then((r) => r.data),
 
   deleteObjective: (groundId: string, objectiveId: string) =>

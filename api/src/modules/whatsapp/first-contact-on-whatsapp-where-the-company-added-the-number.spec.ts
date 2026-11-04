@@ -19,12 +19,13 @@ describe('the lead adds a WhatsApp number', () => {
       groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p-brian', email: 'brian@muchemi.test', userId: null, nameGiven: 'Brian Kiptoo', user: userPhone ? { firstName: 'Brian', lastName: 'Kiptoo', phoneNumber: userPhone } : null })) },
       person: {
         /* The organisation's other numbers are Kenyan, so a number typed without a code is read as Kenyan. */
-        findMany: jest.fn(async () => [{ phone: '+254722000201' }]),
-        findFirst: jest.fn(async () => entry),
+        findMany: jest.fn(async (q: any) => (q?.where?.OR ? (entry ? [entry] : []) : [{ phone: '+254722000201' }])),
+        /* The roster refusal (a number on a colleague's entry) asks with the person's own entries left out; Brian's own entry is his. */
+        findFirst: jest.fn(async (q: any) => (q?.where?.AND?.some?.((c: any) => c.OR?.some?.((o: any) => o.NOT?.email?.equals === 'brian@muchemi.test')) ? null : entry)),
         create: jest.fn(async (a: any) => { made.push(a.data); return { id: 'person-brian' }; }),
         update: jest.fn(async (a: any) => { updated.push(a); return {}; }),
       },
-      user: { update: jest.fn(async () => ({})), findMany: jest.fn(async () => []), findFirst: jest.fn(async () => (taken ? { id: 'u-someone', firstName: 'Kevin' } : null)), findUnique: jest.fn(async () => null) },
+      user: { update: jest.fn(async () => ({})), findMany: jest.fn(async () => []), findFirst: jest.fn(async (q: any) => (taken && q?.where?.phoneNumber ? { id: 'u-someone', firstName: 'Kevin' } : null)), findUnique: jest.fn(async () => null) },
     };
     return { prisma, made, updated };
   }
@@ -77,6 +78,8 @@ describe('Brian, invited and not joined, writes "Hi" from the number the company
     h.prisma.person.findFirst = jest.fn(async () => ({ id: 'person-brian', email: 'brian@muchemi.test', phone: '+254712345678' }));
     h.prisma.person.updateMany = jest.fn(async () => ({ count: 1 }));
     h.prisma.groundParticipant.findFirst = jest.fn(async (q: any) => (q?.where?.inviteToken ? { inviteToken: 'tok-brian' } : null));
+    /* Every invitation waiting is read now, not only the first (polish round 15): the mock answers the list the same way. */
+    h.prisma.groundParticipant.findMany = jest.fn(async (q: any) => (q?.where?.inviteToken && !joined ? [{ inviteToken: 'tok-brian' }] : []));
     h.prisma.user = { findFirst: jest.fn(async () => (joined ? { id: 'u-brian' } : null)), findUnique: jest.fn(async () => null) };
     h.prisma.checkIn.findMany = jest.fn(async () => (joined ? [{ id: 'ci-brian-1', status: 'NOT_STARTED', sessionNumber: 1, availableFrom: null, createdAt: new Date(), ground: { label: 'Litigation team daily', scenario: 'PULSE_CHECK', overWhatsApp: null, cadence: 'DAILY' } }] : []));
     await h.service.handle('org-1', h.message('Hi'), 'ours');
@@ -133,6 +136,8 @@ describe('one number for a person (reviewer, 14 October)', () => {
     h.prisma.person.findFirst = jest.fn(async () => ({ id: 'person-kevin', email: 'kevin@kilima.test' }));
     h.prisma.person.updateMany = jest.fn(async () => ({ count: 0 }));
     h.prisma.groundParticipant.findFirst = jest.fn(async (q: any) => (q?.where?.inviteToken ? { inviteToken: 'tok-kevin' } : (q?.where?.userId === null ? { ground: { label: 'Sales daily' } } : null)));
+    /* Every invitation waiting is read now, not only the first (polish round 15): the mock answers the list the same way. */
+    h.prisma.groundParticipant.findMany = jest.fn(async (q: any) => (q?.where?.inviteToken && !joined ? [{ inviteToken: 'tok-kevin' }] : []));
     h.prisma.user = { findFirst: jest.fn(async () => ({ id: 'u-kevin' })), findUnique: jest.fn(async () => null) };
     h.prisma.checkIn.findMany = jest.fn(async () => (joined ? [{ id: 'ci-kevin-1', status: 'NOT_STARTED', sessionNumber: 1, availableFrom: null, createdAt: new Date(), ground: { label: 'Sales daily', scenario: 'PULSE_CHECK', overWhatsApp: null, cadence: 'DAILY' } }] : []));
     await h.service.handle('org-1', h.message('Hi'), 'ours');

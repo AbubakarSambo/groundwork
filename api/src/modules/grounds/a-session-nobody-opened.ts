@@ -51,9 +51,10 @@ const ON_A_CLOCK: Cadence[] = [Cadence.DAILY, Cadence.WEEKLY, Cadence.FORTNIGHTL
 const LEFT_ALONE: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
 
 /** The sessions nobody opened whose round has closed by `now`, oldest first. */
-export async function theSessionsNobodyOpened(prisma: any, now: Date, releaseMoment: Date): Promise<ASessionToClose[]> {
+export async function theSessionsNobodyOpened(prisma: any, now: Date, releaseMoment: Date, only: { checkInId?: string } = {}): Promise<ASessionToClose[]> {
   const rows: any[] = await prisma.checkIn.findMany({
     where: {
+      ...(only.checkInId ? { id: only.checkInId } : {}),
       status: CheckInStatus.NOT_STARTED,
       isSetup: false,
       optional: false,
@@ -67,7 +68,7 @@ export async function theSessionsNobodyOpened(prisma: any, now: Date, releaseMom
     select: {
       id: true, groundId: true, participantId: true, sessionNumber: true, availableFrom: true, createdAt: true,
       participant: { select: { id: true, userId: true, partyType: true, managingOnly: true, cameThroughTheLink: true, user: { select: { awaitingOrgApproval: true } } } },
-      ground: { select: { cadence: true, cadenceAnchorDay: true, workingDays: true, startsAt: true, createdAt: true, organizationId: true } },
+      ground: { select: { cadence: true, cadenceDays: true, cadenceAnchorDay: true, workingDays: true, startsAt: true, createdAt: true, organizationId: true } },
     },
     orderBy: [{ sessionNumber: 'asc' }],
   });
@@ -89,6 +90,7 @@ export async function theSessionsNobodyOpened(prisma: any, now: Date, releaseMom
       {
         cadence: g.cadence,
         anchorDay: g.cadenceAnchorDay ?? null,
+        days: (g as any).cadenceDays ?? null,
         workingDays: g.workingDays ?? [],
         startedAt: g.startsAt ?? g.createdAt ?? openedAt,
         startsNow: !g.startsAt,
@@ -102,4 +104,17 @@ export async function theSessionsNobodyOpened(prisma: any, now: Date, releaseMom
     out.push({ checkInId: r.id, groundId: r.groundId, participantId: r.participantId, sessionNumber: r.sessionNumber, closesAt });
   }
   return out;
+}
+
+/**
+ * ONE SESSION, AT THE MOMENT ITS PERSON OPENS IT (engine test, second run, Drop Access and Muchemi & Co). The sweep above runs every half
+ * hour, so a session whose round had closed could still be opened and answered before the sweep reached it. Joseph left Thursday 15
+ * October's session and opened it on Friday at 14:07; his Friday answer went into Thursday's session, Friday's opened the minute he
+ * finished, he was told at 14:30 "your check-in for Sales team, Q4 is overdue", and Grace's board said he had not checked in, on a day
+ * he had answered (David, who left Tuesday on the litigation daily, the same). Read with exactly the sweep's rules, for one session:
+ * when its round closed, or null where it is still its round, somebody has said something in it, or the sweep would leave it alone.
+ */
+export async function whenThisSessionsRoundClosed(prisma: any, checkInId: string, now: Date, releaseMoment: Date): Promise<Date | null> {
+  const due = await theSessionsNobodyOpened(prisma, now, releaseMoment, { checkInId });
+  return due.find((s) => s.checkInId === checkInId)?.closesAt ?? null;
 }

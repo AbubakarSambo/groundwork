@@ -1,0 +1,369 @@
+import { aLineNamesTheCustomer } from './one-deal-per-customer';
+import { aPaymentIsAbout, readsAsAPayment, readsAsASignedOrder } from './a-deals-four-criteria';
+import { theContactOf } from './a-deal-that-has-stalled';
+
+/**
+ * A DEAL'S PROOF IS ABOUT THAT DEAL (Drop Access, Release 1's first ten-day run, 18 October; findings A1 and A4).
+ *
+ * Three things on Grace's board said "proof" where the proof was about something else:
+ *
+ *  - Ngong Road Minimart read "Proof shows it" and counted as paid. Kevin's line "I've also sent out quotes to Savannah Cafe and
+ *    Ngong Road Minimart." was backed by the M-Pesa message for Savannah Cafe's deposit ("Ksh15,000.00 received from JANE
+ *    MWENDE ... Ref: Savannah Cafe deposit"). The line names Ngong Road Minimart; the document does not. A document that can be
+ *    read as words is about the customers it names, never about every customer its line names.
+ *  - Kilele Hotel's contact history read "with proof" on 14, 16 and 22 October. Kevin said "Kilele Hotel already bought 40 units."
+ *    on those days, and the record backed each line with the M-Pesa message he added on 12 October. A contact is "with proof" only
+ *    on the day the proof came in: the day its document was added, or the day a payment reference was typed in full.
+ *  - A payment record is a document that reads as a payment and names the customer (or the person they deal with there), or a
+ *    payment reference typed in full on a line that names them. A signed order is proof of the order, not of the payment.
+ *
+ * One rule for every reader: the board's deal rows, the counts of what is sold with proof of payment, and the reports.
+ */
+
+export interface ABackingDocument {
+  id: string;
+  participantId?: string | null;
+  fileName?: string | null;
+  uploaderNote?: string | null;
+  content?: string | null;
+  createdAt?: Date | string | null;
+}
+
+/** Every backing document the lines name, by its id. A document that cannot be found is left out. */
+export async function theBackingDocuments(prisma: any, rows: { anchoredDocumentId?: string | null }[]): Promise<Map<string, ABackingDocument>> {
+  const ids = [...new Set(rows.map((r) => r.anchoredDocumentId).filter(Boolean))] as string[];
+  if (!ids.length) return new Map();
+  const docs = ((await (prisma?.groundDocument?.findMany?.({
+    where: { id: { in: ids } },
+    select: { id: true, participantId: true, fileName: true, uploaderNote: true, content: true, createdAt: true },
+  }) ?? Promise.resolve([])).catch(() => [])) ?? []) as ABackingDocument[];
+  return new Map(docs.map((d) => [d.id, d]));
+}
+
+/** What a document says, as words: its name, the note it was added with, and its text. */
+export function theDocumentsWords(d: ABackingDocument | null | undefined): string {
+  return [d?.fileName, d?.uploaderNote, d?.content].filter((x) => !!String(x ?? '').trim()).join(' ');
+}
+
+/** Whether a document can be read as words (a text or a message), not only a photo with a file name. */
+export function aDocumentHasWords(d: ABackingDocument | null | undefined): boolean {
+  return !!String(d?.content ?? '').trim();
+}
+
+const squash = (s: string) => (s ?? '').toLowerCase().replace(/[‘’“”'"]/g, '').replace(/[^a-z0-9\s-]/g, ' ').replace(/\s+/g, ' ').trim();
+
+/**
+ * Whether words name this deal: its customer, or the person they deal with there. A document writes names in capitals ("received
+ * from KILELE HOTEL LTD", "JANE MWENDE"), so the person is found whatever their capitals.
+ */
+export function theWordsNameTheDeal(words: string, deal: { name: string; fields?: Record<string, string> | null }): boolean {
+  if (aPaymentIsAbout(words, deal) || aLineNamesTheCustomer(words, deal.name)) return true;
+  const contact = (theContactOf(deal.fields ?? null) ?? '').split(',')[0].trim();
+  if (!/^[A-Z][\p{L}'’-]+(?:\s+[A-Z][\p{L}'’-]+)?$/u.test(contact) || contact.length < 3) return false;
+  return ` ${squash(words)} `.includes(` ${squash(contact)} `);
+}
+
+/** A line as the proof rules read it: its words, how it is known, and the document behind it, where one is. */
+export interface ALineWithItsProof {
+  text: string;
+  mark: string;
+  createdAt: Date | string;
+  /** The document's own words, where it can be read as words. */
+  documentWords?: string | null;
+  /** The day the document was added. */
+  documentOn?: Date | string | null;
+}
+
+/**
+ * Whether a proven line's proof is about this deal: a document that can be read must name the deal; otherwise (a photo, or a
+ * payment reference typed in full) the line must.
+ */
+export function theProofIsAbout(l: Pick<ALineWithItsProof, 'text' | 'documentWords'>, deal: { name: string; fields?: Record<string, string> | null }): boolean {
+  return l.documentWords ? theWordsNameTheDeal(l.documentWords, deal) : theWordsNameTheDeal(l.text, deal);
+}
+
+const dayKey = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+
+/**
+ * Whether a line is proof on the day it was said: confirmed by the colleague who received it, or proven by a document added that
+ * same day (or a reference typed in full, which has no document). A line said later and backed by an earlier document repeats the
+ * proof; it is a contact in their words.
+ */
+export function aContactWithProof(l: ALineWithItsProof, deal: { name: string; fields?: Record<string, string> | null }): boolean {
+  if (l.mark === 'confirmed') return true;
+  if (l.mark !== 'proven') return false;
+  if (!theProofIsAbout(l, deal)) return false;
+  if (!l.documentOn) return true;
+  const said = new Date(l.createdAt);
+  const added = new Date(l.documentOn);
+  if (Number.isNaN(said.getTime()) || Number.isNaN(added.getTime())) return true;
+  return dayKey(said) === dayKey(added);
+}
+
+/** A proven line, with the document behind it, as the payment rule reads it. */
+export interface AProvenLine {
+  text: string;
+  createdAt: Date | string;
+  anchoredDocumentId?: string | null;
+}
+
+/**
+ * THE PAYMENT RECORDS among the proven lines: each document that reads as a payment (an M-Pesa message, a receipt, a bank's
+ * remittance or transfer), and each payment reference typed in full on a line with no document. Each is kept as the words that
+ * say whom it is about: the document's own words where it can be read, otherwise the line's.
+ */
+export function thePaymentRecords(proven: AProvenLine[], docOf: Map<string, ABackingDocument>): { text: string; at: Date }[] {
+  const out: { text: string; at: Date }[] = [];
+  for (const l of proven) {
+    const d = l.anchoredDocumentId ? docOf.get(l.anchoredDocumentId) : undefined;
+    if (d) {
+      if (!readsAsAPayment(theDocumentsWords(d))) continue;
+      out.push({ text: aDocumentHasWords(d) ? theDocumentsWords(d) : `${l.text} ${d.fileName ?? ''}`.trim(), at: new Date(l.createdAt) });
+      continue;
+    }
+    /* No document to read (a reference typed in full, or a document that cannot be found): the line says it. */
+    if (readsAsAPayment(l.text)) out.push({ text: l.text, at: new Date(l.createdAt) });
+  }
+  return out;
+}
+
+/**
+ * THE SIGNED ORDERS among the proven lines (Hafsah, 18 October, answer 2: Won is met with a signed order or a payment): each
+ * document that reads as a signed order (a purchase order, an order signed by the customer), and, with no document, a line that
+ * says so with the order's reference typed in full. Kept as the words that say whom it is about, as the payment records are.
+ */
+export function theSignedOrders(proven: AProvenLine[], docOf: Map<string, ABackingDocument>): { text: string; at: Date }[] {
+  const out: { text: string; at: Date }[] = [];
+  for (const l of proven) {
+    const d = l.anchoredDocumentId ? docOf.get(l.anchoredDocumentId) : undefined;
+    if (d) {
+      if (!readsAsASignedOrder(theDocumentsWords(d))) continue;
+      out.push({ text: aDocumentHasWords(d) ? theDocumentsWords(d) : `${l.text} ${d.fileName ?? ''}`.trim(), at: new Date(l.createdAt) });
+      continue;
+    }
+    if (readsAsASignedOrder(l.text) && /\b(?:L\.?P\.?O|PO)[-\s]?\d{2,}\b/i.test(l.text)) out.push({ text: l.text, at: new Date(l.createdAt) });
+  }
+  return out;
+}
+
+/** Whether one of the payment records is about this deal. */
+export function aPaymentRecordFor(deal: { name: string; fields?: Record<string, string> | null }, payments: readonly { text: string }[]): boolean {
+  return payments.some((p) => theWordsNameTheDeal(p.text, deal));
+}
+
+/**
+ * A DEPOSIT IS NOT A FULL PAYMENT (final real-model check, item 10). Jane at Savannah Cafe paid a KES 15,000 deposit on a KES 30,000
+ * order, and the board, the morning and the weekly report counted the cafe's 6 units as paid ("6 units, paid", "47 paid", "46 with
+ * proof"). Where every payment record about a deal is a deposit, or pays less than the deal is worth, it is a deposit: what was paid, and
+ * of what. It still backs the sale (Hafsah, 17 October: "Won: paid, or a deposit received, with a payment record"); it is never said as paid.
+ */
+export interface ADeposit { paid: number | null; of: number | null; currency: string }
+const AMOUNT = /\b(KES|KSh|Ksh|Kshs|USD|NGN|₦|\$)\.?\s?([\d][\d,]*(?:\.\d+)?)\s*(k|thousand|m|million)?\b/i;
+const amountIn = (t: string): { amount: number; currency: string } | null => {
+  const m = AMOUNT.exec(String(t ?? ''));
+  if (!m) return null;
+  let n = Number(m[2].replace(/,/g, ''));
+  if (/^(k|thousand)$/i.test(m[3] ?? '')) n *= 1e3;
+  if (/^(m|million)$/i.test(m[3] ?? '')) n *= 1e6;
+  return { amount: n, currency: /^k/i.test(m[1]) ? 'KES' : m[1].toUpperCase() };
+};
+const valueOf = (fields: Record<string, string> | null | undefined): number | null => {
+  const v = Object.entries(fields ?? {}).find(([k]) => /^(?:deal\s+)?(?:value|amount|worth|size|quoted)$/i.test(k.trim()))?.[1];
+  const m = v ? /([\d][\d,]*(?:\.\d+)?)\s*(k|thousand|m|million)?/i.exec(String(v)) : null;
+  if (!m) return null;
+  let n = Number(m[1].replace(/,/g, ''));
+  if (/^(k|thousand)$/i.test(m[2] ?? '')) n *= 1e3;
+  if (/^(m|million)$/i.test(m[2] ?? '')) n *= 1e6;
+  return n;
+};
+export function theDepositFor(deal: { name: string; fields?: Record<string, string> | null }, payments: readonly { text: string }[]): ADeposit | null {
+  const about = payments.filter((p) => theWordsNameTheDeal(p.text, deal));
+  if (!about.length) return null;
+  const of = valueOf(deal.fields);
+  const reads = about.map((p) => ({ deposit: /\bdeposit\b|\badvance\b|\bpart[\s-]payment\b/i.test(p.text), money: amountIn(p.text) }));
+  const each = reads.map((r) => r.deposit || (!!r.money && of !== null && r.money.amount < of));
+  if (!each.every(Boolean)) return null;
+  /*
+   * THE BALANCE PAID MAKES IT PAID IN FULL (polish round 15, U7). Jane paid Savannah Cafe's KES 15,000 deposit (RBT7Y3KQ2P) and, on Friday
+   * 16 October, the remaining KES 15,000 (SGL9W4MN7T). Each payment on its own is less than the KES 30,000, so each read as a deposit, and
+   * the board said "Deposit paid, KES 15,000 of KES 30,000" after the balance was paid. The payments are added up, each once: where they
+   * reach what the deal is worth, it is paid in full.
+   */
+  const paidInAll = thePaymentsAddedUp(about);
+  if (of !== null && paidInAll && paidInAll.amount >= of) return null;
+  const paid = reads.map((r) => r.money?.amount ?? 0).reduce((a, b) => Math.max(a, b), 0) || null;
+  return { paid, of, currency: reads.find((r) => r.money)?.money?.currency ?? 'KES' };
+}
+
+/**
+ * WHAT THE PAYMENT RECORDS ADD UP TO, EACH PAYMENT ONCE (polish round 15, U2 and U7). One payment is often on record more than once: the
+ * Kilele M-Pesa message behind every line that repeats the sale, or the same code typed in two check-ins. A payment is known by its M-Pesa
+ * code where it has one, otherwise by its words. Null where no payment record says an amount.
+ */
+export function thePaymentsAddedUp(payments: readonly { text: string }[]): { amount: number; currency: string } | null {
+  const seen = new Set<string>();
+  let amount = 0;
+  let currency: string | null = null;
+  for (const p of payments) {
+    const money = amountIn(p.text);
+    if (!money) continue;
+    const key = theMPesaCodesIn(p.text)[0] ?? String(p.text ?? '').trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (currency && money.currency !== currency) continue;
+    currency = money.currency;
+    amount += money.amount;
+  }
+  return currency ? { amount, currency } : null;
+}
+/** "Deposit paid, KES 15,000 of KES 30,000." */
+export const aDepositSaid = (d: ADeposit): string => {
+  const k = (n: number) => `${d.currency} ${Math.round(n).toLocaleString('en-US')}`;
+  return d.paid && d.of ? `Deposit paid, ${k(d.paid)} of ${k(d.of)}.` : d.paid ? `Deposit paid, ${k(d.paid)}.` : 'A deposit is paid.';
+};
+
+/** For a served line: the document's words where it can be read, and the day it was added. */
+export function theDocumentBehind(anchoredDocumentId: string | null | undefined, docOf: Map<string, ABackingDocument>): { documentWords: string | null; documentOn: Date | null } {
+  const d = anchoredDocumentId ? docOf.get(anchoredDocumentId) : undefined;
+  if (!d) return { documentWords: null, documentOn: null };
+  return { documentWords: aDocumentHasWords(d) ? theDocumentsWords(d) : null, documentOn: d.createdAt ? new Date(d.createdAt) : null };
+}
+
+/*
+ * AN M-PESA CODE GIVEN IN WORDS IS PROOF OF PAYMENT, AND IS SHOWN AS "M-PESA CODE" (Hafsah, 19 October: "An M-Pesa code given in words
+ * counts as proof of payment. Show it as "M-Pesa code", and ask once for the screenshot."). Kevin said on Tuesday 13 October "Kilele
+ * Hotel's payment was KES 200,000 via M-Pesa. The confirmation code is QJK4TL2MX9." The line is kept as typed proof
+ * (a-typed-reference-backs-its-line) and counts wherever proof of payment counts; where the proof is shown it reads "M-Pesa code
+ * QJK4TL2MX9", never "a payment record" or "a document".
+ */
+/* M-Pesa codes: ten capitals and digits, with at least two letters and one digit ("QJK4TL2MX9"), as a-typed-reference-backs-its-line reads them. */
+const AN_MPESA_CODE = /\b(?=[A-Z0-9]{10}\b)(?=[A-Z0-9]*\d)(?=(?:[0-9]*[A-Z]){2})[A-Z0-9]{10}\b/g;
+
+/** The M-Pesa codes typed in a line, once each. */
+export function theMPesaCodesIn(text: string | null | undefined): string[] {
+  return [...new Set(String(text ?? '').match(AN_MPESA_CODE) ?? [])];
+}
+
+/**
+ * The M-Pesa code typed for this deal: on a line with no document that names the deal and reads as a payment. Null where the payment
+ * record is a document (an M-Pesa message, a receipt), or there is none.
+ */
+export function theMPesaCodeFor(deal: { name: string; fields?: Record<string, string> | null }, lines: readonly { text: string; anchoredDocumentId?: string | null }[]): string | null {
+  for (const l of lines) {
+    if (l.anchoredDocumentId) continue;
+    const text = String(l.text ?? '');
+    const codes = theMPesaCodesIn(text);
+    if (!codes.length || !readsAsAPayment(text) || !theWordsNameTheDeal(text, deal)) continue;
+    return codes[0];
+  }
+  return null;
+}
+
+/** How the proof of a payment typed as an M-Pesa code is said: "M-Pesa code QJK4TL2MX9". */
+export const anMPesaCode = (code: string) => `M-Pesa code ${code}`;
+
+/*
+ * A CODE GIVEN AS AN ANSWER IS ABOUT THE SALE IT WAS ASKED FOR (polish round 15, U14). Joseph said on Thursday 15 October "Juja Hardware
+ * bought 2 units today. KES 10,000 by M-Pesa.", and on Friday Groundwork asked him "You're on track for 30 units, and Juja Hardware bought
+ * two. What shows the sale of those two units?" He answered "M-Pesa code TGH5K2M9QX." The line kept from his answer names no customer, so
+ * no deal read it as its payment, and Juja Hardware's 2 units read 0 on his targets, his review and the board. A code typed on a line that
+ * names no customer is about the one deal the question it answered named; the line is read with the owner's own line about that sale
+ * (the latest one that says it was bought or paid, in the three days before), so its units and its amount are read with it.
+ */
+export interface ALineThatMayCarryACode {
+  text: string;
+  participantId?: string | null;
+  checkInId?: string | null;
+  createdAt: Date | string;
+  anchoredDocumentId?: string | null;
+}
+export interface ATurnOfTheCheckIn { checkInId: string; role: string; content: string; createdAt: Date | string }
+
+const A_SALE_SAID = /\b(?:bought|paid|purchased|ordered|sold)\b/i;
+const THREE_DAYS = 3 * 86_400_000;
+
+/** The deal the question just before the answer that typed this code named, where it named exactly one. */
+export function theDealTheCodeAnswered<D extends { name: string; fields?: Record<string, string> | null; ownerParticipantId?: string | null }>(
+  code: string, line: ALineThatMayCarryACode, turns: readonly ATurnOfTheCheckIn[], deals: readonly D[],
+): D | null {
+  if (!line.checkInId) return null;
+  const here = turns.filter((t) => t.checkInId === line.checkInId).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const i = here.findIndex((t) => String(t.role).toUpperCase() === 'PERSON' && String(t.content ?? '').includes(code));
+  if (i < 1) return null;
+  const asked = [...here.slice(0, i)].reverse().find((t) => String(t.role).toUpperCase() !== 'PERSON');
+  if (!asked) return null;
+  const theirs = deals.filter((d) => !line.participantId || !d.ownerParticipantId || d.ownerParticipantId === line.participantId);
+  const named = theirs.filter((d) => aLineNamesTheCustomer(String(asked.content ?? ''), d.name));
+  return named.length === 1 ? named[0] : null;
+}
+
+/**
+ * The lines, each code typed as an answer read with the sale it was given for. A line that names a customer, or carries a document, is
+ * kept as it is.
+ */
+export function withTheSaleEachCodeAnswered<L extends ALineThatMayCarryACode, D extends { name: string; fields?: Record<string, string> | null; ownerParticipantId?: string | null }>(
+  lines: readonly L[], turns: readonly ATurnOfTheCheckIn[], deals: readonly D[],
+): L[] {
+  return lines.map((l) => {
+    if (l.anchoredDocumentId) return l;
+    const code = theMPesaCodesIn(l.text)[0];
+    if (!code || deals.some((d) => theWordsNameTheDeal(l.text, d))) return l;
+    const deal = theDealTheCodeAnswered(code, l, turns, deals);
+    if (!deal) return l;
+    const at = new Date(l.createdAt).getTime();
+    const sale = lines
+      .filter((x) => x !== l && x.participantId === l.participantId && A_SALE_SAID.test(x.text) && theWordsNameTheDeal(x.text, deal))
+      .filter((x) => { const t = new Date(x.createdAt).getTime(); return t <= at && t >= at - THREE_DAYS; })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    return { ...l, text: `${l.text.trim()} ${sale ? sale.text.trim() : `This is the payment from ${deal.name}.`}` };
+  });
+}
+
+/** The turns of the check-ins the code lines were said in, read only where a code line names no customer. */
+export async function theTurnsBehindTheCodes(prisma: any, lines: readonly ALineThatMayCarryACode[]): Promise<ATurnOfTheCheckIn[]> {
+  const ids = [...new Set(lines.filter((l) => !l.anchoredDocumentId && l.checkInId && theMPesaCodesIn(l.text).length).map((l) => l.checkInId as string))];
+  if (!ids.length) return [];
+  return ((await Promise.resolve(prisma?.conversationTurn?.findMany?.({
+    where: { checkInId: { in: ids } }, select: { checkInId: true, role: true, content: true, createdAt: true }, orderBy: { createdAt: 'asc' },
+  })).catch(() => [])) ?? []) as ATurnOfTheCheckIn[];
+}
+
+/*
+ * WHAT WAS SOLD IS WHAT ITS PAYMENT SHOWS (polish round 15, U2 and U14). A won deal with no Value read "2 won deals have no record of what
+ * it is worth" beside the Kilele M-Pesa message for KES 200,000 and Savannah Cafe's two codes for KES 15,000 each; and Juja Hardware held
+ * the 5 units Joseph had asked a price for, while the payment he proved was for the 2 units he sold. Where every payment on record for the
+ * deal says how many units were bought, those are the units sold, and what was paid is its value; where the deal has no value of its own
+ * and is paid in full, what was paid is its value. A deposit keeps the deal's own value, so what is left to pay can still be said.
+ *
+ * It is the deal as it was sold, for whatever counts or says what was sold. The deal's own details are kept as they were said, so the price
+ * Joseph asked about for 5 units is still read as 5 units; only a value the deal never had is added to them (theDealsOnRecord).
+ */
+const UNITS_BOUGHT = /\b(?:bought|purchased|paid for|ordered|took|sold)\s+(?:the\s+)?(\d[\d,]*)\s+(?:units?|dispensers?|pieces?)\b/i;
+const A_VALUE_FIELD = /^(?:deal\s+)?(?:value|amount|worth|size)$/i;
+
+export function theSaleAsItsPaymentShowsIt(
+  deal: { name: string; fields?: Record<string, string> | null },
+  payments: readonly { text: string }[],
+): Record<string, string> {
+  const fields = { ...(deal.fields ?? {}) };
+  const about = payments.filter((p) => theWordsNameTheDeal(p.text, deal));
+  if (!about.length) return fields;
+  const once = new Map<string, { text: string }>();
+  for (const p of about) once.set(theMPesaCodesIn(p.text)[0] ?? String(p.text ?? '').trim().toLowerCase(), p);
+  const each = [...once.values()];
+  const paid = thePaymentsAddedUp(each);
+  const says = each.map((p) => UNITS_BOUGHT.exec(String(p.text ?? ''))?.[1]).map((n) => (n ? Number(n.replace(/,/g, '')) : null));
+  const unitsKey = Object.keys(fields).find((k) => /^(?:units?|quantity|qty|how many)$/i.test(k.trim())) ?? 'Units';
+  const valueKey = Object.keys(fields).find((k) => A_VALUE_FIELD.test(k.trim()));
+  const money = (m: { amount: number; currency: string }) => `${m.currency} ${Math.round(m.amount).toLocaleString('en-US')}`;
+  if (says.length && says.every((n) => n !== null && n > 0)) {
+    const sold = says.reduce<number>((t, n) => t + (n ?? 0), 0);
+    if (String(sold) !== String(fields[unitsKey] ?? '').replace(/[^\d]/g, '')) {
+      fields[unitsKey] = String(sold);
+      if (paid) fields[valueKey ?? 'Value'] = money(paid);
+      return fields;
+    }
+  }
+  if (!valueKey && paid && !theDepositFor({ name: deal.name, fields }, each)) fields.Value = money(paid);
+  return fields;
+}

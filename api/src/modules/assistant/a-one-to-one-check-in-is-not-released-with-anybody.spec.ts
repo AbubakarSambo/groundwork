@@ -34,9 +34,9 @@ describe('Amina, on her performance plan', () => {
 describe('Miriam, in the sales team, reads what she read before', () => {
   it('in all three places', () => {
     expect(whatItTakesToStart({ toStart: [], open: [SALES], notAccepted: [] }).line).toBe("Your check-in on \"the sales team\" is open. It takes about ten minutes, and what you say is released with everybody else's, not before.");
-    expect(whatIsWorthSayingWhenYouArrive(truth(SALES), 'Miriam').line).toBe("Miriam - your check-in on \"the sales team\" is open. About ten minutes, and what you say is released with everybody else's, not before.");
+    expect(whatIsWorthSayingWhenYouArrive(truth(SALES), 'Miriam').line).toBe("Miriam - your check-in on \"the sales team\" is open. It takes about ten minutes, and what you say is released with everybody else's, not before.");
     const due = whatIsDueFor({ sessions: [SALES], sessionNumbers: new Map([['ci-sales', 1]]), leftOpen: new Map(), slippedCommitments: 0 });
-    expect(openingOnWhatIsDue(due, 'Miriam').line).toBe("Miriam, your first check-in on \"the sales team\" is open. About ten minutes, and what you say is released with everybody else's, not before.");
+    expect(openingOnWhatIsDue(due, 'Miriam').line).toBe("Miriam, your first check-in on \"the sales team\" is open. It takes about ten minutes, and what you say is released with everybody else's, not before.");
   });
 });
 

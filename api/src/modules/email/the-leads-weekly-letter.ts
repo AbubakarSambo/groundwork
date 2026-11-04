@@ -1,7 +1,10 @@
+import { rebuildThePersonsRecords } from '../board/the-persons-record-store';
+import { theFeeNotesThatFellDueOnAnEvent } from '../board/a-fee-note-that-fell-due-said-to-the-lead';
 import { NOT_A_QUIET_CLOSE } from '../grounds/an-answer-includes-a-refusal';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { owesThisSession } from '../grounds/the-lead-checks-in-when-they-choose';
-import { theConfirmedWaits, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
+import { theConfirmedWaits, whatTheyTriedInFull } from '../grounds/a-wait-is-the-speakers-account';
+import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
 import { nameToCall, aNameToList } from '../engagement/a-name-to-call-them';
 import { withoutRepeats, saysTheSame } from '../engagement/a-sentence-said-twice';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
@@ -14,6 +17,12 @@ import { WHERE_A_GROUND_IS_THE_ANCHORS, WHERE_A_GROUND_IS_NOT_THE_ANCHORS } from
 import { theNextCheckInFor, theSuggestionSaid } from '../engagement/the-next-check-in-from-what-happened';
 import { everyLineTheFinalCheckPasses } from '../conversation/the-final-check';
 import { whatTheRecordHolds } from '../conversation/what-the-record-holds';
+import { dedupeDependencies, theSameThingInOtherWords } from '../board/reads';
+import { theirClosedSessions } from '../grounds/missed-check-ins';
+import { theDirectMorningFor, theStoredRecords } from '../engagement/the-direct-morning';
+import { whatMovedWithProof, whoNeedsYouThisWeek, type AKindOfCheckIn } from '../board/what-the-lead-reads-about-each-person';
+import { isASalesKind, oneOfTheKinds } from '../board/the-kind-of-work';
+import { theCollectionsTypeFor } from '../board/the-collections-record';
 
 /**
  * THE LEAD'S WEEKLY LETTER (docs/anchor-scenario-plan.md, piece 29; the prototype's "one weekly letter",
@@ -33,6 +42,15 @@ import { whatTheRecordHolds } from '../conversation/what-the-record-holds';
 
 const NUMBERS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 const aNumber = (n: number) => (n <= 10 ? NUMBERS[n] : String(n));
+/**
+ * ONE FORM FOR THE COUNTS OF ONE SENTENCE (Drop Access run 1, item 20). The subject read "Ten things people said they would do were done; 14
+ * handoffs are still waiting": words and digits in one sentence. Every count in it is said in words when all are ten or fewer, else in digits.
+ */
+export function theCountsOf(...counts: number[]): (n: number) => string {
+  return counts.some((n) => n > 10) ? (n: number) => String(n) : aNumber;
+}
+/** The same, where Release 1's switch is on for the check-in's organisation; off, each count is said as before (release-one-sales-board). */
+const countsFor = (releaseOne: boolean | undefined, ...counts: number[]): ((n: number) => string) => (releaseOne ? theCountsOf(...counts) : aNumber);
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 const listed = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 
@@ -63,7 +81,7 @@ export interface AWeekInOneCheckIn {
   waitingOn?: { name: string; count: number }[];
   /**
    * WAITS ON A COLLEAGUE THAT COLLEAGUE HAS NOT CONFIRMED (decision 137; change 4), each as the speaker's account with the note beside it:
-   * "Kevin Odhiambo says the work is waiting on Fatuma Bello for the final prices. Not backed: no attempt to unblock mentioned." They are never
+   * "Kevin Odhiambo says the work is waiting on Fatuma Bello for the final prices.", with what Kevin said he tried, where he said anything. Never
    * counted in `waitingOn`, so the subject never names the colleague as the one the handoffs wait on.
    */
   claims?: string[];
@@ -84,22 +102,43 @@ export interface AWeekInOneCheckIn {
   reminded?: string[];
   /** One real next check-in, said in a sentence, only where it is a different one and the record gives a reason. */
   next?: string | null;
+  /**
+   * THE CHECK-INS MADE, NOT ONLY THE PEOPLE (Drop Access run 1, item 17). "This week, all four people checked in." went to Grace in a week
+   * Joseph missed two of his five. Of the sessions that closed in the week for the people who owe one (never the lead's own, which are hers
+   * to choose), how many were answered, and who missed which. Absent where the caller did not count them.
+   */
+  checkInsDue?: number;
+  checkInsMade?: number;
+  missedBy?: { name: string; missed: number; of: number }[];
+  /** Release 1's sales board is on for the check-in's organisation: counts in one form, one decision said once, what was tried in full. Never said. */
+  releaseOne?: boolean;
+  /**
+   * WHAT THE LEAD READS ABOUT THE WEEK FROM THE RECORD (Groundwork does the managing, part 2), only where the organisation's direct morning is
+   * on (theWeekForTheLead). Each is absent when it has nothing to say, and a letter built without them is the letter it always was.
+   *
+   * The target in one line, as her morning summary and her board say it: "75 of 120 sold, 47 paid, 45 short, and the open deals cover 40."
+   */
+  theTarget?: string | null;
+  /** What moved this week with proof: what each person said, in their words and with the day, and what on file shows it. */
+  movedWithProof?: string[];
+  /** Who needs her, with the evidence: the person Groundwork could not move, then their lines with the days. */
+  needsYou?: { says: string; evidence: string[] }[];
 }
 
 const aName = (n: string) => n;
 
 /** "Four things people said they would do were done, all by Abigail." Named only when ONE person closed ALL of them. */
-function theDoneSentence(w: AWeekInOneCheckIn): string | null {
+function theDoneSentence(w: AWeekInOneCheckIn, said: (n: number) => string = aNumber): string | null {
   if (w.done <= 0) return null;
-  const base = `${capital(aNumber(w.done))} ${w.done === 1 ? 'thing people said they would do was' : 'things people said they would do were'} done`;
+  const base = `${capital(said(w.done))} ${w.done === 1 ? 'thing people said they would do was' : 'things people said they would do were'} done`;
   const one = w.closedBy?.length === 1 && w.closedBy[0].count === w.done ? aName(w.closedBy[0].name) : null;
   return one ? `${base}, ${w.done === 1 ? 'by' : w.done === 2 ? 'both by' : 'all by'} ${one}` : base;
 }
 
 /** "Two handoffs are still waiting, both on James." Named only when ALL of them wait on one person. */
-function theWaitingSentence(w: AWeekInOneCheckIn): string | null {
+function theWaitingSentence(w: AWeekInOneCheckIn, said: (n: number) => string = aNumber): string | null {
   if (w.waiting <= 0) return null;
-  const base = `${capital(aNumber(w.waiting))} ${w.waiting === 1 ? 'handoff is' : 'handoffs are'} still waiting`;
+  const base = `${capital(said(w.waiting))} ${w.waiting === 1 ? 'handoff is' : 'handoffs are'} still waiting`;
   const one = w.waitingOn?.length === 1 && w.waitingOn[0].count === w.waiting ? w.waitingOn[0].name : null;
   return one ? `${base}, ${w.waiting === 1 ? 'on' : w.waiting === 2 ? 'both on' : 'all on'} ${one}` : base;
 }
@@ -114,7 +153,9 @@ const lowerFirst = (s: string) => `${s.charAt(0).toLowerCase()}${s.slice(1)}`;
  */
 /** The two facts of a week as one phrase, or null where neither holds. Used by the weekly letter and by the report-ready notice to the lead. */
 export function theFactsOfTheWeek(w: AWeekInOneCheckIn): string | null {
-  const facts = [theDoneSentence(w), theWaitingSentence(w)].filter((x): x is string => !!x);
+  /* One sentence: its two counts in one form (item 20). */
+  const said = countsFor(w.releaseOne, w.done, w.waiting);
+  const facts = [theDoneSentence(w, said), theWaitingSentence(w, said)].filter((x): x is string => !!x);
   return facts.length ? facts.map((f, i) => (i ? lowerFirst(f) : f)).join('; ') : null;
 }
 
@@ -126,20 +167,33 @@ export function theSubjectFor(weeks: AWeekInOneCheckIn[]): string {
     const checkedIn = new Set(counted.flatMap((w) => w.checkedInIds ?? []));
     const of = answerable.size || counted.reduce((n, w) => n + w.ofHowMany, 0);
     const done = checkedIn.size || counted.reduce((n, w) => n + w.checkedIn, 0);
-    return done > 0 ? `This week, ${aNumber(done)} of ${aNumber(of)} people checked in across your ${aNumber(counted.length)} check-ins` : THE_SUBJECT;
+    const n = countsFor(counted.some((w) => w.releaseOne), done, of, counted.length);
+    return done > 0 ? `This week, ${n(done)} of ${n(of)} people checked in across your ${n(counted.length)} check-ins` : THE_SUBJECT;
   }
   const w = counted[0];
-  const facts = [theDoneSentence(w), theWaitingSentence(w)].filter((x): x is string => !!x);
+  const said = countsFor(w.releaseOne, w.done, w.waiting);
+  const facts = [theDoneSentence(w, said), theWaitingSentence(w, said)].filter((x): x is string => !!x);
   if (facts.length) return facts.map((f, i) => (i ? lowerFirst(f) : f)).join('; ');
-  return w.checkedIn > 0 ? `This week, ${aNumber(w.checkedIn)} of ${aNumber(w.ofHowMany)} people checked in` : THE_SUBJECT;
+  const n = countsFor(w.releaseOne, w.checkedIn, w.ofHowMany);
+  return w.checkedIn > 0 ? `This week, ${n(w.checkedIn)} of ${n(w.ofHowMany)} people checked in` : THE_SUBJECT;
 }
 
 /** The sentences for one check-in, in order. Nothing is said that the count does not hold. */
 export function theWeekInSentences(w: AWeekInOneCheckIn): string[] {
   const out: string[] = [];
+  const someMissed = (w.checkInsDue ?? 0) > 0 && (w.checkInsMade ?? 0) < (w.checkInsDue ?? 0) && w.checkedIn > 0;
   if (w.checkedIn <= 0) out.push('Nobody has checked in this week.');
+  else if (someMissed) {
+    /* Counted by the check-ins made, and who missed which, said as facts (item 17). */
+    const said = theCountsOf(w.checkInsMade ?? 0, w.checkInsDue ?? 0);
+    out.push(`This week, ${said(w.checkInsMade ?? 0)} of the ${said(w.checkInsDue ?? 0)} check-ins were made.`);
+    for (const m of (w.missedBy ?? []).filter((x) => aNameToList(x.name) && x.missed > 0).slice(0, 3)) {
+      const each = theCountsOf(m.missed, m.of);
+      out.push(`${capital(m.name)} missed ${each(m.missed)} of ${each(m.of)}.`);
+    }
+  }
   else if (w.checkedIn >= w.ofHowMany) out.push(w.ofHowMany === 1 ? 'This week, the one person who can answer checked in.' : `This week, all ${aNumber(w.ofHowMany)} people checked in.`);
-  else out.push(`This week, ${aNumber(w.checkedIn)} of ${aNumber(w.ofHowMany)} people checked in.`);
+  else out.push(`This week, ${countsFor(w.releaseOne, w.checkedIn, w.ofHowMany)(w.checkedIn)} of ${countsFor(w.releaseOne, w.checkedIn, w.ofHowMany)(w.ofHowMany)} people checked in.`);
   if (w.saidWhatNext > 0) out.push(`${capital(aNumber(w.saidWhatNext))} ${w.saidWhatNext === 1 ? 'person' : 'people'} said what they will do next.`);
   const done = theDoneSentence(w);
   if (done) out.push(`${done}.`);
@@ -174,6 +228,11 @@ export const somethingUsefulHappened = (w: AWeekInOneCheckIn): boolean => w.ofHo
 /** The sentences after the week's counts, for one check-in: what moved, what Groundwork is already doing, what to do, and what to start next. */
 export function theRestOfTheWeekIn(w: AWeekInOneCheckIn, roomForToDo: number): string[] {
   const out: string[] = [];
+  /* The record's own parts first, where the direct morning is on: the target, what moved with proof, and who needs her. */
+  if (w.theTarget) out.push(`Here is where the target stands. ${w.theTarget}`);
+  const proved = (w.movedWithProof ?? []).slice(0, 4);
+  if (proved.length) out.push(`Here is what moved this week, with what shows it. ${proved.join(' ')}`);
+  for (const [i, n] of (w.needsYou ?? []).slice(0, 3).entries()) out.push(`${i === 0 ? 'Here is who needs you. ' : ''}${n.says}${n.evidence.length ? ` ${n.evidence.join(' ')}` : ''}`);
   const moved = withoutRepeats(w.moved ?? []).slice(0, 3);
   if (moved.length) out.push(`Here is what moved this week. ${moved.join(' ')}`);
   const reminded = (w.reminded ?? []).filter(aNameToList).filter((n) => w.notYet.includes(n));
@@ -182,7 +241,9 @@ export function theRestOfTheWeekIn(w: AWeekInOneCheckIn, roomForToDo: number): s
   const todo = (w.toDo ?? []).filter((t) => !moved.some((m) => saysTheSame(m, `${t.do} ${t.why ?? ''}`))).slice(0, Math.max(0, roomForToDo));
   if (todo.length) {
     out.push('Here is what I would do this week.');
-    for (const t of todo) out.push(`${t.do.trim()}${t.why?.trim() ? ` ${t.why.trim()}` : ''}`);
+    /* Each thing to do is a sentence of its own, before its reason (messages test, 19 October, finding 5: "... or a signed order Kevin Omondi counted ..."). */
+    const asASentence = (x: string) => (/[.!?]["\u201d]?$/.test(x.trim()) ? x.trim() : `${x.trim()}.`);
+    for (const t of todo) out.push(`${asASentence(t.do)}${t.why?.trim() ? ` ${asASentence(t.why)}` : ''}`);
   }
   if (w.next) out.push(`Here is something worth doing next. ${w.next}`);
   return out;
@@ -202,10 +263,15 @@ export function theLeadsLetter(weeks: AWeekInOneCheckIn[], opts: { onlyWhenSomet
   let room = 3;
   /* One next check-in in the whole letter, the first one: the same suggestion under each of two check-ins is the same advice twice (found on the test bed). */
   let nextAlreadyShown = false;
-  for (const w of counted) {
+  for (let w of counted) {
     if (counted.length > 1) lines.push(`"${w.label}"`);
     lines.push(theWeekInSentences(w).join(' '));
-    lines.push(...(w.claims ?? []));
+    /* ONE DECISION ONCE (Drop Access run 1, item 19): a claim the letter's own to-do already says ("Sort out a decision on the KES 4,500
+       price for Juja Hardware") is not said again above it, and to-dos that are the same thing in other words are said once. */
+    /* Where Release 1's switch is on for the check-in's organisation; off, as before. */
+    const toDo = w.releaseOne ? (w.toDo ?? []).filter((t, i, all) => !all.slice(0, i).some((u) => theSameThingInOtherWords(u.do, t.do))) : (w.toDo ?? []);
+    if (w.releaseOne) w = { ...w, toDo };
+    lines.push(...(w.claims ?? []).filter((c) => !w.releaseOne || !toDo.some((t) => theSameThingInOtherWords(c.replace(/^.*? the work is waiting on \S+ for /, '').replace(/\..*$/, ''), t.do))));
     const rest = theRestOfTheWeekIn(nextAlreadyShown ? { ...w, next: null } : w, room);
     if (w.next) nextAlreadyShown = true;
     room -= Math.min(room, (w.toDo ?? []).length);
@@ -232,6 +298,34 @@ export async function theReportsWordsHeldToTheRecord<R extends { moved: string[]
   }
 }
 
+/**
+ * THE WEEK FOR THE LEAD, FROM THE RECORD (Groundwork does the managing, part 2; Hafsah, 21 October 2026), for the lead who runs the check-in
+ * and only where her organisation's direct morning is on (theDirectMorningFor returns nothing otherwise). Results against the target, as her
+ * morning summary and board say them; what moved this week with proof, from each person's stored record; and who needs her, with the evidence
+ * (what they said against what was proved, promises, changed figures, with the days and their lines). The people's records are read only
+ * where the organisation keeps judgements of a person on. Nothing is sent that was not sent before: these are sentences in the same letter.
+ */
+export async function theWeekForTheLead(
+  prisma: any, g: { id: string; label: string; initiatorId: string }, now: Date, board?: { get(groundId: string, userId: string): Promise<any> },
+): Promise<Pick<AWeekInOneCheckIn, 'theTarget' | 'movedWithProof' | 'needsYou'>> {
+  const ground = await Promise.resolve(prisma.ground?.findUnique?.({ where: { id: g.id }, select: { organizationId: true, kindOfWork: true, participants: { select: { id: true, userId: true, managingOnly: true, leftAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } })).catch(() => null) as any;
+  if (!ground) return {};
+  /* The week passing is something new in each person's record, as each morning (the-leads-daily-nudge): read current, never stale. */
+  await rebuildThePersonsRecords(prisma, g.id, now).catch(() => 0);
+  const served = board ? await board.get(g.id, g.initiatorId).catch(() => null) : null;
+  const morning = served ? await theDirectMorningFor(prisma, { groundId: g.id, leadUserId: g.initiatorId, board: served, now }).catch(() => null) : null;
+  /* Every target line the morning says (one on a sales check-in, one per team target under Release 4). */
+  const targetLines = morning?.parts.find((p) => p.key === 'target')?.lines ?? [];
+  const theTarget = (served?.releaseFourTeams && !isASalesKind(oneOfTheKinds(ground.kindOfWork)) ? targetLines.map((l) => l.text).join(' ') : targetLines[0]?.text) || null;
+  const team = ((ground.participants ?? []) as any[]).filter((p) => p.userId !== g.initiatorId && !p.managingOnly && !p.leftAt);
+  const records = await theStoredRecords(prisma, ground.organizationId, team.map((p) => p.id), g.id);
+  const people = team.map((p) => ({ name: nameToCall(p), stored: records.get(p.id) ?? null })).filter((p) => !!p.name);
+  const kind: AKindOfCheckIn = isASalesKind(oneOfTheKinds(ground.kindOfWork)) ? 'sales' : (await theCollectionsTypeFor(prisma, g.id).catch(() => null)) ? 'collections' : 'matter';
+  const movedWithProof = whatMovedWithProof(people, new Date(now.getTime() - WEEK), now);
+  const needsYou = whoNeedsYouThisWeek(people, kind, g.label);
+  return { ...(theTarget ? { theTarget } : {}), ...(movedWithProof.length ? { movedWithProof } : {}), ...(needsYou.length ? { needsYou } : {}) };
+}
+
 const TERMINAL: GroundStatus[] = A_GROUND_NO_MESSAGE_IS_ABOUT;
 const WEEK = 7 * 86_400_000;
 
@@ -239,7 +333,7 @@ const WEEK = 7 * 86_400_000;
  * Counts one check-in's last seven days. Reads nothing anybody said: only who finished, counts of
  * commitments and handoffs, and first names.
  */
-export async function theWeekOf(prisma: any, g: { id: string; label: string; initiatorId: string }, now: Date): Promise<AWeekInOneCheckIn> {
+export async function theWeekOf(prisma: any, g: { id: string; label: string; initiatorId: string; cadence?: string | null }, now: Date): Promise<AWeekInOneCheckIn> {
   const since = new Date(now.getTime() - WEEK);
   const [people, finished, saidNext, done, waiting, doneRows, waitingRows] = await Promise.all([
     prisma.groundParticipant.findMany({ where: { groundId: g.id }, select: { id: true, userId: true, email: true, managingOnly: true, nameGiven: true, lastNudgedAt: true, ...WHAT_SAYS_SOMEBODY_JOINED, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } }),
@@ -250,8 +344,13 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
     prisma.groundDependency.count({ where: { groundId: g.id, status: { not: 'CLEARED' } } }),
     /* Who settled what, and whom handoffs wait on: ids only, for the subject. Never what anybody said. */
     (async () => prisma.groundCommitment.findMany({ where: { groundId: g.id, status: 'DONE', participantId: { not: null }, settledAt: { gte: since, lte: now } }, select: { participantId: true, status: true } }))().catch(() => []),
-    (async () => prisma.groundDependency.findMany({ where: { groundId: g.id, status: { not: 'CLEARED' }, onParticipantId: { not: null } }, select: { id: true, groundId: true, fromParticipantId: true, onParticipantId: true, status: true, what: true, triedSaid: true } }))().catch(() => []),
+    (async () => prisma.groundDependency.findMany({ where: { groundId: g.id, status: { not: 'CLEARED' }, onParticipantId: { not: null } }, select: { id: true, groundId: true, fromParticipantId: true, onParticipantId: true, status: true, what: true, triedSaid: true, createdAt: true } }))().catch(() => []),
   ]);
+  /* Each session that closed in the week, for everybody who owes one (item 17). Read like the missed check-ins are (missed-check-ins.ts). */
+  const sessions: any[] = await Promise.resolve(prisma.checkIn?.findMany?.({
+    where: { groundId: g.id, isSetup: false },
+    select: { participantId: true, sessionNumber: true, status: true, isSetup: true, optional: true, closedReason: true, availableFrom: true, createdAt: true, completedAt: true, missedReason: true, turns: { where: { role: 'PERSON' }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } },
+  }) ?? []).catch(() => []);
   /* Decision 133: the lead is counted only in a week they checked in, and never listed as not yet. */
   const checkedInThisWeek = new Set((finished as any[]).map((r) => r.participantId));
   /* Invited, not joined yet: not counted and never "not yet" (decision 8 redone, night run 3). */
@@ -280,13 +379,18 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   const confirmedWaits = await theConfirmedWaits(prisma, openOnSomebody.map((r, i) => ({ ...r, id: r.id ?? `w-${i}`, groundId: r.groundId ?? g.id })));
   const isConfirmed = (r: any, i: number) => confirmedWaits.has(r.id ?? `w-${i}`);
   const waitingOn = tally(openOnSomebody.filter(isConfirmed).map((r) => r.onParticipantId));
-  const claims = openOnSomebody
-    .filter((r, i) => !isConfirmed(r, i) && String(r.what ?? '').trim())
+  const releaseOne = await theReleaseOneSalesBoardIsOnFor(prisma, g.id).catch(() => false);
+  /* The same wait said again in other words is one claim, with the fullest words of what was tried (items 18 and 19), where Release 1's
+     switch is on; off, each claim as before. */
+  const unconfirmed = openOnSomebody.filter((r, i) => !isConfirmed(r, i) && String(r.what ?? '').trim());
+  const claims = (releaseOne ? dedupeDependencies(unconfirmed) : unconfirmed)
     .map((r) => {
       const from = r.fromParticipantId ? nameOf(r.fromParticipantId) : null;
       const on = nameOf(r.onParticipantId);
       if (!from || !on) return null;
-      return `${from === 'you' ? 'You say' : `${from} says`} the work is waiting on ${on} for ${String(r.what).trim().replace(/[.\s]+$/, '')}. ${theNoteBesideTheClaim(r, { by: from, on, lead: 'you' })}`;
+      /* What they said they tried, in full and with the day, or nothing (item 18). */
+      const tried = whatTheyTriedInFull(r, from === 'you' ? 'You' : from);
+      return `${from === 'you' ? 'You say' : `${from} says`} the work is waiting on ${on} for ${String(r.what).trim().replace(/[.\s]+$/, '')}.${tried ? ` ${tried}` : ''}`;
     })
     .filter((x): x is string => !!x);
   /*
@@ -303,7 +407,21 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
     .map((p) => nameToCall(p))
     .filter((n: string) => !!n);
   const saidNextBy = new Set((saidNext as any[]).map((r) => r.participantId).filter((id: string) => countedIds.has(id)));
-  return { groundId: g.id, label: g.label, ofHowMany: counted.length, checkedIn: finishedIds.size, answerableIds: counted.map((p) => p.userId ?? p.id), checkedInIds: counted.filter((p) => finishedIds.has(p.id)).map((p) => p.userId ?? p.id), notYet, saidWhatNext: saidNextBy.size, done: done as number, waiting: waiting as number, closedBy, waitingOn, ...(claims.length ? { claims } : {}), ...(reminded.length ? { reminded } : {}) };
+  let checkInsDue = 0;
+  let checkInsMade = 0;
+  const missedBy: { name: string; missed: number; of: number }[] = [];
+  for (const p of counted) {
+    if (p.userId && p.userId === g.initiatorId) continue;
+    const theirs = (Array.isArray(sessions) ? sessions : []).filter((c) => c.participantId === p.id);
+    const inTheWeek = new Set(theirs.filter((c) => { const at = new Date(c.availableFrom ?? c.createdAt); return at >= since && at <= now; }).map((c) => c.sessionNumber));
+    /* On a check-in that opens each working day, a quiet session on a day they answered another is no miss: "Kevin missed one of six" (polish round 15). */
+    const closed = theirClosedSessions(theirs, [], now, { opensDaily: String(g.cadence ?? '').toUpperCase() === 'DAILY' }).filter((c) => inTheWeek.has(c.sessionNumber));
+    const missed = closed.filter((c) => c.missed).length;
+    checkInsDue += closed.length;
+    checkInsMade += closed.length - missed;
+    if (missed) missedBy.push({ name: nameToCall(p), missed, of: closed.length });
+  }
+  return { groundId: g.id, label: g.label, ofHowMany: counted.length, checkedIn: finishedIds.size, answerableIds: counted.map((p) => p.userId ?? p.id), checkedInIds: counted.filter((p) => finishedIds.has(p.id)).map((p) => p.userId ?? p.id), notYet, saidWhatNext: saidNextBy.size, done: done as number, waiting: waiting as number, closedBy, waitingOn, checkInsDue, checkInsMade, ...(missedBy.length ? { missedBy } : {}), ...(releaseOne ? { releaseOne: true } : {}), ...(claims.length ? { claims } : {}), ...(reminded.length ? { reminded } : {}) };
 }
 
 /**
@@ -319,6 +437,8 @@ export async function sendTheLeadsWeeklyLetters(
      * its switch is on. `weeklyReport` reads the lead's own weekly report as she is served it (what moved, what to do), and may be absent.
      */
     everyCheckIn?: { anchorIsOn: boolean; weeklyReport?: (g: { id: string; initiatorId: string }, now: Date) => Promise<{ moved: string[]; toDo: { do: string; why: string }[] } | null> };
+    /** The lead's own board, as she opens it, so the letter's target is the one her board and her morning summary say. Optional. */
+    board?: { get(groundId: string, userId: string): Promise<any> };
   },
   now: Date = new Date(),
 ): Promise<{ tried: number }> {
@@ -327,10 +447,10 @@ export async function sendTheLeadsWeeklyLetters(
   const kind = every ? (every.anchorIsOn ? {} : WHERE_A_GROUND_IS_NOT_THE_ANCHORS) : WHERE_A_GROUND_IS_THE_ANCHORS;
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
     where: { ...kind, status: { notIn: TERMINAL } },
-    select: { id: true, label: true, initiatorId: true, ...(every ? { scenario: true } : {}) },
+    select: { id: true, label: true, initiatorId: true, organizationId: true, cadence: true, cadenceDays: true, ...(every ? { scenario: true } : {}) },
     ...page,
   }), 1000);
-  const byLead = new Map<string, { id: string; label: string; initiatorId: string; scenario?: string | null }[]>();
+  const byLead = new Map<string, { id: string; label: string; initiatorId: string; organizationId?: string; scenario?: string | null }[]>();
   for (const g of grounds) byLead.set(g.initiatorId, [...(byLead.get(g.initiatorId) ?? []), g]);
 
   const base = (deps.frontendUrl || '').replace(/\/$/, '');
@@ -353,6 +473,16 @@ export async function sendTheLeadsWeeklyLetters(
           const reported = await prisma.report?.findFirst?.({ where: { groundId: g.id, releasedAt: { not: null } }, select: { id: true } }).catch(() => null);
           if (next.kind === 'another' && w.checkedIn > 0 && reported) w.next = theSuggestionSaid(next);
         }
+        /* A fee note that fell due on an event this week, or can now be raised, first in what moved (messages test, 19 October, finding 4). Release 2 only. */
+        const fellDue = g.organizationId
+          ? await theFeeNotesThatFellDueOnAnEvent(prisma, { userId: leadId, organizationId: g.organizationId }, [g.id], new Date(now.getTime() - 7 * 86_400_000)).catch(() => [])
+          : [];
+        /* What the record shows this week, where the direct morning is on: what moved with proof takes the place of what the report
+           said moved (the record's fee notes that fell due stay first); off, nothing here and the letter as before. */
+        const fromTheRecord = await theWeekForTheLead(prisma, g, now, deps.board).catch(() => ({} as Awaited<ReturnType<typeof theWeekForTheLead>>));
+        if (fromTheRecord.movedWithProof?.length) w.moved = [];
+        Object.assign(w, fromTheRecord);
+        if (fellDue.length) w.moved = [...fellDue.map((f) => f.text), ...(w.moved ?? [])];
         weeks.push(w);
       }
       const letter = theLeadsLetter(weeks, every ? { onlyWhenSomethingHappened: true } : {});

@@ -46,7 +46,18 @@ export type WhatKindOfMail =
    * a customer-facing preference's business - a staff member who unsubscribed from a customer's
    * digest did not ask to stop hearing that a customer is waiting on them (fix plan D13, NL-032).
    */
-  | 'operational';
+  | 'operational'
+  /**
+   * Money, the plan, and what becomes of the record when a plan ends: what the organisation needs in order to pay and keep its
+   * work. Treated as `asked for` by every rule here, and the one kind of mail about the work that a pause never stops (Hafsah,
+   * 2 November 2026: while Groundwork is paused "people can still sign in, see their data and pay").
+   */
+  | 'about paying';
+
+/** The kinds a pause leaves alone: getting in, the running of the product, and paying. Everything else waits until they pay. */
+export function aPauseStops(kind: WhatKindOfMail): boolean {
+  return kind === 'we decided to send it' || kind === 'asked for';
+}
 
 export interface WhatTheyWant {
   /** The account-level switch. Undefined where there is no account — a person invited by address. */
@@ -84,10 +95,10 @@ export const GOVERNED_BY_THE_DIGEST_SWITCH: ReadonlySet<string> = new Set(['send
  * the person themselves to do something, or tell them they have missed it.
  */
 export const NOT_SENT_WHILE_AWAY: ReadonlySet<string> = new Set([
-  'sendNudge', 'sendAbsenceReminder', 'sendSessionReady', 'sendInviteAboutToLapse', 'sendFeedbackRequest',
+  'sendNudge', 'sendAbsenceReminder', 'sendSessionReady', 'sendInviteAboutToLapse', 'sendFeedbackRequest', 'sendTheLeadsNudge',
 ]);
 
-export const GOVERNED_BY_THE_NUDGE_SWITCH: ReadonlySet<string> = new Set(['sendNudge', 'sendAbsenceReminder', 'sendLeadFirstCheckIn']);
+export const GOVERNED_BY_THE_NUDGE_SWITCH: ReadonlySet<string> = new Set(['sendNudge', 'sendAbsenceReminder', 'sendLeadFirstCheckIn', 'sendTheLeadsNudge']);
 
 /**
  * Whether this goes out. The whole decision, in one function, called from one place.
@@ -174,6 +185,10 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   /* To our own roster, about the running of the product. Exempt from the customer-facing preference:
      an API-access request has to reach somebody. */
   sendTeamAlert: 'operational',
+  /* Groundwork's own morning list of what did not go out yesterday, to the one platform address set for it (engagement/the-daily-delivery-alert.ts). */
+  sendTheDailyDeliveryAlert: 'operational',
+  /* Groundwork's own daily usage summary, to the back-office team (back-office/the-daily-usage-summary.ts). */
+  sendTheDailyUsageSummary: 'operational',
 
   /* They took part; this is the outcome. */
   sendReportReady: 'asked for',
@@ -198,10 +213,10 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendLateCorrectionNotice: 'asked for',
   sendParticipantCheckedIn: 'asked for',
   sendCoachRequestReceived: 'asked for',
-  sendRecordPortabilityNotice: 'asked for',
-  sendBillingChangeNotification: 'asked for',
-  sendPaymentRequestEmail: 'asked for',
-  sendPaymentFailed: 'asked for',
+  sendRecordPortabilityNotice: 'about paying',
+  sendBillingChangeNotification: 'about paying',
+  sendPaymentRequestEmail: 'about paying',
+  sendPaymentFailed: 'about paying',
   /* A chase Groundwork decided to send, told to the lead at the end of the reminders: routine, so the one-a-day rule counts it and her own opt-out stops it (8 October). */
   sendWhoHasNotStarted: 'we decided to send it',
   /* They sent the invitation; this is what became of it. */
@@ -216,19 +231,23 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
      A warning that the plan is about to stop working is not a nudge, even though nobody asked for
      it this morning: suppressing it means the wall arrives as a surprise, on the day somebody has
      work to do. Found by the guard below rather than by me — eight senders I had not classified. */
-  sendSubscriptionConfirmed: 'asked for',
-  sendSubscriptionCancelled: 'asked for',
-  sendSubscriptionPaymentFailed: 'asked for',
-  sendSubscriptionRenewal: 'asked for',
-  sendFreeExtensionClaimed: 'asked for',
-  sendApproachingSessionLimit: 'asked for',
-  sendMemberCapWarning: 'asked for',
-  sendCareFeeConfirmation: 'asked for',
+  sendSubscriptionConfirmed: 'about paying',
+  sendSubscriptionCancelled: 'about paying',
+  sendSubscriptionPaymentFailed: 'about paying',
+  sendSubscriptionRenewal: 'about paying',
+  sendFreeExtensionClaimed: 'about paying',
+  sendApproachingSessionLimit: 'about paying',
+  sendMemberCapWarning: 'about paying',
+  sendCareFeeConfirmation: 'about paying',
 
   /* Nobody asked this morning. Every one of these stops when somebody says stop. */
   sendNudge: 'we decided to send it',
   /* The lead pressed "Remind": still a reminder, so the person's own opt-out stops it, but never counted or held for the day's one. */
   sendNudgeFromAPress: 'we decided to send it',
+  /* The lead pressed "Nudge Peter" (engagement/the-leads-own-nudge.ts): one message from her by name, about Peter's one thing today. A
+     reminder, so his own stop link and opt-out stop it and it waits for quiet hours to end; never counted or held as the day's one routine
+     message (it is not in ROUTINE_EMAILS), and never sent to somebody on approved leave. */
+  sendTheLeadsNudge: 'we decided to send it',
   /* "Send me that" from the assistant: they asked for it. */
   sendMeThat: 'asked for',
   sendInviteAboutToLapse: 'we decided to send it',
@@ -253,11 +272,13 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendReopenedNotification: 'we decided to send it',
   sendParticipantBlockedNudge: 'we decided to send it',
   /* About a code whose time is running out: billing, so the opt-out never stops it (decision 109 item 5). */
-  sendCodeExpiryReminder: 'asked for',
-  /* The free month ending, and ended (15 October): billing, so the opt-out never stops them (decision 109 item 5), but each is
-     still the admin's one routine message that day, and the sweep sends them only in the organisation's working day. */
-  sendFreeMonthEndsSoon: 'asked for',
-  sendFreeMonthEnded: 'asked for',
+  sendCodeExpiryReminder: 'about paying',
+  /* The free month ending (15 October): billing, so the opt-out never stops it (decision 109 item 5), but it is still the admin's one
+     routine message that day, and the sweep sends it only in the organisation's working day. */
+  sendFreeMonthEndsSoon: 'about paying',
+  /* The four weeks after the free month (2 November): how long is left before Groundwork pauses, and how to pay. Billing, so the
+     opt-out never stops it, and never held back by the day's one routine message: a countdown that waits a day says the wrong day. */
+  sendGroundworkPausesSoon: 'about paying',
   sendRoundDigest: 'we decided to send it',
   /* The lead's weekly letter on the anchor check-ins. Nobody asked this morning, so the stop link stops it. */
   sendTheLeadsWeeklyLetter: 'we decided to send it',
@@ -279,6 +300,12 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendMissedCheckIns: 'we decided to send it',
   /* What is outstanding for a lead, once each morning when something is (decision 120). */
   sendTheLeadsDailyNudge: 'we decided to send it',
+  /* The direct morning (behind organizations.direct_morning_on): the lead's daily summary in its four parts. It is sent under the daily nudge's name, so it is still her one routine message of the day. */
+  sendTheDirectMorning: 'we decided to send it',
+  /* A message WhatsApp could not take, by email instead (whatsapp/by-email-instead.ts): the day's routine one and a notice are ours to send; the thank-you and the report follow the person's own check-in. */
+  sendTheRoutineMessageByEmail: 'we decided to send it',
+  sendTheMessageByEmail: 'we decided to send it',
+  sendTheAnswerByEmail: 'asked for',
 };
 
 export function whatThisMailIs(sender: string): WhatKindOfMail {

@@ -1,3 +1,4 @@
+import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { Injectable, Logger } from '@nestjs/common';
 import { CheckInStatus, DependencyStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -830,7 +831,9 @@ export class DetectorsService {
      * This early return used to sit above everything, which is the same shape as the bug found in
      * `findNoLead` an hour earlier: a guard clause for one thing quietly gating another.
      */
-    const aboutPeople = await this.aboutPeople(organizationId, subjects, turns);
+    /* Judgements of a person off for this organisation: no finding about a person is made (organisation/person-judgements.ts). */
+    const judged = await thePersonJudgementsAreOn(this.prisma, organizationId);
+    const aboutPeople = judged ? await this.aboutPeople(organizationId, subjects, turns) : 0;
     if (!subjects.length) {
       this.logger.log(`Org ${organizationId}: no subjects imported; ${aboutPeople} people findings.`);
       return { ran: true, found: aboutPeople };
@@ -882,7 +885,7 @@ export class DetectorsService {
     /* Its opposite: talked about repeatedly, never by the number on it. */
     const measureGaps = await this.measureUnmentioned(organizationId, subjects, turns);
     const diverging = await this.goalDivergence(organizationId, subjects);
-    const contribution = await this.contribution(organizationId, subjects, turns);
+    const contribution = judged ? await this.contribution(organizationId, subjects, turns) : 0;
     const proposed = await this.recommend(organizationId, subjects);
 
     this.logger.log(`Org ${organizationId}: ${found.length} undeclared dependencies, ${unmentioned} unmentioned, ${measureGaps} with a measure nobody mentions, ${diverging} diverging, ${contribution} contribution findings, ${aboutPeople} about people, ${proposed} recommendations.`);

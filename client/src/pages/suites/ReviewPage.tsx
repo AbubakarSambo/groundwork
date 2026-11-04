@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { reviewsApi, type AReview, type ReviewForTheWriter, type YourAppeal, type AppealForAnotherReader, type ReviewForThePerson, type TheRecord, type ABriefing, type RecogniseForTheWriter, type RecogniseForThePerson } from '@/api/suites'
+import { reviewsApi, type AReview, type ReviewForTheWriter, type YourAppeal, type AppealForAnotherReader, type ReviewForThePerson, type TheRecord, type ABriefing, type RecogniseForTheWriter, type RecogniseForThePerson, type AReviewAsPictured } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Page, PageTitle, Section, Panel, Button, Note, ProofMark, FieldLabel, TextArea, TextField, RowList, Row } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Note, ProofMark, FieldLabel, TextArea, TextField, RowList, Row, FoldedLine, EdgeList, EdgeRow } from '@/components/gw/ui'
 
 /**
  * ONE PERFORMANCE REVIEW (E4, #/suite/reviews/:id, group 2 piece 4). The wording is copied from the
@@ -85,7 +85,12 @@ export function ReviewPage() {
           </div>
         )
       )}
-      {data && <TheReview r={data} myUserId={user?.id ?? null} />}
+      {/* Release 7: the review as pictured, built from check-ins, first; the review's own parts follow, folded under it. */}
+      {data?.asPictured && <TheReviewAsPictured p={data.asPictured} />}
+      {data && (data.asPictured
+        /* Open while the review is in progress (fix plan, pattern 3; quarter test, Kevin): the own-view box and Update from the record are in it, and were hidden behind a closed fold. */
+        ? <FoldedLine name="The record in full, what Groundwork noticed, and the decision" defaultOpen={!(data as any).decision}>{<TheReview r={data} myUserId={user?.id ?? null} />}</FoldedLine>
+        : <TheReview r={data} myUserId={user?.id ?? null} />)}
     </Page>
   )
 }
@@ -145,6 +150,7 @@ function TheReview({ r, myUserId }: { r: AReview; myUserId: string | null }) {
           editable={person && !r.decision}
           save={(text) => reviewsApi.view(r.id, text)}
           reviewId={r.id}
+          drafts={person && (r as any).asPictured ? () => reviewsApi.selfReviewDraft(r.id) : undefined}
         />
       </div>
 
@@ -241,13 +247,15 @@ function WhereYouDiffer({ d }: { d: NonNullable<ReviewForThePerson['whereYouDiff
   )
 }
 
-function Words({ heading, text, empty, editable, save, reviewId }: {
+function Words({ heading, text, empty, editable, save, reviewId, drafts }: {
   heading: string; text: string | null; empty: string; editable: boolean; save: (t: string) => Promise<AReview>; reviewId: string
+  /** Release 7: the person's own view, drafted from their running record. */
+  drafts?: () => Promise<string>
 }) {
   return (
     <Section heading={heading}>
       {editable
-        ? <WriteWordsForm label={heading} text={text} save={save} reviewId={reviewId} />
+        ? <WriteWordsForm label={heading} text={text} save={save} reviewId={reviewId} drafts={drafts} />
         : text ? <p className="gwui-quoted-text">“{text}”</p> : <p className="gwui-panel-text-muted">{empty}</p>}
     </Section>
   )
@@ -258,8 +266,8 @@ function Words({ heading, text, empty, editable, save, reviewId }: {
  * page already drew (item 3: a reader offered their own box beside the writer's already-written
  * words, inside the one "What <name> writes" section).
  */
-function WriteWordsForm({ label, text, save, reviewId }: {
-  label: string; text: string | null; save: (t: string) => Promise<AReview>; reviewId: string
+function WriteWordsForm({ label, text, save, reviewId, drafts }: {
+  label: string; text: string | null; save: (t: string) => Promise<AReview>; reviewId: string; drafts?: () => Promise<string>
 }) {
   const qc = useQueryClient()
   const [draft, setDraft] = useState(text ?? '')
@@ -273,7 +281,8 @@ function WriteWordsForm({ label, text, save, reviewId }: {
   return (
     <form className="gwui-suite-q" onSubmit={e => { e.preventDefault(); if (draft.trim()) saving.mutate() }}>
       <FieldLabel htmlFor={fieldId}>{label}</FieldLabel>
-      <TextArea id={fieldId} rows={5} value={draft} onChange={e => setDraft(e.target.value)} maxLength={4000} />
+      {drafts && <button type="button" className="gw-link t-small gw-start" onClick={() => drafts().then(setDraft).catch(() => setProblem('That didn’t load. Try again.'))}>Draft it from my record</button>}
+      <TextArea id={fieldId} rows={drafts ? 10 : 5} value={draft} onChange={e => setDraft(e.target.value)} maxLength={4000} />
       <div><Button kind="secondary" size="small" type="submit" disabled={!draft.trim() || saving.isPending}>Save</Button></div>
       {problem && <Note tone="error">{problem}</Note>}
     </form>
@@ -283,13 +292,28 @@ function WriteWordsForm({ label, text, save, reviewId }: {
 /** What Groundwork understands from the record. The person marks a line wrong and says what is true; nobody else can. */
 function TheRecordSection({ r, record }: { r: AReview; record: TheRecord }) {
   const person = r.reader === 'person'
+  const qc = useQueryClient()
+  const [problem, setProblem] = useState<string | null>(null)
+  /* Opening never reads the record again; the person or whoever writes it may, while it is in progress. */
+  const mayUpdate = !(r as any).decision && (person || !!(r as any).mayWrite)
+  const update = useMutation({
+    mutationFn: () => reviewsApi.updateFromTheRecord(r.id),
+    onSuccess: (x) => { setProblem(null); qc.setQueryData(['suite-review', r.id], x) },
+    onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
+  })
   return (
     <Section heading={person ? 'What Groundwork understands about your work' : `What Groundwork understands about ${r.firstName}’s work`}>
       <p className="gwui-panel-text">{record.intro}</p>
+      {mayUpdate && (
+        <p className="gwui-panel-text">
+          <Button kind="secondary" size="small" onClick={() => update.mutate()} disabled={update.isPending}>{update.isPending ? 'Updating…' : 'Update from the record'}</Button>
+        </p>
+      )}
+      {problem && <Note tone="error">{problem}</Note>}
       {record.whoReads && <p className="gwui-panel-text-muted">{record.whoReads}</p>}
       {record.parts.map(part => (
         <Panel key={part.part} as="section" aria-label={part.heading}>
-          <h3 className="gwui-panel-heading">{part.heading}</h3>
+          <h3 className="t-h3">{part.heading}</h3>
           <RowList label={part.heading}>
             {part.lines.map(l => <ALine key={l.key} reviewId={r.id} line={l} mayCorrect={record.mayCorrect} />)}
           </RowList>
@@ -348,7 +372,7 @@ function TheBriefing({ b }: { b: ABriefing }) {
       {b.counts && <p className="gwui-panel-text">{b.counts}</p>}
       {b.patterns.length > 0 && (
         <Panel as="section" aria-label="What keeps coming up">
-          <h3 className="gwui-panel-heading">What keeps coming up</h3>
+          <h3 className="t-h3">What keeps coming up</h3>
           <RowList label="What keeps coming up">
             {b.patterns.map((p, i) => (
               <Row key={i} columns="minmax(0, 1fr)">
@@ -357,23 +381,22 @@ function TheBriefing({ b }: { b: ABriefing }) {
                   {p.whatHappened && <p className="gwui-panel-text">{p.whatHappened}</p>}
                   <p className="gwui-panel-text">{p.howOften}</p>
                   <p className="gwui-panel-text-muted">{p.checkIn}</p>
-                  <p className="gwui-panel-text">{p.theirAnswer}</p>
+                  {p.nextStep && <p className="gwui-panel-text">{p.nextStep}</p>}
                 </div>
               </Row>
             ))}
           </RowList>
-          {b.patternsNote && <p className="gwui-panel-text-muted">{b.patternsNote}</p>}
         </Panel>
       )}
       {b.changedAfterEarlierConversations.length > 0 && (
         <Panel as="section" aria-label="What changed after earlier conversations">
-          <h3 className="gwui-panel-heading">What changed after earlier conversations</h3>
+          <h3 className="t-h3">What changed after earlier conversations</h3>
           {b.changedAfterEarlierConversations.map((c, i) => <p key={i} className="gwui-panel-text">{c}</p>)}
         </Panel>
       )}
       {b.corrections.length > 0 && (
         <Panel as="section" aria-label="What has been marked as wrong">
-          <h3 className="gwui-panel-heading">What has been marked as wrong</h3>
+          <h3 className="t-h3">What has been marked as wrong</h3>
           {b.corrections.map((c, i) => (
             <div key={i}>
               <p className="gwui-panel-text">{c.line}</p>
@@ -402,7 +425,7 @@ function WhatMayBeSuggested({ firstName, r }: { firstName: string | null; r: Rec
 function TheSuggestion({ r, firstName, onAgree, onElse }: { r: RecogniseForTheWriter; firstName: string; onAgree: () => void; onElse: () => void }) {
   return (
     <Panel as="section" aria-label={r.headline}>
-      <h3 className="gwui-panel-heading">{r.headline}</h3>
+      <h3 className="t-h3">{r.headline}</h3>
       <p className="gwui-panel-text">{r.why}</p>
       <p className="gwui-panel-text-muted">{r.whatWouldChangeIt}</p>
       <p className="gwui-panel-text-muted">{r.yourDecision}</p>
@@ -434,7 +457,7 @@ function Decision({ r }: { r: AReview }) {
     return (
       <Section heading={mine ? 'Your decision' : by ? `${by}’s decision` : 'The decision'}>
         <p className="gwui-panel-text">{r.decision.says}</p>
-        <h3 className="gwui-panel-heading">{mine ? 'Your reasons' : by ? `${by}’s reasons` : 'The reasons'}</h3>
+        <h3 className="t-h3">{mine ? 'Your reasons' : by ? `${by}’s reasons` : 'The reasons'}</h3>
         <p className="gwui-panel-text">{r.decision.reasons}</p>
         {mine && <p className="gwui-panel-text-muted">{r.firstName} sees your decision and your reasons.</p>}
       </Section>
@@ -483,7 +506,7 @@ function Appeal({ r }: { r: AReview }) {
 function DecisionWas({ was }: { was: { says: string; reasons: string } }) {
   return (
     <>
-      <h3 className="gwui-panel-heading">What the decision said before</h3>
+      <h3 className="t-h3">What the decision said before</h3>
       <p className="gwui-panel-text-muted">{was.says}</p>
       <p className="gwui-panel-text-muted">{was.reasons}</p>
     </>
@@ -535,12 +558,12 @@ function YourAppealSection({ r, a }: { r: ReviewForThePerson; a: YourAppeal }) {
   return (
     <Section heading="Your appeal">
       <p className="gwui-panel-text">{a.says}</p>
-      <h3 className="gwui-panel-heading">Your reasons</h3>
+      <h3 className="t-h3">Your reasons</h3>
       <p className="gwui-quoted-text">“{a.yourReasons}”</p>
       {a.additions.map((x, i) => <p key={i} className="gwui-quoted-text">“{x.said}”</p>)}
       {decided && a.reasons && a.reasons !== r.decision?.reasons && (
         <>
-          <h3 className="gwui-panel-heading">{a.decidedByFirstName ? `${a.decidedByFirstName}’s reasons` : 'The reasons'}</h3>
+          <h3 className="t-h3">{a.decidedByFirstName ? `${a.decidedByFirstName}’s reasons` : 'The reasons'}</h3>
           <p className="gwui-panel-text">{a.reasons}</p>
         </>
       )}
@@ -577,14 +600,14 @@ function AnAppealForAnotherReader({ r, a }: { r: ReviewForTheWriter; a: AppealFo
       <p className="gwui-panel-text">{a.says}</p>
       {a.theirReasons && (
         <>
-          <h3 className="gwui-panel-heading">{`${a.personFirstName}’s reasons`}</h3>
+          <h3 className="t-h3">{`${a.personFirstName}’s reasons`}</h3>
           <p className="gwui-quoted-text">“{a.theirReasons}”</p>
           {(a.additions ?? []).map((x, i) => <p key={i} className="gwui-quoted-text">“{x.said}”</p>)}
         </>
       )}
       {decided && a.reasons && a.reasons !== r.decision?.reasons && (
         <>
-          <h3 className="gwui-panel-heading">The reasons for the outcome of the appeal</h3>
+          <h3 className="t-h3">The reasons for the outcome of the appeal</h3>
           <p className="gwui-panel-text">{a.reasons}</p>
         </>
       )}
@@ -611,5 +634,38 @@ function AnAppealForAnotherReader({ r, a }: { r: ReviewForTheWriter; a: AppealFo
         </form>
       )}
     </Section>
+  )
+}
+
+const EDGE = { rec: 'ready', act: 'decide', att: 'look', con: 'concern' } as const
+
+/** RELEASE 7: "A review built from check-ins", as the Check-in Reports file draws it: three readings, what they committed to and did, blocked or dropped, their view, who decides. */
+function TheReviewAsPictured({ p }: { p: AReviewAsPictured }) {
+  return (
+    <>
+      <div className="g3">
+        {p.readings.map((r) => (
+          <div key={r.label} className="panel pad gw-col-6">
+            <span className="t-tiny mut gw-caps">{r.label}</span>
+            <b>{r.question}</b>
+            <p className="t-small">{r.says}</p>
+            {/* What it rests on, from the record (Hafsah, 25 October: each reading with its evidence, never a combined score). */}
+            {(r.evidence ?? []).length > 0 && <ul className="gw-evidence">{(r.evidence ?? []).map((e) => <li key={e} className="t-tiny mut">{e}</li>)}</ul>}
+          </div>
+        ))}
+      </div>
+      {p.committed.length > 0 && (
+        <Section heading={p.committedHeading}>
+          <EdgeList label={p.committedHeading}>{p.committed.map((c) => <EdgeRow key={c.title} kind={EDGE[c.tone]} reason={null} title={c.title} detail={c.says} />)}</EdgeList>
+        </Section>
+      )}
+      {p.blockedOrDropped.length > 0 && (
+        <Section heading="Blocked, or dropped it?">
+          <EdgeList label="Blocked, or dropped it">{p.blockedOrDropped.map((c) => <EdgeRow key={c.title} kind={EDGE[c.tone]} reason={null} title={c.title} detail={c.says} />)}</EdgeList>
+        </Section>
+      )}
+      <Section heading={p.ownViewHeading}><p className="t-body">{p.ownView}</p></Section>
+      <Section heading={p.decidesHeading}><p className="t-body">{p.decides}</p></Section>
+    </>
   )
 }

@@ -1,3 +1,4 @@
+import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
 import { GroundStatus } from '@prisma/client';
 import { A_GROUND_NO_MESSAGE_IS_ABOUT } from '../grounds/a-ground-that-has-ended';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
@@ -37,31 +38,22 @@ export interface WhoWasInvited {
   remindingAgainOn: Date[];
 }
 
+/** Who has not started, who has had a reminder, and when the next goes, and nothing about what Groundwork is doing for her or whether she needs to chase. */
 export function theWaitingWords(firstName: string | null | undefined, w: WhoWasInvited) {
   const n = w.invited.length;
-  const named = namesWithTheRestCounted(w.invited, aNumberInWords);
-  const who = listed(named);
-  const subject = n === 1
-    ? `${capital(who)} has not started "${w.label}" yet, and Groundwork is following up`
-    : `Nobody has started "${w.label}" yet, and Groundwork is following up`;
+  const who = listed(namesWithTheRestCounted(w.invited, aNumberInWords));
   const reminded = namesWithTheRestCounted(w.reminded, aNumberInWords);
-  const again = w.remindingAgainOn.length
-    ? `It will remind them again on ${listed(w.remindingAgainOn.map((d) => whenItWas(d, 'day')))}.`
-    : 'It will not send any more reminders after this, and will tell you when that is so.';
   return {
-    subject,
+    subject: n === 1 ? `${capital(who)} has not started "${w.label}" yet` : `Nobody has started "${w.label}" yet`,
     lines: [
       `Hello ${firstName?.trim() || 'there'}. ${capital(who)} ${n === 1 ? 'was' : 'were'} invited to "${w.label}" on ${whenItWas(w.invitedOn, 'day')}, and nobody has started yet.`,
-      reminded.length
-        ? `Groundwork has already sent a reminder to ${listed(reminded)}.`
-        : 'Groundwork sent each of them the invitation, and is about to remind them.',
-      again,
-      `You do not need to chase anyone yourself. If you would like to say a word to them as well, you could write, "I would value your view on ${w.label}. It takes about ten minutes."`,
+      reminded.length ? `${capital(listed(reminded))} ${w.reminded.length === 1 ? 'has' : 'have'} had a reminder.` : `${n === 1 ? 'They have' : 'Each of them has'} had the invitation.`,
+      ...(w.remindingAgainOn.length ? [`The next reminder goes on ${listed(w.remindingAgainOn.map((d) => whenItWas(d, 'day')))}.`] : []),
+      `You could write to them yourself, "I would value your view on ${w.label}. It takes ${ABOUT_HOW_LONG}."`,
     ],
     linkLabel: 'See who has started',
   };
 }
-
 
 /** The columns of a check-in that `whoIsWaitedOn` reads. */
 export const WHAT_WAITING_READS = {

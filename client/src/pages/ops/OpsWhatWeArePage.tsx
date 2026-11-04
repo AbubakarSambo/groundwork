@@ -27,7 +27,7 @@ export function OpsWhatWeArePage() {
   const d = it.data
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="What we are" answers="What is this product, and what is it not?" />
 
       {d && (
@@ -41,12 +41,12 @@ export function OpsWhatWeArePage() {
               {d.headline}
             </h2>
             {d.saidOutLoud && (
-              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: 0, maxWidth: '62ch', lineHeight: 1.6 }}>
+              <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: 0, maxWidth: '62ch', lineHeight: '22px' }}>
                 {d.saidOutLoud}
               </p>
             )}
             {d.writtenAt && (
-              <p style={{ fontSize: 11.5, color: 'var(--gw-sub)', margin: '10px 0 0' }}>
+              <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '10px 0 0' }}>
                 Written {readDate(d.writtenAt)}
                 {d.writtenBy ? ` by ${d.writtenBy}` : ''}
                 {d.because ? ` - ${d.because}` : ''}
@@ -56,7 +56,7 @@ export function OpsWhatWeArePage() {
               /* Said, so nobody mistakes the deck's words for a decision made in
                  here. Until somebody sets it, the check is running against a
                  slide. */
-              <p style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', margin: '10px 0 0', maxWidth: '62ch', lineHeight: 1.6 }}>
+              <p style={{ fontSize: 12, color: 'var(--gw-amber-t)', margin: '10px 0 0', maxWidth: '62ch', lineHeight: '19px' }}>
                 These are the words from the sales deck, carried across verbatim. Nobody has set them
                 here yet, so every marketing check would be measuring against a slide.
               </p>
@@ -66,7 +66,7 @@ export function OpsWhatWeArePage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginBottom: 14 }}>
             <section style={CARD}>
               <p style={LABEL}>What it is</p>
-              <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13.5, lineHeight: 1.7 }}>
+              <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 14, lineHeight: '24px' }}>
                 {d.isIt.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
@@ -77,7 +77,7 @@ export function OpsWhatWeArePage() {
               {/* The half that does the work, and it looks different because it
                   is different: this is the list a deck violates. */}
               <p style={{ ...LABEL, color: 'var(--gw-red-t)' }}>What it is not</p>
-              <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13.5, lineHeight: 1.7 }}>
+              <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 14, lineHeight: '24px' }}>
                 {d.isNotIt.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
@@ -115,7 +115,7 @@ export function OpsWhatWeArePage() {
                   against. What we used to say is evidence about what changed. */}
               <p style={LABEL}>What we used to say</p>
               {(past.data ?? []).slice(1).map((v) => (
-                <p key={v.version} style={{ fontSize: 13, margin: '8px 0 0', color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                <p key={v.version} style={{ fontSize: 13, margin: '8px 0 0', color: 'var(--gw-sub)', lineHeight: '21px' }}>
                   <strong>v{v.version}</strong> · {v.headline}
                   {v.because ? ` - ${v.because}` : ''} · {readDate(v.writtenAt)}
                 </p>

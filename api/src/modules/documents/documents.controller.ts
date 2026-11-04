@@ -37,6 +37,22 @@ export class InviteDocumentsController {
   }
 }
 
+/** A file read for the person signed in, during setup, before a check-in exists. Nothing is stored. */
+@ApiTags('Documents')
+@ApiBearerAuth()
+@Controller('documents/read')
+export class SetupDocumentsController {
+  constructor(private readonly docs: DocumentsService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Read a file (PDF, Word, Excel, PowerPoint, photo or text) during setup and give back its text. Nothing is stored.' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  read(@UploadedFile() file: Express.Multer.File) {
+    return this.docs.readForSetup(file);
+  }
+}
+
 @ApiTags('Documents')
 @ApiBearerAuth()
 @Controller('grounds/:groundId/documents')
@@ -51,11 +67,13 @@ export class DocumentsController {
     @Param('groundId') groundId: string,
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser('id') userId: string,
-    @Body() body: { consentConfirmed?: string | boolean; uploaderNote?: string },
+    @Body() body: { consentConfirmed?: string | boolean; uploaderNote?: string; fromTheCheckIn?: string | boolean },
   ) {
     /* Multipart, so it arrives as the string "true" rather than a boolean. */
     const confirmed = body?.consentConfirmed === true || body?.consentConfirmed === 'true';
-    return this.docs.upload(groundId, userId, file, confirmed, body?.uploaderNote);
+    /* Release 1B: added in the person's own check-in, so it may be filed as evidence on its item (proof-filed-on-its-item.ts). */
+    const fromTheCheckIn = body?.fromTheCheckIn === true || body?.fromTheCheckIn === 'true';
+    return this.docs.upload(groundId, userId, file, confirmed, body?.uploaderNote, fromTheCheckIn ? { fromTheCheckIn: true } : {});
   }
 
   @Get()

@@ -61,7 +61,7 @@ export function WhatYouAreCarryingForward({
               ("From your own check-in only..."), so the fragment is dropped rather than forced
               into a sentence that would only repeat that line. */}
           <Sec title="What you are carrying forward" />
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 4 }}>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginBottom: 4 }}>
             From your own check-in only. Only you can see it unless you choose to share it.
           </div>
           {mySoloReport?.report ? (
@@ -90,8 +90,8 @@ export function WhatYouAreCarryingForward({
                 <button
                   onClick={() => mySoloReport.shared ? setSoloSharedMut.mutate(false) : setShowShareConfirm(true)}
                   disabled={setSoloSharedMut.isPending}
-                  className="gwui-tap-40"
-                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', background: 'var(--gw-paper-2)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
+                  type="button"
+                  className="gw-link t-small"
                 >
                   {mySoloReport.shared ? 'Stop sharing' : 'Share with everyone'}
                 </button>
@@ -108,8 +108,8 @@ export function WhatYouAreCarryingForward({
     {showShareConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>Share your private report?</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 6 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 8 }}>Share your private report?</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', marginBottom: 6 }}>
               Your private report will become visible to everyone else in this check-in:
             </div>
             <ul style={{ margin: '0 0 14px', paddingLeft: 18 }}>
@@ -124,20 +124,20 @@ export function WhatYouAreCarryingForward({
                 </li>
               ))}
             </ul>
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 18, background: 'var(--gw-paper-2)', borderRadius: 8, padding: '10px 12px' }}>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: '19px', marginBottom: 18, background: 'var(--gw-paper-2)', borderRadius: 8, padding: '10px 12px' }}>
               This is all or nothing. All sections of your private report become visible at once. You can stop sharing at any time.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
+              <button className="btn sec"
                 onClick={() => setShowShareConfirm(false)}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ flex: 1 }}
               >
                 Cancel
               </button>
-              <button
+              <button className="btn pri"
                 onClick={() => setSoloSharedMut.mutate(true)}
                 disabled={setSoloSharedMut.isPending}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: setSoloSharedMut.isPending ? 0.6 : 1 }}
+                style={{ flex: 1 }}
               >
                 {setSoloSharedMut.isPending ? 'Sharing…' : 'Yes, share it'}
               </button>

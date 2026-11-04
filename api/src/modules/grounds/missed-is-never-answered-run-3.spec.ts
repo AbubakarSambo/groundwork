@@ -55,15 +55,17 @@ describe('a session closed with nothing said is missed, never answered; somebody
     expect(text).toMatch(/Hassan Mwenda has answered 3 sessions/);
   });
 
-  it('the count leaves Amina out and says why, in a full sentence', () => {
+  /* CHANGED 1 NOVEMBER 2026: everyone on the check-in is counted (the one count, approved by Hafsah after the prototype's "5 of 6 have
+     checked in today; Omar hasn't yet"), so Amina is in the count, and said as not joined, in a full sentence; never as missed. */
+  it('the count counts Amina and says she has not joined, in a full sentence', () => {
     const glance: any = atAGlance({
       sessionNumber: 4, roundsDone: 3, roundsPlanned: 12, scenario: null, dependencies: [],
       people: people.map((p) => ({ ...p, invitedAt: day(1), ...(p.id === 'p-amina' ? { notJoinedYet: true } : {}) })) as any,
       thisRound: people.flatMap((p) => p.checkIns.filter((c) => c.sessionNumber === 4).map((c) => ({ ...c, participantId: p.id }))) as any,
     } as any, NOW);
     console.log(`THE LEAD READS: ${glance.progress.answeredThisRound} of ${glance.progress.ofPeople}. ${glance.progress.notCountedSays}`);
-    expect(glance.progress.ofPeople).toBe(2);
-    expect(glance.progress.notCountedSays).toBe('One more person is not counted yet, because they were invited and have not joined yet.');
+    expect(glance.progress.ofPeople).toBe(3);
+    expect(glance.progress.notJoinedSays).toBe('One of them was invited and has not joined yet.');
   });
 
   it('the line beside it names them plainly', () => {

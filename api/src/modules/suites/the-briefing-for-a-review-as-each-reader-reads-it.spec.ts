@@ -51,22 +51,42 @@ async function started() {
 }
 
 describe('Wairimu, who writes the review, reads her briefing', () => {
-  it('with the counts from the check-in she runs, Aisha’s answered pattern, what changed after earlier conversations, and that she decides', async () => {
+  it('reads what the record shows about Aisha (layer 2), with the days and words, and the next step; Grace and Juma read none of it', async () => {
+    const across = {
+      patterns: [{
+        key: 'slipping-promises', participantId: 'pa-sales', kind: 'needs work', state: 'holds', who: 'Aisha',
+        saying: 'Aisha has let 2 promised days pass without the work done.',
+        instances: [
+          { checkInId: 'c2', sessionNumber: 2, on: '2026-05-18', item: 'the price list', words: ['I have not sent the price list yet.'] },
+          { checkInId: 'c3', sessionNumber: 3, on: '2026-06-01', item: 'the Naivas call', words: ['I still have not called Naivas.'] },
+        ],
+      }],
+      role: null, focus: null, toAskNextTime: [],
+    };
+    const interventions = [{ key: 'slipping-promises', participantId: 'pa-sales', ladder: 'work', rung: 2, step: 'a conversation', forWhom: 'the lead', theLeadDecides: true,
+      says: 'Talk with Aisha about it. Aisha has let 2 promised days pass without the work done.', because: '', state: 'waiting for the lead',
+      startedIn: { checkInId: 'c2', sessionNumber: 2 }, followedUp: [] }];
+    const x = setup({ earlier: true, assessments: [{ participantId: 'pa-sales', sessionNumber: 3, sessionReport: { kind: 'assessment', version: 1, acrossTime: across, interventions } }] });
+    const { id } = await x.svc.start(x.as('u-wairimu'), 'd-aisha');
+    expect(((await x.svc.one(x.as('u-wairimu'), id)) as any).briefing.patterns).toEqual([{
+      heading: 'Aisha has let 2 promised days pass without the work done.',
+      whatHappened: 'On 18 May, the words were "I have not sent the price list yet." On 1 June, the words were "I still have not called Naivas."',
+      howOften: 'This rests on 2 separate things from 2 check-ins.',
+      checkIn: expect.any(String),
+      nextStep: 'Talk with Aisha about it. Aisha has let 2 promised days pass without the work done.',
+    }]);
+    for (const u of ['u-grace', 'u-juma']) expect(((await x.svc.one(x.as(u), id)) as any).briefing.patterns).toEqual([]);
+  });
+
+  it('with the counts from the check-in she runs, the earlier decision and that she decides, and none of Aisha’s stored patterns', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const { svc, as, id } = await started();
     const r: any = await svc.one(as('u-wairimu'), id);
     expect(r.briefing).toEqual({
       heading: 'Your briefing for Aisha’s review',
       counts: 'In the check-ins you are in with Aisha, Aisha made 5 commitments between 6 April 2026 and 28 September 2026. Aisha kept 2 of them, 1 was not done, 1 was dropped and 1 was still open when this review started. Of them, 2 took longer than first said, because they were not done, or Aisha said them again in a later check-in.',
-      patterns: [{
-        heading: 'Problems are mostly put down to things outside the team',
-        whatHappened: 'Aisha put the missed orders down to the stock arriving late.',
-        howOften: 'This came up in 3 check-ins, in sessions 2, 3 and 4.',
-        checkIn: 'Sales team, Q3',
-        theirAnswer: 'Aisha’s answer: “The stock came three weeks late, so I could not sell.”',
-      }],
-      patternsNote: 'These only appear after three check-ins. Aisha sees them first and can answer, and they never go anywhere on their own.',
+      patterns: [],
       changedAfterEarlierConversations: [
-        'You talked with Aisha about “Problems are mostly put down to things outside the team” on 25 September 2026. It came up again in 1 check-in after that.',
         'You decided Aisha’s review on 15 March 2026. The decision was “Aisha leads the butchery accounts.” The reason given was “She closed every butchery sale she was given.”',
       ],
       corrections: [],
@@ -74,16 +94,16 @@ describe('Wairimu, who writes the review, reads her briefing', () => {
     });
     /* "Groundwork suggests recognising" stays behind its setting, which is off. */
     expect(r.recognise).toBeNull();
+    expect(JSON.stringify(r.briefing)).not.toMatch(/Aisha put the missed orders|The stock came three weeks late|Problems are mostly put down/);
   });
 
-  it('reads a pattern Aisha has not answered once her three days are over, saying she has not answered', async () => {
+  it('reads none of Aisha’s stored patterns, answered or not, even once her three days are over', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const { svc, as, id } = await started();
     jest.setSystemTime(new Date('2026-10-03T12:00:00Z'));
     const r: any = await svc.one(as('u-wairimu'), id);
-    expect(r.briefing.patterns.map((p: any) => [p.heading, p.theirAnswer])).toEqual([
-      ['Problems are mostly put down to things outside the team', 'Aisha’s answer: “The stock came three weeks late, so I could not sell.”'],
-      ['Delivers what was agreed, with proof', 'Aisha hasn’t answered this yet.'],
-    ]);
+    expect(r.briefing.patterns).toEqual([]);
+    expect(JSON.stringify(r.briefing)).not.toMatch(/Delivers what was agreed|Aisha sent the proof|hasn’t answered this yet|The stock came three weeks late/);
   });
 
   it('reads Aisha’s corrections beside the line they correct, and never one about a check-in she is not in', async () => {
@@ -115,8 +135,7 @@ describe('everybody else who may open the review', () => {
         heading: 'The briefing for Aisha’s review',
         counts: null,
         patterns: [],
-        patternsNote: null,
-        changedAfterEarlierConversations: [
+          changedAfterEarlierConversations: [
           'Wairimu decided Aisha’s review on 15 March 2026. The decision was “Aisha leads the butchery accounts.” The reason given was “She closed every butchery sale she was given.”',
         ],
         corrections: [],
@@ -148,7 +167,8 @@ describe('Groundwork never makes the decision', () => {
 
   it('the briefing reads patterns only through the one place that decides who reads them, and reads no hours or leave', () => {
     const code = readFileSync(join(__dirname, 'a-review-briefing.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(code).toMatch(/servedPatterns\(/);
+    /* 2 November 2026 (F2): the one place is layer 2's served shape, read only by whoever runs the check-in. */
+    expect(code).toMatch(/theRecordAsServedPatterns\(/);
     expect(code).not.toMatch(/\b(timeEntry|timeWeek|leaveRequest|theirApprovedLeave|leadMark|coachingForAPattern)\b/);
   });
 });

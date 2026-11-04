@@ -274,8 +274,9 @@ describe('a judgement never praises a claim the record\'s own numbers contradict
     const worded = src.indexOf('aMoveForTheReader(x.move');
     const held = src.indexOf('praiseTheNumbersDoNotSupport(');
     /* The judgement is now returned with the id of the prompt version that wrote it (d2e3e34b); the line is matched as
-       exactly as before, and the order it guards is the same: worded, then held to the numbers, then returned. */
-    const returned = src.indexOf('return { judgement: { ...kept, promptVersionId: stored?.id ?? null }, table }');
+       exactly as before, and the order it guards is the same: worded, then held to the numbers, then returned. And it may carry
+       the direct morning's block beside that id (the-direct-morning-is-written-straight), so the line is matched up to the id. */
+    const returned = src.indexOf('return { judgement: { ...kept, promptVersionId: stored?.id ?? null');
     expect(worded).toBeGreaterThan(-1);
     expect(held).toBeGreaterThan(worded);
     expect(returned).toBeGreaterThan(held);

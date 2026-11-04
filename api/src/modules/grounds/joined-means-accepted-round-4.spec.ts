@@ -1,6 +1,6 @@
 import { whoHasNotJoinedYet } from './invited-not-joined-yet';
 import { whoHasMissedCheckIns } from './missed-check-ins';
-import { howManyHaveAnswered, whoIsInTheRound, whoIsExpected } from '../reports/how-many-have-answered';
+import { howManyHaveAnswered, whoIsInTheRound, whoHasAnswered } from '../reports/how-many-have-answered';
 import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
 
 /**
@@ -67,23 +67,26 @@ describe('joined means accepted the invitation (journey round 4)', () => {
     expect(names).not.toContain('Eli');
   });
 
-  it('the session count leaves Eli out, and is the same number in sessions 1, 2 and 3', () => {
+  /*
+   * CHANGED 1 NOVEMBER 2026 (Hafsah approved counting everyone on the check-in, as the prototype does: "5 of 6 have checked in today;
+   * Omar hasn't yet"). Eli, invited and not joined, was left out of every count (13 October); he is counted now, in every session alike,
+   * and named apart as not joined, so a page says that of him and never that he missed a check-in.
+   */
+  it('the session count counts Eli, names him as not joined, and is the same number in sessions 1, 2 and 3', () => {
     const flagged = people.map((p) => ({ ...p, notJoinedYet: p.id === 'p-eli' }));
     const counts = [1, 2, 3].map((n) => whoIsInTheRound(flagged as any, n, null).filter((p) => p.partyType !== 'INITIATOR').length);
-    const waited = [1, 2, 3].map((n) => whoIsExpected(flagged as any, n, null, NOW).map((p) => p.id));
-    expect(counts).toEqual([4, 4, 4]);
-    for (const w of waited) expect(w).not.toContain('p-eli');
+    expect(counts).toEqual([5, 5, 5]);
+    for (const n of [1, 2, 3]) expect(whoHasAnswered(flagged as any, n, null).notJoined).toEqual(['p-eli']);
   });
 
-  it('howManyHaveAnswered, the board and the session report read: Eli is neither expected nor waited on', async () => {
+  it('howManyHaveAnswered, the board and the session report read: Eli is counted, and named as not joined', async () => {
     const rows = people.map((p) => ({ ...p, checkIns: p.checkIns.filter((c: any) => c.sessionNumber === 2 && ['COMPLETED', 'DECLINED'].includes(c.status)) }));
     const db = { ...prisma, groundParticipant: { findMany: jest.fn(async (a: any) => (a?.where?.groundId ? rows.filter((p) => p.partyType !== 'INITIATOR') : people)) } };
     const counted = await howManyHaveAnswered(db, 'g1', 2);
     console.log(`SESSION 2: ${counted.answered} of ${counted.expected} people checked in.`);
-    expect(counted.expectedIds).not.toContain('p-eli');
-    expect(counted.waitingOn).not.toContain('p-eli');
+    expect(counted.expectedIds).toContain('p-eli');
     expect(counted.notJoinedIds).toEqual(['p-eli']);
-    expect(counted.expected).toBe(4);
+    expect(counted.expected).toBe(5);
     expect(counted.answered).toBe(2);
   });
 });

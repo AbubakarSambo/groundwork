@@ -142,15 +142,18 @@ describe('and every path a turn is saved by keeps one question', () => {
     expect(src).toMatch(/const oneThing = oneThingAsked\(asConfirmed\.text, asConfirmed\.confirmed\)/);
   });
 
-  it('the close line is put under the reply through the one helper, on both paths', () => {
+  it('no close line is put under the reply any more, on either path', () => {
     /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
-    expect((src.match(/withTheOneMoreLine\(/g) ?? []).length).toBe(1);
+    /* Changed 3 November 2026 (no forced close): the product no longer holds a close with a line of its own, so withTheOneMoreLine is not called. */
+    expect((src.match(/withTheOneMoreLine\(/g) ?? []).length).toBe(0);
+    expect(src).not.toMatch(/close\.ask/);
     expect(theStreamedRouteRunsThePlainRoute(src)).toBe(true);
     expect(src).not.toMatch(/`\$\{stillOpen\}\\n\\n\$\{close\.ask\}`/);
   });
 
   it('the reply path asks once more, with the rule named, before it trims', () => {
     expect(src).toMatch(/wouldLeaveAQuestionOut\(screened\.text\)/);
-    expect(src).toMatch(/\$\{ASK_ONE_THING\}/);
+    /* Changed 2 November 2026: every check hands its instruction to one re-ask (ask), which carries every failing instruction at once. */
+    expect(src).toMatch(/ask\(ASK_ONE_THING\)/);
   });
 });

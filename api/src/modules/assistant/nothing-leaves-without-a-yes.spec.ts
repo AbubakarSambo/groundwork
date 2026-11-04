@@ -45,7 +45,7 @@ describe('what it refuses, in words that name the fix', () => {
 
   it('and no address to send to', () => {
     const said = whyThisCannotBeSent(latest, { displayName: 'Sam', email: null })!;
-    expect(said).toContain('has not given us an email address');
+    expect(said).toContain('has not given me an email address');
     expect(said).toContain('can add one');
   });
 

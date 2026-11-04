@@ -16,7 +16,7 @@ import { anHoursRequest, whereItIsOnTheBoard, whereYourRequestIs, type WhereItSt
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
 import { saidAsADay } from './who-is-away';
 import { readDuties } from './who-holds-each-duty';
-import { anyTimeRule, isAskedForHours, isBillable, lagosMonday, readTimeRules, stillNeedsHours, whereYouStand, type TimeRules } from './the-time-sheet-rules';
+import { anyTimeRule, isAskedForHours, isBillable, lagosMonday, readTimeRules, stillNeedsHours, whereYouStand, aboveTheDaysLimit, isTheWeekLocked, type TimeRules } from './the-time-sheet-rules';
 import { draftTheWeek, readTheWeeksRecord, type AWeekDrafted } from './a-week-drafted-from-the-record';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const XLSX = require('xlsx') as typeof import('xlsx');
@@ -26,6 +26,7 @@ export const TIME_REFUSED = {
   notOn: thisSuiteIsOff('The time sheets suite'),
   onlyAdminsAndLeads: 'Only an admin or a lead can open this board.',
   notInIt: 'Only people in this organisation have time sheets here.',
+  locked: 'That week is locked. Ask whoever approves time sheets to reopen it.',
   notYours: 'Only the person who approves these hours can approve them.',
   nothingToApprove: 'There are no hours to approve for that week.',
   nothingToRead: 'There are no hours here for you to read for that week.',
@@ -610,6 +611,11 @@ export class TimeSheetsService {
       return { organizationId, userId, client, onDay: atMidnight(e.onDay), minutes, ...(typeof e.billable === 'boolean' ? { billable: e.billable } : {}) };
     });
     if (!rows.length) throw new BadRequestException(TIME_REFUSED.badHours);
+    /* Release 9: a locked week takes no new hours; hours above the day's limit are kept and said as needing approval. */
+    const rules = await readTimeRules(this.prisma, organizationId).catch(() => ({} as TimeRules));
+    const today = new Date().toISOString().slice(0, 10);
+    if (rows.some((r) => isTheWeekLocked(rules, dayOf(mondayOf(r.onDay)), today))) throw new BadRequestException(TIME_REFUSED.locked);
+    const needsApproval = aboveTheDaysLimit(rules, (entries ?? []).map((e) => ({ client: e.client, onDay: e.onDay, hours: e.hours })));
     await this.prisma.timeEntry.createMany({ data: rows });
     /* One record of who did what (decision 85, build step 5): sent, for each week, after the say-back and the yes when there was one. */
     for (const w of new Set(rows.map((r) => dayOf(mondayOf(r.onDay))))) {
@@ -624,7 +630,7 @@ export class TimeSheetsService {
         await this.told.waiting(organizationId, await this.told.approversOf(organizationId, now.who, userId), this.inWords(userId, first, rows));
       } catch { /* the hours stand */ }
     }
-    return { recorded: rows.length };
+    return { recorded: rows.length, ...(needsApproval.length ? { needsApproval } : {}) };
   }
 
   /** Hours as every reader reads them: how many, on which clients, for which day or week. Never how much somebody works. */

@@ -51,7 +51,9 @@ describe('a session finished in the entry chat', () => {
     const extraction = service.indexOf('.extractExpectations(checkIn.id, participant.id, ground.id, dto.history)');
     const emit = service.indexOf('GroundworkEvents.CHECK_IN_COMPLETED');
     expect(extraction).toBeGreaterThan(-1);
-    expect(service.slice(Math.max(0, extraction - 400), extraction)).toContain('await this.conversation');
+    /* Changed 3 November 2026: read after the save has answered, and the board is told when the targets land (SETUP_READ). */
+    expect(service.slice(Math.max(0, extraction - 400), extraction)).toContain('readUntilItLands(');
+    expect(service.slice(extraction, extraction + 600)).toContain('GroundworkEvents.SETUP_READ');
     expect(emit).toBeGreaterThan(-1);
   });
 

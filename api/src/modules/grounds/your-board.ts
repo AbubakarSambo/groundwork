@@ -1,3 +1,4 @@
+import { GROUNDWORKS_OWN_OFFER } from '../conversation/a-promise-is-theirs-not-ours';
 import { howManyCheckIns } from './which-check-in-it-is';
 import { wasAQuietClose } from './an-answer-includes-a-refusal';
 import { isShut } from './a-ground-that-has-ended';
@@ -78,6 +79,8 @@ export interface GroundCommitmentRow {
   /** When it was settled, done or not done (week 9). What "in the last 4 weeks" reads. */
   settledAt?: Date | string | null;
   createdAt?: Date | string | null;
+  /** The promise as a clear action, kept beside their words (fix plan, pattern 5). What is shown, where there is one. */
+  action?: string | null;
 }
 
 export interface CoachingRow {
@@ -120,6 +123,8 @@ export interface SomethingYouSaid {
   stateSays: string;
   /** How a settled one is known, for the mark: their word, their own document, or the colleague who received it. */
   settledBy?: 'said' | 'proven' | 'confirmed';
+  /** When they said it, so their own weekly email can say the day (messages test, 19 October, finding 14). */
+  saidAt?: string | null;
 }
 
 /**
@@ -207,17 +212,21 @@ const A_BARE_WORD = /^[a-z][a-z-]*$/;
  * 30000000." is now "30 million naira disbursed. You have 4 million naira of 30 million naira.", and a
  * goal written in the first person ("I'm aiming for ...") is about the reader, whose goal it is.
  */
-function goalFromTarget(t: OwnedTargetRow, firstNames: readonly string[] = []): string {
+export function goalFromTarget(t: OwnedTargetRow, firstNames: readonly string[] = []): string {
   const readable = aboutTheReaderAsYou(theNumbersPeopleCanRead(t.name.trim().replace(/[.\s]+$/, '')), firstNames);
   const asYours = asTheReader(readable);
   const name = asYours.toLowerCase() === readable.toLowerCase() ? readable : asYours;
   const hasTarget = t.target !== null && t.target !== undefined;
   const money = theMoneyItCountsIn(name);
   const n = (x: number) => `${aNumberPeopleCanRead(x)}${money && x !== 0 ? ` ${money}` : ''}`;
+  /* A target passed is never "You have 49 of 30" (night run 2, Kevin): what there is, and by how much it is past the target. */
+  const past = hasTarget && (t.target as number) > 0 && (t.count ?? 0) > (t.target as number);
+  if (A_BARE_WORD.test(name) && past) return `You have ${n(t.count ?? 0)} ${name}, ${n((t.count ?? 0) - (t.target as number))} more than the ${n(t.target as number)}.`;
   if (A_BARE_WORD.test(name) && hasTarget) return `You have ${n(t.count ?? 0)} of ${n(t.target as number)} ${name}.`;
   if (!hasTarget) return asASentence(name);
   /* A target of one on a sentence is done or not done; "You have 0 of 1." counted a piece that is not a thing (B-167). */
   if (t.target === 1 && !A_BARE_WORD.test(name)) return `${asASentence(name)} ${(t.count ?? 0) >= 1 ? 'You have reached it.' : 'You have not reached it yet.'}`;
+  if (past) return `${asASentence(name)} You have ${n(t.count ?? 0)} so far, ${n((t.count ?? 0) - (t.target as number))} more than the ${n(t.target as number)}.`;
   return `${asASentence(name)} You have ${n(t.count ?? 0)} of ${n(t.target as number)}.`;
 }
 
@@ -345,6 +354,96 @@ function theFullerOf<T extends { text: string; when: string | null; open: boolea
 
 const STATE_SAYS: Record<SaidState, string> = { open: 'Open', kept: 'Kept', not_done: 'Not done' };
 
+/** One promise as the record reads it, with the row it was read from: what You and My work both show. */
+export interface APromiseAndItsState extends SomethingYouSaid {
+  groundId: string;
+  t: number;
+  open: boolean;
+  /** The person's own words, as they said them. */
+  raw: string;
+  /** Their own words for when, as said. */
+  whenSaid: string | null;
+  createdAt: Date | string | null;
+  /** When it was settled, kept or not kept: the commitment's own date, or the day a to-do was marked done. */
+  settledAt: Date | string | null;
+  /** False where the lead asked for it rather than the person saying it (a commitment's own field). */
+  explicit?: boolean | null;
+  /** The state in the commitment's own words: DONE, NOT_DONE or UNKNOWN. */
+  status: 'DONE' | 'NOT_DONE' | 'UNKNOWN';
+}
+
+/**
+ * ONE PROMISE, ONE STATE, READ BY EVERY PAGE THAT SHOWS IT (browser test, 21 October, Kevin). Kevin's You page listed "Call them by end of
+ * day tomorrow" as Kept, from the to-do he wrote himself and marked done, while My work listed the same promise, kept again as a
+ * commitment, as Late and said "You kept 0 of 1 promises": My work read the commitments alone. A promise lives in two places, a
+ * GroundCommitment and a self-authored PersonObjective (a to-do or a commitment they wrote), so the two are merged here, once, and both
+ * pages read the result.
+ *
+ * The engine's rules for one promise said twice (request 96), applied across both places a promise is kept: the same words with the
+ * same time are one promise, and the settled copy wins; a short open copy inside a fuller open copy, with no different time, is the
+ * fuller one, with the short one's time if it has none. Two different promises are never merged, and a settled promise is never folded
+ * into an open one. Matching reads the person's own words; what is shown is the action form (asAnAction). Dropped ones are gone, as
+ * they are elsewhere. The rows handed in are already the reader's own, in check-ins the reader may read.
+ */
+export function onePromiseOneState(
+  commitments: readonly (GroundCommitmentRow & { explicit?: boolean | null })[],
+  objectives: readonly (ObjectiveRow & { statusChangedAt?: Date | string | null })[],
+  labelOf: (groundId: string) => string,
+  now: Date = new Date(),
+): APromiseAndItsState[] {
+  const said: APromiseAndItsState[] = [];
+  const keysOf: string[] = [];
+  const addSaid = (item: APromiseAndItsState) => {
+    const raw = item.raw;
+    const key = `${item.groundId}\u0000${aCommitmentKey(raw, item.whenSaid)}`;
+    const same = keysOf.indexOf(key);
+    if (same !== -1) {
+      const settledBeatsOpen = said[same].state === 'open' && item.state !== 'open';
+      const sameWayFuller = (said[same].state === 'open') === (item.state === 'open') && raw.length > said[same].raw.length;
+      if (settledBeatsOpen || sameWayFuller) said[same] = { ...item, when: item.when ?? said[same].when, whenSaid: item.whenSaid ?? said[same].whenSaid };
+      return;
+    }
+    const fuller = said.findIndex((s) => !!theFullerOf({ ...s, text: s.raw }, { ...item, text: raw }));
+    if (fuller !== -1) {
+      const one = theFullerOf({ ...said[fuller], text: said[fuller].raw }, { ...item, text: raw })!;
+      const fromNew = one.id === item.id;
+      const [base, other] = fromNew ? [item, said[fuller]] : [said[fuller], item];
+      said[fuller] = { ...base, when: one.when, whenSaid: base.whenSaid ?? other.whenSaid };
+      keysOf[fuller] = key;
+      return;
+    }
+    said.push(item); keysOf.push(key);
+  };
+  for (const c of commitments) {
+    const state: SaidState | null =
+      c.status === 'DONE' ? 'kept' : c.status === 'NOT_DONE' ? 'not_done' : c.status === 'DROPPED' ? null : 'open';
+    const rawText = (c.text ?? '').trim();
+    if (!state || !rawText) continue;
+    const by = state !== 'open' && c.settledBy ? SETTLED_BY[c.settledBy] : undefined;
+    addSaid({
+      id: c.id, text: c.action?.trim() || asAnAction(rawText), when: state === 'open' ? whenItWasFor(c.whenSaid, c.createdAt, now) : whenInOneForm(c.whenSaid),
+      checkIn: labelOf(c.groundId), state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}),
+      saidAt: c.createdAt ? new Date(c.createdAt).toISOString() : null, t: time(c.createdAt), open: state === 'open', groundId: c.groundId,
+      raw: rawText, whenSaid: c.whenSaid ?? null, createdAt: c.createdAt ?? null, settledAt: c.settledAt ?? null,
+      ...(c.explicit !== undefined ? { explicit: c.explicit } : {}),
+      status: state === 'kept' ? 'DONE' : state === 'not_done' ? 'NOT_DONE' : 'UNKNOWN',
+    });
+  }
+  for (const o of objectives) {
+    if (!o.kind || !THINGS_TO_DO.has(o.kind) || o.authoredBy !== 'self') continue;
+    const state: SaidState | null = (o.status ?? 'OPEN') === 'OPEN' ? 'open' : o.status === 'MET' ? 'kept' : null;
+    const rawText = (o.text ?? '').trim();
+    if (!state || !rawText) continue;
+    addSaid({
+      id: o.id, text: asAnAction(rawText), when: whenInOneForm(o.dueSaid), checkIn: labelOf(o.groundId), state, stateSays: STATE_SAYS[state],
+      saidAt: o.createdAt ? new Date(o.createdAt).toISOString() : null, t: time(o.createdAt), open: state === 'open', groundId: o.groundId,
+      raw: rawText, whenSaid: o.dueSaid ?? null, createdAt: o.createdAt ?? null, settledAt: state === 'kept' ? (o.statusChangedAt ?? null) : null,
+      status: state === 'kept' ? 'DONE' : 'UNKNOWN',
+    });
+  }
+  return said;
+}
+
 export function yourBoard(
   list: ListedCheckIn[],
   reader: BoardReader,
@@ -436,71 +535,29 @@ export function yourBoard(
      * decision for Hafsah rather than a licence to edit what somebody said.
      */
     const text = (o.text ?? '').trim();
+    /* A goal kept before the fix in Groundwork's own words is not shown as theirs (a-promise-is-theirs-not-ours.ts; two-week check, Aisha). */
+    if (GROUNDWORKS_OWN_OFFER.test(text)) continue;
     const theirOwnWords = o.authoredBy === 'self';
     if (text) goals.push({ id: o.id, says: asASentence(theirOwnWords ? text : aboutTheReaderAsYou(asTheReader(text), myFirstNames)), checkIn: labelOf.get(o.groundId)! });
   }
   for (const t of rows.ownedTargets) {
     if (!labelOf.has(t.groundId) || !(t.name ?? '').trim()) continue;
+    /*
+     * ONE GOAL, ONCE (fix plan, pattern 5; quarter test). A target they said is kept as their own goal and as a target, so Kevin read
+     * "Trying to get those 30 units moved" beside "You are really focused on hitting your 30-unit target", and Faith "7 units in
+     * November." beside "7 units in November. You have 2 of 7." In one check-in, a goal that names the same figure as a target is that
+     * target, shown once, with its count.
+     */
+    const figures = theFiguresIn(t.name);
+    if (figures) for (let i = goals.length - 1; i >= 0; i -= 1) if (goals[i].checkIn === labelOf.get(t.groundId) && theFiguresIn(goals[i].says.split(/ You have /)[0]) === figures) goals.splice(i, 1);
+    if (figures && goals.some((g) => g.checkIn === labelOf.get(t.groundId) && theFiguresIn(g.says.split(/ You have /)[0]) === figures)) continue;
     goals.push({ id: t.id, says: goalFromTarget(t, myFirstNames), checkIn: labelOf.get(t.groundId)! });
   }
 
-  /* What you said you would do, in your own check-ins. Dropped ones are gone, as they are elsewhere.
-     The same promise sometimes lives twice, in two different places - a GroundCommitment and a
-     self-authored PersonObjective both saying "I will plan shorter routes", one of them fuller and
-     dated - so the two sources below are merged through the one `addSaid`, never kept apart.
-     Merged (1 October) with the engine's own request 96 work: one form for every date
-     (whenInOneForm), the same promise matched by aCommitmentKey or theFullerOf, and settled
-     beating open. Matching reads the person's own words; what is shown is
-     the action form (asAnAction). */
-  const said: (SomethingYouSaid & { t: number; open: boolean; groundId: string })[] = [];
-  const rawOf: string[] = [];
-  const mineCommitments: GroundCommitmentRow[] = [];
-  const keysOf: string[] = [];
-  /* The engine's rules for one promise said twice (request 96), applied across both places a
-     promise is kept: the same words with the same time are one promise, and the settled copy wins;
-     a short open copy inside a fuller open copy, with no different time, is the fuller one, with
-     the short one's time if it has none. Two different promises are never merged, and a settled
-     promise is never folded into an open one. Matching reads the person's own words. */
-  const addSaid = (item: SomethingYouSaid & { t: number; open: boolean; groundId: string }, raw: string, whenSaid?: string | null) => {
-    const key = `${item.groundId}\u0000${aCommitmentKey(raw, whenSaid)}`;
-    const same = keysOf.indexOf(key);
-    if (same !== -1) {
-      const settledBeatsOpen = said[same].state === 'open' && item.state !== 'open';
-      const sameWayFuller = (said[same].state === 'open') === (item.state === 'open') && raw.length > rawOf[same].length;
-      if (settledBeatsOpen || sameWayFuller) { said[same] = { ...item, when: item.when ?? said[same].when }; rawOf[same] = raw; }
-      return;
-    }
-    const fuller = said.findIndex((s, i) => !!theFullerOf({ ...s, text: rawOf[i] }, { ...item, text: raw }));
-    if (fuller !== -1) {
-      const one = theFullerOf({ ...said[fuller], text: rawOf[fuller] }, { ...item, text: raw })!;
-      const fromNew = one.id === item.id;
-      const base = fromNew ? item : said[fuller];
-      said[fuller] = { ...base, when: one.when };
-      rawOf[fuller] = fromNew ? raw : rawOf[fuller];
-      keysOf[fuller] = key;
-      return;
-    }
-    said.push(item); rawOf.push(raw); keysOf.push(key);
-  };
-  for (const c of rows.commitments) {
-    if (!isMine(c.groundId, c.participantId)) continue;
-    mineCommitments.push(c);
-    const state: SaidState | null =
-      c.status === 'DONE' ? 'kept' : c.status === 'NOT_DONE' ? 'not_done' : c.status === 'DROPPED' ? null : 'open';
-    const rawText = (c.text ?? '').trim();
-    if (!state || !rawText) continue;
-    const checkIn = labelOf.get(c.groundId)!;
-    const by = state !== 'open' && c.settledBy ? SETTLED_BY[c.settledBy] : undefined;
-    addSaid({ id: c.id, text: asAnAction(rawText), when: state === 'open' ? whenItWasFor(c.whenSaid, c.createdAt, now) : whenInOneForm(c.whenSaid), checkIn, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), t: time(c.createdAt), open: state === 'open', groundId: c.groundId }, rawText, c.whenSaid);
-  }
-  for (const o of rows.objectives) {
-    if (!isMine(o.groundId, o.participantId)) continue;
-    if (!o.kind || !THINGS_TO_DO.has(o.kind) || o.authoredBy !== 'self') continue;
-    const state: SaidState | null = (o.status ?? 'OPEN') === 'OPEN' ? 'open' : o.status === 'MET' ? 'kept' : null;
-    const rawText = (o.text ?? '').trim();
-    if (!state || !rawText) continue;
-    addSaid({ id: o.id, text: asAnAction(rawText), when: whenInOneForm(o.dueSaid), checkIn: labelOf.get(o.groundId)!, state, stateSays: STATE_SAYS[state], t: time(o.createdAt), open: state === 'open', groundId: o.groundId }, rawText, o.dueSaid);
-  }
+  /* What you said you would do, in your own check-ins: the one reading of a promise and its state (onePromiseOneState, below), which
+     My work reads too, so the two pages never disagree about whether a promise was kept (browser test, 21 October, Kevin). */
+  const mineCommitments = rows.commitments.filter((c) => isMine(c.groundId, c.participantId));
+  const said = onePromiseOneState(mineCommitments, rows.objectives.filter((o) => isMine(o.groundId, o.participantId)), (g) => labelOf.get(g)!, now);
   const order: Record<SaidState, number> = { open: 0, kept: 1, not_done: 2 };
   said.sort((a, b) => order[a.state] - order[b.state] || a.t - b.t);
 
@@ -519,13 +576,13 @@ export function yourBoard(
     checkIns,
     turns,
     goals,
-    saidYoudDo: said.map(({ t: _t, open: _o, groundId: _g, ...s }) => s),
+    saidYoudDo: said.map(({ t: _t, open: _o, groundId: _g, raw: _r, whenSaid: _w, createdAt: _c, settledAt: _s, explicit: _e, status: _st, ...s }) => s),
     todos: rows.todos
       .filter((t) => (t.text ?? '').trim())
       .map((t) => ({ id: t.id, text: t.text.trim(), when: whenInOneForm(t.dueSaid) })),
     coaching,
     ownReports: ownReports.sort((a, b) => b.t - a.t).map(({ t: _t, ...r }) => r),
-    keptLately: keptLately(mineCommitments, now, rows.leave ?? []),
+    keptLately: keptLately(said, now, rows.leave ?? []),
   };
 }
 
@@ -538,12 +595,12 @@ export function yourBoard(
  */
 export function theOwnWeekOf(board: (Partial<YourBoard> & { askedOfYou?: { items?: { who: string | null; what: string; checkIn: string }[] } | null }) | null | undefined): {
   kept: { kept: number; of: number } | null;
-  open: { text: string; checkIn: string }[];
+  open: { text: string; checkIn: string; saidAt?: string | null }[];
   askedOfYou: { who: string | null; what: string; checkIn: string }[];
 } {
   return {
     kept: board?.keptLately ? { kept: board.keptLately.kept, of: board.keptLately.of } : null,
-    open: (board?.saidYoudDo ?? []).filter((s) => s.state === 'open').map((s) => ({ text: s.text, checkIn: s.checkIn })),
+    open: (board?.saidYoudDo ?? []).filter((s) => s.state === 'open').map((s) => ({ text: s.text, checkIn: s.checkIn, ...(s.saidAt ? { saidAt: s.saidAt } : {}) })),
     askedOfYou: (board?.askedOfYou?.items ?? []).map((i) => ({ who: i.who ?? null, what: i.what, checkIn: i.checkIn })),
   };
 }
@@ -553,10 +610,31 @@ export function theOwnWeekOf(board: (Partial<YourBoard> & { askedOfYou?: { items
  * THE COUNT OF WHAT YOU KEPT, FOR YOUR OWN WEEKLY EMAIL (decision 109, spec 25), over the rows of the check-ins the email is about. Kept here so that the
  * count is worked out in this file alone (the guard in kept-in-the-last-four-weeks-is-yours-alone.spec.ts). It is yours and goes to you.
  */
+/**
+ * WHICH THINGS YOU KEPT, IN YOUR OWN WORDS, for your own weekly email (messages test, 19 October, finding 14: "You kept the one thing you
+ * said you would do" said not which). The same rows and window as the count: yours, settled done in the last four weeks.
+ */
+export function theOwnKeptWords(
+  rows: readonly { status: string | null; text?: string | null; createdAt?: Date | string | null; settledAt?: Date | string | null }[],
+  now: Date = new Date(),
+): string[] {
+  const from = now.getTime() - THE_LAST_FOUR_WEEKS_MS;
+  return rows
+    .filter((r) => r.status === 'DONE' && !!String(r.text ?? '').trim())
+    .filter((r) => { const t = time(r.settledAt) || time(r.createdAt); return !!t && t >= from && t <= now.getTime(); })
+    .map((r) => asAnAction(String(r.text).trim()));
+}
+
 export function theOwnKept(
   rows: readonly { status: string | null; createdAt?: Date | string | null; settledAt?: Date | string | null }[],
   now: Date = new Date(),
 ): { kept: number; of: number } | null {
   const r = keptLately(rows, now, []);
   return r ? { kept: r.kept, of: r.of } : null;
+}
+
+/** The figures a goal names, as one key ("30", "7"), or null where it names none: how two goals for one target are told to be one. */
+function theFiguresIn(text: string | null | undefined): string | null {
+  const ns = (String(text ?? '').replace(/(\d),(\d{3})/g, '$1$2').match(/\d+(?:\.\d+)?/g) ?? []).filter((n) => !/^(?:19|20)\d\d$/.test(n));
+  return ns.length ? [...new Set(ns)].sort().join(',') : null;
 }

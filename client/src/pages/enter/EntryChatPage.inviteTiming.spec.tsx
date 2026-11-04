@@ -31,7 +31,8 @@ describe('INVITE-TIMING: add-participants step states invites are deferred until
 
   it('places the timing copy inside the invite-contributors step (not elsewhere)', () => {
     const heading = src.indexOf('const inviteHeading =')
-    const input = src.indexOf('value={inviteEmail}')
+    /* The email field is gone (one team box above the report, Hafsah, 31 October 2026); the list the step keeps is the anchor now. */
+    const input = src.indexOf('{inviteAdded.length > 0 && (')
     const timing = src.indexOf('Nobody is invited before you save this check-in')
     expect(heading).toBeGreaterThan(-1)
     expect(input).toBeGreaterThan(-1)

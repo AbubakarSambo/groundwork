@@ -9,6 +9,9 @@ import type { GroundScenario } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 import { Page, Mark, PageTitle, Panel, SubHeading, Callout, Note, Button, FieldLabel, TextField, Modal, Stack } from '@/components/gw/ui'
+import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
+import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
+import { keepTheNumberForWhenTheySignIn, saveMyNumber } from '@/lib/a-number-given-before-signing-in'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
 import { opensStraightOnTheQuestion, whereTheLinkGoes } from './the-link-opens-on-the-question'
@@ -53,13 +56,13 @@ function theDayOf(iso: string): string {
  * ONE PLACE FOR THE PAGE'S OWN "ONE MOMENT" LINE (B-205 follow-up). This page's loading and
  * in-between states ("Loading your invitation…", "Opening your question…", and now "Opening your
  * check-in…" for somebody already signed in as the invitee) are one centred status line each, and
- * they used to repeat the same `className="gwui-pt-sub"` inline at each call site. One-off style
+ * they used to repeat the same `className="t-body mut gw-pt-sub"` inline at each call site. One-off style
  * classes are only ever meant to go down (one-off-uses-only-go-down.spec.ts) - adding a third
  * literal use of an already-flagged class for the new state would have moved it the wrong way, so
  * this says it once and every call site reads from here instead.
  */
 function OneLineStatus({ children }: { children: React.ReactNode }) {
-  return <p role="status" className="gwui-pt-sub" style={{ textAlign: 'center' }}>{children}</p>
+  return <p role="status" className="t-body mut gw-pt-sub" style={{ textAlign: 'center' }}>{children}</p>
 }
 
 export function InvitePage() {
@@ -85,6 +88,9 @@ export function InvitePage() {
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  /* Optional, always asked (Hafsah, 30 October 2026); saved to them through PATCH /auth/me, as Settings saves it, once they are signed in. */
+  const [phone, setPhone] = useState('')
+  const whatsappOn = useWhatsAppIsOn()
   /* "What happens to what you write" (design-audit.md section 3, U.20 fifth review): kept out of
      the page's flow, reachable from a plain link rather than an always-open section or the old
      folding panel. Its content is the Modal's children, below. */
@@ -154,16 +160,21 @@ export function InvitePage() {
           const token = localStorage.getItem('token')
           if (token) setAuth(fresh, token)
         } catch { /* leaves them exactly as they were */ }
+        /* Signed in already: the number they typed is theirs now (Hafsah, 30 October 2026). It never holds them up. */
+        void saveMyNumber(phone)
         const checkInId = (res as any).checkInId as string | null
         const groundId = (res as any).groundId as string
         navigate(checkInId ? whereTheLinkGoes(checkInId, preview?.scenario) : `/grounds/${groundId}/p`, { replace: true })
         return
       }
       if ((res as any).emailed) {
+        /* Signed in only when they open the link we just sent: the number waits for that address. */
+        keepTheNumberForWhenTheySignIn(String((res as any).email ?? ''), phone)
         setEmailedTo((res as any).email as string)
         return
       }
       setAuth(res.user, res.accessToken)
+      void saveMyNumber(phone)
       if ((res as any).existingAccount) {
         toast.info(`Welcome back - continuing as ${res.user.email}`)
       }
@@ -350,7 +361,7 @@ export function InvitePage() {
       <LinkProblem
         kind="invite"
         detail={signedIn
-          ? 'We do not recognise this link. Ask the person who added you for a new invitation.'
+          ? 'I do not recognise this link. Ask the person who added you for a new invitation.'
           : 'We do not recognise this link. If you have already joined, sign in with your email. If you have not, ask the person who added you for a new invitation.'}
       />
     </Page>
@@ -553,6 +564,7 @@ export function InvitePage() {
                         <TextField id="invite-last" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
                       </FieldLabel>
                     </div>
+                    <PhoneNumberField id="invite-phone" value={phone} onChange={setPhone} whose="yours" whatsappOn={whatsappOn} />
                   </Stack>
                   <p className="gwui-field-help">Your name is optional. If you add it, the others will see it on the shared report.</p>
                   {/* Whether they go straight in or wait for an admin, as the invitation said it (Hafsah, 12 October). */}
@@ -567,7 +579,8 @@ export function InvitePage() {
                 <p className="gwui-fine" style={{ textAlign: 'center' }}>
                   {/* "You choose how you sign in afterwards" only to someone not signed in (U.6 review). Whether an
                       address has an account is never revealed, so being signed in is what this can know. */}
-                  {signedIn ? 'About ten minutes.' : 'About ten minutes. You choose how you sign in afterwards.'}
+                  {/* How long it takes is the server's one measured figure (when-it-asks.ts). The target's "You make your account afterwards" says "account", which is never said; the sign-in sentence it replaced stays. */}
+                  {signedIn ? (preview.takes ? `${preview.takes}.` : '') : `${preview.takes ? `${preview.takes}. ` : ''}You choose how you sign in afterwards.`}
                 </p>
               </Stack>
             )}
@@ -693,10 +706,11 @@ export function whoCanReadThis(scenario: GroundScenario | null | undefined, orga
   return `The people in this check-in, including your manager, can see what you say in it.${admins} Your own report and your questions to ${askNameFor(organisationName)} stay private.`
 }
 
-/** "Wairimu invited you to the sales team's check-in", with the check-in's own name. */
+/** "Akinyi invited you to the Deal progress check-in" (the approved journey, stage 6), with the check-in's own name. */
 export function theInvitation(p: { leadFirstName?: string | null; initiatorName: string; groundLabel: string }): string {
   const who = (p.leadFirstName ?? '').trim() || p.initiatorName.trim() || 'Someone'
-  return `${who} invited you to “${p.groundLabel}”`
+  const name = p.groundLabel.trim()
+  return /\bcheck-?in$/i.test(name) ? `${who} invited you to the ${name.replace(/^the\s+/i, '')}` : `${who} invited you to the ${name} check-in`
 }
 
 /**
@@ -714,7 +728,8 @@ export function theInvitation(p: { leadFirstName?: string | null; initiatorName:
 export function whereAndUntil(p: { organisationName?: string | null; endsAt?: string | null; today?: Date }): string {
   const until = p.endsAt ? theLastDay(p.endsAt, p.today ?? new Date()) : null
   const org = (p.organisationName ?? '').trim()
-  if (org && until) return `This runs at ${org} until ${until}.`
+  /* The approved journey's words (stage 6, Hafsah 1 November 2026), as join-invite.txt has them. */
+  if (org && until) return `${org}, until ${until}.`
   if (org) return `A check-in at ${org}.`
   return `It runs until ${until}.`
 }

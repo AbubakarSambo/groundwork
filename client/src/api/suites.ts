@@ -181,7 +181,7 @@ export interface YourReview {
   appealStands?: AppealStands | null
   appealSays?: string | null
 }
-export interface ReviewsBoard { every: string | null; next: NextReview[] }
+export interface ReviewsBoard { every: string | null; next: NextReview[]; startNow?: { externalId: string; name: string }[] }
 export interface Noticed { says: string; mark: 'proven' | 'said' }
 /** What Groundwork understands from the record, as one reader is served it: each part, each line, and the person's correction beside it. */
 export interface TheRecord {
@@ -200,8 +200,7 @@ export interface RecogniseForThePerson { facts: string; whoDecides: string }
 export interface ABriefing {
   heading: string
   counts: string | null
-  patterns: { heading: string; whatHappened: string | null; howOften: string; checkIn: string; theirAnswer: string }[]
-  patternsNote: string | null
+  patterns: { heading: string; whatHappened: string | null; howOften: string; checkIn: string; nextStep: string | null }[]
   changedAfterEarlierConversations: string[]
   corrections: { line: string; said: string; whatIsTrue: string }[]
   whoDecides: string
@@ -284,7 +283,18 @@ export interface ReviewForThePerson {
   mayAppealSays?: string | null
   appeal?: YourAppeal | null
 }
-export type AReview = ReviewForTheWriter | ReviewForThePerson
+/** RELEASE 7: the review as pictured ("A review built from check-ins"), served where the organisation has Release 7 on. */
+export interface AReviewAsPictured {
+  readings: { label: string; question: string; says: string; evidence?: string[] }[]
+  committedHeading: string
+  committed: { title: string; says: string; tone: 'rec' | 'att' | 'act' | 'con' }[]
+  blockedOrDropped: { title: string; says: string; tone: 'rec' | 'att' | 'act' | 'con' }[]
+  ownViewHeading: string
+  ownView: string
+  decidesHeading: string
+  decides: string
+}
+export type AReview = (ReviewForTheWriter | ReviewForThePerson) & { asPictured?: AReviewAsPictured }
 
 /**
  * AN ADMIN'S LIST OF APPEALS (decision 113, GET /suites/reviews/appeals). Not drawn until now
@@ -314,9 +324,14 @@ export const reviewsApi = {
   mineQuietly: async (): Promise<YourReview[]> =>
     (await apiClient.get('/suites/reviews/mine', { skipNotFoundToast: true } as any)).data,
   start: async (dueId: string): Promise<{ id: string }> => (await apiClient.post(`/suites/reviews/due/${dueId}/start`)).data,
+  startNow: async (personExternalId: string): Promise<{ id: string }> => (await apiClient.post(`/suites/reviews/start-now/${encodeURIComponent(personExternalId)}`)).data,
   one: async (id: string): Promise<AReview> => (await apiClient.get(`/suites/reviews/${id}`, { skipForbiddenToast: true } as any)).data,
   words: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/words`, { text })).data,
   view: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/view`, { text })).data,
+  /** Release 7: your own view, drafted from your running record. Nothing is kept until you save it. */
+  selfReviewDraft: async (id: string): Promise<string> => ((await apiClient.get(`/suites/reviews/${id}/self-review-draft`)).data as any)?.draft ?? '',
+  /** The person, or whoever writes it, reads the record again for a review in progress. */
+  updateFromTheRecord: async (id: string): Promise<AReview> => (await apiClient.post(`/suites/reviews/${id}/update-from-the-record`)).data,
   correct: async (id: string, lineKey: string, text: string): Promise<AReview> =>
     (await apiClient.post(`/suites/reviews/${id}/lines/${encodeURIComponent(lineKey)}/correction`, { text })).data,
   decide: async (id: string, decision: string, reasons: string): Promise<AReview> =>
@@ -376,6 +391,8 @@ export const roleMapApi = {
 export type SpendApprover = { kind: 'manager' } | { kind: 'person'; firstName: string } | { kind: 'admin' }
 export interface SpendWaiting {
   id: string
+  /** What they attached, said as a sentence, or null. */
+  attached?: string | null
   name: string
   firstName: string
   amount: number
@@ -403,6 +420,23 @@ export interface SpendBoard {
   waiting: SpendWaiting[]
   budgets: { team: string; budget: number; spent: number; left: number }[]
   teams: string[]
+}
+
+/** THE APPROVAL STEPS BY AMOUNT (GET and PUT /suites/spend/rules, thresholds only): one setting, which the spending page, Ask and the policy board all write. */
+export type ApprovalRole = 'manager' | 'departmentHead' | 'budgetOwner' | 'finance' | 'hr' | 'chiefExecutive' | 'admin'
+/** One rule of a step: a role, or one person named (the settings card's "Who approves anything above that?"). */
+export type AStepRule = ApprovalRole | { named: string }
+export interface AnAmountsSteps { above: number; steps: AStepRule[][] }
+/** A receipt or a quote needed for any request over `above` (0: every request). */
+export interface TheReceiptRule { what: 'receipt' | 'quote'; above: number }
+/** `said` is the server's whole route (who approves at each amount, then finance's part) and the receipt rule, in full sentences. */
+export interface TheSpendRules { rules: { thresholds?: AnAmountsSteps[]; evidence?: TheReceiptRule }; said: string[]; people: { id: string; name: string }[] }
+export const spendRulesApi = {
+  get: async (): Promise<TheSpendRules> => (await apiClient.get('/suites/spend/rules', { skipForbiddenToast: true } as any)).data,
+  setThresholds: async (thresholds: AnAmountsSteps[]): Promise<TheSpendRules> =>
+    (await apiClient.put('/suites/spend/rules', { thresholds: thresholds.length ? thresholds : null })).data,
+  setReceiptRule: async (evidence: TheReceiptRule | null): Promise<TheSpendRules> =>
+    (await apiClient.put('/suites/spend/rules', { evidence })).data,
 }
 
 export const spendApi = {
@@ -674,6 +708,11 @@ export const fileARequestApi = {
     (await apiClient.post('/suites/leave/requests', input, { skipNotFoundToast: true } as any)).data,
   spending: async (input: NewSpendingRequest): Promise<RequestFiled> =>
     (await apiClient.post('/suites/spend/requests', input, { skipNotFoundToast: true } as any)).data,
+  /** A receipt or a proforma, attached to the person's own request while it waits (polish round 1, 25 October). Only its name and words are kept. */
+  attachToSpending: async (id: string, file: File, kind: 'receipt' | 'quote'): Promise<{ id: string; says: string }> => {
+    const body = new FormData(); body.append('file', file); body.append('kind', kind)
+    return (await apiClient.post(`/suites/spend/requests/${id}/attachment`, body, { headers: { 'Content-Type': 'multipart/form-data' } })).data
+  },
   /** With the suite off this throws a 404 carrying the board's own off sentence; the form reads
       that straight from the error rather than treating it as a generic failure. */
   leaveForm: async (): Promise<LeaveFormInfo> =>

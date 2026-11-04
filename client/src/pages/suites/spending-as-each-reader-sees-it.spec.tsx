@@ -12,7 +12,7 @@ import type { SpendBoard } from '@/api/suites'
  * prototype's words (suite-spend.txt), word for word, for Grace (an admin) and Fatuma (a lead), and
  * what everybody else reads.
  */
-vi.mock('@/api/suites', () => ({ spendApi: { get: vi.fn(), decide: vi.fn(), setBudget: vi.fn(), ask: vi.fn() } }))
+vi.mock('@/api/suites', () => ({ spendApi: { get: vi.fn(), decide: vi.fn(), setBudget: vi.fn(), ask: vi.fn() }, spendRulesApi: { get: vi.fn().mockRejectedValue(new Error('not served in these tests')), setThresholds: vi.fn() } }))
 import { spendApi } from '@/api/suites'
 
 const KAMAU = {

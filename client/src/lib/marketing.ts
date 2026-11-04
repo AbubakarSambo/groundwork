@@ -8,39 +8,30 @@
  * Her rule: the logo and the mark always take you back to the marketing page. That is one destination,
  * so it is one constant.
  */
-/**
- * `||`, NOT `??`, AND THIS IS THE WHOLE BUG.
- *
- * `client/.env` carries `VITE_MARKETING_URL=` with nothing after it. That is the empty STRING, not
- * undefined, so `??` does not fall back - every logo rendered `href=""`, which links to the page you
- * are already on. The rail's wordmark has been going nowhere for as long as that line has been in the
- * env file, and it looks identical to working: the cursor changes, the click does nothing visible.
- *
- * Caught by reading the attribute off the running page instead of trusting the expression.
- */
-export const MARKETING_URL = import.meta.env.VITE_MARKETING_URL || 'https://myground.work'
+/** This app's own root. When the mark goes here, this build has no marketing site to send anyone to. */
+export const OUR_OWN_ROOT = '/'
+
+export const MARKETING_URL = whereTheMarkGoes(import.meta.env.VITE_MARKETING_URL)
 
 /**
- * WHETHER THIS BUILD WAS TOLD WHERE ITS OWN MARKETING SITE IS.
+ * WHERE THE MARK GOES, AND NOT ACROSS ENVIRONMENTS.
  *
- * The line above defaults to the PRODUCTION domain, which is right for the production app and wrong
- * everywhere else - and "wrong" here means a person opening staging is silently moved to the live
- * site. They then sign in there, on production data, believing they are testing. Nothing says it
- * happened; the address bar just changes.
+ * The production domain was the default for every build that was not told otherwise, and only the
+ * root route checked whether that was right. So the logo in the rail, on a local or staging build,
+ * sent a signed-in lead in the middle of setting up a check-in to the LIVE marketing site, whose
+ * "Go to your check-ins" then took her to the live sign-in (milestone 1's smoke run, 3 November
+ * 2026). The root route had been fixed; the logo, reading the same constant, had not.
  *
- * There is no staging deployment of the marketing site at all today - nothing in CI builds
- * `marketing/` - so on staging this is always false, which is exactly the case worth handling.
- */
-export const MARKETING_URL_WAS_CONFIGURED = Boolean(import.meta.env.VITE_MARKETING_URL)
-
-/**
- * Is this the production app, where sending somebody to the production marketing site is correct?
+ * So the decision is made here, once, for everything that reads `MARKETING_URL`: the address it was
+ * told, else the production site only on the production app, else this app's own root. That root
+ * is Today for somebody signed in and this build's own front door for anybody else (App.tsx), so
+ * nothing on a test build ever leaves it for the live product.
  *
  * Read off the browser rather than an env var, because the env var being unset is the situation
- * being detected - asking it "are you production?" is asking the thing that has already not been
- * told. `localhost` counts as not-production for the same reason: a developer's root should not
- * throw them onto the live site either.
+ * being handled. `||`, not `??`: `client/.env` carries `VITE_MARKETING_URL=` with nothing after
+ * it, the empty string, which once made every logo `href=""`.
  */
-export function thisIsTheProductionApp(host: string = typeof location === 'undefined' ? '' : location.hostname): boolean {
-  return host === 'app.myground.work'
+export function whereTheMarkGoes(told: string | undefined, host: string = typeof location === 'undefined' ? '' : location.hostname): string {
+  return told || (host === 'app.myground.work' ? 'https://myground.work' : OUR_OWN_ROOT)
 }
+

@@ -65,7 +65,10 @@ function renderBoard(board: any) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/grounds/g1/board']}>
+      {/* Screen match, 16 October: the lead first reads programme-board.jpg's own board; these fixes hold, word for
+          word, on "See every other part of this board" (?whole=1), the whole board as it was. The pictured board is
+          checked in a-sales-team-of-many-in-teams-as-the-lead-reads-it.spec.tsx. */}
+      <MemoryRouter initialEntries={['/grounds/g1/board?whole=1']}>
         <Routes><Route path="/grounds/:id/board" element={<BoardPage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,

@@ -68,9 +68,9 @@ export default function OpsTargetCompaniesPage() {
 
   if (targetCompanies.isError) {
     return (
-      <section className="gw-page" style={{ padding: 40, maxWidth: 640 }}>
+      <section style={{ padding: 40, maxWidth: 640 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>We could not load the list</h1>
-        <button type="button" onClick={() => targetCompanies.refetch()} style={{ ...CARD, cursor: 'pointer' }}>
+        <button className="btn sec sm" type="button" onClick={() => targetCompanies.refetch()} >
           Try again
         </button>
       </section>
@@ -80,21 +80,21 @@ export default function OpsTargetCompaniesPage() {
   const data = targetCompanies.data
 
   return (
-    <section className="gw-page" style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+    <section style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
       <header style={{ marginBottom: 18 }}>
         {/* The back-link went with the board switcher: the navigation is on
             every page now, and a second way home is clutter rather than help. */}
         <p style={LABEL}>Target companies</p>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
           {data?.period?.name ?? 'Loading'}
         </h1>
         {data?.period?.goal && (
-          <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: 0 }}>{data.period.goal}</p>
+          <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: 0 }}>{data.period.goal}</p>
         )}
         <select
           value={periodKey}
           onChange={(e) => setPeriodKey(e.target.value)}
-          style={{ marginTop: 8, fontSize: 12.5, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
+          style={{ marginTop: 8, fontSize: 12, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
         >
           {targetLists.map((p) => (
             <option key={p.key} value={p.key}>
@@ -107,7 +107,7 @@ export default function OpsTargetCompaniesPage() {
             chose, and a board headed by a name alone leaves "is this the one we
             are in?" to be worked out from the companies on it. */}
         {selected && (
-          <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '6px 0 0' }}>
+          <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '6px 0 0' }}>
             {readDay(selected.startsOn)} to {readDay(selected.endsOn)} · {selected.status.toLowerCase()}
           </p>
         )}
@@ -178,10 +178,10 @@ export default function OpsTargetCompaniesPage() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
             {STAGES.map((stage) => (
               <div key={stage} style={{ ...CARD, minWidth: 110 }}>
-                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gw-navy)' }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--gw-navy)' }}>
                   {data.counts.byStage[stage] ?? 0}
                 </div>
-                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>{readStage(stage)}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{readStage(stage)}</div>
               </div>
             ))}
           </div>
@@ -293,7 +293,7 @@ export default function OpsTargetCompaniesPage() {
               <tbody>
                 {(data.companies ?? []).map((c) => (
                   <tr key={c.id} style={{ borderTop: '1px solid var(--gw-border)' }}>
-                    <td style={{ padding: '10px 12px', fontWeight: 600 }}>
+                    <td style={{ padding: '10px 12px', fontWeight: 700 }}>
                       <Link
                         to={`/ops/companies/${c.key}`}
                         style={{ color: 'var(--gw-navy)', textDecoration: 'none' }}
@@ -310,7 +310,7 @@ export default function OpsTargetCompaniesPage() {
                         number moves on its own and people stop trusting the board.
                       */}
                       {c.summaryIsStale && (
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
                           from the work - the summary still says {readStage(c.storedStage)}
                         </div>
                       )}

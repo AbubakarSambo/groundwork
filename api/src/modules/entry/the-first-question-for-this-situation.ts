@@ -111,6 +111,11 @@ export const THE_FIRST_QUESTION: Record<GroundScenario, TheFirstQuestion> = {
     ask: 'What is the plan for, and what money and people do you actually have for it?',
     until: 'the period, who owns which part, and the money or people available',
   },
+  /* Collect what's owed (Release 2): the bills first, then who follows them up. Only reached where Release 2 is on. */
+  COLLECTIONS: {
+    ask: 'What is owed to you, and who follows it up?',
+    until: 'what is owed and by whom, who follows each one up or owes it, and how often you want to hear from them',
+  },
   PULSE_CHECK: {
     ask: 'Who is on the team, and what are they each working on?',
     until: 'who the people are, what each of them owns, and how often you want to hear from them',
@@ -236,7 +241,7 @@ export function theSetupPackFor(
      *
      * Caught by running it, not by reading it. Every test passed.
      */
-    `YOUR FIRST QUESTION IS THIS ONE, or a close version of it in your own words. Ask it straight away - nothing comes before it:`,
+    `THE FIRST THING TO ASK, once your first reply has said back what you understood and they have answered it, is this, or a close version of it in your own words, unless what they have said already answers it:`,
     `  "${ask}"`,
     '',
     `Keep asking around it until you have: ${q.until}.`,

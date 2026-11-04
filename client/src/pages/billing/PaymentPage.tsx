@@ -54,7 +54,7 @@ export function PaymentPage() {
         setTimeout(() => navigate(groundId ? `/grounds/${groundId}` : '/grounds'), 1200)
       }
     },
-    onError: () => setCodeMsg({ ok: false, text: 'Something went wrong. Try again.' }),
+    onError: () => setCodeMsg({ ok: false, text: 'That didn’t work. Try again.' }),
   })
 
   return (
@@ -73,7 +73,7 @@ export function PaymentPage() {
             underneath, that sessions are not charged for - a title that contradicted its own
             body. The only thing left to do here is redeem an access code (the session-purchase
             form is gone; see the comment below), so the title now says that. */}
-        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>
           {ground?.isFreeGround ? 'This check-in' : 'Use an access code'}
         </div>
         {groundName && (
@@ -85,7 +85,7 @@ export function PaymentPage() {
           <div style={{ fontSize: 13, color: 'var(--gw-muted)', padding: '20px 0' }}>Loading...</div>
         ) : ground?.isFreeGround ? (
           <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px' }}>
-            <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>
+            <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: '21px' }}>
               <strong>This check-in has unlimited free sessions.</strong> There is nothing to purchase here - just continue from the check-in page.
             </div>
           </div>
@@ -97,7 +97,7 @@ export function PaymentPage() {
                 is left on this page is contributor-code redemption, which
                 grants access and costs nobody anything. */}
             <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
-              <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>
+              <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: '21px' }}>
                 <strong>Sessions are not charged for.</strong> Every check-in runs as many sessions
                 and reports as it needs. An access code is only for the number of check-ins your
                 organisation can run at once.
@@ -123,15 +123,15 @@ export function PaymentPage() {
                 value={code}
                 onChange={e => { setCode(e.target.value); setCodeMsg(null) }}
                 placeholder="Enter code"
-                style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${codeMsg && !codeMsg.ok ? 'var(--gw-danger)' : 'var(--gw-border)'}`, borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                className="gwui-input" style={{ boxSizing: 'border-box', marginBottom: 8, ...(codeMsg && !codeMsg.ok ? { borderColor: 'var(--gw-danger)' } : {}) }}
               />
               {codeMsg && (
                 <div style={{ fontSize: 12, color: codeMsg.ok ? 'var(--gw-green-t)' : 'var(--gw-danger)', marginBottom: 8 }}>{codeMsg.text}</div>
               )}
-              <button
+              <button className="btn pri"
                 onClick={() => redeemCode.mutate()}
                 disabled={!code.trim() || redeemCode.isPending}
-                style={{ width: '100%', padding: '9px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: !code.trim() ? 'not-allowed' : 'pointer', opacity: !code.trim() ? 0.45 : 1, fontFamily: 'inherit' }}
+                style={{ width: '100%' }}
               >
                 {redeemCode.isPending ? 'Checking...' : 'Apply'}
               </button>

@@ -51,9 +51,10 @@ describe('request 123: patterns on the new hire\'s board follow decision 86', ()
     expect(b.patterns).toHaveLength(2);
   });
 
-  it('Amina reads the one Tobi has answered, and not the one nobody has shown him yet', async () => {
+  it('Amina reads neither stored pattern about Tobi, the one he answered or the one nobody has shown him', async () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const b = await boardAs(SETUP as any, 'u-amina', 'MEMBER');
-    expect(b.patterns).toHaveLength(1);
-    expect(JSON.stringify(b.patterns)).toContain('Nobody gave me the terms');
+    expect(b.patterns ?? []).toHaveLength(0);
+    expect(JSON.stringify(b.patterns ?? [])).not.toContain('Nobody gave me the terms');
   });
 });

@@ -1,3 +1,4 @@
+import { THE_SETUP_LINE } from './EntryChatPage'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -64,7 +65,8 @@ describe('the anchor opener, served like any scenario’s', () => {
     const { container } = openAnchorArrival()
     // The bubble keeps the served text's own line breaks (white-space: pre-wrap, one text node),
     // so the whole reply is checked against the messages column's own text at once.
-    await waitFor(() => expect(container.querySelector('.gwui-ec-messages')?.textContent).toBe(theFullOpening))
+    /* Changed 26 October 2026 (Hafsah): the setup's opening line is added in front of the first message she reads, which stays exactly as served. */
+    await waitFor(() => expect(container.querySelector('.gwui-ec-messages')?.textContent).toBe(`${THE_SETUP_LINE}${theFullOpening}`))
     /* Request 196: the opener is also asked for `source` (undefined here - no `?source=` on this
        arrival), since a scenario with its own `thePeopleStep` rides on the very same call. */
     expect(opener).toHaveBeenCalledWith('HELP_TEAM_UNDERSTAND', undefined)

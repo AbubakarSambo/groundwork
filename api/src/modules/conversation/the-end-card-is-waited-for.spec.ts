@@ -47,29 +47,30 @@ describe('the screen waits for the card', () => {
   });
 });
 
-describe('finishing waits for the card, writes its lines, and returns it', () => {
-  it('writes exactly the lines on the card that was still being built', async () => {
+describe('finishing waits for the card and returns it; its lines are the record\'s draft, written from the assessment', () => {
+  /* Changed for one source, part 2: the close writes nothing to the record now; the card's lines go to the assessment as its draft. */
+  it('returns exactly the card that was still being built, with its lines, and writes nothing to the record', async () => {
     let turn: any = { id: 'turn-9', createdAt: new Date(), recordDraft: null, endCard: null };
     const prisma: any = {
       conversationTurn: { findFirst: jest.fn(async () => turn), count: jest.fn(async () => 0) },
       recordEntry: { createMany: jest.fn(async () => ({})) },
     };
     const service = aService(prisma);
-    service.extractRecordEntries = jest.fn();
+    service.theAssessmentAtTheClose = jest.fn();
     service.theEndCardFor = jest.fn(() => new Promise((resolve) => setTimeout(() => { turn = { ...turn, recordDraft: ROWS, endCard: CARD }; resolve(CARD); }, 20)));
     service.startTheEndCard({ id: 'ci1', participantId: 'p1', groundId: 'g1' }, 'turn-9');
     await service.waitForTheCardBeingBuilt('ci1');
-    const card = await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
-    expect(card).toEqual(CARD);
-    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: [{ ...ROWS[0], checkInId: 'ci1', participantId: 'p1', createdAt: expect.any(Date) }] });
-    expect(service.extractRecordEntries).not.toHaveBeenCalled();
+    const ended = await service.theEndCardAtTheEnd({ id: 'ci1', participantId: 'p1' });
+    expect(ended).toEqual({ card: CARD, lines: ROWS });
+    expect(prisma.recordEntry.createMany).not.toHaveBeenCalled();
+    expect(service.theAssessmentAtTheClose).not.toHaveBeenCalled();
   });
 
   it('finishing a session waits, and the answer carries the card', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const body = src.slice(src.indexOf('  private async finishTheSession('), src.indexOf('  async ensureNextSession('));
     expect(body).toContain('if (how.waitForTheCard) await this.waitForTheCardBeingBuilt(checkIn.id);');
-    expect(body.indexOf('waitForTheCardBeingBuilt')).toBeLessThan(body.indexOf('writeTheRecordAtTheEnd'));
+    expect(body.indexOf('waitForTheCardBeingBuilt')).toBeLessThan(body.indexOf('theEndCardAtTheEnd'));
     expect(body).toMatch(/return \{ status: 'completed', groundId: checkIn\.groundId, \.\.\.\(endCard \? \{ endCard \} : \{\}\), /);
   });
 
@@ -113,7 +114,8 @@ describe('"Finish my check-in now" before the conversation closed (journey 3, ro
     ] as const) {
       const prisma: any = { conversationTurn: { findMany: jest.fn(async () => turns) } };
       const service = aService(prisma);
-      service.loadOwnedCheckIn = jest.fn(async () => ({ id: 'ci1', participantId: 'p1', groundId: 'g1', status }));
+      /* Finished means its record is written (completedAt): since one state for a session (29 October), COMPLETED without it is still being finished. */
+      service.loadOwnedCheckIn = jest.fn(async () => ({ id: 'ci1', participantId: 'p1', groundId: 'g1', status, completedAt: status === 'COMPLETED' ? new Date() : null }));
       service.theEndCardFor = jest.fn();
       expect(await service.theEndCardWhenReady('ci1', 'u1')).toEqual({ endCard: null });
       expect(service.theEndCardFor).not.toHaveBeenCalled();

@@ -1,54 +1,56 @@
-import { theBehavioursAnybodyCanBeRead } from '../board/a-role-nobody-mapped-is-still-a-person';
-import { roleMapFor, RoleFunction } from '../board/role-maps';
 import { ConversationService } from '../conversation/conversation.service';
+import type { AnIntervention } from '../patterns/the-next-step-for-each-pattern';
 
 /**
  * THE NOTICING, AND THE CALL THAT WAS MISSING. (G42)
  *
  * An hour after committing a note about methods that are computed and wired to
- * nothing, recordCoachingStep() was a public method nothing invoked. The state
- * machine was right, the flag was right, the prompt block was right, and no
- * session would ever have produced a row.
+ * nothing, recordCoachingStep() was a public method nothing invoked. So this file
+ * asserts two separate things, because they fail separately: what the coach offers,
+ * and that complete() actually calls it.
  *
- * So this file asserts two separate things, because they fail separately:
- *
- *   the noticing behaves - a low-confidence function, a "none" answer, or an
- *   index with no reason all produce nothing rather than a step
- *
- *   complete() actually calls it - the part that was missing, and the part no
- *   module test can show
+ * 2 November 2026 (F2, Hafsah's decisions): the coach no longer reads the transcript
+ * with its own model call against the role map, and no longer keeps its own count of
+ * what it has seen. Coaching and interventions have one owner, layer 3 on the
+ * check-in's assessment; the coach delivers its small step into CoachingState. The
+ * tests that asserted the old read (an index from the model, its reason, its
+ * recurrence count, the inversion word check) asserted the second judge that was
+ * removed, so they now assert the one owner: the assessment's step is offered, none
+ * is offered when it has none, the last step's outcome is the assessment's
+ * follow-up, no model is called, and the leave rules are unchanged.
  */
 
-const MANAGEMENT_STEP = /Hands over real ownership/;
+const QUESTION = 'Which of the things you said you would do since last time is still open, and what day will you finish it?';
+const aStep = (o: Partial<AnIntervention> = {}): AnIntervention => ({
+  key: 'slipping-promises', participantId: 'p1', ladder: 'work', rung: 0, step: 'a coaching question', forWhom: 'the person', theLeadDecides: false,
+  says: QUESTION, because: 'Promises were not kept when they came due.', state: 'open',
+  startedIn: { checkInId: 'ci1', sessionNumber: 4 }, followedUp: [], ...o,
+});
 
 function makeService({
   enabled = true,
-  confidence = 0.9,
-  fn = RoleFunction.MANAGEMENT,
-  observed = { index: 0, reason: 'three of the four things named were things the team was meant to own', lastStepOutcome: null as any },
-  personSays = 'I ran the Meridian handover myself again on Tuesday, and closed two of the three tickets.',
   joinedAt = null,
   leftAt = null,
   leavePeriods = null,
-  /* Recurrence: a step is offered only when the same thing was seen in two distinct sessions. The
-     default harness has seen it once before, in session 3, so session 4 is the second time. */
-  priorObservations = [{ sessionNumber: 3, noticed: roleMapFor(RoleFunction.MANAGEMENT)?.failureSignals?.[0] ?? '', reason: 'seen before' }],
+  interventions = [aStep()] as AnIntervention[],
+  prior = null as any,
 }: any = {}) {
   const upserts: any[] = [];
   const prisma: any = {
-    groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1' }]), findUnique: jest.fn(async () => ({ detectedFunction: fn, detectedFunctionConfidence: confidence, joinedAt, leftAt, leavePeriods })) },
-    conversationTurn: {
-      findMany: jest.fn(async () => [
-        { role: 'AI', content: 'What did you spend the week on?' },
-        { role: 'PERSON', content: personSays },
-      ]),
+    checkIn: {
+      findUnique: jest.fn(async (a: any) => (a?.select?.sessionReport
+        ? { sessionReport: { kind: 'assessment', version: 1, interventions } }
+        : { groundId: 'g1', isSetup: false })),
     },
+    ground: { findUnique: jest.fn(async () => ({ organizationId: 'org' })) },
+    organization: { findUnique: jest.fn(async () => ({ personJudgementsOn: true })) },
+    groundParticipant: { findUnique: jest.fn(async () => ({ joinedAt, leftAt, leavePeriods, userId: null, ground: { organizationId: 'org' } })) },
     coachingState: {
-      findUnique: jest.fn(async () => (priorObservations ? { observations: priorObservations } : null)),
+      findUnique: jest.fn(async () => prior),
       upsert: jest.fn(async (a: any) => { upserts.push(a); return a.create; }),
     },
   };
-  const anthropic: any = { extract: jest.fn(async () => observed) };
+  const anthropic: any = { extract: jest.fn(async () => null), respond: jest.fn(async () => null) };
   const config: any = { get: jest.fn(() => enabled) };
   const service = new ConversationService(
     prisma, {} as any, anthropic, {} as any,
@@ -59,216 +61,74 @@ function makeService({
 }
 
 const observe = (s: any) => (s as any).observeForCoaching('ci1', 'p1', 4);
+const OUTSTANDING = { currentStep: 'a step', stepGivenAt: 3, staircase: null, staircasePosition: 0, history: [{ step: 'a step', givenAtSession: 3, outcome: null }] };
 
-describe('what the session showed', () => {
-  it('waits when this is the first session the behaviour was seen in: one instance is not a pattern', async () => {
-    const { service, upserts } = makeService({ priorObservations: null });
+describe('what the coach offers', () => {
+  it('the assessment\'s small step for the person, as the one step, with no model call of its own', async () => {
+    const { service, anthropic, upserts } = makeService();
     await observe(service);
-    expect(upserts[0].create.currentStep).toBeNull();
-    expect(upserts[0].create.observations).toHaveLength(1);
-    expect(upserts[0].create.lastInput.observed.recurring).toBe(false);
-  });
-
-  it('never offers the thing the person asked for themselves, by their own words', async () => {
-    const step = roleMapFor(RoleFunction.MANAGEMENT)!.successSignals![0];
-    const { service, upserts } = makeService({ personSays: `What I want is exactly this: ${step}. I have asked for it twice.` });
-    await observe(service);
-    expect(upserts[0].create.currentStep).toBeNull();
-    expect(upserts[0].create.lastInput.observed.inverted).toBe(true);
-  });
-
-  it('the model saying they asked for it does not suppress on its own; it is kept for reading', async () => {
-    const { service, upserts } = makeService({ observed: { index: 0, reason: 'they said it', theyAskedForThisThemselves: true, lastStepOutcome: null } });
-    await observe(service);
-    expect(upserts[0].create.currentStep).toMatch(MANAGEMENT_STEP);
-    expect(upserts[0].create.lastInput.observed.modelSaidTheyAsked).toBe(true);
-  });
-
-  it('turns an observed behaviour into one step, from that person\'s own map', async () => {
-    const { service, upserts } = makeService();
-    await observe(service);
-    expect(upserts[0].create.currentStep).toMatch(MANAGEMENT_STEP);
+    expect(upserts[0].create.currentStep).toBe(QUESTION);
     expect(upserts[0].create.stepGivenAt).toBe(4);
+    expect(anthropic.extract).not.toHaveBeenCalled();
+    expect(anthropic.respond).not.toHaveBeenCalled();
   });
 
-  it('never runs on a guess about what somebody\'s job is', async () => {
-    /*
-     * THE RULE IS UNCHANGED AND THE ASSERTION IS NOT. "A step chosen from a low-confidence function
-     * reads as a stranger's advice" - so no step may come from a guessed job, and that still holds
-     * exactly. What changed is that failing to read the job no longer means reading nothing at all:
-     * 477 people are on record and 32 clear this threshold, so the old early return meant 93% could
-     * never be coached about anything, not because nothing was noticed but because nothing was ever
-     * looked at.
-     *
-     * The old assertion was that the model is not called. That is the implementation, not the rule.
-     * The rule is that the behaviours it reads against are not this person's guessed function - so
-     * that is what is asserted now, along with the row recording which floor the step came off, so
-     * a weaker read can never be mistaken later for a role-mapped one.
-     */
-    const { service, anthropic, upserts } = makeService({ confidence: 0.2 });
-    await observe(service);
-
-    /* The behaviours are handed over as the user content, not the system prompt - that is where
-       the list lives, and it is the list that must not be this person's guessed function. */
-    const handed = (anthropic.extract as jest.Mock).mock.calls[0]?.[1]?.[0]?.content ?? '';
-    const map = roleMapFor(RoleFunction.MANAGEMENT)!;
-    for (const signal of map.failureSignals ?? []) expect(handed).not.toContain(signal);
-    /* The floor instead: read off the ACCOUNT, never off the work, because the work is the part
-       that cannot be read without knowing the job. */
-    /* Asserted through the module rather than by quoting the line, which was rewritten out of
-       Yoda once already and will be again. What matters is that the floor's own list is what was
-       handed over. */
-    for (const line of theBehavioursAnybodyCanBeRead()) expect(handed).toContain(line);
-
-    expect(upserts).toHaveLength(1);
-    expect(upserts[0].create.lastInput.why).toMatch(/below 0.5|no role map/);
-  });
-
-  it('offers nothing when the read says none, which is the normal answer', async () => {
-    const { service, upserts } = makeService({ observed: { index: null, reason: null, lastStepOutcome: null } });
+  it('offers nothing when the assessment has no step for them, which is the normal answer', async () => {
+    const { service, upserts } = makeService({ interventions: [] });
     await observe(service);
     expect(upserts[0].create.currentStep).toBeNull();
   });
 
-  it('offers nothing on an index with no reason', async () => {
-    // THE GUARD THAT MATTERS MOST. A model that returns a behaviour and no reason
-    // must produce nothing, not a step with a blank explanation - which is a
-    // verdict with homework attached.
-    const { service, upserts } = makeService({ observed: { index: 0, reason: '   ', lastStepOutcome: null } });
+  it('never offers a step the lead decides', async () => {
+    const { service, upserts } = makeService({ interventions: [aStep({ step: 'a conversation', forWhom: 'the lead', theLeadDecides: true, state: 'waiting for the lead', says: 'Talk with them about it.' })] });
     await observe(service);
     expect(upserts[0].create.currentStep).toBeNull();
   });
 
-  it('offers nothing on an index that is not in the list', async () => {
-    const { service, upserts } = makeService({ observed: { index: 99, reason: 'a real reason', lastStepOutcome: null } });
-    await observe(service);
-    expect(upserts[0].create.currentStep).toBeNull();
-  });
-
-  it('offers nothing to somebody who had a quiet week', async () => {
-    // Even where a behaviour was observed. Nothing checkable in the session means
-    // nothing to coach from, and homework for a quiet week is the worst version
-    // of this feature.
-    const { service, upserts } = makeService({ personSays: 'Not much really, same as before.' });
-    await observe(service);
-    expect(upserts[0].create.currentStep).toBeNull();
-  });
-
-  it('takes the outcome of the last step only from what the transcript says', async () => {
-    const { service, prisma, upserts } = makeService({
-      observed: { index: null, reason: null, lastStepOutcome: 'done' },
-    });
-    prisma.coachingState.findUnique = jest.fn(async () => ({
-      currentStep: 'Hands over real ownership, not just tasks, and then lets go',
-      stepGivenAt: 3, staircase: null, staircasePosition: 0,
-      history: [{ step: 'Hands over real ownership, not just tasks, and then lets go', givenAtSession: 3, outcome: null }],
-    }));
+  it('takes the outcome of the last step from the assessment\'s follow-up: not seen again is done', async () => {
+    const { service, upserts } = makeService({ prior: OUTSTANDING, interventions: [aStep({ state: 'worked', startedIn: { checkInId: 'ci0', sessionNumber: 3 }, followedUp: [{ checkInId: 'ci1', sessionNumber: 4, worked: true }] })] });
     await observe(service);
     expect(upserts[0].update.history[0].outcome).toBe('done');
     expect(upserts[0].update.staircasePosition).toBe(1);
   });
 
-  it('and ignores an outcome the model made up', async () => {
-    // Anything outside the four real outcomes is dropped rather than coerced,
-    // because a coerced outcome puts a fact in the record nobody said.
-    const { service, prisma, upserts } = makeService({
-      observed: { index: null, reason: null, lastStepOutcome: 'partially done, good effort' },
-    });
-    prisma.coachingState.findUnique = jest.fn(async () => ({
-      currentStep: 'a step', stepGivenAt: 3, staircase: null, staircasePosition: 0,
-      history: [{ step: 'a step', givenAtSession: 3, outcome: null }],
-    }));
+  it('and seen again is not done', async () => {
+    const { service, upserts } = makeService({ prior: OUTSTANDING, interventions: [aStep({ step: 'a clear expectation', rung: 1, startedIn: { checkInId: 'ci0', sessionNumber: 3 }, followedUp: [{ checkInId: 'ci1', sessionNumber: 4, worked: false }] })] });
+    await observe(service);
+    expect(upserts[0].update.history[0].outcome).toBe('not done');
+  });
+
+  it('and leaves it unsaid when no step of theirs was followed up in this check-in', async () => {
+    const { service, upserts } = makeService({ prior: OUTSTANDING, interventions: [] });
     await observe(service);
     expect(upserts[0].update.history[0].outcome).toBeNull();
   });
 
   it('never coaches somebody who is on leave', async () => {
-    /**
-     * FOUND BY THE UNWIRED-MODULE RULE, IN CODE I HAD JUST WRITTEN.
-     * participation-timeline.ts has said this since it was written and nothing
-     * had ever called it, so the coaching path would have offered a step to
-     * somebody on parental leave. Its own comment names it: the tone-deaf thing
-     * that ends trust in a product permanently.
-     */
-    const { service, anthropic, upserts } = makeService({
-      leavePeriods: [{ from: new Date(Date.now() - 86400000).toISOString(), to: null }],
-    });
+    /* participation-timeline.ts: never the tone-deaf step to somebody on parental leave. */
+    const { service, upserts } = makeService({ leavePeriods: [{ from: new Date(Date.now() - 86400000).toISOString(), to: null }] });
     await observe(service);
-    expect(anthropic.extract).not.toHaveBeenCalled();
     expect(upserts).toHaveLength(0);
   });
 
   it('and never coaches somebody who has left', async () => {
-    // A coaching prompt firing at somebody who is gone is both absurd and a leak.
     const { service, upserts } = makeService({ leftAt: new Date(Date.now() - 86400000) });
     await observe(service);
     expect(upserts).toHaveLength(0);
   });
 
   it('coaches somebody whose leave has ended', async () => {
-    // The guard must not be a one-way door.
     const { service, upserts } = makeService({
       leavePeriods: [{ from: new Date(Date.now() - 2 * 86400000).toISOString(), to: new Date(Date.now() - 86400000).toISOString() }],
     });
     await observe(service);
-    expect(upserts[0].create.currentStep).toMatch(MANAGEMENT_STEP);
+    expect(upserts[0].create.currentStep).toBe(QUESTION);
   });
 
   it('survives a malformed leave record rather than refusing to coach anybody', async () => {
-    // Json columns hold whatever was written into them, and a bad row must not
-    // silently switch coaching off for a whole ground.
     const { service, upserts } = makeService({ leavePeriods: [{ from: 'not a date' }, 'nonsense'] });
     await observe(service);
-    expect(upserts[0].create.currentStep).toMatch(MANAGEMENT_STEP);
-  });
-
-  it('reads the outcome from their own words when the model says nothing', async () => {
-    /**
-     * coaching-step.ts was written for exactly this and had never been called by
-     * anything. A regex over what somebody actually typed is better evidence than
-     * a model asked to classify it, so it is the fallback rather than the other
-     * way round - and its spelling ("not_done") is mapped to the machine's at the
-     * one point they meet.
-     */
-    const { service, prisma, upserts } = makeService({
-      observed: { index: null, reason: null, lastStepOutcome: null },
-      personSays: "I didn't get round to it, ran out of time, but I closed two of the three tickets.",
-    });
-    prisma.coachingState.findUnique = jest.fn(async () => ({
-      currentStep: 'a step', stepGivenAt: 3, staircase: null, staircasePosition: 0,
-      history: [{ step: 'a step', givenAtSession: 3, outcome: null }],
-    }));
-    await observe(service);
-    expect(upserts[0].update.history[0].outcome).toBe('not done');
-  });
-
-  it('and leaves it unsaid when their words are unclear', async () => {
-    // 'unclear' becomes null rather than a guess.
-    const { service, prisma, upserts } = makeService({
-      observed: { index: null, reason: null, lastStepOutcome: null },
-      personSays: 'The Meridian numbers came in at four hundred and twelve on Tuesday.',
-    });
-    prisma.coachingState.findUnique = jest.fn(async () => ({
-      currentStep: 'a step', stepGivenAt: 3, staircase: null, staircasePosition: 0,
-      history: [{ step: 'a step', givenAtSession: 3, outcome: null }],
-    }));
-    await observe(service);
-    expect(upserts[0].update.history[0].outcome).toBeNull();
-  });
-
-  /*
-   * THIS ASSERTED THAT THE FLAG TURNED IT OFF. The flag is gone - it was off in every environment
-   * for long enough that the coach had never run for anybody, which is a decision nobody was
-   * making rather than caution.
-   *
-   * What is worth proving now is the thing the flag was standing in for: the coach reads the
-   * session before it says anything, so it can be silent when there is nothing to say.
-   */
-  it('reads the session before it decides anything', async () => {
-    const { service, prisma, anthropic } = makeService({ enabled: true });
-    await observe(service);
-    expect(prisma.groundParticipant.findUnique).toHaveBeenCalled();
-    expect(anthropic.extract).toHaveBeenCalled();
+    expect(upserts[0].create.currentStep).toBe(QUESTION);
   });
 });
 
@@ -307,7 +167,8 @@ describe('and complete() calls it, which is the part that was missing', () => {
       { emit: jest.fn() } as any, {} as any, { canStartSession: jest.fn() } as any, {} as any,
       { emit: jest.fn(() => Promise.resolve()) } as any, { get: jest.fn(() => true) } as any,
     );
-    for (const m of ['extractRecordEntries', 'buildSoloArtifact', 'ensureNextSession', 'extractDependencies', 'extractWorkMentions', 'reviseDetectedFunction']) {
+    /* (1 November 2026: the coach now also waits for the conversation's assessment, stubbed here like the other readers.) */
+    for (const m of ['theEndCardAtTheEnd', 'buildSoloArtifact', 'ensureNextSession', 'extractDependencies', 'extractWorkMentions', 'assessAndThenRead', 'reviseDetectedFunction']) {
       jest.spyOn(service as any, m).mockResolvedValue(undefined);
     }
     const spy = jest.spyOn(service as any, 'observeForCoaching').mockResolvedValue(undefined);

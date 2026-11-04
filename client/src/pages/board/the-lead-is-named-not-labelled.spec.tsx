@@ -63,7 +63,7 @@ function renderBoard(payload: any) {
   )
 }
 
-describe('"What we are aiming for" says who sets the targets, never "the lead"', () => {
+describe('"What the team is aiming for" says who sets the targets, never "the lead"', () => {
   it('says "You set these targets." to the lead', async () => {
     me = { id: 'u-lead', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(AS_THE_LEAD)

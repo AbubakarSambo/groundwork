@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { THE_DOOR_SIGNED_IN, THE_DOOR_SIGNED_OUT, THE_EXAMPLES, RATHER_PICK } from './the-way-in'
-import { Panel, PageTitle, FieldLabel, TextArea, Button, QuickReplies, Stack, Note } from '@/components/gw/ui'
+import { THE_DOOR, THE_DOOR_CRUMBS, THE_EXAMPLES, RATHER_PICK } from './the-way-in'
+import { Panel, PageTitle, TextArea, Button, QuickReplies, Stack, Note } from '@/components/gw/ui'
 
 /*
  * THE FIRST SCREEN OF A NEW CHECK-IN (U.6, B1): #/start signed out, #/new signed in.
@@ -26,32 +26,27 @@ export function TheDoor({
   onSeeEverySituation: () => void
 }) {
   const [text, setText] = useState('')
-  const words = signedIn ? THE_DOOR_SIGNED_IN : THE_DOOR_SIGNED_OUT
   const send = () => { if (text.trim()) onSend(text.trim()) }
 
   return (
     <div className="gwui-door">
       <PageTitle
-        crumbs={signedIn ? THE_DOOR_SIGNED_IN.crumbs.map(label => ({ label })) : undefined}
-        title={words.heading}
-        subtitle={words.help}
+        crumbs={signedIn ? THE_DOOR_CRUMBS.map(label => ({ label })) : undefined}
+        title={THE_DOOR.heading}
+        subtitle={THE_DOOR.help}
       />
       <Panel>
         <Stack gap={10}>
-          {signedIn && <FieldLabel htmlFor="gw-door-box">{THE_DOOR_SIGNED_IN.question}</FieldLabel>}
           <TextArea
             id="gw-door-box"
             rows={3}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-            placeholder={words.placeholder}
-            aria-label={signedIn ? undefined : words.heading}
+            aria-label={THE_DOOR.heading}
           />
-          {!signedIn && (
-            <QuickReplies items={[...THE_EXAMPLES]} onPick={setText} label="Examples" />
-          )}
-          <Button onClick={send} disabled={!text.trim()}>{words.button}</Button>
+          <QuickReplies items={[...THE_EXAMPLES]} onPick={setText} label="Examples" />
+          <Button onClick={send} disabled={!text.trim()}>{THE_DOOR.button}</Button>
         </Stack>
       </Panel>
       <Note>

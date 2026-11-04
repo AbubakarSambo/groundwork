@@ -72,6 +72,13 @@ export function canSeeDocument(
 }
 
 /**
+ * EVERYBODY ON THE CHECK-IN, as one reader: a party who neither leads it nor uploaded the document. Whatever is read from a
+ * document for all of them (the team's aims from the lead's assessment) reads only what this reader may open, so a document
+ * marked "Only you" or "Only the lead" keeps its audience.
+ */
+export const EVERYBODY_ON_THE_CHECK_IN: DocumentReader = { participantId: 'everybody on the check-in', isLead: false };
+
+/**
  * The Prisma `where` for a reader's document list.
  *
  * Kept next to canSeeDocument on purpose: a query and a predicate that are

@@ -28,11 +28,15 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   /* The same words as the opening notice, to somebody it never reached (engagement/a-person-the-opening-never-reached.ts). It is the day's routine message and not an opening, so it counts. */
   'checkin-catch-up',
   'anchor-weekly-insight', 'anchor-follow-up',
-  'report', 'report-retry', 'request-waiting', 'request-decided', 'review-started', 'review-decided',
+  'report', 'report-retry', 'request-waiting', 'request-decided', 'request-decided-with-reason', 'review-started', 'review-decided',
+  /* A thank-you for an answer when the report has nothing in it yet: Groundwork writes it first, it has no template, so it goes inside the 24 hours only (Drop Access run 1, item 22). */
+  'report-thanks',
   /* What waits for an approver, said once for all of it (the-approvals-summary.ts). */
   'requests-waiting',
   /* A check-in left halfway (a-check-in-left-halfway.ts): the reminder to carry on, the half-hour warning, and the clock closing it. */
   'carry-on', 'closes-in-half-an-hour', 'closed-by-the-clock',
+  /* The lead's own nudge (engagement/the-leads-own-nudge.ts): Groundwork writes it for her, so the 24 hours, the template, quiet hours and STOP hold. */
+  'lead-nudge',
 ]);
 
 /**
@@ -81,7 +85,11 @@ export const APPROVALS: ReadonlySet<string> = new Set(['request-waiting', 'reque
  * first, so the person's own "Not now" today holds it, as it holds the others; STOP and the 24 hours hold it
  * anyway, through the gates before this one.
  */
-export const ONLY_HELD_BY_NOT_NOW: ReadonlySet<string> = new Set(['closed-by-the-clock']);
+/*
+ * THE LEAD'S OWN NUDGE (nudges that get answers, 20 October). The lead pressed "Nudge Peter": it is not the day's routine message, so it
+ * neither counts towards the one a day nor is held by it, but Peter's own "Not now" today holds it, as STOP and quiet hours do.
+ */
+export const ONLY_HELD_BY_NOT_NOW: ReadonlySet<string> = new Set(['closed-by-the-clock', 'lead-nudge']);
 /** The messages that mark a day a check-in opens or closes, when two may go. */
 export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon', 'closes-in-half-an-hour']);
 /**
@@ -89,7 +97,9 @@ export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 
  * Groundwork starts is new, and goes to an organisation only once it has turned WhatsApp on (decisions
  * 78 and 88), or when it already had a number of its own connected.
  */
-export const WENT_BEFORE_THIS_RELEASE: ReadonlySet<string> = new Set(['report', 'report-retry']);
+export const WENT_BEFORE_THIS_RELEASE: ReadonlySet<string> = new Set(['report', 'report-retry', 'report-thanks']);
+/** Never a first contact: a thank-you with nothing to read is not how Groundwork introduces itself to a number (Drop Access run 1, item 23). */
+export const NEVER_THE_FIRST_MESSAGE: ReadonlySet<string> = new Set(['report-thanks']);
 export const NOT_TURNED_ON_QUIETLY = 'This organisation has not turned on WhatsApp; not sent';
 export const NOT_TODAY = 'Groundwork has already written first to this person as often as it may today; not sent';
 export const THEY_SAID_NOT_NOW = 'This person replied "Not now" today; not sent';
@@ -176,6 +186,8 @@ export const TEMPLATES: Record<string, ATemplate> = {
   /* Ours, proposed to Hafsah: everything waiting for an approver, said once. {{2}} is the whole paragraph, in plain full sentences. */
   'requests-waiting': aTemplate('groundwork_requests_waiting', 'Hi {{1}}. {{2}} You can read and answer them in Groundwork here {{3}} and nothing is decided until you do.'),
   'request-decided': aTemplate('groundwork_request_decided', 'Hi {{1}}, your request for {{2}} was {{3}} by {{4}}. Open Groundwork to read it.'),
+  /* Ours, proposed to Hafsah (round 1 dead end, 25 October): the same, with the reason the decider gave, so a decline outside the 24 hours still says why. {{5}} is "Grace said, “…”". */
+  'request-decided-with-reason': aTemplate('groundwork_request_decided_with_reason', 'Hi {{1}}, your request for {{2}} was {{3}} by {{4}}. {{5}} Open Groundwork to read it.'),
   /*
    * Ours, proposed to Hafsah (item 16): a review waits for the person in the app. Never anything the
    * review says, only who started or decided it, so its contents stay in the app.
@@ -185,6 +197,12 @@ export const TEMPLATES: Record<string, ATemplate> = {
   /* No template for the appeal of a decided review (decision 124, item 4): its messages go by email and in the app only. */
 };
 TEMPLATES['report-retry'] = TEMPLATES.report;
+/*
+ * THE LEAD'S OWN NUDGE, OUTSIDE THE 24 HOURS, GOES AS THE APPROVED TEMPLATE THAT FITS (nudges that get answers, 20 October): "your view
+ * matters", which names the lead in {{3}} ("Your answers help Grace understand what's in your way"). Its wording is never changed; inside
+ * the 24 hours the lead's own words go instead.
+ */
+TEMPLATES['lead-nudge'] = TEMPLATES['your-view-matters'];
 /* The catch-up for somebody the opening notice never reached is the opening notice's own template: no new template (Hafsah, 8 October). */
 TEMPLATES['checkin-catch-up'] = TEMPLATES['checkin-open'];
 /*
@@ -197,9 +215,88 @@ TEMPLATES['first-contact'] = aTemplate('groundwork_first_contact', 'This is Grou
 /** The names an organisation submits to Meta, once each: every template the product starts. */
 export const THE_NAMES_TO_SUBMIT: string[] = [...new Set(Object.values(TEMPLATES).map((t) => t.name))];
 
+/*
+ * THE FOUR TEMPLATES OF 19 OCTOBER (docs/whatsapp-templates.md, "The new templates"), word for word, for Abubakar to submit. None of
+ * them changes an approved template: each is a new one, and each is used only when all three hold:
+ *  - its name is in WHATSAPP_APPROVED_TEMPLATES (or in the organisation's own approved list);
+ *  - the person is outside the 24 hours (inside them, the ordinary message goes as free text, as before);
+ *  - the message carries every one of its blanks (a thank-you with no first name cannot say "Thank you, {{1}}").
+ * Until one is approved and listed, the template it replaces goes as before where that one is approved, and otherwise the same
+ * message goes by email instead (whatsapp.service.ts, byEmailInstead). checkin_open stays in use until groundwork_checkin_open_v2
+ * is approved and listed. The list is empty today, so nobody's messages change from these.
+ */
+export const THE_FOUR_OF_19_OCTOBER = {
+  checkInOpen: aTemplate('groundwork_checkin_open_v2', 'Hi {{1}}, your check-in for {{2}} is open. It takes about ten minutes, and you can answer right here. Reply START to begin.'),
+  thanks: aTemplate('groundwork_checkin_thanks', "Thank you, {{1}}. Your answer for {{2}} is in. You will hear here when the team's report is ready to read."),
+  yourReport: aTemplate('groundwork_your_report_ready', 'Hi {{1}}, your own report for {{2}} is ready. It shows what you did, what is still open and what to do next. Open it here: {{3}} . Reply STOP to stop these messages.'),
+  promiseDue: aTemplate('groundwork_promise_due', 'Hi {{1}}, you said you would {{2}} by {{3}}. Reply DONE if it is done, or tell me what changed.'),
+} as const;
+export const THE_FOUR_NAMES: string[] = Object.values(THE_FOUR_OF_19_OCTOBER).map((t) => t.name);
+/*
+ * THE TEMPLATE OF 21 OCTOBER (Hafsah's answers of 21 October; docs/whatsapp-templates.md, "The new template of 21 October"), word for
+ * word, for Abubakar to submit. It replaces checkin_closes_soon (which says "Five minutes now") by the same three rules as the four above:
+ * only once its name is listed, only outside the 24 hours, and only with every blank. It has checkin_closes_soon's three blanks in the same
+ * order (first name, the check-in's name, the closing time), so the closing reminder's own words fill it. It counts as that day's routine
+ * message, as checkin_closes_soon does. Until it is approved and listed, checkin_closes_soon goes as today.
+ */
+export const THE_ONE_OF_21_OCTOBER = {
+  closesSoon: aTemplate('groundwork_checkin_closes_soon_v2', 'Hi {{1}}, your check-in for {{2}} closes at {{3}}. It takes about ten minutes, and you can answer right here.'),
+} as const;
+export const THE_NAMES_OF_21_OCTOBER: string[] = Object.values(THE_ONE_OF_21_OCTOBER).map((t) => t.name);
+/*
+ * THE TEMPLATE OF 4 NOVEMBER (Hafsah's answer 5 of 4 November; docs/whatsapp-templates.md, "The new template of 4 November"), word for
+ * word, for Abubakar to submit. It replaces checkin_your_view_matters (which says "about five minutes") by the same three rules as the
+ * four above: only once its name is listed, only outside the 24 hours, and only with every blank. It has checkin_your_view_matters's
+ * three blanks in the same order (first name, the check-in's name, the lead's first name), so the message's own words fill it, and the
+ * lead's own nudge, which goes as checkin_your_view_matters outside the 24 hours, goes as this one too. Until it is approved and listed,
+ * checkin_your_view_matters goes as today.
+ */
+export const THE_ONE_OF_4_NOVEMBER = {
+  yourViewMatters: aTemplate('groundwork_checkin_your_view_matters_v2', "Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} understand what's in your way, and where they can help. It takes about ten minutes, and you can answer here."),
+} as const;
+export const THE_NAMES_OF_4_NOVEMBER: string[] = Object.values(THE_ONE_OF_4_NOVEMBER).map((t) => t.name);
+/** Every name the product may use: the ones it starts with today, the four of 19 October, the one of 21 October and the one of 4 November. */
+export const THE_NAMES_WE_MAY_USE: string[] = [...new Set([...THE_NAMES_TO_SUBMIT, ...THE_FOUR_NAMES, ...THE_NAMES_OF_21_OCTOBER, ...THE_NAMES_OF_4_NOVEMBER])];
+
+/** Which of the four goes in place of a message, first, before the template that message has always had. */
+export const THE_NEWER_TEMPLATE_FIRST: Record<string, ATemplate[]> = {
+  'checkin-open': [THE_FOUR_OF_19_OCTOBER.checkInOpen],
+  'checkin-catch-up': [THE_FOUR_OF_19_OCTOBER.checkInOpen],
+  /* Only straight after the person's own check-in, once for it: its one sender is the thank-you after a finished check-in. */
+  'report-thanks': [THE_FOUR_OF_19_OCTOBER.thanks],
+  report: [THE_FOUR_OF_19_OCTOBER.yourReport],
+  'report-retry': [THE_FOUR_OF_19_OCTOBER.yourReport],
+  /* The person's own promise, never anybody else's, with the day it was due; a sender that has no day for it does not offer its blanks. */
+  'anchor-follow-up': [THE_FOUR_OF_19_OCTOBER.promiseDue],
+  /* The closing reminder: groundwork_checkin_closes_soon_v2 once it is listed, checkin_closes_soon until then. */
+  'closes-soon': [THE_ONE_OF_21_OCTOBER.closesSoon],
+  /* The chase on the lead's chase days, and the lead's own nudge: groundwork_checkin_your_view_matters_v2 once it is listed. */
+  'your-view-matters': [THE_ONE_OF_4_NOVEMBER.yourViewMatters],
+  'lead-nudge': [THE_ONE_OF_4_NOVEMBER.yourViewMatters],
+};
+
+/* groundwork_checkin_open_v2 has checkin_open's two blanks, and groundwork_checkin_closes_soon_v2 and groundwork_checkin_your_view_matters_v2 have their old templates' three, in the same order: the message's own words fill them. The others say a message's own blanks. */
+const THE_SAME_BLANKS_AS_BEFORE: ReadonlySet<string> = new Set(['groundwork_checkin_open_v2', 'groundwork_checkin_closes_soon_v2', 'groundwork_checkin_your_view_matters_v2']);
+const howManyBlanks = (body: string) => new Set([...body.matchAll(/\{\{(\d+)\}\}/g)].map((m) => m[1])).size;
+
+/** The template a message goes as outside the 24 hours, and the words for its blanks; null when none is approved for it. */
+export function theTemplateToUse(
+  kind: string | null | undefined,
+  approved: readonly string[],
+  words: { params?: string[]; paramsFor?: Record<string, string[]> } = {},
+): { template: ATemplate; params?: string[] } | null {
+  if (!kind) return null;
+  for (const t of THE_NEWER_TEMPLATE_FIRST[kind] ?? []) {
+    if (!approved.includes(t.name)) continue;
+    const params = words.paramsFor?.[t.name] ?? (THE_SAME_BLANKS_AS_BEFORE.has(t.name) ? words.params : undefined);
+    if (params && params.length >= howManyBlanks(t.body) && params.every((p) => !!String(p ?? '').trim())) return { template: t, params };
+  }
+  const t = TEMPLATES[kind];
+  return t && approved.includes(t.name) ? { template: t } : null;
+}
+
 export function templateFor(kind: string | null | undefined, approved: readonly string[]): ATemplate | null {
-  const t = kind ? TEMPLATES[kind] : null;
-  return t && approved.includes(t.name) ? t : null;
+  return theTemplateToUse(kind, approved)?.template ?? null;
 }
 
 export const OUTSIDE_THE_WINDOW = 'Outside the 24-hour service window and no approved template for this message; not sent';
@@ -210,7 +307,12 @@ export const A_STOP_WORD = /^\s*(stop|unsubscribe|opt\s*out)\s*[.!]?\s*$/i;
 export const A_START_WORD = /^\s*(start|unstop|resume|opt\s*in)\s*[.!]?\s*$/i;
 
 /** A number Groundwork does not know (decision 106, item 5). */
-export const UNKNOWN_NUMBER_SAYING = 'Groundwork does not know this number yet. If you use Groundwork, add this number under Settings, or ask your admin to add it, then write again.';
+/**
+ * A NUMBER NOBODY HAS LINKED (Hafsah, 3 November 2026): one polite reply asking them to link it from the app or the link they were sent,
+ * said once to a number (said-once-to-a-number.ts), and nothing written or sent back from it until it is linked. Linking is the way a
+ * number is verified: the person adds it in Settings, or through the link they were sent, or an admin adds it under People.
+ */
+export const UNKNOWN_NUMBER_SAYING = 'Groundwork does not know this number yet, and it cannot act on what you send from it. To use this number, add it in the Groundwork app under Settings, or through the link you were sent, and then write again.';
 /* Decision 106 item 7: the last sentence is true because a decision that cannot go by WhatsApp goes by email (a-request-told-on-whatsapp.service.ts). */
 export const STOPPED_SAYING = 'Stopped. Nothing more comes to this number from Groundwork unless you reply START. Your check-ins are still in Groundwork. Leave and spending decisions still reach you by email.';
 export const RESUMED_SAYING = 'Resumed. Your check-in notices come here again.';

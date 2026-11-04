@@ -98,7 +98,7 @@ describe('the sidebar waits for the list', () => {
   it('if the list cannot be loaded it says so, and what to do, instead of claiming there are none', async () => {
     vi.spyOn(groundsApi, 'list').mockRejectedValue(new Error('offline'))
     mount()
-    expect(await screen.findByText('Your check-ins did not load. Reload the page to try again.')).toBeInTheDocument()
+    expect(await screen.findByText('Your check-ins didn’t load. Reload the page.')).toBeInTheDocument()
     expect(screen.queryByText('Nothing in progress yet.')).toBeNull()
   })
 })

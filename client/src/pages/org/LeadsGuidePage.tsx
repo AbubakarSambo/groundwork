@@ -55,10 +55,10 @@ export function LeadsGuidePage() {
         </button>
       </div>
 
-      <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '-.02em' }}>
+      <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '-.02em' }}>
         Running a check-in
       </h1>
-      <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 32, lineHeight: 1.6 }}>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 32, lineHeight: '22px' }}>
         For anybody about to lead one. Four things about how it works, and what you can see as the person who set it up. Send this link to your team.{' '}
         <TextAction onClick={copyTheLink} strong>{copied ? 'Copied ✓' : 'Copy the link'}</TextAction>
       </p>
@@ -75,7 +75,7 @@ export function LeadsGuidePage() {
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-sub)', flexShrink: 0 }}>{i + 1}</span>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>{s.title}</div>
-                <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>{s.body}</p>
+                <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', margin: 0 }}>{s.body}</p>
               </div>
             </div>
           </div>
@@ -98,7 +98,7 @@ export function LeadsGuidePage() {
           report, or a lead's private notes, and never a performance plan unless given access to
           that check-in. Rewritten to say exactly that, with the organisation's own Ask name.
         */}
-        <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>
+        <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', margin: 0 }}>
           An admin can see every board and report, including what people said in them. An admin
           never sees anyone's questions to {askNameFor(realOrgName)}, anyone's own report, or a
           lead's private notes, and never {WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS} unless given
@@ -106,9 +106,8 @@ export function LeadsGuidePage() {
         </p>
       </div>
 
-      <button
+      <button className="btn pri"
         onClick={() => navigate('/grounds/new')}
-        style={{ padding: '12px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
       >
         Open a check-in
       </button>

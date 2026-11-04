@@ -1,5 +1,4 @@
 import { whatNeedsYou, type ListedCheckIn } from './what-needs-you';
-import { aCheckInInASentence, theSummaryParagraph } from '../whatsapp/the-leads-daily-summary';
 import { boardAs, AMINA, RUKIA, BARAKA, JUMA, answered } from '../board/the-switchboards-sections-harness';
 
 /**
@@ -45,15 +44,6 @@ describe('request 118 (1): Today with nobody left to name', () => {
   it('with somebody still left, Rukia reads the same sentence as before', () => {
     const r = whatNeedsYou([sales(['p-Neema'])], { userId: 'u-rukia', role: 'MEMBER', organizationId: 'org' }, [], NOW);
     expect(r.line).toBe('In Sales team, Q3, 4 of 5 have checked in for the first check-in. Neema has not checked in yet.');
-  });
-});
-
-describe('request 118 (1): the lead\'s daily summary with nobody left to name', () => {
-  it('reads a count, and never an empty name', () => {
-    expect(aCheckInInASentence({ label: 'Sales team, Q3', ofHowMany: 5, answered: 4, notYet: [] }))
-      .toBe('In "Sales team, Q3", 4 of 5 people have checked in.');
-    expect(theSummaryParagraph([{ label: 'Sales team, Q3', ofHowMany: 4, answered: 4, notYet: [] }], []))
-      .toBe('In "Sales team, Q3", all 4 people have checked in.');
   });
 });
 

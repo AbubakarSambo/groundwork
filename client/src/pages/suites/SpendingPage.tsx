@@ -5,6 +5,7 @@ import { spendApi, type SpendBoard, type SpendWaiting } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, Select, TextField, TextArea, Tag, ExampleExchange } from '@/components/gw/ui'
 import { AskAQuestion } from './AskAQuestion'
+import { ApprovalStepsByAmount } from './ApprovalStepsByAmount'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
@@ -139,6 +140,9 @@ export function SpendingPage() {
           </Section>
 
           {(data.teams ?? []).length > 0 && <SetABudget teams={data.teams} />}
+
+          {/* Who approves, by amount, in order: shown to whoever the server serves the rules to (an admin, or whoever looks after finance). */}
+          <ApprovalStepsByAmount currency={data.currency} />
         </>
       )}
     </Page>
@@ -171,6 +175,7 @@ function ARequest({ w, board }: { w: SpendWaiting; board: SpendBoard }) {
         {w.category && <> <Tag>{w.category}</Tag>{' '}</>}
         {known && <p className="gwui-panel-text">{known}</p>}
         <p className="gwui-panel-text">{w.where}</p>
+        {w.attached && <p className="gwui-panel-text">{w.attached}</p>}
         {w.needs.map((n, i) => <p key={`n${i}`} className="gwui-panel-text">{n}</p>)}
         {w.questions.map((q, i) => <p key={`q${i}`} className="gwui-panel-text">{q}</p>)}
         {w.mayDecide && (

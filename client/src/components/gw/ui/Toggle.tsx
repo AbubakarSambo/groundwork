@@ -6,13 +6,15 @@ import './gw-ui.css'
  * when on - this is green, as the prototype draws it). A real switch for screen readers, with its
  * own name.
  */
-export function Toggle({ on, onChange, label, disabled }: {
+export function Toggle({ on, onChange, label, disabled, look = 'switch' }: {
+  /** The prototype's sliding switch, or B8's plain checkbox on People and setup. */
+  look?: 'switch' | 'checkbox'
   on: boolean
   onChange: (on: boolean) => void
   label: string
   disabled?: boolean
 }) {
-  return (
+  if (look === 'switch') return (
     <button
       type="button"
       role="switch"
@@ -24,5 +26,18 @@ export function Toggle({ on, onChange, label, disabled }: {
     >
       <span className="gwui-toggle-knob" />
     </button>
+  )
+  return (
+    /* B8 draws a setting that is on or off as a checkbox, not a sliding switch. */
+    <input
+      type="checkbox"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      disabled={disabled}
+      checked={on}
+      className="gw-check"
+      onChange={() => onChange(!on)}
+    />
   )
 }

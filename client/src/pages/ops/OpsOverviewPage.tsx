@@ -27,10 +27,10 @@ const WINDOWS = [
 function Figure({ value, label, quiet }: { value: string | number; label: string; quiet?: boolean }) {
   return (
     <div style={{ ...CARD, minWidth: 128, flex: '1 1 128px' }}>
-      <div style={{ fontSize: 20, fontWeight: 800, color: quiet ? 'var(--gw-sub)' : 'var(--gw-navy)' }}>
+      <div style={{ fontSize: 20, fontWeight: 700, color: quiet ? 'var(--gw-sub)' : 'var(--gw-navy)' }}>
         {value}
       </div>
-      <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>{label}</div>
+      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{label}</div>
     </div>
   )
 }
@@ -84,7 +84,7 @@ export default function OpsOverviewPage() {
   const ask = (n: number) => d?.questions?.find((q) => q.n === n)?.question ?? ''
 
   return (
-    <section className="gw-page" style={PAGE}>
+    <section style={PAGE}>
       <OpsHeader name="Commercial overview" answers="Everything, in the order somebody asks." />
 
       {/*
@@ -100,20 +100,11 @@ export default function OpsOverviewPage() {
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
         {WINDOWS.map((w) => (
-          <button
+          <button className={`gwui-choice${w.key === window.key ? ' gwui-choice-on' : ''}`}
             key={w.key}
             type="button"
             onClick={() => setWindow(w)}
             aria-pressed={w.key === window.key}
-            style={{
-              border: '1px solid var(--gw-border)',
-              borderRadius: 20,
-              padding: '3px 11px',
-              fontSize: 12,
-              cursor: 'pointer',
-              background: w.key === window.key ? 'var(--gw-navy)' : 'white',
-              color: w.key === window.key ? 'white' : 'var(--gw-navy)',
-            }}
           >
             {w.label}
           </button>
@@ -156,7 +147,7 @@ export default function OpsOverviewPage() {
           {d.share && (
             <Band question={ask(4)}>
               <section style={CARD}>
-                <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '0 0 10px' }}>{d.share.says}</p>
+                <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '0 0 10px' }}>{d.share.says}</p>
                 {(d.share.rows ?? []).map((r) => (
                   <div key={r.personKey} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '3px 0' }}>
                     <span style={{ fontSize: 13, width: 120, flex: 'none' }}>{r.person}</span>
@@ -166,7 +157,7 @@ export default function OpsOverviewPage() {
                     <div style={{ flex: 1, background: 'rgba(12,68,124,0.08)', borderRadius: 4, height: 7 }}>
                       <div style={{ width: `${r.share ?? 0}%`, height: '100%', background: 'var(--gw-navy)', borderRadius: 4 }} />
                     </div>
-                    <span style={{ fontSize: 12.5, width: 40, textAlign: 'right', flex: 'none' }}>{r.share}%</span>
+                    <span style={{ fontSize: 12, width: 40, textAlign: 'right', flex: 'none' }}>{r.share}%</span>
                   </div>
                 ))}
                 {(d.share.rows ?? []).length === 0 && (
@@ -199,8 +190,8 @@ export default function OpsOverviewPage() {
                     flexWrap: 'wrap',
                   }}
                 >
-                  <strong style={{ fontSize: 13.5, width: 120, flex: 'none' }}>{l.person}</strong>
-                  <span style={{ fontSize: 12.5, color: 'var(--gw-sub)', width: 96, flex: 'none' }}>
+                  <strong style={{ fontSize: 14, width: 120, flex: 'none' }}>{l.person}</strong>
+                  <span style={{ fontSize: 12, color: 'var(--gw-sub)', width: 96, flex: 'none' }}>
                     {l.itIsTheirJob ? 'their job' : 'not their job'}
                   </span>
                   <span style={{ fontSize: 13, flex: 1 }}>
@@ -241,13 +232,13 @@ export default function OpsOverviewPage() {
                 <Figure value={health.data.overdueFollowUps} label="follow-ups overdue" />
                 <Figure value={health.data.attributionUnresolved} label="nobody credited yet" />
               </div>
-              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '8px 0 0' }}>{health.data.says}</p>
+              <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '8px 0 0' }}>{health.data.says}</p>
             </Band>
           )}
 
           {d.claimsWaiting !== null && d.claimsWaiting > 0 && (
             <Band question={ask(13)}>
-              <p style={{ fontSize: 13.5, color: 'var(--gw-red-t)', margin: 0 }}>
+              <p style={{ fontSize: 14, color: 'var(--gw-red-t)', margin: 0 }}>
                 {d.claimsWaiting} claim{d.claimsWaiting === 1 ? '' : 's'} of contribution waiting on a
                 decision. Until they are decided, they are not evidence.
               </p>

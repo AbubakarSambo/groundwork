@@ -66,7 +66,7 @@ export const FOLDS: Fold[] = [
   { key: 'deals', box: 'work', name: 'Every deal, day by day', line: 'deals', parts: [/^Every deal, day by day$/], openOnALaptop: true },
   { key: 'assumes', box: 'work', name: 'What the target assumes', parts: [/^What the target of .+ assumes$/], onePerBlock: true },
   { key: 'reported', box: 'work', name: 'Reported, stage by stage', line: 'reported', parts: [/^Reported, stage by stage$/] },
-  { key: 'overTime', box: 'work', name: 'Targets over time', line: 'targetsOverTime', parts: [/^Over time$/, /^What we are aiming for$/, /^What success looks like$/] },
+  { key: 'overTime', box: 'work', name: 'Targets over time', line: 'targetsOverTime', parts: [/^Over time$/, /^What the team is aiming for$/, /^What success looks like$/] },
   { key: 'heading', box: 'work', name: 'Where this is heading', line: 'whereHeading', parts: [/^Where this is heading$/] },
   { key: 'forecast', box: 'work', name: 'Where this could end up', line: 'forecast', parts: [/^Where this could end up$/] },
   { key: 'likelyEnd', box: 'work', name: 'Where the sales numbers are likely to end up', line: 'likelyEnd', parts: [/^Where the .+ numbers are likely to end up$/] },
@@ -195,7 +195,7 @@ export function TheLightNeedsYou({ title }: { title?: string }) {
   return (
     <div className="gwui-light-needs">
       {/* Approved rename: for an admin or the chief executive, "What needs you in this check-in" reads "What needs the lead". */}
-      {title && <h2 className="gwui-section-title gwui-light-needs-title">{title}</h2>}
+      {title && <h2 className="t-h2 gwui-light-needs-title">{title}</h2>}
       {NEEDS.map((_, i) => <div key={i} ref={s.slot(`needs:${i}`)} className="gwui-light-slot" />)}
     </div>
   )
@@ -213,12 +213,12 @@ export function TheLightBoxes() {
   const s = useContext(LightSlots)
   if (!s) return null
   return (
-    <section className="gwui-section gwui-light-else" aria-labelledby="gwui-light-else-h">
-      <div className="gwui-section-h">
-        <h2 id="gwui-light-else-h" className="gwui-section-title">Everything else</h2>
-        <span className="gwui-section-note">Tap any line to see more</span>
+    <section className="sec gwui-light-else" aria-labelledby="gwui-light-else-h">
+      <div className="sec-h">
+        <h2 id="gwui-light-else-h" className="t-h2">Everything else</h2>
+        <span className="t-small mut">Tap any line to see more</span>
       </div>
-      <div className="gwui-section-body">
+      <div>
         <div className="gwui-boxes">
           {BOX_ORDER.map((box) => (
             <Box key={box} name={boxName(box, s.glance)} facts={s.glance.boxes?.[box] ?? []} defaultOpen={box === 'work' && s.onALaptop}>
@@ -257,17 +257,18 @@ export function TheLightSummaryFirst() {
   if (!s) return null
   return (
     <>
-      <section className="gwui-section gwui-light-glance" aria-labelledby="gwui-light-glance-h">
-        <div className="gwui-section-h">
-          <h2 id="gwui-light-glance-h" className="gwui-section-title">At a glance</h2>
-          <span className="gwui-section-note">For you as an admin. The lead runs this check-in.</span>
+      <section className="sec gwui-light-glance" aria-labelledby="gwui-light-glance-h">
+        <div className="sec-h">
+          <h2 id="gwui-light-glance-h" className="t-h2">At a glance</h2>
+          <span className="t-small mut">For you as an admin. The lead runs this check-in.</span>
         </div>
-        <div className="gwui-section-body">
+        <div>
           <div className="gwui-light-glance-rows">
             {BOX_ORDER.map((box) => (
               <div key={box} className="gwui-light-glance-row">
                 <span className="gwui-light-glance-name">{boxName(box, s.glance)}</span>
-                <span className="gwui-light-glance-fact">{(s.glance.boxes?.[box] ?? []).slice(0, 2).join(' · ')}</span>
+                {/* Every fact, each its own line: never cut to two, never joined with a dot (boards audit O1). */}
+                <span className="gwui-light-glance-fact">{(s.glance.boxes?.[box] ?? []).map((f: string) => <span className="gwui-light-glance-line" key={f}>{f}</span>)}</span>
               </div>
             ))}
             {s.glance.needsTheLead && (

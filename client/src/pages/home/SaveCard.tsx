@@ -95,7 +95,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
      * what they typed, say what happened, and leave the button live.
      */
     onError: () => {
-      setEmailError('That did not save - nothing has been sent. Try again.')
+      setEmailError('That didn’t send. Try again.')
     },
   })
 

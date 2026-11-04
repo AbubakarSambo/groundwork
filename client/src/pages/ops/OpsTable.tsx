@@ -32,7 +32,7 @@ export function DueDate({ value }: { value: string | null | undefined }) {
   const due = new Date(value)
   const late = due < new Date()
   return (
-    <span style={late ? { color: 'var(--gw-red-t)', fontWeight: 600 } : undefined}>
+    <span style={late ? { color: 'var(--gw-red-t)', fontWeight: 700 } : undefined}>
       {whenItWas(due, 'day')}
       {late ? ' · overdue' : ''}
     </span>
@@ -73,20 +73,11 @@ export function Filters<T>({
       {[{ label: 'All', keep: () => true }, ...filters].map((f) => {
         const on = f.label === 'All' ? active === null : active === f.label
         return (
-          <button
+          <button className={`gwui-choice${on ? ' gwui-choice-on' : ''}`}
             key={f.label}
             type="button"
             onClick={() => onPick(f.label === 'All' ? null : f.label)}
             aria-pressed={on}
-            style={{
-              border: '1px solid var(--gw-border)',
-              borderRadius: 20,
-              padding: '3px 11px',
-              fontSize: 12,
-              cursor: 'pointer',
-              background: on ? 'var(--gw-navy)' : 'white',
-              color: on ? 'white' : 'var(--gw-navy)',
-            }}
           >
             {f.label}
           </button>

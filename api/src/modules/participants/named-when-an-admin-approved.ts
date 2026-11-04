@@ -1,4 +1,4 @@
-import { isAnAdminOf, needsApproval, whoToAsk } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { howTheyStandIn, isAnAdminOf, needsApproval, whoToAsk } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
 
 /**
  * WHO GOES STRAIGHT IN, AND WHO WAITS FOR AN ADMIN (Hafsah, 12 October 2026).
@@ -27,10 +27,9 @@ export async function theyWaitForAnAdmin(db: any, ground: TheGround, row: TheRow
     ? user.organizationId === ground.organizationId
       || !!(await db.organizationMembership?.findUnique?.({ where: { userId_organizationId: { userId: user.id, organizationId: ground.organizationId } }, select: { id: true } }).catch(() => null))
     : false;
-  const inviter = await db.user.findUnique({ where: { id: whoToAsk(row.addedByUserId, ground.initiatorId) }, select: { role: true, organizationId: true } }).catch(() => null);
-  const approver = ground.approvedById
-    ? await db.user.findUnique({ where: { id: ground.approvedById }, select: { role: true, organizationId: true } }).catch(() => null)
-    : null;
+  /* As they stand in the check-in's organisation, not in whichever one they have open (15 October). */
+  const inviter = await howTheyStandIn(db, whoToAsk(row.addedByUserId, ground.initiatorId), ground.organizationId);
+  const approver = ground.approvedById ? await howTheyStandIn(db, ground.approvedById, ground.organizationId) : null;
   return needsApproval({
     groundOrganizationId: ground.organizationId,
     theirHomeOrganizationId: user?.organizationId ?? null,

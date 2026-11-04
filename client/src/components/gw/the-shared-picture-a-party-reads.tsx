@@ -21,7 +21,7 @@ const LABEL: React.CSSProperties = {
 }
 import { WhatTheNetworkSaid } from './WhatTheNetworkSaid'
 
-const PROSE: React.CSSProperties = { fontSize: 13, lineHeight: 1.65, color: 'var(--gw-text)', maxWidth: '68ch' }
+const PROSE: React.CSSProperties = { fontSize: 13, lineHeight: '21px', color: 'var(--gw-text)', maxWidth: '68ch' }
 
 export function TheSharedPictureAPartyReads({ report }: { report: any }) {
   const agreements: any[] = report?.agreements ?? []
@@ -58,8 +58,8 @@ export function TheSharedPictureAPartyReads({ report }: { report: any }) {
     {(picture || agreements.length || divergences.length) && (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--gw-border)' }}>
-        <div style={{ fontSize: 13.5, fontWeight: 700 }}>The shared picture</div>
-        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>
+        <div style={{ fontSize: 14, fontWeight: 700 }}>The shared picture</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>
           Built from what each person said. If you are one of the people in it, this is your report too, and everyone reads the same one.
         </div>
       </div>
