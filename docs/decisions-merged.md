@@ -77,7 +77,7 @@ These are settled. Do not change them. If one seems to block the work, stop and 
     - questions someone asks Ask Groundwork stay private, as always.
 
     Each item is proven by putting the same documents and messages through both and comparing what is saved. The old context chat keeps working until every item is proven, and only then is it switched off.
-51. **The Context tab and page are called "References and resources"** (decided 29 September), because documents are there too.
+51. **The Context tab and page are called "Context and resources"** (decided 29 September), because documents are there too.
 52. **The plain pattern names are approved** (decided 29 September). They are the names in `docs/pattern-names.md`, with B5 as written there (the code's meaning), and these eight reworded:
     - B3: "Others describe doing work they described as theirs"
     - B8: "When delivery is questioned, the answer points elsewhere"

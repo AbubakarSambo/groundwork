@@ -27,8 +27,8 @@ Making the product sound better must never make it know less. Each item below is
 | **The one question to answer** | `centralQuestion` | "central question present (reports)" |
 | **A judgement for the lead** | `theJudgement` | "judgement present (reports)". This must go UP to all 24 |
 | **Commitments** | commitments on the record | "commitments recorded" |
-| **49 kinds of pattern**, shown after three periods, whether or not in a row; positive patterns shown at once; a pattern is never named to the person. Since Hafsah's F2 decision of 2 November 2026 a stored pattern is read only by the person it is about; the lead reads layer 2 (`what-the-record-shows-the-lead.ts`) | `patterns/pattern-library.ts`, `THREE_PERIOD_RULE = 3` | "patterns found" |
-| **Never blames the person who is only chasing** someone else. Since Hafsah's F2 decision of 2 November 2026 this is kept by layer 2's whose-action rule (only the person's own promises, claims and actions are instances), and the guard file is retired | `patterns/patterns-across-the-assessments.ts` | `the-record-across-time-on-real-rows.spec.ts` (Aisha) |
+| **49 kinds of pattern**, shown after three periods, whether or not in a row; positive patterns shown at once; a pattern is never named to the person | `patterns/pattern-library.ts`, `THREE_PERIOD_RULE = 3` | "patterns found" |
+| **Never blames the person who is only chasing** someone else | `a-chaser-is-not-the-blocker.ts` | Existing tests |
 | **Handover, including what the person leaving knew** | handover module | Existing tests |
 | **Organisation memory**, with proposals to confirm | knowledge proposals | Existing tests |
 | **Asking afterwards whether an outcome was right**, so the engine learns | outcome feedback | Existing tests |
