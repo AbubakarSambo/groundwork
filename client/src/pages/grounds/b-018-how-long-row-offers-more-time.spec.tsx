@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
 
@@ -11,6 +11,11 @@ import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
  * only way to the timeframe editor that can extend it was the warning that appears in the last
  * week of a check-in. Fixed by giving the row its own "Give it more time" action, opening the same
  * editor "How often"'s "Change" button already does.
+ *
+ * 4 November 2026: People and setup is the B8 page for everybody now (Release 1B's switch went). There, "When it runs" draws
+ * How often, Starts and Ends as fields for whoever may change them, with "Give it more time" beside them, and pressing it
+ * takes the reader to the "Ends" field. What is protected is the same: the button is there early, it leads to the end
+ * date, and nobody who may not change the setup is offered it.
  */
 function ground(over: Record<string, any> = {}) {
   return {
@@ -77,27 +82,25 @@ function renderWith(over: Record<string, any> = {}) {
   return props
 }
 
-describe('the "How long" row offers "Give it more time"', () => {
-  it('shows the button beside the row, early, not only once a warning appears', async () => {
+describe('"When it runs" offers "Give it more time"', () => {
+  it('shows the button beside the end date, early, not only once a warning appears', async () => {
     renderWith()
-    await waitFor(() => expect(screen.getByText("Rukia's check-in")).toBeTruthy())
-    const row = screen.getByText('How long').closest('.gwui-field-row') as HTMLElement
-    expect(row).toBeTruthy()
-    expect(within(row).getByRole('button', { name: 'Give it more time' })).toBeTruthy()
+    await screen.findByText('When it runs')
+    expect(screen.getByRole('button', { name: 'Give it more time' })).toBeTruthy()
+    expect(screen.getByLabelText('Ends')).toBeTruthy()
   })
 
-  it('pressing it opens the timeframe editor (the "Ends on" field)', async () => {
+  it('pressing it takes her to the "Ends" field', async () => {
     renderWith()
-    await waitFor(() => expect(screen.getByText("Rukia's check-in")).toBeTruthy())
-    const row = screen.getByText('How long').closest('.gwui-field-row') as HTMLElement
-    fireEvent.click(within(row).getByRole('button', { name: 'Give it more time' }))
-    expect(await screen.findByLabelText('Ends on')).toBeTruthy()
+    await screen.findByText('When it runs')
+    fireEvent.click(screen.getByRole('button', { name: 'Give it more time' }))
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Ends')))
   })
 
   it('is not offered to someone who may not change the setup', async () => {
     renderWith({ ground: ground({ mayChangeSetup: false }) })
-    await waitFor(() => expect(screen.getByText("Rukia's check-in")).toBeTruthy())
-    const row = screen.getByText('How long').closest('.gwui-field-row') as HTMLElement
-    expect(within(row).queryByRole('button', { name: 'Give it more time' })).toBeNull()
+    await screen.findByText('When it runs')
+    expect(screen.queryByRole('button', { name: 'Give it more time' })).toBeNull()
+    expect(screen.queryByLabelText('Ends')).toBeNull()
   })
 })
