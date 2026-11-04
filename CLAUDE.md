@@ -4,6 +4,8 @@ Read this first, every session. Then read `docs/tasks.md` and carry on from the 
 
 Later, after milestone 1: see docs/groundwork-memory-system.md and docs/groundwork-design-guide.md (not to be started yet).
 
+Direction for every batch after batch 1: see docs/chat-is-king.md. Chat is king: everything, including sign-up, can be done by talking to Groundwork.
+
 ## The standards everything is built and scored against (Hafsah, 2 November 2026)
 
 The full version is `~/Desktop/next-steps/standards.md` (copy in `docs/overnight/standards.md` on wip/first-experience). Score every change against all of these, the approved target journey, and the test's measures.
