@@ -2,6 +2,23 @@
 
 Everything here waits until the current run is finished (milestone 1's smoke test and judged runs, from 3 November 2026). After the run, it is grouped by root cause into `docs/fix-plan.md`, built as one set, then run again. Only a bug that stops a run from finishing is fixed during it.
 
+
+## BATCH 2, FIRST PRIORITY (Hafsah, 4 November): wip/plan's untrue lines and numbers that disagree
+From the short comparison with live (round 50, wip/plan c79d60cee; scores in ~/Desktop/assessment-test/runs/plan-round50-smoke/scores.json). Live couldn't produce these measures, because its setup never reached a board, so batch 1 passed. These are the first thing batch 2 fixes.
+
+**10 untrue lines** (8 on the board, 2 in the reports). There are two causes.
+- **Dates read from the wrong day.** The board says Brian "raised a blocker on Friday 30 October", that "This was raised once, on 30 October", and that he "has been waiting… since 30 October". He said on 5 November that he had asked for the statement on 30 October. When he asked is being stored as when he raised it.
+- **Quotes that weren't said.** Words are shown in quote marks as Brian's, but they are a rewording of what he said:
+  - "I've promised to send the draft to Wanjiru by Wednesday, 4 November." He said "promised to send the Kasarani Foods submissions draft to Wanjiru by Wednesday 4 November 2026".
+  - "I should follow up with Baraka Hardware early next week…"
+  - The report's "This week Brian Otieno said…" and "Will do: …"
+  - Also "The record does not hold what 'it' is" and "Ask Brian what was to be sent by Monday 9 November", when the record says it is the draft submissions.
+
+**3 numbers that disagree between pages:**
+- Total sessions: 51 on Check-ins and one board figure, 103 on the check-in page, another board figure and the lead's report.
+- People checked in for session 2: "1 of 3" everywhere, except one board line that says "1 of 1".
+- The check-in's end date: 26 October 2027 on the check-in page, 25 October on the board.
+
 ## Agreed, waiting to be built
 
 | # | Issue | Source | Evidence |
