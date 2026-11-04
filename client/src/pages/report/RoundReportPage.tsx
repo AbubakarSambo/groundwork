@@ -61,7 +61,6 @@ export default function RoundReportPage() {
 
   const canRunThisCheckIn = !!user?.id && (ground as any)?.initiatorId === user.id
   const isAParty = !!(ground as any)?.viewerIsInitiator || !!(ground as any)?.participants?.some((p: any) => p.userId === user?.id)
-  const contextEnabled = (ground as any)?.contextEnabled === true
   /* The direct morning (lib/the-direct-morning.tsx), from the check-in this page already reads, said once for what it draws. */
   const direct = isTheDirectMorningOn(ground)
   const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions, (ground as any)?.cadenceDays) : null
@@ -98,7 +97,7 @@ export default function RoundReportPage() {
           canRunThisCheckIn={canRunThisCheckIn}
           isAParty={isAParty}
           active="report"
-          tabs={checkInHeaderTabs({ id, contextEnabled, canRunThisCheckIn, isAParty, ground: ground as any })}
+          tabs={checkInHeaderTabs({ id, canRunThisCheckIn, isAParty, ground: ground as any })}
         />
       )}
 

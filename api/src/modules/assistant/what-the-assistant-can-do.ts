@@ -351,7 +351,7 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     does:
       'Type one line straight onto a check-in\'s context - a strategy note, a way of working, a '
       + 'decision, something unsettled - with no conversation needed, for the lead who runs it or an '
-      + 'admin covering for them. The same door as the Context and resources page\'s own "type it in" '
+      + 'admin covering for them. The same door as the References and resources page\'s own "type it in" '
       + 'box.',
     writes: 'after you confirm it',
     ordered:

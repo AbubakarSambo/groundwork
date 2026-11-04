@@ -69,16 +69,6 @@ function theSalesCheckIn(over: { switchOn?: boolean; overWhatsApp?: boolean | nu
 
 const read = (prisma: any, userId: string) => readPeopleAndSetup(prisma, { groundId: 'g-sales', organizationId: 'org-drop', userId }, NOW);
 
-describe('with Release 1B\'s switch off, nothing new is served, and nothing is written', () => {
-  it('every reader is served { on: false }, so People and setup reads exactly as it did', async () => {
-    for (const who of ['u-grace', 'u-naomi', 'u-mercy']) {
-      const { prisma, writes } = theSalesCheckIn({ switchOn: false });
-      expect(await read(prisma, who)).toEqual({ on: false });
-      expect(writes).toEqual([]);
-    }
-  });
-});
-
 describe('the lead, Grace, reads the whole page', () => {
   it('one sentence on how it runs, and each setup problem with its one fix', async () => {
     const { prisma, writes } = theSalesCheckIn();

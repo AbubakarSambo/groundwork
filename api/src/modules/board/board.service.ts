@@ -11,7 +11,6 @@ import { yourTeamPersonByPerson, theLeadActsOnAPerson, type AnActionAsked } from
 import { theNudgesOnTheBoard } from '../engagement/the-leads-own-nudge';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
-import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { aLineThatSaysItHappened } from './somebody-said-it-happened';
 import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
 import { whoHasMissedCheckIns, whatTheLeadReads, theNextStepSuggested, TOLD_THE_LEAD, whoMissedTheCheckInsJustBefore } from '../grounds/missed-check-ins';
@@ -2990,11 +2989,10 @@ export class BoardService {
       }
       /*
        * EACH ITEM'S OWN EVIDENCE, BESIDE IT (Release 1B, pull request 2 of 3: "Proof added in a check-in is read, filed on its item
-       * as evidence, and shown on the board beside that item"). Only while the organisation's Release 1B switch is on; off, the
-       * rows are served exactly as before. Whoever runs it reads every piece; anybody else only what they added themselves, the
+       * as evidence, and shown on the board beside that item"). Whoever runs it reads every piece; anybody else only what they added themselves, the
        * same rule as References and resources' Evidence. Read from the rows proof-filed-on-its-item.ts wrote, never worked out here.
        */
-      if (rows.length && await theRelease1bTabsAreOn(this.prisma as any, (ground as any).organizationId)) {
+      if (rows.length) {
         const filed = ((await ((this.prisma as any).itemEvidence?.findMany?.({
           where: { groundId, workItemId: { in: rows.map((r: any) => r.id).filter(Boolean) } },
           select: { id: true, documentId: true, participantId: true, workItemId: true, readAs: true, countsAsProof: true, shows: true, createdAt: true },

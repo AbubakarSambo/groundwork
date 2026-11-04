@@ -120,22 +120,6 @@ export class AdminService implements OnApplicationBootstrap {
   }
 
   /**
-   * RELEASE 1B'S NEW CHECK-IN TABS FOR ONE ORGANISATION (grounds/release-1b-tabs). Writes the one column and nothing else.
-   * Said back in a full sentence, for the Orgs tab to show as it is given.
-   */
-  async setRelease1bTabs(organizationId: string, on: boolean): Promise<{ id: string; name: string; release1bTabsOn: boolean; says: string }> {
-    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true } });
-    if (!org) throw new NotFoundException('That organisation could not be found, so refresh the list and try again.');
-    const row = await this.prisma.organization.update({ where: { id: organizationId }, data: { release1bTabsOn: on }, select: { id: true, name: true, release1bTabsOn: true } });
-    return {
-      ...row,
-      says: on
-        ? `${row.name} now has the new People and setup tab. Each check-in shows it the next time it is opened, and no setting changes.`
-        : `${row.name} is back on the People and setup tab it had before. No setting has changed and nothing is lost.`,
-    };
-  }
-
-  /**
    * RELEASE 2 FOR ONE ORGANISATION (grounds/release-2-collections): "Collect what's owed" in the picker, the switchboard's
    * Release 2 rows and the type in "What it is". Writes the one column and nothing else. Said back in a full sentence, for the
    * Orgs tab to show as it is given.

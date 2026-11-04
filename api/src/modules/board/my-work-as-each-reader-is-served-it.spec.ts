@@ -116,14 +116,6 @@ function theSalesCheckIn(over: { switchOn?: boolean; thin?: boolean; judgementsO
 const allText = (x: unknown) => JSON.stringify(x);
 
 describe('My work, as each reader is served it', () => {
-  it('with the switch off, every reader is served { on: false }, and nothing about anybody is read', async () => {
-    for (const userId of ['u-grace', 'u-mercy', 'u-kevin']) {
-      const c = theSalesCheckIn({ switchOn: false });
-      await expect(readMyWork(c.prisma, c.board, { groundId: 'g-sales', userId }, NOW)).resolves.toEqual({ on: false });
-      expect(c.reads).toEqual([]);
-      expect(c.boardReads).toEqual([]);
-    }
-  });
 
   it('Mercy reads her own page, in her own words for her, with the seven behaviours in the library’s order and words', async () => {
     const c = theSalesCheckIn();

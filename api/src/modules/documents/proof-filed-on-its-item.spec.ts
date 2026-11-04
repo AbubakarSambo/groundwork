@@ -61,12 +61,6 @@ describe('a document added in a check-in is filed on its item', () => {
     expect(theItemItNames('Greenfield Hardware and Kilele Supplies both ordered', DEALS, 'p-joseph')).toBeNull();
   });
 
-  it('with the switch off, nothing is filed and nothing is written', async () => {
-    const { prisma, made } = theDatabase({ switchOn: false });
-    expect(await fileTheProofOnItsItem(prisma, ORDER, NOW)).toBeNull();
-    expect(made).toEqual([]);
-    expect(prisma.workItem.findMany).not.toHaveBeenCalled();
-  });
 });
 
 describe('what the proof is, by the board’s own rules', () => {
@@ -128,10 +122,4 @@ describe('the upload files it only when it was added in a check-in', () => {
     expect(res.filedAsEvidence).toBeUndefined();
   });
 
-  it('in a check-in with the switch off: nothing filed, and the answer is as before', async () => {
-    const { s, filed } = svc(false);
-    const res = await s.upload('g-sales', 'u-mercy', photo, false, undefined, { fromTheCheckIn: true });
-    expect(filed).toEqual([]);
-    expect('filedAsEvidence' in res).toBe(false);
-  });
 });

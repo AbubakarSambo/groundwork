@@ -23,7 +23,7 @@ describe('the switches are Groundwork\'s own', () => {
       expect(Reflect.getMetadata(GUARDS_METADATA, c)).toContain(PlatformAdminGuard);
     }
     expect(Reflect.getMetadata(PATH_METADATA, AdminController)).toBe('admin');
-    for (const m of ['theSwitchesOf', 'setASwitch', 'setReleaseOneSalesBoard', 'setRelease1bTabs', 'setRelease2Collections']) {
+    for (const m of ['theSwitchesOf', 'setASwitch', 'setReleaseOneSalesBoard', 'setRelease2Collections']) {
       expect(typeof (AdminController.prototype as any)[m]).toBe('function');
     }
   });

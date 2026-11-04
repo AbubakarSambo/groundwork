@@ -53,7 +53,7 @@ beforeEach(() => {
 })
 
 describe('Mercy opens People and setup on her own check-in page', () => {
-  it('with the switch on, she reads her short page', async () => {
+  it('she reads her short page', async () => {
     ;(groundsApi.get as any).mockResolvedValue(theSalesCheckIn(true))
     renderPage()
     await screen.findByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')
@@ -63,12 +63,4 @@ describe('Mercy opens People and setup on her own check-in page', () => {
     expect(screen.queryByText('Setup')).toBeNull()
   })
 
-  it('with the switch off, she reads the tab as before, and the new read is never asked for', async () => {
-    ;(groundsApi.get as any).mockResolvedValue(theSalesCheckIn(false))
-    renderPage()
-    await waitFor(() => expect(screen.getByText('Setup')).toBeTruthy())
-    expect(screen.getByText('Sessions completed')).toBeTruthy()
-    expect(groundsApi.peopleAndSetup).not.toHaveBeenCalled()
-    expect(screen.queryByText('5 people answer every weekday, until 30 October, on WhatsApp or here.')).toBeNull()
-  })
 })

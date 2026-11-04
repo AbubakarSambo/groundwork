@@ -9,7 +9,6 @@
  */
 export const THE_ORGANISATION_SWITCHES = [
   { key: 'release1SalesBoardOn', name: 'Release 1, the sales board' },
-  { key: 'release1bTabsOn', name: 'Release 1B, the new check-in tabs' },
   { key: 'release2CollectionsOn', name: 'Release 2, collect what is owed' },
   { key: 'release3InvoicesOn', name: 'Release 3, raising invoices on time' },
   { key: 'invoicesAfterASaleOn', name: 'Release 3, an invoice after each sale' },

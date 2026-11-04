@@ -17,7 +17,7 @@ import { looksLikeADump } from '../grounds/a-dump-is-many-things';
 export const WHERE_TO_TAKE_A_LONG_PASTE_IN_ASK_GROUNDWORK = (ask: string = askName(null)) =>
   `That is a lot to read. To put the numbers, dates, decisions and questions in it on this check-in, paste it into ${ask}. It will say back what it found, and nothing is saved until you say yes.`;
 export const WHERE_TO_TAKE_A_LONG_PASTE_ON_THE_CONTEXT_PAGE =
-  'That is a lot to read. To put the numbers, dates, decisions and questions in it on this check-in, paste it into the chat on this check-in\'s Context and resources page. It will say back what it found, and nothing is saved until you say yes.';
+  'That is a lot to read. To put the numbers, dates, decisions and questions in it on this check-in, paste it into the chat on this check-in\'s References and resources page. It will say back what it found, and nothing is saved until you say yes.';
 
 export function whereToTakeALongPaste(opts: { isTheLead: boolean; message: string; askGroundworkTakesContext: boolean; ask?: string }): string | null {
   if (!opts.isTheLead || !looksLikeADump(opts.message ?? '')) return null;

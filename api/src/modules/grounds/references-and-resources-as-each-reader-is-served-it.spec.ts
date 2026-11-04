@@ -132,15 +132,7 @@ function theSalesCheckIn(over: { switchOn?: boolean; brief?: string } = {}) {
 
 const read = (prisma: any, userId: string) => readReferencesAndResources(prisma, { groundId: 'g-sales', userId, contextEnabled: true }, NOW);
 
-describe("with Release 1B's switch off, nothing new is served, and nothing is written", () => {
-  it('every reader is served { on: false }, so the Context tab reads exactly as it did', async () => {
-    for (const who of ['u-grace', 'u-naomi', 'u-mercy']) {
-      const { prisma, writes } = theSalesCheckIn({ switchOn: false });
-      expect(await read(prisma, who)).toEqual({ on: false });
-      expect(await readTheEvidence(prisma, { groundId: 'g-sales', userId: who }, {}, NOW)).toBeNull();
-      expect(writes).toEqual([]);
-    }
-  });
+describe('the old Context page, still drawn for what moved to My work', () => {
 
   it('the old Context page still reads only its five kinds of line to a team member: no People line reaches it', () => {
     const lines: any[] = [
@@ -151,12 +143,6 @@ describe("with Release 1B's switch off, nothing new is served, and nothing is wr
     expect(theLinesFor(lines, { isTheLead: false }).map((l) => l.id)).toEqual(['1']);
   });
 
-  it('a line cannot be added while the switch is off, even by the lead', async () => {
-    const { prisma, writes } = theSalesCheckIn({ switchOn: false });
-    const service = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
-    await expect(service.addAReference('g-sales', 'u-grace', { kind: 'RULE', text: 'A rule' })).rejects.toBeInstanceOf(ForbiddenException);
-    expect(writes).toEqual([]);
-  });
 });
 
 describe('the lead, Grace, reads every section', () => {

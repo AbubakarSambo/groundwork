@@ -1,5 +1,4 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { theRelease1bTabsAreOn } from './release-1b-tabs';
 import { readsAsAnAdmin, theAdminsWhoAlsoReadYourPeopleNotes } from './who-may-read-this-check-in';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { theReferencesTemplateFor, theCollectionsReferencesTemplate, type TheReferencesTemplate } from './the-references-template';
@@ -272,7 +271,6 @@ export async function readTheEvidence(
 ): Promise<AnEvidencePage | null> {
   const ground = await prisma.ground.findFirst({ where: { id: input.groundId }, select: GROUND_SELECT });
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
-  if (!(await theRelease1bTabsAreOn(prisma, ground.organizationId))) return null;
   const { view, mine } = await whoIsReading(prisma, ground, input.userId);
   return theEvidencePage(prisma, ground, view, mine, query, now);
 }
@@ -337,7 +335,6 @@ export async function readReferencesAndResources(
 ): Promise<ReferencesAndResources> {
   const ground = await prisma.ground.findFirst({ where: { id: input.groundId }, select: GROUND_SELECT });
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
-  if (!(await theRelease1bTabsAreOn(prisma, ground.organizationId))) return { on: false };
 
   const { view, mine, isLead } = await whoIsReading(prisma, ground, input.userId);
   const timeZone = ground.organization?.timeZone || 'Africa/Lagos';

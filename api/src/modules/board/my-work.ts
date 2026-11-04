@@ -3,7 +3,6 @@ import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
 import { whatTheyTriedFirst } from './what-they-tried-first';
 import { saidWhatTheyTried } from '../grounds/a-wait-is-the-speakers-account';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 import { theReferencesTemplateFor } from '../grounds/the-references-template';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
 import { whenItWasFor } from '../grounds/a-day-said-is-read-on-the-day-it-was-said';
@@ -697,7 +696,6 @@ export async function readMyWork(
 ): Promise<MyWork> {
   const ground = await prisma.ground.findFirst({ where: { id: input.groundId }, select: GROUND_SELECT });
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
-  if (!(await theRelease1bTabsAreOn(prisma, ground.organizationId))) return { on: false };
 
   const isLead = ground.initiatorId === input.userId;
   const participants: any[] = ground.participants ?? [];

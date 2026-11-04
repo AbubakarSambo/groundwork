@@ -2,7 +2,6 @@ import { timesAWeekInWords } from './the-check-ins-own-schedule';
 import { aDayInItsZone } from '../board/a-day-said-in-full';
 import { whoAnswersThisCheckIn } from '../reports/how-many-have-answered';
 import { NotFoundException } from '@nestjs/common';
-import { theRelease1bTabsAreOn } from './release-1b-tabs';
 import { readsAsAnAdmin } from './who-may-read-this-check-in';
 import { deadlineOf } from './when-the-clock-starts';
 import { totalSessionsFor } from './session-count';
@@ -236,7 +235,6 @@ export async function readPeopleAndSetup(
     },
   });
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
-  if (!(await theRelease1bTabsAreOn(prisma, ground.organizationId))) return { on: false };
 
   const viewer = await prisma.user.findUnique({ where: { id: input.userId }, select: { role: true, organizationId: true, email: true } });
   const rows: Row[] = (ground.participants ?? []) as Row[];

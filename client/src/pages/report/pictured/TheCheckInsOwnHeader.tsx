@@ -29,7 +29,7 @@ export function TheCheckInsOwnHeader({ groundId, ground, sessionNumber, label }:
       tabs={[
         { key: 'board', label: 'Board', to: `/grounds/${groundId}/board` },
         { key: 'chat', label: 'Check-in', to: `/grounds/${groundId}` },
-        { key: 'context', label: 'Context and resources', to: `/grounds/${groundId}?tab=context` },
+        { key: 'context', label: 'References and resources', to: `/grounds/${groundId}?tab=context` },
         { key: 'sessions', label: 'My work', to: `/grounds/${groundId}?tab=sessions` },
         { key: 'settings', label: 'People and setup', to: `/grounds/${groundId}?tab=settings` },
       ]}
