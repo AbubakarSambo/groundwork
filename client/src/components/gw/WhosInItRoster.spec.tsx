@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WhosInItRoster } from './WhosInItRoster'
 
 /**
@@ -79,16 +80,20 @@ function renderRoster(sessionParties?: { id: string; done: boolean; isSelf: bool
  * sentence - both against the wording rule in CLAUDE.md.
  */
 describe('the "add a person" panel reads plain sentences (fault 5, live walk, 6 October 2026)', () => {
+  /* In a QueryClientProvider, as the app draws it: the add panel now asks whether WhatsApp is on, for the sentence under its
+     "Phone number" field (Hafsah, 30 October 2026). The words checked below are unchanged. */
   function renderAddPanel(isOrgAdmin: boolean) {
     return render(
-      <MemoryRouter>
-        <WhosInItRoster
-          {...baseProps()}
-          isOrgAdmin={isOrgAdmin}
-          ground={{ initiatorId: 'lead-1', createdAt: '2026-09-27T09:00:00.000Z', participants: [] }}
-          showAdd
-        />
-      </MemoryRouter>,
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <WhosInItRoster
+            {...baseProps()}
+            isOrgAdmin={isOrgAdmin}
+            ground={{ initiatorId: 'lead-1', createdAt: '2026-09-27T09:00:00.000Z', participants: [] }}
+            showAdd
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
     )
   }
 

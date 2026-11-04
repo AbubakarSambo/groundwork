@@ -109,7 +109,7 @@ export interface TheCollectionsInput {
   /** The check-in's id, for the routes the lead answers with. */
   groundId?: string;
   /** Release 3, raising invoices on time (raising-invoices-on-time), where it is on: who raises the invoices, and the pattern when they raise late. */
-  raising?: { raiser: string | null; pattern: { says: string; instances: string[] } | null; /** The lead's sentences for each one late to raise, the same as the morning's and Today's (raising-invoices-on-time). */ lateLines?: string[] };
+  raising?: { raiser: string | null; pattern: { says: string; instances: string[] } | null; /** The lead's sentences for each one late to raise, the same as the morning's and Today's (raising-invoices-on-time), each with its bill. */ lateLines?: { billId: string; says: string }[] };
 }
 
 export interface ACollectionsRow {
@@ -145,11 +145,14 @@ export interface TheCollectionsBoard {
   needsYou: {
     heading: string;
     rows: { title: string; says: string }[];
+    /** To whoever runs it: the bill each row is about, in the rows' order, so her morning line about the same bill is not drawn beside it. */
+    refs?: string[];
     empty: string | null;
     /** Lines that came close to the event a bill waits for, for the lead to confirm (a-fee-note-due-on-an-event). Lead only. */
     toConfirm?: { id: string; title: string; says: string; choices: { label: string; route: { method: 'POST'; path: string; body: Record<string, unknown> } }[] }[];
     /** Release 3: each one late to raise, in a sentence or two, for the lead's morning (engagement/the-direct-morning). Lead only. */
-    lateToRaise?: string[];
+    /** Each with the board row it is (`ref`), so the lead's morning does not say it again beside that row. */
+    lateToRaise?: { ref: string; says: string }[];
   };
   stand: { heading: string; total: string; groups: { group: AGroup; label: string; count: number; says: string }[] };
   every: { heading: string; note: string; columns: string[]; rows: ACollectionsRow[]; empty: string | null; foot: string | null };
@@ -331,7 +334,8 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
     : `Payments count as proven where a bank slip, an M-Pesa message or the accounting system’s record is filed on the ${bill}; everything else is from what people said in their check-ins.`;
 
   /* ------------------------------------------------------------ what needs you */
-  const need: { rank: number; title: string; says: string }[] = [];
+  /* Each with the bill it is about (`ref`), so the lead's morning line about the same bill is not drawn beside it. */
+  const need: { rank: number; title: string; says: string; ref?: string }[] = [];
   for (const { r, group } of rows) {
     const amt = amountOf(r);
     /* RELEASE 3: ONE TO RAISE WHOSE DAY HAS COME says that day, why, how late it is, and who raises it; most overdue first. */
@@ -339,7 +343,7 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
     if (toRaise) {
       const late = Math.max(0, daysBetween(toRaise.day, today));
       const raiser = input.raising?.raiser ?? null;
-      need.push({
+      need.push({ ref: `bill-${r.id}`,
         /* Late to raise before anything else, the most overdue first. */
         rank: late > 0 ? -late : 2,
         title: late > 0 ? `A ${bill} for ${whoOf(r)} is ${late === 1 ? 'one day' : `${late} days`} late to raise` : `A ${bill} for ${whoOf(r)} is due to be raised today`,
@@ -353,7 +357,7 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
     const promise = theOpenPromise(r, today);
     const followsUp = loans ? '' : ` ${Cap(midName(follower))} ${nameOf(follower) === 'You' ? 'follow' : 'follows'} it up.`;
     if (promise?.missed) {
-      need.push({
+      need.push({ ref: `bill-${r.id}`,
         rank: 1,
         title: loans ? `${who === 'You' ? 'You' : who} missed the day ${who === 'You' ? 'you' : 'they'} promised to pay by` : `${who} missed the date they promised to pay by`,
         says: `${Cap(aBill(r))}${amountWords}. ${loans ? (who === 'You' ? 'You' : 'They') : 'The client'} promised to pay by ${aDayInWords(promise.by, zone)}, and nothing has come in.${input.stallRuleSet ? ` It is stalled by your rule.` : ''}${followsUp}`,
@@ -366,14 +370,14 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
         ? `${ev.by} said in ${ev.from} on ${aDayInWords(ev.saidOn, zone)}, “${stop(ev.said)}.”`
         : `${ev.from} reported it on ${aDayInWords(ev.saidOn, zone)}.`;
       const raised = !!field(r, F.number) && r.stage !== NOT_YET_RAISED;
-      need.push({
+      need.push({ ref: `bill-${r.id}`,
         rank: 2,
         title: raised ? `${Cap(aBill(r))} fell due on ${aDayInWords(ev.day, zone)}` : `A ${bill} for ${who} fell due on ${aDayInWords(ev.day, zone)}, and it is not raised yet`,
         says: `${whenItFallsDue} ${said}${amt ? ` It is for ${money(amt.value, amt.currency)}${raised ? ', and nothing is paid yet' : ''}.` : raised ? ' Nothing is paid yet.' : ''}${followsUp}`,
       });
     } else if (group === 'not-heard') {
       const due = theDueDay(r);
-      need.push({
+      need.push({ ref: `bill-${r.id}`,
         rank: 2,
         title: loans
           ? (() => { const at = r.ownerParticipantId ? input.lastCheckIn[r.ownerParticipantId] : null; const since = at ? ` since ${aDayInWords(new Date(at), zone)}` : ' yet'; return `${who === 'You' ? 'You have' : `${who} has`} not checked in${since}`; })()
@@ -384,20 +388,20 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
       });
     } else if (group === 'blocked') {
       const words = field(r, F.disputed) || field(r, F.inTheWay);
-      need.push({
+      need.push({ ref: `bill-${r.id}`,
         rank: 3,
         title: loans ? `${who === 'You' ? 'Your loan is' : `${who}’s loan is`} blocked` : `${who} disputes ${field(r, F.number) ? `${bill} ${field(r, F.number)}` : `a ${bill}`}`,
         says: `${Cap(aBill(r))}${amountWords}. ${Cap(midName(r.ownerParticipantId))} said, “${stop(words)}.”${followsUp}`,
       });
     } else if (group === 'paid' && !r.proof.length) {
-      need.push({
+      need.push({ ref: `bill-${r.id}`,
         rank: 4,
         title: loans ? `${who === 'You' ? 'Your' : `${who}’s`} repayment has no proof yet` : `${who}’s payment has no proof yet`,
         says: `${Cap(midName(r.ownerParticipantId))} ${nameOf(r.ownerParticipantId) === 'You' ? 'say' : 'says'} ${aBill(r)} is paid. ${loans ? 'A repayment record, a bank slip or an M-Pesa message' : 'A bank slip, an M-Pesa message or the accounting system’s record'} would show it.`,
       });
     } else if (group === 'not-raised') {
       const when = field(r, F.dueWhen);
-      need.push({
+      need.push({ ref: `bill-${r.id}`,
         rank: 5,
         title: `A ${bill} for ${who} is not raised yet`,
         says: `${when ? `It falls due when ${stop(when.replace(/^when\s+/i, '')).replace(/^./, (c) => c.toLowerCase())}.` : 'Nobody has said when it falls due.'}${amountWords ? ` It is for ${amt ? money(amt.value, amt.currency) : ''}.` : ''}${followsUp}`,
@@ -422,10 +426,12 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
   }));
   const needsYou = {
     heading: 'What needs you',
-    rows: need.slice(0, 5).map(({ title, says }) => ({ title, says })),
+    /* Every one: a cap hid missed promises and disputes behind fee notes late to raise (boards audit, C2 and R3-1). */
+    rows: need.map(({ title, says }) => ({ title, says })),
+    ...(reader.runsIt && need.length ? { refs: need.map((n) => n.ref ?? '') } : {}),
     empty: need.length || toConfirm.length ? null : (loans ? 'Nothing needs you on the loans right now.' : `Nothing needs you on the ${bills} right now.`),
     ...(toConfirm.length ? { toConfirm } : {}),
-    ...(reader.runsIt && input.raising?.lateLines?.length ? { lateToRaise: input.raising.lateLines } : {}),
+    ...(reader.runsIt && input.raising?.lateLines?.length ? { lateToRaise: input.raising.lateLines.map((l) => ({ ref: `bill-${l.billId}`, says: l.says })) } : {}),
   };
 
   /* ------------------------------------------------------------ where they stand */

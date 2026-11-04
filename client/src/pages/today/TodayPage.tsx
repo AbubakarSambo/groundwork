@@ -160,14 +160,13 @@ export function TodayPage() {
    * you", most important first, each said once. A row the list already has (the same title) is not added again.
    */
   type ARow = { key: string; kind: Need['kind']; title: string; detail?: string; action?: { label: string; to: string } }
-  /* The same thing said in other words is a repeat too: most of its longer words already said in a row above. */
-  const COMMON = new Set(['about', 'after', 'again', 'their', 'there', 'these', 'those', 'which', 'while', 'would', 'could', 'should', 'since', 'today', 'until', 'waiting', 'answer', 'check', 'with', 'from', 'this', 'that', 'your', 'have', 'been', 'what'])
-  const wordsOf = (t: string) => new Set(t.toLowerCase().replace(/[’']s\b/g, '').split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && !COMMON.has(w)))
-  const seen: Set<string>[] = []
+  /* A row is said once: the same title is not added again. Rows are never dropped for sharing words with another (restored, 30 October
+     2026: the word-overlap check dropped a different overdue item or risk, against "understand, don't match"). */
+  const seen = new Set<string>()
   const once = (r: ARow) => {
-    const w = wordsOf(r.title)
-    if (seen.some((x) => { const both = [...w].filter((y) => x.has(y)).length; return both >= 4 && both / Math.min(w.size, x.size) >= 0.7 })) return false
-    seen.push(w)
+    const t = r.title.trim().toLowerCase()
+    if (seen.has(t)) return false
+    seen.add(t)
     return true
   }
   needs.forEach((n: Need) => once({ key: n.key, kind: n.kind, title: n.title }))

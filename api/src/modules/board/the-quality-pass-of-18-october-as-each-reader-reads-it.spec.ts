@@ -111,8 +111,9 @@ describe('the quality pass of 18 October, as each reader reads the board', () =>
     it('a price nobody agreed is not a value, and a quote reads as quoted', () => {
       expect(deal(grace, 'Juja Hardware').valueLine).toBe('5 units, KES 22,500 if you agree KES 4,500');
       expect(deal(joseph, 'Juja Hardware').valueLine).toBe('5 units, KES 22,500 if Grace agrees to KES 4,500');
-      expect(deal(grace, 'Savannah Cafe').valueLine).toBe('KES 30,000 quoted');
-      expect(deal(grace, 'Ngong Road Minimart').valueLine).toBe('KES 20,000 quoted');
+      /* Each deal's units lead its line, the same count that closes the gap (boards audit S9, 30 October: the row showed no units). */
+      expect(deal(grace, 'Savannah Cafe').valueLine).toBe('6 units, KES 30,000 quoted');
+      expect(deal(grace, 'Ngong Road Minimart').valueLine).toBe('4 units, KES 20,000 quoted');
     });
 
     it('the four criteria read the deal\'s own details: Mama Pima Stores, Juja Hardware, Tuskys Westgate, and the won deals', () => {

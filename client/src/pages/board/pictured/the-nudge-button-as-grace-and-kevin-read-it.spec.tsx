@@ -8,7 +8,7 @@ vi.mock('@/lib/the-direct-morning', () => ({ useTheDirectMorning: () => true }))
 vi.mock('@/api/check-in-links', () => ({ checkInLinksApi: { get: vi.fn(async () => ({})) } }))
 
 import { boardApi } from '@/api/board'
-import { TheMorningAtTheTop } from './TheMorningAtTheTop'
+import { YourTeamToday } from './TheMorningOnTheBoard'
 import { TheTeamToday } from './ThePicturedSalesBoard'
 import SERVED from './__fixtures__/the-direct-morning-served.json'
 
@@ -34,11 +34,16 @@ const NUDGES = [
 const afternoon = { ...drop.theMorning, parts: drop.theMorning.parts.map((p: any) => (p.key === 'team' ? { ...p, lines: GRACES_TEAM } : p)), nudges: NUDGES }
 const wrap = (ui: any) => render(<QueryClientProvider client={new QueryClient()}><MemoryRouter>{ui}</MemoryRouter></QueryClientProvider>)
 
-describe('Grace, at the top of her board', () => {
+/*
+ * CHANGED 30 OCTOBER (boards audit S1 and C1): the morning is no longer one block above the board. On a sales board each "Nudge" is on
+ * the person's row of The team today (below); on the collections and matter boards, which have no row per person, the team's lines and
+ * their buttons are under "Your team today" (YourTeamToday). The same served lines and buttons are read here, there.
+ */
+describe('Grace, under Your team today', () => {
   beforeEach(() => vi.mocked(boardApi.nudge).mockReset())
 
   it('reads who has not checked in today and the day they last did, with a button for each, and Joseph already nudged', () => {
-    wrap(<TheMorningAtTheTop m={afternoon} b={{ workRecords: drop.workRecords }} />)
+    wrap(<YourTeamToday b={{ theMorning: afternoon }} />)
     for (const l of GRACES_TEAM) expect(screen.getByText(l)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Nudge Peter' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Nudge Kevin' })).toBeTruthy()
@@ -49,7 +54,7 @@ describe('Grace, at the top of her board', () => {
 
   it('presses "Nudge Peter" once, and reads what became of it', async () => {
     vi.mocked(boardApi.nudge).mockResolvedValue({ nudged: true, at: '15:31', says: 'Nudged at 15:31', channel: 'whatsapp' })
-    wrap(<TheMorningAtTheTop m={afternoon} b={{ workRecords: drop.workRecords }} />)
+    wrap(<YourTeamToday b={{ theMorning: afternoon }} />)
     fireEvent.click(screen.getByRole('button', { name: 'Nudge Peter' }))
     expect(await screen.findByText('Nudged at 15:31')).toBeTruthy()
     expect(boardApi.nudge).toHaveBeenCalledWith(drop.theMorning.groundId, 'p-peter')
@@ -58,7 +63,7 @@ describe('Grace, at the top of her board', () => {
 
   it('where nothing could be sent, reads why and to call instead', async () => {
     vi.mocked(boardApi.nudge).mockResolvedValue({ nudged: false, at: null, says: 'Kevin said STOP on WhatsApp, so no nudge was sent, and you can call Kevin instead.' })
-    wrap(<TheMorningAtTheTop m={afternoon} b={{ workRecords: drop.workRecords }} />)
+    wrap(<YourTeamToday b={{ theMorning: afternoon }} />)
     fireEvent.click(screen.getByRole('button', { name: 'Nudge Kevin' }))
     expect(await screen.findByText('Kevin said STOP on WhatsApp, so no nudge was sent, and you can call Kevin instead.')).toBeTruthy()
   })
@@ -77,7 +82,7 @@ describe('on each row of The team today', () => {
   it('Kevin, or Grace with the switch off, is served no nudge, and reads no button', () => {
     wrap(<TheTeamToday b={{ eachPersonToday: rows.map(({ nudge: _n, ...r }: any) => r), eachPerson: [] }} deals={{ rows: [] }} today="2026-10-20" groundId="g1" />)
     expect(screen.queryByRole('button', { name: /^Nudge/ })).toBeNull()
-    wrap(<TheMorningAtTheTop m={drop.theMorning} b={{ workRecords: drop.workRecords }} />)
+    wrap(<YourTeamToday b={{ theMorning: drop.theMorning }} />)
     expect(screen.queryByRole('button', { name: /^Nudge/ })).toBeNull()
   })
 })

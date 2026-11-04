@@ -173,7 +173,7 @@ export async function theCollectionsBoardFor(prisma: any, groundId: string, read
   }
   const ways = ((await Promise.resolve(prisma?.groundContextItem?.findMany?.({ where: { groundId, kind: 'WAY_OF_WORKING' }, select: { text: true, kind: true, closedAt: true } })).catch(() => [])) ?? []) as any[];
   /* Release 3, where it is on: who raises the invoices here, and their pattern when they raise late (raising-invoices-on-time). */
-  let raising: { raiser: string | null; pattern: { says: string; instances: string[] } | null; lateLines?: string[] } | undefined;
+  let raising: { raiser: string | null; pattern: { says: string; instances: string[] } | null; lateLines?: { billId: string; says: string }[] } | undefined;
   if (await theRelease3InvoicesIsOn(prisma, ground.organizationId)) {
     const mayRaise = await thePeopleWhoMayRaise(prisma, groundId);
     const raiserId = whoRaisesInvoices(mayRaise, null);
@@ -181,7 +181,7 @@ export async function theCollectionsBoardFor(prisma: any, groundId: string, read
     const theirName = raiser ? (raiser.id === reader.participantId ? 'You' : raiser.firstName) : null;
     const allHere = (await theOrganisationsBills(prisma, ground.organizationId)).filter((b) => b.groundId === groundId);
     const today = now.toISOString().slice(0, 10);
-    const lateLines = theInvoicesToRaise(allHere, today).filter((i) => i.daysLate >= 1).map((i) => whatIsLateToRaise(i, it.billWord, raiser && !raiser.isTheLead ? raiser.firstName : null));
+    const lateLines = theInvoicesToRaise(allHere, today).filter((i) => i.daysLate >= 1).map((i) => ({ billId: i.billId, says: whatIsLateToRaise(i, it.billWord, raiser && !raiser.isTheLead ? raiser.firstName : null) }));
     raising = { raiser: theirName, pattern: raiser ? theRaisingPattern(allHere, raiser.firstName, it.billWord) : null, lateLines };
   }
   return buildTheCollectionsBoard({

@@ -44,7 +44,8 @@ function ThePerson({ groundId, p }: { groundId: string; p: APersonOnYourBoard })
             )}
           </div>
         )}
-        <FoldedLine name={p.delivered.heading}>
+        {/* Its fact on the folded line, so it reads without a tap: how many were delivered with proof (boards audit S6). */}
+        <FoldedLine name={p.delivered.heading} fact={p.delivered.proven.length ? `${p.delivered.proven.length} delivered with proof.` : 'Nothing delivered with proof yet.'}>
           {p.delivered.empty ? <Note tone="muted">{p.delivered.empty}</Note> : (
             <ul className="gwui-panel-list">
               {[...p.delivered.proven, ...p.delivered.onlySaid].map((l) => <li key={l}>{l}</li>)}
@@ -80,7 +81,7 @@ function ThePerson({ groundId, p }: { groundId: string; p: APersonOnYourBoard })
           </FoldedLine>
         )}
         {p.fromYou.length > 0 && (
-          <FoldedLine name="What you have done">
+          <FoldedLine name="What you have done" defaultOpen>
             <ul className="gwui-panel-list">
               {p.fromYou.map((l) => <li key={l}>{l}</li>)}
             </ul>

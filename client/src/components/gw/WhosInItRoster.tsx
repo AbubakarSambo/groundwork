@@ -1,7 +1,10 @@
 import { useQuery as useWhatsAppQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
+import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
+import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { ThisAddsASeat, useTheNextSeat } from '@/components/gw/this-adds-a-seat'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PeopleTable, PersonRow, Tag, Button, TextField, Stack, type TagTone } from '@/components/gw/ui'
 import { groundsApi } from '@/api/grounds'
 import { aPersonsSentenceForAServerError } from '@/lib/a-persons-sentence-for-a-server-error'
@@ -391,6 +394,35 @@ export function AddPeopleForm({
   lastInviteWaits: boolean
   onShareCode: () => void
 }) {
+  /*
+   * A PHONE NUMBER, ALWAYS ASKED (Hafsah, 30 October 2026; this replaces decision 106 item 6, "Leads cannot add numbers when
+   * inviting"). The add itself carries no number (api a-lead-cannot-add-a-number-when-inviting.spec.ts): once the person is on the
+   * check-in, their number goes through the one writer for a lead's number, PATCH .../participants/:id/whatsapp-number
+   * (the-lead-adds-a-whatsapp-number.ts). Each number waits here beside its address until that person is on the list below.
+   * One that does not save says so, and the add stands.
+   */
+  const { id: groundId } = useParams()
+  const whatsappOn = useWhatsAppIsOn()
+  const [phone, setPhone] = useState('')
+  const [numbersToSave, setNumbersToSave] = useState<Record<string, string>>({})
+  const keepTheNumber = () => {
+    const email = newParticipantEmail.trim().toLowerCase()
+    if (phone.trim() && looksLikeAnAddress(email)) setNumbersToSave((prev) => ({ ...prev, [email]: phone.trim() }))
+    setPhone('')
+  }
+  useEffect(() => {
+    if (!groundId) return
+    for (const [email, number] of Object.entries(numbersToSave)) {
+      const p = participants.find((x: any) => String(x?.email ?? '').trim().toLowerCase() === email)
+      if (!p?.id) continue
+      setNumbersToSave((prev) => { const { [email]: _saved, ...rest } = prev; return rest })
+      const who = firstNameOrLabel(p) || email
+      groundsApi.addTheirWhatsAppNumber(groundId, p.id, number)
+        .then(() => toast.success(`${who}’s phone number is saved.`))
+        /* The server's sentence names WhatsApp, so it is said only while WhatsApp is on (Hafsah's rule of 26 September). */
+        .catch((e: any) => toast.error(whatsappOn && e?.response?.data?.message ? e.response.data.message : `${who}’s phone number did not save, but ${who} is on the check-in. Check that it has its country code and try again.`))
+    }
+  }, [participants, numbersToSave, groundId, whatsappOn])
   return (
       <div className="panel pad">
         <p className="gwui-switch-row-title">Add a person to this check-in</p>
@@ -444,9 +476,10 @@ export function AddPeopleForm({
           value={newParticipantDepartment} onChange={(e) => setNewParticipantDepartment(e.target.value)}
           className="gwui-input"
         />
+        <PhoneNumberField id="add-person-phone" value={phone} onChange={setPhone} whose="theirs" whatsappOn={whatsappOn} />
         <div style={{ display: 'flex', flexWrap: 'wrap' }}>
           <Button
-            onClick={() => addParticipantMut.mutate()}
+            onClick={() => { keepTheNumber(); addParticipantMut.mutate() }}
             disabled={!looksLikeAnAddress(newParticipantEmail) || addParticipantMut.isPending}
           >
             {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
@@ -457,6 +490,7 @@ export function AddPeopleForm({
               const email = newParticipantEmail.trim().toLowerCase()
               if (!looksLikeAnAddress(email)) return
               if (queuedToAdd.some((q) => q.email === email)) return
+              keepTheNumber()
               setQueuedToAdd([...queuedToAdd, { email, note: newParticipantNote.trim() }])
               setNewParticipantEmail('')
               setNewParticipantNote('')

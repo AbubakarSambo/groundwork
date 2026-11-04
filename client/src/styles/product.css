@@ -135,14 +135,14 @@ p button.gw-link, .t-small button.gw-link { min-height: 0; display: inline; }
 .item > .acts, .item > .gw-acts { position: relative; z-index: 1; }
 
 /* TODAY ON A PHONE, AS THE PROTOTYPE DRAWS IT: a 32px greeting, the line in small text, "What needs you" as a smaller
-   heading, the first row with its edge and a full-width button, and the rest as plain rows tapped as a whole. */
+   heading, the first row with its edge and a full-width button, and the rest as plainer rows that keep their own buttons, so
+   an action such as "Say why you missed it" can be reached on every row (restored, 30 October 2026). */
 @media (max-width: 640px) {
   .gw-today .t-greet { font-size: 32px; }
   .gw-today .gwui-greeting p, .gw-today header p.t-body { font-size: 14px; line-height: 20px; }
   .gw-today .sec-h .t-h2 { font-size: 18px; }
   .gw-today .list .item:first-child > .acts { justify-self: stretch; }
   .gw-today .list .item:first-child > .acts .btn { width: 100%; }
-  .gw-today .list .item:not(:first-child) > .acts { display: none; }
   .gw-today .list .item:not(:first-child) > .sp { visibility: hidden; }
   .gw-today .list .item:not(:first-child) .h { font-size: 16px; }
   .gw-today .list .item:not(:first-child) .s { font-size: 14px; }

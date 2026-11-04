@@ -35,6 +35,14 @@
      "lines": [
       "Kevin's sale to Roysambu Gym has no proof yet, so ask Kevin for the payment record.",
       "Mercy has 2 sales with proof, so tell Mercy well done."
+     ],
+     "about": [
+      {
+       "participantId": "9f2e58a4-06d8-4a0a-bddc-03cd96df027c"
+      },
+      {
+       "participantId": "5632caa0-593e-48d5-910e-5c9ea5bc4fb2"
+      }
      ]
     }
    ]

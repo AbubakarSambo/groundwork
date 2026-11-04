@@ -335,13 +335,10 @@
   .pb-changed > :nth-child(3) { grid-column: 2; }
 }
 
-/* The direct morning at the top of the lead's board (TheMorningAtTheTop.tsx): the four parts, then the board as it is. */
-.pb.pb-morning { gap: 20px; margin-bottom: 44px; padding-bottom: 28px; border-bottom: 1px solid var(--gw-line); }
-.pb-morning-part p { margin: 6px 0 0; line-height: 1.5; }
-.pb-morning-part .pb-answer { font-size: 18px; }
-.pb-morning-deals .pb-grid { margin-top: 12px; overflow-x: auto; }
+/* Each person's own line on The team today: their number against their target, what they said, and the morning's line about them. */
+.pb-row-more { display: block; margin-top: 4px; }
 
-/* "Nudge Peter" (TheNudgeButton.tsx): the lead's one-tap nudge, at the top and on each row of The team today. */
+/* "Nudge Peter" (TheNudgeButton.tsx): the lead's one-tap nudge, on each row of The team today, and under Your team today on the collections and matter boards. */
 .pb-nudges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .pb-row-nudge { grid-column: 1 / -1; }
 .pb-nudge { font-size: 14px; }
@@ -349,16 +346,20 @@
 /* "You checked in on time today, 5 days running." on your own report (SessionReportPage.tsx). */
 .pb-on-time { font-size: 15px; color: var(--gw-text); margin: 6px 0 0; line-height: 23px;}
 
-/* The rest of the board, folded under its own headings (FoldTheRest.tsx): the heading row alone, divided by rules, until opened. */
+/*
+ * The rest of the board, folded under its own headings (FoldTheRest.tsx): the heading row alone, divided by rules, until opened. Its own
+ * class (`pb-folded`): the old rule on `pb-fold` also hid the summary line and the opened contents of every <details class="pb-fold">
+ * (the gap's "and N more", the weekly report's actions, the new hire's 90 days, the You page's record), so nothing there could be read.
+ */
 .pb-fold-the-rest { display: flex; flex-direction: column; border-top: 1px solid var(--gw-rule); }
-.pb-fold-the-rest > section.pb-fold, .pb-fold-the-rest section.pb-fold { border-bottom: 1px solid var(--gw-rule); margin: 0; }
-.pb-fold > .sec-h { cursor: pointer; min-height: 44px; display: flex; align-items: center; padding: 6px 0; }
-.pb-fold > .sec-h::after { content: '›'; margin-left: auto; font-size: 20px; color: var(--gw-sub); transition: transform .15s; }
-.pb-fold.pb-fold-open > .sec-h::after { transform: rotate(90deg); }
-.pb-fold:not(.pb-fold-open) > :not(.sec-h) { display: none; }
-.pb-fold.pb-fold-open { padding-bottom: 16px; }
-.pb-fold > .sec-h:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .pb-fold > .sec-h::after { transition: none; } }
+.pb-fold-the-rest section.pb-folded { border-bottom: 1px solid var(--gw-rule); margin: 0; }
+.pb-folded > .sec-h { cursor: pointer; min-height: 44px; display: flex; align-items: center; padding: 6px 0; }
+.pb-folded > .sec-h::after { content: '›'; margin-left: auto; font-size: 20px; color: var(--gw-sub); transition: transform .15s; }
+.pb-folded.pb-folded-open > .sec-h::after { transform: rotate(90deg); }
+.pb-folded:not(.pb-folded-open) > :not(.sec-h) { display: none; }
+.pb-folded.pb-folded-open { padding-bottom: 16px; }
+.pb-folded > .sec-h:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .pb-folded > .sec-h::after { transition: none; } }
 /* Release 4, support.jpg: volume from the helpdesk as tiles, causes from the check-ins as bars. */
 .pb-volume { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .pb-volume-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 12px; align-content: start; }

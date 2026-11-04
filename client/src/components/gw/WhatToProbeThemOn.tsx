@@ -206,6 +206,8 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
         {arcAdvisories && arcAdvisories.length > 0 && (
           <Stack gap={10}>
             <SubHeading as="h3">For your review, about the record itself</SubHeading>
+            {/* Restored, 30 October 2026: it keeps a flag about the record from reading as a label on the person ("no labels on people"). */}
+            <Note>A flag about how an account was given, never a judgement on the person who gave it.</Note>
             {arcAdvisories.map((a) => (
               <div key={a.participantId}>
                 <SubHeading as="h3">{nameFor ? nameFor(a.participantId) : 'A colleague'}</SubHeading>

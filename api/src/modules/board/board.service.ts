@@ -2183,8 +2183,8 @@ export class BoardService {
        * WHAT THE LEAD CAN DO ABOUT EACH ONE (screens request 112 b): to the lead alone, the one person who can act on
        * it. The ids it is built from are taken off for every reader. See what-needs-you-and-what-to-do.
        */
-      out.decisions = ((out.decisions ?? []) as any[]).map(({ contextItemId, waitsOn, ...d }: any) => (isInitiator
-        ? { ...d, action: whatToDoAboutADecision({ ...d, contextItemId, waitsOn }, groundId, theLeadsRow, (pid) => nameOf(pid)) }
+      out.decisions = ((out.decisions ?? []) as any[]).map(({ contextItemId, waitsOn, ref, ...d }: any) => (isInitiator
+        ? { ...d, ...(ref ? { ref } : {}), action: whatToDoAboutADecision({ ...d, contextItemId, waitsOn }, groundId, theLeadsRow, (pid) => nameOf(pid)) }
         : d));
     }
 
@@ -3187,8 +3187,10 @@ export class BoardService {
              * prototype puts it and Yes and No, which keep the answer and clear the wait. See aWaitTheLeadCanAnswer.
              */
             const decision = wait && releaseOne ? aWaitTheLeadCanAnswer(wait, whoWaits, dealsOnTheBoard.filter((r: any) => r.ownerParticipantId === wait.fromParticipantId), dealsOnTheBoard) : null;
-            if (wait && decision) return { ...a, decision: { question: decision.question, asked: decision.asked, why: decision.why, afterwards: decision.afterwards }, action: whatToDoAboutAWaitTheLeadCanAnswer(wait.id, groundId, decision) };
-            return { ...a, action: whatToDoAboutALeadAction(a, groundId, whoWaits) };
+            /* The wait it is, so the lead's morning line about the same wait is drawn once (the-direct-morning, `ref`). */
+            const ref = wait ? { ref: `wait-${wait.id}` } : {};
+            if (wait && decision) return { ...a, ...ref, decision: { question: decision.question, asked: decision.asked, why: decision.why, afterwards: decision.afterwards }, action: whatToDoAboutAWaitTheLeadCanAnswer(wait.id, groundId, decision) };
+            return { ...a, ...ref, action: whatToDoAboutALeadAction(a, groundId, whoWaits) };
           })
           : leadActions;
       }
@@ -3263,7 +3265,7 @@ export class BoardService {
               const what = String(w.what ?? '').trim().replace(/[.\s]+$/, '');
               return { id: w.id, says: saidOf.get(w.id)!, step: `Waiting on ${String(w.onLabel).trim()} for ${/^[A-Z][a-z]/.test(what) ? what.charAt(0).toLowerCase() + what.slice(1) : what}` };
             });
-            if (!row.next && !row.nextStep) row.nextStep = direct ? inAboutEightWords(row.waitingOnTheCustomer[row.waitingOnTheCustomer.length - 1].step) : row.waitingOnTheCustomer[row.waitingOnTheCustomer.length - 1].step;
+            if (!row.next && !row.nextStep) row.nextStep = row.waitingOnTheCustomer[row.waitingOnTheCustomer.length - 1].step;
           }
         }
       }
@@ -3299,13 +3301,19 @@ export class BoardService {
             if (valueLine && valueLine !== row.value) row.valueLine = valueLine;
             if (!line) continue;
             row.next = line.says;
-            /* In about eight words where the direct morning is on (Hafsah, 25 October); off, as before. */
-            row.nextStep = direct ? inAboutEightWords(line.says) : line.says;
+            row.nextStep = line.says;
             row.nextSays = line.says;
             row.nextKnown = 'said';
             if (line.on) row.nextOn = line.on.toISOString().slice(0, 10);
           }
         }
+      }
+      /*
+       * EVERY NEXT STEP IN ABOUT EIGHT WORDS, IN ONE PLACE (Hafsah, 25 October), where the direct morning is on; off, each step is said
+       * whole, as before. The whole sentence stays in `next` for the opened deal. Every writer above gives the step whole.
+       */
+      if (direct && Array.isArray(out.workRecords)) {
+        for (const sec of out.workRecords as any[]) for (const row of (sec?.rows ?? []) as any[]) if (row?.nextStep) row.nextStep = inAboutEightWords(String(row.nextStep));
       }
       /*
        * BLOCKERS, ONE SECTION (request 105): each open blocker with every time it was raised, what the
@@ -3843,7 +3851,8 @@ export class BoardService {
         const matter = await theMatterBoardFor(this.prisma, groundId, { runsIt: isInitiator || theyRunIt, participantId: me?.id ?? null, userId: requestingUserId }, now, {
           decisions: ((Array.isArray(walled.decisions) ? walled.decisions : []) as any[])
             .filter((d) => typeof d?.question === 'string' && d.question.trim())
-            .map((d) => ({ question: String(d.question), why: typeof d.why === 'string' ? d.why : null })),
+            /* With what the lead can do about it, as every board draws a decision (boards audit, M4). */
+            .map((d) => ({ question: String(d.question), why: typeof d.why === 'string' ? d.why : null, ...(d.action ? { action: d.action } : {}), ...(d.ref ? { ref: String(d.ref) } : {}) })),
         }).catch((err: any) => { this.logger.warn(`The matter board could not be read for ${groundId}: ${err?.message ?? err}`); return null; });
         if (matter) walled.matter = matter;
       }
@@ -4208,6 +4217,8 @@ export class BoardService {
             : (who === 'You' ? 'You cannot move until it comes.' : 'They cannot move until it comes.'),
           owner: !aDecision && owner === NOBODY_NAMED_TO_DECIDE ? 'Nobody has been named to provide it.' : owner,
           source: 'blocker' as const,
+          /* The wait it is, so the lead's morning line about the same wait is not drawn beside it (the-direct-morning, `ref`). */
+          ref: `wait-${(d as any).id}`,
           /* For what the lead can do about it (request 112 b); taken off before the board is served. */
           waitsOn: { participantId: d.onParticipantId ?? null, outside: aPartyOutside(d) ? d.onLabel!.trim() : null, what: d.what },
         };
@@ -4232,9 +4243,9 @@ export class BoardService {
       return true;
     });
 
-    // A list of fifteen is not a list of decisions, it is a backlog nobody
-    // reads. Blockers first, because someone is stuck behind them.
-    return deduped.slice(0, 5);
+    /* Every decision, blockers first, because someone is stuck behind them. The board draws blockers in their own section, so a cap here
+       dropped the decisions the lead wrote down whenever five blockers stood before them (boards audit, S11). */
+    return deduped;
   }
 
   /**

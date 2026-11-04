@@ -19,15 +19,16 @@ export function FoldTheRest({ children, startOpen = import.meta.env.MODE === 'te
       const section = h.parentElement as HTMLElement
       if (section.dataset.folded === 'ready') continue
       section.dataset.folded = 'ready'
-      section.classList.add('pb-fold')
+      /* Its own class, never `pb-fold`, which every <details> fold on the boards, reports and You page already uses. */
+      section.classList.add('pb-folded')
       h.setAttribute('role', 'button')
       h.setAttribute('tabindex', '0')
-      if (startOpen) section.classList.add('pb-fold-open')
+      if (startOpen) section.classList.add('pb-folded-open')
       h.setAttribute('aria-expanded', String(startOpen))
       const toggle = (e: Event) => {
         /* A link or a button inside the heading row does its own job. */
         if ((e.target as HTMLElement).closest('a, button')) return
-        const open = section.classList.toggle('pb-fold-open')
+        const open = section.classList.toggle('pb-folded-open')
         h.setAttribute('aria-expanded', String(open))
       }
       const key = (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(e) } }
