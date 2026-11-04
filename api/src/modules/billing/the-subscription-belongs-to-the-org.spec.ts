@@ -32,9 +32,11 @@ describe('what /billing/status returns', () => {
   });
 
   it('reads the subscription off the organisation', () => {
-    for (const field of ['subscriptionPlan: true', 'subscriptionStatus: true', 'subscriptionPeriodEnd: true']) {
-      expect(GET_STATUS).toContain(field);
-    }
+    /* The plan and its status come through the one shared list of what a cover read needs (2 November 2026). */
+    expect(GET_STATUS).toContain('...WHAT_COVER_READS');
+    expect(GET_STATUS).toContain('subscriptionPeriodEnd: true');
+    const shared = readFileSync(join(__dirname, '../../common/subscription.ts'), 'utf8');
+    for (const field of ['subscriptionPlan: true', 'subscriptionStatus: true']) expect(shared.slice(shared.indexOf('export const WHAT_COVER_READS'))).toContain(field);
   });
 
   it('and returns it, so the client never has to find it on a ground', () => {

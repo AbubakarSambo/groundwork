@@ -9,6 +9,7 @@ import { coachApi, type CoachRequestRow } from '@/api/coach'
 import { feedbackApi } from '@/api/feedback'
 import { formatMonthlyPrice, formatDollars, type SubscriptionPlan } from '@/api/billing'
 import { SectionFailed } from './a-section-that-failed-says-so'
+import { Button } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -739,6 +740,7 @@ function PricingPanel() {
       <FreeGroundLimitRow />
       <FreeMemberLimitRow />
       <FreeTrialRow />
+      <TrialGraceRow />
       <AnchorTrialRow />
     </div>
   )
@@ -792,6 +794,83 @@ export function FreeTrialRow() {
       </div>
       <div style={{ fontSize: 11, marginTop: 8, fontWeight: 700, color: data.on ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
         {data.on ? 'On' : 'Off'}
+      </div>
+    </div>
+  )
+}
+
+/** What each sentence is, for the person editing it. The blanks are filled in by the server. */
+const GRACE_WORDS_SAID: Record<string, string> = {
+  weekSubject: 'The weekly email, its subject',
+  weekOpening: 'The weekly email, its first sentence',
+  daySubject: 'The daily email, its subject',
+  dayOpening: 'The daily email, its first sentence',
+  lastDaySubject: 'The last day\u2019s email, its subject',
+  lastDayOpening: 'The last day\u2019s email, its first sentence',
+  whilePaused: 'What a pause means, in every email',
+  howToPayAdmin: 'How to pay, to an admin',
+  howToPayLead: 'How to pay, to a lead',
+  linkLabel: 'The link to Plan and billing',
+  noteAfterTrialAdmin: 'The note on Today during the weeks, for an admin',
+  noteAfterTrialLead: 'The note on Today during the weeks, for a lead',
+  notePausedAdmin: 'The note on Today once paused, for an admin',
+  notePausedLead: 'The note on Today once paused, for a lead',
+}
+
+/**
+ * THE WEEKS AFTER THE FREE TRIAL (Hafsah, 2 November 2026; `GET`/`PATCH /admin/pricing/trial-grace`): how long everything keeps
+ * working after a free month ends, the emails to admins and leads, and their words, before Groundwork pauses until they pay.
+ */
+export function TrialGraceRow() {
+  const qc = useQueryClient()
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['admin-trial-grace'], queryFn: adminApi.getTrialGrace })
+  const [draft, setDraft] = useState<{ weeks?: string; daily?: string; fromHour?: string; words: Record<string, string> }>({ words: {} })
+  const [err, setErr] = useState<string | null>(null)
+  const save = useMutation({
+    mutationFn: () => adminApi.setTrialGrace({
+      ...(draft.weeks !== undefined ? { weeks: Number(draft.weeks) } : {}),
+      ...(draft.daily !== undefined ? { dailyForTheLastDays: Number(draft.daily) } : {}),
+      ...(draft.fromHour !== undefined ? { fromHour: Number(draft.fromHour) } : {}),
+      ...(Object.keys(draft.words).length ? { words: draft.words } : {}),
+    }),
+    onSuccess: (res) => { qc.setQueryData(['admin-trial-grace'], res); setDraft({ words: {} }); setErr(null); toast.success('Saved.') },
+    onError: (e: any) => setErr(e?.response?.data?.message ?? e?.message ?? 'That did not save.'),
+  })
+  if (isLoading) return null
+  if (error || !data) return <SectionFailed what="The weeks after the free trial" error={error} retry={() => refetch()} />
+  const field = { fontSize: 12, padding: '6px 8px', border: '1px solid var(--gw-border)', borderRadius: 6, width: '100%' } as const
+  const changed = draft.weeks !== undefined || draft.daily !== undefined || draft.fromHour !== undefined || Object.keys(draft.words).length > 0
+  return (
+    <div style={{ ...C, padding: '14px 16px' }}>
+      <div style={{ fontSize: 13, fontWeight: 700 }}>After the free trial</div>
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
+        When a free month ends, everything keeps working for {data.weeks} {data.weeks === 1 ? 'week' : 'weeks'}, and then Groundwork pauses until the organisation chooses a plan.
+        Admins and leads get one email at the start of each week, and one a day in the last {data.dailyForTheLastDays} {data.dailyForTheLastDays === 1 ? 'day' : 'days'}, from {data.fromHour}:00 in the organisation{'\u2019'}s own day. This applies only while the free trial is on.
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginTop: 10 }}>
+        <label style={{ fontSize: 12 }}>Weeks after the trial
+          <input style={field} inputMode="numeric" value={draft.weeks ?? String(data.weeks)} onChange={(e) => setDraft({ ...draft, weeks: e.target.value })} />
+        </label>
+        <label style={{ fontSize: 12 }}>Days of daily emails
+          <input style={field} inputMode="numeric" value={draft.daily ?? String(data.dailyForTheLastDays)} onChange={(e) => setDraft({ ...draft, daily: e.target.value })} />
+        </label>
+        <label style={{ fontSize: 12 }}>First hour of the day
+          <input style={field} inputMode="numeric" value={draft.fromHour ?? String(data.fromHour)} onChange={(e) => setDraft({ ...draft, fromHour: e.target.value })} />
+        </label>
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 10, lineHeight: 1.5 }}>
+        In the sentences, Groundwork fills in {'{organisation}'}, {'{endDay}'}, {'{pauseDay}'}, {'{timeLeft}'}, {'{days}'} and {'{admins}'}.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+        {Object.keys(GRACE_WORDS_SAID).map((k) => (
+          <label key={k} style={{ fontSize: 12 }}>{GRACE_WORDS_SAID[k]}
+            <textarea style={{ ...field, minHeight: 44 }} value={draft.words[k] ?? data.words[k] ?? ''} onChange={(e) => setDraft({ ...draft, words: { ...draft.words, [k]: e.target.value } })} />
+          </label>
+        ))}
+      </div>
+      {err && <div role="alert" style={{ fontSize: 12, color: 'var(--gw-red-t)', marginTop: 4 }}>{err}</div>}
+      <div style={{ marginTop: 10 }}>
+        <Button disabled={!changed || save.isPending} onClick={() => save.mutate()}>Save</Button>
       </div>
     </div>
   )

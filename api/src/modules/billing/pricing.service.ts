@@ -4,6 +4,7 @@ import { StripeService } from './stripe.service';
 import { SubscriptionPlan } from '@prisma/client';
 import { theKindOfStripeKey } from './what-kind-of-stripe-key';
 import type { APlansPrices } from './what-a-month-costs';
+import { theGraceSetting, TRIAL_GRACE_KEY, DEFAULT_GRACE_WORDS, type TrialGraceSetting } from './the-trial-grace';
 
 /**
  * The plan NAMES, and only the names.
@@ -250,6 +251,39 @@ export class PricingService {
       update: { value: next as any, updatedBy: adminUserId },
     });
     this.logger.log(`Anchor trial set to ${JSON.stringify(next)} by ${adminUserId}`);
+    return next;
+  }
+
+  /** The four weeks after a free trial, their emails and their words (the-trial-grace.ts). Never throws: a bad row reads as the default. */
+  async getTrialGrace(): Promise<TrialGraceSetting> {
+    return theGraceSetting(this.prisma);
+  }
+
+  /**
+   * CHANGE THE FOUR WEEKS, THEIR EMAILS OR THEIR WORDS, from Admin, System, Pricing (Hafsah, 2 November 2026). Only what is sent
+   * changes; the rest stays. The moment it first came in (`onSince`) is never changed here, so a change cannot pause anybody early.
+   */
+  async setTrialGrace(input: Partial<TrialGraceSetting> | null | undefined, adminUserId: string): Promise<TrialGraceSetting> {
+    const now = await this.getTrialGrace();
+    const weeks = input?.weeks !== undefined ? Number(input.weeks) : now.weeks;
+    const daily = input?.dailyForTheLastDays !== undefined ? Number(input.dailyForTheLastDays) : Math.min(now.dailyForTheLastDays, weeks * 7);
+    const fromHour = input?.fromHour !== undefined ? Number(input.fromHour) : now.fromHour;
+    if (!Number.isInteger(weeks) || weeks < 1 || weeks > 12) throw new BadRequestException('The weeks after the free trial must be a whole number between 1 and 12.');
+    if (!Number.isInteger(daily) || daily < 0 || daily > weeks * 7) throw new BadRequestException(`The daily emails must be for a whole number of days between 0 and ${weeks * 7}.`);
+    if (!Number.isInteger(fromHour) || fromHour < 0 || fromHour > 17) throw new BadRequestException('The emails must start at a whole hour between 0 and 17.');
+    const words = { ...now.words };
+    for (const [k, v] of Object.entries(input?.words ?? {})) {
+      if (!(k in DEFAULT_GRACE_WORDS)) continue;
+      if (typeof v !== 'string' || !v.trim()) throw new BadRequestException('Every sentence about the weeks after the free trial must have some words in it.');
+      (words as any)[k] = v.trim();
+    }
+    const next: TrialGraceSetting = { weeks, dailyForTheLastDays: daily, fromHour, words, ...(now.onSince ? { onSince: now.onSince } : { onSince: new Date().toISOString() }) };
+    await this.prisma.platformSetting.upsert({
+      where: { key: TRIAL_GRACE_KEY },
+      create: { key: TRIAL_GRACE_KEY, value: next as any, updatedBy: adminUserId },
+      update: { value: next as any, updatedBy: adminUserId },
+    });
+    this.logger.log(`The weeks after the free trial set to ${weeks} weeks, daily for ${daily} days, from ${fromHour}:00, by ${adminUserId}`);
     return next;
   }
 

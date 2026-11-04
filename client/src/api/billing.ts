@@ -32,6 +32,11 @@ export interface BillingStatus {
    * nobody can see ends as a surprise, which is the one thing it must not do.
    */
   onTheHouse?: { plan: SubscriptionPlan; until: string; freeTrial?: boolean } | null
+  /**
+   * Admin only (2 November 2026): the four weeks after the free month, or the pause after them, in the server's one sentence, the
+   * same one Today says. Null or absent otherwise.
+   */
+  afterTheTrial?: string | null
   activeGrounds: GroundBalance[]
   card?: { brand: string; last4: string } | null
   /**

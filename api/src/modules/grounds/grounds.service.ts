@@ -103,7 +103,8 @@ import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AUTHORED_AT_SETUP, WHAT_RECORDING_IT_MEANS } from './what-setup-agreed';
 import { proposalFrom, extractionToolFor, Heard, Proposal, WHO_AND_WHAT_THEY_EXPECT, asContextThenTheSentence, confirmedSay } from './what-the-context-chat-heard';
 import { freeSeatLimitMessage } from '../billing/billing.service';
-import { isCovered } from '../../common/subscription';
+import { isCovered, WHAT_COVER_READS } from '../../common/subscription';
+import { theGraceInForce } from '../billing/the-trial-grace';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { howManyTheFreePlanCovers } from './a-cohort-is-not-a-payroll';
 import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-was-said';
@@ -6227,9 +6228,9 @@ export class GroundsService {
      */
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
+      select: WHAT_COVER_READS,
     });
-    const covered = !!org && isCovered(org);
+    const covered = !!org && isCovered(org, new Date(), await theGraceInForce(this.prisma).catch(() => null));
 
     if (ground.isFreeGround && !covered) {
       const participantCount = await this.prisma.groundParticipant.count({ where: { groundId } });

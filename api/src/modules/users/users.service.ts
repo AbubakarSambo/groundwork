@@ -24,7 +24,8 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { tidyANumberFor } from '../whatsapp/the-organisations-country';
 import { aSignInsNumberChanged, aRosterNumberChanged, refuseANumberOnSomebodyElse, aSignInWithNoNumberTakesTheRosters, theSignInOf } from '../whatsapp/one-number-for-a-person';
 import { theDomainOf, mayBeJoinedBy, effectiveJoinDomain } from '../../common/an-email-domain';
-import { isCovered } from '../../common/subscription';
+import { isCovered, WHAT_COVER_READS } from '../../common/subscription';
+import { theGraceInForce } from '../billing/the-trial-grace';
 import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { mayChange, mayHandOver } from './the-person-who-set-this-up';
 import { colleaguesOf, A_COLLEAGUE_WITH_NO_NAME } from '../../common/colleagues';
@@ -75,7 +76,7 @@ export class UsersService {
       this.prisma.ground.count({ where: { organizationId } }),
       this.prisma.organization.findUnique({
         where: { id: organizationId },
-        select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
+        select: WHAT_COVER_READS,
       }),
       this.prisma.apiCredential.count({ where: { organizationId, revokedAt: null } }),
       this.prisma.whatsAppConnection.findUnique({ where: { organizationId }, select: WHAT_SAYS_IT_WORKS }).catch(() => null),
@@ -89,7 +90,7 @@ export class UsersService {
       checkIns,
       /* Covered, not paying: a month given away is cover, and reading it as unpaid told a customer
          to subscribe to something we had already given them. See grounds.service.addParticipant. */
-      paying: isCovered(org ?? { subscriptionPlan: null, subscriptionStatus: null }),
+      paying: isCovered(org ?? { subscriptionPlan: null, subscriptionStatus: null }, new Date(), await theGraceInForce(this.prisma).catch(() => null)),
       connected: keys > 0,
       whatsappOn,
       whatsappConnected: itSendsFromTheirNumber(wa),

@@ -88,6 +88,7 @@ import { aSignInsNumberChanged, refuseANumberOnSomebodyElse } from './one-number
 import { FIRST_CONTACT, FIRST_CONTACT_NOT_APPROVED, theFirstContactLine } from './the-first-message-to-a-number';
 import { aRoutineWhatsApp, theirRoutineMessagesToday } from '../engagement/one-routine-message-a-day';
 import { heldUntilTheMorning, QUIET_HOURS_HELD } from './quiet-hours-are-the-organisations';
+import { GROUNDWORK_IS_PAUSED_THERE, thisOrganisationIsPaused } from '../billing/the-trial-grace';
 import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THIS_RELEASE, NOT_TURNED_ON_QUIETLY, templateFor, theTemplateToUse, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, APPROVALS, ONLY_HELD_BY_NOT_NOW, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW, NEVER_THE_FIRST_MESSAGE } from './a-message-outside-the-window';
 
 /**
@@ -180,7 +181,15 @@ export class WhatsAppService implements OnModuleInit {
    * month's count of held messages goes up (at the limit, the admins are told once). Null when it may go.
    */
   private async heldFor(organizationId: string | null, to: string, context: SendContext): Promise<SendResult | null> {
-    if (!organizationId || !this.addOn) return null;
+    if (!organizationId) return null;
+    /* GROUNDWORK IS PAUSED THERE (2 November 2026): nothing Groundwork starts goes, and nobody is told on WhatsApp why. Written
+       down, so the app and the daily delivery alert can say it. A reply to somebody who just wrote still goes. */
+    if (isBusinessInitiated(String(context.kind ?? '').split(':')[0]) && (await thisOrganisationIsPaused(this.prisma, organizationId))) {
+      const result: SendResult = { sent: false, error: GROUNDWORK_IS_PAUSED_THERE };
+      await this.writeItDown(organizationId, to, result, { ...context, kind: `${context.kind}:paused` });
+      return result;
+    }
+    if (!this.addOn) return null;
     const may = await this.addOn.mayWeSend(organizationId);
     if (may.send) return null;
     const result: SendResult = { sent: false, error: may.saying };
