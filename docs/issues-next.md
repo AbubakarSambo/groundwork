@@ -125,3 +125,10 @@ Evidence: her screenshots of 4 November at 13:23 (Kevin, Sales team Q4), in ~/De
 | 57 | Items are the facts, in plain words and correctly labelled ("Visited Choma Zone butchery; the owner is still deciding on a chest freezer", "Forgot the price list"). Venting and swearing are never shown back as items, and never labelled "something you got done" (today "This fucking Choma Zone guy wasted my whole damn day." is shown as an item and labelled "This is something you got done."). The person's exact words stay in the record. | Hafsah, 4 November | kevin-1323-report, kevin-1323-whole-report |
 | 58 | "What you told us" becomes "What you told me" (one voice, item 18). | Hafsah, 4 November | kevin-1323-report |
 | 59 | Find every other place where one thing has become several pages or layers, and list it for batch 2. | Hafsah, 4 November | To be listed |
+
+## Found while building batch 1, for Hafsah or later
+| # | Issue | Source | Evidence |
+|---|---|---|---|
+| 60 | The speed report doesn't close a turn's timing window when no reply comes, so it counts later background work as "running at once" (the "23 to 33 calls" in round 39). This is test tooling, `~/Desktop/next-steps/speed/`. To fix after this cycle's runs. | Setup builder, batch 1 | Its report |
+| 61 | **For Hafsah to confirm:** with setup private, the strategy, notes, dates and open decisions said in setup reach the team only when the lead shares them from References and resources. Before, everyone saw them. The lead's aims in her own words are out of every report sentence a member reads; the standard she set still shows. | Engine builder, batch 1, group 1 | Its report |
+| 62 | `someone-held-for-a-seat-reads-no-report` fails on wip/plan without batch 1's changes. Fix with group 8 (every failing spec passes). | Engine builder | Its report |
