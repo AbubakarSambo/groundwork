@@ -110,3 +110,18 @@ Ratings: clinic 1, family 1, field 1, law 1, ngo 1, sales 1, startup 2, wild 1 (
 | # | Issue | Source | Evidence |
 |---|---|---|---|
 | 52 | **Merge the three organisation-level checks into the single pattern layer:** collusion (COLLUSION_RISK), work concentrated in one person (CONCENTRATION_RISK) and the invisible backbone (M4_PLUS). Do it the same way as the older system: keep their definitions, and make them read from the assessments. Collusion is only ever shown to an admin or the lead, with strong evidence, and never worded as an accusation. In batch 1 they stay as they are, because none caused a false flag in round 38. | Hafsah, 4 November | `patterns/patterns.service.ts:723-918`, `intelligence/intelligence.service.ts:234`; the round 38 false-flag table in docs/fix-plan.md, group 4 |
+
+## For batch 2: the check-in inside its tab, and one report in My work (Hafsah, 4 November)
+Evidence: her screenshots of 4 November at 13:23 (Kevin, Sales team Q4), in ~/Desktop/next-steps/evidence-4-november/ (kevin-1323-end-page, kevin-1323-report, kevin-1323-whole-report).
+
+**The problem.** The check-in is its own separate page, cut off from the tabs. After finishing, people land on more separate pages: the end page, the report, then the "whole report". From there they can't reach the Board, References and resources, or anything else.
+
+| # | Issue | Source | Evidence |
+|---|---|---|---|
+| 53 | The check-in happens inside the Check-in tab, with the tabs always visible, on desktop and phone. | Hafsah, 4 November | kevin-1323 screenshots |
+| 54 | When it ends, the closing is the last messages in the conversation: the read-back of what was recorded, with "Anything wrong?", and what happens next. A small pop-up says "Done. Your report is in My work." Closing it leaves the person where they are, with every tab one click away. | Hafsah, 4 November | kevin-1323-end-page |
+| 55 | The person's report lives in My work. The separate end page, the separate report page and the whole-report page ("See every other part of this report") are removed. | Hafsah, 4 November | kevin-1323-report, kevin-1323-whole-report |
+| 56 | Removed from what's left: "Your next check-in is open now. Go to it", the "Two reports come from this" section and its cards, "How checkable today's check-in was", "These were taken from what you wrote, not typed by you…", and the General / Some of both / Specific bar. "For tomorrow" names the person and is specific, or is left out (today it reads "Find out what would help them to make a decision."). | Hafsah, 4 November | the three screenshots |
+| 57 | Items are the facts, in plain words and correctly labelled ("Visited Choma Zone butchery; the owner is still deciding on a chest freezer", "Forgot the price list"). Venting and swearing are never shown back as items, and never labelled "something you got done" (today "This fucking Choma Zone guy wasted my whole damn day." is shown as an item and labelled "This is something you got done."). The person's exact words stay in the record. | Hafsah, 4 November | kevin-1323-report, kevin-1323-whole-report |
+| 58 | "What you told us" becomes "What you told me" (one voice, item 18). | Hafsah, 4 November | kevin-1323-report |
+| 59 | Find every other place where one thing has become several pages or layers, and list it for batch 2. | Hafsah, 4 November | To be listed |
