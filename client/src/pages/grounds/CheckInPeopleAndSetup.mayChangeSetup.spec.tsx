@@ -12,6 +12,11 @@ import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
  * used to be `isInitiator || isOrgAdmin`, a role check that never asked the server. It now reads
  * the served `mayChangeSetup`, falling back to the old role check only when a payload has not
  * sent the field at all.
+ *
+ * 4 November 2026: People and setup is the B8 page for everybody now (Release 1B's switch went). It has no "Change"
+ * buttons: whoever may change the setup gets the field itself (the name, How often, Targets, Confirming each other's work,
+ * Use simpler words, When someone is blocked), and anyone else reads the answer as a sentence. These cases now check those
+ * controls, for the same readers, against the same served flag.
  */
 function ground(over: Record<string, any> = {}) {
   return {
@@ -80,33 +85,64 @@ function renderWith(over: Record<string, any> = {}) {
 
 beforeEach(() => vi.clearAllMocks())
 
+/** Every setup control the served `mayChangeSetup` gates, as the B8 page draws it. */
+function theControls() {
+  return {
+    name: screen.queryByRole('textbox', { name: 'Name' }),
+    howOften: screen.queryByRole('combobox', { name: 'How often' }),
+    targets: screen.queryByRole('combobox', { name: 'Targets' }),
+    confirming: screen.queryByRole('combobox', { name: 'Confirming each other’s work' }),
+    simplerWords: screen.queryByRole('switch', { name: 'Use simpler words' }),
+    blocked: screen.getByRole('switch', { name: 'When someone is blocked' }),
+  }
+}
+function offeredEveryOne() {
+  const c = theControls()
+  expect(c.name).toBeTruthy()
+  expect(c.howOften).toBeTruthy()
+  expect(c.targets).toBeTruthy()
+  expect(c.confirming).toBeTruthy()
+  expect(c.simplerWords).toBeTruthy()
+  expect(c.blocked).not.toBeDisabled()
+}
+function offeredNone() {
+  const c = theControls()
+  expect(c.name).toBeNull()
+  expect(c.howOften).toBeNull()
+  expect(c.targets).toBeNull()
+  expect(c.confirming).toBeNull()
+  expect(c.simplerWords).toBeNull()
+  expect(c.blocked).toBeDisabled()
+  /* The name is still read, as a sentence. */
+  expect(screen.getByText("Tendai's check-in")).toBeTruthy()
+}
+const drawn = () => screen.findByText('When it runs')
+
 describe('Naomi, an admin on Tendai\'s check-in, is not offered setup changes the server refuses her', () => {
-  it('offers no "Change" at all when the server sends mayChangeSetup: false', async () => {
+  it('offers no setup control at all when the server sends mayChangeSetup: false', async () => {
     renderWith({ ground: ground({ mayChangeSetup: false }) })
-    await waitFor(() => expect(screen.getByText("Tendai's check-in")).toBeTruthy())
-    expect(screen.queryAllByRole('button', { name: 'Change' }).length).toBe(0)
+    await drawn()
+    offeredNone()
   })
 
-  it('still offers "Change" when the server actually grants it (mayChangeSetup: true)', async () => {
+  it('still offers them when the server actually grants it (mayChangeSetup: true)', async () => {
     renderWith({ ground: ground({ mayChangeSetup: true }) })
-    await waitFor(() => expect(screen.getByText("Tendai's check-in")).toBeTruthy())
-    expect(screen.queryAllByRole('button', { name: 'Change' }).length).toBeGreaterThan(0)
+    await drawn()
+    offeredEveryOne()
   })
 
   it('falls back to the old role check only when the server has not sent the field at all', async () => {
     renderWith({ ground: ground() })
-    await waitFor(() => expect(screen.getByText("Tendai's check-in")).toBeTruthy())
+    await drawn()
     // isOrgAdmin: true in these props, and no mayChangeSetup field on the ground payload.
-    expect(screen.queryAllByRole('button', { name: 'Change' }).length).toBeGreaterThan(0)
+    offeredEveryOne()
   })
 })
 
 /**
  * A TEST PER CONTROL (decision 119, H10), checked against the one flag that gates every one of
  * them - `canEditRunOrAdmin`, read from the server's `mayChangeSetup` - so none of the setup
- * controls H10 names can drift from the others: the name, how often it runs, the days it works on,
- * the start date, where people answer (WhatsApp), who sees targets, and whether people here can
- * confirm each other's work. "Use simpler words" is covered the same way, inside `editingSimplerWords`.
+ * controls H10 names can drift from the others.
  */
 describe('every H10 control asks the same question, for each kind of reader', () => {
   it('Tendai, who leads it, is offered every one of them', async () => {
@@ -114,26 +150,20 @@ describe('every H10 control asks the same question, for each kind of reader', ()
       ground: ground({ mayChangeSetup: true }),
       isInitiator: true, isOrgAdmin: false, user: { id: 'u-tendai' },
     })
-    await waitFor(() => expect(screen.getByText("Tendai's check-in")).toBeTruthy())
-    expect(screen.queryAllByRole('button', { name: 'Change' }).length).toBeGreaterThan(0)
-    expect(screen.getByRole('switch', { name: 'Targets' })).not.toBeDisabled()
-    expect(screen.getByRole('switch', { name: "Who can confirm each other's work" })).not.toBeDisabled()
+    await drawn()
+    offeredEveryOne()
   })
 
   it('Naomi, an admin who does not lead it, is offered none of them while Tendai is still here', async () => {
     renderWith({ ground: ground({ mayChangeSetup: false }) })
-    await waitFor(() => expect(screen.getByText("Tendai's check-in")).toBeTruthy())
-    expect(screen.queryAllByRole('button', { name: 'Change' }).length).toBe(0)
-    expect(screen.getByRole('switch', { name: 'Targets' })).toBeDisabled()
-    expect(screen.getByRole('switch', { name: "Who can confirm each other's work" })).toBeDisabled()
+    await drawn()
+    offeredNone()
   })
 
   it('Naomi is offered every one of them once the server says Tendai has left', async () => {
     renderWith({ ground: ground({ mayChangeSetup: true }) })
-    await waitFor(() => expect(screen.getByText("Tendai's check-in")).toBeTruthy())
-    expect(screen.queryAllByRole('button', { name: 'Change' }).length).toBeGreaterThan(0)
-    expect(screen.getByRole('switch', { name: 'Targets' })).not.toBeDisabled()
-    expect(screen.getByRole('switch', { name: "Who can confirm each other's work" })).not.toBeDisabled()
+    await drawn()
+    offeredEveryOne()
   })
 
   it('a member, in this check-in but not running it, is offered none of them - the server never grants a mere party mayChangeSetup', async () => {
@@ -141,9 +171,7 @@ describe('every H10 control asks the same question, for each kind of reader', ()
       ground: ground({ mayChangeSetup: false }),
       isInitiator: false, isOrgAdmin: false, viewerIsAParty: true, user: { id: 'u-someone-else' },
     })
-    await waitFor(() => expect(screen.getByText("Tendai's check-in")).toBeTruthy())
-    expect(screen.queryAllByRole('button', { name: 'Change' }).length).toBe(0)
-    expect(screen.getByRole('switch', { name: 'Targets' })).toBeDisabled()
-    expect(screen.getByRole('switch', { name: "Who can confirm each other's work" })).toBeDisabled()
+    await drawn()
+    offeredNone()
   })
 })
