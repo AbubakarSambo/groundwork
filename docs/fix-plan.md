@@ -95,7 +95,7 @@ Drafted from `docs/issues-next.md` items 1 to 38, the cast run (round 38) and th
 
 ## Hafsah's answers, 4 November (built into the groups above)
 1. **Group 1:** the lead keeps one conversation on screen (setup and her first check-in together), stored in two parts. Setup facts stay private to whoever runs the check-in. Her "where things stand today" is saved as her first check-in under the normal rules.
-2. **Group 4:** the older patterns system (PatternDetection) is retired, leaving one pattern layer for everyone. People still see their own coaching from it.
+2. **Group 4 (corrected by Hafsah, 4 November):** the older patterns system is NOT retired. It is merged into the single pattern layer, keeping what it does well: its 49 kinds, three periods, positives shown at once and its wording become the layer's definitions. It reads from the assessments only, and people still see their own patterns as now. Only the duplicate parts that judged people separately and caused false flags are removed. The kept, changed and removed list is in group 4 below, written before anything changes.
 3. The check-in screen stays just the conversation. "Set the context" lives in References and resources, and "Add people" in People and setup.
 4. When signed in, the logo goes to Today.
 5. WhatsApp: the two templates waiting for approval replace their five-minute versions. The ten-minute replacement for `checkin_your_view_matters` is drafted in docs/whatsapp-templates.md and wired in this batch.
@@ -111,6 +111,14 @@ Every line on the list in ~/Desktop/next-steps/explainers-and-pages-between.md i
 - the tab renamed "References and resources".
 
 **Proof:** a sweep of every page as lead and as member finds none of the listed lines.
+
+Hafsah's answers on the sweep (4 November):
+- The approved wording and "References and resources" become the only version for everyone, and the `directMorningOn` and `release1bTabsOn` switches go.
+- **Consent:** one plain line stays, only where people first agree: the invitation's "what happens to what you write", and who sees what in setup. The end card's line goes.
+- **Help:** the Help panel and the lead's guide stay, on demand only, behind a Help link, never shown on a page unless asked for.
+- **Join and preview:** the join form stays. The invitation preview is not a separate page; it is a small "Preview" link in setup.
+- **Proof keys:** the symbols and the key are replaced by plain words on each item ("said", "proven"), so no key is needed.
+- **Decision 51** now reads "References and resources" (changed by Claude with Hafsah's leave, that line only).
 
 ## Test tooling, before the live baseline
 The privacy judge's brief now follows the four rules (done 4 November, `~/Desktop/assessment-test/harness/score.ts`). Round 38 will be re-scored with it, so live and plan are counted the same way.
