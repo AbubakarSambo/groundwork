@@ -64,3 +64,15 @@ Headline: first experience 1, 2 and 2 (law, sales, field; average 1.7). 91% of f
 | 36 | Ask reaches 33% of facts and answers 1 of 6 setup questions. | Cast run, round 38 | ask |
 | 37 | Stored patterns catch 5 of 12 and flag 3 honest people; follow-ups on interventions are 1 of 4. | Cast run, round 38 | patterns, interventions |
 | 38 | The slowest check-in first words took 10.1 s, above the 4 s fallback. | Cast run, round 38 | speed.md |
+
+### The privacy findings traced (read only, 4 November, round 38 data)
+- **28 is real, with one root cause.** The setup chat is stored as the lead's first check-in. entry.service.ts:2633 writes the setup transcript into her session-1 turns, and assess-the-conversation.ts:104-108 then tags them `check-in`. So the record writer's guard (the-record-from-the-assessment.ts:81-83) cannot tell setup words apart, and they become record lines every reader sees. This happens through `whereAgainstSuccessAsBuilt` (reports.service.ts:3260) and WhatSuccessLooksLike.tsx:214 "And what each person says it is".
+  - The same path puts Grace's "We sell water filters…" on the sales boards and My work, and Ruth's setup words ("the rains in Kitgum") in the field team's shared session report.
+  - There is a second way in: `whatSuccessWasSaid` (reports.service.ts:1078) reads setup facts for everyone, and `mayRead` (the-facts-on-record.ts:62) never checks `inSetup`.
+  - Where to cut: setup turns are never stored as check-in turns (or are tagged `setup`), and `inSetup` facts are refused to anyone who doesn't run the check-in.
+  - Other readers of the same thing: the against-success route, the session report, My work, the shared synthesis, and Ask.
+  - Specs that missed it: the-record-is-written-from-the-assessment (setup modelled only as `setup`-tagged turns); what-was-said-reaches-the-report-from-the-assessments (the member is tested only before release); the evaluation-only lead's-notes spec; and the-anchor-leads-aims-stay-hers-in-the-report:61-64, which pins the leak as expected outside the anchor flow.
+- **29 is not a breach.** The patterns are Kevin's own, shown to Kevin first (who-reads-a-pattern.ts rules 3 and 5). But `shown_to_person_at` stays null although they were shown, so the lead's timer in rule 5 never starts. That is a bug.
+- **30, Mercy's words:** allowed by the four rules (she said them in a released check-in Kevin is in). But they are her objectives, on a check-in set to `who_sees_targets=THEIR_OWN`, beside "Only you and Grace see your share". **Needs Hafsah:** should a person's own words about their own target follow the target's privacy setting? (Request 77 kept them outside the wall on purpose.)
+- **4a and 4b are not breaches.** Moses's blocker sits in the shared session report of a check-in Joseph is in. "What you said about your work is short…" is fixed text everyone gets, and its wording reads like a verdict: a wording fault.
+- **31:** the privacy judge's brief needs the four rules, so it stops counting a person's own words as leaks.
