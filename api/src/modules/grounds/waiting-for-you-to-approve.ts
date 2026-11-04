@@ -38,12 +38,12 @@ export function waitingForYouToApprove(
 
   const leave = (input.leave ?? []).filter((l) => l.mayDecide);
   if (leave.length >= MANY) {
-    out.push({ ...base, key: 'approve-leave', title: `${leave.length} leave requests are waiting for you to approve.`, detail: null, action: { label: 'Look at them', to: '/suite/leave' } });
+    out.push({ ...base, key: 'approve-leave', title: `${leave.length} leave requests are waiting for you to approve.`, detail: null, action: { label: 'Look at them', to: '/suite/queue?suite=leave' } });
   } else {
     leave.forEach((l, i) => out.push({
       ...base, key: `approve-leave-${i}`,
       title: `${first(l.name)} asked for leave ${l.startsOn === l.endsOn ? `on ${saidAsADay(l.startsOn)}` : `from ${saidAsADay(l.startsOn)} to ${saidAsADay(l.endsOn)}`}.`,
-      detail: WAITING, action: { label: 'Look at it', to: '/suite/leave' },
+      detail: WAITING, action: { label: 'Look at it', to: '/suite/queue?suite=leave' },
     }));
   }
 
@@ -64,12 +64,12 @@ export function waitingForYouToApprove(
 
   const spend = (input.spend ?? []).filter((s) => s.mayDecide);
   if (spend.length >= MANY) {
-    out.push({ ...base, key: 'approve-spend', title: `${spend.length} requests to spend are waiting for you to approve.`, detail: null, action: { label: 'Look at them', to: '/suite/spend' } });
+    out.push({ ...base, key: 'approve-spend', title: `${spend.length} requests to spend are waiting for you to approve.`, detail: null, action: { label: 'Look at them', to: '/suite/queue?suite=spend' } });
   } else {
     spend.forEach((s, i) => out.push({
       ...base, key: `approve-spend-${i}`,
       title: `${s.firstName} asked to spend ${amountSaid(s.amount, input.currency ?? null)} on ${whatTheMoneyIsFor(s.what)}.`,
-      detail: WAITING, action: { label: 'Look at it', to: '/suite/spend' },
+      detail: WAITING, action: { label: 'Look at it', to: '/suite/queue?suite=spend' },
     }));
   }
   return out;

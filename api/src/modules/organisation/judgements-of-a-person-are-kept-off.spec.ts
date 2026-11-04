@@ -56,12 +56,19 @@ describe("Grace's list on Today and in her weekly letter", () => {
   const person = (id: string, userId: string, partyType: PartyType, first: string) => ({ id, userId, partyType, email: null, roleAsDescribed: null, nameGiven: null, organisationGiven: null, managingOnly: false, createdAt: new Date('2026-10-01'), user: { firstName: first, lastName: 'X' } });
   const PEOPLE = [person('p-grace', 'u-grace', PartyType.INITIATOR, 'Grace'), person('p-kevin', 'u-kevin', PartyType.PARTICIPANT, 'Kevin')];
   const ROW = { id: 'pd-1', groundId: 'g-sales', participantId: 'p-kevin', code: 'B2', status: 'SURFACED', periodsObserved: 3, seenInSessions: [1, 2, 3], lastPeriodNumber: 3, observationText: 'Confident statements about hitting a target are repeated.', firstSeenAt: new Date('2026-09-01'), lastSeenAt: new Date('2026-10-14'), personAnswer: null, personAnsweredAt: null, shownToPersonAt: new Date('2026-10-01'), talkedAboutAt: null, readyAt: new Date('2026-09-20') };
+  /* Kevin's newest assessment, holding a layer-2 pattern and the lead's layer-3 step for it (F2, 2 November 2026). */
+  const KEVINS_ASSESSMENT = { id: 'c-kevin-3', participantId: 'p-kevin', sessionNumber: 3, sessionReport: { kind: 'assessment', version: 1,
+    acrossTime: { patterns: [{ key: 'slipping-promises', participantId: 'p-kevin', kind: 'needs work', state: 'holds', who: 'Kevin', saying: 'Kevin has let 2 promised days pass without the work done.',
+      instances: [{ checkInId: 'c-kevin-2', sessionNumber: 2, on: '2026-10-07', item: 'the Sarit quote', words: ['I have not sent the Sarit quote.'] }, { checkInId: 'c-kevin-3', sessionNumber: 3, on: '2026-10-14', item: 'the Westgate call', words: ['I did not call Westgate'] }] }],
+      role: null, focus: null, toAskNextTime: [] },
+    interventions: [{ key: 'slipping-promises', participantId: 'p-kevin', ladder: 'work', rung: 2, step: 'a conversation', forWhom: 'the lead', theLeadDecides: true,
+      says: 'Talk with Kevin about it. Kevin has let 2 promised days pass without the work done.', because: '', state: 'waiting for the lead', startedIn: { checkInId: 'c-kevin-3', sessionNumber: 3 }, followedUp: [] }] } };
   const list = async (on: boolean) => {
     const ground = { initiatorId: 'u-grace', organizationId: 'org-drop', cadence: 'DAILY', kindOfWork: 'sales team', whoSeesTargets: 'THEIR_OWN', participants: PEOPLE, dependencies: [], objectives: [], personObjectives: [] };
     const prisma: any = {
       organization: { findUnique: jest.fn(async () => ({ personJudgementsOn: on, release1SalesBoardOn: false })) },
       report: { findUnique: jest.fn(async () => ({ divergences: [] })) },
-      checkIn: { findMany: jest.fn(async () => [{ participantId: 'p-kevin' }]) },
+      checkIn: { findMany: jest.fn(async (a: any) => (a?.select?.sessionReport ? [KEVINS_ASSESSMENT] : [{ participantId: 'p-kevin' }])) },
       groundContextItem: { findMany: async () => [] },
       wordedLine: { findUnique: async () => null },
       patternDetection: { findMany: jest.fn(async () => [ROW]) },
@@ -70,14 +77,22 @@ describe("Grace's list on Today and in her weekly letter", () => {
     const nameOf = (pid: string) => PEOPLE.find((p) => p.id === pid)?.user.firstName ?? 'a colleague';
     return { items: (await forTheLeadFrom(prisma, 'g-sales', { ground, participants: PEOPLE, checkIns: [], nameOf } as any, reader, 8)) ?? [], prisma };
   };
+  /* 2 November 2026 (F2): Today's "talk with Kevin" comes from layer 3 on his assessments, not from a stored pattern, so the
+     assessments are what is read with the switch on and what is not read with it off. */
+  const readTheAssessments = (prisma: any) => prisma.checkIn.findMany.mock.calls.some((c: any[]) => c[0]?.select?.sessionReport);
   it('has no "talk with Kevin about" a pattern with the switch off, and the pattern is not even read', async () => {
     const { items, prisma } = await list(false);
     expect(JSON.stringify(items)).not.toMatch(/Talk with Kevin/);
     expect(prisma.patternDetection.findMany).not.toHaveBeenCalled();
+    expect(readTheAssessments(prisma)).toBe(false);
   });
-  it('reads the patterns as before with it on', async () => {
-    const { prisma } = await list(true);
-    expect(prisma.patternDetection.findMany).toHaveBeenCalled();
+  it('reads the patterns as before with it on: Grace reads the step that is hers, with the days and words', async () => {
+    const { prisma, items } = await list(true);
+    expect(readTheAssessments(prisma)).toBe(true);
+    expect(items).toEqual(expect.arrayContaining([expect.objectContaining({
+      decide: 'Talk with Kevin about it. Kevin has let 2 promised days pass without the work done.',
+      why: 'On 7 October, the words were "I have not sent the Sarit quote." On 14 October, the words were "I did not call Westgate."',
+    })]));
   });
 });
 

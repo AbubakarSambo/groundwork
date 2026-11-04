@@ -53,10 +53,12 @@ describe('what the setup screen is handed', () => {
   });
 
   it('the closing words never say who "gives the accounts"', async () => {
-    const out: any = await world(model, 'This will help us track Chidi. The next screen will ask who gives the accounts, and the check-in itself will come after that.').onboard(said as any, undefined, undefined, undefined, undefined, { userId: 'u-w', organizationId: 'o1' });
+    /* Changed 4 November 2026 (fix plan, group 5): setup ends on the model's close, read once, not on a guess that a reply without a
+       question mark has stopped asking; so the reply that ends it carries the close. */
+    const out: any = await world(model, 'This will help us track Chidi. The next screen will ask who gives the accounts, and the check-in itself will come after that. [[SESSION_COMPLETE]]').onboard(said as any, undefined, undefined, undefined, undefined, { userId: 'u-w', organizationId: 'o1' });
     /* A reply with no question ends setup, so the product's last line follows it (26 October 2026, setup-is-the-first-check-in). */
-    /* Since 26 October a reply that stops asking is followed by "Anything else I should know?", and its talk of a next screen comes out. */
-    expect(out.reply).toBe('This will help us track Chidi.\n\nAnything else I should know?');
+    /* Changed 3 November 2026: no "Anything else I should know?" is put under it any more; its talk of a next screen still comes out. */
+    expect(out.reply).toBe(`This will help us track Chidi.\n\n${SETUP_IS_DONE}`);
     expect(out.reply).not.toMatch(/account/i);
   });
 });

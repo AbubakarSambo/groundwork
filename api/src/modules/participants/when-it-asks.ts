@@ -1,12 +1,16 @@
+import { timesAWeekInWords, theHourACheckInOpens } from '../grounds/the-check-ins-own-schedule';
+import { A_CHECK_IN_TAKES } from '../../common/how-long-a-check-in-takes';
 /**
  * HOW OFTEN A CHECK-IN ASKS, IN ONE PLAIN SENTENCE, for the invitation (A3, #/join/invite).
  *
- * The prototype says "About two minutes each weekday, from 4pm, on what moved with your deals." Only
- * the rhythm is something the record holds for every check-in: there is no reminder time, and what it
- * asks about is the conversation's, not the schedule's. So this says the rhythm and nothing it would
- * have to guess. It mirrors the scheduler's fields and is never a promise of a date.
+ * The prototype says "About two minutes each weekday, from 4pm, on what moved with your deals." This says the rhythm, the hour it
+ * opens where it opens at a set hour, and the check-in's name, all from what setup holds, and nothing it would have to guess (see
+ * whenItAsks). It mirrors the scheduler's fields and is never a promise of a date.
  */
 export type ACadence = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL' | 'ONE_TIME';
+
+/* How long a check-in takes, from its one owner (common/how-long-a-check-in-takes.ts). */
+const ABOUT = A_CHECK_IN_TAKES;
 
 const DAY_NAMES = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
 
@@ -23,33 +27,51 @@ function theDays(workingDays: number[] | null | undefined): string | null {
   return listed(days.map((d) => DAY_NAMES[d]));
 }
 
+/** "8am", "12pm", "4pm". */
+const anHour = (h: number) => `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? 'am' : 'pm'}`;
+
+/**
+ * THE INVITATION'S "FROM 4PM" AND TOPIC (Hafsah, 3 November 2026, word for word: "'From 4pm' and the topic in the invitation come from
+ * what setup already holds: the check-in's opening time and its name or purpose. If either isn't set, leave it out; don't guess.") The
+ * opening time is the schedule's own (theHourACheckInOpens), said only where a check-in opens at a set hour; the topic is the check-in's
+ * name. "About ten minutes each weekday, from 8am, for Deal progress."
+ */
 export function whenItAsks(g: {
   cadence: ACadence | string;
   cadenceAnchorDay?: number | null;
+  cadenceDays?: number[] | null;
   workingDays?: number[] | null;
   leadFirstName?: string | null;
+  /** The check-in's name, as the topic. Left out where there is none. */
+  label?: string | null;
 }): string {
   const lead = (g.leadFirstName ?? '').trim();
+  const hour = theHourACheckInOpens(String(g.cadence));
+  const from = hour == null ? '' : `, from ${anHour(hour)}`;
+  const topic = g.label?.trim() ? `, for ${g.label.trim().replace(/[.\s]+$/, '')}` : '';
+  const said = (rhythm: string) => `${ABOUT}${rhythm ? ` ${rhythm}` : ''}${from}${topic}.`;
   switch (g.cadence) {
     case 'DAILY': {
       const days = theDays(g.workingDays);
-      if (!days) return 'A short check-in each day.';
-      if (days === 'weekday') return 'A short check-in each weekday.';
-      return `A short check-in on ${days}.`;
+      if (!days) return said('each day');
+      if (days === 'weekday') return said('each weekday');
+      return said(`on ${days}`);
     }
     case 'WEEKLY': {
+      const often = timesAWeekInWords({ cadence: g.cadence, days: g.cadenceDays });
+      if (often) return said(often);
       const d = g.cadenceAnchorDay;
-      return Number.isInteger(d) && d! >= 0 && d! <= 6 ? `A short check-in every week, on ${DAY_NAMES[d!]}.` : 'A short check-in every week.';
+      return Number.isInteger(d) && d! >= 0 && d! <= 6 ? said(`every week, on ${DAY_NAMES[d!]}`) : said('every week');
     }
     case 'FORTNIGHTLY':
-      return 'A short check-in every two weeks.';
+      return said('every two weeks');
     case 'MONTHLY':
-      return 'A short check-in once a month.';
+      return said('once a month');
     case 'SEQUENTIAL':
-      return lead ? `A short check-in each time ${lead} checks in.` : 'A short check-in each time the person who runs it checks in.';
+      return said(lead ? `each time ${lead} checks in` : 'each time the person who runs it checks in');
     case 'ONE_TIME':
-      return 'One short check-in.';
+      return `One check-in, of ${ABOUT.toLowerCase()}${topic}.`;
     default:
-      return 'A short check-in.';
+      return said('');
   }
 }

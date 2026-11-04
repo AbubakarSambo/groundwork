@@ -61,10 +61,10 @@ function makeService(ground: Record<string, any>) {
   return { service, capturedSystemPrompts };
 }
 
-async function assembledPrompt(cadence: string | null) {
+async function assembledPrompt(cadence: string | null, cadenceDays: number[] = []) {
   const { service, capturedSystemPrompts } = makeService({
     id: 'g1', scenario: GroundScenario.NEW_PROJECT, label: 'Test Ground',
-    initiatorId: 'init-1', resolutionState: null, brief: null, cadence,
+    initiatorId: 'init-1', resolutionState: null, brief: null, cadence, cadenceDays,
   });
   await service.sendMessage('ci1', 'user-1', 'hello');
   return capturedSystemPrompts[0];
@@ -73,6 +73,10 @@ async function assembledPrompt(cadence: string | null) {
 describe('CADENCE-IN-PROMPT: the ground\'s actual cadence reaches the model', () => {
   it('WEEKLY renders as a plain-English cadence line', async () => {
     expect(await assembledPrompt('WEEKLY')).toMatch(/CADENCE: weekly/);
+  });
+
+  it('twice a week renders with its days (assessment test, 2 November)', async () => {
+    expect(await assembledPrompt('WEEKLY', [1, 4])).toMatch(/CADENCE: twice a week, on Monday and Thursday/);
   });
 
   it('FORTNIGHTLY renders as "every two weeks"', async () => {

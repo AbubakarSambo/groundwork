@@ -1,8 +1,8 @@
+import { useACheckInTakes } from '@/lib/how-long-setup-takes'
 import { FoldTheRest } from './FoldTheRest'
 import { AddToTheProject } from './AddToTheProject'
-import { TheSituationsNote, WhatEachSidePromised, TheRisks, WhatHappenedDayByDay, WhatKeepsBeingRaised, TheSituationsWorkPlan } from './TheSituationsSections'
+import { TheSituationsNote, WhatEachSidePromised, TheRisks, WhatHappenedDayByDay, WhatKeepsBeingRaised, TheSituationsWorkPlan, EachAccountSideBySide, KnownBelievedUnknown, whoAnsweredThisRound } from './TheSituationsSections'
 import { useMemo, useState, type ReactNode } from 'react'
-import { useTheDirectMorning } from '@/lib/the-direct-morning'
 import { WhatIsClosing } from './TheMorningOnTheBoard'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -21,7 +21,7 @@ import { howARowReads, isFinished, type ListRow } from '@/pages/grounds/how-a-ro
 import {
   HeadlineAndGap, WhatTheTargetAssumes, WhatNeedsYou, EveryDealDayByDay, TheTeamToday, Blockers, WhatKeepsComingUp,
   ReportedAgainstCriteria, WhoCheckedIn, TheOpenDeal, Reports, HelpNobodyMentioned, WaitingOnOtherTeams, OpenIssues, WhereThisIsHeading,
-  AskAboutThisBoard, GroundworkRecommends, dealsByGroup, isoDay, type PicturedBoardProps,
+  GroundworkRecommends, dealsByGroup, isoDay, type PicturedBoardProps,
 } from './ThePicturedSalesBoard'
 import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 import './pictured-board.css'
@@ -38,7 +38,7 @@ type Any = any
 export type APicturedSection =
   | 'lastSession' | 'headline' | 'closing' | 'assumes' | 'needsYou' | 'deals' | 'agreedAtTheStart' | 'changeSinceLast' | 'ninetyDays'
   | 'history' | 'bothSeeIt' | 'teamToday' | 'blockers' | 'patterns' | 'reported' | 'whoCheckedIn' | 'overTime' | 'reports'
-  | 'everySession' | 'otherBoards' | 'help' | 'otherTeams' | 'openIssues' | 'heading' | 'ask' | 'recommends' | 'otherRecords' | 'kindOfWork' | 'yourTeam'
+  | 'everySession' | 'otherBoards' | 'help' | 'otherTeams' | 'openIssues' | 'heading' | 'recommends' | 'otherRecords' | 'kindOfWork' | 'yourTeam'
   | 'participantNote' | 'priorities' | 'yourPart' | 'teamReport' | 'companyBoard' | 'template'
   | 'plan' | 'money' | 'stakeholders' | 'projectComingUp' | 'offTrack'
   | 'theDecision' | 'accounts' | 'knownBelievedUnknown'
@@ -272,15 +272,6 @@ function TheTeamsReport({ b, groundId, sessionRows, leadFirstName, heading }: { 
 
 /* ------------------------------------------------------------------ a decision worked through (supplier-board.jpg) */
 
-const wordsOf = (text: string) => String(text ?? '').replace(/^[^"“]*?said,\s*/i, '').replace(/^["“]|["”]$/g, '').trim()
-
-function whoAnsweredThisRound(b: Any): { answered: Set<string>; open: number | null } {
-  const grid = b.checkInGrid
-  const last = (grid?.sessions ?? []).slice(-1)[0]
-  const answered = new Set<string>((grid?.rows ?? []).filter((r: Any) => last != null && r.cells?.[String(last)] === 'done').map((r: Any) => r.participantId))
-  return { answered, open: last ?? null }
-}
-
 /** "The decision": the question it is about, and how many have answered on their own so far. */
 function TheDecision({ b }: { b: Any }) {
   const question = b.endState ?? b.divergence?.centralQuestion ?? null
@@ -294,64 +285,6 @@ function TheDecision({ b }: { b: Any }) {
       <p className="pb-answer" style={{ margin: '6px 0 8px', fontSize: 24 }}>{question}</p>
       <p className="gwui-panel-text">{`Each person answered on their own before any discussion. ${answered.size} of ${people.length} so far${missing.length ? `; ${missing.join(' and ')} ${missing.length === 1 && missing[0] !== 'you' ? 'hasn’t' : 'haven’t'} answered.` : '.'}`}</p>
     </Panel>
-  )
-}
-
-/** "Each account, side by side": each person's own view, in their own words, as they gave it. */
-function EachAccountSideBySide({ b }: { b: Any }) {
-  const { answered } = whoAnsweredThisRound(b)
-  /* Those who have answered first, as pictured. */
-  const people: Any[] = (b.participants ?? []).filter((x: Any) => !x.managingOnly).sort((a: Any, c: Any) => Number(!answered.has(a.id)) - Number(!answered.has(c.id)))
-  const linesOf = (pid: string): Any[] => ((b.whoOwnsWhat ?? []).find((w: Any) => w.participantId === pid)?.items ?? [])
-  if (people.length < 2) return null
-  return (
-    <Section heading="Each account, side by side" note="Nobody saw the others’ before answering">
-      <div className="pb-cards3">
-        {people.map((x) => {
-          /* Their view: what they said they want, which the board sends with no kind or as an intent, in their own words. */
-          const view = linesOf(x.id).filter((i) => (i.type == null || i.type === 'INTENT' || i.type === 'SUCCESS_DEFINITION') && i.mark !== 'proven' && /said,/.test(i.text ?? '')).map((i) => wordsOf(i.text)).join(' ')
-          const isIn = answered.has(x.id)
-          return (
-            <Panel key={x.id}>
-              <div className="pb-card-top">
-                <b>{x.id === b.myParticipantId ? 'You' : firstName(x.name)}{x.role ? `, ${String(x.role).toLowerCase()}` : ''}</b>
-                <Tag tone={isIn ? 'proven' : 'attention'}>{isIn ? 'In' : 'Waiting'}</Tag>
-              </div>
-              {isIn
-                ? (view ? <p className="pb-read" style={{ marginTop: 10 }}>{`“${view}”`}</p> : <p className="gwui-panel-text">Answered, with no view of the decision on record.</p>)
-                : <p className="gwui-panel-text" style={{ marginTop: 10 }}>Hasn’t answered yet.</p>}
-            </Panel>
-          )
-        })}
-      </div>
-    </Section>
-  )
-}
-
-/** "What’s known, believed and unknown": what a document shows, what somebody said, and what is still to find out. */
-function KnownBelievedUnknown({ b, unknown, leadFirstName }: { b: Any; unknown: string[]; leadFirstName: string | null }) {
-  const all: Any[] = (b.whoOwnsWhat ?? []).flatMap((w: Any) => (w.items ?? []).map((i: Any) => ({ ...i, who: w.name })))
-  const known = all.filter((i) => i.mark === 'proven' && i.type !== 'INTENT' && /said,/.test(i.text ?? '')).map((i) => wordsOf(i.text))
-  const believed = all.filter((i) => i.mark !== 'proven' && /said,/.test(i.text ?? '') && (i.type === 'WORRY' || i.type === 'TENSION' || i.type === 'PROGRESS')).map((i) => `${wordsOf(i.text)} (${i.who === 'You' ? 'your' : `${firstName(i.who)}’s`} word; nothing on record backs it yet)`)
-  if (!known.length && !believed.length && !unknown.length) return null
-  const { answered } = whoAnsweredThisRound(b)
-  const people: Any[] = (b.participants ?? []).filter((x: Any) => !x.managingOnly)
-  const waitingFor = people.filter((x) => !answered.has(x.id)).map((x) => firstName(x.name))
-  return (
-    <Section heading="What’s known, believed and unknown">
-      <div className="pb-cards3">
-        {[['Known', known, 'pb-k-known'], ['Believed', believed, 'pb-k-believed'], ['Unknown', unknown, 'pb-k-unknown']].map(([h, l, cls]) => (
-          <div key={h as string} className="pb-kbu">
-            <b className={cls as string}>{h as string}</b>
-            {(l as string[]).length ? (l as string[]).map((t) => <p key={t}>{t}</p>) : <p className="pb-sub">Nothing yet.</p>}
-          </div>
-        ))}
-      </div>
-      <div className="pb-decides">
-        <b>{`For ${b.canEditFrame ? 'you' : leadFirstName ?? 'the person who runs it'} to decide${waitingFor.length ? ` once ${waitingFor.join(' and ')}’s account is in` : ''}.`}</b>
-        <p>The board lays out the accounts and what’s known. It doesn’t choose.</p>
-      </div>
-    </Section>
   )
 }
 
@@ -390,13 +323,9 @@ export function TheOtherBoardsYouAreIn({ groundId }: { groundId: string }) {
  * the board says they saw it first: a pattern the lead reads only because a week went by is not said to
  * have been told to anybody.
  */
-function TheSuggestion({ b, groundId, personId }: { b: Any; groundId: string; personId: string | null }) {
-  const person = (b.participants ?? []).find((x: Any) => x.id === personId)
-  const first = firstName(person?.name)
-  const told = (b.patterns ?? [])
-    .filter((x: Any) => x.participantId === personId && x.whatHappened && first && String(x.whoSeesIt ?? '').startsWith(`${first} saw this first`))
-    .map((x: Any) => `${first} was also told, on ${first}’s own board: ${String(x.whatHappened).charAt(0).toLowerCase()}${String(x.whatHappened).slice(1)}`)
-  return <div className="pb-suggestion"><SuggestionsForTheLead groundId={groundId} where="board" alsoTold={told} /></div>
+function TheSuggestion({ groundId }: { b: Any; groundId: string; personId: string | null }) {
+  /* F5: the served pattern no longer carries a sentence about who sees it, so nothing here reads one. */
+  return <div className="pb-suggestion"><SuggestionsForTheLead groundId={groundId} where="board" /></div>
 }
 
 /** "Open Daniel’s case": everything this board serves the lead about the one person, on their own page. */
@@ -756,15 +685,15 @@ function AgreedOnDayOneAndSetUpApart({ b, personId }: { b: Any; personId: string
 
 /** What the lead still has to do before the board can fill in, each from the record. */
 function TheFirstSteps({ b, groundId }: { b: Any; groundId: string }) {
-  /* The direct morning (lib/the-direct-morning.tsx): the same short estimate the check-in itself gives. */
-  const direct = useTheDirectMorning()
+  /* How long a check-in takes, from the server's one owner (lib/how-long-setup-takes.ts), the same with the direct morning on or off. */
+  const takes = useACheckInTakes()
   const mine = (b.checkInGrid?.rows ?? []).find((r: Any) => r.participantId === b.myParticipantId)
   const cells = Object.values(mine?.cells ?? {}) as string[]
   const iHaveAnswered = cells.includes('done')
   const invited = (b.participants ?? []).filter((x: Any) => x.id !== b.myParticipantId && !x.managingOnly).length
   return (
     <EdgeList label="Getting started">
-      {!iHaveAnswered && <EdgeRow kind="decide" title="Your own check-in" detail={direct ? 'A few minutes' : 'About ten minutes'} actions={<Button kind="secondary" size="small" to={`/grounds/${groundId}`}>Open</Button>} />}
+      {!iHaveAnswered && <EdgeRow kind="decide" title="Your own check-in" detail={takes ?? undefined} actions={<Button kind="secondary" size="small" to={`/grounds/${groundId}`}>Open</Button>} />}
       <EdgeRow kind="decide" title="Say what it’s for, and what counts" detail="In your own words" actions={<Button kind="secondary" size="small" to={`/grounds/${groundId}?tab=context`}>Open</Button>} />
       <EdgeRow kind="decide" title="Add the people in it" detail={invited === 1 ? '1 invited' : `${invited} invited`} actions={<Button kind="secondary" size="small" to={`/grounds/${groundId}?tab=settings`}>Open</Button>} />
     </EdgeList>
@@ -806,8 +735,6 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
   const now = useMemo(() => new Date(), [])
   const deals = (b.workRecords ?? []).find((s: Any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: Any) => r.kind === 'deal')) ?? null
   const groups = dealsByGroup(deals)
-  const nextQuarterDeal = (groups['next-quarter'] ?? [])[0]
-  const example = nextQuarterDeal ? `Why is ${nextQuarterDeal.name} next quarter?` : 'Who is waiting on whom?'
   const draw: Record<APicturedSection, () => ReactNode> = {
     lastSession: () => <TheLastSessionIsDone b={b} groundId={p.groundId} />,
     headline: () => <HeadlineAndGap b={b} deals={deals} groups={groups} />,
@@ -833,7 +760,6 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     otherTeams: () => <WaitingOnOtherTeams groundId={p.groundId} />,
     openIssues: () => <OpenIssues b={b} renderActions={p.renderActions} />,
     heading: () => <WhereThisIsHeading b={b} onRecordTheDecision={p.onRecordTheDecision} />,
-    ask: () => <AskAboutThisBoard example={example} />,
     recommends: () => <GroundworkRecommends offers={p.recommendations} onAnswer={p.onAnswerRecommendation} busy={p.recommendationBusy} />,
     otherRecords: () => p.otherRecords,
     yourTeam: () => p.yourTeam,
@@ -893,7 +819,7 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
   }
   const at = p.foldAfter ? p.order.indexOf(p.foldAfter) : -1
   if (at >= 0) {
-    const open: APicturedSection[] = ['ask', 'recommends', 'kindOfWork']
+    const open: APicturedSection[] = ['recommends', 'kindOfWork']
     const head = p.order.slice(0, at + 1)
     const rest = p.order.slice(at + 1)
     return (

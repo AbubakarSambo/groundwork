@@ -76,8 +76,12 @@ export const THE_SITUATIONS: ASituation[] = [
   { scenario: 'OPEN_READ', situation: 'Work through something else', group: 'Open', on: ['accounts', 'picture', 'themes'], optional: ['timeline', 'change', 'blockers', 'risks', 'patterns', 'lead'] },
 ];
 
-/** The board's order for every situation: what was agreed and what was said first, then what moved, then what to do. */
-const THE_ORDER: ASituationSection[] = ['lead', 'targets', 'start', 'accounts', 'picture', 'themes', 'oblig', 'timeline', 'change', 'grid', 'plan', 'blockers', 'risks', 'patterns', 'grades'];
+/**
+ * The board's order for every situation (Hafsah's change 4 to the approved journey, 1 November 2026): where things stand against
+ * the target and what needs the lead first, then where people differ and what nobody knows yet, then what moved and the rest. What
+ * was agreed at the start is the lead's own setup words, so it is kept, further down, and no longer opens the board.
+ */
+const THE_ORDER: ASituationSection[] = ['targets', 'lead', 'accounts', 'picture', 'change', 'grid', 'themes', 'oblig', 'timeline', 'plan', 'blockers', 'risks', 'patterns', 'start', 'grades'];
 
 export const theSituation = (scenario: string | null | undefined): ASituation | null => THE_SITUATIONS.find((s) => s.scenario === scenario) ?? null;
 
@@ -128,6 +132,11 @@ export interface ASituationBoard {
 const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 const inAList = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
+/** An empty board says what will fill it (the approved journey, stage 10): "Nothing is on this board yet. Blockers appear here as your team's check-ins come in." */
+const theEmptyBoard = (what: string[]): string => (what.length
+  ? `Nothing is on this board yet. ${inAList(what).replace(/^./, (c) => c.toUpperCase())} ${what.length === 1 ? 'appears' : 'appear'} here as your team’s check-ins come in.`
+  : 'Nothing is on this board yet. It fills in after the first check-in.');
+
 /**
  * This situation's board for this reader, from the board already served to them. `runsIt` decides whether
  * "What needs you" is drawn: it is the lead's, never a participant's.
@@ -144,7 +153,7 @@ export function theSituationBoard(scenario: string, b: Record<string, any>, opts
     ? null
     : open
       ? 'Nothing is clear yet, so this board is empty. Each part appears here as soon as people’s check-ins give it something to show.'
-      : `Nothing is on this board yet. It fills in after the first check-in.`;
+      : theEmptyBoard(s.on.filter((k) => opts.runsIt || k !== 'lead').map((k) => lowerFirst(THE_SECTIONS[k].heading)));
   /* An open read names nothing in advance: nobody knows yet what it will need. */
   const stillToCome = open || !sections.length || !waiting.length ? null : `${inAList(waiting).replace(/^./, (c) => c.toUpperCase())} ${waiting.length === 1 ? 'appears' : 'appear'} here once a check-in gives ${waiting.length === 1 ? 'it' : 'them'} something to show.`;
   return { scenario: s.scenario, situation: s.situation, group: s.group, sections, stillToCome, empty };

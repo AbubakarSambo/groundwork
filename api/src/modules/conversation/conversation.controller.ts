@@ -68,6 +68,12 @@ export class ConversationController {
       .send(text);
   }
 
+  @Get(':id/opening-line')
+  @ApiOperation({ summary: 'The first line of the opening, from the record, for the screen to show while the check-in opens (owner only)' })
+  async openingLine(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.conversation.theOpeningLine(id, userId);
+  }
+
   @Post(':id/open')
   @ApiOperation({ summary: 'Open the check-in - the engine delivers the opening' })
   async open(@Param('id') id: string, @CurrentUser('id') userId: string) {

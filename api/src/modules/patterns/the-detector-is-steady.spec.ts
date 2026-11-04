@@ -14,7 +14,8 @@
  * measurement said:
  *
  * 1. Every check-in is read five times (READS_PER_CHECK_IN), each extraction call and the
- *    confirming call at the model's steadiest setting (PATTERN_DETECTION_STEADY_OPTIONS).
+ *    confirming call at the model's steadiest setting (PATTERN_DETECTION_STEADY_OPTIONS). Since
+ *    2 November 2026 each code is confirmed once per check-in, not once in every read.
  * 2. A code is written once at least three of the five reads (READS_THAT_MUST_AGREE) keep it, and
  *    not written when only two do. Since 1 October 2026, when two or three of five keep a code on a
  *    pattern not yet shown, five more reads are taken and it is decided on all ten, on the same line
@@ -152,6 +153,35 @@ describe('analyzeCheckIn reads a check-in five times, at the steady setting', ()
     for (const call of anthropic.respond.mock.calls as any[]) {
       expect(call[2]).toBe(PATTERN_DETECTION_STEADY_OPTIONS);
     }
+  });
+
+  /* 2 November 2026: the confirming call used to run inside every read, up to ten times a check-in for one code. */
+  it('a code all five reads kept is confirmed once, not five times', async () => {
+    const prisma = buildPrisma();
+    const anthropic = buildAnthropic(5);
+    const svc = buildService(prisma, anthropic);
+    svc.observe = jest.fn(async () => {});
+    svc.observePositive = jest.fn(async () => {});
+
+    await svc.analyzeCheckIn('check-1');
+
+    expect(anthropic.respond).toHaveBeenCalledTimes(1);
+    expect((anthropic.respond.mock.calls as any[])[0][1][0].content).toContain('read 1:');
+    expect(svc.observe).toHaveBeenCalledTimes(1);
+  });
+
+  it('a split code is confirmed once across all ten reads, and a code the verifier rejects is written from none of them', async () => {
+    const prisma = buildPrisma();
+    const anthropic = buildAnthropic(3, 'B1', 'read', 5);
+    anthropic.respond = jest.fn(async () => 'NO');
+    const svc = buildService(prisma, anthropic);
+    svc.observe = jest.fn(async () => {});
+    svc.observePositive = jest.fn(async () => {});
+
+    await svc.analyzeCheckIn('check-1');
+
+    expect(anthropic.respond).toHaveBeenCalledTimes(1);
+    expect(svc.observe).not.toHaveBeenCalled();
   });
 
   /* Changed 1 October 2026: three of five is now a split period, so the five more reads it brings

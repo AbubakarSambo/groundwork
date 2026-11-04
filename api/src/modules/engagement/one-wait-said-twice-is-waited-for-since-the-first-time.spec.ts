@@ -42,7 +42,7 @@ const AIM = { id: 'obj-120', name: 'Units sold by 30 October', target: 120, coun
 const BOARD = {
   decisions: [
     { question: 'Kevin Omondi is waiting on a decision on the quote for 4 units, so it needs deciding.', why: 'They cannot move until this is decided.', owner: 'Ngong Road Minimart', source: 'blocker' },
-    { question: 'People in this check-in said different things. A decision on a discount for a potential 10-unit sale is holding up progress. This needs settling.', why: 'What people said about this does not match, so nobody can assume it is agreed.', owner: 'You', source: 'divergence' },
+    { question: 'People in this check-in said different things. A decision on a discount for a potential 10-unit sale is holding up progress. This needs settling.', why: 'What people said about this does not match.', owner: 'You', source: 'divergence' },
   ],
   leadActions: [{ id: 'the-stall-rule', kind: 'decision', text: 'No stall rule set yet' }],
   /* The board's own read of the difference, as served to Grace: what each person said about it. */

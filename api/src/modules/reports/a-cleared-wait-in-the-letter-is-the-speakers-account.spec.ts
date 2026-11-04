@@ -18,24 +18,25 @@ describe('a cleared wait on a colleague, in the weekly letter', () => {
   it('the lead reads Hassan\'s wait as his account, with the note and Amina\'s own words beside it', () => {
     const theirSide = theirSideOfIt(['Hassan', 'Hassan Mwenda'], AMINAS_LINES);
     const says = aHandoffThatCleared(
-      { fromParticipantId: 'p-hassan', onParticipantId: 'p-amina', onLabel: null, what: 'the stock from Kisumu', confirmed: false, note: 'Not backed: no attempt to unblock mentioned.', theirSide },
+      { fromParticipantId: 'p-hassan', onParticipantId: 'p-amina', onLabel: null, what: 'the stock from Kisumu', confirmed: false, note: '', theirSide },
       'Hassan Mwenda', 'Amina Otieno',
     );
-    expect(says).toBe('Hassan Mwenda said the work was waiting on Amina Otieno for the stock from Kisumu, and it is no longer waiting. Not backed: no attempt to unblock mentioned. Amina Otieno said, "I sent Hassan exactly what he ordered on Monday, 10 Plus and 10 Home kits, on DN-1203 on Tuesday, and 6 kits to Homa Bay on DN-1204."');
+    expect(says).toBe('Hassan Mwenda said the work was waiting on Amina Otieno for the stock from Kisumu, and it is no longer waiting. Amina Otieno said, "I sent Hassan exactly what he ordered on Monday, 10 Plus and 10 Home kits, on DN-1203 on Tuesday, and 6 kits to Homa Bay on DN-1204."');
     expect(says).not.toMatch(/is no longer waiting on Amina/);
   });
 
   it('Hassan reads it as his own account, with what he said he tried', () => {
+    /* Changed 3 November (Hafsah, F2: silence is never a finding): "Not backed: no attempt to unblock mentioned" is gone; the note is what they said they tried, in full, or nothing. */
     const says = aHandoffThatCleared(
-      { fromParticipantId: 'p-hassan', onParticipantId: 'p-amina', onLabel: null, what: 'the right kit mix', confirmed: false, note: 'Tried: asked her three times, I messaged Amina on Thursday about it.' },
+      { fromParticipantId: 'p-hassan', onParticipantId: 'p-amina', onLabel: null, what: 'the right kit mix', confirmed: false, note: 'You said on Thursday 29 October, “I messaged Amina on Thursday about it.”' },
       'You', 'Amina Otieno',
     );
-    expect(says).toBe('You said the work was waiting on Amina Otieno for the right kit mix, and it is no longer waiting. Tried: asked her three times, I messaged Amina on Thursday about it.');
+    expect(says).toBe('You said the work was waiting on Amina Otieno for the right kit mix, and it is no longer waiting. You said on Thursday 29 October, “I messaged Amina on Thursday about it.”');
   });
 
   it('a week kept before the field existed reads as the speaker\'s account too, never as a fact about the colleague', () => {
     const says = aHandoffThatCleared({ fromParticipantId: 'p-hassan', onParticipantId: 'p-amina', onLabel: null, what: 'the stock from Kisumu' }, 'Hassan Mwenda', 'Amina Otieno');
-    expect(says).toBe('Hassan Mwenda said the work was waiting on Amina Otieno for the stock from Kisumu, and it is no longer waiting. Not backed: no attempt to unblock mentioned. Hassan Mwenda could have messaged Amina Otieno, asked again, or raised it with the lead.');
+    expect(says).toBe('Hassan Mwenda said the work was waiting on Amina Otieno for the stock from Kisumu, and it is no longer waiting.');
   });
 
   it('a wait the colleague confirmed, and a wait on something outside the check-in, read as before', () => {

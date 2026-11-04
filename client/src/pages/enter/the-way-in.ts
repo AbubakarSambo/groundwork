@@ -1,3 +1,5 @@
+import { SETUP_TAKES } from '@/lib/how-long-setup-takes'
+
 /*
  * THE WAY INTO A NEW CHECK-IN, IN THE PROTOTYPE'S OWN WORDS (U.6, B1).
  *
@@ -7,23 +9,20 @@
  * one is listed in docs/morning-report-ui.md.
  */
 
-/** start.txt: the first screen someone signed out meets. */
-export const THE_DOOR_SIGNED_OUT = {
+/**
+ * start.txt: the way in, for everybody (F5, the approved target journey, stage 1). A lead who has just made the organisation meets
+ * the same screen as somebody signed out: one question, the examples as buttons that fill the box, one button. "Describe it in your
+ * own words" and the sentence about pressing send are gone, and there is no example text in the box, so no example can ever be kept
+ * as something the lead said. How long it takes is the measured figure (how-long-setup-takes.ts), not "about two minutes".
+ */
+export const THE_DOOR = {
   heading: 'What do you need updates on, or want to track?',
-  help: 'A goal, a new hire, a decision. Describe it and we’ll set it up in about two minutes.',
-  placeholder: 'For example: our sales targets this quarter',
+  help: `A goal, a new hire, a decision. Describe it and we’ll set it up in ${SETUP_TAKES}.`,
   button: 'Continue',
 } as const
 
-/** new.txt: the same moment for someone signed in. */
-export const THE_DOOR_SIGNED_IN = {
-  crumbs: ['Check-ins', 'New check-in'],
-  heading: 'Set up a check-in',
-  help: 'Describe it in your own words. Nothing is sent to anyone until you press send.',
-  question: 'What do you want your team to check in about?',
-  placeholder: 'For example: our sales targets this quarter',
-  button: 'Send',
-} as const
+/** new.txt: where a signed-in lead is, above the same words. */
+export const THE_DOOR_CRUMBS = ['Check-ins', 'New check-in'] as const
 
 /** start.txt: the five examples. Pressing one puts its words in the box, to change or send. */
 export const THE_EXAMPLES = [

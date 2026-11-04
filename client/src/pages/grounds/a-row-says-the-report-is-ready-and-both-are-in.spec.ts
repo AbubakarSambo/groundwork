@@ -1,5 +1,6 @@
 import { it, expect } from 'vitest'
 import { howARowReads, type ListRow } from './how-a-row-reads'
+import { aServedCount } from '@/lib/a-served-count-for-a-spec'
 
 /**
  * WHAT A CHECK-IN NEEDS, AS THE CHECK-INS LIST AND EVERY BOARD'S "THE OTHER BOARDS YOU’RE IN" SAY IT (check-ins.jpg,
@@ -18,7 +19,11 @@ const SALES: ListRow = {
   ],
   roundsDone: 37,
   report: { releasedSessions: Array.from({ length: 37 }, (_, i) => i + 1) },
-}
+  /* The server's one count, as the list serves it (api this-sessions-count.ts; Hafsah, 30 October 2026). */
+  glance: { progress: { answeredThisRound: 1, ofPeople: 2, waitingOn: ['p-o'] } },
+  /* And who has answered each session, as the list serves it (wip/assessment's one count), which the row's waiting state reads. */
+  theCount: aServedCount({ 38: { on: ['p-a', 'p-o'], answered: ['p-a'] } }),
+} as ListRow
 
 it('Wairimu reads that today’s report is ready, not who it waits on', () => {
   expect(howARowReads(SALES, 'u-w', NOW).needs).toEqual({ text: 'Today’s report ready', tone: 'proven' })

@@ -36,7 +36,9 @@ const FULL_SOURCE = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
    check-in phase's own composer") rather than this one - since rebuilt, and covered by
    the-entry-chats-everything-else-is-rebuilt.spec.tsx's own range instead. This range stays as it
    was scoped, so a later edit above it cannot silently widen what this file checks. */
-const QUICK_ACTIONS_START = FULL_SOURCE.indexOf('{/* Natural close prompt */}')
+/* The natural close card and the quick-action chips are gone (Hafsah, 3 November evening); the range now starts at the file input the
+   box's "+" opens, which is what is left of the attach row. */
+const QUICK_ACTIONS_START = FULL_SOURCE.indexOf('{/* The file the "+" in the box opens')
 const QUICK_ACTIONS_END = FULL_SOURCE.indexOf('{/* Input bar / save CTA */}')
 if (QUICK_ACTIONS_START === -1 || QUICK_ACTIONS_END === -1 || QUICK_ACTIONS_END <= QUICK_ACTIONS_START) {
   throw new Error('the 4d-2 source range markers moved - update this spec to find the new ones')
@@ -135,13 +137,16 @@ function seedCheckInSession(extra: Record<string, unknown> = {}) {
 
 beforeEach(() => { localStorage.clear(); authedUser = null })
 
+/* Changed 3 November evening (Hafsah: no suggested answers or extra boxes): the chips are gone; attaching is the "+" in the box, and
+   End session is in the header. */
 describe('the quick-action chip row, once a check-in is under way', () => {
-  it('shows the chips and the attach chip, with one navy button at most', async () => {
+  it('is gone: no chips, the "+" in the box attaches, End session is in the header, one navy button at most', async () => {
     seedCheckInSession()
     const { container } = renderPage()
     await waitFor(() => expect(screen.getAllByText('Once, in July. Not formally.').length).toBeGreaterThan(0))
-    expect(screen.getByText('Attach a document')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Patterns' })).toBeTruthy()
+    expect(screen.queryByText('Attach a document')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Patterns' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Add a document or a photo' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'End session' })).toBeTruthy()
     expectAtMostOnePrimaryButton(container)
   })

@@ -1,4 +1,3 @@
-import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { randomBytes } from 'crypto';
@@ -9,7 +8,7 @@ import { GroundworkEvents, RoundCompletedEvent } from '../../common';
 import { mayNotSend, digestSubject, digestBody, DigestFacts } from './nothing-lands-at-3am';
 
 /** Said to an unknown unsubscribe token, in place of an error. */
-export const NOT_A_LINK_WE_KNOW = 'That link is not one we recognise, which usually means these emails have already stopped. If any still arrive, reply to one and we will stop them by hand.';
+export const NOT_A_LINK_WE_KNOW = 'That link is not one I recognise, which usually means these emails have already stopped. If any still arrive, reply to one and I will stop them by hand.';
 
 /**
  * ONE MAIL PER ROUND, TO THE PEOPLE WHO WANT IT, IN THEIR OWN HOURS.
@@ -83,8 +82,6 @@ export class RoundDigestService {
         permalink: `${this.appUrl().replace(/\/$/, '')}/grounds/${e.groundId}`,
       };
 
-      /* The direct morning's switch for this check-in's organisation, read once for the round (a-direct-email.ts). */
-      const direct = await theDirectMorningIsOn(this.prisma, ground.organizationId);
       for (const p of ground.participants) {
         if (!p.email) continue;
         /*
@@ -112,7 +109,7 @@ export class RoundDigestService {
         await this.email.sendRoundDigest(
           p.email,
           digestSubject(facts),
-          digestBody(facts, `${this.appUrl().replace(/\/$/, '')}/unsubscribe/${prefs.unsubscribeToken}`, direct),
+          digestBody(facts),
         );
       }
     } catch (err: any) {

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReferencesAndResourcesPage } from './ReferencesAndResources'
 import { groundsApi } from '@/api/grounds'
-import { theContextTabsName } from '@/lib/the-references-tab'
+import { groundTabs, checkInHeaderTabs } from './ground-tabs'
 
 /**
  * REFERENCES AND RESOURCES, AS EACH READER READS IT (Release 1B, pull request 2 of 3). The sales check-in of the B6 pictures,
@@ -185,18 +185,11 @@ describe('Kevin, a team member, never reads People, and cannot add', () => {
   })
 })
 
-describe('with the switch off', () => {
-  it('the tab keeps the name it had, and is renamed only where the switch is on', () => {
-    expect(theContextTabsName({ release1bTabsOn: false }, 'Context and resources')).toBe('Context and resources')
-    expect(theContextTabsName(null, 'Documents')).toBe('Documents')
-    expect(theContextTabsName({ release1bTabsOn: true }, 'Context and resources')).toBe('References and resources')
-  })
-
-  it('the page draws nothing when the server says the switch is off', async () => {
-    ;(groundsApi.referencesAndResources as any).mockResolvedValue({ on: false })
-    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const { container } = render(<QueryClientProvider client={qc}><MemoryRouter><ReferencesAndResourcesPage groundId="g-sales" ground={GROUND} isTheLead /></MemoryRouter></QueryClientProvider>)
-    await waitFor(() => expect(groundsApi.referencesAndResources).toHaveBeenCalled())
-    await waitFor(() => expect(container.textContent).toBe(''))
+describe('the tab has one name for everybody (release batch 1, 4 November 2026: the switch is gone)', () => {
+  it('says "References and resources" on the check-in page and the report pages, for the lead and for a team member', () => {
+    for (const who of [{ canRunThisCheckIn: true, isAParty: false }, { canRunThisCheckIn: false, isAParty: true }]) {
+      expect(groundTabs(who).find((t) => t.key === 'context')!.label).toBe('References and resources')
+      expect(checkInHeaderTabs({ id: 'g-sales', ...who }).find((t) => t.key === 'context')!.label).toBe('References and resources')
+    }
   })
 })

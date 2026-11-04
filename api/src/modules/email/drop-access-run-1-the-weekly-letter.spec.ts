@@ -76,8 +76,8 @@ describe('item 17: the week counts the check-ins made', () => {
 
 describe('item 18: what Joseph tried is said in full, from the record, or nothing', () => {
   it('his words of 23 October, with the day: never "Not backed: ... could have messaged you"', () => {
-    expect(whatTheyTriedInFull({ what: ON_GRACE[2].what, triedSaid: ON_GRACE[2].triedSaid, createdAt: ON_GRACE[2].createdAt }, 'Joseph')).toBe('Joseph said on Friday 23 October, “I\'ve asked Grace about the price.”');
-    expect(whatTheyTriedInFull({ what: 'the final prices', triedSaid: null }, 'Kennedy')).toBe('');
+    expect(whatTheyTriedInFull({ triedSaid: ON_GRACE[2].triedSaid, createdAt: ON_GRACE[2].createdAt }, 'Joseph')).toBe('Joseph said on Friday 23 October, “I\'ve asked Grace about the price.”');
+    expect(whatTheyTriedInFull({ triedSaid: null }, 'Kennedy')).toBe('');
   });
 });
 
@@ -113,7 +113,8 @@ describe('with Release 1\'s switch off for the organisation, the letter reads as
     expect(w.releaseOne).toBeUndefined();
     const letter = theLeadsLetter([{ ...w, toDo: THE_REPORTS_TO_DO }])!;
     expect(letter.lines[1]).toBe('This week, 13 of the 15 check-ins were made. Joseph missed two of five. Four people said what they will do next. Five things people said they would do were done. 25 handoffs are still waiting.');
-    expect(letter.lines.join('\n')).toMatch(/Not backed|Tried:/);
+    /* Changed 3 November (Hafsah, F2: silence is never a finding): "Not backed: no attempt to unblock mentioned" is gone everywhere, switch on or off. */
+    expect(letter.lines.join('\n')).not.toMatch(/Not backed|could have messaged/);
   });
   it('a subject says each count as before: "Ten things ...; 14 handoffs"', () => {
     const base = { groundId: G.id, label: G.label, ofHowMany: 4, checkedIn: 4, notYet: [], saidWhatNext: 4 };

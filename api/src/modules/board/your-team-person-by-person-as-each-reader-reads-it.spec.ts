@@ -156,9 +156,6 @@ describe('who is served it, and the switches', () => {
   it('a team member is served none of it', async () => {
     expect(await teamOf('drop', { reader: thePersonOf('drop', 'Kevin').userId })).toBeNull();
   });
-  it('with the direct morning off, nobody is served it', async () => {
-    expect(await teamOf('drop', { directMorning: false })).toBeNull();
-  });
   it('with judgements of a person off, no line on where they stand and no record or coaching is built or served; what they won still is', async () => {
     const t: any = await teamOf('drop', { judgements: false });
     for (const p of t.people) {
@@ -201,13 +198,10 @@ const PETER = thePersonOf('drop', 'Peter');
 const josephsItem = (name: string) => (R2.drop.items as any[]).find((i) => i.name === name && i.ownerParticipantId === JOSEPH.participantId);
 
 describe('the one-tap actions', () => {
-  it('only the lead who runs it may tap one, and only with the direct morning on', async () => {
+  it('only the lead who runs it may tap one', async () => {
     const a = aDatabaseForTheActions();
     await expect(theLeadActsOnAPerson(a.db, a.write, DROP, JOSEPH.participantId, MERCY.userId, { kind: 'praise', text: 'Well done.' })).rejects.toBeInstanceOf(ForbiddenException);
-    const off = aDatabaseForTheActions({ directMorning: false });
-    await expect(theLeadActsOnAPerson(off.db, off.write, DROP, JOSEPH.participantId, GRACE, { kind: 'praise', text: 'Well done.' })).rejects.toBeInstanceOf(ForbiddenException);
     expect(a.kept).toEqual([]);
-    expect(off.kept).toEqual([]);
   });
 
   it('praise is kept in Mercy’s record, and Mercy reads it on My work and in her own report; Grace reads what she did on the board', async () => {

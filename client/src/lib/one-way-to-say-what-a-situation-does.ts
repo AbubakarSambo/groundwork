@@ -19,20 +19,6 @@ export const DESCRIBE_YOUR_OWN = 'Describe it in your own words'
 export const OR_CHOOSE_A_SITUATION =
   'choose a situation to set the context for what you want people to check in on or provide updates about'
 
-/**
- * AND ONE EXAMPLE OF WHAT "IN YOUR OWN WORDS" LOOKS LIKE.
- *
- * "Describe it in your own words" is an empty box and an instruction, which is the hardest thing
- * to answer in the whole product: somebody who has never used this has no idea how much to write,
- * how specific to be, or whether a number belongs in it. One worked sentence answers all three
- * without telling anybody what their situation is.
- *
- * Her own example, and it is deliberately not a software goal: this product is used to buy
- * chickens and to sell tea as often as it is used to ship features.
- */
-export const WHAT_THAT_SOUNDS_LIKE =
-  'For example: I am setting a goal for my team to procure 300 organic chickens from Kaduna by 31 March, and I need Sahar and Amina to each own part of it.'
-
 /** The whole invitation, for a surface that opens on it. */
 export const HOW_A_SITUATION_IS_CHOSEN = `${DESCRIBE_YOUR_OWN}, or ${OR_CHOOSE_A_SITUATION}.`
 

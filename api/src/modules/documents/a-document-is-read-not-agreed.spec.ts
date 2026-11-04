@@ -8,7 +8,7 @@ import { whatWasRecordedFromADocument } from './what-was-recorded-from-a-documen
  *
  * Driven in the browser, 22 September 2026. A sheet of Q4 targets was attached in the middle of a
  * check-in. Nineteen rows appeared on the record - three for the team, three each for two people -
- * and the conversation then said: "Here is the context we have from harvestline-q4-targets.xlsx...
+ * and the conversation then said: "Here is what I took from harvestline-q4-targets.xlsx...
  * Is that right?"
  *
  * The question was about something already done. A target is the yardstick somebody is read against,
@@ -71,7 +71,7 @@ describe('a document is read, not agreed', () => {
     /* Changed 4 October 2026: a long paste from the lead is told where it can be put, in the same place
        (a-long-paste-from-the-lead-has-a-better-door). The document's numbers are still first. */
     /* Changed 5 October 2026: the anchor's offer answer (request 149) is said after them; the document's numbers are still first. */
-    expect(CONVO).toContain('[contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay, withRoomLeft].filter(Boolean)');
+    expect(CONVO).toContain('[contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay, theReplyItself].filter(Boolean)');
     /*
      * The screen streams. Wiring only the non-streaming path meant a lead said yes in the browser,
      * read "Great. What moved this week?", and nothing was written - found by doing it, not by

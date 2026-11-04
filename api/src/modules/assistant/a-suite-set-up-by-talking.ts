@@ -3,6 +3,7 @@ import { CURRENCIES, checkAnswers, suiteOf } from '../suites/the-ten-suites';
 import { changeDuties, type Duties } from '../suites/who-holds-each-duty';
 import { changeWorkflows } from '../suites/the-approval-steps';
 import { changeLeaveRules, moreThanWorkingDays } from '../suites/the-leave-rules';
+import { changeSpendRules } from '../suites/the-spending-rules';
 import { WEEKDAYS, changeTimeRules, type Weekday } from '../suites/the-time-sheet-rules';
 
 /**
@@ -1003,6 +1004,17 @@ export interface WhatToWrite {
   workflows: Record<string, unknown> | null;
   leaveRules: Record<string, unknown> | null;
   timeRules: Record<string, unknown> | null;
+  /** Spending: who approves, as its steps by amount, the one place that says it (the-spending-rules.ts). */
+  spendRules: Record<string, unknown> | null;
+}
+
+/** The steps by amount a spending set-up says: below the limit its own steps when they are not just the manager, and above it the steps above. */
+export function theSpendingRowsOf(plan: Pick<Plan, 'steps' | 'limit' | 'stepsAbove'>): { above: number; steps: Step[] }[] {
+  const justTheManager = !plan.steps?.length || (plan.steps.length === 1 && plan.steps[0][0] === 'manager');
+  const rows: { above: number; steps: Step[] }[] = [];
+  if (!justTheManager) rows.push({ above: 0, steps: plan.steps as Step[] });
+  if (typeof plan.limit === 'number' && plan.stepsAbove?.length) rows.push({ above: plan.limit, steps: plan.stepsAbove as Step[] });
+  return rows.filter((r, i) => !rows.slice(i + 1).some((x) => x.above === r.above));
 }
 
 /**
@@ -1047,8 +1059,8 @@ export function whatToWrite(plan: Plan, known: WhatIsKnown): WhatToWrite | null 
 
   let workflows: Record<string, unknown> | null = null;
   if (plan.suite !== 'reviews') {
-    const w: Record<string, unknown> = { steps: plan.steps, escalateAfter: plan.escalateAfter ?? null };
-    if (plan.suite === 'spend') w.stepsAbove = plan.stepsAbove ?? null;
+    /* Spending keeps only its days in the workflows: who approves it is its steps by amount. */
+    const w: Record<string, unknown> = plan.suite === 'spend' ? { escalateAfter: plan.escalateAfter ?? null } : { steps: plan.steps, escalateAfter: plan.escalateAfter ?? null };
     workflows = { [plan.suite]: w };
     if ('refused' in changeWorkflows({}, workflows)) return null;
   }
@@ -1064,17 +1076,22 @@ export function whatToWrite(plan: Plan, known: WhatIsKnown): WhatToWrite | null 
     timeRules = { every: 'week', hoursAWeek: plan.hoursAWeek ?? null, cutOff: plan.cutOff ?? null };
     if ('refused' in changeTimeRules({}, timeRules, { people, teams: new Set(known.teams), clients: plan.clients ?? [] })) return null;
   }
-  return { answers, duties: hasDuties ? duties : null, workflows, leaveRules, timeRules };
+  let spendRules: Record<string, unknown> | null = null;
+  if (plan.suite === 'spend') {
+    const rows = theSpendingRowsOf(plan);
+    spendRules = { thresholds: rows.length ? rows : null };
+    if ('refused' in changeSpendRules({}, spendRules)) return null;
+  }
+  return { answers, duties: hasDuties ? duties : null, workflows, leaveRules, timeRules, spendRules };
 }
 
 /** What the services returned after the yes, read back as a plan, so the reply says what was stored. */
 export function planFromStored(suite: SetUpSuite, stored: {
   answers: Record<string, unknown>;
   steps?: Step[] | null;
-  stepsAbove?: Step[] | null;
   escalateAfter?: number | null;
   tellHr?: 'every' | 'approved' | null;
-  /** Leave by length as stored. The conversation sets one; the first is read back. */
+  /** Leave by length as stored, or spending's steps by amount. The conversation sets one for leave; the first is read back. */
   thresholds?: { above: number; steps: Step[] }[] | null;
   hoursAWeek?: number | null;
   cutOff?: { day: unknown; time: string } | null;
@@ -1086,7 +1103,15 @@ export function planFromStored(suite: SetUpSuite, stored: {
     const t = stored.thresholds?.[0];
     Object.assign(plan, { days: a.days, tellHr: stored.tellHr ?? null, longer: t ? { above: t.above, add: rulesOnly([...t.steps]), also: false } : null });
   }
-  if (suite === 'spend') Object.assign(plan, { currency: a.currency, limit: a.limit, stepsAbove: rulesOnly(stored.stepsAbove) });
+  if (suite === 'spend') {
+    /* Read back from the steps by amount: a row at nothing is the steps below the limit, the next row the limit and the steps above it. */
+    const rows = stored.thresholds ?? [];
+    const base = rows.find((r) => r.above === 0);
+    const above = rows.find((r) => r.above > 0);
+    Object.assign(plan, { currency: a.currency, limit: above?.above ?? a.limit, stepsAbove: rulesOnly(above?.steps) });
+    Object.assign(plan, { steps: rulesOnly(base?.steps) ?? [['manager', 'admin']], escalateAfter: stored.escalateAfter ?? null });
+    return plan;
+  }
   if (suite === 'time') Object.assign(plan, { clients: a.clients, hoursAWeek: stored.hoursAWeek ?? null, cutOff: stored.cutOff ?? null });
   if (suite === 'reviews') Object.assign(plan, { every: a.every, writer: a.writer });
   if (suite !== 'reviews') Object.assign(plan, { steps: rulesOnly(stored.steps), escalateAfter: stored.escalateAfter ?? null });

@@ -118,6 +118,9 @@ describe('every link the API puts in an email', () => {
      * to put it in front of somebody.
      */
     const src = withoutComments(path.join(__dirname, 'email.service.ts'));
+    const words = withoutComments(path.join(__dirname, 'the-direct-words.ts'));
+    const DIRECT_WORDS = new Map([...words.matchAll(/export function (\w+Directly)\(([\s\S]*?)\n\}/g)].map((m) => [m[1], m[2]] as [string, string]));
+    expect(DIRECT_WORDS.size).toBeGreaterThan(2);
     const methods = [...src.matchAll(/async (send[A-Za-z]+)\(([\s\S]*?)\): Promise<[^>]*> \{([\s\S]*?)\n  \}/g)];
     expect(methods.length).toBeGreaterThan(20);
 
@@ -126,7 +129,11 @@ describe('every link the API puts in an email', () => {
       const takesAUrl = /\b(\w*[Uu]rl)\s*[:?]/.test(args);
       if (!takesAUrl) continue;
       const urlNames = [...args.matchAll(/\b(\w*[Uu]rl)\s*[:?]/g)].map((m) => m[1]);
-      const usesOne = urlNames.some((u) => new RegExp(`href="\\$\\{${u}`).test(body));
+      /* Rendered here, or handed to one of the direct words (the-direct-words.ts) that renders a link with it. Changed 4 November 2026:
+         since the direct morning's switch went, these mails are written only there. */
+      const handedOn = (u: string) => [...body.matchAll(new RegExp(`\\b(\\w+Directly)\\(([^;]*?\\b${u}\\b[^;]*?)\\)`, 'g'))]
+        .some(([, helper]) => DIRECT_WORDS.has(helper) && /button\(|href="/.test(DIRECT_WORDS.get(helper)!));
+      const usesOne = urlNames.some((u) => new RegExp(`href="\\$\\{${u}`).test(body) || handedOn(u));
       if (!usesOne) silent.push(`${name} takes ${urlNames.join(', ')} and renders no link with it`);
     }
 

@@ -1,3 +1,4 @@
+import { aServedCount } from '@/lib/a-served-count-for-a-spec'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -37,7 +38,10 @@ function ground() {
       { id: 'c3', sessionNumber: 1, status: 'OPEN', participantId: 'p-b' },
     ],
     roundCompletions: [],
+    /* The server's one count (api this-sessions-count.ts; Hafsah, 30 October 2026): Hafsah answered, the two she invited have not. */
+    /* Changed 3 November (F1 part 2): one served count, theCount, in place of `thisSession` beside `answeredBySession`; the same sentences. */
     boardRenders: true,
+    theCount: aServedCount({ 1: { on: ['p-lead', 'p-a', 'p-b'], answered: ['p-lead'] } }, { session: 1, says: 'One of the three people has checked in for session 1.' }),
   }
 }
 

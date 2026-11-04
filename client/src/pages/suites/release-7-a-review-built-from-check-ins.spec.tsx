@@ -13,7 +13,7 @@ import { reviewsApi } from '@/api/suites'
 const REVIEW: any = {
   reader: 'writer', id: 'r-d', name: 'Daniel Okafor', firstName: 'Daniel', writtenWith: 'Wairimu Kamau', writtenWithFirstName: 'Wairimu', dueOn: '2026-10-01',
   noticed: [], managersWords: null, theirView: 'When the direction changed, I moved quickly', decision: null, mayWrite: true, record: null, recognise: null,
-  briefing: { heading: 'Before you talk', counts: [], patterns: [], patternsNote: null, changedAfterEarlierConversations: [], corrections: [], whoDecides: 'You decide.' },
+  briefing: { heading: 'Before you talk', counts: [], patterns: [], changedAfterEarlierConversations: [], corrections: [], whoDecides: 'You decide.' },
   asPictured: AS_PICTURED,
 }
 

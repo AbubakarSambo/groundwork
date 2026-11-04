@@ -160,7 +160,7 @@ function Suggested({ groundId, items, onDone }: { groundId: string; items: NonNu
   const failed = (e: any) => toast.error(e?.response?.data?.message ?? 'That didn’t save. Try again.')
   const add = useMutation({ mutationFn: (id: string) => groundsApi.confirmPlanCard(groundId, id, null), onSuccess: onDone, onError: failed })
   const dismiss = useMutation({ mutationFn: (id: string) => groundsApi.planCardNotNow(groundId, id), onSuccess: onDone, onError: failed })
-  const edit = useMutation({ mutationFn: (e: { id: string; says: string }) => groundsApi.editPlanCard(groundId, e.id, e.says), onSuccess: () => { setEditing(null); onDone() }, onError: failed })
+  const edit = useMutation({ mutationFn: (e: { id: string; says: string }) => groundsApi.editPlanCard(groundId, e.id, { says: e.says }), onSuccess: () => { setEditing(null); onDone() }, onError: failed })
   return (
     <Section heading="Suggested from your check-ins">
       <Stack gap={10}>

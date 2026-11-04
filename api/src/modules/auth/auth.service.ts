@@ -137,7 +137,7 @@ function goOnTo<T extends object>(res: T, kept: string | null | undefined): T & 
 export const YOUR_SIGN_UP_IS_NOT_FINISHED = 'You have not finished creating your account yet. We have emailed you the link again. Open it, say where you work, and then sign in with your password.';
 
 export const theConfirmationLinkWasSent = (email: string): string =>
-  `Check your email. We sent a link to ${email} to confirm it is yours. Open it on any device.`;
+  `Check your email. I sent a link to ${email} to confirm it is yours. Open it on any device.`;
 export const YOU_CAN_NO_LONGER_SIGN_IN_HERE =
   'You can no longer sign in here. Ask the person who added you if you need to get back in.';
 
@@ -413,7 +413,7 @@ export class AuthService {
           .catch((err) => this.logger.error(`Could not re-send an expired link to ${pending.email}: ${err?.message}`));
 
         throw new BadRequestException(
-          'That link had expired, so we have sent a new one to the same address. Nothing you wrote has been lost.',
+          'That link had expired, so I have sent a new one to the same address. Nothing you wrote has been lost.',
         );
       }
 
@@ -1111,7 +1111,7 @@ export class AuthService {
   }
 
   async memberSignin(dto: MemberSigninDto): Promise<{ message: string; email: string }> {
-    const message = 'We have sent a sign-in link to that address, if we know it. Check your email.';
+    const message = 'I have sent a sign-in link to that address, if I know it. Check your email.';
     const email = dto.email.toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || user.deletedAt || !user.isActive) return { message, email };
@@ -1152,7 +1152,7 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
-    const message = 'We have sent a link to choose a new password to that address, if we know it. Check your email.';
+    const message = 'I have sent a link to choose a new password to that address, if I know it. Check your email.';
     const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
     if (!user) return { message };
 
@@ -1382,7 +1382,7 @@ export class AuthService {
    */
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
-    if (!user) throw new BadRequestException('We could not find that sign-in, so sign in again and try once more.');
+    if (!user) throw new BadRequestException('I could not find that sign-in, so sign in again and try once more.');
     /* One builder. A field added to it cannot fail to reach this route now. */
     const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
     return {
@@ -1425,7 +1425,7 @@ export class AuthService {
 
   async userShapeFor(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
-    if (!user) throw new BadRequestException('We could not find that sign-in, so sign in again and try once more.');
+    if (!user) throw new BadRequestException('I could not find that sign-in, so sign in again and try once more.');
     const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
     return this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere);
   }
@@ -1705,9 +1705,9 @@ export class AuthService {
 
   /** Unknown and expired are told apart: one is a wrong link, the other is a slow one. */
   async redeemOAuthExchangeCode(code: string): Promise<{ accessToken: string }> {
-    if (!code?.trim()) throw new BadRequestException('That is not a sign-in code we issued.');
+    if (!code?.trim()) throw new BadRequestException('That is not a sign-in code I issued.');
     const row = await this.prisma.oAuthExchangeCode.findUnique({ where: { code } });
-    if (!row) throw new BadRequestException('That is not a sign-in code we issued.');
+    if (!row) throw new BadRequestException('That is not a sign-in code I issued.');
     /* Delete first: a second redeem racing this one finds nothing and is told the code is gone. */
     const gone = await this.prisma.oAuthExchangeCode.deleteMany({ where: { id: row.id } });
     if (gone.count === 0) throw new BadRequestException('That sign-in code has already been used. Sign in again.');
@@ -1729,7 +1729,7 @@ export class AuthService {
       where: { id: userId },
       select: { organizationId: true, role: true },
     });
-    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    if (!user) throw new NotFoundException('I could not find that sign-in, so sign in again and try once more.');
 
     /* Never one they are held out of for want of a seat (U.4 third review): they have not been told
        about it, so it is not theirs to see or switch to until the hold is cleared. */
@@ -1850,7 +1850,7 @@ export class AuthService {
    */
   async whereCanIJoin(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, isEmailVerified: true } });
-    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    if (!user) throw new NotFoundException('I could not find that sign-in, so sign in again and try once more.');
     const mine = await this.prisma.organizationMembership.findMany({ where: { userId }, select: { organizationId: true } });
     const inIt = new Set(mine.map((m) => m.organizationId));
     const domain = theDomainOf(user.email);
@@ -1922,7 +1922,7 @@ export class AuthService {
   /** "Join": by email domain, as "Takes part", through the seat check, then into it. */
   async joinByDomain(userId: string, organizationId: string, via: SignedInVia = 'password') {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, isEmailVerified: true } });
-    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    if (!user) throw new NotFoundException('I could not find that sign-in, so sign in again and try once more.');
     const domain = theDomainOf(user.email);
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true, name: true, joinDomain: true } });
     const allowed = !!org && !!domain && user.isEmailVerified && mayBeJoinedBy(domain) && org.joinDomain === domain;
@@ -1958,7 +1958,7 @@ export class AuthService {
       where: { id: userId },
       select: { id: true, email: true, firstName: true, lastName: true, organizationId: true },
     });
-    if (!user) throw new NotFoundException('We could not find that sign-in, so sign in again and try once more.');
+    if (!user) throw new NotFoundException('I could not find that sign-in, so sign in again and try once more.');
 
     /*
      * MORE THAN ONE OF YOUR OWN, AS THE PROTOTYPE HAS IT (Hafsah, 26 September). This used to refuse

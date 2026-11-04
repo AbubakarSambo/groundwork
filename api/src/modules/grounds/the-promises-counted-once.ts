@@ -47,3 +47,19 @@ export function thePromisesCounted(promises: readonly { status: string; explicit
   const notDone = theirs.filter((p) => p.status === 'NOT_DONE').length;
   return { said: theirs.length, kept, notDone, open: theirs.length - kept - notDone };
 }
+
+/**
+ * WHAT HAPPENED TO WHAT THEY SAID THEY WOULD DO, IN ONE PLAIN SENTENCE (plan round 32: Brian's own My work read "0/2 promises kept this
+ * month", a score on a person, from a count of its own). Said from the one count, everywhere it is said: My work and the You page.
+ * "You said you would do 6 things. 2 were not done, and 4 are still open."
+ */
+export function whatHappenedToThePromises(c: PromisesCounted): string {
+  if (!c.said) return 'Nothing you said you would do is on record yet.';
+  const parts = [
+    c.kept ? (c.kept === c.said ? (c.said === 1 ? 'It is done' : 'All of them are done') : `${c.kept} ${c.kept === 1 ? 'is' : 'are'} done`) : '',
+    c.notDone ? `${c.notDone} ${c.notDone === 1 ? 'was' : 'were'} not done` : '',
+    c.open ? (c.open === c.said ? (c.said === 1 ? 'It is still open' : 'All of them are still open') : `${c.open} ${c.open === 1 ? 'is' : 'are'} still open`) : '',
+  ].filter(Boolean);
+  const joined = parts.length <= 1 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+  return `You said you would do ${c.said === 1 ? 'one thing' : `${c.said} things`}. ${joined}.`;
+}

@@ -9,7 +9,7 @@ import { RULES_AN_ADMIN_MAY_SET, RULE_IN_WORDS, STEP_SUITES, WORKFLOWS_REFUSED, 
 import { theStepsFor, type Step } from './who-may-decide';
 import { saidAsADate } from './a-request-is-recorded';
 import { LEAVE_RULES_REFUSED, LEAVE_RULES_ROW, changeLeaveRules, leaveRulesFrom, theLeaveRulesSaid, type LeaveRules } from './the-leave-rules';
-import { SPEND_RULES_REFUSED, SPEND_RULES_ROW, changeSpendRules, spendRulesFrom, theSpendRulesSaid, type SpendRules } from './the-spending-rules';
+import { SPEND_RULES_REFUSED, SPEND_RULES_ROW, changeSpendRules, spendRulesFrom, theCardsAnswers, theSpendRulesSaid, withTheCardsAnswers, type SpendRules } from './the-spending-rules';
 import { TIME_RULES_REFUSED, TIME_RULES_ROW, changeTimeRules, timeRulesFrom, theTimeRulesSaid, type TimeRules } from './the-time-sheet-rules';
 
 /** The words the server says when it refuses, in plain full sentences. */
@@ -68,7 +68,7 @@ export interface TheDuties {
 }
 
 export const DUTIES_USED_FOR =
-  'Spending over what a manager may approve alone goes to three people in order. It goes first to whoever holds that team’s budget, then to whoever looks after finance, and last to the person named on the spending suite.';
+  'A request to spend goes to whoever its steps by amount name, on the spending page. Once it is approved, whoever looks after finance checks it, notes the receipt or quote, and records it paid.';
 
 /** The approval steps of leave, time sheets and spending (the-approval-steps.ts), as the admin who sets them reads them. */
 export interface TheWorkflows {
@@ -77,10 +77,8 @@ export interface TheWorkflows {
     name: string;
     /** Whether an admin has set steps or days for this suite; otherwise it runs as it always has. */
     set: boolean;
-    /** The steps that run now, each a list of rules tried in order. For spending, those up to the limit. */
+    /** The steps that run now, each a list of rules tried in order. For spending, those below every amount: its steps by amount are its spending rules. */
     steps: Step[];
-    /** For spending with a limit, the steps above it; otherwise null. */
-    stepsAbove: Step[] | null;
     /** Working days before a request is passed on, or null when it never is. */
     escalateAfter: number | null;
     /** The workflow said back in full sentences. */
@@ -119,8 +117,10 @@ export interface TheLeaveRules {
 /** The spending rules (the-spending-rules.ts), as the admin who sets them reads them. */
 export interface TheSpendRules {
   rules: SpendRules;
-  /** The rules said back in full sentences. */
+  /** The rules said back in full sentences: the whole route first, then the categories and the receipt rule. */
   said: string[];
+  /** The organisation's people by name only, for a step that names a person. */
+  people: { id: string; name: string }[];
 }
 
 /** The time sheet rules (the-time-sheet-rules.ts), as the admin who sets them reads them. */
@@ -170,7 +170,7 @@ export class SuitesService {
             key: s.key, name: s.name, line: s.line,
             on: rows.get(s.key)?.isOn ?? false,
             questions: s.questions,
-            answers: answersUnderTheQuestionsOwnIds(s, rows.get(s.key)?.answers, adminIds),
+            answers: this.answersOf(s, rows, adminIds),
           })),
         })),
         people: await this.people(reader.organizationId),
@@ -179,7 +179,7 @@ export class SuitesService {
     /* Whoever holds the HR or finance duty also reads the suites that duty sets up (decision 85). */
     const mine = role && role !== 'GUEST' ? await this.suitesTheySetUp(reader, role) : new Set<string>();
     const youSetUp = SUITES.filter((s) => mine.has(s.key)).map((s) => ({
-      key: s.key, name: s.name, line: s.line, on: rows.get(s.key)?.isOn ?? false, questions: s.questions, answers: answersUnderTheQuestionsOwnIds(s, rows.get(s.key)?.answers, adminIds),
+      key: s.key, name: s.name, line: s.line, on: rows.get(s.key)?.isOn ?? false, questions: s.questions, answers: this.answersOf(s, rows, adminIds),
     }));
     if (role === 'LEAD') {
       return {
@@ -190,6 +190,18 @@ export class SuitesService {
     }
     if (role === 'MEMBER' && youSetUp.length) return { reader: 'duty', youSetUp, people: await this.people(reader.organizationId) };
     throw new ForbiddenException(REFUSED.onlyAdminsAndLeads);
+  }
+
+  /**
+   * A suite's answers as its settings card reads them. Spending's limit and "Who approves anything above that?" are read from its steps
+   * by amount, the one place that says who approves (the-spending-rules.ts), and are kept nowhere else.
+   */
+  private answersOf(s: (typeof SUITES)[number], rows: Map<string, { answers: unknown }>, adminIds: Set<string>): Answers {
+    const answers = { ...answersUnderTheQuestionsOwnIds(s, rows.get(s.key)?.answers, adminIds) } as Record<string, unknown>;
+    if (s.key !== 'spend') return answers as Answers;
+    delete answers.limit; delete answers.above;
+    const card = theCardsAnswers(spendRulesFrom(rows.get(SPEND_RULES_ROW)?.answers));
+    return { ...answers, ...(card.limit !== null ? { limit: card.limit } : {}), ...(card.above ? { above: card.above } : {}) } as Answers;
   }
 
   /** Who in the organisation is an admin, so a person kept as the approver can be read as "An admin". */
@@ -226,7 +238,7 @@ export class SuitesService {
    * holds the HR duty may switch leave and reviews, and whoever holds the finance duty spending and time
    * sheets (decision 85). The rules history keeps it as their change.
    */
-  async switch(reader: Reader, key: string, input: { on?: unknown; answers?: unknown }): Promise<ForAnAdmin | ForALead | ForADutyHolder> {
+  async switch(reader: Reader, key: string, input: { on?: unknown; answers?: unknown }, opts: { theStepsAreSet?: boolean } = {}): Promise<ForAnAdmin | ForALead | ForADutyHolder> {
     const suite = suiteOf(key);
     const mine = await this.suitesTheySetUp(reader);
     if (!mine.size || (suite && !mine.has(suite.key))) throw new ForbiddenException(this.refusalFor(key));
@@ -243,6 +255,12 @@ export class SuitesService {
       const old = theOldNamesOf(suite.key);
       const kept = Object.fromEntries(Object.entries((before?.answers && typeof before.answers === 'object' ? before.answers : {}) as Record<string, unknown>).filter(([k]) => !old.includes(k) && !(k in given)));
       const answers = { ...kept, ...given } as typeof given;
+      /* Spending's limit and the person above it are the lowest of its steps by amount: written there, and kept nowhere else. */
+      if (suite.key === 'spend') {
+        /* Set up by talking writes the whole route through `setSpendRules` itself, so the card's two answers are not laid over it. */
+        if (!opts.theStepsAreSet) await this.theCardsAnswersIntoTheSteps(reader, given as Record<string, unknown>);
+        delete (answers as Record<string, unknown>).limit; delete (answers as Record<string, unknown>).above;
+      }
       await this.prisma.organizationSuite.upsert({
         where,
         create: { organizationId: reader.organizationId, suite: suite.key, isOn: true, answers, changedById: reader.userId },
@@ -330,18 +348,14 @@ export class SuitesService {
     if (!STEP_SUITES.some((k) => mine.has(k))) throw new ForbiddenException(WORKFLOWS_REFUSED.onlyAnAdmin);
     const rows = await this.rows(reader.organizationId);
     const kept = workflowsFrom(rows.get(WORKFLOWS_ROW)?.answers);
-    const spend = (rows.get('spend')?.answers ?? {}) as Record<string, unknown>;
-    const limit = typeof spend.limit === 'number' ? spend.limit : null;
-    const above = typeof spend.above === 'string' ? spend.above : null;
     return {
       suites: STEP_SUITES.filter((key) => mine.has(key)).map((key) => {
         const workflow = kept[key];
-        const steps = key === 'spend' ? theStepsFor('spend', { limit, above, workflow }, 0) : theStepsFor(key, { workflow });
-        const stepsAbove = key === 'spend' && limit != null ? theStepsFor('spend', { limit, above, workflow }, limit + 1) : null;
+        const steps = key === 'spend' ? theStepsFor('spend', {}, 0) : theStepsFor(key, { workflow });
         return {
-          key, name: suiteOf(key)?.name ?? key, set: !!workflow, steps, stepsAbove,
+          key, name: suiteOf(key)?.name ?? key, set: !!workflow, steps,
           escalateAfter: workflow?.escalateAfter ?? null,
-          said: aWorkflowSaid(key, steps, stepsAbove, workflow?.escalateAfter),
+          said: aWorkflowSaid(key, steps, workflow?.escalateAfter),
         };
       }),
       rules: RULES_AN_ADMIN_MAY_SET.map((key) => ({ key, said: RULE_IN_WORDS[key] })),
@@ -424,13 +438,36 @@ export class SuitesService {
     await this.keepTheChange(reader, 'leave', before, { isOn: before?.isOn === true, answers });
   }
 
-  /** The spending rules, for whoever sets them: an admin, or whoever holds the finance duty. Nobody else reads this. */
+  /**
+   * The spending rules, for whoever sets them: an admin, or whoever holds the finance duty. Nobody else reads this. `said` is the whole
+   * route (who approves at each amount, then finance's part), the categories and the receipt rule, with each person by first name.
+   * `people` is the organisation's people by name only, for a step that names a person.
+   */
   async spendRules(reader: Reader): Promise<TheSpendRules> {
     if (!(await this.maySetUp(reader, 'spend'))) throw new ForbiddenException(SPEND_RULES_REFUSED.onlyAnAdmin);
     const rows = await this.rows(reader.organizationId);
     const rules = spendRulesFrom(rows.get(SPEND_RULES_ROW)?.answers);
     const spend = (rows.get('spend')?.answers ?? {}) as Record<string, unknown>;
-    return { rules, said: theSpendRulesSaid(rules, typeof spend.currency === 'string' ? spend.currency : null) };
+    const people = await this.people(reader.organizationId);
+    const first = (id: string | null | undefined) => people.find((p) => p.id === id)?.name.split(/\s+/)[0] ?? null;
+    const finance = first(dutiesFrom(rows.get(DUTIES_ROW)?.answers).finance);
+    return { rules, said: theSpendRulesSaid(rules, typeof spend.currency === 'string' ? spend.currency : null, { nameOf: first, finance }), people };
+  }
+
+  /** The settings card saved: its limit and "Who approves anything above that?" become the lowest of the steps by amount. */
+  private async theCardsAnswersIntoTheSteps(reader: Reader, given: Record<string, unknown>): Promise<void> {
+    const where = { organizationId_suite: { organizationId: reader.organizationId, suite: SPEND_RULES_ROW } };
+    const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });
+    const kept = spendRulesFrom(row?.answers);
+    const next = withTheCardsAnswers(kept, given);
+    if (next === kept) return;
+    const answers = next as never;
+    await this.prisma.organizationSuite.upsert({
+      where,
+      create: { organizationId: reader.organizationId, suite: SPEND_RULES_ROW, isOn: false, answers, changedById: reader.userId },
+      update: { answers, changedById: reader.userId },
+    });
+    await this.keepTheChange(reader, SPEND_RULES_ROW, row ? { isOn: false, answers: row.answers } : null, { isOn: false, answers });
   }
 
   /**
@@ -444,6 +481,9 @@ export class SuitesService {
     const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });
     const changed = changeSpendRules(spendRulesFrom(row?.answers), input);
     if ('refused' in changed) throw new BadRequestException(changed.refused);
+    /* A step may name a person only from this organisation. */
+    const ids = new Set((await this.people(org)).map((p) => p.id));
+    if ((changed.rules.thresholds ?? []).some((t) => t.steps.flat().some((r) => typeof r === 'object' && !ids.has(r.named)))) throw new BadRequestException(SPEND_RULES_REFUSED.badThresholds);
     const answers = changed.rules as SpendRules as never;
     await this.prisma.organizationSuite.upsert({
       where,
@@ -476,7 +516,7 @@ export class SuitesService {
     /* Who approves is the approval steps, through the one resolver (who-may-decide.ts); said, never set, here. */
     const time = (rows.get('time')?.answers ?? {}) as Record<string, unknown>;
     const workflow = workflowsFrom(rows.get(WORKFLOWS_ROW)?.answers).time;
-    const approval = `${aWorkflowSaid('time', theStepsFor('time', { ...time, workflow }), null, workflow?.escalateAfter)[0]} An admin changes who approves under the approval steps.`;
+    const approval = `${aWorkflowSaid('time', theStepsFor('time', { ...time, workflow }), workflow?.escalateAfter)[0]} An admin changes who approves under the approval steps.`;
     return { rules, said: theTimeRulesSaid(rules, approval, (id) => nameOf.get(id) ?? null) };
   }
 
@@ -619,8 +659,7 @@ export class SuitesService {
         const said = (w: Workflows) => {
           const x = w[key];
           if (!x) return null;
-          const steps = x.steps ?? (key === 'spend' ? null : theStepsFor(key, {}));
-          return aWorkflowSaid(key, steps ?? theStepsFor('spend', { limit: null, above: null }, 0), x.stepsAbove ?? null, x.escalateAfter).join(' ');
+          return aWorkflowSaid(key, key === 'spend' ? theStepsFor('spend', {}, 0) : x.steps ?? theStepsFor(key, {}), x.escalateAfter).join(' ');
         };
         const from = said(wb);
         const to = said(wa);

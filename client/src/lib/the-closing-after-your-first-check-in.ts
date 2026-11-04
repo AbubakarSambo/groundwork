@@ -8,11 +8,14 @@
  */
 import { whenTheCheckInsLand, type Cadence } from '../components/gw/when-the-check-ins-land'
 import { everyDayThatTheyWork } from './the-days-in-words'
+import { timesAWeek } from './cadence'
 
 export type TheSchedule = {
   cadence?: string | null
   /** Weekly and fortnightly: 0 = Sunday .. 6 = Saturday. Monthly: the day of the month. */
   cadenceAnchorDay?: number | null
+  /** Twice or more a week: the weekdays it meets on. */
+  cadenceDays?: number[] | null
   startsAt?: string | null
   createdAt?: string | null
   /** 0 = Sunday .. 6 = Saturday. */
@@ -44,7 +47,7 @@ export function howOftenTheTeamChecksIn(s: TheSchedule): string | null {
   const c = (s.cadence ?? '').toUpperCase()
   /* The days she set count (setup page review): weekdays only is "every weekday, Monday to Friday", never "every day". */
   if (c === 'DAILY') return everyDayThatTheyWork(s.workingDays)
-  if (c === 'WEEKLY') { const d = theWeekday(s); return d ? `every ${d}` : 'every week' }
+  if (c === 'WEEKLY') { const d = theWeekday(s); return timesAWeek(c, s.cadenceDays) ?? (d ? `every ${d}` : 'every week') }
   if (c === 'FORTNIGHTLY') { const d = theWeekday(s); return d ? `every other ${d}` : 'every two weeks' }
   if (c === 'MONTHLY') {
     if (typeof s.cadenceAnchorDay === 'number' && s.cadenceAnchorDay >= 1 && s.cadenceAnchorDay <= 31) return `on the ${ordinal(s.cadenceAnchorDay)} of each month`

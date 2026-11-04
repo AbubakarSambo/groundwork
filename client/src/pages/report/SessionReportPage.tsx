@@ -23,7 +23,7 @@ import { useAuthStore } from '@/stores/auth'
 import { peopleLabels } from '@/lib/utils'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { whoIsInRound } from '@/lib/who-is-in-this-round'
+import { theCountOf } from '@/lib/the-one-count'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useBackOrFallback } from '@/lib/a-back-button-never-leaves-groundwork'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
@@ -236,8 +236,7 @@ export default function SessionReportPage() {
     onError: () => toast.error('Could not download that record. Please try again.'),
   })
 
-  const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
-  const contextEnabled = (ground as any)?.contextEnabled === true
+  const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions, (ground as any)?.cadenceDays) : null
 
   /**
    * B-142: "Start my check-in" PROMISED A SESSION THAT WAS NOT THERE.
@@ -336,12 +335,13 @@ export default function SessionReportPage() {
           id={data.groundId as string}
           title={(ground as any)?.label ?? 'Check-in'}
           cadence={(ground as any)?.cadence ?? null}
+          cadenceDays={(ground as any)?.cadenceDays ?? null}
           plannedSessions={plannedSessions}
           canRunThisCheckIn={amTheInitiator}
           isAParty
           hasOpenSessionNow={hasOpenSessionNow}
           active="report"
-          tabs={checkInHeaderTabs({ id: data.groundId as string, contextEnabled, canRunThisCheckIn: amTheInitiator, isAParty: true, ground: ground as any })}
+          tabs={checkInHeaderTabs({ id: data.groundId as string, canRunThisCheckIn: amTheInitiator, isAParty: true, ground: ground as any })}
         />
       ) : (
         <button type="button" onClick={back.onClick} className="gwui-plain-link">
@@ -758,7 +758,7 @@ export default function SessionReportPage() {
             groundId={data.groundId}
             sessionNumber={data.sessionNumber}
             light={isASalesKind((ground as any)?.kindOfWork)}
-            totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), data.sessionNumber, (ground as any).scenario, (ground as any).checkIns ?? []).length : null}
+            totalInThisRound={ground ? theCountOf(ground, data.sessionNumber)?.onTheCheckIn.length ?? null : null}
           />
           {/* A self-correction shows up as a flagged, dated entry rather than being blended in
               silently. Visible to everyone who reads this report, same as the report itself. */}

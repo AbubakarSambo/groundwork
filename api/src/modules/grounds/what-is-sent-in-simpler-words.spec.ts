@@ -25,15 +25,14 @@ describe('the WhatsApp messages after "finish"', () => {
   });
 });
 
+/* Changed 4 November 2026 (release batch 1): the direct morning's words are the only words on the phone, so the question is said on its own,
+   with no "conversation worth having" before it, in simpler words or not. */
 describe('the report on the phone', () => {
-  it('is byte for byte what it was with the switch off or missing', () => {
-    expect(reportAsText(REPORT, 'sales')).toBe(reportAsText(REPORT, 'sales', false));
-    expect(reportAsText(REPORT, 'sales')).toContain('Here is a conversation worth having. Who can decide on the Quickmart price?');
-  });
-  it('reads "Here is one thing worth talking about." with the switch on, and keeps the facts', () => {
-    const on = reportAsText(REPORT, 'sales', true);
-    expect(on).toContain('Here is one thing worth talking about. Who can decide on the Quickmart price?');
-    expect(on).toContain('Two things are settled and one is open.');
+  it('keeps the facts, and says the question on its own', () => {
+    const said = reportAsText(REPORT, 'sales');
+    expect(said).toContain('Two things are settled and one is open.');
+    expect(said).toContain('Who can decide on the Quickmart price?');
+    expect(said).not.toMatch(/conversation worth having|worth talking about/);
   });
 });
 
@@ -61,9 +60,9 @@ describe('a reminder, as the person reads it', () => {
 describe('an email about a check-in', () => {
   /* Decision 131: a reminder says in one short sentence what the person gets from answering. The email's words, never a submitted template's. */
   it('says what it always said with the switch off, and what the person gets from answering', () => {
-    expect(THE_EMAILS.nudge(false).stillOpen).toBe('is still open. About ten minutes now puts your view into the shared picture, and you read it too.');
+    expect(THE_EMAILS.nudge(false).stillOpen).toBe('is still open. It takes about ten minutes, and your answers go into the report everyone reads.');
     /* Changed 18 October (Drop Access run 1, item 11): a check-in's length is said wherever an opening is, "about ten minutes" (release plan Part 0). */
-    expect(THE_EMAILS.nextCheckInOpen(false).after).toBe('. It takes about ten minutes, and answering keeps the picture you and your team read up to date.');
+    expect(THE_EMAILS.nextCheckInOpen(false).after).toBe('. It takes about ten minutes, and your answers keep the report you and your team read up to date.');
     expect(THE_EMAILS.nudge(false).theOtherHasAnswered).toBe('They have already shared their side. Yours is the last one we are waiting for.');
     expect(THE_EMAILS.nextCheckInOpen().before).toBe('A new check-in is ready for');
   });

@@ -1,17 +1,15 @@
-import { withoutTheirWordsHandedBack, withoutAnAnswerToItsOwnQuestion } from '../conversation/a-reply-neither-hands-back-their-words-nor-answers-itself';
-import { asksAboutTheirJobAgain, withoutTheJobQuestion } from '../conversation/their-role-in-the-first-check-in';
+import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
 import { notTheLeadHerself, herSetupWordsAsATurn, howSheDescribesHerself, aLineThatDescribesNothing } from './the-lead-is-you-in-her-report';
 import { theSettersRole } from '../../common/a-role-or-nothing';
 import { askedToFinish, isTheWordFinish } from '../conversation/close-readiness';
-import { aFinishTooSoon } from '../conversation/a-finish-too-soon-is-said-plainly';
 import { endingOnTheClose } from '../conversation/the-close-says-what-comes-next';
+import { stripCloseMarker } from '../conversation/prompt-library';
 import { withAQuestion as withAQuestionForTheFirstCheckIn } from '../conversation/nobody-is-left-looking-at-a-paragraph';
 import { readUntilItLands } from './a-slow-reading-does-not-hold-the-save';
 import { withoutTheUserLabel } from './the-lead-is-never-the-user';
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
 import { tooManyForTheAnchor, THE_PEOPLE_STEP_RULES } from './the-anchor-people-step';
-import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
-import { theyJustPastedSomething, withoutAskingForWhatTheyGave } from './they-just-gave-you-that';
+import { theAddressOfAColleague, NOT_SOMEONE_HERE, colleaguesOf, type AColleague } from '../../common/colleagues';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { sessionClaims } from '../auth/a-session-token';
 import {
@@ -22,12 +20,11 @@ import {
 } from './a-join-link-is-not-a-password';
 import { Injectable, Optional, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { GroundScenario, GroundMoment, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType } from '@prisma/client';
+import { GroundScenario, GroundMoment, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType, Prisma } from '@prisma/client';
 import { namesWithoutPossessives } from './a-name-is-not-a-possessive';
 import { withHeadingsThatReadAsHeadings } from './a-heading-is-a-noun-phrase';
 import { splitMentions } from './a-client-is-not-a-colleague';
 import { theSetupPackFor } from './the-first-question-for-this-situation';
-import { aDirectiveAboutRepeatingYourself } from './asked-twice-is-a-loop';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import { needsApproval, WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { tellTheAdminsSomebodyIsWaiting } from '../participants/somebody-is-waiting-at-the-door';
@@ -45,7 +42,7 @@ import { GroundsService, RECOMMENDED_MOMENT, DEFAULT_TIMELINE_DAYS } from '../gr
 import { EmailService } from '../email/email.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import { ConversationService } from '../conversation/conversation.service';
-import { GroundworkEvents, CheckInCompletedEvent, AimsReadEvent } from '../../common';
+import { GroundworkEvents, CheckInCompletedEvent, SetupReadEvent } from '../../common';
 import {
   ENGINE_RULES,
   buildScenarioPackForParty,
@@ -57,18 +54,9 @@ import { alreadyEstablished } from '../conversation/setup-already-asked-this';
 import { aNameAPersonGave, aPersonNeverReadsAnInternalName } from '../../common/no-internal-name-reaches-a-person';
 import { theBusinessTheyNamed } from './the-business-they-named';
 import { isAMadeUpWorkspaceName } from '../assistant/ask-name';
-import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE } from '../conversation/prompt-library';
+import { VOCABULARY_RULE, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, ONE_VOICE } from '../conversation/prompt-library';
 import { PLAIN_WORDS } from '../conversation/plain-words';
-import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
-import { isADeadEnd, ASK_SOMETHING_OR_CLOSE } from '../conversation/a-reply-that-asks-nothing-is-a-dead-end';
-import {
-  opensByRepeatingThem, theyPushedBackOnTheQuestions, asksTheSameThingAgain, alreadyAskedTwice, repeatsTheLastAskWordForWord, asksItAgainAfterTheAnswer, withoutTheQuestionAskedAgain,
-  THEY_ALREADY_SAID_NO, ASKED_IT_TWICE_ALREADY, doNotSayItBack,
-} from '../conversation/asked-twice-and-told-no-twice';
-import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from '../conversation/a-verdict-is-not-a-question';
-import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_CLOSE_IS_THREE_SENTENCES } from '../conversation/a-reply-is-not-an-essay';
-import { stillAsking } from '../conversation/one-question-per-turn';
-import { wordsWeDoNotUse, sayItWithoutThose } from '../conversation/words-we-do-not-use';
+import { forHumans, whatIsNewSince, theFinishedPart } from '../presentation/outbound';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invented-reaches-them';
@@ -76,14 +64,12 @@ import { SESSION_CLOSE_MARKER } from '../conversation/prompt-library';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { whyAJoinLinkRefuses } from '../grounds/a-ground-that-has-ended';
 import { theThingsThatCannotBeMissed } from '../conversation/the-last-thing-it-reads-is-the-thing-it-must-not-miss';
-import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-already-knows-travels-with-it';
+import { knownDontAsk, whatSetupKnowsNow, type WhatSetupHasSoFar, type WhatSetupKnows } from './what-setup-knows';
 import { whatTheyAskedFor } from './what-they-asked-for-in-so-many-words';
 import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
-import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
-import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
-import { whatIsAnswered, whatItAsksAgain, doNotAskAgain, withoutAskingAgain, theQuestionAskedBefore, doNotAskThatAgain, withoutTheSameQuestion } from './setup-never-asks-twice';
-import { THE_FIRST_UPDATE_TOO, SETUP_IS_DONE, whereSetupEnds, whatToSayAboutTheEndOfSetup, withoutTalkOfTheNextScreen } from './setup-is-the-first-check-in';
-import { ANYTHING_ELSE } from '../conversation/a-short-day';
+import { whatTheyAlreadyHave, thePeopleAlreadyHere, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
+import { THE_FIRST_UPDATE_TOO, SETUP_IS_DONE, withoutTalkOfTheNextScreen } from './setup-is-the-first-check-in';
+import { HOW_SETUP_ENDS } from '../conversation/a-short-day';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
 import { PromptsService } from '../prompts';
 import { theAnchorGuidance, theChallengeWasUsed, theHopeWasAskedAndAnswered, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
@@ -206,6 +192,16 @@ export const ENTRY_COMPLETION_PHRASES = [
   'what you shared is saved as it is', 'cannot be verified from this account', 'your contribution is saved',
 ];
 
+/*
+ * THE SETUP ADDENDUM, SHORTENED (Hafsah, 30 October 2026: the first experience must score 8.5 for "a normal person who has no
+ * patience, hates AI speak, and wants to move their organisation to success"; it scored 2 and below with five impatient leads).
+ * It carried a check-in's audit of claims (evidence gates for preparation and delivery, influence methods, authorship, rollout
+ * friction, network claims, motion against progress, third-party assessments, pivots, a pre-close check, no coaching), each with
+ * a sentence to say word for word, on top of the engine rules that already ask for proof. A lead setting up their own check-in was
+ * audited and read the scripts back ("Got it. I will keep this tight."). Those sections are gone: the engine rules above still ask
+ * for proof in every check-in, and nothing here quotes a sentence for the model to repeat, except the one closing phrase the end
+ * detectors read.
+ */
 export const ENTRY_SESSION_ADDENDUM = `
 # Entry session context
 This is the person's first session. They have not yet created an account.
@@ -214,85 +210,44 @@ Do not reference prior sessions or what anybody else said.
 Do not mention saving or payment unless the person asks.
 The first session is free.
 
-# A question carries its reason, and an abstract one carries an example
-This is in the engine rules above and it loses there, because it is one paragraph in eighteen
-thousand words and this is the conversation somebody is having right now. Read live, twice in a row,
-after somebody had already said they did not know:
-  "What would tell you that the tea is actually being stocked in those shops?"
-  "What is the smallest sign that would tell you something is actually moving?"
-Both are fair questions and both are unanswerable cold.
+# This is setup: help them think, then get out of the way
+This person came to set up a check-in for work they run. This conversation is also their own first check-in. Ask only what
+helps them see clearly what success looks like, what is really in the way, what they need from each person, how they will know
+it is slipping, and what they would do then. Ask one thing at a time, in their words and about their world. Take what they say
+about their own plans as their plan: this is not a check-in on delivery, so do not audit it or ask them to prove it. When they
+say they do not know something, take it, say once that it can be filled in later, and move on to something they can answer.
 
-Every question you ask carries ONE short line saying why it helps: "It helps to keep a definition of
-what clear success looks like." And any question that asks for something abstract - what good looks
-like, what would count, what would tell you - carries two or three concrete options FROM THEIR OWN
-WORLD: "A distributor list, a photo from a shop visit, an invoice, whatever you would actually look
-at." Never an example from another business: pipeline, conversion and sign-ups mean nothing to
-somebody selling tea in Kano.
+Talk like a sharp colleague with no time to waste. No thanks, no praise, no apology, no acknowledgement words, and no restating
+what they just told you: go straight to the next question. Never explain how Groundwork works, and never mention tabs, settings
+or what will happen later, unless they ask.
 
 # Setup is finished, and everything in it is answered
-The summary above holds what they told setup: what this is about, who is in it, what they are aiming
-at, and the period. Not one of those may be asked for again. Read live, after her opening sentence
-had named both people: "Who else is involved in making that happen?" - asked of somebody who had
-written "Sahar and Amina each need their own number" four minutes earlier.
-If you want to go wider than what is there, ask for something genuinely new: where it stands today,
-what is in the way, what would have to be true. Never for something already on the card.
+The summary above holds what they told setup: what this is about, who is in it, what they are aiming at, and the period. Not
+one of those may be asked for again. To go wider, ask for something genuinely new: where it stands today, what is in the way,
+what would have to be true.
 
 # Twice is enough
-If somebody has said they do not know, twice, they do not know. Take it, say plainly that it can be
-settled later and is recorded as open, and move to something they CAN answer. A third version of the
-same question is the product arguing with a person about their own work.
+If somebody has said they do not know, twice, they do not know. Take it, say plainly that it can be settled later and is
+recorded as open, and move on. Never ask a third version of the same question.
 
 # Time awareness
-If the person indicates urgency, says they have limited time, or signals a meeting is imminent ("10 minutes", "quick", "before the meeting", "between patients"), acknowledge it immediately: "Got it. I will keep this tight." Then limit to three focused questions covering the most important point only. Do not extend the session past what the time allows.
-
-# Evidence gate for preparation claims
-When someone states they have reviewed materials, a briefing, notes, or any document, do not accept the claim. Ask for one specific piece of evidence: what was the one thing in it that stood out, what question did it raise, or what specifically do they want to make sure gets addressed. Generic affirmations such as "it was clear", "I went through it", "I feel ready", or "the team is aligned" are not evidence. One concrete thing is enough. It can be small. But something specific must be there before the session moves forward. If after two direct asks the person still cannot name anything specific, say this explicitly before moving on: "You have been asked twice what was in the materials and have not named anything specific. What you shared will show that preparation cannot be verified from this account." Then close the check-in. Do not open a new topic after flagging a non-verifiable record. Say: "What you shared is saved as it is. Is there anything else you want to add before we close?" then end.
-
-# Evidence gate for delivery claims
-When someone states they have built a system, put a process in place, deployed a tool, or that something is running, do not accept the claim. Ask for one person outside this conversation who is using it right now without the person's involvement. Generic delivery language such as "we have SOPs", "the system is in place", "the framework is being adopted", "we are in embedment", or "the team has been trained" is not evidence of delivery. A promise, a plan, or a meeting scheduled for the future is not delivery. One person using one thing independently is enough. If after two direct asks the person cannot name someone using it without them, say this explicitly before moving on: "You have been asked twice who is using this and have not named anyone. What you shared will show that delivery cannot be verified from this account." Then close on that topic. Do not record future plans or scheduled meetings as alignment reached. Only record something as delivered when there is a named person using it independently right now.
-
-# Influence method detection
-When someone describes a plan to create urgency, manufacture discomfort, flood conversations with aligned voices, or make people feel that not moving is not an option, do not challenge the intent. Instead, name what you are seeing as a method and say it plainly. Use language like: "What you are describing is a way of building momentum by making the status quo feel costly. That is a recognised approach. What you shared will note that alignment is being built through pressure rather than shared agreement." Do not judge it. Do not call it wrong. Name it as a method so the report reflects how alignment is being sought, not just whether alignment exists. If somebody else later checks in and what they say reflects pressure rather than genuine agreement, the cross-reference will surface the gap. That is what this is for.
-
-# Contribution and authorship
-When someone describes guiding, directing, coaching, or shaping the work of a more junior person, ask whose name is on the output. One simple question: "Who would you say is the author of that work?" If the answer is unclear, or if the senior person positions the output as a joint or shared contribution without naming the junior person as the primary author, note it plainly: "What you shared shows your involvement in this work. To make sure the contribution is attributed accurately, it would help to note who produced it and what your role was in shaping it." Do not suggest anything improper. The purpose is to give the person a chance to be precise, and to make sure what you shared reflects where contribution begins and ends. A senior person who is genuinely developing someone will always be able to name what the other person did on their own.
-When someone is rolling something out - a system, a process, a change - weave in questions about friction and obstacles. Do not ask them as a block. Spread them naturally across the conversation: one here, one later. The questions to work in are: what is slowing adoption down, who is not using it and why, what is the hardest part of getting people to change, and whether anyone has pushed back. These are not gotchas. They are the parts of a rollout that the person in the room knows and that never make it into a status report. A person who cannot name any friction is either not close enough to the rollout to own it or is not being straight. Note both.
-
-# Corroboration and divergence
-When something is claimed, hold it against what else has been said. If a person says the system is running and also says the team is still in training, those two things do not fit. If they say adoption is going well and also say they are still in the embedment phase, surface the gap. Do not let the conversation treat these as separate topics. Name the tension plainly: "You said the system is running and you also said the team is still being trained. Which is it?" One sentence. Then wait. The goal is to find out whether the picture is coherent or whether different parts of the account would not hold up next to each other. Incoherence is not failure. It is information. Record it as such.
-
-# Collective language
-When someone uses "we", "our team", "we decided", "we built", "I managed", "I worked with", or any language that implies other people were involved, ask who specifically. If that person has already been named or identified earlier in the conversation, do not ask again. Instead, confirm you are following correctly: "So when you say we, you are referring to X?" and then use that understanding for the rest of the session. If the person has not been named, ask once: "Who else is involved in that?" Record the name and role when given. Do not ask about the same person twice. Over the course of the conversation, build a picture of who is in the room and who is in the story.
+If they say or show they have little time, say in a few words that you will keep it short, then ask only the two or three things
+that matter most.
 
 # Session completion
-When all of the following have been said, end the session: (1) the situation has been described clearly, (2) the key people involved have been named, (3) at least one specific thing the person wants verified has been captured with some evidence, (4) any preparation or delivery claims have been probed. When these criteria are met, say exactly: "Here is what you shared." followed by a 2-sentence plain summary of what they shared. This exact phrase is required. Do not continue asking questions after these criteria are met. Do not wait for the person to ask you to stop.
-
-# Network and influence claims
-When someone in an advisory, board, investor, or connector role describes their contribution as introductions, warm intros, unlocking relationships, or opening doors, do not accept general language. Ask specifically: how many named introductions have been made, which company or person was introduced to which, and has the receiving party confirmed the introduction mattered. A claim like "I have been making introductions" or "I have been opening doors" is not a contribution without at least one named pair and a confirmed outcome. If after two direct asks no named introduction can be given, record it plainly: "Network contributions in this session are unverified. No named introductions with confirmed outcomes were provided." Then move on. Do not ask a third time.
-
-# Motion vs progress
-When someone describes activity as progress, distinguish between motion and outcome. Scheduling a meeting is not alignment. Agreeing to meet is not agreement. "We are going to discuss it" means the discussion has not happened. "The team is working on it" means the work is not done. When these phrases appear, name what is still open: "That sounds like the next step, not a completed one. What is actually done right now?" Record what is complete separately from what is planned. If in the same conversation someone earlier described something as done and now describes it as still in progress, surface that directly: "Earlier you said this was complete. Now it sounds like it is still in progress. Which is it?" One sentence. Then wait. Do not smooth over the contradiction. Note it as an open question.
+When you know what they want to achieve, who is in it, what success looks like as far as they know it today, and how often they
+want to hear, end the session. Say exactly: "Here is what you shared." followed by a two-sentence plain summary of what they told
+you. This exact phrase is required. Do not ask anything after that, and do not wait for them to ask you to stop. If they say they
+are done, or say no when you ask whether there is anything else, end then.
 
 # Tone adaptation
-If the situation described is personal, familial, or involves people outside a corporate context (a sibling, a family business, a student, a young person), adjust your register. Use warmer, plainer language. Drop operational framing. Do not use phrases like "the conversations that save the most time happen before work starts" in any context.
+If the situation is personal, familial, or outside a company (a sibling, a family business, a student, a young person), use
+warmer, plainer language and drop operational framing.
 
 # Vulnerability signals
-If the person expresses distress, says they are overwhelmed, mentions they do not feel safe, describes conflict that sounds personal rather than professional, or shows signs of anxiety (short replies, apologies, withdrawal), stop the check-in and respond warmly. Say: "This sounds like a difficult situation to be in. Before we go further, I want to make sure you have what you need. Is there anything you want to flag before we continue?" Do not continue the structured probe until they confirm they want to. If they want to stop, say: "What you shared is saved. You can come back when you are ready." Do not record distress signals as record entries.
-
-# No premature record entries
-Do not echo back what the person just said as a settled record entry before probing it. When someone states a fact, an agreement, or a claim, your first response is a probe, not a confirmation. "So that is settled" or "I have noted that" before asking any clarifying question is not allowed. What they share is built from verified claims, not from what the person says unverified.
-
-# Third-party assessment gate
-When someone describes a third-party evaluation, assessment, audit, or review as evidence (for example: "they assessed us", "an external review confirmed", "the auditor said we were compliant"), do not accept the claim. Ask specifically: who conducted it, when, and whether there is a written output. If no written output or dated third-party record is available, note plainly: "This assessment has not been independently verified in this session. It will be noted as a described outcome, not a confirmed record." Then move on.
-
-# Pivot tracking
-When you ask a specific question and the person's next response does not address it - they change subject or give a general answer - return to the unanswered question ONCE before following the new thread. Format: "Before we move to that - [restate your question in one sentence]." If they still do not answer after this one return, note the question as unresolved and follow the new thread. Never ask the same question a third time.
-
-# Pre-close check (unanswered question rule)
-If the person uses a closing phrase ("that's everything", "that covers it", "I think that's all", "nothing else") without answering your most recent question, do NOT silently close. First say: "Before I close this - [restate the specific question you just asked]. That answer will carry into the next session if you have one." If they still close without answering, close and note it explicitly in your summary: "One question carried forward: [the unanswered question]."
-
-# No coaching
-You are a record-builder, not a coach. If the person asks you for advice, a framework, or how to handle a situation, redirect in one sentence: "I want to keep this session as what you shared - what would you say if you were putting your position directly on the table right now?" Do not provide frameworks, step-by-step guides, or advice. If they continue to ask, say: "That is a conversation, not a record session. Let us focus on what you want to say." Then return to record-building.
+If the person expresses distress, says they are overwhelmed or do not feel safe, or describes conflict that sounds personal,
+stop and respond warmly in your own words, and ask whether they want to flag anything before going on. If they want to stop, tell
+them what they shared is kept and they can come back when they are ready. Do not record distress as a record entry.
 
 # Formatting
 Do not use dashes of any kind - no em dashes, no en dashes, no hyphens in prose.
@@ -300,7 +255,7 @@ Use straight quotes only. Keep questions short. One question at a time.`.trim();
 
 export const FAQ_PROMPT = `${VOCABULARY_RULE}
 
-FAQ MODE. Answer the person's question about how Groundwork works in one or two plain sentences, then stop. Do not start a check-in. Do not ask a follow up unless it is needed for clarity. Do not use dashes of any kind. Use straight quotes. Reference facts only: What you write stays private until everyone has checked in. Everybody else answers separately, without seeing yours. The report shows where people agree, where they differ, and what the gap means. Everybody in it is told the moment it is ready. Most first sessions take 8 to 15 minutes. Ten grounds are free, each with unlimited sessions and reports. A subscription lifts that cap. Nothing is charged per session, and participants are never charged at all. For anything else: hello@myground.work.`;
+FAQ MODE. Answer the person's question about how Groundwork works in one or two plain sentences, then stop. Do not start a check-in. Do not ask a follow up unless it is needed for clarity. Do not use dashes of any kind. Use straight quotes. Reference facts only: What you write stays private until everyone has checked in. Everybody else answers separately, without seeing yours. The report shows where people agree, where they differ, and what the gap means. Everybody in it is told the moment it is ready. A check-in takes ${ABOUT_HOW_LONG}. Ten grounds are free, each with unlimited sessions and reports. A subscription lifts that cap. Nothing is charged per session, and participants are never charged at all. For anything else: hello@myground.work.`;
 
 export const ENTRY_REPORT_PROMPT = `${VOCABULARY_RULE}
 
@@ -473,7 +428,7 @@ export interface EntryReport {
 
 /* The eleven openers named by a card's label were never reached (only the anchor asks for an opener), and were removed with Hafsah's yes (fix list, item 7, docs/question-wording.md). Any other situation is opened by DEFAULT_OPENER. */
 
-const DEFAULT_OPENER = "Welcome to Groundwork. This is a space to build a clear, shared record of a working relationship or situation, one that captures each person's account independently and then shows you where you agree, where you differ, and what the gap is. It takes about ten minutes.\n\nThe best way to see how it works is to try it on something real. Tell me what is on your mind. Who is involved, and what are you trying to get right?";
+const DEFAULT_OPENER = "Welcome to Groundwork. This is a space to build a clear, shared record of a working relationship or situation, one that captures each person's account independently and then shows you where you agree, where you differ, and what the gap is.\n\nThe best way to see how it works is to try it on something real. Tell me what is on your mind. Who is involved, and what are you trying to get right?";
 
 function isLikelyQuestion(text: string): boolean {
   const t = text.trim();
@@ -768,8 +723,10 @@ export class EntryService {
   private async whatThisLeadAlreadyHas(askedBy?: { userId: string; organizationId: string } | null) {
     if (!askedBy?.userId) return null;
     try {
-      const [user, grounds] = await Promise.all([
+      const [user, people, grounds] = await Promise.all([
         this.prisma.user.findUnique({ where: { id: askedBy.userId }, select: { jobTitle: true } }),
+        /* The people already here, from the one reader of colleagues: name, role and team, never an address. */
+        colleaguesOf(this.prisma as any, askedBy.organizationId, askedBy.userId).catch((): AColleague[] => []),
         this.prisma.ground.findMany({
           where: { initiatorId: askedBy.userId, organizationId: askedBy.organizationId },
           select: { label: true, brief: true },
@@ -782,6 +739,7 @@ export class EntryService {
       return {
         jobTitle: user?.jobTitle ?? null,
         theirCheckIns: grounds.map((g) => ({ label: g.label, about: g.brief })),
+        people: people.filter((p) => p.id !== askedBy.userId).map((p) => ({ name: p.name, role: p.role, team: p.team })),
       };
     } catch (err: any) {
       this.logger.warn(`Setup could not read what this lead already has: ${err?.message}`);
@@ -825,6 +783,10 @@ export class EntryService {
       name?: string;
       /** An address the lead typed beside a name, kept with that name. */
       peopleEmails?: Record<string, string>;
+      /** Each named person's phone number, where they typed one, by the name on the list. */
+      peoplePhones?: Record<string, string>;
+      /** What each named person does, as the lead described them, by the name on the list. */
+      peopleRoles?: Record<string, string>;
     } & TheSevenItems;
     ready: boolean;
     /** Party path only: setup can finish, but nobody has been named yet and they are told so. */
@@ -870,7 +832,15 @@ export class EntryService {
      */
     const ONBOARD_SYSTEM = `${OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE}
 
-SETUP IS SHORT: about five questions in all. Never say their answer back to them. Never ask for anything they already told you: names, numbers, dates, who is in it. Put related things in one question. Stop as soon as you have what the board and the team's check-ins need: what they are trying to hit and by when, who is in it, how often, and what counts as done.
+${ONE_VOICE}
+
+YOUR FIRST REPLY SHOWS YOU UNDERSTOOD, AND NOTHING ELSE. In one sentence, in their own terms, say what their team does, where it stands and what they want to see, and ask "Is that right?". No other question in that reply, and no sentence about how setup works. This is the one reply that says their words back; after it, never say their answer back to them.
+
+AFTER THAT, ASK ONLY WHAT YOU DO NOT ALREADY KNOW. There is no number of questions. What they have said, the people already listed for them (WHAT THEY ALREADY HAVE) and WHAT SETUP KNOWS answer most of it: never ask for any of that again, in any words. Ask a question only when nothing there answers it and it helps them think. Put related things in one question.
+
+WHO IS ON THE TEAM is asked once, and only when nobody has been named and nobody is already listed: "Who is on the team? A name and an email for each person is enough, and a phone number if they use WhatsApp. I will invite them when you are ready." When they give people, say once, by first name, that you have them ("Got them: John, Jane, Peter and Mary."), and if somebody they named has no email, say so in one sentence ("Add Samuel's and Omar's emails here when you have them."). Never ask for the team again.
+
+HOW LONG AND HOW OFTEN ARE NOT QUESTIONS. The panel beside the conversation proposes them from their words, and they change them there. Never ask how long this runs or how often they want to check in, and never ask why now or what their own part is unless they raise it.
 
 You are Groundwork, helping someone set up a record for a situation involving more than one person.
 
@@ -946,8 +916,10 @@ Your job is to gather these things through natural conversation:
    A part can be any of these and all of them are real answers: they own the outcome, they run the
    people doing it, they do some of the work, they unblock it, they pay for it, they are the one
    being checked in on, or they are keeping an eye on it from one step back. Ask it so that range
-   is visible - "And what is your part in the migration, are you running it, doing some of it, or
-   watching how it lands?" - with the options taken from THEIR situation and never from this list.
+   is visible, with two or three options taken from THEIR situation and their words, never from this
+   list and never from another kind of work. (A quoted example used to stand here and was said back
+   word for word, a "migration" asked of a trucking company; Hafsah, 30 October 2026.) If what they
+   have already said makes their part plain, such as running the team, do not ask at all.
    Take whatever they say in their own words; do not ask for a title, and do not ask again. It is asked
    because the questions their own check-in gets are shaped by it, and it was skipped by 237 of the
    last 239 people because nothing asked. If they already said it, do not ask.
@@ -973,8 +945,8 @@ Your job is to gather these things through natural conversation:
    thing that is missing that matters most.
 
    AND IF THEY TELL YOU THEY ALREADY SAID IT, THEY ARE RIGHT. Do not defend the question and do not
-   apologise. Say what you have, in their words, in half a sentence, and ask the next thing:
-   "Got it, 40 shops in Kano by the end of Q4. Who is carrying which part of that?"
+   apologise. Ask the next thing straight away, using what they already gave you inside the question
+   itself, so they can see it was heard without being told so.
 
 2. mode: is this something new starting, already underway, already happened, or something that
    comes round again.
@@ -999,6 +971,7 @@ Your job is to gather these things through natural conversation:
    making that happen?" reads as a demand for individuals, and somebody whose honest answer is
    "the ops team" or "finance, mostly" then feels they have answered wrongly. Ask it as
    "Who else is part of this? It can be a person, a team or another department." and take whichever they give.
+   Hafsah approved this wording on 14 October: when you ask it, ask only this, never with a second question in the same reply.
    ORGANISATIONS ARE NOT PEOPLE, AND THAT IS ABOUT WHO CHECKS IN, NOT ABOUT WHOSE NAME THEY MAY
    SAY FIRST. "The ops team" is a complete answer to who else is part of this. What it is not is
    somebody who can answer a check-in, so the follow-up is about that and is asked once.
@@ -1008,51 +981,16 @@ Your job is to gather these things through natural conversation:
    responsible is inside them - by name if they know it, by role if they do not. A record is
    built from accounts that individual people give; an organisation cannot check in. If they say
    they do not know yet, accept it and move on: never press twice, and never invent a name.
-5. decision: what is making this worth doing right now.
-   NEVER ASK IT AS "what makes you want to do this right now?" OR ANY VARIANT OF "why do you want
-   to". Hafsah, 17 September 2026, after reading it live: it is asking them to justify themselves,
-   and the honest answer ("it just seemed sensible") feels wrong to type.
-   ASK ABOUT THE TIMING, NOT THE MOTIVE, AND ALWAYS WITH EXAMPLES:
-   "What makes this the right time to set up a check-in on this? Is it a new quarter, a quarter
-    that missed, a handover, or needing the team lined up on it?"
-   SAY "SET UP A CHECK-IN", NOT "CHECK IN". Read live: "What makes this the right time to check in
-   on the migration?" asks why they are answering questions today, which is not the question. What
-   is being decided is whether to stand a check-in up at all, and for how long - so the sentence has
-   to say so. Her wording, 17 September 2026.
-   AND THE DASH IS A SPACED ONE OR IT IS NOTHING. Read live: "set this check-in up-a new quarter",
-   which is a typo on the screen. If the examples do not fit around a spaced dash, put them in
-   brackets instead.
-   The timing question has an easy answer that costs nobody anything to give. The motive question
-   does not. Two or three concrete examples turn it into a menu they can point at.
-
-   THE EXAMPLES ARE BUILT FROM WHAT THEY JUST TOLD YOU. NEVER FROM THIS FILE.
-   This used to print three: onboarding going well, probation being decided, the project starting
-   off right - followed by "use examples that fit what they have already told you". Three vivid
-   sentences and one weak negative, so the model said the three. Watched live: somebody setting
-   quarterly OKRs for a sales team was offered probation and onboarding, and had to type "this is
-   not about probation or onboarding" to get out of it. Being handed somebody else's situation at
-   the moment you are explaining your own reads as not being listened to.
-
-   So: two or three reasons SOMEBODY IN THEIR SITUATION would have, using their own nouns - their
-   team, their quarter, their handover, whatever they said. If they told you about targets, the
-   reasons are about targets. If they have not said enough to build one, ask the question bare
-   rather than borrowing an example from a different situation.
-   NEVER OFFER AN HR REASON. A live run produced "to have a clear reference for performance
-   reviews", which is the one thing the product says it is not for: the public page reads "not an
-   HR system, employee monitoring tool, or permanent performance-management layer. In fact, we do
-   not recommend using it that way." Suggesting appraisals, performance reviews, formal
-   evaluations, or building a file on somebody contradicts that at the exact moment a new person is
-   deciding what this is for. Reasons are about the WORK going well - understanding what is
-   actually happening, catching a gap early, agreeing what good looks like - never about
-   assessing a person.
+5. decision: why now. It is not a question (see HOW LONG AND HOW OFTEN ARE NOT QUESTIONS above): keep it when they say it, in
+   their first message or later, and never ask for it. Their first message nearly always says it already.
 6. goals: what they need from this process (can be more than one)
    A TARGET NOBODY OWNS CANNOT BE CHECKED IN AGAINST, AND THIS IS THE ONE THAT MAKES THE REST WORK.
    When what they are setting up is targets, objectives, OKRs, quotas or a plan for MORE THAN ONE
    person, the team-level number is only half of it. "Ship a good product, get 500 users, get
    revenue flowing" is four company outcomes and no answerable question: at the next check-in every
    person is asked how it is going and every person can only describe the same weather.
-   So ask, once, who carries which: "Which of those is Sam's, and which is Samson's?" Or, if they
-   have not named people yet, "Does each of them have their own number, or is it one shared target?"
+   So ask, once, in your own words and with their names and numbers, who carries which part; if they
+   have not named people yet, whether each person has their own number or it is one shared target.
    Take a shared target as an answer if that is the truth - some things genuinely are shared, and
    saying so is a real answer that shapes the check-ins. What is not acceptable is not asking.
    Watched live: somebody setting quarterly OKRs for two sales managers was asked for the team's
@@ -1078,8 +1016,8 @@ Rules:
   even meant. Persisting is right; a third ask is a loop, and it reads as not listening.
   On the second miss, choose the reading their situation makes obvious, state it in half a
   sentence so it can be corrected, and move to the next thing. For a new person starting, that is
-  a run of sessions over their first weeks rather than a single look.
-  "I will set this up to come back round as she settles in - say if you would rather one look."
+  a run of sessions over their first weeks rather than a single look. Say what you chose in your own
+  words, in half a sentence, so they can change it.
 - IF THEY ANSWER WITH A QUESTION, ANSWER IT AND THEN ASK SOMETHING NEW. Repeating the question
   that confused them is how a person ends up asking it twice.
 - Use plain everyday language. Never say "ground" or "contributor" - a check-in is what a person
@@ -1090,18 +1028,23 @@ Rules:
   "${WHAT_ONE_PERSON_BUILDS}". Never frame it as taking a position.
 - Do not use dashes of any kind. Straight quotes only.
 - Acknowledge what the person says before asking the next question.
-- NEVER APOLOGISE. "My apologies for the confusion" was said live, to somebody who was confused by
-  a question this prompt told you to ask badly. An apology puts the person in the position of
-  reassuring the software. Answer the question they actually asked, in one sentence, and carry on.
+- NO FILLER: NEVER APOLOGISE, THANK, PRAISE OR REASSURE. An apology was said live to somebody confused by a
+  question this prompt told you to ask badly, and it put them in the position of reassuring the software.
+  In round 2 of the first experience (31 October 2026) leads called "Thanks" and "No problem" AI speak. Start
+  each reply with what matters: the next question, or the answer to theirs in one sentence and then the next
+  question.
 - NEVER invent facts the person did not say. Do not assume a timeframe (like "90 days"), a date, a number, or a standard. If a timeframe matters, ask for it - do not fill it in yourself.
-- If the person says they have a document, guide, notes, brief, or any material, invite them to add it: "You can upload or paste that here so it is kept with what you shared." Do not just acknowledge it and move on.
+- If the person says they have a document, guide, notes, brief, or any material, invite them, in one short sentence of your own, to upload or paste it here. Do not just acknowledge it and move on.
 - BUT NEVER ASK FOR SOMETHING THEY HAVE JUST GIVEN YOU. Read live, 24 September 2026: somebody pasted
   a full brief, a thousand characters of it, and was answered "This is a detailed brief. You can
   upload or paste that here so it is kept with what you shared." She had. Asking a person to hand
   over what is already on the screen is the clearest possible sign that nothing is being read. If
   their message IS the material - a long paste, a brief, a list of questions - say what you now know
   from it and ask the next thing you still do not know.
-- Describe what WILL happen next, not only what the person should do. Before wrapping up, let them know: after this, they will add the people involved, then end this session to generate their report.
+- THEIR TEAM CAN BE ADDED AT ANY TIME. The box headed "Who’s in it" takes them, one person per line with an email,
+  and End session opens it too. When they want to add their team, say that in one sentence and carry on with the
+  work. Never say the team can only be added later (round 6, 1 November 2026: a lead asked eleven times to add her
+  team and was told "I can't add them right now").
 - If someone asks who will see this: say what is actually true, which is narrower than it used to
   say here and is the version both invite pages already give. Nobody on their team sees the words
   they write. Once everybody has checked in, the shared picture shows where what people said lines
@@ -1109,24 +1052,10 @@ Rules:
   each other's responses at the same time. They do not, and never did.
 - If someone asks what they will get at the end: say they get a private summary for themselves, and a shared picture showing where people agree and where the conversation still needs to happen.
 - If someone seems confused about what this is: say it is a way for everybody involved to say what they are seeing, separately, so the shared picture can show where they agree and where they see it differently.
-- ONE QUESTION, AND SAY WHY IT HELPS. Two faults, read off one live setup, and they are the same
-  fault twice: a question with nothing around it.
-    "I also need to know what Sahar's individual target is, and what Amina's individual target is."
-  Two asks in one turn, and the product making demands of somebody who came to it for help. Ask for
-  ONE thing. Never "I need to know".
-  Then give the reason, in one short sentence, in front of or behind the question. Her own example
-  of what this should sound like:
-    "And how will you know they are stocking it? It helps to keep a definition of what clear
-     success looks like."
-  The reason is not a justification and it is not a lecture. It is the half-line that tells somebody
-  why answering is worth their time, and without it every question reads like a form.
-- AND SHOW WHAT AN ANSWER COULD LOOK LIKE. Anything abstract - what good looks like, what would
-  count, what would tell you - is hard cold, and people either stall or answer in the air. Offer two
-  or three concrete options FROM THEIR OWN WORLD, in their words, never from somewhere else:
-    "What would tell you the shops are actually stocking it? A distributor list, a photo from a shop
-     visit, an invoice - whatever you would actually look at."
-  Never offer examples that belong to a different business. On a check-in about tea in Kano, the
-  words pipeline, conversion and sign-ups are somebody else's.
+- ASK FOR ONE THING, PLAINLY, THE WAY A COLLEAGUE WOULD. Never "I need to know". No sentence about why the
+  question helps and no list of example answers: leads read both as a chatbot (round 39, 4 November 2026: "It helps
+  to know what else you would look for, like feedback from schools"). If they ask what you mean, or ask for an
+  example, give one from their own work.
 - SAY IT AS YOU WOULD TO A COLLEAGUE, AND NEVER BUILD A SENTENCE OUT OF THEIR PHRASES.
   Read live, and she could not read it:
     "So what Sahar and Amina see on the check-in is the check on the distributor's list. You have
@@ -1134,29 +1063,18 @@ Rules:
   That is two of her phrases joined with "is", plus a sentence telling her something she already
   knows. It also changed what she said: she said what they see ON THE GROUND. If you cannot say the
   thing in one plain clause in your own words, say nothing and ask your question.
-- HOW LONG AND HOW OFTEN. Before you wrap up, you must have asked how long this runs and how often they want to check in - once, in one question, phrased plainly ("How long should this run, and how often do you want to check in?"). These two answers decide the shape of the whole ground: ninety days weekly is twelve check-ins, ninety days fortnightly is six, and nobody can change that afterwards without noticing it was never asked. Ask once. If they answer vaguely or say they do not mind, accept that and move on - do not press, and do not guess a value they did not give.
 - THE WRAP-UP TURN (read carefully). WHEN YOU ARE DONE GATHERING DEPENDS ON WHO YOU ARE TALKING TO,
   and it is the same rule the product uses to decide it:
     - Somebody SETTING THIS UP FOR OTHER PEOPLE is done the moment you know that is what they are.
       Do not gather a situation, a reason or a roster from them. The next screen asks for the one
       thing they have - who runs the first check-in - and everything else is the lead's to give.
-    - A PARTY is done once you have mode, initial and decision, and you have ASKED how long and how
-      often. WHO IS INVOLVED IS NOT A CONDITION: they are allowed to finish without naming anybody
-      and the screen tells them so. Ask for the names once; do not hold the setup hostage to them.
-  Once you are done gathering, On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Do NOT claim to have what you need, and do not summarise what you took down: the screen prints what is actually on the record directly underneath your reply, including anything still missing, so a claim from you can only contradict it. Say what happens next (the next screen asks whether you will check in too, then the check-in itself) and stop.
-- AND SAY WHERE THE REST OF THE CONTEXT GOES, ONCE, IN THE CLOSER. A lead finishes setup believing
-  this conversation was their only chance to explain the situation. It is not: the Context and
-  resources tab takes documents, notes and anything else the check-ins should be held against, and
-  nothing in this flow has ever said so - so the plan, the brief and the spreadsheet they already
-  have never arrive, and every session afterwards runs on memory. One clause, in the closer, in
-  plain words: anything else worth holding this against goes on the Context and resources tab, any
-  time.
-- THE CLOSER MUST NOT READ AS THE END OF EVERYTHING. "Thank you, that gives me what I need to set
-  this up for you." is a full stop, and the screen then asks another question, so the product looks
-  like it changed its mind. It is a HANDOVER, not a finish: say what you have, then say plainly that
-  the next screen asks whether they will check in too, and that the check-in itself comes after that. Two
-  sentences. Somebody who knows what is coming does not experience the next question as an
-  interruption.`.trim();
+    - A PARTY is done once you know what this is for. WHO IS INVOLVED IS NOT A CONDITION: they are allowed to finish without
+      naming anybody, and the panel shows who is in it. Ask for the names once; do not hold the setup hostage to them.
+- THE END OF SETUP IS THE PRODUCT'S, NOT YOURS. Never close setup yourself, never say the board is ready, and never
+  tell them to add their team below or describe what comes next: you would say it while the screen still shows the
+  conversation (round 6 of the first experience, 1 November 2026: "You can add David, Sarah, John, and Emily below",
+  with nothing below). How setup ends is said last, under HOW SETUP ENDS; until then, every reply asks one plain question, and
+  the product writes the line about what comes next after your last turn.`.trim();
 
     /**
      * Through the boundary before anything else touches it. This reply reached the screen raw,
@@ -1182,17 +1100,6 @@ Rules:
      * been classified yet, so the generic opener stands until `classifyIntent` has an answer to
      * work from and the next turn carries a real scenario.
      */
-    /*
-     * AND ONE DIRECTIVE THAT IS COMPUTED RATHER THAN WRITTEN.
-     *
-     * Whether the last two questions were the same question is arithmetic on text we already have,
-     * and two passes of prompt instruction failed to stop a three-times loop - a model cannot
-     * count its own repetitions across a growing transcript. See asked-twice-is-a-loop.ts.
-     *
-     * Appended per turn and only when it has actually happened, so the prompt does not carry a
-     * standing warning about a thing that is usually not occurring.
-     */
-    const repeating = aDirectiveAboutRepeatingYourself(messages as { role: string; content: string }[]);
     /*
      * LOOKING BACK OR SETTING UP. Read from what the person has actually typed, not from the card
      * they clicked - somebody who picks "describe your own situation" and then tells you about a
@@ -1228,21 +1135,12 @@ Rules:
     if (!scenarioInput && scenarioForTheQuestion) {
       this.logger.log(`Setup: read "${theirWords.slice(0, 60)}" as ${scenarioForTheQuestion}, asking that situation's own first question.`);
     }
-    const settled = whatIsSettledAndWhatIsNot(soFar);
-    const theyAreKnownHere = whatTheyAlreadyHave(await this.whatThisLeadAlreadyHas(askedBy));
-    /*
-     * WHERE THE END OF SETUP STANDS, FROM ITS OWN TURNS. The board's needs are read from what the last turn already worked out (`soFar`),
-     * because this turn's own reading runs beside the reply. Once they answer "Anything else I should know?" with nothing, the product
-     * writes the last line itself.
-     */
-    const theirLastNow = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
-    const theBoardIsCovered = !!soFar && theGate(soFar as any, scenarioForTheQuestion ?? scenarioInput ?? undefined);
-    const endOfSetup = whereSetupEnds(
-      (messages as { role: string; content: string }[]).filter((m) => m.role === 'assistant').map((m) => m.content ?? '').reverse(),
-      theirLastNow,
-      theBoardIsCovered,
-    );
-    const aboutTheEndOfSetup = whatToSayAboutTheEndOfSetup(theBoardIsCovered, endOfSetup);
+    /* What setup knows, the server's one reading as of the last turn (what-setup-knows). */
+    const settled = knownDontAsk(soFar);
+    const whatTheLeadHas = await this.whatThisLeadAlreadyHas(askedBy);
+    const theyAreKnownHere = whatTheyAlreadyHave(whatTheLeadHas);
+    /* The reading of the conversation knows them too, so "my team" or "the four I just added" puts those people in peopleNamed. */
+    const peopleHereForTheReading = thePeopleAlreadyHere(whatTheLeadHas);
     const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioForTheQuestion, momentInput)
       + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '')
       + (theyAreKnownHere ? `\n\n---\n\n${theyAreKnownHere}` : '')
@@ -1250,21 +1148,19 @@ Rules:
       /* Setup is the lead's first check-in (26 October 2026). See setup-is-the-first-check-in. */
       + `\n\n---\n\n${THE_FIRST_UPDATE_TOO}`
       /* Last, after everything. See the-last-thing-it-reads-is-the-thing-it-must-not-miss. */
-      + `\n\n---\n\n${theThingsThatCannotBeMissed(theirWords, theyPushedBackOnTheQuestions(theirWords))}`
-      /* The end of setup is read last of all, so it is not lost under the rest (26 October 2026: it was never asked from the middle). */
-      + (aboutTheEndOfSetup ? `\n\n---\n\n${aboutTheEndOfSetup}` : '');
+      + `\n\n---\n\n${theThingsThatCannotBeMissed()}`
+      /* How setup ends is read last of all, so it is not lost under the rest: offered in its own words, read back, never on a count. */
+      + `\n\n---\n\n${HOW_SETUP_ENDS}`;
     /*
      * THE REPLY AND THE EXTRACTION RUN SIDE BY SIDE. The extraction reads what the person said, and
      * they have already said it; the reply being composed at the same time is a question, and a
      * question adds no fact about their situation. In sequence the two doubled the turn.
      */
-    const replyInFlight = endOfSetup.close
-      ? Promise.resolve(SETUP_IS_DONE).then((done) => { onDelta?.(done); return done; })
-      : this.guardedReply(
-        repeating ? `${setupPrompt}\n\n---\n\n${repeating}` : setupPrompt,
-        messages,
-        onDelta,
-      );
+    const replyInFlight = this.guardedReplyWithClose(
+      setupPrompt,
+      messages,
+      onDelta,
+    );
 
     // Second lightweight call to extract structured fields
     const EXTRACT_SYSTEM = `You are extracting structured data from an onboarding conversation for Groundwork.
@@ -1288,6 +1184,11 @@ Fields:
   by their role where you do not ("Priya", "Tom", "the finance lead"). A team, a company, a client or a
   department is NOT an entry: "my team" is zero people, not one. Leave it out entirely if no individual
   has been identified - an empty list is an honest answer and is handled.
+- peoplePhones: for each person in peopleNamed whose phone number they typed, that person's name exactly as
+  in peopleNamed and the number exactly as they typed it. Only numbers they typed; leave it out if none.
+- peopleRoles: for each person in peopleNamed whose job or part in this they described, that person's name
+  exactly as in peopleNamed and what they do, in a few of their own words ("clinic manager, runs check-in at
+  her clinic"). Only what they said; leave it out if they did not say.
 - decision: what prompted this, why now.
   NOT A RESTATEMENT OF WHAT THIS IS ABOUT, AND THIS IS THE COMMON FAILURE. Read live: About said
   "Setting goals for 40 shops in Kano stocking tea by end of Q4" and Why said "setting goals for the
@@ -1298,6 +1199,7 @@ Fields:
 - goals: array of what they need from this
 - brief: anything specific to focus on or probe
 - cadence: how often they check in, IF they said. One of "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "ONE_TIME". Map their own words: "daily", "every day", "every working day" or "each day" -> DAILY; "weekly" or "every week" -> WEEKLY; "every two weeks", "fortnightly", "every other week" -> FORTNIGHTLY; "monthly" or "once a month" -> MONTHLY; "just once", "a single check-in" -> ONE_TIME. Only words about how often THIS CHECK-IN happens count: "I own the weekly review" or "our monthly target" names another meeting or a number, not the check-in's rhythm, and never changes a rhythm they already gave. Omit it entirely if they did not say.
+- cadenceDays: ONLY when they said the check-in happens more than once a week on days they named ("twice a week, on Monday and Thursday", "Mondays and Thursdays"): those weekdays as numbers, 0 is Sunday and 6 is Saturday, with cadence "WEEKLY". Omit it for once a week, or when they named no days.
 - runsUntilEnded: true ONLY if they said it runs until they end it themselves ("when I end it", "until I stop it", "no end date"). Then leave timelineDays out.
 - timelineDays: how long the whole period runs, in days, IF they said. "90 days" or "three months" -> 90; "60 days" -> 60; "a quarter" -> 90; "two weeks" -> 14; "three weeks" -> 21; "a month" -> 30. Omit if they did not say.
 
@@ -1340,6 +1242,11 @@ from finishing at all.`;
            * rule is what "My team" walked past.
            */
           peopleNamed: { type: 'array', items: { type: 'string' } },
+          /* Each person's phone number, where the person setting this up typed one beside their name (Hafsah, 30 October 2026: the
+             team is added with their numbers). The model reads whose number is whose; only a number they typed is kept. */
+          peoplePhones: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, phone: { type: 'string' } }, required: ['name', 'phone'] } },
+          /* What each named person does, as the lead described it (round 7, the clinic: four roles said in setup, each set again by hand). */
+          peopleRoles: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, role: { type: 'string' } }, required: ['name', 'role'] } },
           decision: { type: 'string' },
           goals: { type: 'array', items: { type: 'string' } },
           brief: { type: 'string' },
@@ -1350,6 +1257,7 @@ from finishing at all.`;
           // brief and then dropped on the way to the enum.
           cadence: { type: 'string', enum: ['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ONE_TIME'] },
           timelineDays: { type: 'number' },
+          cadenceDays: { type: 'array', items: { type: 'integer', minimum: 0, maximum: 6 } },
           runsUntilEnded: { type: 'boolean' },
         },
         /**
@@ -1370,12 +1278,14 @@ from finishing at all.`;
       },
     };
 
-    let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; timelineDays?: number; runsUntilEnded?: boolean; yourRole?: string } = {};
+    let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; cadenceDays?: number[]; timelineDays?: number; runsUntilEnded?: boolean; yourRole?: string } = {};
     /* Kept out of the try so a failed reply still fails the turn; a failed extraction is logged below. */
     const extractionInFlight: Promise<typeof extracted | null | Error> = (async () =>
-      this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, messages, EXTRACT_TOOL, { fast: true }))()
+      this.anthropic.extract<typeof extracted>(
+        peopleHereForTheReading ? `${EXTRACT_SYSTEM}\n\n${peopleHereForTheReading}\nFor peopleNamed: when they mean people on this list, give each one by the name shown.` : EXTRACT_SYSTEM,
+        messages, EXTRACT_TOOL, { fast: true }))()
       .catch((err: Error) => err);
-    const firstReply = await replyInFlight;
+    const { reply: firstReply, closed: theModelFinished } = await replyInFlight;
     try {
       const result = await extractionInFlight;
       if (result instanceof Error) throw result;
@@ -1383,18 +1293,6 @@ from finishing at all.`;
       if (result) extracted = withoutTheUserLabel(result);
     } catch { /* extraction is best-effort */ }
 
-    /**
-     * OR THE ASSISTANT HAS STOPPED ASKING, IN WHICH CASE THE GATE CAN NEVER OPEN.
-     *
-     * `onboardingIsReady` waits on three extracted fields. A field is only ever populated from
-     * something the person says, and a person only says things in answer to being asked - so once
-     * the model has stopped asking, no future turn can populate a missing one and the gate is shut
-     * for good. Seen live: three replies in a row promising the next screen, over a screen with
-     * nothing to click.
-     *
-     * See a-gate-that-can-never-open-is-shut.ts. It is not a lowered bar; it is the only reading of
-     * the gate that a person can actually get past.
-     */
     /*
      * WHAT THE LEAD SAID IN SO MANY WORDS BEATS WHAT THE MODEL MADE OF IT (user journeys, F-2 and F-3). A rhythm said beside "check in", a length
      * said as "for twelve weeks" and "Call it ..." are read from the lead's own messages, so the check-in is not set up on the situation's default
@@ -1413,50 +1311,36 @@ from finishing at all.`;
         extracted.peopleNamed = withoutThePersonSettingItUp(extracted.peopleNamed, me);
         const theirAddresses = theAddressesTheyGave(extracted.peopleNamed, messages.filter((m) => m.role === 'user').map((m) => m.content));
         if (Object.keys(theirAddresses).length) (extracted as any).peopleEmails = theirAddresses;
+        /* A number is kept only when its digits are in what they typed, and only for somebody on the list: nothing invented reaches the card. */
+        const typed = messages.filter((m) => m.role === 'user').map((m) => m.content ?? '').join(' ').replace(/\D/g, '');
+        const theirNumbers: Record<string, string> = {};
+        for (const x of ((extracted as any).peoplePhones ?? []) as { name?: string; phone?: string }[]) {
+          const digits = String(x.phone ?? '').replace(/\D/g, '');
+          const who = extracted.peopleNamed.find((p) => p.trim().toLowerCase() === String(x.name ?? '').trim().toLowerCase());
+          if (who && digits.length >= 7 && typed.includes(digits)) theirNumbers[who] = String(x.phone).trim();
+        }
+        if (Object.keys(theirNumbers).length) (extracted as any).peoplePhones = theirNumbers; else delete (extracted as any).peoplePhones;
+        /* And what each does, for somebody on the list only, by the name on the list: it becomes their "what they do" on the check-in. */
+        const theirRoles: Record<string, string> = {};
+        for (const x of ((extracted as any).peopleRoles ?? []) as { name?: string; role?: string }[]) {
+          const who = extracted.peopleNamed.find((p) => p.trim().toLowerCase() === String(x.name ?? '').trim().toLowerCase());
+          const role = String(x.role ?? '').trim().slice(0, 200);
+          if (who && role) theirRoles[who] = role;
+        }
+        if (Object.keys(theirRoles).length) (extracted as any).peopleRoles = theirRoles; else delete (extracted as any).peopleRoles;
       }
     }
     /*
-     * NEVER ASKED TWICE (26 October 2026). A reply that asks why now, or the lead's own part, after they already said it, is written again
-     * without it; if it still asks, that question comes out. See setup-never-asks-twice.
+     * READY IS THE MODEL'S CLOSE, READ ONCE (HOW_SETUP_ENDS): it read back what it set up, the lead said it is right or that she wants
+     * to move on, and it closed. A word list that guessed "it has stopped asking" from two replies without a question mark is gone: the
+     * close was lost before it reached here (see guardedReplyWithClose), which is what the guess was covering for. End session stays on
+     * screen the whole time.
      */
-    let reply = firstReply;
-    if (!endOfSetup.close) {
-      const answered = whatIsAnswered({ decision: soFar?.decision ?? extracted.decision, yourRole: soFar?.yourRole ?? extracted.yourRole }, theirWords);
-      const again = whatItAsksAgain(reply, answered);
-      if (again.length) {
-        this.logger.warn(`Setup asked again for ${again.join(' and ')}; written again without it.`);
-        const second = await this.guardedReply(`${setupPrompt}\n\n---\n\n${doNotAskAgain(answered, again)}`, messages).catch(() => reply);
-        reply = whatItAsksAgain(second, answered).length ? withoutAskingAgain(second, answered) : second;
-      }
-      const earlier = (messages as { role: string; content: string }[]).filter((m) => m.role === 'assistant').map((m) => m.content ?? '');
-      const repeated = theQuestionAskedBefore(reply, earlier);
-      if (repeated) {
-        this.logger.warn(`Setup asked "${repeated.slice(0, 80)}" again; written again without it.`);
-        const second = await this.guardedReply(`${setupPrompt}\n\n---\n\n${doNotAskThatAgain(repeated)}`, messages).catch(() => reply);
-        const theyHaveSaidALot = messages.filter((m) => m.role === 'user').length >= 3;
-        reply = theQuestionAskedBefore(second, earlier) || whatItAsksAgain(second, answered).length ? withoutTheSameQuestion(withoutAskingAgain(second, answered), earlier, theyHaveSaidALot) : second;
-      }
-    }
-    const stoppedAsking = theSetupHasStoppedAsking(messages, reply);
-    /*
-     * THE AIM IS NOT IN THIS GATE, AND a-check-in-with-no-aim-has-nothing-to-read-against HOLDS THE
-     * MEASUREMENTS THAT SAY WHY. Putting it in did not make setup ask for an aim - the screen reads
-     * `ready`, not the model - while what was added alongside it took why-now from ten out of
-     * twenty-two to two. Read that file before trying again.
-     */
+    const reply = firstReply;
+    const ready = theModelFinished;
     const forThisSituation = scenarioForTheQuestion ?? scenarioInput ?? undefined;
-    /* Ready once setup has ended the way a check-in ends, or the assistant has stopped asking. Never the moment the gate opens: the first update comes next. */
-    /*
-     * WHEN THE MODEL STOPS ASKING, SETUP ASKS THE LAST QUESTION ITSELF (26 October 2026). Achieng's third answer was met with "The next
-     * screen will ask if you want to check in too", the two-part flow that is gone, and setup ended before "Anything else I should know?".
-     * Now that turn's talk of a next screen is taken out and the product asks "Anything else I should know?"; only a no to it ends setup.
-     */
-    const ready = endOfSetup.close;
-    const askTheLastQuestion = stoppedAsking && !endOfSetup.close;
-    if (stoppedAsking && !theGate(extracted, forThisSituation)) {
-      this.logger.warn(
-        `Setup finished without ${whatSetupNeverGot(extracted, forThisSituation).join(', ')} - the assistant had stopped asking.`,
-      );
+    if (ready && !theGate(extracted, forThisSituation)) {
+      this.logger.warn(`Setup finished without ${whatSetupNeverGot(extracted, forThisSituation).join(', ')}.`);
     }
 
     /**
@@ -1482,32 +1366,21 @@ from finishing at all.`;
      * It is still a warning and never a refusal: a required field somebody cannot answer becomes a
      * field they invent, which is the whole history of "My team".
      */
-    const needsPeople = !extracted.peopleNamed?.length;
 
-    /*
-     * AND NOT ASKING HER FOR THE BRIEF SHE HAS JUST PASTED IN.
-     *
-     * Second turn of a real setup, 24 September 2026: a thousand characters of brief, answered with
-     * "You can upload or paste that here so it is kept with what you shared." The prompt line that
-     * produces that is a good one and cannot tell "I have a brief" from a brief. See
-     * they-just-gave-you-that - only that sentence comes out, and only when their message was the
-     * material.
-     */
-    const theirLast = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
     let out = reply;
-    if (theyJustPastedSomething(theirLast)) {
-      out = withoutAskingForWhatTheyGave(reply);
-      if (out !== reply) this.logger.log('Setup: they had just pasted it, so the ask to paste it came out of the reply.');
-    }
 
     /* Nobody reads the word "account" for what somebody says (user journeys, F-6): where the reply still says it, it says who checks in. */
     out = out
       .replace(/\bwho (?:gives|should give|will give) (?:the |their |your )?accounts?\b/gi, 'whether you will check in too')
       .replace(/\bwho (?:gives|should give|will give) (?:an? )?account\b/gi, 'whether you will check in too');
     /* Whichever way setup ended, its last line says what was set up and what happens next. */
-    if (askTheLastQuestion) out = `${withoutTalkOfTheNextScreen(out)}\n\n${ANYTHING_ELSE}`.trim();
-    if (ready && !out.includes(SETUP_IS_DONE)) out = `${out.trim()}\n\n${SETUP_IS_DONE}`;
-    return { reply: out, extracted, ready, needsPeople };
+    if (ready && !out.includes(SETUP_IS_DONE)) out = `${withoutTalkOfTheNextScreen(out).trim()}\n\n${SETUP_IS_DONE}`;
+    /*
+     * WHAT SETUP KNOWS NOW, THE ONE READING (what-setup-knows): what it knew before this turn with what this turn read, including the
+     * kind of check-in it read from their first message. The panel shows it as it is and the screen hands it back with the next message.
+     */
+    const known = whatSetupKnowsNow(soFar, { ...(extracted as Partial<WhatSetupKnows>), ...(forThisSituation ? { classifiedScenario: forThisSituation } : {}) });
+    return { reply: out, extracted: known, ready, needsPeople: !known.peopleNamed?.length };
   }
 
   /**
@@ -1532,7 +1405,7 @@ from finishing at all.`;
       buildEntrySystemPrompt(GroundScenario.HELP_TEAM_UNDERSTAND, THE_ANCHOR_GROUND_LABEL, PartyType.INITIATOR, undefined, peopleNamed, anchor?.text),
       whatTheConversationHasHeard(heard, opening),
       theChallengeIsDue(heard, theChallengeWasUsed(messages as any), theHopeWasAskedAndAnswered(messages as any) || (messages as any[]).some((m) => m.role === 'assistant' && /a month from now|meaningfully better/i.test(m.content))),
-      theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast)),
+      theThingsThatCannotBeMissed(),
       closes ? THE_CLOSING_REMINDER : (anchor?.last ?? ''),
     ].filter(Boolean).join('\n\n---\n\n');
     const reply = await this.guardedReply(system, messages, onDelta);
@@ -1589,7 +1462,7 @@ from finishing at all.`;
      * Otherwise it is null and the text below is exactly what it always was.
      */
     const anchor = await theAnchorGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, scenario, messages);
-    const entrySystem = `${buildEntrySystemPrompt(mapped, aNameAPersonGave(groundLabel) ?? '', PartyType.INITIATOR, undefined, peopleNamed, anchor?.text)}\n\n---\n\n${theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast))}${anchor ? `\n\n---\n\n${anchor.last}` : ''}`;
+    const entrySystem = `${buildEntrySystemPrompt(mapped, aNameAPersonGave(groundLabel) ?? '', PartyType.INITIATOR, undefined, peopleNamed, anchor?.text)}\n\n---\n\n${theThingsThatCannotBeMissed()}${anchor ? `\n\n---\n\n${anchor.last}` : ''}`;
     const out = await this.guardedReplyWithClose(
       entrySystem,
       messages,
@@ -1656,9 +1529,17 @@ from finishing at all.`;
       ...messages.filter((m) => m.role === 'user').map((m) => m.content ?? ''),
       ...(alsoTheirs ?? []).filter(Boolean),
     ];
-    const reply = onDelta
+    const raw = onDelta
       ? await this.spokenAsItComes(this.anthropic.respondStream(system, messages), personSaid, onDelta)
       : await this.anthropic.respond(system, messages);
+    /*
+     * THE CLOSE IS READ ONCE, FROM WHAT THE MODEL WROTE, BEFORE ANYTHING CLEANS THE TEXT (issue 48, round 39, 4 November 2026).
+     * When the lead said "No, that looks right" or "Just show me the board now", the model closed setup with the marker and nothing
+     * else. The internal-name check below then took SESSION_COMPLETE out as a name, so the close was gone before it was read: no reply,
+     * not ready, and the lead looked at an empty screen with the box still open, on four of eight setups. The fact travels beside the
+     * reply from here; the text never carries it.
+     */
+    const { text: reply, hadMarker: closed } = stripCloseMarker(raw);
     /*
      * NOTHING INVENTED REACHES A PERSON, on this path as on the check-in. A sentence naming somebody
      * who does not exist is dropped rather than repaired, because there is nothing of theirs to put
@@ -1666,159 +1547,31 @@ from finishing at all.`;
      * explicable and most likely to be the last thing they read here.
      */
     const screened = screen(reply, personSaid);
-    if (screened.dropped.length) {
-      /*
-       * WHAT WENT, NOT ONLY HOW MANY. The count alone is what made the date fault invisible for two
-       * days: six sentences were cut from one setup conversation and every log line said "Dropped 1
-       * sentence(s)", so nobody could see that the thing being deleted was the date question. The
-       * reason and the offending word go with it - that is what names the bug.
-       */
-      for (const hit of screened.hits) {
-        this.logger.warn(
-          `Entry path dropped a sentence: ${hit.check} (${hit.offending.join(', ')}) in ${JSON.stringify(hit.sentence)}`,
-        );
-      }
+    for (const hit of screened.hits) {
+      /* What went, not only how many: the reason and the offending word name the bug. */
+      this.logger.warn(`Entry path dropped a sentence: ${hit.check} (${hit.offending.join(', ')}) in ${JSON.stringify(hit.sentence)}`);
     }
-    /* No internal name, last of all (night quality run 2: "this new project, NEW_PROJECT,"). */
-    const restored = aPersonNeverReadsAnInternalName(screened.text || ASK_AGAIN, 'the entry chat', this.logger);
+    /* No internal name, last of all (night quality run 2: "this new project, NEW_PROJECT,"). A close with nothing else said is not a fault. */
+    const restored = aPersonNeverReadsAnInternalName(screened.text || (closed ? '' : ASK_AGAIN), 'the entry chat', this.logger);
 
-    // The causal upgrade cannot be repaired by substitution - there is no word of
-    // theirs to put back, because the causation was invented whole. Logged, as on
-    // the other path, rather than edited into prose that reads as a lost thread.
+    /* An invented cause, or one of their own words shortened, is logged as a count, never the words. */
     const invented = causalClaimNobodyMade(restored, personSaid);
-    if (invented.length) {
-      /* The COUNT, not the claim: the same rule as the check-in path. A log is a place staff can
-         read, and the product promises they cannot read somebody's account of their work. */
-      this.logger.warn(
-        `${invented.length} causal claim(s) nobody made on the entry path. ${ASK_INSTEAD_OF_CONCLUDING}`,
-      );
-    }
-
-    /* The two the substitution above cannot reach: a name invented whole, which has nothing of
-       theirs underneath to put back, and one of their own words quietly shortened. Reported rather
-       than edited, on the same reasoning as the check-in path - the point is that the rate stops
-       being unknowable. */
+    if (invented.length) this.logger.warn(`${invented.length} causal claim(s) nobody made on the entry path. ${ASK_INSTEAD_OF_CONCLUDING}`);
     const shortened = truncationsOfTheirWords(restored, personSaid);
-    if (shortened.length) {
-      this.logger.warn(`Shortened one of their own words on the entry path: ${shortened.join(', ')}.`);
-    }
-    /**
-     * Last, after the word-restoration and the causal check, because both of those reason about
-     * what the model actually said. Cleaning the text first would have them inspect a string the
-     * model did not produce.
-     */
+    if (shortened.length) this.logger.warn(`Shortened one of their own words on the entry path: ${shortened.length}.`);
+
     /*
-     * AND THE FOUR SHAPE GUARDS THE SIGNED-IN CHECK-IN HAS HAD ALL EVENING.
-     *
-     * This path had only the invention screen. Every guard built tonight - a reply that asks nothing,
-     * a question asked after somebody refused it, a reply that opens by handing somebody their own
-     * message back, and the same question a third time - was wired into conversation.service and
-     * nowhere else. This is the conversation every lead meets FIRST, and none of them reached it.
-     *
-     * Third time in one evening that a fix sat on a path nobody takes: the start-a-check-in flag no
-     * button passed, the target extraction the entry commit never called, and now this.
-     *
-     * READ, NOT REWRITTEN. Nothing here writes a word or drops a sentence. Where a reply has one of
-     * these shapes it is logged and named, because on this path there is no second attempt to make -
-     * the stream has usually already left. What it buys is that the fault is visible in the log with
-     * the check-in that produced it, instead of being found again by a lead reading her screen.
-     */
-    /*
-     * AND IT ASKS AGAIN, RATHER THAN NOTING THAT IT WENT WRONG.
-     *
-     * The first version of this only logged, on the reasoning that a streamed reply has already left
-     * and there is no second attempt to make. Watched in a browser, that reasoning was wrong in the
-     * way that matters: four of five turns of a real setup conversation tripped a guard and the
-     * person saw every one of them. A log nobody is reading while she is on the screen is not a
-     * guard, it is a note about a guard.
-     *
-     * The whole reply is in hand here, before it is returned, on both the streamed and unstreamed
-     * paths. So it asks once more with the fault named, exactly as the check-in does, and keeps the
-     * second only if it is genuinely better. If it is not, the first stands: a flawed reply beats no
-     * reply, and a loop here would strand the person it is trying to help.
-     *
-     * The streamed case does mean a person can see the first attempt appear and be replaced. That is
-     * worth it. What she saw instead was a lecture about recall sessions ending in the same question
-     * she had just declined.
+     * NO WORD MATCHERS AFTER THE FACT (fix plan, group 5). Six checks read each reply for a repeat, a question asked again, their words
+     * said back, a job question, a verdict or an essay, and cut sentences out or only logged it. They are gone from this path: setup is
+     * told what it knows (what-setup-knows) and asks only what that does not answer, and the model reads what the person means.
+     * Saying they are done still ends it, because that is the person ending the conversation, like End session.
      */
     const theirLast = personSaid[personSaid.length - 1] ?? '';
-    const asksBefore = messages.filter((m) => m.role === 'assistant').map((m) => m.content ?? '');
-
-    const whatIsWrong = (text: string): { fault: string; instruction: string } | null => {
-      if (isADeadEnd(text, hadCloseMarker(text))) {
-        return { fault: 'asked nothing and did not close', instruction: ASK_SOMETHING_OR_CLOSE };
-      }
-      if (theirLast && theyPushedBackOnTheQuestions(theirLast) && asksBefore.length
-        && asksTheSameThingAgain(asksBefore[asksBefore.length - 1], text)) {
-        return { fault: 'asked again after they said no', instruction: THEY_ALREADY_SAID_NO };
-      }
-      if (alreadyAskedTwice(text, asksBefore)) {
-        return { fault: 'the same question a third time', instruction: ASKED_IT_TWICE_ALREADY };
-      }
-      if (theirLast && isAVerdictAboutSomebodyElse(theirLast, text)) {
-        return { fault: 'a verdict about somebody not in the room', instruction: HERS_TO_DRAW };
-      }
-      if (theirLast && opensByRepeatingThem(theirLast, text)) {
-        return { fault: 'opened by repeating them', instruction: doNotSayItBack(theirLast, text) };
-      }
-      /* The words this product does not use, same list and same reason as the check-in path. Their
-         own word back is not the fault; the product reaching for it is. See words-we-do-not-use. */
-      const notOurWords = wordsWeDoNotUse(text, personSaid);
-      if (notOurWords.length) {
-        return { fault: `used ${notOurWords.length} word(s) we do not use`, instruction: sayItWithoutThose(notOurWords, text) };
-      }
-      /* Last, because a reply with a real fault in it should be fixed for the fault, not the length. */
-      /* A reply that carries the marker and still asks is not the closing turn, so it does not get
-         the closing turn's room. See a-turn-still-asking-is-not-a-close. */
-      const closingHere = hadCloseMarker(text) && !stillAsking(text);
-      if (isAnEssay(text, closingHere)) {
-        /* A count, never the words. See no-log-line-carries-what-somebody-wrote. */
-        const wasThisLong = howManyWords(text);
-        /* Ask a long close for what a close is FOR, not merely for fewer words. */
-        return {
-          fault: `${wasThisLong} words`,
-          instruction: closingHere ? A_CLOSE_IS_THREE_SENTENCES : SAY_IT_SHORTER,
-        };
-      }
-      return null;
-    };
-
-    /*
-     * WRITTEN DOWN, NOT ASKED AGAIN. Same decision as the check-in's four - see
-     * DELETES_WHAT_IT_FINDS in the gate. Measured live, these re-asks fired four times in one
-     * conversation and every one logged "the second try was no better; the first stands", having
-     * spent a model call of latency on the turn somebody was waiting for. The detection stays,
-     * because the count is what decides whether any of it earns its place.
-     */
-    const wrong = whatIsWrong(restored);
-    if (wrong) this.logger.warn(`entry chat: ${wrong.fault}.`);
-
-    /*
-     * WHAT THE CHECK-IN DOES IN CODE, THE FIRST CHECK-IN INSIDE SET-UP DOES TOO (reviewer, 14 October 2026). Grace's first
-     * check-in, which follows set-up in the same conversation, ignored "finish", answered "I have to go" with "You have to go.
-     * Before you do...", handed "The owner of Kilele Hotel paid for 40 units today." back to her, asked about her job twice and
-     * asked the same question twice in a row. These are shapes, fixed in code, with no second model call:
-     *   - saying they are done closes it, and nothing more is asked;
-     *   - their own sentence is not said back, and a question it answered for them comes out;
-     *   - the job question, and a question just answered or just asked, are not asked again.
-     */
-    let best = withoutAnAnswerToItsOwnQuestion(withoutTheirWordsHandedBack(restored, personSaid));
-    const lastAsk = asksBefore[asksBefore.length - 1] ?? '';
-    const askedAgain = asksAboutTheirJobAgain(best, asksBefore)
-      || (!!lastAsk && (repeatsTheLastAskWordForWord(best, lastAsk) || asksItAgainAfterTheAnswer(lastAsk, best)));
-    if (askedAgain) {
-      const without = withoutTheJobQuestion(withoutTheQuestionAskedAgain(best, lastAsk ? [lastAsk] : []));
-      best = without && without !== best ? withAQuestionForTheFirstCheckIn(without, { closing: false, asked: asksBefore }) : best;
-    }
-    if (theirLast && (askedToFinish([theirLast]) || isTheWordFinish(theirLast)) && personSaid.length >= 2) {
+    if (theirLast && (askedToFinish([theirLast]) || isTheWordFinish(theirLast))) {
       this.logger.log('entry chat: they said they are done; the conversation closes.');
-      const kept = withoutTheGoodbyeOrTheirLeaving(best, theirLast);
-      return { reply: endingOnTheClose(forHumans(kept), 'web'), closed: true };
+      return { reply: endingOnTheClose(forHumans(withoutTheGoodbyeOrTheirLeaving(restored, theirLast)), 'web'), closed: true };
     }
-    /* "finish" too soon is said plainly, never read as an answer (reviewer, 14 October). */
-    if (theirLast && isTheWordFinish(theirLast)) best = aFinishTooSoon(best, 2 - personSaid.length);
-
-    return { reply: forHumans(best), closed: hadCloseMarker(best) };
+    return { reply: forHumans(restored), closed };
   }
 
 
@@ -1838,7 +1591,7 @@ from finishing at all.`;
     let emitted = 0;
     for await (const delta of deltas) {
       raw += delta;
-      const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
+      const safeUpTo = theFinishedPart(raw, SESSION_CLOSE_MARKER.length);
       if (safeUpTo <= emitted) continue;
       const cleanedSoFar = forHumans(raw.slice(0, safeUpTo));
       const fresh = whatIsNewSince(cleanShown, cleanedSoFar);
@@ -1853,25 +1606,7 @@ from finishing at all.`;
   }
 
 
-  /*
-   * THE REPORT BEING WRITTEN FOR A SETUP, BY THE SETUP'S OWN KEY (3 November 2026). The report is the slowest step at the end of
-   * setup, and Save waited for it. Save no longer does: a lead who saves first has this same report, the one her screen asked for,
-   * kept on her check-in when it lands (commitInner), so it is written once and read the same everywhere. Held for ten minutes.
-   */
-  private readonly reportsBeingWritten = new Map<string, Promise<EntryReport | null>>();
-
-  async report(messages: ChatTurn[], scenario?: string, groundLabel?: string, anchorItems?: Record<string, unknown>, peopleNamed?: string[], leadsOwnWords?: string[], setupKey?: string): Promise<EntryReport | null> {
-    const coming = this.writeTheReport(messages, scenario, groundLabel, anchorItems, peopleNamed, leadsOwnWords);
-    const key = setupKey?.trim();
-    if (key) {
-      this.reportsBeingWritten.set(key, coming);
-      const letGo = setTimeout(() => { if (this.reportsBeingWritten.get(key) === coming) this.reportsBeingWritten.delete(key); }, 10 * 60_000);
-      (letGo as any).unref?.();
-    }
-    return coming;
-  }
-
-  private async writeTheReport(messages: ChatTurn[], scenario?: string, groundLabel?: string, anchorItems?: Record<string, unknown>, peopleNamed?: string[], leadsOwnWords?: string[]): Promise<EntryReport | null> {
+  async report(messages: ChatTurn[], scenario?: string, groundLabel?: string, anchorItems?: Record<string, unknown>, peopleNamed?: string[], leadsOwnWords?: string[]): Promise<EntryReport | null> {
     messages = withoutBankDetailsAnywhere(messages);
     if (!messages || messages.length === 0) throw new BadRequestException('There was nothing to send, so write a message and try again.');
 
@@ -2060,7 +1795,14 @@ from finishing at all.`;
     return out;
   }
 
-  async commit(
+  /** Saves the setup as a check-in; once it is one, it is no longer kept as a setup waiting to be finished, on any device. */
+  async commit(organizationId: string, initiatorId: string, dto: Parameters<EntryService['commitTheSetup']>[2]): ReturnType<EntryService['commitTheSetup']> {
+    const made = await this.commitTheSetup(organizationId, initiatorId, dto);
+    await this.keepTheUnfinishedSetup(initiatorId, null).catch(() => undefined);
+    return made;
+  }
+
+  private async commitTheSetup(
     organizationId: string,
     initiatorId: string,
     dto: {
@@ -2073,7 +1815,11 @@ from finishing at all.`;
       cadenceChosen?: boolean;
       /** Runs until the lead ends it (request 37). */
       runsUntilEnded?: boolean;
+      /** "Check in on your own first, invite later": every invitation is held ready until the lead presses "Send N invitations". */
+      inviteLater?: boolean;
       cadenceAnchorDay?: number;
+      /** Twice or more a week: the weekdays it meets on (Ground.cadenceDays). */
+      cadenceDays?: number[];
       workingDays?: number[];
       checkInBy?: string;
       lastCheckInBy?: string;
@@ -2092,9 +1838,9 @@ from finishing at all.`;
       /** The setter's own part in this, from the report's yourRole or typed by them. */
       roleAsDescribed?: string;
       /** `colleagueId` instead of `email` for a colleague picked from the list (U.4); resolved in commitInner. */
-      contributors: { email: string; colleagueId?: string; context?: string; displayName?: string; inviteToken?: string; note?: string }[];
+      contributors: { email: string; colleagueId?: string; context?: string; displayName?: string; phone?: string; inviteToken?: string; note?: string }[];
     },
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; numbersNotKept?: { email: string; because: string }[] }> {
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
     dto = withoutBankDetailsAnywhere(dto);
     // ---- Server-side draft (written at entry-save, the ISSUE-17 consent
@@ -2236,7 +1982,7 @@ from finishing at all.`;
    * its ground, briefly waiting out an in-flight winner. */
   private async awaitConsumedDraftGround(
     userId: string,
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; numbersNotKept?: { email: string; because: string }[] }> {
     for (let attempt = 0; attempt < 10; attempt++) {
       const d = await this.prisma.entryDraft.findUnique({ where: { userId } });
       if (d?.groundId) {
@@ -2313,8 +2059,8 @@ from finishing at all.`;
   private async commitInner(
     organizationId: string,
     initiatorId: string,
-    dto: Parameters<EntryService['commit']>[2],
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+    dto: Parameters<EntryService['commitTheSetup']>[2],
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; numbersNotKept?: { email: string; because: string }[] }> {
     /* Colleagues picked by id get their addresses here, after the draft is laid over the body, so the
        list of colleagues never carried an address (U.4). */
     dto = { ...dto, contributors: await this.withColleaguesAddressed(organizationId, (dto.contributors ?? []) as any[]) };
@@ -2445,6 +2191,7 @@ from finishing at all.`;
         ...(howLongTheyAsked ? { timelineDays: howLongTheyAsked } : {}),
         runsUntilEnded: dto.runsUntilEnded === true ? true : undefined,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
+        cadenceDays: chosenCadence === Cadence.WEEKLY ? dto.cadenceDays ?? undefined : undefined,
         workingDays: dto.workingDays ?? undefined,
         // Mirrors the self path a few lines below (dto.checkInBy/lastCheckInBy
         // -> startsAt/endsAt) - the admin's chosen dates were previously
@@ -2552,6 +2299,7 @@ from finishing at all.`;
       cadence: theAnchorIsOn ? Cadence.WEEKLY : chosenCadence,
       runsUntilEnded: theAnchorIsOn ? undefined : dto.runsUntilEnded === true ? true : undefined,
       cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
+      cadenceDays: !theAnchorIsOn && chosenCadence === Cadence.WEEKLY ? dto.cadenceDays ?? undefined : undefined,
       workingDays: dto.workingDays ?? undefined,
       startsAt: dto.checkInBy || undefined,
       endsAt: theAnchorIsOn ? theEndSheChose ?? theMonthEnds : dto.lastCheckInBy || undefined,
@@ -2676,21 +2424,32 @@ from finishing at all.`;
      * a session 1 to do, like everybody else.
      */
     /*
-     * SETUP STAYS PRIVATE TO WHOEVER RUNS THE CHECK-IN (Hafsah, 4 November 2026). The lead has one conversation on screen, setup and
-     * her first update together (decision 133), but it is stored in two parts. Her session 1 is closed as answered, so she counts in
-     * session 1 like anybody who has checked in. The conversation itself is NOT copied onto it as check-in turns, and no record lines
-     * are read from it: it was, and her setup words ("I do not know what he is working on") became lines every member read on the
-     * board, in the report and in Ask. Setup asks for her first update whenever it fits, so no turn marks where setup ends and her
-     * update begins, and nothing here guesses. What setup is for reaches the team through its own places: the targets
-     * (extractExpectations, below), the brief, the people and the cadence. Her own words stay hers (LeadSetupWords, above), and the
-     * report she read at the end stays on her session (below), served to her alone.
+     * DECISION 133: SETUP FLOWS STRAIGHT INTO THE LEAD'S FIRST CHECK-IN, IN THE SAME CONVERSATION.
+     * The setup is not the check-in (decision 28) and is not in `history`: `history` holds only the
+     * check-in that followed it, which is the lead's first check-in. So session 1 is closed as answered,
+     * exactly like anybody's finished check-in, and the lead counts in session 1.
+     * Before this, session 1 was left NOT_STARTED, the ground page opened it again, and it read
+     * "Nobody has checked in yet" and "Your turn" to a lead who had just checked in.
      */
-    const theyAnswered = (dto.history ?? []).some((t: any) => t?.role === 'user' && typeof t.content === 'string' && t.content.trim());
+    /* The lead's first session's record, once written; nothing to wait for where there is none. */
+    let theLeadsRecordIsRead: Promise<unknown> = Promise.resolve();
+    const theConversation = (dto.history ?? []).filter((t: any) => t && typeof t.content === 'string' && t.content.trim());
+    const theyAnswered = theConversation.some((t: any) => t.role === 'user');
     if (!theAnchorIsOn && theyAnswered) {
+      /*
+       * STORED IN TWO PARTS (Hafsah, 4 November 2026: one conversation on screen, "setup facts stay private to whoever runs the
+       * check-in; her 'where things stand today' is saved as her first check-in under the normal rules"). The whole setup chat was
+       * copied into her session 1 as check-in turns, so its assessment read every setup sentence as said in a check-in, and the record
+       * took them: "I do not know what he is working on. That is what I want to find out from these check-ins." reached a team
+       * member's board. Her words now reach the assessment once, as setup (setupGiven, below); the read names the messages that are
+       * her own update on where things stand, and only those are written onto session 1 as her first check-in's turns
+       * (assess-the-conversation.ts, herFirstCheckIn), so that part is her record like anybody's, and the rest stays setup's.
+       */
       await this.prisma.checkIn.update({
         where: { id: checkIn.id },
         data: { status: CheckInStatus.COMPLETED, completedAt: new Date(), optional: true },
       });
+      /* What she said is her record, written from her assessment (below) by the one writer anybody's finished check-in has. */
     } else if (dto.history.length > 0) {
       this.logger.log(`Ground ${ground.id}: no answer of the lead's in the conversation; session 1 stays open for the lead to answer.`);
     }
@@ -2738,6 +2497,18 @@ from finishing at all.`;
       .catch((e) => this.logger.error(`entry commit: could not schedule session 2 for ground ${ground.id}: ${e?.message ?? e}`));
 
     /*
+     * NOTHING IS EXTRACTED FROM SETUP AS THOUGH IT WERE THEIR ACCOUNT.
+     *
+     * This read the setup transcript and wrote record entries against session 1 - "I am their
+     * manager, I set the target", "I want to see what is on track" - which are answers about the
+     * SHAPE of the check-in, filed as though they were an account of the work. Read live in a
+     * report: a lead's "what you said this time" held two lines, both about who she is.
+     *
+     * The session she is about to do produces her record, on the normal completion path, like
+     * everybody else's.
+     */
+
+    /*
      * KEEP THE REPORT THEY JUST READ, ON THE SESSION THAT PRODUCED IT.
      *
      * This wrote it into `GroundParticipant.soloArtifact`. That column belongs to
@@ -2749,20 +2520,12 @@ from finishing at all.`;
      * Reported four times as "the report looks nothing like what I got at the end". It looked
      * nothing like it because it was not the same object.
      */
+    /* The report the lead read is kept at once; it is made again below from the conversation and who is on the saved check-in. */
     if (dto.report) {
       await this.prisma.checkIn.update({
         where: { id: checkIn.id },
         data: { sessionReport: dto.report as object },
       });
-    } else {
-      /* Saved before her report landed (3 November 2026): the report her screen asked for is kept here when it does, with the role it read. */
-      const theReportComing = dto.setupKey ? this.reportsBeingWritten.get(dto.setupKey.trim()) : undefined;
-      theReportComing?.then(async (report) => {
-        if (!report) return;
-        await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionReport: report as object } });
-        const roleFromTheReport = setterRole ? null : theSettersRole({ report });
-        if (roleFromTheReport) await this.prisma.groundParticipant.updateMany({ where: { groundId: ground.id, userId: initiatorId, partyType: PartyType.INITIATOR }, data: { roleAsDescribed: roleFromTheReport } });
-      }).catch((err) => this.logger.warn(`Could not keep the report that landed after the save on ${ground.id}: ${err?.message}`));
     }
 
     /**
@@ -2795,6 +2558,31 @@ from finishing at all.`;
       sessionNumber: 1,
     } satisfies CheckInCompletedEvent);
 
+    /*
+     * AND HER CONVERSATION IS ASSESSED, setup and her first check-in together (Hafsah's brief, 31 October; the-assessment.ts).
+     * Setup's own words and what she typed beside them (her notes on each person, the timing) are part of it, so the objective,
+     * the team, the rules and her private notes are read once, from her words, rather than by about two readers out of twenty.
+     * Her record is written from it (the one writer), and it is never waited for: the save answers as quickly as before.
+     */
+    if (theirOwnWords || theyAnswered || theAnchorIsOn) {
+      const words = (dto.leadsOwnWords ?? []).map((t) => (typeof t === 'string' ? t.trim() : '')).filter((t) => t && !t.startsWith('[Document:') && !t.startsWith('[Situation picked'));
+      const setupGiven = {
+        words,
+        /* The question each answered, from the conversation as she had it, so the read sees what she was answering. */
+        asked: theQuestionEachAnswered(words, theConversation),
+        given: [
+          ...(dto.contributors ?? []).map((c) => `${c.displayName?.trim() || c.email || 'Somebody'}${c.context?.trim() ? `: ${c.context.trim()}` : ''}${c.note?.trim() ? ` (note: ${c.note.trim()})` : ''}`),
+          ...(dto.cadence ? [`How often: ${dto.cadence}`] : []),
+          ...(dto.workingDays?.length ? [`Working days (0 is Sunday): ${dto.workingDays.join(', ')}`] : []),
+          ...(dto.brief?.trim() ? [`The brief: ${dto.brief.trim()}`] : []),
+        ],
+      };
+      const closedAt = new Date();
+      /* Kept as a promise: where this stood at the start is read from her record once the assessment has written it (keepWhatSetupGave, below). */
+      theLeadsRecordIsRead = Promise.resolve(this.conversation?.assessAndThenRead?.({ id: checkIn.id, participantId: participant.id, groundId: ground.id, sessionNumber: 1 }, { howItEnded: 'setup saved', closedAt, setup: setupGiven }))
+        .catch((err: any) => this.logger.warn(`entry commit: the assessment of ${ground.id}'s setup could not be written: ${err?.message ?? err}`));
+    }
+
     // Invite each contributor. addParticipant generates a fresh token per participant.
     // Do NOT pass a shared client-side inviteToken here - it would collide on the unique constraint
     // for the second and subsequent contributors, silently dropping them.
@@ -2813,6 +2601,8 @@ from finishing at all.`;
      * to an email address one line after it arrived.
      */
     const whyInvitesFailed: { email: string; because: string }[] = [];
+    /* A number given in the setup that the writer refused, said to the lead with its reason; the person is on the check-in either way. */
+    const numbersNotKept: { email: string; because: string }[] = [];
     for (const c of dto.contributors) {
       try {
         const result = await this.grounds.addParticipant(ground.id, organizationId, initiatorId, {
@@ -2824,6 +2614,7 @@ from finishing at all.`;
              morning it starts (the on-the-day cron sends it), as adding someone on the check-in's
              own page does. Without it the invitation went the moment the link was opened. */
           ...(dto.checkInBy ? { startsAt: dto.checkInBy } : {}),
+          ...(dto.inviteLater ? { heldUntilSent: true } : {}),
         });
         /*
          * WHETHER THE MAIL ACTUALLY WENT, WHICH THIS THREW AWAY.
@@ -2842,6 +2633,22 @@ from finishing at all.`;
           ...((result as any)?.notInvitedBecause ? { waitingBecause: (result as any).notInvitedBecause } : {}),
           ...((result as any)?.saying ? { saying: (result as any).saying } : {}),
         });
+        /*
+         * THE NUMBER THE LEAD GAVE BESIDE THEM, KEPT WITH THEM (Hafsah's blocker of 31 October 2026: "nothing anyone says in setup
+         * is ever lost"). It went through a second request the page made after the save, so a save finished from the email link, on
+         * another browser or with Google never kept it. The one writer for a lead's number keeps it here, where they are put on the
+         * check-in; the lead who is saving runs it, which is the writer's own rule. A number that does not keep leaves them on it.
+         */
+        const participantId = (result as { id?: string })?.id;
+        if (c.phone?.trim() && participantId) {
+          try {
+            await this.grounds.addTheirWhatsAppNumber({ groundId: ground.id, participantId, organizationId, userId: initiatorId, role: '', phone: c.phone });
+          } catch (err: any) {
+            this.logger.warn(`entry commit: the number given for ${c.email} was not kept: ${err?.message}`);
+            const why = typeof err?.message === 'string' && err.message ? ` ${err.message}` : '';
+            numbersNotKept.push({ email: c.email, because: `The phone number for ${c.displayName?.trim() || c.email} did not save, but they are on the check-in.${why}` });
+          }
+        }
       } catch (err: any) {
         this.logger.error(`entry commit: failed to invite ${c.email}: ${err.message}`);
         failedInvites.push(c.email);
@@ -2901,24 +2708,70 @@ from finishing at all.`;
      * Found by running the whole journey and counting the rows: two objectives where there should
      * have been five. So it runs here, after addParticipant, where the people it needs are real.
      *
-     * AFTER THE SAVE HAS ANSWERED (3 November 2026). It was awaited, so that the board would be built with the targets; the save then
-     * waited about twenty seconds for it (B4 capped that wait at twenty). It runs after the answer now, and when it lands the board is
-     * warmed again with the targets on it (AIMS_READ). A reading that fails is tried again rather than dropped. See
-     * a-slow-reading-does-not-hold-the-save.
+     * Awaited: the report is built moments later and reads the board, and a target that arrives
+     * after it is a target the lead does not see where she would look for it.
      */
     if (dto.history.length > 0) {
+      /* After the save has answered (Hafsah's speed brief, 3 November 2026): nothing here holds the save. The targets are read first, tried
+         again if the reading fails, and the board is warmed again when they land (SETUP_READ); then what else setup gave, and the report. */
       void readUntilItLands(
-        /* From the setup conversation, which is no longer copied onto her session. See extractExpectations: the targets are what
-           she said the check-in is FOR, not her account of the work, so setup is still the right place to read them from. */
+        /* From the setup conversation, which is no longer copied onto her session. See extractExpectations: the targets are what she said
+           the check-in is FOR, not her account of the work, so setup is still the right place to read them from. */
         () => this.conversation.extractExpectations(checkIn.id, participant.id, ground.id, dto.history),
         (err, tried, willTryAgain) => this.logger.error(`commit: aims and targets failed for initiator on ${ground.id} (try ${tried}): ${err?.message}${willTryAgain ? '; trying again' : '; giving up'}`),
-      ).then((landed) => {
-        if (landed) this.events?.emit?.(GroundworkEvents.AIMS_READ, { groundId: ground.id } satisfies AimsReadEvent);
-      });
+      ).then(async (landed) => {
+        if (landed) this.events?.emit?.(GroundworkEvents.SETUP_READ, { groundId: ground.id } satisfies SetupReadEvent);
+        /* And everything else the lead said in setup, where each part lives (GroundsService.keepWhatSetupGave), after the targets and
+           once the first session's record is written, so nothing is written twice. */
+        await theLeadsRecordIsRead;
+        await this.grounds.keepWhatSetupGave(ground.id, initiatorId, checkIn.id)
+          .catch((err: any) => this.logger.error(`commit: what setup gave could not be kept on ${ground.id}: ${err?.message}`));
+        /*
+         * THE REPORT KNOWS WHO IS ON THE CHECK-IN (round 7, the sales lead). It was made from the conversation alone, so a team given in the
+         * team box and never typed in the conversation read "The members of the sales team have not been named". It is made here, once the
+         * people are on the saved check-in, from the conversation and their names, and kept where the report lives (Hafsah's blocker,
+         * 31 October 2026: a save made before the page's report was ready has its report made here too).
+         */
+        const onIt = await this.prisma.groundParticipant.findMany({
+          where: { groundId: ground.id, partyType: { not: PartyType.INITIATOR } },
+          select: { nameGiven: true, email: true, user: { select: { firstName: true, lastName: true } } },
+        }).catch(() => [] as any[]);
+        const theTeam = (onIt ?? []).map((p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim()).filter(Boolean);
+        const made = await this.report(dto.history, dto.scenario, dto.groundLabel, undefined, theTeam.length ? theTeam : undefined, dto.leadsOwnWords)
+          .catch((err: Error) => { this.logger.warn(`The setup's report could not be made with its team on ${ground.id}: ${err?.message ?? err}`); return null; });
+        if (made) await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionReport: made as object } }).catch(() => undefined);
+        /* The lead is on the board already, reading "Your full report is ready in a moment." (Hafsah, 3 November evening): the same event
+           warms it again now the report is there, and the board stops saying it is coming. */
+        this.events?.emit?.(GroundworkEvents.SETUP_READ, { groundId: ground.id } satisfies SetupReadEvent);
+      }).catch((err: any) => this.logger.error(`commit: what setup gave could not be read after the save on ${ground.id}: ${err?.message ?? err}`));
     }
 
     const joinToken = (await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { joinToken: true } }))?.joinToken ?? null;
-    return { groundId: ground.id, joinToken, contributors: inviteResults, failedInvites, whyInvitesFailed };
+    return { groundId: ground.id, joinToken, contributors: inviteResults, failedInvites, whyInvitesFailed, numbersNotKept };
+  }
+
+  /**
+   * A SETUP A SIGNED-IN LEAD HAS NOT SAVED YET (Hafsah's blocker, 31 October 2026: "nothing anyone says in setup is ever lost").
+   *
+   * Round 5: a lead who left a setup unfinished and came back on another device, or on a device somebody else had used, found a new
+   * setup that asked everything again, and Check-ins said "No check-ins yet". The page kept the setup only on the device. It keeps it
+   * here too now, on the lead's own draft row (the row that already holds a setup on its way to becoming a check-in), as the same
+   * record /start restores. Only the lead it belongs to reads or writes it. A save, or "Start over", empties it.
+   */
+  async theUnfinishedSetup(userId: string): Promise<unknown> {
+    const d = await this.prisma.entryDraft.findUnique({ where: { userId }, select: { unfinishedSetup: true } });
+    return d?.unfinishedSetup ?? null;
+  }
+
+  async keepTheUnfinishedSetup(userId: string, setup: Record<string, unknown> | null): Promise<void> {
+    const kept = setup ? (setup as Prisma.InputJsonValue) : Prisma.DbNull;
+    /* A lead with no draft row yet gets one with nothing in it to save from (consumedAt set): the save makes the check-in from what the
+       page sends, as a new setup, and the nightly sweep of abandoned anonymous drafts leaves it alone. */
+    await this.prisma.entryDraft.upsert({
+      where: { userId },
+      update: { unfinishedSetup: kept },
+      create: { userId, draftToken: crypto.randomBytes(24).toString('hex'), payload: {}, history: [], consumedAt: new Date(), unfinishedSetup: kept },
+    });
   }
 
   /** Pre-auth draft update, authorized by the bearer draftToken (same pattern
@@ -3301,3 +3154,22 @@ function withoutTheGoodbyeOrTheirLeaving(reply: string, theirLast: string): stri
     return !(t && theirs && (t === theirs || t === theirs.replace(/\bi\b/g, 'you')));
   }).join(' ').trim();
 }
+
+/**
+ * THE QUESTION GROUNDWORK HAD JUST ASKED BEFORE EACH OF HER SETUP MESSAGES, read from the conversation as she had it: the same message,
+ * in order, and the assistant's turn before it. Null where she wrote first or the message is not in the conversation.
+ */
+export function theQuestionEachAnswered(words: string[], conversation: { role: string; content: string }[]): (string | null)[] {
+  let from = 0;
+  return words.map((w) => {
+    for (let i = from; i < conversation.length; i++) {
+      if (conversation[i].role !== 'user' || String(conversation[i].content ?? '').trim() !== w) continue;
+      from = i + 1;
+      const before = conversation[i - 1];
+      return before && before.role === 'assistant' ? stripTheCloseMarkerOf(String(before.content ?? '')) || null : null;
+    }
+    return null;
+  });
+}
+const stripTheCloseMarkerOf = (t: string): string => stripCloseMarker(t).text.trim();
+

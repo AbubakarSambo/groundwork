@@ -57,7 +57,7 @@ describe('what it opens on', () => {
   it('then a session open to them, with what it costs them', () => {
     const said = whatIsWorthSayingWhenYouArrive(truth({ sessions: [session('open to you')] as never }), 'Sam');
     expect(said.source).toBe('session_open');
-    expect(said.line).toContain('ten minutes');
+    expect(said.line).toContain('about ten minutes');
     expect(said.line).toContain('released with everybody');
   });
 

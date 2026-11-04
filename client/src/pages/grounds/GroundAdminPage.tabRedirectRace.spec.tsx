@@ -86,9 +86,10 @@ describe('the read-only redirect waits for the check-in to load', () => {
     expect(screen.queryByText('What this check-in is for')).toBeNull()
 
     resolve(ground())
-    /* Check-in's own content (BetweenCheckIns, since nothing is open in this fixture) - not
-       Context's, which the bug would have shown instead. */
-    expect(await screen.findByText('No check-in open right now')).toBeTruthy()
+    /* Check-in's own content - not Context's, which the bug would have shown instead. Changed in F5 (stage 11): with nothing open,
+       the lead's Check-in tab is "Check in yourself", with no ask box of its own. */
+    expect(await screen.findByRole('button', { name: 'Check in yourself' })).toBeTruthy()
+    expect(screen.queryByText('No check-in open right now')).toBeNull()
     expect(screen.queryByText('What this check-in is for')).toBeNull()
   })
 

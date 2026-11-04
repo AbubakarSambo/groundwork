@@ -74,7 +74,8 @@ describe('where they went', () => {
      * CheckInPeopleAndSetup.tsx renders under its own "Who's in it" heading.
      */
     const ROSTER = strip(readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'WhosInItRoster.tsx'), 'utf8'))
-    expect(ROSTER).toContain('Add a person to this check-in')
+    /* One box for the whole team now (Hafsah, 31 October 2026), headed "Add people to this check-in". */
+    expect(ROSTER).toContain('Add people to this check-in')
     expect(ROSTER).toContain('Or share an access code instead')
     expect(ROSTER).toContain('<ShareSection')
   })

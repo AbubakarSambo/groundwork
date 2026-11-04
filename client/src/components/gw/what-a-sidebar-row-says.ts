@@ -24,6 +24,8 @@ export interface RowFacts {
   roundsDone: number | null | undefined
   alignment: AlignmentRead | null | undefined
   closed: boolean
+  /** The one count's own sentence, as the server serves it to a reader shown the others (api grounds/this-sessions-count.ts). */
+  countSays?: string | null
 }
 
 const count = (n: number, one: string, many: string) => (n === 1 ? `one ${one}` : `${n} ${many}`)
@@ -40,9 +42,7 @@ export function whatTheRowSays(f: RowFacts): string {
       state = `your session ${of(f.attention.sessionNumber)} is ${f.attention.daysLate} days past its date`
       break
     case 'waiting':
-      state = f.attention.done === 0
-        ? `nobody has checked in yet for session ${of(f.round)}`
-        : `${f.attention.done} of ${f.attention.total} ${f.attention.total === 1 ? 'person' : 'people'} ${f.attention.done === 1 ? 'has' : 'have'} checked in for session ${of(f.round)}`
+      /* The served sentence, whole: "2 of 4 have checked in; Peter and Mary haven't joined yet." Every page says this one. */
       break
     default:
       if (f.closed) state = 'this check-in has ended'
@@ -61,6 +61,8 @@ export function whatTheRowSays(f: RowFacts): string {
       : `${count(a.agreed, 'thing is', 'things are')} agreed and nothing is still open`
   }
 
+  const served = f.attention.kind === 'waiting' ? f.countSays?.trim() || null : null
+  if (served) return [`${f.label}.`, served, open ? `${cap(open)}.` : null].filter(Boolean).join(' ')
   const said = [state, open].filter(Boolean).join(', and ')
   return said ? `${f.label}. ${cap(said)}.` : `${f.label}.`
 }

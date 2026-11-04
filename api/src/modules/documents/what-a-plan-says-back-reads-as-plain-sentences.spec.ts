@@ -26,7 +26,7 @@ describe('what is said back after a plan is read', () => {
       dates: [{ what: 'The new stock system goes live', when: 'by the end of the quarter' }],
     };
     expect(theContextWeHave(held)).toBe([
-      "Here is the context we have from plan.txt. I will keep this on record as the source for the sales team's targets.",
+      "Here is what I took from plan.txt. I will keep this on record as the source for the sales team's targets.",
       '',
       "Amani Wekesa's target for new shops is 15 each week.",
       '',

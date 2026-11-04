@@ -62,41 +62,6 @@ describe('a thing that happened has somewhere to go', () => {
     expect(progress.items[0].text).toBe('All forty migrated by Friday.');
   });
 
-  it('the extraction is told the difference, in the terms that confused it', () => {
-    /*
-     * Held on the prompt because that is what decides the type. The three lines below are the
-     * distinction the run showed was missing - a standard, a promise, and a thing that is done.
-     */
-    const P = strip(readFileSync(join(SRC, 'conversation/prompt-library.ts'), 'utf8'));
-    const at = P.indexOf('RECORD_EXTRACTION_PROMPT');
-    const prompt = P.slice(at, P.indexOf('export const', at + 10));
-    expect(prompt).toContain('PROGRESS - THE WORK ITSELF MOVING FORWARD');
-    expect(prompt).toContain('A standard, not an event');
-    expect(prompt).toContain('Once they report the work itself done, that is PROGRESS');
-  });
-
-  it('and the new type is narrow, because a wide one takes everything', () => {
-    /*
-     * THE REGRESSION THIS CAUGHT, AND IT WAS MINE. The first definition read "a thing that has
-     * HAPPENED... if the sentence would answer what has happened since last time, it is this" -
-     * which almost every sentence does. On the next gate run, 39 of 42 entries came back PROGRESS:
-     * no worries, no asks, no commitments, and "I cannot put it live because finance have not
-     * signed off" filed as progress.
-     *
-     * A new category with a wide definition takes the whole record. So it is last in the list, it
-     * says it is last, and it routes the near misses by name - being stuck is a WORRY, chasing
-     * something is a WORRY, a forecast is an INTENT, and "no other blockers" is nothing at all.
-     */
-    const P = strip(readFileSync(join(SRC, 'conversation/prompt-library.ts'), 'utf8'));
-    const at = P.indexOf('RECORD_EXTRACTION_PROMPT');
-    const prompt = P.slice(at, P.indexOf('export const', at + 10));
-    expect(prompt).toContain('PROGRESS IS NARROW AND IS THE LAST ONE TO REACH FOR');
-    expect(prompt).toContain('is being stuck. WORRY.');
-    expect(prompt).toContain('Record nothing at all.');
-    /* Last in the list, so it is the last thing weighed rather than the second. */
-    expect(prompt.indexOf('- PROGRESS -')).toBeGreaterThan(prompt.indexOf('- TENSION -'));
-  });
-
   it('and the slots that ask what happened accept it', () => {
     /*
      * "What has happened since what they said last time" and "where it actually landed" are the two

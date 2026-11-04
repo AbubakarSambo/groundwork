@@ -27,6 +27,8 @@ export type OrgDependency = ReadDependency & Partial<Omit<WhoIsWaiting, 'groundL
   onName?: string | null;
   /** What they said they did about it, in their own words (what-they-said-they-did-about-it.ts). */
   triedSaid?: string | null;
+  /** Taken above the person it was with, or round them, as the assessment read their words. */
+  takenFurther?: boolean | null;
 };
 
 export type WaitingOn = OrgDependency & { waitingDays: number };
@@ -80,7 +82,8 @@ export function whatThePlaceIsWaitingOn(deps: OrgDependency[], now: Date): Waiti
       const k = kept as OrgDependency;
       const s = said as OrgDependency;
       if (s.escalatedAt && (!k.escalatedAt || new Date(s.escalatedAt).getTime() < new Date(k.escalatedAt).getTime())) k.escalatedAt = s.escalatedAt;
-      if (s.triedSaid?.trim() && (!k.triedSaid?.trim() || (itWasTakenFurther({ triedSaid: s.triedSaid }) && !itWasTakenFurther({ triedSaid: k.triedSaid })))) k.triedSaid = s.triedSaid;
+      if (itWasTakenFurther(s) && !itWasTakenFurther(k)) { k.takenFurther = true; if (s.triedSaid?.trim()) k.triedSaid = s.triedSaid; }
+      else if (s.triedSaid?.trim() && !k.triedSaid?.trim()) k.triedSaid = s.triedSaid;
     },
   ) as OrgDependency[];
 

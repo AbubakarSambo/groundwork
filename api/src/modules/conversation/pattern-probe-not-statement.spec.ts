@@ -101,14 +101,17 @@ async function captureLivePrompt(patternRows: { code: string }[]): Promise<strin
 }
 
 describe('GW-PATTERN-PROBE-NOT-STATEMENT: patterns sharpen questions live, never state conclusions', () => {
-  it('proof: D1 (has a probe) sharpens a question live; the report separately names the observation', async () => {
+  it('proof: D1 (has a probe) no longer shapes the live prompt, and is never stated there; the report keeps its own route', async () => {
     const livePrompt = await captureLivePrompt([{ code: 'D1' }]);
 
     // eslint-disable-next-line no-console
     console.log('\n===== LIVE CONVERSATION PROMPT (proof) =====\n' + livePrompt + '\n===== END LIVE PROMPT =====\n');
 
-    expect(livePrompt).toContain('# Sharpen these questions');
-    expect(livePrompt).toContain(D1_PROBE);
+    /* 2 November 2026 (F2, Hafsah's decisions): a stored pattern no longer shapes a live question at all. What the next
+       check-in asks is layer 2's questions for the person (a-pattern-is-asked-about-never-named.spec), so the probe that was
+       asserted here is now asserted absent; every assertion that the pattern is never stated is kept. */
+    expect(livePrompt).not.toContain('# Sharpen these questions');
+    expect(livePrompt).not.toContain(D1_PROBE);
     expect(livePrompt).not.toContain(D1_OBSERVATION);
     expect(livePrompt).not.toContain('Patterns established across prior periods');
     expect(livePrompt).not.toContain('D1');
@@ -190,10 +193,11 @@ describe('GW-PATTERN-PROBE-NOT-STATEMENT: patterns sharpen questions live, never
     expect(livePrompt).not.toContain('F5');
   });
 
-  it('guard: multiple surfaced codes together - only the ones with a probe appear, in probe form, never as observations', async () => {
+  it('guard: multiple surfaced codes together - none appears, as a probe or as an observation', async () => {
     const livePrompt = await captureLivePrompt([{ code: 'D1' }, { code: 'K1' }, { code: 'B4' }]);
-    expect(livePrompt).toContain(D1_PROBE);
-    expect(livePrompt).toContain('What happened when you were not available to intervene?'); // B4's authored probe
+    /* (2 November 2026: no stored pattern's probe reaches the live prompt now; see the first test.) */
+    expect(livePrompt).not.toContain(D1_PROBE);
+    expect(livePrompt).not.toContain('What happened when you were not available to intervene?'); // B4's authored probe
     expect(livePrompt).not.toContain(F5_OBSERVATION);
     expect(livePrompt).not.toContain('F5');
     // No verdict-style code names anywhere in the live prompt.

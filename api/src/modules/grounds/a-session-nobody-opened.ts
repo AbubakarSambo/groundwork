@@ -68,7 +68,7 @@ export async function theSessionsNobodyOpened(prisma: any, now: Date, releaseMom
     select: {
       id: true, groundId: true, participantId: true, sessionNumber: true, availableFrom: true, createdAt: true,
       participant: { select: { id: true, userId: true, partyType: true, managingOnly: true, cameThroughTheLink: true, user: { select: { awaitingOrgApproval: true } } } },
-      ground: { select: { cadence: true, cadenceAnchorDay: true, workingDays: true, startsAt: true, createdAt: true, organizationId: true } },
+      ground: { select: { cadence: true, cadenceDays: true, cadenceAnchorDay: true, workingDays: true, startsAt: true, createdAt: true, organizationId: true } },
     },
     orderBy: [{ sessionNumber: 'asc' }],
   });
@@ -90,6 +90,7 @@ export async function theSessionsNobodyOpened(prisma: any, now: Date, releaseMom
       {
         cadence: g.cadence,
         anchorDay: g.cadenceAnchorDay ?? null,
+        days: (g as any).cadenceDays ?? null,
         workingDays: g.workingDays ?? [],
         startedAt: g.startsAt ?? g.createdAt ?? openedAt,
         startsNow: !g.startsAt,

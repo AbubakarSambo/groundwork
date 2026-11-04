@@ -1,68 +1,42 @@
 import { nextMove } from './one-step-at-a-time';
 
 /**
- * THIRTEEN PEOPLE, COUNTED ON THE CORPUS, WHOSE STEP WAS HELD BACK BY THE THING IT WOULD HAVE FIXED.
+ * A STEP RESTS ON SOMETHING OF THE WORK, AND EVERY OTHER REASON TO WAIT HOLDS.
  *
- * Hafsah: "coaching can happen without a pattern but pattern based coaching is what fires after 3
- * sessions." She is right, and checking it turned this up. Of 226 people with two or more
- * observations and no step, 185 are correct (the behaviour did not recur) and one was correctly
- * suppressed. Thirteen had every condition met - the same behaviour in two distinct sessions, not
- * something they asked for themselves, a paired destination to walk toward - and no step, because
- * `hadSubstance` was false.
- *
- * The steps being withheld:
- *
- *   "Put one detail on each thing you name, so somebody else can tell whether it happened."
- *   "When something stalls, say what you tried next."
- *
- * A vague session is exactly what those steps are for. The gate is right about the work and wrong
- * about the account, so it now asks which kind of step it is holding.
+ * This file used to pin the universal floor's steps about the account ("Put one detail on each thing you name"), offered on a
+ * thin session. That floor was the coach's own transcript read, removed on 2 November 2026 (F2, Hafsah's decisions): every step
+ * is now layer 3's, for a pattern resting on distinct items across the record, so no step is about the account. The machine's
+ * other reasons to wait are unchanged and still asserted here.
  */
 const state = { currentStep: null, stepGivenAt: null, staircase: null, staircasePosition: 0, history: [] };
 
-describe('a thin session is the evidence, not the obstacle', () => {
-  const thin = {
-    noticed: 'Nothing you named has a date, a number or a name on it, so nobody can check any of it later.',
-    lookingLike: 'Put one detail on each thing you name, so somebody else can tell whether it happened.',
-    reason: 'Nothing they named this session carried a date, a number or a name.',
+describe('a step rests on something of the work', () => {
+  const step = {
+    noticed: 'Which of the things you said you would do since last time is still open, and what day will you finish it?',
+    lookingLike: 'Which of the things you said you would do since last time is still open, and what day will you finish it?',
+    reason: 'Promises were not kept when they came due.',
     sessionNumber: 3,
-    hadSubstance: false,
+    hadSubstance: true,
   };
 
-  it('offers a step about the account on a session with nothing checkable in it', () => {
-    const move = nextMove(state, { ...thin, aboutTheAccount: true });
+  it('offers the step when it rests on something', () => {
+    const move = nextMove(state, step);
     expect(move.move).toBe('offer');
-    expect((move as any).step).toBe(thin.lookingLike);
+    expect((move as any).step).toBe(step.lookingLike);
   });
 
-  it('and still waits where the step is about the work', () => {
-    const move = nextMove(state, { ...thin, aboutTheAccount: false });
+  it('and waits when nothing is under it', () => {
+    const move = nextMove(state, { ...step, hadSubstance: false });
     expect(move.move).toBe('wait');
     expect((move as any).because).toMatch(/nothing checkable in it/);
   });
 
-  it('and treats a missing flag the way it always behaved', () => {
-    expect(nextMove(state, thin).move).toBe('wait');
-  });
-
   it('every other reason to wait is untouched', () => {
     /* No reason is still an accusation with no answer to it. */
-    expect(nextMove(state, { ...thin, reason: '  ', aboutTheAccount: true }).move).toBe('wait');
+    expect(nextMove(state, { ...step, reason: '  ' }).move).toBe('wait');
     /* No destination is still nothing to walk toward. */
-    expect(nextMove(state, { ...thin, lookingLike: null, aboutTheAccount: true }).move).toBe('wait');
+    expect(nextMove(state, { ...step, lookingLike: null }).move).toBe('wait');
     /* A step already outstanding is still asked about before a second one is offered. */
-    expect(nextMove(
-      { ...state, currentStep: 'something else', stepGivenAt: 2 },
-      { ...thin, aboutTheAccount: true },
-    ).move).toBe('ask about the last one');
-  });
-
-  it('and the service says which kind of step it is holding', () => {
-    const src = require('fs')
-      .readFileSync(require('path').join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    /* True for exactly the universal floor, which is what somebody gets when nobody has settled
-       what kind of work they do - and that floor is entirely about the account. */
-    expect(src).toMatch(/aboutTheAccount: readFromTheAccount/);
+    expect(nextMove({ ...state, currentStep: 'something else', stepGivenAt: 2 }, step).move).toBe('ask about the last one');
   });
 });

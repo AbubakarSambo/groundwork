@@ -47,8 +47,9 @@ export interface YourBoard {
   whereYouStand?: { says: string; whatWouldChangeIt?: string | null; decision?: string | null }
   /** "Worth knowing now": a few plain sentences. */
   worthKnowing?: string[]
-  /** "Something Groundwork noticed about your work", told to you first. */
-  noticed?: { says: string; whoSees?: string | null }
+  /** "Something Groundwork noticed about your work", told to you first. No note on who else sees it (the standards: no privacy
+      notes on screens); who may read it is the server's rule, unchanged. */
+  noticed?: { says: string }
   /** "Coaching, followed over time". */
   coachingOverTime?: string
   /** "What you contributed". */

@@ -15,7 +15,7 @@ describe('invite people (A4 people.txt)', () => {
       data: { preview: body.preview, seatsLeft: 70, rows: [{ email: 'faith@baridi.co.ke', result: 'invited' }], summary: body.preview ? '1 person will be invited.' : '1 person was invited.' },
     }) as any)
     wrap(<InvitePeople />)
-    fireEvent.change(screen.getByLabelText('Write one person on each line, with their name and email. Or paste a list from a spreadsheet.'), { target: { value: 'Faith Kerubo, faith@baridi.co.ke' } })
+    fireEvent.change(screen.getByLabelText('Write one person on each line, with their name, their email and their phone number. Or paste a list from a spreadsheet.'), { target: { value: 'Faith Kerubo, faith@baridi.co.ke' } })
     fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'ADMIN' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
     await waitFor(() => expect(post).toHaveBeenCalledWith('/users/invitations', { pasted: 'Faith Kerubo, faith@baridi.co.ke', preview: false, role: 'ADMIN' }))
@@ -32,7 +32,7 @@ describe('invite people (A4 people.txt)', () => {
       data: { preview: true, seatsLeft: 1, rows: [{ email: 'oops', result: 'not an email' }, { email: 'b@x.com', result: 'invited' }, { email: 'c@x.com', result: 'no seat' }], summary: '1 person will be invited. 1 line is not an email address. 1 person has no seat on your plan.' },
     } as any)
     wrap(<InvitePeople />)
-    fireEvent.change(screen.getByLabelText('Write one person on each line, with their name and email. Or paste a list from a spreadsheet.'), { target: { value: 'oops, b@x.com, c@x.com' } })
+    fireEvent.change(screen.getByLabelText('Write one person on each line, with their name, their email and their phone number. Or paste a list from a spreadsheet.'), { target: { value: 'oops, b@x.com, c@x.com' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
     expect(await screen.findByText('Not an email address')).toBeTruthy()
     expect(screen.getByText('Will be invited')).toBeTruthy()
@@ -50,7 +50,7 @@ describe('invite people (A4 people.txt)', () => {
       data: { preview: true, seatsLeft: 0, rows: [{ email: 'c@x.com', result: 'no seat' }], summary: '1 person has no seat on your plan.' },
     } as any)
     wrap(<InvitePeople />)
-    fireEvent.change(screen.getByLabelText('Write one person on each line, with their name and email. Or paste a list from a spreadsheet.'), { target: { value: 'c@x.com' } })
+    fireEvent.change(screen.getByLabelText('Write one person on each line, with their name, their email and their phone number. Or paste a list from a spreadsheet.'), { target: { value: 'c@x.com' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
     expect(await screen.findByText('Your plan has no room for anyone else.')).toBeTruthy()
     expect(screen.queryByText(/0 more people/)).toBeNull()
@@ -75,7 +75,7 @@ describe('invite people (A4 people.txt)', () => {
     } as any)
     wrap(<InvitePeople />)
     fireEvent.change(
-      screen.getByLabelText('Write one person on each line, with their name and email. Or paste a list from a spreadsheet.'),
+      screen.getByLabelText('Write one person on each line, with their name, their email and their phone number. Or paste a list from a spreadsheet.'),
       { target: { value: 'Дмитрий Иванов <p01@fieldnote.test>\nAda Obi, ada@x.com\nno-name@x.com' } },
     )
     fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))

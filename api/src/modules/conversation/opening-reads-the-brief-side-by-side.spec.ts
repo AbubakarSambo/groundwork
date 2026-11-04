@@ -66,7 +66,6 @@ function makeService(extractMs: number) {
     await service.theFrameFor('g1');
     return 'SYSTEM';
   });
-  jest.spyOn(service as any, 'suggestedAnswersFor').mockResolvedValue([]);
   return { service, anthropic, calls };
 }
 

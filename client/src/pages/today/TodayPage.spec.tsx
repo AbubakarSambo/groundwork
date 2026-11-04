@@ -23,9 +23,9 @@ const LEAD_READ = {
   count: 3,
   line: 'In Sales team, Q3, 5 of 6 have checked in for session 38; Omar hasn’t yet.',
   needs: [
-    { key: 'turn-f', kind: 'decide', title: 'Your first check-in for Faith, first 90 days', detail: 'About two minutes. Everyone else’s answers are read against yours.', action: { label: 'Start it', to: '/checkin/f1' }, groundId: 'f', organizationId: 'o' },
+    { key: 'turn-f', kind: 'decide', title: 'Your first check-in for Faith, first 90 days', detail: 'About ten minutes. Everyone else’s answers are read against yours.', action: { label: 'Start it', to: '/checkin/f1' }, groundId: 'f', organizationId: 'o' },
     { key: 'end-k', kind: 'decide', title: 'Decide how Kwame, first 90 days ends', detail: 'The last session is done.', action: { label: 'Decide', to: '/grounds/k' }, groundId: 'k', organizationId: 'o' },
-    { key: 'turn-l', kind: 'decide', title: 'Your own check-in for Leadership, Q3', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/l2' }, groundId: 'l', organizationId: 'o' },
+    { key: 'turn-l', kind: 'decide', title: 'Your own check-in for Leadership, Q3', detail: 'About ten minutes.', action: { label: 'Start it', to: '/checkin/l2' }, groundId: 'l', organizationId: 'o' },
   ],
   comingUp: [
     { at: tomorrowAt4, what: 'Session 39 of Sales team, Q3 opens.', to: '/grounds/s' },
@@ -98,25 +98,28 @@ describe('Today, as the lead', () => {
     expect(await screen.findByText('3 things, most important first')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'What needs you' })).toBeTruthy()
     expect(rows()).toEqual([
-      { title: 'Your first check-in for Faith, first 90 days', detail: 'About two minutes. Everyone else’s answers are read against yours.', action: [['Start it', '/checkin/f1']] },
+      { title: 'Your first check-in for Faith, first 90 days', detail: 'About ten minutes. Everyone else’s answers are read against yours.', action: [['Start it', '/checkin/f1']] },
       { title: 'Decide how Kwame, first 90 days ends', detail: 'The last session is done.', action: [['Decide', '/grounds/k']] },
-      { title: 'Your own check-in for Leadership, Q3', detail: 'About two minutes.', action: [['Start it', '/checkin/l2']] },
+      { title: 'Your own check-in for Leadership, Q3', detail: 'About ten minutes.', action: [['Start it', '/checkin/l2']] },
     ])
   })
 
-  /* Live walk at a hundred people, fault 2: an approval item used to send the approver straight to
-     the whole organisation's board (`/suite/leave`, `/suite/spend`), never filtered to this one
-     thing. It now goes to the approver's own queue, filtered by `?suite=`. */
-  it('sends an approval item to the queue, filtered to its suite, not straight to the whole board', async () => {
+  /* Live walk at a hundred people, fault 2, and the use-case walk of 2 November: each item's link is the server's `to`, unchanged.
+     The server sends an approval to the approver's own queue (`/suite/queue?suite=`) and finance's item to the requests for finance.
+     The page used to rewrite every `/suite/spend` to the approvals queue, so Njeri's finance item opened an empty queue. */
+  it('opens each item where the server says: an approval in the queue, and finance’s item in the requests for finance', async () => {
     open(WAIRIMU, {
       ...LEAD_READ,
       needs: [
-        { key: 'approve-leave-0', kind: 'decide', title: 'Aisha asked for leave from Monday 12 October to Friday 16 October.', detail: 'It is waiting for you to approve.', action: { label: 'Look at it', to: '/suite/leave' }, groundId: '', organizationId: 'o' },
-        { key: 'approve-spend-0', kind: 'decide', title: 'Kamau asked to spend KES 18,000 on fuel.', detail: 'It is waiting for you to approve.', action: { label: 'Look at it', to: '/suite/spend' }, groundId: '', organizationId: 'o' },
+        { key: 'approve-leave-0', kind: 'decide', title: 'Aisha asked for leave from Monday 12 October to Friday 16 October.', detail: 'It is waiting for you to approve.', action: { label: 'Look at it', to: '/suite/queue?suite=leave' }, groundId: '', organizationId: 'o' },
+        { key: 'approve-spend-0', kind: 'decide', title: 'Kamau asked to spend KES 18,000 on fuel.', detail: 'It is waiting for you to approve.', action: { label: 'Look at it', to: '/suite/queue?suite=spend' }, groundId: '', organizationId: 'o' },
+        { key: 'spend-finance', kind: 'decide', title: 'One approved request to spend is waiting for you in finance.', detail: 'It has not been checked yet.', action: { label: 'Open them', to: '/suite/spend/finance' }, groundId: '', organizationId: 'o' },
       ],
     })
     const links = await screen.findAllByRole('link', { name: 'Look at it' })
     expect(links.map(a => a.getAttribute('href'))).toEqual(['/suite/queue?suite=leave', '/suite/queue?suite=spend'])
+    expect(screen.getByText('One approved request to spend is waiting for you in finance.')).toBeInTheDocument()
+    expect((await screen.findAllByRole('link', { name: 'Open them' })).map(a => a.getAttribute('href'))).toEqual(['/suite/spend/finance'])
   })
 
   it('says what is coming up, in her own time', async () => {
@@ -240,16 +243,10 @@ describe('Today, for a new organisation’s admin', () => {
     expect(greetingAt).toBeLessThan(welcomeAt)
     expect(needsAt).toBeLessThan(welcomeAt)
     expect(welcomeAt).toBeLessThan(goingAt)
-    /* Answered 29 September, item 11 conflict B: Hafsah's exact sentence, naming the exceptions
-       decision 5 now covers (a performance plan, promotion or renewal alike), replaces the old
-       held sentence that pointed "They" at nobody. */
-    /* Ask is named for the organisation (decision 100): "Ask Nyali Foods", not "Ask Groundwork".
-       SCREEN FAULT 8: updated to the one shared sentence (lib/what-an-admin-cannot-read-without-
-       access.ts), which also names somebody's first 90 days - the fourth kind
-       who-may-read-this-check-in.ts closes to an admin, missing here before. */
-    expect(screen.getByText(
-      'You can see every board and report, including what people said in them. You never see anyone’s questions to Ask Nyali Foods, anyone’s own report, or a lead’s private notes, and never a performance plan, a promotion, a renewal or somebody\'s first 90 days unless given access to that check-in.',
-    )).toBeTruthy()
+    /* The privacy paragraph is taken off the first screen (Hafsah, 30 October 2026: plain
+       language for an impatient first-time lead; the prototype's Today has none). It stays in the
+       guide for leads and admins and on a person's own page. */
+    expect(text).not.toMatch(/You can see every board and report/)
   })
 })
 
@@ -316,7 +313,7 @@ describe('Today: the greeting never claims what "What needs you" does not', () =
     open(WAIRIMU, {
       count: 1,
       line: 'You have not checked in yet.',
-      needs: [{ key: 'turn-s', kind: 'decide', title: 'Your own check-in for Sales team, Q3', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/s1' }, groundId: 's', organizationId: 'o' }],
+      needs: [{ key: 'turn-s', kind: 'decide', title: 'Your own check-in for Sales team, Q3', detail: 'About ten minutes.', action: { label: 'Start it', to: '/checkin/s1' }, groundId: 's', organizationId: 'o' }],
       comingUp: [],
     })
     expect(await screen.findByText(/You have not checked in yet\./)).toBeTruthy()
@@ -371,5 +368,31 @@ describe('the lead’s Today, with what her mail also tells her', () => {
     open(MIRIAM, PARTICIPANT_READ)
     await screen.findByText('Your own report for Sales team, Q3')
     expect(screen.queryByRole('list', { name: 'From Groundwork' })).toBeNull()
+  })
+})
+
+/* F5, the approved journey, stage 8: the count in its words, "Send it to them again" for who has not joined, and the report row naming who differs. */
+describe('Akinyi’s day one, as she reads Today', () => {
+  const AKINYI = { id: 'u-a', firstName: 'Akinyi', role: 'MEMBER', organizationName: 'Westgate Supplies' }
+  const DAY_ONE = {
+    count: 1,
+    line: 'In Deal progress, 2 of 4 have checked in; Peter and Mary haven’t joined yet.',
+    lineGroundId: 'g-deals',
+    lineResend: { groundId: 'g-deals', participantIds: ['p-peter', 'p-mary'], firstNames: ['Peter', 'Mary'] },
+    needs: [
+      { key: 'report-g-deals', kind: 'ready', title: 'Today’s report for Deal progress is ready', detail: 'Jane and John see the Westgate deal differently.', action: { label: 'Read it', to: '/grounds/g-deals/report' }, groundId: 'g-deals', organizationId: 'o' },
+    ],
+    comingUp: [],
+  }
+  it('reads the count, who has not joined, a way to send it again, and who differs', async () => {
+    open(AKINYI, DAY_ONE)
+    expect(await screen.findByText(/In Deal progress, 2 of 4 have checked in; Peter and Mary haven’t joined yet\./)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Send it to them again' })).toBeTruthy()
+    expect(screen.getByText('Today’s report for Deal progress is ready')).toBeTruthy()
+    expect(screen.getByText('Jane and John see the Westgate deal differently.')).toBeTruthy()
+  })
+  it('names the one person when only one has not joined', async () => {
+    open(AKINYI, { ...DAY_ONE, line: 'In Deal progress, 3 of 4 have checked in; Peter hasn’t joined yet.', lineResend: { groundId: 'g-deals', participantIds: ['p-peter'], firstNames: ['Peter'] } })
+    expect(await screen.findByRole('button', { name: 'Send it to Peter again' })).toBeTruthy()
   })
 })

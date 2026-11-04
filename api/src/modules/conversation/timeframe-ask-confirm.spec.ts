@@ -1,7 +1,6 @@
 import { GroundScenario, PartyType } from '@prisma/client';
 import {
   ENGINE_RULES,
-  RECORD_EXTRACTION_PROMPT,
   buildScenarioPackForParty,
 } from './prompt-library';
 
@@ -28,16 +27,16 @@ describe('duration: ask in conversation, never assume, confirm at end', () => {
   it('ENGINE_RULES tells the engine to ASK for the timeframe before anchoring goals', () => {
     expect(ENGINE_RULES).toMatch(/the timeframe is part of establishing success/i);
     expect(ENGINE_RULES).toMatch(/your very next question asks for the period/i);
-    expect(ENGINE_RULES).toMatch(/Do not let the person move toward wrapping up before you have asked for the period/i);
+    /* Changed 3 November 2026 (no forced close): "Do not let the person move toward wrapping up before ..." went; it asks once, naturally. */
+    expect(ENGINE_RULES).toMatch(/This is required, ask it once, naturally, not as a form field\. Wait for their answer/i);
+    expect(ENGINE_RULES).not.toMatch(/Do not let the person move toward wrapping up/i);
   });
 
-  it('ENGINE_RULES requires a single combined end-of-session confirmation of the timeframe', () => {
-    expect(ENGINE_RULES).toMatch(/At the end of the session, before the record closes, confirm the timeframe/i);
-    expect(ENGINE_RULES).toMatch(/one combined closing confirmation, never two stacked prompts/i);
-    /* Hafsah's approved wording, 14 October (E8): it was "is that still the period you want this measured against". */
-    expect(ENGINE_RULES).toMatch(/Is that still the right time span for this/i);
-    // if the person never gave one, ask at the end rather than closing without it
-    expect(ENGINE_RULES).toMatch(/If they never gave a timeframe, ask for it then/i);
+  /* Changed 3 November 2026 (Hafsah: no forced close): the combined "Is that still the right time span for this, and are you ready to close
+     this check-in?" went with the scripted close. A timeframe never given is asked for once, before the model offers to wrap up. */
+  it('ENGINE_RULES asks for a timeframe never given before it offers to wrap up, with no scripted closing confirmation', () => {
+    expect(ENGINE_RULES).toMatch(/If they never gave a timeframe, ask for it once before you offer to wrap up/i);
+    expect(ENGINE_RULES).not.toMatch(/are you ready to close this check-in/i);
   });
 
   it('no scenario question pack hardcodes an assumed period', () => {
@@ -50,9 +49,4 @@ describe('duration: ask in conversation, never assume, confirm at end', () => {
     }
   });
 
-  it('the record schema can carry a stated TIMEFRAME (and only when stated)', () => {
-    expect(RECORD_EXTRACTION_PROMPT).toMatch(/- TIMEFRAME -/);
-    expect(RECORD_EXTRACTION_PROMPT).toMatch(/Record it ONLY if the person actually stated it/i);
-    expect(RECORD_EXTRACTION_PROMPT).toMatch(/Never infer or invent a period/i);
-  });
 });

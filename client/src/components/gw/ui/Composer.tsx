@@ -77,6 +77,8 @@ export function Composer({
   return (
     <div className={ask ? 'asst-comp gw-composer' : 'ci-c gw-composer'}>
       {plusOpen && plusMenu && <div className="gw-composer-menu">{plusMenu}</div>}
+      {/* One box to type in, with the attach button and send inside it (Hafsah, 3 November evening). */}
+      <div className={ask ? 'gw-composer-row' : 'gw-composer-box'}>
       {onPlus && (
         <button
           type="button"
@@ -113,6 +115,7 @@ export function Composer({
       >
         {ask ? (sendText ?? 'Send') : (sendText ?? '↑')}
       </button>
+      </div>
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { aServedCount } from '@/lib/a-served-count-for-a-spec'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -37,7 +38,10 @@ function renderPage() {
 
 beforeEach(() => vi.clearAllMocks())
 
-const anAnchor = (people: any[], checkIns: any[]) => ({
+/* The count is the server's one count now (api this-sessions-count.ts, whose spec pins that the anchor's lead and her set-up
+   conversation are left out; Hafsah, 30 October 2026). Each fixture carries it as GET /grounds/:id serves it. */
+/* Changed 3 November (F1 part 2): one served count, theCount, in place of `thisSession` beside `answeredBySession`. */
+const anAnchor = (people: any[], checkIns: any[], said: any = { session: 1, everyoneIn: false, says: '' }) => ({
   id: 'g1', label: 'Help my team understand', status: 'ACTIVE', scenario: 'HELP_TEAM_UNDERSTAND', timelineDays: 30,
   cadence: 'WEEKLY', plannedSessions: 4, daysLeft: 30, overdue: 0, initiatorId: 'u-amina', endsOn: '2026-11-07',
   participants: [
@@ -51,6 +55,11 @@ const anAnchor = (people: any[], checkIns: any[]) => ({
   ],
   sessionClock: { currentSession: 1, plannedSessions: 4, says: 'Session 1 of 4.', whileOpen: null },
   boardRenders: true,
+  /* As the server counts it: the anchor's managing lead is never in a round; her team is, and a finished session is an answer. */
+  theCount: aServedCount({ 1: {
+    on: people.map((p) => p.id),
+    answered: checkIns.filter((c) => c.status === 'COMPLETED').map((c) => c.participantId),
+  } }, said),
 })
 
 describe("the anchor lead's first screen", () => {
@@ -69,7 +78,7 @@ describe("the anchor lead's first screen", () => {
     ]
     ;(groundsApi.get as any).mockResolvedValue(anAnchor(team, [
       { id: 'c-juma', sessionNumber: 1, status: 'COMPLETED', participantId: 'p-juma', completedAt: '2026-10-09' },
-    ]))
+    ], { session: 1, answered: 1, ofPeople: 2, everyoneIn: false, notCountedSays: null, says: 'One of the two people has checked in for session 1.' }))
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Help my team understand/i).length).toBeGreaterThan(0))
     expect(await screen.findByText(/One of the two people has checked in for session 1\./)).toBeTruthy()

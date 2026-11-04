@@ -1,11 +1,12 @@
 import { theDaysAnOpenDailySessionWasMissed } from '../board/the-persons-record';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
-import { NOT_A_QUIET_CLOSE, wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
-import { theConfirmedWaits, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
+import { NOT_A_QUIET_CLOSE } from '../grounds/an-answer-includes-a-refusal';
+import { theConfirmedWaits, whatTheyTriedInFull } from '../grounds/a-wait-is-the-speakers-account';
 import { aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
 import { anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { theCountOfASession } from '../grounds/this-sessions-count';
 import { whoIsNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { whoHasNotJoinedYet, WHAT_SAYS_SOMEBODY_JOINED } from '../grounds/invited-not-joined-yet';
 import { asADirection } from '../board/an-aim-or-a-limit';
@@ -20,8 +21,10 @@ import { labelsForParties, namesVisibleTo, viewerLabelOf, withNames } from './pa
 import { peersAreNamedOn } from './peers-are-named';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
 import { theSentenceAbout, theSentenceIsSafe, theWeekOf, type AWeeksLine } from './the-weekly-sentence-about-each-person';
-import { awayUntilOn, fallsInLeave, leaveOfThePeopleOn, type Stretch } from '../suites/who-is-away';
+import { leaveOfThePeopleOn, type Stretch } from '../suites/who-is-away';
+import { whoHasAnswered } from './how-many-have-answered';
 import { howSolid } from './a-figure-nobody-can-check-says-so';
+import { theFactsOnRecord } from '../conversation/the-facts-on-record';
 import { whatMoreThanOnePersonNamed } from './what-more-than-one-person-named';
 import { isASalesKind } from '../board/the-kind-of-work';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
@@ -43,6 +46,7 @@ import { withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the
 import { periodOf } from '../patterns/period-of';
 import { theNamesOnOurSide } from '../board/a-deal-that-has-stalled';
 import { PATTERN_ROW_SELECT, servedPatterns, runsItForAPattern } from '../patterns/who-reads-a-pattern';
+import { theNewestRecordOfEachPerson, theRecordAsServedPatterns } from '../patterns/what-the-record-shows-the-lead';
 import {
   theFactsIn, asTheWeekReadBeforeReleaseOne, theSentencesIn, theWeeksHeading, whatThisReportIs, theCheckInsMade, theThingsWithProof, aTargetThisWeek,
   movedThisWeek, whatCameUpAcrossTheTeam, whatWasSaidAndWhatTheProofShows, aCommitmentThatSettled, aHandoffThatCleared, theirSideOfIt,
@@ -181,7 +185,7 @@ export class TheWeeklyReportService {
     const ground: any = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        initiatorId: true, cadence: true, workingDays: true, kindOfWork: true, workStages: true, organizationId: true,
+        initiatorId: true, cadence: true, cadenceDays: true, workingDays: true, kindOfWork: true, workStages: true, organizationId: true, scenario: true,
         participants: { select: { id: true, userId: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, ...WHAT_SAYS_SOMEBODY_JOINED, user: { select: { firstName: true, lastName: true, email: true } } } },
         objectives: { select: { id: true, name: true, target: true, count: true, direction: true, ownerParticipantId: true, setByParticipantId: true, isADecisionAboutAPerson: true } },
       } as any,
@@ -196,11 +200,10 @@ export class TheWeeklyReportService {
       select: { participantId: true, sessionNumber: true, completedAt: true, isSetup: true },
     } as any);
     const checkedIn = new Set(done.map((c) => c.participantId));
-    const rows: any[] = await this.prisma.recordEntry.findMany({
-      where: { participant: { groundId }, createdAt: { gte: start }, disputedAt: null },
-      select: { participantId: true, type: true, text: true, anchoredDocumentId: true, recallBased: true },
-    } as any);
-    if (!checkedIn.size && !rows.length) return null;
+    /* WHAT EACH PERSON SAID THIS WEEK, from their conversations' assessments through the one reader, as everybody in the check-in may
+       read it (never a lead-only item): the record they build, not a summary of counts and names (1 November 2026). */
+    const saidThisWeek = await theFactsOnRecord(this.prisma, { groundId, reader: { kind: 'everybody in the check-in' }, since: start, until: at });
+    if (!checkedIn.size && !saidThisWeek.length) return null;
 
     /*
      * WHO WAS ON LEAVE THIS WEEK (week 23): approved leave, by its dates only. Somebody away is not
@@ -215,22 +218,24 @@ export class TheWeeklyReportService {
     /* Somebody an admin has not let in yet cannot check in, so is neither due nor written up as absent (decision 77). */
     const notLetIn = await whoIsNotLetInYet(this.prisma, parties);
     /* Nor somebody invited who has not joined yet: not due, not absent, never missed (decision 8 redone, night run 3). */
-    for (const id of await whoHasNotJoinedYet(this.prisma, parties).catch(() => new Set<string>())) if (!notLetIn.has(id)) notLetIn.set(id, { declined: false, decidedByUserId: null, decidedAt: null });
+    const notJoinedIds = await whoHasNotJoinedYet(this.prisma, parties).catch(() => new Set<string>());
+    for (const id of notJoinedIds) if (!notLetIn.has(id)) notLetIn.set(id, { declined: false, decidedByUserId: null, decidedAt: null });
 
     /* THE SENTENCE ABOUT EACH PERSON. */
     const eachPerson: { participantId: string; says: string }[] = [];
     for (const p of parties) {
       const label = labels.get(p.id);
       if (!label) continue;
-      const lines: AWeeksLine[] = rows
-        .filter((r) => r.participantId === p.id)
-        .map((r) => ({ text: String(r.text ?? ''), type: String(r.type), documented: !!r.anchoredDocumentId }));
+      const lines: AWeeksLine[] = saidThisWeek
+        .filter((f) => f.participantId === p.id)
+        .map((f) => ({ text: f.words, type: f.section, documented: f.proved }));
       const here = checkedIn.has(p.id);
       /* The lead who ran it and did not check in this week is not someone the week is about. */
       if (p.partyType === PartyType.INITIATOR && !here && !lines.length) continue;
       if (notLetIn.has(p.id) && !here && !lines.length) continue;
+      /* Kept without names: a name inside their words is put back as that person's label, and swapped in again when served. */
       const says = theSentenceAbout({ label, checkedIn: here, lines, onLeave: awayThisWeek(p.id) });
-      if (says && theSentenceIsSafe(says, { label, lines })) eachPerson.push({ participantId: p.id, says });
+      if (says && theSentenceIsSafe(says, { label, lines })) eachPerson.push({ participantId: p.id, says: namesOff(says) });
     }
 
     /* THE CHECK-INS DUE AND MADE: every check-in opened this week, and every one made this week. */
@@ -239,32 +244,42 @@ export class TheWeeklyReportService {
       select: { participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, createdAt: true, isSetup: true, isClarification: true, isSelfCorrection: true, optional: true, closedReason: true, turns: { where: { role: 'PERSON' }, take: 1, select: { id: true } } },
     } as any) as Promise<any[]>).catch(() => [])) ?? []) as any[];
     const inTheWeek = (d: any) => !!d && new Date(d).getTime() >= start.getTime() && new Date(d).getTime() <= at.getTime();
-    /*
-     * A CHECK-IN STILL WAITING THAT OPENED ON THE NIGHT BEFORE THE WEEK BEGAN IS DUE THIS WEEK (night quality run 2). Amina's fourth
-     * check-in opened at midnight on Sunday in Nairobi, two hours before Monday began in Lagos, so it was not counted as due, and Esther
-     * read "All 3 check-ins due this week were made." and "100%" while Amina was being reminded. A day of slack covers any time zone.
-     */
+    /* A session opened on the night before the week began is this week's (night quality run 2): a day of slack covers any time zone. */
     const openedForThisWeek = (d: any) => !!d && new Date(d).getTime() >= start.getTime() - 86_400_000 && new Date(d).getTime() <= at.getTime();
-    const due = all.filter((c) => c && !c.isSetup && !c.isClarification && !c.isSelfCorrection && c.status !== undefined)
+    const sessions = all.filter((c) => c && !c.isSetup && !c.isClarification && !c.isSelfCorrection);
+    const thisWeeksSessions = [...new Set(sessions
       .filter((c) => (c.status === CheckInStatus.COMPLETED && inTheWeek(c.completedAt)) || (c.status !== CheckInStatus.COMPLETED && openedForThisWeek(c.availableFrom ?? c.createdAt)))
-      /* Not one that opened while its person was away, nor one that waits for somebody away now. */
-      .filter((c) => c.status === CheckInStatus.COMPLETED
-        || !(fallsInLeave(new Date(c.availableFrom ?? c.createdAt), leave.get(c.participantId) ?? []) || awayUntilOn(leave.get(c.participantId), at)))
-      /* Nor one that waits for somebody an admin has not let in yet, who cannot make it (decision 77). */
-      .filter((c) => c.status === CheckInStatus.COMPLETED || !notLetIn.has(c.participantId))
-      /* The lead's own optional row is due only when they answered it (decision 133). */
-      .filter((c) => !c.optional || (c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c)));
-    const made = due.filter((c) => c.status === CheckInStatus.COMPLETED && !wasAQuietClose(c)).length;
+      .map((c) => c.sessionNumber as number))];
+    /*
+     * EACH OF THE WEEK'S SESSIONS, BY THE ONE COUNT (how-many-have-answered.ts, 1 November 2026): due is everybody each session counts,
+     * made is who answered it. The week read "100% of check-ins made" from its own count of rows, beside the board's "2 of 4 people have
+     * answered this session" on the same day. Somebody away this week, or not let in, is not due, as the one count says.
+     */
+    let dueCount = 0;
+    let made = 0;
+    for (const n of thisWeeksSessions) {
+      const people = parties.map((p) => ({
+        ...p,
+        notLetIn: notLetIn.has(p.id) && !notJoinedIds.has(p.id),
+        notJoinedYet: notJoinedIds.has(p.id),
+        awayUntil: awayThisWeek(p.id) ? 'this week' : null,
+        checkIns: sessions.filter((c) => c.participantId === p.id && c.sessionNumber === n),
+      }));
+      const c = whoHasAnswered(people, n, ground.scenario);
+      dueCount += c.onTheCheckIn.length;
+      made += c.answered.length;
+    }
+    const due = sessions.filter((c) => thisWeeksSessions.includes(c.sessionNumber));
 
     /* WHAT WAS SAID, AND HOW MUCH OF IT HAS SOMETHING BEHIND IT. Never the rating of an answer. */
-    const said = rows.filter((r) => String(r.type) !== 'SUCCESS_DEFINITION');
+    const said = saidThisWeek.map((f) => ({ participantId: f.participantId, text: f.words, proved: f.proved }));
     const counts: AWeeksCount[] = parties.filter((p) => labels.get(p.id)).map((p) => {
       const mine = said.filter((r) => r.participantId === p.id);
-      const how = mine.map((r) => howSolid({ text: String(r.text ?? ''), recallBased: r.recallBased !== false && !r.anchoredDocumentId }));
+      const how = mine.map((r) => howSolid({ text: r.text, recallBased: !r.proved }));
       return {
         participantId: p.id,
         said: mine.length,
-        documented: mine.filter((r) => !!r.anchoredDocumentId).length,
+        documented: mine.filter((r) => r.proved).length,
         estimated: how.filter((h) => h === 'estimated').length,
         fromMemory: how.filter((h) => h === 'from-memory').length,
       };
@@ -376,7 +391,7 @@ export class TheWeeklyReportService {
     const collections: TheCollectionsWeek | null = await theCollectionsWeekFor(this.prisma, groundId, start, at).catch(() => null);
 
     /* WHAT MORE THAN ONE PERSON NAMED, by label. Names of people in the check-in are never a "thing". */
-    const people = parties.filter((p) => labels.get(p.id)).map((p) => ({ who: labels.get(p.id)!, texts: said.filter((r) => r.participantId === p.id).map((r) => String(r.text ?? '')) }));
+    const people = parties.filter((p) => labels.get(p.id)).map((p) => ({ who: labels.get(p.id)!, texts: said.filter((r) => r.participantId === p.id).map((r) => r.text) }));
     const theirNames = parties.flatMap((p) => [fullNameOf(p), p.user?.firstName, p.user?.lastName, p.nameGiven].filter(Boolean) as string[]);
     const namedByMoreThanOne = whatMoreThanOnePersonNamed(people, theirNames).map((s) => ({ name: namesOff(s.name), who: s.who }));
 
@@ -393,7 +408,7 @@ export class TheWeeklyReportService {
 
     /* WHAT STOPPED BEING IN SOMEBODY'S WAY THIS WEEK. */
     const deps: any[] = ((await ((this.prisma as any).groundDependency?.findMany?.({
-      where: { groundId, status: 'CLEARED' }, select: { id: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, triedSaid: true, clearedAt: true },
+      where: { groundId, status: 'CLEARED' }, select: { id: true, fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, triedSaid: true, clearedAt: true, createdAt: true },
     }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[];
     const clearedThisWeek = deps.filter((d) => inTheWeek(d.clearedAt) && (d.what ?? '').trim()).map((d, i) => ({ ...d, id: d.id ?? `w-${i}`, groundId }));
     /* Change 4 (decision 137): a wait on a colleague is the speaker's account until the colleague's own promise confirms it. */
@@ -412,15 +427,13 @@ export class TheWeeklyReportService {
       const p = pid ? parties.find((x) => x.id === pid) : null;
       return p ? fullNameOf(p) || String(p.nameGiven ?? '').trim() || null : null;
     };
-    const theLeadsRow = parties.find((x) => x.partyType === 'INITIATOR');
-    const theNamesOf = (d: any) => ({ by: nameOfParty(d.fromParticipantId), on: nameOfParty(d.onParticipantId), lead: nameOfParty(theLeadsRow?.id) });
     const cleared = clearedThisWeek.map((d) => {
       const confirmed = !d.onParticipantId || confirmedWaits.has(d.id);
       const theirSide = confirmed ? null : theirSideOfIt(namesOfParty(d.fromParticipantId), (Array.isArray(theirLines) ? theirLines : []).filter((l) => l.participantId === d.onParticipantId));
       return {
         fromParticipantId: d.fromParticipantId, onParticipantId: d.onParticipantId ?? null, onLabel: d.onLabel ? namesOff(d.onLabel) : null, what: namesOff(d.what),
         confirmed,
-        ...(confirmed ? {} : { note: namesOff(theNoteBesideTheClaim(d, theNamesOf(d))), ...(theirSide ? { theirSide: namesOff(theirSide) } : {}) }),
+        ...(confirmed ? {} : { note: namesOff(whatTheyTriedInFull(d, nameOfParty(d.fromParticipantId))), ...(theirSide ? { theirSide: namesOff(theirSide) } : {}) }),
       };
     });
 
@@ -449,7 +462,7 @@ export class TheWeeklyReportService {
       periods,
       eachPerson,
       /* A daily session left open is due once for each working day of the week it stayed open (final real-model check, item 14). */
-      checkIns: { due: due.length + (await this.theDaysLeftOpenThisWeek(ground, due, start, at)), made },
+      checkIns: { due: dueCount + (await this.theDaysLeftOpenThisWeek(ground, due, start, at)), made },
       counts,
       targets,
       namedByMoreThanOne,
@@ -487,7 +500,7 @@ export class TheWeeklyReportService {
     const ground: any = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, startedFrom: true, peersVisibleToEachOther: true, whoSeesTargets: true, cadence: true,
+        organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, startedFrom: true, peersVisibleToEachOther: true, whoSeesTargets: true, cadence: true, cadenceDays: true,
         /* Decision 75, item 2: the admin asked to approve an evaluation check-in reads it. */
         status: true, approvedById: true,
         participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, cameThroughTheLink: true, user: { select: { firstName: true, lastName: true, email: true } } } },
@@ -745,8 +758,17 @@ export class TheWeeklyReportService {
       now,
     });
     const thisWeek = new Set(facts.periods);
-    return served
-      .filter((p) => (rows.find((r) => r.id === p.id)?.seenInSessions ?? []).some((n: number) => thisWeek.has(n)))
+    /* What the record shows about each person (layer 2), for whoever runs it only (F2, 2 November 2026): each pattern that holds and
+       rests on something from a check-in of this week. */
+    const people = runsItForAPattern(ground, readerUserId) ? await theNewestRecordOfEachPerson(this.prisma, groundId) : [];
+    const acrossTime = theRecordAsServedPatterns(people.map((one) => ({
+      ...one,
+      record: { ...one.record, patterns: one.record.patterns.filter((p) => p.instances.some((i) => thisWeek.has(periodOf({ sessionNumber: i.sessionNumber, when: i.on }, ground)))) },
+    })));
+    return [
+      ...served.filter((p) => (rows.find((r) => r.id === p.id)?.seenInSessions ?? []).some((n: number) => thisWeek.has(n))),
+      ...acrossTime,
+    ]
       .filter((p) => p.yours || labels.has(p.participantId))
       .map((p) => {
         const heading = /[.!?]$/.test(p.heading) ? p.heading : `${p.heading}.`;

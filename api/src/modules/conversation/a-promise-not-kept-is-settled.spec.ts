@@ -1,5 +1,7 @@
 import { ConversationService } from './conversation.service';
-import { aCommitmentKey, oneOfEach, thePrompt } from './what-happened-to-what-they-said';
+import { aCommitmentKey, oneOfEach } from './what-happened-to-what-they-said';
+import { assessTheConversation } from './assess-the-conversation';
+import { anAssessmentHolding } from './an-assessment-for-a-spec';
 import { yourBoard } from '../grounds/your-board';
 
 /**
@@ -36,10 +38,13 @@ describe('the same promise, written twice', () => {
 });
 
 describe('reading what happened to it', () => {
+  /* Changed 1 November 2026: what happened is read by the conversation's assessment, given the open promises once by id, and the settling reads it there. */
   function aService(outcomes: any[]) {
+    const assessment: any = anAssessmentHolding();
+    assessment.comparedWithLastTime.promisesDue = outcomes.map((o, i) => ({ id: `d${i}`, words: o.words ?? '', from: [1], whoMaySee: 'the people in this check-in', saidWordForWord: false, previousItem: `c:${TWO_COPIES[o.item - 1].id}`, happened: o.happened }));
     const prisma: any = {
       checkIn: { findUnique: jest.fn(async () => ({
-        groundId: 'g1', participantId: 'p-ngozi', startedAt: new Date('2026-09-29T13:40:00Z'),
+        groundId: 'g1', participantId: 'p-ngozi', startedAt: new Date('2026-09-29T13:40:00Z'), sessionReport: assessment,
         turns: [
           { role: 'AI', content: 'What have you done to get an answer from Mr. Adebayo after escalating?' },
           { role: 'PERSON', content: "I haven't done anything further. He didn't reply." },
@@ -47,18 +52,28 @@ describe('reading what happened to it', () => {
       })) },
       groundCommitment: { findMany: jest.fn(async () => TWO_COPIES), updateMany: jest.fn(async () => ({ count: 1 })) },
     };
-    const anthropic: any = { extract: jest.fn(async () => ({ outcomes })) };
+    const anthropic: any = { extract: jest.fn(async () => { throw new Error('read from the assessment'); }) };
     const nothing: any = { get: () => undefined, emit: jest.fn(() => Promise.resolve()) };
     return { svc: new ConversationService(prisma, {} as any, anthropic, {} as any, nothing, nothing, nothing, nothing, nothing, nothing) as any, prisma, anthropic };
   }
 
   it('each answer goes with the question it answered, and the promise is put once', async () => {
-    const { svc, anthropic } = aService([{ item: 1, happened: 'NOT_DONE' }]);
-    await svc.settleWhatTheySaidTheyWouldDo('ci3');
-    const content = anthropic.extract.mock.calls[0][1][0].content;
-    expect(content).toBe(thePrompt([TWO_COPIES[0]], [{ asked: 'What have you done to get an answer from Mr. Adebayo after escalating?', said: "I haven't done anything further. He didn't reply." }]));
-    expect(content).toContain('1. (Asked: "What have you done to get an answer from Mr. Adebayo after escalating?") I haven\'t done anything further. He didn\'t reply.');
-    expect(content).not.toContain('2. I will follow up');
+    const calls: string[] = [];
+    const prisma: any = {
+      checkIn: {
+        findUnique: async () => ({ id: 'ci3', groundId: 'g1', participantId: 'p-ngozi', sessionNumber: 3, startedAt: new Date('2026-09-29T13:40:00Z'), sessionReport: null, whatWeHave: null,
+          turns: [
+            { id: 't1', role: 'AI', content: 'What have you done to get an answer from Mr. Adebayo after escalating?' },
+            { id: 't2', role: 'PERSON', content: "I haven't done anything further. He didn't reply." },
+          ], participant: { partyType: 'PARTICIPANT', user: { firstName: 'Ngozi' } }, ground: { label: null } }),
+        findMany: async () => [], update: async () => ({}),
+      },
+      groundCommitment: { findMany: async () => TWO_COPIES },
+    };
+    await assessTheConversation({ prisma, anthropic: { extract: async (_s: string, h: any[]) => { calls.push(h[0].content); return { summary: '', nothingToRecord: [1] }; } } as any }, 'ci3', { howItEnded: 'finished by the person', closedAt: new Date() });
+    expect(calls[0]).toContain("GROUNDWORK: What have you done to get an answer from Mr. Adebayo after escalating?\n[1] THE PERSON: I haven't done anything further. He didn't reply.");
+    expect(calls[0]).toContain('[c:c1] I will follow up with Mr. Adebayo again (by tomorrow)');
+    expect(calls[0]).not.toContain('[c:c2]');
   });
 
   it('not done settles both copies, on her word', async () => {

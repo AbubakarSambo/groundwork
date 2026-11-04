@@ -22,6 +22,7 @@ export interface TheGroundsSchedule {
   status?: string | null;
   cadence?: Cadence | string | null;
   cadenceAnchorDay?: number | null;
+  cadenceDays?: number[] | null;
   workingDays?: number[] | null;
   startsAt?: Date | null;
   createdAt?: Date | null;
@@ -41,13 +42,14 @@ export function whenTheirNextCheckInWouldOpen(
   const cadence = (ground.cadence ?? Cadence.FORTNIGHTLY) as Cadence;
   if (cadence === Cadence.ONE_TIME || cadence === Cadence.SEQUENTIAL) return null;
   if (thisOne.isFinal) return null;
-  const planned = totalSessionsFor(ground.timelineDays ?? null, cadence);
+  const planned = totalSessionsFor(ground.timelineDays ?? null, cadence, ground.cadenceDays);
   if (planned != null && thisOne.sessionNumber >= planned) return null;
   const lastOpenedAt = thisOne.availableFrom ?? thisOne.createdAt ?? now;
   const opens = whenTheNextSessionOpens(
     {
       cadence,
       anchorDay: ground.cadenceAnchorDay ?? null,
+      days: ground.cadenceDays ?? null,
       workingDays: ground.workingDays ?? [],
       startedAt: ground.startsAt ?? ground.createdAt ?? lastOpenedAt,
       startsNow: !ground.startsAt,

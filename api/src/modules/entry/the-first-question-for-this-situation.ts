@@ -241,7 +241,7 @@ export function theSetupPackFor(
      *
      * Caught by running it, not by reading it. Every test passed.
      */
-    `YOUR FIRST QUESTION IS THIS ONE, or a close version of it in your own words. Ask it straight away - nothing comes before it:`,
+    `THE FIRST THING TO ASK, once your first reply has said back what you understood and they have answered it, is this, or a close version of it in your own words, unless what they have said already answers it:`,
     `  "${ask}"`,
     '',
     `Keep asking around it until you have: ${q.until}.`,

@@ -1,10 +1,7 @@
-import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { Injectable } from '@nestjs/common';
 import { whatMightHelp, NOT_A_STANDARD } from '../detectors/what-worked-for-somebody-else';
 import { PrismaService } from '../prisma/prisma.service';
 import { runIntake, trustFrom, COMPLETION_WORDS, PROBLEM_WORDS } from './intake';
-import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_PROBE_BY_CODE } from '../patterns/pattern-library';
-import { hasBeenSeenInThreePeriods } from '../patterns/who-reads-a-pattern';
 import { CheckInStatus, RecordEntryType } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
@@ -131,7 +128,7 @@ The standard contribution-chat sequence MUST NOT continue.
 1. Acknowledge what was shared - one sentence, specific to their words, not generic.
 2. Do NOT probe for evidence ("when did this happen?", "who else saw it?"). Evidence-gathering is not your role here.
 3. Say: "What you have described may go beyond what this tool is designed to handle. Your account matters, and it needs to reach the right people - not just this record."
-4. Say: "This record is currently visible only to you. If the ground is activated, the report goes to both parties - including the person you have described. Before we continue, consider where this record goes."
+4. Say: "This record is currently visible only to you. If the ground is activated, the report goes to both parties - including the person you have described. Before you go on, consider where this record goes."
 5. Share support resources. Let them decide whether to pause or continue.
 
 ${SUPPORT_RESOURCES}`;
@@ -295,46 +292,8 @@ export class ConversationContextService {
       }
     }
 
-    // Surfaced longitudinal patterns (three-period rule) - NEVER stated to the
-    // person. The trust boundary is STATEMENT vs PROBE, not live vs report: no
-    // observationText or verdict is ever injected here as something to name -
-    // that belongs only in the report (reports.service.ts's concernFlags,
-    // routed through synthesis rule 9). A surfaced pattern may only sharpen a
-    // follow-up QUESTION, the same shape the INVISIBLE_LABOUR cross-reference
-    // below already uses - the person hears a better question, never the
-    // detected pattern. PATTERN_PROBE_BY_CODE is an allowlist built from each
-    // code's own authored `probe` field (pattern-library.ts) - a code with no
-    // safe question form (no `probe` entry) is excluded by construction, not
-    // by remembering to exclude it; it still reaches the report unchanged.
-    // Feed-only codes (F5/E4 - cofounder/founder burden asymmetry) must NEVER
-    // reach the person at all, in any form, live or as a probe (Part 4 / GW-07).
-    // The WHERE clause excludes them at the DB level; the post-query filter is
-    // a defense-in-depth guard in case the DB result set ever contains a stale
-    // or unexpected code value.
-    /*
-     * STATUS ALONE IS NOT THREE PERIODS (decision 57, item 8, 30 September 2026). `status:
-     * SURFACED` is true of a bad-faith code once it has genuinely reached three periods, but
-     * `observePositive` sets it SURFACED the moment a good-news code is seen ONCE - "surfaces
-     * immediately" is right for a board badge, and wrong for shaping a probe question here, which
-     * this decision holds to the same three-period floor as everything else. Read the honest count
-     * instead of trusting the status column.
-     */
-    /* Judgements of a person off for this organisation: no pattern about them shapes a question (organisation/person-judgements.ts). */
-    const surfacedRaw = (await thePersonJudgementsAreOnFor(this.prisma, groundId)) ? await this.prisma.patternDetection.findMany({
-      where: { participantId, status: 'SURFACED', code: { notIn: [...ALIGNMENT_FEED_ONLY_CODES] } },
-      select: { code: true, periodsObserved: true, seenInSessions: true },
-    }) : [];
-    // GW-07 defense-in-depth: filter again in memory so a DB inconsistency
-    // cannot leak a feed-only code into the conversation context.
-    const surfacedCodes = surfacedRaw.filter((p) => !ALIGNMENT_FEED_ONLY_CODES.has(p.code) && hasBeenSeenInThreePeriods(p));
-    const patternProbes = surfacedCodes
-      .map((p) => PATTERN_PROBE_BY_CODE.get(p.code))
-      .filter((probe): probe is string => Boolean(probe));
-    if (patternProbes.length) {
-      block += `# Sharpen these questions (behind the curtain - do NOT name a pattern, a prior period, or a verdict; ask a sharper, more specific question instead, the same way you would for any other probe)\n`;
-      for (const probe of patternProbes) block += `[PATTERN_PROBE | TIER 1] Recommended probe: ${probe}\n`;
-      block += `\n`;
-    }
+    /* What the record cannot settle about this person reaches their check-in once, as layer 2's questions for them
+       (conversation.service's whatToAskThisTime block, F2, 2 November 2026). No stored pattern shapes a question here. */
 
     block += `# Tone\nApply the "${tone}" tone. If absorption or rescue is present, surface it warmly as real, often-invisible contribution. Close your response by naming: what was strong and specific, what needs sharpening, and one question that would make the record stronger.`;
 
@@ -394,7 +353,7 @@ export class ConversationContextService {
       // person about their own record. "The other party says X" based on keyword
       // overlap is fabricated intelligence in the trust-critical moment.
       if (myCompletion && theyReportProblem && overlap.length >= 2) {
-        injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: true, probe: `Before we log ${topic} as complete - has the downstream team or person depending on this confirmed it works for them?` });
+        injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: true, probe: `Before I log ${topic} as complete - has the downstream team or person depending on this confirmed it works for them?` });
       } else if (iReportProblem && theySayMovement && overlap.length >= 2) {
         injections.push({ type: 'CONTRADICTION', tier: 2, topic, downstream: false, probe: `You have named ${topic} as a blocker - is there a version of this that is already resolved elsewhere, or is this still open?` });
       } else if (overlap.length >= 3) {
@@ -402,15 +361,8 @@ export class ConversationContextService {
       }
     }
 
-    /* Escalate contradictions to tier 3 if a pattern has genuinely reached three periods for this
-       party (decision 57, item 8) - not merely SURFACED, which a good-news code reaches after one. */
-    const surfacedForEscalation = (await thePersonJudgementsAreOnFor(this.prisma, groundId)) ? await this.prisma.patternDetection.findMany({
-      where: { participantId, status: 'SURFACED' },
-      select: { periodsObserved: true, seenInSessions: true },
-    }) : [];
-    if (surfacedForEscalation.some((p) => hasBeenSeenInThreePeriods(p))) {
-      injections.forEach((i) => { if (i.type === 'CONTRADICTION') i.tier = 3; });
-    }
+    /* A contradiction stays at its own tier. It was raised to tier 3 from a stored pattern on this person; a pattern is layer 2's now
+       and the lead's to read (F2, Hafsah, 2 November 2026), so it never steers this person's own check-in. */
 
     // -------------------------------------------------------------------------
     // Degree 3: org-wide name mentions - invisible labour detection.

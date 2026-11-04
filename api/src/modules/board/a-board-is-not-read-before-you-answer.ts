@@ -35,12 +35,5 @@ export function theyOweAnAccountFirst(who: WhoIsAsking, round: ThisRound | null)
   return round.missingParticipantIds.includes(who.participantId);
 }
 
-/**
- * The same sentence the report gives, said for the board. Deliberately the same explanation in the
- * same voice: two surfaces withholding the same thing for the same reason should not sound like two
- * different products having two different policies.
- */
-export const BECAUSE_YOURS_WOULD_BE_AN_ANSWER =
-  'The board puts what everybody said next to each other, and you have not answered yet. You will be able to '
-  + 'open it as soon as you have checked in. Reading what everybody else said first would make '
-  + 'yours an answer to theirs, and each answer is meant to be your own.';
+/** What a person reads in place of the board before they have checked in, with one button beside it (Hafsah, 25 October and 4 November). */
+export const BECAUSE_YOURS_WOULD_BE_AN_ANSWER = 'Check in first, then you’ll see the board.';

@@ -89,13 +89,19 @@ describe('where it is called from', () => {
     const redelivery = inbound.indexOf('firstTimeWeSeeThis');
     const doubleTap = inbound.indexOf('notTheSameWordsJustNow');
     const receipt = inbound.indexOf('weAreReadingThis');
-    const theWork = inbound.indexOf('await this.route(');
-
     expect(receipt).toBeGreaterThan(-1);
     expect(receipt).toBeGreaterThan(redelivery);
     expect(receipt).toBeGreaterThan(doubleTap);
-    /* And before the model is asked, which is the wait it exists to cover. */
-    expect(receipt).toBeLessThan(theWork);
+    /* Changed 3 November 2026 (Hafsah: a number nobody has linked is sent nothing back but the one reply). The receipt is handed to
+       the routing as `reading`, which calls it once the sender is known to be somebody's, and before the model is asked, which is
+       the wait it exists to cover. */
+    const route = inbound.slice(inbound.indexOf('private async route('));
+    const known = route.indexOf('if (!who.personId && !who.userId)');
+    const reading = route.indexOf('await out.reading?.();');
+    expect(known).toBeGreaterThan(-1);
+    expect(reading).toBeGreaterThan(known);
+    expect(reading).toBeLessThan(route.indexOf("if (arrived.kind === 'other')"));
+    expect(reading).toBeLessThan(route.indexOf('this.conversation.sendMessage('));
   });
 
   it('passes the number the message arrived on, rather than assuming ours', () => {

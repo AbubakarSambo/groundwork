@@ -20,6 +20,7 @@ describe('the setup key', () => {
   })
   it('goes with the save', () => {
     const src = readFileSync(join(__dirname, '..', 'enter', 'EntryChatPage.tsx'), 'utf8')
-    expect(src).toMatch(/function buildCommitPayload\(\) \{\n    return \{\n[^\n]*\n        setupKey: theSetupKey\(\),/)
+    /* The save now takes the team box (d46100679), so the payload builder has a parameter; the key still goes first. */
+    expect(src).toMatch(/function buildCommitPayload\([^)]*\) \{\n    return \{\n[^\n]*\n        setupKey: theSetupKey\(\),/)
   })
 })

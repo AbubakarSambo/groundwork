@@ -4,9 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 
 /**
- * AN ADMIN INVITING PEOPLE IS ASKED FOR A PHONE NUMBER (Hafsah, 30 October 2026: "phone numbers are always shown and editable,
- * whether WhatsApp is on or off ... Label it plainly 'Phone number'. Only wording that mentions WhatsApp itself stays hidden while
- * WhatsApp is off"). This replaces decision 106 item 6. The number is saved to the one person invited, through PATCH /users/:id.
+ * AN ADMIN INVITING PEOPLE IS ASKED FOR EACH PERSON'S PHONE NUMBER ON THEIR LINE (Hafsah, 30 October 2026: "phone numbers are always
+ * shown and editable, whether WhatsApp is on or off"; this replaces decision 106 item 6). The first version had one "Phone number"
+ * field that saved only when one person was invited; round 1 of the first experience showed three of four leads adding each number
+ * one by one afterwards. Now the number goes on each person's line, as A4 people.txt:224 draws it, and the server saves it to them
+ * once their invitation has gone (api putting-a-whole-company-on.ts numbersIn, a-phone-number-comes-with-the-pasted-line.spec.ts).
  */
 let whatsappOn = false
 vi.mock('@/lib/whatsapp-is-on', () => ({ useWhatsAppIsOn: () => whatsappOn }))
@@ -15,51 +17,32 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.f
 vi.mock('@/api/client', () => ({ apiClient: { post: vi.fn(), get: vi.fn(), patch: vi.fn() } }))
 
 import { apiClient } from '@/api/client'
-import { toast } from 'sonner'
 import { InvitePeople } from './InvitePeople'
 
 const wrap = () => render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><InvitePeople /></MemoryRouter></QueryClientProvider>)
-const FAITH = { email: 'faith@kito.test', name: 'Faith Kerubo', result: 'invited' }
+const LINE = 'Faith Kerubo, faith@kito.test, +254 712 345 678'
 
 describe('Invite people, with WhatsApp off and on', () => {
   beforeEach(() => {
-    vi.mocked(apiClient.post).mockImplementation(async (_u: string, b: any) => ({ data: { preview: b.preview, seatsLeft: 4, rows: [FAITH], summary: b.preview ? '1 will be invited.' : '1 invited.' } }) as any)
-    vi.mocked(apiClient.get).mockResolvedValue({ data: { data: [{ id: 'u-faith', email: 'faith@kito.test', isActive: true }], meta: { total: 1 } } } as any)
-    vi.mocked(apiClient.patch).mockReset()
+    vi.mocked(apiClient.post).mockImplementation(async (_u: string, b: any) => ({ data: { preview: b.preview, seatsLeft: 4, rows: [{ email: 'faith@kito.test', name: 'Faith Kerubo', phone: '+254 712 345 678', result: 'invited' }], summary: b.preview ? '1 will be invited.' : '1 invited.' } }) as any)
   })
 
-  it('shows "Phone number" with WhatsApp off, and says nothing about WhatsApp', () => {
-    whatsappOn = false
-    wrap()
-    expect(screen.getByLabelText('Phone number')).toBeTruthy()
-    expect((screen.getByLabelText('Phone number') as HTMLInputElement).placeholder).toBe('+254 712 345 678')
-    expect(document.body.textContent).not.toMatch(/WhatsApp/)
-  })
+  for (const on of [false, true]) {
+    it(`asks for each person's phone number on their line, with WhatsApp ${on ? 'on' : 'off'}, and says nothing about WhatsApp`, () => {
+      whatsappOn = on
+      wrap()
+      const box = screen.getByRole('textbox', { name: /Write one person on each line, with their name, their email and their phone number/ })
+      expect((box as HTMLTextAreaElement).placeholder).toMatch(/faith@yourcompany\.com, \+254 712 345 678/)
+      expect(screen.queryByLabelText('Phone number')).toBeNull()
+      expect(document.body.textContent).not.toMatch(/WhatsApp/)
+    })
+  }
 
-  it('shows the same field with WhatsApp on, with its sentence about WhatsApp', () => {
-    whatsappOn = true
+  it('sends the lines as typed, numbers and all, so the server saves each number with its person', async () => {
     wrap()
-    expect(screen.getByLabelText('Phone number')).toBeTruthy()
-    expect(screen.getByText('Optional. With it, their check-ins can also reach them on WhatsApp.')).toBeTruthy()
-  })
-
-  it('saves a typed number to the one person invited, through PATCH /users/:id', async () => {
-    whatsappOn = false
-    wrap()
-    fireEvent.change(screen.getByRole('textbox', { name: /Write one person on each line/ }), { target: { value: 'Faith Kerubo, faith@kito.test' } })
-    fireEvent.change(screen.getByLabelText('Phone number'), { target: { value: '+254 712 345 678' } })
+    fireEvent.change(screen.getByRole('textbox', { name: /Write one person on each line/ }), { target: { value: LINE } })
     fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
-    await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('/users/u-faith', { phoneNumber: '+254 712 345 678' }))
-  })
-
-  it('a number that does not save says so, and the invitation stands', async () => {
-    whatsappOn = false
-    vi.mocked(apiClient.patch).mockRejectedValue({})
-    wrap()
-    fireEvent.change(screen.getByRole('textbox', { name: /Write one person on each line/ }), { target: { value: 'Faith Kerubo, faith@kito.test' } })
-    fireEvent.change(screen.getByLabelText('Phone number'), { target: { value: '+254 712 345 678' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Faith Kerubo’s phone number did not save. Their invitation went out. Add the number on People.'))
-    expect(toast.success).toHaveBeenCalledWith('1 invited.')
+    await waitFor(() => expect(apiClient.post).toHaveBeenCalledWith('/users/invitations', { pasted: LINE, preview: false, role: 'MEMBER' }))
+    expect(apiClient.patch).not.toHaveBeenCalled()
   })
 })

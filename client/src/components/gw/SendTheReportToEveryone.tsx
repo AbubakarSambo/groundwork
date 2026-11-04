@@ -81,6 +81,9 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not send. Try again.'),
   })
   if (!answered.size) return null
+  /* Nobody else has answered, so there is nobody to send it to: said by nothing, never as "0 people have answered" beside the
+     row's own "1 of 3 checked in" (first-experience round 3, Hafsah, 30 October 2026). */
+  if (!reachable.length && !declined.length && !everybodyAlreadyTold) return null
   /* Nothing left for the button to do: either nobody here may be sent it, or the last press
      already reached everybody it could. Either way, say so instead of offering a press that can
      only repeat the same answer. */
@@ -95,7 +98,7 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
             they asked for anything - `wantsTheReport !== false` is the default, not something a
             person had to request. Two full sentences in place of one joined with a semicolon.
           */}
-          {reachable.length} {reachable.length === 1 ? 'person has' : 'people have'} answered.{declined.length ? ` ${declined.length} ${declined.length === 1 ? 'person' : 'people'} said no thanks.` : ''} Each gets a link to this session's report, once.
+          {reachable.length ? `${reachable.length === 1 ? 'One person who answered gets' : `${reachable.length} people who answered get`} a link to this session's report, once.` : ''}{declined.length ? ` ${declined.length} ${declined.length === 1 ? 'person' : 'people'} said no thanks.` : ''}
           {everybodyAlreadyTold && ' Everybody who asked for it already has it.'}
         </p>
         {!nothingLeftToSend && (

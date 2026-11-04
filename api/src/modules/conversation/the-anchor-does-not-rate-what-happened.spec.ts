@@ -16,7 +16,7 @@ describe('the anchor says what happened and never how good it was', () => {
     expect(r.text).toBe('You delivered this before you described it as in progress. What did you learn this week?');
   });
   it('leaves a plain reply alone, and a view about the work that is not a rating', () => {
-    for (const ok of ['What moved since we last spoke?', 'The delay in delivery touches the customer\'s renewal. What happened on Monday?', 'It is progress reports that the donor asks for. Who sends them?']) {
+    for (const ok of ['What moved since you last checked in?', 'The delay in delivery touches the customer\'s renewal. What happened on Monday?', 'It is progress reports that the donor asks for. Who sends them?']) {
       expect(withoutARatingOfWhatHappened(ok)).toEqual({ text: ok, cut: [] });
     }
   });

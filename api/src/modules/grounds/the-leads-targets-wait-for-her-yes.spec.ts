@@ -37,7 +37,6 @@ function theWriter(releaseOne: boolean) {
   const anthropic: any = {
     extract: jest.fn(async (prompt: string) => (prompt === EXPECTATION_PROMPT
       ? {
-        groundAims: [{ name: 'Water dispensers sold by 30 October', target: 120 }],
         expectations: [{ personName: 'Kevin', targetNumber: 40, expectation: 'Kevin sells 40 water dispensers by 30 October.', awareness: 'TOLD', kind: 'TARGET', check: 'A_NUMBER' }],
       }
       : { promises: [] })),
@@ -46,10 +45,17 @@ function theWriter(releaseOne: boolean) {
   return { svc, held, written };
 }
 
+/* Her check-in, read: the team's aim as her assessment read it (one source, 2 November 2026), kept by the one writer of the team's
+   aims, and what she expects of each person, read as before. */
+async function heard(svc: any, checkInId: string) {
+  await svc.keepTheTeamsAims('g1', 'p-grace', [{ name: 'Water dispensers sold by 30 October', target: 120 }], [GRACE_SAYS]);
+  await svc.extractExpectations(checkInId, 'p-grace', 'g1');
+}
+
 describe('Grace\'s targets, read from her check-in', () => {
   it('with Release 1 on, nothing goes on the record: the team\'s 120 and Kevin\'s 40 wait for her yes, each with her own sentence', async () => {
     const { svc, held, written } = theWriter(true);
-    await svc.extractExpectations('c1', 'p-grace', 'g1');
+    await heard(svc, 'c1');
     expect(written).toEqual([]);
     expect(held.map((h) => [h.kind, h.fromDocument, h.fields.what, h.fields.number, h.fields.participantId ?? null])).toEqual([
       ['GOAL', FROM_YOUR_CHECK_IN, 'Water dispensers sold by 30 October', 120, null],
@@ -62,13 +68,13 @@ describe('Grace\'s targets, read from her check-in', () => {
   });
   it('and the same targets said again are not held twice', async () => {
     const { svc, held } = theWriter(true);
-    await svc.extractExpectations('c1', 'p-grace', 'g1');
-    await svc.extractExpectations('c2', 'p-grace', 'g1');
+    await heard(svc, 'c1');
+    await heard(svc, 'c2');
     expect(held).toHaveLength(2);
   });
   it('with Release 1 off, they are written as before', async () => {
     const { svc, held, written } = theWriter(false);
-    await svc.extractExpectations('c1', 'p-grace', 'g1');
+    await heard(svc, 'c1');
     expect(held).toEqual([]);
     expect(written.map((w) => w.target)).toEqual(expect.arrayContaining([120, 40]));
   });

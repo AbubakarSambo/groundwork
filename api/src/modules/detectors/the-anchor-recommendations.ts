@@ -1,9 +1,8 @@
-import { aGroundIsTheAnchors } from '../conversation/the-anchor-weekly-check-in';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 
 /**
- * RECOMMENDED CHECK-INS, FOR A CHECK-IN STARTED FROM THE ANCHOR (docs/anchor-scenario-plan.md, piece 24;
- * docs/anchor-scenario.md, section 21).
+ * RECOMMENDED CHECK-INS, "WHAT GROUNDWORK RECOMMENDS" (docs/anchor-scenario-plan.md, piece 24; docs/anchor-scenario.md, section 21).
+ * Looked for on every check-in, whatever its scenario or how it was started (Hafsah, 3 November evening: leads always see it).
  *
  * Groundwork looks at one check-in's own record and, where the work itself shows it, offers the lead
  * one more check-in: one for two people who keep waiting on each other, one for a piece of work that
@@ -178,10 +177,10 @@ interface Reader {
   recommendation: any;
 }
 
-/** Reads one check-in's record. Refuses anything that is not the anchor's, by how it was started or by its scenario (decision 114). */
+/** Reads one check-in's record, whatever its scenario. */
 export async function theRecordOf(prisma: Reader, groundId: string): Promise<{ organizationId: string; leadId: string; record: TheRecordOfOneCheckIn } | null> {
-  const ground = await prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, organizationId: true, initiatorId: true, startedFrom: true, scenario: true } });
-  if (!ground || !aGroundIsTheAnchors(ground as any)) return null;
+  const ground = await prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, organizationId: true, initiatorId: true } });
+  if (!ground) return null;
   const [participants, handoffs, aims, commitments] = await Promise.all([
     prisma.groundParticipant.findMany({ where: { groundId }, select: { id: true, userId: true, nameGiven: true, managingOnly: true, user: { select: { firstName: true, lastName: true } } } }),
     prisma.groundDependency.findMany({ where: { groundId, status: { not: 'CLEARED' } }, select: { fromParticipantId: true, onParticipantId: true } }),
@@ -257,8 +256,8 @@ export async function theLeadAnswers(
   prisma: Reader,
   args: { groundId: string; offerId: string; leadUserId: string; yes: boolean },
 ): Promise<{ ok: true; state: 'ACCEPTED' | 'DECLINED'; setUp?: WhatToSetUp } | { ok: false }> {
-  const ground = await prisma.ground.findUnique({ where: { id: args.groundId }, select: { organizationId: true, initiatorId: true, startedFrom: true, scenario: true } });
-  if (!ground || !aGroundIsTheAnchors(ground as any) || ground.initiatorId !== args.leadUserId) return { ok: false };
+  const ground = await prisma.ground.findUnique({ where: { id: args.groundId }, select: { organizationId: true, initiatorId: true } });
+  if (!ground || ground.initiatorId !== args.leadUserId) return { ok: false };
   const row = await prisma.recommendation.findFirst({
     where: { id: args.offerId, organizationId: ground.organizationId, subjectExternalId: theSubjectOf(args.groundId), kind: { in: [...ANCHOR_KINDS] }, state: 'PROPOSED' },
   });

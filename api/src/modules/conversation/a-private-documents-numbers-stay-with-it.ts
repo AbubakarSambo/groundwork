@@ -15,7 +15,9 @@
  * for others that carries a figure found only in a private document, and never in her own words, is not
  * written at all. Taking just the number off is not enough: the number is still in the line's words.
  */
+import { DocumentVisibility } from '@prisma/client';
 import { numbersIn } from './a-claim-the-numbers-do-not-support';
+import { canSeeDocument, EVERYBODY_ON_THE_CHECK_IN } from '../documents/who-can-see-a-document';
 
 export interface ADocumentWithItsAudience {
   content: string | null;
@@ -23,7 +25,8 @@ export interface ADocumentWithItsAudience {
 }
 
 /** Whether everybody on the check-in may open this document. Anything else is private to someone. */
-export const everybodyMayOpen = (d: ADocumentWithItsAudience): boolean => d.visibility === 'OPEN';
+export const everybodyMayOpen = (d: ADocumentWithItsAudience, contextEnabled = true): boolean =>
+  canSeeDocument({ participantId: null, visibility: (d.visibility ?? 'OWN') as DocumentVisibility }, EVERYBODY_ON_THE_CHECK_IN, contextEnabled);
 
 /** The figures, at every scale they could be read at, that appear only in documents not everybody may open. */
 export function figuresOnlyInPrivateDocuments(documents: ADocumentWithItsAudience[], theirOwnWords: string[]): Set<number> {

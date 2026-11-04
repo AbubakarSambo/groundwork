@@ -7,6 +7,8 @@ const NOTHING_TO_END = 'There is no check-in open here, so there is nothing to e
 /** What an update said in Ask is told, where nothing of theirs on record is what it changes. Ask is private, so it is not put on the record from here. */
 const AN_UPDATE_SAID_IN_ASK = 'Thank you. What you say here in Ask stays between you and Groundwork, so it is not on your record yet. To put it there, say it in your next check-in, or press Add something on your check-in.';
 import { clearTheWaitsTheRecordEnds } from '../conversation/a-wait-is-over-from-what-it-means';
+import { theFactsOnRecord } from '../conversation/the-facts-on-record';
+import { keepTheCorrectionOnItsItem } from '../conversation/a-correction-is-kept-on-its-item';
 import { checkTheCorrection, type WhatTheRecordHolds, type TheCorrectionChecked, type ANumberShownThem } from './a-correction-is-checked-like-a-claim';
 import { thePromisesOf, thePromisesCounted } from '../grounds/the-promises-counted-once';
 import { withTheirCountNow } from '../board/an-aim-is-counted-now';
@@ -37,7 +39,7 @@ import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-the
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { whatThisReaderCallsEachLabel, noStandInLabelAnywhereIn } from '../reports/a-stand-in-label-never-reaches-a-reader';
 import { howManyAnsweredInWords } from '../reports/the-picture-in-plain-sentences';
-import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds } from './what-they-said-that-you-may-read';
+import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds, I_CANNOT_SHOW_YOU_THAT } from './what-they-said-that-you-may-read';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { theOneToDoFirst, whatMustSurviveIn } from './what-to-do-next';
 import { aReportSource, YOUR_TO_DOS_SOURCE, YOUR_COMMITMENTS_SOURCE, WHAT_NEEDS_YOU_SOURCE } from './a-source-says-where-it-came-from';
@@ -375,7 +377,7 @@ export class AssistantService {
       const record = await this.whatTheRecordHoldsFor(organizationId, userId).catch(() => null);
       const checked = record ? await checkTheCorrection(this.engine as any, this.prompts as any, message, record).catch(() => null) : null;
       if (checked) {
-        await this.putTheCorrectionOnRecord(record!, checked).catch(() => undefined);
+        await this.putTheCorrectionOnRecord(record!, checked, userId).catch(() => undefined);
         /* A backed correction closes, everywhere in the organisation, every wait it shows is over, not only the one the check named
            (Hafsah, 29 October). Only that a wait is over is written; nothing they typed here reaches anybody. After the reply, not before. */
         if (checked.verdict === 'backed') void this.closeTheWaitsACorrectionEnds(organizationId, userId, message, checked.reply).catch(() => undefined);
@@ -608,10 +610,9 @@ export class AssistantService {
       return rules('how_to_ask_for_leave_or_spending', text(howToAskForLeaveOrSpending({ leave: suites.has('leave'), spend: suites.has('spend') })));
     }
 
+    /* Where the rules place nothing, a question is answered from the record and the documents below, never sent to a lane's own
+       lookup by the model (ask-understands-with-the-model.ts, 1 November 2026). */
     let routedByRules = route(message);
-    /* Where the rules place nothing, the lane the model read it as, which is only ever one that reads (ask-understands-with-the-model.ts). */
-    /* Only for something asked: a statement the model took for a question was sent to "There is nothing on your to-do list" (two-week check, Kevin). */
-    if (routedByRules.lane === 'unplaced' && understood?.lane && (isAQuestion(message) || /^\s*(?:tell|show|list|give)\b/i.test(message))) routedByRules = understood.about ? { lane: understood.lane as any, subject: understood.about } : { lane: understood.lane as any };
     /* The company by its own name: the router cannot know it, so it is asked here (B-134). */
     if (routedByRules.lane === 'unplaced' && /\bworking\s+on\b/i.test(message)) {
       const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }).catch(() => null);
@@ -800,7 +801,7 @@ export class AssistantService {
   /** Their own record, as the correction check reads it: their promises, their lines, and the numbers shown them with how each was counted. */
   private async whatTheRecordHoldsFor(organizationId: string, userId: string): Promise<WhatTheRecordHolds> {
     const db = this.prisma as any;
-    const places = ((await Promise.resolve(db.groundParticipant?.findMany?.({ where: { userId, ground: { organizationId } }, select: { id: true, groundId: true, ground: { select: { id: true, label: true, organizationId: true, kindOfWork: true, workStages: true } } } })).catch(() => [])) ?? []) as any[];
+    const places = ((await Promise.resolve(db.groundParticipant?.findMany?.({ where: { userId, ground: { organizationId } }, select: { id: true, groundId: true, ground: { select: { id: true, label: true, organizationId: true, kindOfWork: true, workStages: true, initiatorId: true } } } })).catch(() => [])) ?? []) as any[];
     const label = new Map<string, string>(places.map((p) => [p.groundId, String(p.ground?.label ?? 'a check-in')]));
     const ids = places.map((p) => p.id);
     const day = (d: any) => (d ? aDaySaidInFull(new Date(d)) : '');
@@ -822,6 +823,16 @@ export class AssistantService {
       const specific = done.filter((c) => c.specificityLevel === 'specific');
       if (due.length) numbers.push({ name: `Check-ins in ${label.get(p.groundId)}`, says: `${done.length} of ${due.length} check-ins done, ${specific.length} of the ${done.length} done were specific.`, howItIsCounted: 'every session of this check-in that has opened for you, done where you finished it, and specific where you named the item, what changed and the day.' });
     }
+    /*
+     * AND, FOR A CHECK-IN THEY RUN, WHO HAS CHECKED IN, FROM THE ONE COUNT (round 6, 1 November 2026). The mobile cinema lead said "You
+     * told me they have checked in" about Aisha and David, and this record held only his own check-ins, so he was answered about his own.
+     * The count the board and the check-in's page say, by name, is part of what he was shown, so it is here to be checked against.
+     */
+    for (const p of places) {
+      if (p.ground?.initiatorId !== userId) continue;
+      const stood = await theOpenSessionOfACheckIn(db, p.groundId, userId).catch(() => null);
+      if (stood?.says) numbers.push({ name: `Who has checked in to ${label.get(p.groundId)}`, says: stood.says, howItIsCounted: 'the session the board counts: everybody on the check-in who has joined, who has checked in, who has started and not finished, and who has not started.' });
+    }
     for (const p of places) {
       const aims = ((await Promise.resolve(db.groundObjective?.findMany?.({ where: { groundId: p.groundId, ownerParticipantId: p.id }, select: { id: true, name: true, target: true, count: true, ownerParticipantId: true } })).catch(() => [])) ?? []) as any[];
       for (const a of await withTheirCountNow(db, p.ground, aims).catch(() => aims)) {
@@ -836,8 +847,21 @@ export class AssistantService {
       orderBy: { createdAt: 'desc' }, take: 30,
     })).catch(() => [])) ?? []) as any[];
     const waits = waitRows.map((w) => ({ id: w.id, says: `${ids.includes(w.onParticipantId) ? 'Somebody is waiting on you' : 'You are waiting on somebody'} for ${String(w.what ?? '').slice(0, 200)} (in ${label.get(w.groundId) ?? 'a check-in'})`, since: day(w.createdAt) }));
+    /*
+     * THE LINES THEY WERE SHOWN, FROM THE ASSESSMENTS, AS THEY MAY READ THEM (F4 item 3). A lead reads the lines of the check-ins she
+     * runs, as a manager would, without anything that judges a person (Ask never discusses anybody's performance); anybody else reads
+     * their own. So "That's not right" on a line about somebody else reaches the check only for the lead of that check-in.
+     */
+    const facts: { id: string; says: string; who: string; on: string }[] = [];
+    for (const p of places) {
+      const reader = p.ground?.initiatorId === userId ? { kind: 'the lead' as const, judgements: false } : { kind: 'the person' as const, participantId: p.id };
+      for (const f of await theFactsOnRecord(db, { groundId: p.groundId, reader }).catch(() => [] as any[])) {
+        facts.push({ id: `${f.checkInId}#${f.itemId}`, says: String(f.words).slice(0, 300), who: f.participantId === p.id ? 'You' : String(f.who), on: f.on ? day(f.on) : 'an earlier check-in' });
+      }
+    }
     return {
       waits,
+      facts: facts.slice(-60),
       firstName: String(me?.firstName ?? 'They'),
       promises: (promises as any[]).slice(-40).map((p) => ({ id: p.id, table: commitmentIds.has(p.id) ? 'commitment' : 'todo', text: String(p.raw ?? ''), status: p.status, checkIn: label.get(p.groundId) ?? 'a check-in', madeOn: day(p.createdAt) })),
       lines: lines.map((l) => ({ id: l.id, text: cleanText(String(l.text ?? '')).slice(0, 300), checkIn: label.get(l.participant?.groundId) ?? 'a check-in', on: day(l.createdAt), proof: !!l.anchoredDocumentId })),
@@ -857,10 +881,14 @@ export class AssistantService {
   }
 
   /** A backed correction changes the record itself, so every page reads the new thing. Only an id the check was handed, in only two ways. */
-  private async putTheCorrectionOnRecord(record: WhatTheRecordHolds, checked: TheCorrectionChecked): Promise<void> {
-    if (checked.verdict !== 'backed') return;
+  private async putTheCorrectionOnRecord(record: WhatTheRecordHolds, checked: TheCorrectionChecked, userId: string | null = null): Promise<void> {
     const db = this.prisma as any;
     const now = new Date();
+    if (checked.line) {
+      const [checkInId, itemId] = checked.line.id.split('#');
+      await keepTheCorrectionOnItsItem(db, { checkInId, itemId, nowSays: checked.line.nowSays, backed: checked.verdict === 'backed', by: userId ?? null, on: now }).catch(() => false);
+    }
+    if (checked.verdict !== 'backed') return;
     if (checked.promise) {
       const p = record.promises.find((x) => x.id === checked.promise!.id);
       if (p?.table === 'commitment') await db.groundCommitment.update({ where: { id: p.id }, data: { status: checked.promise.nowIs, settledBy: 'SAID', settledAt: now } });
@@ -1476,6 +1504,22 @@ export class AssistantService {
       message,
     );
     const first = reply.blocks[0];
+    /*
+     * NOTHING TO READ BECAUSE THEY HAVE NOT FINISHED, SAID AS THAT (round 6, 1 November 2026). The mobile cinema lead asked where Aisha's and
+     * David's check-ins were and read "I cannot show you that. I have nothing from Aisha and David's check-ins", which sounds like a wall:
+     * they had started session 1 and not finished it. For a check-in this lead runs with them on it, the one count says where they are,
+     * by name, as the board and the check-in's page say it.
+     */
+    if (userId && first?.type === 'text' && first.body.startsWith(I_CANNOT_SHOW_YOU_THAT) && subject) {
+      const asked = subject.split(/\s*(?:,|\band\b|&)\s*/i).map((n) => (n.trim().split(/\s+/)[0] ?? '').replace(/['’]s$/i, '')).filter((n) => n.length > 1);
+      const theirs = await this.prisma.ground.findMany({ where: { organizationId, initiatorId: userId }, select: { id: true }, orderBy: { createdAt: 'desc' }, take: 20 }).catch(() => [] as { id: string }[]);
+      for (const g of theirs) {
+        const stood = await theOpenSessionOfACheckIn(this.prisma, g.id, userId).catch(() => null);
+        if (stood?.says && asked.length && asked.every((n) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(stood.says!))) {
+          return rules('what_did_they_say', text(`There is nothing of theirs to read yet, because they have not finished a check-in. ${stood.says}`));
+        }
+      }
+    }
     const keep = first && first.type === 'text'
       ? first.body.split('\n').filter((l) => l.startsWith('- "')).map((l) => l.slice(2))
       : [];
@@ -2343,7 +2387,7 @@ export class AssistantService {
     if (open) {
       const next = whatToAskForNext(open);
       if (!next) return this.offerToSeed(organizationId, who, open);
-      return rules('set_an_objective', text(`We are still working on "${open.workingTitle}". ${next.asks}`));
+      return rules('set_an_objective', text(`I am still working on "${open.workingTitle}" with you. ${next.asks}`));
     }
 
     /*
@@ -2529,7 +2573,8 @@ export class AssistantService {
     }
     const suites = this.suites!;
     try {
-      await suites.switch(reader, plan.suite, { on: true, answers: w.answers });
+      await suites.switch(reader, plan.suite, { on: true, answers: w.answers }, { theStepsAreSet: !!w.spendRules });
+      if (w.spendRules) await suites.setSpendRules(reader, w.spendRules);
       if (w.duties) await suites.setDuties(reader, w.duties);
       if (w.workflows) await suites.setWorkflows(reader, w.workflows);
       if (w.leaveRules) await suites.setLeaveRules(reader, w.leaveRules);
@@ -2550,12 +2595,13 @@ export class AssistantService {
     const known = await this.whatIsKnownToSetUp(reader, suite);
     const wf = suite === 'reviews' ? null : (await suites.workflows(reader)).suites.find((s) => s.key === suite) ?? null;
     const leave = suite === 'leave' ? await suites.leaveRules(reader) : null;
+    const spend = suite === 'spend' ? await suites.spendRules(reader) : null;
     const time = suite === 'time' ? await suites.timeRules(reader) : null;
     const plan = planFromStored(suite, {
       answers: known.answers,
-      steps: wf?.steps ?? null, stepsAbove: wf?.stepsAbove ?? null, escalateAfter: wf?.escalateAfter ?? null,
+      steps: wf?.steps ?? null, escalateAfter: wf?.escalateAfter ?? null,
       tellHr: leave?.rules.tellHr ?? null,
-      thresholds: leave?.rules.thresholds ?? null,
+      thresholds: (spend ? spend.rules.thresholds : leave?.rules.thresholds) ?? null,
       hoursAWeek: time?.rules.hoursAWeek ?? null,
       cutOff: time?.rules.cutOff && typeof time.rules.cutOff.day === 'string' ? { day: time.rules.cutOff.day as Weekday, time: time.rules.cutOff.time } : null,
     });
@@ -3004,7 +3050,7 @@ export class AssistantService {
    * exactly one open question, because that is the only way a bare "yes" is unambiguous.
    */
   private async whatShouldWeTalkAbout(organizationId: string, who: string | null): Promise<Reply> {
-    if (!who) return rules('what_should_we_talk_about', text('I cannot find you in what your organisation has sent us.'));
+    if (!who) return rules('what_should_we_talk_about', text('I cannot find you in what your organisation has sent me.'));
 
     /* Mapped, not cast. `says` lives inside the evidence blob - see `fromRow`. */
     const kept = await keptInTheApp(this.prisma as any, organizationId);
@@ -3272,7 +3318,7 @@ export class AssistantService {
       where: { id: personId, organizationId },
       select: { email: true, linkedUserId: true },
     });
-    if (!me?.email) return rules('what_came_of_it', text('I cannot find you in what your organisation has sent us.'));
+    if (!me?.email) return rules('what_came_of_it', text('I cannot find you in what your organisation has sent me.'));
 
     /* On WhatsApp, a check-in kept in the app is never recalled (decision 82, item 7). */
     const kept = await keptInTheApp(this.prisma as any, organizationId);
@@ -5781,7 +5827,7 @@ export class AssistantService {
       where: { id: personId, organizationId },
       select: { externalId: true, linkedUserId: true },
     });
-    if (!me) return rules('what_did_i_commit_to', text('I cannot find you in what your organisation has sent us.'));
+    if (!me) return rules('what_did_i_commit_to', text('I cannot find you in what your organisation has sent me.'));
 
     const kept = await keptInTheApp(this.prisma as any, organizationId);
     const open = await withoutCommitmentsFromGoalsNotToldYet(this.prisma, await this.prisma.commitment.findMany({
@@ -5926,7 +5972,7 @@ export class AssistantService {
       where: { id: personId, organizationId },
       select: { externalId: true },
     });
-    if (!me) return rules('what_am_i_on', text('I cannot find you in what your organisation has sent us, which is something your admin would need to look at.'));
+    if (!me) return rules('what_am_i_on', text('I cannot find you in what your organisation has sent me, which is something your admin would need to look at.'));
 
     const all = await this.prisma.subject.findMany({
       where: { organizationId, sourceDeletedAt: null },
@@ -5948,7 +5994,7 @@ export class AssistantService {
     if (!owned.length && !contributing.length) {
       /* An empty answer that says WHY it is empty. "Nothing" and "nothing has been sent to me" are
          different facts and only one of them is about the person. */
-      return rules('what_am_i_on', text('Nothing your organisation has sent us lists you as an owner or a contributor. That may mean the work is tracked somewhere that is not connected yet.'));
+      return rules('what_am_i_on', text('Nothing your organisation has sent me lists you as an owner or a contributor. That may mean the work is tracked somewhere that is not connected yet.'));
     }
 
     const parts: string[] = [];
@@ -5980,7 +6026,7 @@ export class AssistantService {
      *
      * This echoed whatever it was handed. Juma asked about looking after people while the road was
      * closed and read back: 'I do not have anybody called "looking after them while the road is
-     * closed. ...". I only know the people your organisation has sent us.' A request to add some
+     * closed. ...". I only know the people your organisation has sent me.' A request to add some
      * notes, read back to him as a missing colleague.
      *
      * The router put him here and that is worth fixing too, but the damage is done at this line,
@@ -6004,7 +6050,7 @@ export class AssistantService {
         || (p.displayName ?? '').toLowerCase().split(' ')[0] === lower
         || p.externalId.toLowerCase() === lower,
     );
-    if (!hit) return rules('who_is', text(`I do not have anybody called "${q}". I only know the people your organisation has sent us.`));
+    if (!hit) return rules('who_is', text(`I do not have anybody called "${q}". I only know the people your organisation has sent me.`));
 
     const manager = hit.managerExternalId
       ? people.find((p) => p.externalId === hit.managerExternalId)
@@ -6017,7 +6063,7 @@ export class AssistantService {
         : hit.managerExternalId
           /* The id resolved to nobody: said plainly rather than rendered as "no manager", which is a
              different and wrong fact. */
-          ? `Their reporting line points at ${hit.managerExternalId}, who has not been sent to us.`
+          ? `Their reporting line points at ${hit.managerExternalId}, who has not been sent to me.`
           : 'No reporting line has been sent for them.',
     ];
     return rules('who_is', text(bits.join(' ')));

@@ -78,9 +78,9 @@ describe('the month board, as the lead reads it', () => {
     expect(b.wherePerspectivesDiffer).toEqual(['No two people have described the same thing differently so far.']);
     expect(b.whatIsStillGettingInTheWay).toEqual(['Baraka is waiting on Rukia for the sales deck.']);
     expect(b.whatGroundworkIsWorkingOnNext).toEqual([
-      'Groundwork is checking in with the two people who have not yet answered this round.',
-      'Groundwork will ask about the one thing people said they would do that is still open.',
-      'Groundwork will ask about the one handoff still waiting on someone.',
+      'Two people have not answered this round yet. They’re being asked.',
+      'One thing people said they’d do is still open.',
+      'One handoff is still waiting on someone.',
     ]);
   });
 
@@ -130,7 +130,7 @@ describe('the weeks and the patterns', () => {
     expect(theWeekOfTheMonth(record.startedOn, at(90))).toBe(4);
   });
   it('says a difference with its topic in quotation marks, never joined by a colon', () => {
-    expect(aDifferenceInAWords({ topic: 'The renewals target.', whoSeesIt: 'You and Rukia Mwangi see this differently.' })).toBe('You and Rukia Mwangi see "The renewals target" differently.');
+    expect(aDifferenceInAWords({ topic: 'The renewals target.', whoSeesIt: 'You and Rukia Mwangi said different things about this.' })).toBe('You and Rukia Mwangi said different things about "The renewals target".');
   });
 });
 
@@ -245,8 +245,8 @@ describe('a wait and a difference read as sentences', () => {
     expect(aWaitInAWords({ from: 'Baraka', on: 'Rukia', what: 'the sales deck' })).toBe('Baraka is waiting on Rukia for the sales deck.');
   });
   it('a topic that is a whole sentence is said as one, and then who said different things', () => {
-    expect(aDifferenceInAWords({ topic: 'The timing of handovers between team members creates daily friction and delays', whoSeesIt: 'Amani, Zawadi and Chidi see this differently.' }))
+    expect(aDifferenceInAWords({ topic: 'The timing of handovers between team members creates daily friction and delays', whoSeesIt: 'Amani, Zawadi and Chidi said different things about this.' }))
       .toBe('The timing of handovers between team members creates daily friction and delays. Amani, Zawadi and Chidi said different things about this.');
-    expect(aDifferenceInAWords({ topic: 'The renewals target.', whoSeesIt: 'You and Rukia see this differently.' })).toBe('You and Rukia see "The renewals target" differently.');
+    expect(aDifferenceInAWords({ topic: 'The renewals target.', whoSeesIt: 'You and Rukia said different things about this.' })).toBe('You and Rukia said different things about "The renewals target".');
   });
 });

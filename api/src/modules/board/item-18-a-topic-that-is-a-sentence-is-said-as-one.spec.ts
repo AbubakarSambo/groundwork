@@ -19,6 +19,7 @@ const AUTHORITY = 'Who has the final authority on the completion of the Atlas an
 const DEADLINE = 'The delivery deadline for the analysis is not agreed upon.';
 const AT_STAKE = 'If this holds, the analysis may be delivered incomplete on the earlier deadline';
 
+/* Expectation updated (Hafsah, 30 October 2026: plain language for an impatient first-time lead; a difference is said as what people said, with no "needs settling".) */
 describe('item 18: a topic that is a whole sentence is said as one', () => {
   it('a noun clause that says something of itself is a whole sentence; one that does not is not', () => {
     expect(isAWholeSentence(AUTHORITY)).toBe(true);
@@ -45,6 +46,6 @@ describe('item 18: a topic that is a whole sentence is said as one', () => {
   it('Amina reads the decision to settle in full sentences', async () => {
     const b = await boardAs({ report }, ...AMINA);
     const q = (b.decisions ?? []).map((d: any) => d.question).find((x: string) => /final authority/.test(x));
-    expect(q).toMatch(/said different things\. Who has the final authority on the completion of the Atlas analysis is not agreed\. This needs settling\.$/);
+    expect(q).toMatch(/said different things\. Who has the final authority on the completion of the Atlas analysis is not agreed\.$/);
   });
 });

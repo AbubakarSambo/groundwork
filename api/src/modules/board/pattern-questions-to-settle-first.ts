@@ -25,7 +25,9 @@ export function patternQuestionsToSettleFirst(
   const out: string[] = [];
   for (const p of served ?? []) {
     if (out.length >= AT_MOST_THIS_MANY_PATTERN_QUESTIONS) break;
-    if (p.yours || p.talkedAbout) continue;
+    /* A strength is not a question to settle, and is never worded as something unanswered (docs/fix-plan.md, group 4: Joseph's
+       strength read "keeps coming up ... has not answered it yet" in round 38). */
+    if (p.yours || p.talkedAbout || p.kind === 'good') continue;
     const name = (nameOf(p.participantId) ?? '').trim();
     if (!name) continue;
     const often = String(p.howOften ?? '').trim();

@@ -13,6 +13,7 @@ export { HELD_FOR_A_SEAT };
 import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
 import { assertInviteLinkStillOpens, hasExpired } from './an-invite-link-still-opens';
 import { whenItAsks } from './when-it-asks';
+import { A_CHECK_IN_TAKES } from '../../common/how-long-a-check-in-takes';
 import { inviteExpiryFrom } from './how-long-an-invite-lasts';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -126,9 +127,13 @@ export class ParticipantsService {
       schedule: whenItAsks({
         cadence: ground.cadence,
         cadenceAnchorDay: ground.cadenceAnchorDay,
+        cadenceDays: (ground as any).cadenceDays,
         workingDays: ground.workingDays,
         leadFirstName: leadFirst,
+        label: ground.label,
       }),
+      /* How long a check-in takes, from its one owner, for the line under the button. */
+      takes: A_CHECK_IN_TAKES,
       groundLabel: ground.label,
       scenario: ground.scenario,
       initiatorName: `${ground.initiator.firstName} ${ground.initiator.lastName}`.trim(),

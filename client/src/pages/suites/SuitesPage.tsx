@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { TheSpendingRoute } from './ApprovalStepsByAmount'
 import { suitesApi, reviewsApi, yourRequestsApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
@@ -229,7 +230,7 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
   const [problem, setProblem] = useState<string | null>(null)
   const flip = useMutation({
     mutationFn: ({ on, given }: { on: boolean; given?: Answers }) => suitesApi.switch(s.key, on, given),
-    onSuccess: (page) => { setProblem(null); setAsking(false); qc.setQueryData(['suites'], page); qc.invalidateQueries({ queryKey: ['suites-on-for-you'] }) },
+    onSuccess: (page) => { setProblem(null); setAsking(false); qc.setQueryData(['suites'], page); qc.invalidateQueries({ queryKey: ['suites-on-for-you'] }); qc.invalidateQueries({ queryKey: ['spend-rules'] }) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
 
@@ -293,6 +294,7 @@ function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin
           {s.on && s.questions.length > 0 && !asking && (
             <Button kind="quiet" size="small" onClick={openSettings}>See or change its settings</Button>
           )}
+          {s.on && s.key === 'spend' && !asking && <TheSpendingRoute />}
         </div>
         <div className="gwui-suite-switch">
           <Tag>{s.on ? 'On' : 'Off'}</Tag>

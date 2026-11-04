@@ -135,7 +135,7 @@ describe('"Check your email", as the person who asked for a link reads it', () =
     expect(readable(container)).toBe([
       'Groundwork',
       'Check your email',
-      'We sent a sign-in link to wairimu@baridi.test. Open it on any device.',
+      'I sent a sign-in link to wairimu@baridi.test. Open it on any device.',
       'Send it again',
       'You can send it again in 30 seconds.',
       'Wrong address? Use a different one',
@@ -166,7 +166,7 @@ describe('"Forgot your password?", as a signed-out visitor reads it', () => {
     expect(readable(container)).toBe([
       'Groundwork',
       'Forgot your password?',
-      'We’ll email you a link to choose a new one. It works for an hour.',
+      'I’ll email you a link to choose a new one. It works for an hour.',
       'Email',
       'Email me a reset link',
       'Back to sign in',
@@ -185,7 +185,7 @@ describe('"Forgot your password?", as a signed-out visitor reads it', () => {
     expect(readable(container)).toBe([
       'Groundwork',
       'Check your email',
-      'If there is an account for nobody@baridi.test, we sent it a link to choose a new password. The link works for an hour.',
+      'If there is an account for nobody@baridi.test, I sent it a link to choose a new password. The link works for an hour.',
       'Send it again',
       'You can send it again in 30 seconds.',
       'Wrong address? Use a different one',
@@ -281,7 +281,7 @@ describe('the organisation\'s name, suggested from the address (Hafsah, 26 Septe
     fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'hafsah@coamana.com' } })
     const org = screen.getByLabelText('Your organisation (optional)') as HTMLInputElement
     await waitFor(() => expect(org.value).toBe('Coamana'))
-    expect(screen.getByText('We suggested this from your email address. You can change it now or later.')).toBeTruthy()
+    expect(screen.getByText('I suggested this from your email address. You can change it now or later.')).toBeTruthy()
     fireEvent.change(org, { target: { value: 'Coamana Group' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'hafsah@coamana.co.ke' } })
     expect(org.value).toBe('Coamana Group')

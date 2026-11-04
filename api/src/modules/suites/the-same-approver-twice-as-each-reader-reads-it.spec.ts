@@ -87,7 +87,8 @@ describe('spending: Omar looks after finance and holds the Operations budget', (
   it('Kamau’s request: Omar approves for finance, and the budget step that names him again is passed', async () => {
     const o = aSpendingOrganisation({
       duties: { finance: 'u-omar', budgetOwners: { Operations: 'u-omar' } },
-      workflows: { spend: { steps: [['finance', 'admin'], ['budgetOwner', 'admin']] } },
+      /* Steps for any amount, set by amount: spending's steps live only there (Hafsah's plan of 2 November, step 0). */
+      rules: { thresholds: [{ above: 0, steps: [['finance', 'admin'], ['budgetOwner', 'admin']] }] },
     });
     const r = o.req('u-kamau', 5000, 'fuel', 'Operations', 'waiting', SPEND_TODAY);
     await o.svc.decide(o.as('u-omar'), r.id, 'approved', SPEND_TODAY);

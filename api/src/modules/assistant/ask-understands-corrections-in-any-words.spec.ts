@@ -1,6 +1,6 @@
 import { AssistantService } from './assistant.service';
 import { WhatIsTrueService } from './what-is-true.service';
-import { whatTheModelSaid, LANES_THAT_ONLY_READ } from './ask-understands-with-the-model';
+import { whatTheModelSaid } from './ask-understands-with-the-model';
 import { theVerdictMadeSafe, type WhatTheRecordHolds } from './a-correction-is-checked-like-a-claim';
 
 /**
@@ -67,10 +67,11 @@ describe('a correction in any words is checked like a claim', () => {
     expect(updates).toEqual([['commitment', expect.objectContaining({ where: { id: 'c-fn' }, data: expect.objectContaining({ status: 'DONE', settledBy: 'SAID' }) })]]);
   });
 
-  it('the model can never pick a lane that writes, approves or sends', () => {
-    for (const lane of ['ask_to_spend', 'ask_for_leave', 'decide_a_request', 'add_a_to_do', 'tick_off_a_to_do', 'lead_note', 'log_hours', 'start_a_check_in']) {
-      expect(Object.prototype.hasOwnProperty.call(LANES_THAT_ONLY_READ, lane)).toBe(false);
-      expect(whatTheModelSaid({ kind: 'question', lane })?.lane).toBeNull();
+  it('the model can never pick a lane that writes, approves or sends: it picks no lane at all (1 November 2026)', () => {
+    for (const lane of ['ask_to_spend', 'ask_for_leave', 'decide_a_request', 'add_a_to_do', 'tick_off_a_to_do', 'lead_note', 'log_hours', 'start_a_check_in', 'what_is_due', 'what_you_can_see']) {
+      const read = whatTheModelSaid({ kind: 'question', lane }) as any;
+      expect(read).toEqual({ kind: 'question', about: null });
+      expect('lane' in read).toBe(false);
     }
   });
 

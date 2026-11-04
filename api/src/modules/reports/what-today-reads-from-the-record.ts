@@ -2,6 +2,7 @@ import { notABlockerTheyRaised } from '../board/not-a-blocker-they-raised';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { dedupeDependencies } from '../board/reads';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+import { peopleSaidDifferentThingsAbout } from './what-people-said-differently-about';
 import { theDifferencesThatAreOnlyATargetSaidAgain } from '../board/a-target-said-again-is-that-target';
 import { theCorrectionsOnTheCheckIn, isOnlyACorrection, whoIsBehindALabel } from './a-correction-is-their-latest-word';
 import { isASalesKind } from '../board/the-kind-of-work';
@@ -16,7 +17,8 @@ import { aCountThatMovedSaid } from './a-count-that-moved-is-one-sentence';
 import { whatMovedInTheRound } from './what-this-session-holds';
 import { yourOwnWhereYouAreTheSubject, anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { asADirection } from '../board/an-aim-or-a-limit';
-import { PATTERN_ROW_SELECT, servedPatterns, patternTalkNudge } from '../patterns/who-reads-a-pattern';
+import { theNewestRecordOfEachPerson, theIdOfAPatternAcrossTime } from '../patterns/what-the-record-shows-the-lead';
+import { theInstancesAsSentences } from '../patterns/the-next-step-for-each-pattern';
 import { aHolderSaidWithWhose } from '../board/a-holder-in-their-own-words';
 import { everyLineTheFinalCheckPasses, type WhatTheRecordHolds } from '../conversation/the-final-check';
 import { whatTheRecordHolds } from '../conversation/what-the-record-holds';
@@ -110,7 +112,7 @@ async function load(prisma: any, groundId: string) {
       kindOfWork: true,
       whoSeesTargets: true,
       peersVisibleToEachOther: true,
-      cadence: true,
+      cadence: true, cadenceDays: true,
       participants: {
         select: {
           id: true, email: true, userId: true, partyType: true, createdAt: true, roleAsDescribed: true,
@@ -339,29 +341,20 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
     .map(({ onlyATargetSaidAgain, ...x }) => ({ ...x, ...(opts.markTargetsSaidAgain && onlyATargetSaidAgain ? { onlyATargetSaidAgain } : {}), order: 1 })));
 
   /*
-   * DECISION 57, ITEM 3. "AFTER A PATTERN REACHES THE LEAD, THEY ARE NUDGED ONCE TO HAVE THE
-   * CONVERSATION." A pattern about somebody else reaches the lead through the same rule as anywhere
-   * else it is served (servedPatterns / patternRowsThisReaderMayRead), so this is exactly the set the
-   * lead may already read on the board or the ground page - nothing new is exposed here. The nudge
-   * goes away the moment `talkedAboutAt` is set, which is why it is left out below rather than left
-   * on the list with a "done" flag.
+   * DECISION 57, ITEM 3, FROM LAYER 3 (F2, 2 November 2026). "After a pattern reaches the lead, they are nudged once to have the
+   * conversation." The lead reads what the record shows about each person from layer 2, and the step that is hers to take is
+   * layer 3's (praise, a conversation, a deadline, a plan, or firing when there are grounds), so that step is the nudge, with
+   * the days and words it rests on. It goes away once she marks it talked through. Only where judgements of a person are on.
    */
-  /* Judgements of a person off for the organisation: no "talk with them about" a pattern (organisation/person-judgements.ts). */
   if (lead && (await thePersonJudgementsAreOn(prisma, (ground as any).organizationId ?? null))) {
-    const patternRows = (((await prisma.patternDetection?.findMany?.({
-      where: { groundId, participantId: { not: lead.id } },
-      select: PATTERN_ROW_SELECT,
-    })?.catch?.(() => [])) ?? []) as any[]);
-    const served = servedPatterns(patternRows, { participantId: lead.id, runsIt: true }, {
-      leadName: nameOf(lead.id),
-      leadParticipantId: lead.id,
-      firstNameOf: (pid: string) => nameOf(pid),
-      isDaily: ground.cadence === 'DAILY',
-    });
-    for (const p of served) {
-      const row = patternRows.find((r) => r.id === p.id);
-      if (row?.talkedAboutAt) continue; // the nudge goes away once marked
-      out.push({ ...patternTalkNudge(p, nameOf(p.participantId)), order: 0 });
+    for (const person of await theNewestRecordOfEachPerson(prisma, groundId)) {
+      if (person.participantId === lead.id) continue;
+      for (const p of person.record.patterns.filter((x) => x.state === 'holds')) {
+        const id = theIdOfAPatternAcrossTime(person.participantId, p.key);
+        if (person.marks[id]?.talkedAboutAt) continue; // the nudge goes away once marked
+        const step = person.interventions.find((i) => i.key === p.key && i.participantId === p.participantId && i.forWhom === 'the lead' && (i.state === 'open' || i.state === 'waiting for the lead'));
+        if (step) out.push({ id: `pattern-talk-${id}`, decide: step.says, why: theInstancesAsSentences(p), order: 0 });
+      }
     }
   }
 
@@ -463,10 +456,12 @@ export async function whereWhatPeopleSaidDiffers(
     const atStake = named(d?.atStake);
     out.push({
       id: `difference-${i + 1}`,
-      decide: settledBy
-        ? sentence(settledBy)
-        : knowsWho ? `Settle the difference between what ${andList(who)} said.` : 'Settle the difference between what people said.',
-      why: `${topic ? `${sentence(topic)} ` : ''}${whoSaid} said different things about this, so nobody can assume it is agreed.`,
+      /* The one sentence the board says for a difference (Hafsah, 30 October 2026: "Settle the difference between what you and
+         Kwame said" sat beside the board's own sentence for the same thing). */
+      decide: settledBy ? sentence(settledBy) : peopleSaidDifferentThingsAbout(topic, whoSaid),
+      why: settledBy
+        ? `${topic ? `${sentence(topic)} ` : ''}${whoSaid} said different things about this.`
+        : 'What people said about this does not match.',
       ...(atStake ? { changes: sentence(atStake) } : {}),
       ...(sameTarget.has(d) ? { onlyATargetSaidAgain: true as const } : {}),
     });

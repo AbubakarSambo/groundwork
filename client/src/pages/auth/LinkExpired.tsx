@@ -77,7 +77,7 @@ function AskForAFreshLink({ kind, title, sub, button }: { kind: 'sign-in' | 'res
     onSuccess: () => setSent(true),
     onError: (err: any) => {
       const status = err?.response?.status
-      if (!status || status >= 500) { setError('That did not send, because something went wrong on our side. Please try again.'); return }
+      if (!status || status >= 500) { setError('That did not send, because something went wrong on my side. Please try again.'); return }
       if (status === 429) { setError('Too many attempts. Wait a minute and try again.'); return }
       /* Anything about the address itself gets the same answer as a sent link. */
       setSent(true)

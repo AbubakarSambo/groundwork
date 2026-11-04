@@ -19,7 +19,7 @@ import { theDayInWords } from './the-day-in-words';
  *  - CRITERIA MET: nothing on record says what a deal must show at each stage. The grid's `groupsNote` says
  *    so once; no row claims a criterion.
  */
-export const WHAT_CONTACT_HISTORY_IS = 'Each date is a day somebody spoke about this deal in a check-in. Nothing on record holds each contact with the customer.';
+export const WHAT_CONTACT_HISTORY_IS = 'Each date is a day this deal came up in a check-in.';
 export const NO_VALUE_SAID = 'Nobody has said what this deal is worth yet.';
 
 const VALUE_KEY = /^(?:deal\s+)?(?:value|amount|worth|size)$/i;
@@ -68,8 +68,8 @@ export function theContactHistory(name: string, lines: ALineAboutDeals[], now: D
       on,
       how: proof ? 'with proof' as const : 'in their words' as const,
       says: proof
-        ? `On ${theDayInWords(at, now)}, somebody spoke about it, and proof backs what they said.`
-        : `On ${theDayInWords(at, now)}, somebody spoke about it, in their own words.`,
+        ? `On ${theDayInWords(at, now)}, it came up in a check-in, with proof.`
+        : `On ${theDayInWords(at, now)}, it came up in a check-in.`,
     }));
 }
 

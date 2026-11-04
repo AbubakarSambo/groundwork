@@ -51,7 +51,8 @@ describe('forms behave like forms', () => {
     expect(e).toMatch(/onKeyDown=\{e => \{ if \(e\.key === 'Enter' && !e\.shiftKey\) \{ e\.preventDefault\(\); if \(input\.trim\(\)\) sendOnboarding\(input\) \} \}\}/)
     /* Fault 7 (live walk, 6 October 2026): shortened so it is never clipped at 375px - the "+ Doc"
        button beside it already says how to add a document, so "with + Doc" was redundant too. */
-    expect(e).toContain('placeholder="Type your response, or add a document."')
+    /* Changed 3 November evening: setup uses the check-in's own box and words (Hafsah: the same layout). */
+    expect(e).toContain('placeholder="Type your answer"')
     const composer = read('../../components/gw/ui/Composer.tsx')
     expect(composer).toMatch(/<textarea\s/)
     expect(composer).toContain('placeholder={placeholder}')

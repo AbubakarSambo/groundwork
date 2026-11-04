@@ -15,8 +15,8 @@ describe('a private file is not named to anybody else', () => {
   it('takes the name out, with the words that only introduced it', () => {
     expect(withoutPrivateFileNames('The attached team-plan.txt document confirms the split between Aisha and Tunde.', names))
       .toBe('The document confirms the split between Aisha and Tunde.');
-    expect(withoutPrivateFileNames('Here is the context we have from team-plan.txt - the quarter plan.', names))
-      .toBe('Here is the context we have from a document - the quarter plan.');
+    expect(withoutPrivateFileNames('Here is what I took from team-plan.txt - the quarter plan.', names))
+      .toBe('Here is what I took from a document - the quarter plan.');
     expect(withoutPrivateFileNames('She said the numbers are in "budget.xlsx".', names))
       .toBe('She said the numbers are in a document.');
   });

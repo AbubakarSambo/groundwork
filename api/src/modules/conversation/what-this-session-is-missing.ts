@@ -34,7 +34,6 @@
  * said this session may be carrying the note.
  */
 
-import { A_CHECK_IN_IS_NOT_DONE_IN } from './how-short-a-check-in-may-be';
 
 export interface WhatTheCheckInHas {
   /** Every objective on the check-in, owned and unowned. */
@@ -64,9 +63,8 @@ const ALREADY_SAID = (turns: string[], markers: RegExp[]): boolean =>
 
 export function theOneThingToDoBetter(has: WhatTheCheckInHas): string | null {
   if (!has.theyRunIt) return null;
-  /* Not before the session could close. The wording says "before this session closes" and the
-     product, not the model, decides when that is - see A_CHECK_IN_IS_NOT_DONE_IN. */
-  if ((has.answersSoFar ?? 0) < A_CHECK_IN_IS_NOT_DONE_IN) return null;
+  /* Not on the opener: they have to have said something first. When before the close is the model's to judge (no count). */
+  if ((has.answersSoFar ?? 0) < 1) return null;
   const said = has.alreadySaidThisSession ?? [];
 
   const withNumbers = (has.objectives ?? []).filter((o) => typeof o.target === 'number' && o.target! > 0);

@@ -49,11 +49,6 @@ describe('what the model is told', () => {
     expect(block).not.toContain('ONE LINE OF COACHING');
   });
 
-  it('with the direct morning off, nothing is added for anybody', async () => {
-    for (const [g, who] of [['fees', 'Aisha'], ['drop', 'Joseph'], ['drop', 'Kevin']] as const) {
-      expect((await theBlockFor(g, who, { directMorning: false })).block).toBe('');
-    }
-  });
 });
 
 describe('what is sent', () => {
@@ -73,12 +68,6 @@ describe('what is sent', () => {
   it('never a label on the person', () => {
     expect(withNoLabelOnThem('You are at risk of missing your target. What would help this week?').cut).toEqual(['You are at risk of missing your target.']);
     expect(withNoLabelOnThem('The Mama Pima deal is at risk. What would help this week?').cut).toEqual([]);
-  });
-
-  it('with the direct morning off, the turn is sent exactly as written', async () => {
-    const { prisma } = await theBlockFor('fees', 'Aisha', { directMorning: false });
-    const raw = 'You are at risk of missing your target. Could you send the bank slip for FN-006?';
-    expect(await theTurnManaged(prisma, { groundId: R2.fees.ground.id, participantId: thePersonOf('fees', 'Aisha').participantId }, raw)).toEqual({ text: raw, cut: [] });
   });
 
   it('with it on, Aisha is not asked again for the FN-006 slip she was asked for on Monday 19 October', async () => {

@@ -35,13 +35,14 @@ describe('what Wairimu reads', () => {
     expect(w.sent).toEqual([{
       to: 'wairimu@baridi.test',
       /* Changed 19 October (messages test, finding 17): the subject says which check-in its count is about, as the body does. */
-      subject: 'Five of six people have checked in for the third check-in on "Sales team, Q4", and here is what is new',
+      /* Changed 3 November (F5 part 3): the one count's own sentence (grounds/this-sessions-count.ts). */
+      subject: '5 of 6 have checked in on "Sales team, Q4", and here is what is new',
       lines: [
         'Hello Wairimu. Here is where your check-ins stand today.',
-        'In "Sales team, Q4", five of six people have checked in for the third check-in, and Omar has not yet.',
+        'In "Sales team, Q4", 5 of 6 have checked in; Omar hasn’t started yet.',
         'What is new is that Groundwork now follows up with each person about the thing they said they would do, in their own words and only to them.',
         'On Fridays, when your team has done something that week, Groundwork also sends you a short letter about it. The email that tells you a shared picture is ready now says what the picture found.',
-        'The link at the bottom of any of these emails stops the ones we decide to send. So does Settings, where you can also turn them back on. Emails you ask for, such as sign-in links and reports, always reach you.',
+        'The link at the bottom of any of these emails stops the ones I decide to send. So does Settings, where you can also turn them back on. Emails you ask for, such as sign-in links and reports, always reach you.',
       ],
       linkLabel: 'See your check-ins',
       linkUrl: 'https://app.test/grounds',
@@ -55,19 +56,20 @@ describe('what Wairimu reads', () => {
     expect(w.asked[0].status.notIn).toEqual(expect.arrayContaining(['STALLED', 'PAUSED']));
   });
 
+  /* Changed 3 November (F5 part 3): Ask and What's new say the one count's own sentence (grounds/this-sessions-count.ts), as Today, the board and the list do; their own count wording is gone. */
   it('says several check-ins in one subject, and each in its own sentence', () => {
-    const w = theWhatIsNewWords('Wairimu', [{ label: 'A', ofHowMany: 4, answered: 4, notYet: [] }, { label: 'B', ofHowMany: 3, answered: 0, notYet: [] }]);
+    const w = theWhatIsNewWords('Wairimu', [{ label: 'A', ofHowMany: 4, answered: 4, notYet: [], says: 'All 4 have checked in.' }, { label: 'B', ofHowMany: 3, answered: 0, notYet: [], says: 'Nobody has checked in yet; Omar, Bisi and Femi haven’t started yet.' }]);
     expect(w!.subject).toBe('Here is where your two check-ins stand, and what is new');
-    expect(w!.lines.slice(1, 3)).toEqual(['In "A", all four people have checked in.', 'In "B", nobody has checked in yet, out of three people.']);
+    expect(w!.lines.slice(1, 3)).toEqual(['In "A", all 4 have checked in.', 'In "B", nobody has checked in yet; Omar, Bisi and Femi haven’t started yet.']);
   });
 
-  it('says nothing about anybody beyond first names of those who have not yet checked in', () => {
-    expect(whereOneStands({ label: 'X', ofHowMany: 9, answered: 3, notYet: ['Omar', 'Bisi', 'Femi'] })).toBe('In "X", three of nine people have checked in, and Omar, Bisi, Femi and three others have not yet.');
+  it('says the one count\'s sentence, with who is missing named once', () => {
+    expect(whereOneStands({ label: 'X', ofHowMany: 4, answered: 2, notYet: [], says: '2 of 4 have checked in; Peter and Mary haven’t joined yet.' })).toBe('In "X", 2 of 4 have checked in; Peter and Mary haven’t joined yet.');
   });
 });
 
 describe('the follow-up line is only said where it is true', () => {
-  const a = { label: 'A', ofHowMany: 4, answered: 4, notYet: [] };
+  const a = { label: 'A', ofHowMany: 4, answered: 4, notYet: [], says: 'All 4 have checked in.' };
   it('said for a check-in with a session still to come', () => {
     expect(theWhatIsNewWords('W', [{ ...a, moreToCome: true }])!.lines).toContain('What is new is that Groundwork now follows up with each person about the thing they said they would do, in their own words and only to them.');
   });
@@ -107,13 +109,13 @@ describe('who is not written to', () => {
 
 describe('the subject and the lead\'s own line', () => {
   it('nobody has checked in', () => {
-    expect(theWhatIsNewWords('W', [{ label: 'Sales team, Q4', ofHowMany: 5, answered: 0, notYet: [], moreToCome: true }])!.subject).toBe('Nobody has checked in on "Sales team, Q4" yet, and here is what is new');
+    expect(theWhatIsNewWords('W', [{ label: 'Sales team, Q4', ofHowMany: 5, answered: 0, notYet: [], moreToCome: true, says: 'Nobody has checked in yet.' }])!.subject).toBe('Nobody has checked in yet on "Sales team, Q4", and here is what is new');
   });
   it('one of five has', () => {
-    expect(theWhatIsNewWords('W', [{ label: 'Sales team, Q4', ofHowMany: 5, answered: 1, notYet: ['Omar'], moreToCome: true }])!.subject).toBe('One of five people has checked in on "Sales team, Q4", and here is what is new');
+    expect(theWhatIsNewWords('W', [{ label: 'Sales team, Q4', ofHowMany: 5, answered: 1, notYet: ['Omar'], moreToCome: true, says: '1 of 5 has checked in; Omar hasn’t started yet.' }])!.subject).toBe('1 of 5 has checked in on "Sales team, Q4", and here is what is new');
   });
   it('the lead who has not checked in is "you", with the right verb', () => {
-    expect(whereOneStands({ label: 'X', ofHowMany: 3, answered: 2, notYet: ['you'] })).toBe('In "X", two of three people have checked in, and you have not yet.');
+    expect(whereOneStands({ label: 'X', ofHowMany: 3, answered: 2, notYet: ['you'], says: '2 of 3 have checked in; you haven’t started yet.' })).toBe('In "X", 2 of 3 have checked in; you haven’t started yet.');
   });
   it('a check-in where only the lead is in it is left out, and a lead with only that gets nothing', async () => {
     const w = world();

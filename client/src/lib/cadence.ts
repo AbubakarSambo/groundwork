@@ -62,8 +62,28 @@ export const TIMED_CADENCES = CADENCES.filter((c) => c.days !== null)
  */
 export const SELECTABLE_CADENCES = CADENCES
 
-export const cadenceLabel = (c: GroundCadence): string =>
-  CADENCES.find((x) => x.cadence === c)?.label ?? String(c)
+/* The days are always passed (assessment test, 2 November: the board said "Weekly, Thursdays." of a check-in that meets Monday and
+   Thursday), so no line names a rhythm without reading them. Null where nothing is chosen yet. */
+export const cadenceLabel = (c: GroundCadence, cadenceDays: number[] | null | undefined): string => {
+  const often = timesAWeek(c, cadenceDays)
+  return often ? `${often[0].toUpperCase()}${often.slice(1)}` : CADENCES.find((x) => x.cadence === c)?.label ?? String(c)
+}
+
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const TIMES = ['', 'once', 'twice', 'three times', 'four times', 'five times', 'six times', 'seven times']
+
+/**
+ * TWICE OR MORE A WEEK (2 November 2026): "twice a week, on Monday and Thursday", the one wording every page uses for a weekly
+ * check-in that meets on more than one day (Ground.cadenceDays, served with the check-in). The server says it the same way
+ * (grounds/the-check-ins-own-schedule.ts, timesAWeekInWords). Null when it meets once a week or less.
+ */
+export function timesAWeek(cadence: string | null | undefined, cadenceDays?: number[] | null): string | null {
+  if (cadence !== 'WEEKLY') return null
+  const days = [...new Set((cadenceDays ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b)
+  if (days.length < 2) return null
+  const names = days.map((d) => WEEKDAY_NAMES[d])
+  return `${TIMES[days.length]} a week, on ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
 
 /**
  * How many sessions a timeframe holds at this cadence.

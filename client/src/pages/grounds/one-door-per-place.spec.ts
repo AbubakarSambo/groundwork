@@ -37,7 +37,7 @@ const LIST = readFileSync(join(__dirname, '../../components/gw/TheReportIsAListO
 describe('the board still exists and is still reachable', () => {
   /** Not in the tab row: every other tab stays on the page and this one never did. */
   it('is not a tab', () => {
-    expect(groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: true }).map(t => t.key)).not.toContain('board')
+    expect(groundTabs({ canRunThisCheckIn: true, isAParty: true }).map(t => t.key)).not.toContain('board')
   })
 
   it('and the report is what opens it - the first row of the session list', () => {

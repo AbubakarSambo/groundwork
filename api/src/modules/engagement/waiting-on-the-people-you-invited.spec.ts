@@ -46,12 +46,13 @@ describe('what Baraka reads on the first reminder day', () => {
     expect(await w.run()).toEqual({ tried: 1 });
     expect(w.sent).toHaveLength(1);
     expect(w.sent[0].to).toBe('baraka@x.test');
-    expect(w.sent[0].subject).toBe('Nobody has started "Distributor review" yet, and Groundwork is following up');
+    expect(w.sent[0].subject).toBe('Nobody has started "Distributor review" yet');
     expect(w.sent[0].lines).toEqual([
       expect.stringMatching(/^Hello Baraka\. Kito, Lerato, Tobi and Peter were invited to "Distributor review" on .*8.*Oct.*, and nobody has started yet\.$/),
-      'Groundwork has already sent a reminder to Kito, Lerato, Tobi and Peter.',
-      expect.stringMatching(/^It will remind them again on .*15.*Oct.* and .*22.*Oct.*\.$/),
-      'You do not need to chase anyone yourself. If you would like to say a word to them as well, you could write, "I would value your view on Distributor review. It takes about ten minutes."',
+      /* Changed 4 November 2026 (release batch 1): the direct words are the only words: who has had a reminder and when the next goes, and nothing about what Groundwork is doing for him. */
+      'Kito, Lerato, Tobi and Peter have had a reminder.',
+      expect.stringMatching(/^The next reminder goes on .*15.*Oct.* and .*22.*Oct.*\.$/),
+      'You could write to them yourself, "I would value your view on Distributor review. It takes about ten minutes."',
     ]);
     expect(w.sent[0].linkUrl).toBe('https://app.test/grounds/g1');
     const read = [w.sent[0].subject, ...w.sent[0].lines].join(' ');
@@ -71,10 +72,10 @@ describe('what Baraka reads on the first reminder day', () => {
 
   it('one person invited, and nobody reminded yet', () => {
     const w = theWaitingWords('Baraka', { label: 'Distributor review', invited: ['Kito'], invitedOn: INVITED, reminded: [], remindingAgainOn: [] });
-    expect(w.subject).toBe('Kito has not started "Distributor review" yet, and Groundwork is following up');
+    expect(w.subject).toBe('Kito has not started "Distributor review" yet');
     expect(w.lines[0]).toMatch(/^Hello Baraka\. Kito was invited to "Distributor review" on /);
-    expect(w.lines[1]).toBe('Groundwork sent each of them the invitation, and is about to remind them.');
-    expect(w.lines[2]).toBe('It will not send any more reminders after this, and will tell you when that is so.');
+    expect(w.lines[1]).toBe('They have had the invitation.');
+    expect(w.lines[2]).toBe('You could write to them yourself, "I would value your view on Distributor review. It takes about ten minutes."');
   });
 });
 

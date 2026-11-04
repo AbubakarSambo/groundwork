@@ -559,18 +559,6 @@ export class AdminController {
   }
 
   /**
-   * RELEASE 1B'S NEW CHECK-IN TABS, ONE ORGANISATION AT A TIME (Hafsah, 18 October 2026: test organisations first, then real
-   * clients one at a time once she says so). Staff only, by the guard on this controller. Off returns the organisation to the
-   * tabs it had, with nothing lost.
-   */
-  @Patch('organisations/:organizationId/release-1b-tabs')
-  @ApiOperation({ summary: "Switch Release 1B's new check-in tabs on or off for one organisation" })
-  setRelease1bTabs(@Param('organizationId') organizationId: string, @Body() dto: { on?: unknown }) {
-    if (typeof dto?.on !== 'boolean') throw new BadRequestException('Say whether the new check-in tabs should be on or off for this organisation.');
-    return this.adminService.setRelease1bTabs(organizationId, dto.on);
-  }
-
-  /**
    * RELEASE 2, COLLECT WHAT'S OWED, ONE ORGANISATION AT A TIME (release plan, Release 2: test organisations first, then Muchemi
    * & Co once Hafsah says so). Staff only, by the guard on this controller. Off returns the organisation to what it had, with
    * nothing lost.

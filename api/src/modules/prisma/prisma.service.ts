@@ -128,6 +128,8 @@ export const CronLock = {
   DELIVERY_ALERT: 920_016,
   /** The daily usage summary to the back-office team. See back-office/the-daily-usage-summary.cron.ts. */
   DAILY_USAGE: 920_017,
+  /** The writes to the record a check-in still owes, tried again. See conversation/the-owed-writes.cron.ts. */
+  OWED_WRITES: 920_018,
 } as const;
 
 /**

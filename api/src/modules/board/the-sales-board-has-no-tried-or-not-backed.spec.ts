@@ -41,10 +41,11 @@ describe('the sales board, as the kit has it (answer 5)', () => {
     expect(blocker.proof.says).toBe('Nothing on record proves it. It rests on what Joseph said.');
     expect(blocker.wouldClearItSays).toBe('Nobody has said what would clear it yet.');
   });
-  it('with Release 1\'s sales board off, and on any other kind of board, the note stays as before', async () => {
+  it('with Release 1\'s sales board off, and on any other kind of board, no "Not backed:" either', async () => {
+    /* Changed 3 November (Hafsah, F2: silence is never a finding): "Not backed: no attempt to unblock mentioned" is gone everywhere, switch on or off. */
     const off = await boardAs(run('sales team', false), 'u-grace', 'MEMBER');
-    expect(everySentence(off)).toMatch(/Not backed: no attempt to unblock mentioned\./);
+    expect(everySentence(off)).not.toMatch(/Not backed|could have messaged/);
     const other = await boardAs(run('operations', true), 'u-grace', 'MEMBER');
-    expect(everySentence(other)).toMatch(/Not backed: no attempt to unblock mentioned\./);
+    expect(everySentence(other)).not.toMatch(/Not backed|could have messaged/);
   });
 });

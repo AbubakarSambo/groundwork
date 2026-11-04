@@ -37,15 +37,16 @@ import { ConversationService } from './conversation.service';
  * createNextIfAbsent is private, which is the correct shape for it - so it is
  * reached the way the product reaches it, through ensureNextSession.
  */
-function makeScheduler(cadence: Cadence, timelineDays: number) {
+function makeScheduler(cadence: Cadence, timelineDays: number, cadenceDays: number[] | null = null) {
   const created: number[] = [];
+  const finals: number[] = [];
   const prisma: any = {
     ground: {
-      findUnique: jest.fn(async () => ({ cadence, timelineDays, cadenceAnchorDay: null, endsAt: null })),
+      findUnique: jest.fn(async () => ({ cadence, timelineDays, cadenceDays, cadenceAnchorDay: null, endsAt: null })),
     },
     checkIn: {
       findUnique: jest.fn(async () => null),      // nothing exists yet, so nothing is skipped as duplicate
-      create: jest.fn(async (args: any) => { created.push(args.data.sessionNumber); return args.data; }),
+      create: jest.fn(async (args: any) => { created.push(args.data.sessionNumber); if (args.data.isFinal) finals.push(args.data.sessionNumber); return args.data; }),
       findFirst: jest.fn(async () => null),
       findMany: jest.fn(async () => []),
     },
@@ -57,7 +58,7 @@ function makeScheduler(cadence: Cadence, timelineDays: number) {
   );
   const schedule = (justCompleted: number) =>
     (service as any).ensureNextSession('g1', 'p1', justCompleted);
-  return { schedule, created };
+  return { schedule, created, finals };
 }
 
 describe('the last planned session is the last session', () => {
@@ -108,5 +109,21 @@ describe('the last planned session is the last session', () => {
     const { schedule, created } = makeScheduler(Cadence.ONE_TIME, 90);
     await schedule(1);
     expect(created).toEqual([]);
+  });
+
+  it('counts a twice-a-week check-in on its days, so the closing session is the last of the twelve, not the sixth', async () => {
+    /* Assessment test, 2 November: the field check-in ran Monday and Thursday for 46 days. The scheduler
+       counted seven days a step and made session 6 the closing one, so after it closed unanswered nobody
+       had a session left to open, and the lead was told the programme had ended. */
+    const { schedule, created, finals } = makeScheduler(Cadence.WEEKLY, 46, [1, 4]);
+    for (let n = 1; n <= 14; n++) await schedule(n);
+    expect(created).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    expect(finals).toEqual([13]);
+  });
+
+  it('marks the closing session of a weekly check-in where its plan ends', async () => {
+    const { schedule, finals } = makeScheduler(Cadence.WEEKLY, 90);
+    for (let n = 1; n <= 11; n++) await schedule(n);
+    expect(finals).toEqual([12]);
   });
 });

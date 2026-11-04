@@ -43,7 +43,9 @@ describe('request 117 (6): nobody waits on themselves, on the coaching and the p
     const c: any = await svc.coachingForTheBoard('g1', 'u-grace');
     expect(everyString(c).filter((s) => SELF.test(s))).toEqual([]);
     const rukia = c.eachPerson.find((p: any) => p.who === 'Rukia Otieno');
-    expect(rukia.probe[0]).toMatch(/^Baraka Mwangi and Amani Wekesa say the work is waiting on Rukia Otieno for the discount and the price list\. Not backed: no attempt to unblock mentioned\. Baraka Mwangi and Amani Wekesa could have messaged Rukia Otieno or asked again\./);
+    expect(rukia.probe[0]).toMatch(/^Baraka Mwangi and Amani Wekesa say the work is waiting on Rukia Otieno for the discount and the price list\./);
+    /* Changed 3 November (Hafsah, F2: silence is never a finding): "Not backed: no attempt to unblock mentioned" is gone; the note is what they said they tried, in full, or nothing. */
+    expect(rukia.probe[0]).not.toMatch(/Not backed|could have messaged/);
   });
 
   it.each([['Rukia', 'u-rukia'], ['Amani', 'u-amani'], ['Baraka', 'u-baraka'], ['Juma', 'u-juma'], ['Grace', 'u-grace']])(
@@ -74,8 +76,8 @@ describe('request 117 (6): on the board, as each reader', () => {
     const board = await boardAs(review5(), ...RUKIA_RUNS_IT);
     expect(board.blockers.map((b: any) => b.says)).toEqual(expect.arrayContaining([
       /* Change 4: neither has Rukia's own promise of it, so each reads as the speaker's account, with the note. */
-      'Baraka Mwangi says the work is waiting on you for the discount. Not backed: no attempt to unblock mentioned. Baraka Mwangi could have messaged you or asked again.',
-      'Amani Wekesa says the work is waiting on you for the price list. Not backed: no attempt to unblock mentioned. Amani Wekesa could have messaged you or asked again.',
+      'Baraka Mwangi says the work is waiting on you for the discount.',
+      'Amani Wekesa says the work is waiting on you for the price list.',
     ]));
   });
 });

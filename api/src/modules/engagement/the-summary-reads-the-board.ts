@@ -1,4 +1,5 @@
 import { sameSentenceKey } from '../board/what-needs-you-and-what-to-do';
+import { withoutTheOldEnding } from '../reports/what-people-said-differently-about';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import type { AThingOutstanding, WhatIsOutstanding } from './the-leads-daily-nudge';
 
@@ -50,17 +51,13 @@ export function aWaitInADecision(question: string): string {
   return m ? m[1] : '';
 }
 
-/** "People in this check-in said different things. X. This needs settling." said as one plain thing for her to settle. */
-export function aDecisionSheOwes(question: string, source?: string | null): string {
-  const q = String(question ?? '').trim();
-  if (source === 'divergence') {
-    /* "... said different things about the status of the sale to Mama Pima Stores, so it needs settling." already says it once (engine test, second run). */
-    const about = /^(.+? said different things about .+?), so it needs settling\.?$/i.exec(q);
-    if (about) return `${about[1]}${PLACE}, so it needs settling.`;
-    const core = q.replace(/^People in this check-in said different things\.\s*/i, '').replace(/\s*This needs settling\.?$/i, '').trim();
-    if (core) return `${sentence(core).replace(/\.$/, '')}${PLACE}, and people said different things about it, so it needs settling.`;
-  }
-  return sentence(q).replace(/\.$/, `${PLACE}.`);
+/*
+ * The board's decision, said with where it is. A difference is already one plain sentence on the board ("You and Kwame Nkosi said
+ * different things about the fee notes.", reports/what-people-said-differently-about.ts), so it needs no rewording here; the
+ * reading of "..., so it needs settling." that used to be here went with that wording (Hafsah, 30 October 2026).
+ */
+export function aDecisionSheOwes(question: string): string {
+  return sentence(withoutTheOldEnding(question)).replace(/\.$/, `${PLACE}.`);
 }
 
 /*
@@ -149,7 +146,7 @@ export function withWhatTheBoardsSay(o: WhatIsOutstanding, boards: TheLeadsBoard
     for (const d of (Array.isArray(board.decisions) ? board.decisions : []) as any[]) {
       if (String(d?.owner ?? '') !== 'You' || !String(d?.question ?? '').trim()) continue;
       if (d?.source === 'blocker' && waitsSaid.has(theThingWaitedFor(aWaitInADecision(String(d.question))))) continue;
-      add(out.needsYou, { ...base, text: aDecisionSaidFromTheRecord(d, board, b.record) ?? aDecisionSheOwes(d.question, d.source), group: 1, about: { kind: 'decision', ids: [String(d.id ?? d.question)] } });
+      add(out.needsYou, { ...base, text: aDecisionSaidFromTheRecord(d, board, b.record) ?? aDecisionSheOwes(d.question), group: 1, about: { kind: 'decision', ids: [String(d.id ?? d.question)] } });
     }
     /* A wait on her the board lists, that the summary does not already say from the record. */
     for (const a of (Array.isArray(board.leadActions) ? board.leadActions : []) as any[]) {

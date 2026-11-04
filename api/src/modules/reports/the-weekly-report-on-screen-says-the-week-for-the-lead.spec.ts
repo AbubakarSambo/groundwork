@@ -43,11 +43,6 @@ describe('the weekly report on the screen, for the lead', () => {
     expect(theWeekForTheLead).not.toHaveBeenCalled();
   });
 
-  it('with the direct morning off, the report is served as before', async () => {
-    const r: any = await aController(false).week('g1', GRACE, 'ADMIN', 'o1');
-    expect(r.forTheLead).toBeUndefined();
-  });
-
   it('an earlier week is served as before', async () => {
     const r: any = await aController(true).week('g1', GRACE, 'ADMIN', 'o1', '2026-10-12');
     expect(r.forTheLead).toBeUndefined();

@@ -64,7 +64,7 @@ describe('B-052: a failed check-in send says what is still true', () => {
     renderPage()
     await waitFor(() => expect(screen.getByText(/How is the project going/i)).toBeTruthy())
 
-    const box = screen.getByPlaceholderText(/Type your response/i)
+    const box = screen.getByPlaceholderText(/Type your answer/)
     fireEvent.change(box, { target: { value: 'We shipped the first milestone on time.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
 

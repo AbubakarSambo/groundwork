@@ -79,7 +79,7 @@ export function contributionRead(
   if (byLead && bySelf) {
     return {
       state: 'both',
-      line: 'Both the lead and this person have said what this person is here to do. If those two descriptions differ, that difference is the most useful thing on this page.',
+      line: 'The lead and this person have both said what this person is here to do.',
     };
   }
   if (byLead) {

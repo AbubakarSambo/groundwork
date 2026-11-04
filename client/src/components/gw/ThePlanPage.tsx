@@ -137,7 +137,7 @@ export function TheTargetsYouGave({ groundId, cards }: { groundId: string; cards
     onError: (e) => { settle(); refused(e) },
   })
   const correct = useMutation({
-    mutationFn: (id: string) => groundsApi.correctATargetCard(groundId, id, { what: what.trim(), number: number.trim() ? Number(number.replace(/,/g, '')) : null }),
+    mutationFn: (id: string) => groundsApi.editPlanCard(groundId, id, { fields: { what: what.trim(), number: number.trim() ? Number(number.replace(/,/g, '')) : null } }),
     onSuccess: () => { setEditing(null); settle() },
     onError: refused,
   })
@@ -186,7 +186,7 @@ function Card({ groundId, card }: { groundId: string; card: PlanCard }) {
   const confirm = useMutation({ mutationFn: () => groundsApi.confirmPlanCard(groundId, card.id, way || null), onSuccess: settle, onError: refused })
   const notNow = useMutation({ mutationFn: () => groundsApi.planCardNotNow(groundId, card.id), onSuccess: settle, onError: refused })
   const save = useMutation({
-    mutationFn: () => groundsApi.editPlanCard(groundId, card.id, says),
+    mutationFn: () => groundsApi.editPlanCard(groundId, card.id, { says }),
     onSuccess: () => { setEditing(false); settle() },
     onError: refused,
   })

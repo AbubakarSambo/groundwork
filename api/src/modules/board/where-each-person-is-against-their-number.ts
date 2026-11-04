@@ -87,6 +87,8 @@ export interface PersonRow {
    * the same readers who may see the decider on GET /grounds/:id.
    */
   notLetIn?: { by: string | null; at: Date | null; declined?: boolean };
+  /** Invited and has not joined yet, by the one joined rule (withWhoHasNotJoinedMarked). */
+  notJoinedYet?: boolean;
 }
 
 /**
@@ -103,10 +105,12 @@ export type Reason =
   | 'nothing checkable'
   | 'waiting on someone'
   | 'nothing to do'
-  | 'not let in';
+  | 'not let in'
+  /* Invited and has not joined yet: counted, and named as not joined (Hafsah, 1 November), so never "has not checked in" (round 3). */
+  | 'not joined';
 
 /** Ordered worst first. The order IS the product; a manager reads down until it stops mattering. */
-const ORDER: Reason[] = ['has not answered', 'something in the way two weeks', 'behind the pace', 'nothing checkable', 'waiting on someone', 'nothing to do', 'not let in'];
+const ORDER: Reason[] = ['has not answered', 'something in the way two weeks', 'behind the pace', 'nothing checkable', 'waiting on someone', 'nothing to do', 'not let in', 'not joined'];
 
 /**
  * A NUMBER, A DATE OR A DOCUMENT, READ OFF ONE LINE OF THE RECORD.
@@ -153,6 +157,7 @@ function sittingUnchased(row: PersonRow) {
 
 export function whyThisRow(row: PersonRow, roundsPlanned: number | null): Reason {
   if (row.notLetIn) return 'not let in';
+  if (row.notJoinedYet) return 'not joined';
   if (!row.answeredThisRound) return 'has not answered';
   if (sittingUnchased(row).length) return 'something in the way two weeks';
   if (behindThePace(row, roundsPlanned)) return 'behind the pace';
@@ -208,6 +213,8 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
         : `${start} was not let in, so there is nobody to ask.`;
     case 'has not answered':
       return `${start} has not checked in for this session yet.`;
+    case 'not joined':
+      return `${start} was invited and has not joined yet.`;
     case 'something in the way two weeks': {
       const oldest = sittingUnchased(row)[0];
       /* The day it began, never a count of days from the reading (request 117, part 9). */

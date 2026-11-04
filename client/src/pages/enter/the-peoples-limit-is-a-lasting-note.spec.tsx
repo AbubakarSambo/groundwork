@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
+import { addThroughTheTeamBox, saveWithMyEmail } from './a-team-read-in-a-spec'
 import { toast } from 'sonner'
 
 /**
@@ -21,6 +22,7 @@ import { toast } from 'sonner'
 vi.mock('@/api/auth', () => ({ authApi: { entrySave: vi.fn().mockResolvedValue({ draftToken: 'd-token' }) } }))
 vi.mock('@/api/entry', () => ({
   entryApi: {
+    peopleOnLines: vi.fn(async (t: string) => (await import('./a-team-read-in-a-spec')).readLikeTheServer(t)),
     opener: vi.fn().mockResolvedValue({ reply: '' }),
     chat: vi.fn(), report: vi.fn(), onboard: vi.fn(), classifyIntent: vi.fn(),
     patchDraft: vi.fn().mockResolvedValue({ ok: true }),
@@ -51,17 +53,10 @@ function seedClosedAnchorSession() {
   }))
 }
 
-async function addOnePerson(email: string) {
-  fireEvent.change(await screen.findByPlaceholderText('name@company.com'), { target: { value: email } })
-  fireEvent.click(screen.getByText('Add'))
-  await screen.findByText('What do they do, and why are they part of this?')
-  fireEvent.click(screen.getByText('Skip'))
-  await waitFor(() => expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull())
-}
 
 const LIMIT_SENTENCE = 'This one-month Groundwork holds up to 20 people besides you.'
 
-describe('the people step keeps the limit sentence on screen, and disables Add person', () => {
+describe('the people step keeps the limit sentence on screen, and adds nobody past it', () => {
   beforeEach(() => { localStorage.clear(); vi.clearAllMocks() })
 
   it('says nothing about the limit before it is reached', async () => {
@@ -71,28 +66,32 @@ describe('the people step keeps the limit sentence on screen, and disables Add p
     expect(screen.queryByText(LIMIT_SENTENCE)).toBeNull()
   })
 
+  /* UPDATED (Hafsah's blocker, 31 October 2026): the box's lines are the team, so the limit is counted on them as they are typed. */
   it('keeps the limit sentence on screen as a Note once mayAdd is reached, not only a toast', async () => {
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
-    await addOnePerson('person0@example.test')
-    await addOnePerson('person1@example.test')
+    addThroughTheTeamBox('person0@example.test')
+    expect(screen.queryByText(LIMIT_SENTENCE)).toBeNull()
+    addThroughTheTeamBox('person0@example.test\nperson1@example.test')
     expect(await screen.findByText(LIMIT_SENTENCE)).toBeTruthy()
     // It really is lasting, not a toast that already dismissed itself.
     await waitFor(() => expect(screen.getByText(LIMIT_SENTENCE)).toBeTruthy())
   })
 
-  it('disables "Add person" once the limit is reached, instead of it silently doing nothing', async () => {
+  /* UPDATED (Hafsah's blocker, 31 October 2026): past the limit the save stops, said on screen, and nobody is dropped half-way. */
+  it('past the limit, the save stops and saves nobody, and the limit stays said on screen', async () => {
     seedClosedAnchorSession()
     renderPage()
     await screen.findByText('Who needs to be part of this?')
-    await addOnePerson('person0@example.test')
-    await addOnePerson('person1@example.test')
-
-    fireEvent.change(await screen.findByPlaceholderText('name@company.com'), { target: { value: 'person2@example.test' } })
-    fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do, and why are they part of this?')
-    expect(screen.getByText('Add person').closest('button')).toBeDisabled()
+    addThroughTheTeamBox('person0@example.test\nperson1@example.test\nperson2@example.test')
+    saveWithMyEmail()
+    const { authApi } = await import('@/api/auth')
+    const { entryApi } = await import('@/api/entry')
+    await waitFor(() => expect(entryApi.peopleOnLines).toHaveBeenCalled())
+    await new Promise((r) => setTimeout(r, 0))
+    expect(authApi.entrySave).not.toHaveBeenCalled()
+    expect(screen.getByText(LIMIT_SENTENCE)).toBeTruthy()
     expect(toast.error).not.toHaveBeenCalled()
   })
 })

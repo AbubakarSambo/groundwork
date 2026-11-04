@@ -46,6 +46,8 @@ export type TheSchedule = {
   cadence: Cadence;
   /** Weekly and fortnightly: 0 = Sunday .. 6 = Saturday. Monthly: the day of the month, 1 to 31. */
   anchorDay?: number | null;
+  /** Weekly, twice or more a week: the weekdays it meets on, 0 = Sunday .. 6 = Saturday (Ground.cadenceDays). */
+  days?: number[] | null;
   workingDays?: number[] | null;
   /** The check-in's start date, else the day it was made. */
   startedAt: Date;
@@ -113,6 +115,14 @@ function roundDay(s: TheSchedule, start: Day, k: number): Day {
     return on(from.getUTCMonth()) > start ? on(m - 1) : on(m);
   }
   if (s.cadence === Cadence.DAILY) return start + k * DAY;
+  /* TWICE OR MORE A WEEK (2 November 2026): round k is the k-th chosen weekday after the start, so "Monday and Thursday" from a
+     Sunday start meets Monday, Thursday, Monday, and so on. */
+  const chosen = theWeekdaysItMeets(s);
+  if (chosen.length >= 2) {
+    let d = start;
+    for (let i = 0; i < k; ) { d += DAY; if (chosen.includes(new Date(d).getUTCDay())) i += 1; }
+    return d;
+  }
   /* Item 5 (the walk, Sunday 11 October, "every Monday"): weekly, round 1 is the first set day after
      the start, Monday 12. It was the start plus a week, then the set day, Monday 19, so Monday 12 was
      skipped. Fortnightly keeps a fortnight before its set day.
@@ -128,6 +138,28 @@ function roundDay(s: TheSchedule, start: Day, k: number): Day {
     while (new Date(first).getUTCDay() !== anchor) first += DAY;
   }
   return first + (k - 1) * step * DAY;
+}
+
+/** The weekdays a weekly check-in meets on when it meets on more than one, sorted; empty otherwise. */
+export function theWeekdaysItMeets(s: { cadence?: Cadence | string | null; days?: number[] | null }): number[] {
+  if (s.cadence !== Cadence.WEEKLY) return [];
+  const days = [...new Set((s.days ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b);
+  return days.length >= 2 ? days : [];
+}
+
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const TIMES = ['', 'once', 'twice', 'three times', 'four times', 'five times', 'six times', 'seven times'];
+
+/**
+ * HOW OFTEN, IN WORDS, WHEN IT MEETS MORE THAN ONCE A WEEK: "twice a week, on Monday and Thursday", the one wording every sentence on
+ * the server uses (the check-in's own line, what it asks). Null when it meets once a week or less.
+ */
+export function timesAWeekInWords(s: { cadence?: Cadence | string | null; days?: number[] | null }): string | null {
+  const days = theWeekdaysItMeets(s);
+  if (!days.length) return null;
+  const names = days.map((d) => WEEKDAY_NAMES[d]);
+  const listed = names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  return `${TIMES[days.length]} a week, on ${listed}`;
 }
 
 /**
@@ -177,6 +209,8 @@ export function whenTheNextSessionOpens(s: TheSchedule, lastOpenedAt: Date, now:
  * session: the one open now closes when the next one opens, at 8, so there are never two at once.
  */
 export const A_DAILY_CHECK_IN_OPENS_AT_HOUR = 8;
+/** The hour of the day a check-in opens, where it opens at a set hour; null where it opens at the start of its day, which is no time to say. */
+export const theHourACheckInOpens = (cadence: string): number | null => (cadence === Cadence.DAILY ? A_DAILY_CHECK_IN_OPENS_AT_HOUR : null);
 function theHourItOpens(s: Pick<TheSchedule, 'cadence'>, zone: string, day: Day): Date {
   return s.cadence === Cadence.DAILY ? theStartOfTheDayIn(zone, day + A_DAILY_CHECK_IN_OPENS_AT_HOUR * 3_600_000) : theStartOfTheDayIn(zone, day);
 }

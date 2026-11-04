@@ -18,7 +18,7 @@ describe('a line built at the read is held to the same tests', () => {
 
   it('and the builder that wrote it, with the lead reading, now serves it right', () => {
     const built = whatToProbe({
-      who: 'Tobi Adewale', participantId: 'p-tobi', role: null, answeredThisSession: true, patterns: [],
+      who: 'Tobi Adewale', participantId: 'p-tobi', role: null, answeredThisSession: true,
       waitingOn: [], holdingUp: [{ what: 'the initiation of commercial discussions', who: 'you', daysOld: 0 }],
       concrete: [], documentsAttached: 0, sessionNumber: 2, totalSessions: 3, scenario: 'NEW_HIRE',
     });

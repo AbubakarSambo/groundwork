@@ -3,6 +3,13 @@
 
 /* The composer's field grows with what is typed (a pasted plan keeps its lines), at the prototype's .input height. */
 .gw-composer { position: relative; }
+/* One box to type in, with the attach button and send inside it (Hafsah, 3 November evening): the check-in and setup composers. */
+.gw-composer-row { display: contents; }
+.gw-composer-box { flex: 1; min-width: 0; display: flex; align-items: flex-end; gap: 4px; padding: 4px; border: 1px solid var(--rule2-crisp, var(--rule2)); border-radius: 26px; background: var(--surface); }
+.gw-composer-box:focus-within { box-shadow: 0 0 0 2px var(--act); border-color: transparent; }
+.gw-composer .gw-composer-box textarea.input { border: 0; background: transparent; min-height: 40px; padding: 9px 8px; outline: none; box-shadow: none; }
+.gw-composer-box .ci-sq { width: 44px; height: 44px; border-radius: 50%; font-size: 18px; }
+.gw-composer-box .btn.sec.ci-sq { box-shadow: none; background: transparent; }
 .gw-composer textarea.input { flex: 1; min-width: 0; min-height: 48px; max-height: 120px; resize: none; padding: 11px 16px; line-height: 1.5; }
 .gw-composer-menu { position: absolute; bottom: 100%; left: 16px; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; box-shadow: var(--gw-shadow-menu); padding: 6px; z-index: 20; width: 260px; max-width: calc(100vw - 40px); }
 /* Ask's answers keep the line breaks they were written with. */
@@ -22,7 +29,12 @@
 .sec { scroll-margin-top: 24px; }
 /* A long check-in scrolls inside its card, as a chat does, so the way back and the composer stay on screen. */
 .ci-card { height: calc(100dvh - 150px); }
-@media (max-width: 860px) { body.focus .ci-card { height: calc(100dvh - 60px); } }
+/* On a phone the way back and the card share the screen, so the box to type in is always on it (Hafsah, 3 November evening: one box,
+   always there). The card took a full screen's height below the way back, which put the box under the fold. */
+@media (max-width: 860px) {
+  body.focus .ci-focus { height: 100dvh; display: flex; flex-direction: column; }
+  body.focus .ci-card { flex: 1; min-height: 0; height: auto; }
+}
 /* A plain text link for an action the prototype does not draw as a button (Hafsah, 24 October: fewer buttons). */
 .gw-link { background: none; border: 0; padding: 0; font: inherit; color: var(--act); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; text-align: left; }
 .gw-link:disabled { color: var(--muted); cursor: not-allowed; }
@@ -48,7 +60,6 @@
 .gw-when-row { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--rule); }
 .gw-when-row a { color: var(--ink); text-decoration: none; }
 .gw-when-row a:hover { text-decoration: underline; }
-.gw-ci-back { margin-bottom: 12px; }
 .gw-chat-title { margin-bottom: 14px; }
 .gw-asst-h { flex-wrap: wrap; }
 .gw-ask-about { display: flex; gap: 6px; align-items: center; width: 100%; margin-top: 6px; }

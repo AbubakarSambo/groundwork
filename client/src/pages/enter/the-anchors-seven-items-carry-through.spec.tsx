@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
+import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
 import { authApi } from '@/api/auth'
 import { entryApi } from '@/api/entry'
 import { THE_ANCHOR_FIRST_QUESTION } from './TheSetup'
@@ -30,6 +31,7 @@ import { THE_ANCHOR_FIRST_QUESTION } from './TheSetup'
 const onboardStream = vi.fn()
 vi.mock('@/api/entry', () => ({
   entryApi: {
+    peopleOnLines: vi.fn(async (t: string) => (await import('./a-team-read-in-a-spec')).readLikeTheServer(t)),
     opener: vi.fn().mockResolvedValue({ reply: '' }),
     chat: vi.fn(),
     report: vi.fn().mockResolvedValue({ report: null }),
@@ -58,7 +60,7 @@ function openAnchorArrival() {
 
 async function sendOnboardingMessage(text: string) {
   /* Fault 7 (live walk, 6 October 2026): placeholder shortened, so it is never clipped at 375px. */
-  const box = await screen.findByPlaceholderText('Type your response, or add a document.')
+  const box = await screen.findByPlaceholderText('Type your answer')
   fireEvent.change(box, { target: { value: text } })
   fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
 }
@@ -71,7 +73,8 @@ beforeEach(() => {
 })
 
 describe('the anchor’s seven items merge across turns', () => {
-  it('keeps what one turn heard once a later turn says nothing about it, and ticks the panel', async () => {
+  /* Changed 3 November evening: the summary has no "N of 7 set" count; it shows each item heard, which is what is checked now. */
+  it('keeps what one turn heard once a later turn says nothing about it, and shows it in the summary', async () => {
     onboardStream
       .mockResolvedValueOnce({
         reply: 'Who are you trying to move?',
@@ -92,13 +95,15 @@ describe('the anchor’s seven items merge across turns', () => {
 
     await sendOnboardingMessage('Nobody on my team sees how the renewals land.')
     await waitFor(() => expect(onboardStream).toHaveBeenCalledTimes(1))
-    await screen.findByText('2 of 7 set')
+    await screen.findByText('Keeping renewals on track')
+    expect(screen.getByText('My whole team')).toBeTruthy()
 
     await sendOnboardingMessage('The whole commercial team.')
     await waitFor(() => expect(onboardStream).toHaveBeenCalledTimes(2))
     // Both the two already heard, AND the new one: nothing heard before was lost by a turn that
     // said nothing about it.
-    await screen.findByText('3 of 7 set')
+    await waitFor(() => expect(screen.getAllByRole('listitem').length).toBe(3))
+    expect(screen.getByText('Keeping renewals on track')).toBeTruthy()
   })
 
   it('sends the merged seven back on the next onboard call, under soFar.anchorItems', async () => {
@@ -242,12 +247,9 @@ describe('the people step’s Name field, for an anchor draft', () => {
     renderPage('/start')
     await screen.findByText('Who needs to be part of this?')
 
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Ada' } })
-    fireEvent.change(screen.getByPlaceholderText('name@company.com'), { target: { value: 'ada@example.test' } })
-    fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do, and why are they part of this?')
-    fireEvent.click(screen.getByText('Skip'))
-    await waitFor(() => expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull())
+    /* UPDATED (Hafsah, 31 October 2026): the name is given on the same line as the email, in the one team box. */
+    /* UPDATED (Hafsah's blocker, 31 October 2026): nothing to press before saving; the save takes the box's lines. */
+    addThroughTheTeamBox('Ada, ada@example.test')
 
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
@@ -265,11 +267,7 @@ describe('the people step’s Name field, for an anchor draft', () => {
     renderPage('/start')
     await screen.findByText('Who needs to be part of this?')
 
-    fireEvent.change(screen.getByPlaceholderText('name@company.com'), { target: { value: 'bello@example.test' } })
-    fireEvent.click(screen.getByText('Add'))
-    await screen.findByText('What do they do, and why are they part of this?')
-    fireEvent.click(screen.getByText('Skip'))
-    await waitFor(() => expect(screen.queryByText('What do they do, and why are they part of this?')).toBeNull())
+    addThroughTheTeamBox('bello@example.test')
 
     /* The save step asks "Your name" now (local test of staging, 15 October). */
     { const yourName = screen.queryByPlaceholderText('Your name'); if (yourName) fireEvent.change(yourName, { target: { value: 'Hafsah Jumare' } }) }
@@ -295,7 +293,8 @@ describe('the people step’s Name field, for an anchor draft', () => {
    * What stays anchor-only is the rest of the seven-item machinery this file is really about,
    * checked elsewhere in this describe block.
    */
-  it('offers the Name field on the people step for any other situation too, not only an anchor draft', async () => {
+  /* UPDATED (Hafsah, 31 October 2026): the name is asked on each line of the one team box, for every situation alike. */
+  it('offers a name on each line of the team box for any other situation too, not only an anchor draft', async () => {
     localStorage.setItem('gw_entry_session', JSON.stringify({
       closed: true, onboardingStep: 7,
       history: [{ role: 'assistant', content: 'hi' }, { role: 'user', content: 'ship it' }],
@@ -309,6 +308,6 @@ describe('the people step’s Name field, for an anchor draft', () => {
     fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
     fireEvent.submit(emailInput.closest('form')!)
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalled())
-    expect(screen.queryByLabelText('Name')).toBeTruthy()
+    expect(screen.getByText(/One per line: a name, an email and a phone number\./)).toBeTruthy()
   })
 })

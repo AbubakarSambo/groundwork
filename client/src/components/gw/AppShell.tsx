@@ -30,6 +30,7 @@ import { sidebarWasFolded, rememberSidebarFolded } from './where-the-sidebar-was
 import { pinnedFor, togglePin } from './pinned-check-ins'
 import { recentlyOpenedFor } from './recently-opened-check-ins'
 import { whatTheRowSays } from './what-a-sidebar-row-says'
+import { theClocksSessionSaid } from '@/lib/the-one-count'
 import { OrganisationChoices } from './OrganisationChoices'
 import { initialsOf, roleWord } from './your-organisations'
 import { JumpTo } from './JumpTo'
@@ -975,7 +976,7 @@ export function AppSidebar() {
        when it started - is said after the name; a label that is already unique is left alone. */
     const apart = whatTellsItApart(inRail, g)
     const nameRead = apart ? `${g.label}, ${apart}` : g.label
-    const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions ?? (g as any).totalSessions)
+    const planned = plannedSessionsFor(g.timelineDays, (g as any).cadence, (g as any).maxSessions ?? (g as any).totalSessions, (g as any)?.cadenceDays)
     const mine = attention.kind === 'yours' || attention.kind === 'overdue'
     /* The room the row's buttons need when they show over its right, and whether the row must keep it
        (a badge is wider than the buttons and hides while they show, so a row with one already has it). */
@@ -997,6 +998,7 @@ export function AppSidebar() {
       roundsDone: (g as any).roundsDone,
       alignment: (g as any).alignment,
       closed: isClosed(g),
+      countSays: theClocksSessionSaid(g)?.says ?? null,
     })
     return (
       <li key={g.id}>
@@ -1476,6 +1478,20 @@ function GroundworkBars() {
   )
 }
 
+/**
+ * THE RAIL'S EMPTY FRAME, WHILE THE WALL DECIDES (B-202's wall is unchanged; plan round 32, Today blank). The same fixed column the
+ * sidebar takes, with nothing in it: no organisation, no doors, and none of AppSidebar's requests, until `my-waiting` has answered.
+ */
+function TheRailWhileItDecides() {
+  return (
+    <aside
+      className="gw-sidebar-desktop gw-rl"
+      aria-hidden="true"
+      style={{ position: 'fixed', top: 0, left: 0, width: 'var(--gw-sidebar-w, 256px)', height: '100vh', display: 'flex', flexDirection: 'column', zIndex: 40 }}
+    />
+  )
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   /**
    * THE ROUTER'S LOCATION, NOT THE BROWSER'S. This is why the menu was never there.
@@ -1694,10 +1710,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * the app, not an endless blank wall.
    */
   const waitingQuery = useQuery({ queryKey: ['my-waiting'], queryFn: authApi.myWaiting, enabled: isAuthenticated, retry: false })
-  const stillWaitingOrUnknown = isAuthenticated
-    && (waitingQuery.isLoading || (!waitingQuery.isError && waitingQuery.data?.waiting === true))
+  /* While the answer is not in yet, the rail's frame is drawn empty (TheRailWhileItDecides): no names, no doors, no requests. Once it
+     says the person is waiting, nothing is drawn, as before. */
+  const deciding = isAuthenticated && waitingQuery.isLoading
+  const stillWaiting = isAuthenticated && !waitingQuery.isLoading && !waitingQuery.isError && waitingQuery.data?.waiting === true
   const showSidebar =
-    isAuthenticated && !stillWaitingOrUnknown && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail && !aPageAskedForNoRail
+    isAuthenticated && !stillWaiting && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail && !aPageAskedForNoRail
 
   if (!showSidebar) return <main id="main">{children}</main>
 
@@ -1713,7 +1731,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         *
         * The link is visually hidden until it takes focus, which is the one case it exists for.
         */}
-      <AppSidebar />
+      {deciding ? <TheRailWhileItDecides /> : <AppSidebar />}
       <main id="main" className={onConversationPage ? 'gw-main-content gw-focus' : 'gw-main-content'}>
         {children}
       </main>

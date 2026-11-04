@@ -4,7 +4,7 @@ import { everyColleaguesFaultAsTheirAccount } from '../conversation/a-colleagues
 /**
  * THE DROP ACCESS SHORT RUN (gw_sweep_drop3), ITEM 15. Amina Otieno, an admin, read in the probes served on the sales board with
  * Release 1 on: "Joseph Kariuki says the work has been waiting on Grace Achieng for an answer on the KES 4,500 price since 14
- * October. Not backed: no attempt to unblock mentioned. Joseph Kariuki could have messaged Grace Achieng or asked again." The
+ * October." The
  * board itself already had no such note (Hafsah's answer 5); the coaching served on it now follows it.
  */
 const PROBE = 'Joseph Kariuki has been waiting on Grace Achieng for an answer on the KES 4,500 price since 14 October. Ask what that is waiting on.';
@@ -17,8 +17,11 @@ const HELD = {
 } as any;
 
 describe('the coaching on Release 1\'s sales board has no note beside a claim', () => {
-  it('as before, elsewhere: the claim is Joseph\'s account, with the note', () => {
-    expect(String(everyColleaguesFaultAsTheirAccount([PROBE], HELD).value)).toMatch(/Not backed: no attempt to unblock mentioned/);
+  it('elsewhere: the claim is Joseph\'s account, and with nothing he said he tried, nothing beside it', () => {
+    /* Changed 3 November (Hafsah, F2: silence is never a finding): "Not backed: no attempt to unblock mentioned" is gone; the note is what they said they tried, in full, or nothing. */
+    const out = String(everyColleaguesFaultAsTheirAccount([PROBE], HELD).value);
+    expect(out).toContain('Joseph Kariuki says the work has been waiting on Grace Achieng for an answer on the KES 4,500 price since 14 October.');
+    expect(out).not.toMatch(/Not backed|could have messaged/);
   });
 
   it('with the note off, the claim is still Joseph\'s account, and no "Not backed:" or "Tried:"', () => {

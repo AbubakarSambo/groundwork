@@ -412,6 +412,8 @@ export interface ADependencyRow {
   escalatedAt: Date | null;
   /** What they said they had done about it, in their own words, where they said anything. */
   triedSaid?: string | null;
+  /** Taken above the person it was with, or round them, as the assessment read their words. */
+  takenFurther?: boolean | null;
   /** The session the person was in when they first said it. */
   statedInSession?: number | null;
 }

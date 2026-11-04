@@ -3,38 +3,40 @@ import { TheWeeklyReportService, NOTHING_YET_THIS_WEEK } from './the-weekly-repo
 import { theSentenceAbout, theSentenceIsSafe, theWeekOf, thingsNamedIn } from './the-weekly-sentence-about-each-person';
 
 /**
- * WEEK 12B: WHAT PEOPLE NAMED IN THE WEEK, SAID IN ONE SENTENCE EACH (decisions 11, 38, 40, 43).
+ * WEEK 12B: WHAT PEOPLE SAID IN THE WEEK, IN ONE SENTENCE EACH (decisions 11, 38, 40, 43).
  * Checked as each reader reads it, not only as the draft is written.
+ * 1 November 2026: the sentence quotes what they said, read from their assessments through the one reader; it used to count and
+ * name ("named Green Mart and gave a next step and a date"). The walls are unchanged: stored without names, the lead reads every
+ * sentence, a person only their own, and an item noted for the lead never reaches it.
  */
 
 const L = 'Participant A';
 const line = (text: string, type = 'PROGRESS', documented = false) => ({ text, type, documented });
 
 describe('the sentence about one person', () => {
-  it('says what was named, with the next step and the date', () => {
-    const s = theSentenceAbout({ label: L, checkedIn: true, lines: [line('I visited Green Mart and Nyama Choma Palace.'), line('I will send the quote on Friday.', 'COMMITMENT')] })!;
-    expect(s).toBe('Participant A named Green Mart and Nyama Choma Palace this week, and gave a next step and a date.');
+  /* What they said this week, in their own words, from their assessments (1 November 2026). It used to count and name. */
+  it('says what they said, in their words, the most telling first', () => {
+    const s = theSentenceAbout({ label: L, checkedIn: true, lines: [
+      line('I met Green Mart and they want a quote.', 'workUpdates'),
+      line('I will send the quote on Friday.', 'promises'),
+      line('Green Mart owes KES 380,000.', 'numbers'),
+    ] })!;
+    expect(s).toBe('This week Participant A said “Green Mart owes KES 380,000” and “I will send the quote on Friday”. One more thing Participant A said is on the record.');
   });
 
-  it('says a gap as what the record shows, and gives no label', () => {
-    const s = theSentenceAbout({ label: L, checkedIn: true, lines: [line('It was a busy week with lots of calls.')] })!;
-    expect(s).toBe("Participant A's account named no person or company, date or next step this week, so there is nothing yet to follow up on.");
+  it('says one thing as one quotation, with nothing about how many more', () => {
+    const s = theSentenceAbout({ label: L, checkedIn: true, lines: [line('It was a busy week with lots of calls.', 'everythingElse')] })!;
+    expect(s).toBe('This week Participant A said “It was a busy week with lots of calls”.');
   });
 
-  it('says "customer" when the words were about customers', () => {
-    const s = theSentenceAbout({ label: L, checkedIn: true, lines: [line('I spoke to a few customers.')] })!;
-    expect(s).toBe("Participant A's account named no customer, date or next step this week, so there is nothing yet to follow up on.");
+  it('says somebody who checked in and said nothing on the record so, and gives no label', () => {
+    expect(theSentenceAbout({ label: L, checkedIn: true, lines: [] })).toBe('Participant A checked in this week, and nothing Participant A said is on the record yet.');
   });
 
-  it('says names with no next step as not yet clear what happens next', () => {
-    const s = theSentenceAbout({ label: L, checkedIn: true, lines: [line('Mama Fresh said the price was high.')] })!;
-    expect(s).toBe('Participant A named Mama Fresh this week, but gave no next step or date, so it is not yet clear what happens next.');
-  });
-
-  it('says a document is behind it only when one is', () => {
-    const s = theSentenceAbout({ label: L, checkedIn: true, lines: [line('Green Mart bought on Tuesday.', 'PROGRESS', true)] })!;
-    expect(s).toContain('One of them has a document behind it.');
-    expect(theSentenceAbout({ label: L, checkedIn: true, lines: [line('Green Mart bought on Tuesday.')] })).not.toContain('document');
+  it('says proof is behind it only when it is', () => {
+    const s = theSentenceAbout({ label: L, checkedIn: true, lines: [line('Green Mart bought on Tuesday.', 'claims', true)] })!;
+    expect(s).toContain('One thing Participant A said has proof behind it.');
+    expect(theSentenceAbout({ label: L, checkedIn: true, lines: [line('Green Mart bought on Tuesday.', 'claims')] })).not.toContain('proof');
   });
 
   it('does not treat a capital at the start of a sentence or a weekday as a name', () => {
@@ -48,18 +50,18 @@ describe('the sentence about one person', () => {
 
   it('never uses rating, label or ranking words, and never says consistently', () => {
     const all = [
-      theSentenceAbout({ label: L, checkedIn: true, lines: [line('Green Mart on Friday, I will call.', 'COMMITMENT', true)] }),
-      theSentenceAbout({ label: L, checkedIn: true, lines: [line('busy')] }),
+      theSentenceAbout({ label: L, checkedIn: true, lines: [line('Green Mart on Friday, I will call.', 'promises', true)] }),
+      theSentenceAbout({ label: L, checkedIn: true, lines: [] }),
       theSentenceAbout({ label: L, checkedIn: false, lines: [] }),
     ].join(' ').toLowerCase();
     for (const w of ['score', 'rating', 'rank', 'best', 'worst', 'weak', 'strong', 'at risk', 'consistently', 'specific', 'checkable']) expect(all).not.toContain(w);
   });
 
-  it('refuses a sentence that holds a rating word or a name the person never said', () => {
-    const lines = [line('Green Mart on Friday.')];
+  it('refuses a sentence whose own words hold a rating word or a name, and never refuses their quoted words', () => {
+    const lines = [line('Best Foods paid on Friday.', 'claims')];
     expect(theSentenceIsSafe('Participant A is the best this week.', { label: L, lines })).toBe(false);
     expect(theSentenceIsSafe('Participant A named Kwik Stores this week.', { label: L, lines })).toBe(false);
-    expect(theSentenceIsSafe('Participant A named Green Mart this week.', { label: L, lines })).toBe(true);
+    expect(theSentenceIsSafe('This week Participant A said “Best Foods paid on Friday”.', { label: L, lines })).toBe(true);
   });
 
   it('counts a week from Monday in Lagos', () => {
@@ -79,12 +81,20 @@ const PARTIES = [
   party('p-baraka', 'u-baraka', 'RESPONDENT', 'Baraka', 2),
 ];
 
-function build(scenario = 'SALES_TEAM_CHECK', rows: any[] = []) {
+/* What each person said, as their assessments hold it: the one reader reads these (conversation/the-facts-on-record.ts). */
+const anAssessment = (participantId: string, who: string, parts: Record<string, unknown>) => ({
+  kind: 'assessment', version: 1,
+  about: { checkInId: `c-${participantId}`, groundId: 'g1', participantId, who, isTheLead: false, sessionNumber: 3, endedAt: '2026-09-22T09:00:00Z' },
+  summary: '', setup: null, comparedWithLastTime: {}, ...parts,
+});
+const said = (words: string, whoMaySee = 'the people in this check-in') => ({ id: words.slice(0, 6), words, from: [1], whoMaySee, saidWordForWord: true });
+
+function build(scenario = 'SALES_TEAM_CHECK', assessments: any[] = []) {
   let stored: any = null;
   const prisma: any = {
     ground: { findUnique: jest.fn(async () => ({ organizationId: 'org', initiatorId: 'u-lead', createdByUserId: 'u-lead', scenario, peersVisibleToEachOther: true, participants: PARTIES })) },
-    checkIn: { findMany: jest.fn(async () => [{ participantId: 'p-aisha' }, { participantId: 'p-baraka' }]) },
-    recordEntry: { findMany: jest.fn(async () => rows) },
+    checkIn: { findMany: jest.fn(async ({ select }: any) => (select?.sessionReport ? assessments.map((a) => ({ sessionReport: a })) : [{ participantId: 'p-aisha' }, { participantId: 'p-baraka' }])) },
+    recordEntry: { findMany: jest.fn(async () => []) },
     weeklyReport: {
       upsert: jest.fn(async ({ create, update }: any) => { stored = { ...(stored ?? create), ...(update ?? {}), weekStart: create.weekStart, builtAt: new Date() }; return stored; }),
       findFirst: jest.fn(async () => stored),
@@ -93,9 +103,13 @@ function build(scenario = 'SALES_TEAM_CHECK', rows: any[] = []) {
   return { svc: new TheWeeklyReportService(prisma), prisma, stored: () => stored };
 }
 const ROWS = [
-  { participantId: 'p-aisha', type: 'PROGRESS', text: 'I met Green Mart and they want a quote.', anchoredDocumentId: null },
-  { participantId: 'p-aisha', type: 'COMMITMENT', text: 'I will send the quote on Friday.', anchoredDocumentId: null },
-  { participantId: 'p-baraka', type: 'PROGRESS', text: 'A lot of calls this week.', anchoredDocumentId: null },
+  anAssessment('p-aisha', 'Aisha', {
+    workUpdates: [said('I met Green Mart and they want a quote.')],
+    promises: [said('I will send the quote on Friday.')],
+    /* What was noted for the lead about Aisha never reaches a sentence everybody's week is built from. */
+    observations: [said('I think it went fine.', 'the lead only')],
+  }),
+  anAssessment('p-baraka', 'Baraka', { everythingElse: [said('A lot of calls this week. Aisha helped me.')] }),
 ];
 const lead = { userId: 'u-lead', role: 'LEAD', organizationId: 'org' };
 
@@ -106,8 +120,8 @@ describe('the weekly sentences, built and read', () => {
     const json = JSON.stringify(stored().eachPerson);
     for (const n of ['Wairimu', 'Aisha', 'Baraka']) expect(json).not.toContain(n);
     expect(json).toContain('Participant');
-    const asked = JSON.stringify(prisma.recordEntry.findMany.mock.calls[0][0].select);
-    expect(asked).not.toMatch(/verifiab|specificity/i);
+    expect(json).not.toContain('I think it went fine');
+    for (const call of prisma.checkIn.findMany.mock.calls) expect(JSON.stringify(call[0])).not.toMatch(/verifiab|specificity/i);
   });
 
   it('serves the lead every sentence, with names and as the lead reads it', async () => {
@@ -116,8 +130,8 @@ describe('the weekly sentences, built and read', () => {
     const r = await svc.read('g1', lead);
     const says = r.eachPerson.map((e) => `${e.who}: ${e.says}`);
     expect(says).toEqual([
-      "Aisha: Aisha named Green Mart this week, and gave a next step and a date.",
-      "Baraka: Baraka's account named no person or company, date or next step this week, so there is nothing yet to follow up on.",
+      'Aisha: This week Aisha said “I will send the quote on Friday” and “I met Green Mart and they want a quote”.',
+      'Baraka: This week Baraka said “A lot of calls this week. Aisha helped me”.',
     ]);
     expect(JSON.stringify(r)).not.toMatch(/Participant [A-Z]|the initiator/);
   });
@@ -126,9 +140,11 @@ describe('the weekly sentences, built and read', () => {
     const { svc } = build('SALES_TEAM_CHECK', ROWS);
     await svc.build('g1', new Date('2026-09-23T10:00:00Z'));
     const r = await svc.read('g1', { userId: 'u-baraka', role: 'MEMBER', organizationId: 'org' });
-    expect(r.eachPerson).toEqual([{ who: 'You', isYou: true, says: "Your account named no person or company, date or next step this week, so there is nothing yet to follow up on." }]);
+    expect(r.eachPerson).toHaveLength(1);
+    expect(r.eachPerson[0]).toMatchObject({ who: 'You', isYou: true });
+    expect(r.eachPerson[0].says).toContain('“A lot of calls this week.');
     const all = JSON.stringify(r);
-    expect(all).not.toMatch(/Aisha|Green Mart|Wairimu/);
+    expect(all).not.toMatch(/Green Mart|Wairimu|send the quote/);
   });
 
   it('gives a colleague nothing about another person when there is no sentence about them', async () => {
@@ -136,8 +152,8 @@ describe('the weekly sentences, built and read', () => {
     await svc.build('g1', new Date('2026-09-23T10:00:00Z'));
     const r = await svc.read('g1', { userId: 'u-aisha', role: 'MEMBER', organizationId: 'org' });
     expect(r.eachPerson).toHaveLength(1);
-    expect(r.eachPerson[0].says).toBe('You named Green Mart this week, and gave a next step and a date.');
-    expect(JSON.stringify(r)).not.toMatch(/Baraka/);
+    expect(r.eachPerson[0].says).toContain('“I will send the quote on Friday” and “I met Green Mart and they want a quote”.');
+    expect(JSON.stringify(r)).not.toMatch(/Baraka|lot of calls/);
   });
 
   it('gives an admin of the organisation what the lead reads, on an ordinary check-in', async () => {
@@ -164,7 +180,7 @@ describe('the weekly sentences, built and read', () => {
     const r = await svc.read('g1', lead);
     expect(r).toMatchObject({ eachPerson: [], saying: NOTHING_YET_THIS_WEEK });
     expect(prisma.weeklyReport.upsert).not.toHaveBeenCalled();
-    expect(prisma.recordEntry.findMany).not.toHaveBeenCalled();
+    expect(prisma.checkIn.findMany).not.toHaveBeenCalled();
   });
 });
 

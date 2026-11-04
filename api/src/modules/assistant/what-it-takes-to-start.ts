@@ -1,3 +1,5 @@
+import { IT_TAKES, ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
+
 /**
  * STARTING A CHECK-IN BY SAYING SO.
  *
@@ -58,7 +60,7 @@ export function whatItTakesToStart(waiting: WaitingOnThem): WhatToSay {
     const [first, ...rest] = waiting.open;
     return {
       line:
-        `Your check-in on "${first.label}" is open. ${itTakesAboutTenMinutes(first.aboutOnePerson)}`
+        `Your check-in on "${first.label}" is open. ${howLongItTakes(first.aboutOnePerson)}`
         + andTheRest(rest.map((c) => c.label), 'also open to you'),
       act: { kind: 'open_a_check_in', id: first.checkInId, label: 'Open it' },
     };
@@ -87,10 +89,9 @@ export function whatItTakesToStart(waiting: WaitingOnThem): WhatToSay {
  * person has nobody else's to release it with, so it says only how long it takes, as the WhatsApp
  * opening notice does.
  */
-export function itTakesAboutTenMinutes(aboutOnePerson: boolean | undefined): string {
-  return aboutOnePerson
-    ? 'It takes about ten minutes.'
-    : "It takes about ten minutes, and what you say is released with everybody else's, not before.";
+export function howLongItTakes(aboutOnePerson: boolean | undefined): string {
+  /* The length is the one owner's (common/how-long-a-check-in-takes.ts). */
+  return aboutOnePerson ? IT_TAKES : `It takes ${ABOUT_HOW_LONG}, and what you say is released with everybody else's, not before.`;
 }
 
 /** Named, not offered. See the note above. */

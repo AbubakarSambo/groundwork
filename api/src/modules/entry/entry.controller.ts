@@ -1,15 +1,17 @@
-import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, BadRequestException, Res, Req, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Put, Body, Query, UnauthorizedException, BadRequestException, Res, Req, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public, OptionalAuth, CurrentUser, CurrentUserData } from '../../common';
-import { ATurnDto, A_HISTORY_MAX_TURNS, A_MESSAGE_MAX } from '../../common/dto';
+import { ATurnDto, A_HISTORY_MAX_TURNS, A_MESSAGE_MAX, A_MESSAGE_IS_TOO_LONG } from '../../common/dto';
 import { A_STREAM_FAILED } from '../../common/published-surfaces';
 import { EntryService } from './entry.service';
 import { TheOpenLinkService } from './the-open-link.service';
 import { A_ROOM_MAY_START_PER_MINUTE, A_PERSON_MAY_SAY_PER_MINUTE } from '../../common/guards/a-room-of-people-is-not-one-person';
 import { HOW_MANY_PEOPLE_ONE_CHECK_IN_HOLDS } from './how-many-people-one-check-in-holds';
+import { A_CHECK_IN_TAKES } from '../../common/how-long-a-check-in-takes';
 import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject, Min, Max, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
+import { peopleOnLines, MOST_IN_ONE_PASTE } from '../users/putting-a-whole-company-on';
 
 /**
  * THE POSTURE OF THIS CONTROLLER, STATED ONCE. Every handler here is anonymous. Each one therefore
@@ -145,7 +147,7 @@ class EntryOpenerDto {
 class EntryClassifyDto {
   @IsString()
   @IsNotEmpty()
-  @MaxLength(A_MESSAGE_MAX)
+  @MaxLength(A_MESSAGE_MAX, { message: A_MESSAGE_IS_TOO_LONG })
   description: string;
 
   @IsOptional()
@@ -173,6 +175,10 @@ class EntryClassifyDto {
 class EntryDraftPatchDto {
   @IsString() @IsNotEmpty() @MaxLength(200) draftToken: string;
   @IsObject() payload: Record<string, any>;
+}
+
+class KeepTheUnfinishedSetupDto {
+  @IsOptional() @IsObject() setup?: Record<string, unknown> | null;
 }
 
 class EntryJoinAcceptDto {
@@ -229,9 +235,6 @@ class EntryReportDto {
   @IsArray()
   @IsString({ each: true })
   leadsOwnWords?: string[];
-
-  /* Which setup this report is for, the key its save will carry, so a save that comes first keeps this same report (3 November 2026). */
-  @IsOptional() @IsString() @MaxLength(100) setupKey?: string;
 }
 
 class ContributorDto {
@@ -241,6 +244,8 @@ class ContributorDto {
   @IsOptional() @IsString() context?: string;
   /* "Name + email" (anchor section 13): what the lead calls this person, kept beside the address. */
   @IsOptional() @IsString() @MaxLength(120) displayName?: string;
+  /* The phone number the lead gave beside them in the setup, kept once they are on the check-in (Hafsah's blocker of 31 October 2026). */
+  @IsOptional() @IsString() @MaxLength(40) phone?: string;
   @IsOptional() @IsString() inviteToken?: string;
   @IsOptional() @IsString() note?: string;
 }
@@ -383,7 +388,12 @@ export class EntryCommitDto {
   @IsOptional() @IsBoolean() cadenceChosen?: boolean;
   /** "When I end it": no planned length and no planned last session (request 37). Send true instead of a length. */
   @IsOptional() @IsBoolean() runsUntilEnded?: boolean;
+  /** "Check in on your own first, invite later": the invitations are ready and held until the lead sends them (Hafsah, 3 November 2026). */
+  @IsOptional() @IsBoolean() inviteLater?: boolean;
   @IsOptional() @IsInt() cadenceAnchorDay?: number;
+  /** Twice or more a week: the weekdays a weekly check-in meets on, 0=Sun..6=Sat, as setup's reading heard them. */
+  @IsOptional() @IsArray() @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true })
+  cadenceDays?: number[];
   /** Which days this team works, 0=Sun..6=Sat. Absent means nobody said; never defaulted. */
   @IsOptional() @IsArray() @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true })
   workingDays?: number[];
@@ -430,7 +440,7 @@ export class EntryCommitDto {
   @IsArray()
   @ArrayMaxSize(A_HISTORY_MAX_TURNS)
   @IsString({ each: true })
-  @MaxLength(A_MESSAGE_MAX, { each: true })
+  @MaxLength(A_MESSAGE_MAX, { each: true, message: A_MESSAGE_IS_TOO_LONG })
   leadsOwnWords?: string[];
 
   @IsOptional()
@@ -462,6 +472,13 @@ export class EntryCommitDto {
   @ValidateNested({ each: true })
   @Type(() => ContributorDto)
   contributors: ContributorDto[];
+}
+
+/** A team typed one per line: name, email, phone number. */
+export class PeopleOnLinesDto {
+  @IsString()
+  @MaxLength(50000)
+  pasted!: string;
 }
 
 @Controller('entry')
@@ -630,11 +647,23 @@ export class EntryController {
     return { reply };
   }
 
+  /*
+   * A TEAM TYPED ONE PER LINE, READ BY THE ONE READER (users/putting-a-whole-company-on.ts peopleOnLines; Hafsah, 31 October 2026). The
+   * setup's save card and a check-in's People and setup ask this, so the organisation's invite box and they read a line the same way.
+   * It only reads: nothing is stored and nobody is invited.
+   */
+  @Public()
+  @Post('people-on-lines')
+  @Throttle({ global: { limit: 60, ttl: 60000 } })
+  peopleOnLines(@Body() dto: PeopleOnLinesDto) {
+    return { people: peopleOnLines(dto.pasted).slice(0, MOST_IN_ONE_PASTE) };
+  }
+
   @Public()
   @Post('report')
   @Throttle({ global: { limit: 20, ttl: 60000 } })
   async report(@Body() dto: EntryReportDto) {
-    const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel, dto.anchorItems, dto.peopleNamed, dto.leadsOwnWords, dto.setupKey);
+    const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel, dto.anchorItems, dto.peopleNamed, dto.leadsOwnWords);
     return { report };
   }
 }
@@ -649,7 +678,7 @@ class OpenStartDto {
 
 class OpenSayDto {
   @IsString() @IsNotEmpty() @MaxLength(200) key: string;
-  @IsString() @IsNotEmpty() @MaxLength(A_MESSAGE_MAX) message: string;
+  @IsString() @IsNotEmpty() @MaxLength(A_MESSAGE_MAX, { message: A_MESSAGE_IS_TOO_LONG }) message: string;
 }
 
 class OpenFinishDto {
@@ -704,6 +733,21 @@ export class EntryCommitController {
   }
 
   /**
+   * THE SETUP THIS LEAD HAS NOT SAVED YET (Hafsah's blocker, 31 October 2026). Their own, and nobody else's: read and written by the
+   * signed-in lead it belongs to, so Today and Check-ins lead back to it on any device. `setup: null` throws it away.
+   */
+  @Get('unfinished')
+  async unfinished(@CurrentUser() user: CurrentUserData) {
+    return { setup: await this.service.theUnfinishedSetup(user.id) };
+  }
+
+  @Put('unfinished')
+  async keepUnfinished(@CurrentUser() user: CurrentUserData, @Body() dto: KeepTheUnfinishedSetupDto) {
+    await this.service.keepTheUnfinishedSetup(user.id, dto.setup ?? null);
+    return { ok: true as const };
+  }
+
+  /**
    * A NEW CHECK-IN STARTED FROM A RECOMMENDATION (request 148). The lead said yes to "Groundwork
    * recommends" and the screen hands back the `setUp` it was given. Answers the draft the set-up screen
    * opens with, its people checked against the lead's own organisation. Creates nothing, invites nobody.
@@ -753,6 +797,18 @@ export class EntryCommitController {
   @Get('open')
   async openPreview(@Query('t') token: string) {
     return this.openLink.whatThisIs(token ?? '');
+  }
+
+  /**
+   * HOW LONG A TEAM MEMBER'S CHECK-IN TAKES, from its one owner (participants/when-it-asks.ts, the measured figure). Public, because
+   * the pages that say it are read before anybody signs in: the answer-first link and setup. The check-in page reads it here too, so
+   * the client holds no copy of the figure.
+   */
+  @Public()
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
+  @Get('a-check-in-takes')
+  aCheckInTakes() {
+    return { takes: A_CHECK_IN_TAKES };
   }
 
   /* A hundred people scanning one QR code in one minute is the case this exists for, and ten a

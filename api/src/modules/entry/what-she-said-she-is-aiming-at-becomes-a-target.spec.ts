@@ -43,7 +43,7 @@ describe('what she said she is aiming at becomes a target', () => {
     const at = src.indexOf('.extractExpectations(checkIn.id, participant.id, ground.id, dto.history)');
     expect(at).toBeGreaterThan(-1);
     expect(src.slice(Math.max(0, at - 400), at)).toMatch(/void readUntilItLands\(/);
-    expect(src.slice(at, at + 600)).toMatch(/GroundworkEvents\.AIMS_READ/);
+    expect(src.slice(at, at + 600)).toMatch(/GroundworkEvents\.SETUP_READ/);
   });
 
   /* Changed 3 November 2026: a failure is tried again rather than caught and dropped; readUntilItLands never throws. */

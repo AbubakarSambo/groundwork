@@ -20,13 +20,13 @@ describe('a failed open, read by each person', () => {
 
   it('the lead is never told to tell the person who set the check-in up', async () => {
     expect(await whatTheyRead(service(PartyType.INITIATOR, 'u-wairimu'), 'u-wairimu')).toBe(
-      'The conversation could not be reached just now, so this session cannot continue this minute. Nothing you have already said has been lost. Please try again in a few minutes. If it keeps happening, it is a problem on our side and not anything you did, and we are looking into it.',
+      'The conversation could not be reached just now, so this session cannot continue this minute. Nothing you have already said has been lost. Please try again in a few minutes. If it keeps happening, it is a problem on my side and not anything you did, and I am looking into it.',
     );
   });
 
   it('a participant is told the lead by name', async () => {
     expect(await whatTheyRead(service(PartyType.PARTICIPANT, 'u-amani'), 'u-amani')).toBe(
-      'The conversation could not be reached just now, so this session cannot continue this minute. Nothing you have already said has been lost. Please try again shortly, and if it keeps happening tell Wairimu, because it is a problem on our side and not anything you did.',
+      'The conversation could not be reached just now, so this session cannot continue this minute. Nothing you have already said has been lost. Please try again shortly, and if it keeps happening tell Wairimu, because it is a problem on my side and not anything you did.',
     );
   });
 

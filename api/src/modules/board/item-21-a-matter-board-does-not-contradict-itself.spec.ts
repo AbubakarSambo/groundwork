@@ -14,13 +14,14 @@ const report = { ...A_RELEASED_REPORT, divergences: [{ topic: TOPIC, atStake: nu
 /* One round planned, as on the local check-in: such a board shows only the quick read, the differences and who checked in. */
 const setup = { scenario: GroundScenario.CONTRACT_REVIEW, kindOfWork: 'a law firm matter', clock: { timelineDays: 7, cadence: 'WEEKLY' }, checkIns: [answered('p-rukia', 1), answered('p-baraka', 1)], report };
 
+/* Expectations updated (Hafsah, 30 October 2026: plain language for an impatient first-time lead; a difference is said as what people said, with no "needs settling".) */
 describe('the matter board, as each reader reads it', () => {
   it('Amina, who runs it, reads the open difference as what she needs to decide', async () => {
     const b = await boardAs(setup as any, ...AMINA);
     expect(b.whatYouNeedToDecide).toEqual({
       heading: 'What you need to decide',
       state: 'filled',
-      items: [{ question: `People said different things. ${TOPIC} This needs settling.`, why: 'What people said about this does not match, so nobody can assume it is agreed.', owner: 'You' }],
+      items: [{ question: `People said different things. ${TOPIC}`, why: 'What people said about this does not match.', owner: 'You' }],
     });
     expect(b.whereTheMatterStands.says).toContain('1 thing is waiting for a decision.');
   });

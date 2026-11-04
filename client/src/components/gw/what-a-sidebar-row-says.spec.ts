@@ -23,19 +23,20 @@ describe('what a sidebar row says', () => {
       .toBe('Coamana growth, Q3 paying customers. Session 2 of 12 is ready for you, and one thing is still open.')
   })
 
+  /* Changed 3 November (F5 part 3): the row says the server's one count sentence whole (api grounds/this-sessions-count.ts), the
+     same words Today, the board, the list and Ask say, in place of a count sentence of its own ("2 of 5 people have checked in for session 2 of 12"). */
   it('to an admin watching, when nobody has checked in', () => {
-    expect(whatTheRowSays({ ...base, attention: { kind: 'waiting', done: 0, total: 5 } }))
-      .toBe('Coamana growth, Q3 paying customers. Nobody has checked in yet for session 2 of 12, and one thing is still open.')
+    expect(whatTheRowSays({ ...base, attention: { kind: 'waiting', done: 0, total: 5 }, countSays: 'Nobody has checked in yet.' }))
+      .toBe('Coamana growth, Q3 paying customers. Nobody has checked in yet. One thing is still open.')
   })
 
-  it('when one of several has, it is one person who has, among several people (F-18)', () => {
-    expect(whatTheRowSays({ ...base, attention: { kind: 'waiting', done: 1, total: 3 } }))
-      .toBe('Coamana growth, Q3 paying customers. 1 of 3 people has checked in for session 2 of 12, and one thing is still open.')
+  it('when some have, it says who is missing, once, in the served sentence', () => {
+    expect(whatTheRowSays({ ...base, attention: { kind: 'waiting', done: 2, total: 4 }, alignment: { agreed: 3, open: 2 }, countSays: '2 of 4 have checked in; Peter and Mary haven’t joined yet.' }))
+      .toBe('Coamana growth, Q3 paying customers. 2 of 4 have checked in; Peter and Mary haven’t joined yet. 2 things are still open.')
   })
 
-  it('when some have', () => {
-    expect(whatTheRowSays({ ...base, attention: { kind: 'waiting', done: 2, total: 5 }, alignment: { agreed: 3, open: 2 } }))
-      .toBe('Coamana growth, Q3 paying customers. 2 of 5 people have checked in for session 2 of 12, and 2 things are still open.')
+  it('says no count of its own where the reader was served none', () => {
+    expect(whatTheRowSays({ ...base, attention: { kind: 'waiting', done: 1, total: 3 }, alignment: null })).toBe('Coamana growth, Q3 paying customers.')
   })
 
   it('when it is late', () => {

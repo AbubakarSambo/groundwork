@@ -53,7 +53,7 @@ beforeEach(() => {
   ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', leadFirstName: 'Wairimu', cadence: 'WEEKLY', cadenceAnchorDay: 1, timelineDays: 42, participants: [], checkIns: [], roundCompletions: [], contextItems: [] })
 })
 
-it('Wairimu reads the suggestion, what Daniel was told first, and the way into his case', async () => {
+it('Wairimu reads the suggestion and the way into his case', async () => {
   me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'LEAD' }
   ;(boardApi.get as any).mockResolvedValue(board('p-w'))
   ;(suggestionsApi.onCheckIn as any).mockResolvedValue({ suggestions: [suggestion] })
@@ -62,8 +62,9 @@ it('Wairimu reads the suggestion, what Daniel was told first, and the way into h
   expect(screen.getByText('This is only a suggestion. You decide, and Daniel sees your reasons.')).toBeTruthy()
   expect(screen.getByText('Agree')).toBeTruthy()
   expect(screen.getByText('Choose something else')).toBeTruthy()
-  expect(screen.getByText('Daniel was also told, on Daniel’s own board: calls that need a difficult ask moved to next week, for 3 weeks in a row.')).toBeTruthy()
-  /* Not what Daniel has not seen yet. */
+  /* Changed in F5: "Daniel was also told" was read from the stored pattern's who-sees-it sentence, which the lead stopped receiving in F2
+     (a stored pattern is read only by the person it is about) and which is gone now, so it is not drawn. */
+  expect(screen.queryByText(/Daniel was also told/)).toBeNull()
   expect(screen.queryByText(/visits without the shop’s name/i)).toBeNull()
   expect(screen.getByText('Open Daniel’s case').closest('a')?.getAttribute('href')).toBe('/grounds/g-pip/person/p-d')
   expect(screen.getByText('Daniel and you. Weekly, Mondays. Session 4 of 6.')).toBeTruthy()

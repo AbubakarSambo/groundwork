@@ -12,12 +12,12 @@ const kevins = { groundLabel: 'Sales team, Q4', sessionNumber: 1, participantCou
 
 describe('the session digest says what needs attention', () => {
   it('Kevin, session 1: one wait, said as one', () => {
-    const body = digestBody(kevins, 'http://localhost:5196/unsubscribe/R4L6');
+    const body = digestBody(kevins);
     expect(body).toContain('5 people took part. One thing somebody is waiting for is still open, and the check-in\'s board shows who is waiting and for what.');
     expect(body).not.toContain('1 thing needs attention');
   });
   it('Kevin, session 2: three', () => {
-    const body = digestBody({ ...kevins, sessionNumber: 2, participantCount: 4, needsAttention: 3 }, 'u');
+    const body = digestBody({ ...kevins, sessionNumber: 2, participantCount: 4, needsAttention: 3 });
     expect(body).toContain('4 people took part. Three things people are waiting for are still open, and the check-in\'s board shows who is waiting and for what.');
   });
 });

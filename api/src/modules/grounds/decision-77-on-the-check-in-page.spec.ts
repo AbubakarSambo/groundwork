@@ -4,7 +4,7 @@ import { GroundsService } from './grounds.service';
  * DECISION 77 ON THE CHECK-IN'S OWN PAGE (GET /grounds/:id), AS EACH PERSON READS IT (2 October 2026).
  *
  * Rukia runs "Sales team, Q3" and checks in; Amani checks in; Faraji Odhiambo is on it and an admin has
- * not let him in. Rukia and Amani answered session 1, and Rukia has started session 2. Juma is an admin.
+ * not let him in. Rukia and Amani answered session 1, and Amani has started session 2. Juma is an admin.
  *
  * Before: the header read "Session 1 of 12." with "Session 2 has started for some people, while session
  * 1 is still open.", held back by a man who cannot check in, and nothing said he was waiting to be let in.
@@ -24,8 +24,11 @@ function pageFor(viewer: string, opts: { role?: 'MEMBER' | 'ADMIN'; peers?: bool
       { id: 'c1r', participantId: 'pRukia', sessionNumber: 1, status: 'COMPLETED' },
       { id: 'c1a', participantId: 'pAmani', sessionNumber: 1, status: 'COMPLETED' },
       { id: 'c1f', participantId: 'pFaraji', sessionNumber: 1, status: 'NOT_STARTED' },
-      { id: 'c2r', participantId: 'pRukia', sessionNumber: 2, status: 'IN_PROGRESS' },
-      { id: 'c2a', participantId: 'pAmani', sessionNumber: 2, status: 'NOT_STARTED' },
+      /* Amani has started session 2. It was Rukia's own session 2 before 30 October 2026: the page's clock now is the board's, the
+         team's (decision 133, the lead checks in when she chooses; this-sessions-count.ts), so a lead's own early start does not move
+         it. The point of this spec is unchanged: somebody not let in does not hold the team's session back. */
+      { id: 'c2r', participantId: 'pRukia', sessionNumber: 2, status: 'NOT_STARTED' },
+      { id: 'c2a', participantId: 'pAmani', sessionNumber: 2, status: 'IN_PROGRESS' },
     ],
     resolution: null, patternDetections: [], report: null,
   };

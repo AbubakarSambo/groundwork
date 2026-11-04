@@ -30,7 +30,7 @@ import { theDayInWords } from './the-headline-and-where-each-target-stands';
  * person. The caller enforces both.
  */
 
-export const GROUNDWORK_DOES_NOT_CHOOSE = 'Groundwork lays out the outcomes and the proof. It doesn’t choose.';
+export const GROUNDWORK_DOES_NOT_CHOOSE = '';
 export const NO_OUTCOMES_ON_RECORD = 'Nothing on record names the possible outcomes for this check-in yet.';
 export const NO_SIGNALS_YET = 'Nothing on record points towards one outcome or another yet.';
 export const NOTHING_SAYS_WHAT_WOULD_SETTLE_IT = 'Nothing on record says yet what would settle it.';

@@ -80,5 +80,5 @@ export function whyItIsTooEarly(removed: readonly string[]): string | null {
   if (!removed.length) return null;
   const names = removed.map((f) => A_PLAIN_NAME[f] ?? f);
   const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-  return `It is too early to read ${list}. That needs more than one round to mean anything, and this is the first.`;
+  return `This is the first round, and ${list} is read from the second round on.`;
 }

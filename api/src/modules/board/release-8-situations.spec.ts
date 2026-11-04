@@ -16,7 +16,9 @@ describe('Release 8: each remaining situation shows what it switches on, and not
     const b = theSituationBoard('CONTRACT_REVIEW', anAgreementBeingChecked, { runsIt: true })!;
     expect(b.situation).toBe('Check an agreement before signing');
     expect(b.group).toBe('Something is starting');
-    expect(b.sections.map((s) => s.key)).toEqual(['lead', 'start', 'accounts', 'picture', 'oblig', 'risks']);
+    /* Changed in F5 (Hafsah's change 4 to the approved journey): what needs the lead, then where people differ and what nobody
+       knows yet; what was agreed at the start is the lead's own setup words, so it comes after them, no longer first. */
+    expect(b.sections.map((s) => s.key)).toEqual(['lead', 'accounts', 'picture', 'oblig', 'risks', 'start']);
     /* The timeline is held, but this situation does not switch it on. */
     expect(b.sections.some((s) => s.key === 'timeline')).toBe(false);
     expect(b.stillToCome).toBeNull();
@@ -30,7 +32,7 @@ describe('Release 8: each remaining situation shows what it switches on, and not
 
   it('names, in one sentence, what an agreement being tracked switches on and has not filled yet', () => {
     const b = theSituationBoard('IMPLEMENTATION_TRACKING', { startingState: anAgreementBeingChecked.startingState, obligations: anAgreementBeingChecked.obligations }, { runsIt: true })!;
-    expect(b.sections.map((s) => s.key)).toEqual(['start', 'oblig']);
+    expect(b.sections.map((s) => s.key)).toEqual(['oblig', 'start']);
     expect(b.stillToCome).toBe('Change since last check-in, blockers, risks and what needs you appear here once a check-in gives them something to show.');
   });
 
@@ -45,6 +47,11 @@ describe('Release 8: each remaining situation shows what it switches on, and not
     expect(later.empty).toBeNull();
     /* An open read names nothing in advance. */
     expect(later.stillToCome).toBeNull();
+  });
+
+  it('an empty board says what will fill it (the approved journey, stage 10)', () => {
+    expect(theSituationBoard('PULSE_CHECK', {}, { runsIt: true })!.empty).toBe('Nothing is on this board yet. Change since last check-in, blockers and what keeps coming up appear here as your team’s check-ins come in.');
+    expect(theSituationBoard('SNAPSHOT', {}, { runsIt: false })!.empty).toBe('Nothing is on this board yet. What keeps being raised appears here as your team’s check-ins come in.');
   });
 
   it('is not built for a situation a kit picture already draws', () => {

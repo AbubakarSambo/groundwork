@@ -48,6 +48,14 @@ export class CreateGroundDto {
   @Min(0)
   cadenceAnchorDay?: number;
 
+  @ApiPropertyOptional({ type: [Number], description: 'Twice or more a week: the weekdays a weekly check-in meets on, 0=Sun..6=Sat.' })
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  cadenceDays?: number[];
+
   /**
    * Which days this team works, 0=Sun..6=Sat. Empty or absent means nobody said, and the date
    * maths leaves every date where the cadence put it. Never defaulted to Monday-Friday: that is

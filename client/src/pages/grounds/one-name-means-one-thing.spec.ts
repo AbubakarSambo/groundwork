@@ -16,7 +16,7 @@ import { groundTabs, type GroundTabKey } from './ground-tabs'
  * They are two keys now. This is the guard that they stay two.
  */
 const forViewer = (canRunThisCheckIn: boolean, isAParty: boolean) =>
-  groundTabs({ contextEnabled: true, canRunThisCheckIn, isAParty })
+  groundTabs({ canRunThisCheckIn, isAParty })
 
 const keys = (canRun: boolean, party: boolean) => forViewer(canRun, party).map(t => t.key)
 

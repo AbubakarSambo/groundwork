@@ -1,10 +1,9 @@
 import { rebuildThePersonsRecords } from '../board/the-persons-record-store';
-import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { theFeeNotesThatFellDueOnAnEvent } from '../board/a-fee-note-that-fell-due-said-to-the-lead';
 import { NOT_A_QUIET_CLOSE } from '../grounds/an-answer-includes-a-refusal';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { owesThisSession } from '../grounds/the-lead-checks-in-when-they-choose';
-import { theConfirmedWaits, whatTheyTriedInFull, theNoteBesideTheClaim } from '../grounds/a-wait-is-the-speakers-account';
+import { theConfirmedWaits, whatTheyTriedInFull } from '../grounds/a-wait-is-the-speakers-account';
 import { theReleaseOneSalesBoardIsOnFor } from '../board/release-one-sales-board';
 import { nameToCall, aNameToList } from '../engagement/a-name-to-call-them';
 import { withoutRepeats, saysTheSame } from '../engagement/a-sentence-said-twice';
@@ -82,7 +81,7 @@ export interface AWeekInOneCheckIn {
   waitingOn?: { name: string; count: number }[];
   /**
    * WAITS ON A COLLEAGUE THAT COLLEAGUE HAS NOT CONFIRMED (decision 137; change 4), each as the speaker's account with the note beside it:
-   * "Kevin Odhiambo says the work is waiting on Fatuma Bello for the final prices. Not backed: no attempt to unblock mentioned." They are never
+   * "Kevin Odhiambo says the work is waiting on Fatuma Bello for the final prices.", with what Kevin said he tried, where he said anything. Never
    * counted in `waitingOn`, so the subject never names the colleague as the one the handoffs wait on.
    */
   claims?: string[];
@@ -309,7 +308,6 @@ export async function theReportsWordsHeldToTheRecord<R extends { moved: string[]
 export async function theWeekForTheLead(
   prisma: any, g: { id: string; label: string; initiatorId: string }, now: Date, board?: { get(groundId: string, userId: string): Promise<any> },
 ): Promise<Pick<AWeekInOneCheckIn, 'theTarget' | 'movedWithProof' | 'needsYou'>> {
-  if (!(await theDirectMorningIsOnFor(prisma, g.id))) return {};
   const ground = await Promise.resolve(prisma.ground?.findUnique?.({ where: { id: g.id }, select: { organizationId: true, kindOfWork: true, participants: { select: { id: true, userId: true, managingOnly: true, leftAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } })).catch(() => null) as any;
   if (!ground) return {};
   /* The week passing is something new in each person's record, as each morning (the-leads-daily-nudge): read current, never stale. */
@@ -382,7 +380,6 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   const isConfirmed = (r: any, i: number) => confirmedWaits.has(r.id ?? `w-${i}`);
   const waitingOn = tally(openOnSomebody.filter(isConfirmed).map((r) => r.onParticipantId));
   const releaseOne = await theReleaseOneSalesBoardIsOnFor(prisma, g.id).catch(() => false);
-  const direct = await theDirectMorningIsOnFor(prisma, g.id);
   /* The same wait said again in other words is one claim, with the fullest words of what was tried (items 18 and 19), where Release 1's
      switch is on; off, each claim as before. */
   const unconfirmed = openOnSomebody.filter((r, i) => !isConfirmed(r, i) && String(r.what ?? '').trim());
@@ -391,10 +388,8 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
       const from = r.fromParticipantId ? nameOf(r.fromParticipantId) : null;
       const on = nameOf(r.onParticipantId);
       if (!from || !on) return null;
-      /* What they said they tried, in full and with the day, or nothing: never "Not backed:" in a message (item 18), where Release 1's
-         switch is on; off, the note beside the claim as before. */
-      /* With the direct morning on too (email/a-direct-email.ts): what was tried in their words, or nothing, never "Not backed". */
-      const tried = releaseOne || direct ? whatTheyTriedInFull(r, from === 'you' ? 'You' : from) : theNoteBesideTheClaim(r, { by: from, on, lead: 'you' });
+      /* What they said they tried, in full and with the day, or nothing (item 18). */
+      const tried = whatTheyTriedInFull(r, from === 'you' ? 'You' : from);
       return `${from === 'you' ? 'You say' : `${from} says`} the work is waiting on ${on} for ${String(r.what).trim().replace(/[.\s]+$/, '')}.${tried ? ` ${tried}` : ''}`;
     })
     .filter((x): x is string => !!x);
@@ -452,7 +447,7 @@ export async function sendTheLeadsWeeklyLetters(
   const kind = every ? (every.anchorIsOn ? {} : WHERE_A_GROUND_IS_NOT_THE_ANCHORS) : WHERE_A_GROUND_IS_THE_ANCHORS;
   const grounds: any[] = await everyRowAPageAtATime((page: any) => prisma.ground.findMany({
     where: { ...kind, status: { notIn: TERMINAL } },
-    select: { id: true, label: true, initiatorId: true, organizationId: true, cadence: true, ...(every ? { scenario: true } : {}) },
+    select: { id: true, label: true, initiatorId: true, organizationId: true, cadence: true, cadenceDays: true, ...(every ? { scenario: true } : {}) },
     ...page,
   }), 1000);
   const byLead = new Map<string, { id: string; label: string; initiatorId: string; organizationId?: string; scenario?: string | null }[]>();

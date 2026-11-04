@@ -83,8 +83,10 @@ describe('who the report is counting', () => {
        answered, and where the lead only asks she is never counted. The promise is unchanged and is
        checked as behaviour in api/src/modules/reports/a-lead-who-only-manages-is-never-counted.spec.ts;
        here, that both of the rule's functions still leave a lead out by her own test. */
-    expect(theRule).toContain('if (p.managingOnly && theLeadOnlyAsks) return false;')
-    expect(theRule).toContain('if (checksInOnlyWhenTheyChoose(p) && !theyAnswered(p, sessionNumber)) return false;')
-    expect(theRule).toMatch(/!\(p\.managingOnly && theLeadOnlyAsks\) && \(!checksInOnlyWhenTheyChoose\(p\) \|\| theyAnswered\(/)
+    /* Since the one count (whoHasAnswered) the rule is written once and whoIsInTheRound reads it, so both leave a lead out by
+       the same two tests. */
+    expect(theRule).toContain('if (p.managingOnly && theLeadOnlyAsks) continue;')
+    expect(theRule).toContain('if (checksInOnlyWhenTheyChoose(p) && !did) continue;')
+    expect(theRule).toMatch(/export function whoIsInTheRound[\s\S]*?whoHasAnswered\(people, sessionNumber, scenario\)\.onTheCheckIn/)
   })
 })

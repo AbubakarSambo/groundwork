@@ -1,4 +1,5 @@
 import { CheckInStatus, TurnRole } from '@prisma/client';
+import { THE_PARTS_OF_A_JOB, type TheAssessment } from './the-assessment';
 import { NOT_NAMED_YET } from '../suites/correct-their-job';
 import { aRoleOrNothing } from '../../common/a-role-or-nothing';
 import { theyDeclined, type AThingToCover } from './what-this-session-has-covered';
@@ -25,7 +26,6 @@ import { aClaimThatMattersInTheirLastAnswer } from './asking-for-proof-kindly';
  */
 
 export const FIRST_CHECK_IN_ROLE_KEY = 'first_check_in_role';
-export const ROLE_READING_KEY = 'role_reading';
 /** A request waiting for the person in Ask Groundwork: may the role map show what they said they own. */
 export const SHARE_WITH_THE_ROLE_MAP_KIND = 'role_share_from_check_in';
 
@@ -57,33 +57,6 @@ export const FIRST_CHECK_IN_ROLE_PROMPT = [
   'Do not ask again what they have already told you without being asked. Say back what you heard in a few of their own words and move on. Leave it if they do not want to say or do not know.',
   'Ask about the job and the work, never about how good they are. Do not say that this is a part of a first check-in, that something is outstanding, or that it is saved anywhere. Nobody is being marked.',
 ].join('\n');
-
-export const ROLE_READING_PROMPT = [
-  'You read what one person said in their first check-in, and pick out only what they said about their own job.',
-  'Use only their own words. Copy each part from ONE of their answers, exactly as they said it, trimmed to the sentence or sentences that answer it. Never write anything of your own, never join words from two different answers, and never guess. If they did not say it, leave it out.',
-  'Each answer is shown under the question it answered, so you can tell what it is about. Take a part from whichever single answer says it, including answers to the check-in\'s own questions about the work, such as what they need from others or what is blocked. A worry about a customer or a deal is not part of their job.',
-  'roleName: what they call their job, if they said it, in a few words such as "sales representative". Otherwise leave it out.',
-  'owns: what they said they are responsible for in their job. Prefer the answer where they describe their own job, over an answer about this one piece of work or project.',
-  'doingWell: what they said doing well looks like in their job. Prefer that over what finishing this one piece of work looks like.',
-  'dependsOn: who they said they depend on or need things from, and who depends on them. One entry for both is fine.',
-  'inTheWay: what they said gets in their way or holds them up.',
-  'Copy only from the lines that start with "They said". The lines that start with "They were asked" are only there so you know what was being answered.',
-].join('\n');
-
-export const ROLE_READING_SCHEMA = {
-  name: 'what_they_said_about_their_job',
-  description: 'What the person said about their own job, copied from their own words, and nothing else.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      roleName: { type: 'string', description: 'What they call their job, in a few words, only if they said it.' },
-      owns: { type: 'string', description: 'What they said they are responsible for, in their words.' },
-      doingWell: { type: 'string', description: 'What they said doing well looks like in their job, in their words.' },
-      dependsOn: { type: 'string', description: 'Who they said they depend on, and who depends on them, in their words.' },
-      inTheWay: { type: 'string', description: 'What they said usually gets in their way, in their words.' },
-    },
-  },
-} as const;
 
 export type WhatTheySaidAboutTheirJob = Partial<Record<'roleName' | 'owns' | 'doingWell' | 'dependsOn' | 'inTheWay', string>>;
 
@@ -281,16 +254,33 @@ export async function theRoleBlock(
   return { block: lines.join('\n'), thisTurn: turn.text, thing: turn.thing, promptVersionId: version.id, first: true };
 }
 
+/** What their conversation's assessment heard them say about their own job: the first role signal for each part, in their words. */
+export function whatTheySaidAboutTheirJobIn(a: TheAssessment | null): WhatTheySaidAboutTheirJob {
+  const field: Record<(typeof THE_PARTS_OF_A_JOB)[number], keyof WhatTheySaidAboutTheirJob> = {
+    'the name of their job': 'roleName', 'what they are responsible for': 'owns', 'what doing well looks like': 'doingWell', 'who they depend on': 'dependsOn', 'what gets in their way': 'inTheWay',
+  };
+  const out: WhatTheySaidAboutTheirJob = {};
+  for (const item of a?.roleSignals ?? []) {
+    const k = field[String(item.part ?? '') as (typeof THE_PARTS_OF_A_JOB)[number]];
+    const words = String(item.words ?? '').trim();
+    if (k && words && !out[k]) out[k] = words;
+  }
+  return out;
+}
+
 /**
- * AFTER THE CHECK-IN: THE READING THAT KEEPS WHAT THEY SAID ABOUT THEIR JOB. One small model call on the person's own turns.
+ * AFTER THE CHECK-IN: WHAT THEY SAID ABOUT THEIR JOB IS KEPT, FROM THEIR CONVERSATION'S ASSESSMENT (2 November 2026). The
+ * assessment's role signals carry each part of the job they spoke of, in their words, so there is no separate model read.
  * Writes one private row, sets their title only if they have none, and leaves a request for them in Ask Groundwork asking
  * whether the role map may show what they own. Never throws into the close.
  */
 export async function keepWhatTheySaidAboutTheirJob(
   deps: Deps,
   checkIn: { id: string; participantId: string },
+  assessment: TheAssessment | null,
   log: { log: (m: string) => void; warn: (m: string) => void } = { log() {}, warn() {} },
 ): Promise<{ kept: boolean; roleSet: boolean; versionId: string | null } | null> {
+  if (!assessment) return null;
   const first = await isTheirFirstCheckIn(deps, checkIn);
   if (!first) return null;
   const all = await deps.prisma.conversationTurn.findMany({
@@ -298,24 +288,11 @@ export async function keepWhatTheySaidAboutTheirJob(
     orderBy: { createdAt: 'asc' },
     select: { role: true, content: true },
   });
-  const turnsInOrder = (all as { role: string; content: string | null }[]).map((t) => ({ role: t.role, text: (t.content ?? '').trim() })).filter((t) => t.text);
-  const theirs = turnsInOrder.filter((t) => t.role === TurnRole.PERSON).map((t) => t.text);
-  const pairs = turnsInOrder.map((t, i) => (t.role === TurnRole.PERSON ? `They were asked: ${(turnsInOrder[i - 1]?.role === TurnRole.AI ? turnsInOrder[i - 1].text : '(nothing)').slice(0, 300)}\nThey said: ${t.text}` : '')).filter(Boolean);
+  const theirs = (all as { role: string; content: string | null }[]).filter((t) => t.role === TurnRole.PERSON).map((t) => (t.content ?? '').trim()).filter(Boolean);
   if (theirs.join(' ').split(/\s+/).length < 12) return { kept: false, roleSet: false, versionId: null };
 
-  const reading = await theVersionThatRuns(deps, ROLE_READING_KEY, ROLE_READING_PROMPT);
-  let read: WhatTheySaidAboutTheirJob | null = null;
-  try {
-    read = await deps.anthropic.extract<WhatTheySaidAboutTheirJob>(
-      reading.content,
-      [{ role: 'user', content: pairs.join('\n\n') }],
-      ROLE_READING_SCHEMA as any,
-      { fast: true, temperature: 0 },
-    );
-  } catch (err) {
-    log.warn(`Check-in ${checkIn.id}: the reading of what they said about their job failed: ${(err as Error)?.message}`);
-    return null;
-  }
+  const read = whatTheySaidAboutTheirJobIn(assessment);
+  const reading = { id: assessment.promptVersionId ?? null };
   const mine = onlyWhatTheySaid(read, theirs);
   const dropped = (['roleName', 'owns', 'doingWell', 'dependsOn', 'inTheWay'] as const).filter((k) => (read as any)?.[k] && !mine[k]);
   if (dropped.length) log.log(`Check-in ${checkIn.id}: the reading offered ${dropped.join(', ')}, which did not run on unbroken in one of their answers, so it was not kept.`);

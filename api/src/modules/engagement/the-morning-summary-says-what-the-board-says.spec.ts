@@ -46,7 +46,7 @@ const AIM = { id: 'obj-120', name: 'Units sold by 30 October', target: 120, coun
 const BOARD = {
   decisions: [
     { question: 'Kevin Omondi is waiting on a decision on the quote for 4 units, so it needs deciding.', why: 'They cannot move until this is decided.', owner: 'Ngong Road Minimart', source: 'blocker' },
-    { question: 'People in this check-in said different things. A decision on a discount for a potential 10-unit sale is holding up progress. This needs settling.', why: 'What people said about this does not match, so nobody can assume it is agreed.', owner: 'You', source: 'divergence' },
+    { question: 'People in this check-in said different things. A decision on a discount for a potential 10-unit sale is holding up progress.', why: 'What people said about this does not match.', owner: 'You', source: 'divergence' },
   ],
   leadActions: [{ id: 'the-stall-rule', kind: 'decision', text: 'No stall rule set yet' }],
   /* The board's own read of the difference, as served to Grace: what each person said about it. */
@@ -67,7 +67,7 @@ function graceMorning(o: { board?: any; releaseOne?: boolean; said?: any[] } = {
       findUnique: jest.fn(async () => ({ id: G, organizationId: ORG, kindOfWork: 'sales team', initiatorId: 'u-grace', participants: PEOPLE })),
     },
     organization: { findMany: jest.fn(async () => [{ id: ORG }]), findUnique: jest.fn(async () => ({ release1SalesBoardOn: o.releaseOne !== false })) },
-    platformSetting: { findUnique: jest.fn(async () => ({ value: { at: '2026-09-01T00:00:00Z' } })), create: jest.fn(), update: jest.fn() },
+    platformSetting: { findUnique: jest.fn(async ({ where }: any) => (String(where?.key ?? '').includes('direct-morning') ? null : { value: { at: '2026-09-01T00:00:00Z' } })), create: jest.fn(), update: jest.fn() },
     user: { findUnique: jest.fn(async () => ({ firstName: 'Grace', email: 'grace@dropaccess.test', phoneNumber: null, deletedAt: null, isActive: true })), findMany: jest.fn(async () => []) },
     person: { findFirst: jest.fn(async () => ({ phone: '+254700300001', externalId: 'grace' })), findMany: jest.fn(async () => []) },
     groundParticipant: { findMany: jest.fn(async ({ where }: any) => (where?.userId ? [{ id: 'gp-grace', groundId: G }] : PEOPLE.filter((p) => p.partyType !== 'INITIATOR').map((p) => ({ ...p, groundId: G, email: null, managingOnly: false, leftAt: null, user: { ...p.user, lastName: null, awaitingOrgApproval: false } })))) },
@@ -78,7 +78,11 @@ function graceMorning(o: { board?: any; releaseOne?: boolean; said?: any[] } = {
   const prisma: any = new Proxy(base, { get: (t: any, k: string) => t[k] ?? new Proxy({}, { get: (_x: any, m: string) => jest.fn(async () => (m === 'findMany' ? [] : m === 'count' ? 0 : null)) }) });
   const whatsapp: any = { isEnabled: jest.fn(async () => true), hasSaidStop: jest.fn(async () => false), sendFor: jest.fn(async (_o: string, _t: string, text: string, context: any) => { whats.push({ text, context }); return { sent: true }; }) };
   const email: any = { sendTheLeadsDailyNudge: jest.fn(async () => 'sent') };
-  const run = () => sendTheLeadsDailyNudges({ prisma, whatsapp, email, boards: {}, frontendUrl: 'http://localhost:5206', ...(o.board ? { board: { get: jest.fn(async () => o.board) } } : {}) }, NOW);
+  /* Changed 4 November 2026 (release batch 1): the direct morning is tried first for every lead. This spec is about the summary that goes
+     where the direct morning has nothing to say, so the direct morning's own read of the board finds nothing and the summary's read finds it. */
+  const get = jest.fn(async () => o.board);
+  if (o.board) get.mockResolvedValueOnce(null as any);
+  const run = () => sendTheLeadsDailyNudges({ prisma, whatsapp, email, boards: {}, frontendUrl: 'http://localhost:5206', ...(o.board ? { board: { get } } : {}) }, NOW);
   return { run, whats };
 }
 const onHerPhone = (w: any) => fill(TEMPLATES['lead-summary'].body, w.context.params);
@@ -110,7 +114,8 @@ describe("Grace's morning summary on Thursday 15 October", () => {
   it('where the record does not say who asked, the board\'s own sentence stands, never anything vaguer', async () => {
     const m = graceMorning({ board: BOARD, said: [] });
     await m.run();
-    expect(m.whats[0].context.params[1]).toContain('A decision on a discount for a potential 10-unit sale is holding up progress, and people said different things about it, so it needs settling.');
+    /* The board's own sentence, said as it is (Hafsah, 30 October 2026: plain language for an impatient first-time lead; no "needs settling"). */
+    expect(m.whats[0].context.params[1]).toContain('People in this check-in said different things. A decision on a discount for a potential 10-unit sale is holding up progress.');
   });
 
   it('without Release 1\'s switch the decision she owes is still said, and the deals are not read', async () => {
@@ -123,9 +128,15 @@ describe("Grace's morning summary on Thursday 15 October", () => {
 });
 
 describe('the board\'s sentences, said for a message', () => {
-  it('a decision people disagreed on is one plain sentence for her to settle', () => {
-    expect(aDecisionSheOwes('People in this check-in said different things. There is no shared, standard price for a water dispenser unit. This needs settling.', 'divergence').replace('{in}', ''))
-      .toBe('There is no shared, standard price for a water dispenser unit, and people said different things about it, so it needs settling.');
+  /* Hafsah, 30 October 2026: plain language for an impatient first-time lead. The board's sentence is said as it is, and a board
+     stored before then is read without its old "This needs settling." ending. */
+  it('a decision people disagreed on is the board\'s one plain sentence, an old stored ending left off', () => {
+    expect(aDecisionSheOwes('People in this check-in said different things. There is no shared, standard price for a water dispenser unit. This needs settling.').replace('{in}', ''))
+      .toBe('People in this check-in said different things. There is no shared, standard price for a water dispenser unit.');
+    expect(aDecisionSheOwes('Brian and Miriam said different things about the price list, so it needs settling.').replace('{in}', ''))
+      .toBe('Brian and Miriam said different things about the price list.');
+    expect(aDecisionSheOwes('Brian and Miriam said different things about the price list.').replace('{in}', ''))
+      .toBe('Brian and Miriam said different things about the price list.');
   });
   it('the gap says how many more, of what target, and never "here"', () => {
     const said = theGapSaid({ gap: 55, aim: 'Units sold by 30 October', says: 'Even if all five here close too, that is 27 units, 28 short.' }, 120, 'units')!.replace('{in}', '');

@@ -1,3 +1,4 @@
+import { aServedCount } from '@/lib/a-served-count-for-a-spec'
 import type { ReactElement } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
@@ -60,6 +61,8 @@ function groundFor(reader: 'lead' | 'participant') {
     checkIns: participants.map((p) => ({ id: `c-${p.id}`, participantId: p.id, sessionNumber: 1, status: p.id === 'b' ? 'COMPLETED' : 'NOT_STARTED', completedAt: p.id === 'b' ? at(5) : null, createdAt: at(4) })),
     commitments: [{ id: 'k1', participantId: 'c', text: 'Send the price list.', explicit: true }],
     signals: [],
+    /* As the server counts session 1: the lead did not answer it, so she is not in it. */
+    theCount: aServedCount({ 1: { on: ['a', 'b', 'c'], answered: ['b'] } }),
   }
 }
 
@@ -135,7 +138,7 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     expect(document.body.textContent).toContain('One colleague and a third colleague have not checked in yet.')
     expect(document.body.textContent).not.toContain('You, one colleague')
     noNoteAsAName('lead, report')
-  })
+  }, 20_000) /* it opens four tabs of the whole check-in page in turn, which takes about five seconds on one worker */
 
   it('as a participant, on every tab that lists people, with no part of the note anywhere', async () => {
     me = { id: 'u-me', firstName: '', lastName: '', email: null, role: 'MEMBER' }

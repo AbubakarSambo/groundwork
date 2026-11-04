@@ -51,7 +51,8 @@ describe('what is waiting for you to approve, on Today', () => {
       'Baraka sent 6 hours on Atlas for Thursday 1 October. They are waiting for you to approve.',
       'Baraka asked to spend KES 12,000 on fuel for the Kisumu trip. It is waiting for you to approve.',
     ]);
-    expect(r.needs.map((n) => n.action.to)).toEqual(['/suite/leave', '/suite/time', '/suite/spend']);
+    /* The server owns each link: an approval opens the approver's own queue, filtered to its suite (the page used to rewrite these). */
+    expect(r.needs.map((n) => n.action.to)).toEqual(['/suite/queue?suite=leave', '/suite/time', '/suite/queue?suite=spend']);
     expect(r.count).toBe(3);
   });
 

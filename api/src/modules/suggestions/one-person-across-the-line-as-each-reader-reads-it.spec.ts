@@ -1,3 +1,4 @@
+import { anAssessmentHolding } from '../conversation/an-assessment-for-a-spec';
 import { ConversationService } from '../conversation/conversation.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { GroundworkEvents } from '../../common';
@@ -184,8 +185,15 @@ function aWorld(opts: { leave?: { startsOn: Date; endsOn: Date }[]; thresholdRow
     });
     events.emit(GroundworkEvents.CHECK_IN_COMPLETED, { checkInId: id, groundId: G, participantId: 'p-tobi', sessionNumber: session });
     await settled();
-    /* A DONE carries the person's own words that say it happened, since a promise is stored as done only then (change 3, 11 October). */
-    settle.outcomes = happened.map((h, i) => ({ item: i + 1, happened: h, ...(h === 'DONE' ? { words: 'Some of it got done' } : {}) }));
+    /* A DONE carries the person's own words that say it happened, since a promise is stored as done only then (change 3, 11 October).
+       What happened to each open promise is read from the conversation's assessment (one source, 1 November), in the order they were made. */
+    const open = commitments.filter((c) => c.status === 'UNKNOWN' && c.createdAt < checkIns.get(id).startedAt);
+    const assessed: any = anAssessmentHolding();
+    assessed.comparedWithLastTime.promisesDue = happened.map((h, i) => (open[i] ? {
+      id: `r1.compared.promisesDue.${i}`, from: [1], whoMaySee: 'the people in this check-in', saidWordForWord: true,
+      previousItem: `c:${open[i].id}`, happened: h, words: h === 'DONE' ? 'Some of it got done' : 'some of it did not',
+    } : null)).filter(Boolean);
+    checkIns.get(id).sessionReport = assessed;
     await conversation.settleWhatTheySaidTheyWouldDo(id);
     await settled();
   }

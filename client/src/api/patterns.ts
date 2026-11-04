@@ -27,29 +27,18 @@ export interface ServedPattern {
   theirWords: string | null
   /** Only the person it is about can answer it. */
   canAnswer: boolean
-  /** Who else reads it, and when, as a sentence for this reader. */
-  whoSeesIt: string
   /**
    * WHICH PART OF "WHAT KEEPS COMING UP" IT BELONGS IN (request 82, decision 67): `'the work'` for
    * "About each person's work", `'what is said against what happened'` for "How what people say
    * can run ahead of what happened". The same for every reader.
    */
   about?: 'the work' | 'what is said against what happened'
-  /**
-   * FOR WHOEVER RUNS THE CHECK-IN ONLY (decision 67): what to coach the person towards, the good
-   * version, in one plain sentence. Null for the person it is about.
-   */
-  coachTowards?: string | null
-  /** FOR WHOEVER RUNS THE CHECK-IN ONLY: one small, concrete step the person could take. Null for the person. */
-  oneStep?: string | null
   /** The sessions it came up in, in order (request 70, "Pattern history"). */
   sessions?: number[]
   /** After talking it through: the lead's own mark. Always null for the person it is about, and for a colleague. */
   leadMark?: 'RIGHT' | 'WRONG' | 'NOT_SURE' | null
   /** Whether whoever runs the check-in has said they talked this through with the person. */
   talkedAbout?: boolean
-  /** "Two separate reads of the record found this." For whoever runs the check-in only. */
-  secondReadNote?: string | null
 }
 
 export const patternsApi = {

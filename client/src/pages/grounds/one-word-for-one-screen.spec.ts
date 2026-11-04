@@ -34,9 +34,9 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
 /* These were the same call twice, from when the list could not differ by role. It can now: the
    tab showing EVERYONE's state and the tab showing YOUR OWN account shared one key and one label,
    which is what made the two views indistinguishable. */
-const leadTabs = groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: false })
-const partyTabs = groundTabs({ contextEnabled: true, canRunThisCheckIn: false, isAParty: true })
-const bothTabs = groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: true })
+const leadTabs = groundTabs({ canRunThisCheckIn: true, isAParty: false })
+const partyTabs = groundTabs({ canRunThisCheckIn: false, isAParty: true })
+const bothTabs = groundTabs({ canRunThisCheckIn: true, isAParty: true })
 const labelOf = (tabs: { key: string; label: string }[], key: string) => tabs.find(t => t.key === key)?.label
 
 describe('the conversation tab', () => {

@@ -1,3 +1,4 @@
+import { useACheckInTakes } from '@/lib/how-long-setup-takes'
 import './gw-ui.css'
 
 /**
@@ -16,6 +17,8 @@ const DEALS: { account: string; stage: 'Proposal' | 'Qualified'; value: string; 
 ]
 
 export function EmbedWidgetExample() {
+  /* How long a check-in takes, from the server's one owner (lib/how-long-setup-takes.ts). */
+  const takes = useACheckInTakes()
   return (
     <div className="gwui-console" role="img" aria-label="An example of Groundwork's chat panel embedded on the side of a company's own page, next to that company's own deals">
       <div className="gwui-console-head">
@@ -42,7 +45,7 @@ export function EmbedWidgetExample() {
             <span>Aisha</span>
           </div>
           <p className="gwui-embed-widget-msg">
-            Your sales check-in for this week is open. About ten minutes, and what you say is shared with the rest of the team once everyone has answered.
+            Your sales check-in for this week is open.{takes ? ` ${takes}, and what you say is shared with the rest of the team once everyone has answered.` : ''}
           </p>
           <div className="gwui-embed-widget-replies">
             <span className="gwui-embed-widget-reply">Start it</span>

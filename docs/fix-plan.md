@@ -1,4 +1,171 @@
-# Fix plan: by root cause, not by symptom
+# Fix plan, release batch 1, by root cause (DRAFT, 4 November 2026)
+
+Drafted from `docs/issues-next.md` items 1 to 38, the cast run (round 38) and the smoke test (round 37). It is final only once the first-experience run (round 39) and the 120 adversarial cases have joined the list. The batch must be better than live (staging 237a36837, measured once) on every release-bar measure. Groups are in order of harm.
+
+## 1. Setup is stored as the lead's first check-in (privacy). Closes 28 and 30.
+- **Cause.**
+  - `entry.service.ts:2626-2646` copies the setup chat (`dto.history`) into the lead's session-1 turns.
+  - `assess-the-conversation.ts:103-108` then tags those turns `check-in`, so the guard in `the-record-from-the-assessment.ts:81-83` can't tell them from check-in words.
+  - A second way in: `the-assessment.ts:239-247` makes only team, risks and private notes lead-only, and `mayRead` (`the-facts-on-record.ts:62-69`) never checks `inSetup`.
+  - `mayRead` also ignores `whoSeesTargets`.
+- **One fix.**
+  - Delete the copy into session 1, so setup reaches the assessment only as setup.
+  - Every `setup.*` section belongs to whoever runs the check-in. Targets, rules and expectations reach the team only through their own places.
+  - `mayRead` honours the target setting: under THEIR_OWN, a person's words about their own target are read only by them and the lead.
+  - A one-time script removes record lines already written from copied setup turns.
+  - Update `the-anchor-leads-aims-stay-hers-in-the-report:61-64`, which pins the leak.
+- **Proof.** Read each member's board, My work, own report, shared report, the "Against the target" band and Ask on a bed. New privacy specs cover setup words and the copied-turn path.
+- **Ships to staging separately.** Staging and production most likely have the same breach.
+
+## 2. One figure, two owners. Closes 35 and the figure lines in 22 and 32.
+- **Cause.**
+  - A target's progress is both the stored `groundObjective.count` (`a-measure-that-goes-down-is-still-going-well.ts:201`) and the model's `suggestedCount` (`BoardPage.tsx:4298`).
+  - Reports build their own session clock inputs (`reports.service.ts:6555-6565`, compared with `this-sessions-count.ts:165-167`).
+  - The client has its own fallback count (`GroundAdminPage.tsx:1827`).
+- **One fix.**
+  - A target's figure is read from the record, with "said" and "proven" shown as such. The stored count is used only when a person set it.
+  - Reports read `theSessionAndItsCount`, and the client fallback is deleted.
+- **Proof.** None of round 38's 15 disagreeing measures returns.
+
+## 3. Words nobody said, and facts lost on the way. Closes 22 (quotes), 32 (stitched quotes), 33, 23 and 36.
+- **Cause.**
+  - A live check-in remembers earlier sessions only as its last 6 record lines (`conversation.service.ts:4486-4495`).
+  - Ask keeps only 45 days and 40 facts per person (`a-question-is-answered-from-the-documents.ts:127, 143, 174`).
+  - Quote marks go around model-written words.
+- **One fix.**
+  - The check-in reads the person's open items through `theFactsOnRecord`.
+  - Ask drops the window, and never cuts setup facts or open items.
+  - Only `saidWordForWord` facts may be shown in quote marks.
+- **Proof.** No denial of something said earlier; Ask answers 6 of 6 setup questions; no quote that wasn't typed.
+
+## 4. One pattern layer, and no honest person flagged. Closes 37 (flags). Hafsah's correction of 4 November: merge the older system, don't retire it.
+
+The older system (PatternDetection) is merged into the single pattern layer (patterns across the assessments). The written plan comes first: nothing changes until this list is built exactly as it stands. Paths are relative to api/src/modules/; "lib" means patterns/pattern-library.ts.
+
+**What the round 38 false flags came from.** Most were not PatternDetection.
+
+| Person | False flag | Written by |
+|---|---|---|
+| Aisha | "missed 3 of the last 4 check-ins" | `grounds/missed-check-ins.ts:334-336` |
+| Aisha, Joseph, Mercy | claims rarely proved | layer 2, `patterns-across-the-assessments.ts:324-327` |
+| Mercy | slipping promises | layer 2, `:319-321` |
+| Peter, Mercy | B2, K1, K3 and B8 stored as candidates | the older system's model detector, `patterns.service.ts:341, 512-524` |
+| Peter | "Peter's word; nothing on record backs it yet" | `board/what-happens-next-to-a-record.ts` |
+| Peter | "Ask Peter what has happened…" | `reports/what-to-probe.ts:204` |
+| Joseph | a strength worded as "keeps coming up… has not answered" | `board/pattern-questions-to-settle-first.ts:35-36` |
+| Mercy | a next step that did not fit | `the-next-step-for-each-pattern.ts` |
+
+### KEPT: these move into the single layer as its definitions
+- **The 49 kinds, their codes, names and families** (lib:23-206): 8 positives, 3 carrying, and 38 bad-faith across D, B, K, E, R and F. This is the vocabulary Hafsah decided on.
+- **The plain names** (`patterns/plain-pattern-names.ts`): the only names a person ever reads.
+- **Each kind's probe and `whatToAskAbout`** (lib:337-348), with the F5 exclusion: each pattern's own question.
+- **The what-counts lines** (`what-counts-for-each-pattern.ts`): these become each kind's rule for what counts as an instance.
+- **The feed-only kinds** (lib:212): E4 and F5 are never named to anyone.
+- **The three periods** (`who-reads-a-pattern.ts:207-214`, `period-of.ts:59`): three periods in a row or three separate ones, where a period is a session on a weekly or slower check-in and a calendar week on a daily one. This replaces layer 2's "2 items from 2 check-ins".
+- **The leave pause** (`patterns.service.ts:690`): approved leave never breaks a run.
+- **Positives shown at once** (observePositive's rule, `patterns.service.ts:563-618`): one sighting is enough. Today the readers' three-period gate (`who-reads-a-pattern.ts:32-35`) wrongly holds positives back too, so the gate changes to honour it. Layer 2's strength threshold of 3 items goes.
+- **Who reads a pattern, rules 1 to 5** (`who-reads-a-pattern.ts`): a person reads only their own, sees it first and can answer it. Only the source of the rows changes.
+- **The wording checks:** `whatHappenedIn` (:241), `plainVoice` and `howOftenItCameUp` (:266, "came up in N…").
+
+### CHANGED: now read from the one source, the assessments
+- **Finding each kind:** it reads the assessment's items, each naming its instances in the person's own words, not raw turns and record entries. **Why:** it can then never disagree with the board, which reads the same assessments.
+- **What a person sees** (`servedPatterns`, `patternRowsThisReaderMayRead`, the board's own patterns at `board/board.service.ts:2527-2549`, My work at `board/my-work.ts:745` and `grounds/your-board.service.ts:144, 289`, the ground page, the session report, the ending page, the weekly report): all read the single layer. **Why:** people still see their own patterns exactly as now, from one source.
+- **The person's answer, the lead's mark, "talked about" and the accuracy rating** (`patterns.controller.ts:36-88`): re-keyed to the single layer's ids. **Why:** nothing a person said back is lost.
+- **Learning counts** (`learning/learning.service.ts:40, 62`): count the single layer. **Why:** one count.
+- **The session planner** (`conversation/conversation.service.ts:7836-7874`): reads the single layer and its toAskNextTime, never raw candidates or internal names. **Why:** today it reads unconfirmed rows that no serving rule has checked.
+- **Layer 2's claims-rarely-proved** (`:324-327`): any proof anywhere on the record settles a claim, as already agreed. **Why:** it flagged Aisha, Joseph and Mercy, who had proof.
+- **Missed check-ins** (`grounds/missed-check-ins.ts:334`): read the one session clock and count only rounds due to that person. **Why:** it counted rounds with a clock that disagrees with itself (group 2).
+- **"Ask Peter what has happened…" and the board's "nothing on record backs it yet"** (`reports/what-to-probe.ts:204`, `board/what-happens-next-to-a-record.ts`): read the single layer's settled claims. **Why:** each judged a person on its own.
+- **A strength's wording** (`pattern-questions-to-settle-first.ts:35-36`): a positive is never worded as something unanswered.
+
+### REMOVED: only the duplicate judges
+- **The model detector, with its 5 or 10 reads, confirmation, settling and last-period steer** (`patterns.service.ts:123-474, 1066-1088`). **Why:** it judged each person separately from the assessments, and wrote Peter's and Mercy's false flags. The kinds it detected are kept above.
+- **The keyword and threshold rules, the F1 gate and the evidence-source rule** (lib:444-935). **Why:** fixed word lists, not understanding (rule 4).
+- **observe, observePositive, surfacePatterns and startNewPeriod as stored state** (`patterns.service.ts:490-702`). **Why:** the single layer works the state out from the record each time, so there is no second state to drift. Their rules (three periods, the leave pause, positives at once) are kept above.
+- **The record-over-time pattern lines** (`reports/reports.service.ts:4809-4899`). **Why:** they are worked out and then always removed before serving.
+- **The chaser guard:** already deleted (c156bcd16, 2 November).
+- **Collusion, concentration and M4_PLUS are NOT removed** (Hafsah, 4 November): they are the organisation-level patterns she wants. In batch 1 they stay exactly as they are. None of round 38's false flags came from them (see the table above), so there is nothing in them to fix in this batch. In batch 2 they are merged into the single layer the same way (issues-next item 52).
+
+**Proof:** in the lead's view, honest people wrongly flagged is 0 on every control. At least 10 of 12 patterns are still caught. A person's own patterns show as before. A positive shows on its first sighting. A pattern spec for each family reads from an assessment fixture.
+
+## 5. Setup loops and sounds like a chatbot. Closes 19, 20, 27 and 15.
+- **Cause.**
+  - The model never gets setup's own reading of what is known; the panel builds it on the client (`entry.service.ts:1505-1543`).
+  - Word matchers catch repeats after the fact (`asked-twice-and-told-no-twice.ts:51-60`, `entry.service.ts:1690-1700`).
+  - A reason-and-example rule is copied word for word (`entry.service.ts:1076-1078`, `prompt-library.ts:689`).
+  - The situation name lives in three places.
+  - The packs say "KEEP IT SHORT".
+- **One fix.**
+  - One server reading of what setup knows, each turn. The panel shows it, and the model gets it as "known, don't ask".
+  - Delete the matchers, the rule, the copies and the length lines.
+  - Prove the running prompt version by its `promptVersionId`.
+- **Proof.** Three leads walked in the browser: nothing asked twice, no "It helps to…", no sales examples for the law firm, phone numbers kept whole, and the walk ends on "Send N invitations".
+
+## 6. One voice, "I". Closes 18 and 34.
+- **Cause.**
+  - The document line "Here is the context we have from" is written in `what-a-document-holds.ts:196` and matched by regex in `grounds.service.ts:3954` and `ContextPage.tsx:1006, 1033`.
+  - Fixed headings say "we".
+  - The check-in instructions let the model say "we".
+- **One fix.**
+  - The document line becomes one field, which the two strippers read.
+  - Reword the headings.
+  - Put the voice rule in the one stored system instruction.
+- **Proof.** `oneVoice.groundworkSaysWe` is 0.
+
+## 7. Agreed builds in batch 1
+- **3b**, Check-in opens the chat directly (with group 10).
+- **3**, desktop full width, like Slack. The phone layout is unchanged.
+- **1**, openers prepared in advance, which removes the roughly 7 s of opening calls and probably item 38.
+- **Proof.** Screenshots at web and phone width; the opener appears with no model call.
+
+## 8. The rest in batch 1
+- 9 and 17: every spec that already fails is made to pass.
+- 6: the report's state has one owner.
+
+## Waits for batch 2
+- **2**, sentence-by-sentence streaming. Every "Correction:" is an untrue line already read.
+- **4**, the boards matching the prototype.
+- Waits and how long they've been open.
+- **5**, the read-back's second reading.
+- 8, 10, 25, 26, and the follow-ups in 37.
+- `shownToPersonAt`, which nothing ever writes.
+- Removing the target-number matcher.
+- **16**, the marketing site's copy.
+
+## Hafsah's answers, 4 November (built into the groups above)
+1. **Group 1:** the lead keeps one conversation on screen (setup and her first check-in together), stored in two parts. Setup facts stay private to whoever runs the check-in. Her "where things stand today" is saved as her first check-in under the normal rules.
+2. **Group 4 (corrected by Hafsah, 4 November):** the older patterns system is NOT retired. It is merged into the single pattern layer, keeping what it does well: its 49 kinds, three periods, positives shown at once and its wording become the layer's definitions. It reads from the assessments only, and people still see their own patterns as now. Only the duplicate parts that judged people separately and caused false flags are removed. The kept, changed and removed list is in group 4 below, written before anything changes.
+3. The check-in screen stays just the conversation. "Set the context" lives in References and resources, and "Add people" in People and setup.
+4. When signed in, the logo goes to Today.
+5. WhatsApp: the two templates waiting for approval replace their five-minute versions. The ten-minute replacement for `checkin_your_view_matters` is drafted in docs/whatsapp-templates.md and wired in this batch.
+6. The leftover test databases are listed in ~/Desktop/next-steps/leftover-test-databases.md, for Hafsah to remove.
+
+## 9. The boards: the order and the first screen (added by Hafsah, 4 November)
+In the prototype's look, the first screen reads in this order: where things stand against the target, then what needs the lead, what's closing, and the team. Everything else is folded below. The full prototype match waits for batch 2. **Proof:** before and after screenshots at web and phone width, for the lead and for a member. The judge's "at a glance" score must not drop.
+
+## 10. No explainer lines, no privacy notes, no pages in between (added by Hafsah, 4 November; standards.md fixed rule)
+Every line on the list in ~/Desktop/next-steps/explainers-and-pages-between.md is removed. Status lines with real information stay. The pages in between go: the Check-in tab opens the conversation (item 3b), and the not-checked-in board is one line, "Check in first, then you'll see the board.", plus the button. This group also covers items 39 to 46:
+- the blank first page on opening a session;
+- pages using only half the desktop window;
+- the tab renamed "References and resources".
+
+**Proof:** a sweep of every page as lead and as member finds none of the listed lines.
+
+Hafsah's answers on the sweep (4 November):
+- The approved wording and "References and resources" become the only version for everyone, and the `directMorningOn` and `release1bTabsOn` switches go.
+- **Consent:** one plain line stays, only where people first agree: the invitation's "what happens to what you write", and who sees what in setup. The end card's line goes.
+- **Help:** the Help panel and the lead's guide stay, on demand only, behind a Help link, never shown on a page unless asked for.
+- **Join and preview:** the join form stays. The invitation preview is not a separate page; it is a small "Preview" link in setup.
+- **Proof keys:** the symbols and the key are replaced by plain words on each item ("said", "proven"), so no key is needed.
+- **Decision 51** now reads "References and resources" (changed by Claude with Hafsah's leave, that line only).
+
+## Test tooling, before the live baseline
+The privacy judge's brief now follows the four rules (done 4 November, `~/Desktop/assessment-test/harness/score.ts`). Round 38 will be re-scored with it, so live and plan are counted the same way.
+
+---
+
+# Earlier plan (28 October 2026)
+
 
 Written 28 October 2026 from the quarter test (https://claude.ai/artifact/1CxdqG5seigytMJScvkKKj). Every finding is in exactly one pattern below. No single finding inside a pattern is fixed on its own. The patterns are fixed in order of harm: wrong numbers and untrue lines (patterns 1 and 2), broken flows (3), dates (4), commitments (5), messages (6), wording (7) and phone layout (8). Each fix comes with tests that would have caught the whole pattern, and removes the one-off patches it replaces.
 
@@ -540,3 +707,123 @@ Real model, kept awake, at low priority. Kevin, Joseph, Faith and Aisha on Whats
   - The opening says "It takes about ten minutes" twice.
   - Kevin also said he had not missed two check-ins, which was not true (he answered Wednesday, not Thursday or Friday), and Groundwork agreed without checking.
   - One question showed a typed backslash: "Mwangi & Sons\' second office".
+
+## One assessment per conversation: choosing how a conversation is recorded (Hafsah, 31 October 2026)
+
+### Where the law firm lead's information was lost
+In round 4 of the first experience she named her four people in setup, typed them into the team box with emails and numbers, and pressed Save. The check-in was created at 08:58:39 with only her on it; her four reached it at 09:04:18, only after she typed them a second time on People and setup. Two causes: Save sent a separate list rather than what was in the team box (her typing during the 20-second save went into a list nothing sent), and phone numbers were saved by a second request only one kind of save made. Her own words were kept (the setup conversation is stored as her first check-in, and LeadSetupWords keeps her messages); what was lost was everything that should have come out of them. Across rounds 3 and 4, three setups produced no check-in at all and four reached only some of the people named. The same kind of loss runs through the record as a whole (the survey is in ~/Desktop/assessment-test/today.md): about 40 separate parts pull their own bits from a conversation, and a lead's first check-in made in setup gets about 2 of them where one made in the app gets about 20.
+
+### The four options, judged on the evidence
+
+| | A. Today: separate parts pull their own bits | B. One full assessment per conversation, checked for completeness, read by everything, raw conversation kept | C. Notes during the conversation | D. Pages re-read the raw conversations each time |
+|---|---|---|---|---|
+| Nothing lost | No. Filters drop lines with only a count logged; extractors are gated by scenario and board; unresolved names are dropped; the setup path skips about 18 of them; decline emits nothing; races between fire-and-forget writers and listeners. | Yes, by construction: every message the person sent is matched to an item or marked "nothing to record" before the assessment is used. | Partly. A per-turn note exists today (CheckIn.whatWeHave) and is read by no page; it misses what is only clear by the end (a promise corrected two turns later) and a failed turn read loses that turn. | Yes for the words, but each page decides afresh what they meant, so what is "found" differs by page and by day. |
+| Every page agreeing | No: promise state has two writers and two kinds of reader, "done" has five writers, target counts three, coaching four sources, specificity four measures, role three copies, two session reports. | Yes: one owner per fact per conversation; pages read it, as thePromisesOf already does for promises. | Partly: one store, but read only during the conversation today. | No: each page's own reading can differ, and opening a page would rebuild it, against the rule that opening never rebuilds. |
+| Every line traceable to someone's words | Mostly (RecordEntry keeps the words), but derived rows (counts, Delivery, WorkMention) often lose the words. | Yes: every item carries the person's own words and where they said them. | Yes for what it holds. | Yes, but at a model's reading each time. |
+| Speed | The close waits on about 6 awaited steps; the rest race after it. | The session closes the moment Groundwork says so; one assessment is written just after (one extraction call plus a completeness check), and readers follow. | Adds a call to every turn (already 1 per turn today). | Slow: every page view re-reads every conversation. |
+| Cost per check-in | About 2N+15 to 2N+40 model calls; the same turns re-read about 18 times at close. | During the turns as now; at close, one assessment call (a second only for unmatched messages), replacing most of the 18 separate re-reads over time. | As now plus nothing saved at close. | Highest: a model read per page per view. |
+| How simple it keeps the code | The most complex: about 40 writers and their reconcilers. | Simpler as readers move onto it: one writer per conversation, readers read. Built by extending what exists, not beside it. | One store, but the close still needs everything else. | Removes writers but moves the work into every page. |
+
+### The choice: B, built by extending what already exists
+B is the only option that meets all six. It is built from parts Groundwork already has, not as a new system beside them:
+- **The store:** CheckIn.sessionReport, a per-session Json column that exists and is already served, but is written today only by setup. It becomes the assessment for every setup and check-in conversation. The raw turns stay in ConversationTurn as now.
+- **The draft:** the per-turn note (CheckIn.whatWeHave) and the end card's single extraction (ConversationTurn.recordDraft) become the assessment's running draft and its first pass, so no new per-turn call is added.
+- **The completeness check:** each person message is matched to items or marked "nothing to record", and anything unmatched is added before the assessment is used.
+- **Patterns (layer 2)** extend the existing pattern reads (PatternDetection, with its three-period rule, the nearest thing to the consequence ladder) and role detection (GroundParticipant.detectedFunction), reading assessments instead of re-reading turns; each pattern names the assessments and words it rests on.
+- **Interventions (layer 3)** extend the coaching state (CoachingState) and My work's seven behaviours: the next step for the person and for the lead, tracked in later assessments; warnings, plans and firing stay the lead's decision.
+- **Readers move one at a time** onto the assessment (the board's records, the report, My work, Ask, References and resources, the setup outcome), each proven by the no-loss check before the next, and the separate extractors each reader replaces are deleted with it.
+This is built on wip/assessment and tested with against without on the same round before anything is kept.
+
+## Why each problem happens, and the strategy (2 November 2026)
+
+Sources: the traced failures on the smoke runs (why-traced.md, 82 items), the false flags and missed patterns in the baseline (false-flags.md), the maps of today's Ask (today-ask-map.md) and of how a conversation is recorded (today.md), and the baseline full run's scores (runs/without-round22/scores.json). The "with" run's numbers go beside these when it has run.
+
+## The baseline, scored with the corrected scoring (wip/regressions, 3 organisations, 9 team members, 4 check-ins each)
+
+| Measure | Baseline |
+|---|---|
+| Facts people said that show up somewhere | 93% of 148 |
+| On the board | 66% |
+| In the reports | 90% |
+| Through Ask | 13% |
+| Facts stated wrongly | 21 |
+| Untrue lines on the board or in reports | 13 |
+| Ask answers correct | 4 of 22 (what the lead said in setup: 0 of 4) |
+| Numbers that disagree between pages | 8 of 22 |
+| Planted patterns caught | 6 of 12 (6 of 7 for people who had check-ins) |
+| Honest people wrongly flagged | 2 of 3 controls |
+| Next steps offered / fitting / followed up | 16 / 16 / 5 |
+| Model calls per check-in | 65 (per setup 38) |
+| First-experience rating | 2.5 (law 3, field 2, sales not rated) |
+| Team reached the check-in at setup | law 2 of 3, sales 0 of 3, field 3 of 3 |
+
+
+## The with-and-without result, like for like (law firm and field programme, corrected scorers)
+
+| Measure | Without | With |
+|---|---|---|
+| Found somewhere the lead can see | 93% | 96% |
+| On the board | 67% | 71% |
+| In the reports | 89% | 86% |
+| Through Ask | 13% | 37% |
+| Stated wrongly | 25 | 17 |
+| Untrue lines | 15 | 12 |
+| Ask correct | 4 of 22 | 7 of 22 |
+| Pages disagreeing | 9 of 25 | 2 of 20 |
+| Patterns the lead can see | 5 of 7 | 7 of 7 |
+| Honest people flagged | 2 of 2 | 2 of 2 |
+| Model calls per check-in (all organisations) | 65 | 78 |
+
+The full report, with the causes of what got worse and the seven fixes built since: https://claude.ai/artifact/3851LMQjrHPFX8sSPvkMPB
+
+## The causes, with the numbers they explain
+
+### 1. Each page has its own route to the information (confirmed; the main cause)
+The board reads record lines, targets, waits, work items and figures, each from its own table and behind its own gate; the session report reads the record lines in about 15 places; the weekly report is written from a summary of counts and names ("Brian named Kasarani Foods, Baraka Hardware and KES"); Ask has 45 lanes, each with its own small lookup, and a documents answer that reads only record lines and targets. Whatever a route doesn't carry is missing on that page.
+- Explains: 66% on the board against 90% in the reports and 13% through Ask; the setup facts that reached no page (1 of the law lead's 18) when the separate target write failed; the weekly report's empty sentences.
+- On the "with" branch at first, the assessment held every fact but no page read it ("the assessment itself reaches nobody"), so it was one more copy and scored lower.
+
+### 2. Ask decides what a question means before it reads the record (partly as suspected)
+Fixed patterns place a question first (about 139 of them, plus about 30 word lists); when none matches, the model chooses only from a menu of 26 read lanes, and the chosen lane then blocks the record answer. Every lane answer in the smoke runs was wrong; both correct answers came from the record answer.
+- Explains: 4 of 22 correct; "When is the Kasarani Foods filing due?" answered "Nothing is due" from the lead's own to-dos; "Tell me everything Brian told you" answered with a list of what Ask can do.
+
+### 3. Model-written text is not tied to the record (real, smaller)
+A client's promise stored as the person's own commitment; a wait's label cutting off the amount owed; "Monday 9 November", said on 13 November, stored as 2027; the page's own worked example ("300 organic chickens") stored as the lead's goal.
+- Explains: part of the 21 stated wrongly and the 13 untrue lines.
+
+### 4. The same figure is counted in more than one place (confirmed)
+"Who has answered" was computed in about 35 places (the board header "2 of 4", the report index "1 of 1", the check-in page's own copy, Today's nudge "three"); the end date two ways ("19 January" and "18 January"); the weekly "100% of check-ins made" counted rows, not people.
+- Explains: 8 of 22 numbers disagreeing between pages.
+
+### 5. A failed model write is lost, not retried
+Setup's record extraction and target read failed on a network error and were only logged; that lead's whole setup reached no page.
+
+### 6. Gates drop facts
+Work items are made only when a kind of work is set; figures are kept only for agreements.
+
+### 7. The record has no place for what people say
+"Twice a week, Monday and Thursday" had no value, so pages said "Every week", "Every Thursday" and "Weekly, Thursdays".
+
+### 8. Stale copies
+The report's opening count was frozen when written; one promise sat in two tables with different days.
+
+### 9. Patterns are judged by many readers, from silence, inside a round (the false flags)
+Six separate readers judge a person, each with its own threshold, often inside one round; silence is read as a finding ("nothing on record says it was raised higher"); the quiet, precise people get thin records (leading questions, early closes) and the gaps are held against them; one standing debt counted as three periods; a client's promise counted as the person's; settled items keep counting; a regex decides whether something was "taken further".
+- Explains: 2 of 3 honest controls flagged (Aisha, Joseph); the quietly excellent person (David) told "Nothing David said this round can be checked yet"; weak catches resting on a generic line printed for everyone.
+
+## The strategy (for every scenario, not this run)
+
+1. **One source.** One assessment per conversation, checked for completeness, is the only reading of what was said. The record (record lines, targets, promises, waits, work items, figures) is written from it by one writer each. Every page, report, summary and assistant answer reads through one reader that applies who may see what. Removes: the per-page routes, the weekly summary, Ask's lane lookups, the separate target and promise reads, the duplicate promise table. Moves: facts on the board, in reports and through the assistant toward 100%; stated wrongly down.
+2. **Pages show the record; the model only words it.** Every sentence on a page rests on facts in the record and names them; a sentence that rests on nothing is not shown. Removes: model-written summaries that are not tied to facts. Moves: untrue lines to zero.
+3. **One count for each figure.** "Who has answered" and every other figure is computed once on the server and served; no page counts for itself. Removes: about 35 counts and the client's copy. Moves: pages disagreeing to zero.
+4. **No write is lost.** Every model call that writes the record or the assessment is retried, and if it still fails it is kept as owed on the conversation and written later; pages rebuild when it lands. Moves: nothing said in setup lost.
+5. **The record holds what people say.** The schedule holds days of the week; no frozen copies of figures. Moves: stated wrongly down.
+6. **A map of where each kind of fact appears.** For each kind of fact (deal, fee note, task, promise, decision, wait, date, proof, target, figure, role, risk), where it appears on the board, in the reports and through the assistant. A fact with no home is a design gap (the work items without a kind of work: a section of the existing board, approved 2 November).
+7. **Patterns have one owner.** Layer 2 of the assessment is the only thing that states anything about a person's behaviour: distinct items, each with its owner and its settlement, counted across the whole record, with proof from any check-in counting; anything "not on record" becomes the next check-in's question, never a flag; each pattern names its instances. Removes: the other readers (the waits and worries lines in what-to-probe, the TAKEN_ABOVE regex, the board's "nothing checkable" and "only asked about" reasons, per-transcript coaching, the detector's lead-facing lines and the chaser guard that patches them). Moves: honest people flagged to zero, quiet excellence shown, model calls down. Needs Hafsah: replacing PatternDetection's lead-facing patterns (a must-keep), retiring the chaser guard, the lead's setup notes as her side in the bias test.
+8. **The assistant understands with the model** and answers from the one reader (see the assistant design). Moves: the assistant's correct answers.
+9. **The test's measures are a standing check**, run on every change, with model calls per check-in reported every time (65 in the baseline) and brought down without losing quality.
+
+## Where it stands
+- Built on wip/assessment (pushed to Hafsah's copy): the one reader (theFactsOnRecord), Ask's documents answer reading it and the read-lane menu removed, the weekly and session reports reading it, the one count on the server and every screen, retries with writes owed until they land, one promise one owner, targets from the lead's assessment.
+- Being built: the record written only from the assessment; twice a week; the work-items board section (gate 1). Left as is: gate 2 (changes no page).
+- Not built yet: the patterns fix (needs Hafsah on the must-keep), the assistant, the Desk, email check-ins.

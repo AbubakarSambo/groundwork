@@ -43,10 +43,12 @@ describe('with no spending rules set, every reader reads exactly what they read 
       );
     });
 
-    it(`${label}: Kamau's say-back over the limit names Joseph, who holds the budget, as before`, async () => {
+    /* Until 2 November this named Joseph, who holds the Operations budget: the built-in chain above the limit put the budget holder
+       in front of the person named. Now the person the settings name approves it (Hafsah's plan, step 0). */
+    it(`${label}: Kamau's say-back over the limit names Grace, the person the settings name`, async () => {
       const o = aSpendingOrganisation({ rules });
       expect(await o.says('u-kamau', 'Can I spend KES 150,000 on a new freezer?')).toBe(
-        'You asked to spend KES 150,000 on a new freezer. That is over the Operations budget left for October, which is KES 38,000. This is over KES 20,000, so Joseph must approve it. Shall I still send it to Joseph to approve?',
+        'You asked to spend KES 150,000 on a new freezer. That is over the Operations budget left for October, which is KES 38,000. This is over KES 20,000, so Grace must approve it. Shall I still send it to Grace to approve?',
       );
     });
 
@@ -68,9 +70,17 @@ describe('with no spending rules set, every reader reads exactly what they read 
     });
   }
 
-  it('Grace reads that nothing is set', async () => {
+  it('Grace reads the route the settings set, and that no categories are set', async () => {
     const o = aSpendingOrganisation();
-    expect(await o.suites.spendRules(o.as('u-grace'))).toEqual({ rules: {}, said: ['There are no categories set, so a request to spend is kept in the person’s own words.'] });
+    const read = await o.suites.spendRules(o.as('u-grace'));
+    expect(read.rules).toEqual({ thresholds: [{ above: 20000, steps: [[{ named: 'u-grace' }]] }] });
+    expect(read.said).toEqual([
+      'Up to KES 20,000, the person’s manager approves, or else an admin.',
+      'Over KES 20,000, Grace approves.',
+      'Once it is approved, Omar in finance checks it, notes the receipt or quote, and records it paid.',
+      'There are no categories set, so a request to spend is kept in the person’s own words.',
+    ]);
+    expect(read.people.map((p) => p.name)).toContain('Omar Said');
   });
 });
 
@@ -80,15 +90,19 @@ describe('Grace, the admin, sets the rules', () => {
   it('reads them back in full sentences', async () => {
     const o = aSpendingOrganisation();
     const back = await o.suites.setSpendRules(o.as('u-grace'), RULES);
+    /* The whole route comes first, with finance's part after the last approval; then categories and evidence (Hafsah's plan of 2 November, step 0). */
     expect(back.said).toEqual([
+      'Up to KES 100,000, the person’s manager approves, or else an admin.',
+      'Over KES 100,000, the person’s manager approves first, and then whoever looks after finance approves.',
+      'Over KES 500,000, whoever holds their team’s budget approves first, and then the chief executive approves.',
+      'A request over more than one of these amounts follows the highest one.',
+      'Each approval sends it to the next step, and only the last step ends it. A decline ends it at any step.',
+      'Once it is approved, Omar in finance checks it, notes the receipt or quote, and records it paid.',
       'Each request to spend is for one category: Fuel, Travel and Equipment. When somebody does not say which, Groundwork asks “Which category is this for?” before it sends anything.',
       'Spending on Fuel needs a receipt.',
       'Spending on Equipment over KES 50,000 needs a quote.',
       'Any request over KES 300,000 needs a quote.',
       'Groundwork keeps only that a receipt or a quote is needed and whether finance has had it. It keeps no file. A rule about evidence never stops a request: the person is told before they send it, and so is whoever decides it.',
-      'A request to spend over KES 100,000 goes first to the person’s manager, and then to whoever looks after finance.',
-      'A request to spend over KES 500,000 goes first to whoever holds their team’s budget, and then to the chief executive.',
-      'A request over more than one of these amounts follows the highest one. Below the lowest, it follows the approval steps as they are.',
     ]);
   });
 
@@ -110,7 +124,7 @@ describe('Grace, the admin, sets the rules', () => {
   it('a project can be what a category is called', async () => {
     const o = aSpendingOrganisation();
     const back = await o.suites.setSpendRules(o.as('u-grace'), { categories: [{ name: 'Atlas' }, { name: 'Kisumu depot' }], categoryCalled: 'Project' });
-    expect(back.said[0]).toBe('Each request to spend is for one project: Atlas and Kisumu depot. When somebody does not say which, Groundwork asks “Which project is this for?” before it sends anything.');
+    expect(back.said.find((l) => l.startsWith('Each request'))).toBe('Each request to spend is for one project: Atlas and Kisumu depot. When somebody does not say which, Groundwork asks “Which project is this for?” before it sends anything.');
   });
 });
 

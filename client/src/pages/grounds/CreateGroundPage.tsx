@@ -231,7 +231,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'A plan that looks fine on paper but you suspect the budget behind it was assumed, not approved.',
     ] },
   { cardKey: 'PULSE_CHECK', scenario: 'PULSE_CHECK', label: SCENARIO_LABELS.PULSE_CHECK,
-    desc: "A short recurring check-in, with no setup and no target. About ten minutes each on one thing going well, one thing stuck, and what has changed since last time. Use it for a temperature read, not a record. If there is a specific thing you need people held to, pick one of the others.",
+    desc: "A short recurring check-in, with no setup and no target. Each one asks about one thing going well, one thing stuck, and what has changed since last time. Use it for a temperature read, not a record. If there is a specific thing you need people held to, pick one of the others.",
     moment: 'Regularly understand how work is going while it is happening.',
     agreed: 'Agree what the team is working on and what each person owns.',
     tests: 'Each check-in asks what that person did since last time. Work drifting off what was agreed shows up week by week, not at the end.',
@@ -362,7 +362,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'What is the one thing you need from me before Friday?',
     ] },
   { cardKey: 'SNAPSHOT', scenario: 'SNAPSHOT', label: SCENARIO_LABELS.SNAPSHOT,
-    desc: 'One honest read from everyone, once. No setup and no target: about ten minutes each on what is going well, what is stuck and what has changed. If there is a specific thing you need people held to, pick that situation instead.',
+    desc: 'One honest read from everyone, once, with no setup and no target. Each person says what is going well, what is stuck and what has changed. If there is a specific thing you need people held to, pick that situation instead.',
     moment: 'Get a quick picture of how people are experiencing the work right now.',
     agreed: 'Nothing. No setup and no target to measure against, which is the point.',
     tests: 'Nothing over time either. One check-in, and one honest read from each person on what is going well, what is stuck, and what has changed. A temperature read, not a record. If there is a specific thing you need people held to, pick one of the others.',
@@ -1483,7 +1483,7 @@ export function CreateGroundPage() {
                         * Now the general ground genuinely exists, so the sentence is true - and it names
                         * the trade rather than glossing it.
                       */}
-                      We could not tell which of the situations above this is closest to, so we will open an
+                      I could not tell which of the situations above this is closest to, so I will open an
                       <b> open read</b>: each person answers privately and the report shows where
                       they differ. That works when the shape is genuinely unclear. If one of the cards above
                       does fit, pick it instead, because a named situation asks sharper questions than this

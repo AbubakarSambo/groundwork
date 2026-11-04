@@ -9,6 +9,12 @@ import { EXPECTATION_PROMPT } from './prompt-library';
  */
 const SHEET = 'Rep,Q4 target (units)\nKevin Omondi,120\nMercy Wairimu,100\nJoseph Kariuki,80\nTeam,300';
 const GRACE_SAID = 'Kevin sent the Kilele M-Pesa. The team is aiming to sell 40 units to Kilele Hotel this week.';
+/* What the model handed back in the pilot: the sheet's rows as the team's aims. Read by her assessment now (one source, 2 November
+   2026) and kept by the one writer of the team's aims, with the same rules. */
+const THE_AIMS_READ = [
+  { name: 'Kevin Omondi is aiming for 120 units sold', target: 120 },
+  { name: 'The team is aiming to sell 40 units to Kilele Hotel this week', target: 40 },
+];
 
 function gracesCheckIn(visibility: 'OWN' | 'OPEN') {
   const board: any[] = [];
@@ -41,12 +47,7 @@ function gracesCheckIn(visibility: 'OWN' | 'OPEN') {
     extract: jest.fn(async (prompt: string, messages: any[]) => {
       shown.push(messages.map((m) => m.content).join('\n'));
       if (prompt !== EXPECTATION_PROMPT) return { promises: [] };
-      /* What the model handed back in the pilot: the sheet's rows as the team's aims. */
       return {
-        groundAims: [
-          { name: 'Kevin Omondi is aiming for 120 units sold', target: 120 },
-          { name: 'The team is aiming to sell 40 units to Kilele Hotel this week', target: 40 },
-        ],
         expectations: [{ personName: 'Kevin', targetNumber: 120, expectation: 'Kevin sells 120 units this quarter', awareness: 'NOT_ASKED', kind: 'TARGET', check: 'A_NUMBER', dueKind: 'NOT_SAID' }],
       };
     }),
@@ -60,6 +61,7 @@ describe('what is read from a private document keeps its audience', () => {
   it('an "Only you" sheet gives the team no aim and no colleague a line, and the reading of others never sees it', async () => {
     const { svc, board, expectations, shown } = gracesCheckIn('OWN');
     await svc.extractExpectations('c-1', 'p-grace', 'g-1');
+    await svc.keepTheTeamsAims('g-1', 'p-grace', THE_AIMS_READ, [GRACE_SAID]);
     expect(board.map((b) => b.name)).toEqual(['The team is aiming to sell 40 units to Kilele Hotel this week']);
     expect(board.map((b) => b.name).join(' ')).not.toContain('120');
     expect(expectations.filter((e) => e.participantId === 'p-kevin')).toEqual([]);
@@ -71,6 +73,7 @@ describe('what is read from a private document keeps its audience', () => {
   it('the same sheet shared with everybody is still read and written, as before', async () => {
     const { svc, board, shown } = gracesCheckIn('OPEN');
     await svc.extractExpectations('c-1', 'p-grace', 'g-1');
+    await svc.keepTheTeamsAims('g-1', 'p-grace', THE_AIMS_READ, [GRACE_SAID]);
     expect(board.map((b) => b.name)).toContain('Kevin Omondi is aiming for 120 units sold');
     expect(shown[shown.length - 1]).toContain('Kevin Omondi,120');
   });

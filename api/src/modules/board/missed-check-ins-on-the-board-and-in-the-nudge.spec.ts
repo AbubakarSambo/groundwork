@@ -57,7 +57,7 @@ function aPrisma(role = 'MEMBER', settings = new Map<string, any>(), more: { dir
 
 const boardAs = (userId: string, role = 'MEMBER') => new BoardService(aPrisma(role), { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, Object.create(ReportsService.prototype) as ReportsService).get('g-1', userId) as Promise<any>;
 
-const RUKIA_READS = 'Brian has missed 3 of the last 4 check-ins. Brian gave this reason: "I was on the road to Kisumu with no signal." When someone stops checking in, the team loses their view, problems surface late, and the effort to keep everyone in step falls on you and the rest of the team. Speak to Brian this week.';
+const RUKIA_READS = 'Brian has missed 3 of the last 4 check-ins. Brian gave this reason: "I was on the road to Kisumu with no signal." Speak to Brian this week.';
 
 describe('missed check-ins on the board (decision 136)', () => {
   it('Rukia, who runs it, reads Brian\'s line with his reason beside it, and nothing about her own skipped sessions', async () => {
@@ -124,7 +124,8 @@ describe('with the direct morning on', () => {
     expect(off.risks[0]).toBe(RUKIA_READS.replace('check-ins.', 'check-ins on "Sales team, Q3".'));
     const onWait = on.risks.find((r) => r.includes('stock count'));
     const offWait = off.risks.find((r) => r.includes('stock count'));
-    expect(offWait).toMatch(/Not backed/);
+    /* Changed 3 November (Hafsah, F2: silence is never a finding): "Not backed: no attempt to unblock mentioned" is gone everywhere, switch on or off. */
+    expect(offWait).toBe('Amani says the work is waiting on Brian for the stock count for Kisumu.');
     expect(onWait).toBe('Amani says the work is waiting on Brian for the stock count for Kisumu.');
   });
 });

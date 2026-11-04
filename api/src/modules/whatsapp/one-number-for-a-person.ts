@@ -22,6 +22,23 @@ export const A_NUMBER_ON_SOMEBODY_ELSE =
 
 type Db = any;
 
+/**
+ * WHO THIS IS, BY THEIR SIGN-IN (round 5, the family business: "a loop trying to add phone numbers that I had already given the system").
+ *
+ * A person is their sign-in. Somebody on a check-in who has not opened their invitation yet has no sign-in linked to that place
+ * (`GroundParticipant.userId` is empty), though a sign-in with their address may well exist, made when they were invited on People.
+ * Every reader and writer here took only the linked id, so for them the number was looked for on the wrong record: the check-in's row
+ * said "Juma has no WhatsApp number yet", and saving Juma's own number was refused as "already saved for Juma Mumbi". The sign-in is
+ * found from the address here, once, and every reader and writer below uses it.
+ */
+export async function theSignInFor(prisma: Db, who: { userId?: string | null; email?: string | null }): Promise<string | null> {
+  if (who.userId) return who.userId;
+  const email = (who.email ?? '').trim();
+  if (!email) return null;
+  const u = await Promise.resolve(prisma.user?.findFirst?.({ where: { email: { equals: email, mode: 'insensitive' }, deletedAt: null }, select: { id: true } })).catch(() => null);
+  return u?.id ?? null;
+}
+
 /** The same refusal, naming the colleague whose number it is when they are in the same organisation: an admin there already sees it on People. */
 export const A_NUMBER_ON_A_COLLEAGUE = (name: string) =>
   `This number is already saved for ${name}, so it cannot be saved for somebody else too. Check the number, or change ${name}'s number on People first.`;
@@ -36,6 +53,7 @@ export const A_NUMBER_ON_A_COLLEAGUE = (name: string) =>
 export async function refuseANumberOnSomebodyElse(prisma: Db, number: string | null | undefined, ownUserId: string | null | undefined, organizationId?: string | null, ownEmail?: string | null): Promise<void> {
   if (!number) return;
   const forms = formsOfTheSameNumber(number);
+  ownUserId = await theSignInFor(prisma, { userId: ownUserId, email: ownEmail });
   /*
    * AND A NUMBER ALREADY ON SOMEBODY ELSE'S ROSTER ENTRY IN THIS ORGANISATION (browser test, 21 October 2026). Grace kept
    * "+254 712 345 678" for Sam on People and setup (Sam has no sign-in yet, so the number is on his roster entry), then typed
@@ -85,6 +103,7 @@ export const A_NUMBER_ON_A_COLLEAGUE_WITH_NO_SIGN_IN = (name: string) =>
  * the most recently changed one with a number wins, and the sign-in's number is used when no entry has one.
  */
 export async function theNumberOnRecord(prisma: Db, organizationId: string, who: { userId?: string | null; email?: string | null }): Promise<string | null> {
+  who = { ...who, userId: await theSignInFor(prisma, who) };
   const or = [...(who.userId ? [{ linkedUserId: who.userId }] : []), ...(who.email ? [{ email: { equals: who.email.trim(), mode: 'insensitive' } }] : [])];
   const entries: any[] = or.length
     ? (await Promise.resolve(prisma.person?.findMany?.({ where: { organizationId, OR: or, phone: { not: null } }, orderBy: { updatedAt: 'desc' }, select: { phone: true } })).catch(() => [])) ?? []
@@ -102,6 +121,7 @@ export async function theNumberOnRecord(prisma: Db, organizationId: string, who:
  * entries there were.
  */
 export async function everyRosterEntryTakesTheNumber(prisma: Db, organizationId: string, who: { userId?: string | null; email?: string | null }, number: string | null): Promise<number> {
+  who = { ...who, userId: await theSignInFor(prisma, who) };
   const or = [...(who.userId ? [{ linkedUserId: who.userId }] : []), ...(who.email ? [{ email: { equals: who.email.trim(), mode: 'insensitive' } }] : [])];
   if (!or.length || !prisma.person?.findMany) return 0;
   const entries: any[] = (await prisma.person.findMany({ where: { organizationId, OR: or }, select: { id: true, phone: true } })) ?? [];

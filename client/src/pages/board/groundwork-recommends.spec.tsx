@@ -12,9 +12,8 @@ import { groundsApi } from '@/api/grounds'
  *
  * On the check-in started from the anchor link, once something in the work shows it, Groundwork
  * offers the lead one more check-in - never a label on anybody, only what the record shows and a
- * question. The lead alone reads it, and only while `anchorScenarioOn` is served as true; the
- * server itself answers an empty list with the switch off or for anybody who is not the lead, but
- * this checks the screen never even asks when it already knows the answer must be nothing.
+ * question. Every lead reads it on every check-in she runs, with no setting in the way (Hafsah, 3 November
+ * evening); a team member is served only offers about their own work, and the lead's are never drawn for them.
  */
 vi.mock('@/api/board', () => ({ boardApi: { get: vi.fn() } }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
@@ -36,7 +35,7 @@ vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: currentUser }),
 }))
 
-const board = (anchorScenarioOn: boolean) => ({
+const board = () => ({
   groundId: 'g1',
   renders: true,
   mode: 'SHARED',
@@ -48,7 +47,6 @@ const board = (anchorScenarioOn: boolean) => ({
   myParticipantId: 'p1',
   canEditFrame: false,
   readOnlyNote: '',
-  anchorScenarioOn,
   participants: [
     { id: 'p1', name: 'Hafsah', role: null, managingOnly: false, signedOffAt: null },
     { id: 'p2', name: 'Kennedy', role: null, managingOnly: false, signedOffAt: null },
@@ -80,10 +78,10 @@ beforeEach(() => {
   currentUser = { id: 'u1', firstName: 'Hafsah', role: 'ADMIN' }
 })
 
-describe('for the lead, with the switch on', () => {
+describe('for the lead', () => {
 
   it('draws an offer with its own words and both buttons', async () => {
-    ;(boardApi.get as any).mockResolvedValue(board(true))
+    ;(boardApi.get as any).mockResolvedValue(board())
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     ;(recommendedCheckInsApi.list as any).mockResolvedValue({ offers: [anOffer] })
     renderBoard()
@@ -95,7 +93,7 @@ describe('for the lead, with the switch on', () => {
   })
 
   it('draws nothing when there are no offers', async () => {
-    ;(boardApi.get as any).mockResolvedValue(board(true))
+    ;(boardApi.get as any).mockResolvedValue(board())
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     ;(recommendedCheckInsApi.list as any).mockResolvedValue({ offers: [] })
     renderBoard()
@@ -103,23 +101,19 @@ describe('for the lead, with the switch on', () => {
     expect(screen.queryByText('Groundwork recommends')).toBeNull()
   })
 
-  /*
-   * SCREEN MATCH, 16 OCTOBER: the lead asks whatever the switch, because an account several people name
-   * is offered on any check-in (detectors/an-account-several-people-name.ts); the server still offers
-   * the anchor's own check-ins only with the switch on. Was "never asks" - updated because the board as
-   * pictured has "Groundwork recommends" on every check-in. With nothing offered, nothing is drawn.
-   */
-  it('draws nothing with the switch off and nothing offered', async () => {
-    ;(boardApi.get as any).mockResolvedValue(board(false))
+  /* Was "draws nothing with the switch off": Hafsah, 3 November evening, leads always see what Groundwork recommends, so the board
+     no longer serves a switch and the lead's offer is drawn from what the server sends alone. */
+  it('draws the offer on a board that serves no switch at all', async () => {
+    ;(boardApi.get as any).mockResolvedValue(board())
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
-    ;(recommendedCheckInsApi.list as any).mockResolvedValue({ offers: [] })
+    ;(recommendedCheckInsApi.list as any).mockResolvedValue({ offers: [anOffer] })
     renderBoard()
-    await screen.findAllByText('Harvestline sales and delivery')
-    expect(screen.queryByText('Groundwork recommends')).toBeNull()
+    expect(await screen.findByText('Groundwork recommends')).toBeTruthy()
+    expect(screen.getByText(anOffer.says)).toBeTruthy()
   })
 
   it('"Yes, set it up" calls the yes route, then draft-from-set-up, then opens /start prefilled with what it hands back', async () => {
-    ;(boardApi.get as any).mockResolvedValue(board(true))
+    ;(boardApi.get as any).mockResolvedValue(board())
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     ;(recommendedCheckInsApi.list as any).mockResolvedValue({ offers: [anOffer] })
     const setUp = { kind: 'anchor_pair_check_in', about: anOffer.says, aim: null, people: [{ name: 'Kennedy', email: 'kennedy@x.test' }] }
@@ -139,7 +133,7 @@ describe('for the lead, with the switch on', () => {
   })
 
   it('"Not now" calls the not-now route and removes the offer', async () => {
-    ;(boardApi.get as any).mockResolvedValue(board(true))
+    ;(boardApi.get as any).mockResolvedValue(board())
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     ;(recommendedCheckInsApi.list as any).mockResolvedValueOnce({ offers: [anOffer] }).mockResolvedValue({ offers: [] })
     ;(recommendedCheckInsApi.notNow as any).mockResolvedValue({ state: 'DECLINED' })
@@ -157,8 +151,8 @@ describe('for a participant, not the lead', () => {
     currentUser = { id: 'u2', firstName: 'Kennedy', role: 'MEMBER' }
   })
 
-  it('draws nothing, even with the switch on and an offer waiting', async () => {
-    ;(boardApi.get as any).mockResolvedValue(board(true))
+  it('draws none of the lead\'s offers', async () => {
+    ;(boardApi.get as any).mockResolvedValue(board())
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     renderBoard()
     await screen.findAllByText('Harvestline sales and delivery')

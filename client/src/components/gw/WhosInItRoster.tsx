@@ -1,14 +1,13 @@
 import { useQuery as useWhatsAppQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
+import { TheTeamBox, aLineFor, type APersonOnALine } from '@/components/gw/TheTeamBox'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { ThisAddsASeat, useTheNextSeat } from '@/components/gw/this-adds-a-seat'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { PeopleTable, PersonRow, Tag, Button, TextField, Stack, type TagTone } from '@/components/gw/ui'
 import { groundsApi } from '@/api/grounds'
 import { aPersonsSentenceForAServerError } from '@/lib/a-persons-sentence-for-a-server-error'
-import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { ShareSection } from '@/pages/grounds/ShareSection'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { atTheStart, firstNameOrLabel, nameWithoutGuessing } from '@/lib/utils'
@@ -22,7 +21,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * Carries over, unchanged in meaning, every old "Who is in it" fold on the Setup tab
  * (GroundAdminPage.tsx, ~2543-2748: the seat warning, the approval note, the add-person queue, the
  * access code and share link) plus a roster row per person - name, when they joined, a status tag,
- * and for anyone who needs something before they can start, one sentence and one button underneath.
+ * and for anyone who cannot check in yet, one sentence and one button underneath.
  *
  * THE SESSION-BY-SESSION GRID STAYS ON SESSIONS. That grid (one cell per session, GW's own roster on
  * the Sessions tab) answers "where has each person got to on THIS run" and belongs there; this
@@ -45,10 +44,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * tested on its own (nobody-is-late-before-it-opens.spec.tsx).
  */
 export function WhosInItRoster({
-  ground, isInitiator, isOrgAdmin, colleagues, addingMany, addManyParticipants,
-  newParticipantEmail, setNewParticipantEmail, newParticipantName = '', setNewParticipantName = () => undefined, newParticipantNote, setNewParticipantNote,
-  newParticipantDepartment, setNewParticipantDepartment, addParticipantMut,
-  queuedToAdd, setQueuedToAdd, inviteTheQueue, lastInvitedEmail, whyItWaits, lastInviteWaits,
+  ground, isInitiator, isOrgAdmin, colleagues, addManyParticipants,
   billingStatus, onShareCode, fixingEmailId, setFixingEmailId, fixingEmailValue,
   setFixingEmailValue, fixEmail, resendInvite, showAdd, showLink,
   sessionParties, peersHidden, notOpenYet, viewerIsParty, leadName, viewerIsTheLead,
@@ -57,23 +53,7 @@ export function WhosInItRoster({
   isInitiator: boolean
   isOrgAdmin: boolean
   colleagues?: { id: string; name: string; role?: string; team?: string | null }[]
-  addingMany: boolean
-  addManyParticipants: (picked: { id: string; name: string }[]) => void
-  newParticipantEmail: string
-  setNewParticipantEmail: (v: string) => void
-  newParticipantName?: string
-  setNewParticipantName?: (v: string) => void
-  newParticipantNote: string
-  setNewParticipantNote: (v: string) => void
-  newParticipantDepartment: string
-  setNewParticipantDepartment: (v: string) => void
-  addParticipantMut: { mutate: () => void; isPending: boolean }
-  queuedToAdd: { email: string; note: string }[]
-  setQueuedToAdd: (q: { email: string; note: string }[]) => void
-  inviteTheQueue: { mutate: () => void; isPending: boolean }
-  lastInvitedEmail: string | null
-  whyItWaits: string | null
-  lastInviteWaits: boolean
+  addManyParticipants: (picked: { id: string; name: string }[]) => Promise<void> | void
   billingStatus: any
   navigate: (to: string) => void
   onShareCode: () => void
@@ -99,8 +79,6 @@ export function WhosInItRoster({
   const leavesOutTheManager = ground.scenario === 'HELP_TEAM_UNDERSTAND'
   const isNotCounted = (p: any) => leavesOutTheManager && p.managingOnly === true
   const counted = participants.filter((p) => !isNotCounted(p))
-  const checkingIn = counted.filter((p) => p.userId && !p.notJoinedYet && p.inviteDeliveryStatus !== 'BOUNCED' && !p.awaitingSeat && !p.user?.awaitingOrgApproval).length
-  const needSomething = counted.length - checkingIn
 
   const seats = billingStatus?.people
   /* Fix list item 6: on a plan that adds seats, a full plan is an extra seat, said before it sends, not a refusal. */
@@ -110,10 +88,7 @@ export function WhosInItRoster({
   return (
     <div>
       <p className="gwui-panel-text" style={{ fontWeight: 700 }}>
-        {counted.length} {counted.length === 1 ? 'person' : 'people'}.
-        {/* FAULT H (reviewer, third round): a semicolon joined two separate counts into one
-            clipped clause. Two plain sentences instead. */}
-        {' '}{checkingIn} {checkingIn === 1 ? 'is' : 'are'} checking in.{needSomething > 0 ? ` ${needSomething} ${needSomething === 1 ? 'needs' : 'need'} something before they can start.` : ''}
+        {whosInItSays(counted)}
       </p>
 
       {/* WHAT THE PILLS SAID THAT WAS NOT PER-PERSON: whether peers can see each other here, and what
@@ -141,13 +116,7 @@ export function WhosInItRoster({
       {isInitiator && showAdd && (
         <AddPeopleForm
           isOrgAdmin={isOrgAdmin} colleagues={colleagues} participants={participants} seats={seats} seatsFull={seatsFull}
-          addingMany={addingMany} addManyParticipants={addManyParticipants}
-          newParticipantEmail={newParticipantEmail} setNewParticipantEmail={setNewParticipantEmail} newParticipantName={newParticipantName} setNewParticipantName={setNewParticipantName}
-          newParticipantNote={newParticipantNote} setNewParticipantNote={setNewParticipantNote}
-          newParticipantDepartment={newParticipantDepartment} setNewParticipantDepartment={setNewParticipantDepartment}
-          addParticipantMut={addParticipantMut} queuedToAdd={queuedToAdd} setQueuedToAdd={setQueuedToAdd}
-          inviteTheQueue={inviteTheQueue} lastInvitedEmail={lastInvitedEmail} whyItWaits={whyItWaits} lastInviteWaits={lastInviteWaits}
-          onShareCode={onShareCode}
+          addManyParticipants={addManyParticipants} onShareCode={onShareCode}
         />
       )}
 
@@ -190,6 +159,41 @@ export function WhosInItRoster({
 }
 
 /**
+ * WHAT STOPS ONE PERSON CHECKING IN, the one owner of it. Each row's status tag and the count
+ * above the roster both read this, so the count can never say something the rows do not.
+ */
+export type WhatStopsThem = 'bounced' | 'seat' | 'notLetIn' | 'admin' | 'notJoined' | null
+export function whatStopsThem(p: any): WhatStopsThem {
+  if (!p.userId && p.inviteDeliveryStatus === 'BOUNCED') return 'bounced'
+  if (p.awaitingSeat) return 'seat'
+  if (p.notLetIn) return 'notLetIn'
+  if (p.userId && p.user?.awaitingOrgApproval) return 'admin'
+  if (!p.userId || p.notJoinedYet) return 'notJoined'
+  return null
+}
+
+/**
+ * THE LINE ABOVE THE ROSTER. The prototype says "2 need something before they can start"; an
+ * impatient lead in round 1 could not tell what they needed (Hafsah, 30 October 2026), so each
+ * reason is said as its own sentence, counted from the same `whatStopsThem` the rows read.
+ */
+export function whosInItSays(counted: any[]): string {
+  const by = (r: WhatStopsThem) => counted.filter((p) => whatStopsThem(p) === r).length
+  const n = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`
+  const checkingIn = by(null)
+  const lines = [
+    `${n(counted.length, 'person', 'people')}.`,
+    `${n(checkingIn, 'is', 'are')} checking in.`,
+  ]
+  const notJoined = by('notJoined'); if (notJoined) lines.push(`${n(notJoined, 'has', 'have')} not joined yet.`)
+  const admin = by('admin'); if (admin) lines.push(`${n(admin, 'is', 'are')} waiting for an admin to let them in.`)
+  const seat = by('seat'); if (seat) lines.push(`${n(seat, 'is', 'are')} waiting for a seat on your plan.`)
+  const bounced = by('bounced'); if (bounced) lines.push(`${n(bounced, 'did', 'did')} not get the invitation, because the email bounced.`)
+  const notLetIn = by('notLetIn'); if (notLetIn) lines.push(`${n(notLetIn, 'was', 'were')} not let in.`)
+  return lines.join(' ')
+}
+
+/**
  * ONE PERSON'S ROW, IN TODAY'S WORDS: their status word, the line about when they joined, whether they have checked in for
  * this session, and the one sentence and button for anyone who needs something before they can start. Lifted out of the
  * roster unchanged, so the new People and setup (Release 1B) shows the same status words and the same fixes.
@@ -210,10 +214,11 @@ export function whereThisPersonIs(p: any, c: {
 }): { name: string; when: string; statusText: string; tone: TagTone; sessionLine: string | null; help?: { tone: 'look' | 'concern'; text: string; action?: React.ReactNode } } {
   const { ground, isInitiator, isOrgAdmin, isNotCounted, sessionParties, notOpenYet, fixingEmailId, setFixingEmailId, fixingEmailValue, setFixingEmailValue, fixEmail, resendInvite } = c
   const { name, inASentence, nameless } = nameWithoutGuessing(p)
-  const bounced = !p.userId && p.inviteDeliveryStatus === 'BOUNCED'
-  const waitingForSeat = !!p.awaitingSeat
-  const notLetIn = !!p.notLetIn
-  const waitingForAdmin = !!p.userId && !!p.user?.awaitingOrgApproval && !notLetIn
+  const stopsThem = whatStopsThem(p)
+  const bounced = stopsThem === 'bounced'
+  const waitingForSeat = stopsThem === 'seat'
+  const notLetIn = stopsThem === 'notLetIn'
+  const waitingForAdmin = stopsThem === 'admin'
   /* EVERYONE GETS A "WHEN" LINE, THE LEAD INCLUDED. The lead has no `invitedAt` (nobody
      invited them - they created the check-in), which used to leave their own row reading
      "Checking in" twice over (once as the date line, once as the status tag) while everyone
@@ -242,14 +247,15 @@ export function whereThisPersonIs(p: any, c: {
       ? 'Not invited yet, because there is no seat for them.'
       : (p.invitedAt ? `Invited ${whenItWas(p.invitedAt, 'dayAndMonthLong')}` : 'Invited')
 
+  const stops = isNotCounted(p) ? null : stopsThem
   let statusText = 'Checking in'
   let tone: TagTone = 'proven'
   if (isNotCounted(p)) { statusText = 'Runs it'; tone = 'plain' }
-  else if (bounced) { statusText = 'The email bounced'; tone = 'concern' }
-  else if (waitingForSeat) { statusText = 'Waiting for a seat'; tone = 'attention' }
-  else if (notLetIn) { statusText = 'Not let in'; tone = 'concern' }
-  else if (waitingForAdmin) { statusText = 'Waiting for an admin'; tone = 'attention' }
-  else if (!p.userId || (p as any).notJoinedYet) { statusText = waitsForItsStart(p) ? 'Invited' : 'Not joined yet'; tone = 'plain' }
+  else if (stops === 'bounced') { statusText = 'The email bounced'; tone = 'concern' }
+  else if (stops === 'seat') { statusText = 'Waiting for a seat'; tone = 'attention' }
+  else if (stops === 'notLetIn') { statusText = 'Not let in'; tone = 'concern' }
+  else if (stops === 'admin') { statusText = 'Waiting for an admin'; tone = 'attention' }
+  else if (stops === 'notJoined') { statusText = waitsForItsStart(p) ? 'Invited' : 'Not joined yet'; tone = 'plain' }
 
   /* WHETHER THEY HAVE CHECKED IN FOR THIS SESSION - what the old "Who is in this" pills said
      and this roster did not. Silent, exactly as the pills were, while the next session has
@@ -363,69 +369,74 @@ export function whereThisPersonIs(p: any, c: {
   return { name, when, statusText, tone, sessionLine, help }
 }
 
-/** "Add a person to this check-in": today's form, unchanged, so the new People and setup opens the very same one. */
-export function AddPeopleForm({
-  isOrgAdmin, colleagues, participants, seats, seatsFull, addingMany, addManyParticipants,
-  newParticipantEmail, setNewParticipantEmail, newParticipantName = '', setNewParticipantName = () => undefined, newParticipantNote, setNewParticipantNote,
-  newParticipantDepartment, setNewParticipantDepartment, addParticipantMut,
-  queuedToAdd, setQueuedToAdd, inviteTheQueue, lastInvitedEmail, whyItWaits, lastInviteWaits, onShareCode,
-}: {
+/**
+ * ADD PEOPLE, AS ONE BOX (Hafsah, 31 October 2026: "Make adding a team the top pattern ... Judge it by how fast a lead can get their
+ * whole team in, with phone numbers, without repeating themselves"). This was a name field, an email field, a note, a department and a
+ * phone number, one person at a time, each with its own press. It is now the one team box every place uses (TheTeamBox.tsx): one person
+ * per line, everyone on in one press, each with their phone number. It comes filled with anybody from the organisation who is not on
+ * the check-in yet, so somebody invited on People is one press away here, and a colleague is recognised by name and needs no email.
+ * Their role is added after, in the table below.
+ */
+export function AddPeopleForm({ isOrgAdmin, colleagues, participants, seats, seatsFull, addManyParticipants, onShareCode }: {
   isOrgAdmin: boolean
-  colleagues?: { id: string; name: string; role?: string; team?: string | null }[]
+  colleagues?: { id: string; name: string; role?: string; team?: string | null; email?: string | null }[]
   participants: any[]
   seats: any
   seatsFull: boolean
-  addingMany: boolean
-  addManyParticipants: (picked: { id: string; name: string }[]) => void
-  newParticipantEmail: string
-  setNewParticipantEmail: (v: string) => void
-  newParticipantName?: string
-  setNewParticipantName?: (v: string) => void
-  newParticipantNote: string
-  setNewParticipantNote: (v: string) => void
-  newParticipantDepartment: string
-  setNewParticipantDepartment: (v: string) => void
-  addParticipantMut: { mutate: () => void; isPending: boolean }
-  queuedToAdd: { email: string; note: string }[]
-  setQueuedToAdd: (q: { email: string; note: string }[]) => void
-  inviteTheQueue: { mutate: () => void; isPending: boolean }
-  lastInvitedEmail: string | null
-  whyItWaits: string | null
-  lastInviteWaits: boolean
-  onShareCode: () => void
+  addManyParticipants: (picked: { id: string; name: string }[]) => Promise<void> | void
+  onShareCode?: () => void
 }) {
-  /*
-   * A PHONE NUMBER, ALWAYS ASKED (Hafsah, 30 October 2026; this replaces decision 106 item 6, "Leads cannot add numbers when
-   * inviting"). The add itself carries no number (api a-lead-cannot-add-a-number-when-inviting.spec.ts): once the person is on the
-   * check-in, their number goes through the one writer for a lead's number, PATCH .../participants/:id/whatsapp-number
-   * (the-lead-adds-a-whatsapp-number.ts). Each number waits here beside its address until that person is on the list below.
-   * One that does not save says so, and the add stands.
-   */
   const { id: groundId } = useParams()
+  const qc = useQueryClient()
   const whatsappOn = useWhatsAppIsOn()
-  const [phone, setPhone] = useState('')
-  const [numbersToSave, setNumbersToSave] = useState<Record<string, string>>({})
-  const keepTheNumber = () => {
-    const email = newParticipantEmail.trim().toLowerCase()
-    if (phone.trim() && looksLikeAnAddress(email)) setNumbersToSave((prev) => ({ ...prev, [email]: phone.trim() }))
-    setPhone('')
-  }
-  useEffect(() => {
-    if (!groundId) return
-    for (const [email, number] of Object.entries(numbersToSave)) {
-      const p = participants.find((x: any) => String(x?.email ?? '').trim().toLowerCase() === email)
-      if (!p?.id) continue
-      setNumbersToSave((prev) => { const { [email]: _saved, ...rest } = prev; return rest })
-      const who = firstNameOrLabel(p) || email
-      groundsApi.addTheirWhatsAppNumber(groundId, p.id, number)
-        .then(() => toast.success(`${who}’s phone number is saved.`))
-        /* The server's sentence names WhatsApp, so it is said only while WhatsApp is on (Hafsah's rule of 26 September). */
-        .catch((e: any) => toast.error(whatsappOn && e?.response?.data?.message ? e.response.data.message : `${who}’s phone number did not save, but ${who} is on the check-in. Check that it has its country code and try again.`))
+  const [adding, setAdding] = useState(false)
+  const inIt = new Set(participants.map((m) => m.userId).filter(Boolean))
+  const notOnItYet = (colleagues ?? []).filter((c) => !inIt.has(c.id))
+  const sameName = (a?: string | null, b?: string | null) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase()
+
+  async function onAdd(people: APersonOnALine[]): Promise<APersonOnALine[]> {
+    if (!groundId) return people
+    setAdding(true)
+    const left: APersonOnALine[] = []
+    const fromTheOrganisation: { id: string; name: string }[] = []
+    let added = 0
+    try {
+      for (const p of people) {
+        const colleague = (colleagues ?? []).find((c) => sameName(c.name, p.name) || (!!p.email && sameName(c.email, p.email)))
+        if (colleague && !inIt.has(colleague.id)) { fromTheOrganisation.push(colleague); continue }
+        if (colleague) continue
+        if (!p.email) { left.push(p); continue }
+        try {
+          const row: any = await groundsApi.addParticipant(groundId, { email: p.email, ...(p.name ? { displayName: p.name } : {}) })
+          added += 1
+          const who = p.name ?? p.email
+          /* What happened to their invitation, said as the row says it (an invite that waits says so; added-but-waiting-for-a-seat.ts). */
+          if (row?.notInvitedBecause === 'mail_failed') toast.error(`The invitation to ${p.email} did not send. They are on the check-in; send it again from their row.`)
+          else if (row?.saying) toast.info(`${who} is on the check-in. ${row.saying}`)
+          else if (row && !row.invitedAt) toast.info(`${who} is on the check-in. Their invitation goes out on the start date.`)
+          const id = row?.id ?? row?.data?.id
+          if (p.phone && id) {
+            await groundsApi.addTheirWhatsAppNumber(groundId, id, p.phone).catch((e: any) => {
+              const who = p.name ?? p.email
+              toast.error(whatsappOn && e?.response?.data?.message ? e.response.data.message : `${who}’s phone number did not save, but ${who} is on the check-in. Check that it has its country code and try again.`)
+            })
+          }
+        } catch (e: any) {
+          left.push(p)
+          toast.error(aPersonsSentenceForAServerError(e, `${p.name ?? p.email} could not be added. Check the email and try again.`))
+        }
+      }
+      if (fromTheOrganisation.length) { await addManyParticipants(fromTheOrganisation); added += fromTheOrganisation.length }
+      if (added) toast.success(added === 1 ? 'One person is on the check-in.' : `${added} people are on the check-in.`)
+      await qc.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes(groundId) })
+    } finally {
+      setAdding(false)
     }
-  }, [participants, numbersToSave, groundId, whatsappOn])
+    return left
+  }
+
   return (
       <div className="panel pad">
-        <p className="gwui-switch-row-title">Add a person to this check-in</p>
         <ThisAddsASeat />
         {seatsFull && (
           <div className="gwui-note gwui-note-error" role="alert">
@@ -435,109 +446,18 @@ export function AddPeopleForm({
             <Link className="gwui-open-link" to="/billing">View plans</Link>
           </div>
         )}
-        {/*
-          FAULT 5 (live walk, 6 October 2026): PLAIN SENTENCES, NOT JARGON OR A DASH JOIN. "Until
-          the report releases" used the filing-cabinet word for sharing a report with people; "is
-          the approval - there is no queue" joined two pieces with a dash instead of saying each
-          as its own sentence.
-        */}
+        {/* FAULT 5 (live walk, 6 October 2026): plain sentences, not jargon or a dash join. */}
         <p className="gwui-note">
           They give their own version of the same work. You cannot see what they write until you
           share the report.
         </p>
+        <TheTeamBox heading="Add people to this check-in" prefilled={notOnItYet.map((c) => aLineFor({ name: c.name, email: c.email }))} onAdd={onAdd} adding={adding} />
         <p className="gwui-note">
           {isOrgAdmin
-            ? 'You are an admin here, so adding someone here is all the approval they need. Nobody waits in a queue. Anybody from outside your organisation gets a login here and appears on your People page, where you can take them off again.'
+            ? 'Anybody you add can check in straight away. Somebody from outside your organisation also appears on your People page, where you can take them off again.'
             : 'Somebody from outside your organisation is invited straight away, and an admin here has to let them in before they can check in. They are told the same thing, and you can see it beside their name below.'}
         </p>
-        <PeoplePicker
-          people={colleagues ?? []}
-          alreadyIn={participants.map((m) => m.userId ?? '').filter(Boolean)}
-          adding={addingMany}
-          onAdd={(picked) => addManyParticipants(picked)}
-        />
-        <input
-          type="text" placeholder="Their name, e.g. Samuel Otieno" aria-label="Their name"
-          value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)}
-          className="gwui-input"
-        />
-        <input
-          type="email" placeholder="name@company.com" aria-label="Their email address"
-          value={newParticipantEmail} onChange={(e) => setNewParticipantEmail(e.target.value)}
-          className="gwui-input"
-        />
-        <input
-          type="text" placeholder="What do you want them to cover? (optional)" aria-label="What they are accountable for"
-          value={newParticipantNote} onChange={(e) => setNewParticipantNote(e.target.value)}
-          className="gwui-input"
-        />
-        <input
-          type="text" placeholder="Their department (optional)" aria-label="Their department"
-          value={newParticipantDepartment} onChange={(e) => setNewParticipantDepartment(e.target.value)}
-          className="gwui-input"
-        />
-        <PhoneNumberField id="add-person-phone" value={phone} onChange={setPhone} whose="theirs" whatsappOn={whatsappOn} />
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          <Button
-            onClick={() => { keepTheNumber(); addParticipantMut.mutate() }}
-            disabled={!looksLikeAnAddress(newParticipantEmail) || addParticipantMut.isPending}
-          >
-            {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
-          </Button>
-          <Button
-            kind="secondary"
-            onClick={() => {
-              const email = newParticipantEmail.trim().toLowerCase()
-              if (!looksLikeAnAddress(email)) return
-              if (queuedToAdd.some((q) => q.email === email)) return
-              keepTheNumber()
-              setQueuedToAdd([...queuedToAdd, { email, note: newParticipantNote.trim() }])
-              setNewParticipantEmail('')
-              setNewParticipantNote('')
-            }}
-            disabled={!looksLikeAnAddress(newParticipantEmail)}
-          >
-            + Add another
-          </Button>
-        </div>
-
-        {queuedToAdd.length > 0 && (
-          <div className="panel">
-            {queuedToAdd.map((q) => (
-              <div key={q.email} className="gwui-field-row">
-                <div className="gwui-field-row-value">
-                  {q.email}
-                  <div className="gwui-switch-row-detail">
-                    {/* FAULT 5 (live walk, 6 October 2026): a plain sentence, not two pieces joined by a dash. */}
-                    {q.note || 'There is no note. They will be asked the general questions for this situation.'}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setQueuedToAdd(queuedToAdd.filter((x) => x.email !== q.email))}
-                  aria-label={`Remove ${q.email}`}
-                  className="btn quiet sm"
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-            <Button onClick={() => inviteTheQueue.mutate()} disabled={inviteTheQueue.isPending}>
-              {inviteTheQueue.isPending
-                ? 'Inviting…'
-                : `Invite ${queuedToAdd.length} ${queuedToAdd.length === 1 ? 'person' : 'people'}`}
-            </Button>
-          </div>
-        )}
-        {lastInvitedEmail && (
-          <p className="gwui-note">
-            {whyItWaits
-              ? `${lastInvitedEmail} is on the check-in. ${whyItWaits}`
-              : lastInviteWaits
-                ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
-                : `Invite sent to ${lastInvitedEmail}`}
-          </p>
-        )}
-        <Button kind="quiet" onClick={onShareCode}>Or share an access code instead</Button>
+        {onShareCode && <Button kind="quiet" onClick={onShareCode}>Or share an access code instead</Button>}
       </div>
   )
 }

@@ -37,7 +37,7 @@ describe('decision 77: the session report does not count somebody an admin has n
     const { svc } = serviceFor('sales');
     const r = await theSessionReportAs(svc, userId, 1);
     expect(r.refused).toBeUndefined();
-    expect(r.pictureLines[0]).toBe('4 of 4 people have answered this session. There is enough here to talk about, and not enough to settle anything.');
+    expect(r.pictureLines[0]).toBe('4 of 4 people have answered this session. There is enough here to talk about.');
     expect(everyString(r).filter((s) => /\b4 of 5\b/.test(s))).toEqual([]);
   });
 
@@ -96,7 +96,7 @@ describe('decision 77: once an admin lets him in, he is counted again', () => {
     const { svc, w } = serviceFor('sales');
     letFarajiIn(svc, w);
     const r = await theSessionReportAs(svc, userId, 1);
-    expect(r.pictureLines[0]).toBe('4 of 5 people have answered this session. There is enough here to talk about, and not enough to settle anything.');
+    expect(r.pictureLines[0]).toBe('4 of 5 people have answered this session. There is enough here to talk about.');
     expect(r.counting).toHaveLength(5);
     expect(r.counting.filter((c: any) => !c.answered)).toHaveLength(1);
   });

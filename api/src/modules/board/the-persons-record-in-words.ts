@@ -194,9 +194,7 @@ export function theRecordInWords(r: ThePersonsRecord, coaching: readonly ACoachi
 
   return {
     heading: w.self ? `Your record in ${checkInName}` : `${w.first}’s record in ${checkInName}`,
-    note: w.self
-      ? 'This is read from what you said in your check-ins and what is on file. It changes only when something new comes in.'
-      : `This is read from what ${w.first} said in ${w.first}’s check-ins and what is on file. It changes only when something new comes in.`,
+    note: '',
     parts,
     coaching: coaching.map((c) => theCoachingInWords(c, w)),
     coachingEmpty: coaching.length ? null : w.self ? 'Groundwork has not coached you on anything yet.' : `Groundwork has not coached ${w.first} on anything yet.`,

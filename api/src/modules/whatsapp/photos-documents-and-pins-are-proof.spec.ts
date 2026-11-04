@@ -67,7 +67,8 @@ describe('a photo and a PDF sent on WhatsApp', () => {
     /* Read against what she said, as an app upload is: this is what makes a line backed by it. */
     expect(d.anchorAfterUpload).toHaveBeenCalledWith('p-amani', 'g-1');
     expect(h.said).toHaveLength(1);
-    expect(h.said[0]).toMatch(new RegExp(`^${called} is on your check-in\\. `));
+    /* Changed 4 November 2026 (batch 1, the direct words for everybody): where the file went, and nothing about how it is read. */
+    expect(h.said[0]).toMatch(new RegExp(`^${called} is on your check-in\\.`));
     expect(h.said[0]).not.toMatch(/shows|I can see|I saw/);
   });
 
@@ -81,8 +82,8 @@ describe('a photo and a PDF sent on WhatsApp', () => {
     const { h, created, send } = amaniSends({ type: 'image', image: { id: 'm-3', mime_type: 'image/jpeg' } }, '[Attached: image-1.jpg - could not read the image.]');
     await send();
     expect(created).toHaveLength(1);
-    /* Her first file on WhatsApp, so the reply also tells her, once, that it went to her check-in. */
-    expect(h.said).toEqual([`${I_COULD_NOT_OPEN_THAT_FILE} ${ONCE}`]);
+    /* Changed 4 November 2026 (batch 1, the direct words for everybody): no note about who sees it; who sees it is unchanged (below). */
+    expect(h.said).toEqual([I_COULD_NOT_OPEN_THAT_FILE]);
     expect(I_COULD_NOT_OPEN_THAT_FILE).toBe('I could not open that file. Could you tell me what it shows?');
   });
 });
@@ -143,21 +144,28 @@ describe('who sees a photo, a PDF or a pin: whoever sees her other shared proof 
     }
   });
 
-  it('the first reply carries the sentence once, and the next one does not', async () => {
+  /*
+   * Changed 4 November 2026 (batch 1, the direct words for everybody): a photo or a file is told only as where it went. A pin still
+   * carries the sentence, once. Who can see each of them is unchanged and is checked above and below.
+   */
+  it('a photo and a file say only where they went; a pin carries the sentence once, and the next one does not', async () => {
     expect(PHOTOS_YOU_SEND_HERE_ARE_PROOF).toBe(ONCE);
     const notes: Notes = [];
     const first = amaniSends({ type: 'image', image: { id: 'm-2', mime_type: 'image/jpeg' } }, 'Acme 40000 won', notes);
     await first.send();
-    expect(first.h.said).toEqual([`Your photo is on your check-in. Anything it backs up is read against what you said. ${ONCE}`]);
-    expect(first.h.said[0].split(ONCE)).toHaveLength(2);
+    expect(first.h.said).toEqual(['Your photo is on your check-in.']);
+    expect(first.created[0].visibility).toBe(DocumentVisibility.OPEN);
     const second = amaniSends({ type: 'location', location: { latitude: -1.2921, longitude: 36.7871 } }, 'x', notes);
     await second.send();
     expect(second.created[0].visibility).toBe(DocumentVisibility.OPEN);
-    expect(second.h.said[0]).not.toContain(ONCE);
+    expect(second.h.said[0].split(ONCE)).toHaveLength(2);
     expect(second.h.said[0]).not.toMatch(/Only you can see this/);
-    const third = amaniSends({ type: 'document', document: { id: 'm-1', mime_type: 'application/pdf', filename: 'pipeline.pdf' } }, 'Acme 40000 won', notes);
+    const third = amaniSends({ type: 'location', location: { latitude: -1.2921, longitude: 36.7871 } }, 'x', notes);
     await third.send();
-    expect(third.h.said).toEqual(['"pipeline.pdf" is on your check-in. Anything it backs up is read against what you said.']);
+    expect(third.h.said[0]).not.toContain(ONCE);
+    const fourth = amaniSends({ type: 'document', document: { id: 'm-1', mime_type: 'application/pdf', filename: 'pipeline.pdf' } }, 'Acme 40000 won', notes);
+    await fourth.send();
+    expect(fourth.h.said).toEqual(['"pipeline.pdf" is on your check-in.']);
   });
 
   it('with adding documents switched off, nothing is shared and she is not told the lead can see it', async () => {

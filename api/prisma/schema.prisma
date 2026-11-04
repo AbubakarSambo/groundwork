@@ -595,10 +595,8 @@ model Organization {
   /// is kept, and the lead's morning summary and the weekly letter read from the deals. The writers (deal rows, each stage
   /// kept with its day, the week's deals kept on the weekly row) run either way, so switching it off loses nothing.
   release1SalesBoardOn   Boolean   @default(false) @map("release_1_sales_board_on")
-  /// RELEASE 1B'S NEW CHECK-IN TABS, A SWITCH PER ORGANISATION (Hafsah, 18 October 2026). Off for every organisation until
-  /// Groundwork staff switch it on in Admin, Orgs, or a script does for a "(test)" organisation. On, People and setup reads as
-  /// the B8 pictures for the lead, a team member and an admin who does not run it; off, it reads exactly as before. It writes
-  /// nothing on its own: existing check-ins keep their cadence and every setting.
+  /// NO LONGER READ (release batch 1, Hafsah, 4 November 2026): the new check-in tabs are what everybody has. The column is left
+  /// in place, unused, so no migration drops it.
   release1bTabsOn        Boolean   @default(false) @map("release_1b_tabs_on")
   /// RELEASE 2, COLLECT WHAT'S OWED, A SWITCH PER ORGANISATION (release plan, Release 2). Off for every organisation until
   /// Groundwork staff switch it on in Admin, Orgs, or a script does for a "(test)" organisation. On: the scenario picker
@@ -613,11 +611,8 @@ model Organization {
   /// coaching about a person, the pattern and verdict lines about a person, and suggestions about a person are neither built nor
   /// served for that organisation (organisation/person-judgements.ts). The board, the summaries and the reports still go ahead.
   personJudgementsOn     Boolean   @default(true) @map("person_judgements_on")
-  /// THE DIRECT MORNING, A SWITCH PER ORGANISATION (Hafsah, 20 October 2026). Off for every organisation until
-  /// scripts/the-direct-morning.ts sets it on for one, by its id. On: the lead's morning summary answers the target, what needs
-  /// her, what is about to close and who on the team needs her; her board opens at the same four parts; each team member's
-  /// opening names the one thing that matters to them today; and the messages, emails and screens say names, numbers,
-  /// customers and days without explaining Groundwork (organisation/the-direct-morning-switch.ts). Off: everything reads as before.
+  /// NO LONGER READ (release batch 1, Hafsah, 4 November 2026): the direct wording is what everybody reads. The column is left in
+  /// place, unused, so no migration drops it.
   directMorningOn        Boolean   @default(false) @map("direct_morning_on")
   /// Release 3, raising invoices on time (24 October 2026). Off for every organisation until switched on.
   release3InvoicesOn     Boolean   @default(false) @map("release_3_invoices_on")
@@ -910,6 +905,11 @@ model EntryDraft {
   history    Json
   consumedAt DateTime? @map("consumed_at")
   groundId   String?   @map("ground_id")
+  /// A SETUP A SIGNED-IN LEAD HAS NOT SAVED YET, AS THE PAGE KEEPS IT (Hafsah's blocker, 31 October 2026: "nothing anyone says in
+  /// setup is ever lost"). The same record /start restores, kept here as well as on the device, so the lead finds it from Today or
+  /// Check-ins on any device. Read and written only by the lead it belongs to (GET and PUT /entry/unfinished); emptied when the
+  /// setup is saved or thrown away.
+  unfinishedSetup Json? @map("unfinished_setup")
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
@@ -1101,6 +1101,10 @@ model Ground {
   timelineWeeks    Int?    @map("timeline_weeks")
   cadence          Cadence @default(FORTNIGHTLY)
   cadenceAnchorDay Int?    @map("cadence_anchor_day") // weekly: 0=Sun..6=Sat ("every Monday"); monthly: 1-31 (day of month)
+  /// TWICE OR MORE A WEEK (2 November 2026): the weekdays a weekly check-in meets on, 0=Sun..6=Sat, when it meets on more than one
+  /// ("Twice a week, on Monday and Thursday."). Empty means once a week, on cadenceAnchorDay. Read by the schedule
+  /// (grounds/the-check-ins-own-schedule.ts), the session count (grounds/session-count.ts) and every sentence that says how often.
+  cadenceDays      Int[]   @default([]) @map("cadence_days")
   /// THE TIME OF DAY EACH SESSION'S TEAM REPORT SHARES ITSELF, "HH:MM" in the organisation's own day (Hafsah's answer 5, 16 October 2026:
   /// "Reports share themselves at their set time unless the lead holds them"). Null means the product's default, 18:30, for a check-in that
   /// repeats; a one-time check-in shares when everyone has checked in, as before. See reports/a-report-shares-itself.ts.
@@ -1665,6 +1669,10 @@ model GroundParticipant {
   ///
   /// Null means the work was already underway, which is true of every row that existed before it.
   startsAt                   DateTime?         @map("starts_at")
+  /// READY, NOT SENT (Hafsah, 3 November 2026: "the lead's invitations stay ready but unsent until they tap 'Send N invitations'").
+  /// When the lead set the check-in up to check in on their own first: the invitation is ready and held until they send it, whatever
+  /// the start date. Cleared when it is sent. Null for every invitation that was never held this way.
+  inviteHeldAt               DateTime?         @map("invite_held_at")
   leftAt                     DateTime?         @map("left_at") // quit, removed, or let go. Freeze, never erase.
   // Authorized absence: the DATES ONLY.
   //
@@ -1796,6 +1804,10 @@ model CheckIn {
   openedAnnouncedAt           DateTime?     @map("opened_announced_at") // one-shot: checkin.opened went to the organisation's webhooks
   patternsAnalyzedAt          DateTime?     @map("patterns_analyzed_at") // pattern sweep has processed this period
   closedReason                String?       @map("closed_reason") // "declined" or "auto_closed"; null when the person completed it
+  /// THE WRITES TO THE RECORD THIS CHECK-IN STILL OWES (1 November 2026). A model call that writes the record or the assessment and
+  /// still fails after its own tries is kept here (step, tries, last error, next try), never only logged, and the scheduled pass writes
+  /// it again until it lands. Null when nothing is owed. See conversation/a-write-is-owed-until-it-lands.ts.
+  writesOwed                  Json?         @map("writes_owed")
   /// One of managed | vague | directional | specific, worst first - enforced by a CHECK constraint in
   /// the database and ordered in one place (conversation/how-checkable-a-session-was.ts). The map that
   /// ranked "managed" above "directional" is gone.
@@ -1827,7 +1839,7 @@ model CheckIn {
   isClarification             Boolean       @default(false) @map("is_clarification") // true when session is correcting a flagged inference
   clarificationTarget         String?       @map("clarification_target") // inference id from report.inferences being corrected
   isSelfCorrection            Boolean       @default(false) @map("is_self_correction") // true when session is correcting the participant's OWN prior session
-  closeHeldAt                 DateTime?     @map("close_held_at") // set once, the one time the close was held for a date, a number or a document
+  closeHeldAt                 DateTime?     @map("close_held_at") // set once, when the close was held for the read-back (conversation/the-read-back.ts)
   /// The plan for this session, written by the product before the first question from everything the record
   /// holds about this person: what must be established, the questions in order, what to watch for, the coaching
   /// path, when it is done. Context for every turn, never a script. See the-plan-for-this-session.
@@ -2304,6 +2316,9 @@ model GroundDependency {
   /// refused. Their sentence, kept as they said it; the tiering is read off it at the point of use
   /// so the words stay the record and the judgement stays out of the column.
   triedSaid       String?          @map("tried_said") @db.Text
+  /// TAKEN ABOVE THE PERSON IT WAS WITH, OR ROUND THEM, by their own account (F2, 2 November 2026): the assessment's reading of
+  /// their words (`takenFurther` on the wait), never a word list and never the product's own stamp. Null where it was never read.
+  takenFurther    Boolean?         @map("taken_further")
   escalatedAt     DateTime?        @map("escalated_at")
   sourceCheckInId String?          @map("source_check_in_id")
   /// THE OTHER CHECK-IN THIS HANDOFF WAITS ON (D3, U.16), when it waits on another team's check-in.
@@ -2766,7 +2781,7 @@ model RoleInterviewAnswer {
   sharedAt         DateTime? @map("shared_at")
   /// The first check-in a 'first_check_in' row was read from.
   checkInId        String?  @map("check_in_id")
-  /// The stored version of the prompt that read the person's words (role_reading).
+  /// The stored version of the instructions that read the person's words: the conversation's assessment's promptVersionId (null when the file's words ran).
   promptVersionId  String?  @map("prompt_version_id")
   /// The stored version of the prompt that told the conversation to learn the role (first_check_in_role).
   askedWithPromptVersionId String? @map("asked_with_prompt_version_id")

@@ -51,13 +51,16 @@ describe('and the board sends it', () => {
   const SRC = strip(readFileSync(join(__dirname, 'board.service.ts'), 'utf8'));
   const RULES = strip(readFileSync(join(__dirname, '../patterns/who-reads-a-pattern.ts'), 'utf8'));
 
-  it('attaches it to every pattern row a lead reads', () => {
-    /* 29 September 2026: out.patterns now carries wordPatternEvidence's result, which wraps the
-       same servedPatterns(...) call rather than replacing it - askThem is unchanged either way. */
-    expect(SRC).toMatch(/out\.patterns = await wordPatternEvidence\(/);
-    /* The call now also carries `now`, and is read beside the earlier read (withTheEarlierRead). The same single servedPatterns call still serves every row. */
+  it('serves stored rows only through the rules, which give the question to nobody but a non-owner, and the lead’s rows from the record layer', () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    /* The board's stored rows still go through the one servedPatterns call and its kept wording. */
     expect(SRC).toMatch(/servedPatterns\(detections as any, patternReader, \{ \.\.\.namesForPatterns, now \}\)/);
+    expect(SRC).toMatch(/const worded = await wordPatternEvidence\(/);
+    /* What the lead reads about each person is the record layer, appended after the reader's own stored rows. */
+    expect(SRC).toMatch(/out\.patterns = \[\.\.\.worded, \.\.\.\(await whatTheRecordShowsTheLead\(this\.prisma, groundId, patternReader\)\)\]/);
+    /* A stored row is served only to the person it is about, who is asked what is behind it, never handed the library's question. */
     expect(RULES).toMatch(/askThem: yours \? null : whatToAskAbout\(row\.code\)/);
+    expect(RULES).toMatch(/return !!reader\.participantId && row\.participantId === reader\.participantId;/);
   });
 });
 

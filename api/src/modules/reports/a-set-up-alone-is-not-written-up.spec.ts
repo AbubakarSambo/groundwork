@@ -1,4 +1,5 @@
 import { ReportsListener } from './reports.listener';
+/* Changed 1 November 2026: the report is written when the check-in's assessment is ready (onTheAssessmentReady), not on the completion itself; the same release logic, checked the same way. */
 
 /**
  * FOUND IN THE ANCHOR WALK (8 October 2026). The lead's set-up, saved as finished, announced a session. The report was written from nothing and the
@@ -17,7 +18,7 @@ describe('a lead\'s set-up on its own is not written up as a report', () => {
     listener.notifyAdminOnCheckIn = jest.fn(async () => undefined);
     listener.notifyOnLateCorrection = jest.fn(async () => undefined);
     listener.warmTheReads = jest.fn(async () => undefined);
-    await listener.onCheckInCompleted({ checkInId: 'c1', groundId: 'g1', participantId: 'p1', sessionNumber: 1 });
+    await listener.onTheAssessmentReady({ checkInId: 'c1', groundId: 'g1', participantId: 'p1', sessionNumber: 1, howItEnded: 'finished by the person' });
     return synthesize;
   };
 

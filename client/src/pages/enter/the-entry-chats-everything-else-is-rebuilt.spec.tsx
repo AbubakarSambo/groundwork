@@ -133,8 +133,10 @@ describe('the fills-in-as-you-talk panel, once the door has given way to a conve
     }))
     renderPage()
     await waitFor(() => expect(screen.getByText('Who is it, and what were they meant to be delivering?')).toBeTruthy())
-    expect(screen.getByText('Fills in as you talk. You can start without all of it.')).toBeTruthy()
-    expect(screen.getByText('0 of 4 set')).toBeTruthy()
+    /* Changed in F5: the panel no longer says "Fills in as you talk"; it is found by what it is. */
+    expect(screen.getByRole('complementary', { name: 'What is set so far' })).toBeTruthy()
+    /* Changed 3 November evening: no count of what is set. */
+    expect(screen.queryByText(/of 4 set/)).toBeNull()
     expect(entryApi.chat).not.toHaveBeenCalled()
     expect(entryApi.onboard).not.toHaveBeenCalled()
   })
@@ -150,10 +152,10 @@ describe('the check-in phase, once the engine has spoken', () => {
     /* The fills-in panel only shows during setup (new.txt, beside the onboarding conversation) -
        phase 'checkin' means setup is done, so it is gone here, the same as the prototype's own
        start-chat.txt, which carries no such panel either. */
-    expect(screen.queryByText('Fills in as you talk. You can start without all of it.')).toBeNull()
-    /* The composer: a real textbox, placeholder "Type your response.", arrow-send (B3's own shape,
+    expect(screen.queryByRole('complementary', { name: 'What is set so far' })).toBeNull()
+    /* The composer: a real textbox, placeholder "Type your answer", arrow-send (B3's own shape,
        not B1's "Send"). */
-    expect(screen.getByPlaceholderText('Type your response.')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Type your answer')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Send message' })).toBeTruthy()
     expectAtMostOnePrimaryButton(container)
   })
@@ -185,7 +187,7 @@ describe('the check-in phase, once the engine has spoken', () => {
        itself. Said plainly now: everyone gets the shared report once everyone has checked in. */
     expect(screen.getByText('Invite others to check in. Everyone gets the shared report once all of you have checked in.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Invite and finish' })).toBeTruthy()
-    expect(screen.queryByPlaceholderText('Type your response.')).toBeNull()
+    expect(screen.queryByPlaceholderText('Type your answer')).toBeNull()
     expectAtMostOnePrimaryButton(container)
   })
 })

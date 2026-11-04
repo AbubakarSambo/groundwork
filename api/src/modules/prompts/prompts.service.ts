@@ -520,7 +520,6 @@ export class PromptsService implements OnModuleInit {
         createdAt: true,
         isInternal: true,
         release1SalesBoardOn: true,
-        release1bTabsOn: true,
         release2CollectionsOn: true,
         _count: { select: { grounds: true } },
       },
@@ -556,8 +555,6 @@ export class PromptsService implements OnModuleInit {
       isInternal: org.isInternal,
       /* Release 1's sales board, switched on per organisation by staff (Admin, Orgs). */
       release1SalesBoardOn: org.release1SalesBoardOn === true,
-      /* Release 1B's new check-in tabs, switched on per organisation by staff (Admin, Orgs). */
-      release1bTabsOn: (org as any).release1bTabsOn === true,
       /* Release 2, collect what's owed, switched on per organisation by staff (Admin, Orgs). */
       release2CollectionsOn: (org as any).release2CollectionsOn === true,
       groundCount: org._count.grounds,

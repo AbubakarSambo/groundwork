@@ -124,6 +124,19 @@ async function BEFORE_spendApproverOf(prisma: any, organizationId: string, r: { 
   const lead = await BEFORE_whoApprovesFor(prisma, { organizationId, personUserId: r.userId, managerExternalId: p?.managerExternalId ?? null });
   return lead.kind === 'manager' ? { kind: 'manager' as const, userId: lead.userId } : { kind: 'admin' as const };
 }
+/**
+ * ABOVE THE LIMIT, SINCE 2 NOVEMBER (Hafsah's plan, step 0). b7ff00b4 sent spending above the limit to the team's budget holder,
+ * then finance, then the person named. The use-case walk found that sent Brian's KES 65,000 to finance instead of the person named.
+ * Now the steps by amount are the one owner, and the settings card's answer is its step: the person named decides, or else an admin.
+ * Up to the limit nothing changed, so BEFORE still checks it.
+ */
+function NOW_spendAboveTheLimit(r: { userId: string }, above: string) {
+  const role = roles[above] ?? null;
+  return above !== r.userId && role && role !== 'GUEST' ? { kind: 'person' as const, userId: above } : { kind: 'admin' as const };
+}
+/** The settings card's two answers, as they are kept: the lowest of the steps by amount. */
+const theCard = (above: string) => ({ currency: 'KES', limit: 20000, above, thresholds: [{ above: 20000, steps: [[{ named: above }]] }] });
+
 function BEFORE_spendMayDecide(readerId: string, role: string | null, r: { userId: string }, who: { kind: string; userId?: string }) {
   if (r.userId === readerId) return false;
   if (who.kind === 'admin') return role === 'ADMIN';
@@ -205,7 +218,7 @@ describe('spending: every answer, every amount, every set of duties, every reque
     for (const [dutiesSaid, duties] of DUTIES) {
       for (const amount of [5000, 95000]) {
         it(`above ${above}, ${dutiesSaid}, KES ${amount}`, async () => {
-          const answers = { currency: 'KES', limit: 20000, above };
+          const answers = theCard(above);
           const prisma = aPrisma({ spend: answers, ...(duties ? { duties } : {}) });
           const svc = new SpendingService(prisma);
           const dir: Map<string, any> = await (svc as any).directory(ORG);
@@ -213,7 +226,7 @@ describe('spending: every answer, every amount, every set of duties, every reque
           for (const ext of REQUESTERS.filter((x) => signInOf(x))) {
             const userId = signInOf(ext)!;
             const r = { userId, amount, team: null };
-            const whoBefore = await BEFORE_spendApproverOf(prisma, ORG, r, answers, byUser.get(userId));
+            const whoBefore = amount > 20000 ? NOW_spendAboveTheLimit(r, above) : await BEFORE_spendApproverOf(prisma, ORG, r, answers, byUser.get(userId));
             const whoAfter = await (svc as any).approverOf(ORG, r, answers, byUser, dir);
             const before = READERS.filter((u) => BEFORE_spendMayDecide(u, roles[u] ?? null, r, whoBefore));
             const after = READERS.filter((u) => (svc as any).mayDecide({ userId: u, organizationId: ORG }, roles[u] ?? null, r, whoAfter));
@@ -226,15 +239,17 @@ describe('spending: every answer, every amount, every set of duties, every reque
     }
   }
 
-  it('a member is let onto the spending board as an approver exactly when they were before', async () => {
+  /* Since 2 November a duty decides only when a step names it, so holding the budget or finance no longer lets a member onto the board. */
+  it('a member is let onto the spending board as an approver exactly when a step names them', async () => {
     for (const above of [...ABOVE, 'u-member2']) {
       for (const [, duties] of DUTIES) {
-        const answers = { currency: 'KES', limit: 20000, above };
+        const answers = theCard(above);
         const prisma = aPrisma({ spend: answers, ...(duties ? { duties } : {}) });
         const svc = new SpendingService(prisma);
         const d = await readDuties(prisma, ORG);
         for (const u of Object.keys(roles).filter((x) => roles[x] === 'MEMBER')) {
-          const before = above === u || d.finance === u || Object.values(d.budgetOwners ?? {}).includes(u);
+          const before = above === u;
+          void d;
           expect([above, u, await (svc as any).approvesOverTheLimit(ORG, u, answers)]).toEqual([above, u, before]);
         }
       }
@@ -260,7 +275,7 @@ describe('the only two differences, where before nobody at all could decide', ()
 
   it('spending over the limit: a person named on the suite who is now a guest, or has left, is passed over for an admin, where before the request waited on somebody who could not open the board', async () => {
     for (const above of ['u-guest', 'u-gone']) {
-      const answers = { currency: 'KES', limit: 20000, above };
+      const answers = theCard(above);
       const prisma = aPrisma({ spend: answers });
       const svc = new SpendingService(prisma);
       const dir: Map<string, any> = await (svc as any).directory(ORG);

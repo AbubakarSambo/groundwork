@@ -71,7 +71,9 @@ function setup(opts: { workflows?: Record<string, unknown>; duties?: Record<stri
   const suites: Record<string, any> = {
     leave: { isOn: true, answers: { days: 21, approver: 'Their manager' } },
     time: { isOn: true, answers: { clients: ['Naivas', 'Lakeside'], approver: 'Their manager' } },
-    spend: { isOn: true, answers: opts.spend ?? { currency: 'KES', limit: 20000, above: 'u-grace' } },
+    spend: { isOn: true, answers: opts.spend ?? { currency: 'KES' } },
+    /* Who approves spending is its steps by amount alone (Hafsah's plan of 2 November, step 0): the limit of 20,000 and Grace above it, and below it the steps this spec sets. Its days before passing on stay in the workflows. */
+    spendRules: { isOn: false, answers: { thresholds: [...((opts.workflows as any)?.spend?.steps ? [{ above: 0, steps: (opts.workflows as any).spend.steps }] : []), { above: 20000, steps: [[{ named: 'u-grace' }]] }] } },
     ...(opts.duties ? { duties: { isOn: false, answers: opts.duties } } : {}),
     ...(opts.workflows ? { workflows: { isOn: false, answers: opts.workflows } } : {}),
   };

@@ -53,7 +53,7 @@ describe('a check-in that is slow is not a check-in that is gone', () => {
      * not a guard, and this one had to be broken on purpose before it was worth anything.
      */
     await waitFor(() => expect(get).toHaveBeenCalled())
-    await waitFor(() => expect(container.textContent).toContain('We could not load this check-in'))
+    await waitFor(() => expect(container.textContent).toContain('I could not load this check-in'))
 
     /*
      * THIS ASSERTION USED TO READ `toContain('Loading')`, AND THAT WAS THE BUG WRITTEN DOWN.
@@ -72,7 +72,7 @@ describe('a check-in that is slow is not a check-in that is gone', () => {
     /* The state is only honest if the button in it works. */
     const get = vi.spyOn(groundsApi, 'get').mockRejectedValue(Object.assign(new Error('network'), { response: undefined }))
     const { container, getByText } = show()
-    await waitFor(() => expect(container.textContent).toContain('We could not load this check-in'))
+    await waitFor(() => expect(container.textContent).toContain('I could not load this check-in'))
 
     get.mockResolvedValue({
       id: 'g1', label: 'Atlas delivery', scenario: 'NEW_HIRE', moment: 'STARTING',
@@ -80,7 +80,7 @@ describe('a check-in that is slow is not a check-in that is gone', () => {
     } as any)
     getByText('Try again').click()
 
-    await waitFor(() => expect(container.textContent).not.toContain('We could not load this check-in'))
+    await waitFor(() => expect(container.textContent).not.toContain('I could not load this check-in'))
     expect(container.textContent).not.toContain('This check-in isn’t available any more')
   })
 
@@ -99,7 +99,7 @@ describe('a check-in that is slow is not a check-in that is gone', () => {
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    await waitFor(() => expect(container.textContent).toContain('We could not load this check-in'))
+    await waitFor(() => expect(container.textContent).toContain('I could not load this check-in'))
     expect(container.textContent).not.toContain('no longer part of it')
     expect(container.textContent).toContain('You are still part of it')
   })
@@ -119,7 +119,7 @@ describe('a check-in that is slow is not a check-in that is gone', () => {
     vi.spyOn(groundsApi, 'get').mockRejectedValue(Object.assign(new Error('forbidden'), { response: { status: 403 } }))
     const { container } = show()
     await waitFor(() => expect(container.textContent).toContain('This check-in isn’t available any more'))
-    expect(container.textContent).not.toContain('We could not load this check-in')
+    expect(container.textContent).not.toContain('I could not load this check-in')
     expect(container.textContent).not.toContain('Loading')
   })
 

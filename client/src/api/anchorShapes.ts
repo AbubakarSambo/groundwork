@@ -6,8 +6,7 @@
  * These types copy, field for field, `api/src/modules/entry/the-anchor-served-shapes.ts` on the
  * engine side (read only - never imported from `api/`, since the client builds alone on staging).
  * Nothing here is served yet except where a comment says so. A screen draws nothing for a field
- * that is `undefined` - it never invents a value, and it never draws for the switch
- * `anchorScenarioOn` being anything but `true`.
+ * that is `undefined` - it never invents a value.
  */
 
 /* ------------------------------------------------------------------------------------------------

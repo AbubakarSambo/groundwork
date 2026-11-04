@@ -36,13 +36,13 @@ export class RoleInterviewController {
   }
 
   @Get('mine')
-  @ApiOperation({ summary: 'What you told us about your own job: in the role interview, or in your first check-in. Nobody else reads it here.' })
+  @ApiOperation({ summary: 'What you told me about your own job: in the role interview, or in your first check-in. Nobody else reads it here.' })
   mine(@CurrentUser() user: CurrentUserData) {
     return this.interview.mine({ userId: user.id, organizationId: user.organizationId });
   }
 
   @Put('mine')
-  @ApiOperation({ summary: 'Correct what you told us about your own job. You are the only one who can; send only what changed.' })
+  @ApiOperation({ summary: 'Correct what you told me about your own job. You are the only one who can; send only what changed.' })
   async correctMine(@CurrentUser() user: CurrentUserData, @Body() dto: CorrectMyJobDto) {
     try {
       return await this.interview.correctMine({ userId: user.id, organizationId: user.organizationId }, dto);

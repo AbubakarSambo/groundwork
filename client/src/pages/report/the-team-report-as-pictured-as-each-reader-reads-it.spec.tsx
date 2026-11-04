@@ -136,7 +136,9 @@ it('a sales team reads “What each person did”, and a sales organisation of t
 })
 
 /* team-report.jpg, "What I don’t know yet": what the check-in asked and did not get, and what happens next, served to whoever runs it. */
-it('Wairimu reads what Groundwork does not know yet, below “Every session”, and what it will do next', async () => {
+/* Changed in F5 (Hafsah's change 4 to the approved journey): what is not known yet comes before what each person said, after where
+   people differ, no longer below "Every session". */
+it('Wairimu reads what Groundwork does not know yet, before what each person said, and what it will do next', async () => {
   me = { id: 'u-w', firstName: 'Wairimu', lastName: 'Kamau', role: 'LEAD' }
   ;(reportsApi.sessionReport as any).mockResolvedValue({ ...REPORT, whatIDontKnowYet: [
     { title: '“What is getting in the way now?”', says: 'Groundwork asked Samuel this in session 35 and once more since, and Samuel has not answered it yet. Next: Groundwork will not ask again, so that Samuel is not pressed. You could ask Samuel yourself.' },
@@ -146,9 +148,8 @@ it('Wairimu reads what Groundwork does not know yet, below “Every session”, 
   expect(screen.getByText('Things Groundwork can’t tell from what it has, and what it will ask next.')).toBeTruthy()
   expect(screen.getByText('“What is getting in the way now?”')).toBeTruthy()
   expect(screen.getByText(/You could ask Samuel yourself\.$/)).toBeTruthy()
-  /* Below "Every session", as pictured. */
-  const every = screen.getByRole('link', { name: 'Every session' })
-  expect(every.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  const eachPerson = screen.getByText('What each person said')
+  expect(heading.compareDocumentPosition(eachPerson) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
 it('with nothing open, Wairimu reads that nothing is waiting for an answer; where the server serves no such list, there is no section', async () => {
@@ -171,4 +172,17 @@ it('with no question of hers to answer, Wairimu reads no “One question to answ
   renderIt()
   expect(await screen.findByText('In short')).toBeTruthy()
   expect(screen.queryByText('One question to answer')).toBeNull()
+})
+
+/* F5, Hafsah's change 4 to the approved journey: the report opens with where things stand and what needs the lead, then where people
+   differ and what is not known yet, and only then what each person said. Read as the lead reads the page. */
+it('Wairimu reads where things stand first, then what is not known yet, then what each person said', async () => {
+  me = { id: 'u-w', firstName: 'Wairimu', lastName: 'Kamau', role: 'LEAD' }
+  ;(reportsApi.sessionReport as any).mockResolvedValue({ ...REPORT, whatIDontKnowYet: [] })
+  renderIt()
+  await screen.findByText('What each person said')
+  const text = (document.body.textContent ?? '').replace(/\s+/g, ' ')
+  const at = ['In short', 'What this report can’t tell you', 'What I don’t know yet', 'What each person said'].map((h) => text.indexOf(h))
+  expect(at.every((i) => i > -1)).toBe(true)
+  expect([...at].sort((a, b) => a - b)).toEqual(at)
 })

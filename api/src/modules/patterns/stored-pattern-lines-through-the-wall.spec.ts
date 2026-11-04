@@ -19,23 +19,28 @@ const lead = { participantId: 'p-lead', runsIt: true };
 const readAs = (reader: { participantId: string | null; runsIt: boolean }, r = rows) => withTheEarlierRead(servedPatterns(r, reader, { now: NOW }), r, stored, reader);
 
 describe('what the report kept, read beside the pattern the lead is already served', () => {
-  it('is one more line on the served pattern, so each pattern appears once, with its plain heading and the live count', () => {
+  it('reaches the lead not at all: no stored pattern and no stored line, while Ade reads his own with its plain heading and the live count', () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
     const out = readAs(lead);
-    expect(out.map((p) => p.participantId).sort()).toEqual(['p-ade', 'p-bola']);
-    const ade = out.find((p) => p.participantId === 'p-ade')!;
-    expect(ade.earlierRead).toBe(OBS);
+    expect(out).toEqual([]);
+    expect(JSON.stringify(out)).not.toContain(OBS);
+    const [ade] = readAs({ participantId: 'p-ade', runsIt: false });
     expect(ade.heading).toBe('Tasks are described without saying what they are for');
     expect(ade.sessions).toEqual([1, 2, 3]);
   });
   it('carries no stored who, code, name or status, and no label on a person in anything a person reads', () => {
-    const out = readAs(lead);
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    const out = [...readAs(lead), ...readAs({ participantId: 'p-ade', runsIt: false }), ...readAs({ participantId: 'p-bola', runsIt: false })];
+    expect(out.length).toBe(2);
     const text = JSON.stringify(out);
     for (const p of out) for (const k of ['who', 'code', 'name', 'status', 'consecutive', 'say']) expect(p).not.toHaveProperty(k);
     expect(text).not.toMatch(/Participant [A-Z]\b|the initiator|of 3, consecutively/i);
     for (const n of Object.values(PLAIN_PATTERN_NAMES).length ? ['Activity Without Outcome Logic', 'CEO-Pleasing'] : []) expect(text).not.toContain(n);
   });
-  it('drops a stored line that puts a label on a person, and keeps the pattern itself', () => {
-    const out = readAs(lead);
+  it('the lead reads no stored line that puts a label on a person; Bola keeps her own pattern without it', () => {
+    /* Hafsah, 2 November 2026: the lead reads the assessment's pattern layer, not stored patterns. */
+    expect(JSON.stringify(readAs(lead))).not.toContain('told the initiator the deal was closed');
+    const out = readAs({ participantId: 'p-bola', runsIt: false });
     const bola = out.find((p) => p.participantId === 'p-bola')!;
     expect(bola.earlierRead ?? null).toBeNull();
     expect(bola.heading).toBeTruthy();

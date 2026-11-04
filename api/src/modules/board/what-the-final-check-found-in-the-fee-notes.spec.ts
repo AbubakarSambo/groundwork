@@ -25,6 +25,7 @@ async function theFeeNotesWithTheSlipFiled() {
   return { db, filed };
 }
 
+/* Expectations updated (Hafsah, 30 October 2026: plain language for an impatient first-time lead; a difference is said as what people said, with no "needs settling".) */
 describe('the fee notes on record', () => {
   it('Njeri’s Equity slip, which names FN-004 by its number and Kasarani Foods by name, is filed on FN-004', async () => {
     const { filed } = await theFeeNotesWithTheSlipFiled();
@@ -62,7 +63,7 @@ describe('Wanjiru’s Thursday morning', () => {
   });
   it('never says "People said different things about this"', () => {
     const m = theMatterDirectMorning({
-      groundId: 'g', label: 'Litigation team daily', board: { decisions: [{ source: 'divergence', owner: 'You', question: 'People in this check-in said different things about this, so it needs settling.' }] },
+      groundId: 'g', label: 'Litigation team daily', board: { decisions: [{ source: 'divergence', owner: 'You', question: 'People in this check-in said different things about this.' }] },
       people: [], hers: new Set(), waits: [], items: [], lastCheckIn: {}, firstOpened: {}, workingDays: null, now: THURSDAY_MORNING, zone: 'Africa/Nairobi',
     });
     expect(JSON.stringify(m)).not.toMatch(/different things about this/);

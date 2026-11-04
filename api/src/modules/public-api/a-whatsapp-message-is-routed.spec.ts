@@ -29,11 +29,12 @@ describe('what arrived', () => {
 });
 
 describe('the report as one message, and the language line', () => {
-  it('says where things stand, the reads, and the conversation worth having', () => {
+  it('says where things stand, the reads, and the question on its own', () => {
     const t = reportAsText({ whereThingsStand: { saying: 'Two things settled, one open.' }, atAGlance: [{ label: 'Scope', value: 'Clear', sub: 'five pages named' }], theConversationWorthHaving: 'Who signs off copy.' }, 'New project');
     expect(t).toContain('Your report for New project is ready.');
     expect(t).toContain('Five pages named.');
-    expect(t).toContain('Here is a conversation worth having. Who signs off copy.');
+    expect(t).toContain('Who signs off copy.');
+    expect(t).not.toContain('conversation worth having');
     expect(t).not.toMatch(/Scope: Clear|Worth having:|\(five pages named\)/);
   });
   it('is empty for English and names the language otherwise', () => {

@@ -5,6 +5,13 @@
  */
 export const GroundworkEvents = {
   CHECK_IN_COMPLETED: 'checkin.completed',
+  /* THE CONVERSATION'S ASSESSMENT IS WRITTEN (conversation/assess-the-conversation.ts). Emitted just after a setup or a check-in
+     ends, once its one assessment is ready (or could not be written), on every path that ends one. The readers that moved onto
+     the assessment wait for this rather than for the completion, so they never read a conversation before it is assessed. */
+  ASSESSMENT_READY: 'assessment.ready',
+  /** SOMETHING SETUP GAVE WAS READ, after the save had answered (3 November 2026): the aims and targets it named, then the lead's full
+      report. The board listens and is warmed with each as it lands. */
+  SETUP_READ: 'ground.setupRead',
   /* THE TEAM IS TOLD. Three things the back office wants to hear about the moment they happen: a
      new organisation, a request for the API, a request for a call or coaching. Listened to in
      back-office/the-team-is-told.service.ts. */
@@ -33,8 +40,6 @@ export const GroundworkEvents = {
    * (Kevin's Kilimani deal) were never read. The board listens, and reads the finished sessions' records once.
    */
   KIND_OF_WORK_READ: 'ground.kindOfWorkRead',
-  /** THE AIMS AND TARGETS SETUP NAMED WERE READ, after the save had answered (3 November 2026). The board listens and is warmed with them. */
-  AIMS_READ: 'ground.aimsRead',
   /**
    * A HANDOFF WAS NAMED FOR THE FIRST TIME. Only when it clears the board's substance bar, so a
    * passing remark does not become an alert in somebody else's channel.
@@ -91,6 +96,14 @@ export interface CheckInCompletedEvent {
   source?: 'auto-close' | 'repair';
 }
 
+export interface AssessmentReadyEvent {
+  checkInId: string;
+  groundId: string;
+  participantId: string;
+  sessionNumber: number;
+  howItEnded: 'finished by the person' | 'closed by the clock' | 'declined' | 'setup saved' | 'missed';
+}
+
 export interface CheckInOpenedEvent {
   checkInId: string;
   groundId: string;
@@ -120,10 +133,6 @@ export interface GroundActivatedEvent {
 }
 
 export interface KindOfWorkReadEvent {
-  groundId: string;
-}
-
-export interface AimsReadEvent {
   groundId: string;
 }
 
@@ -197,4 +206,8 @@ export interface CallAskedEvent {
   /** CALL, COACHING, HANDS_ON or INTEGRATION. */
   subject: string;
   note: string | null;
+}
+
+export interface SetupReadEvent {
+  groundId: string;
 }

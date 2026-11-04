@@ -8,27 +8,25 @@ import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { whichSessionIsThisCheckInOn, whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
+import { whichSessionAreWeOn } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Page } from '@/components/gw/ui/Page'
-import { Note, Empty, Button, Stack, SubHeading, Callout, Section } from '@/components/gw/ui'
+import { Note, Empty, Button, Stack, Callout, Section } from '@/components/gw/ui'
 import { cadenceLabel } from '@/lib/cadence'
 import { peopleLabels, atTheStart } from '@/lib/utils'
-import { whoRunsThis, whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { useOpenSession } from '@/hooks/useOpenSession'
 import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
 import { YourWork } from '@/components/gw/checkin/YourWork'
-import { WhoIsInThis } from '@/components/gw/WhoIsInThis'
 import { BetweenCheckIns } from '@/components/gw/BetweenCheckIns'
-import { MyParticipation } from '@/components/gw/MyParticipation'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { ReferencesAndResourcesPage } from './ReferencesAndResources'
 import { MyWorkPage } from './MyWorkPage'
-import { theContextTabsName } from '@/lib/the-references-tab'
+import { REFERENCES_AND_RESOURCES } from '@/lib/the-references-tab'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 
@@ -194,7 +192,6 @@ export function GroundParticipantPage() {
    * that is a product decision, not an oversight, and it stays until Hafsah says
    * otherwise.
    */
-  const contextEnabled = (ground as any)?.contextEnabled === true
 
 
   /**
@@ -319,7 +316,7 @@ export function GroundParticipantPage() {
    */
   if (isError && !definitelyGone) return (
     <Page narrow>
-      <Empty title="We could not load this check-in" action={<Button kind="secondary" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Trying…' : 'Try again'}</Button>}>
+      <Empty title="I could not load this check-in" action={<Button kind="secondary" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Trying…' : 'Try again'}</Button>}>
         This is a connection problem, not a lost record. You are still part of it, and nothing you
         have written is affected.
       </Empty>
@@ -483,7 +480,7 @@ export function GroundParticipantPage() {
   // number). Unknown is null: the header prints the session with no total, and
   // the gate stays closed rather than guessed open.
   const totalSessions: number | null =
-    plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions) ?? null
+    plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions, (ground as any)?.cadenceDays) ?? null
 
 
   /**
@@ -515,38 +512,6 @@ export function GroundParticipantPage() {
     if (t === 'settings') return 'people'
     return 'mywork'
   }
-
-  /**
-   * ROUND 4, ITEM A STEP 2: "WHO IS IN THIS", COMPUTED ONCE, FOR People and setup.
-   *
-   * Exactly the values GroundChat used to compute inline for GroundTopic - moved up here,
-   * unchanged. See the comments at each of these call sites (still there, below) for why each is
-   * built the way it is.
-   */
-  const whoIsInThisNotOpenYet = !(dueNow ? openCheckIn.id : null) && !!(opensLater ? openAvailableFrom : null)
-  const whoIsInThisParties = (ground.participants ?? [])
-    .filter((p: any) => !p.managingOnly)
-    .map((p: any) => {
-      const currentSession = whichSessionIsThisCheckInOn(
-        (ground.participants ?? [])
-          .filter((q: any) => !q.managingOnly)
-          .map((q: any) =>
-            ((q.checkIns ?? []) as any[])
-              .filter((c) => c.status === 'COMPLETED')
-              .map((c) => c.sessionNumber ?? 0),
-          ),
-        totalSessions,
-      )
-      return {
-        name: atTheStart(participantLabel(p)),
-        done: hasDoneThisSession((p.checkIns ?? []) as any[], currentSession),
-        isSelf: p.userId === user?.id,
-        /* GROUP 3'S REVIEW, CONTRADICTION 4: held outside the organisation, by an admin - not by
-           the session's own clock. See the matching note in WhoIsInThis.tsx. */
-        waitingToBeLetIn: !!p.user?.awaitingOrgApproval,
-        notJoinedYet: !!(p as any)?.notJoinedYet,
-      }
-    })
 
   return (
     <div className="gwui-page-shell">
@@ -585,7 +550,7 @@ export function GroundParticipantPage() {
         <CheckInHeader
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: ground.label }]}
           title={ground.label}
-          subtitle={(ground as any).cadence ? (theRhythmInFull(ground as any, { untilEnded: !!(ground as any).runsUntilEnded }) ?? `${cadenceLabel((ground as any).cadence)}.`) : undefined}
+          subtitle={(ground as any).cadence ? (theRhythmInFull(ground as any, { untilEnded: !!(ground as any).runsUntilEnded }) ?? `${cadenceLabel((ground as any).cadence, (ground as any).cadenceDays)}.`) : undefined}
           action={(
             <div className="gwui-button-row">
               {/*
@@ -681,7 +646,7 @@ export function GroundParticipantPage() {
           tabs={[
             { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
             { key: 'checkin', label: 'Check-in' },
-            { key: 'context', label: theContextTabsName(ground as any, contextEnabled ? 'Context and resources' : 'Documents') },
+            { key: 'context', label: REFERENCES_AND_RESOURCES },
             { key: 'mywork', label: 'My work' },
             { key: 'people', label: 'People and setup' },
           ]}
@@ -879,7 +844,7 @@ export function GroundParticipantPage() {
           ) : (
             <BetweenCheckIns
               groundLabel={ground.label}
-              nextOpensSaying={whenTheNextOneOpens(myCheckIns, null)}
+              myCheckIns={myCheckIns}
               groundId={id!}
               canChangeTheRhythm={isInitiator}
               onGoToSetup={() => goTab('settings')}
@@ -928,9 +893,7 @@ export function GroundParticipantPage() {
 
         {/* CHECK-IN TAB */}
         {/* MY RECORD TAB */}
-        {/* RELEASE 1B (pull request 3 of 3): with the organisation's switch on, My work is the B7 page, served to this person as
-            their own (MyWorkPage.tsx), with the rest of today's page and the parts that left References and resources under it.
-            Off, today's page exactly as it was. */}
+        {/* My work is the B7 page, served to this person as their own (MyWorkPage.tsx), with the rest of today's page and the parts that left References and resources under it. */}
         {tab === 'record' && (() => {
           const yours = (
           <YourWork
@@ -965,12 +928,10 @@ export function GroundParticipantPage() {
             /* A party's "the team's, Read" opens the fuller shared-report reading experience below,
                not a bare per-session link - see the note on `onReadTeamReport` in YourWork.tsx. */
             onReadTeamReport={() => goTab('report')}
-            asTheRestOfMyWork={(ground as any).release1bTabsOn === true}
+            asTheRestOfMyWork
           />
           )
-          return (ground as any).release1bTabsOn === true
-            ? <MyWorkPage groundId={id!} onAllYourReports={() => goTab('report')} rest={<>{yours}<ContextPage ground={ground} role={isInitiator ? 'lead' : 'party'} viewerUserId={user?.id} only="what-moved-to-my-work" /></>} />
-            : yours
+          return <MyWorkPage groundId={id!} onAllYourReports={() => goTab('report')} rest={<>{yours}<ContextPage ground={ground} role={isInitiator ? 'lead' : 'party'} viewerUserId={user?.id} only="what-moved-to-my-work" /></>} />
         })()}
 
         {/* REPORT TAB */}
@@ -1027,10 +988,7 @@ export function GroundParticipantPage() {
           order, with a stray heading and buttons pointing at a chat this page does not have. One
           file now owns the bands and their order - see ContextPage.
         */}
-        {/* RELEASE 1B (pull request 2 of 3): References and resources where the organisation's switch is on; off, as before. */}
-        {tab === 'docs' && ((ground as any).release1bTabsOn === true
-          ? <ReferencesAndResourcesPage groundId={id ?? ''} ground={ground} isTheLead={isInitiator} />
-          : <ContextPage ground={ground} role={isInitiator ? 'lead' : 'party'} viewerUserId={user?.id} />)}
+        {tab === 'docs' && <ReferencesAndResourcesPage groundId={id ?? ''} ground={ground} isTheLead={isInitiator} />}
 
         {/* SETTINGS TAB */}
         {/*
@@ -1042,57 +1000,7 @@ export function GroundParticipantPage() {
           one banned prop this div had) moves to a class; `display`/`flexDirection` are not banned
           and stay inline, keeping the flex context `order` needs.
         */}
-        {/* RELEASE 1B (pull request 1 of 3): with the organisation's switch on, a team member reads only the short page the
-            server serves them (YourPeopleAndSetup.tsx). Off, the tab below reads exactly as it did. */}
-        {tab === 'settings' && ((ground as any).release1bTabsOn === true ? <YourPeopleAndSetup groundId={id ?? ''} /> : (
-          <div className="gwui-gap-10" style={{ display: 'flex', flexDirection: 'column' }}>
-            {/*
-              ROUND 4, ITEM A STEP 2: "WHO IS IN THIS", MOVED HERE FROM THE CHECK-IN TAB.
-              GroundChat.tsx's GroundTopic used to hold this beside "About this check-in" - which
-              duplicates Context and so is not re-added here, per the prototype's own placement
-              (People and setup).
-
-              WHO IS IN THIS, for the person who could not see it before. W13-5. `ground.participants`
-              already carries only the people this reader is allowed to know about - the service
-              filters the others out when peers are hidden - so this is a read of the payload, not a
-              new permission. NAMES, NOT ROLES (U.8 third review): `whoRunsThis` reads "Rukia knows
-              who is here", true whenever there is a lead; `WhoIsInThis` shows the lead her own true
-              sentence instead when `viewerIsTheLead` is set - exactly `isInitiatorHere`.
-            */}
-            <WhoIsInThis
-              parties={whoIsInThisParties}
-              peersHidden={(ground as any).peersVisibleEffective === false}
-              notOpenYet={whoIsInThisNotOpenYet}
-              viewerIsParty
-              leadName={whoRunsThis(ground as any)}
-              viewerIsTheLead={isInitiatorHere}
-            />
-            {/*
-              THE SETUP TAB IS WHAT IS TRUE ABOUT YOU, AND NOTHING ELSE.
-
-              It used to open with a paragraph saying nothing here was hers to change, then the two
-              panels that paragraph was apologising for - the yardstick and the starting point - both
-              of which said only that nothing had been set. Three statements about absence and
-              permission before a single fact about her.
-
-              The paragraph is gone, and so are the panels. Not because a party should not see what
-              they are read against - that is exactly what this product is for - but because a
-              settings tab was the wrong place for it. What the lead says success is now reaches her
-              on My record, beside her own account of it, which is where it can be compared rather
-              than merely disclosed. See `WhatSuccessLooksLike`.
-            */}
-            <SubHeading>Setup</SubHeading>
-
-            {/* Profile summary */}
-            <MyParticipation
-              viewer={user}
-              ground={ground}
-              myParticipant={myParticipant}
-              completedCount={completedCheckIns.length}
-              totalSessions={totalSessions ?? null}
-            />
-          </div>
-        ))}
+        {tab === 'settings' && <YourPeopleAndSetup groundId={id ?? ''} />}
       </div>
 
       {/* REVIEW ROUND 3, ITEM 2: THE PAYWALL, PULLED OUT INTO A SHARED COMPONENT (see useOpenSession.ts) */}

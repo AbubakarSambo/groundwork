@@ -51,7 +51,7 @@ function renderPage() {
 describe('the "What is it?" field in the onboarding chat\'s document panel', () => {
   it('has an accessible name, not only a placeholder', async () => {
     renderPage()
-    fireEvent.click(await screen.findByRole('button', { name: /\+ Doc/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /Add a document \(paste or upload\)/ }))
     expect(screen.getByRole('textbox', { name: 'What is it?' })).toBeTruthy()
   })
 })

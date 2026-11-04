@@ -55,7 +55,7 @@ describe('Joseph\'s session 2 opening, 13 October', () => {
 describe('what the opening says about how long a check-in takes', () => {
   it('the email, as Joseph would read it: "about ten minutes"', () => {
     const w = THE_EMAILS.nextCheckInOpen(false);
-    expect(`${w.before} Sales team, Q4${w.after}`).toBe('A new check-in is ready for Sales team, Q4. It takes about ten minutes, and answering keeps the picture you and your team read up to date.');
+    expect(`${w.before} Sales team, Q4${w.after}`).toBe('A new check-in is ready for Sales team, Q4. It takes about ten minutes, and your answers keep the report you and your team read up to date.');
   });
   it('WhatsApp, inside the 24 hours, in our own words: "about ten minutes"; outside them the approved template goes word for word, unchanged', () => {
     const said = theCheckInIsOpen({ firstName: 'Joseph', label: 'Sales team, Q4' });

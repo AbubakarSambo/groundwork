@@ -157,7 +157,8 @@ describe('item 3: a sign of work while a reply is on its way', () => {
       expect(screen.queryByText(/Still reading what you wrote/)).toBeNull()
 
       await act(async () => { await vi.advanceTimersByTimeAsync(4000) })
-      expect(screen.getByText('Still reading what you wrote. Nothing was lost, you do not need to send it again.')).toBeInTheDocument()
+      /* Hafsah, 30 October 2026: plain language for an impatient first-time lead; one short line that never says how long it takes. */
+      expect(screen.getByText('Still reading what you wrote.')).toBeInTheDocument()
 
       await act(async () => { resolveReply({ lane: 'x', composedBy: 'rules', blocks: [{ type: 'text', body: 'Nothing is stuck.' }] }) })
       await vi.waitFor(() => expect(screen.queryByText(/Still reading what you wrote/)).toBeNull())

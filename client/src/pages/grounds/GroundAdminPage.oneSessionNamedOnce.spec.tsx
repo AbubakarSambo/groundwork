@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GroundAdminPage } from './GroundAdminPage'
+import { aServedCount } from '@/lib/a-served-count-for-a-spec'
 import { groundsApi } from '@/api/grounds'
 
 /**
@@ -59,7 +60,9 @@ describe('B-053: the header names one session, and counts who has checked in for
          `openRound` has already moved to session 2, which nobody has answered - the exact split that
          produced the bug. */
       sessionClock: { currentSession: 1, plannedSessions: 12, says: 'Session 1 of 12.', whileOpen: null },
+      /* The count for that same session, from the server's one count (api grounds/the-count-as-served.ts; Hafsah, 30 October 2026). Changed 3 November (F1 part 2): one served count, theCount, in place of `thisSession` beside `answeredBySession`; the same sentences. */
       boardRenders: true,
+      theCount: aServedCount({ 1: { on: ['p-lead'], answered: ['p-lead'] }, 2: { on: [], answered: [] } }, { session: 1, everyoneIn: true, says: 'The one person in it has checked in for session 1.' }),
     }
     ;(groundsApi.get as any).mockResolvedValue(g)
     renderPage()
@@ -67,7 +70,7 @@ describe('B-053: the header names one session, and counts who has checked in for
 
     expect(await screen.findByText(/Session 1 of 12\./)).toBeTruthy()
     // One session, one true statement: the session just named has been checked into.
-    expect(await screen.findByText(/checked in for session 1/)).toBeTruthy()
+    expect(await screen.findByText(/has checked in for session 1\./)).toBeTruthy()
     expect(screen.queryByText(/Nobody has checked in yet/)).toBeNull()
     expect(screen.queryByText(/Waiting for the first check-in/)).toBeNull()
   })

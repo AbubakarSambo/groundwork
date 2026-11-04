@@ -1,6 +1,8 @@
 import { railAttention, openRound } from '@/lib/rail-attention'
+import { theClocksSessionSaid } from '@/lib/the-one-count'
 import { hasEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor } from '@/lib/sessionCount'
+import { timesAWeek } from '@/lib/cadence'
 import { scenarioLabel, isEvaluationScenario } from '@/lib/scenario-catalog'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whenItRunsOut } from '@/lib/when-it-runs-out'
@@ -31,6 +33,8 @@ export interface ListRow {
   brief?: string | null
   cadence?: string | null
   cadenceAnchorDay?: number | null
+  /** Twice or more a week: the weekdays it meets on. */
+  cadenceDays?: number[] | null
   workingDays?: number[] | null
   timelineDays?: number | null
   maxSessions?: number | null
@@ -97,6 +101,8 @@ export function howOften(g: ListRow): string | null {
   if (!c) return null
   if (c === 'ONE_TIME') return 'One time.'
   if (c === 'SEQUENTIAL') return 'When the lead checks in.'
+  const often = timesAWeek(c, g.cadenceDays)
+  if (often) return `${often[0].toUpperCase()}${often.slice(1)}.`
   const base = ({ DAILY: 'Daily', WEEKLY: 'Weekly', FORTNIGHTLY: 'Every 2 weeks', MONTHLY: 'Monthly' } as Record<string, string>)[c]
   if (!base) return null
   const days = [...(g.workingDays ?? [])].sort().join(',')
@@ -144,7 +150,7 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   const forWhat = g.scenario ? sentenceCase(scenarioLabel(g.scenario, g.brief)) : ''
   const iRunIt = !!me && g.initiatorId === me
   const planned = g.glance?.progress?.roundsPlanned
-    ?? plannedSessionsFor(g.timelineDays ?? null, g.cadence as never, g.maxSessions ?? g.totalSessions ?? null)
+    ?? plannedSessionsFor(g.timelineDays ?? null, g.cadence as never, g.maxSessions ?? g.totalSessions ?? null, g?.cadenceDays)
   const done = g.glance?.progress?.roundsDone ?? g.roundsDone ?? 0
   /*
    * SCREEN FAULT 9: "SESSION 2 OF 12" HERE, "SESSION 1 OF 12" ON THE BOARD, FOR THE SAME CHECK-IN
@@ -213,9 +219,9 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   else if (iRunIt && !allDone && !isEvaluationScenario(g.scenario) && g.cadence && g.cadence !== 'ONE_TIME' && round > 0 && aSessionReportToShare(g, round)) needs = { text: g.cadence === 'DAILY' ? 'Today’s report ready' : 'This session’s report is ready', tone: 'proven' }
   else if (a.kind === 'waiting' && iRunIt) {
     const byId = new Map((g.participants ?? []).map(p => [p.id, p]))
-    const missing = sessionsOf(g).filter(c => c.sessionNumber === round && c.status !== 'COMPLETED').map(c => byId.get(c.participantId))
+    /* Who the server's one count still waits on (api this-sessions-count.ts), never a count of the rows on the screen (Hafsah, 30 October 2026). */
+    const missing = ((g as any).glance?.progress?.waitingOn ?? []).map((id: string) => byId.get(id))
     const name = missing.length === 1 ? firstName(missing[0]) : null
-    /* Counted from the session's own rows: a lead who does not answer is not someone it waits on. */
     const count = missing.length
     if (count > 0) needs = { text: name ? `Waiting on ${name}` : count === 1 ? 'Waiting on 1 person' : `Waiting on ${count} people`, tone: 'plain' }
   }
@@ -223,6 +229,7 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   /* WHERE IT STANDS. */
   let stands: string
   const answered = g.glance?.progress?.answeredThisRound
+  const said = theClocksSessionSaid(g)
   const ofPeople = g.glance?.progress?.ofPeople ?? 0
   const next = nextSessionOn(g, now)
   if (g.status === 'AWAITING_APPROVAL') stands = 'Not started yet'
@@ -233,7 +240,8 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   else if (done === 0 && round <= 1 && !answered) stands = 'Just started'
   /* danielpip-board.jpg, "Daniel, the next six weeks: Both accounts in": on a check-in about one person, the person's account and the lead's are both in for this session. */
   else if (round > 0 && isEvaluationScenario(g.scenario) && ofPeople === 2 && answered === 2) stands = 'Both accounts in'
-  else if (round > 0 && ofPeople > 1 && answered != null && answered < ofPeople) stands = `${answered} of ${ofPeople} answered`
+  /* The one count's own sentence, as the server serves it to a reader shown the others: "2 of 4 have checked in; Peter and Mary haven't joined yet." */
+  else if (round > 0 && said && !said.everyoneIn) stands = said.says
   else if (next) stands = `Next: ${whenItWas(next, 'dayAndMonthLong')}`
   else if (planned) stands = `${done} of ${planned} sessions done`
   else stands = done === 1 ? '1 session done' : `${done} sessions done`

@@ -58,9 +58,7 @@ export interface TheReportYouSawAtTheEndProps {
   renderCorrect?: (about: string) => ReactNode
   /** True to note that the reader has already corrected this once. */
   correctedNote?: boolean
-  /** Renders the invite control against a suggested party or a mentioned person, when there is one. */
-  renderAdd?: (key: string, label: string) => ReactNode
-  /** The line under "Where this leaves you" saying what is on record. */
+  /** The line under "What happens next" saying what is on record. */
   onRecordLine?: ReactNode
   /**
    * WHAT THE CHECK-IN STILL NEEDS FROM THE PERSON WHO SET IT UP.
@@ -76,7 +74,7 @@ export interface TheReportYouSawAtTheEndProps {
    *
    * The end of a first session is the one moment where somebody has just been thinking about the
    * work and has not yet been handed a dashboard. A slot rather than markup, because what is missing
-   * differs by caller and only the caller can answer it - the same reason `renderAdd` is a slot.
+   * differs by caller and only the caller can answer it.
    */
   stillNeeded?: ReactNode
   /**
@@ -169,7 +167,6 @@ export function TheReportYouSawAtTheEnd({
   correctionSlot,
   renderCorrect,
   correctedNote,
-  renderAdd,
   onRecordLine,
   stillNeeded,
   stands,
@@ -183,11 +180,17 @@ export function TheReportYouSawAtTheEnd({
     <div className="gw-close gw-entry-report" style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
         <style>{CLOSE_SHEET}</style>
         <style>{SIZES}</style>
-        {/* What we heard from you */}
+        {/*
+          THE PROTOTYPE'S OWN HEADINGS (Hafsah, 30 October 2026, first-experience round 1). Impatient
+          leads read "What we heard from you", "What we noticed", "Why it matters" and "Where this
+          leaves you" as a consultant's report. The prototype's own report and end card
+          (B4 own-report, B3 check-in-end-card) say "What you told us" and "What happens next", with
+          no caption over each sentence, so this says the same.
+        */}
         <div className="gw-head"><div style={{ background: 'var(--gw-dark)', borderRadius: 10, padding: 'var(--er-box-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 'var(--er-gap-sm)' }}>
             {/* U.9 RE-REVIEW, ITEM A: a plain heading, not a shout. */}
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-b)' }}>What we heard from you</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-b)' }}>What you told me</div>
             {correctedNote && (
               <div style={{ fontSize: 'var(--er-label)', color: 'rgba(255,255,255,.55)', fontStyle: 'normal' }}>Updated after your correction</div>
             )}
@@ -205,13 +208,12 @@ export function TheReportYouSawAtTheEnd({
             note were "01 WHAT'S STILL OPEN" over a lower-case sub-line; they are now one plain
             sentence, and each field caption inside the card is no longer shouted in capitals. */}
         {report.areasRequiringAlignment.length > 0 && (
-          <Block n={next()} label="What's still open, and what to do about it">
+          <Block n={next()} label="What is still open">
             {report.areasRequiringAlignment.map((a, i) => (
               <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-amber-b)', borderRadius: 10, padding: 'var(--er-box)', marginBottom: 'var(--er-gap-sm)' }}>
                 {/* A title the server judged unusable as a heading is absent; the card stands without it. */}
                 {a.title && <div style={{ fontSize: 'var(--er-lead)', fontWeight: 700, marginBottom: 7 }}>{a.title}</div>}
-                <div style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>{a.observation}</div>
-                <div style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Why it matters</span>{a.whyItMatters}</div>
+                <p style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, margin: '0 0 5px' }}>{[a.observation, a.whyItMatters].filter(Boolean).join(' ')}</p>
                 {renderCorrect?.(a.title)}
                 <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: 'var(--er-box-sm)', fontSize: 'var(--er-body)', color: 'var(--gw-green-t)', lineHeight: 1.5 }}><span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
               </div>
@@ -250,13 +252,11 @@ export function TheReportYouSawAtTheEnd({
                 Based on this check-in, these roles would strengthen the check-in. What they say would change or confirm what is currently on record from one side only.
               </div>
               {report.suggestedParties.map((p, i) => {
-                const key = `sug-${i}-${p.role}`
                 return (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-blue-bg)' : undefined }}>
                   <div style={{ flex: 1 }}>
                     <CardTitle>{p.role}</CardTitle>
                     <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.reason}</div>
-                    {renderAdd?.(key, p.reason)}
                   </div>
                 </div>
                 )
@@ -302,18 +302,17 @@ export function TheReportYouSawAtTheEnd({
                   same thing as adding them in the invite step below, so reworded to say that
                   instead of describing a list that may not be on screen.
                 */}
-                {renderAdd
-                  ? 'You named these people while you were talking. Add anyone who should answer for this themselves, and they will be invited when you save. Adding them here does the same thing as adding them below, so nobody is invited twice.'
-                  : 'You named these people while you were talking. Adding somebody to this check-in is done on its Setup tab.'}
+                {/* ONE WAY TO ADD A TEAM (Hafsah, 31 October 2026; round 5's startup lead). Each name here had its own "Add them" and its
+                    own email field, beside the team box that already held everybody named; he added five people one at a time and
+                    typed each email. The team box in the setup is the one way now, and this says where it is, wherever it is read. */}
+                You named these people while you were talking. You choose who is on this check-in in its setup.
               </div>
               {report.mentionedPeople.map((p, i) => {
-                const key = `men-${i}-${p.name}`
                 return (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
                   <div style={{ flex: 1 }}>
                     <CardTitle>{p.name}</CardTitle>
                     <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
-                    {renderAdd?.(key, `${p.name} - ${p.context}`)}
                   </div>
                 </div>
                 )
@@ -357,13 +356,13 @@ export function TheReportYouSawAtTheEnd({
         */}
         {/* FAULT 12 (live review): same fix - "Where this leaves you" is the whole heading; what is
             settled and what is still open is what the rows underneath already say. */}
-        <Block n={next()} label="Where this leaves you">
+        <Block n={next()} label="What happens next">
           {((stands?.settled?.length ?? 0) || (stands?.open?.length ?? 0))
             ? <div style={{ display: 'grid', gap: 6 }}>
                 {(stands?.settled ?? []).map((t, i) => <div key={`s${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}>{`Everyone agrees that ${lowerFirst(t)}`}</div>)}
                 {(stands?.open ?? []).map((t, i) => <div key={`o${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}>{`This is still open. ${capitalize(t)}`}</div>)}
               </div>
-            : <div style={{ fontSize: 'var(--er-lead)', color: 'var(--gw-sub)', lineHeight: 1.5 }}>Nothing is settled or unsettled yet. That comes once more than one person has checked in.</div>}
+            : <div style={{ fontSize: 'var(--er-lead)', color: 'var(--gw-sub)', lineHeight: 1.5 }}>Once someone else checks in, you will see where you agree and where you see things differently.</div>}
           <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-muted)', marginTop: 8 }}>
             {onRecordLine}
           </div>

@@ -53,7 +53,7 @@ describe('opening a session that is taking a while', () => {
 
     renderChat()
     expect(await screen.findByText('Groundwork is writing…')).toBeTruthy()
-    expect(screen.queryByText(/can take a minute or two/i)).toBeNull()
+    expect(screen.queryByText('Getting your first question.')).toBeNull()
   })
 
   it('shows the same animated dots every other wait shows, in Groundwork\'s own bubble shape (Hafsah, 9 October)', async () => {
@@ -69,7 +69,8 @@ describe('opening a session that is taking a while', () => {
     expect(region?.querySelector('.gwui-writing-dots')).toBeTruthy()
   })
 
-  it('says the wait can take a minute or two once it has gone on a few seconds', async () => {
+  /* Changed 3 November evening (Hafsah: no explanation lines): a long wait adds no line; "Groundwork is writing…" and its dots say it. */
+  it('adds no line once the wait has gone on a few seconds, and never says how long it takes', async () => {
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'NOT_STARTED', sessionNumber: 1, groundId: 'g1' },
       turns: [],
@@ -80,7 +81,9 @@ describe('opening a session that is taking a while', () => {
     await screen.findByText('Groundwork is writing…')
     await vi.advanceTimersByTimeAsync(5_000)
 
-    expect(await screen.findByText('Getting your first question ready. This can take a minute or two.')).toBeTruthy()
+    expect(screen.getByText('Groundwork is writing…')).toBeTruthy()
+    expect(screen.queryByText('Getting your first question.')).toBeNull()
+    expect(document.body.textContent).not.toMatch(/minute or two|can take/i)
   })
 
   it('never says it once the session has actually opened', async () => {
@@ -94,7 +97,7 @@ describe('opening a session that is taking a while', () => {
     await vi.advanceTimersByTimeAsync(10_000)
 
     expect(await screen.findByText(/How has the week gone\?/i)).toBeTruthy()
-    expect(screen.queryByText(/can take a minute or two/i)).toBeNull()
+    expect(screen.queryByText('Getting your first question.')).toBeNull()
   })
 })
 

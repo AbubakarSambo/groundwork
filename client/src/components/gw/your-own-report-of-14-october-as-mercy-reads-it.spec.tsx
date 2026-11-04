@@ -43,7 +43,7 @@ describe('Mercy’s own report for 14 October', () => {
     expect(within(well).getByText(OWN.didWell[0].text)).toBeTruthy()
     expect(within(well).queryByText(/Delivery|pays then/)).toBeNull()
     expect(screen.getByText(OWN.story)).toBeTruthy()
-    const told = screen.getByRole('region', { name: 'What you told us' })
+    const told = screen.getByRole('region', { name: 'What you told me' })
     for (const x of OWN.toldUs) expect(within(told).getByText(x.text)).toBeTruthy()
     expect(within(told).getByText('You said this. A message from Mrs Njeri would prove it.')).toBeTruthy()
     expect(within(screen.getByRole('region', { name: 'One thing to think about' })).getByText(THINK)).toBeTruthy()

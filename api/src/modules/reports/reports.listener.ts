@@ -1,4 +1,5 @@
 import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
+import { theFactsOnRecord } from '../conversation/the-facts-on-record';
 import { nameToCall } from '../engagement/a-name-to-call-them';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { whoIsLeftToCheckIn } from '../email/who-has-not-checked-in-yet';
@@ -10,7 +11,7 @@ import { GroundsService } from '../grounds';
 import { ReportsService } from './reports.service';
 import { TheWeeklyReportService } from './the-weekly-report.service';
 import { EmailService } from '../email/email.service';
-import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
+import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent, AssessmentReadyEvent } from '../../common';
 import { GroundStatus, PartyType, ReportActivationStatus, CheckInStatus } from '@prisma/client';
 import { hasEnded, isHeld, hasStalled, isShut } from '../grounds/a-ground-that-has-ended';
 import { theTimeItSharesItself } from './a-report-shares-itself';
@@ -20,7 +21,8 @@ import { theTimeItSharesItself } from './a-report-shares-itself';
  * the emitters (conversation, grounds) never import reports - no cycle.
  *
  * Flow:
- *   checkin.completed  -> when ALL parties finish any session:
+ *   checkin.completed  -> tell the admin and the other party; a repair writes the report at once.
+ *   assessment.ready   -> when ALL parties finish any session:
  *                           synthesize the report and move the ground to ACTIVE.
  *                           No payment gate between sessions.
  *   ground.activated   -> synthesize if needed, then release report.
@@ -49,7 +51,9 @@ export class ReportsListener {
     try {
       const row = await this.prisma.checkIn.findUnique({ where: { id: event.checkInId }, select: { isSetup: true } });
       if (!row?.isSetup) return false;
-      return (await this.prisma.recordEntry.count({ where: { participant: { groundId: event.groundId } } })) === 0;
+      /* Nothing on the record is no line and nothing in anybody's assessment (the one reader, 1 November 2026). */
+      if ((await this.prisma.recordEntry.count({ where: { participant: { groundId: event.groundId } } })) > 0) return false;
+      return (await theFactsOnRecord(this.prisma, { groundId: event.groundId, reader: { kind: 'everybody in the check-in' } })).length === 0;
     } catch {
       return false;
     }
@@ -70,6 +74,24 @@ export class ReportsListener {
       this.logger.warn(`Late-correction notification failed for ground ${event.groundId}: ${err.message}`),
     );
 
+    /*
+     * THE REPORT WAITS FOR THE CONVERSATION'S ASSESSMENT (one source, 1 November 2026). The promises and waits a check-in adds are
+     * read from its assessment, after the completion, so a report written now would miss them. It is written when the assessment
+     * and what was read from it are ready (onTheAssessmentReady, below). A repair is the backstop re-sending a completion whose
+     * assessment was written long ago, so it is written at once, as it always was.
+     */
+    if (event.source === 'repair') await this.writeAndRelease(event);
+  }
+
+  /** When a conversation's assessment, and the promises and waits read from it, are ready. A decline is not an account: it never wrote a report, and still does not. */
+  @OnEvent(GroundworkEvents.ASSESSMENT_READY)
+  async onTheAssessmentReady(event: AssessmentReadyEvent) {
+    if (event.howItEnded === 'declined') return;
+    await this.writeAndRelease({ checkInId: event.checkInId, groundId: event.groundId, participantId: event.participantId, sessionNumber: event.sessionNumber });
+  }
+
+  /** The report built, and released once everybody is through: exactly what the completion did, moved here unchanged. */
+  private async writeAndRelease(event: CheckInCompletedEvent) {
     /* A set-up conversation alone is no account: with nothing on the record from anyone, a report would be written from nothing. */
     if (await this.thereIsNothingToWriteAReportFrom(event)) return;
 
@@ -125,7 +147,7 @@ export class ReportsListener {
       // Once everyone is through, this is the real moment: mutual reveal,
       // billing activation, "your report is ready" notifications.
       this.logger.log(`All parties through session ${sessionNumber}. Releasing report and activating ground ${event.groundId}.`);
-      const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true, cadence: true, reportSharesAt: true } as any }) as any;
+      const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true, cadence: true, cadenceDays: true, reportSharesAt: true } as any }) as any;
       if (g) {
         /*
          * A REPORT SHARES ITSELF AT ITS SET TIME, NOT THE MOMENT EVERYONE IS IN (Hafsah's answers 1 and 5, 16 October 2026).

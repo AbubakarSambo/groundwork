@@ -40,7 +40,7 @@ describe('the manager\'s week groups what was already decided', () => {
      * the one condition there was before the person's own words were read too).
      */
     expect(WEEK).toContain('const groundworkRaisedIt = !!w.escalatedAt;');
-    expect(WEEK).toContain('itWasTakenFurther({ triedSaid: w.triedSaid ?? null })');
+    expect(WEEK).toContain('itWasTakenFurther(w)');
     expect(WEEK).toContain('if (!theySaidSo && !groundworkRaisedIt) continue;');
   });
 

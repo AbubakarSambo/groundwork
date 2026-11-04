@@ -1,7 +1,7 @@
+import { timesAWeekInWords } from './the-check-ins-own-schedule';
 import { aDayInItsZone } from '../board/a-day-said-in-full';
 import { whoAnswersThisCheckIn } from '../reports/how-many-have-answered';
 import { NotFoundException } from '@nestjs/common';
-import { theRelease1bTabsAreOn } from './release-1b-tabs';
 import { readsAsAnAdmin } from './who-may-read-this-check-in';
 import { deadlineOf } from './when-the-clock-starts';
 import { totalSessionsFor } from './session-count';
@@ -91,7 +91,7 @@ const ordinal = (n: number) => (n % 10 === 1 && n !== 11 ? `${n}st` : n % 10 ===
 const listed = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
 /** "every weekday", "every Monday", "on the 5th of every month", "once": how often, as part of a sentence. */
-export function theRhythmInWords(g: { cadence?: string | null; workingDays?: number[] | null; cadenceAnchorDay?: number | null }): string {
+export function theRhythmInWords(g: { cadence?: string | null; workingDays?: number[] | null; cadenceAnchorDay?: number | null; cadenceDays?: number[] | null }): string {
   const days = [...new Set((g.workingDays ?? []).filter((d) => d >= 0 && d <= 6))].sort();
   const anchor = g.cadenceAnchorDay;
   switch (g.cadence) {
@@ -100,7 +100,7 @@ export function theRhythmInWords(g: { cadence?: string | null; workingDays?: num
       if (!days.length || days.length === 7) return 'every day';
       return `every ${listed(days.map((d) => WEEK[d]))}`;
     case 'WEEKLY':
-      return anchor != null && anchor >= 0 && anchor <= 6 ? `every ${WEEK[anchor]}` : 'every week';
+      return timesAWeekInWords({ cadence: g.cadence, days: g.cadenceDays }) ?? (anchor != null && anchor >= 0 && anchor <= 6 ? `every ${WEEK[anchor]}` : 'every week');
     case 'FORTNIGHTLY':
       return anchor != null && anchor >= 0 && anchor <= 6 ? `every other ${WEEK[anchor]}` : 'every 2 weeks';
     case 'MONTHLY':
@@ -123,6 +123,7 @@ export function howThisCheckInRuns(a: {
   cadence?: string | null;
   workingDays?: number[] | null;
   cadenceAnchorDay?: number | null;
+  cadenceDays?: number[] | null;
   endsOn: Date | null;
   noEnd: boolean;
   onWhatsApp: boolean;
@@ -216,7 +217,7 @@ export async function readPeopleAndSetup(
     where: { id: input.groundId },
     select: {
       id: true, organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, status: true, approvedById: true,
-      cadence: true, workingDays: true, cadenceAnchorDay: true, timelineDays: true, runsUntilEnded: true, startsAt: true, endsAt: true,
+      cadence: true, cadenceDays: true, workingDays: true, cadenceAnchorDay: true, timelineDays: true, runsUntilEnded: true, startsAt: true, endsAt: true,
       createdAt: true, overWhatsApp: true, kindOfWork: true, peersVisibleToEachOther: true, restrictExternalVisibility: true,
       /* The type, for "What it is" where Release 2 is on (the-switchboard.ts). The words are read here and never served. */
       kindOfWorkSetBy: true, checkInType: true, checkInTypeConfirmedAt: true, label: true, brief: true,
@@ -234,7 +235,6 @@ export async function readPeopleAndSetup(
     },
   });
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
-  if (!(await theRelease1bTabsAreOn(prisma, ground.organizationId))) return { on: false };
 
   const viewer = await prisma.user.findUnique({ where: { id: input.userId }, select: { role: true, organizationId: true, email: true } });
   const rows: Row[] = (ground.participants ?? []) as Row[];
@@ -251,10 +251,10 @@ export async function readPeopleAndSetup(
   /* The people a session waits on, by the round's own rule (reports/how-many-have-answered.ts), so this and Today's "1 of 5" count the same people. */
   const answering = whoAnswersThisCheckIn(rows as any[], ground.scenario).length;
   const howItRuns = howThisCheckInRuns({
-    answering, cadence: ground.cadence, workingDays: ground.workingDays, cadenceAnchorDay: ground.cadenceAnchorDay,
+    answering, cadence: ground.cadence, workingDays: ground.workingDays, cadenceAnchorDay: ground.cadenceAnchorDay, cadenceDays: (ground as any).cadenceDays,
     endsOn, noEnd, onWhatsApp: askedOnWhatsApp, endedBy: isLead ? 'you' : (ground.initiator?.firstName || 'the person who runs it'), timeZone,
   });
-  const planned = noEnd ? null : totalSessionsFor(ground.timelineDays, ground.cadence);
+  const planned = noEnd ? null : totalSessionsFor(ground.timelineDays, ground.cadence, ground.cadenceDays);
 
   if (!isLead && !isAdmin && mine) {
     /* A TEAM MEMBER: THE SHORT PAGE, AND NOTHING ELSE. */

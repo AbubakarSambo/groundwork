@@ -12,9 +12,11 @@ describe('a document or a photo backing a line makes the round checkable', () =>
     expect(aRoundCanBeChecked({ specificityLevel: 'specific' }, false, false)).toBe(true);
     expect(aRoundCanBeChecked(null, true, false)).toBe(true);
   });
-  it('the board reads each check-in\'s backing documents this round', () => {
+  /* Changed 3 November: since cbb2468f9 ("silence is never a finding") the board reads the whole record, not this round alone,
+     so the lines are `theRecordsLines`; the rule this pins is the same. */
+  it('the board reads each check-in\'s backing documents across the record', () => {
     const src = readFileSync(join(__dirname, 'board.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    expect(src).toMatch(/const backedByADocument = new Set\(thisRoundsLines\.filter\(\(e: any\) => !!e\.anchoredDocumentId\)/);
+    expect(src).toMatch(/const backedByADocument = new Set\(theRecordsLines\.filter\(\(e: any\) => !!e\.anchoredDocumentId\)/);
     expect(src).toMatch(/aRoundCanBeChecked\(c, recordHasSomething, backedByADocument\.has\(c\?\.id\)\)/);
   });
 });

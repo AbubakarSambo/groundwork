@@ -60,9 +60,10 @@ describe('an invite that waits says so', () => {
     const unconditional: string[] = [...(ADMIN.match(/>Invite sent to \{lastInvitedEmail\}</g) ?? [])]
       .concat(ROSTER.match(/>Invite sent to \{lastInvitedEmail\}</g) ?? [])
     expect(unconditional).toEqual([])
-    /* And the guarded sentence is still there somewhere, so this is not passing by having said
-       nothing at all. */
-    expect(ROSTER).toMatch(/Invite sent to \$\{lastInvitedEmail\}/)
+    /* The team box (Hafsah, 31 October 2026) says how many are on the check-in, and what happened to an invitation that did not go:
+       never "Invite sent". So this is not passing by having said nothing at all. */
+    expect(ROSTER).not.toMatch(/Invite sent to/)
+    expect(ROSTER).toMatch(/did not send\. They are on the check-in/)
   })
 
   it('and the setup flow counts the people who are waiting, not only the ones refused', () => {

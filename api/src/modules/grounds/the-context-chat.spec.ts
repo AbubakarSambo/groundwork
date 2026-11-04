@@ -163,6 +163,10 @@ describe('the opening line, written by the product from what the check-in alread
     expect(openingLine(84, 'WEEKLY')).toBe('This check-in runs for 12 weeks and people check in once a week.');
   });
 
+  it('says twice a week with its days (assessment test, 2 November)', () => {
+    expect(openingLine(84, 'WEEKLY', false, null, [1, 4])).toBe('This check-in runs for 12 weeks and people check in twice a week, on Monday and Thursday.');
+  });
+
   it('says only the length when there is no chosen rhythm yet', () => {
     expect(openingLine(84, null)).toBe('This check-in runs for 12 weeks.');
   });

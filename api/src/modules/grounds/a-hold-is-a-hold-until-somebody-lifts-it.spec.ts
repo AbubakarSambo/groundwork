@@ -3,6 +3,7 @@ import { GroundStatus, CheckInStatus } from '@prisma/client';
 import { GroundsCron } from './grounds.cron';
 import { GroundsService } from './grounds.service';
 import { ReportsListener } from '../reports/reports.listener';
+/* Changed 1 November 2026: the report is written when the check-in's assessment is ready (onTheAssessmentReady), not on the completion itself; the same release logic, checked the same way. */
 
 /**
  * A HOLD IS A HOLD UNTIL SOMEBODY LIFTS IT.
@@ -89,14 +90,14 @@ describe('releasing a report leaves a held ground alone', () => {
 
   it('releases the report and does not set a PAUSED ground ACTIVE', async () => {
     const { l, prisma, reports } = listener(GroundStatus.PAUSED);
-    await l.onCheckInCompleted({ groundId: paused.id, sessionNumber: 1 } as any);
+    await l.onTheAssessmentReady({ groundId: paused.id, sessionNumber: 1 } as any);
     expect(reports.release).toHaveBeenCalled();
     expect(prisma.ground.update).not.toHaveBeenCalled();
   });
 
   it('still sets a live ground ACTIVE, which is what release normally means', async () => {
     const { l, prisma } = listener(GroundStatus.AWAITING_PARTIES);
-    await l.onCheckInCompleted({ groundId: 'g-live', sessionNumber: 1 } as any);
+    await l.onTheAssessmentReady({ groundId: 'g-live', sessionNumber: 1 } as any);
     expect(prisma.ground.update).toHaveBeenCalledWith(expect.objectContaining({ data: { status: GroundStatus.ACTIVE } }));
   });
 });

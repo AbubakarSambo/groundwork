@@ -35,10 +35,10 @@ import { onboardingIsReady } from './entry.service';
 const AND_AN_AIM = { goals: ['a number by a date'] };
 
 describe('setup asks what this person can actually answer', () => {
-  it('wants the situation and why now, from everybody', () => {
+  /* Why now is asked once by setup's instructions and no longer holds the gate (first experience, round 2, 31 October 2026). */
+  it('wants the situation and what it is about, from everybody', () => {
     expect(onboardingIsReady({ ...AND_AN_AIM, mode: 'recurring' })).toBe(false);
-    expect(onboardingIsReady({ ...AND_AN_AIM, mode: 'recurring', initial: 'a thing' })).toBe(false);
-    expect(onboardingIsReady({ ...AND_AN_AIM, mode: 'recurring', initial: 'a thing', decision: 'because' })).toBe(true);
+    expect(onboardingIsReady({ ...AND_AN_AIM, mode: 'recurring', initial: 'a thing' })).toBe(true);
   });
 
   it('does not wait for a question setup no longer asks', () => {

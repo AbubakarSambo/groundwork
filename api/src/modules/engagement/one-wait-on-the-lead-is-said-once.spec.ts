@@ -42,11 +42,13 @@ describe("Grace's morning summary, with Peter's wait on her", () => {
 });
 
 describe('A difference on her board, in the same summary', () => {
-  it('says once that it needs settling', () => {
+  /* Hafsah, 30 October 2026: plain language for an impatient first-time lead. The board's sentence no longer ends "so it needs
+     settling"; a board stored before then is read without that ending, and the difference is still said once. */
+  it('says the difference once, as the board says it', () => {
     const all = withWhatTheBoardsSay({ ...fromTheRecord(), needsYou: [] }, [{ label: 'Sales team, Q4', groundId: GROUND, board: { decisions: [
       { question: 'People in this check-in said different things about the status of the sale to Mama Pima Stores, so it needs settling.', owner: 'You', source: 'divergence' },
     ] } }]);
     const said = withPlacesWhereTheyTellApart(all).needsYou.map((t) => t.text);
-    expect(said).toEqual(['People in this check-in said different things about the status of the sale to Mama Pima Stores, so it needs settling.']);
+    expect(said).toEqual(['People in this check-in said different things about the status of the sale to Mama Pima Stores.']);
   });
 });

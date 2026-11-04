@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { thePersonHasHadTheirTurn, patternRowsThisReaderMayRead, type APatternRow } from './who-reads-a-pattern';
+import { patternRowsThisReaderMayRead, type APatternRow } from './who-reads-a-pattern';
+
+/* 2 November 2026 (F2): a stored pattern is read by the person it is about and nobody else, so the lead's clock (thePersonHasHadTheirTurn)
+   is gone. Each test that asked when the lead could read it now asserts that the lead never reads it, at that same moment. */
+const theLeadReadsIt = (row: APatternRow, now: Date) => patternRowsThisReaderMayRead([row], { participantId: null, runsIt: true }, { on: true, now }).length > 0;
 
 /**
  * DECISION 62: A PATTERN THAT ALREADY EXISTED AT RELEASE STARTS THE PERSON-FIRST PROCESS ON RELEASE
@@ -62,7 +66,7 @@ describe('an existing pattern starts the person-first process on release day', (
   };
 
   it('is not readable by whoever runs the check-in on release day itself', () => {
-    expect(thePersonHasHadTheirTurn(existingRow, releaseDay)).toBe(false);
+    expect(theLeadReadsIt(existingRow, releaseDay)).toBe(false);
     const forTheLead = patternRowsThisReaderMayRead([existingRow], { participantId: null, runsIt: true }, { on: true, now: releaseDay });
     expect(forTheLead).toHaveLength(0);
   });
@@ -78,24 +82,24 @@ describe('an existing pattern starts the person-first process on release day', (
 
   it('still is not readable by whoever runs the check-in a few days after release, before either clock has run out', () => {
     const threeDaysIn = new Date(releaseDay.getTime() + 2 * 24 * 60 * 60 * 1000);
-    expect(thePersonHasHadTheirTurn(existingRow, threeDaysIn)).toBe(false);
+    expect(theLeadReadsIt(existingRow, threeDaysIn)).toBe(false);
   });
 
-  it('reaches whoever runs the check-in seven days after release, if the person never opens a page that shows it - never seven days after it was last seen', () => {
+  it('never reaches whoever runs the check-in, seven days after release or after it was last seen', () => {
     const sixDaysIn = new Date(releaseDay.getTime() + 6 * 24 * 60 * 60 * 1000);
-    expect(thePersonHasHadTheirTurn(existingRow, sixDaysIn)).toBe(false);
+    expect(theLeadReadsIt(existingRow, sixDaysIn)).toBe(false);
     const sevenDaysIn = new Date(releaseDay.getTime() + 7 * 24 * 60 * 60 * 1000);
-    expect(thePersonHasHadTheirTurn(existingRow, sevenDaysIn)).toBe(true);
+    expect(theLeadReadsIt(existingRow, sevenDaysIn)).toBe(false);
     /* And it is nothing to do with how long ago it was last seen: longBeforeRelease is unused by
        the rule at all, which is the point - the clock is ready_at, not last_seen_at. */
     expect(longBeforeRelease.getTime()).toBeLessThan(releaseDay.getTime());
   });
 
-  it('reaches whoever runs the check-in three days after the person is actually shown it, sooner than the seven-day fallback', () => {
+  it('never reaches whoever runs the check-in after the person is shown it either', () => {
     const shownOnReleaseDay = { ...existingRow, shownToPersonAt: releaseDay };
     const twoDaysAfterShown = new Date(releaseDay.getTime() + 2 * 24 * 60 * 60 * 1000);
-    expect(thePersonHasHadTheirTurn(shownOnReleaseDay, twoDaysAfterShown)).toBe(false);
+    expect(theLeadReadsIt(shownOnReleaseDay, twoDaysAfterShown)).toBe(false);
     const threeDaysAfterShown = new Date(releaseDay.getTime() + 3 * 24 * 60 * 60 * 1000);
-    expect(thePersonHasHadTheirTurn(shownOnReleaseDay, threeDaysAfterShown)).toBe(true);
+    expect(theLeadReadsIt(shownOnReleaseDay, threeDaysAfterShown)).toBe(false);
   });
 });

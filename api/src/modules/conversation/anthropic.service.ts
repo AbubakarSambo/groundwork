@@ -9,6 +9,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { theModelStandInIsOn, theStandInReply, THE_STAND_IN_READ_NO_FILE } from './a-stand-in-for-the-model';
+import { TheFixedInstructions, asACachedAsk } from './the-fixed-instructions-are-cached';
 
 
 /**
@@ -58,7 +59,13 @@ export function worthWaitingOut(err: any): boolean {
    * A slow call and a busy one are the same fact from our side, and the same answer works for both:
    * stop waiting, ask again. The retry is ours, not theirs - they typed once.
    */
-  return /resource[ _]exhausted|rate limit|too many requests|overloaded|unavailable|timed out|did not open|stalled/i.test(said);
+  /*
+   * AND A LINE THAT DROPPED IS THE SAME (assessment test, 1 November 2026). One network blip at a setup's save failed the record and
+   * the promise read with "fetch failed" within a second, and neither was asked again: 21 of the run's failures came from it. A
+   * connection that dropped, reset or could not be found is not a bad request, so it is waited out like a busy one.
+   */
+  if (/^(ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE|UND_ERR_\w+)$/.test(String(err?.code ?? err?.cause?.code ?? ''))) return true;
+  return /resource[ _]exhausted|rate limit|too many requests|overloaded|unavailable|timed out|did not open|stalled|fetch failed|network|socket hang up|connection (?:reset|closed|refused)/i.test(said);
 }
 
 /** Short, and short enough that nobody is left staring at a composer. */
@@ -267,6 +274,8 @@ export class AnthropicService implements OnApplicationBootstrap {
   /** What a person in a conversation talks to. See geminiConfig.conversationModel. */
   private conversationModel: string;
   private maxTokens: number;
+  /** The engine's fixed rules, cached once per text and sent by name (the-fixed-instructions-are-cached.ts). */
+  private readonly fixedInstructions = new TheFixedInstructions(() => this.client.caches as any, () => this.conversationModel, (s) => this.logger.warn(s));
 
   constructor(private config: ConfigService) {
     this.standIn = theModelStandInIsOn();
@@ -444,6 +453,7 @@ export class AnthropicService implements OnApplicationBootstrap {
       role: t.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: t.content }],
     }));
+    const cached = this.fixedInstructions.for(systemPrompt);
     /*
      * A STREAM THAT NEVER ARRIVES USED TO WAIT FOR EVER.
      *
@@ -460,8 +470,14 @@ export class AnthropicService implements OnApplicationBootstrap {
     const stream = await withADeadline(
       this.client.models.generateContentStream({
         model: this.conversationModel,
-        contents,
-        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
+        ...this.withTheFixedInstructions(systemPrompt, contents, cached),
+        config: { ...this.theSystemOrTheCache(systemPrompt, cached), maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
+      }).catch((err: any) => {
+        /* A cache Gemini no longer has is forgotten, and this reply is asked the plain way. */
+        if (!cached) throw err;
+        this.fixedInstructions.forget(cached.name);
+        this.logger.warn(`respondStream() with the cached instructions failed (${err?.message ?? err}); asking with them whole.`);
+        return this.client.models.generateContentStream({ model: this.conversationModel, contents, config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } } });
       }),
       OPENING_A_STREAM_WAITS,
       'Gemini respondStream() did not open',
@@ -505,6 +521,22 @@ export class AnthropicService implements OnApplicationBootstrap {
     return /flash/.test(this.conversationModel) ? 0 : CONVERSATION_THINKING_BUDGET;
   }
 
+  /**
+   * THE ENGINE'S FIXED RULES, SAID ONCE (the-fixed-instructions-are-cached.ts). Whoever composes a conversation's prompt names the part
+   * of it that is the same for every reply of its kind; it is cached in the background, and from then on a reply whose prompt starts
+   * with it sends only the rest.
+   */
+  keepTheFixedInstructions(fixed: string): void {
+    if (this.standIn) return;
+    this.fixedInstructions.keep(fixed);
+  }
+  private withTheFixedInstructions(systemPrompt: string, contents: { role: string; parts: { text: string }[] }[], cached: { fixed: string } | null) {
+    return { contents: cached ? asACachedAsk(systemPrompt, cached.fixed, contents) : contents };
+  }
+  private theSystemOrTheCache(systemPrompt: string, cached: { name: string } | null): { systemInstruction?: string; cachedContent?: string } {
+    return cached ? { cachedContent: cached.name } : { systemInstruction: systemPrompt };
+  }
+
   /** For logs and the health page. */
   modelsInUse() {
     return { conversation: this.conversationModel, reports: this.model };
@@ -524,6 +556,7 @@ export class AnthropicService implements OnApplicationBootstrap {
     }));
 
     let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
+    const cached = this.fixedInstructions.for(systemPrompt);
     /* A 429 under load is "not this second", not an outage - see tryAgainIfItIsJustBusy. The
        deadline sits INSIDE the retry, so a slow call is cut off and asked again rather than
        being waited out once and handed to the person as a failure. */
@@ -532,9 +565,9 @@ export class AnthropicService implements OnApplicationBootstrap {
         () => withADeadline(
           this.client.models.generateContent({
             model: this.conversationModel,
-            contents,
+            ...this.withTheFixedInstructions(systemPrompt, contents, cached),
             config: {
-              systemInstruction: systemPrompt,
+              ...this.theSystemOrTheCache(systemPrompt, cached),
               maxOutputTokens: this.maxTokens,
               thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() },
               ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
@@ -548,6 +581,12 @@ export class AnthropicService implements OnApplicationBootstrap {
       );
       this.noteSuccess();
     } catch (err: any) {
+      /* A cache Gemini no longer has is forgotten, and the reply is asked once more with the instructions whole. */
+      if (cached) {
+        this.fixedInstructions.forget(cached.name);
+        this.logger.warn(`respond() with the cached instructions failed (${err?.message ?? err}); asking with them whole.`);
+        return this.respond(systemPrompt, history, options);
+      }
       this.logger.error(`respond() Gemini call failed: ${err.message}`);
       this.noteFailure('respond', err);
       throw engineUnavailable(err);

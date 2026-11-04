@@ -28,7 +28,8 @@ describe('the opener for an open link', () => {
   /* The whole point: no prompt composed, no model called, no guard re-run. */
   it('and costs nothing to serve', () => {
     const open = CONV.slice(CONV.indexOf('async open(checkInId: string'), CONV.indexOf('private async whatTheDocumentWaitsFor('));
-    expect(open).toMatch(/const openerSystem = alreadyWritten\s*\n?\s*\? ''/);
+    /* Changed 4 November 2026: an opener prepared in advance costs nothing to serve either (the-opening-prepared-in-advance). */
+    expect(open).toMatch(/const openerSystem = alreadyWritten(?:\s*\|\|\s*prepared)?\s*\n?\s*\? ''/);
     expect(open).toMatch(/const reply = alreadyWritten\s*\n?\s*\? alreadyWritten/);
     expect(open).toMatch(/const held = alreadyWritten\s*\n?\s*\? forHumans\(reply\)/);
   });

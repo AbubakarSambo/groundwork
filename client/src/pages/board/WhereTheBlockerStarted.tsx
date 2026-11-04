@@ -8,7 +8,7 @@ import { Page, Panel, Button, CheckInHeader } from '@/components/gw/ui'
 import { theScheduleInWords } from './pictured/ThePicturedSalesBoard'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
 import { plannedSessionsFor } from '@/lib/sessionCount'
-import { theContextTabsName } from '@/lib/the-references-tab'
+import { REFERENCES_AND_RESOURCES } from '@/lib/the-references-tab'
 import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
 import './pictured/pictured-board.css'
 
@@ -48,13 +48,13 @@ export function WhereTheBlockerStarted() {
   const tabs = [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
     ...(runsIt || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),
-    { key: 'context', label: theContextTabsName(g, 'Context and resources'), to: `/grounds/${id}?tab=context` },
+    { key: 'context', label: REFERENCES_AND_RESOURCES, to: `/grounds/${id}?tab=context` },
     ...(runsIt || isAParty ? [{ key: myWork, label: 'My work', to: `/grounds/${id}?tab=${myWork}` }] : []),
     { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
   ]
   const schedule = [
-    theScheduleInWords(g?.cadence, g?.workingDays, b?.phaseSpine?.sessions?.[b.phaseSpine.sessions.length - 1]?.opensOn ?? null),
-    phaseSpineSentence(b?.phaseSpine?.currentSession ? { startsAt: null, endsAt: b.phaseSpine.endsAt ?? null, currentSession: b.phaseSpine.currentSession } : null, plannedSessionsFor(g?.timelineDays, g?.cadence, g?.plannedSessions) ?? null),
+    theScheduleInWords(g, b?.phaseSpine?.sessions?.[b.phaseSpine.sessions.length - 1]?.opensOn ?? null),
+    phaseSpineSentence(b?.phaseSpine?.currentSession ? { startsAt: null, endsAt: b.phaseSpine.endsAt ?? null, currentSession: b.phaseSpine.currentSession } : null, plannedSessionsFor(g?.timelineDays, g?.cadence, g?.plannedSessions, g?.cadenceDays) ?? null),
   ].filter(Boolean).join(' ')
   const traces = data?.traces ?? []
   return (
