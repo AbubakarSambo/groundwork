@@ -32,15 +32,16 @@ describe('Wanjiru, the partner, reads every matter the check-in names, with one 
     const b = await matterBoard(LIT_WANJIRU);
     expect(b.intro).toBe('Two matters are on record in this check-in, Kasarani Foods v. Tumaini Traders and Jamii Clinics employment claim.');
     expect(b.question).toBe('Where the matters stand');
+    /* Each deadline says who has it, in the morning's own words, and each wait since when (boards audit M3, 30 October: both were left out). */
     expect(b.matters.map((m: any) => [m.name, m.stands, m.fees])).toEqual([
       [
         'Kasarani Foods v. Tumaini Traders',
-        'The hearing in Kasarani Foods v. Tumaini Traders is due on Thursday 12 November. Nothing is in the way that has not been cleared.',
+        'The hearing in Kasarani Foods v. Tumaini Traders is due on Thursday 12 November, and David has it. Nothing is in the way that has not been cleared.',
         'There are three fee notes on this matter, for KES 750,000 in all. FN-004 is paid, with proof. FN-005 fell due on 20 October, when the reply was filed. The fee note not raised yet fell due on 21 October, when the hearing date was set.',
       ],
       [
         'Jamii Clinics employment claim',
-        'The witness statements for the Jamii Clinics employment claim are due on Friday 30 October. Aisha is waiting on Jamii Clinics for the last witness statement.',
+        'The witness statements for the Jamii Clinics employment claim are due on Friday 30 October, and Aisha has it. Aisha has been waiting on Jamii Clinics since 19 October for the last witness statement.',
         'There is one fee note on this matter, for KES 180,000. FN-007 was promised for 10 October, and the date passed.',
       ],
     ]);
@@ -85,7 +86,7 @@ describe('an associate reads only the matters they spoke of, their own lines, an
     const b = await matterBoard(LIT_AISHA);
     expect(b.matters.map((m: any) => [m.name, m.stands, m.fees])).toEqual([[
       'Jamii Clinics employment claim',
-      'The witness statements for the Jamii Clinics employment claim are due on Friday 30 October. You are waiting on Jamii Clinics for the last witness statement.',
+      'The witness statements for the Jamii Clinics employment claim are due on Friday 30 October, and you have it. You have been waiting on Jamii Clinics since 19 October for the last witness statement.',
       'You follow up one fee note on this matter, for KES 180,000. FN-007 was promised for 10 October, and the date passed.',
     ]]);
     for (const theirs of ['Kasarani', 'Brian', 'David', 'FN-004', 'FN-005', '750,000']) expect(words(b)).not.toContain(theirs);
@@ -97,7 +98,7 @@ describe('the paralegal, in the litigation daily only, never reads a fee amount'
     const b = await matterBoard(LIT_DAVID);
     expect(b.intro).toBe('You have spoken about two matters in this check-in, Kasarani Foods v. Tumaini Traders and Jamii Clinics employment claim.');
     expect(b.matters.map((m: any) => [m.name, m.stands, m.fees])).toEqual([
-      ['Kasarani Foods v. Tumaini Traders', 'The hearing in Kasarani Foods v. Tumaini Traders is due on Thursday 12 November. Nothing is in your way on this matter that has not been cleared.', 'You do not follow up a fee note on this matter, so its fees are not shown to you.'],
+      ['Kasarani Foods v. Tumaini Traders', 'The hearing in Kasarani Foods v. Tumaini Traders is due on Thursday 12 November, and you have it. Nothing is in your way on this matter that has not been cleared.', 'You do not follow up a fee note on this matter, so its fees are not shown to you.'],
       ['Jamii Clinics employment claim', 'No deadline of yours is on record for this matter yet. Nothing is in your way on this matter that has not been cleared.', 'You do not follow up a fee note on this matter, so its fees are not shown to you.'],
     ]);
     expect(b.changed.rows.every((r: any) => r.who === 'You')).toBe(true);

@@ -49,10 +49,12 @@ it('Get a project back on track: needs you, the deals, blockers and what keeps c
   expect(screen.getByText('What keeps coming up')).toBeTruthy()
 })
 
-it('Start an advisor or board relationship: none of the four, and the rest of the board', async () => {
+/* Every situation's sales board now opens on the lead's first screen, What needs you included (restored, 30 October 2026: the
+   morning block said it above every board until 24 October); the switchboard still leaves the deals, blockers and patterns off here. */
+it('Start an advisor or board relationship: the first screen, none of the other three, and the rest of the board', async () => {
   renderFor('NEW_ADVISOR')
   expect(await screen.findByRole('link', { name: 'See every other part of this board' })).toBeTruthy()
-  expect(screen.queryByText('What needs you in this check-in')).toBeNull()
+  expect(screen.getByText('What needs you in this check-in')).toBeTruthy()
   expect(screen.queryByText('Every deal, day by day')).toBeNull()
   expect(screen.queryByText('Blockers')).toBeNull()
   expect(screen.queryByText('What keeps coming up')).toBeNull()

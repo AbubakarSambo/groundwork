@@ -3,6 +3,7 @@ import { AddToTheProject } from './AddToTheProject'
 import { TheSituationsNote, WhatEachSidePromised, TheRisks, WhatHappenedDayByDay, WhatKeepsBeingRaised, TheSituationsWorkPlan } from './TheSituationsSections'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTheDirectMorning } from '@/lib/the-direct-morning'
+import { WhatIsClosing } from './TheMorningOnTheBoard'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Section, Panel, Tag, Button, EdgeList, EdgeRow } from '@/components/gw/ui'
@@ -35,7 +36,7 @@ import './pictured-board.css'
 type Any = any
 
 export type APicturedSection =
-  | 'lastSession' | 'headline' | 'assumes' | 'needsYou' | 'deals' | 'agreedAtTheStart' | 'changeSinceLast' | 'ninetyDays'
+  | 'lastSession' | 'headline' | 'closing' | 'assumes' | 'needsYou' | 'deals' | 'agreedAtTheStart' | 'changeSinceLast' | 'ninetyDays'
   | 'history' | 'bothSeeIt' | 'teamToday' | 'blockers' | 'patterns' | 'reported' | 'whoCheckedIn' | 'overTime' | 'reports'
   | 'everySession' | 'otherBoards' | 'help' | 'otherTeams' | 'openIssues' | 'heading' | 'ask' | 'recommends' | 'otherRecords' | 'kindOfWork' | 'yourTeam'
   | 'participantNote' | 'priorities' | 'yourPart' | 'teamReport' | 'companyBoard' | 'template'
@@ -810,6 +811,7 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
   const draw: Record<APicturedSection, () => ReactNode> = {
     lastSession: () => <TheLastSessionIsDone b={b} groundId={p.groundId} />,
     headline: () => <HeadlineAndGap b={b} deals={deals} groups={groups} />,
+    closing: () => <WhatIsClosing b={b} />,
     assumes: () => <WhatTheTargetAssumes b={b} />,
     needsYou: () => <WhatNeedsYou b={b} renderActions={p.renderActions} groundId={p.groundId} deals={deals} sessionRows={p.sessionRows} manyInTeams={p.order.includes('everySale') && (!b.releaseFourTeams || b.kindOfWork === 'sales org')} heading={p.order.includes('cohortStands') || p.order.includes('systemsShow') ? 'What needs you' : undefined} />,
     deals: () => (deals ? <EveryDealDayByDay b={b} section={deals} now={now} groundId={p.groundId} /> : null),

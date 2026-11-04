@@ -26,7 +26,8 @@ describe('Release 4: the support desk, as its lead reads it', () => {
   it('draws the sections in support.jpg’s order', () => {
     draw()
     const heads = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-    const want = ['Where each target stands', 'What needs you in this check-in', 'Every ticket, and what shows it', 'The team today', 'Volume from the helpdesk, causes from the check-ins', 'By queue', 'Who checked in', 'Blockers', 'What keeps coming up']
+    /* The team today before every ticket, on the first screen, as on Grace's board (boards audit R4-1, 30 October). */
+    const want = ['Where each target stands', 'What needs you in this check-in', 'The team today', 'Every ticket, and what shows it', 'Volume from the helpdesk, causes from the check-ins', 'By queue', 'Who checked in', 'Blockers', 'What keeps coming up']
     expect(heads.filter((h) => want.includes(h ?? ''))).toEqual(want)
   })
 

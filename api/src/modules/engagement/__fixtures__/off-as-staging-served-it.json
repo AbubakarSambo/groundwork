@@ -2343,7 +2343,8 @@
      "label": "Ask Joseph",
      "says": "Tell Groundwork on the Context page what to ask Joseph Kariuki, and it will ask in Joseph Kariuki's next check-in.",
      "goesTo": "context"
-    }
+    },
+    "ref": "wait-f0342531-4f91-4ddd-8881-8b78dc35979c"
    },
    {
     "question": "Joseph Kariuki is waiting on an answer on the KES 4,500 price, so it needs deciding.",
@@ -2354,7 +2355,8 @@
      "label": "Reply in your check-in",
      "says": "This is waiting on you. Tell Groundwork in your check-in what you will do about it, and by when.",
      "goesTo": "check-in"
-    }
+    },
+    "ref": "wait-14d8f32f-10db-4525-96fe-3e324b6a7eda"
    }
   ],
   "whatTheRoomIsAbout": {
@@ -2739,7 +2741,8 @@
        "Need established"
       ],
       "stageMet": "Need established",
-      "groupSays": "Two of the four criteria are on record. The budget the customer stated and the buying date are not on record yet. It was last spoken about on 14 October. A next step is on record."
+      "groupSays": "Two of the four criteria are on record. The budget the customer stated and the buying date are not on record yet. It was last spoken about on 14 October. A next step is on record.",
+      "valueLine": "10 units"
      },
      {
       "id": "be4f1714-4af7-49ee-8edb-3296abde09d2",
@@ -2807,7 +2810,7 @@
         "step": "Waiting on Jane for a KES 15,000 deposit"
        }
       ],
-      "valueLine": "KES 30,000 quoted",
+      "valueLine": "6 units, KES 30,000 quoted",
       "nextOn": "2026-10-16",
       "group": "likely",
       "criteria": [
@@ -2999,7 +3002,7 @@
         "step": "Waiting on Ali for a decision on the four units"
        }
       ],
-      "valueLine": "KES 20,000 quoted",
+      "valueLine": "4 units, KES 20,000 quoted",
       "nextOn": "2026-10-19",
       "group": "possible",
       "criteria": [
@@ -3230,7 +3233,8 @@
        "Won"
       ],
       "stageMet": "Won",
-      "groupSays": "Three of the four criteria are on record. The buying date is not on record yet. It was last spoken about on 14 October. A next step is on record."
+      "groupSays": "Three of the four criteria are on record. The buying date is not on record yet. It was last spoken about on 14 October. A next step is on record.",
+      "valueLine": "25 units, KES 125,000"
      },
      {
       "id": "6f06e3c2-53bf-489c-8c86-47def6e38085",
@@ -3284,7 +3288,7 @@
        "words": "Mama Mboga Mart didn't state a budget.",
        "says": "Mercy Wairimu's read, in their own words."
       },
-      "valueLine": "KES 10,000 quoted",
+      "valueLine": "2 units, KES 10,000 quoted",
       "nextStep": "Nothing booked. Rose has Mercy's KES 10,000 quote, and no buying date is on record.",
       "group": "possible",
       "criteria": [
@@ -3512,7 +3516,8 @@
        "Won"
       ],
       "stageMet": "Won",
-      "groupSays": "Two of the four criteria are on record. The decision maker and the buying date are not on record yet. It was last spoken about on 14 October. A next step is on record."
+      "groupSays": "Two of the four criteria are on record. The decision maker and the buying date are not on record yet. It was last spoken about on 14 October. A next step is on record.",
+      "valueLine": "40 units, KES 200,000"
      }
     ],
     "groups": [
@@ -4175,7 +4180,8 @@
        }
       }
      ]
-    }
+    },
+    "ref": "wait-14d8f32f-10db-4525-96fe-3e324b6a7eda"
    },
    {
     "id": "own-4cb78fc7-c492-46bd-a8ab-99c0c2c413d3",
@@ -5434,7 +5440,7 @@
         "step": "Waiting on Jane for a KES 15,000 deposit"
        }
       ],
-      "valueLine": "KES 30,000 quoted",
+      "valueLine": "6 units, KES 30,000 quoted",
       "nextOn": "2026-10-16",
       "group": "likely",
       "criteria": [
@@ -5534,7 +5540,7 @@
         "step": "Waiting on Ali for a decision on the four units"
        }
       ],
-      "valueLine": "KES 20,000 quoted",
+      "valueLine": "4 units, KES 20,000 quoted",
       "nextOn": "2026-10-19",
       "group": "possible",
       "criteria": [
@@ -5769,7 +5775,8 @@
        "Won"
       ],
       "stageMet": "Won",
-      "groupSays": "Two of the four criteria are on record. The decision maker and the buying date are not on record yet. It was last spoken about on 14 October. A next step is on record."
+      "groupSays": "Two of the four criteria are on record. The decision maker and the buying date are not on record yet. It was last spoken about on 14 October. A next step is on record.",
+      "valueLine": "40 units, KES 200,000"
      }
     ],
     "onlyYours": "Only yours.",
@@ -7083,7 +7090,8 @@
        "Won"
       ],
       "stageMet": "Won",
-      "groupSays": "Three of the four criteria are on record. The buying date is not on record yet. It was last spoken about on 14 October. A next step is on record."
+      "groupSays": "Three of the four criteria are on record. The buying date is not on record yet. It was last spoken about on 14 October. A next step is on record.",
+      "valueLine": "25 units, KES 125,000"
      },
      {
       "id": "6f06e3c2-53bf-489c-8c86-47def6e38085",
@@ -7137,7 +7145,7 @@
        "words": "Mama Mboga Mart didn't state a budget.",
        "says": "Your read, in your own words."
       },
-      "valueLine": "KES 10,000 quoted",
+      "valueLine": "2 units, KES 10,000 quoted",
       "nextStep": "Nothing booked. Rose has your KES 10,000 quote. Ask Rose when Mama Mboga Mart will buy.",
       "group": "possible",
       "criteria": [

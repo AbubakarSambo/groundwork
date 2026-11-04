@@ -1,6 +1,7 @@
 import { Section, Panel, Tag, ProofMark } from '@/components/gw/ui'
 import type { TheCollectionsBoard as TheBoard, TheCollectionsTeamReport, TheCollectionsOwnReport } from '@/lib/collect-whats-owed'
 import './pictured-board.css'
+import { theMorningNeedsNotOnTheBoard, WhatIsClosing, YourTeamToday } from './TheMorningOnTheBoard'
 
 /**
  * THE COLLECTIONS BOARD, AS PICTURED (Release 2, pull request 2 of 3). The loans type is the kit's loans board
@@ -17,8 +18,10 @@ const GROUP_TONE: Record<string, 'proven' | 'attention' | 'concern' | 'plain'> =
 
 type ARoute = { method: 'POST'; path: string; body: Record<string, unknown> }
 
-export function TheCollectionsBoard({ board: c, onRecordTheDecision, onAnswer, answering }: { board: TheBoard; onRecordTheDecision?: () => void; onAnswer?: (route: ARoute) => void; answering?: boolean }) {
+export function TheCollectionsBoard({ board: c, b = null, onRecordTheDecision, onAnswer, answering }: { board: TheBoard; /** The whole board as served, for the lead's morning (`theMorning`), served to her alone. */ b?: unknown; onRecordTheDecision?: () => void; onAnswer?: (route: ARoute) => void; answering?: boolean }) {
   const loans = c.type === 'loans'
+  /* Her morning's needs lines that are not already a row here: a wait on her, never a bill the rows already say (boards audit C1). */
+  const morningNeeds = theMorningNeedsNotOnTheBoard(b, new Set([...(c.needsYou.refs ?? []), ...(c.needsYou.toConfirm ?? []).map((q) => q.id)]))
   return (
     <div className="pb" data-collections-board={c.type}>
       <section className="pb-head" aria-label={c.question}>
@@ -39,7 +42,13 @@ export function TheCollectionsBoard({ board: c, onRecordTheDecision, onAnswer, a
               <p className="pb-card-h">{r.title}</p>
               <p className="gwui-panel-text">{r.says}</p>
             </div>
-          )) : (c.needsYou.empty ? <p className="gwui-panel-text">{c.needsYou.empty}</p> : null)}
+          )) : (c.needsYou.empty && !morningNeeds.length ? <p className="gwui-panel-text">{c.needsYou.empty}</p> : null)}
+          {morningNeeds.map((l) => (
+            <div className="pb-kv-list" key={l.text}>
+              <p className="pb-card-h">{l.row?.title ?? l.text}</p>
+              {l.row?.detail && <p className="gwui-panel-text">{l.row.detail}</p>}
+            </div>
+          ))}
           {(c.needsYou.toConfirm ?? []).map((q) => (
             <div className="pb-kv-list" key={q.id} data-to-confirm={q.id}>
               <p className="pb-card-h">{q.title}</p>
@@ -63,6 +72,10 @@ export function TheCollectionsBoard({ board: c, onRecordTheDecision, onAnswer, a
           ))}
         </Panel>
       </section>
+
+      {/* Who to chase, and the team's check-ins with a nudge for each, from her morning, served to her alone (boards audit C1). */}
+      <WhatIsClosing b={b} />
+      <YourTeamToday b={b} />
 
       <Section heading={c.stand.heading} note={c.stand.total}>
         <div className="pb-cards4">

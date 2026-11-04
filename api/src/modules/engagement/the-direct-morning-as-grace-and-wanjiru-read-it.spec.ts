@@ -15,6 +15,7 @@ import { TEMPLATES } from '../whatsapp/a-message-outside-the-window';
 const NOW = new Date('2026-10-20T04:00:00Z');
 const BASE = 'http://localhost:5220';
 const DROP = N.drop.ground.id;
+const [JOSEPH, KEVIN, MERCY, PETER] = ['2274e6af-8d37-4388-bd39-8a7aeb582d7b', '9f2e58a4-06d8-4a0a-bddc-03cd96df027c', '5632caa0-593e-48d5-910e-5c9ea5bc4fb2', 'dfda363d-d9f3-4f01-bcb0-ae9f8d722f6f'];
 
 async function doors(g: 'drop' | 'fees' | 'lit', directMorning: boolean, more: Partial<{ grounds: any[] }> = {}) {
   const db = await theNightRunsDatabaseWithRecords(g, { directMorning });
@@ -60,7 +61,9 @@ describe('Grace’s direct morning, Tuesday 20 October, Drop Access (test), from
         { title: 'Juja Hardware wants 5 units at KES 4,500, not 5,000', detail: 'Joseph is waiting for a yes or no from Management. Get it for Joseph.' },
         { title: 'Peter is waiting on you', detail: 'For a specific area to focus on, since Thursday.' },
         { title: 'Peter is waiting for a list of leads for this week', detail: 'Nobody is named to give it. Send it or say who will.' },
-      ] },
+      ],
+      /* The board's own item each line says, where it has one, so the board draws it once, with its buttons (boards audit S2, 30 October). */
+      about: ['wait-4433fea3-122d-47ef-b9ef-7c21f48fae3b', 'wait-cf1ee764-daa2-4325-b043-875b91eb6a25', 'wait-a22ddb63-2709-4da0-ad7c-2105e790214a'].map((ref) => ({ ref })) },
       { key: 'closing', heading: 'About to close', lines: ['Ngong Road Minimart pays KES 25,000 for 5 units on delivery tomorrow.'] },
       { key: 'team', heading: 'Your team today', lines: [
         /* Joseph's record (21 October): coached on proof after his first check-in, and nothing has changed since. */
@@ -71,7 +74,9 @@ describe('Grace’s direct morning, Tuesday 20 October, Drop Access (test), from
         'Peter checked in on time 6 days running.',
         'Kevin checked in on time 6 days running.',
         'Mercy checked in on time 4 days running.',
-      ] },
+      ],
+      /* Whose row of The team today each line goes on (boards audit S1, 30 October: the board drew none of them). */
+      about: [JOSEPH, KEVIN, MERCY, PETER, KEVIN, MERCY].map((participantId) => ({ participantId })) },
     ]);
   });
 

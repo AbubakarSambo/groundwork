@@ -9,6 +9,9 @@ import type { GroundScenario } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 import { Page, Mark, PageTitle, Panel, SubHeading, Callout, Note, Button, FieldLabel, TextField, Modal, Stack } from '@/components/gw/ui'
+import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
+import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
+import { keepTheNumberForWhenTheySignIn, saveMyNumber } from '@/lib/a-number-given-before-signing-in'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
 import { opensStraightOnTheQuestion, whereTheLinkGoes } from './the-link-opens-on-the-question'
@@ -85,6 +88,9 @@ export function InvitePage() {
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  /* Optional, always asked (Hafsah, 30 October 2026); saved to them through PATCH /auth/me, as Settings saves it, once they are signed in. */
+  const [phone, setPhone] = useState('')
+  const whatsappOn = useWhatsAppIsOn()
   /* "What happens to what you write" (design-audit.md section 3, U.20 fifth review): kept out of
      the page's flow, reachable from a plain link rather than an always-open section or the old
      folding panel. Its content is the Modal's children, below. */
@@ -154,16 +160,21 @@ export function InvitePage() {
           const token = localStorage.getItem('token')
           if (token) setAuth(fresh, token)
         } catch { /* leaves them exactly as they were */ }
+        /* Signed in already: the number they typed is theirs now (Hafsah, 30 October 2026). It never holds them up. */
+        void saveMyNumber(phone)
         const checkInId = (res as any).checkInId as string | null
         const groundId = (res as any).groundId as string
         navigate(checkInId ? whereTheLinkGoes(checkInId, preview?.scenario) : `/grounds/${groundId}/p`, { replace: true })
         return
       }
       if ((res as any).emailed) {
+        /* Signed in only when they open the link we just sent: the number waits for that address. */
+        keepTheNumberForWhenTheySignIn(String((res as any).email ?? ''), phone)
         setEmailedTo((res as any).email as string)
         return
       }
       setAuth(res.user, res.accessToken)
+      void saveMyNumber(phone)
       if ((res as any).existingAccount) {
         toast.info(`Welcome back - continuing as ${res.user.email}`)
       }
@@ -553,6 +564,7 @@ export function InvitePage() {
                         <TextField id="invite-last" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
                       </FieldLabel>
                     </div>
+                    <PhoneNumberField id="invite-phone" value={phone} onChange={setPhone} whose="yours" whatsappOn={whatsappOn} />
                   </Stack>
                   <p className="gwui-field-help">Your name is optional. If you add it, the others will see it on the shared report.</p>
                   {/* Whether they go straight in or wait for an admin, as the invitation said it (Hafsah, 12 October). */}

@@ -366,7 +366,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             />
           )}
           <PeopleTable>
-            <PeopleTableHead extraColumns="minmax(170px, 1fr) 190px 210px" labels={['Person', 'Their role here', 'WhatsApp', 'Getting started']} />
+            <PeopleTableHead extraColumns="minmax(170px, 1fr) 190px 210px" labels={['Person', 'Their role here', 'Phone number', 'Getting started']} />
             {[...participants].sort((a, b) => (a.userId === g?.initiatorId ? -1 : b.userId === g?.initiatorId ? 1 : 0)).map((p: any) => {
               const row = whereThisPersonIs(p, {
                 ground: g, isInitiator, isOrgAdmin, isNotCounted, sessionParties: props.whoIsInThisParties, notOpenYet: props.whoIsInThisNotOpenYet,
@@ -382,8 +382,9 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                 <div id={`person-${p.id}`} key={p.id}>
                   <PersonRow
                     extraColumns="minmax(170px, 1fr) 190px 210px"
-                    /* B8: the name and "Runs it" or "Checks in"; the address is on the person's own page and on hover. */
-                    person={{ initials: initialsOf(row.name), name: row.name, level: <span title={p.userId ? p.email : undefined}>{isLead ? 'Runs it' : 'Checks in'}</span> }}
+                    /* The name, "Runs it" or "Checks in", and the address the invitation went to, as A4 draws it under every name
+                       (restored, 30 October 2026: on hover only, nobody on a phone could read it). */
+                    person={{ initials: initialsOf(row.name), name: row.name, level: isLead ? 'Runs it' : 'Checks in', email: p.userId ? p.email : undefined }}
                     help={row.help}
                   >
                     <span>
@@ -401,7 +402,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                       {numberFor === p.id
                         ? <TheirNumber groundId={id} participantId={p.id} name={row.name} phone={phone} onDone={() => setNumberFor(null)} />
                         : phone
-                          ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{onWhatsApp?.says ? <span className="gwui-sr-only">{onWhatsApp.says}</span> : null}</>
+                          ? <>{aNumberAsShown(phone)}{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Change</button>{props.whatsAppIsOn && onWhatsApp?.says ? <span className="gwui-note">{' '}{onWhatsApp.says}</span> : null}</>
                           : <>None yet{' '}<button type="button" className="gwui-plain-link" onClick={() => setNumberFor(p.id)}>Add a number</button></>}
                     </span>
                     <Stack gap={4}>
@@ -410,12 +411,10 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
                           {[1, 2, 3, 4, 5].map((i) => <i key={i} className={i <= stage.reached ? 'on' : undefined} />)}
                         </span>
                       )}
-                      <span title={[stage?.says, row.sessionLine, row.when].filter(Boolean).join(' ')}>
-                        <Tag tone={problem ? row.tone : 'proven'}>{problem || !stage ? row.statusText : STAGE_SAID[stage.reached]}</Tag>
-                      </span>
-                      {/* B8 draws the bar and its label only. The sentences behind them are kept for anyone who needs them: one quiet line when something is wrong, the rest on hover and for screen readers. */}
-                      {problem && stage && <Text size="13" ink="sub" as="p">{stage.says}</Text>}
-                      <span className="gwui-sr-only">{[problem ? null : stage?.says, row.sessionLine, row.when].filter(Boolean).join(' ')}</span>
+                      <Tag tone={problem ? row.tone : 'proven'}>{problem || !stage ? row.statusText : STAGE_SAID[stage.reached]}</Tag>
+                      {/* Where they are, their session and when they last did something, as one quiet line anyone can read, on a phone
+                          too (restored, 30 October 2026: it was for screen readers and hover only). */}
+                      {[stage?.says, row.sessionLine, row.when].some(Boolean) && <Text size="13" ink="sub" as="p">{[stage?.says, row.sessionLine, row.when].filter(Boolean).join(' ')}</Text>}
                     </Stack>
                   </PersonRow>
                 </div>
@@ -426,7 +425,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
             Getting started goes from Invited, to Reached, to Verified, to First check-in, to Coming back. Their role here shapes
             the questions their check-in asks. Their role in your organisation is set in People.
           </Note>
-          <Note>Groundwork writes to each person on WhatsApp once their number is here, and they can answer there.</Note>
+          {props.whatsAppIsOn && <Note>Groundwork writes to each person on WhatsApp once their number is here, and they can answer there.</Note>}
           {!direct && (
           <Note>
             {props.whoIsInThisPeersHidden
@@ -724,7 +723,7 @@ function OneChoice({ label, value, options, onChange, canChange }: {
   )
 }
 
-/** A person's WhatsApp number, added or changed in their row. Saved at once, as today: adding one can send the opening there. */
+/** A person's phone number, added or changed in their row, whether WhatsApp is on or off (Hafsah, 30 October 2026). Saved at once, as today: where WhatsApp is on, adding one can send the opening there. */
 function TheirNumber({ groundId, participantId, name, phone, onDone }: { groundId: string; participantId: string; name: string; phone: string | null; onDone: () => void }) {
   const qc = useQueryClient()
   const [value, setValue] = useState('')
@@ -742,7 +741,7 @@ function TheirNumber({ groundId, participantId, name, phone, onDone }: { groundI
   }
   return (
     <Stack gap={4}>
-      <TextField aria-label={`WhatsApp number for ${name}`} placeholder="0712 345 678" value={value} onChange={(e) => setValue(e.target.value)} />
+      <TextField aria-label={`Phone number for ${name}`} placeholder="0712 345 678" value={value} onChange={(e) => setValue(e.target.value)} />
       <FlexRow gap={6} wrap>
         <Button size="small" kind="secondary" disabled={saving || !value.trim()} onClick={() => keep(value)}>{saving ? 'Saving…' : 'Keep the number'}</Button>
         {phone && <Button size="small" kind="quiet" disabled={saving} onClick={() => keep('')}>Remove</Button>}

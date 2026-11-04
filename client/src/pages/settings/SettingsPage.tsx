@@ -372,14 +372,15 @@ export function SettingsPage() {
             label="Email"
             value={<span>{user?.email}<span className="gwui-field-help">Where your sign-in links go.</span></span>}
           />
-          {whatsappOn && (
+          {/* Your phone number is always here to add or change, whether WhatsApp is on or off (Hafsah, 30 October 2026); what is
+              said about WhatsApp shows only while it is on (her rule of 26 September). */}
             <FieldRow
-              label="WhatsApp"
+              label="Phone number"
               value={!editingPhone ? (
                 <span>
                   {user?.phoneNumber || 'Not set'}
-                  <span className="gwui-field-help">You can check in by replying on WhatsApp.</span>
-                  {whatsAppOffSays && (
+                  {whatsappOn && <span className="gwui-field-help">You can check in by replying on WhatsApp.</span>}
+                  {whatsappOn && whatsAppOffSays && (
                     <span className="gwui-field-help">{whatsAppOffSays}</span>
                   )}
                   {/*
@@ -389,7 +390,7 @@ export function SettingsPage() {
                    * just says hello back, so the engine serves it only while that would still do
                    * something: while it hasn't happened yet. Null otherwise, so nothing draws.
                    */}
-                  {user?.connectWhatsApp && (
+                  {whatsappOn && user?.connectWhatsApp && (
                     <span className="gwui-field-help">
                       Optional. Tap to say hello to Groundwork on WhatsApp.{' '}
                       <a
@@ -405,7 +406,7 @@ export function SettingsPage() {
                 </span>
               ) : (
                 <Stack gap={10}>
-                  <TextField value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="+254 712 345 678" aria-label="Your WhatsApp number" />
+                  <TextField value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="+254 712 345 678" aria-label="Your phone number" />
                   <div className="gwui-invite-actions">
                     <Button kind="secondary" size="small" onClick={() => savePhone.mutate(phoneNumber || null)} disabled={savePhone.isPending}>
                       {savePhone.isPending ? 'Saving…' : 'Save'}
@@ -416,7 +417,6 @@ export function SettingsPage() {
               )}
               action={!editingPhone && <Button kind="quiet" size="small" onClick={() => setEditingPhone(true)}>Change</Button>}
             />
-          )}
         </FieldRows>
       </Section>
 

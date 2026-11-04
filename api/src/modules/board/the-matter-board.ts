@@ -30,7 +30,7 @@ export interface AMatterLine {
 }
 
 export interface AMatterDeadline { id: string; name: string; dueAt: Date | string | null; ownerParticipantId: string | null }
-export interface AMatterWait { id: string; fromParticipantId: string | null; on: string | null; what: string }
+export interface AMatterWait { id: string; fromParticipantId: string | null; on: string | null; what: string; since?: Date | string | null }
 
 export interface AMatterOnRecord {
   key: string;
@@ -54,8 +54,8 @@ export interface TheMatterInput {
   deadlines: AMatterDeadline[];
   waits: AMatterWait[];
   matters: AMatterOnRecord[];
-  /** What waits for a decision, as the board already serves it to whoever runs the check-in. Null for anybody else. */
-  decisions: { question: string; why: string | null }[] | null;
+  /** What waits for a decision, as the board already serves it to whoever runs the check-in, with what she can do about it. Null for anybody else. */
+  decisions: { question: string; why: string | null; action?: unknown; ref?: string }[] | null;
 }
 
 export interface AMatterAsDrawn {
@@ -72,7 +72,7 @@ export interface TheMatterBoard {
   question: string;
   matters: AMatterAsDrawn[];
   mattersEmpty: string | null;
-  decide: null | { heading: string; rows: { question: string; why: string | null }[]; empty: string | null };
+  decide: null | { heading: string; rows: { question: string; why: string | null; action?: unknown; ref?: string }[]; empty: string | null };
   changed: {
     heading: string;
     rows: { id: string; who: string; matter: string | null; said: string; mark: 'proven' | 'said'; markSays: string; itChanged: string | null }[];
@@ -108,6 +108,17 @@ export function aPluralName(name: string): boolean {
   const head = String(name ?? '').trim().toLowerCase().replace(/^(?:the|our|their|a|an)\s+/, '').split(/\s+(?:for|in|of|on|to|with|from|by)\s+/)[0];
   const last = head.split(/\s+/).slice(-1)[0] ?? '';
   return /s$/.test(last) && !/(?:ss|us|is|ys)$/.test(last);
+}
+
+/**
+ * ONE DEADLINE, IN ONE WORDING for the lead's morning and the matter board: "The witness statements are due on Friday, and Brian has
+ * it." A deadline with no day is still on record, so it is said: "The hearing date has no day yet, and Brian has it."
+ */
+export function aDeadlineSaid(name: string, when: string | null, past: boolean, holder: string | null): string {
+  const has = holder ? `, and ${holder} ${/^you$/i.test(holder) ? 'have' : 'has'} it` : '';
+  if (!when) return `${Cap(stop(name))} has no day yet${has}.`;
+  const many = aPluralName(name);
+  return `${Cap(stop(name))} ${past ? (many ? 'were' : 'was') : (many ? 'are' : 'is')} due ${when}${has}.`;
 }
 
 /** Lists in a sentence: "a, b and c". */
@@ -173,34 +184,34 @@ export function buildTheMatterBoard(input: TheMatterInput): TheMatterBoard {
 
   const matters: AMatterAsDrawn[] = drawn.map((m) => {
     const says: string[] = [];
+    /* Every deadline on record, with whoever has it; one with no day yet is said last, as such (boards audit, M2 and M3). */
     const deadlines = input.deadlines
-      .filter((d) => mine(d.ownerParticipantId) && d.dueAt && theWordsNameTheMatter(d.name, m))
-      .sort((a, b) => new Date(a.dueAt as any).getTime() - new Date(b.dueAt as any).getTime());
+      .filter((d) => mine(d.ownerParticipantId) && theWordsNameTheMatter(d.name, m))
+      .sort((a, b) => (a.dueAt ? new Date(a.dueAt).getTime() : Infinity) - (b.dueAt ? new Date(b.dueAt).getTime() : Infinity));
     for (const d of deadlines) {
-      const day = theDayOf(new Date(d.dueAt as any), 'UTC');
-      const many = aPluralName(d.name);
-      says.push(`${Cap(stop(d.name))} ${day < today ? (many ? 'were' : 'was') : (many ? 'are' : 'is')} due on ${aDayInWords(day, zone, true)}.`);
+      const day = d.dueAt ? theDayOf(new Date(d.dueAt), 'UTC') : null;
+      const holder = d.ownerParticipantId ? nameOf(d.ownerParticipantId) : null;
+      says.push(aDeadlineSaid(d.name, day ? `on ${aDayInWords(day, zone, true)}` : null, !!day && day < today, holder === 'You' ? 'you' : holder));
     }
     /* A person reads only their own deadlines and waits, so what they are told is about theirs. */
     if (!deadlines.length) says.push(reader.runsIt ? 'No deadline is on record for this matter yet.' : 'No deadline of yours is on record for this matter yet.');
     const waits = input.waits.filter((w) => mine(w.fromParticipantId) && theWordsNameTheMatter(`${w.on ?? ''} ${w.what}`, m));
     for (const w of waits) {
       const who = nameOf(w.fromParticipantId);
-      says.push(`${who} ${who === 'You' ? 'are' : 'is'} waiting on ${w.on ?? 'somebody'} for ${stop(w.what)}.`);
+      /* Since when, from the day the wait was first said. */
+      const since = w.since ? ` since ${aDayInWords(theDayOf(new Date(w.since), zone), zone)}` : '';
+      says.push(`${who} ${who === 'You' ? 'have' : 'has'} been waiting on ${w.on ?? 'somebody'}${since} for ${stop(w.what)}.`);
     }
     if (!waits.length) says.push(reader.runsIt ? 'Nothing is in the way that has not been cleared.' : 'Nothing is in your way on this matter that has not been cleared.');
     const fees = theFeesLine(m, input);
     return { key: m.key, name: nameOfTheMatter(m), stands: says.join(' '), fees: fees.says, feeMark: fees.mark };
   });
 
-  /* What changed this week: the lines this reader may read, since Monday, newest first, each with the matter it names. */
-  const monday = (() => {
-    const d = new Date(`${today}T12:00:00Z`);
-    const back = (d.getUTCDay() + 6) % 7;
-    return new Date(d.getTime() - back * 86_400_000).toISOString().slice(0, 10);
-  })();
+  /* What changed this week: the lines this reader may read in the last seven days, newest first, each with the matter it names. Never
+     only since Monday, which left it empty every Monday morning (boards audit, M7). */
+  const aWeekAgo = new Date(new Date(`${today}T12:00:00Z`).getTime() - 6 * 86_400_000).toISOString().slice(0, 10);
   const thisWeek = input.lines
-    .filter((l) => mine(l.participantId) && theDayOf(new Date(l.at), zone) >= monday)
+    .filter((l) => mine(l.participantId) && theDayOf(new Date(l.at), zone) >= aWeekAgo)
     .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
   const madeDue = new Map<string, string>();
   for (const m of input.matters) for (const r of m.bills) {
@@ -226,7 +237,7 @@ export function buildTheMatterBoard(input: TheMatterInput): TheMatterBoard {
   const decide = reader.runsIt
     ? {
       heading: 'What you need to decide',
-      rows: (input.decisions ?? []).map((d) => ({ question: d.question, why: d.why })),
+      rows: (input.decisions ?? []).map((d) => ({ question: d.question, why: d.why, ...(d.action ? { action: d.action } : {}), ...(d.ref ? { ref: d.ref } : {}) })),
       empty: (input.decisions ?? []).length ? null : 'Nothing is waiting for a decision yet.',
     }
     : null;

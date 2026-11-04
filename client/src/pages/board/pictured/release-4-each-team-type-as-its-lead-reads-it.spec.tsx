@@ -32,27 +32,29 @@ const inOrder = (want: string[]) => expect(heads().filter((h) => want.includes(h
 describe('Release 4: each team type, as its lead reads it', () => {
   it('operations, as ops.jpg, with incidents by site and type', () => {
     const { container } = draw(operations)
-    inOrder(['Where each target stands', 'What needs you in this check-in', 'Every incident, and what shows it', 'The team today', 'Incidents by site and type, last 8 weeks', 'By site', 'Who checked in', 'Blockers', 'What keeps coming up'])
+    /* The team today before every incident, on the first screen, as on Grace's board (boards audit R4-1, 30 October). */
+    inOrder(['Where each target stands', 'What needs you in this check-in', 'The team today', 'Every incident, and what shows it', 'Incidents by site and type, last 8 weeks', 'By site', 'Who checked in', 'Blockers', 'What keeps coming up'])
     expect(container.querySelectorAll('.pb-heat tbody tr').length).toBe(4)
     expect(container.querySelector('.pb-heat-3')?.textContent).toBe('3')
   })
 
   it('engineering, as eng.jpg, with what was reported against the evidence', () => {
     draw(engineering)
-    inOrder(['Where each target stands', 'What needs you in this check-in', 'Every task, and what shows it', 'The team today', 'Reported vs evidence, stage by stage', 'By area of work', 'Who checked in', 'Blockers'])
+    inOrder(['Where each target stands', 'What needs you in this check-in', 'The team today', 'Every task, and what shows it', 'Reported vs evidence, stage by stage', 'By area of work', 'Who checked in', 'Blockers'])
   })
 
   it('a sales organisation, as salesorg.jpg, by team', () => {
     draw(salesOrg)
     expect(heads()).toContain('Every sale, and what shows it')
     expect(heads()).toContain('By team')
-    expect(heads().indexOf('The team today')).toBeGreaterThan(heads().indexOf('Every sale, and what shows it'))
+    /* The team today comes first, then every sale (boards audit R4-1, 30 October; this pinned the team after the sales, folded). */
+    expect(heads().indexOf('The team today')).toBeLessThan(heads().indexOf('Every sale, and what shows it'))
   })
 
   it('MarketView Q4, as mvq4.jpg: one screen, nothing folded', () => {
     const { container } = draw(subscriptions)
     inOrder(['What needs you', 'What the systems show', 'Where what people said and the systems differ', 'Where this is heading'])
-    expect(container.querySelector('.pb-fold')).toBeNull()
+    expect(container.querySelector('.pb-folded')).toBeNull()
   })
 
   it('writes each target with its unit, as the pictures do', () => {

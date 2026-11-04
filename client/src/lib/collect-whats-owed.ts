@@ -69,6 +69,8 @@ export interface TheCollectionsBoard {
   bar: { proven: number; said: number } | null
   needsYou: {
     heading: string; rows: { title: string; says: string }[]; empty: string | null
+    /** To whoever runs it: the bill each row is about, in the rows' order, so the morning's line about the same bill is drawn once. */
+    refs?: string[]
     /** Lines that came close to the event a fee note waits for, for the lead to confirm (Release 2, pull request 3). Lead only. */
     toConfirm?: { id: string; title: string; says: string; choices: { label: string; route: { method: 'POST'; path: string; body: Record<string, unknown> } }[] }[]
   }
@@ -116,7 +118,7 @@ export interface TheMatterBoard {
   question: string
   matters: { key: string; name: string; stands: string; fees: string; feeMark: 'proven' | 'said' | 'none' }[]
   mattersEmpty: string | null
-  decide: null | { heading: string; rows: { question: string; why: string | null }[]; empty: string | null }
+  decide: null | { heading: string; rows: { question: string; why: string | null; action?: unknown; ref?: string }[]; empty: string | null }
   changed: {
     heading: string
     rows: { id: string; who: string; matter: string | null; said: string; mark: 'proven' | 'said'; markSays: string; itChanged: string | null }[]

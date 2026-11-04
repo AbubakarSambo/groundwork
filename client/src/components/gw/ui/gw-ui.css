@@ -2359,6 +2359,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-light-glance-row + .gwui-light-glance-row { border-top: 1px solid var(--gw-border); }
 .gwui-light-glance-name { font-weight: 700; font-size: 16px; color: var(--gw-text); }
 .gwui-light-glance-fact { font-size: 14px; color: var(--gw-sub); line-height: 20px; }
+.gwui-light-glance-line { display: block; }
 .gwui-light-full { margin-top: 18px; }
 .gwui-light-full > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid var(--gw-rule-2); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font-weight: 700; font-size: 14px; box-sizing: border-box; }
 .gwui-light-full > summary::-webkit-details-marker { display: none; }

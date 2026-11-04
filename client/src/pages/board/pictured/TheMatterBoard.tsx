@@ -1,6 +1,9 @@
+import type { ReactNode } from 'react'
 import { Section, Panel, ProofMark } from '@/components/gw/ui'
 import type { TheMatterBoard as TheBoard } from '@/lib/collect-whats-owed'
 import './pictured-board.css'
+import { theMorningNeedsNotOnTheBoard, WhatIsClosing, YourTeamToday } from './TheMorningOnTheBoard'
+import { WhereThisIsHeading } from './ThePicturedSalesBoard'
 
 /**
  * THE MATTER BOARD, AS PICTURED (Release 2, pull request 3 of 3; the kit's matter board,
@@ -12,7 +15,16 @@ import './pictured-board.css'
  * need to decide (whoever runs it only); what changed this week and what it changed, each line marked by how it is known, with the
  * legend under it.
  */
-export function TheMatterBoard({ board: m }: { board: TheBoard }) {
+export function TheMatterBoard({ board: m, b = null, renderActions, onRecordTheDecision }: {
+  board: TheBoard
+  /** The whole board as served: the lead's morning (`theMorning`) and where this is heading, both served to her alone. */
+  b?: any
+  /** The board's own action buttons for a decision (BoardPage's ActionButtons). */
+  renderActions?: (action: any) => ReactNode
+  onRecordTheDecision?: () => void
+}) {
+  /* Her morning's needs lines that are not already a decision here (boards audit M1). */
+  const morningNeeds = theMorningNeedsNotOnTheBoard(b, new Set((m.decide?.rows ?? []).map((d) => d.ref ?? d.question)))
   return (
     <div className="pb" data-matter-board>
       <p className="pb-matter-intro">{m.intro}</p>
@@ -38,11 +50,23 @@ export function TheMatterBoard({ board: m }: { board: TheBoard }) {
               <div className="pb-kv-list" key={d.question}>
                 <p className="pb-card-h">{d.question}</p>
                 {d.why && <p className="gwui-panel-text">{d.why}</p>}
+                {/* What she can do about it, as every board draws a decision (boards audit M4). */}
+                {!!d.action && renderActions && <div className="pb-issue-acts">{renderActions(d.action)}</div>}
               </div>
-            )) : <p className="gwui-panel-text">{m.decide.empty}</p>}
+            )) : (morningNeeds.length ? null : <p className="gwui-panel-text">{m.decide.empty}</p>)}
+            {morningNeeds.map((l) => (
+              <div className="pb-kv-list" key={l.text}>
+                <p className="pb-card-h">{l.row?.title ?? l.text}</p>
+                {l.row?.detail && <p className="gwui-panel-text">{l.row.detail}</p>}
+              </div>
+            ))}
           </Panel>
         )}
       </section>
+
+      {/* What is due in the next seven days and who has it, and the team's check-ins with a nudge for each, from her morning (boards audit M1). */}
+      <WhatIsClosing b={b} />
+      <YourTeamToday b={b} />
 
       <Section heading={m.changed.heading} foot={m.changed.note}>
         {m.changed.rows.length ? (
@@ -65,6 +89,9 @@ export function TheMatterBoard({ board: m }: { board: TheBoard }) {
           </div>
         ) : <Panel><p className="gwui-panel-text">{m.changed.empty}</p></Panel>}
       </Section>
+
+      {/* Where this is heading, as the prototype's matter board and the collections board have it (boards audit M5). */}
+      {b?.whereThisIsHeading && <WhereThisIsHeading b={b} onRecordTheDecision={onRecordTheDecision ?? (() => undefined)} readOnly={!onRecordTheDecision} />}
     </div>
   )
 }

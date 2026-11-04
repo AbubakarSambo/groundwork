@@ -70,13 +70,9 @@ export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not record that. Try again.'),
   })
 
-  const Outer = ({ children }: { children: React.ReactNode }) => asFold
-    ? <FoldedLine name="What doing well looks like" fact={current?.successLooksLike ? withSentenceCase(current.successLooksLike) : 'Not stated yet.'}>{children}</FoldedLine>
-    : <Section heading="What doing well looks like">{children}</Section>
-  const Inner = ({ children }: { children: React.ReactNode }) => asFold ? <div>{children}</div> : <Panel>{children}</Panel>
   return (
-    <Outer>
-      <Inner>
+    <Outer asFold={asFold} fact={current?.successLooksLike ? withSentenceCase(current.successLooksLike) : 'Not stated yet.'}>
+      <Inner asFold={asFold}>
         {current ? (
           <>
             {/* Folded, the line itself is the fold's own fact, so it is not said twice. */}
@@ -221,4 +217,15 @@ export function BaselinePanel({ groundId, canState, groundStartedAt, asFold }: {
       )}
     </Outer>
   )
+}
+
+/* The two wrappers live outside the panel, so typing in its form keeps the same text box: built inside the render, they were new
+   components on every keystroke, and the box lost focus after one letter (restored, 30 October 2026). */
+function Outer({ asFold, fact, children }: { asFold?: boolean; fact: string; children: React.ReactNode }) {
+  return asFold
+    ? <FoldedLine name="What doing well looks like" fact={fact}>{children}</FoldedLine>
+    : <Section heading="What doing well looks like">{children}</Section>
+}
+function Inner({ asFold, children }: { asFold?: boolean; children: React.ReactNode }) {
+  return asFold ? <div>{children}</div> : <Panel>{children}</Panel>
 }

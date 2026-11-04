@@ -6,6 +6,8 @@ import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 import { Mark } from '@/components/gw/ui'
 import { MARKETING_URL } from '@/lib/marketing'
 import { useAuthStore } from '@/stores/auth'
+import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
+import { keepTheNumberForWhenTheySignIn } from '@/lib/a-number-given-before-signing-in'
 
 /**
  * ANSWER FIRST, SAY WHO YOU ARE AT THE END.
@@ -78,6 +80,8 @@ export function AnswerFirstPage() {
     try { return window.localStorage.getItem(`gw-answer-${token}`) ? 'talking' : 'reading' } catch { return 'reading' }
   })
   const [email, setEmail] = useState('')
+  /* Optional, always asked (Hafsah, 30 October 2026); saved to them through PATCH /auth/me when that address signs in here. */
+  const [phone, setPhone] = useState('')
   const [name, setName] = useState('')
   /* WHO THEY ANSWERED FOR. On a link sent across a network the organisation is the unit the whole
      report is about, and this asked for a name and an address and nothing else. */
@@ -159,6 +163,7 @@ export function AnswerFirstPage() {
     try {
       /* The name goes either way; the address and the wish for the report only where they said yes. */
       const done = await openLinkApi.finish(key, withEmail ? email.trim() : undefined, name.trim() || undefined, withEmail, org.trim() || undefined)
+      if (withEmail) keepTheNumberForWhenTheySignIn(email, phone)
       setSentTo(done.at)
       /* What we measured about their own answers, told to them. See WhatYouGaveUs. */
       if ((done as any)?.whatYouGave) setWhatYouGave((done as any).whatYouGave as WhatYouGave)
@@ -415,6 +420,8 @@ export function AnswerFirstPage() {
               <input id="open-email" type="email" autoComplete="email" value={email}
                 onChange={e => { setEmail(e.target.value); setProblem('') }}
                 placeholder="you@work.com" style={field} />
+              {/* Nobody is signed in on this page, so nothing here says WhatsApp (useWhatsAppIsOn answers off until somebody is). */}
+              <PhoneNumberField id="open-phone" value={phone} onChange={setPhone} whose="yours" whatsappOn={false} />
             </div>
             {problem && <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13, marginTop: 8 }}>{problem}</div>}
             {/* U.6 review: "Done" waits for all three, and now it says so. The same three are needed. */}
