@@ -28,6 +28,23 @@ The full version is `~/Desktop/next-steps/standards.md` (copy in `docs/overnight
 3. After each run, turn the list into a strategy before building anything: group the issues by root cause, using the five fix rules, decide what changes as one coherent set, and write it in `docs/fix-plan.md`. Then build that set, then run again.
 4. Only a bug that stops a run from finishing can be fixed during it.
 
+## Release batches (Hafsah, 4 November 2026)
+
+After this cycle's runs and fix plan, the work goes in release batches.
+
+1. **Each batch:** build the fix plan's set (nothing added mid-way), smoke test, then the judged runs.
+2. **The release bar.** A batch goes to staging only if:
+   - zero privacy breaches, untrue lines, honest people flagged, and adversarial zero-tolerance failures;
+   - nothing anyone said is lost, and numbers agree across pages;
+   - no use case or step scores worse than what's live now;
+   - typecheck and the touched tests pass.
+   It doesn't need to reach 8.5: it needs to be safe and better than what's live.
+3. **If it passes:** turn the batch into a small number of clean pull requests into staging, in merge order, each with plain release notes (what changes for people, migrations, anything to switch on), and update `~/Desktop/final/abubakar.md` with the merge order and the production steps. Don't merge; Abubakar does. Pull requests contain the product only: product code, migrations and the product's own tests. Never the test harness, the judged-run tooling, scoring, plans, status files, standards, issue lists or other notes. Those stay on our working branches and Hafsah's copy.
+4. **If it doesn't pass:** fix what fails the bar, smoke test, re-run the failing parts, and check again.
+5. **Then** the next batch starts from `docs/issues-next.md` and the fix plan.
+
+The first batch is the milestone 1 work on wip/plan, plus the privacy fix and the fixes from this cycle's runs.
+
 ## How we fix things: five rules (Hafsah, 29 October 2026)
 
 Standing rules for every fix. Follow them before any fix, and in each fix's note say how it meets them.
