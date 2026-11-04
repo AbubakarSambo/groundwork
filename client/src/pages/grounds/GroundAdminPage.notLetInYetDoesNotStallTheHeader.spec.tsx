@@ -16,6 +16,11 @@ import { groundsApi } from '@/api/grounds'
  * "Session 1" for ever, however far everybody actually let in had gone. `whoIsInRound`, used two
  * lines below this for the roster and the counter, already leaves them out; the header now does
  * the same, so it reads the same state the rest of the page does.
+ *
+ * ONE CLOCK NOW (fix plan, group 2, 4 November 2026). The header's own count is gone: it says the server's sentence
+ * (`sessionClock`, from theSessionAndItsCount), which leaves out somebody held at the door by the same rule. That the server's
+ * clock moves to session 2 for these rows is proved in api this-sessions-count.spec.ts; this proves the page says what it is
+ * served, and nothing of its own.
  */
 vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: { id: 'u-lead', role: 'MEMBER', email: 'lead@x.test' }, isAuthenticated: true }),
@@ -60,13 +65,16 @@ beforeEach(() => vi.clearAllMocks())
 
 describe('somebody not let in yet does not stall the header on "Session 1"', () => {
   it('reads "Session 2" once everybody who is actually in the round has finished session 1', async () => {
-    const g = baseGround()
+    const g: any = baseGround()
     g.checkIns = [
       { id: 'c1', sessionNumber: 1, status: 'COMPLETED', participantId: 'p-lead', completedAt: '2026-09-01' },
       { id: 'c2', sessionNumber: 1, status: 'COMPLETED', participantId: 'p-a', completedAt: '2026-09-01' },
       { id: 'c3', sessionNumber: 1, status: 'COMPLETED', participantId: 'p-b', completedAt: '2026-09-02' },
       // p-c (notLetInYet) has no check-in at all, and never will until let in.
     ]
+    /* What GET /grounds/:id serves for these rows once session 2 has come (api this-sessions-count.spec.ts, "somebody held at
+       the door does not keep the clock on session 1"). */
+    g.sessionClock = { currentSession: 2, plannedSessions: 12, says: 'Session 2 of 12.', whileOpen: null }
     ;(groundsApi.get as any).mockResolvedValue(g)
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
