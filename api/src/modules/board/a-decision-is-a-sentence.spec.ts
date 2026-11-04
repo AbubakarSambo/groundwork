@@ -25,7 +25,7 @@ describe('a decision on the board is a sentence', () => {
     );
     /* Changed 3 November (F5 part 3, stage 8 and 9): named people "see it differently", in the approved journey's words. */
     expect(d.question).toBe('Brian Mwangi and Miriam Achieng see differently whether the order is signed.');
-    expect(d.why).toBe('What people said about this does not match, so nobody can assume it is agreed.');
+    expect(d.why).toBe('What people said about this does not match.');
   });
 
   it('a difference where one name is hidden from this reader names nobody', () => {

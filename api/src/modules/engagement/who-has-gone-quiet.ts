@@ -1,4 +1,3 @@
-import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import { whoHasAnswered } from '../reports/how-many-have-answered';
@@ -61,8 +60,8 @@ function theDoneByOne(c: AQuietCheckIn): string | null {
   return `${capital(aNumberInWords(n))} ${n === 1 ? 'thing people said they would do was' : 'things people said they would do were'} done, ${n === 1 ? 'by' : n === 2 ? 'both by' : 'all by'} ${c.closedAllBy.name}`;
 }
 
-/** `direct`: the direct morning is on (email/a-direct-email.ts). Who has not answered and what to do, without defending the check-in. */
-export function theTeamWords(firstName: string | null | undefined, c: AQuietCheckIn, direct = false) {
+/** Who has not answered and what to do, without defending the check-in. */
+export function theTeamWords(firstName: string | null | undefined, c: AQuietCheckIn) {
   const n = quietIn(c);
   /* THE POSITIVE IS NOT LEFT OUT WHEN MOST OF A TEAM IS QUIET (spec sections 16 and 21, journey 7): "seven have not answered" and, as a plain fact on its own, who did
      what got done. "And", never "but": it sets nobody against anybody. */
@@ -74,7 +73,6 @@ export function theTeamWords(firstName: string | null | undefined, c: AQuietChec
       `Hello ${firstName?.trim() || 'there'}. ${capital(aNumberInWords(n))} of the ${aNumberInWords(c.ofHowMany)} people on "${c.label}" have not answered the latest check-in, which opened more than a week ago.`,
       `${capital(theKinds(c))}.`,
       ...(done ? [`${done}.`] : []),
-      ...(direct ? [] : ['Most of the team has not answered, so this is a pattern across the team and not about one person. Groundwork has not changed or shortened the check-in.']),
       'If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
     ],
     linkLabel: 'See who has answered',
@@ -82,7 +80,7 @@ export function theTeamWords(firstName: string | null | undefined, c: AQuietChec
 }
 
 /** Journey 7: spread over several check-ins, or fewer than most of one. */
-export function theAcrossWords(firstName: string | null | undefined, cs: AQuietCheckIn[], direct = false) {
+export function theAcrossWords(firstName: string | null | undefined, cs: AQuietCheckIn[]) {
   const quiet = cs.filter((c) => quietIn(c) > 0);
   const total = quiet.reduce((n, c) => n + quietIn(c), 0);
   const one = quiet.length === 1 ? quiet[0] : null;
@@ -102,7 +100,7 @@ export function theAcrossWords(firstName: string | null | undefined, cs: AQuietC
       /* One check-in is named once, in the subject and the first line, not again in every sentence. */
       ...quiet.map((c) => (one ? `${capital(theKinds(c))}.` : `In "${c.label}", ${theKinds(c)}.`)),
       ...positives,
-      `${direct ? '' : 'Groundwork has not changed or shortened any of them. '}If you want to know what is in the way, asking one of them directly is the quickest way to find out.`,
+      'If you want to know what is in the way, asking one of them directly is the quickest way to find out.',
     ],
     linkLabel: one ? 'See who has answered' : 'See your check-ins',
   };
@@ -205,9 +203,8 @@ export async function sendWhoHasGoneQuiet(
       const user = await prisma.user.findUnique({ where: { id: leadId }, select: { email: true, firstName: true, deletedAt: true, isActive: true, organizationId: true } });
       if (!user?.email || user.deletedAt || user.isActive === false) continue;
       const mostOf = found.find(mostOfTheTeamIs);
-      const direct = await theDirectMorningIsOn(prisma, user.organizationId);
       if (await isAlreadyHeld(prisma, QUIET_SENDER, user.email)) continue;
-      const w = mostOf ? theTeamWords(user.firstName, mostOf, direct) : theAcrossWords(user.firstName, found, direct);
+      const w = mostOf ? theTeamWords(user.firstName, mostOf) : theAcrossWords(user.firstName, found);
       const link = mostOf ? `${base}/grounds/${mostOf.groundId}/board` : `${base}/grounds`;
       const went = await deps.email.sendWhoHasGoneQuiet(user.email, w.subject, w.lines, w.linkLabel, link);
       await nowToldOnce(prisma, once, went, { sender: QUIET_SENDER, to: user.email });

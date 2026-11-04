@@ -81,7 +81,7 @@ describe('what a digest may carry', () => {
   };
 
   it('a headline, a count, and a link', () => {
-    const body = digestBody(facts, 'https://app/u/tok');
+    const body = digestBody(facts);
     expect(digestSubject(facts)).toBe('Renewal push - session 3 is complete');
     expect(body).toMatch(/4 people took part/);
     /* Changed 19 October (messages test): "2 things need attention" did not say what; it says what kind of thing, still with no name. */
@@ -105,11 +105,15 @@ describe('what a digest may carry', () => {
     );
   });
 
-  it('and carries a working unsubscribe link on every mail', () => {
-    expect(digestBody(facts, 'https://app/u/tok')).toMatch(/To stop these emails: https:\/\/app\/u\/tok/);
+  /* Changed 4 November 2026 (release batch 1): the link to stop these is in the footer every mail of this kind carries, not said twice. */
+  it('and carries a working unsubscribe link on every mail, in the footer the door adds', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { whatThisMailIs } = require('./nothing-goes-out-that-was-turned-off');
+    expect(whatThisMailIs('sendRoundDigest')).toBe('we decided to send it');
+    expect(digestBody(facts)).toMatch(/Read it on the check-in's board at https:\/\/app\/grounds\/g1/);
   });
 
   it('and says nothing is flagged rather than reporting a zero', () => {
-    expect(digestBody({ ...facts, needsAttention: 0 }, 'u')).toMatch(/Nothing is flagged for attention/);
+    expect(digestBody({ ...facts, needsAttention: 0 })).toMatch(/Nothing is flagged for attention/);
   });
 });

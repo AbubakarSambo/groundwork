@@ -58,12 +58,3 @@ describe('with the direct morning on', () => {
     expect(JSON.stringify(r.yourRecord ?? null)).not.toMatch(/Baraka|Jamii|Upendo|Aisha/);
   });
 });
-
-describe('with the direct morning off', () => {
-  it('every reader’s report is served exactly as before, with nothing of their record', async () => {
-    for (const [g, userId, n] of [['fees', thePersonOf('fees', 'Aisha').userId, 2], ['drop', thePersonOf('drop', 'Joseph').userId, 3], ['fees', theLeadOfTheRun('fees'), 2]] as const) {
-      const r = await served(g, userId, n, false);
-      expect(r).toEqual({ ...THE_REPORT, sessionNumber: n });
-    }
-  });
-});

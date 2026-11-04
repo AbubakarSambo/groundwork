@@ -16,7 +16,6 @@ import { theCollectionsTypeFor } from '../board/the-collections-record';
 import { aDeadlineSaid } from '../board/the-matter-board';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
-import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { theirDay, twoMissedDaysSaid, notInTodaySaid, onTimeSaid, mayBeNudged, type ASessionOnRecord, type TheirDay } from './who-answers-and-when';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { readThePersonsRecord, type AStoredPersonsRecord } from '../board/the-persons-record-store';
@@ -919,7 +918,6 @@ export async function theDirectMorningFor(
       participants: { select: { id: true, userId: true, partyType: true, nameGiven: true, managingOnly: true, leftAt: true, user: { select: { firstName: true, lastName: true } } } } },
   })).catch(() => null) as any;
   if (!ground || ground.initiatorId !== opts.leadUserId) return null;
-  if (!(await theDirectMorningIsOn(prisma, ground.organizationId))) return null;
   const zone = (await theOrganisationsZone(prisma, ground.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
   const people = ((ground.participants ?? []) as any[]).map((p) => ({
     id: p.id,

@@ -201,7 +201,7 @@ describe('the lead reads the whole week', () => {
   it('reads what was said and what the proof shows, as totals', async () => {
     const { r } = await served(LEAD);
     expect(r.saidAndProof).toBe(
-      'This week, people said 5 things in their check-ins. 1 of them has a photo or document behind it. 1 number was given as an estimate, and 1 number was given from memory with nothing attached, so they cannot be checked yet. It is worth confirming them before acting on them.',
+      'This week, people said 5 things in their check-ins. 1 of them has a photo or document behind it. 1 number was given as an estimate, and 1 number was given from memory with nothing attached, so they cannot be checked yet.',
     );
   });
 
@@ -276,7 +276,7 @@ describe('a person reads only what is about them, and the team\'s own counts', (
     ]);
     expect(r.threeInARow!.every((p) => p.isYou && p.who === 'You')).toBe(true);
     expect(r.saidAndProof).toBe(
-      'This week, you said 2 things in your check-ins. None of them has a photo or document behind it yet. 1 number was given as an estimate, and 1 number was given from memory with nothing attached, so they cannot be checked yet. It is worth confirming them before acting on them.',
+      'This week, you said 2 things in your check-ins. None of them has a photo or document behind it yet. 1 number was given as an estimate, and 1 number was given from memory with nothing attached, so they cannot be checked yet.',
     );
     expect(r.whatChanged).toEqual({
       moved: ['You said the work was waiting on Wairimu for the price list, and it is no longer waiting.'],

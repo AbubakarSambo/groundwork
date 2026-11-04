@@ -41,9 +41,10 @@ describe('the shared-picture email Grace reads is written for her', () => {
     const lines = theFirstInsight(MONDAY, 'Sales team, Q4', { isTheLead: true })!.lines;
     await (EmailService.prototype as any).sendReportReady.call(mailer, GRACE, 'Sales team, Q4', 'http://x/r', undefined, 'g-sales', undefined, lines);
     await (EmailService.prototype as any).sendReportReady.call(mailer, KEVIN, 'Sales team, Q4', 'http://x/r', undefined, 'g-sales', undefined, theFirstInsight(MONDAY, 'Sales team, Q4', { isTheLead: false })!.lines);
+    /* Changed 4 November 2026 (release batch 1, Hafsah: no privacy notes in messages): neither mail carries a note about who sees what. */
     expect(read(GRACE)).not.toContain('including your manager');
-    expect(read(GRACE)).toContain('The people in this check-in can see what you say in it, and you can see what they say.');
-    expect(read(KEVIN)).toContain('The people in this check-in, including your manager, can see what you say in it.');
+    expect(read(GRACE)).not.toContain('can see what you say');
+    expect(read(KEVIN)).not.toContain('can see what you say');
   });
 
   it('her own rule answers what the email asked her: Kilele Hotel has a payment record, so it counts', async () => {
@@ -52,7 +53,7 @@ describe('the shared-picture email Grace reads is written for her', () => {
     const lines = theFirstInsight(MONDAY, 'Sales team, Q4', { isTheLead: true })!.lines;
     const rule = { deals: [{ name: 'Kilele Hotel', paid: true, signed: false }, { name: 'Greenfield', paid: false, signed: true }] };
     const said = lines.map((l) => withWhatHerRuleSays(l, rule)).join(' ');
-    expect(said).toContain('Here is a conversation worth having. The status of the Kilele Hotel sale is described differently. Your rule is that a sale counts only with a payment or a signed order. There is a payment record for Kilele Hotel, so it counts.');
+    expect(said).toContain('The status of the Kilele Hotel sale is described differently. Your rule is that a sale counts only with a payment or a signed order. There is a payment record for Kilele Hotel, so it counts.');
     expect(said).not.toContain("meets the team's definition");
     /* And where nothing is on record, it says so, never asks her. */
     expect(withWhatHerRuleSays("Confirm if Kilele Hotel's word meets the team's definition of a completed deal.", { deals: [{ name: 'Kilele Hotel', paid: false, signed: false }] }))

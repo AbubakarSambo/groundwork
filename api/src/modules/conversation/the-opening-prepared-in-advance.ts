@@ -1,4 +1,4 @@
-import { whatIsOpenFor, type WhatIsOpen } from './the-one-thing-today';
+import { whatIsOpenFor, theOpeningFrom, type WhatIsOpen } from './the-one-thing-today';
 
 /**
  * EACH PERSON'S OPENER AND FIRST QUESTION, PREPARED IN ADVANCE (Hafsah, 3 November 2026 night, answers 1 to 3; fix plan, release batch 1,
@@ -22,6 +22,8 @@ import { whatIsOpenFor, type WhatIsOpen } from './the-one-thing-today';
 export interface WhatItRestsOn {
   /** The fact line as the record gave it then. It changes with a new wait, a payment, a deal or a promise carried over. */
   line: string;
+  /** The record's own question after the line, or null with nothing open. Not compared: the line and the things already carry it. */
+  asks?: string | null;
   /** The things on record behind it, by key. */
   things: string[];
   /** Their own latest update: a check-in line or something they added. */
@@ -48,11 +50,20 @@ export const KEPT_IN_THE_PLAN_AS = 'preparedOpening';
 
 const capital = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
 
-/** One plain fact by name, the most important thing on record for them today; "nothing is open from last time" when there is none. */
-export function theFactLine(open: Pick<WhatIsOpen, 'firstName' | 'things'>): string {
-  const first = open.things[0]?.says?.trim();
-  const fact = first || 'nothing is open from last time.';
+/**
+ * One plain fact by name, the most important thing on record for them today (two, for somebody late), read from the same opening the
+ * notices carry (theOpeningFrom), so there is one fact line; "nothing is open from last time" when there is none.
+ */
+export function theFactLine(open: Pick<WhatIsOpen, 'firstName' | 'things'> & Partial<Pick<WhatIsOpen, 'late' | 'label'>>): string {
+  const opening = theOpeningFrom(open.firstName, open.things, !!open.late, open.label ?? 'your check-in');
+  if (opening) return opening.line;
+  const fact = 'nothing is open from last time.';
   return open.firstName ? `${open.firstName}, ${fact}` : capital(fact);
+}
+
+/** The record's own question after the fact line, or null where nothing is open. The model is shown it, and it is the fallback. */
+export function theRecordsOwnQuestion(open: Pick<WhatIsOpen, 'firstName' | 'things'> & Partial<Pick<WhatIsOpen, 'late' | 'label'>>): string | null {
+  return theOpeningFrom(open.firstName, open.things, !!open.late, open.label ?? 'your check-in')?.question ?? null;
 }
 
 /** The opener as the person reads it: the fact line, then the first question. Never the line alone. */
@@ -82,6 +93,7 @@ export async function whatItWouldRestOn(
   ]);
   return {
     line: theFactLine(open),
+    asks: theRecordsOwnQuestion(open),
     things: open.things.map((t) => t.key),
     lastOwnUpdateAt: latest([{ at: (own as any)?.createdAt }]),
     lastLeadDecisionAt: latest([{ at: (decisions as any)?.createdAt }]),
@@ -116,12 +128,31 @@ export function thePreparedOpeningIn(sessionPlan: unknown): APreparedOpening | n
   return p && typeof p.line === 'string' && typeof p.question === 'string' && p.question.trim() && p.restsOn ? p as APreparedOpening : null;
 }
 
-/** What the model is told when only the question is to be written: the line is already said, first. */
-export function writeOnlyTheQuestion(line: string): string {
+/**
+ * The draft on this person's next session that nothing relevant has changed since, or null. The one reading of a ready draft, for the
+ * check-in, the screen's first line and the notices sent before it opens.
+ */
+export async function theDraftNothingHasChangedSince(
+  prisma: any,
+  who: { groundId: string; participantId: string; sessionNumber?: number | null; now?: Date },
+): Promise<APreparedOpening | null> {
+  const row = await Promise.resolve(prisma?.checkIn?.findFirst?.({
+    where: { groundId: who.groundId, participantId: who.participantId, status: 'NOT_STARTED', isSetup: false, isSelfCorrection: false, ...(who.sessionNumber != null ? { sessionNumber: who.sessionNumber } : {}) },
+    orderBy: { sessionNumber: 'asc' }, select: { sessionPlan: true },
+  })).catch(() => null);
+  const prepared = thePreparedOpeningIn((row as any)?.sessionPlan);
+  if (!prepared) return null;
+  const now = await whatItWouldRestOn(prisma, who).catch(() => null);
+  return now && nothingChangedSince(prepared, now) ? prepared : null;
+}
+
+/** What the model is told when only the question is to be written: the line is already said, first, and the record's own question. */
+export function writeOnlyTheQuestion(line: string, recordsQuestion?: string | null): string {
   return [
     'THE OPENING LINE IS ALREADY WRITTEN, FROM THE RECORD, AND IS SAID FIRST, WORD FOR WORD:',
     `"${line}"`,
     'Write only the first question that follows it: one plain sentence that builds on that line where it can, ending in a question mark.',
+    ...(recordsQuestion ? [`The record's own question after it is "${recordsQuestion}". Ask it, or a better one the session plan gives you about the same thing.`] : []),
     'Do not repeat the line, do not greet them, and do not say what this check-in is for.',
   ].join('\n');
 }

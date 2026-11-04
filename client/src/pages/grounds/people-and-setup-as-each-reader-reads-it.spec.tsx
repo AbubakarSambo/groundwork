@@ -216,16 +216,6 @@ describe('Naomi, an admin who does not run it, reads the whole page with no endi
   })
 })
 
-describe('with the organisation\'s switch off, People and setup reads exactly as before', () => {
-  it('the lead reads today\'s page, and the new page is never asked for', async () => {
-    renderPage(props({ ground: theSalesCheckIn({ release1bTabsOn: false }) }))
-    expect(screen.getByRole('heading', { name: 'Roles in this check-in' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'How it runs' })).toBeTruthy()
-    expect(screen.queryByText('How this check-in runs')).toBeNull()
-    expect(groundsApi.peopleAndSetup).not.toHaveBeenCalled()
-  })
-})
-
 describe('Mercy, a team member, reads only her short page', () => {
   it('one sentence, her role, her status, her sessions, who runs it, and who sees what', async () => {
     ;(groundsApi.peopleAndSetup as any).mockResolvedValue({

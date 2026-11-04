@@ -31,11 +31,15 @@ export function theReportIsStillWaitingDirectly(label: string, reportUrl: string
   return p(since ? `Your report for ${label} has been ready since ${since}.` : `Your report for ${label} is ready.`) + button(reportUrl, 'Read the report →');
 }
 
-/** A check-in invitation: who asks, what it is, how long it takes, and the button. */
-export function theInvitationDirectly(a: { hello: string; from: string; label: string; joining: string; noteHtml: string; url: string; whatsApp: string; stopLine: string }): string {
+/**
+ * A check-in invitation: who asks, what it is, how long it takes, who sees what they say, and the button. The one line about who sees
+ * what stays here, where a person is first asked to take part (Hafsah, 4 November 2026: one plain consent line, where people first agree).
+ */
+export function theInvitationDirectly(a: { hello: string; from: string; label: string; whoSees: string; joining: string; noteHtml: string; url: string; whatsApp: string; stopLine: string }): string {
   return p(a.hello) +
     `<p><strong>${esc(a.from)}</strong> would like to know what you are seeing in <strong>${esc(a.label)}</strong>.</p>` +
     p(`It is a short check-in, ${ABOUT_HOW_LONG}, where you say what is actually going on from where you sit.`) +
+    (a.whoSees ? p(a.whoSees) : '') +
     a.joining + a.noteHtml +
     `<p><a href="${a.url}" style="${BUTTON}">Start my check-in →</a></p>` +
     a.whatsApp + a.stopLine;

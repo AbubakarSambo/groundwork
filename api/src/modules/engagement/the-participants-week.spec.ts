@@ -63,7 +63,7 @@ describe('what Vera reads', () => {
       to: 'vera@x.test',
       subject: 'You kept three of the four things you said you would do; two requests are waiting on you',
       lines: [
-        'Hello Vera. Here is your week in Groundwork. Only you can read this.',
+        'Hello Vera. Here is your week.',
         /* Her four promises were all said five days ago, so the count says since that day, not "in the last four weeks" (engine test, Mercy's week). */
         `You kept three of the four things you said you would do since ${theDayTheCountBegins([{ createdAt: recent }], NOW)}.`,
         /* Changed 19 October (messages test, finding 14): each open thing is said on its own with the check-in it was said in, the latest
@@ -190,7 +190,7 @@ describe('what Fatuma reads when Kevin says he is waiting on her', () => {
     await w.run();
     expect(w.sent[0].subject).toBe('One request is waiting on you');
     expect(w.sent[0].lines).toEqual([
-      'Hello Fatuma. Here is your week in Groundwork. Only you can read this.',
+      'Hello Fatuma. Here is your week.',
       'Imani Hassan is waiting for "the purchase request for the phone" from you in "Duka pilot".',
       'Kevin Odhiambo says the work is waiting for "the final prices" from you in "Duka pilot". That is what Kevin Odhiambo said, and you have not said it yourself. Say in your check-in whether it is yours to give.',
     ]);

@@ -1,5 +1,4 @@
 import { rebuildThePersonsRecords } from '../board/the-persons-record-store';
-import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { theFeeNotesThatFellDueOnAnEvent } from '../board/a-fee-note-that-fell-due-said-to-the-lead';
 import { NOT_A_QUIET_CLOSE } from '../grounds/an-answer-includes-a-refusal';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
@@ -309,7 +308,6 @@ export async function theReportsWordsHeldToTheRecord<R extends { moved: string[]
 export async function theWeekForTheLead(
   prisma: any, g: { id: string; label: string; initiatorId: string }, now: Date, board?: { get(groundId: string, userId: string): Promise<any> },
 ): Promise<Pick<AWeekInOneCheckIn, 'theTarget' | 'movedWithProof' | 'needsYou'>> {
-  if (!(await theDirectMorningIsOnFor(prisma, g.id))) return {};
   const ground = await Promise.resolve(prisma.ground?.findUnique?.({ where: { id: g.id }, select: { organizationId: true, kindOfWork: true, participants: { select: { id: true, userId: true, managingOnly: true, leftAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } })).catch(() => null) as any;
   if (!ground) return {};
   /* The week passing is something new in each person's record, as each morning (the-leads-daily-nudge): read current, never stale. */
@@ -382,7 +380,6 @@ export async function theWeekOf(prisma: any, g: { id: string; label: string; ini
   const isConfirmed = (r: any, i: number) => confirmedWaits.has(r.id ?? `w-${i}`);
   const waitingOn = tally(openOnSomebody.filter(isConfirmed).map((r) => r.onParticipantId));
   const releaseOne = await theReleaseOneSalesBoardIsOnFor(prisma, g.id).catch(() => false);
-  const direct = await theDirectMorningIsOnFor(prisma, g.id);
   /* The same wait said again in other words is one claim, with the fullest words of what was tried (items 18 and 19), where Release 1's
      switch is on; off, each claim as before. */
   const unconfirmed = openOnSomebody.filter((r, i) => !isConfirmed(r, i) && String(r.what ?? '').trim());

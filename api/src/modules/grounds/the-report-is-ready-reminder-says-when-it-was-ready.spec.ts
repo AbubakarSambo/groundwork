@@ -36,7 +36,7 @@ describe('the report-is-ready reminder says when it became ready', () => {
   it('reads the day of the release, Monday 12 October in Nairobi, never "a few days"', async () => {
     const mail = await theReminderAsKevinReadIt(new Date('2026-10-12T15:30:00Z'));
     expect(mail.subject).toBe('Your report for "Sales team, Q4" is ready to view');
-    expect(mail.text).toContain('The shared picture for Sales team, Q4 has been ready since Monday 12 October.');
+    expect(mail.text).toContain('Your report for Sales team, Q4 has been ready since Monday 12 October.');
     expect(mail.text).not.toContain('a few days');
   });
 
@@ -44,6 +44,7 @@ describe('the report-is-ready reminder says when it became ready', () => {
     const mail = await theReminderAsKevinReadIt(new Date('2026-10-12T15:30:00Z'));
     expect(mail.text).not.toContain('confirm you are ready');
     expect(mail.text).not.toContain('accounts');
-    expect(mail.text).toContain('It shows where what you each said agrees, where it differs, and what is still open. It is open to you now, and nothing else is needed from you to read it.');
+    /* Changed 4 November 2026 (release batch 1): the reminder says when it became ready, and the link, with nothing explaining the report. */
+    expect(mail.text).toContain('Read the report');
   });
 });

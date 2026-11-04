@@ -3,7 +3,6 @@ import { aQuestionNotYetAsked, WHAT_ELSE } from './nobody-is-left-looking-at-a-p
 import { aClaimIn, aSentenceNames } from '../board/the-persons-record';
 import type { ThePersonsRecord, ACoaching } from '../board/the-persons-record';
 import { readThePersonsRecord } from '../board/the-persons-record-store';
-import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 
 /**
  * INSIDE THE CHECK-IN, GROUNDWORK MANAGES (Groundwork does the managing, part 1; Hafsah, 21 October 2026). Behind the direct morning
@@ -147,7 +146,6 @@ export function withNoLabelOnThem(reply: string, alreadyAsked: string[] = []): {
  * Off, nothing: the prompt is byte for byte what it was.
  */
 export async function theManagingBlockFor(prisma: any, checkIn: { groundId: string; participantId: string }, coach: boolean): Promise<string> {
-  if (!(await theDirectMorningIsOnFor(prisma, checkIn.groundId).catch(() => false))) return '';
   const stored = await readThePersonsRecord(prisma, checkIn.participantId).catch(() => null);
   return whatGroundworkManagesHere(stored?.record ?? null, stored?.coaching ?? [], { coach });
 }
@@ -158,7 +156,6 @@ export async function theManagingBlockFor(prisma: any, checkIn: { groundId: stri
  */
 export async function theTurnManaged(prisma: any, checkIn: { id?: string; groundId?: string; participantId?: string }, raw: string, alreadyAsked: string[] = []): Promise<{ text: string; cut: string[] }> {
   if (!raw || !checkIn?.participantId || !checkIn?.groundId) return { text: raw, cut: [] };
-  if (!(await theDirectMorningIsOnFor(prisma, checkIn.groundId).catch(() => false))) return { text: raw, cut: [] };
   const cut: string[] = [];
   let text = raw;
   const stored = await readThePersonsRecord(prisma, checkIn.participantId).catch(() => null);

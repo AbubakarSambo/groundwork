@@ -46,7 +46,7 @@ describe('Baraka, who leads the check-in', () => {
     expect(mail.lines[0].startsWith('Hello Baraka. ')).toBe(true);
     expect(got.nobodyHasStarted[0]).toMatchObject({ groundId: 'g1', label: 'Distributor review', subject: mail.subject, lines: [mail.lines[0].slice('Hello Baraka. '.length), ...mail.lines.slice(1)], linkLabel: 'See who has started', to: '/grounds/g1' });
     expect(got.nobodyHasStarted[0].lines[0]).toMatch(/^Kito and Lerato were invited to "Distributor review" on /);
-    expect(got.nobodyHasStarted[0].subject).toBe('Nobody has started "Distributor review" yet, and Groundwork is following up');
+    expect(got.nobodyHasStarted[0].subject).toBe('Nobody has started "Distributor review" yet');
   });
 
   it('is told what Groundwork would do this week, from the weekly report, in the Friday letter\'s sentences', async () => {
@@ -61,7 +61,7 @@ describe('Baraka, who leads the check-in', () => {
   });
 
   it('is not told a sentence Today already says, nor one the daily nudge\'s page says', async () => {
-    const onTheCards = await world({ needs: [{ title: 'Nobody has started "Distributor review" yet, and Groundwork is following up', detail: null }] }).today('u-lead');
+    const onTheCards = await world({ needs: [{ title: 'Nobody has started "Distributor review" yet', detail: null }] }).today('u-lead');
     expect(onTheCards.forTheLead?.nobodyHasStarted ?? []).toHaveLength(0);
     const inTheNudge = await world({ outstanding: ['Name one owner for the distributor relationship. Nobody owns the next step with the distributor.'] }).today('u-lead');
     expect(inTheNudge.forTheLead!.whatIWouldDoThisWeek[0].lines).toEqual(['Here is what I would do this week.', 'Ask finance to confirm the discount limit. Two people gave two different limits.']);

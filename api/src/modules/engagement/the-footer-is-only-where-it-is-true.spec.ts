@@ -47,10 +47,11 @@ describe('a lead\'s messages about the work', () => {
   });
 });
 
-describe('mail that is about what somebody said still carries it', () => {
-  it('the reminder and the report notice do', async () => {
+/* Changed 4 November 2026 (release batch 1, Hafsah: no explainer lines and no privacy notes in messages): no mail carries it now. */
+describe('mail that is about what somebody said no longer carries it', () => {
+  it('the reminder does not', async () => {
     const d = door();
     await d.email.sendNudge('omar@x.test', 'Kenya launch', 'https://app.test/c', undefined, undefined, null, 'p1');
-    expect(d.sent[0].html).toMatch(/Groundwork is where the people involved/);
+    expect(d.sent[0].html).not.toMatch(/Groundwork is where the people involved/);
   });
 });

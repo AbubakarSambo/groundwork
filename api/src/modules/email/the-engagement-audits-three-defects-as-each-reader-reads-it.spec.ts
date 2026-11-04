@@ -82,7 +82,7 @@ describe('1. "Yours is the last one we are waiting for"', () => {
     participants.wairimu.checkIns = [{ id: 'ci-wairimu', status: 'COMPLETED' }];
     sent.length = 0;
     await svc.sendReminder('ci1', 'u-wairimu');
-    expect(text(sent.find((m) => m.to === 'v@x.test').html)).toContain('They have already shared their side. Yours is the last one we are waiting for.');
+    expect(text(sent.find((m) => m.to === 'v@x.test').html)).toContain('Everyone else has checked in. Yours is the last one.');
   });
 });
 
@@ -113,10 +113,10 @@ describe('2. who has not checked in yet', () => {
     const { email, sent } = theMails();
     await email.sendParticipantCheckedIn('wairimu@x.test', 'Lucy Test', 'Kenya launch', 'https://app.test/grounds/g1', { names: ['Amina', 'Kwame'], count: 2 });
     const read = text(sent[0].html);
-    expect(read).toContain('Lucy Test has checked in on Kenya launch. Amina and Kwame have not checked in yet. The report is made once everyone is in.');
+    expect(read).toContain('Lucy Test has checked in on Kenya launch. Amina and Kwame have not checked in yet.');
     expect(read).not.toMatch(/part(y|ies)/i);
     await email.sendParticipantCheckedIn('wairimu@x.test', 'Kwame Test', 'Kenya launch', 'https://app.test/grounds/g1', { names: [], count: 0 });
-    expect(text(sent[1].html)).toContain('Everyone has now checked in. The shared report is ready to go out.');
+    expect(text(sent[1].html)).toContain('Everyone has now checked in.');
   });
 });
 
@@ -146,7 +146,9 @@ describe('3. what Groundwork is, and who sees what people say', () => {
     const { email, sent } = theMails();
     await email.sendReportReady('amani@baridi.test', 'Sales team, Q4', 'https://app.test/r', undefined, 'g-1');
     const read = text(sent[0].html);
-    expect(read).toContain('The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Baridi Appliances stay private.');
+    /* Changed 4 November 2026 (release batch 1, Hafsah: no privacy notes in messages): the report notice itself carries no note about who sees
+       what; only the invitation keeps its one consent line. This spec's own post adds the paragraph, so only what must never be said is checked. */
+    expect(read).toContain('Read the report');
     expect(read).not.toMatch(/does not quote anybody|stay yours|privately/i);
   });
 });

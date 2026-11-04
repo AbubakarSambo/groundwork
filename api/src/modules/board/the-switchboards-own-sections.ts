@@ -758,7 +758,7 @@ export function theLeadActions(
       says: (howMany.get(g.participantId) ?? 1) > 1
         ? `${needs} to talk ${who} through the ${howMany.get(g.participantId)} goals ${leadInASentence} set for this work, because ${who} has not been told about them yet.`
         : `${needs} to talk ${who} through a goal ${leadInASentence} set for this work, because ${who} has not been told about it yet.`,
-      because: 'The goal still counts, and Groundwork will not tell its number until it has been talked through.',
+      because: 'The goal counts. Its number is told once it’s talked through.',
     });
   }
 
@@ -841,7 +841,7 @@ export interface AForecast {
 }
 
 export const WHAT_A_FORECAST_CANNOT_TELL_YOU =
-  'This carries the pace so far forward in a straight line. It is not a promise, and anything that changes the pace changes where it ends.';
+  'This carries the pace so far forward in a straight line.';
 
 /**
  * A team's number only (decided for Hafsah to confirm, 1 October): a target with an owner is about one

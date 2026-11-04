@@ -80,20 +80,20 @@ describe('what each reader reads', () => {
     const text = whatThePersonReads({ inARow: 2 }, { leadName: 'Amani', somebodyWaitsOnThem: true });
     console.log(`THE PERSON READS:\n${text}`);
     /* Changed 18 October (Drop Access run 1, item 25): at two missed in a row the lead is not told yet (she is from three of the last four), so the person reads that she will be if they miss the next one, never that she will see this. */
-    expect(text).toBe("You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late, people waiting on you go unseen, and Amani has to chase instead of help. If you miss the next one as well, Amani will be told. About ten minutes now puts your view back in the picture.");
+    expect(text).toBe("You've missed your last two check-ins. Somebody on the team is waiting on you. If you miss the next one as well, Amani will be told. It takes about ten minutes.");
   });
 
   it('the person, with nobody waiting on them: no word about people waiting', () => {
     const text = whatThePersonReads({ inARow: 2 }, { leadName: null, somebodyWaitsOnThem: false });
     expect(text).not.toMatch(/waiting on you/);
     /* Changed 18 October (Drop Access run 1, item 25): at two missed in a row the lead is not told yet (she is from three of the last four), so the person reads that she will be if they miss the next one, never that she will see this. */
-    expect(text).toContain('your manager has to chase instead of help. If you miss the next one as well, your manager will be told.');
+    expect(text).toContain('If you miss the next one as well, your manager will be told.');
   });
 
   it('the lead: facts and what they do, the name and never a guessed pronoun or a label', () => {
     const text = whatTheLeadReads('Brian', { ofTheLastFour: 3, lastFour: 4 }, 'Sales weekly');
     console.log(`THE LEAD READS:\n${text}\n${theirReasonBesideIt('Brian', 'My mother was in hospital.')}\n${theNextStepSuggested('Brian', A_SUPPORT_PLAN)}`);
-    expect(text).toBe('Brian has missed 3 of the last 4 check-ins on "Sales weekly". When someone stops checking in, the team loses their view, problems surface late, and the effort to keep everyone in step falls on you and the rest of the team. Speak to Brian this week.');
+    expect(text).toBe('Brian has missed 3 of the last 4 check-ins on "Sales weekly". Speak to Brian this week.');
     expect(text).not.toMatch(/\b(him|her|his|she|he)\b|at risk|PIP|exit/);
     expect(theNextStepSuggested('Brian', TOLD_THE_LEAD)).toBeNull();
     expect(theNextStepSuggested('Brian', A_FORMAL_PROCESS)).toContain('a formal process in the performance suite');

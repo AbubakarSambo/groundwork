@@ -96,13 +96,6 @@ describe('Grace’s morning and the top of her board, with the switch on', () =>
   });
 });
 
-describe('with the switch off', () => {
-  it('nothing is built, so nobody reads any of it', async () => {
-    expect(await morningAt(new Date('2026-10-20T12:30:00Z'), { directMorning: false })).toBeNull();
-    expect(await morningAt(new Date('2026-10-22T06:00:00Z'), { directMorning: false, rows: josephMissesTwoDays() })).toBeNull();
-  });
-});
-
 describe('the sentences, one at a time', () => {
   const day = (over: any) => ({ participantId: 'p', dueToday: true, answeredToday: false, answeredOnTimeToday: false, lateAfter: null, lateToday: false, lastCheckedIn: '2026-10-19', missedDays: [], onTimeRunning: 0, onTimeLastDay: null, ...over });
   it('two missed days on a weekly check-in are said as the times it opened, not as days in a row', () => {

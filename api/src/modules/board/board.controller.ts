@@ -1,7 +1,4 @@
-import { withTheDirectMorningSaid } from '../organisation/the-screen-is-told-the-direct-morning';
 import { withoutComparisonsAnywhere } from '../reports/no-comparison-between-people';
-import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
-import { inTheDirectMorningsWords } from '../reports/the-direct-morning-says-the-fact';
 import { PrismaService } from '../prisma/prisma.service';
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body, BadRequestException, Optional } from '@nestjs/common';
 import { IsString, IsInt, IsOptional, IsArray, IsBoolean, IsIn, MaxLength, Min, ArrayMaxSize, ValidateNested, Matches } from 'class-validator';
@@ -121,10 +118,7 @@ export class BoardController {
   ) {
     const variant: CoverageVariant = coverage === 'bar' ? 'bar' : coverage === 'text' ? 'text' : DEFAULT_COVERAGE_VARIANT;
     /* No sentence that ranks a person against others reaches any reader (reports/no-comparison-between-people.ts). */
-    /* The direct morning: the product's own hedges say the fact or nothing, as served (reports/the-direct-morning-says-the-fact.ts). Off, as before. */
-    const on = await theDirectMorningIsOnFor(this.prisma, id);
-    /* And the page is told it, as one yes or no for its fixed words (organisation/the-screen-is-told-the-direct-morning.ts). */
-    return withTheDirectMorningSaid(inTheDirectMorningsWords(withoutComparisonsAnywhere(await this.board.get(id, userId, variant)), on), on);
+    return withoutComparisonsAnywhere(await this.board.get(id, userId, variant));
   }
 
   /**

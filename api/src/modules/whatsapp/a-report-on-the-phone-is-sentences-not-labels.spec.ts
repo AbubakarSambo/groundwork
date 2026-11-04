@@ -23,7 +23,7 @@ describe('what Chidi reads on his phone when his report arrives', () => {
       'Your report for Sales team, Q4 is ready.',
       'Not everyone has answered yet, so there is nothing to agree or differ with.',
       '3 people have still to answer. Somebody named a number, and nothing is tracking it. 4 worries are on record, and no wait has been recorded against a named person. Nothing said this session has a document behind it.',
-      'Here is a conversation worth having. Which of those conversations was with someone who can actually decide, with the budget and the authority?',
+      'Which of those conversations was with someone who can actually decide, with the budget and the authority?',
     ].join('\n\n'));
   });
   it('a read with no note is the label and the value in one sentence', () => {

@@ -44,7 +44,7 @@ describe('proof on the record counts for the deal it names', () => {
   it('a deal said to be won with nothing shown stays said to be won', async () => {
     const b = await boardAs(RUN, ...BISI);
     expect(heading(b, 'w-wema')).toBe('Said to be won, not shown yet');
-    expect(row(b, 'Wema').groupSays).toMatch(/^It rests on what somebody said, with no proof yet\./);
+    expect(row(b, 'Wema').groupSays).toMatch(/^There is no proof yet\./);
   });
 });
 

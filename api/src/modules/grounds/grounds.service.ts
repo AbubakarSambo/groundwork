@@ -3,10 +3,8 @@ import { whatTheRecordShowsTheLead } from '../patterns/what-the-record-shows-the
 import { theWeekdaysItMeets } from './the-check-ins-own-schedule';
 import { ConversationService as ConversationServiceForReopening } from '../conversation/conversation.service';
 import { theEndingSaid } from '../resolution/end-states';
-import { withTheDirectMorningSaid } from '../organisation/the-screen-is-told-the-direct-morning';
 import { THE_TEMPLATES, theTemplate } from '../board/the-thirteen-templates';
 import { theRelease4TeamsIsOn } from '../board/release-4-teams';
-import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { theNumberIsOnlyADay } from '../conversation/a-day-is-not-a-target';
 import { readWhereEachPersonIsGettingStarted } from './getting-each-person-started';
@@ -94,8 +92,7 @@ import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { theGlanceAsThisReaderMayReadIt, whatIsInTheWay } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
 import { readPeopleAndSetup } from './people-and-setup';
-import { readReferencesAndResources, readTheEvidence, aLineToKeep, aKeyFactFrom, referencesSaidDirectly, type EvidenceQuery } from './references-and-resources';
-import { theRelease1bTabsAreOn } from './release-1b-tabs';
+import { readReferencesAndResources, readTheEvidence, aLineToKeep, aKeyFactFrom, type EvidenceQuery } from './references-and-resources';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
@@ -523,7 +520,7 @@ export class GroundsService {
   async theOldContextChatMustBeOpen(organizationId: string): Promise<void> {
     if (await theOldContextChatIsOpen(this.prisma)) return;
     const ask = await askNameOf(this.prisma as any, organizationId);
-    throw new GoneException(`Setting up a check-in now happens in ${ask}, so open ${ask} from this check-in's Context and resources page and say what you want to add.`);
+    throw new GoneException(`Setting up a check-in now happens in ${ask}, so open ${ask} from this check-in's References and resources page and say what you want to add.`);
   }
 
   /**
@@ -2012,7 +2009,7 @@ export class GroundsService {
         /* For `guestIn`: whose workspace this check-in belongs to. And whether it has a WhatsApp
            number, which is what the "where people answer this" setting needs - riding along on a
            read that already has the organisation in hand, rather than a second query. */
-        organization: { select: { name: true, release1bTabsOn: true, directMorningOn: true, whatsappConnection: { select: { enabled: true } } } },
+        organization: { select: { name: true, whatsappConnection: { select: { enabled: true } } } },
         /**
          * WHAT THE WHOLE CHECK-IN IS AIMING AT. Written by the lead's own check-in alongside the
          * per-person expectations, and never read back until now - so the Context page had a band
@@ -2068,7 +2065,7 @@ export class GroundsService {
                name is actually needed. The WhatsApp connection rides along for the same reason it
                does above - and it has to be here too, or a cross-org lead is the one person who
                cannot see the setting. */
-            organization: { select: { name: true, release1bTabsOn: true, directMorningOn: true, whatsappConnection: { select: { enabled: true } } } },
+            organization: { select: { name: true, whatsappConnection: { select: { enabled: true } } } },
             /**
              * THE SAME LIST AS THE PRIMARY READ ABOVE, and it has to stay that way: this is the
              * cross-org participant's path, and anything missing here is a field that exists for
@@ -3095,10 +3092,6 @@ export class GroundsService {
        * which is the pattern this codebase has caught three times.
        */
       orgHasWhatsApp,
-      /* Release 1B's new check-in tabs for this organisation (release-1b-tabs.ts): which People and setup the page draws. A yes or no, nothing about anybody. */
-      release1bTabsOn: (ground as any).organization?.release1bTabsOn === true,
-      /* The direct morning for this organisation (organisation/the-direct-morning-switch.ts): which words the screens say. A yes or no, nothing about anybody. */
-      directMorningOn: (ground as any).organization?.directMorningOn === true,
       alignment,
       daysLeft,
       endsOn,
@@ -5540,7 +5533,7 @@ export class GroundsService {
       select: { id: true, text: true, aboutParticipantId: true, exactQuestion: true, closedAt: true },
     });
     if (!line) throw new NotFoundException('That question is not on this check-in.');
-    if (line.closedAt) throw new BadRequestException('You left this question out. Open it again on the Context and resources page first if you want it asked.');
+    if (line.closedAt) throw new BadRequestException('You left this question out. Open it again on the References and resources page first if you want it asked.');
     if (!line.aboutParticipantId) throw new BadRequestException('This question is not for anybody on this check-in, so there is nobody to ask it.');
     const edited = typeof dto?.exactQuestion === 'string' ? (withoutBankDetails(dto.exactQuestion) as string).replace(/\s+/g, ' ').trim() : '';
     if (typeof dto?.exactQuestion === 'string' && !edited) throw new BadRequestException('Write the question as you want it asked first.');
@@ -6113,9 +6106,9 @@ export class GroundsService {
         ? 'Nobody can be invited yet: nothing has been said about what this check-in is for. You are '
           + 'running this check-in rather than taking part in it, so it has to come from you in '
           + 'writing - write the brief, say what you expect of somebody, or add a document or a note '
-          + 'on the Context and resources tab.'
+          + 'on the References and resources tab.'
         : 'Nobody can be invited yet: nothing has been said about what this check-in is for. Write the '
-          + 'brief, say what you expect of somebody, add a document or a note on the Context and resources tab, or do '
+          + 'brief, say what you expect of somebody, add a document or a note on the References and resources tab, or do '
           + 'your own check-in first.',
     );
   }
@@ -8562,17 +8555,14 @@ export class GroundsService {
   async peopleAndSetup(groundId: string, organizationId: string, userId: string) {
     await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
     await this.assertMaySeeGround(groundId, userId);
-    /* The direct morning (organisation/the-screen-is-told-the-direct-morning.ts): one yes or no for the page's fixed words. It shows nothing more. */
-    return withTheDirectMorningSaid(await readPeopleAndSetup(this.prisma as any, { groundId, organizationId, userId }), await theDirectMorningIsOnFor(this.prisma, groundId));
+    return readPeopleAndSetup(this.prisma as any, { groundId, organizationId, userId });
   }
 
   /** References and resources, as this reader may read it (Release 1B, pull request 2 of 3). Asked after the check-in's own read rules. */
   async referencesAndResources(groundId: string, userId: string) {
     await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, userId, CANNOT_CHECK_IN_YET);
     await this.assertMaySeeGround(groundId, userId);
-    const served = await readReferencesAndResources(this.prisma as any, { groundId, userId, contextEnabled: this.contextEnabled() });
-    const direct = await theDirectMorningIsOnFor(this.prisma, groundId);
-    return withTheDirectMorningSaid(direct ? referencesSaidDirectly(served) : served, direct);
+    return readReferencesAndResources(this.prisma as any, { groundId, userId, contextEnabled: this.contextEnabled() });
   }
 
   /** One page of the evidence this reader may read (Release 1B, pull request 2 of 3). */
@@ -8586,7 +8576,7 @@ export class GroundsService {
    * THE LEAD ADDS TO REFERENCES AND RESOURCES, AND NOBODY ELSE (Release 1B, pull request 2 of 3: "Only the lead adds to it";
    * Hafsah, 18 October: team members "can't add to it"). The same gate as every other setup change (decision 63: the lead, or an
    * admin standing in only once the lead has left the organisation), asked here at the server, so a team member's request is
-   * refused whatever the screen draws. Only while the organisation's switch is on.
+   * refused whatever the screen draws.
    */
   private async aReferencesWriteIsAllowed(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({
@@ -8594,9 +8584,6 @@ export class GroundsService {
       select: { id: true, initiatorId: true, organizationId: true, status: true, endState: true, scenario: true, participants: { select: { id: true, userId: true } } } as any,
     }) as any;
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
-    if (!(await theRelease1bTabsAreOn(this.prisma as any, ground.organizationId))) {
-      throw new ForbiddenException('References and resources is not open for this organisation yet.');
-    }
     const confirm = await this.mayConfirmSetupOn(ground, userId);
     const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else', ground.scenario);
     if (refused) throw new BadRequestException(refused);

@@ -94,9 +94,9 @@ export interface ARecordSection {
  * a helpdesk" under the helpdesk's own section, which read oddly: the example named the very thing the
  * section was about. Each section now names the kind of system that would hold its numbers.
  */
-const FROM_ANOTHER_SYSTEM = 'Groundwork does not keep this yet. It needs numbers from another system.';
-const FROM_PAYMENT_RECORDS = 'Groundwork does not keep this yet. It needs numbers from another system, such as payment records.';
-const FROM_THE_HELPDESK = 'Groundwork does not keep this yet. It needs the ticket counts from the helpdesk itself.';
+const FROM_ANOTHER_SYSTEM = '';
+const FROM_PAYMENT_RECORDS = '';
+const FROM_THE_HELPDESK = '';
 
 /* One sales board for both sales kinds until Release 4 draws the sales organisation's own (see THE_SALES_KINDS). */
 const THE_SALES_RECORDS: ARecordSection[] = [
@@ -179,7 +179,7 @@ export function itemKindsFor(kind: KindOfWork): string[] {
  */
 export const RECORD_SECTIONS: string[] = [...new Set(Object.values(RECORDS_FOR_EACH_KIND).flatMap((l) => l.map((s) => s.section)))];
 
-export const NOT_KNOWN_KIND = 'Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.';
+export const NOT_KNOWN_KIND = '';
 
 /** What one row looks like on the board. */
 export interface AServedRecord {

@@ -1,13 +1,14 @@
 import { theNightRunsDatabase, N, type AGroundOfTheRun } from '../engagement/the-night-run-bed';
 import { ConversationService } from './conversation.service';
 import { withTheOpeningLine } from './the-opening-line';
+import { aTeamMembersOpeningFor } from './the-one-thing-today';
 import { theFactLine, theOpeningAsRead, nothingChangedSince, thePreparedOpeningIn, KEPT_IN_THE_PLAN_AS, type APreparedOpening } from './the-opening-prepared-in-advance';
 
 /**
  * EACH PERSON'S OPENER AND FIRST QUESTION, PREPARED IN ADVANCE (Hafsah, 3 November 2026 night; fix plan, batch 1, group 7, item 1).
  *
- * Read on the second night run's record (Drop Access, "Sales team, Q4", Tuesday 20 October in the morning), with the direct morning off,
- * which is how every organisation runs today. The model is a fixture that says which instruction it was given; everything else is the
+ * Read on the second night run's record (Drop Access, "Sales team, Q4", Tuesday 20 October in the morning). Since batch 1 the direct
+ * morning has no switch, and this is its one opener: the morning email and WhatsApp message read the same draft. The model is a fixture that says which instruction it was given; everything else is the
  * product: what is prepared, what is kept on the row, what the person reads first, and how many model calls the opening makes.
  *
  * Before: opening a check-in made two model calls while the person waited, the session plan (about 4.3 seconds) and the opener (about
@@ -29,6 +30,8 @@ function aCheckInOver(g: AGroundOfTheRun, first: string) {
   db.conversationTurn.create = jest.fn(async ({ data }: any) => { const t = { id: `t${saved.length + 1}`, createdAt: new Date(), ...data }; saved.push(t); return t; });
   db.conversationTurn.findFirst = jest.fn(async (q: any) => (q?.where?.checkInId === ci.id ? saved.find((t) => t.role === q.where.role) ?? null : { id: 'another-round' }));
   db.checkIn.findUnique = jest.fn(async (q: any) => (q?.where?.id === ci.id ? structuredClone(row) : null));
+  const theRun = db.checkIn.findFirst;
+  db.checkIn.findFirst = jest.fn(async (q: any) => (q?.where?.participantId === row.participantId && q?.where?.status === 'NOT_STARTED' ? (row.status === 'NOT_STARTED' ? structuredClone(row) : null) : theRun(q)));
   db.checkIn.update = jest.fn(async ({ data }: any) => { Object.assign(row, data); return row; });
   db.checkIn.updateMany = jest.fn(async ({ where, data }: any) => { if (where.id !== ci.id || row.status !== where.status) return { count: 0 }; Object.assign(row, data); return { count: 1 }; });
   db.ground.updateMany = jest.fn(async () => ({ count: 1 }));
@@ -77,7 +80,7 @@ describe('the opener, in its parts', () => {
   });
 });
 
-describe('Kevin\'s check-in, with the direct morning off', () => {
+describe('Kevin\'s check-in', () => {
   beforeEach(() => jest.useFakeTimers({ now: NOW, doNotFake: ['setTimeout', 'setInterval', 'setImmediate', 'clearTimeout', 'clearInterval', 'nextTick', 'queueMicrotask'] }));
   afterEach(() => jest.useRealTimers());
 
@@ -100,6 +103,14 @@ describe('Kevin\'s check-in, with the direct morning off', () => {
     expect(anthropic.respond).not.toHaveBeenCalled();
     expect(r.reply).toBe(withTheOpeningLine(`${KEVINS_LINE} ${THE_QUESTION}`));
     expect(line.line).toBe(r.reply);
+  });
+
+  it('the morning email and WhatsApp message carry the same draft, word for word, and the record\'s own words only while there is none', async () => {
+    const { service, row, db } = aCheckInOver('drop', 'Kevin');
+    const who = { groundId: row.groundId, participantId: row.participantId, sessionNumber: row.sessionNumber, now: NOW };
+    expect((await aTeamMembersOpeningFor(db, who))?.text).toBe(`${KEVINS_LINE} Is the delivery set for tomorrow?`);
+    await service.prepareTheOpening(row.id);
+    expect((await aTeamMembersOpeningFor(db, who))?.text).toBe(`${KEVINS_LINE} ${THE_QUESTION}`);
   });
 
   it('opened after something changed: the fact line straight away, and only the question written fresh, in one model call', async () => {

@@ -3,7 +3,6 @@ import { PartyType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
-import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { aTeamMembersOpeningFor, type ATeamMembersOpening } from '../conversation/the-one-thing-today';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { whoOnACheckInIsAway } from '../suites/who-is-away';
@@ -87,9 +86,9 @@ export async function theNudgeToday(prisma: any, participantId: string, now: Dat
   }
 }
 
-/** For the board: each person the lead may nudge, with the button's words. Empty where the switch is off. */
+/** For the board: each person the lead may nudge, with the button's words. */
 export async function theNudgesOnTheBoard(prisma: any, organizationId: string | null, people: { participantId: string; firstName: string }[], now: Date): Promise<ANudgeServed[]> {
-  if (!people.length || !organizationId || !(await theDirectMorningIsOn(prisma, organizationId))) return [];
+  if (!people.length || !organizationId) return [];
   const zone = (await theOrganisationsZone(prisma, organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
   const out: ANudgeServed[] = [];
   for (const p of people) {
@@ -119,7 +118,6 @@ export class TheLeadsOwnNudgeService {
     if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
     /* The lead who runs it, and nobody else. Decided here, on the server. */
     if (!requestingUserId || ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the person who runs this check-in can nudge somebody in it.');
-    if (!(await theDirectMorningIsOn(prisma, ground.organizationId))) throw new ForbiddenException('Nudging somebody from the board is not turned on for your organisation.');
     const isLead = (p: any) => p.partyType === PartyType.INITIATOR || p.userId === ground.initiatorId;
     const lead = (ground.participants ?? []).find(isLead);
     const them = (ground.participants ?? []).find((p: any) => p.id === participantId);

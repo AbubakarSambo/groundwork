@@ -9,7 +9,6 @@
  */
 export const THE_ORGANISATION_SWITCHES = [
   { key: 'release1SalesBoardOn', name: 'Release 1, the sales board' },
-  { key: 'release1bTabsOn', name: 'Release 1B, the new check-in tabs' },
   { key: 'release2CollectionsOn', name: 'Release 2, collect what is owed' },
   { key: 'release3InvoicesOn', name: 'Release 3, raising invoices on time' },
   { key: 'invoicesAfterASaleOn', name: 'Release 3, an invoice after each sale' },
@@ -19,7 +18,6 @@ export const THE_ORGANISATION_SWITCHES = [
   { key: 'release7PeopleOn', name: 'Release 7, reviews built from check-ins' },
   { key: 'release8SituationsOn', name: 'Release 8, the remaining situations' },
   { key: 'release9PolicyOn', name: 'Release 9, the policy board and setup from documents' },
-  { key: 'directMorningOn', name: 'Direct language' },
   { key: 'personJudgementsOn', name: 'What the lead reads about each person' },
 ] as const;
 

@@ -1,4 +1,3 @@
-import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { randomBytes } from 'crypto';
@@ -83,8 +82,6 @@ export class RoundDigestService {
         permalink: `${this.appUrl().replace(/\/$/, '')}/grounds/${e.groundId}`,
       };
 
-      /* The direct morning's switch for this check-in's organisation, read once for the round (a-direct-email.ts). */
-      const direct = await theDirectMorningIsOn(this.prisma, ground.organizationId);
       for (const p of ground.participants) {
         if (!p.email) continue;
         /*
@@ -112,7 +109,7 @@ export class RoundDigestService {
         await this.email.sendRoundDigest(
           p.email,
           digestSubject(facts),
-          digestBody(facts, `${this.appUrl().replace(/\/$/, '')}/unsubscribe/${prefs.unsubscribeToken}`, direct),
+          digestBody(facts),
         );
       }
     } catch (err: any) {

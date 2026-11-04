@@ -116,7 +116,7 @@ describe('what a claim rests on, said at the claim', () => {
     // The case where counting would give the wrong answer.
     expect(isSettled(p({ accounts: 5, contradicted: true }))).toBe(false);
     expect(provenanceLine(p({ accounts: 5, contradicted: true })))
-      .toMatch(/People said different things about it, so it is not settled/);
+      .toMatch(/^People said different things about this/);
   });
 
   it('says where to go and look', () => {
@@ -146,11 +146,9 @@ describe('somebody contradicting themselves', () => {
 });
 
 describe('the report says it is not final', () => {
-  it('in one sentence, and not in a footer', () => {
-    // A record that presents itself as settled invites people to argue with it
-    // instead of adding to it, which is the opposite of what it is for.
-    expect(CURRENT_BEST_READING).toMatch(/It is not a verdict/);
-    expect(CURRENT_BEST_READING).toMatch(/the next session can change any part of it/);
+  /* Changed 4 November 2026 (release batch 1): the direct morning's words are the only words, so this sentence is said as the fact, or not at all. */
+  it('says nothing that hedges: no "not a verdict" line', () => {
+    expect(CURRENT_BEST_READING).toBe('');
   });
 });
 

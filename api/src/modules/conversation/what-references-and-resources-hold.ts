@@ -1,4 +1,3 @@
-import { theRelease1bTabsAreOn } from '../grounds/release-1b-tabs';
 
 /**
  * THE CHECK-INS READ REFERENCES AND RESOURCES (Release 1B, pull request 2 of 3; Hafsah, 18 October 2026: "The check-ins read
@@ -80,7 +79,7 @@ export async function whatReferencesAndResourcesHold(
   checkIn: { id: string; groundId: string; participantId: string; createdAt?: Date | string | null; participant?: { partyType?: string; user?: { firstName?: string | null } | null } | null },
 ): Promise<{ block: string; on: boolean }> {
   const ground = await prisma?.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { organizationId: true, initiatorId: true } }).catch(() => null);
-  if (!ground || !(await theRelease1bTabsAreOn(prisma, ground.organizationId))) return { block: '', on: false };
+  if (!ground) return { block: '', on: false };
   const isTheLead = checkIn.participant?.partyType === 'INITIATOR';
   const lines: any[] = (await prisma.groundContextItem?.findMany?.({
     where: {

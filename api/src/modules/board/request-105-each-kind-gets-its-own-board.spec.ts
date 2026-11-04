@@ -60,7 +60,7 @@ describe('a government programme', () => {
         { participantId: 'p-musa', who: 'Musa Ibrahim', said: ['Musa Ibrahim said, "My understanding was that we were meant to get the new system installed and start using it for our daily operations."'] },
       ],
     });
-    expect(NO_LEVEL_ON_RECORD).toBe("Groundwork does not keep which level each person works at, so each person's own words are shown in the order they joined, after the aim that was set.");
+    expect(NO_LEVEL_ON_RECORD).toBe("Nobody’s level is on record, so each person’s words are in the order they joined.");
   });
 
   it('reads each county with its projects, and that no visit log is on record', async () => {

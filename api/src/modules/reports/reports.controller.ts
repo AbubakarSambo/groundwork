@@ -1,6 +1,4 @@
 import { Controller, Get, Post, Param, Body, NotFoundException, ForbiddenException, ParseIntPipe, Optional } from '@nestjs/common';
-import { theDirectMorningIsOnFor } from '../organisation/the-direct-morning-switch';
-import { inTheDirectMorningsWords } from './the-direct-morning-says-the-fact';
 import { yourRecordInYourReport } from '../board/the-persons-record-store';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -22,11 +20,6 @@ import { theSessionReportAtAGlance, withItsFacts } from './a-report-at-a-glance'
 export class ReportsController {
   constructor(private readonly reports: ReportsService, @Optional() private readonly prisma?: PrismaService) {}
 
-  /** The direct morning: the product's own hedges say the fact or nothing, as served (the-direct-morning-says-the-fact). Off, as before. */
-  private async direct<T>(groundId: string, served: T): Promise<T> {
-    return inTheDirectMorningsWords(served, await theDirectMorningIsOnFor(this.prisma, groundId));
-  }
-
   @Get()
   @ApiOperation({ summary: 'Get the released report (party or org admin)' })
   async get(
@@ -34,7 +27,7 @@ export class ReportsController {
     @CurrentUser('id') userId: string,
     @CurrentUser('organizationId') organizationId: string,
   ) {
-    return this.direct(groundId, await this.reports.get(groundId, userId, organizationId));
+    return await this.reports.get(groundId, userId, organizationId);
   }
 
   /**
@@ -68,7 +61,7 @@ export class ReportsController {
     @CurrentUser('id') userId: string,
     @CurrentUser('organizationId') organizationId: string,
   ) {
-    return this.direct(groundId, await this.reports.rounds(groundId, userId, organizationId));
+    return await this.reports.rounds(groundId, userId, organizationId);
   }
 
   /**
@@ -93,17 +86,16 @@ export class ReportsController {
     /* What the switchboard picks for the reports, only where Release 2 is on (board/the-switchboard.ts); off, the report is served exactly as before. */
     const pick = served && typeof served === 'object' && !Array.isArray(served) ? ((await this.reports.theSwitchboardsPickFor?.(groundId).catch(() => ({}))) ?? {}) : {};
     const withPick = (pick as any).switchboard ? { ...(served as object), switchboard: (pick as any).switchboard } : served;
-    return this.direct(groundId, await this.withYourRecord(groundId, sessionNumber, userId, withPick));
+    return await this.withYourRecord(groundId, sessionNumber, userId, withPick);
   }
 
   /**
    * THE READER'S OWN RECORD IN THEIR OWN REPORT (Groundwork does the managing, part 1): what they said in this session and what shows it,
    * their promises that are late, and the coaching Groundwork gave them and whether it worked. The reader's own alone, read from where it
-   * is kept and never rebuilt here. Only where the direct morning is on; off, the report is served exactly as before.
+   * is kept and never rebuilt here.
    */
   private async withYourRecord<T>(groundId: string, sessionNumber: number, userId: string, served: T): Promise<T> {
     if (!this.prisma || !served || typeof served !== 'object' || Array.isArray(served)) return served;
-    if (!(await theDirectMorningIsOnFor(this.prisma, groundId))) return served;
     const yourRecord = await yourRecordInYourReport(this.prisma, groundId, sessionNumber, userId).catch(() => null);
     return yourRecord ? { ...(served as object), yourRecord } as T : served;
   }

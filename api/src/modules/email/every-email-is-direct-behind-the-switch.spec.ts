@@ -14,8 +14,7 @@ import { THANKS_YOUR_ANSWER_IS_IN } from '../public-api/a-whatsapp-message-is-ro
  * Muchemi & Co (test), "Litigation team daily": Wanjiru runs it, David is on it). Each email goes through the real door every email goes
  * through (EmailService.deliverNow), so the footer is added, or not, where it always is, and the text is what a mail program shows.
  *
- * SWITCH OFF: what each person reads is word for word what the night run sent them (engine-test/run2/raw/messages.json), the links aside.
- * SWITCH ON: names, numbers, customers and days, and no paragraph about Groundwork, no note about who sees what, no "shared picture",
+ * Since release batch 1 (4 November 2026) the switch is gone and these are the only words: names, numbers, customers and days, and no paragraph about Groundwork, no note about who sees what, no "shared picture",
  * no "settled and still open", no "a conversation worth having", and no "you are never obligated". Who can see what never changes: the
  * same people are sent the same mail, and nothing is in it they could not read before.
  */
@@ -95,11 +94,11 @@ const MONDAYS_REPORT = {
 async function everyEmail(on: boolean) {
   const email = aMailer(on);
   const out: Record<string, { subject: string; text: string } | null> = {};
-  const lead = theFirstInsight(MONDAYS_REPORT, 'Sales team, Q4', { isTheLead: true, direct: on })!;
-  const rep = theFirstInsight(MONDAYS_REPORT, 'Sales team, Q4', { isTheLead: false, direct: on })!;
+  const lead = theFirstInsight(MONDAYS_REPORT, 'Sales team, Q4', { isTheLead: true })!;
+  const rep = theFirstInsight(MONDAYS_REPORT, 'Sales team, Q4', { isTheLead: false })!;
   await email.sendReportReady(GRACE, 'Sales team, Q4', 'http://localhost:5220/grounds/g/session/1', undefined, DROP, lead.subjectForTheLead ?? undefined, lead.lines, { url: 'http://localhost:5220/chat?about=g', label: 'I can help you do that' }, null);
   out.leadReport = read(GRACE);
-  await email.sendReportReady(JOSEPH, 'Sales team, Q4', 'http://localhost:5220/invite?token=t', undefined, DROP, theSharedPictureSubject('Sales team, Q4', null, null, on), rep.lines, undefined, null);
+  await email.sendReportReady(JOSEPH, 'Sales team, Q4', 'http://localhost:5220/invite?token=t', undefined, DROP, theSharedPictureSubject('Sales team, Q4', null, null), rep.lines, undefined, null);
   out.repReport = read(JOSEPH);
   await email.sendParticipantInvite(KEVIN, 'Grace', 'Sales team, Q4', 'tok', 'Sales rep', { kind: 'PARTICIPANT_INVITE', participantId: KEVINS_PLACE } as any);
   out.invite = read(KEVIN);
@@ -109,109 +108,12 @@ async function everyEmail(on: boolean) {
   out.stillWaiting = read(KEVIN);
   await email.sendNudge(DAVID, 'Litigation team daily', 'http://localhost:5220/checkin/c', 'PULSE_CHECK', true, null, DAVIDS_PLACE);
   out.nudge = read(DAVID);
-  await email.sendTheAnswerByEmail(GRACE, 'Thank you, your answer for Sales team, Q4 is in', THANKS_YOUR_ANSWER_IS_IN('Sales team, Q4', on), null, null, '9594ee31-5f40-41d2-97fe-e87527405712');
+  await email.sendTheAnswerByEmail(GRACE, 'Thank you, your answer for Sales team, Q4 is in', THANKS_YOUR_ANSWER_IS_IN('Sales team, Q4'), null, null, '9594ee31-5f40-41d2-97fe-e87527405712');
   out.thanks = read(GRACE);
   await email.sendAddPasswordEmail(KEVIN, 'Kevin', 'tok');
   out.password = read(KEVIN);
   return out;
 }
-
-describe('with the direct morning off, every email reads word for word as the night run sent it', () => {
-  let m: Record<string, { subject: string; text: string } | null>;
-  beforeAll(async () => { m = await everyEmail(false); });
-
-  it('Grace, the report is ready (the lead)', () => {
-    expect(m.leadReport!.subject).toBe(`In "Sales team, Q4", the standard for what counts as a 'sold' unit is not being applied consistently`);
-    expect(m.leadReport!.text).toBe([
-      "The standard for what counts as a 'sold' unit is not being applied consistently.",
-      'Three things are settled and one is still open.',
-      "Here is what I would do first. Agree on the single, specific point at which a deal is counted as 'sold' in the team's official tally.",
-      'The shared picture for Sales team, Q4 is open to all of you at the same moment, with the detail behind this.',
-      'The people in this check-in can see what you say in it, and you can see what they say. Your questions to Ask Drop Access (test) stay private.',
-      'I can help you do that',
-      'Read the shared picture',
-      'Groundwork is where the people involved in a piece of work each say how it is going, and get one shared picture back.',
-    ].join('\n\n'));
-  });
-
-  it('Joseph, the report is ready (a rep)', () => {
-    expect(m.repReport!.subject).toBe('The shared picture for "Sales team, Q4" is ready');
-    expect(m.repReport!.text).toBe([
-      "The standard for what counts as a 'sold' unit is not being applied consistently.",
-      'Three things are settled and one is still open.',
-      'The shared picture for Sales team, Q4 is open to all of you at the same moment, with the detail behind this.',
-      'The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Drop Access (test) stay private.',
-      'Read the shared picture →',
-      'Groundwork is where the people involved in a piece of work each say how it is going, and get one shared picture back.',
-    ].join('\n\n'));
-  });
-
-  it('Kevin, the invitation', () => {
-    expect(m.invite!.subject).toBe('Grace would like your take on Sales team, Q4');
-    expect(m.invite!.text).toBe([
-      'Hi Kevin,',
-      'Grace would like to know what you are seeing in Sales team, Q4.',
-      'It is a short check-in, about ten minutes, where you say what is actually going on from where you sit.',
-      'The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Drop Access (test) stay private.',
-      'When you join, you go straight in and can check in at once.',
-      'You are not being asked to be fair or balanced. You are being asked to be honest. What you share here is yours.',
-      'Sales rep',
-      'Start my check-in →',
-      'You can also check in on WhatsApp. Send Hi to +44 7700 900123.',
-      'Connect WhatsApp',
-      'You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.',
-      'Would you rather I stopped reminding you? Stop the reminders. Your invitation keeps working, and nothing is recorded either way.',
-    ].join('\n\n'));
-  });
-
-  it('Grace, somebody has checked in', () => {
-    expect(m.checkedIn!.subject).toBe('Kevin Omondi has checked in on Sales team, Q4');
-    expect(m.checkedIn!.text).toBe([
-      'Kevin Omondi has checked in on Sales team, Q4.',
-      'Everyone has now checked in. The shared report is ready to go out.',
-      'View check-in →',
-      'You can see who has checked in and read what they said in the check-in, and the shared picture once it is ready. Everybody in it is told the moment the picture is ready.',
-    ].join('\n\n'));
-  });
-
-  it('Kevin, the report has been ready a while', () => {
-    expect(m.stillWaiting!.subject).toBe('Your report for "Sales team, Q4" is ready to view');
-    expect(m.stillWaiting!.text).toBe([
-      'The shared picture for Sales team, Q4 has been ready since Monday 12 October.',
-      'It shows where what you each said agrees, where it differs, and what is still open. It is open to you now, and nothing else is needed from you to read it.',
-      'View your report →',
-      'Groundwork is where the people involved in a piece of work each give their own account of it, and get one shared record back. The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Groundwork stay private.',
-      'If you would rather not get the emails I decide to send, you can stop them here.',
-    ].join('\n\n'));
-  });
-
-  it('David, the reminder', () => {
-    expect(m.nudge!.text).toBe([
-      'Your check-in for Litigation team daily is still open. It takes about ten minutes, and your answers go into the report everyone reads.',
-      'They have already shared their side. Yours is the last one we are waiting for.',
-      'Check in',
-      'Would you rather I stopped reminding you? Stop the reminders. Your invitation keeps working, and nothing is recorded either way.',
-      'You can also check in on WhatsApp. Send Hi to +44 7700 900123.',
-      'Connect WhatsApp',
-      'Groundwork is where the people involved in a piece of work each give their own account of it, and get one shared record back. The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Muchemi & Co (test) stay private.',
-      'If you would rather not get the emails I decide to send, you can stop them here.',
-    ].join('\n\n'));
-  });
-
-  it('Grace, her own answer is in', () => {
-    expect(m.thanks!.text).toBe([
-      'Thank you, your answer for Sales team, Q4 is in. The shared picture is made once everyone has answered, and you will be told as soon as there is something to read.',
-      'Groundwork is where the people involved in a piece of work each give their own account of it, and get one shared record back. The people in this check-in can see what you say in it, and you can see what they say. Your questions to Ask Drop Access (test) stay private.',
-    ].join('\n\n'));
-  });
-
-  it('Kevin, set a password', () => {
-    expect(m.password!.text.split('\n\n').slice(0, 2)).toEqual([
-      'Hi Kevin,',
-      'Groundwork is where you and the people you work with each say how a piece of work is actually going, separately, and get one shared picture back. Setting a password means you can come back and sign in with this email address and your password.',
-    ]);
-  });
-});
 
 describe('with the direct morning on, every email says what happened and nothing else', () => {
   let m: Record<string, { subject: string; text: string } | null>;
@@ -232,11 +134,13 @@ describe('with the direct morning on, every email says what happened and nothing
     expect(m.repReport!.text).toBe(["The standard for what counts as a 'sold' unit is not being applied consistently.", 'Read the report →'].join('\n\n'));
   });
 
-  it('Kevin, the invitation: who asks, what it is, and the button', () => {
+  /* Changed 4 November 2026 (Hafsah: one plain consent line stays where people first agree): the invitation says who sees what they say. */
+  it('Kevin, the invitation: who asks, what it is, who sees what he says, and the button', () => {
     expect(m.invite!.text).toBe([
       'Hi Kevin,',
       'Grace would like to know what you are seeing in Sales team, Q4.',
       'It is a short check-in, about ten minutes, where you say what is actually going on from where you sit.',
+      'The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Drop Access (test) stay private.',
       'When you join, you go straight in and can check in at once.',
       'Sales rep',
       'Start my check-in →',
@@ -283,8 +187,8 @@ describe('with the direct morning on, every email says what happened and nothing
     expect(m.password!.text.split('\n\n').slice(0, 2)).toEqual(['Hi Kevin,', 'Setting a password means you can come back and sign in with this email address and your password.']);
   });
 
-  it('no email, to anybody, explains Groundwork, notes who sees what, or hedges', () => {
-    for (const [kind, mail] of Object.entries(m)) {
+  it('no email, to anybody, explains Groundwork, notes who sees what, or hedges (the invitation keeps its one consent line)', () => {
+    for (const [kind, mail] of Object.entries(m).filter(([k]) => k !== 'invite')) {
       const all = `${mail!.subject}\n${mail!.text}`;
       expect({ kind, all }).toEqual({ kind, all: expect.not.stringMatching(/Groundwork is where|including your manager|stay private|shared picture|settled|conversation worth having|never obligated|What you share here is yours|nothing is recorded/i) });
     }
@@ -295,17 +199,8 @@ describe('the round digest (to Kevin, session 1 of "Sales team, Q4")', () => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { digestBody } = require('./nothing-lands-at-3am');
   const facts = { groundLabel: 'Sales team, Q4', sessionNumber: 1, participantCount: 5, accountsGiven: 5, needsAttention: 1, permalink: 'http://localhost:5220/grounds/g' };
-  it('off: as the night run sent it', () => {
-    expect(digestBody(facts, 'http://localhost:5220/unsubscribe/u')).toBe([
-      'Everyone has checked in for session 1 of Sales team, Q4.',
-      "5 people took part. One thing somebody is waiting for is still open, and the check-in's board shows who is waiting and for what.",
-      'Read it here: http://localhost:5220/grounds/g',
-      '',
-      'To stop these emails: http://localhost:5220/unsubscribe/u',
-    ].join('\n'));
-  });
   it('on: the link in a sentence, and one way to stop them, in the footer', () => {
-    expect(digestBody(facts, 'http://localhost:5220/unsubscribe/u', true)).toBe([
+    expect(digestBody(facts)).toBe([
       'Everyone has checked in for session 1 of Sales team, Q4.',
       "5 people took part. One thing somebody is waiting for is still open, and the check-in's board shows who is waiting and for what.",
       "Read it on the check-in's board at http://localhost:5220/grounds/g",
@@ -319,9 +214,6 @@ describe('somebody is waiting to be let in (to Grace)', () => {
     await email.sendSomebodyIsWaiting(GRACE, 'Grace', 'peter@dropaccess.test', 'Grace Achieng', 'Sales team, Q4', { name: 'Peter Njoroge', organisationName: 'Drop Access (test)', cameThroughTheLink: true });
     return read(GRACE)!;
   };
-  it('off: as the night run sent it, with the rule explained', async () => {
-    expect((await send(false)).text.split('\n\n')[2]).toBe('They can sign in, and they cannot start until you approve them joining. Nobody outside your organisation is added to it, or counted on your plan, without this.');
-  });
   it('on: what it needs from her', async () => {
     const m = await send(true);
     expect(m.subject).toBe('Peter Njoroge is waiting to be let into Drop Access (test).');

@@ -13,7 +13,7 @@ describe('what the person reads on WhatsApp when they finish and the others have
     const read = [theCheckInIsCompleteSaying(), THANKS_YOUR_ANSWER_IS_IN('Pulse check')];
     expect(read).toEqual([
       'Your check-in is complete and on record.',
-      'Thank you, your answer for Pulse check is in. The shared picture is made once everyone has answered, and you will be told as soon as there is something to read.',
+      'Thank you, your answer for Pulse check is in. You will be told when the report is ready.',
     ]);
   });
   it('in simpler words, and when the clock closes it, the same', () => {

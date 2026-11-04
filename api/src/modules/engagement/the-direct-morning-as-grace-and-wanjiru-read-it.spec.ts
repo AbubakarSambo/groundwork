@@ -151,31 +151,6 @@ describe('the summary she is sent, with the switch on', () => {
   });
 });
 
-describe('with the switch off, Grace reads exactly what she read before', () => {
-  it('there is no direct morning, on the board or in the summary', async () => {
-    expect(await theDirectMorningFor(theNightRunsDatabase('drop', { directMorning: false }), { groundId: DROP, leadUserId: theLeadOf('drop').userId, board: theLeadsBoard('drop'), now: NOW })).toBeNull();
-  });
-
-  it('the seven o’clock sweep sends nothing, and the 9am summary is the one built as before', async () => {
-    const d = await doors('drop', false);
-    expect((await sendTheLeadsDailyNudges(d.deps, NOW, { onlyTheDirectMorningAt7: true })).tried).toBe(0);
-    expect(d.sent).toHaveLength(0);
-    const at9 = new Date('2026-10-20T08:00:00Z');
-    await sendTheLeadsDailyNudges({ ...d.deps, board: undefined }, at9);
-    const lead = { userId: theLeadOf('drop').userId, organizationId: N.drop.ground.organizationId, grounds: [{ ...N.drop.ground }] };
-    const o = withPlacesWhereTheyTellApart(theseForAPhone(await whatIsOutstandingFor(theNightRunsDatabase('drop', { directMorning: false }), lead as any, { boards: {} as any, release: null }, at9)));
-    const before = theTemplateParagraph('Grace', o, theBoardTheMessageIsAbout(BASE, lead.grounds, o));
-    if (d.sent.length) {
-      expect(d.sent[0].ctx.params).toEqual(before.params);
-      expect(d.sent[0].ctx.paramsFor).toBeUndefined();
-      expect(d.sent[0].ctx.params[1]).not.toMatch(/^Target:/);
-    } else {
-      expect(before.params[1]).toBe('');
-    }
-    expect(d.mails.every((x) => x.kind !== 'direct')).toBe(true);
-  });
-});
-
 describe('Wanjiru’s direct morning, Muchemi & Co (test): fee notes and the litigation team in one message', () => {
   it('says what is owed and paid with proof, what fell due and why, who to chase, what needs the partner, and the team', async () => {
     const fees = await theDirectMorningFor(await theNightRunsDatabaseWithRecords('fees', { directMorning: true }), { groundId: N.fees.ground.id, leadUserId: theLeadOf('fees').userId, board: theLeadsBoard('fees'), now: NOW });

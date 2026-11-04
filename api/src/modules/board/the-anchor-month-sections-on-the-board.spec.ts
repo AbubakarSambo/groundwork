@@ -135,6 +135,6 @@ describe('the month board\'s last three parts are sections too', () => {
 
   it('once the check-in has ended, Groundwork says it is not asking anyone for more, and nothing about this week', async () => {
     const b: any = await boardAs(anchor({ status: 'CLOSED' }), ...AMINA);
-    expect(b.whatGroundworkIsWorkingOnNext.items).toEqual(['Groundwork is not asking anyone for more.']);
+    expect(b.whatGroundworkIsWorkingOnNext.items).toEqual(['Nobody is being asked for more.']);
   });
 });

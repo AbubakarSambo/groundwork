@@ -460,8 +460,8 @@ export async function whereWhatPeopleSaidDiffers(
          Kwame said" sat beside the board's own sentence for the same thing). */
       decide: settledBy ? sentence(settledBy) : peopleSaidDifferentThingsAbout(topic, whoSaid),
       why: settledBy
-        ? `${topic ? `${sentence(topic)} ` : ''}${whoSaid} said different things about this, so nobody can assume it is agreed.`
-        : 'What people said about this does not match, so nobody can assume it is agreed.',
+        ? `${topic ? `${sentence(topic)} ` : ''}${whoSaid} said different things about this.`
+        : 'What people said about this does not match.',
       ...(atStake ? { changes: sentence(atStake) } : {}),
       ...(sameTarget.has(d) ? { onlyATargetSaidAgain: true as const } : {}),
     });

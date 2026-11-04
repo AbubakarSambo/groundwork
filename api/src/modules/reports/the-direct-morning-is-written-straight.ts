@@ -4,7 +4,7 @@
  *
  * The team report's instructions are about alignment: "a shared picture none of them could see on their own", "the gap", "what the gap
  * reveals", "the question to carry", "No recommendations for what either person should do", "Do not produce a verdict". A sales lead
- * read that as the opposite of a status report. For an organisation with the direct morning on (`Organization.directMorningOn`), the
+ * read that as the opposite of a status report. For every organisation (release batch 1, 4 November 2026: the switch is gone), the
  * CODE adds one block to each model instruction that writes a report or the board's judgement, and the block says it overrides the
  * earlier lines about style. Nothing stored is edited.
  *
@@ -13,15 +13,14 @@
  * template unless a version under `the_judgement_room` or `the_judgement_population` is active, which then replaces it. Either way the
  * stored text comes first and this block is appended after it, in code, so whatever version is stored, this block runs after it and
  * wins where they differ. The report's `promptVersionId` (and the judgement's own `promptVersionId`) still names the stored version
- * that ran, as before; `theDirectMorning` beside it names this block's version (THE_DIRECT_MORNING_BLOCKS), and is absent where the
- * switch was off. So a report written for a switched-on organisation says both: which stored version ran, and that this block ran after it.
+ * that ran, as before; `theDirectMorning` beside it names this block's version (THE_DIRECT_MORNING_BLOCKS), so every report
+ * says both: which stored version ran, and that this block ran after it.
  *
  * WHAT IT NEVER CHANGES. Who may read what. The schema. Labels in the stored report (each reader's copy swaps them for names, through
  * the one wrapper that also handles anonymous sharing). The rules about quotations, counting accounts, inferences, lead-supplied
  * context, leadership gaps and numbers a block holds. No label or score is ever put on a person, and nothing the person-judgements
  * switch holds back is asked for.
  *
- * OFF, NOTHING. `withTheDirectMorning(prompt, block, false)` is the prompt, character for character.
  */
 
 /** This block's version, kept beside `promptVersionId` on what it wrote. Raise it when a block below changes. */
@@ -79,12 +78,12 @@ export const THE_DIRECT_OWN_REPORT = [
   '- The earlier rule still holds in full: never name anybody else and never quote anybody.',
 ].join('\n');
 
-/** The prompt, with the block after it for a switched-on organisation; off, the prompt exactly as it was. */
-export function withTheDirectMorning(prompt: string, block: string, on: boolean): string {
-  return on ? `${prompt}\n\n${block}` : prompt;
+/** The prompt, with the block after it, for every organisation (release batch 1, Hafsah, 4 November 2026: the direct wording is the only wording). */
+export function withTheDirectMorning(prompt: string, block: string): string {
+  return `${prompt}\n\n${block}`;
 }
 
-/** Kept beside `promptVersionId` on what a switched-on organisation's report or judgement was written with. Off, nothing is added. */
-export function whichDirectBlockRan(on: boolean): { theDirectMorning?: string } {
-  return on ? { theDirectMorning: THE_DIRECT_MORNING_BLOCKS } : {};
+/** Kept beside `promptVersionId` on every report and judgement, so each one says which block ran after the stored version. */
+export function whichDirectBlockRan(): { theDirectMorning: string } {
+  return { theDirectMorning: THE_DIRECT_MORNING_BLOCKS };
 }

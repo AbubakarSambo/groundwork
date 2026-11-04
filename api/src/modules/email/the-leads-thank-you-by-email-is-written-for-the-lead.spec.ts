@@ -32,7 +32,7 @@ function door() {
   return { email, sent };
 }
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ');
-const THANKS = 'Thank you, your answer for Sales team, Q4 is in. The shared picture is made once everyone has answered, and you will be told as soon as there is something to read.';
+const THANKS = 'Thank you, your answer for Sales team, Q4 is in. You will be told when the report is ready.';
 
 describe("the thank-you by email, as the lead and as a team member read it", () => {
   it('Grace, who runs the check-in, is not told that her manager can see what she says', async () => {
@@ -43,12 +43,14 @@ describe("the thank-you by email, as the lead and as a team member read it", () 
     const read = text(d.sent[0].html);
     expect(read).toContain(THANKS);
     expect(read).not.toContain('including your manager');
-    expect(read).toContain('The people in this check-in can see what you say in it, and you can see what they say. Your questions to Ask Drop Access (test) stay private.');
+    /* Changed 4 November 2026 (release batch 1, Hafsah: no privacy notes in messages). */
+    expect(read).not.toContain('can see what you say');
   });
 
-  it('Mercy, who takes part, still reads the invitation\'s own sentence', async () => {
+  it('Mercy, who takes part, is not given a privacy note either', async () => {
     const d = door();
     await d.email.sendTheAnswerByEmail('mercy@dropaccess.test', 'Thank you, your answer for Sales team, Q4 is in', THANKS, 'Open Groundwork', 'https://app.test/c', 'p-mercy');
-    expect(text(d.sent[0].html)).toContain('The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Drop Access (test) stay private.');
+    expect(text(d.sent[0].html)).toContain(THANKS);
+    expect(text(d.sent[0].html)).not.toContain('can see what you say');
   });
 });

@@ -165,7 +165,7 @@ describe('C answers once, then never opens another session, while the clock move
     const told = await whatThePersonIsToldAboutMissing(t.prisma, 'u-c', null, new Date('2026-10-26T09:00:00+01:00'));
     expect(told.map((x) => x.text)).toEqual([
       /* Changed 18 October (Drop Access run 1, item 25): at two missed in a row the lead is not told yet (she is from three of the last four), so the person reads that she will be if they miss the next one, never that she will see this. */
-      "You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late and Amina has to chase instead of help. If you miss the next one as well, Amina will be told. About ten minutes now puts your view back in the picture.",
+      "You've missed your last two check-ins. If you miss the next one as well, Amina will be told. It takes about ten minutes.",
     ]);
     expect(told[0].openCheckInId).toBe(c[3].id);
 
@@ -178,7 +178,7 @@ describe('C answers once, then never opens another session, while the clock move
     expect(found).toHaveLength(1);
     expect(found[0].stand).toMatchObject({ stage: TOLD_THE_LEAD, inARow: 3, ofTheLastFour: 3, lastFour: 4 });
     expect(whatTheLeadReads(found[0].name, found[0].stand, 'Weekly sales')).toBe(
-      'Chiamaka has missed 3 of the last 4 check-ins on "Weekly sales". When someone stops checking in, the team loses their view, problems surface late, and the effort to keep everyone in step falls on you and the rest of the team. Speak to Chiamaka this week.',
+      'Chiamaka has missed 3 of the last 4 check-ins on "Weekly sales". Speak to Chiamaka this week.',
     );
 
     /* The lead's own session was never closed, and the lead is never counted. */
@@ -264,7 +264,7 @@ describe('A FIRST SESSION NOBODY OPENED (night quality run 4): Jared joined and 
     const told = await whatThePersonIsToldAboutMissing(t.prisma, 'u-j', null, new Date('2026-10-19T09:00:00+01:00'));
     expect(told.map((x) => x.text)).toEqual([
       /* Changed 18 October (Drop Access run 1, item 25): at two missed in a row the lead is not told yet (she is from three of the last four), so the person reads that she will be if they miss the next one, never that she will see this. */
-      "You've missed your last two check-ins. When you miss them, your team works without your view. Things you know about surface late and Amina has to chase instead of help. If you miss the next one as well, Amina will be told. About ten minutes now puts your view back in the picture.",
+      "You've missed your last two check-ins. If you miss the next one as well, Amina will be told. It takes about ten minutes.",
     ]);
     expect(told[0].openCheckInId).toBe(j[2].id);
 
@@ -276,7 +276,7 @@ describe('A FIRST SESSION NOBODY OPENED (night quality run 4): Jared joined and 
     expect(found).toHaveLength(1);
     expect(found[0].stand).toMatchObject({ stage: TOLD_THE_LEAD, inARow: 3 });
     expect(whatTheLeadReads(found[0].name, found[0].stand, 'Weekly sales')).toBe(
-      'Jared has missed 3 of the last 3 check-ins on "Weekly sales". When someone stops checking in, the team loses their view, problems surface late, and the effort to keep everyone in step falls on you and the rest of the team. Speak to Jared this week.',
+      'Jared has missed 3 of the last 3 check-ins on "Weekly sales". Speak to Jared this week.',
     );
 
     /* Amina was invited and has not joined: her session 1 waits, is never closed, and she is never counted. */

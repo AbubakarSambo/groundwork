@@ -5,7 +5,7 @@ describe('a session’s own report, as the person reads it', () => {
   it('a finished session with no report says it was not kept, instead of leaving the page waiting', () => {
     expect(whereASessionsReportStands({ report: null, finishedAt: new Date() })).toEqual({
       state: 'not-kept',
-      says: 'This session was finished, but no separate report was kept for it. What you said, and what came from it, is shown on this page.',
+      says: 'No report was kept for this session. What you said is below.',
     });
   });
   it('an open session and a kept report say so too', () => {
@@ -19,6 +19,6 @@ describe('a session’s own report, as the person reads it', () => {
     const out = await svc.getSessionReport('c1', 'u1');
     expect(out.report).toBeNull();
     expect(out.state).toBe('not-kept');
-    expect(out.says).toMatch(/no separate report was kept/);
+    expect(out.says).toBe('No report was kept for this session. What you said is below.');
   });
 });

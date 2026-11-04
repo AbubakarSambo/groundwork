@@ -365,7 +365,6 @@ export function whatWasSaidAndWhatTheProofShows(c: Omit<AWeeksCount, 'participan
     const m = mem ? `${mem} ${mem === 1 ? 'number was' : 'numbers were'} given from memory with nothing attached` : '';
     const both = e && m ? `${e}, and ${m}` : e || m;
     parts.push(`${both.charAt(0).toUpperCase()}${both.slice(1)}, so ${est + mem === 1 ? 'it cannot' : 'they cannot'} be checked yet.`);
-    parts.push(`It is worth confirming ${est + mem === 1 ? 'it' : 'them'} before acting on ${est + mem === 1 ? 'it' : 'them'}.`);
   }
   return parts.join(' ');
 }

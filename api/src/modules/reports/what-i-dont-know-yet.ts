@@ -53,8 +53,8 @@ export function whatIDontKnowYet(
           ? `Groundwork asked ${who} this in session ${n}, and ${theyHave} not answered it yet.`
           : `Groundwork asked ${who} this in session ${n} and once more since, and ${theyHave} not answered it yet.`;
       const next = askedOnce
-        ? `Next: Groundwork will ask ${them} again in a later check-in.`
-        : `Next: Groundwork will not ask again, so that ${name ? `${name} is` : 'they are'} not pressed. You could ask ${them} yourself.`;
+        ? 'They’ll be asked again in a later check-in.'
+        : `It won’t be asked again. You could ask ${them} yourself.`;
       return { title: question ? `“${question}”` : 'Something the check-in asked', says: `${known} ${next}` };
     });
 }

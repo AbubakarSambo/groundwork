@@ -76,7 +76,7 @@ describe('whose description of the job exists', () => {
 
   it('calls both versions existing the useful case, and says why', () => {
     expect(contributionRead(c('the lead'), c('themselves')).line)
-      .toMatch(/If those two descriptions differ, that difference is the most useful thing/);
+      .toBe('The lead and this person have both said what this person is here to do.');
   });
 
   it('notices when only the lead has said it', () => {

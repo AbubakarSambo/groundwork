@@ -237,7 +237,6 @@ export default function SessionReportPage() {
   })
 
   const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions, (ground as any)?.cadenceDays) : null
-  const contextEnabled = (ground as any)?.contextEnabled === true
 
   /**
    * B-142: "Start my check-in" PROMISED A SESSION THAT WAS NOT THERE.
@@ -342,7 +341,7 @@ export default function SessionReportPage() {
           isAParty
           hasOpenSessionNow={hasOpenSessionNow}
           active="report"
-          tabs={checkInHeaderTabs({ id: data.groundId as string, contextEnabled, canRunThisCheckIn: amTheInitiator, isAParty: true, ground: ground as any })}
+          tabs={checkInHeaderTabs({ id: data.groundId as string, canRunThisCheckIn: amTheInitiator, isAParty: true, ground: ground as any })}
         />
       ) : (
         <button type="button" onClick={back.onClick} className="gwui-plain-link">

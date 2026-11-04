@@ -67,12 +67,12 @@ export function theEndOfMonthRead(input: { herWords: string; record: TheMonthRec
   return {
     yourOwnWords: input.herWords,
     whatWeFound: found,
-    whatTheyNowUnderstandDifferently: ['Groundwork does not yet keep how each person saw things at the start, so it cannot say what changed in what they understand.'],
+    whatTheyNowUnderstandDifferently: [],
     whatTheyAreDoingDifferently: doing.length ? doing : ['Nothing has been recorded yet that people are doing differently.'],
     whatYourTeamContributed: [ideasSaid(r)],
     /* From the same record and the same sentence as the month board's people (piece 22), so the two never disagree. */
     peopleWhoHelpedMoveTheThinking: (r.doneByPerson ?? []).map((d) => ({ name: d.name, sentence: aContributionSaid(d.name, d.clause, d.settledBy) })),
-    whatYouChangedAsALead: ['Groundwork does not yet keep what changed in how you lead, so it has nothing to say here.'],
+    whatYouChangedAsALead: [],
     whatIsStillStuck: stuck.length ? stuck : ['Nobody has said that anything is still in their way.'],
     whatShouldHappenNext: next,
     reveal,

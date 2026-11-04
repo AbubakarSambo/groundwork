@@ -72,6 +72,6 @@ describe('the shared picture mail says who checked in, from the session\'s own r
 
   it('still says everybody has checked in when everybody has', async () => {
     const read = await theMails(tuesday.map((r) => ({ ...r, status: 'COMPLETED' })));
-    expect(read('mercy@dropaccess.test')).toContain('Everybody on Sales team, Q4 has now checked in, so the shared picture is open to all of you at the same moment.');
+    expect(read('mercy@dropaccess.test')).toContain('Everybody on Sales team, Q4 has checked in, and the report is ready.');
   });
 });

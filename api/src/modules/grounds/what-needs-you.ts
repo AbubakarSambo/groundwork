@@ -323,7 +323,6 @@ export function whatNeedsYou(
             ? `${theAwayLine('the person', null, reader.awayUntil)} You can still answer it if you want to.`
             : [
               `${A_CHECK_IN_TAKES}.`,
-              next.sessionNumber === 1 && iRunIt ? 'Everyone else’s answers are read against yours.' : null,
               /* The day it opened, never a count of days from the reading (request 117, part 9). */
               days > A_WHILE && opened ? `It opened on ${theDayInWords(new Date(opened), new Date(at))}.` : null,
             ].filter(Boolean).join(' '),
@@ -387,7 +386,7 @@ export function whatNeedsYou(
           key: `own-${g.id}`,
           kind: 'ready',
           title: `Your own report for ${g.label}`,
-          detail: 'Only you see it.',
+          detail: null,
           action: { label: 'Read it', to: `/checkin/${last.id}/report` },
           ...base,
         });
@@ -570,20 +569,6 @@ export function whatNeedsYou(
   };
 }
 
-/**
- * WHAT NEEDS YOU, SAID DIRECTLY (the direct morning, Hafsah, 20 October 2026; organisation/the-direct-morning-switch.ts). Where the
- * switch is on, a check-in's estimate is its length alone, from the one owner (common/how-long-a-check-in-takes.ts), with no line about how
- * the product reads the answers, and your own report carries no "Only you see it." Nothing else changes: which needs a reader is served is decided before this, the same either way.
- */
-export function needsSaidDirectly<T extends { detail?: string | null }>(needs: T[]): T[] {
-  return needs.map((n) => {
-    if (typeof n?.detail !== 'string') return n;
-    if (n.detail.startsWith(`${A_CHECK_IN_TAKES}.`)) return { ...n, detail: `${A_CHECK_IN_TAKES}.` };
-    /* "Your own report for Sales team, Q4" needs no "Only you see it." under it: who reads it is the backend's rule. */
-    if (n.detail === 'Only you see it.') return { ...n, detail: null };
-    return n;
-  });
-}
 
 /** A daily check-in whose team report was shared on the reader's day, in the product's own zone: "Today’s report". */
 function aReportOfToday(g: ListedCheckIn, at: number): boolean {

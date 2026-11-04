@@ -24,9 +24,9 @@ describe('the report-ready mail', () => {
        finding where there is one. The link, the sentence naming who shared it and the check-in are the same. */
     /* Changed again on 8 October (request 198): the call also carries the way into Ask about the finding, `chat`, only where there is a finding and the person signs in with a password. */
     /* Changed 19 October (messages test, finding 2): the call also passes who checked in for the picture; the link is still linkFor(p). */
-    /* Changed 20 Oct 2026: the direct morning's switch, read once for the check-in, goes last (email/a-direct-email.ts). */
-    expect(tell).toMatch(/sendReportReady\(p\.email, ground\.label, linkFor\(p\), sharedByAnAdminSentence, ground\.id, subject, insight\?\.lines, chat, whoCheckedIn, direct\)/);
-    expect(tell).toMatch(/await this\.theReportReadySubject\(ground, p, direct\)/);
+    /* Changed 4 November 2026 (release batch 1): the direct morning's switch is gone, so nothing is passed for it. */
+    expect(tell).toMatch(/sendReportReady\(p\.email, ground\.label, linkFor\(p\), sharedByAnAdminSentence, ground\.id, subject, insight\?\.lines, chat, whoCheckedIn\)/);
+    expect(tell).toMatch(/await this\.theReportReadySubject\(ground, p\)/);
     /* And release() sends through it, not on its own. */
     const release = reports.slice(reports.indexOf('async release('), reports.indexOf('async tellThemTheReportIsReady('));
     expect(release).toContain('await this.tellThemTheReportIsReady(groundId, roundNow, undefined, sharedBecauseLeadLeft?.sentence)');

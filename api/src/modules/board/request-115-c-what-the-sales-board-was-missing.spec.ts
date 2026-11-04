@@ -145,7 +145,7 @@ describe('request 115 (c): open issues, and what a target assumes', () => {
     expect(setUp.issues.map((i: any) => i.title)).toEqual(bisi.issues.map((i: any) => i.title));
     expect(setUp.issues.every((i: any) => i.action === null)).toBe(true);
     expect(JSON.stringify(bisi)).not.toMatch(/\b(?:PIP|exit|at risk)\b/i);
-    expect(NO_OPEN_ISSUES_ON_RECORD).toMatch(/^Groundwork does not follow an issue/);
+    expect(NO_OPEN_ISSUES_ON_RECORD).toBe('');
     for (const reader of [JUMA, FEMI, NGOZI] as (readonly [string, string])[]) {
       expect((await boardAs(WITH_AN_AIM, ...reader)).openIssues).toBeUndefined();
     }

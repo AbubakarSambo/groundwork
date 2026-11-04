@@ -43,7 +43,6 @@ import { theEngagementMoment } from './the-engagement-release-moment';
 import { theQuietIn, quietIn } from './who-has-gone-quiet';
 import { whoHasMissedCheckIns, whatTheLeadReads, TOLD_THE_LEAD } from '../grounds/missed-check-ins';
 import { isAlreadyHeld, hasBeenToldOnce, nowToldOnce } from './a-message-sent-once';
-import { theDirectMorningIsOn } from '../organisation/the-direct-morning-switch';
 import { theDirectMorningFor, theParagraph, theEmailParts, theSubject, type TheDirectMorning } from './the-direct-morning';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 
@@ -360,8 +359,6 @@ export async function whatIsOutstandingFor(
 ): Promise<WhatIsOutstanding> {
   /* What Release 1 adds to the summary is read only where its switch is on for her organisation (release-one-sales-board). */
   const releaseOne = await theReleaseOneSalesBoardIsOn(prisma, lead.organizationId).catch(() => false);
-  /* With the direct morning on, a missed check-in is the fact, the reason and what to do, */
-  const direct = await theDirectMorningIsOn(prisma, lead.organizationId).catch(() => false);
   const out: WhatIsOutstanding = { needsYou: [], overdueOnYourTeam: [], risks: [], ...(releaseOne ? { releaseOne: true } : {}) };
   const today = theDayIn('Africa/Lagos', now);
   const grounds = lead.grounds.filter((g) => !isEvaluationCheckIn(g.scenario));
@@ -586,7 +583,7 @@ export async function whatIsOutstandingFor(
     const g = grounds.find((x) => x.id === m.groundId);
     if (!g) continue;
     missedLines.push({
-      text: whatTheLeadReads(m.name, m.stand, g.label, direct),
+      text: whatTheLeadReads(m.name, m.stand, g.label),
       keptInTheApp: keptOffThePhone(g),
       groundId: g.id,
       about: { kind: 'missed', ids: [m.participantId] },
@@ -782,12 +779,10 @@ export async function sendTheLeadsDailyNudges(deps: TheNudgeDoors, now: Date = n
       if (!user || user.deletedAt || user.isActive === false) continue;
       if (fallsInLeave(now, await theirApprovedLeave(prisma, lead.userId, lead.organizationId))) continue;
       /*
-       * THE DIRECT MORNING (the-direct-morning.ts), where the organisation's switch is on: the target, what needs her, what is about to
-       * close and her team, by seven in the morning where the organisation is, and never twice in a day. Off, everything below runs as before.
+       * THE DIRECT MORNING (the-direct-morning.ts): the target, what needs her, what is about to close and her team, by seven in the
+       * morning where the organisation is, and never twice in a day. Where it has nothing to say, the summary below goes instead.
        */
-      const direct = await theDirectMorningIsOn(prisma, lead.organizationId);
-      if (opts.onlyTheDirectMorningAt7 && !direct) continue;
-      if (direct) {
+      {
         const went = await sendTheDirectMorningTo(deps, lead, user, now, { onlyAt7: !!opts.onlyTheDirectMorningAt7 });
         if (went === 'sent') { tried++; continue; }
         if (went === 'not-now' || opts.onlyTheDirectMorningAt7) continue;
@@ -855,12 +850,13 @@ export async function sendTheDirectMorningTo(
   opts: { onlyAt7?: boolean } = {},
 ): Promise<'sent' | 'not-now' | 'nothing'> {
   const { prisma } = deps;
+  /* Built from her boards as she is served them: with no way to read them there is nothing to say, and the summary below goes. */
+  if (!deps.board) return 'nothing';
   const zone = (await theOrganisationsZone(prisma, lead.organizationId).catch(() => null)) ?? THE_PRODUCTS_OWN_ZONE;
   /* By seven where the organisation is: the early sweep sends it in the quarter hour from seven; the 9am sweep only if it has not gone. */
   if (opts.onlyAt7 && theHourIn(now, zone) !== 7) return 'not-now';
   const key = theDirectMorningsKey(lead.userId, theDayIn7(now, zone));
   if (await hasBeenToldOnce(prisma, key)) return 'not-now';
-  if (!deps.board) return 'nothing';
   const mornings: TheDirectMorning[] = [];
   for (const g of lead.grounds.filter((x) => !isEvaluationCheckIn(x.scenario))) {
     /*

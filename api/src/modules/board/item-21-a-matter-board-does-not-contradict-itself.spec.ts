@@ -21,7 +21,7 @@ describe('the matter board, as each reader reads it', () => {
     expect(b.whatYouNeedToDecide).toEqual({
       heading: 'What you need to decide',
       state: 'filled',
-      items: [{ question: `People said different things. ${TOPIC}`, why: 'What people said about this does not match, so nobody can assume it is agreed.', owner: 'You' }],
+      items: [{ question: `People said different things. ${TOPIC}`, why: 'What people said about this does not match.', owner: 'You' }],
     });
     expect(b.whereTheMatterStands.says).toContain('1 thing is waiting for a decision.');
   });

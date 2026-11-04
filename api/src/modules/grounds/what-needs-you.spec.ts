@@ -78,7 +78,7 @@ describe('Today, as the lead who runs the sales team', () => {
       'Your next check-in for Leadership, Q3',
     ]);
     expect(r.needs.map((n) => [n.detail, n.action.label, n.action.to])).toEqual([
-      ['About ten minutes. Everyone else’s answers are read against yours.', 'Start it', '/checkin/f1'],
+      ['About ten minutes.', 'Start it', '/checkin/f1'],
       ['The last session is done.', 'Decide', '/grounds/g-kwame'],
       ['About ten minutes.', 'Start it', '/checkin/l2'],
     ]);
@@ -105,7 +105,7 @@ describe('Today, as Miriam, who takes part in the sales team', () => {
   it('tells her about her report and her own report, and nothing that is not hers', () => {
     expect(titles(r)).toEqual(['The report for Sales team, Q3 is ready', 'Your own report for Sales team, Q3']);
     expect(r.needs[0].detail).toBe('Three deals moved stage.');
-    expect(r.needs[1]).toMatchObject({ detail: 'Only you see it.', action: { label: 'Read it', to: '/checkin/c4/report' } });
+    expect(r.needs[1]).toMatchObject({ detail: null, action: { label: 'Read it', to: '/checkin/c4/report' } });
   });
 
   it('never tells a participant who else has not checked in', () => {

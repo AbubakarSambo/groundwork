@@ -46,15 +46,6 @@ describe('Grace’s letter, Drop Access (test)', () => {
     expect(lines.find((l) => l.startsWith('Here is what moved this week, with what shows it.'))).not.toMatch(/Joseph/);
   });
 
-  it('with the direct morning off, the letter is the letter as it was', async () => {
-    const { lines, subject } = await theLetterOf('drop', { directMorning: false });
-    expect(subject).toBe('2 things people said they would do were done; 16 handoffs are still waiting');
-    expect(lines).toEqual([
-      'Your team is starting to move.',
-      'This week, all five people checked in. Five people said what they will do next. Two things people said they would do were done. 16 handoffs are still waiting.',
-    ]);
-  });
-
   it('with judgements of a person off, the target stays and nothing read from a person’s record is said', async () => {
     const { lines } = await theLetterOf('drop', { directMorning: true, judgements: false });
     expect(lines).toContain('Here is where the target stands. 75 of 120 sold, 47 paid, 45 short, and the open deals cover 40.');

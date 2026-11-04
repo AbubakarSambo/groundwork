@@ -106,7 +106,7 @@ export function provenanceLine(p: Provenance): string {
   const where = p.firstSeenSession ? ` (session ${p.firstSeenSession})` : '';
 
   if (p.contradicted) {
-    return `Described differently by more than one person${where}. People said different things about it, so it is not settled.`;
+    return `People said different things about this${where}.`;
   }
   if (p.accounts >= 2) {
     return `Described independently by ${p.accounts} people${where}.`;
@@ -158,8 +158,7 @@ export function selfContradictionLine(c: SelfContradiction): string {
  * that presents itself as final invites people to argue with it instead of
  * adding to it, which is the opposite of what it is for.
  */
-export const CURRENT_BEST_READING =
-  'This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.';
+export const CURRENT_BEST_READING = '';
 
 /**
  * THE FIVE READINGS A SESSION IS SCORED ON, AND ONLY THOSE (review of 1 October 2026).
