@@ -114,9 +114,10 @@ describe('B-226: pressing "Start my check-in" off the Check-in tab', () => {
     await screen.findByRole('button', { name: 'Try again' })
     expect(apiClient.post).toHaveBeenCalledTimes(1)
 
-    // Back to Context (labelled "Documents" here - this mocked ground has no `contextEnabled`),
-    // the same way a real reader would: the tab bar's own button, not a reload.
-    fireEvent.click(screen.getByRole('tab', { name: 'Documents' }))
+    // Back to the tab it started on, "References and resources" for everybody since Release 1B's switch went (it read
+    // "Documents" when this mocked ground had no `contextEnabled`), the same way a real reader would: the tab bar's own
+    // button, not a reload.
+    fireEvent.click(screen.getByRole('tab', { name: 'References and resources' }))
     const btnAgain = await screen.findByRole('button', { name: 'Start my check-in' })
     fireEvent.click(btnAgain)
 

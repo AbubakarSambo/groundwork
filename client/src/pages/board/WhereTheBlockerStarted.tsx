@@ -43,7 +43,8 @@ export function WhereTheBlockerStarted() {
   const b: Any = board
   const runsIt = !!user?.id && g?.initiatorId === user.id
   const isAParty = !!(g?.participants ?? []).some((p: Any) => p.userId === user?.id)
-  const myWork = runsIt ? 'sessions' : 'record'
+  /* My work is one page for the lead and each person in it (MyWorkPage.tsx, B7), so every tab row sends it to one key. */
+  const myWork = 'record'
   const title = g?.label ?? b?.title ?? 'This check-in'
   const tabs = [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },

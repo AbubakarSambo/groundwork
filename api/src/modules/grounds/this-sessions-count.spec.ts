@@ -115,6 +115,20 @@ describe('who the one count counts', () => {
     expect([count.answered, count.ofPeople]).toEqual([1, 3]);
     expect(count.says).toBe('1 of 3 has checked in. Three more people are not counted yet, because an admin has not let them in.');
   });
+
+  /* The check-in page's header reads this clock and nothing else (its own client-side count is gone, fix plan group 2), so somebody
+     held at the door must not keep it on session 1 once everybody who is in has finished it (GroundAdminPage.notLetInYet spec). */
+  it('somebody held at the door does not keep the clock on session 1', () => {
+    const people = [person('lead', { partyType: 'INITIATOR' }), person('a'), person('b'), person('c', { notLetIn: true })];
+    const session2 = (id: string) => ({ ...row(id, 'NOT_STARTED'), sessionNumber: 2 });
+    /* Everybody who is in finished session 1 and session 2 has come for them; C, held at the door, has not answered session 1. */
+    const rows = [row('lead', 'COMPLETED'), row('a', 'COMPLETED'), row('b', 'COMPLETED'), row('c', 'NOT_STARTED'), session2('lead'), session2('a'), session2('b')];
+    const ground = { participants: people, checkIns: rows, scenario: 'SALES', timelineDays: 360, cadence: 'MONTHLY', runsUntilEnded: false };
+    expect(theSessionAndItsCount(ground, { now: NOW }).clock.says).toBe('Session 2 of 12.');
+    /* Let in, C is somebody the round waits on, so the same rows read session 1: the hold is what moves it, nothing else. */
+    const letIn = { ...ground, participants: people.map((p) => (p.id === 'c' ? { ...p, notLetIn: false } : p)) };
+    expect(theSessionAndItsCount(letIn, { now: NOW }).clock.says).toBe('Session 1 of 12.');
+  });
 });
 
 /*

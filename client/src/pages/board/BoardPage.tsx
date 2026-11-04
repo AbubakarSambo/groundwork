@@ -7,6 +7,7 @@ import { ThisAddsASeat } from '@/components/gw/this-adds-a-seat'
 import { useState, type ReactNode } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { TheyWereNotInvited } from '@/pages/grounds/TheyWereNotInvited'
 import { SWITCHBOARD_MATRIX } from './the-switchboard-g2-table'
 import { ThatIsOnTheRecord } from '@/components/gw/ThatIsOnTheRecord'
 import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
@@ -1744,7 +1745,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const restOfWorkRecordSections = isSalesOrg
     ? (b.workRecords ?? []).filter((s) => s.section !== 'Deal grid')
     : (b.workRecords ?? []).filter((s) => s.state === 'not-known' && !(themesAndAreaAfterTheTeam && s.section === 'Themes'))
-  const myWorkTab = viewerRunsThisCheckIn ? 'sessions' : 'record'
+  /* My work is one page for the lead and each person in it (MyWorkPage.tsx, B7), so every tab row sends it to one key. */
+  const myWorkTab = 'record'
   const headerTabs = [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
     ...(viewerRunsThisCheckIn || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),
@@ -2692,6 +2694,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           trailing={!groundId ? <TheOtherBoardsYouAreIn groundId={id!} label={light || picturedLead || picturedOnboarding || picturedMember || picturedParticipant || picturedDecision || picturedPlan || picturedOtherKind ? 'Views' : undefined} plain={picturedLead || picturedOnboarding || picturedMember || picturedParticipant || picturedDecision || picturedPlan || picturedOtherKind} /> : undefined}
         />
         )}
+        {/* Straight from "Send N invitations", who was not invited is said here, where the lead lands, not only in a toast. */}
+        {viewerRunsThisCheckIn && id && <TheyWereNotInvited groundId={id} />}
         {/* Straight from "Send N invitations": the board shows what is known while setup's report is written (Hafsah, 3 November evening). */}
         {b.fullReportComing && <p className="gwui-fs-15 gwui-ink-dark gwui-mt-8" role="status">{b.fullReportComing}</p>}
 

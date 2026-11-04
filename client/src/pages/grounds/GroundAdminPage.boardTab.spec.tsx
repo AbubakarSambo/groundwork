@@ -30,7 +30,11 @@ import { documentsApi } from '@/api/documents'
  * way in lives.
  */
 
-vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
+/* My work is the B7 page for everybody (batch 1, group 10), drawn from the server's answer; the quiet links are under it. */
+vi.mock('@/api/grounds', async () => {
+  const { SERVED_TO_THE_LEAD } = await import('./my-work-served.fixture')
+  return { groundsApi: { get: vi.fn(), myWork: vi.fn().mockResolvedValue(SERVED_TO_THE_LEAD) } }
+})
 vi.mock('@/api/participantRequests', () => ({ participantRequestsApi: { list: vi.fn().mockResolvedValue([]) } }))
 vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn() } }))
 vi.mock('@/api/documents', () => ({ documentsApi: { list: vi.fn() } }))
@@ -122,8 +126,9 @@ describe('finding the team board', () => {
 
     /** Waits on a tab that is always present. "Overview" was used here and no longer exists. */
     await waitFor(() => expect(screen.getByRole('tab', { name: 'My work' })).toBeTruthy())
-    // The outer row: the prototype's five, "Setup" relabelled "People and setup".
-    for (const label of ['Check-in', 'Documents', 'My work', 'People and setup']) {
+    // The outer row: the prototype's five, "Setup" relabelled "People and setup", and the third tab named as it is pictured
+    // for everybody now that Release 1B's switch has gone (it read "Documents" with the switch off).
+    for (const label of ['Check-in', 'References and resources', 'My work', 'People and setup']) {
       expect(screen.getByRole('tab', { name: label })).toBeTruthy()
     }
     // "Report" and "Sessions" are quiet links inside My work now, not sub-tabs - see the note above.

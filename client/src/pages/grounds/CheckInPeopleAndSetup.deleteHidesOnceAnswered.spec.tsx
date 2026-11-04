@@ -10,6 +10,9 @@ import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
  * sent people to "Ask us to end it instead" - which does not exist (the lead already has "Decide
  * how it ends", in the section just above). The button and the whole panel now only show while
  * deleting could actually work: before anyone but the lead has answered.
+ *
+ * 4 November 2026: People and setup is the B8 page for everybody now (Release 1B's switch went), where the button reads
+ * "Delete this test" beside "Decide how it ends". What is protected is the same: offered only before anyone else answered.
  */
 function ground(over: Record<string, any> = {}) {
   return {
@@ -89,7 +92,7 @@ describe('B-152: "Delete this check-in" only while deleting could still work', (
       isInitiator: true,
       whoIsInThisParties: [{ id: 'p-lead', done: false, isSelf: true }, { id: 'p-a', done: false, isSelf: false }],
     })
-    expect(await screen.findByRole('button', { name: 'Delete this check-in' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Delete this test' })).toBeTruthy()
   })
 
   it('is hidden, with no "Ask us to end it instead", once somebody else has answered', async () => {
@@ -97,8 +100,9 @@ describe('B-152: "Delete this check-in" only while deleting could still work', (
       isInitiator: true,
       whoIsInThisParties: [{ id: 'p-lead', done: true, isSelf: true }, { id: 'p-a', done: true, isSelf: false }],
     })
-    await screen.findByText('Ending it')
-    expect(screen.queryByRole('button', { name: 'Delete this check-in' })).toBeNull()
+    await screen.findByRole('link', { name: 'Decide how it ends' })
+    expect(screen.queryByRole('button', { name: 'Delete this test' })).toBeNull()
+    expect(screen.getByText(/Ending it stops new check-ins\. Everything stays as it is/)).toBeTruthy()
     expect(screen.queryByText(/Ask us to end it instead/)).toBeNull()
   })
 })

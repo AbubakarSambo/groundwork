@@ -33,7 +33,11 @@ const BASE_GROUND = {
 vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: { id: 'u-lead', role: 'MEMBER', email: 'tendai@kijani.test' }, isAuthenticated: true }),
 }))
-vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
+/* My work is the B7 page for everybody (batch 1, group 10), drawn from the server's answer; "Who has answered" is under it. */
+vi.mock('@/api/grounds', async () => {
+  const { SERVED_TO_THE_LEAD } = await import('./my-work-served.fixture')
+  return { groundsApi: { get: vi.fn(), myWork: vi.fn().mockResolvedValue(SERVED_TO_THE_LEAD) } }
+})
 vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn() } }))
 vi.mock('@/api/documents', () => ({ documentsApi: { list: vi.fn() } }))
 
@@ -62,6 +66,9 @@ describe('B-056: the My work notice counts one person in words, not a bare digit
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Get a project back on track/i).length).toBeGreaterThan(0))
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
+    /* Batch 1, group 10: "My work" opens the B7 page for a lead too, from every tab row, so the roster is one press further,
+       behind "Who has answered" inside it (it was the lead's landing while Release 1B's switch was off). */
+    fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
     expect(await screen.findByText(/once you have checked in/)).toBeTruthy()
     expect(screen.queryByText(/once all 1 are in/)).toBeNull()
   })
