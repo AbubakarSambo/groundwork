@@ -229,6 +229,9 @@ class EntryReportDto {
   @IsArray()
   @IsString({ each: true })
   leadsOwnWords?: string[];
+
+  /* Which setup this report is for, the key its save will carry, so a save that comes first keeps this same report (3 November 2026). */
+  @IsOptional() @IsString() @MaxLength(100) setupKey?: string;
 }
 
 class ContributorDto {
@@ -631,7 +634,7 @@ export class EntryController {
   @Post('report')
   @Throttle({ global: { limit: 20, ttl: 60000 } })
   async report(@Body() dto: EntryReportDto) {
-    const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel, dto.anchorItems, dto.peopleNamed, dto.leadsOwnWords);
+    const report = await this.service.report(dto.messages, dto.scenario, dto.groundLabel, dto.anchorItems, dto.peopleNamed, dto.leadsOwnWords, dto.setupKey);
     return { report };
   }
 }

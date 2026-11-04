@@ -1,4 +1,5 @@
 import { theSituationBoard, theRelease8SituationsIsOn } from './release-8-situations';
+import { theLinesAboutAColleaguesTargetLeftOut } from '../reports/their-words-about-a-target-follow-the-setting';
 import { whereTheTimeWent } from './the-switchboards-own-sections';
 import { theRelease4TeamsIsOn, theUnitOfATarget } from './release-4-teams';
 import { theProjectBoard, theRelease5ProjectsIsOn, isAProject, aMilestoneAcceptedIsAnInvoiceToRaise } from './release-5-projects';
@@ -102,7 +103,7 @@ import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { Injectable, ForbiddenException, NotFoundException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
+import { GroundworkEvents, CheckInCompletedEvent, AimsReadEvent } from '../../common';
 import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { howACheckInIsGoing } from '../grounds/how-a-check-in-is-going';
@@ -364,14 +365,16 @@ export class BoardService {
    * warmed every board twice because the public API module built a second one (see
    * only-one-board-listens.spec).
    */
+  /* And when the targets setup named land, which is after the save has answered (3 November 2026): they are new, so the board is built again with them. */
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
-  async warmOnCheckInCompleted(event: CheckInCompletedEvent) {
+  @OnEvent(GroundworkEvents.AIMS_READ)
+  async warmOnCheckInCompleted(event: CheckInCompletedEvent | AimsReadEvent) {
     try {
       await (this.boardWarming ?? new OneAtATime<void>()).run(event.groundId, () => this.whatTheBoardIsBuiltFrom(event.groundId), async () => {
         const ground = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { initiatorId: true } });
         if (!ground?.initiatorId) return;
         await this.get(event.groundId, ground.initiatorId, DEFAULT_COVERAGE_VARIANT, { mayWordNewLines: true });
-        this.logger.log(`Board warmed for ${event.groundId} after session ${event.sessionNumber}.`);
+        this.logger.log(`Board warmed for ${event.groundId} after ${'sessionNumber' in event ? `session ${event.sessionNumber}` : 'the aims were read'}.`);
       });
     } catch (err: any) {
       this.logger.warn(`Board warm-up failed for ${event.groundId}: ${err?.message}`);
@@ -2003,7 +2006,7 @@ export class BoardService {
 
     if (has('whoOwnsWhat')) {
       const entries = await this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT', 'PROGRESS'] } },
+        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT', 'PROGRESS'] }, ...theLinesAboutAColleaguesTargetLeftOut((ground as any).whoSeesTargets, me, runsThisGround) } as any,
         select: { id: true, participantId: true, type: true, text: true, checkInId: true, createdAt: true, ...WHAT_A_MARK_READS },
         orderBy: { createdAt: 'asc' },
       });
@@ -2760,7 +2763,7 @@ export class BoardService {
           || (!whoMaySee.peersHidden && !colleaguesWordsWalled && !aParticipantOnly);
         const mayReadTheWordsOf = (pid: string | null | undefined) => !!pid && (pid === me?.id || readsEveryonesWords);
         const everyLine = ((await (this.prisma.recordEntry.findMany({
-          where: { disputedAt: null, participant: { groundId } } as any,
+          where: { disputedAt: null, participant: { groundId }, ...theLinesAboutAColleaguesTargetLeftOut((ground as any).whoSeesTargets, me, runsThisGround) } as any,
           select: { id: true, text: true, participantId: true, checkInId: true, createdAt: true, disputedAt: true, ...WHAT_A_MARK_READS } as any,
         }) as Promise<any[]>).catch(() => [] as any[])) ?? []) as any[];
         const readableRows = everyLine.filter((l) => !l.disputedAt && mayReadTheWordsOf(l.participantId));
