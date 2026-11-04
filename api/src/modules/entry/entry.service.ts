@@ -6,7 +6,6 @@ import { askedToFinish, isTheWordFinish } from '../conversation/close-readiness'
 import { aFinishTooSoon } from '../conversation/a-finish-too-soon-is-said-plainly';
 import { endingOnTheClose } from '../conversation/the-close-says-what-comes-next';
 import { withAQuestion as withAQuestionForTheFirstCheckIn } from '../conversation/nobody-is-left-looking-at-a-paragraph';
-import { stripCloseMarker } from '../conversation/prompt-library';
 import { waitNoLongerThan, HOW_LONG_THE_SAVE_WAITS_FOR_THE_READING_MS } from './a-slow-reading-does-not-hold-the-save';
 import { withoutTheUserLabel } from './the-lead-is-never-the-user';
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
@@ -23,7 +22,7 @@ import {
 } from './a-join-link-is-not-a-password';
 import { Injectable, Optional, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType } from '@prisma/client';
+import { GroundScenario, GroundMoment, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType } from '@prisma/client';
 import { namesWithoutPossessives } from './a-name-is-not-a-possessive';
 import { withHeadingsThatReadAsHeadings } from './a-heading-is-a-noun-phrase';
 import { splitMentions } from './a-client-is-not-a-colleague';
@@ -2661,38 +2660,21 @@ from finishing at all.`;
      * a session 1 to do, like everybody else.
      */
     /*
-     * DECISION 133: SETUP FLOWS STRAIGHT INTO THE LEAD'S FIRST CHECK-IN, IN THE SAME CONVERSATION.
-     * The setup is not the check-in (decision 28) and is not in `history`: `history` holds only the
-     * check-in that followed it, which is the lead's first check-in. So it is written into session 1
-     * and closed as answered, exactly like anybody's finished check-in, and the lead counts in session 1.
-     * Before this, session 1 was left NOT_STARTED, the ground page opened it again, and it read
-     * "Nobody has checked in yet" and "Your turn" to a lead who had just checked in.
+     * SETUP STAYS PRIVATE TO WHOEVER RUNS THE CHECK-IN (Hafsah, 4 November 2026). The lead has one conversation on screen, setup and
+     * her first update together (decision 133), but it is stored in two parts. Her session 1 is closed as answered, so she counts in
+     * session 1 like anybody who has checked in. The conversation itself is NOT copied onto it as check-in turns, and no record lines
+     * are read from it: it was, and her setup words ("I do not know what he is working on") became lines every member read on the
+     * board, in the report and in Ask. Setup asks for her first update whenever it fits, so no turn marks where setup ends and her
+     * update begins, and nothing here guesses. What setup is for reaches the team through its own places: the targets
+     * (extractExpectations, below), the brief, the people and the cadence. Her own words stay hers (LeadSetupWords, above), and the
+     * report she read at the end stays on her session (below), served to her alone.
      */
-    const theirCheckIn = (dto.history ?? []).filter((t: any) => t && typeof t.content === 'string' && t.content.trim());
-    const theyAnswered = theirCheckIn.some((t: any) => t.role === 'user');
+    const theyAnswered = (dto.history ?? []).some((t: any) => t?.role === 'user' && typeof t.content === 'string' && t.content.trim());
     if (!theAnchorIsOn && theyAnswered) {
-      /*
-       * IN THE ORDER IT HAPPENED (pilots, 13 October 2026, E5). Every turn was written with one and the same time, so
-       * Njeri's session 1 came back in whatever order the database chose: her closing turn mid-transcript, two of
-       * Groundwork's turns together and her answers after them. Each turn now has its own moment, a millisecond apart,
-       * in the order she had the conversation. And the close marker's brackets never reach the record.
-       */
-      const startedAt = Date.now() - theirCheckIn.length;
-      await this.prisma.conversationTurn.createMany({
-        data: theirCheckIn.map((t: any, i: number) => ({
-          checkInId: checkIn.id,
-          role: t.role === 'user' ? TurnRole.PERSON : TurnRole.AI,
-          content: t.role === 'user' ? t.content : stripCloseMarker(t.content).text,
-          createdAt: new Date(startedAt + i),
-        })),
-      });
       await this.prisma.checkIn.update({
         where: { id: checkIn.id },
         data: { status: CheckInStatus.COMPLETED, completedAt: new Date(), optional: true },
       });
-      /* What she said is her record, on the same extractor anybody's finished check-in runs. */
-      this.conversation?.extractRecordEntries?.(checkIn.id, participant.id)?.catch?.((err: any) =>
-        this.logger.warn(`entry commit: the lead's first check-in record could not be read on ${ground.id}: ${err?.message}`));
     } else if (dto.history.length > 0) {
       this.logger.log(`Ground ${ground.id}: no answer of the lead's in the conversation; session 1 stays open for the lead to answer.`);
     }
@@ -2738,18 +2720,6 @@ from finishing at all.`;
     await this.conversation
       .ensureNextSession(ground.id, participant.id, 1)
       .catch((e) => this.logger.error(`entry commit: could not schedule session 2 for ground ${ground.id}: ${e?.message ?? e}`));
-
-    /*
-     * NOTHING IS EXTRACTED FROM SETUP AS THOUGH IT WERE THEIR ACCOUNT.
-     *
-     * This read the setup transcript and wrote record entries against session 1 - "I am their
-     * manager, I set the target", "I want to see what is on track" - which are answers about the
-     * SHAPE of the check-in, filed as though they were an account of the work. Read live in a
-     * report: a lead's "what you said this time" held two lines, both about who she is.
-     *
-     * The session she is about to do produces her record, on the normal completion path, like
-     * everybody else's.
-     */
 
     /*
      * KEEP THE REPORT THEY JUST READ, ON THE SESSION THAT PRODUCED IT.
