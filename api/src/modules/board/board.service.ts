@@ -1,4 +1,5 @@
 import { theSituationBoard, theRelease8SituationsIsOn } from './release-8-situations';
+import { theLinesAboutAColleaguesTargetLeftOut } from '../reports/their-words-about-a-target-follow-the-setting';
 import { whereTheTimeWent } from './the-switchboards-own-sections';
 import { theRelease4TeamsIsOn, theUnitOfATarget } from './release-4-teams';
 import { theProjectBoard, theRelease5ProjectsIsOn, isAProject, aMilestoneAcceptedIsAnInvoiceToRaise } from './release-5-projects';
@@ -2005,7 +2006,7 @@ export class BoardService {
 
     if (has('whoOwnsWhat')) {
       const entries = await this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT', 'PROGRESS'] } },
+        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT', 'PROGRESS'] }, ...theLinesAboutAColleaguesTargetLeftOut((ground as any).whoSeesTargets, me, runsThisGround) } as any,
         select: { id: true, participantId: true, type: true, text: true, checkInId: true, createdAt: true, ...WHAT_A_MARK_READS },
         orderBy: { createdAt: 'asc' },
       });
@@ -2762,7 +2763,7 @@ export class BoardService {
           || (!whoMaySee.peersHidden && !colleaguesWordsWalled && !aParticipantOnly);
         const mayReadTheWordsOf = (pid: string | null | undefined) => !!pid && (pid === me?.id || readsEveryonesWords);
         const everyLine = ((await (this.prisma.recordEntry.findMany({
-          where: { disputedAt: null, participant: { groundId } } as any,
+          where: { disputedAt: null, participant: { groundId }, ...theLinesAboutAColleaguesTargetLeftOut((ground as any).whoSeesTargets, me, runsThisGround) } as any,
           select: { id: true, text: true, participantId: true, checkInId: true, createdAt: true, disputedAt: true, ...WHAT_A_MARK_READS } as any,
         }) as Promise<any[]>).catch(() => [] as any[])) ?? []) as any[];
         const readableRows = everyLine.filter((l) => !l.disputedAt && mayReadTheWordsOf(l.participantId));

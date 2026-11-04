@@ -253,6 +253,7 @@ import { theTimeItSharesItself, isThisSessionHeld, withThisSessionHeld, whenItSh
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { asTheReleasedSessionHadIt, isThisSessionReleased, releasedSessionsOf, theLatestReleasedSession, theSessionTheReportHolds, thisSessionIsNotSharedYet, whatReleasingThisSessionDoes, withThisSessionReleased, youAreReadingAnEarlierSession } from './each-sessions-picture-is-released-on-its-own';
 import { aRoleInTheirOwnWords, withoutTheLeadsDescriptionOfAnyone, deeplyWithoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
+import { theLinesAboutAColleaguesTargetLeftOut } from './their-words-about-a-target-follow-the-setting';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -3167,6 +3168,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
         organizationId: true,
         initiatorId: true,
         createdByUserId: true,
+        /* Whether a colleague's words about their target may be read (their-words-about-a-target-follow-the-setting). */
+        whoSeesTargets: true,
         /*
          * RE-REVIEW PRIVACY BUG (SCREENS WORKSPACE): `scenario` AND `peersVisibleToEachOther`
          * WERE NEVER SELECTED, SO `peersAreNamedOn` BELOW COULD NOT SEE WHETHER THIS CHECK-IN
@@ -3247,7 +3250,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         select: { successLooksLike: true, version: true, conditions: true },
       }),
       this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, ...whoseLines } as any,
+        where: { disputedAt: null, ...whoseLines, ...theLinesAboutAColleaguesTargetLeftOut((ground as any).whoSeesTargets, me, viewerIsLead) } as any,
         orderBy: { createdAt: 'asc' },
         select: { type: true, text: true, participantId: true },
       }),
@@ -3299,6 +3302,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
         brief: true,
         /* A one-time listening session is drafted differently from a run of work. See PictureInput.oneTime. */
         cadence: true, scenario: true, id: true,
+        /* Whether a colleague's words about their target may be read (their-words-about-a-target-follow-the-setting). */
+        whoSeesTargets: true,
         /* The run's length, for "session N of M": with the rhythm it gives plannedSessions below.
            Left out of this select, plannedSessions was null on every read (request 55). */
         timelineDays: true,
@@ -3391,15 +3396,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
       ? ground.participants.map((p) => p.id)
       : me ? [me.id] : [];
     const mine = new Set(me ? [me.id] : []);
+    const aColleaguesTargetWords = theLinesAboutAColleaguesTargetLeftOut((ground as any).whoSeesTargets, me, viewerIsLead);
 
     const [entries, previousEntries, baseline, startingPoint, checkIn] = await Promise.all([
       this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber } },
+        where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber }, ...aColleaguesTargetWords },
         select: { type: true, text: true, recallBased: true, anchoredOrigin: true, dimensionThreadKey: true, participantId: true, confirmedAt: true, anchoredDocumentId: true },
       }),
       sessionNumber > 1
         ? this.prisma.recordEntry.findMany({
-          where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: sessionNumber - 1 } },
+          where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: sessionNumber - 1 }, ...aColleaguesTargetWords },
           select: { type: true, text: true, dimensionThreadKey: true, participantId: true },
         })
         : Promise.resolve([]),
@@ -3832,7 +3838,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * the report.
      */
     const everyEntrySoFar = await this.prisma.recordEntry.findMany({
-      where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: { lte: sessionNumber } } },
+      where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: { lte: sessionNumber } }, ...aColleaguesTargetWords },
       orderBy: { createdAt: 'asc' },
       select: { type: true, text: true, participantId: true },
     });
