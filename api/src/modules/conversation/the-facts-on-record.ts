@@ -59,13 +59,19 @@ const WHAT_JUDGES_A_PERSON = new Set(['observations', 'roleSignals', 'areas', 'c
 /* Not facts anybody said: names alone, and the questions Groundwork means to ask next. */
 const NOT_A_FACT = new Set(['people', 'stillOpen']);
 
-function mayRead(reader: TheReader, item: AnItem, section: string, participantId: string): boolean {
+/**
+ * Who may read one item. `inSetup` is true for an item read only from setup's words, which stay with whoever runs the check-in and
+ * the lead who said them (Hafsah, 4 November 2026); her own update on where things stand is her first check-in, so it is not.
+ * `aboutTheirTarget` is true for a person's own words about their target: where each person sees only their own target, those
+ * words are read only by them and the lead, even in a shared check-in (Hafsah, 4 November 2026).
+ */
+function mayRead(reader: TheReader, item: AnItem, section: string, participantId: string, inSetup: boolean, aboutTheirTarget: boolean): boolean {
   if (item.whoMaySee === KEPT_FROM_THE_LEAD) return reader.kind === 'who hears a complaint' || (reader.kind === 'the person' && reader.participantId === participantId);
   if (reader.kind === 'who hears a complaint') return false;
   if (reader.kind === 'the lead') return !WHAT_JUDGES_A_PERSON.has(section) || reader.judgements;
   if (item.whoMaySee === 'the lead only') return false;
   if (reader.kind === 'the person') return reader.participantId === participantId;
-  return item.whoMaySee === 'the people in this check-in';
+  return item.whoMaySee === 'the people in this check-in' && !inSetup && !aboutTheirTarget;
 }
 
 const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
@@ -103,14 +109,22 @@ function everyItemWithItsSection(a: TheAssessment): { section: string; item: AnI
   ];
 }
 
+/** Who sees the targets on this check-in (Ground.whoSeesTargets). THEIR_OWN is the default, as it is on the ground. */
+export type WhoSeesTheTargets = 'THEIR_OWN' | 'EVERYBODY';
+
+const squashed = (s: unknown) => String(s ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+
 /** The facts in one assessment that this reader may read. Pure, so every page reads them the same way. */
-export function theFactsIn(a: TheAssessment, reader: TheReader): AFact[] {
+export function theFactsIn(a: TheAssessment, reader: TheReader, whoSeesTargets: WhoSeesTheTargets = 'THEIR_OWN'): AFact[] {
   const seen = new Set<string>();
-  const inSetup = new Set((a.messages ?? []).filter((m) => m.where === 'setup').map((m) => m.n));
+  const setupMessages = new Set((a.messages ?? []).filter((m) => m.where === 'setup').map((m) => m.n));
+  /* Their words about a target, wherever else the same words were read (a target's words are often a number too). */
+  const targetWords = new Set((a.targets ?? []).map((t) => squashed(t.words)).filter(Boolean));
   const out: AFact[] = [];
   for (const { section, item } of everyItemWithItsSection(a)) {
     if (NOT_A_FACT.has(section)) continue;
-    if (!mayRead(reader, item, section, a.about.participantId)) continue;
+    const inSetup = (item.from ?? []).length > 0 && (item.from ?? []).every((n) => setupMessages.has(n));
+    if (!mayRead(reader, item, section, a.about.participantId, inSetup, whoSeesTargets === 'THEIR_OWN' && (section === 'targets' || targetWords.has(squashed(item.words))))) continue;
     const corrected = (item.history ?? []).filter((h) => h.backed).pop();
     const words = (corrected?.nowSays ?? item.words ?? '').trim();
     const detail = theDetailOf(section, item);
@@ -124,7 +138,7 @@ export function theFactsIn(a: TheAssessment, reader: TheReader): AFact[] {
       isTheLead: a.about.isTheLead, sessionNumber: a.about.sessionNumber, on: a.about.endedAt, section, words, detail,
       proved: item.proof === 'proved',
       saidWordForWord: !corrected && item.saidWordForWord === true,
-      inSetup: (item.from ?? []).length > 0 && (item.from ?? []).every((n) => inSetup.has(n)),
+      inSetup,
     });
   }
   return out;
@@ -139,6 +153,9 @@ export async function theFactsOnRecord(
   input: { groundId: string; reader: TheReader; participantIds?: string[]; since?: Date; until?: Date },
 ): Promise<AFact[]> {
   const only = input.reader.kind === 'the person' ? [input.reader.participantId] : input.participantIds;
+  /* The ground owns who sees the targets; every page reads it from there, through here. */
+  const ground = await Promise.resolve(prisma.ground?.findUnique?.({ where: { id: input.groundId }, select: { whoSeesTargets: true } })).catch(() => null);
+  const whoSeesTargets: WhoSeesTheTargets = ground?.whoSeesTargets === 'EVERYBODY' ? 'EVERYBODY' : 'THEIR_OWN';
   const rows = ((await Promise.resolve(prisma.checkIn?.findMany?.({
     where: {
       groundId: input.groundId,
@@ -150,7 +167,7 @@ export async function theFactsOnRecord(
   })).catch(() => [])) ?? []) as { sessionReport: unknown }[];
   return rows.flatMap((r) => {
     const a = theAssessmentIn(r.sessionReport);
-    return a ? theFactsIn(a, input.reader) : [];
+    return a ? theFactsIn(a, input.reader, whoSeesTargets) : [];
   });
 }
 
