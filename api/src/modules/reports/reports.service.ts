@@ -123,9 +123,7 @@ import { howTheNumbersSit } from './do-the-parts-add-up-to-the-whole';
 import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
 import { whatSituationThisIsAbout } from './what-situation-this-report-is-about';
-import { totalSessionsFor } from '../grounds/session-count';
-import { theSessionClock } from '../board/one-count-for-the-sessions';
-import { whoHoldsTheClock } from '../grounds/this-sessions-count';
+import { theSessionAndItsCount, thePlannedSessionsOf } from '../grounds/this-sessions-count';
 import { hasEnded } from '../grounds/a-ground-that-has-ended';
 import { nobodyHasSaidWhoArrangedAnything } from '../conversation/who-secured-that-meeting';
 import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
@@ -1364,7 +1362,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const theSituation = whatSituationThisIsAbout(
       (ground as any).scenario,
       roundNow,
-      totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
+      thePlannedSessionsOf(ground as any),
     );
     /* The direct morning (the-direct-morning-is-written-straight): for a switched-on organisation the code's block goes LAST, after the
        stored version and every code block, so it runs whatever version is stored. Off, the prompt is exactly as it was. */
@@ -3610,7 +3608,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
          otherwise the length over the rhythm. Null where either is unset, so the header omits the
          position rather than inventing a denominator. Worked out inline it had no step for a one-time
          check-in, so the report read "Session 1." while the board read "of 1" (12 October). */
-      plannedSessions: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
+      plannedSessions: thePlannedSessionsOf(ground as any),
       closed: !!snapshot,
       /* The wall is the release, not whether the round has closed (user journeys, F-12). */
       othersWordsAreNotYetOpen: !(released || viewerIsLead),
@@ -4313,7 +4311,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           /* How many this run holds, from the length and the rhythm - the same arithmetic the
              chat composer does when it says "session 3 of 6", by the one rule in session-count.ts. Null where either is unset, which
              makes the read fall silent rather than guess at a last session. */
-          plannedSessions: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
+          plannedSessions: thePlannedSessionsOf(ground as any),
           thereIsALater: ONE_SITTING_ONLY.has((ground as any).scenario)
             ? false
             : ALREADY_IN_THE_OPEN.has((ground as any).scenario)
@@ -6566,16 +6564,19 @@ happened, and what is in the way.`;
    * written ahead of time included. All three now read this one: the open round among the people who check
    * in (nobody an admin has not let in holds it back, decision 77), capped at the last planned session.
    */
+  /* One clock (docs/fix-plan.md, group 2): the board's own theSessionAndItsCount, read with the same rows, not a second build of its inputs. */
   private async theBoardsClock(groundId: string, ground: any): Promise<{ current: number; planned: number | null }> {
     const rows = ((await (this.prisma.checkIn?.findMany?.({
       where: { groundId },
       select: { participantId: true, sessionNumber: true, status: true, isSetup: true, availableFrom: true, startedAt: true, completedAt: true },
     }) ?? Promise.resolve([] as any[]))?.catch?.(() => [] as any[])) ?? []) as any[];
-    const givers = whoHoldsTheClock((ground?.participants ?? []) as any[]);
-    const planned = totalSessionsFor(ground?.timelineDays, ground?.cadence, ground?.cadenceDays) ?? null;
     /* A finished round hands the count on only with Release 1's sales board on, as the board's header reads it. */
     const handOn = await theReleaseOneSalesBoardIsOn(this.prisma, ground?.organizationId ?? null).catch(() => false);
-    const clock = theSessionClock(rows.filter((c) => !c.isSetup) as any, givers, planned, new Date(), handOn);
+    const { clock } = theSessionAndItsCount({
+      participants: (ground?.participants ?? []) as any[], checkIns: rows, scenario: ground?.scenario ?? null,
+      timelineDays: ground?.runsUntilEnded ? null : ground?.timelineDays ?? null, cadence: ground?.cadence ?? null, cadenceDays: ground?.cadenceDays ?? null,
+      runsUntilEnded: !!ground?.runsUntilEnded,
+    }, { now: new Date(), handOn });
     return { current: clock.currentSession, planned: clock.plannedSessions };
   }
 
@@ -8414,7 +8415,7 @@ happened, and what is in the way.`;
       if (!g) return false;
       if (hasEnded(g.status as any)) return true;
       if ((g.checkIns ?? []).some((c: any) => c.isFinal && c.status === CheckInStatus.COMPLETED)) return true;
-      const planned = totalSessionsFor((g as any).timelineDays, (g as any).cadence, (g as any).cadenceDays) ?? null;
+      const planned = thePlannedSessionsOf(g as any);
       const held = Math.max(0, ...(g.checkIns ?? []).map((c: any) => c.sessionNumber ?? 0));
       return planned !== null && held >= planned;
     })().catch(() => false);
