@@ -295,6 +295,14 @@ describe('the sender keeps the rules every first message shares', () => {
 
 import { anInboundHarness } from './a-whatsapp-inbound-harness';
 
+/* A WORKING DAY, WHATEVER DAY THE TESTS RUN (CI after batch 1, 7 November 2026). The morning sweep skips a day the team does not work
+   (isAWorkingDay), so on a Saturday or a Sunday it rightly sent nothing and these failed. Only the date is fixed: Wednesday 4 November,
+   21:30 UTC, when CI last ran them; timers stay real. */
+const ALL_BUT_THE_DATE = ['hrtime', 'nextTick', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'cancelAnimationFrame', 'requestIdleCallback', 'cancelIdleCallback', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout'] as const;
+beforeAll(() => { jest.useFakeTimers({ now: new Date('2026-11-04T21:30:00Z'), doNotFake: [...ALL_BUT_THE_DATE] }); });
+afterAll(() => { jest.useRealTimers(); });
+
+
 describe('"Start" and "Not now", typed or tapped', () => {
   const tapped = (text: string) => ({ entry: [{ changes: [{ value: { messages: [{ id: `wamid.${text}`, from: '254712345678', type: 'button', button: { text, payload: text } }] } }] }] });
 

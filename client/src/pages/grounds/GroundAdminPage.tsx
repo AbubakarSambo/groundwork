@@ -456,7 +456,7 @@ export function GroundAdminPage() {
   const myOpenOpensLater = !!myOpenAvailableFrom && new Date(myOpenAvailableFrom).getTime() > Date.now() && (myOpenCheckIn as any)?.status !== 'IN_PROGRESS'
   /**
    * THE SAME TWO VALUES THE COMPOSER (AND, BEFORE ROUND 4, GroundChat) READ FOR "OPENS ON" - see
-   * nobody-is-late-before-it-opens.spec.tsx, which pins this exact derivation as a source check,
+   * people-and-setup-as-each-reader-reads-it.spec.tsx, which pins this exact derivation as a source check,
    * and the Check-in tab's own redirect below, which uses `myOpenCheckInId` the same way.
    */
   const myOpenCheckInId = myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.id : null
@@ -1489,8 +1489,8 @@ export function GroundAdminPage() {
    * ROUND 4, ITEM A STEP 2: "WHO IS IN THIS", COMPUTED ONCE, FOR People and setup.
    *
    * Exactly the values GroundChat used to compute inline for GroundTopic - moved up here,
-   * unchanged, so WhoIsInThis (in the Setup tab, below) reads the same roster GroundChat's Check-in
-   * tab used to show. See the comments at each of these call sites, kept there rather than
+   * unchanged, so People and setup (in the Setup tab, below) reads the same roster GroundChat's
+   * Check-in tab used to show. See the comments at each of these call sites, kept there rather than
    * repeated here.
    */
   /*
@@ -1509,8 +1509,8 @@ export function GroundAdminPage() {
   const whoIsInThisPeersHidden = (ground as any).peersVisibleEffective === false && !canRunThisGround
   /* NOBODY IS LATE FOR A SESSION THAT HAS NOT OPENED. W14-12. `myOpenCheckInId`/`myNextOpensAt`
      computed once, above, near myOpenCheckIn/myOpenOpensLater - see
-     nobody-is-late-before-it-opens.spec.tsx, which pins this exact derivation as a source check.
-     Passed to CheckInPeopleAndSetup.tsx, which mounts WhoIsInThis unchanged. */
+     people-and-setup-as-each-reader-reads-it.spec.tsx, which pins this exact derivation as a source check.
+     Passed to CheckInPeopleAndSetup.tsx, whose roster rows read it. */
   const whoIsInThisNotOpenYet = !myOpenCheckInId && !!myNextOpensAt
   const whoIsInThisLeadName = (() => {
     const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
@@ -1524,15 +1524,14 @@ export function GroundAdminPage() {
       const current = clockRound
       const theirs = ((ground.checkIns ?? []) as any[]).filter((c) => c.participantId === p.id)
       return {
-        /* Carried for both readers: WhoIsInThis (still used and tested on its own) reads `name`;
-           CheckInPeopleAndSetup's roster matches its own rows to this by `id` instead, so it can
+        /* Carried for every reader. CheckInPeopleAndSetup's roster matches its own rows to this by `id` instead, so it can
            fold the session-completion fact into a row that already has the person's own label. */
         id: p.id as string,
         name: atTheStart(nameOfParticipant(p.id) ?? 'a colleague'),
         done: hasDoneThisSession(theirs, current),
         isSelf: p.userId === user?.id,
         /* GROUP 3'S REVIEW, CONTRADICTION 4: held outside the organisation, by an admin - not by
-           the session's own clock. See the matching note in WhoIsInThis.tsx. Read with `p?.` (not
+           the session's own clock. Read with `p?.` (not
            `p.`) only so this is not a second match for waiting-on-your-org-is-not-waiting-on-them
            .spec.ts's check that "Invite pending" is decided before this field is - that rule is
            about the roster row below, not this one. */

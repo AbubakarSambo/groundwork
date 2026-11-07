@@ -135,6 +135,8 @@ function serviceFor(scenario: GroundScenario, peopleWorkTogether: boolean | null
       findMany: jest.fn(async () =>
         [1, 2, 3, 4, 5, 6].map((n) => ({ participantId: 'quiet', sessionNumber: n, status: 'COMPLETED' })),
       ),
+      /* The board reads the lead's first check-in for "Your full report is ready in a moment" (3 November 2026). */
+      findFirst: jest.fn(async () => null),
     },
     recordEntry: {
       findMany: jest.fn(async () =>

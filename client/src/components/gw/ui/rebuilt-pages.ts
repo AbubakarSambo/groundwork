@@ -187,7 +187,8 @@ export const REBUILT_PAGES: string[] = [
    * GroundAdminPage.tsx's own equivalent states were (`Page narrow` + `Empty` + `Button`, the
    * shared `gwui-page-shell`, `gw-bd` for the tab content column). Its four tabs were already
    * rebuilt components (`BetweenCheckIns`, `YourWork`, `SharedReportForAParty`, `ContextPage`,
-   * `WhoIsInThis`, `MyParticipation`) before this page itself joined the list.
+   * `MyParticipation`) before this page itself joined the list. (`WhoIsInThis` was on that list too; it went with the old People
+   * and setup page, 7 November 2026.)
    */
   'pages/grounds/GroundParticipantPage.tsx',
   /*

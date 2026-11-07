@@ -40,7 +40,9 @@ describe('when James finishes and two have not', () => {
     const w = run([lead, person('p-a', 'Abigail', true), person('p-j', 'James', true)].map((p) => ({ ...p })), 'p-j');
     await w.go();
     expect(w.sent[0].subject).toBe('James Test has checked in on Kenya launch');
-    expect(text(w.sent[0].html)).toContain('Everyone has now checked in. The shared report is ready to go out.');
+    /* The direct morning's words since 4 November 2026 (batch 1, group 10): the fact, then the way in, with no line about what comes next. */
+    expect(text(w.sent[0].html)).toContain('Everyone has now checked in.');
+    expect(text(w.sent[0].html)).not.toContain('The shared report is ready to go out.');
   });
 });
 

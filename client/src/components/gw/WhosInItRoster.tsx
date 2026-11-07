@@ -40,8 +40,8 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * `notOpenYet` exactly as the pills were - nobody is late for a session that has not opened);
  * whether peers are hidden from each other on this ground (kept as the note under the summary line);
  * and the closing sentence about what the report will show once everyone has answered (kept, same
- * place). Nothing the pills said is dropped; `WhoIsInThis.tsx` itself is untouched and still used and
- * tested on its own (nobody-is-late-before-it-opens.spec.tsx).
+ * place). Nothing the pills said is dropped. `WhoIsInThis.tsx` itself was deleted on 7 November 2026; its rules
+ * are checked on the page that draws the roster now (people-and-setup-as-each-reader-reads-it.spec.tsx).
  */
 export function WhosInItRoster({
   ground, isInitiator, isOrgAdmin, colleagues, addManyParticipants,

@@ -4,8 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TheEndCard } from './TheEndCard'
 import { TheDonePage } from './TheDonePage'
-import { WhoIsInThis } from '../WhoIsInThis'
-import { whoElseAnswers, whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
 
 /**
  * U.8 FOURTH REVIEW: A PARTICIPANT ON A HIDDEN CHECK-IN, THE REAL ROW SHAPE.
@@ -76,25 +75,12 @@ vi.mock('@/api/conversation', () => ({
   conversationApi: { artifact: vi.fn(async () => ({ artifact: null })) },
 }))
 
-/**
- * ROUND 4, ITEM A STEP 2: "WHO IS IN THIS" MOVED FROM `GroundChat`'s Check-in tab TO `WhoIsInThis`,
- * on People and setup. No QueryClient or Router needed any more - `WhoIsInThis` is plain props in,
- * words out.
+/*
+ * The roster describe that used to sit here ("Rukia knows who is here", drawn by WhoIsInThis.tsx) moved on 7 November 2026, when
+ * that component was deleted: a team member's People and setup now reads the server's own sentence, checked in
+ * pages/grounds/people-and-setup-as-each-reader-reads-it.spec.tsx, and the server names the lead from leadFirstName in
+ * api grounds/the-lead-is-named-even-when-hidden.spec.ts.
  */
-describe('the roster names the lead on a check-in that hides everyone else', () => {
-  it('says "Rukia knows who is here", from leadFirstName alone, not from a participants row', () => {
-    render(
-      <WhoIsInThis
-        parties={[{ name: 'You', done: false, isSelf: true }]}
-        peersHidden
-        leadName={whoRunsThis(AMANIS_HIDDEN_GROUND)}
-        viewerIsTheLead={AMANIS_HIDDEN_GROUND.viewerIsInitiator}
-      />,
-    )
-    expect(screen.getByText(/Rukia knows who is here/)).toBeTruthy()
-    expect(screen.queryByText(/Your lead knows/)).toBeNull()
-  })
-})
 
 function renderDonePage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })

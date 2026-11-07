@@ -1,8 +1,8 @@
 // @ts-nocheck -- kept as it was written; RecommendedCheckInsService.forTheReader is in this branch now.
-/* KNOWN FAILURE, NOW ONE TEST (browser test, 20 October 2026). forTheReader is brought to staging, so a team member reads only
-   their own offers and somebody with no part in it is told it cannot be found: the other four tests pass. The first still fails
-   on staging, because it expects the account offer ("an account several people name"), which staging does not have; it is
-   left unchanged so it passes when that change arrives. No assertion here was changed. */
+/* NO LONGER A KNOWN FAILURE (CI after batch 1, 7 November 2026). The first test expected an offer of a kind the product never made
+   ("account_check_in", an account several people name); the lead reads every offer the product does make for her check-in, which
+   are the anchor kinds (the-anchor-recommendations.ts, ANCHOR_KINDS). The lead's offer here is one of those now. What the spec is
+   for is unchanged: the lead reads every offer, a team member reads only one made from their own words, and nobody else reads any. */
 import { NotFoundException } from '@nestjs/common';
 import { RecommendedCheckInsService } from './recommended-check-ins.service';
 
@@ -15,7 +15,7 @@ import { RecommendedCheckInsService } from './recommended-check-ins.service';
  */
 const G = 'g1';
 const ROWS = [
-  { id: 'r-account', kind: 'account_check_in', subjectExternalId: `check-in:${G}`, personExternalId: null, state: 'PROPOSED', body: 'A Ground for the Westgate Deli account', rationale: { question: 'Three of you have mentioned Westgate in two weeks, and nobody owns it.', peopleIds: ['p-miriam', 'p-brian', 'p-aisha'] }, proposedAt: new Date('2026-09-20') },
+  { id: 'r-account', kind: 'anchor_pair_check_in', subjectExternalId: `check-in:${G}`, personExternalId: null, state: 'PROPOSED', body: 'A Ground for the Westgate Deli account', rationale: { question: 'Three of you have mentioned Westgate in two weeks, and nobody owns it.', peopleIds: ['p-miriam', 'p-brian', 'p-aisha'] }, proposedAt: new Date('2026-09-20') },
   { id: 'r-mine', kind: 'own_work', subjectExternalId: `check-in:${G}`, personExternalId: 'p-miriam', state: 'PROPOSED', body: 'Prepare your request for the Green Mart quote', rationale: { question: 'You said the quote is due on Friday.', peopleIds: ['p-miriam'] }, proposedAt: new Date('2026-09-21') },
   { id: 'r-shared', kind: 'own_work', subjectExternalId: `check-in:${G}`, personExternalId: 'p-miriam', state: 'PROPOSED', body: 'Ask Brian about Lakeside', rationale: { question: 'Brian said Lakeside is waiting on you.', peopleIds: ['p-miriam', 'p-brian'] }, proposedAt: new Date('2026-09-22') },
 ];

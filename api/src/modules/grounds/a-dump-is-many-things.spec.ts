@@ -250,7 +250,8 @@ describe('the parts of a paste that are words', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, 'grounds.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     const writer = src.slice(src.indexOf('private async writeWhatThePasteGave('), src.indexOf('async changeContextLine('));
-    expect(writer).toContain('audience: ABOUT_SOMEBODY.has(kind) ? ContextNoteAudience.LEAD_ONLY : ContextNoteAudience.EVERYONE');
+    /* And, since the privacy fix (#410, 4 November 2026), what a paste in setup gave stays the lead's too, except how the team works. */
+    expect(writer).toContain('audience: ABOUT_SOMEBODY.has(kind) || (got.keptForTheLead && kind !== ContextItemKind.WAY_OF_WORKING) ? ContextNoteAudience.LEAD_ONLY : ContextNoteAudience.EVERYONE');
     for (const kind of ['STRATEGY', 'WAY_OF_WORKING', 'DECISION', 'UNSETTLED', 'NOTE', 'ABOUT_A_PERSON', 'QUESTION_FOR_PERSON', 'BETWEEN_PEOPLE']) {
       expect(writer).toContain(`ContextItemKind.${kind}`);
     }

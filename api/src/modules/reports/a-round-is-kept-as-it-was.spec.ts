@@ -51,7 +51,7 @@ describe('a round already kept', () => {
 
   it('and the mark says what moved, in words', () => {
     const answer = decide(picture({ sharedPicture: 'Different now.' }), kept()) as any;
-    expect(answer.note).toContain('the shared picture');
+    expect(answer.note).toContain('the summary');
     expect(answer.note).toContain('corrected their own check-in');
   });
 
@@ -60,7 +60,7 @@ describe('a round already kept', () => {
       picture({ sharedPicture: 'Different now.', centralQuestion: 'A different question?' }),
       kept(),
     ) as any;
-    expect(answer.note).toContain('the shared picture');
+    expect(answer.note).toContain('the summary');
     expect(answer.note).toContain('the question it left open');
   });
 
@@ -81,14 +81,14 @@ describe('a round already kept', () => {
   });
 });
 
-/* Request 131 item 3: "Updated after somebody added to or corrected their own check-in. What changed: the shared picture, ..." joined with a colon. */
+/* Since 4 November 2026 the summary is called "the summary" everywhere (the direct morning's words, batch 1 group 10). Request 131 item 3: "Updated after somebody added to or corrected their own check-in. What changed: the shared picture, ..." joined with a colon. */
 import { aStoredSentenceReadsRight } from './a-stored-sentence-reads-right';
 describe('the note on an updated round, as a participant and the lead read it', () => {
   it('says what changed in a sentence, with no colon', () => {
     const note = (decide(picture({ sharedPicture: 'Now they agree.', agreements: ['x'], centralQuestion: 'A different question?' }), kept()) as any).note;
-    expect(note).toBe('Updated after somebody added to or corrected their own check-in. The parts that changed were the shared picture, what was agreed and the question it left open.');
+    expect(note).toBe('Updated after somebody added to or corrected their own check-in. The parts that changed were the summary, what was agreed and the question it left open.');
     const one = (decide(picture({ sharedPicture: 'Now they agree.' }), kept()) as any).note;
-    expect(one).toBe('Updated after somebody added to or corrected their own check-in. The part that changed was the shared picture.');
+    expect(one).toBe('Updated after somebody added to or corrected their own check-in. The part that changed was the summary.');
     expect(`${note} ${one}`).not.toMatch(/:/);
   });
   it('is put right on a note stored with the colon', () => {

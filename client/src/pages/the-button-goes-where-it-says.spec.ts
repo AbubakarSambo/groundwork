@@ -69,8 +69,9 @@ describe('destinations', () => {
      * the heading above the button already calls it. The button now says the same thing the
      * heading, and the rest of this section, say.
      */
+    /* REPOINTED (batch 1, group 10, 4 November 2026): "Ending it" is on People and setup as pictured, the only People and setup page. */
     const admin = read('grounds/GroundAdminPage.tsx')
-    const page = read('grounds/CheckInPeopleAndSetup.tsx')
+    const page = read('grounds/PeopleAndSetupAsPictured.tsx')
     expect(admin).not.toMatch(/<button disabled[^>]*>\s*Close this check-in/)
     expect(page).not.toMatch(/<button disabled[^>]*>\s*Close this check-in/)
     expect(page).toContain('Ask us to end this check-in')

@@ -25,10 +25,6 @@ import { join } from 'path';
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const CLIENT = join(__dirname, '..', '..', '..', '..', 'client', 'src');
 const CHAT = strip(readFileSync(join(CLIENT, 'components', 'gw', 'GroundChat.tsx'), 'utf8'));
-/* The settings tab moved into CheckInPeopleAndSetup.tsx (29 September); its sentences can wrap
-   across lines there, so the two files are read together with their spaces collapsed. */
-const LEAD = (strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'GroundAdminPage.tsx'), 'utf8')) + '\n'
-  + strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'CheckInPeopleAndSetup.tsx'), 'utf8')).replace(/props\./g, '')).replace(/\s+/g, ' ');
 const PARTY = strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'GroundParticipantPage.tsx'), 'utf8'));
 
 describe('waiting for the next session', () => {
@@ -55,15 +51,19 @@ describe('waiting for the next session', () => {
   });
 });
 
+/* REPOINTED (batch 1, group 10, 4 November 2026): People and setup as pictured is the only People and setup page, and it says the end
+   in the prototype's words, in the panel where how often and how long it runs are chosen. */
+const PICTURED = strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'PeopleAndSetupAsPictured.tsx'), 'utf8')).replace(/props\./g, '').replace(/\s+/g, ' ');
+
 describe('the end of a check-in', () => {
   it('is described where the length is chosen, not only when it arrives', () => {
-    expect(LEAD).toContain('On the last one, everybody is asked how this should close');
+    expect(PICTURED).toContain('At the last session, everyone is asked how this should close.');
   });
 
-  it('beside the arithmetic, because that is the number it is the end of', () => {
-    /* Counted with sessionsUpToTheEnd since the journey test of 12 October; the arithmetic is still the line the note sits beside. */
-    const at = LEAD.indexOf('${timelineDaysDraft} days, ${n} session');
+  it('in the same panel as how often and how long it runs, because that is the number it is the end of', () => {
+    const at = PICTURED.indexOf('id="how-often"');
     expect(at).toBeGreaterThan(-1);
-    expect(LEAD.slice(at, at + 600)).toContain('how this should close');
+    const panel = PICTURED.slice(at, PICTURED.indexOf('<Panel>', at));
+    expect(panel).toContain('how this should close');
   });
 });

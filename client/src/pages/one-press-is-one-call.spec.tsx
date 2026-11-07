@@ -49,13 +49,19 @@ describe('guarded submits', () => {
      * row now, until the server can take it (docs/requests-to-engine.md), which removes one call,
      * not the guard this test is about.
      */
+    /*
+     * REPOINTED (batch 1, group 10, 4 November 2026): People and setup as pictured is the only People and setup page. Its changes
+     * are drafted on the page and written by one "Save changes", which makes each write once (saveSetup takes the name, the
+     * timeframe and the start together) and is disabled while any of them is on its way.
+     */
     const admin = read('grounds/GroundAdminPage.tsx')
-    const page = read('grounds/CheckInPeopleAndSetup.tsx')
+    const page = read('grounds/PeopleAndSetupAsPictured.tsx')
     expect(admin).not.toMatch(/onClick=\{\(\) => groundsApi\.update\(/)
     expect(admin).not.toMatch(/onClick=\{\(\) => groundsApi\.setPeopleWorkTogether\(/)
-    expect(page.match(/saveSetup\.mutate\(/g)?.length).toBe(3)
-    expect(page).toContain('onChange={(on) => props.setWorkTogether.mutate(on)}')
-    expect(page).toMatch(/disabled=\{!canEditRunOrAdmin \|\| props\.setWorkTogether\.isPending\}/)
+    expect(page.match(/saveSetup\.mutate\(/g)?.length).toBe(1)
+    expect(page).toMatch(/props\.setWorkTogether\.mutate\(/)
+    expect(page).toMatch(/const saving = \[props\.saveSetup,[\s\S]*props\.setWorkTogether[\s\S]*\]\.some\(\(m\) => m\.isPending\)/)
+    expect(page).toContain('disabled={saving} onClick={save}')
   })
   it('the add-admin form clears only when the promotion happened', () => {
     const dash = read('admin/AdminDashboardPage.tsx')

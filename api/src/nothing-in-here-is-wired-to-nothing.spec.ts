@@ -57,7 +57,13 @@ const NOT_WIRED_ON_PURPOSE: Record<string, string> = {
   /* Hafsah's quality pass, 18 October: the short run's record (Drop Access, gw_sweep_drop3), as the board specs and the report specs read it. */
   'the-short-run-harness.ts': 'test-only set-up: the short run of Drop Access as the board specs read it; nothing in the product should import it',
   'the-short-run-reports-bed.ts': 'test-only stand-in database holding the short run of Drop Access for the report specs; nothing in the product should import it',
-  'the-persons-record-bed.ts': 'test-only stand-in database holding the second night run for the people\'s records specs; nothing in the product should import it',
+  /* Batch 1 and the regressions fix (4 November 2026): more stand-in databases and fixtures, read by specs only. The persons-record bed
+     above them is now imported by two of these beds, so it is reached through them and needs no line of its own. */
+  'the-final-check-bed.ts': 'test-only stand-in database holding the final check\'s record for the board and report specs; nothing in the product should import it',
+  'the-round-15-bed.ts': 'test-only stand-in database holding round 15\'s record for the Ask, board and team report specs; nothing in the product should import it',
+  'the-night-run-bed.ts': 'test-only stand-in database holding the night run for the morning and board specs; nothing in the product should import it',
+  'an-assessment-for-a-spec.ts': 'test-only builder of an assessment fixture for the pattern, board and end card specs; nothing in the product should import it',
+  'a-company-like-drop-access.ts': 'test-only stand-in organisation for the WhatsApp team numbers spec; nothing in the product should import it',
   'request-92-harness.ts': 'test-only set-up shared by the request 92 specs in assistant/ and grounds/; nothing in the product should import it',
   // Duplicated deliberately into the client, and documented there.
   'what-this-ground-can-tell-you.ts': 'shares its rules with client/src/lib/contextStrength.ts by deliberate duplication - see the header in both',

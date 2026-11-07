@@ -39,7 +39,7 @@ describe('decision 66: a shared note lifts the block', () => {
     expect(GATE.length).toBeGreaterThan(300);
   });
 
-  it('a line on the Context and resources tab now counts, read from groundContextItem', () => {
+  it('a line on the References and resources tab now counts, read from groundContextItem', () => {
     expect(GATE).toContain('groundContextItem.count');
     expect(GATE).toContain('kind: ContextItemKind.NOTE');
     expect(GATE).toContain('contextNotes > 0');
@@ -92,13 +92,13 @@ describe('decision 66: a shared note lifts the block', () => {
     );
     expect(theirMessage).toContain('running this check-in rather than taking part in it, so it has to come from you in');
     expect(theirMessage).toContain('writing - write the brief, say what you expect of somebody, or add a document or a note');
-    expect(theirMessage).toContain('on the Context and resources tab.');
+    expect(theirMessage).toContain('on the References and resources tab.');
 
     const everyoneElsesMessage = SRC.slice(
       SRC.indexOf('Nobody can be invited yet: nothing has been said about what this check-in is for. Write the'),
     );
     expect(everyoneElsesMessage).toContain('Nobody can be invited yet: nothing has been said about what this check-in is for. Write the');
-    expect(everyoneElsesMessage).toContain('brief, say what you expect of somebody, add a document or a note on the Context and resources tab, or do');
+    expect(everyoneElsesMessage).toContain('brief, say what you expect of somebody, add a document or a note on the References and resources tab, or do');
     expect(everyoneElsesMessage).toContain('your own check-in first.');
   });
 });

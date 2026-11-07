@@ -29,8 +29,12 @@ import { THE_REPORT_IN_SIMPLER_WORDS } from '../grounds/what-is-sent-in-simpler-
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { theLinesAboutAColleaguesTargetLeftOut } from './their-words-about-a-target-follow-the-setting';
-/* The standard the lead set, which is the target's own place in a report read (not her words in setup). */
-const THE_STANDARD_AS_SET = [['stated'], ['againstSuccess', 'stated']] as const;
+/* The target's own places in a report read, which the lead's-aims rule never takes out: the standard the lead set (not her words in
+   setup), and the counts said from the record ("The team's approved facilities went from 0 to 11", "Your approved facilities went from
+   0 to 5"). Those are worded by the product for this reader, from targets this reader may read (targetsFor), so a team member keeps the
+   team's counts and their own (CI after batch 1, 7 November 2026: the privacy fix of 4 November took them out of Today, the check-in
+   and the Movement tile's line, because each names a target). */
+const THE_STANDARD_AS_SET = [['stated'], ['againstSuccess', 'stated'], ['sinceLast'], ['sinceLast', 'says'], ['sinceLast', 'also']] as const;
 import { theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
 import { whatIDontKnowYet } from './what-i-dont-know-yet';
 import { theOpenQuestionsThenTheDeals } from './the-sales-team-report-from-the-record';

@@ -50,7 +50,9 @@ describe('the board warm-up runs once for each new thing', () => {
   let completedAt = new Date('2026-09-29T17:40:00Z');
   const prisma: any = {
     ground: { findUnique: jest.fn(async () => ({ initiatorId: 'u-lead' })) },
-    checkIn: { aggregate: jest.fn(async () => ({ _count: { _all: 9 }, _max: { completedAt } })) },
+    /* `count` is the check-ins with a report written on them, which the board's fingerprint reads since the report after "Send N
+       invitations" lands on its own (3 November 2026): a new report is something new, so the board is built again. */
+    checkIn: { aggregate: jest.fn(async () => ({ _count: { _all: 9 }, _max: { completedAt } })), count: jest.fn(async () => 9) },
     recordEntry: { aggregate: jest.fn(async () => ({ _count: { _all: 40 }, _max: { createdAt: completedAt } })) },
     groundDocument: { count: jest.fn(async () => 0) },
     groundObjective: { aggregate: jest.fn(async () => ({ _count: { _all: 5 }, _max: { updatedAt: null } })) },

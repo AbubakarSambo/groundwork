@@ -63,6 +63,8 @@ const stubPrisma = () => {
 
 const service = (coachStep: any) => {
   const s = Object.create(ConversationService.prototype) as any;
+  /* The model service, as the product always has it: composing the prompt names its fixed rules to it, to be sent once (#408). */
+  s.anthropic = { keepTheFixedInstructions: () => {} };
   s.prisma = stubPrisma();
   /*
    * The base prompt comes from the database at runtime, seeded from ENGINE_RULES. Returning null

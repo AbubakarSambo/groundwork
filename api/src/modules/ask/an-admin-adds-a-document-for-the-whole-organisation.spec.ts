@@ -108,6 +108,8 @@ function assistantWorld(opts: { admin?: boolean } = {}) {
       update: jest.fn(async ({ where, data }: any) => { const row = rows.find((r) => r.id === where.id); Object.assign(row, data); return row; }),
     },
   };
+  /* The model that says what is in the file (32ae7d269); it answers nothing here, so the say-back is the product's own words. */
+  s.engine = { respond: jest.fn(async () => '') };
   s.knowledge = { ingestDocument: jest.fn(async (_org: string, input: any) => { ingested.push(input); return { chunks: 3 }; }) };
   s.remember = jest.fn(async (_o: string, _w: string, said: string, reply: any) => { remembered.push({ said, reply }); });
   s.truth = { forPerson: jest.fn(async () => ({ sessions: { value: [] } })) };

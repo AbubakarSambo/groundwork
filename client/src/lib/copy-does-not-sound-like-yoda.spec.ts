@@ -52,6 +52,25 @@ const NOT_COPY = [
    * only job they have. Same reason this list already excludes the prompt library.
    */
   'reading-what-they-just-said.ts',
+  /* Batch 1 (4 November 2026): four more model instructions, read by the model and never by a person. The assessor's instructions,
+     the read-back's, setup's own conversation rules and the short day's wrap-up rules. */
+  'the-assessment.ts',
+  'the-read-back.ts',
+  'setup-is-the-first-check-in.ts',
+  'a-short-day.ts',
+  /* Model instructions read by the model and never by a person (CI after batch 1, 7 November 2026): each of these files is a prompt
+     or a pattern's definition for the model. The two lists are one list again. */
+  'a-verdict-is-not-a-question.ts',
+  'giving-the-person-agency.ts',
+  'the-ground-the-brief-asks-us-to-cover.ts',
+  'the-record-holds-what-was-said.ts',
+  'what-happened-to-what-they-said.ts',
+  'you-have-already-said-this-about-them.ts',
+  'what-the-context-chat-heard.ts',
+  'the-detector-reads-their-own-earlier-record.ts',
+  'what-counts-for-each-pattern.ts',
+  'a-prompt-proposal.ts',
+  'the-policy.ts',
   /* Fix plan, 28 October 2026: two more model instructions, read by the model and never by a person. Ask's reading of what a message means and its
      correction check (ask-understands-with-the-model.ts), and the reading of what someone said they would do (what-they-said-they-would-do-next.ts). */
   'ask-understands-with-the-model.ts',

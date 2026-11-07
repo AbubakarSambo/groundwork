@@ -160,7 +160,7 @@ describe('GW-CONTEXT-H3 / F#9: across people - conflicting other-party record su
     //     (0 occurrences in ENGINE_RULES; pattern probes are empty in this harness), and the
     //     CONTRADICTION probe body is uniquely templated.
     expect(system).toContain('Recommended probe:');
-    expect(system.toLowerCase()).toMatch(/before we log .* as complete|who specifically owned|resolved elsewhere/);
+    expect(system.toLowerCase()).toMatch(/before i log .* as complete|who specifically owned|resolved elsewhere/); // "I", one voice (Hafsah, 3 November 2026)
     // (b) NON-REVEALING (GW-37): probe is templated off the shared topic noun only - the other
     //     party's verbatim record text must NEVER appear in the assembled prompt.
     const theirWords = ['not working for our team', 'handoff never happened', 'is broken'];

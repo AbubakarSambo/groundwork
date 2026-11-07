@@ -15,7 +15,8 @@ const CONTROLLER = readFileSync(join(__dirname, 'grounds.controller.ts'), 'utf8'
 /* The settings tab moved into its own file (People and setup, rebuilt from the shared parts on
    29 September); GroundAdminPage keeps the drafts and passes them in as props. Both are read. */
 const readClient = (f: string) => readFileSync(join(__dirname, '../../../../client/src/pages/grounds', f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-const ADMIN_PAGE = readClient('GroundAdminPage.tsx') + '\n' + readClient('CheckInPeopleAndSetup.tsx').replace(/props\./g, '');
+/* People and setup as pictured is the only People and setup page since batch 1 (4 November 2026); its helpers stay in CheckInPeopleAndSetup.tsx. */
+const ADMIN_PAGE = readClient('GroundAdminPage.tsx') + '\n' + readClient('CheckInPeopleAndSetup.tsx').replace(/props\./g, '') + '\n' + readClient('PeopleAndSetupAsPictured.tsx').replace(/props\./g, '');
 
 describe('the days a team works, after the check-in exists', () => {
   it('are accepted where the rhythm is changed', () => {
@@ -54,7 +55,9 @@ describe('the days a team works, after the check-in exists', () => {
     /* Sent with the rhythm it belongs to, and the save button knows it changed. */
     /* The save goes through one helper now (`theTimeframeToSave`, which also sends the end on the
        field); what this guards is unchanged: the days travel with the rhythm and the length. */
-    expect(ADMIN_PAGE).toMatch(/saveSetup\.mutate\(theTimeframeToSave\(/);
+    /* The pictured page gathers every changed field into one patch, the timeframe through theTimeframeToSave, and saves it once. */
+    expect(ADMIN_PAGE).toMatch(/Object\.assign\(patch, theTimeframeToSave\(/);
+    expect(ADMIN_PAGE).toMatch(/saveSetup\.mutate\(patch\)/);
     expect(ADMIN_PAGE).toMatch(/return \{ timelineDays: p\.timelineDaysDraft, cadence: p\.cadenceDraft, workingDays: p\.workingDaysDraft/);
     expect(ADMIN_PAGE).toMatch(/!sameDays\(workingDaysDraft, \(ground as \{ workingDays\?: number\[\] \}\)\.workingDays\)/);
   });

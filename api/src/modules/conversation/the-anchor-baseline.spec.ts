@@ -206,11 +206,13 @@ describe('the team baseline puts no ready-made answer into anybody\'s mouth (6 O
     expect(out.suggestedAnswers).toBeUndefined();
   });
 
-  it('offers them in the weekly check-in and in every other check-in, as before', async () => {
+  /* UPDATED (Hafsah, 3 November 2026, the conversation screens: "no suggested answers"; 802108c9f removed them): no check-in offers
+     ready-made answers any more, so the weekly check-in and every other one offer none either, like the baseline. */
+  it('offers none in the weekly check-in or in any other check-in either', async () => {
     const weekly = await reply({ startedFrom: 'anchor', switchOn: true, sessionNumber: 2 });
-    expect(weekly.suggestedAnswers).toEqual(['I believe we are shipping the product.', 'We are stuck on the data.', 'I am not sure.']);
+    expect(weekly.suggestedAnswers).toBeUndefined();
     const other = await reply({ startedFrom: null, switchOn: true });
-    expect(other.suggestedAnswers?.length).toBeGreaterThan(0);
+    expect(other.suggestedAnswers).toBeUndefined();
   });
 });
 

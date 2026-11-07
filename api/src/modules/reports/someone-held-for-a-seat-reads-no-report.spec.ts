@@ -75,7 +75,8 @@ function reportsFor(held: boolean) {
 }
 
 function boardFor(held: boolean) {
-  const none = { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) };
+  /* findFirst: the board reads the lead's first check-in for "Your full report is ready in a moment" (3 November 2026). */
+  const none = { findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null), count: jest.fn(async () => 0) };
   const ground = {
     id: 'g1', scenario: GroundScenario.NEW_PROJECT, mode: GroundMode.SHARED, organizationId: 'org1',
     initiatorId: 'lead-user', createdByUserId: null, peopleWorkTogether: true, timelineDays: 90,

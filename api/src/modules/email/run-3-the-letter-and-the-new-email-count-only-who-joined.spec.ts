@@ -49,6 +49,9 @@ describe('run 3: only people who joined are counted, and a silent close is not a
     expect(open.ofHowMany).toBe(4);
     expect(open.answered).toBe(2);
     expect(open.notYet).toEqual(['Jared']);
-    expect(open.notJoinedSays).toBe('One of them was invited and has not joined yet.');
+    /* The lead may read names, so the one count says Amina by name, once, as not joined, in its own sentence (this-sessions-count.ts);
+       the nameless "One of them was invited and has not joined yet." is for a reader who may not read names. */
+    expect(open.says).toBe('2 of 4 have checked in; Jared didn’t check in before it closed, and Amina hasn’t joined yet.');
+    expect(open.says.match(/Amina/g)).toHaveLength(1);
   });
 });

@@ -209,6 +209,12 @@ const CHECKED_AND_FINE = new Set([
    * `WhatsAppConnection.accessToken`, a different, organisation-owned row that is always set.
    */
   'modules/whatsapp/whatsapp.service.ts:accessToken',
+  /*
+   * A NAME COLLISION. In `whoIsWritingTo`, `person.email ? ... : null` checks a roster entry (`Person`, whose `email` is `String?`)
+   * before looking for a sign-in with that address. The same file's check on a sign-in's address (`User.email`, never empty) is
+   * gone (7 November 2026), so this is the only `email` check left here, and it is a real one.
+   */
+  'modules/whatsapp/whatsapp.service.ts:email',
 ]);
 
 function findHits() {

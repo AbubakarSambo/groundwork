@@ -122,7 +122,8 @@ function hasAnyCaller(method: string, declaredIn: string): boolean {
   // `.method(`, `method(` after this/await, or referenced without calling (passed as
   // a callback, spied on in a test). A spec calling it counts: this rule is about
   // dead code, not about coverage.
-  const call = new RegExp(`(?:\\.|\\b)${method}\\s*\\(`, 'g');
+  // An optional call (`this.reports.method?.(`) is a call too: the product uses it where a service may be built without the method.
+  const call = new RegExp(`(?:\\.|\\b)${method}\\s*(?:\\?\\.)?\\(`, 'g');
   const reference = new RegExp(`['"\`]${method}['"\`]`);
   for (const [file, text] of sources) {
     if (file === declaredIn) {

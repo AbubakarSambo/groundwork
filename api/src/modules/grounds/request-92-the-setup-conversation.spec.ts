@@ -94,7 +94,7 @@ describe('point 7: the reader is "you", and a number for somebody else names the
 
   it('after a yes, the lead is told whose number was set', () => {
     expect(whatWasRecordedFromADocument({ fileName: 'Q3 targets.xlsx', forAPerson: 1, forEveryone: 0, reader: 'setup', owners: ['Amani'] }))
-      .toBe('I have recorded this from Q3 targets.xlsx. One number is now set for Amani. It is marked as set by you, and Amani has not seen it yet. You can see it on the Context and resources page now, and every check-in will ask about it.');
+      .toBe('I have recorded this from Q3 targets.xlsx. One number is now set for Amani. It is marked as set by you, and Amani has not seen it yet. You can see it on the References and resources page now, and every check-in will ask about it.');
     expect(whatWasRecordedFromADocument({ fileName: 'Q3 targets.xlsx', forAPerson: 1, forEveryone: 0, reader: 'check-in', owners: ['you'] }))
       .toBe('I have recorded this from Q3 targets.xlsx. One number is now set for you. Nobody is measured against a number until they have seen it.');
     expect(whatWasRecordedFromADocument({ fileName: 'Q3 targets.xlsx', forAPerson: 3, forEveryone: 0, reader: 'setup', owners: ['Amani', 'Amani', 'you'] }))

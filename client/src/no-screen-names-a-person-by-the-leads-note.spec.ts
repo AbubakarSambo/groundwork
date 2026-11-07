@@ -39,7 +39,6 @@ const ALLOWED: Record<string, string> = {
    */
   'pages/grounds/CheckInPeopleAndSetup.tsx': 'your own role, on your own row, folded in from MyParticipation',
   'pages/grounds/PeopleAndSetupAsPictured.tsx': 'B8: the box where the lead who runs it describes each person’s role here; anybody else reads only whether it has been described',
-  'components/gw/RolesInThisCheckIn.tsx': "the lead's own labelled note, for the person who runs the check-in only",
   'pages/admin/AdminPage.tsx': 'a role column for whoever runs the check-in',
   'pages/join/JoinPage.tsx': 'what the person types about themselves when joining',
   'pages/enter/EntryChatPage.tsx': 'the lead’s own part, sent at setup',

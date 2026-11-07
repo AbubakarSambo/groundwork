@@ -1108,7 +1108,7 @@ export class WhatsAppService implements OnModuleInit {
     const foundUser = await this.prisma.user.findFirst({ where: { organizationId, phoneNumber: { in: forms }, deletedAt: null }, select: { id: true, email: true, phoneNumber: true } });
     const user = foundUser && (await this.theSameNumber(organizationId, foundUser.phoneNumber, rawNumber)) ? foundUser : null;
     if (!user) return { personId: null, userId: null, externalId: null };
-    const byEmail = user.email ? await this.prisma.person.findFirst({ where: { organizationId, email: user.email }, select: { id: true, externalId: true } }) : null;
+    const byEmail = await this.prisma.person.findFirst({ where: { organizationId, email: user.email }, select: { id: true, externalId: true } });
     return { personId: byEmail?.id ?? null, userId: user.id, externalId: byEmail?.externalId ?? null };
   }
 

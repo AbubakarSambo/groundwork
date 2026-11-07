@@ -30,7 +30,7 @@ describe('the gate', () => {
     const off = service(settings({}));
     const err: any = await off.theOldContextChatMustBeOpen('org').catch((e) => e);
     expect(err).toBeInstanceOf(GoneException);
-    expect(err.message).toBe("Setting up a check-in now happens in Ask Baridi, so open Ask Baridi from this check-in's Context and resources page and say what you want to add.");
+    expect(err.message).toBe("Setting up a check-in now happens in Ask Baridi, so open Ask Baridi from this check-in's References and resources page and say what you want to add.");
   });
   it('says Ask Groundwork where the organisation has no name', async () => {
     const off = service(settings({}, ''));

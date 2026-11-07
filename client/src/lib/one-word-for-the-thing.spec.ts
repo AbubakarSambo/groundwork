@@ -51,6 +51,10 @@ const CODE_NOT_COPY = [
   /* Same file: the reminders row's day/days pluraliser reads `ground.chaseAfterDays` inside a
      template literal the `>...<` matcher also catches as prose. */
   /\(\(ground as any\)\?\.chaseAfterDays/,
+  /* DirectionPage.tsx: the list of check-ins the direction is set for, read from `grounds.data` inside JSX; code, never shown. */
+  /\(\(grounds\.data as any\[\]\) \?\? \[\]\)\.filter/,
+  /* GroundParticipantPage.tsx: `<ContextPage ground={ground} ...>` passes the record to a component inside JSX; code, never shown. */
+  /<ContextPage ground=\{ground\}/,
 ]
 
 describe('one word for the thing a person opens', () => {

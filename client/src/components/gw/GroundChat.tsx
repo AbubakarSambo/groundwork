@@ -69,7 +69,7 @@ import { useAfterAWhile, GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening
  * question people have in week eight, not just week one.
  */
 /**
- * ROUND 4, ITEM A STEP 2: "WHO IS IN THIS" MOVED OUT OF HERE, TO PEOPLE AND SETUP (WhoIsInThis.tsx).
+ * ROUND 4, ITEM A STEP 2: "WHO IS IN THIS" MOVED OUT OF HERE, TO PEOPLE AND SETUP (now PeopleAndSetupAsPictured.tsx).
  *
  * This card used to hold two different things - the brief ("About this check-in") and the roster
  * ("Who is in this"), because it inherited its shape from a version where the roster lived here
@@ -465,7 +465,7 @@ export function GroundChat({
   openPending?: boolean
   /**
    * The topic at the top of the scroll: what this check-in is about. "Who is in it" used to be
-   * part of this too; it moved to People and setup (WhoIsInThis.tsx, round 4, item A step 2).
+   * part of this too; it moved to People and setup (now PeopleAndSetupAsPictured.tsx; round 4, item A step 2).
    *
    * `label`, `scenario`, `alignment` and `sessionsDone` used to arrive here too and are gone. Every
    * one of them is in the page header on both pages, and a card that restates the header is the

@@ -43,7 +43,9 @@ function aWorld(over: Partial<Record<string, any[]>> = {}) {
       ci('c0', MERCY, G1, new Date('2026-10-14T05:00:00Z'), 'COMPLETED', 1),
       ci('c4', GRACE, G3, MON('06:00')),
     ],
-    turns: [{ checkInId: 'c3' }],
+    /* Whether somebody answered is whether a reply of theirs exists (Hafsah, 3 November 2026): Joseph answered this week, and Peter's
+       and Mercy's first sessions, which they completed, hold their replies. */
+    turns: [{ checkInId: 'c3' }, { checkInId: 'c1b' }, { checkInId: 'c0' }],
     sends: [
       { organizationId: 'o1', phone: '+254700000011', checkInId: 'c1', kind: 'checkin-open', sentAt: null, failedAt: MON('05:00'), error: OUTSIDE_THE_WINDOW, createdAt: MON('05:00') },
       { organizationId: 'o1', phone: '+254700000012', checkInId: 'c2', kind: 'checkin-open', sentAt: MON('05:00'), failedAt: null, error: null, createdAt: MON('05:00') },

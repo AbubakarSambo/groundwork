@@ -214,6 +214,8 @@ describe('with Release 1\'s sales board off', () => {
       expect(said).not.toContain('"met":');
     }
     const lead = await boardAs(run(false), ...BISI);
-    expect(grid(lead).groupsNote).toContain('Nothing on record says what a deal must show at each stage, so no group here says whether a criterion is met.');
+    /* UPDATED (Hafsah's rule of 4 November 2026, no explainer lines; batch 1 group 10, 301ec880c): the note that said no group checks a
+       criterion explained the grid, so it went. The board still says no criterion, which the lines above check. */
+    expect(grid(lead).groupsNote).not.toContain('Nothing on record says what a deal must show at each stage, so no group here says whether a criterion is met.');
   });
 });

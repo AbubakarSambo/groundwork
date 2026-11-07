@@ -66,7 +66,7 @@ describe('the shape of finishing', () => {
     expect(assess.indexOf('writeTheRecordFromTheAssessment(')).toBeGreaterThan(0);
     expect(assess.indexOf('writeTheRecordFromTheAssessment(')).toBeLessThan(assess.indexOf('theAssessmentIsReady('));
     const listens = (file: string) => readFileSync(join(__dirname, '..', file), 'utf8');
-    expect(listens('board/board.service.ts')).toMatch(/@OnEvent\(GroundworkEvents\.ASSESSMENT_READY\)\s*async warmOnCheckInCompleted/);
+    expect(listens('board/board.service.ts')).toMatch(/@OnEvent\(GroundworkEvents\.ASSESSMENT_READY\)\s*(@OnEvent\(GroundworkEvents\.SETUP_READ\)\s*)?async warmOnCheckInCompleted/); // and on SETUP_READ since 3 November 2026
     expect(listens('board/the-persons-record.service.ts')).toMatch(/@OnEvent\(GroundworkEvents\.ASSESSMENT_READY\)\s*async onCheckInCompleted/);
     expect(listens('board/board.listener.ts')).toMatch(/theRoundIsClosed\(e\.groundId, e\.sessionNumber\)/);
   });

@@ -19,8 +19,9 @@ import { whatThisStatusMeans } from '@/components/gw/what-a-status-means-to-the-
 import { copy } from '@/components/gw/copying-can-fail'
 import { initialsOf } from '@/pages/org/people-here'
 import { scenarioLabel } from '@/lib/scenario-catalog'
+import { scrollToId } from '@/lib/scroll-to'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { sessionsFor } from '@/lib/cadence'
+import { sessionsFor, SELECTABLE_CADENCES } from '@/lib/cadence'
 import { KIND_OF_WORK_OPTION_LABEL } from '@/pages/board/WorkRecords'
 import { SHARE_A_LINK } from './ShareSection'
 import {
@@ -58,15 +59,10 @@ import '@/pages/board/pictured/pictured-board.css'
  */
 type Served = Extract<PeopleAndSetup, { view: 'lead' | 'admin' }>
 
-const HOW_OFTEN: { key: string; label: string }[] = [
-  { key: 'weekday', label: 'Every weekday' },
-  { key: 'day', label: 'Every day' },
-  { key: 'WEEKLY', label: 'Every week' },
-  { key: 'FORTNIGHTLY', label: 'Every 2 weeks' },
-  { key: 'MONTHLY', label: 'Every month' },
-  { key: 'SEQUENTIAL', label: 'When I choose' },
-  { key: 'ONE_TIME', label: 'Once' },
-]
+/* Every rhythm a lead may choose, from the one list (lib/cadence.ts), so this picker can never drop one the product recommends.
+   A daily check-in is offered twice, as the prototype pictures it: on weekdays only, or every day. */
+const HOW_OFTEN: { key: string; label: string }[] = SELECTABLE_CADENCES.map((c) => ({ key: c.cadence as string, label: c.label }))
+  .flatMap((c) => (c.key === 'DAILY' ? [{ key: 'weekday', label: 'Every weekday' }, { key: 'day', label: c.label }] : [c]))
 
 const weekdaysOnly = (days: number[]) => { const d = workingDaysOf(days); return d.length === 5 && WEEKDAYS.every((x) => d.includes(x)) }
 export function howOftenKey(cadence: string, workingDays: number[]): string {
@@ -184,7 +180,11 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
     props.setStartsAtDraft(props.startsAtOnRecord)
   }
 
+  /* One press is one save: every write "Save changes" makes, so the button waits while any of them is on its way. */
+  const saving = [props.saveSetup, setKind, confirmType, props.setChasing, props.setOverWhatsApp, props.setSimplerWords, props.setExpectThemToUnblock,
+    props.setPeerVisibility, props.setContactVisibility, props.setWorkTogether, props.setWhoSeesTargets, setSharesAt, props.updateRole].some((m) => m.isPending)
   const save = () => {
+    if (saving) return
     const patch: Record<string, unknown> = {}
     if (changedKeys.includes('label') && draft.label.trim()) patch.label = draft.label.trim()
     if (props.theTimeframeChanged) Object.assign(patch, theTimeframeToSave(props))
@@ -228,7 +228,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const [numberFor, setNumberFor] = useState<string | null>(null)
   const roleRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const endsRef = useRef<HTMLInputElement | null>(null)
-  const scrollToRow = (pid: string) => document.getElementById(`person-${pid}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  const scrollToRow = (pid: string) => scrollToId(`person-${pid}`)
 
   const fixIt = (pr: ASetupProblem) => {
     const p = participants.find((x) => x.id === pr.participantId)
@@ -681,7 +681,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
               <Text size="15" as="p">You have changes. They apply from the next check-in. Sessions already done keep their dates.</Text>
               <FlexRow gap={8}>
                 <Button kind="secondary" onClick={discard}>Discard</Button>
-                <Button kind="secondary" onClick={save}>Save changes</Button>
+                <Button kind="secondary" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save changes'}</Button>
               </FlexRow>
             </FlexRow>
           </Panel>
