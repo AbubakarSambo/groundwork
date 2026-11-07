@@ -40,15 +40,11 @@ describe('whether WhatsApp is mentioned', () => {
     const settings = readFileSync(join(__dirname, '../pages/settings/SettingsPage.tsx'), 'utf8')
     /* U.4: the number box moved to one person's page. */
     const people = readFileSync(join(__dirname, '../pages/org/OnePersonPage.tsx'), 'utf8')
-    /* UPDATED, GROUP 1 REBUILD: the WhatsApp field is a `FieldRow` inside "You"'s panel now, not
-       its own `<section>` with kit.tsx's `Sec` - the same gate (`whatsappOn &&`), on the row that
-       carries the number. */
-    expect(settings).toMatch(/\{whatsappOn && \(\s*<FieldRow\s*\n\s*label="WhatsApp"/)
-    /*
-     * REBUILT (design-audit.md item 9): the number now sits behind the same "Change" every other
-     * field on this page uses, in `EditableField`, not the old always-editable `gw-one-field` /
-     * `gw-one-label` box - those classes are gone from the page entirely.
-     */
-    expect(people).toMatch(/\{whatsappOn && \(\s*<EditableField\s*\n\s*label="WhatsApp"/)
+    /* CHANGED (Hafsah, 30 October 2026): the phone number row is always there, whether WhatsApp is on or off. What is
+       said about WhatsApp - "You can check in by replying on WhatsApp." - is what waits for `whatsappOn`. */
+    expect(settings).toMatch(/label="Phone number"/)
+    expect(settings).toMatch(/\{whatsappOn && <span className="gwui-field-help">You can check in by replying on WhatsApp\.<\/span>\}/)
+    /* One person's page: the number is always there to add or change; the line saying where they are on WhatsApp waits. */
+    expect(people).toMatch(/\{whatsappOn && m\.whatsappSays && <FieldRow label="On WhatsApp"/)
   })
 })

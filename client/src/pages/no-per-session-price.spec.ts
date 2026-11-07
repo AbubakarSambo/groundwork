@@ -62,8 +62,9 @@ describe('no surface quotes a per-session price', () => {
   it('tells a new person the truth about what their first ground costs', () => {
     const entry = code(join(__dirname, 'enter/EntryChatPage.tsx'))
     expect(entry).not.toMatch(/\$5/)
-    /* "account" is a banned word in this product's copy; the promise it carried is unchanged. */
-    expect(entry).toMatch(/means signing in, and it is free/)
+    /* The line "means signing in, and it is free" left the entry page when setup became a conversation (batch 1, groups 5-6);
+       the page now says plainly when the free check-ins are used up. It must still not put a price on a session. */
+    expect(entry).not.toMatch(/\$\d/)
   })
 
   it('keeps access-code redemption, which grants access and costs nothing', () => {

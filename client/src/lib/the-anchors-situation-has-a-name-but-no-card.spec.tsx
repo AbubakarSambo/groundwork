@@ -28,12 +28,12 @@ describe('HELP_TEAM_UNDERSTAND reads as a sentence, everywhere a situation’s n
     expect(SITUATION_CARDS.some((c) => c.scenario === 'HELP_TEAM_UNDERSTAND')).toBe(false)
   })
 
-  it('the admin "Situation" row (CheckInPeopleAndSetup.tsx) reads it through scenarioLabel(), not a raw lookup with the key as its own fallback', () => {
-    const src = readFileSync(join(__dirname, '../pages/grounds/CheckInPeopleAndSetup.tsx'), 'utf8')
-    const i = src.indexOf('label="Situation"')
+  it('the admin "Scenario" row (PeopleAndSetupAsPictured.tsx) reads it through scenarioLabel(), not a raw lookup with the key as its own fallback', () => {
+    const src = readFileSync(join(__dirname, '../pages/grounds/PeopleAndSetupAsPictured.tsx'), 'utf8')
+    const i = src.indexOf('label="Scenario"')
     const around = src.slice(Math.max(0, i - 50), i + 200)
-    expect(around).toMatch(/scenarioLabel\(ground\.scenario/)
-    expect(around).not.toMatch(/SCENARIO_LABELS\[ground\.scenario.*\?\?\s*ground\.scenario/)
+    expect(around).toMatch(/scenarioLabel\(g\.scenario/)
+    expect(around).not.toMatch(/SCENARIO_LABELS\[g\.scenario.*\?\?\s*g\.scenario/)
   })
 
   it('the participant’s own "Situation" row (MyParticipation.tsx) reads "Help my team understand", rendered', () => {

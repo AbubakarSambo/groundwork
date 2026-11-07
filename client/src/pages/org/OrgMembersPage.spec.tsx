@@ -377,7 +377,7 @@ describe('the rest of the page, in the prototype\'s order and words', () => {
   it('invite people, who can join, who can open a check-in, help your team get started', async () => {
     open()
     expect(await screen.findByRole('heading', { name: 'Invite people' })).toBeTruthy()
-    expect(screen.getByText('Write one person on each line, with their name and email. Or paste a list from a spreadsheet.')).toBeTruthy()
+    expect(screen.getByText('Write one person on each line, with their name, their email and their phone number. Or paste a list from a spreadsheet.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Send their invitations' })).toBeTruthy()
     expect(screen.getByText('They’ll get an email with a link to set themselves up.')).toBeTruthy()
     expect(await screen.findByRole('heading', { name: 'Who can open a check-in' })).toBeTruthy()
@@ -546,7 +546,7 @@ describe('the head count keeps up', () => {
       return { data: {} }
     })
     vi.spyOn(apiClient, 'post').mockImplementation(async (_u: string, body: any) => ({ data: { preview: body.preview, seatsLeft: 71, rows: [{ email: 'a@x.co', result: 'invited' }, { email: 'b@x.co', result: 'invited' }], summary: body.preview ? '2 people will be invited.' : '2 people were invited.' } }) as any)
-    fireEvent.change(screen.getByLabelText('Write one person on each line, with their name and email. Or paste a list from a spreadsheet.'), { target: { value: 'a@x.co\nb@x.co' } })
+    fireEvent.change(screen.getByLabelText('Write one person on each line, with their name, their email and their phone number. Or paste a list from a spreadsheet.'), { target: { value: 'a@x.co\nb@x.co' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send their invitations' }))
     expect(await screen.findByText('29 people, on the Growth plan, which is for up to 100.')).toBeTruthy()
   })

@@ -79,7 +79,8 @@ describe('neither page keeps its own copy of the rule', () => {
        * What matters here is unchanged: the page asks, and does not keep its own copy.
        */
       expect(src).toMatch(/whichSessionAreWeOn\(|whichSessionIsThisCheckInOn\(/)
-      expect(src).toMatch(/hasDoneThisSession\(/)
+      /* Only the admin roster tallies who has done the session; the participant page asks about one person (above). */
+      if (page.endsWith('GroundAdminPage.tsx')) expect(src).toMatch(/hasDoneThisSession\(/)
       /* And it must not re-derive the round rule beside the helper that holds it. */
       expect(src).not.toMatch(/Math\.min\(\.\.\.perParticipantDone\)/)
       /**

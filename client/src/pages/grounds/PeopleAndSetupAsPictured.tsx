@@ -19,6 +19,7 @@ import { whatThisStatusMeans } from '@/components/gw/what-a-status-means-to-the-
 import { copy } from '@/components/gw/copying-can-fail'
 import { initialsOf } from '@/pages/org/people-here'
 import { scenarioLabel } from '@/lib/scenario-catalog'
+import { scrollToId } from '@/lib/scroll-to'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { sessionsFor } from '@/lib/cadence'
 import { KIND_OF_WORK_OPTION_LABEL } from '@/pages/board/WorkRecords'
@@ -228,7 +229,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
   const [numberFor, setNumberFor] = useState<string | null>(null)
   const roleRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const endsRef = useRef<HTMLInputElement | null>(null)
-  const scrollToRow = (pid: string) => document.getElementById(`person-${pid}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  const scrollToRow = (pid: string) => scrollToId(`person-${pid}`)
 
   const fixIt = (pr: ASetupProblem) => {
     const p = participants.find((x) => x.id === pr.participantId)
@@ -681,7 +682,7 @@ export function PeopleAndSetupAsPictured(props: PeopleAndSetupProps) {
               <Text size="15" as="p">You have changes. They apply from the next check-in. Sessions already done keep their dates.</Text>
               <FlexRow gap={8}>
                 <Button kind="secondary" onClick={discard}>Discard</Button>
-                <Button kind="secondary" onClick={save}>Save changes</Button>
+                <Button kind="secondary" disabled={props.saveSetup.isPending || props.setWorkTogether.isPending} onClick={save}>Save changes</Button>
               </FlexRow>
             </FlexRow>
           </Panel>
