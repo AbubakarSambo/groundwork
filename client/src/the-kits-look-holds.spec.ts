@@ -101,7 +101,7 @@ describe('a button is the kit button', () => {
    * launcher on the page that pictures a customer's site.
    */
   const ALLOWED: Record<string, number> = {
-    'pages/admin/AdminPage.tsx': 7, // on/off switches
+    'pages/admin/AdminPage.tsx': 6, // on/off switches
     'pages/join/AnswerFirstPage.tsx': 1, // the round icon send beside the answer box
     'pages/ops/TheAssistantAsACustomerSeesIt.tsx': 1, // the launcher on the pictured customer site
     'components/gw/SharedReportForAParty.tsx': 1, // the board's own dark card, a way in rather than a button (the-board-reads-on-a-dark-ground.ts)

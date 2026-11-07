@@ -17,11 +17,14 @@ describe('the finish offer counts only the answers the server kept', () => {
   })
 })
 
-describe('the check-in page offers "Finish my check-in now" on that count', () => {
-  it('reads answersTheServerKept, not every message on screen', async () => {
+describe('the check-in page no longer offers a manual "Finish my check-in now"', () => {
+  /* REMOVED (26 October, "Check-ins end properly", d43a2de78): the check-in ends itself, so the page no longer draws a
+     button gated on this count. What must not come back is the gate reading every message on screen. */
+  it('does not gate anything on every message on screen', async () => {
     const { readFileSync } = await import('fs')
     const { resolve } = await import('path')
     const source = readFileSync(resolve(__dirname, '../pages/chat/ChatPage.tsx'), 'utf8')
-    expect(source).toContain('answersTheServerKept(msgs) >= mayCompleteAfter')
+    expect(source).not.toContain('Finish my check-in now</')
+    expect(source).not.toMatch(/msgs\.filter\([^)]*PERSON[^)]*\)\.length\s*>=\s*mayCompleteAfter/)
   })
 })

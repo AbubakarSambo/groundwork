@@ -70,7 +70,7 @@ describe('destinations', () => {
      * heading, and the rest of this section, say.
      */
     const admin = read('grounds/GroundAdminPage.tsx')
-    const page = read('grounds/CheckInPeopleAndSetup.tsx')
+    const page = read('grounds/PeopleAndSetupAsPictured.tsx')
     expect(admin).not.toMatch(/<button disabled[^>]*>\s*Close this check-in/)
     expect(page).not.toMatch(/<button disabled[^>]*>\s*Close this check-in/)
     expect(page).toContain('Ask us to end this check-in')

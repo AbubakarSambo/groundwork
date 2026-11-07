@@ -26,7 +26,9 @@ vi.mock('@/api/conversation', () => ({
   },
   streamMessage: vi.fn().mockRejectedValue(new Error('no stream in tests')),
 }))
-vi.mock('@/api/documents', () => ({ documentsApi: { upload: vi.fn() } }))
+/* `list` too: after an upload the page polls for the document's reading every 3s, and on a slow runner that fires after the test
+   has ended - an unhandled TypeError that fails the whole run even though every test passed. */
+vi.mock('@/api/documents', () => ({ documentsApi: { upload: vi.fn(), list: vi.fn().mockResolvedValue([]) } }))
 /* How long a check-in takes, as the server serves it from its one owner (participants/when-it-asks.ts). */
 vi.mock('@/api/entry', () => ({ entryApi: { aCheckInTakes: vi.fn().mockResolvedValue('About ten minutes') } }))
 vi.mock('@/api/grounds', () => ({

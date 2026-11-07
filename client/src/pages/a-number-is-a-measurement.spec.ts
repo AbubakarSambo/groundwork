@@ -82,9 +82,9 @@ describe('the label says what is counted', () => {
        clause): "You gave {turns} answer(s)." with "More answers make the report stronger."
        appended below four. Still labels the turn count as depth of participation, not specificity. */
     expect(entry).toContain('You gave ${turns} ${turns === 1 ? \'answer\' : \'answers\'}.')
-    /* The label opens on what pressing does since 0c8a95a68 ("Change how many check-ins. ... planned from N days, weekly."), so it no
-       longer ends on "Click to change."; it still says the count comes from the days and the rhythm. */
-    expect(entry).toMatch(/Change how many check-ins\. .*planned from \$\{plannedFrom\.timelineDays\} days, \$\{plannedFrom\.cadence\.toLowerCase\(\)\}\./)
+    /* The "Change how many check-ins. ... planned from N days" label is gone from the entry page: setup is a conversation now
+       (batch 1, groups 5-6), so there is no pressable count to label. What is left to guard is that nothing there claims
+       the count is extracted from the talk. */
     expect(entry).not.toContain('does not\n                yet extract cadence')
   })
 })

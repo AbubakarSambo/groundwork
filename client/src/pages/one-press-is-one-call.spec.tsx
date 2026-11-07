@@ -50,12 +50,14 @@ describe('guarded submits', () => {
      * not the guard this test is about.
      */
     const admin = read('grounds/GroundAdminPage.tsx')
-    const page = read('grounds/CheckInPeopleAndSetup.tsx')
+    const page = read('grounds/PeopleAndSetupAsPictured.tsx')
     expect(admin).not.toMatch(/onClick=\{\(\) => groundsApi\.update\(/)
     expect(admin).not.toMatch(/onClick=\{\(\) => groundsApi\.setPeopleWorkTogether\(/)
-    expect(page.match(/saveSetup\.mutate\(/g)?.length).toBe(3)
-    expect(page).toContain('onChange={(on) => props.setWorkTogether.mutate(on)}')
-    expect(page).toMatch(/disabled=\{!canEditRunOrAdmin \|\| props\.setWorkTogether\.isPending\}/)
+    /* REBUILT (batch 1): nothing is written until "Save changes"; the page makes the writes together, in one press of one
+       button, and that button is disabled while the two guarded writes are in flight. */
+    expect(page.match(/props\.saveSetup\.mutate\(/g)?.length).toBe(1)
+    expect(page).toContain('props.setWorkTogether.mutate(')
+    expect(page).toMatch(/disabled=\{props\.saveSetup\.isPending \|\| props\.setWorkTogether\.isPending\} onClick=\{save\}/)
   })
   it('the add-admin form clears only when the promotion happened', () => {
     const dash = read('admin/AdminDashboardPage.tsx')

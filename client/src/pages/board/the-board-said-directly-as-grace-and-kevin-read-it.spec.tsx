@@ -1,3 +1,6 @@
+/* The served times are read back in the reader's own zone ("8am"), and the fixture was captured at UTC+3 (Nairobi). Pinned so the
+   suite reads the same on a laptop and on CI (which runs in UTC). */
+process.env.TZ = 'Africa/Nairobi'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
