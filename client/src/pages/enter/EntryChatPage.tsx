@@ -1666,7 +1666,7 @@ export function EntryChatPage() {
     setPickedSituation(card.label)
     setPickedScenario(card.scenario)
     setOnboardingSelections((prev) => ({ ...prev, classifiedScenario: card.scenario, kindName: undefined }))
-    setOnboardingHistory((h) => [...h, { role: 'assistant', content: `Then I will set this up as ${sentenceCase(card.label).toLowerCase()}. Everything you have told me so far is kept.` }])
+    setOnboardingHistory((h) => [...h, { role: 'assistant', content: `Then I will set this up as “${sentenceCase(card.label)}”. Everything you have told me so far is kept.` }])
   }
 
   const [showEndConfirm, setShowEndConfirm] = useState(false)
