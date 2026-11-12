@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { EntryChatPage } from './EntryChatPage'
 
 /**
@@ -15,6 +16,7 @@ import { EntryChatPage } from './EntryChatPage'
  *    correction on the card goes into the setup's conversation, so it is saved with it, and a report made before it is not sent: the
  *    server makes the report from the whole conversation.
  */
+vi.mock('sonner', () => ({ toast: { info: vi.fn(), error: vi.fn(), warning: vi.fn(), success: vi.fn() } }))
 vi.mock('@/api/entry', () => ({
   entryApi: {
     unfinished: vi.fn().mockResolvedValue(null),
@@ -98,15 +100,17 @@ describe('the law firm lead, while she is still talking', () => {
 describe('the law firm lead on the save card', () => {
   beforeEach(() => { localStorage.clear(); vi.clearAllMocks() })
 
-  it('is told beside Save why it did not save', async () => {
+  /* Changed in the team-skip hotfix (live pilot): this pinned "This was not saved. Add an email for ...". A name with no email never blocks
+     the save now; it saves in one press and says who is not on the check-in yet. */
+  it('saves in one press when none of her four has an email, and says they are not on the check-in yet', async () => {
     seedHerSetup()
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
     await screen.findByLabelText('Your team, one per line')
     fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
-    const why = await screen.findByText('This was not saved. Add an email for David Ochieng, Fatima Kariuki, Joseph Muthama and Esther Wanjiru, or take them off the list.')
-    expect(why.closest('.gwui-ec-savecard-section')?.textContent).toContain('Save this')
-    expect(entryApi.commit).not.toHaveBeenCalled()
+    await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
+    expect(toast.info).toHaveBeenCalledWith('David Ochieng, Fatima Kariuki, Joseph Muthama and Esther Wanjiru are not on the check-in yet, because there is no email for them. Add them under People when you have their emails.', expect.anything())
+    expect(screen.queryByText(/This was not saved/)).toBeNull()
   })
 
   it('a correction she makes is saved with the setup, and the report made before it is not sent', async () => {
@@ -120,9 +124,7 @@ describe('the law firm lead on the save card', () => {
 
     fireEvent.change(screen.getByLabelText('Your team, one per line'), { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
-    /* Her four are named and the box is empty: the first press says so (round 7), and the second saves without them, as she chose. */
-    expect(await screen.findByText(/This was not saved\. You named David Ochieng, Fatima Kariuki, Joseph Muthama and Esther Wanjiru in the conversation, but they are not in the box\./)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
+    /* Her four are named and the box is empty: one press saves without them and says so (changed in the team-skip hotfix; it used to need a second press). */
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     const payload = vi.mocked(entryApi.commit).mock.calls[0][0] as any
     expect(payload.history.map((t: any) => t.content).join(' ')).toContain('Esther is my finance officer in charge of billing.')
