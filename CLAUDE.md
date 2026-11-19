@@ -83,6 +83,10 @@ Keep `docs/morning-report.md` up to date all the time, not only at the end.
 
 **Tests.** All must pass. If a test only checks old wording or old defective behaviour, update it, and write the reason in the commit and in the morning report. Never delete a test to make things pass.
 
+**Tests run on your machine, not on GitHub (Abubakar, 19 November 2026).** GitHub Actions no longer runs the test suites automatically: they used up the free monthly Actions allowance and exceeded the runner's time limit. Before you push, run them yourself, `cd api && npx jest --ci --testPathIgnorePatterns=/journey/` and `cd client && npx vitest run`, and say in the commit or the morning report that you did. GitHub only deploys (staging and production). `Tests (PR)` can still be started by hand from the Actions tab. **Tell Hafsah this at the start of your next session with her**, in plain words: a green tick on a pull request no longer means the tests passed.
+
+**Tests were pruned on 19 November 2026, by Abubakar's decision.** 43 spec files were deleted (stale wording checks, and whole-codebase audits such as dead methods, wiring and date formats), six leave-suite specs now freeze the date, and three source files got one-line guards for missing dependencies in hand-built test objects. The "never delete a test" rule above still applies to your own work. **Tell Hafsah this too**, and name the files if she asks: `git diff --stat` on the commit that carries this note.
+
 **Where work may go (guard version 6, Hafsah, 30 October 2026).** Work is pushed to Hafsah's own private copy with `git push mine wip/<branch>` (or `git push mine <local>:wip/<branch>`). Release branches may also be pushed to "origin", Abubakar's repository (`AbubakarSambo/groundwork`), and their pull requests may be opened into staging and merged into staging. Never push to or merge into main or production, never force-push, and never delete a branch, on either repository. Nothing else goes to anyone else's branch. The only other merge allowed is `git merge mine/wip/<branch>` into a `wip/` branch, to keep `wip/next` in step with `wip/release`.
 
 ## One workspace

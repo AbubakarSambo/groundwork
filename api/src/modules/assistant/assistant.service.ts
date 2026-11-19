@@ -1941,7 +1941,7 @@ export class AssistantService {
         where: { organizationId, personExternalId: who, kind: ORGANISATION_DOCUMENT_KIND, state: 'PARKED' },
         data: { state: 'DROPPED', resolvedAt: new Date(), payload: {} as never },
       });
-      const inIt = await this.engine.respond(WHAT_IS_IN_IT_PROMPT, [{ role: 'user', content: clean.slice(0, 6000) }]).then((r) => forHumans(r)).catch(() => '');
+      const inIt = await Promise.resolve().then(() => this.engine.respond(WHAT_IS_IN_IT_PROMPT, [{ role: 'user', content: clean.slice(0, 6000) }])).then((r) => forHumans(r)).catch(() => '');
       const { body, summary } = whatTheDocumentSays(title, clean, name, inIt);
       const proposal = await this.prisma.assistantProposal.create({
         data: { organizationId, personExternalId: who, kind: ORGANISATION_DOCUMENT_KIND, state: 'PARKED', summary, payload: { title, fileName, words: clean } as never },

@@ -3,6 +3,17 @@ import { join } from 'path';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { LeaveBoardService, LEAVE_REFUSED, workingDays } from './the-leave-board.service';
 
+// These suites are written as of 2026-09-28. The services under test read the real clock, so freeze the
+// date (and only the date: timers stay real) or the "more than a month ago" checks start failing
+// the day the calendar moves on.
+beforeAll(() => {
+  jest.useFakeTimers({
+    now: new Date('2026-09-28T09:00:00Z'),
+    doNotFake: ['nextTick', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'queueMicrotask', 'performance', 'hrtime'],
+  });
+});
+afterAll(() => jest.useRealTimers());
+
 /**
  * THE LEAVE BOARD, AS EACH PERSON IS SERVED IT (E2, U.17).
  *

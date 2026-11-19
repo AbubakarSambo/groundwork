@@ -7,6 +7,17 @@ import { TimeSheetsService, TIME_REFUSED } from './the-time-sheets.service';
 import { ReviewsService } from './the-reviews.service';
 import { SuitesService } from './suites.service';
 
+// These suites are written as of 2026-09-28. The services under test read the real clock, so freeze the
+// date (and only the date: timers stay real) or the "more than a month ago" checks start failing
+// the day the calendar moves on.
+beforeAll(() => {
+  jest.useFakeTimers({
+    now: new Date('2026-09-28T09:00:00Z'),
+    doNotFake: ['nextTick', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'queueMicrotask', 'performance', 'hrtime'],
+  });
+});
+afterAll(() => jest.useRealTimers());
+
 /**
  * ONE RECORD OF WHO DID WHAT (decision 85, build step 5), AS EACH READER READS IT.
  *
