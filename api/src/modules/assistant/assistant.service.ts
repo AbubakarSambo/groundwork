@@ -64,7 +64,7 @@ import {
 } from './a-document-for-the-whole-organisation';
 import { keptForTheOrganisation, keptThatTouches, mayReadWhatIsKept } from '../knowledge/organisation-memory';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
-import { LEAVE_NOT_SENT, LEAVE_NOTHING_WAITING, LEAVE_WHICH_DAYS, plainlyAsksForLeave, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
+import { LEAVE_NOT_SENT, LEAVE_NOTHING_WAITING, LEAVE_WHICH_DAYS, mentionsTimeOff, plainlyAsksForLeave, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave, whenNoDaysAreSaid } from '../suites/leave-said-in-chat';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { SuitesService } from '../suites/suites.service';
@@ -369,7 +369,8 @@ export class AssistantService {
       return rules('when_is_my_next_check_in', text(`${NOTHING_TO_END}${after}`));
     }
     const placedByRules = route(message).lane !== 'unplaced';
-    const understood = userId && (!placedByRules || isACorrection(message))
+    /* Time off mentioned is read by the model too, because a rule placed "how do I apply for leave" in the company's written ways of working. */
+    const understood = userId && (!placedByRules || isACorrection(message) || mentionsTimeOff(message))
       ? await understandTheMessage(this.engine as any, this.prompts as any, message).catch(() => null)
       : null;
     /* A correction, in any words, is checked like a claim against their own record (a-correction-is-checked-like-a-claim.ts). */
@@ -573,6 +574,8 @@ export class AssistantService {
       /* Plainly a request for time off whose days cannot be read without guessing: asked again, never shrugged at. */
       if (plainlyAsksForLeave(message)) return rules('ask_for_leave', text(LEAVE_WHICH_DAYS));
     }
+    /* Time off wanted with no days said, in any words (Hafsah's screenshot of 19 November; ask-understands-with-the-model.ts): ask for the days. */
+    if (who && userId && understood?.kind === 'time_off') return rules('ask_for_leave', text(await whenNoDaysAreSaid(this.prisma, organizationId)));
 
     /*
      * HOURS (week 21) AND SPENDING (week 22), SAID BACK AND SENT ONLY ON A YES. Read by rules, before
