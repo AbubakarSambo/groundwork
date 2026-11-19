@@ -63,10 +63,15 @@ export function linesInTheBox(text: string): number {
   return text.split('\n').filter((l) => l.trim()).length
 }
 
-/** The sentence for the lines a save cannot take yet: "Add an email for Brian Kiprop, or take them off the list." */
-export function addAnEmailFor(people: APersonOnALine[]): string {
-  const names = people.map((p) => p.name ?? p.phone ?? '').filter(Boolean)
-  return names.length ? `Add an email for ${andList(names)}, or take them off the list.` : 'Add an email on every line, or take that line off the list.'
+/**
+ * WHO IS NOT ON THE CHECK-IN, SAID ONCE, BY THE ONE OWNER (hotfix, live pilot: the admin typed two names with no emails and was told
+ * "This was not saved"). A person cannot be on a check-in without a way to reach them, because inviting sends a message, so the save
+ * goes ahead without them and says so in this sentence. Nobody is stopped from saving.
+ */
+export function notOnTheCheckInYet(names: string[]): string {
+  const who = names.map((n) => n.trim()).filter(Boolean)
+  if (!who.length) return ''
+  return `${andList(who)} ${who.length === 1 ? 'is' : 'are'} not on the check-in yet, because there is no email for them. Add them under People when you have their emails.`
 }
 
 export function TheTeamBox({ prefilled, onAdd, adding, heading, text: textGiven, onText, said, disabled }: {
