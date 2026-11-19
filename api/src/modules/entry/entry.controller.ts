@@ -259,109 +259,6 @@ class EntryLeadDto {
   @IsOptional() @IsString() @MaxLength(2000) contextNote?: string;
 }
 
-// The committer's own private session report, sent as a narrowed summary (not
-// the full EntryReport) - entry.service.ts's commit() reads whatGroundworkSaw
-// off this to populate the ground's brief when no explicit `brief` was given.
-// This DTO was missing entirely from 2026-06-24 (e078b0d) until now: the
-// client has sent `reportSummary` (not `report`) since that commit, but this
-// class never grew a matching field, so the global ValidationPipe's
-// forbidNonWhitelisted rejected every commit carrying one with 400 "property
-// reportSummary should not exist" - i.e. every commit where the committer had
-// completed their own check-in session before saving. The client and service
-// were already correct; only this DTO was stale.
-/*
- * THE WHOLE REPORT, NOT TWO FIELDS OF IT. The person read nine fields at the end of their entry
- * chat; this DTO carried two, the merge rebuilt a one-key object from them, and that one key is what
- * was written to CheckIn.sessionReport. Seven of nine fields were shown and then dropped at the
- * moment they made an account - "the report looks nothing like what I got at the end", four times.
- * Every key the client's EntryReport has is declared here, because forbidNonWhitelisted turns an
- * undeclared key into a 400 (which is how this DTO came to exist in the first place).
- */
-/**
- * THE ITEMS INSIDE THE REPORT'S ARRAYS, DECLARED - AND THIS WAS THE BUG.
- *
- * The arrays below were `@IsOptional() @IsArray()` with no item type. The global pipe runs with
- * `whitelist: true`, which strips every property it was not told about - and with no `@Type()` on
- * the item, it was told about none of them. So each `{title, observation, whyItMatters,
- * recommendedMove}` arrived, passed validation, and was written to the database with nothing left
- * in it.
- *
- * WHAT THAT LOOKED LIKE. The report the person read at the end of their session was complete: it
- * comes straight back from `POST /entry/report` and never passes through this pipe. The copy stored
- * on their check-in went through here, so when they opened the same report a minute later from
- * Report, it was three cards headed "What we noticed", "Why it matters" and "What to do next" with
- * no words under any of them. Reported four times as "the report looks nothing like what I got at
- * the end". It looked nothing like it because half of it had been stripped off in the doorway.
- *
- * Every array on this DTO gets its item type for the same reason. An `@IsArray()` with no `@Type()`
- * under a whitelisting pipe is not a loose check - it is a silent delete.
- */
-class AreaRequiringAlignmentDto {
-  @IsOptional() @IsString() @MaxLength(300) title?: string;
-  @IsString() @MaxLength(4000) observation: string;
-  @IsString() @MaxLength(4000) whyItMatters: string;
-  @IsString() @MaxLength(4000) recommendedMove: string;
-}
-
-class AlignmentReachedDto {
-  @IsOptional() @IsString() @MaxLength(300) title?: string;
-  @IsString() @MaxLength(4000) note: string;
-}
-
-class PersonMentionedDto {
-  @IsString() @MaxLength(300) name: string;
-  @IsOptional() @IsString() @MaxLength(2000) context?: string;
-}
-
-class SuggestedPartyDto {
-  @IsString() @MaxLength(300) role: string;
-  @IsOptional() @IsString() @MaxLength(2000) reason?: string;
-}
-
-class EntryReportSummaryDto {
-  @IsIn(['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'])
-  alignmentStatus: 'Unresolved' | 'Mixed' | 'Emerging' | 'Clear' | 'Aligned';
-
-  @IsString() @MaxLength(6000)
-  whatGroundworkSaw: string;
-
-  @IsOptional() @IsString() @MaxLength(500)
-  yourRole?: string | null;
-
-  @IsOptional() @IsString() @MaxLength(4000)
-  alignmentBasis?: string;
-
-  @IsOptional() @IsArray() @ArrayMaxSize(50)
-  @ValidateNested({ each: true }) @Type(() => AreaRequiringAlignmentDto)
-  areasRequiringAlignment?: AreaRequiringAlignmentDto[];
-
-  @IsOptional() @IsArray() @ArrayMaxSize(50)
-  @ValidateNested({ each: true }) @Type(() => AlignmentReachedDto)
-  alignmentReached?: AlignmentReachedDto[];
-
-  @IsOptional() @IsObject()
-  honestClose?: { aligned: string; open: string; revisit: string; risk: string };
-
-  @IsOptional() @IsArray() @ArrayMaxSize(100)
-  @ValidateNested({ each: true }) @Type(() => PersonMentionedDto)
-  mentionedPeople?: PersonMentionedDto[];
-
-  @IsOptional() @IsArray() @ArrayMaxSize(100)
-  @ValidateNested({ each: true }) @Type(() => PersonMentionedDto)
-  alsoCameUp?: PersonMentionedDto[];
-
-  @IsOptional() @IsString() @MaxLength(2000)
-  alsoCameUpNote?: string | null;
-
-  /* The anchor scenario's reveal, as the screen read it at the end of the conversation (request 149). Kept with the report the lead read; it is built from her own turns. */
-  @IsOptional() @IsObject()
-  leadsReveal?: Record<string, any> | null;
-
-  @IsOptional() @IsArray() @ArrayMaxSize(50)
-  @ValidateNested({ each: true }) @Type(() => SuggestedPartyDto)
-  suggestedParties?: SuggestedPartyDto[];
-}
-
 export class EntryDocumentDto {
   @IsString() @MaxLength(300) fileName: string;
   /** Plain text only. The entry chat extracts text client-side before upload. */
@@ -404,10 +301,11 @@ export class EntryCommitDto {
   // brief since the coordinator has no session transcript to derive one from.
   @IsOptional() @IsString() @MaxLength(4000) brief?: string;
 
+  /* The report the person read, sent back so that one is kept. The server wrote it, so the server gives it its shape
+     (`theReportAsItIsKept`), and nothing in it can refuse a save: see that file for Clinton's save of 19 November. */
   @IsOptional()
-  @ValidateNested()
-  @Type(() => EntryReportSummaryDto)
-  reportSummary?: EntryReportSummaryDto;
+  @IsObject()
+  reportSummary?: Record<string, unknown>;
 
   /**
    * TRUE WHEN THEY SAID THE OTHER PEOPLE CHECK IN AND THEY READ WHAT COMES BACK.

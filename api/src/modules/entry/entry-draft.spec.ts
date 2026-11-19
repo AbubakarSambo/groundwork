@@ -319,12 +319,14 @@ describe('overlayDraftOntoBody', () => {
     expect(m.history).toEqual(HISTORY); // body had no turns -> draft transcript
   });
 
-  it('maps the stored reportSummary into the report shape so the brief populates', () => {
+  /* Updated 19 November 2026: the overlay used to turn `reportSummary` into `report` itself, which left a save with no draft
+     keeping no report. The save's one door (`commitInner`) reads it now, so the overlay only has to carry it through. */
+  it('carries the stored reportSummary through, for the save to keep', () => {
     const m = overlayDraftOntoBody(
       { payload: { reportSummary: { whatGroundworkSaw: 'The gap is ownership.' } }, history: HISTORY },
       EMPTY_BODY,
     );
-    expect(m.report).toEqual({ whatGroundworkSaw: 'The gap is ownership.' });
+    expect(m.reportSummary).toEqual({ whatGroundworkSaw: 'The gap is ownership.' });
   });
 });
 

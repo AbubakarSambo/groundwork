@@ -7,6 +7,7 @@ import { stripCloseMarker } from '../conversation/prompt-library';
 import { theAssessmentIn, theColumnWith } from '../conversation/the-assessment';
 import { withAQuestion as withAQuestionForTheFirstCheckIn } from '../conversation/nobody-is-left-looking-at-a-paragraph';
 import { readUntilItLands } from './a-slow-reading-does-not-hold-the-save';
+import { theReportAsItIsKept } from './the-report-as-it-is-kept';
 import { withoutTheUserLabel } from './the-lead-is-never-the-user';
 import { tooManyPeopleFor } from './how-many-people-one-check-in-holds';
 import { tooManyForTheAnchor, THE_PEOPLE_STEP_RULES } from './the-anchor-people-step';
@@ -527,14 +528,6 @@ export function overlayDraftOntoBody(
   const bodyHistory = Array.isArray(body?.history) ? body.history : [];
   const draftHistory = Array.isArray(draft.history) ? draft.history : [];
   merged.history = bodyHistory.length > 0 ? bodyHistory : draftHistory;
-  // The client payload stores the report as reportSummary; map it into the
-  // dto's report shape so the ground brief populates ("visible before
-  // participants arrive").
-  /* Pass-through, now that the DTO carries the whole report. The narrowing that stood here rebuilt a
-     one-key object because the DTO was two fields wide, and seven fields the person had read were lost. */
-  if (!merged.report && merged.reportSummary) {
-    merged.report = merged.reportSummary;
-  }
   if (!Array.isArray(merged.contributors)) merged.contributors = [];
   return merged;
 }
@@ -1740,11 +1733,12 @@ from finishing at all.`;
       alsoCameUp: split.alsoCameUp,
       alsoCameUpNote: split.note,
     });
-    const served = {
+    /* One shape, given here: what is served is what the save takes back (`the-report-as-it-is-kept.ts`). */
+    const served = theReportAsItIsKept({
       ...restored,
       mentionedPeople: namesWithoutPossessives(restored.mentionedPeople ?? []),
       alsoCameUp: namesWithoutPossessives(restored.alsoCameUp ?? []),
-    };
+    })!;
     /*
      * THE LEAD'S REVEAL, for the anchor conversation only and only while the switch is on (request 149).
      * Built from her own turns and the people she named, with no model call; with the switch off, or for
@@ -2064,7 +2058,11 @@ from finishing at all.`;
   ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; numbersNotKept?: { email: string; because: string }[] }> {
     /* Colleagues picked by id get their addresses here, after the draft is laid over the body, so the
        list of colleagues never carried an address (U.4). */
-    dto = { ...dto, contributors: await this.withColleaguesAddressed(organizationId, (dto.contributors ?? []) as any[]) };
+    /* THE REPORT THE PERSON READ IS THE ONE KEPT, ON EVERY WAY IN. The screen sends it as `reportSummary`. It was read only where a
+       draft was laid over the body, so a signed-in lead saving a new setup (no draft) kept no report at all. It is read here, the one
+       door every save passes, and given its shape by the server (`the-report-as-it-is-kept.ts`). */
+    const sent = dto as typeof dto & { reportSummary?: unknown };
+    dto = { ...dto, report: dto.report ?? theReportAsItIsKept(sent.reportSummary) ?? null, contributors: await this.withColleaguesAddressed(organizationId, (dto.contributors ?? []) as any[]) };
     /*
      * NOTHING USABLE FROM ANY SOURCE, AND THERE ARE THREE OF THEM NOW.
      *

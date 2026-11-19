@@ -38,10 +38,11 @@ describe('the report a session ended on', () => {
     const iface = clientType.slice(clientType.indexOf('export interface EntryReport {'), clientType.indexOf('\n}', clientType.indexOf('export interface EntryReport {')));
     const keys = [...iface.matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]);
     expect(keys.length).toBeGreaterThanOrEqual(9);
-    const controller = withoutComments('entry.controller.ts');
-    const dto = controller.slice(controller.indexOf('class EntryReportSummaryDto {'), controller.indexOf('export class EntryDocumentDto'));
-    for (const k of keys) expect(dto).toMatch(new RegExp(`\\b${k}\\??:`));
-    expect(service).toMatch(/if \(!merged\.report && merged\.reportSummary\) \{\s*merged\.report = merged\.reportSummary;/);
+    /* Updated 19 November 2026: the keys are held equal to the one function that shapes the report on the server, not to a
+       class in the controller, and the save's one door reads what the screen sent. */
+    const kept = withoutComments('the-report-as-it-is-kept.ts');
+    for (const k of keys) expect(kept).toMatch(new RegExp(`\\b${k}\\b`));
+    expect(service).toMatch(/report: dto\.report \?\? theReportAsItIsKept\(sent\.reportSummary\) \?\? null/);
     const page = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'client', 'src', 'pages', 'enter', 'EntryChatPage.tsx'), 'utf8');
     /* Since 0e649a61a (a correction on the setup card is saved with it), the page sends the report it showed only when it was made
        from the whole conversation; otherwise the save makes it from the conversation and the team's names (dd2344ad5). */
