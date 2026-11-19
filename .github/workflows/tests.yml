@@ -20,8 +20,10 @@ on:
       - "api/**"
       - "client/**"
       - ".github/workflows/tests.yml"
-  push:
-    branches: [staging, main]
+  # No `push` trigger on staging/main: a change only reaches them through a pull request that
+  # already ran these suites, and re-running the whole thing on the merge doubled the minutes
+  # for nothing (and, in November, helped use up the free Actions allowance). Run it by hand
+  # from the Actions tab if a direct push needs checking.
   workflow_dispatch: {}
 
 concurrency:
