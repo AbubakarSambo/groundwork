@@ -1,5 +1,7 @@
 # Morning report
 
+**From Abubakar, 19 November 2026 (read this first).** (1) GitHub no longer runs the tests: the free Actions allowance ran out and the full suite is too big for the runner. Run the api and client suites on your own machine before pushing; a green tick on a pull request no longer means they passed. GitHub only deploys. (2) 43 spec files were deleted and a handful fixed, at his decision, to clear stale failures; details are in `CLAUDE.md` under Tests. (3) The Vercel deploy needed the `collecta` Vercel account linked to the `AbubakarSambo` GitHub account, and the Actions budget set to $5, to work again.
+
 **26 October, the UX and functionality stretch on `wip/polish` (pushed to `mine/wip/polish`). No engine changes beyond what the six items needed, no scoring, no rounds.**
 
 What now works, each checked in a browser on the local test bed as the person who uses it:
