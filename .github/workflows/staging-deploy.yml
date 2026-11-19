@@ -20,6 +20,8 @@ on:
     paths:
       - "client/**"
       - ".github/workflows/staging-deploy.yml"
+  # Lets a deploy be started by hand (Actions tab, or `gh workflow run`) without a client/ change.
+  workflow_dispatch: {}
 
 concurrency:
   # No longer shared with preview-deploy.yml's group (that one is now scoped

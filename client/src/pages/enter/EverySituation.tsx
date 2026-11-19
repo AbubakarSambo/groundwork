@@ -46,6 +46,8 @@ export function EverySituation({
   onStart,
   onDescribe,
   alsoOffered = [],
+  changingTheKind = false,
+  onKeep,
 }: {
   signedIn: boolean
   /** Cards offered only where the organisation's switch is on, as the server says. None by default. */
@@ -55,6 +57,10 @@ export function EverySituation({
   onSend: (text: string) => void
   onStart: (card: ScenarioCard, opener: string) => void
   onDescribe: () => void
+  /** Inside setup, picking another kind of check-in: a card is used at once, and what was said stays. */
+  changingTheKind?: boolean
+  /** Inside setup: the way back to the kind it already was. */
+  onKeep?: () => void
 }) {
   const [text, setText] = useState('')
   const [picked, setPicked] = useState<ScenarioCard | null>(null)
@@ -117,6 +123,7 @@ export function EverySituation({
           </div>
           <button type="button" className="gw-btn-sec" onClick={onDescribe}>{EVERY_SITUATION.describeIt}</button>
         </div>
+        {onKeep && <p style={{ margin: '14px 0 0' }}><button type="button" className="gwui-plain-link" onClick={onKeep}>{EVERY_SITUATION.keepIt}</button></p>}
       </div>
 
       {picked && (
@@ -135,7 +142,15 @@ export function EverySituation({
               ))}
             </>
           )}
-          {opener && (
+          {changingTheKind && (
+            <>
+              <button type="button" className="gw-btn" style={{ width: '100%', margin: '6px 0 10px' }} onClick={() => onStart(picked, '')}>
+                {EVERY_SITUATION.useThisKind}
+              </button>
+              <p style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, margin: '0 0 8px' }}>{EVERY_SITUATION.keepsWhatWasSaid}</p>
+            </>
+          )}
+          {!changingTheKind && opener && (
             <>
               <button type="button" className="gw-btn" style={{ width: '100%', margin: '6px 0 10px' }} onClick={() => onStart(picked, opener)}>
                 {EVERY_SITUATION.startWithThis}

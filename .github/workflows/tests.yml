@@ -15,13 +15,10 @@ name: Tests (PR)
 # Deliberately cheap: no browser, no model credentials, no mail catcher. It should
 # finish in a couple of minutes so it can be the check people actually wait for.
 on:
-  pull_request:
-    paths:
-      - "api/**"
-      - "client/**"
-      - ".github/workflows/tests.yml"
-  push:
-    branches: [staging, main]
+  # NO AUTOMATIC TRIGGER (Abubakar, 19 November 2026). The full suite is far too big for GitHub's
+  # 2-core runners: it exhausted the free Actions allowance in November and then hit the step cap.
+  # Run the tests on your own machine before pushing (`cd api && npx jest --ci`, `cd client &&
+  # npx vitest run`). This workflow stays so it can still be started by hand from the Actions tab.
   workflow_dispatch: {}
 
 concurrency:
@@ -87,6 +84,10 @@ jobs:
       # Hafsah's decision, 14 October.
       - name: Tests
         working-directory: api
+        # Capped well under the job limit: in November a run of this step sat for ~60 minutes
+        # (and the client one for ~33) before being cancelled, and those minutes used up the
+        # whole free monthly Actions allowance. A normal run is a couple of minutes.
+        timeout-minutes: 10
         run: npx jest --ci --testPathIgnorePatterns=/journey/
 
       # THE ONE THAT NEEDS A DATABASE.
@@ -134,4 +135,5 @@ jobs:
 
       - name: Tests
         working-directory: client
+        timeout-minutes: 10
         run: npx vitest run

@@ -51,10 +51,8 @@ const CODE_NOT_COPY = [
   /* Same file: the reminders row's day/days pluraliser reads `ground.chaseAfterDays` inside a
      template literal the `>...<` matcher also catches as prose. */
   /\(\(ground as any\)\?\.chaseAfterDays/,
-  /* DirectionPage.tsx: the list of check-ins the direction is set for, read from `grounds.data` inside JSX; code, never shown. */
-  /\(\(grounds\.data as any\[\]\) \?\? \[\]\)\.filter/,
-  /* GroundParticipantPage.tsx: `<ContextPage ground={ground} ...>` passes the record to a component inside JSX; code, never shown. */
-  /<ContextPage ground=\{ground\}/,
+  /* A component prop, `<ContextPage ground={ground} />` - the data model's name, between two JSX tags. */
+  /\bground=\{ground\}/,
 ]
 
 describe('one word for the thing a person opens', () => {
@@ -140,7 +138,7 @@ describe('one word for the thing a person opens', () => {
          */
         /[a-z] [a-z]/.test(prose) &&
         // Code that reads like prose to a regex: keys, paths, property access, statements.
-        !/queryKey|navigate\(|window\.location|sessionStorage|localStorage|setQueryData|\(ground as any\)|ground\?\.|ground\.\w|^(import|export|const|let|return|if|type|interface|await|function)\b|^\w+[:.]|id="|to: '|grounds as any|grounds\.length|grounds\.map/g
+        !/queryKey|navigate\(|window\.location|sessionStorage|localStorage|setQueryData|\(ground as any\)|ground\?\.|ground\.\w|^(import|export|const|let|return|if|type|interface|await|function)\b|^\w+[:.]|id="|to: '|grounds as any|grounds\.length|grounds\.map|grounds\.data/g
           .test(bare)
       if (isBareProse) hits.push(prose)
 

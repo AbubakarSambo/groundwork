@@ -4181,7 +4181,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             <FlexRow gap={8} align="center">
                             Whose goal
                             <select
-                              className="gwui-input" style={{width: 'auto'}}
+                              className="gwui-input" style={{width: 'auto', minHeight: 44}}
                               value={o.ownerParticipantId ?? ''}
                               onChange={async (e) => {
                                 try { await boardApi.updateObjective(id!, o.id, { ownerParticipantId: e.target.value || null }); invalidate() }

@@ -3,6 +3,17 @@ import { aLeaveOrganisation, TODAY } from './a-leave-organisation-for-specs';
 import { theStepsFor } from './who-may-decide';
 import { LEAVE_RULES_REFUSED } from './the-leave-rules';
 
+// These suites are written as of 2026-10-05. The services under test read the real clock, so freeze the
+// date (and only the date: timers stay real) or the "more than a month ago" checks start failing
+// the day the calendar moves on.
+beforeAll(() => {
+  jest.useFakeTimers({
+    now: new Date('2026-10-05T09:00:00Z'),
+    doNotFake: ['nextTick', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'queueMicrotask', 'performance', 'hrtime'],
+  });
+});
+afterAll(() => jest.useRealTimers());
+
 /**
  * LEAVE BY LENGTH (decision 85, Hafsah's own example: "If it's more than 10 working days, department
  * head also approves"), AS EACH PERSON IS SERVED IT.

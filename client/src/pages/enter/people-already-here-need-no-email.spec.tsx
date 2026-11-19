@@ -87,7 +87,10 @@ describe('a lead who added her team on People first', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
     /* Changed in F5 (stage 5): the full setup, with the picker, opens from Change beside the name. */
     fireEvent.click((await screen.findAllByRole('button', { name: 'Change' }))[0])
-    const box = (await screen.findByLabelText('Your team, one per line')) as HTMLTextAreaElement
+    /* Waits for exactly one: while the setup panel swaps in, a slow runner briefly has two boxes with this name, and
+       findBy would fail on "multiple elements" instead of retrying. */
+    let box!: HTMLTextAreaElement
+    await waitFor(() => { box = screen.getByLabelText('Your team, one per line') as HTMLTextAreaElement })
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Karanja Mumbi' }))
     const picker = screen.getByRole('listbox').closest('div')!.parentElement as HTMLElement
     fireEvent.click(within(picker).getByRole('button', { name: /^Add/ }))

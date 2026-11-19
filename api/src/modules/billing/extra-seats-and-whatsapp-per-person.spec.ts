@@ -5,6 +5,16 @@ import { thisMonth, aCheaperPlan, seatsCost, thisAddsASeat, whatsappPeopleCharge
 import { theStatusAsTheyMayReadIt } from './billing.controller';
 import { AdminController } from '../admin/admin.controller';
 
+// The services under test read the real clock, and this file is written as of 15 October 2026 (see NOW):
+// the "free month" in it ends 14 November. Freeze the date only, or it starts failing once that passes.
+beforeAll(() => {
+  jest.useFakeTimers({
+    now: new Date('2026-10-15T10:00:00Z'),
+    doNotFake: ['nextTick', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'queueMicrotask', 'performance', 'hrtime'],
+  });
+});
+afterAll(() => jest.useRealTimers());
+
 /**
  * THE NEW PRICING (fix list item 6, Hafsah, 15 October 2026).
  *

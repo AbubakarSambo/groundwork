@@ -51,7 +51,7 @@ import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
 import { groundsApi } from '@/api/grounds'
-import { TheTeamBox, aLineFor, addAnEmailFor, linesInTheBox, readTheLines, withTheNamedAdded, type APersonOnALine } from '@/components/gw/TheTeamBox'
+import { TheTeamBox, aLineFor, notOnTheCheckInYet, linesInTheBox, readTheLines, withTheNamedAdded, type APersonOnALine } from '@/components/gw/TheTeamBox'
 import {
   COLLECT_WHATS_OWED, COLLECT_WHATS_OWED_CARD, COLLECT_WHATS_OWED_GROUP, COLLECT_WHATS_OWED_OPENER, COLLECT_WHATS_OWED_FOR_EXAMPLE,
   soundsLikeCollectingWhatsOwed,
@@ -106,8 +106,10 @@ function asSomeoneToInvite(entry: string, displayNames?: Record<string, string>,
 }
 
 /** The team box, read: each person's key (an address, or "colleague:<id>"), and the name and number given beside it. */
-type TheBoxRead = { entries: string[]; names: Record<string, string>; numbers: Record<string, string> }
-const NOBODY_IN_THE_BOX: TheBoxRead = { entries: [], names: {}, numbers: {} }
+type TheBoxRead = { entries: string[]; names: Record<string, string>; numbers: Record<string, string>; /** Lines with no way to reach the person: kept in the box, not on the check-in. */ leftOut: APersonOnALine[]; /** The one sentence saying who is not on the check-in and why, or nothing. */ said: string }
+const NOBODY_IN_THE_BOX: TheBoxRead = { entries: [], names: {}, numbers: {}, leftOut: [], said: '' }
+/** What a line is called in a sentence: the name, or the number when no name was given. */
+const whoTheyAre = (p: APersonOnALine) => p.name ?? p.phone ?? ''
 
 /** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
 const A_MESSAGE_MAX = 30000
@@ -1637,18 +1639,34 @@ export function EntryChatPage() {
 
 
   /*
-   * THE KIND OF CHECK-IN, ANSWERED ON ITS CARD (plan round 32). "Confirmed" holds it, and answers the first reply in the conversation
-   * while that is still the last thing said. "It’s something else" keeps everything said and asks what it is; the lead's next words are
-   * read for the kind by the one reader (classifyIntent). It used to put the conversation back to the opening question, so the law firm
-   * lead gave her team three times.
+   * THE KIND OF CHECK-IN, ANSWERED IN THE PANEL (plan round 32; hotfix, live pilot). "It’s something else" opens the list of every
+   * situation (the same EverySituation the door shows), inside setup, so another kind can be picked while everything said so far is kept:
+   * the people, their emails and the brief. Picking one changes only the kind. Describing it instead, in the list's own box or by
+   * "Describe it", keeps everything said and asks what it is; the lead's next words are read for the kind by the one reader
+   * (classifyIntent). It used to put the conversation back to the opening question, so the law firm lead gave her team three times,
+   * and then it offered only a request to type a sentence, with no way to see the other situations.
    */
   const kindRefused = useRef(false)
-  function itIsSomethingElse() {
+  const [choosingAnotherKind, setChoosingAnotherKind] = useState(false)
+  const theListOfKinds = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (choosingAnotherKind) scrollTo(theListOfKinds.current, { block: 'nearest' })
+  }, [choosingAnotherKind])
+  function itIsSomethingElse() { setChoosingAnotherKind(true) }
+  function describeTheKindInstead() {
     kindRefused.current = true
+    setChoosingAnotherKind(false)
     setPickedSituation(null)
     setPickedScenario(null)
-    setOnboardingSelections((prev) => ({ ...prev, classifiedScenario: undefined }))
+    setOnboardingSelections((prev) => ({ ...prev, classifiedScenario: undefined, kindName: undefined }))
     setOnboardingHistory((h) => [...h, { role: 'assistant', content: SAY_WHAT_IT_IS }])
+  }
+  function useAnotherKind(card: { scenario: string; label: string }) {
+    setChoosingAnotherKind(false)
+    setPickedSituation(card.label)
+    setPickedScenario(card.scenario)
+    setOnboardingSelections((prev) => ({ ...prev, classifiedScenario: card.scenario, kindName: undefined }))
+    setOnboardingHistory((h) => [...h, { role: 'assistant', content: `Then I will set this up as “${sentenceCase(card.label)}”. Everything you have told me so far is kept.` }])
   }
 
   const [showEndConfirm, setShowEndConfirm] = useState(false)
@@ -1853,8 +1871,6 @@ export function EntryChatPage() {
    * foot of the card, and one (the anchor's limit) said nothing at all. Each stop now also says it here, beside the button pressed.
    */
   const [whyItWasNotSaved, setWhyItWasNotSaved] = useState('')
-  /* The people named in setup and left out of the box that the last press already said, so the next press saves without them. */
-  const askedAboutWhoIsLeftOff = useRef('')
   /*
    * THE TEAM AS WRITTEN IS KEPT WITH THE SETUP (round 5, the startup lead). He typed his team's emails, left before saving, and came back
    * to a box asking for every email again. The box's lines go into the kept setup as they are written, and come back with it.
@@ -3261,6 +3277,8 @@ export function EntryChatPage() {
       queryClient.invalidateQueries({ queryKey: ['grounds'] })
       clearEntryHandover()
       sayWhoWasNotInvited(res, how)
+      /* Whoever has no email is left off, and said once, after the save, in the same press. */
+      if (box.said) toast.info(box.said, { duration: 15000 })
       rememberTheFirstCheckInClosing(res.groundId)
       /* To the board (the approved journey, stage 9; plan round 32: "I have sent the invitations and I expect to see the board now"). */
       navigate(`/grounds/${res.groundId}/board`, { replace: true })
@@ -3372,9 +3390,8 @@ export function EntryChatPage() {
       let box = NOBODY_IN_THE_BOX
       if (teamText.trim()) {
         try {
-          const { read, needAnEmail } = theBoxAsRead(await readTheLines(teamText))
-          box = read
-          setTeamSaid(needAnEmail.length ? addAnEmailFor(needAnEmail) : '')
+          box = theBoxAsRead(await readTheLines(teamText))
+          setTeamSaid(box.said)
         } catch { /* the box is read again on the next change */ }
       }
       const patch = {
@@ -3713,23 +3730,23 @@ export function EntryChatPage() {
   }
   /**
    * THE TEAM IN THE BOX, READ BY EVERY PRESS THAT SAVES (Hafsah's blocker of 31 October 2026). The lines are read by the one team reader
-   * (POST /entry/people-on-lines). A colleague is recognised by name and needs no email; anybody else needs one. A line with no email
-   * stops the save with one sentence naming who needs it, and so does a team over the anchor's limit, so nobody is dropped without a
-   * word and nothing is saved half-way. `null` means the save stops here.
+   * (POST /entry/people-on-lines). A colleague is recognised by name and needs no email; anybody else needs one, because inviting sends
+   * a message. SKIPPING IS ALWAYS POSSIBLE (hotfix, live pilot): a line with no way to reach the person never stops the save. They are
+   * left off, and `said` is the one sentence that says who and why, whether they were named in the box or only in the conversation.
+   * The only stops left are a team over the anchor's limit and a box that could not be read, which say so and save nothing.
    */
-  /** The box's lines, as the people they are: a colleague by name, anybody else by email, and who still needs an email. */
-  function theBoxAsRead(people: APersonOnALine[]): { read: TheBoxRead; needAnEmail: APersonOnALine[] } {
-    const needAnEmail: APersonOnALine[] = []
-    const read: TheBoxRead = { entries: [], names: {}, numbers: {} }
+  function theBoxAsRead(people: APersonOnALine[]): TheBoxRead {
+    const read: TheBoxRead = { entries: [], names: {}, numbers: {}, leftOut: [], said: '' }
     for (const p of people) {
       const colleague = p.name ? colleagueNamed(p.name) : null
-      if (!colleague && !p.email) { needAnEmail.push(p); continue }
+      if (!colleague && !p.email) { read.leftOut.push(p); continue }
       const head = colleague ? `${A_COLLEAGUE}${colleague.id}` : p.email!.trim().toLowerCase()
       read.entries.push(head)
       if (!colleague && p.name) read.names[head] = p.name
       if (p.phone) read.numbers[head] = p.phone
     }
-    return { read, needAnEmail }
+    read.said = notOnTheCheckInYet(read.leftOut.map(whoTheyAre))
+    return read
   }
   async function readTheTeamBox(): Promise<TheBoxRead | null> {
     setWhyItWasNotSaved('')
@@ -3741,34 +3758,20 @@ export function EntryChatPage() {
         return null
       }
     }
+    const read = theBoxAsRead(people)
     /*
      * SOMEBODY NAMED IN SETUP IS NEVER DROPPED WITHOUT A WORD (round 7, the clinic admin). She named Emeka Nnamdi in the conversation,
-     * then wrote her three managers' full lines over the box, so the line the box held for him went, and the save invited three. Invitations
-     * are sent, so this is a fixed rule (five rules, 4): the first press that would leave out somebody she named says who, and saves
-     * nothing; a second press saves without them, as she chose.
+     * then wrote her three managers' full lines over the box, so the line the box held for him went, and the save invited three. It
+     * used to stop for a second press; now it saves at once and says who is left off, in the same sentence as anybody with no email.
      */
     /* By whole name, or by first name where the box writes only that ("Aisha, aisha@clinic.test"). */
     const inTheBox = new Set(people.flatMap((p) => { const n = (p.name ?? '').trim().toLowerCase(); return n ? [n, n.split(/\s+/)[0]] : [] }))
     const alreadyAdded = new Set(inviteAdded.map((e) => shownAs(e.split(' - ')[0]).trim().toLowerCase()))
     const leftOff = (onboardingSelections.peopleNamed ?? []).map((n) => n.trim()).filter((n) => n && !inTheBox.has(n.toLowerCase()) && !inTheBox.has(n.toLowerCase().split(/\s+/)[0]) && !alreadyAdded.has(n.toLowerCase()))
-    const leftOffKey = leftOff.join('|')
     /* Only where the box has been shown to her: before an email is given, a visitor has no box yet. */
     const theBoxWasShown = theSetupHoldsTheNameAndPeople || emailSent
-    if (theBoxWasShown && leftOff.length && askedAboutWhoIsLeftOff.current !== leftOffKey) {
-      askedAboutWhoIsLeftOff.current = leftOffKey
-      const named = leftOff.length === 1 ? leftOff[0] : `${leftOff.slice(0, -1).join(', ')} and ${leftOff[leftOff.length - 1]}`
-      const said = `You named ${named} in the conversation, but they are not in the box. Add them with an email, or press save again to save without them.`
-      setTeamSaid(said)
-      setWhyItWasNotSaved(`This was not saved. ${said}`)
-      return null
-    }
-    if (!people.length) { setTeamSaid(''); return NOBODY_IN_THE_BOX }
-    const { read, needAnEmail } = theBoxAsRead(people)
-    if (needAnEmail.length) {
-      setTeamSaid(addAnEmailFor(needAnEmail))
-      setWhyItWasNotSaved(`This was not saved. ${addAnEmailFor(needAnEmail)}`)
-      return null
-    }
+    const everyoneLeftOff = theBoxWasShown ? [...read.leftOut.map(whoTheyAre), ...leftOff] : read.leftOut.map(whoTheyAre)
+    read.said = notOnTheCheckInYet(everyoneLeftOff)
     const onTheList = (e: string) => inviteAdded.some((x) => x === e || x.startsWith(`${e} - `))
     /* Over the anchor's limit the save stops; the limit sentence already stands under the box (peopleLimitReached). */
     if (isAnchorDraft() && inviteAdded.length + read.entries.filter((e) => !onTheList(e)).length > thePeopleStepRules.mayAdd) {
@@ -3776,7 +3779,7 @@ export function EntryChatPage() {
       setWhyItWasNotSaved(`This was not saved. ${thePeopleStepRules.limitSentence}`)
       return null
     }
-    setTeamSaid('')
+    setTeamSaid(read.said)
     return read
   }
   /** Everybody this save invites: whoever is on the list, then whoever is in the box, once each, with their names and numbers. */
@@ -3808,10 +3811,11 @@ export function EntryChatPage() {
   /** Once a save has taken the box, its people are on the list the page shows and keeps in step, and the box is empty for anybody more. */
   function takeTheBoxIntoTheList(box: TheBoxRead) {
     if (!box.entries.length) return
+    /* Whoever was left off stays in the box, so nothing typed is lost and they can be given an email. */
     setInviteAdded((prev) => [...prev, ...box.entries.filter((e) => !prev.some((x) => x === e || x.startsWith(`${e} - `)))])
     setDisplayNames((prev) => ({ ...prev, ...box.names }))
     setPhones((prev) => ({ ...prev, ...box.numbers }))
-    setTeamText('')
+    setTeamText(box.leftOut.map(aLineFor).join('\n'))
   }
 
   /*
@@ -4083,7 +4087,7 @@ export function EntryChatPage() {
       onChangeTeam={() => setChangingTeam(true)}
       onChangeSetup={closed && !showSave ? () => setShowSave(true) : undefined}
       asOneLine={!thePanelFitsBeside}
-      ready={closed && !showSave && user && !emailSent ? { opens: whenTheirFirstCheckInOpens(), onSend: saveAsSignedInUser, sending: savingAsUser, why: whyItWasNotSaved || teamSaid || undefined } : null}
+      ready={closed && !showSave && user && !emailSent ? { opens: whenTheirFirstCheckInOpens(), onSend: saveAsSignedInUser, sending: savingAsUser, why: whyItWasNotSaved || undefined } : null}
       /*
        * FAULT 2: THE ANCHOR'S SEVEN ITEMS, NOT THE USUAL FOUR.
        *
@@ -4270,6 +4274,21 @@ export function EntryChatPage() {
                 </div>
               )}
 
+              {!atTheDoor && choosingAnotherKind && (
+                <div className="gwui-ec-door-slot" ref={theListOfKinds}>
+                  <EverySituation
+                    signedIn={!!user}
+                    changingTheKind
+                    openerFor={() => undefined}
+                    alsoOffered={collectionsOffered ? [{ card: COLLECT_WHATS_OWED_CARD, group: COLLECT_WHATS_OWED_GROUP, forExample: COLLECT_WHATS_OWED_FOR_EXAMPLE }] : []}
+                    onSend={(text) => { describeTheKindInstead(); sendOnboarding(text) }}
+                    onDescribe={describeTheKindInstead}
+                    onStart={useAnotherKind}
+                    onKeep={() => setChoosingAnotherKind(false)}
+                  />
+                </div>
+              )}
+
               {onboardingLoading && (
                 <Bubble mine={false}>
                   {onboardingDraft ? onboardingDraft : <GroundworkIsWriting wrap={false} />}
@@ -4432,7 +4451,7 @@ export function EntryChatPage() {
             {/* Input bar / save CTA */}
             {closed && !showSave && user && !emailSent && theTeamAsItStands().people.length > 0 ? (
               <div className="gwui-ec-invite-bar">
-                <ReadyToSend people={theTeamAsItStands().people.length} lines={theTeamAsItStands().people} onChange={() => setShowSave(true)} opens={whenTheirFirstCheckInOpens()} onSend={() => saveAsSignedInUser()} onLater={() => saveAsSignedInUser({ inviteLater: true })} sending={savingAsUser} why={whyItWasNotSaved || teamSaid || undefined} />
+                <ReadyToSend people={theTeamAsItStands().people.length} lines={theTeamAsItStands().people} onChange={() => setShowSave(true)} opens={whenTheirFirstCheckInOpens()} onSend={() => saveAsSignedInUser()} onLater={() => saveAsSignedInUser({ inviteLater: true })} sending={savingAsUser} why={whyItWasNotSaved || undefined} />
               </div>
             ) : closed && !showSave ? (
               <div className="gwui-ec-invite-bar">

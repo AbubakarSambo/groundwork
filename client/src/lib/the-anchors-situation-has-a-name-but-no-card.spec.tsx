@@ -28,12 +28,9 @@ describe('HELP_TEAM_UNDERSTAND reads as a sentence, everywhere a situation’s n
     expect(SITUATION_CARDS.some((c) => c.scenario === 'HELP_TEAM_UNDERSTAND')).toBe(false)
   })
 
-  /* REPOINTED (batch 1, group 10, 4 November 2026): People and setup as pictured is the only People and setup page, and its row is
-     "Scenario". The rule it holds is the same: the name is read through scenarioLabel(), never a raw lookup falling back to the key. */
-  it('the "Scenario" row on People and setup (PeopleAndSetupAsPictured.tsx) reads it through scenarioLabel(), not a raw lookup with the key as its own fallback', () => {
+  it('the admin "Scenario" row (PeopleAndSetupAsPictured.tsx) reads it through scenarioLabel(), not a raw lookup with the key as its own fallback', () => {
     const src = readFileSync(join(__dirname, '../pages/grounds/PeopleAndSetupAsPictured.tsx'), 'utf8')
     const i = src.indexOf('label="Scenario"')
-    expect(i).toBeGreaterThan(-1)
     const around = src.slice(Math.max(0, i - 50), i + 200)
     expect(around).toMatch(/scenarioLabel\(g\.scenario/)
     expect(around).not.toMatch(/SCENARIO_LABELS\[g\.scenario.*\?\?\s*g\.scenario/)

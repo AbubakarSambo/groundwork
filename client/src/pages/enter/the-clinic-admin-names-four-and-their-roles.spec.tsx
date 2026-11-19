@@ -3,6 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
+import { toast } from 'sonner'
 import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
 
 /**
@@ -13,6 +14,7 @@ import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
  * Now a save that would leave out somebody she named says who and saves nothing, once; and what she said each person does goes with
  * them into the check-in, from the setup's reading (peopleRoles).
  */
+vi.mock('sonner', () => ({ toast: { info: vi.fn(), error: vi.fn(), warning: vi.fn(), success: vi.fn() } }))
 vi.mock('@/api/entry', () => ({
   entryApi: {
     unfinished: vi.fn().mockResolvedValue(null),
@@ -69,7 +71,9 @@ function open() {
 describe('the clinic admin saves her setup', () => {
   beforeEach(() => { localStorage.clear(); vi.clearAllMocks() })
 
-  it('with Emeka written over, the first press says she named him and saves nothing; a second press saves without him', async () => {
+  /* Changed in the team-skip hotfix (live pilot): the first press used to say she named him and save nothing, and only a second press saved.
+     It is one press now, and the same sentence is said after it, in the same words as for anybody with no email. */
+  it('with Emeka written over, one press saves the three and says he is not on the check-in yet', async () => {
     seedHerSetup()
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
@@ -77,11 +81,9 @@ describe('the clinic admin saves her setup', () => {
     addThroughTheTeamBox(['Aisha Musa, aisha@clinic.test', 'Chinedu Obi, chinedu@clinic.test', 'Fatima Bello, fatima@clinic.test'].join('\n'))
     fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
 
-    expect(await screen.findByText('This was not saved. You named Emeka Nnamdi in the conversation, but they are not in the box. Add them with an email, or press save again to save without them.')).toBeTruthy()
-    expect(entryApi.commit).not.toHaveBeenCalled()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
+    expect(toast.info).toHaveBeenCalledWith('Emeka Nnamdi is not on the check-in yet, because there is no email for them. Add them under People when you have their emails.', expect.anything())
+    expect(screen.queryByText(/This was not saved/)).toBeNull()
   })
 
   it('what she said each person does goes with them into the check-in', async () => {

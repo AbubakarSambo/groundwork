@@ -394,10 +394,11 @@ export class BoardService {
    */
   private async herFullReportIsComing(groundId: string, leadId: string | null, now: Date): Promise<{ fullReportComing?: string }> {
     if (!leadId) return {};
-    const hers = await this.prisma.checkIn.findFirst({
+    // Best effort: a lookup that throws (not only one that rejects) just means no line is said.
+    const hers = await Promise.resolve().then(() => this.prisma.checkIn.findFirst({
       where: { groundId, sessionNumber: 1, participant: { userId: leadId } },
       select: { completedAt: true, sessionReport: true },
-    }).catch(() => null);
+    })).catch(() => null);
     const saved = hers?.completedAt?.getTime() ?? 0;
     return hers && hers.sessionReport == null && saved && now.getTime() - saved < A_SETUP_REPORT_TAKES_AT_MOST_MS ? { fullReportComing: YOUR_FULL_REPORT_IS_COMING } : {};
   }
