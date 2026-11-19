@@ -5,6 +5,17 @@ import { sayBackLeave, sendLeave } from './leave-said-in-chat';
 import { LEAVE_RULES_REFUSED, LEAVE_RULES_ROW } from './the-leave-rules';
 import { aRequestsHistory } from './a-request-is-recorded';
 
+// These suites are written as of 2026-10-05. The services under test read the real clock, so freeze the
+// date (and only the date: timers stay real) or the "more than a month ago" checks start failing
+// the day the calendar moves on.
+beforeAll(() => {
+  jest.useFakeTimers({
+    now: new Date('2026-10-05T09:00:00Z'),
+    doNotFake: ['nextTick', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'queueMicrotask', 'performance', 'hrtime'],
+  });
+});
+afterAll(() => jest.useRealTimers());
+
 /**
  * THE LEAVE RULES (decision 85, item 1; build step 8), AS EACH PERSON IS SERVED THEM.
  *

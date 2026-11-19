@@ -5,6 +5,17 @@ import { ARequestFiledFromItsForm } from './a-request-filed-from-its-form';
 import { LEAVE_REFUSED } from './the-leave-board.service';
 import { SPEND_REFUSED } from './the-spending.service';
 
+// These suites are written as of 2026-10-05. The services under test read the real clock, so freeze the
+// date (and only the date: timers stay real) or the "more than a month ago" checks start failing
+// the day the calendar moves on.
+beforeAll(() => {
+  jest.useFakeTimers({
+    now: new Date('2026-10-05T09:00:00Z'),
+    doNotFake: ['nextTick', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'queueMicrotask', 'performance', 'hrtime'],
+  });
+});
+afterAll(() => jest.useRealTimers());
+
 /**
  * REQUEST 165: A PERSON FILES THEIR OWN REQUEST FROM THE SUITE'S FORM, READ AS EACH PERSON READS IT.
  *

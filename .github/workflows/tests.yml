@@ -15,15 +15,10 @@ name: Tests (PR)
 # Deliberately cheap: no browser, no model credentials, no mail catcher. It should
 # finish in a couple of minutes so it can be the check people actually wait for.
 on:
-  pull_request:
-    paths:
-      - "api/**"
-      - "client/**"
-      - ".github/workflows/tests.yml"
-  # No `push` trigger on staging/main: a change only reaches them through a pull request that
-  # already ran these suites, and re-running the whole thing on the merge doubled the minutes
-  # for nothing (and, in November, helped use up the free Actions allowance). Run it by hand
-  # from the Actions tab if a direct push needs checking.
+  # NO AUTOMATIC TRIGGER (Abubakar, 19 November 2026). The full suite is far too big for GitHub's
+  # 2-core runners: it exhausted the free Actions allowance in November and then hit the step cap.
+  # Run the tests on your own machine before pushing (`cd api && npx jest --ci`, `cd client &&
+  # npx vitest run`). This workflow stays so it can still be started by hand from the Actions tab.
   workflow_dispatch: {}
 
 concurrency:

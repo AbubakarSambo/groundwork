@@ -3,6 +3,17 @@ import { aLeaveOrganisation } from './a-leave-organisation-for-specs';
 import { aSpendingOrganisation } from './a-spending-organisation-for-specs';
 import { ARequestFiledFromItsForm, THE_REQUEST_WAS_SENT } from './a-request-filed-from-its-form';
 
+// These suites are written as of 2026-10-05. The services under test read the real clock, so freeze the
+// date (and only the date: timers stay real) or the "more than a month ago" checks start failing
+// the day the calendar moves on.
+beforeAll(() => {
+  jest.useFakeTimers({
+    now: new Date('2026-10-05T09:00:00Z'),
+    doNotFake: ['nextTick', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'queueMicrotask', 'performance', 'hrtime'],
+  });
+});
+afterAll(() => jest.useRealTimers());
+
 /**
  * S3 (nothing-removed audit): THE REQUEST FORMS ANSWER A SERVER FAULT ONLY WHEN THERE IS ONE.
  *
