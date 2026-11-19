@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { ReportsService } from './reports.service';
+import { withTheDirectMorning, THE_DIRECT_JUDGEMENT } from './the-direct-morning-is-written-straight';
 import { theRoomJudgementTemplate, theJudgementOverARoom, THE_JUDGEMENT_ROOM_KEY } from './the-judgement-over-the-answers';
 
 /**
@@ -33,7 +34,8 @@ describe('the judgement runs its stored version', () => {
   it('with none stored, it runs the code text and records no version', async () => {
     const { run, seen } = judgeWith(null);
     const out = await run();
-    expect(seen[0]).toBe(theJudgementOverARoom('whoever called this check-in', 'what to do next about the people and the work it covers', 'Wairimu Kamau'));
+    // The instruction that runs is the code text with the direct-morning block appended (reports.service.ts), so say so here.
+    expect(seen[0]).toBe(withTheDirectMorning(theJudgementOverARoom('whoever called this check-in', 'what to do next about the people and the work it covers', 'Wairimu Kamau'), THE_DIRECT_JUDGEMENT));
     expect(out.judgement.promptVersionId).toBeNull();
   });
 
