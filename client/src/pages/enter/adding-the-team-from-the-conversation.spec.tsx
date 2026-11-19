@@ -3,6 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
+import { toast } from 'sonner'
 import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
 
 /**
@@ -21,6 +22,7 @@ import { addThroughTheTeamBox } from './a-team-read-in-a-spec'
  * separate step the law firm lead's save did not wait for, and checked the numbers through a second request after the save, which a
  * save finished from the email link never made. The numbers now travel in the save itself.
  */
+vi.mock('sonner', () => ({ toast: { info: vi.fn(), error: vi.fn(), warning: vi.fn(), success: vi.fn() } }))
 vi.mock('@/api/entry', () => ({
   entryApi: {
     peopleOnLines: vi.fn(async (t: string) => (await import('./a-team-read-in-a-spec')).readLikeTheServer(t)),
@@ -74,18 +76,21 @@ describe('a lead who named four people in the setup conversation presses Save', 
     expect(screen.getByText(/^Everyone in the box above is on the check-in when you save it\. Nobody is invited before you save this check-in\. How many people you can add depends on your plan, not on the check-in\.$/)).toBeTruthy()
   })
 
-  it('with two emails in the box and two prefilled without, the save stops naming the two and nothing is saved', async () => {
+  /* Changed in the team-skip hotfix (live pilot): this pinned "the save stops naming the two and nothing is saved". Skipping is always
+     possible now, so the save goes ahead with the two who can be reached and says who is not on the check-in yet, in the same press. */
+  it('with two emails in the box and two prefilled without, one press saves the two and says the other two are not on it yet', async () => {
     seedTheLawFirmsSetup()
     const box = await openTheSaveCard()
     addThroughTheTeamBox([lineFor(NAMED[0], true), lineFor(NAMED[1], true), lineFor(NAMED[2], false), lineFor(NAMED[3], false)].join('\n'))
     fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
 
-    expect(await screen.findByText('Add an email for Kevin Kimani and Grace Wambui, or take them off the list.')).toBeTruthy()
     const { entryApi } = await import('@/api/entry')
-    expect(entryApi.commit).not.toHaveBeenCalled()
-    /* Nothing she typed is taken out of the box. */
-    expect(box.value.split('\n')).toHaveLength(4)
-    expect(box.disabled).toBe(false)
+    await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
+    const payload = vi.mocked(entryApi.commit).mock.calls[0][0] as any
+    expect(payload.contributors.map((c: any) => c.email)).toEqual(['david@law.test', 'sarah@law.test'])
+    expect(toast.info).toHaveBeenCalledWith('Kevin Kimani and Grace Wambui are not on the check-in yet, because there is no email for them. Add them under People when you have their emails.', expect.anything())
+    expect(screen.queryByText(/This was not saved/)).toBeNull()
+    expect(box.disabled).toBeDefined()
   })
 
   it('with every email given, all four reach the save with their names and phone numbers', async () => {

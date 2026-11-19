@@ -47,6 +47,10 @@ export const EVERY_SITUATION = {
   youPicked: 'You picked',
   forExample: 'For example',
   startWithThis: 'Start with this',
+  /** Choosing another kind inside setup: nothing already said is lost. */
+  useThisKind: 'Use this kind of check-in',
+  keepsWhatWasSaid: 'Everything you have said so far is kept. Only the kind of check-in changes.',
+  keepIt: 'Keep it as it is',
   /** "It starts the conversation with: “…” You can change every word." */
   itStartsWith: (opener: string) => `It starts the conversation with: “${opener}” You can change every word.`,
   noAccountNeeded: 'You don’t need an account to start. We ask for your email when there’s something worth keeping.',
