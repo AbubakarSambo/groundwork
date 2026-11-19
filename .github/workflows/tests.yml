@@ -87,6 +87,10 @@ jobs:
       # Hafsah's decision, 14 October.
       - name: Tests
         working-directory: api
+        # Capped well under the job limit: in November a run of this step sat for ~60 minutes
+        # (and the client one for ~33) before being cancelled, and those minutes used up the
+        # whole free monthly Actions allowance. A normal run is a couple of minutes.
+        timeout-minutes: 10
         run: npx jest --ci --testPathIgnorePatterns=/journey/
 
       # THE ONE THAT NEEDS A DATABASE.
@@ -134,4 +138,5 @@ jobs:
 
       - name: Tests
         working-directory: client
+        timeout-minutes: 10
         run: npx vitest run
