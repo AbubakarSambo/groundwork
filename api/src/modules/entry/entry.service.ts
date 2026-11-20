@@ -2062,7 +2062,7 @@ from finishing at all.`;
        draft was laid over the body, so a signed-in lead saving a new setup (no draft) kept no report at all. It is read here, the one
        door every save passes, and given its shape by the server (`the-report-as-it-is-kept.ts`). */
     const sent = dto as typeof dto & { reportSummary?: unknown };
-    dto = { ...dto, report: dto.report ?? theReportAsItIsKept(sent.reportSummary) ?? null, contributors: await this.withColleaguesAddressed(organizationId, (dto.contributors ?? []) as any[]) };
+    dto = { ...dto, contributors: await this.withColleaguesAddressed(organizationId, (dto.contributors ?? []) as any[]), report: dto.report ?? theReportAsItIsKept(sent.reportSummary) ?? null };
     /*
      * NOTHING USABLE FROM ANY SOURCE, AND THERE ARE THREE OF THEM NOW.
      *
