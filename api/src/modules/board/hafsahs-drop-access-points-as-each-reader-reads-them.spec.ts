@@ -162,7 +162,7 @@ describe('with Release 1\'s sales board on', () => {
     expect((today.get('p-kwame') as any).checkedInToday).toBe(true);
     expect((today.get('p-ngozi') as any).line).toBe('Hasn’t checked in today.');
     expect((today.get('p-ngozi') as any).checkedInToday).toBe(false);
-    expect(JSON.stringify(b.eachPersonToday)).not.toContain('has not checked in for this session yet');
+    expect(JSON.stringify(b.eachPersonToday)).not.toContain('has not checked in yet');
   });
 
   it('point 10: Juma, an admin who only reads, reads that they checked in, never their words', async () => {

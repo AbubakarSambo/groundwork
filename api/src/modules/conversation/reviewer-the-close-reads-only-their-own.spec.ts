@@ -1,6 +1,6 @@
 import { withoutTheLeadsBrief, theLeadsSetupWords } from './the-leads-brief-is-never-quoted-to-them';
 import { withoutTheAnchorBack } from './no-anchor-back-when-they-leave';
-import { theLanguageOfTheirOwnWords } from '../public-api/plainly-english';
+import { theLanguageTheyWroteIn } from '../public-api/the-language-they-write-in';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -73,10 +73,13 @@ describe('no "One thing before you go" when they are leaving', () => {
 
 describe('the reply language follows their own messages', () => {
   const KEVIN = ['Kilele Hotel, 40 units. The owner paid today.', 'No other deals right now. I will visit two shops in Westlands tomorrow.', 'I have to go'];
-  it('Kevin writes English, so a stored Swahili read does not decide', () => {
-    expect(theLanguageOfTheirOwnWords(KEVIN, 'sw')).toBe('en');
+  /* Changed 20 November 2026 (WhatsApp test C1): the stored one-time read and the word list are gone, so the model reads all of their words together. */
+  it('reads all of Kevin\'s words together, never one early message, and nothing stored decides', async () => {
+    const extract = jest.fn(async () => ({ language: 'en' }));
+    expect(await theLanguageTheyWroteIn(extract as any, KEVIN)).toBe('en');
+    expect((extract.mock.calls[0] as any)[1][0].content).toBe(KEVIN.join('\n'));
   });
-  it('somebody who writes Swahili keeps Swahili', () => {
-    expect(theLanguageOfTheirOwnWords(['Leo nimeuza mifuko kumi', 'Kesho nitaenda Westlands kuona wateja'], 'sw')).toBe('sw');
+  it('somebody who writes Swahili keeps Swahili', async () => {
+    expect(await theLanguageTheyWroteIn((async () => ({ language: 'sw' })) as any, ['Leo nimeuza mifuko kumi', 'Kesho nitaenda Westlands kuona wateja'])).toBe('sw');
   });
 });

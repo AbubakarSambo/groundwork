@@ -67,15 +67,23 @@ describe('what Ask offers each reader about adding a document', () => {
 });
 
 describe('the file itself, on the server', () => {
-  it('is refused to anybody who is not an admin, before it is read', async () => {
+  /* Changed for the Desk (S7, 20 November 2026): a lead may add a document for the whole organisation too (Hafsah: "Admins
+     and managers can upload company context there, and by chat"), so Wairimu is no longer refused. A member still is. */
+  it('is refused to anybody who is neither an admin nor a lead, before it is read', async () => {
     const { svc, asker, documents, assistant } = askWorld();
     const file: any = { originalname: 'Staff handbook.pdf', size: 10, mimetype: 'application/pdf', buffer: Buffer.from('x') };
     await expect(svc.addADocumentForTheOrganisation(asker('u-amani'), file)).rejects.toThrow(
-      new ForbiddenException('Only an admin of Msingi Foods can add a document for the whole organisation.'),
+      new ForbiddenException('Only an admin or a lead of Msingi Foods can add a document for the whole organisation.'),
     );
-    await expect(svc.addADocumentForTheOrganisation(asker('u-wairimu'), file)).rejects.toBeInstanceOf(ForbiddenException);
     expect(documents.textOutOf).not.toHaveBeenCalled();
     expect(assistant.sayBackADocumentForTheOrganisation).not.toHaveBeenCalled();
+  });
+
+  it('from Wairimu, a lead, is read and said back like an admin\'s', async () => {
+    const { svc, asker, assistant } = askWorld();
+    const file: any = { originalname: 'Sales playbook.pdf', size: 10, mimetype: 'application/pdf', buffer: Buffer.from('x') };
+    await svc.addADocumentForTheOrganisation(asker('u-wairimu'), file);
+    expect(assistant.sayBackADocumentForTheOrganisation).toHaveBeenCalledWith(ORG, 'pp', 'Sales playbook.pdf', 'Sales playbook', 'Leave\n\n21 days a year.');
   });
   it('from an admin, is read and handed on to be said back, with its title', async () => {
     const { svc, asker, assistant } = askWorld();
@@ -91,7 +99,7 @@ const HANDBOOK = [
   '# Travel', '', 'Use the travel form five working days before you travel.',
 ].join('\n');
 
-function assistantWorld(opts: { admin?: boolean } = {}) {
+function assistantWorld(opts: { admin?: boolean; role?: string } = {}) {
   const rows: any[] = [];
   const ingested: any[] = [];
   const remembered: any[] = [];
@@ -99,7 +107,7 @@ function assistantWorld(opts: { admin?: boolean } = {}) {
   s.prisma = {
     person: { findFirst: jest.fn(async () => ({ externalId: 'grace-ext', linkedUserId: 'u-grace', email: 'grace@msingi.test' })) },
     organization: { findUnique: jest.fn(async () => ({ name: 'Msingi Foods' })) },
-    organizationMembership: { findUnique: jest.fn(async () => ({ role: opts.admin === false ? 'MEMBER' : 'ADMIN' })) },
+    organizationMembership: { findUnique: jest.fn(async () => ({ role: opts.role ?? (opts.admin === false ? 'MEMBER' : 'ADMIN') })) },
     user: { findUnique: jest.fn(async () => ({ role: 'ADMIN', organizationId: ORG })) },
     ground: { findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null) },
     assistantProposal: {
@@ -108,6 +116,8 @@ function assistantWorld(opts: { admin?: boolean } = {}) {
       update: jest.fn(async ({ where, data }: any) => { const row = rows.find((r) => r.id === where.id); Object.assign(row, data); return row; }),
     },
   };
+  /* The model that says what is in the file (32ae7d269); it answers nothing here, so the say-back is the product's own words. */
+  s.engine = { respond: jest.fn(async () => '') };
   s.knowledge = { ingestDocument: jest.fn(async (_org: string, input: any) => { ingested.push(input); return { chunks: 3 }; }) };
   s.remember = jest.fn(async (_o: string, _w: string, said: string, reply: any) => { remembered.push({ said, reply }); });
   s.truth = { forPerson: jest.fn(async () => ({ sessions: { value: [] } })) };
@@ -131,26 +141,29 @@ describe('what Grace reads, from asking to the yes', () => {
     expect(reply.blocks.some((b: any) => b.type === 'next_step')).toBe(false);
   });
 
+  /* Changed for the Desk (S7, 20 November 2026): it goes on the organisation's Desk, not "the handbook", and the
+     check-ins read it when it applies. */
   it('the file is said back, and nothing is added until the yes', async () => {
     const { s, rows, ingested, remembered } = assistantWorld();
     const reply = await s.sayBackADocumentForTheOrganisation(ORG, 'pp', 'Staff handbook.pdf', 'Staff handbook', HANDBOOK);
     expect(textOf(reply)).toBe(
       'I have read Staff handbook. It has 3 parts. They cover Leave, Expenses and Travel.\n\n'
-      + "Nothing is added yet. If you say yes, it becomes part of Msingi Foods' handbook. Ask Msingi Foods answers from it, and check-ins are read with it in mind. If you say no, nothing from it is kept.",
+      + "Nothing is added yet. If you say yes, it goes on Msingi Foods' Desk, where everyone in Msingi Foods can read it. Ask Msingi Foods answers from it, and check-ins read it when it applies. If you say no, nothing from it is kept.",
     );
-    expect(reply.blocks.find((b: any) => b.type === 'proposal')).toMatchObject({ summary: "Add Staff handbook to Msingi Foods' handbook?" });
+    expect(reply.blocks.find((b: any) => b.type === 'proposal')).toMatchObject({ summary: "Add Staff handbook to Msingi Foods' Desk?" });
     expect(rows[0]).toMatchObject({ kind: 'organisation_document', state: 'PARKED' });
     expect(ingested).toEqual([]);
     expect(remembered[0].said).toBe('Here is Staff handbook.pdf.');
   });
 
-  it('her yes adds it to the handbook', async () => {
+  it('her yes puts it on the Desk, as hers, with the summary she was told', async () => {
     const { s, rows, ingested } = assistantWorld();
+    s.engine.respond = jest.fn(async () => 'This is the staff handbook. It covers leave, expenses and travel.');
     await s.sayBackADocumentForTheOrganisation(ORG, 'pp', 'Staff handbook.pdf', 'Staff handbook', HANDBOOK);
     const reply = await s.resolveParkedOrganisationDocument(ORG, 'pp', 'grace-ext', rows[0], 'yes');
-    expect(textOf(reply)).toBe("I have added Staff handbook to Msingi Foods' handbook, in 3 parts. Ask Msingi Foods answers from it from now on.");
+    expect(textOf(reply)).toBe("I have added Staff handbook to Msingi Foods' Desk, in 3 parts. Ask Msingi Foods answers from it from now on, and check-ins read it when it applies.");
     expect(ingested).toHaveLength(1);
-    expect(ingested[0]).toMatchObject({ title: 'Staff handbook', text: HANDBOOK, kind: 'handbook' });
+    expect(ingested[0]).toMatchObject({ key: 'desk:staff-handbook', title: 'Staff handbook', text: HANDBOOK, kind: 'handbook', summary: 'This is the staff handbook. It covers leave, expenses and travel.', addedByUserId: 'u-grace' });
     expect(rows[0].state).toBe('ACCEPTED');
     expect(rows[0].payload.words).toBeUndefined();
   });
@@ -165,12 +178,22 @@ describe('what Grace reads, from asking to the yes', () => {
     expect(rows[0].payload.words).toBeUndefined();
   });
 
-  it('a yes from somebody who is no longer an admin adds nothing', async () => {
+  it('a yes from somebody who is no longer an admin or a lead adds nothing', async () => {
     const { s, rows, ingested } = assistantWorld({ admin: false });
     await s.sayBackADocumentForTheOrganisation(ORG, 'pp', 'Staff handbook.pdf', 'Staff handbook', HANDBOOK);
     const reply = await s.resolveParkedOrganisationDocument(ORG, 'pp', 'grace-ext', rows[0], 'yes');
-    expect(textOf(reply)).toBe('Only an admin of Msingi Foods can add a document for the whole organisation. I have not added Staff handbook. Nothing from it was kept.');
+    expect(textOf(reply)).toBe('Only an admin or a lead of Msingi Foods can add a document for the whole organisation. I have not added Staff handbook. Nothing from it was kept.');
     expect(ingested).toEqual([]);
+  });
+
+  it('a lead who says it is for the whole company is offered the file picker for the organisation, and her yes puts it on the Desk', async () => {
+    const { s, rows, ingested } = assistantWorld({ role: 'LEAD' });
+    const offer = await s.addADocument(ORG, 'pp', 'wairimu-ext', 'I want to add our sales policy for the whole company', undefined, 'u-wairimu');
+    expect(offer.blocks.find((b: any) => b.type === 'next_step')).toMatchObject({ kind: 'upload_a_document', id: 'organisation' });
+    await s.sayBackADocumentForTheOrganisation(ORG, 'pp', 'Sales policy.pdf', 'Sales policy', HANDBOOK);
+    const reply = await s.resolveParkedOrganisationDocument(ORG, 'pp', 'wairimu-ext', rows[0], 'yes');
+    expect(textOf(reply)).toMatch(/^I have added Sales policy to Msingi Foods' Desk/);
+    expect(ingested).toHaveLength(1);
   });
 });
 
@@ -182,7 +205,9 @@ describe('after the yes, a question the handbook answers', () => {
     s.knowledge.retrieve = jest.fn(async () => ({ cards: [{ title: 'Staff handbook - Travel', body: 'Use the travel form five working days before you travel.' }], truncated: false }));
     s.keptThatMatches = jest.fn(async () => []);
     const reply = await s.aQuestionAnsweredFromTheDocuments(ORG, 'grace-ext', 'u-grace', null, 'What is our travel policy?');
-    expect(textOf(reply)).toBe('Staff handbook - Travel\nUse the travel form five working days before you travel.');
+    /* Changed (round 2, T4): when the model gives no sentence, the passage is shown under its document's readable title,
+       not the part's own "Staff handbook - Travel". With a sentence, the Desk's answer is said instead (ask-answers-from-the-desk.spec.ts). */
+    expect(textOf(reply)).toBe('Staff handbook\nUse the travel form five working days before you travel.');
     s.knowledge.retrieve = jest.fn(async () => ({ cards: [], truncated: false }));
     const none = await s.aQuestionAnsweredFromTheDocuments(ORG, 'grace-ext', 'u-grace', null, 'What is our travel policy?');
     expect(textOf(none)).toBe(docs.NO_DOCUMENTS_TO_READ);

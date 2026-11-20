@@ -1,5 +1,6 @@
 import { GroundsService } from './grounds.service';
-import { readPeopleAndSetup, howThisCheckInRuns, theRhythmInWords } from './people-and-setup';
+import { readPeopleAndSetup, howThisCheckInRuns } from './people-and-setup';
+import { howOftenItRuns } from './the-check-ins-own-schedule';
 
 /**
  * PEOPLE AND SETUP, AS EACH READER IS SERVED IT (Release 1B, pull request 1 of 3). Proved at the server, for each reader, on
@@ -38,10 +39,9 @@ function theSalesCheckIn(over: { switchOn?: boolean; overWhatsApp?: boolean | nu
     checkIns: [
       { participantId: 'p-mercy', status: 'COMPLETED', isSetup: false, sessionNumber: 1, closedReason: null },
       { participantId: 'p-mercy', status: 'COMPLETED', isSetup: false, sessionNumber: 2, closedReason: null },
-      { participantId: 'p-mercy', status: 'COMPLETED', isSetup: false, sessionNumber: 3, closedReason: 'auto_closed' },
+      { participantId: 'p-mercy', status: 'COMPLETED', isSetup: false, sessionNumber: 3, closedReason: 'auto_closed', turns: [] },
       { participantId: 'p-kevin', status: 'COMPLETED', isSetup: false, sessionNumber: 1, closedReason: null },
     ],
-    roundCompletions: [1, 2, 3, 4, 5].map((n) => ({ sessionNumber: n })),
   };
   const users: Record<string, any> = {
     'u-grace': { role: 'LEAD', organizationId: 'org-drop', email: 'grace@dropaccess.test', awaitingOrgApproval: false },
@@ -77,13 +77,13 @@ describe('the lead, Grace, reads the whole page', () => {
     /* Changed 28 October 2026 (fix plan, pattern 1): the people a session waits on, as Today's "1 of N" counts them. Grace runs it and checks in
        when she chooses, so she is not counted. Changed again 3 November: somebody invited who has not joined is counted (Hafsah, 1 November:
        "counted and named as not joined"), as Today and the board count them, so Peter is one of the 4. */
-    expect(r.howItRuns).toBe('4 people answer every weekday, until 30 October, on WhatsApp or here.');
+    expect(r.howItRuns).toBe('4 people answer every weekday, Monday to Friday, until 30 October, on WhatsApp or here.');
     expect(r.problems).toEqual([
       { participantId: 'p-mercy', says: 'Mercy Wanjiru has no WhatsApp number, so Mercy answers here.', fix: 'add-a-number' },
       { participantId: 'p-joseph', says: "Nobody has described Joseph Mutua's role here, so Joseph gets the general questions.", fix: 'add-their-role' },
       { participantId: 'p-peter', says: "Peter Ouma can't start, because the invitation to Peter bounced.", fix: 'fix-the-address' },
     ]);
-    expect(r.sessions).toBe('5 of 18 sessions done. Sessions already done are never removed.');
+    expect(r.sessions).toBe('3 of 18 sessions done. Sessions already done are never removed.');
     expect(r.joinedWithTheLink).toBe('1 person has answered with it.');
     expect(r.kindOfWork).toBe('sales team');
     expect(r.othersWithAccess).toBe("The people above and the admins of Drop Access can see it. So can a lead in the same department, once the team's report is shared.");
@@ -93,7 +93,7 @@ describe('the lead, Grace, reads the whole page', () => {
   it('a check-in kept in Groundwork asks nobody for a number, and says "here"', async () => {
     const { prisma } = theSalesCheckIn({ overWhatsApp: false });
     const r: any = await read(prisma, 'u-grace');
-    expect(r.howItRuns).toBe('4 people answer every weekday, until 30 October, here.');
+    expect(r.howItRuns).toBe('4 people answer every weekday, Monday to Friday, until 30 October, here.');
     expect(r.problems.map((p: any) => p.fix)).toEqual(['add-their-role', 'fix-the-address']);
   });
 });
@@ -103,7 +103,7 @@ describe('an admin who does not run it, Naomi, reads the whole page with no endi
     const { prisma, writes } = theSalesCheckIn();
     const r: any = await read(prisma, 'u-naomi');
     expect(r.view).toBe('admin');
-    expect(r.howItRuns).toBe('4 people answer every weekday, until 30 October, on WhatsApp or here.');
+    expect(r.howItRuns).toBe('4 people answer every weekday, Monday to Friday, until 30 October, on WhatsApp or here.');
     expect(r.problems).toEqual([
       { participantId: 'p-mercy', says: 'Mercy Wanjiru has no WhatsApp number, so Mercy answers here.', fix: 'add-a-number' },
       { participantId: 'p-joseph', says: "Nobody has described Joseph Mutua's role here, so Joseph gets the general questions.", fix: null },
@@ -126,7 +126,7 @@ describe('a team member, Mercy, is served only her short page', () => {
     expect(r).toEqual({
       on: true,
       view: 'member',
-      howItRuns: '4 people answer every weekday, until 30 October, on WhatsApp or here.',
+      howItRuns: '4 people answer every weekday, Monday to Friday, until 30 October, on WhatsApp or here.',
       yourRole: 'Rep, Kiambu and schools',
       status: 'AWAITING_PARTIES',
       yourSessionsDone: 2,
@@ -176,13 +176,18 @@ describe('the check-in\'s own read rules come first', () => {
 describe('how it runs, as one sentence, for every rhythm', () => {
   const base = { answering: 4, endsOn: null, noEnd: true, onWhatsApp: true, endedBy: 'you' as const, timeZone: 'Africa/Nairobi' };
   it('reads each rhythm in plain words', () => {
-    expect(theRhythmInWords({ cadence: 'WEEKLY', cadenceAnchorDay: 1 })).toBe('every Monday');
-    expect(theRhythmInWords({ cadence: 'WEEKLY' })).toBe('every week');
-    expect(theRhythmInWords({ cadence: 'FORTNIGHTLY', cadenceAnchorDay: 5 })).toBe('every other Friday');
-    expect(theRhythmInWords({ cadence: 'MONTHLY', cadenceAnchorDay: 2 })).toBe('on the 2nd of every month');
-    expect(theRhythmInWords({ cadence: 'DAILY', workingDays: [] })).toBe('every day');
-    expect(theRhythmInWords({ cadence: 'DAILY', workingDays: [1, 3, 5] })).toBe('every Monday, Wednesday and Friday');
-    expect(theRhythmInWords({ cadence: 'ONE_TIME' })).toBe('once');
+    expect(howOftenItRuns({ cadence: 'WEEKLY', cadenceAnchorDay: 1 })).toBe('every Monday');
+    expect(howOftenItRuns({ cadence: 'WEEKLY' })).toBe('every week');
+    expect(howOftenItRuns({ cadence: 'FORTNIGHTLY', cadenceAnchorDay: 5 })).toBe('every other Friday');
+    expect(howOftenItRuns({ cadence: 'MONTHLY', cadenceAnchorDay: 2 })).toBe('on the 2nd of each month');
+    /* S18 (staging check, 4 November): one wording everywhere. A daily check-in with no days saved runs Monday to Friday, as the
+       scheduler runs it, so it is said that way; every day of the week is "every day". Was 'every day' for no days saved. */
+    expect(howOftenItRuns({ cadence: 'DAILY', workingDays: [] })).toBe('every weekday, Monday to Friday');
+    expect(howOftenItRuns({ cadence: 'DAILY', workingDays: [0, 1, 2, 3, 4, 5, 6] })).toBe('every day');
+    expect(howOftenItRuns({ cadence: 'FORTNIGHTLY' })).toBe('every two weeks');
+    expect(howOftenItRuns({ cadence: 'MONTHLY' })).toBe('once a month');
+    expect(howOftenItRuns({ cadence: 'DAILY', workingDays: [1, 3, 5] })).toBe('every Monday, Wednesday and Friday');
+    expect(howOftenItRuns({ cadence: 'ONE_TIME' })).toBe('once');
   });
   it('fee notes, with no end, and a team pulse answered once', () => {
     expect(howThisCheckInRuns({ ...base, cadence: 'WEEKLY', cadenceAnchorDay: 1 })).toBe('4 people answer every Monday, until you end it, on WhatsApp or here.');

@@ -169,7 +169,7 @@ describe('the box never renders empty', () => {
   it('with no pattern and no blocker it still says what to do', () => {
     const out = whatToWorkOnNext(memberBase);
     expect(out.beforeNextTime.length).toBeGreaterThan(0);
-    expect(out.whyItMatters).toContain('session 2 of 6');
+    expect(out.whyItMatters).toContain('check-in 2 of 6');
   });
 
   it('and the lead section says plainly when nothing is blocked', () => {

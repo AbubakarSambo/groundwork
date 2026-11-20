@@ -32,6 +32,9 @@ const SAYS_SOMETHING_OF_IT = new RegExp(
 export function isAWholeSentence(topic: string): boolean {
   const t = (topic ?? '').trim().replace(/[.!?]+$/, '');
   if (!t) return false;
+  /* A topic that itself says people differ ("Lucy Njeri and participants count sales differently") is a sentence whatever its verb is: after "about" it
+     read "...about You and participants count sales differently", and after "see" it read "...see ... differently differently" (run 6, 20 November). */
+  if (/\bdifferently$/i.test(t)) return true;
   if (STARTS_A_NOUN_CLAUSE.test(t)) return SAYS_SOMETHING_OF_IT.test(t);
   /* Two sides set against each other with ", while" or ", whereas" are two clauses, so a sentence (item 21, the loans board). */
   return A_VERB.test(` ${t}`) || /,\s+(?:while|whereas)\s+\S+\s+\S+/i.test(t);

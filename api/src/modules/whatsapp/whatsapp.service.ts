@@ -3,8 +3,8 @@ import { theOutboxKey, mayItGo, letItGoAgain } from '../../common/the-one-outbox
  * The one outbox key for a send. A message held for the night was claimed when it was held, so its morning send claims its own key: the held
  * queue sent Wanjiru's morning summary three times in eleven seconds (two-week check, 15 January).
  */
-function aKeyForThisSend(to: string, text: string, context: { kind?: string | null; checkInId?: string | null }): string | null {
-  return theOutboxKey({ channel: 'whatsapp', to, kind: String(context.kind ?? '').replace(/:(?:template|held|quiet-hours)$/, '') || null, about: context.checkInId ?? null, text });
+function aKeyForThisSend(to: string, text: string, context: { kind?: string | null; checkInId?: string | null; answering?: string | null }): string | null {
+  return theOutboxKey({ channel: 'whatsapp', to, kind: String(context.kind ?? '').replace(/:(?:template|held|quiet-hours)$/, '') || null, about: context.checkInId ?? null, text, answering: context.answering ?? null });
 }
 /** A read receipt and the "typing" sign are not a message to anybody: they go through the one door, and claim nothing. */
 const A_RECEIPT = Symbol('a read receipt');
@@ -43,6 +43,8 @@ export function theMessageIdIn(body: string): string | undefined {
 export type SendContext = {
   checkInId?: string | null;
   kind?: string;
+  /** The id of the message from the person that this one answers: a reply to a different message is a different reply, even in the same words. */
+  answering?: string | null;
   /** The product's own words for the template's {{1}}, {{2}}, used when the message has to go as a template. */
   params?: string[];
   /** The words for a newer template's blanks, by its name, where they differ from `params` (a-message-outside-the-window.ts, THE_NEWER_TEMPLATE_FIRST). */
@@ -79,6 +81,7 @@ import { EmailService } from '../email/email.service';
 import { META_REFUSED_IT, ALREADY_GO_BY_EMAIL, AN_OPENING, BY_EMAIL_ROUTINE, BY_EMAIL_AFTER_THEIR_OWN, THE_OPENING_EMAILS, oneMessage, theOnceKey, theSenderFor, theSubjectFor, theWordsForAnEmail, whatsAppCouldNotTakeIt } from './by-email-instead';
 import { hasBeenToldOnce, nowToldOnce } from '../engagement/a-message-sent-once';
 import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
+import { aPersonWhoWasRemoved } from '../participants/held-for-a-seat';
 import { aLocalForm, callingCodeOf, formsOfTheSameNumber, tidyANumber } from './a-number-whatsapp-can-reach';
 import { theCountryCodeOf, tidyANumberFor } from './the-organisations-country';
 import { itSendsFromTheirNumber, WHAT_SAYS_IT_WORKS, whatIsMissingFrom, NOTHING_WAS_SAVED_BECAUSE, THIS_IS_FOR_YOUR_OWN_NUMBER, THAT_IS_A_TEAM_MEMBERS_NUMBER, A_PHONE_NUMBER_IS_NOT_ITS_ID } from './a-connection-that-works';
@@ -88,7 +91,7 @@ import { aSignInsNumberChanged, refuseANumberOnSomebodyElse } from './one-number
 import { FIRST_CONTACT, FIRST_CONTACT_NOT_APPROVED, theFirstContactLine } from './the-first-message-to-a-number';
 import { aRoutineWhatsApp, theirRoutineMessagesToday } from '../engagement/one-routine-message-a-day';
 import { heldUntilTheMorning, QUIET_HOURS_HELD } from './quiet-hours-are-the-organisations';
-import { GROUNDWORK_IS_PAUSED_THERE, thisOrganisationIsPaused } from '../billing/the-trial-grace';
+import { GROUNDWORK_IS_PAUSED_THERE, CHECK_INS_ARE_PAUSED, thisOrganisationIsPaused } from '../billing/the-trial-grace';
 import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THIS_RELEASE, NOT_TURNED_ON_QUIETLY, templateFor, theTemplateToUse, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, APPROVALS, ONLY_HELD_BY_NOT_NOW, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW, NEVER_THE_FIRST_MESSAGE } from './a-message-outside-the-window';
 
 /**
@@ -181,12 +184,25 @@ export class WhatsAppService implements OnModuleInit {
    * month's count of held messages goes up (at the limit, the admins are told once). Null when it may go.
    */
   private async heldFor(organizationId: string | null, to: string, context: SendContext): Promise<SendResult | null> {
+    /* NOBODY WHO WAS REMOVED IS WRITTEN TO FIRST (run 7): the one owner of that is asked here, for every send Groundwork starts. A reply to somebody who just wrote still goes (the removal message is one). */
+    if (isBusinessInitiated(String(context.kind ?? '').split(':')[0]) && (await aPersonWhoWasRemoved(this.prisma as any, { phone: to }))) {
+      const result: SendResult = { sent: false, error: 'They were removed from the check-in, and nothing more is sent to them.' };
+      await this.writeItDown(organizationId, to, result, { ...context, kind: `${context.kind}:removed` });
+      return result;
+    }
     if (!organizationId) return null;
     /* GROUNDWORK IS PAUSED THERE (2 November 2026): nothing Groundwork starts goes, and nobody is told on WhatsApp why. Written
        down, so the app and the daily delivery alert can say it. A reply to somebody who just wrote still goes. */
     if (isBusinessInitiated(String(context.kind ?? '').split(':')[0]) && (await thisOrganisationIsPaused(this.prisma, organizationId))) {
       const result: SendResult = { sent: false, error: GROUNDWORK_IS_PAUSED_THERE };
       await this.writeItDown(organizationId, to, result, { ...context, kind: `${context.kind}:paused` });
+      return result;
+    }
+    /* A person who writes in a pause is told, once, that check-ins are paused: not that WhatsApp is off and the check-in carries on in the app. */
+    if (await thisOrganisationIsPaused(this.prisma, organizationId)) {
+      const result: SendResult = { sent: false, error: GROUNDWORK_IS_PAUSED_THERE };
+      await this.writeItDown(organizationId, to, result, { ...context, kind: context.kind ? `${context.kind}:paused` : 'paused' });
+      await this.tellThemItIsHeld(organizationId, to, context, CHECK_INS_ARE_PAUSED).catch((err: any) => this.logger.warn(`Could not tell ${to} that check-ins are paused: ${err?.message}`));
       return result;
     }
     if (!this.addOn) return null;
@@ -204,10 +220,12 @@ export class WhatsAppService implements OnModuleInit {
    * wrote and heard nothing reads the product as dead. So when a message is held by the add-on or the
    * month's limit and the person wrote in the last 24 hours (a reply always is), they get ONE free
    * message, not counted towards the month, saying why and that the check-in carries on in the app.
-   * Once in any 24 hours, so a conversation does not become a stream of the same sentence. Outside
+   * Once in any 24 hours, so a conversation does not become a stream of the same sentence (except in a pause, which answers every message). Outside
    * the 24 hours nothing can go at all, and the app says it from the send record.
    */
   static heldSaying(saying: string): string {
+    /* In a pause there is nothing to carry on with anywhere. */
+    if (saying === CHECK_INS_ARE_PAUSED) return saying;
     return `${saying} You can carry on in the Groundwork app.`;
   }
 
@@ -222,7 +240,8 @@ export class WhatsAppService implements OnModuleInit {
     const told = await (this.prisma.whatsAppSend as any)
       ?.findFirst?.({ where: { phone: { in: forms }, kind: 'held-told', sentAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }, select: { id: true } })
       ?.catch?.(() => null);
-    if (told) return;
+    /* In a pause the line goes every time somebody writes: they are each answered, and nothing else is going to answer (run 9). Any other held sentence is still said once in 24 hours. */
+    if (told && saying !== CHECK_INS_ARE_PAUSED) return;
     const text = WhatsAppService.heldSaying(saying);
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
     let result: SendResult;
@@ -1101,14 +1120,18 @@ export class WhatsAppService implements OnModuleInit {
     });
     const person = found && (await this.theSameNumber(organizationId, found.phone, rawNumber)) ? found : null;
     if (person) {
-      const userId = person.linkedUserId
+      /* A sign-in that was turned off is nobody's: a removed person's number is on the roster still, and linking it to the dead sign-in answered her as herself (run 7). */
+      const linked = person.linkedUserId
+        ? (await this.prisma.user.findFirst({ where: { id: person.linkedUserId, deletedAt: null }, select: { id: true } }))?.id ?? null
+        : null;
+      const userId = linked
         ?? (person.email ? (await this.prisma.user.findFirst({ where: { organizationId, email: person.email, deletedAt: null }, select: { id: true } }))?.id ?? null : null);
       return { personId: person.id, userId, externalId: person.externalId };
     }
     const foundUser = await this.prisma.user.findFirst({ where: { organizationId, phoneNumber: { in: forms }, deletedAt: null }, select: { id: true, email: true, phoneNumber: true } });
     const user = foundUser && (await this.theSameNumber(organizationId, foundUser.phoneNumber, rawNumber)) ? foundUser : null;
     if (!user) return { personId: null, userId: null, externalId: null };
-    const byEmail = user.email ? await this.prisma.person.findFirst({ where: { organizationId, email: user.email }, select: { id: true, externalId: true } }) : null;
+    const byEmail = await this.prisma.person.findFirst({ where: { organizationId, email: user.email }, select: { id: true, externalId: true } });
     return { personId: byEmail?.id ?? null, userId: user.id, externalId: byEmail?.externalId ?? null };
   }
 

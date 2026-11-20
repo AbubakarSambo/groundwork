@@ -1,3 +1,4 @@
+/* Batch S round 2, T11: the welcome no longer carries a privacy note ("What you ask me stays private."); the sentences below are what it says now. */
 import { AskService } from './ask.service';
 import { askStartersFor, askFirstWelcome } from '../assistant/ask-name';
 
@@ -43,7 +44,7 @@ describe('a member with no suites on', () => {
   it('is never offered leave or spending, in the starters or the welcome', async () => {
     const r = await read(miriam, []);
     expect(r.starters).toEqual(['What did I say I would do?', 'What is my check-in for, and who reads it?', 'When is my next check-in?', "What are the company's priorities right now?"]);
-    expect(r.welcome).toBe('This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins. What you ask me stays private.');
+    expect(r.welcome).toBe('This is Ask Baridi. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. Ask me about the company, about your work, or about your check-ins.');
     expect(JSON.stringify(r)).not.toMatch(/leave|spend/i);
   });
 });
@@ -55,8 +56,9 @@ describe('a member with leave on', () => {
     expect(r.starters.join(' ')).not.toMatch(/spend/);
     expect(r.welcome).toContain('Ask me about the company, about your work, or about your check-ins. You can also ask me for leave.');
   });
-  it('with both on, is offered both in one line', async () => {
-    expect((await read(miriam, ['leave', 'spend'])).starters).toContain('Ask for leave, or to spend money.');
+  /* One line for each thing in the one guide (Batch S, S5), so with both on there are two lines, not one joined line. */
+  it('with both on, is offered both', async () => {
+    expect((await read(miriam, ['leave', 'spend'])).starters).toEqual(expect.arrayContaining(['Ask for leave.', 'Ask to spend money.']));
     expect((await read(miriam, ['spend'])).starters).toContain('Ask to spend money.');
   });
 });
@@ -65,7 +67,7 @@ describe('a guest', () => {
   it('is offered only what is about their own check-in, and is welcomed as a guest', async () => {
     const r = await read(gus, ['leave', 'spend'], true);
     expect(r.starters).toEqual(['What did I say I would do?', 'What is my check-in for, and who reads it?', 'When is my next check-in?']);
-    expect(r.welcome).toBe('This is Ask Baridi. You are a guest here, so I answer you only about your own check-in. What you ask me stays private.');
+    expect(r.welcome).toBe('This is Ask Baridi. You are a guest here, so I answer you only about your own check-in.');
     expect(JSON.stringify(r.starters)).not.toMatch(/company|priorities|leave|spend|context/i);
   });
 });

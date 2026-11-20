@@ -102,11 +102,11 @@ export function nextMove(state: CoachingStateShape, read: SessionRead): NextMove
   // A step with no reason is an accusation, and a step on an empty session is a
   // guess. Both produce nothing, which is the correct output.
   if (!read.reason?.trim()) {
-    return { move: 'wait', because: 'nothing in this session gave a reason to offer a step.' };
+    return { move: 'wait', because: 'nothing in this check-in gave a reason to offer a step.' };
   }
   /* A step rests on something of the work: layer 3's step rests on its pattern's distinct items across the record. */
   if (!read.hadSubstance) {
-    return { move: 'wait', because: 'this session had nothing checkable in it, so there is nothing to coach from.' };
+    return { move: 'wait', because: 'this check-in had nothing checkable in it, so there is nothing to coach from.' };
   }
 
   // A step is outstanding. Ask what happened before offering anything new -

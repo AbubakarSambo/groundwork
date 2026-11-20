@@ -2,7 +2,7 @@ import { GroundScenario } from '@prisma/client';
 import {
   boardAs, SALES_RUN, BISI, FEMI, NGOZI, KWAME, JUMA, SETUP_ADMIN, A_RELEASED_REPORT, type Setup,
 } from './the-switchboards-sections-harness';
-import { GROUNDWORK_DOES_NOT_CHOOSE, NOTHING_SAYS_WHAT_WOULD_SETTLE_IT, NO_SIGNALS_YET } from './where-this-is-heading';
+import { NOTHING_SAYS_WHAT_WOULD_SETTLE_IT, NO_SIGNALS_YET } from './where-this-is-heading';
 
 /**
  * REQUEST 108 (d): "WHERE THIS IS HEADING" AND "RECORD THE DECISION".
@@ -35,13 +35,13 @@ describe('request 108 (d): where this is heading, as Bisi, who runs it, reads it
         { value: 'ALIGNED', says: 'The team is on course.', more: null },
         { value: 'REACH_WITH_A_CHANGE', says: 'The team can reach it, with a change in how the work is done.', more: null },
         { value: 'GAPS_IDENTIFIED', says: 'The target needs to change.', more: null },
-        { value: 'NOT_YET', says: 'It is not settled yet, and more sessions are needed.', more: null },
+        { value: 'NOT_YET', says: 'It is not settled yet, and more check-ins are needed.', more: null },
       ],
       outcomesSays: null,
       signals: [
         {
-          says: 'The team is aiming for 40 approved facilities this quarter. If it keeps moving at the pace it has since session 1, it would be about 31 by session 6, against an aim of 40.',
-          from: 'It was 6 in session 1 and 11 in session 2, and this check-in runs for 6 sessions.',
+          says: 'The team is aiming for 40 approved facilities this quarter. If it keeps moving at the pace it has since check-in 1, it would be about 31 by check-in 6, against an aim of 40.',
+          from: 'It was 6 in check-in 1 and 11 in check-in 2, and this check-in runs for 6 check-ins.',
         },
         { says: 'Femi Okonkwo is waiting for the bank statements.', from: 'This was raised once, on 16 September.' },
         { says: 'Ngozi Eze is waiting on Mr. Adebayo for a date for the credit decision.', from: 'This was raised once, on 16 September.' },
@@ -50,7 +50,6 @@ describe('request 108 (d): where this is heading, as Bisi, who runs it, reads it
       whatWouldSettleIt: ['Whether to take the credit committee delays to the Head of Credit.'],
       whatWouldSettleItSays: 'You wrote this down as still to decide.',
       whoDecides: 'You decide.',
-      groundworkDoesNotChoose: '',
       recordTheDecision: 'Record the decision',
       decided: null,
     });
@@ -68,13 +67,13 @@ describe('request 108 (d): where this is heading, as Bisi, who runs it, reads it
 
   it('once she has recorded it, says which ending and when, and offers nothing more to record', async () => {
     const b = await boardAs({ ...RUN, status: 'CLOSED', endState: 'NOT_YET', resolvedAt: new Date('2026-09-30T10:00:00Z') }, ...BISI);
-    expect(b.whereThisIsHeading.decided).toBe('You recorded the decision on 30 September. The outcome is that it is not settled yet, and more sessions are needed.');
+    expect(b.whereThisIsHeading.decided).toBe('You recorded the decision on 30 September. The outcome is that it is not settled yet, and more check-ins are needed.');
     expect(b.whereThisIsHeading.recordTheDecision).toBeNull();
   });
 
   it('read the next year, the same board writes the year out', async () => {
     const b = await boardAs({ ...RUN, status: 'CLOSED', endState: 'NOT_YET', resolvedAt: new Date('2026-09-30T10:00:00Z'), clock: { ...RUN.clock, now: new Date('2027-01-15T12:00:00Z') } }, ...BISI);
-    expect(b.whereThisIsHeading.decided).toBe('You recorded the decision on 30 September 2026. The outcome is that it is not settled yet, and more sessions are needed.');
+    expect(b.whereThisIsHeading.decided).toBe('You recorded the decision on 30 September 2026. The outcome is that it is not settled yet, and more check-ins are needed.');
   });
 });
 
@@ -84,7 +83,6 @@ describe('request 108 (d): who else reads it', () => {
     expect(b.whereThisIsHeading.whoDecides).toBe('Bisi Adeyemi decides.');
     expect(b.whereThisIsHeading.whatWouldSettleItSays).toBe('Bisi Adeyemi wrote this down as still to decide.');
     expect(b.whereThisIsHeading.recordTheDecision).toBeNull();
-    expect(b.whereThisIsHeading.groundworkDoesNotChoose).toBe(GROUNDWORK_DOES_NOT_CHOOSE);
   });
 
   /* Changed by decision 93, row 14. This pinned "Juma, an admin who only reads, is not sent it", the restriction Hafsah removed. */
@@ -93,7 +91,6 @@ describe('request 108 (d): who else reads it', () => {
     expect(b.whereThisIsHeading.whoDecides).toBe('Bisi Adeyemi decides.');
     expect(b.whereThisIsHeading.whatWouldSettleItSays).toBe('Bisi Adeyemi wrote this down as still to decide.');
     expect(b.whereThisIsHeading.recordTheDecision).toBeNull();
-    expect(b.whereThisIsHeading.groundworkDoesNotChoose).toBe(GROUNDWORK_DOES_NOT_CHOOSE);
     const bisi = await boardAs(RUN, ...BISI);
     expect(b.whereThisIsHeading.signals).toEqual(bisi.whereThisIsHeading.signals);
   });

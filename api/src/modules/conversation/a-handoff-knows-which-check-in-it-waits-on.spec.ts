@@ -130,20 +130,18 @@ describe('the handoff the conversation records', () => {
   });
 
   /*
-   * A WAIT IS DATED FROM THEIR OWN "SINCE" (assessment test, 2 November). Aisha said on 16 November that she asked Wanjiru for the
-   * write-off sign-off on 5 November, and the board said "waiting since 16 November", the day of the session.
+   * A WAIT IS DATED FROM THE DAY IT WAS SAID (batch 2, group 3, which replaces the 2 November rule of dating it from their own "since").
+   * Round 50: Brian said on 5 November that he had asked on 30 October, and the board read "raised a blocker on Friday 30 October" and
+   * "This was raised once, on 30 October". "Raised on" and "waiting since" read the day it was said; the day their words refer to stays
+   * in the assessment.
    */
-  it('is dated from the day they said it started, and from the session only when they did not say', async () => {
+  it('is dated from the session it was said in, whatever day their words refer to', async () => {
     const since = scaffold({ dependencies: [{ ...finance18, since: 'on 5 November', sinceDay: '2026-11-05' }] });
     await since.svc.extractDependencies('c1', 'p-miriam', 'sales');
-    expect(since.created[0].createdAt.toISOString().slice(0, 10)).toBe('2026-11-05');
+    expect(since.created[0].createdAt.toISOString().slice(0, 10)).toBe('2026-11-16');
 
     const unsaid = scaffold({ dependencies: [finance18] });
     await unsaid.svc.extractDependencies('c1', 'p-miriam', 'sales');
     expect(unsaid.created[0].createdAt.toISOString().slice(0, 10)).toBe('2026-11-16');
-
-    const later = scaffold({ dependencies: [{ ...finance18, sinceDay: '2026-11-20' }] });
-    await later.svc.extractDependencies('c1', 'p-miriam', 'sales');
-    expect(later.created[0].createdAt.toISOString().slice(0, 10)).toBe('2026-11-16');
   });
 });

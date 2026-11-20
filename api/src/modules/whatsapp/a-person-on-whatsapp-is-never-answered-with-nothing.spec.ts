@@ -87,7 +87,7 @@ describe('the platform handler', () => {
   });
 
   it.each([
-    ['a spent balance', () => { throw new ForbiddenException('This check-in is beyond your ten free check-ins. Resubscribe to continue checking in.'); }, /beyond your ten free/],
+    ['a spent balance', () => { throw new ForbiddenException("You've used your free check-ins. Upgrade to carry on."); }, /used your free check-ins/],
     ['a paused ground', () => { throw new BadRequestException('This check-in is on hold. Nothing can be added to it until it is resumed.'); }, /on hold/],
     ['a failed model call', () => { throw new Error('model unreachable'); }, /model unreachable/],
   ])('%s escaping the handler still produces exactly one outbound text carrying the refusal’s own sentence', async (_n, handle, says) => {
@@ -115,7 +115,9 @@ describe('the organisation handler', () => {
     /* 700, not 600 (engine test, second run): the open path now also follows today's session when the one asked for had a round
        that had closed, which put the try a few characters further back. Still the one try around the open and the answer. */
     /* 1100 (20 October): the words that switch are now said through theWordsOnce, and the direct morning's own opening is read on the same path. Still the one try. */
-    const before = SRC.slice(at - 1100, at);
+    /* 2400 (20 November, Batch S round 2): already failing on wip/combined at 32e21c871; the try sits 2,297 characters back since the missed-check-in notice joined the open path. Still the one try. */
+    /* 3000 (20 November 2026, WhatsApp test C34, merged): a first message that is an answer now opens the check-in as Add something does, which put the try further back again. Still the one try. */
+    const before = SRC.slice(at - 3000, at);
     // Changed 26 October 2026 (Hafsah: item 3): 1500, not 700: an engine close now ends the check-in on the phone inside the same try, which put the catch further on.
     const after = SRC.slice(at, at + 1500);
     expect(before).toMatch(/try \{/);
@@ -124,7 +126,7 @@ describe('the organisation handler', () => {
 
   it('retries the report SEND and never re-runs the report', () => {
     const at = SRC.indexOf('private async sendTheReport(');
-    const body = SRC.slice(at, SRC.indexOf('private async readLanguageOnce('));
+    const body = SRC.slice(at, SRC.indexOf('private async inTheirLanguage('));
     /* sendOn: the same send, on the number the person last wrote to (survey item 8). */
     /* Changed 18 October (Drop Access run 1, items 22 and 23): a third send, the thank-you when the report has nothing in it yet, which goes inside the 24 hours only. */
     expect(body.match(/this\.whatsapp\.sendOn\(/g)).toHaveLength(3);

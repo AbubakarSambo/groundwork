@@ -48,7 +48,7 @@ describe('a live invitation', () => {
     expect(p.leadFirstName).toBe('Wairimu');
     expect(p.endsAt).toBe('2026-09-30T00:00:00.000Z');
     /* Changed 3 November 2026 (Hafsah): the hour it opens and its name, from what setup holds. */
-    expect(p.schedule).toBe('About ten minutes each weekday, from 8am, for Sales team, Q3.');
+    expect(p.schedule).toBe('About ten minutes every weekday, Monday to Friday, from 8am, for Sales team, Q3.' /* S18, 7 November: the one cadence wording */);
     expect(p.expired).toBeUndefined();
   });
 });
@@ -106,19 +106,22 @@ describe('"Send me a fresh link"', () => {
 /* Changed 3 November 2026 (Hafsah: "'From 4pm' and the topic in the invitation come from what setup already holds: the check-in's opening
    time and its name or purpose. If either isn't set, leave it out; don't guess."). A daily check-in opens at 8 in the morning, so it
    says so; every other rhythm opens at the start of its day, so no hour is said. With no name given here, no topic is said. */
+/* Changed 7 November 2026 (staging check S18): how often is worded once, by howOftenItRuns, so the invitation says it as every other page
+   does ("every weekday, Monday to Friday", "every Monday"), and a daily check-in with no days saved runs on weekdays, as it is scheduled. */
 describe('how often it asks, in words', () => {
   it.each([
-    [{ cadence: 'DAILY', workingDays: [1, 2, 3, 4, 5] }, 'About ten minutes each weekday, from 8am.'],
-    [{ cadence: 'DAILY', workingDays: [] }, 'About ten minutes each day, from 8am.'],
-    [{ cadence: 'DAILY', workingDays: [1, 3, 5] }, 'About ten minutes on Mondays, Wednesdays and Fridays, from 8am.'],
-    [{ cadence: 'WEEKLY', cadenceAnchorDay: 1 }, 'About ten minutes every week, on Mondays.'],
-    [{ cadence: 'WEEKLY' }, 'About ten minutes every week.'],
-    [{ cadence: 'FORTNIGHTLY' }, 'About ten minutes every two weeks.'],
-    [{ cadence: 'MONTHLY' }, 'About ten minutes once a month.'],
+    [{ cadence: 'DAILY', workingDays: [1, 2, 3, 4, 5] }, 'About ten minutes every weekday, Monday to Friday, from 8am.'],
+    [{ cadence: 'DAILY', workingDays: [] }, 'About ten minutes every weekday, Monday to Friday, from 8am.'],
+    [{ cadence: 'DAILY', workingDays: [0, 1, 2, 3, 4, 5, 6] }, 'About ten minutes every day, from 8am.'],
+    [{ cadence: 'DAILY', workingDays: [1, 3, 5] }, 'About ten minutes every Monday, Wednesday and Friday, from 8am.'],
+    [{ cadence: 'WEEKLY', cadenceAnchorDay: 1 }, 'About ten minutes every Monday, from 8am.'],
+    [{ cadence: 'WEEKLY' }, 'About ten minutes every week, from 8am.'],
+    [{ cadence: 'FORTNIGHTLY' }, 'About ten minutes every two weeks, from 8am.'],
+    [{ cadence: 'MONTHLY' }, 'About ten minutes once a month, from 8am.'],
     [{ cadence: 'SEQUENTIAL', leadFirstName: 'Wairimu' }, 'About ten minutes each time Wairimu checks in.'],
     [{ cadence: 'ONE_TIME' }, 'One check-in, of about ten minutes.'],
-    [{ cadence: 'DAILY', workingDays: [1, 2, 3, 4, 5], label: 'Deal progress' }, 'About ten minutes each weekday, from 8am, for Deal progress.'],
-    [{ cadence: 'WEEKLY', cadenceAnchorDay: 1, label: 'Deal progress' }, 'About ten minutes every week, on Mondays, for Deal progress.'],
+    [{ cadence: 'DAILY', workingDays: [1, 2, 3, 4, 5], label: 'Deal progress' }, 'About ten minutes every weekday, Monday to Friday, from 8am, for Deal progress.'],
+    [{ cadence: 'WEEKLY', cadenceAnchorDay: 1, label: 'Deal progress' }, 'About ten minutes every Monday, from 8am, for Deal progress.' /* Changed 20 November 2026 (channel test W27, Hafsah: sessions open at 8 where the team is): every rhythm now opens at 8, not only daily. */],
     [{ cadence: 'ONE_TIME', label: 'Deal progress' }, 'One check-in, of about ten minutes, for Deal progress.'],
   ])('%j reads "%s"', (g, sentence) => {
     expect(whenItAsks(g as any)).toBe(sentence);

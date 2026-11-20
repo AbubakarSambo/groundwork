@@ -2,6 +2,7 @@ import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-
 import { plainWordsByPerson, atTheStart } from '../reports/party-labels';
 import { dedupeDependencies } from './reads';
 import { oneBlockerPerThingWaitedOn } from './a-blocker-with-nothing-in-it-is-the-same-blocker';
+import { wasAQuietClose } from '../grounds/an-answer-includes-a-refusal';
 import { whatHasStayedTheSame, theCheckInItWasFirstSaidIn, type ToLookAt } from './the-same-thing-for-three-check-ins';
 
 /**
@@ -31,14 +32,15 @@ export interface TheRowsItReads {
 
 export async function theSameThingFromTheRows(prisma: any, r: TheRowsItReads): Promise<ToLookAt[]> {
   const { groundId, checkIns, rawDependencies, myParticipantId, nameOf, aColleague } = r;
-  const finishedOf = (pid: string) => checkIns.filter((c) => c.participantId === pid && c.status === 'COMPLETED');
+  /* A round the person finished and said something in, once per round: a round the clock closed with nothing said is not one of "their check-ins", and a round is not two because it has two rows (run 10: "9 check-ins" in 8 rounds). */
+  const finishedOf = (pid: string) => checkIns.filter((c) => c.participantId === pid && c.status === 'COMPLETED' && !wasAQuietClose(c as any));
   const people = (r.participants ?? [])
     .filter((p) => !p.managingOnly && p.id !== myParticipantId)
     .map((p) => ({
       participantId: p.id as string,
       who: nameOf(p.id) ?? aColleague(p.id),
       nameIsTheirRole: !([p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim()),
-      finished: finishedOf(p.id).map((c) => c.sessionNumber),
+      finished: [...new Set(finishedOf(p.id).map((c) => c.sessionNumber))],
     }))
     .filter((p) => p.finished.length >= 3);
   if (!people.length) return [];

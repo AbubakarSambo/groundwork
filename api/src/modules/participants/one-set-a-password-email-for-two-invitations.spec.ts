@@ -45,12 +45,20 @@ describe('one "Set a password" email for two invitations', () => {
     expect(w.mails.filter((m) => m.subject === 'Set a password for Groundwork')).toHaveLength(0);
   });
 
-  it('the first says what a password is for, and nothing about Google', async () => {
+  /* UPDATED 19 NOVEMBER (rest of the list): joining no longer sends "Set a password" at all (batch 2, group 6, staging check S14: a person signs back in with an emailed link and sets a password from Settings). The old test pinned the first mail's words after joining; the words are now pinned on the mail itself, and joining is pinned to send none. */
+  it('joining sends no "Set a password" email, with or without an earlier link', async () => {
     const w = brianAccepts({ aLiveLinkWasSent: false });
     await w.run().catch(() => undefined);
     await new Promise((r) => setImmediate(r));
-    const mail = w.mails.find((m) => m.subject === 'Set a password for Groundwork')!;
-    expect(mail.text).not.toContain('Google');
-    expect(mail.text).toContain('Setting a password means you can come back and sign in with this email address and your password.');
+    expect(w.mails.filter((m) => m.subject === 'Set a password for Groundwork')).toHaveLength(0);
+  });
+
+  it('the mail itself, where somebody asks for it, says what a password is for and nothing about Google', async () => {
+    const sent: { subject: string; text: string }[] = [];
+    const mailer: any = { sendEmail: async (m: any) => { sent.push({ subject: m.subject, text: m.html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() }); }, layout: (h: string) => h, frontendUrl: 'http://localhost:5197' };
+    await (EmailService.prototype as any).sendAddPasswordEmail.call(mailer, 'brian@muchemi.test', 'Brian', 'tok');
+    expect(sent[0].subject).toBe('Set a password for Groundwork');
+    expect(sent[0].text).not.toContain('Google');
+    expect(sent[0].text).toContain('Setting a password means you can come back and sign in with this email address and your password.');
   });
 });

@@ -39,6 +39,13 @@ function rhythmOf(word: string): TheRhythm | null {
   return null;
 }
 
+/** How often, from an answer to "How often should they check in?": the last rhythm the words name, or null. The one reading of rhythm words. */
+export function theRhythmIn(said: string): TheRhythm | null {
+  let found: TheRhythm | null = null;
+  for (const m of String(said ?? '').matchAll(new RegExp(`\\b${RHYTHM_WORDS}\\b`, 'gi'))) found = rhythmOf(m[1]) ?? found;
+  return found;
+}
+
 /** Said as the check-in's own rhythm: next to "check in" / "check-ins", or as "weekly for twelve weeks". */
 const RHYTHM_NEXT_TO_CHECK_IN = [
   new RegExp(`\\bcheck(?:ing)?[- ]?ins?\\b[^.!?\\n]{0,24}?\\b${RHYTHM_WORDS}\\b`, 'gi'),

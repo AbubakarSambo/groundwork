@@ -1,7 +1,7 @@
 import { isAPublicHoliday } from './public-holidays';
 import { Cadence } from '@prisma/client';
 import { theDayIn } from './when-a-handoff-is-due';
-import { workingDaysOf } from './which-days-this-team-works';
+import { workingDaysOf, everyDayThatTheyWork } from './which-days-this-team-works';
 import { THE_PRODUCTS_OWN_ZONE, isAZone } from '../../common/the-organisations-own-day';
 
 /**
@@ -163,6 +163,48 @@ export function timesAWeekInWords(s: { cadence?: Cadence | string | null; days?:
 }
 
 /**
+ * WHAT ONE ROUND COVERS, WORDED ONCE: 'day', 'week', 'fortnight' or 'month' where the check-in repeats once or less a day... and null for one that
+ * meets more than once a week, runs one time or has no fixed schedule. A number a person gives in a round is their count for this period, so it is
+ * never the same thing counted again in the next round. The one owner: the model's context (thePeriodOfARound) and the comparison of what a person
+ * said in two rounds (whatDoesNotAddUp) both read it here.
+ */
+export function theUnitOfARound(s: { cadence?: Cadence | string | null; days?: number[] | null }): 'day' | 'week' | 'fortnight' | 'month' | null {
+  if (timesAWeekInWords(s)) return null;
+  return s.cadence === 'DAILY' ? 'day' : s.cadence === 'WEEKLY' ? 'week' : s.cadence === 'FORTNIGHTLY' ? 'fortnight' : s.cadence === 'MONTHLY' ? 'month' : null;
+}
+
+const ordinal = (n: number) => (n % 10 === 1 && n !== 11 ? `${n}st` : n % 10 === 2 && n !== 12 ? `${n}nd` : n % 10 === 3 && n !== 13 ? `${n}rd` : `${n}th`);
+
+/**
+ * HOW OFTEN A CHECK-IN RUNS, WORDED ONCE (staging check S18, 4 November 2026). The same check-in read "Every day", "Every weekday,
+ * Monday to Friday" and "Daily on weekdays" on three pages, because three functions worded it. This is the one wording on the server,
+ * as part of a sentence: "every weekday, Monday to Friday", "every day", "twice a week, on Monday and Thursday", "every Thursday",
+ * "every other Thursday", "on the 5th of each month", "once". The invitation, People and setup, the assistant and the context chat all
+ * read it, and the screens' own `howOftenTheTeamChecksIn` (client/src/lib/the-closing-after-your-first-check-in.ts) says the same words.
+ * A daily check-in with no days saved runs Monday to Friday, as the scheduler runs it (workingDaysOf), so it is never said as "every day".
+ */
+export function howOftenItRuns(g: { cadence?: Cadence | string | null; workingDays?: number[] | null; cadenceAnchorDay?: number | null; cadenceDays?: number[] | null }): string {
+  const anchor = g.cadenceAnchorDay;
+  const aWeekday = anchor != null && anchor >= 0 && anchor <= 6 ? WEEKDAY_NAMES[anchor] : null;
+  switch (g.cadence) {
+    case 'DAILY':
+      return everyDayThatTheyWork(g.workingDays);
+    case 'WEEKLY':
+      return timesAWeekInWords({ cadence: g.cadence, days: g.cadenceDays }) ?? (aWeekday ? `every ${aWeekday}` : 'every week');
+    case 'FORTNIGHTLY':
+      return aWeekday ? `every other ${aWeekday}` : 'every two weeks';
+    case 'MONTHLY':
+      return anchor != null && anchor >= 1 && anchor <= 31 ? `on the ${ordinal(anchor)} of each month` : 'once a month';
+    case 'SEQUENTIAL':
+      return 'each time a new round is opened';
+    case 'ONE_TIME':
+      return 'once';
+    default:
+      return 'when it opens';
+  }
+}
+
+/**
  * HOW MANY ROUNDS FALL FROM THE START UP TO AND INCLUDING THE END (journey test, 12 October 2026).
  *
  * The setup screen, the saved count and the invitation said 12, then 65, then 261 for one check-in,
@@ -203,16 +245,17 @@ export function whenTheNextSessionOpens(s: TheSchedule, lastOpenedAt: Date, now:
 }
 
 /**
- * A DAILY CHECK-IN OPENS AT 8 IN THE MORNING, IN THE ORGANISATION'S OWN ZONE (Hafsah, 13 October 2026, evening). It
- * opened at midnight, so every person on WhatsApp was written to at 11pm ("opens in an hour") and again after midnight
- * ("is open"). Every other rhythm still opens at the start of its day. A check-in already running changes from its next
- * session: the one open now closes when the next one opens, at 8, so there are never two at once.
+ * A CHECK-IN OPENS AT 8 IN THE MORNING, IN THE ORGANISATION'S OWN ZONE (Hafsah, 13 October 2026, evening, for daily; every rhythm since the
+ * channel test of 20 November 2026, W27). A daily one opened at midnight, so every person on WhatsApp was written to at 11pm ("opens in an
+ * hour") and again after midnight ("is open"). A weekly one still opened at midnight, so Chidi's check-in said "opens on Friday 27 November at
+ * 12am". Every rhythm now opens at 8 where the team is. A check-in already running changes from its next session: the one open now closes
+ * when the next one opens, at 8, so there are never two at once.
  */
-export const A_DAILY_CHECK_IN_OPENS_AT_HOUR = 8;
-/** The hour of the day a check-in opens, where it opens at a set hour; null where it opens at the start of its day, which is no time to say. */
-export const theHourACheckInOpens = (cadence: string): number | null => (cadence === Cadence.DAILY ? A_DAILY_CHECK_IN_OPENS_AT_HOUR : null);
-function theHourItOpens(s: Pick<TheSchedule, 'cadence'>, zone: string, day: Day): Date {
-  return s.cadence === Cadence.DAILY ? theStartOfTheDayIn(zone, day + A_DAILY_CHECK_IN_OPENS_AT_HOUR * 3_600_000) : theStartOfTheDayIn(zone, day);
+export const A_CHECK_IN_OPENS_AT_HOUR = 8;
+/** The hour of the day a check-in opens: 8 for every rhythm that has a next session; null for one that opens when it is made or when the lead checks in. */
+export const theHourACheckInOpens = (cadence: string): number | null => (cadence === Cadence.ONE_TIME || cadence === Cadence.SEQUENTIAL ? null : A_CHECK_IN_OPENS_AT_HOUR);
+function theHourItOpens(_s: Pick<TheSchedule, 'cadence'>, zone: string, day: Day): Date {
+  return theStartOfTheDayIn(zone, day + A_CHECK_IN_OPENS_AT_HOUR * 3_600_000);
 }
 
 /** The day the round after the one a session opened in begins, or null when the schedule has none. */

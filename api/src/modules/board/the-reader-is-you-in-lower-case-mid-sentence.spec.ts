@@ -126,18 +126,18 @@ describe('the record over time, as the lead reads it on the board', () => {
   it('says "you" in lower case in the middle of a sentence, and "You" at the start of one', async () => {
     const b = await boardFor('u-wairimu', 'MEMBER', {}, withOverTime('the initiator')).board;
     expect(b.overTime.commitments[0].say).toBe(
-      'In session 1, you committed to call the client. The time you gave for it was on Wednesday 30 September. Nobody has said yet whether it happened.',
+      'In check-in 1, you committed to call the client. The time you gave for it was on Wednesday 30 September. Nobody has said yet whether it happened.',
     );
     expect(b.overTime.commitments[0].say).not.toMatch(/, You |time You/);
   });
 
   it('says "in 1 session" and "in 3 sessions" for the heading', async () => {
     const one = await boardFor('u-wairimu', 'MEMBER', {}, withOverTime('the initiator')).board;
-    expect(one.overTime.inSessions).toBe('in 1 session');
+    expect(one.overTime.inSessions).toBe('in 1 check-in');
     /* Three sessions finished on the record, not only a stored 3: the board counts what the record holds (item 18). */
     const throughThree = [...CHECK_INS, ...[2, 3].map((n) => ({ ...CHECK_INS[1], id: `c-${n}`, sessionNumber: n }))];
     const three = await boardFor('u-wairimu', 'MEMBER', {}, { ...withOverTime('the initiator'), checkIns: throughThree, report: { ...GROUND.report, overTime: { ...STORED('the initiator'), sessions: 3 } } }).board;
-    expect(three.overTime.inSessions).toBe('in 3 sessions');
+    expect(three.overTime.inSessions).toBe('in 3 check-ins');
   });
 });
 
@@ -159,7 +159,7 @@ describe('the lead is named in what the lead committed somebody to', () => {
   it('the lead reads "you", and the person is named', async () => {
     const b = await boardFor('u-wairimu', 'MEMBER', {}, FOR_MIRIAM).board;
     const say = b.overTime.commitments[0].say;
-    expect(say).toBe('In session 3, you committed Aisha Otieno to call the client. Aisha Otieno did not say it. The time you gave for it was on Wednesday 30 September. Nobody has said yet whether it happened.');
+    expect(say).toBe('In check-in 3, you committed Aisha Otieno to call the client. Aisha Otieno did not say it. The time you gave for it was on Wednesday 30 September. Nobody has said yet whether it happened.');
     expect(say).not.toMatch(/the lead|the initiator/i);
   });
 

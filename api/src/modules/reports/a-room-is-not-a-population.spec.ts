@@ -33,11 +33,11 @@ describe('a room is not a population', () => {
       person('Femi', { role: 'Relationship officer, Lagos', finding: '31 applications, none submitted.', patterns: [{ name: 'Tasks are described without saying what they are for', observation: 'Calls, not documents.', seenInSessions: [1, 2, 3] }] }),
       person('Ngozi', { finding: 'Eleven files at credit committee, escalated once.' }),
     ], [], 3);
-    expect(out).toContain('2 people, 3 sessions.');
+    expect(out).toContain('2 people, 3 check-ins.');
     expect(out).toContain('--- Femi');
     expect(out).toContain('31 applications, none submitted.');
     /* The plain name, never the code or the internal name: the lead reads what the model writes from this. */
-    expect(out).toContain('seen in sessions 1, 2, 3 (Tasks are described without saying what they are for)');
+    expect(out).toContain('seen in check-ins 1, 2, 3 (Tasks are described without saying what they are for)');
     expect(out).not.toMatch(/K5|Activity Without Outcome Logic/);
     expect(out).toContain('--- Ngozi');
   });

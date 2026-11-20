@@ -20,9 +20,9 @@ describe('The work plan, as each person reads it', () => {
   it('Amina reads every commitment, what is open first, with the time given and how it ended', async () => {
     const b = await boardAs(RECORD, ...AMINA);
     expect(lines(b)).toEqual([
-      'In session 1, Rukia Mwangi committed to send the Westgate quote. The time Rukia Mwangi gave for it was by Friday. Nobody has said yet whether it happened.',
-      'In session 1, you committed to review the pricing. Nobody has said yet whether it happened.',
-      'In session 1, Baraka Otieno committed to call the Kisumu depot. Baraka Otieno said later that it was done.',
+      'In check-in 1, Rukia Mwangi committed to send the Westgate quote. The time Rukia Mwangi gave for it was by Friday. Nobody has said yet whether it happened.',
+      'In check-in 1, you committed to review the pricing. Nobody has said yet whether it happened.',
+      'In check-in 1, Baraka Otieno committed to call the Kisumu depot. Baraka Otieno said later that it was done.',
     ]);
     const first = b.workPlan[0];
     expect(first).toMatchObject({ participantId: 'p-rukia', who: 'Rukia Mwangi', when: 'by Friday', state: 'open', statedInSession: 1 });
@@ -33,7 +33,7 @@ describe('The work plan, as each person reads it', () => {
   it('Rukia, where people do not see each other, reads only her own line', async () => {
     const b = await boardAs({ ...RECORD, peersVisibleToEachOther: false }, ...RUKIA);
     expect(lines(b)).toEqual([
-      'In session 1, you committed to send the Westgate quote. The time you gave for it was by Friday. Nobody has said yet whether it happened.',
+      'In check-in 1, you committed to send the Westgate quote. The time you gave for it was by Friday. Nobody has said yet whether it happened.',
     ]);
     expect(JSON.stringify(b.workPlan)).not.toContain('pricing');
     expect(JSON.stringify(b.workPlan)).not.toContain('Kisumu');
@@ -42,7 +42,7 @@ describe('The work plan, as each person reads it', () => {
 
   it('Baraka reads his own, with the mark of how it ended in plain words', async () => {
     const b = await boardAs({ ...RECORD, peersVisibleToEachOther: false }, ...BARAKA);
-    expect(lines(b)).toContain('In session 1, you committed to call the Kisumu depot. You said later that it was done.');
+    expect(lines(b)).toContain('In check-in 1, you committed to call the Kisumu depot. You said later that it was done.');
     expect(b.workPlan.every((r: any) => r.participantId !== 'p-rukia')).toBe(true);
   });
 

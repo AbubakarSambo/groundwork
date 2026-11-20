@@ -12,7 +12,7 @@ const REPORT = {
     { label: 'Differences', value: 'Nothing to compare yet', sub: '3 people have still to answer.' },
     { label: 'Movement', value: 'Not tracked', sub: 'Somebody named a number, and nothing is tracking it.' },
     { label: 'Blockers', value: '4 worries', sub: '4 worries are on record, and no wait has been recorded against a named person.' },
-    { label: 'How much was said', value: 'All from memory', sub: 'Nothing said this session has a document behind it.' },
+    { label: 'How much was said', value: 'All from memory', sub: 'Nothing said this check-in has a document behind it.' },
   ],
   theConversationWorthHaving: 'Which of those conversations was with someone who can actually decide, with the budget and the authority?',
 };
@@ -22,7 +22,7 @@ describe('what Chidi reads on his phone when his report arrives', () => {
     expect(reportAsText(REPORT, 'Sales team, Q4')).toBe([
       'Your report for Sales team, Q4 is ready.',
       'Not everyone has answered yet, so there is nothing to agree or differ with.',
-      '3 people have still to answer. Somebody named a number, and nothing is tracking it. 4 worries are on record, and no wait has been recorded against a named person. Nothing said this session has a document behind it.',
+      '3 people have still to answer. Somebody named a number, and nothing is tracking it. 4 worries are on record, and no wait has been recorded against a named person. Nothing said this check-in has a document behind it.',
       'Which of those conversations was with someone who can actually decide, with the budget and the authority?',
     ].join('\n\n'));
   });

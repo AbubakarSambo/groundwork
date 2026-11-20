@@ -1,3 +1,4 @@
+import { HOW_MANY_ARE_OFFERED, TheReader, whatFitsThisReader } from './what-the-assistant-can-do';
 /**
  * ASK IS NAMED FOR THE ORGANISATION (decision 100, 5 October).
  *
@@ -49,16 +50,15 @@ export function askFirstWelcome(
 ): string {
   const name = askName(organisationName).replace(/^Ask /, '');
   if (who.isAGuest) {
-    return `This is Ask ${name}. You are a guest here, so I answer you only about your own check-in. What you ask me stays private.`;
+    return `This is Ask ${name}. You are a guest here, so I answer you only about your own check-in.`;
   }
   const request = who.leaveIsOn && who.spendingIsOn ? 'for leave or to spend money' : who.leaveIsOn ? 'for leave' : who.spendingIsOn ? 'to spend money' : null;
   /* While adding context or a document is hidden at release (`release.contextInAskGroundwork`), the welcome neither offers it nor explains it. */
-  return `This is Ask ${name}. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. `
+  return (`This is Ask ${name}. I answer about the whole organisation and about your own work, and you can point me at one of your check-ins whenever you want to. `
     + (contextIsHere
       ? `Ask me about the company, about your work, or about your check-ins. You can add context or a document to one of your check-ins here${request ? `, and ask ${request}` : ''}. `
       : `Ask me about the company, about your work, or about your check-ins.${request ? ` You can also ask me ${request}.` : ''} `)
-    + `What you ask me stays private.`
-    + (contextIsHere ? ` Anything you choose to add to a check-in works differently. I say it back to you first, it goes in only once you say yes, and from then on it is part of that check-in.` : '');
+    + (contextIsHere ? `Anything you add to a check-in is said back to you first, goes in only once you say yes, and from then on is part of that check-in.` : '')).trim();
 }
 
 /** Looks up the name of one organisation. A missing organisation gives "Ask Groundwork". */
@@ -76,76 +76,15 @@ export async function askNameOf(
 }
 
 /**
- * WHAT SOMEBODY CAN ASK, OFFERED AS THREE QUESTIONS (request 153 / 154 item 3).
+ * WHAT SOMEBODY IS OFFERED WHEN THEY FIRST OPEN ASK, READ FROM THE ONE GUIDE (Batch S, group S5).
  *
- * The screens were wording these themselves and every kind of check-in got the sales words:
- * "Ask me about Get a project back on track: a deal, a target, or what to do next." A law firm
- * matter and a government programme were offered a deal.
- *
- * THEY ARE GENERAL, NEVER ONE SET PER SITUATION (decision 101, 5 October). These five words are
- * Hafsah's, in her order, and they go to every kind of check-in - a law firm matter and a
- * government programme included. Four of them are about the reader's own record rather than the
- * kind of work, which is what lets one set serve every situation.
- *
- * SOMEBODY WITH NO CHECK-IN YET IS LEFT WITH ONE. Four of the five need a check-in to be about -
- * what they said they would do, what it is for, when the next one is, and adding something to it -
- * so for a reader with none the list is the company question on its own. That is the decision as
- * taken: one true starter rather than four invented ones.
+ * Each line is offered only when it is true for this reader, from the reader's own standing (decision 36 for a guest; the suites that
+ * are on; the check-ins they can use), and their own role's lines come first. The list used to put every check-in line first and the
+ * panel cut it to three, so a lead or an admin in a check-in never saw what fits their role. It is cut here, once, to a short list,
+ * and the panel shows all of it.
  */
-const STARTERS = [
-  { line: 'What did I say I would do?', needsACheckIn: true },
-  { line: 'What is my check-in for, and who reads it?', needsACheckIn: true },
-  { line: 'When is my next check-in?', needsACheckIn: true },
-  { line: "What are the company's priorities right now?", needsACheckIn: false },
-  { line: 'Add a document or some context to my check-in.', needsACheckIn: true },
-  /*
-   * THE SIXTH IS LEAVE AND SPENDING, and it is an addition to decision 101 rather than part of it.
-   * Hafsah's five were decided before she said the suggestions must also cover leave or spending
-   * (5 October). Her five keep her order, this goes after them, and it is written up as mine to
-   * be overruled. It needs no check-in, so it is the second thing somebody with none is offered.
-   */
-  { line: 'Ask for leave, or to spend money.', needsACheckIn: false },
-] as const;
-
-export function askStarters(hasACheckIn: boolean, contextIsHere = true): string[] {
-  /* While adding context is hidden at release, the starter that offers it is left out too. */
-  return STARTERS.filter((s) => (hasACheckIn || !s.needsACheckIn) && (contextIsHere || !/context/i.test(s.line))).map((s) => s.line);
-}
-
-
-/**
- * WHAT SOMEBODY IS OFFERED IS WHAT ASK CAN REALLY ANSWER THEM (request from the screens; review of the starters).
- *
- * The list was fixed: leave and spending were offered to a guest and to an organisation with neither suite on, the company's priorities to a guest who is
- * refused the company page, and "when is my next check-in" and "what did I say I would do" to somebody with no check-in they can use (one held for a seat,
- * one that has ended, one they only run). Each is offered now only when it is true for this reader, from the reader's own standing.
- */
-export interface WhoIsAsking {
-  /** A guest from another organisation: answered only about their own check-in. */
-  isAGuest: boolean;
-  /** A check-in they take part in as a person, that has not ended and they are not held for a seat on. */
-  takesPartInOne: boolean;
-  /** Any check-in they can use, that has not ended and they are not held for a seat on. */
-  hasOneToUse: boolean;
-  /** They run one, and so may add context or a document to it. */
-  runsOne: boolean;
-  /** An admin of the organisation, who may add a document for the whole of it (fix list, item 3). Absent reads as no. */
-  isAnAdmin?: boolean;
-  leaveIsOn: boolean;
-  spendingIsOn: boolean;
-  contextIsHere: boolean;
-}
+export type WhoIsAsking = TheReader;
 
 export function askStartersFor(o: WhoIsAsking): string[] {
-  const out: string[] = [];
-  if (o.takesPartInOne) out.push('What did I say I would do?');
-  if (o.hasOneToUse) out.push('What is my check-in for, and who reads it?');
-  if (o.takesPartInOne) out.push('When is my next check-in?');
-  if (!o.isAGuest) out.push("What are the company's priorities right now?");
-  if (!o.isAGuest && o.runsOne && o.contextIsHere) out.push('Add a document or some context to my check-in.');
-  else if (!o.isAGuest && o.isAnAdmin && o.contextIsHere) out.push('Add a document for the whole organisation.');
-  if (!o.isAGuest && (o.leaveIsOn || o.spendingIsOn)) {
-    out.push(o.leaveIsOn && o.spendingIsOn ? 'Ask for leave, or to spend money.' : o.leaveIsOn ? 'Ask for leave.' : 'Ask to spend money.');
-  }
-  return out;
+  return whatFitsThisReader(o).filter((g) => g.starter).slice(0, HOW_MANY_ARE_OFFERED).map((g) => g.starter as string);
 }

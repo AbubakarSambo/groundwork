@@ -17,6 +17,8 @@
  * Nothing is inferred beyond those rows, and nothing here names a judgement about a person: every
  * sentence says what is on record and what would move it. Served to whoever runs the check-in only.
  */
+import { isAWholeSentence } from '../reports/what-people-said-differently-about';
+import { REFERENCES_AND_RESOURCES } from '../../common/the-tab-names';
 
 export const ISSUE_STEPS = ['Unclear', 'Understood', 'Options', 'Decided', 'Being done', 'Checked'] as const;
 export type AnIssueStep = (typeof ISSUE_STEPS)[number];
@@ -87,12 +89,6 @@ export function aDecisionAsAQuestion(text: string): string {
   return capital(t.replace(/^whether\s+/i, ''));
 }
 
-/** A topic that is a sentence of its own: it starts with a person or runs past a short phrase. */
-export function isAWholeSentence(topic: string): boolean {
-  const t = (topic ?? '').trim();
-  return /^(?:you|i|we|they|he|she|the team|everyone|nobody|participants?)\b/i.test(t) || t.split(/\s+/).length > 12;
-}
-
 export function theOpenIssues(from: WhatTheIssuesAreReadFrom): AnOpenIssue[] {
   const out: AnOpenIssue[] = [];
 
@@ -117,7 +113,8 @@ export function theOpenIssues(from: WhatTheIssuesAreReadFrom): AnOpenIssue[] {
       conversation: {
         heading: 'This needs a conversation',
         says: `${aSentence ? `${capital(topic)}. ` : ''}You and ${d.withFirstName} have seen this differently${forHowLong}, and it has not been talked about.`,
-        wayToStart: `“${d.withFirstName}, we see ${what} differently. Can we agree on it?”`,
+        /* The lead's own words to the person, in her voice: no "we" standing in for Groundwork (staging check S15). */
+        wayToStart: `“${d.withFirstName}, you and I see ${what} differently. Can you talk it through with me?”`,
       },
       action: { label: 'Prepare the conversation', says: 'Your check-in helps you prepare what to say, and what to ask.', goesTo: 'check-in' },
       quiet: { label: 'Not now', says: 'It stays here, at Unclear, until one of you says something new about it.' },
@@ -146,7 +143,7 @@ export function theOpenIssues(from: WhatTheIssuesAreReadFrom): AnOpenIssue[] {
       says: q.raisedIn >= 2
         ? `This has come up in ${q.raisedIn} check-ins. Nobody has decided, and nobody owns it.`
         : 'Nobody has decided, and nobody owns it.',
-      action: { label: 'Name who decides, and by when', says: 'Say on the Context page who decides this, and by when.', goesTo: 'context' },
+      action: { label: 'Name who decides, and by when', says: `Say under ${REFERENCES_AND_RESOURCES} who decides this, and by when.`, goesTo: 'context' },
     });
   }
 

@@ -1,3 +1,5 @@
+import { mayReadTheLine, theReader } from '../conversation/who-may-read-a-line';
+import { THE_READ_IS_STILL_TO_COME } from '../conversation/the-read-is-owed';
 import { notJoinedSaid } from './the-session-report';
 import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
 import { withoutTheLeadsSetUpForAMember } from '../grounds/the-leads-set-up-is-the-leads-in-the-anchor';
@@ -98,6 +100,9 @@ export function theFirstSentenceThatFits(s: string | null | undefined, max = A_T
  */
 
 /** One of the four reads the product's own front page shows when it shows a report. */
+/** What a tile's value says while the read behind it is still to come, and the sentence under it (from the-read-is-owed.ts). */
+export const THE_READ_IS_NOT_IN_YET = 'Not read yet';
+
 export interface AGlanceRead {
   label: string;
   value: string;
@@ -245,9 +250,9 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     raisedIn.length
       ? prisma.recordEntry.findMany({
           where: { disputedAt: null, checkInId: { in: raisedIn.map((c) => c.id) }, type: { in: ['WORRY', 'TENSION'] as any } },
-          select: { text: true, participantId: true, saidWordForWord: true },
+          select: { text: true, participantId: true, saidWordForWord: true, aboutParticipantId: true, standing: true },
           orderBy: { createdAt: 'asc' },
-        })
+        }).then((rows: any[]) => (rows ?? []).filter((r) => mayReadTheLine(r, theReader(reader.runsIt ?? reader.isLead, reader.participantId))))
       : Promise.resolve([] as { text: string; participantId: string | null; saidWordForWord: boolean | null }[]),
     /* Still open, and raised before this session (or with no session on record). A session nobody has
        answered yet says nothing about waits, so the table is not asked. */
@@ -429,6 +434,11 @@ export function atAGlanceTiles(a: {
   whyNoWorry?: WhyNoWorryIsShown;
   /** Waits raised before this session and still open, so the tile never says nobody waits while somebody does. */
   waitsFromEarlier?: number;
+  /**
+   * HOW MANY CONVERSATIONS HAVE NOT BEEN READ YET (the-read-is-owed.ts). A tile that found nothing says "None" or "Nothing to compare yet",
+   * and while a read is still to come that is not a finding, it is the read missing. Those tiles say so instead.
+   */
+  readsStillToCome?: number;
 }): AGlanceRead[] {
   /*
    * NOT CUT AT ALL. Read live: "we have a meeting with the CEO to discuss m..." - the tile stopped
@@ -452,14 +462,14 @@ export function atAGlanceTiles(a: {
   const earlier = a.waitsFromEarlier ?? 0;
   /* Nobody waits, said only where it is true; otherwise how many waits from earlier sessions are still open. */
   const andTheWaits = earlier > 0
-    ? `. Nobody named a new wait this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
+    ? `. Nobody named a new wait this check-in, and ${earlier === 1 ? '1 wait from an earlier check-in is' : `${earlier} waits from earlier check-ins are`} still open.`
     : ', and no wait has been recorded against a named person.';
   const theRestOfTheWorries = (n: number): string => (n <= 0
     ? `It is the only worry on record${andTheWaits}`
     : `There ${n === 1 ? 'is 1 more worry' : `are ${n} more worries`} on record${andTheWaits}`);
   const worries = a.worries ?? 0;
   const moved = a.movedOnTargets == null ? 0 : (a.targetsMoved ?? (a.movedOnTargets !== 0 ? 1 : 0));
-  return [
+  const tiles: AGlanceRead[] = [
     {
       label: 'Differences',
       value: a.stillOpen ? `${a.stillOpen}` : a.agreed ? 'None' : 'Nothing to compare yet',
@@ -510,7 +520,7 @@ export function atAGlanceTiles(a: {
             ? 'Somebody named a number, and nothing is tracking it.'
             : 'Nobody has set anything to measure this against.'
         /* "changed", not "moved" (decision 75, item 33): a target that went down changed too. */
-        : moved > 0 ? `${moved === 1 ? '1 target' : `${moved} targets`} changed this session.` : 'No target changed this session.',
+        : moved > 0 ? `${moved === 1 ? '1 target' : `${moved} targets`} changed this check-in.` : 'No target changed this check-in.',
       tone: a.movedOnTargets == null
         ? a.numberWasSaid && !(a.targetsSet ?? 0) ? 'warn' : 'flat'
         : a.movedOnTargets > 0 ? 'good' : 'flat',
@@ -544,10 +554,10 @@ export function atAGlanceTiles(a: {
                   : a.whyNoWorry === 'not whole'
                     ? (worries === 1 ? '1 worry is on record. It cannot be quoted here whole, so it is not shown.' : `${worries} worries are on record. None can be quoted here whole, so none is shown.`)
                     : (worries === 1 ? '1 worry is on record. It was not kept in the words it was said, so it is not quoted here.' : `${worries} worries are on record. None was kept in the words it was said, so none is quoted here.`)} ${earlier > 0
-                ? `Nobody named a new wait this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
+                ? `Nobody named a new wait this check-in, and ${earlier === 1 ? '1 wait from an earlier check-in is' : `${earlier} waits from earlier check-ins are`} still open.`
                 : 'No wait has been recorded against a named person.'}`)
             : earlier > 0
-              ? `Nobody named anything new holding work up this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
+              ? `Nobody named anything new holding work up this check-in, and ${earlier === 1 ? '1 wait from an earlier check-in is' : `${earlier} waits from earlier check-ins are`} still open.`
               : 'Nobody named anything holding work up.',
       tone: a.blocked ? 'bad' : (a.waiting ?? 0) > 0 || worries ? 'warn' : 'good',
     },
@@ -565,11 +575,21 @@ export function atAGlanceTiles(a: {
         : a.backedPct > 0
           ? `${a.backedPct} of every 100 things people said ${a.backedPct === 1 ? 'has' : 'have'} a document behind ${a.backedPct === 1 ? 'it' : 'them'}.`
           : (a.filesSent ?? 0) > 0
-            ? `${a.filesSent === 1 ? 'One file was' : `${a.filesSent} files were`} sent with this session's check-ins. Nothing said has been matched to ${a.filesSent === 1 ? 'it' : 'one of them'} yet.`
-            : 'Nothing said this session has a document behind it.',
+            ? `${a.filesSent === 1 ? 'One file was' : `${a.filesSent} files were`} sent with this check-in's check-ins. Nothing said has been matched to ${a.filesSent === 1 ? 'it' : 'one of them'} yet.`
+            : 'Nothing said this check-in has a document behind it.',
       tone: a.backedPct == null ? 'flat' : a.backedPct > 0 ? 'good' : (a.filesSent ?? 0) > 0 ? 'flat' : 'warn',
     },
   ];
+  /* A tile that found nothing while a read is still to come says the read is missing, in one sentence, and never "None" (the-read-is-owed.ts). */
+  if (!(a.readsStillToCome && a.readsStillToCome > 0)) return tiles;
+  const notYet = (t: AGlanceRead): AGlanceRead => ({ ...t, value: THE_READ_IS_NOT_IN_YET, sub: THE_READ_IS_STILL_TO_COME, tone: 'flat' });
+  return tiles.map((t) => {
+    if (t.label === 'Differences' && !a.stillOpen) return notYet(t);
+    if (t.label === 'Movement' && a.movedOnTargets == null && (a.targetsSet ?? 0) === 0) return notYet(t);
+    if (t.label === 'Blockers' && !a.blocked && !(a.waiting ?? 0) && !worries) return notYet(t);
+    if (t.label === 'How much was said' && a.backedPct == null) return notYet(t);
+    return t;
+  });
 }
 
 /**

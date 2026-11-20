@@ -17,6 +17,8 @@ import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames } from '.
 export interface TheReaderOfTheRoom {
   /** The check-in's people, as the board and the check-in page hold them (with `user.firstName` and `user.lastName`). */
   participants: any[];
+  /** Everybody ever on the check-in, leavers too, when the caller holds them: letters go by position among them, so a person who left moves nobody up a letter. */
+  everyone?: any[];
   /** The reader's own row, or null for a reader who is not in it (an admin, say). */
   me: any | null;
   /** The lead's id on the check-in (`initiatorId`), so the lead stays named to everybody. */
@@ -35,7 +37,7 @@ export function theRoomForThisReader<T extends TheRoomServed | null | undefined>
   if (!stored) return stored;
   const { participants: people, me } = c;
   const leadRow = people.find((p) => !!c.initiatorId && p.userId === c.initiatorId) ?? null;
-  const roomLabels = labelsForParties(people as any);
+  const roomLabels = labelsForParties((c.everyone ?? people) as any);
   /* Stored with labels (decision 110, P9): the names go in here, at the read, and every wall below works on them as it always did. */
   const room = theRoomWithNames(stored, new Map(people.flatMap((p) => { const n = fullNameOf(p); return p.id && n ? [[theRoomsLabelFor(p.id), n] as [string, string]] : []; }))) as T;
   const readerLabel = me?.id ? roomLabels.get(me.id) ?? null : null;

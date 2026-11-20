@@ -80,7 +80,7 @@ export function whatYourOwnRecordSays(r: TheirOwnRecord): string[] {
 
   /* NOTHING ANYBODY ELSE COULD OPEN, which is what makes the next session worth less than this one. */
   if (r.anythingDocumented === false && r.documentsExpected !== false) {
-    out.push('Everything in your session came from memory, so there is nothing here that anybody else could open and check.');
+    out.push('Everything in your check-in came from memory, so there is nothing here that anybody else could open and check.');
   }
 
   return out.slice(0, 3);

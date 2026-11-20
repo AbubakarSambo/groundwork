@@ -14,9 +14,9 @@ import { PLAIN_WORDS } from '../conversation/plain-words';
  * Until this, nothing recorded "sales" or "engineering" anywhere, so every board was drawn from its
  * family alone.
  *
- * WHAT IS STORED. `Ground.kindOfWork` holds one of the twelve names below, exactly, or null (the eleven kinds of
+ * WHAT IS STORED. `Ground.kindOfWork` holds one of the fifteen names below, exactly, or null (the eleven kinds of
  * the prototype's boards, with "sales team" beside "sales org" since Release 1). It is
- * read from the lead's own words and the brief when setup is saved, checked here against the twelve
+ * read from the lead's own words and the brief when setup is saved, checked here against the fifteen
  * (anything else is null, never the nearest match), and the lead can change it. A lead's choice is
  * never overwritten by a later read.
  *
@@ -38,10 +38,10 @@ export const KINDS_OF_WORK = [
   'MarketView Q4',
   'a law firm matter',
   'a government programme',
-  /* Release 4: a leadership team, its priorities across the teams. Offered only where Release 4 is on, and only chosen by the lead (never read from the setup words). */
+  /* Release 4: a leadership team, its priorities across the teams. Offered only where Release 4 is on; read from the lead's words like any other kind (15 November, so that typing it reaches its board), and given only where it is offered. */
   'leadership',
   /* Release 5: a funded or client project, its plan and milestones, money in and out, and stakeholders. Offered only where Release 5
-     is on, and only chosen by the lead. */
+     is on; read from the lead's words, and given only where it is offered. */
   'a funded project',
   /* Client delivery is a type of project (Hafsah, 25 October): the same board, for work delivered to a client. */
   'client delivery',
@@ -123,7 +123,7 @@ export const RECORDS_FOR_EACH_KIND: Record<KindOfWork, ARecordSection[]> = {
     { section: 'Deal grid', holds: 'incidents', itemKinds: ['incident'] },
   ],
   'trader training programme': [
-    { section: 'Deal grid', holds: 'trader groups', itemKinds: ['group'], stages: ['Enrolled', 'Session 1', 'Session 2', 'Completed'] },
+    { section: 'Deal grid', holds: 'trader groups', itemKinds: ['group'], stages: ['Enrolled', 'Check-in 1', 'Check-in 2', 'Completed'] },
   ],
   "founder's own check-in": [
     { section: 'Work plan', holds: 'commitments and decisions', itemKinds: ['commitment', 'decision'] },
@@ -135,7 +135,7 @@ export const RECORDS_FOR_EACH_KIND: Record<KindOfWork, ARecordSection[]> = {
     { section: 'Themes', holds: 'priorities people named', itemKinds: ['priority'] },
   ],
   'MarketView Q4': [
-    { section: 'Deal grid', holds: 'subscriptions', itemKinds: ['subscription'], stages: ['Said', 'Paid'] },
+    { section: 'Deal grid', holds: 'subscriptions and the metrics people state', itemKinds: ['subscription', 'metric'], stages: ['Said', 'Paid'] },
     { section: 'Forecast', holds: 'where paying subscribers are likely to end up', itemKinds: [], whyNotKnown: FROM_PAYMENT_RECORDS },
   ],
   'a law firm matter': [
@@ -318,21 +318,24 @@ export function theRecordSections(kind: KindOfWork | null, leadsStages: unknown,
 
 export const THE_KIND_OF_WORK_PROMPT = `You are reading how a lead described a check-in they are setting up, to say what kind of work it is about.
 
-Choose one of these twelve kinds, or none:
+Choose one of these fifteen kinds, or none:
 - "sales team": one team selling to customers, with one lead and the people who sell under them (for example reps, sales executives or account managers), and deals that move through stages.
 - "sales org": a sales organisation of several sales teams, each with its own lead, such as teams for different regions or products, selling to customers with deals that move through stages.
 - "engineering release": engineers building and shipping software, with tasks and releases.
-- "support desk": a customer support team answering tickets.
+- "support desk": a customer support team answering customers' questions and problems, as tickets, emails or chats, however its work is described.
 - "distribution operations": sites, deliveries, equipment and suppliers, with incidents.
-- "trader training programme": a training or development programme for groups of people across places, with sessions.
+- "trader training programme": a training or development programme for groups of people across places, with check-ins.
 - "founder's own check-in": one person checking in with themselves about their own commitments and decisions.
-- "asset loans": people repaying loans for equipment or stock.
+- "asset loans": a cohort of people who borrowed money to buy equipment or stock for their business and are repaying it. Money that customers or clients owe for work done, such as unpaid invoices, bills or fee notes, is not a loan, and is none of these kinds.
 - "MarketView where next": a workshop of many people choosing priorities or where to focus next.
 - "MarketView Q4": a quarter's goals for a product, such as paying subscribers and weekly users, checked against a payments system.
 - "a law firm matter": a legal case or matter, with parties, a court and deadlines.
 - "a government programme": a government or public programme run through counties or regions and their projects.
+- "leadership": a leadership or executive team, such as a chief executive and the directors, agreeing the company's priorities across its teams and where they are not aligned. The lead has to say it is that team. "The business", "the company" or "my team" with something going wrong is not leadership.
+- "a funded project": a project paid for by a donor, funder or grant, with a workplan, milestones, a budget, money in and out, and partners or stakeholders to report to.
+- "client delivery": work delivered to a client under an agreement, such as a website, a software build or a branding project, with deliverables, approvals, milestones and invoices. Money that clients owe for work already done, such as unpaid invoices, bills or fee notes, is not client delivery: the work is finished and the question is collecting what is owed, so it is none of these kinds.
 
-Give the kind's name exactly as written above. Choose a kind only when the lead's words clearly say it. The people's job titles, where they are given, help: sales reps and a sales manager are selling. When the work is selling and nothing says there are several sales teams, it is a "sales team". When the work is none of these, or you are not sure, give none. A wrong kind is worse than none.`;
+Give the kind's name exactly as written above. Choose a kind only when the lead's words clearly say it. The people's job titles, where they are given, help: sales reps and a sales manager are selling. When the work is selling and nothing says there are several sales teams, it is a "sales team". When the work is none of these, or you are not sure, give none. A lead who says only that something is wrong, or that they are worried, without saying who is involved or what the work is, has not named a kind: give none, so the conversation asks. A wrong kind is worse than none.`;
 
 export const THE_KIND_OF_WORK_SCHEMA = {
   name: 'emit_kind_of_work',
@@ -340,7 +343,7 @@ export const THE_KIND_OF_WORK_SCHEMA = {
   input_schema: {
     type: 'object',
     properties: {
-      kind: { type: 'string', description: 'One of the twelve names exactly, or "none".' },
+      kind: { type: 'string', description: 'One of the fifteen names exactly, or "none".' },
     },
     required: ['kind'],
   },
@@ -374,6 +377,51 @@ export function theSetupWords(
  */
 export const A_DEAL_AND_ITS_DETAILS = `For a sales team, every customer a line names is one deal, a new lead included: give it once per customer, named only as the business is named ("Savannah Cafe", never "Jane Mwende at Savannah Cafe"; the person goes in Contact), and never as a person in the team. A line that names no business ("two shops on Ngong Road") names no deal. What each stage means: Contacted is a business and a person reached, and a new lead is Contacted; Need established is the customer's need said; Pitched is an offer made with its price; Qualified is a need, a budget the customer stated, who decides and a buying date; Quoted is a quote the customer received; Won is paid or an order signed, and a yes with the payment or the order still to come is not Won. Give the stage the line supports, and none when it does not say. Use only these labels for details, each only when the line says it: Value (what the whole deal is worth, such as KES 30,000 for 6 units; never the price of one unit, and never a discount), Price each (the price of one unit, such as KES 4,500, when that is what the line says), Units (how many), Contact (the person they dealt with at the customer), Next step (what happens next, in a few words), Next step by (its day, as said), Buying date (the day the customer said they will buy, as YYYY-MM-DD; it is the customer's date, never the rep's own next step), Need (what the customer needs, in the customer's own words as the line gives them, such as "3 units for the members' area"; a discount or a lower price the customer asks for is never their need), Budget stated (the money the customer said they have or will spend, as said: an amount such as KES 15,000, or a range kept as the range, such as KES 10,000 to 15,000; never the rep's own price or quote), Decision maker (who at the customer decides, by name or by role, such as "the owner" or "Mrs Njeri, the buyer"). A discount the customer asked for is not a value. A line that names only the person at a customer, as the deals on record give them ("Rose said she will buy on October 30th", where Rose is the contact at Mama Mboga Mart), is about that customer's deal: give the deal by its name on record.`;
 
+/**
+ * A LOAN AND THE FIGURES THE TRADER GAVE (pilot, Hafsah's ruling of 14 November 2026, build order 3). The loans board draws
+ * what each trader said in their own check-in, as said and never as proven. The labels are fixed so the board can read them.
+ * The model gives only what the line says; nothing is worked out or added up.
+ */
+export const A_LOAN_AND_ITS_DETAILS = `For an asset loans cohort, every loan a person speaks of is one loan, named as they name it. Use only these labels for details, each only when the line says it, in the person's own words and figures: Business (what they sell or run), Place (where, such as a market or a town), Sales (what they say they have sold lately, with the amount and the period as said, such as KES 38,000 in four weeks; never a repayment, and never a figure added up from several lines), Repayment (how they say their repayments stand, such as "on time" or "two weeks behind"), In the way (what they say is getting in the way of selling or repaying, as they say it), Next step (what happens next, in a few words). A figure the line does not say is left out.`;
+
+/**
+ * A TICKET, INCIDENT OR TASK AND THE FIGURES PEOPLE GAVE ABOUT IT (pilot, tickets family, November 2026). The support, operations and
+ * engineering boards draw what people said in their own check-ins, as said and never as proven; a figure a system would count (tickets
+ * a week, on-time dispatch, downtime) is kept only where a person said it. The labels are fixed so the board can read them. The model
+ * gives only what the line says: nothing is worked out, added up or filled in.
+ */
+const THE_TICKET_DETAILS_RULE = 'Use only these labels for details, each only when the line says it, in the person\'s own words and figures, and never a figure added up from several lines or worked out';
+export const THE_TICKETS_FAMILY_DETAILS: Partial<Record<KindOfWork, string>> = {
+  'support desk': `For a support desk, every ticket a line names is one ticket, named as it is named (its number and what it is about). ${THE_TICKET_DETAILS_RULE}: Where it stands (such as waiting on engineering, reopened or passed to engineering), Queue (the group of tickets it sits in), Cause (what caused it, as the person says it), Seen before (how many like it, as said), Within a day (the share or number of tickets answered within a day, with its period and queue, as said), Reopened (how many were opened again, as said), Passed to engineering (how many, as said), Next step (what happens next, in a few words).`,
+  'distribution operations': `For an operations team, every incident a line names is one incident, named as it is named. ${THE_TICKET_DETAILS_RULE}: Where it stands (such as repeat or plan missed), Site (the depot or place), Type (what kind of problem it is, in one or two words as said, such as equipment, transport or power), Impact (what it cost, such as hours down or orders late, as said), Cause (as the person says it), Fix (what was done), Prevention (what will stop it happening again), On time (the share of orders on time at the site, as said), Downtime (hours down, as said), Next step (what happens next, in a few words).`,
+  'engineering release': `For an engineering team, every task or release a line names is one record, named as it is named. ${THE_TICKET_DETAILS_RULE}: Area (the part of the work it belongs to, such as payments), Done (how far along it is, as said, such as 60% done), Change (what was changed), Test (what testing was done, as said), Deploy (when or whether it went out, as said), Blocked (what it is blocked on, as said), Released (whether it has been released, as said), Next step (what happens next, in a few words).`,
+};
+
+/**
+ * A PROGRAMME'S GROUPS, COUNTIES AND PRIORITIES, AND THE FIGURES PEOPLE GAVE (pilot, programme family, November 2026). The trader
+ * training, government programme and where-next boards draw what people said in their own check-ins, as said and never as proven; a
+ * figure a register or an attendance sheet would hold (women in a group, who attended, what was spent) is kept only where a person
+ * said it. The labels are fixed so the board can read them. The model gives only what the line says: nothing is worked out, added up
+ * or filled in.
+ */
+export const THE_PROGRAMME_FAMILY_DETAILS: Partial<Record<KindOfWork, string>> = {
+  'trader training programme': `For a trader training programme, every group of traders a line names is one group, named as it is named. ${THE_TICKET_DETAILS_RULE}: County (where the group trains), Group size (how many people are in it), Women (how many or what share are women, as said, such as 26 of 42 or 62%), Attended (who came to a check-in, with the check-in, as said, such as 38 of 42 at check-in 2), Completed (how many or what share finished all the check-ins, as said), Reached (how many traders have been reached in a place, as said), Drop-off (where people stopped coming, as said), Why missed (why people missed a check-in, as said), Budget spent (what has been spent, as said), Cost per trainee (as said), Next step (what happens next, in a few words).`,
+  'a government programme': `For a government programme, every county and every project a line names is one record, named as it is named, with kind "county" or "project". ${THE_TICKET_DETAILS_RULE}: County (for a project, the county it belongs to), Reached (how many people or farmers have been reached, and any change, as said), Activity (the work done, such as visits made, and any change, as said), In the way (what is holding it back, as said).`,
+  'MarketView where next': `For a workshop choosing where to focus next, every priority a person names is one priority, named as they name it. ${THE_TICKET_DETAILS_RULE}: Theme (what the priority is about, in a few words, taken from the person's own words, such as a market, a product or a kind of customer), Would pay (whether they say they would pay, and for what, as said), Next step (what they say should happen next, in a few words).`,
+};
+
+/**
+ * A FOUNDER'S MONEY, RUNWAY AND WEEKLY FIGURES, AND A QUARTER'S METRICS AND GOALS (pilot, number-tracking family, November 2026). The
+ * founder's and the MarketView Q4 boards draw what people said in their own check-ins, as said and never as proven; a figure a bank or
+ * a payments system would hold (money, runway, subscribers, weekly users) is kept only where a person said it, and a goal only where a
+ * person stated it as theirs. The labels are fixed so the board can read them. The model gives only what the line says: nothing is
+ * worked out, added up or filled in.
+ */
+export const THE_NUMBER_TRACKING_DETAILS: Partial<Record<KindOfWork, string>> = {
+  "founder's own check-in": `For a founder's own check-in, the commitments and decisions a line names are records, named as they are named. ${THE_TICKET_DETAILS_RULE}: Money (an amount of money the commitment or decision is about, with its currency and what it is for, as said, such as KES 2.1 million in deals with a signed letter), Runway (how long the money lasts, as said, such as 11 months), Each week (how many the person says they do or will do each week, as said, such as 3 investor emails), Next step (what happens next, in a few words).`,
+  'MarketView Q4': `For a quarter's numbers, every metric a line states is one record with kind "metric", named as it is named (such as paid subscriptions or weekly users), and it is separate from a subscription. ${THE_TICKET_DETAILS_RULE}: Said (the figure the person gives for it now, as said, such as 31 or 31 of 40), Goal (the goal a person states for it, as said, such as 40 or 40 this quarter; never a figure the person gives only as where it is now), Source (where the person says the figure comes from, such as Paystack, as said).`,
+};
+
 export function theRecordsPrompt(kind: KindOfWork): string {
   const sections = RECORDS_FOR_EACH_KIND[kind].filter((s) => s.itemKinds.length);
   const lines = sections.map((s) => `- ${s.holds} (give kind as one of: ${s.itemKinds.map((k) => `"${k}"`).join(', ')})${s.stages ? `. Stages, in order: ${s.stages.join(', ')}` : ''}`);
@@ -382,7 +430,7 @@ ${lines.join('\n')}
 
 Each line has an id. For every record a line names, give the id of the line, the kind, and the record's name as it was said in that line, word for word, such as a customer's name, a release's name, a ticket, a county or a party. Give a stage only when the line says it, using one of the stages above. Give a due date only when the line says one, as YYYY-MM-DD. Give other details only when the line says them, as short label and value pairs, such as Value and KES 90K.
 
-${isASalesKind(kind) ? `${A_DEAL_AND_ITS_DETAILS}\n\n` : ''}Leave out anything the line does not say. Never make up a record, a name, a stage or a date. When no line names a record, give an empty list.
+${isASalesKind(kind) ? `${A_DEAL_AND_ITS_DETAILS}\n\n` : ''}${kind === 'asset loans' ? `${A_LOAN_AND_ITS_DETAILS}\n\n` : ''}${THE_TICKETS_FAMILY_DETAILS[kind] ? `${THE_TICKETS_FAMILY_DETAILS[kind]}\n\n` : ''}${THE_PROGRAMME_FAMILY_DETAILS[kind] ? `${THE_PROGRAMME_FAMILY_DETAILS[kind]}\n\n` : ''}${THE_NUMBER_TRACKING_DETAILS[kind] ? `${THE_NUMBER_TRACKING_DETAILS[kind]}\n\n` : ''}Leave out anything the line does not say. Never make up a record, a name, a stage or a date. When no line names a record, give an empty list.
 
 Each line says who said it. Every record is the speaker's own; do not give an owner.
 

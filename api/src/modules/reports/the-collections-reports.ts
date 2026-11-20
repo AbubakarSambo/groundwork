@@ -175,7 +175,7 @@ export function theCollectionsTeamReport(input: TheCollectionsReportInput): TheC
   return {
     title: `The team’s report on the ${input.type === 'loans' ? 'loans' : bills}${w.day ? `, ${aDayInWords(w.day, zone, true)}` : ''}`,
     inShort,
-    whatMoved: moves.length ? moves : [`No ${input.type === 'loans' ? 'loan' : bill} moved in this session.`],
+    whatMoved: moves.length ? moves : [`No ${input.type === 'loans' ? 'loan' : bill} moved in this check-in.`],
     eachPerson,
     seeItDifferently: seeItDifferently.length ? seeItDifferently : [`Nobody sees a ${input.type === 'loans' ? 'loan' : bill} differently on the record.`],
     cantTell,
@@ -208,7 +208,7 @@ export function theCollectionsOwnReport(input: TheCollectionsReportInput): TheCo
   return {
     title: `Your report on your ${input.type === 'loans' ? 'loan' : bills}${w.day ? `, ${aDayInWords(w.day, zone, true)}` : ''}`,
     inShort: [board.answer],
-    whatMoved: moves.length ? moves : [`Nothing moved on your ${input.type === 'loans' ? 'loan' : bills} in this session.`],
+    whatMoved: moves.length ? moves : [`Nothing moved on your ${input.type === 'loans' ? 'loan' : bills} in this check-in.`],
     forYouToDo: forYouToDo.slice(0, 5),
     dontKnowYet: whatIsNotKnownYet(input.rows, groups, bill, nameOf),
   };

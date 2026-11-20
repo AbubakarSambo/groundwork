@@ -78,6 +78,12 @@ export const WHAT_THE_TASK_ADDS: AProblem[] = [
     dropIfUnfixed: false,
   },
   {
+    /* Two people as one subject with the verb for one: "Mary and Sam has not checked in", "You and Sam is waiting". Rewritten, never dropped. */
+    what: 'two people with a verb for one',
+    pattern: /\b(?:[\p{Lu}][\p{L}'’-]+|[Yy]ou) and (?:[\p{Lu}][\p{L}'’-]+|you) (?:has|is|was|hasn['’]t|isn['’]t|wasn['’]t|doesn['’]t|does)\b/gu,
+    dropIfUnfixed: false,
+  },
+  {
     what: 'a pattern used as a label on a person, rather than saying what happened',
     /*
      * DECISION 11: NO LABEL. "You have a pattern of replacing a decision with a conversation about

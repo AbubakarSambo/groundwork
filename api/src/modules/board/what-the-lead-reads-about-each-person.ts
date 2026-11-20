@@ -1,3 +1,4 @@
+import { CHECK_INS_BEFORE_A_PATTERN } from '../patterns/patterns-across-the-assessments';
 import type { AStoredPersonsRecord } from './the-persons-record-store';
 import { theOneThingToCoach, type ACoaching, type AThingToCoach, type AClaim, type ThePersonsRecord } from './the-persons-record';
 import { theRecordInWords, theCoachingInWords, aClaimSaidFor, type TheRecordInWords, type APartOfTheRecord } from './the-persons-record-in-words';
@@ -64,7 +65,12 @@ export function whoGroundworkCouldNotMove(stored: AStoredPersonsRecord | null | 
       if (!unproven.length) return null;
       const back = unproven.filter((x) => !!x.takenBack).length;
       const asked = unproven.some((x) => x.askedForProof);
-      return `${name} said ${times(unproven.length)} that ${whatTheySaid(unproven, kind)} with nothing on file${back ? `, and took ${back} back later` : ''}. Groundwork ${asked ? 'asked for the proof and has coached' : 'has coached'} ${name} ${since}, and ${after}, so call ${name}.`;
+      /* Run 8: "so call Asha" was said of somebody who answered every round and never took anything back. Without a claim taken back, this is a gap in
+       * the proof, so it says what is missing and what would settle it. Only a claim the person took back is about the person. */
+      if (!back) {
+        return `${name} said ${times(unproven.length)} that ${whatTheySaid(unproven, kind)}, and nothing on file shows it. Groundwork ${asked ? 'asked for the proof and has coached' : 'has coached'} ${name} ${since}, and it has not come. A slip, a bank or M-Pesa message or a signed order for ${unproven.length === 1 ? 'it' : 'any of them'} would settle it.`;
+      }
+      return `${name} said ${times(unproven.length)} that ${whatTheySaid(unproven, kind)} with nothing on file, and took ${back} back later. Groundwork ${asked ? 'asked for the proof and has coached' : 'has coached'} ${name} ${since}, and ${after}, so call ${name}.`;
     }
     case 'changes': {
       const one = r.changes.filter((x) => !x.putRight && x.what === 'units').pop();
@@ -192,6 +198,9 @@ export function whereTheyStand(stored: AStoredPersonsRecord | null | undefined, 
     return { standing: 'too early to say', says: `It is too early to say how ${name} is doing.`, evidence: [...(worked ? coachingSaid(worked) : []), ...facts].slice(0, 4) };
   }
   if (worked) return { standing: 'improving', says: `${name} is improving.`, evidence: [...coachingSaid(worked), ...theGood].slice(0, 4) };
+  /* No judgement on a person after one check-in (batch 2, group 2; staging S4, "Remy is doing well" after his first): a verdict needs
+     instances over time, the same number of check-ins the pattern layer needs before it names a pattern. */
+  if (s.checkInsDone < CHECK_INS_BEFORE_A_PATTERN) return { standing: 'too early to say', says: `It is too early to say how ${name} is doing.`, evidence: theGood.slice(0, 3) };
   return { standing: 'doing well', says: `${name} is doing well.`, evidence: theGood.slice(0, 3) };
 }
 

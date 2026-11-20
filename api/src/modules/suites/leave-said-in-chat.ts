@@ -1,12 +1,14 @@
+import { leaveDaysInWords, overTheAllowanceSaid } from './a-leave-request-as-the-approver-reads-it';
+import { readLeaveCalendars, leaveDaysUsed, theLastDayAfter } from './the-leave-calendar';
 import type { PrismaService } from '../prisma/prisma.service';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
-import { workingDays, type Day } from './the-leave-board.service';
+import type { Day } from './the-leave-board.service';
 import { whoApprovesFor } from './who-approves';
 import { readWorkflow, whoInWords } from './the-approval-steps';
 import { theStepsFor, whoDecidesNow, nobodyElseCanDecide, NOBODY_ELSE_CAN_DECIDE } from './who-may-decide';
 import { theThresholdCrossed } from './the-spending-rules';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
-import { hereSince, inASentence, moreThanWorkingDays, readLeaveRules, theKindOf, theKindSaid, theRulesThatApply, type LeaveRules } from './the-leave-rules';
+import { everyDayCounts, hereSince, inASentence, moreThanWorkingDays, readLeaveRules, theCalendarRulesOf, theKindOf, theKindSaid, theRulesThatApply, type ALeaveKind, type LeaveRules } from './the-leave-rules';
 
 /**
  * LEAVE DATES SAID IN CHAT GO TO THE LEAVE SUITE, NEVER TO THE RECORD (week 20, request 21).
@@ -42,6 +44,8 @@ export const LEAVE_WHICH_DAYS = `I could not tell exactly which days you mean, s
  */
 export const LEAVE_TELL_ME_THE_DAYS = `Tell me the first day and the last day you want off in one sentence, ${FOR_EXAMPLE}. I will say it back to you, and send it only when you say yes.`;
 export const LEAVE_IS_NOT_ON = 'Leave requests are not switched on in your organisation, so I cannot send one for you. An admin can switch them on under Suites.';
+/* Said to whoever may switch it on (Hafsah, 20 November 2026: Ruth, an admin, was told "An admin can switch them on"). */
+export const LEAVE_IS_NOT_ON_YET_FOR_YOU = 'Leave requests are not switched on yet, so I cannot send one for you. You can set them up now, and I will take you through it.';
 export async function whenNoDaysAreSaid(prisma: any, organizationId: string): Promise<string> {
   const suite = await Promise.resolve(prisma.organizationSuite?.findUnique?.({ where: { organizationId_suite: { organizationId, suite: 'leave' } } })).catch(() => null);
   return suite?.isOn ? LEAVE_TELL_ME_THE_DAYS : LEAVE_IS_NOT_ON;
@@ -62,6 +66,7 @@ const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const MONTH_RE = `(${MONTHS.join('|')}|${MONTHS.map((m) => m.slice(0, 3)).join('|')})`;
 const WEEKDAY_RE = `(${WEEKDAYS.join('|')})`;
+const ITS_DAY = `(?:\\s+\\d{1,2}(?:st|nd|rd|th)?)?`;
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const midnight = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
@@ -199,7 +204,8 @@ export function readLeaveDates(message: string, today: Date = new Date()): Leave
   }
 
   /* Next Thursday and Friday, this Monday to Wednesday, Thursday. */
-  const wd = new RegExp(`\\b(?:(next|this)\\s+)?${WEEKDAY_RE}(?:\\s*(and|to|until|till|through|-)\\s*(?:(?:next|this)\\s+)?${WEEKDAY_RE})?`).exec(t);
+  /* A weekday may carry its day of the month ("Monday 16 and Tuesday 17", staging S5: read as Tuesday alone). */
+  const wd = new RegExp(`\\b(?:(next|this)\\s+)?${WEEKDAY_RE}${ITS_DAY}(?:\\s*(and|to|until|till|through|-)\\s*(?:(?:next|this)\\s+)?${WEEKDAY_RE}${ITS_DAY})?`).exec(t);
   if (wd) {
     /* "Friday off next week" is next week's Friday: "next" after the day counts as much as before it. A day nobody asked for is the worst way to be wrong here. */
     const how = wd[1] === 'next' || (!wd[1] && new RegExp(`\\b${wd[4] ?? wd[2]}\\b(?:\\s+(?:off|of|on))?\\s+next week\\b`, 'i').test(t)) ? 'next' : 'this';
@@ -217,7 +223,6 @@ export function readLeaveDates(message: string, today: Date = new Date()): Leave
   return null;
 }
 
-const days = (n: number) => `${n} working ${n === 1 ? 'day' : 'days'}`;
 const longDay = (d: Day) => whenItWas(new Date(`${d}T00:00:00.000Z`), 'weekdayAndDay', 'UTC');
 
 /** The exact days as a person reads them: "on Friday 9 October", "from Thursday 8 October to Friday 9 October". */
@@ -237,9 +242,9 @@ const firstName = (p: { givenName?: string | null; displayName?: string | null }
  * Whom the person asks (the one answer in who-approves.ts: their line manager, or an admin) and their
  * team, for the say-back. `days` is the request's working days, so leave by length is read.
  */
-async function whoApproves(prisma: PrismaService, organizationId: string, userId: string, days?: number) {
+async function whoApproves(prisma: PrismaService, organizationId: string, userId: string, days?: number, kind?: string | null) {
   const me = await theirRosterEntry(prisma, organizationId, userId, { department: true, managerExternalId: true });
-  const who = await whoApprovesFor(prisma, { organizationId, personUserId: userId, managerExternalId: me?.managerExternalId ?? null, ...(days != null ? { days } : {}) });
+  const who = await whoApprovesFor(prisma, { organizationId, personUserId: userId, managerExternalId: me?.managerExternalId ?? null, ...(days != null ? { days } : {}), ...(kind ? { kind } : {}) });
   return { name: who.kind === 'admin' ? null : who.firstName, team: me?.department?.trim() || null, managerExternalId: me?.managerExternalId ?? null };
 }
 
@@ -249,11 +254,11 @@ async function whoApproves(prisma: PrismaService, organizationId: string, userId
  * "This is more than ten working days, so Wairimu approves it first, and then Joseph, who heads Sales."
  * Null when no threshold is crossed, or its steps are one.
  */
-async function longerLeaveSaid(prisma: PrismaService, organizationId: string, userId: string, rules: LeaveRules, days: number, first: string | null, managerExternalId: string | null): Promise<string | null> {
+async function longerLeaveSaid(prisma: PrismaService, organizationId: string, userId: string, rules: LeaveRules, days: number, first: string | null, managerExternalId: string | null, kind?: string | null): Promise<string | null> {
   const crossed = theThresholdCrossed(rules, days);
   if (!crossed || crossed.steps.length < 2) return null;
   const workflow = await readWorkflow(prisma, organizationId, 'leave');
-  const steps = theStepsFor('leave', { workflow, rules }, days);
+  const steps = theStepsFor('leave', { workflow, rules }, days, kind);
   const then: string[] = [];
   for (let step = 1; step < steps.length; step++) {
     const later = await whoDecidesNow(prisma, steps, { organizationId, requesterUserId: userId, managerExternalId }, { step });
@@ -291,10 +296,12 @@ export async function sayBackLeave(
   prisma: PrismaService,
   leave: LeaveLike | undefined,
   reader: { userId: string; organizationId: string },
-  dates: LeaveDates,
+  datesSaid: LeaveDates,
   today: Date = new Date(),
   said?: string,
-): Promise<{ ok: true; say: string; kind?: string } | { ok: false; say: string }> {
+  /** What the model read of the request (a-request-read-by-the-model.ts): the type of leave, and whether only its first day was said. */
+  read: { kind?: string | null; onlyTheStart?: boolean } = {},
+): Promise<{ ok: true; say: string; kind?: string; dates?: LeaveDates } | { ok: false; say: string }> {
   const suite = await prisma.organizationSuite.findUnique({
     where: { organizationId_suite: { organizationId: reader.organizationId, suite: 'leave' } },
     select: { isOn: true },
@@ -303,20 +310,27 @@ export async function sayBackLeave(
   const mine = await leave.mine(reader, today).catch(() => null);
   if (!mine) return { ok: false, say: LEAVE_SUITE_OFF };
 
-  const n = workingDays(new Date(`${dates.startsOn}T00:00:00.000Z`), new Date(`${dates.endsOn}T00:00:00.000Z`));
-  const { name, team, managerExternalId } = await whoApproves(prisma, reader.organizationId, reader.userId, n);
+  const rules: LeaveRules = await readLeaveRules(prisma, reader.organizationId).catch(() => ({}));
+  /* The type the model read, when it is one the organisation has; else the type named in their words; else the first. */
+  const kind: ALeaveKind | null = (read.kind && rules.kinds?.find((k) => k.key === read.kind)) || theKindSaid(said, rules);
+  const cal = (await readLeaveCalendars(prisma, reader.organizationId, theCalendarRulesOf(rules)).catch(() => null))?.of(reader.userId);
+  /* "I want to start maternity leave on 3 March": a type taken for a set length each time runs that length from the day said. */
+  const dates: LeaveDates = read.onlyTheStart && kind?.per === 'occasion' && kind.days && cal && datesSaid.startsOn === datesSaid.endsOn
+    ? { startsOn: datesSaid.startsOn, endsOn: theLastDayAfter(cal, datesSaid.startsOn, kind.days, kind) }
+    : datesSaid;
+  const n = cal ? leaveDaysUsed(cal, dates.startsOn, dates.endsOn, kind) : 0;
+  const every = everyDayCounts(rules, kind);
+  const { name, team, managerExternalId } = await whoApproves(prisma, reader.organizationId, reader.userId, n, kind?.key);
   /* The only admin is told now that nobody else could decide it, not offered "send it to an admin" (B-137). */
   if (name == null) {
     const role = (await (prisma as any).organizationMembership?.findUnique?.({ where: { userId_organizationId: { userId: reader.userId, organizationId: reader.organizationId } }, select: { role: true } }).catch(() => null))?.role ?? null;
     const workflow = await readWorkflow(prisma, reader.organizationId, 'leave').catch(() => null);
-    if (await nobodyElseCanDecide(prisma, theStepsFor('leave', { workflow }, n), { organizationId: reader.organizationId, requesterUserId: reader.userId, managerExternalId }, role)) {
+    if (await nobodyElseCanDecide(prisma, theStepsFor('leave', { workflow, rules }, n, kind?.key), { organizationId: reader.organizationId, requesterUserId: reader.userId, managerExternalId }, role)) {
       return { ok: false, say: NOBODY_ELSE_CAN_DECIDE };
     }
   }
   const off = await alsoOff(prisma, reader.organizationId, reader.userId, team, dates);
-  const rules: LeaveRules = await readLeaveRules(prisma, reader.organizationId).catch(() => ({}));
-  const longer = await longerLeaveSaid(prisma, reader.organizationId, reader.userId, rules, n, name, managerExternalId).catch(() => null);
-  const kind = theKindSaid(said, rules);
+  const longer = await longerLeaveSaid(prisma, reader.organizationId, reader.userId, rules, n, name, managerExternalId, kind?.key).catch(() => null);
   const daysLeft = kind ? (mine.kinds?.find((k) => k.key === kind.key)?.daysLeft ?? null) : mine.daysLeft;
 
   const left = daysLeft == null ? null : `You have ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} of ${kind ? inASentence(kind) : 'leave'} left this year`;
@@ -324,7 +338,12 @@ export async function sayBackLeave(
     : off.length === 0 ? `nobody else in ${team} is off then`
     : off.length === 1 ? `${off[0]} is also off then`
     : `${off.slice(0, -1).join(', ')} and ${off[off.length - 1]} are also off then`;
-  const middle = left && others ? `${left}, and ${others}.` : left ? `${left}.` : others ? `${others[0].toUpperCase()}${others.slice(1)}.` : '';
+  const middle0 = left && others ? `${left}, and ${others}.` : left ? `${left}.` : others ? `${others[0].toUpperCase()}${others.slice(1)}.` : '';
+  /* Over the allowance, said plainly (Batch S, round 2, T9). */
+  const over = overTheAllowanceSaid('you', n, daysLeft, every);
+  const middle = over ? `${middle0} ${over}`.trim() : middle0;
+  /* What the policy says of this type that the person should know before it is sent: unpaid. */
+  const unpaid = kind?.paid === false && kind.key !== 'unpaid' ? `${kind.name} is unpaid.` : kind?.paid === false ? 'It is not paid.' : null;
   const applies = theRulesThatApply(rules, {
     kind, startsOn: dates.startsOn, endsOn: dates.endsOn, days: n, askedOn: today.toISOString().slice(0, 10),
     hereSince: (rules as any).eligibleAfterDays ? await hereSince(prisma, reader.organizationId, reader.userId).catch(() => null) : null,
@@ -332,8 +351,10 @@ export async function sayBackLeave(
   const ask = applies.length ? `Shall I still send it to ${name ?? 'an admin'}?` : `Shall I send it to ${name ?? 'an admin'} to approve?`;
   return {
     ok: true,
-    say: `You asked for ${kind ? inASentence(kind) : 'leave'} ${theDaysAsRead(dates)}, which is ${days(n)}. ${middle ? `${middle} ` : ''}${applies.length ? `${applies.join(' ')} ` : ''}${longer ? `${longer} ` : ''}${ask}`,
+    say: `You asked for ${kind ? inASentence(kind) : 'leave'} ${theDaysAsRead(dates)}, which is ${leaveDaysInWords(n, every)}. ${middle ? `${middle} ` : ''}${unpaid ? `${unpaid} ` : ''}${applies.length ? `${applies.join(' ')} ` : ''}${longer ? `${longer} ` : ''}${ask}`,
     ...(kind ? { kind: kind.key } : {}),
+    /* Only when the days are not the ones said: a type taken for a set length, run from its first day. */
+    ...(dates !== datesSaid ? { dates } : {}),
   };
 }
 
@@ -365,9 +386,11 @@ export async function sendLeave(
  * (request 165). One sentence, so the two can never differ.
  */
 export async function theLeaveRequestSent(prisma: PrismaService, reader: { userId: string; organizationId: string }, dates: LeaveAsked): Promise<string> {
-  const n = workingDays(new Date(`${dates.startsOn}T00:00:00.000Z`), new Date(`${dates.endsOn}T00:00:00.000Z`));
-  const { name } = await whoApproves(prisma, reader.organizationId, reader.userId, n);
-  const kind = dates.kind ? theKindOf(dates.kind, await readLeaveRules(prisma, reader.organizationId).catch(() => ({}))) : null;
+  const rules: LeaveRules = await readLeaveRules(prisma, reader.organizationId).catch(() => ({}));
+  const kind = dates.kind ? theKindOf(dates.kind, rules) : null;
+  const cal = (await readLeaveCalendars(prisma, reader.organizationId, theCalendarRulesOf(rules)).catch(() => null))?.of(reader.userId);
+  const n = cal ? leaveDaysUsed(cal, dates.startsOn, dates.endsOn, kind) : 0;
+  const { name } = await whoApproves(prisma, reader.organizationId, reader.userId, n, kind?.key);
   const what = kind ? `request for ${inASentence(kind)}` : 'leave request';
   return `I have sent your ${what} ${theDaysAsRead(dates)} to ${name ?? 'an admin'}. It is not approved until they decide, and you will see it under your leave.`;
 }

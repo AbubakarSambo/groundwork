@@ -239,6 +239,8 @@ export interface SessionReportInputs {
   waiting?: number;
   /** The first of those, in the words it was raised in, so the tile names it. */
   theFirstBlocker?: string | null;
+  /** How many conversations on this check-in have not been read yet (conversation/the-read-is-owed.ts). */
+  readsStillToCome?: number;
   worries?: number;
   theFirstWorry?: string | null;
   /** Files, photos and location pins sent with this session's check-ins that the reader may see (B-103). */
@@ -445,11 +447,11 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
        * outranks what somebody means to do.
        */
       items: [...ofTypes(input.entries, [RecordEntryType.PROGRESS]), ...ofTypes(input.entries, [RecordEntryType.INTENT])],
-      saying: 'Nobody said what has moved, or what they are working towards, this session.',
+      saying: 'Nobody said what has moved, or what they are working towards, this check-in.',
     },
     {
       title: 'Commitments',
-      about: 'what people committed to, and what last session\'s commitments were not returned to',
+      about: 'what people committed to, and what last check-in\'s commitments were not returned to',
       items: [
         ...commitmentsNow,
         /*
@@ -458,7 +460,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
           * lead's name on the closing report. The person who said it is the whole point of the line.
           */
         ...notSpokenTo.map((c) => ({
-          text: `From last session, not mentioned again: ${c.text}`,
+          text: `From last check-in, not mentioned again: ${c.text}`,
           who: c.who,
           documented: false,
         })),
@@ -466,15 +468,15 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       saying:
         lastSessionCommitments.length > 0
           ? canFollowThreads
-            ? 'No new commitments, and every commitment from last session was returned to.'
-            : 'No new commitments this session. Whether last session\'s were returned to is not something this record can tell you.'
-          : 'Nobody committed to anything specific this session.',
+            ? 'No new commitments, and every commitment from last check-in was returned to.'
+            : 'No new commitments this check-in. Whether last check-in\'s were returned to is not something this record can tell you.'
+          : 'Nobody committed to anything specific this check-in.',
     },
     {
       title: 'Risks and concerns',
       about: 'what people said they are worried about, and where two accounts pull against each other',
       items: ofTypes(input.entries, [RecordEntryType.WORRY, RecordEntryType.TENSION]),
-      saying: 'Nobody named a risk or a concern this session.',
+      saying: 'Nobody named a risk or a concern this check-in.',
       /*
        * WHO FILLS THIS SECTION IS NOT WHO IS CAUSING THE TROUBLE.
        *
@@ -494,7 +496,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       title: 'Asks',
       about: 'what people said they need from somebody else',
       items: ofTypes(input.entries, [RecordEntryType.ASK]),
-      saying: 'Nobody asked for anything this session.',
+      saying: 'Nobody asked for anything this check-in.',
     },
     /*
      * THE TWO "WHAT CHANGED" SECTIONS DO NOT EXIST ON SESSION 1.
@@ -507,26 +509,26 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     ...(input.sessionNumber <= 1 ? [] : [
     {
       title: 'What changed since last session',
-      about: 'what this session says that the one before it did not',
+      about: 'what this check-in says that the one before it did not',
       items: whatChanged(input),
       saying:
         input.sessionNumber <= 1
-          ? 'This is the first session, so there is nothing before it to compare with.'
+          ? 'This is the first check-in, so there is nothing before it to compare with.'
           : canFollowThreads
-            ? 'Nothing in this session contradicts or moves what was said last time.'
+            ? 'Nothing in this check-in contradicts or moves what was said last time.'
             /* The same limit as the commitments band above: with nothing threading the sessions
                together, "nothing moved" is a claim this cannot support. Said on all twelve sessions
                of a real cohort in which plenty moved. */
-            : 'This record does not thread across sessions, so what moved since last time cannot be read from it. What each person said this session is above.',
+            : 'This record does not thread across check-ins, so what moved since last time cannot be read from it. What each person said this check-in is above.',
     },
     {
       title: 'What changed since the beginning',
-      about: 'this session against what was agreed and where things stood on day one',
+      about: 'this check-in against what was agreed and where things stood on day one',
       items: sinceTheBeginning(input),
       saying:
         !input.baselineSuccess && !input.startingPoint
           ? 'Nothing was recorded at the start, so there is no day one to measure against. Whoever runs this can still state it.'
-          : 'Nothing this session moves what was agreed at the start.',
+          : 'Nothing this check-in moves what was agreed at the start.',
     },
     ]),
     /*
@@ -591,6 +593,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     theWorry: input.theFirstWorry ?? null,
     whyNoWorry: input.whyNoWorryIsShown ?? null,
     waitsFromEarlier: input.waitsFromEarlier ?? 0,
+    readsStillToCome: input.readsStillToCome ?? 0,
   }), input.centralQuestion);
 
   /**
@@ -695,8 +698,8 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     plannedSessions: input.runsUntilEnded ? null : input.plannedSessions ?? null,
     runsUntilEnded: input.runsUntilEnded === true,
     position: input.runsUntilEnded
-      ? `Session ${input.sessionNumber}. It runs until ${input.whoEndsIt ? input.whoEndsIt : 'you'} end${input.whoEndsIt ? 's' : ''} it.`
-      : input.plannedSessions ? `Session ${input.sessionNumber} of ${input.plannedSessions}.` : `Session ${input.sessionNumber}.`,
+      ? `Check-in ${input.sessionNumber}. It runs until ${input.whoEndsIt ? input.whoEndsIt : 'you'} end${input.whoEndsIt ? 's' : ''} it.`
+      : input.plannedSessions ? `Check-in ${input.sessionNumber} of ${input.plannedSessions}.` : `Check-in ${input.sessionNumber}.`,
     state: input.closed ? 'final' : 'forming',
     confidence,
     whereThingsStand: { agreed, stillOpen, saying: standing, settled, ...(settledMarks ? { settledMarks } : {}), open: theOpenListWithWhatTheRecordHolds, differences: openNow, ...(openMarks ? { openMarks } : {}), openWithReasons },
@@ -780,7 +783,7 @@ function sinceTheBeginning(input: SessionReportInputs): SaidThing[] {
   for (const e of nowSuccess) {
     if (input.baselineSuccess && input.baselineSuccess.trim() !== e.text.trim()) {
       out.push({
-        text: `At the start: ${input.baselineSuccess} - this session: ${e.text}`,
+        text: `At the start: ${input.baselineSuccess} - this check-in: ${e.text}`,
         who: e.who,
         documented: !e.recallBased,
       });
@@ -812,8 +815,8 @@ function howClear(level: string | null): string {
         : level === 'vague'
           ? 'What people said stayed general. A report can only be as specific as what it was given, so this one names fewer things than it otherwise would.'
           : level === 'managed'
-            ? 'Little that could be checked was said in this session. The report names what it can and no more.'
-            : 'How specific this session was has not been read yet.';
+            ? 'Little that could be checked was said in this check-in. The report names what it can and no more.'
+            : 'How specific this check-in was has not been read yet.';
   return level ? `${clarity} ${WHERE_IT_WAS_READ_FROM}` : clarity;
 }
 

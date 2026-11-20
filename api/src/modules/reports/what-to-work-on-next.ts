@@ -315,7 +315,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   /* Coaching is never switched off (decision 55): a person with no role still gets the role block, read from what they said and not from a job. */
   const roleOf = (m: RoleMap | null, p: typeof pair) => (m ? roleBlock(m, p) : !runsTheirOwnBusiness(i.role) && theyGaveNoRole ? GENERAL_ROLE_BLOCK : null);
   /* "Session 6 of 3" is never said: past the planned count, the session is said alone (item 21). */
-  const where = i.totalSessions && i.totalSessions >= i.sessionNumber ? `session ${i.sessionNumber} of ${i.totalSessions}` : `session ${i.sessionNumber}`;
+  const where = i.totalSessions && i.totalSessions >= i.sessionNumber ? `check-in ${i.sessionNumber} of ${i.totalSessions}` : `check-in ${i.sessionNumber}`;
   /*
    * WHAT THIS IS ABOUT, FROM THE MAP WHERE THERE IS ONE. The map's label is what kind of work this
    * person's record is made of, which is a stronger fact than the scenario the check-in was opened
@@ -429,7 +429,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
       showingUp: `${plain.name}. This came up in ${recurring.periodsObserved} of your check-ins, not just once.`,
       /* The map is CONTEXT for how this is said, not a sentence in it. See the service, which hands
          the map to the wording pass as context; the engine's claim is the stage and the recurrence. */
-      whyItMatters: `${whereYouAre} Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
+      whyItMatters: `${whereYouAre} Something read once is an incident. Read across check-ins it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
       /* All of them. The list can hold six and the pattern probe is pushed last, so a cap at three
          made the probe the first thing cut - the one line that was about the recurrence itself. The
          page shows the first three and the rest under "also"; nothing is dropped here. */
@@ -447,7 +447,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
         : !i.anythingDocumented && i.documentsExpected !== false
           ? 'Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system.'
           : last
-            ? 'This is the last session. Say plainly what is still unresolved and who you think owns it, because after this the record stops.'
+            ? 'This is the last check-in. Say plainly what is still unresolved and who you think owns it, because after this the record stops.'
             : 'Say what happened to the thing you said you would do, with a date.',
     );
   }
@@ -456,7 +456,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     aboutYou,
     showingUp: null,
     whyItMatters: early
-      ? `${whereYouAre} Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`
+      ? `${whereYouAre} Nothing repeats yet, which is normal this early. What decides whether the later check-ins are worth anything is what you can point at.`
       : `${whereYouAre} Nothing has come up often enough yet to be called a pattern.`,
     beforeNextTime: actions,
     general: true,
@@ -472,7 +472,7 @@ export function theNoteBeforeYouHaveCheckedIn(): WhatToWorkOnNext {
   return {
     aboutYou: [],
     showingUp: null,
-    whyItMatters: 'You have not checked in yet, so there is nothing to say about your session.',
+    whyItMatters: 'You have not checked in yet, so there is nothing to say about your check-in.',
     beforeNextTime: ['When you check in, say one thing you did, with the date and who else was involved.'],
     general: true,
     role: null,

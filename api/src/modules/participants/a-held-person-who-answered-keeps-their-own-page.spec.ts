@@ -47,6 +47,6 @@ describe('what the narrowed page holds, and reads', () => {
   });
   it('tells them in plain sentences why a new session is not open, and that what they said is still theirs', () => {
     expect(read.saying).toBe(HELD_BUT_KEEPS_WHAT_THEY_SAID);
-    expect(HELD_BUT_KEEPS_WHAT_THEY_SAID).toBe('There is no seat for you on the plan right now, so you cannot answer a new session yet. What you already said and your own report are still yours to read. You will get your invitation as soon as there is a seat.');
+    expect(HELD_BUT_KEEPS_WHAT_THEY_SAID).toBe('There is no seat for you on the plan right now, so you cannot answer a new check-in yet. What you already said and your own report are still yours to read. You will get your invitation as soon as there is a seat.');
   });
 });

@@ -68,7 +68,8 @@ describe('the lead, while the question about doing well is waiting', () => {
     const out: any = await service.contextChat('g1', 'userLead', say(SAID), { yesOrNo: true });
     expect(memory.rows.filter((r) => r.status === 'KEPT')).toEqual([]);
     const kept: any = await service.applyContextProposal('g1', 'userLead', { said: '', offerId: out.proposal.thenOffer.offerId });
-    expect(kept.say).toBe(`I have kept "${RULE}" as a rule for the whole organisation. Later check-ins and Ask Groundwork can now use it. You can see it on the Company page.`);
+    /* Changed: the Company page is called the Desk now (S7; round 2, browser test row 40). */
+    expect(kept.say).toBe(`I have kept "${RULE}" as a rule for the whole organisation. Later check-ins and Ask Groundwork can now use it. You can see it on the Desk.`);
     expect(memory.rows[0]).toMatchObject({ status: 'KEPT', keptById: 'userLead' });
   });
 

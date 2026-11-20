@@ -2,7 +2,6 @@ import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { Injectable, Logger } from '@nestjs/common';
 import { CheckInStatus, DependencyStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { A_GUESTS_KEY_BEGINS } from '../assistant/a-guests-questions-are-kept-apart';
 import { OnboardingService } from '../grounds/onboarding.service';
 import { findUndeclaredDependencies, SubjectRef, Mention, sayIt } from './nobody-wrote-the-dependency-down';
 import { ClearedHandoff, unblockingCredits } from './somebody-else-says-you-unblocked-them';
@@ -762,23 +761,16 @@ export class DetectorsService {
       contributorExternalIds: Array.isArray(r.contributorExternalIds) ? (r.contributorExternalIds as string[]) : [],
       parentExternalId: r.parentExternalId,
     }));
-    /* Never a guest's questions: a guest is not on this organisation's list, and what they ask is theirs. See a-guests-questions-are-kept-apart. */
-    const assistantTurns = await this.prisma.assistantTurn.findMany({
-      where: { organizationId, role: 'person', NOT: { personExternalId: { startsWith: A_GUESTS_KEY_BEGINS } } },
-      select: { personExternalId: true, content: true, createdAt: true },
-      orderBy: { createdAt: 'desc' },
-      take: 2_000,
-    });
-
     /*
-     * AND WHAT PEOPLE SAID IN THEIR CHECK-INS, which was not an input to this at all.
+     * WHAT PEOPLE SAID IN THEIR CHECK-INS IS THE ONLY INPUT. Questions to Ask Groundwork are private,
+     * always, so no detector reads them (Hafsah, 15 November 2026; see a-persons-own-ask-turns).
+     * This used to read every person's Ask questions in the organisation as well, to work out who
+     * was mentioned in which work.
      *
-     * This read `assistantTurn` and nothing else - the chat a lead has with the assistant. Most
-     * people in an organisation never open that; a check-in is the only place they say anything.
-     * Measured on a firm of eleven with twenty-eight conversations about three named projects: 27
-     * ASSIGNED rows, zero STATED, zero REFERENCED, and six people told their leads they had "not
-     * been mentioned in any" of the work they had spent the quarter on. See
-     * a-check-in-is-where-people-talk.
+     * Check-ins are where people talk about their work anyway. Measured on a firm of eleven with
+     * twenty-eight conversations about three named projects, reading Ask alone gave 27 ASSIGNED rows,
+     * zero STATED, zero REFERENCED, and six people told their leads they had "not been mentioned in
+     * any" of the work they had spent the quarter on. See a-check-in-is-where-people-talk.
      */
     const spoken = await this.prisma.conversationTurn.findMany({
       where: { role: 'PERSON', checkIn: { ground: { organizationId } } },
@@ -819,8 +811,8 @@ export class DetectorsService {
     if (fromCheckIns.unmatched) {
       this.logger.log(`Org ${organizationId}: ${fromCheckIns.unmatched} check-in turn(s) belong to somebody who is not in the directory, so they are not read here.`);
     }
-    const turns = [...assistantTurns, ...fromCheckIns.turns];
-    this.logger.log(`Org ${organizationId}: reading ${assistantTurns.length} assistant turn(s) and ${fromCheckIns.turns.length} check-in turn(s).`);
+    const turns = fromCheckIns.turns;
+    this.logger.log(`Org ${organizationId}: reading ${turns.length} check-in turn(s).`);
 
     /*
      * TWO OF THE PEOPLE DETECTORS DO NOT NEED A SINGLE SUBJECT, so they run before the early exit

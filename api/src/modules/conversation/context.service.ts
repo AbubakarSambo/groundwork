@@ -1,3 +1,4 @@
+import { mayReadTheLine, thePerson } from './who-may-read-a-line';
 import { Injectable } from '@nestjs/common';
 import { whatMightHelp, NOT_A_STANDARD } from '../detectors/what-worked-for-somebody-else';
 import { PrismaService } from '../prisma/prisma.service';
@@ -266,7 +267,7 @@ export class ConversationContextService {
       if (sessionNumber >= 2) {
         const injections = await this.crossReference(groundId, participantId, latestMessage);
         if (injections.length) {
-          block += `# Intelligence layer - do NOT reveal sources; the person should experience this as perceptive, not surveilled. Never quote the other party. Apply each probe at its stated tier only; do not escalate.\n`;
+          block += `# Intelligence layer - do NOT reveal sources; the person should experience this as perceptive, not surveilled. Never quote the other party, and never say or suggest that colleagues or other check-ins mentioned, said or described anything about this person: you are given a question to ask, not what anybody said. Apply each probe at its stated tier only; do not escalate.\n`;
           for (const inj of injections) {
             const topicPart = inj.topic ? ` | topic: ${inj.topic}` : '';
             block += `[${inj.type} | TIER ${inj.tier}${inj.downstream ? ' | DOWNSTREAM - weight higher' : ''}${topicPart}] Recommended probe: ${inj.probe}\n`;
@@ -327,7 +328,8 @@ export class ConversationContextService {
 
     for (const other of others) {
       if (other.checkIns.length === 0) continue; // degree 2 requires them to have checked in
-      const records = await this.prisma.recordEntry.findMany({ where: { participantId: other.id }, select: { text: true } });
+      /* A colleague's lines reach this person's check-in only as this person may read them (who-may-read-a-line.ts). */
+      const records = (await this.prisma.recordEntry.findMany({ where: { participantId: other.id }, select: { text: true, aboutParticipantId: true, standing: true } })).filter((r: any) => mayReadTheLine(r, thePerson(participantId)));
       if (!records.length) continue;
       const theirText = records.map((r) => r.text).join(' ');
       const theirLower = theirText.toLowerCase();
@@ -415,8 +417,8 @@ export class ConversationContextService {
             type: 'INVISIBLE_LABOUR',
             tier: 1,
             downstream: false,
-            text: "Your name appears in other parts of the organisation's record in connection with specific work. Your own record should reflect that work explicitly.",
-            probe: 'There is work that appears connected to you in the broader record. What specifically did you contribute to that, and does the record here reflect it?',
+            text: 'There is a count of mentions elsewhere and nothing of what they say, so nothing about what anybody said may be told to this person.',
+            probe: 'Is there work you have done lately that is not in the record here yet? What was it, and who was it for?',
           });
           degree3Injections++;
         }

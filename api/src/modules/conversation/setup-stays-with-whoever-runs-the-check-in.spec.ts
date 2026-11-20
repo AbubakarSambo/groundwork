@@ -249,7 +249,10 @@ function theLinesAskedFor(where: any): any[] {
   const matches = (l: any, w: any): boolean => {
     if (!w) return true;
     if (w.OR && !w.OR.some((o: any) => matches(l, o))) return false;
-    if (w.NOT && matches(l, w.NOT)) return false;
+    /* Prisma takes NOT as one clause or a list; a line about somebody, or one that cannot be true, is read as Prisma reads it. */
+    if (w.NOT && [].concat(w.NOT).some((n: any) => matches(l, n))) return false;
+    if (w.aboutParticipantId !== undefined && (w.aboutParticipantId?.not === null ? !l.aboutParticipantId || (w.aboutParticipantId.notIn ?? []).includes(l.aboutParticipantId) : false)) return false;
+    if (w.standing !== undefined && l.standing !== w.standing?.equals) return false;
     if (w.type && l.type !== w.type) return false;
     if (w.participantId?.in && !w.participantId.in.includes(l.participantId)) return false;
     if (typeof w.participantId === 'string' && l.participantId !== w.participantId) return false;

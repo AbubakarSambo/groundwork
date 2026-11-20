@@ -77,9 +77,9 @@ describe('the partner is told a fee note fell due on an event', () => {
     expect(moved).toBe(`Here is what moved this week. ${FN005_SAID} ${THIRD_SAID} Aisha Kamau is no longer waiting on the client's HR manager for the witness statements from the client.`);
   });
 
-  it('with Release 2 off, neither says anything about fee notes', async () => {
+  it('with the old Release 2 column off, fee notes are still said (always on since 15 November; the column is no longer read)', async () => {
     const now = new Date('2026-10-15T05:00:00Z');
     const o = await whatIsOutstandingFor(theRecord(false), LEAD as any, { boards: {} as any, release: new Date('2026-01-01') }, now);
-    expect(o.needsYou.map((t) => t.text).join(' ')).not.toContain('FN-005');
+    expect(o.needsYou.map((t) => t.text).join(' ')).toContain('FN-005');
   });
 });

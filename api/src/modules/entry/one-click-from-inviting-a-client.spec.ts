@@ -12,7 +12,7 @@ import { splitMentions, isOutsideTheOrganisation, type Mentioned } from './a-cli
  *   Microchip Solutions  two clients
  *   Mass General
  *
- * Adding a client there sends that client an invitation to give their own account
+ * Adding a client there sends that client an invitation to say how it is going in their own words
  * of her team's performance. One click, by somebody skimming.
  *
  * THE FIX IS TO SPLIT THE LIST, NOT TO FILTER IT. Both clients are genuinely part
@@ -48,7 +48,7 @@ describe('her four, sorted', () => {
     const { note } = splitMentions(hers);
     expect(note).toMatch(/outside your organisation/);
     // The sentence that makes the rule make sense rather than feel arbitrary.
-    expect(note).toMatch(/an invitation asks somebody to give their own account/);
+    expect(note).toMatch(/an invitation asks somebody to say how it is going in their own words/);
   });
 
   it('and says nothing where there is nothing to say', () => {

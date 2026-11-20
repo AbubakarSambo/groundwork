@@ -25,7 +25,7 @@ describe('B-165: what is still open, when the record holds something', () => {
   });
   it('an earlier wait still open is listed as open', () => {
     const out = theSessionReport({ ...base, waitsFromEarlier: 2 });
-    expect(out.whereThingsStand.open[0]).toMatch(/2 waits from earlier sessions are still open/);
+    expect(out.whereThingsStand.open[0]).toMatch(/2 waits from earlier check-ins are still open/);
   });
   it('with nothing on record, nothing is listed, so "Nothing is open" is then true', () => {
     const out = theSessionReport({ ...base });

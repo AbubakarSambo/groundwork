@@ -12,13 +12,13 @@ describe('the email to a lead whose person could not check in', () => {
   it('names the person', async () => {
     const { s, sent } = service();
     await s.sendParticipantBlockedNudge('wairimu@msingi.test', 'Sales team, Q4', 'Chidi Okeke', 'https://app.test/grounds/g1');
-    expect(sent[0].subject).toBe('Chidi Okeke tried to check in - add a session to unblock them');
+    expect(sent[0].subject).toBe('Chidi Okeke tried to check in and could not');
     expect(sent[0].html).not.toMatch(/@/);
   });
   it('says "somebody you invited" when no name is known, and still no address', async () => {
     const { s, sent } = service();
     await s.sendParticipantBlockedNudge('wairimu@msingi.test', 'Sales team, Q4', null, 'https://app.test/grounds/g1');
-    expect(sent[0].subject).toBe('Somebody you invited tried to check in - add a session to unblock them');
+    expect(sent[0].subject).toBe('Somebody you invited tried to check in and could not');
     expect(sent[0].html).not.toMatch(/@/);
   });
 });

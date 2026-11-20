@@ -226,7 +226,7 @@ export function theSetupPackFor(
       ? [
         `AND THE SAME GOES FOR WHEN. The card says this is ${momentSaid[String(moment)] ?? 'already placed in time'}, so that is settled: NEVER ask whether this is a one off, whether they will be checking in regularly, or whether it is something that comes back round. It was asked three times in one live run and read as not listening.`,
         '',
-        'AND NEVER ASK HOW LONG IT RUNS OR HOW OFTEN PEOPLE CHECK IN. Both already have a value from the situation they picked, the screen shows it while they talk, and both are changed on the Setup tab in two clicks afterwards. Asked here they are two more questions before anybody has said anything real, and the answer is a guess about a person who has not started yet. Driven live, this was the question that would not stop coming: banned as the moment, it came back as "how long should this run for, and how often would you like to check in with Margaret".',
+        'AND NEVER ASK HOW LONG IT RUNS OR HOW OFTEN PEOPLE CHECK IN. Both already have a value from the situation they picked, the screen shows it while they talk, and both are changed under People and setup in two clicks afterwards. Asked here they are two more questions before anybody has said anything real, and the answer is a guess about a person who has not started yet. Driven live, this was the question that would not stop coming: banned as the moment, it came back as "how long should this run for, and how often would you like to check in with Margaret".',
         '',
       ]
       : []),

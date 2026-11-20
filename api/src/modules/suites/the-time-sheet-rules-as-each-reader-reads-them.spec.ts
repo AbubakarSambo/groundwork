@@ -26,6 +26,7 @@ afterEach(() => jest.useRealTimers());
 
 /* ------------------------------------------- before and after ------------------------------------------- */
 
+/* Batch S, S2 (Hafsah, 19 November 2026): the default step now names the manager's manager before an admin, so the sentences say so. */
 describe('with no time sheet rules set, every reader reads exactly what they read before', () => {
   for (const [label, rules] of [['no rules row at all', undefined], ['an empty rules row', {}]] as const) {
     it(`${label}: Aisha's own hours read as before, with nothing about where she stands`, async () => {
@@ -89,7 +90,7 @@ describe('Grace, the admin, sets the rules and reads them back in full sentences
       'No number of hours is asked for each week.',
       'There is no cut-off.',
       'Every hour is billable, so the billing file holds every approved hour.',
-      'A week of hours goes to the person’s manager, or else an admin. An admin changes who approves under the approval steps.',
+      'A week of hours goes to the person’s manager, or else their manager’s manager, or else an admin. An admin changes who approves under the approval steps.',
       'Hours are for billing only. They never appear in anyone’s check-in report, their signals or a review.',
     ]);
   });
@@ -106,7 +107,7 @@ describe('Grace, the admin, sets the rules and reads them back in full sentences
       'Hours on Internal are not billable.',
       'Hours on every other client or project are billable.',
       'A person can say that one entry is billable or not billable, and that entry follows what they said.',
-      'A week of hours goes to the person’s manager, or else an admin. An admin changes who approves under the approval steps.',
+      'A week of hours goes to the person’s manager, or else their manager’s manager, or else an admin. An admin changes who approves under the approval steps.',
       'Hours are for billing only. They never appear in anyone’s check-in report, their signals or a review.',
     ]);
     const h = await o.suites.rulesHistory(o.as('u-grace'));

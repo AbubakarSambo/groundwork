@@ -246,8 +246,8 @@ export function buildTheMatterBoard(input: TheMatterInput): TheMatterBoard {
   const intro = n
     ? `${reader.runsIt ? `${count(n)} ${n === 1 ? 'matter is' : 'matters are'} on record in this check-in` : `You have spoken about ${lower(n)} ${n === 1 ? 'matter' : 'matters'} in this check-in`}, ${andList(matters.map((m) => m.name))}.`
     : reader.runsIt
-      ? 'No matter is on record in this check-in yet. A matter shows here once somebody names it in a check-in and the firm has a fee note on it.'
-      : 'You have not spoken about a matter in this check-in yet. Each one you name shows here.';
+      ? 'No matter is on record in this check-in yet.'
+      : 'You have not spoken about a matter in this check-in yet.';
   const bills = input.billWord.endsWith('s') ? input.billWord : `${input.billWord}s`;
   return {
     intro,

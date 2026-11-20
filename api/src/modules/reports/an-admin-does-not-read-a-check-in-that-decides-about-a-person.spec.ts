@@ -100,7 +100,7 @@ function makeService(ground: any, userRole: 'ADMIN' | 'MEMBER' = 'MEMBER') {
 
 const routes: [string, (s: ReportsService, who: string) => Promise<any>][] = [
   ['GET /grounds/:id/report', (s, who) => s.get('g1', who, 'org-1')],
-  ['GET /grounds/:id/report/session/1', (s, who) => s.sessionReport('g1', 1, who, 'org-1')],
+  ['GET /grounds/:id/report/check-in/1', (s, who) => s.sessionReport('g1', 1, who, 'org-1')],
   ['GET /grounds/:id/report/rounds', (s, who) => s.rounds('g1', who, 'org-1')],
   ['GET /grounds/:id/report/against-success', (s, who) => s.whereAgainstSuccess('g1', who, 'org-1')],
   ['GET /grounds/:id/report/activation-status', (s, who) => s.getActivationStatusForUser('g1', who, 'org-1')],

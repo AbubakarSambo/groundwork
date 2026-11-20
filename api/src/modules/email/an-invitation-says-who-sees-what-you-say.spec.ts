@@ -23,17 +23,17 @@ describe('the invitation', () => {
     const { svc, sent } = anEmail({ scenario: 'OKR_ALIGNMENT', peersVisibleToEachOther: null, organization: { name: 'Baridi Appliances' }, organizationId: 'org-1', overWhatsApp: null });
     await svc.sendParticipantInvite('amani@baridi.test', 'Wairimu', 'Sales team, Q4', 'tok', undefined, { kind: 'PARTICIPANT_INVITE', groundId: 'g-1' });
     const read = text(sent[0].html);
-    expect(read).toContain('The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Baridi Appliances stay private.');
+    expect(read).toContain('You see your own report straight away. The person who runs it shares a team report when it is ready. Nobody else reads your conversation.');
     expect(read).not.toMatch(/Nobody on your team sees|never quotes you|private check-in/i);
   });
 
   it('for a cohort, where people do not see each other: whoever runs it can, and the others cannot', async () => {
     const { svc, sent } = anEmail({ scenario: 'COHORT_CHECK', peersVisibleToEachOther: null, organization: { name: 'Baridi Appliances' }, organizationId: 'org-1', overWhatsApp: null });
     await svc.sendParticipantInvite('amani@baridi.test', 'Wairimu', 'Founders cohort', 'tok', undefined, { kind: 'PARTICIPANT_INVITE', groundId: 'g-2' });
-    expect(text(sent[0].html)).toContain('Whoever runs this check-in can see what you say in it. The other people taking part do not see what you say. Your questions to Ask Baridi Appliances stay private.');
+    expect(text(sent[0].html)).toContain('You see your own report straight away. The person who runs it reads it too. Nobody else reads your conversation.');
   });
 
   it('a check-in whose lead chose that people see each other says so, whatever its kind', () => {
-    expect(whoSeesWhatYouSayIn({ scenario: 'COHORT_CHECK', peersVisibleToEachOther: true, organization: { name: 'Kito' } })).toMatch(/^The people in this check-in/);
+    expect(whoSeesWhatYouSayIn({ scenario: 'COHORT_CHECK', peersVisibleToEachOther: true, organization: { name: 'Kito' } })).toMatch(/shares a team report/);
   });
 });

@@ -67,6 +67,8 @@ export async function theNewestRecordOfEachPerson(
       ...(w.groundId ? { groundId: w.groundId } : {}),
       ...(w.participantIds ? { participantId: { in: w.participantIds } } : {}),
       ...(typeof w.upToSession === 'number' ? { sessionNumber: { lte: w.upToSession } } : {}),
+      /* Nobody who has left is read for the lead: run 5 (19 November) still read "Mary has said 5 pieces of work were done without showing the proof" after she was removed. What she said stays stored. */
+      participant: { leftAt: null },
     },
     orderBy: { sessionNumber: 'desc' },
     select: { id: true, participantId: true, sessionNumber: true, sessionReport: true },

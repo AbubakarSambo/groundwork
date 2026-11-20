@@ -26,11 +26,6 @@ export function theReportReadyDirectly(
     (chat ? button(chat.url, chat.label) + `<p><a href="${reportUrl}">Read the report</a></p>` : button(reportUrl, 'Read the report →'));
 }
 
-/** The report has been ready a while and this person has not opened it. */
-export function theReportIsStillWaitingDirectly(label: string, reportUrl: string, since: string): string {
-  return p(since ? `Your report for ${label} has been ready since ${since}.` : `Your report for ${label} is ready.`) + button(reportUrl, 'Read the report →');
-}
-
 /**
  * A check-in invitation: who asks, what it is, how long it takes, who sees what they say, and the button. The one line about who sees
  * what stays here, where a person is first asked to take part (Hafsah, 4 November 2026: one plain consent line, where people first agree).

@@ -170,7 +170,6 @@ export interface TheCollectionsBoard {
     signalsSays: string | null;
     whatWouldSettleIt: string;
     whoDecides: string;
-    groundworkDoesNotChoose: string;
   };
 }
 
@@ -295,8 +294,8 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
   let bar: TheCollectionsBoard['bar'] = null;
   if (!rows.length) {
     answer = reader.runsIt
-      ? (loans ? 'No loan is on record yet. Each one shows here once its borrower checks in.' : `No ${bill} is on record yet. Each one shows here once somebody names it in a check-in.`)
-      : (loans ? 'Your loan is not on record yet. It shows here once you check in about it.' : `No ${bill} that you follow up is on record yet. Each one shows here once you name it in a check-in.`);
+      ? (loans ? 'No loan is on record yet.' : `No ${bill} is on record yet.`)
+      : (loans ? 'Your loan is not on record yet.' : `No ${bill} that you follow up is on record yet.`);
   } else if (!dueRows.length) {
     answer = loans ? 'No repayment has fallen due yet.' : `No ${bill} has fallen due yet.`;
   } else {
@@ -610,7 +609,7 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
   const followUp = {
     heading: loans ? 'Support given, and whether it helped' : 'Follow-up given, and whether it helped',
     rows: followRows,
-    empty: followRows.length ? null : `No follow-up is on record yet. It shows here once somebody says they sent a reminder or spoke to ${loans ? 'a borrower' : 'a client'}.`,
+    empty: followRows.length ? null : 'No follow-up is on record yet.',
   };
 
   /* ------------------------------------------------------------ what the systems show */
@@ -648,7 +647,6 @@ export function buildTheCollectionsBoard(input: TheCollectionsInput): TheCollect
         ? 'A check-in from each borrower behind or not heard from, and a repayment record for each repayment said.'
         : `A date from each client behind, and a slip, a message or the accounting system’s record for each payment said.`,
       whoDecides: 'You decide.',
-      groundworkDoesNotChoose: '',
     };
   }
 

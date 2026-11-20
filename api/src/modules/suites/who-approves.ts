@@ -1,5 +1,5 @@
 import type { PrismaService } from '../prisma/prisma.service';
-import { decidesIt, theOneWhoDecides, theStepsFor } from './who-may-decide';
+import { theOneWhoDecides, theStepsFor } from './who-may-decide';
 import { readWorkflow } from './the-approval-steps';
 import { readLeaveRules } from './the-leave-rules';
 
@@ -20,12 +20,12 @@ export type Approver = { kind: 'manager' | 'person'; userId: string; firstName: 
  */
 export async function whoApprovesFor(
   prisma: PrismaService,
-  input: { organizationId: string; personUserId: string; managerExternalId?: string | null; suite?: 'leave' | 'time'; days?: number },
+  input: { organizationId: string; personUserId: string; managerExternalId?: string | null; suite?: 'leave' | 'time'; days?: number; kind?: string | null },
 ): Promise<Approver> {
   const suite = input.suite ?? 'leave';
   const workflow = await readWorkflow(prisma, input.organizationId, suite);
-  const rules = suite === 'leave' && input.days != null ? await readLeaveRules(prisma, input.organizationId).catch(() => ({})) : undefined;
-  const who = await theOneWhoDecides(prisma, theStepsFor(suite, { workflow, rules }, input.days)[0], {
+  const rules = suite === 'leave' && (input.days != null || input.kind) ? await readLeaveRules(prisma, input.organizationId).catch(() => ({})) : undefined;
+  const who = await theOneWhoDecides(prisma, theStepsFor(suite, { workflow, rules }, input.days, input.kind)[0], {
     organizationId: input.organizationId, requesterUserId: input.personUserId, managerExternalId: input.managerExternalId,
   });
   if (who.kind === 'manager') return { kind: 'manager', userId: who.userId, firstName: who.firstName };
@@ -34,16 +34,4 @@ export async function whoApprovesFor(
     return { kind: 'person', userId: who.userId, firstName: u?.firstName?.trim() || null };
   }
   return { kind: 'admin' };
-}
-
-/** Whether this reader decides leave or hours for this person: the one who approves for them, and never the person themselves. */
-export async function mayApproveFor(
-  prisma: PrismaService,
-  input: { organizationId: string; readerId: string; readerRole: string | null; personUserId: string; managerExternalId?: string | null },
-): Promise<boolean> {
-  if (input.personUserId === input.readerId) return false;
-  const who = await theOneWhoDecides(prisma, theStepsFor('leave')[0], {
-    organizationId: input.organizationId, requesterUserId: input.personUserId, managerExternalId: input.managerExternalId,
-  });
-  return decidesIt(who, { userId: input.readerId, role: input.readerRole }, input.personUserId);
 }

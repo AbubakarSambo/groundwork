@@ -21,7 +21,8 @@ describe('the text part', () => {
   it('is passed to the provider on every production send', () => {
     /* Changed 19 October: a sender may give its own text part where the HTML is a table (the daily delivery alert); every other send still reads it off the HTML. */
     expect(send).toMatch(/const text = options\.text \?\? plainTextOf\(options\.html\);/);
-    expect(send).toMatch(/emails\.send\(\{ from: this\.fromEmail, \.\.\.options, text,/);
+    /* The files are taken out of `options` and passed on beside it (attachments.ts), so the spread is of what is left; the text part is still passed on every send. */
+    expect(send).toMatch(/emails\.send\(\{ from: this\.fromEmail, \.\.\.theRest, text,/);
   });
 });
 

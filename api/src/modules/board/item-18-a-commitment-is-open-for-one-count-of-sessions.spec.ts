@@ -22,18 +22,19 @@ const SETUP = {
   },
 };
 
+/* UPDATED 19 NOVEMBER (rest of the list): the product says "check-in" where this spec still said "session" (the board's vocabulary); the count it pins, one count for every line, is unchanged. */
 describe('item 18: a commitment is open for one count of sessions', () => {
   it('Amina, who runs it, reads "open for 1 session" in the record over time, as in the work plan', async () => {
     const b = await boardAs(SETUP, ...AMINA);
     const over = (b.overTime?.commitments ?? []).map((c: any) => c.say).join(' ');
-    expect(over).toMatch(/It has been open for 1 session, and nobody has said whether it happened\./);
-    expect(JSON.stringify(b)).not.toMatch(/open for 2 sessions/);
-    expect(b.overTime.inSessions).toBe('in 2 sessions');
+    expect(over).toMatch(/It has been open for 1 check-in, and nobody has said whether it happened\./);
+    expect(JSON.stringify(b)).not.toMatch(/open for 2 check-ins/);
+    expect(b.overTime.inSessions).toBe('in 2 check-ins');
   });
 
   it.each([['Rukia, who made it', RUKIA], ['Baraka, who checks in', BARAKA], ['Juma, an admin who only reads', JUMA]])('%s is not served the record over time, and reads no other count', async (_who, [user, role]) => {
     const b = await boardAs(SETUP, user, role);
     expect(b.overTime ?? null).toBeNull();
-    expect(JSON.stringify(b)).not.toMatch(/open for 2 sessions/);
+    expect(JSON.stringify(b)).not.toMatch(/open for 2 check-ins/);
   });
 });

@@ -247,7 +247,7 @@ describe('a check-in that runs until the lead ends it', () => {
     });
 
     it('opens the context chat by saying it runs until the lead ends it', () => {
-      expect(openingLine(0, 'WEEKLY', true)).toBe('This check-in runs until you end it and people check in once a week.');
+      expect(openingLine(0, 'WEEKLY', true)).toBe('This check-in runs until you end it and people check in every week.' /* S18, 7 November: the one cadence wording */);
     });
   });
 

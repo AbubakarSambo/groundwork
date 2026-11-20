@@ -1,6 +1,6 @@
 import { UsersService } from '../users/users.service';
-import { whoApprovesFor, mayApproveFor } from './who-approves';
-import { theOneWhoDecides, theStepsFor } from './who-may-decide';
+import { whoApprovesFor } from './who-approves';
+import { decidesIt, theOneWhoDecides, theStepsFor } from './who-may-decide';
 import { loadLookups } from './the-lookups';
 import { ApprovalsQueueService } from './the-approvals-queue.service';
 import { LeaveBoardService } from './the-leave-board.service';
@@ -76,8 +76,10 @@ describe('the manager an admin sets on the People page approves leave', () => {
     await people.setWhereTheySit(ORG, 'u-chidi', { reportsToUserId: 'u-bola' });
 
     expect(await whoApprovesFor(prisma, { organizationId: ORG, personUserId: 'u-chidi' })).toEqual({ kind: 'manager', userId: 'u-bola', firstName: 'Bola' });
-    expect(await mayApproveFor(prisma, { organizationId: ORG, readerId: 'u-bola', readerRole: 'LEAD', personUserId: 'u-chidi' })).toBe(true);
-    expect(await mayApproveFor(prisma, { organizationId: ORG, readerId: 'u-chidi', readerRole: 'MEMBER', personUserId: 'u-chidi' })).toBe(false);
+    /* mayApproveFor had no caller and is gone (Batch S, S2); the one resolver says the same through decidesIt. */
+    const decides = await theOneWhoDecides(prisma, theStepsFor('leave')[0], { organizationId: ORG, requesterUserId: 'u-chidi' });
+    expect(decidesIt(decides, { userId: 'u-bola', role: 'LEAD' }, 'u-chidi')).toBe(true);
+    expect(decidesIt(decides, { userId: 'u-chidi', role: 'MEMBER' }, 'u-chidi')).toBe(false);
 
     /* The boards and the queue answer from what is read once (the-lookups.ts): the same answer. */
     const lookups = await loadLookups(prisma, ORG, new Date('2026-10-12T09:00:00Z'));
@@ -85,11 +87,29 @@ describe('the manager an admin sets on the People page approves leave', () => {
     expect(who).toMatchObject({ kind: 'manager', userId: 'u-bola', firstName: 'Bola' });
   });
 
-  it('a line to somebody who is only a member does not make them an approver, and it still goes to an admin', async () => {
+  /* Changed for Batch S, S2 (Hafsah, 19 November 2026: "approvals that follow the role map"): a manager who signs in as a member
+     decides for the people who report to them. Before, they were skipped and the request went to an admin in silence. */
+  it('a line to somebody who signs in as a member makes them the approver, whatever their app role', async () => {
     const { prisma, people, members } = anOrganisation();
     members.find((m) => m.userId === 'u-bola')!.role = 'MEMBER';
     await people.setWhereTheySit(ORG, 'u-chidi', { reportsToUserId: 'u-bola' });
-    expect(await whoApprovesFor(prisma, { organizationId: ORG, personUserId: 'u-chidi' })).toEqual({ kind: 'admin' });
+    expect(await whoApprovesFor(prisma, { organizationId: ORG, personUserId: 'u-chidi' })).toEqual({ kind: 'manager', userId: 'u-bola', firstName: 'Bola' });
+  });
+
+  /* Batch S, round 2, T7 (W13): People showed "Reports to Nobody" for Amani while her leave went to Wairimu, because the page read
+     only the line set on it and the approvals also read the staff directory. Both now read one line. */
+  it('People shows the manager the staff directory names, the same person who approves the leave', async () => {
+    const { prisma, people } = anOrganisation();
+    const entries = [
+      { externalId: 'p-bola', linkedUserId: 'u-bola', email: null, title: 'Head of Sales', department: 'Sales', managerExternalId: null, givenName: 'Bola', displayName: 'Bola Ade', active: true },
+      { externalId: 'p-chidi', linkedUserId: 'u-chidi', email: null, title: 'Sales executive', department: 'Sales', managerExternalId: 'p-bola', givenName: 'Chidi', displayName: 'Chidi Eze', active: true },
+    ];
+    const matches = (e: any, w: any) => Object.entries(w ?? {}).every(([k, v]) => v === undefined || k === 'active' || k === 'organizationId'
+      || (v && typeof v === 'object' && Array.isArray((v as any).in) ? (v as any).in.includes(e[k]) : e[k] === v));
+    prisma.person.findMany = jest.fn(async ({ where }: any) => entries.filter((e) => matches(e, where)));
+    prisma.person.findFirst = jest.fn(async ({ where }: any) => entries.find((e) => matches(e, where)) ?? null);
+    expect((await people.whereTheySit(ORG, ['u-chidi'])).get('u-chidi')).toMatchObject({ reportsTo: { id: 'u-bola' }, team: 'Sales' });
+    expect(await whoApprovesFor(prisma, { organizationId: ORG, personUserId: 'u-chidi' })).toMatchObject({ kind: 'manager', userId: 'u-bola' });
   });
 
   it('on the screen: Bola\'s "Waiting for you to decide" queue holds Chidi\'s leave, in a full sentence, and his Approve is kept', async () => {

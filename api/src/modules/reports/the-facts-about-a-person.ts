@@ -39,6 +39,8 @@ export interface APersonToWriteUp {
    */
   customers?: string[] | null;
   people?: string[];
+  /** What one round covers, where the check-in repeats (theUnitOfARound), so a figure from each round is that round's count. */
+  roundUnit?: string | null;
 }
 
 /** One number this person holds, and where it came from. */
@@ -293,7 +295,7 @@ export function factsAbout(p: APersonToWriteUp, thisSession: number): PersonFact
    * units, but this has been revised down to 5", and Grace's board said "This means Kevin Omondi's reporting has been inaccurate". The
    * same customers the synthesis is already given (whatDoesNotAddUpPerPerson), so a figure is only set against the same customer's.
    */
-  const diffs = whatDoesNotAddUp({ said, thisSession, targets: p.targets, sessionsLeft: null, aiTurnsThisSession: [], customers: p.customers ?? null, people: p.people ?? [] });
+  const diffs = whatDoesNotAddUp({ said, thisSession, targets: p.targets, sessionsLeft: null, aiTurnsThisSession: [], customers: p.customers ?? null, people: p.people ?? [], roundUnit: p.roundUnit ?? null });
   const doesNotAddUp = diffs.slice(0, 2).map((d) => clean(d.lines[2] ?? d.lines[0] ?? '')).filter(Boolean);
 
   /* A difference between how the work runs and how it is supposed to run is something the lead

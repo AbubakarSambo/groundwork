@@ -1,3 +1,4 @@
+import { mayReadTheLine, EVERYBODY } from '../conversation/who-may-read-a-line';
 /**
  * WHAT THE LEAD WROTE ABOUT A PERSON IS FOR THE LEAD ALONE (U.6 review, tightened in the U.7 review).
  *
@@ -176,7 +177,8 @@ export async function theShareableTextFor(
   const read = <T,>(f: () => Promise<T> | undefined, fallback: T): Promise<T> =>
     Promise.resolve().then(() => f() ?? fallback).catch(() => fallback);
   const [entries, objectives] = await Promise.all([
-    read(() => prisma.recordEntry?.findMany?.({ where: { participant: { groundId: ground.id } }, select: { text: true } }), [] as any[]),
+    /* Only what everybody may read makes words sayable to a member (who-may-read-a-line.ts). */
+    read(() => prisma.recordEntry?.findMany?.({ where: { participant: { groundId: ground.id } }, select: { text: true, aboutParticipantId: true, standing: true } }), [] as any[]).then((rows: any[]) => (Array.isArray(rows) ? rows : []).filter((r) => mayReadTheLine(r, EVERYBODY))),
     read(() => prisma.groundObjective?.findMany?.({ where: { groundId: ground.id }, select: { name: true } }), [] as any[]),
   ]);
   const room = ground.whatTheRoomIsAbout as { aims?: { aim?: string }[] } | null | undefined;

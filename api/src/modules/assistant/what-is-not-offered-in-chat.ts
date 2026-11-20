@@ -34,6 +34,11 @@ export interface NotOffered {
 
 export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
   {
+    area: 'executive-onboarding',
+    why: 'not yet',
+    because: 'An administrator adds a senior person today by sending her name, her email address, her WhatsApp number and the organisation’s approvals to the API. Adding her by telling the assistant, and reading it back before anything is sent, is the next step. What she does after that, such as saying slow down, naming her team or answering the one question, is already done by talking.',
+  },
+  {
     area: 'direction',
     why: 'the chat is the wrong shape',
     because: 'Release 6 sets the company’s direction on its own page. It is approved team by team, and each person recommits their own goals there. A goal changed by a sentence in chat would skip the lead who approves it.',
@@ -138,7 +143,7 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
     area: 'reports',
     why: 'not yet',
     because:
-      'Reading a released report by asking is item seven of the plan, and sending one is item four. Generating and releasing stays with whoever leads the check-in.',
+      'A quarterly or annual report is now asked for in chat, and what is read there is read as the asker may read it. Reading one released report by asking is item seven of the plan, and sending one is item four. Generating and releasing a check-in\u2019s own report stays with whoever leads the check-in.',
   },
   {
     area: 'conversation',
@@ -150,7 +155,7 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
     area: 'participants',
     why: 'not yet',
     because:
-      'Inviting somebody onto a check-in is part of creating one, which is item six. Accepting an invitation stays with the person accepting it - that is the consent.',
+      'Inviting people onto a new check-in is done by chat, as part of setting it up (a-check-in-set-up-by-talking.ts). Adding somebody to a check-in that is already running is done on its Setup tab, and Ask says how. Accepting an invitation stays with the person accepting it - that is the consent.',
   },
   {
     area: 'coach',
@@ -206,6 +211,8 @@ export const REACHABLE_IN_CHAT: Record<string, string> = {
   drafts: 'set_an_objective',
   detectors: 'what_should_we_talk_about',
   knowledge: 'how_we_work',
+  /* The organisation's memory files are read by asking: the librarian (memory system, step 3) answers "how do we handle expenses" from them, in the same lane as the written-down knowledge. */
+  memory: 'how_we_work',
   /* Moved off the not-offered list on 3 October (decision 85): an admin sets a suite up by
      describing it, is asked only what is missing, reads it all back, and nothing is set until the
      yes, which goes through the same SuitesService methods as the Suites page. */

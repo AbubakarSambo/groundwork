@@ -134,8 +134,52 @@ export async function whereThisOrganisationStands(
   return org ? whereTheTrialStands(org, grace, now) : nothing;
 }
 
+/**
+ * WHEN EACH OF THESE ORGANISATIONS PAUSED, for the ones paused now. The pause is a state read from the free month and its weeks, never a
+ * stored stretch, so its start is derived here, once, for whatever counts rounds (fix plan 17 November, group C: after day 58 the
+ * rounds nobody could open were counted as missed). An organisation that is not paused is not in the map.
+ */
+export async function whenTheseOrganisationsPaused(prisma: any, organizationIds: (string | null | undefined)[], now: Date = new Date()): Promise<Map<string, Date>> {
+  const out = new Map<string, Date>();
+  for (const id of [...new Set(organizationIds.filter((x): x is string => !!x))]) {
+    const where = await whereThisOrganisationStands(prisma, id, now).catch(() => null);
+    if (where?.stands === 'paused' && where.pausesAt) out.set(id, where.pausesAt);
+    /* The pause is kept as a stretch the first time it is seen, and closed the first time it is seen over (N51). A fault never changes what is returned. */
+    await keepThePause(prisma, id, where?.stands === 'paused' ? (where.pausesAt ?? null) : null, now).catch(() => undefined);
+  }
+  return out;
+}
+
+async function keepThePause(prisma: any, organizationId: string, pausedFrom: Date | null, now: Date): Promise<void> {
+  const table = prisma?.organizationPause;
+  if (!table?.findFirst) return;
+  const open = await table.findFirst({ where: { organizationId, resumedAt: null }, orderBy: { pausedFrom: 'desc' }, select: { id: true } });
+  if (pausedFrom && !open) await table.create({ data: { organizationId, pausedFrom } });
+  else if (!pausedFrom && open) await table.update({ where: { id: open.id }, data: { resumedAt: now } });
+}
+
+/**
+ * THE PAUSES THAT ARE OVER (N51): for each organisation, the stretches when Groundwork was paused and has since started again. A round that opened inside
+ * one could not have been answered, whatever the organisation's state is now. The pause that is running is `whenTheseOrganisationsPaused`'s, as before.
+ * An organisation with none kept is not in the map, so it reads exactly as it did.
+ */
+export async function thePausesThatAreOver(prisma: any, organizationIds: (string | null | undefined)[]): Promise<Map<string, { from: Date; until: Date }[]>> {
+  const out = new Map<string, { from: Date; until: Date }[]>();
+  const ids = [...new Set(organizationIds.filter((x): x is string => !!x))];
+  if (!ids.length || !prisma?.organizationPause?.findMany) return out;
+  const rows: any[] = await Promise.resolve(prisma.organizationPause.findMany({ where: { organizationId: { in: ids }, resumedAt: { not: null } }, select: { organizationId: true, pausedFrom: true, resumedAt: true } })).catch(() => []);
+  for (const r of Array.isArray(rows) ? rows : []) out.set(r.organizationId, [...(out.get(r.organizationId) ?? []), { from: new Date(r.pausedFrom), until: new Date(r.resumedAt) }]);
+  return out;
+}
+
 /** Why a message about the work did not go: for the send record and the log, never to the person. */
 export const GROUNDWORK_IS_PAUSED_THERE = 'Nothing about the work goes out while Groundwork is paused here. It stays paused until the organisation chooses a plan.';
+
+/**
+ * WHAT A PERSON IS TOLD ON WHATSAPP WHEN THEY WRITE IN A PAUSE (run 6, 20 November). It read "Your organisation has not turned on WhatsApp, so this check-in stays in the
+ * app. You can carry on in the Groundwork app.", but in a pause no check-in is open anywhere. Said plainly, and without a place to carry on.
+ */
+export const CHECK_INS_ARE_PAUSED = 'Check-ins are paused until your organisation chooses a plan, so no check-in is open here or in the app.';
 
 /** Whether Groundwork is paused for this organisation now. False wherever it cannot be read: a fault never pauses anybody. */
 export async function thisOrganisationIsPaused(prisma: any, organizationId: string | null | undefined, now: Date = new Date()): Promise<boolean> {

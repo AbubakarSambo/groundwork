@@ -21,7 +21,7 @@ describe('where somebody is on WhatsApp', () => {
     expect(await whereTheyAreOnWhatsApp(records({ sent: true, received: true }), '+254722000202')).toBe('connected');
   });
   it('says each in a full sentence', () => {
-    expect(WHERE_ON_WHATSAPP_SAYS.waiting).toBe('Waiting for their first message on WhatsApp.');
+    expect(WHERE_ON_WHATSAPP_SAYS.waiting).toBe('They have not written on WhatsApp yet.');
     expect(WHERE_ON_WHATSAPP_SAYS.connected).toBe('Connected. They can check in on WhatsApp.');
   });
 });
@@ -35,7 +35,7 @@ describe('the WhatsApp roster of a check-in is for whoever runs it and an admin 
   };
   it('Grace, who runs it, and an admin read each person\'s number and where they are', async () => {
     expect(await whereEachPersonIsOnWhatsApp(prisma, { groundId: 'g1', organizationId: 'o1', userId: 'u-grace', role: 'LEAD' }))
-      .toEqual([{ participantId: 'p-kevin', phone: '+254722000202', whatsapp: 'waiting', says: 'Waiting for their first message on WhatsApp.' }]);
+      .toEqual([{ participantId: 'p-kevin', phone: '+254722000202', whatsapp: 'waiting', says: 'They have not written on WhatsApp yet.' }]);
     expect(await whereEachPersonIsOnWhatsApp(prisma, { groundId: 'g1', organizationId: 'o1', userId: 'u-admin', role: 'ADMIN' })).toHaveLength(1);
   });
   it('a member, and a lead who does not run it, are refused', async () => {

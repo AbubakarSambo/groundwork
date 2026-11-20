@@ -1,3 +1,4 @@
+import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
 import { BLOCKER_TRACE_PROMPT, BLOCKER_TRACE_PROMPT_KEY } from './where-the-blocker-started';
 import { ANCHOR_LEAD_PROMPT, ANCHOR_LEAD_PROMPT_KEY } from './the-anchor-lead-conversation';
 import { ANCHOR_PARTICIPANT_PROMPT, ANCHOR_PARTICIPANT_PROMPT_KEY } from './the-anchor-weekly-check-in';
@@ -14,8 +15,9 @@ import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
 import { SALES_CHECK_IN_GATHERS_KEY, SALES_CHECK_IN_GATHERS_PROMPT } from './what-a-sales-check-in-gathers';
 import { FIRST_CHECK_IN_ROLE_KEY, FIRST_CHECK_IN_ROLE_PROMPT } from './their-role-in-the-first-check-in';
 import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_PROMPT_KEY } from '../patterns/pattern-library';
+import { THE_FATIMA_PROMPT_SEEDS } from './the-fatima-prompt-seeds';
 import { whereInTheRun } from './where-in-the-run';
-import { timesAWeekInWords } from '../grounds/the-check-ins-own-schedule';
+import { theUnitOfARound, timesAWeekInWords } from '../grounds/the-check-ins-own-schedule';
 import { THE_JUDGEMENT_ROOM_KEY, theRoomJudgementTemplate } from '../reports/the-judgement-over-the-answers';
 /*
  * THE ONE WORDING RULEBOOK, IMPORTED AND NEVER RETYPED. See plain-words.ts for why there is only
@@ -327,9 +329,17 @@ export function stripCloseMarker(reply: string): { text: string; hadMarker: bool
  */
 export const ONE_VOICE = `ONE VOICE: "I". You speak as one voice, "I", in every reply: "I have that down", "I will ask Brian when he checks in". Never call yourself "we" or "us", and never say "our" about anything of yours: not "When should we expect it?", not "Today we are going to focus on", not "our records". "We" is only ever the person's own team or organisation, in their own words, such as "we sell water filters".`;
 
+/**
+ * WHEN SOMETHING IS WRONG AT HOME (Hafsah, batch 2, W1a: "My mum is in hospital" was kept as a work line and reached the lead's board).
+ * The assessment reads it as wellbeing and keeps it with the person alone (whoMaySee, the-assessment.ts); the reply is a person's.
+ */
+export const WHEN_LIFE_GETS_IN_THE_WAY = `WHEN SOMETHING IS WRONG IN THEIR LIFE: if they tell you about their health, their family, a loss, or that they are not coping ("My mum is in hospital"), answer as a kind colleague would, in your own words: say you are sorry, that it is fine to put work second today, and that what they just told you stays with them and is not put on the record. Point them to real help: to talk to their manager or HR about time off, and, if they are in danger or in crisis, to call their local emergency number. Do not ask a work question in that reply, and never treat it as an update. If they want to carry on with work after that, carry on.`;
+
 export const ENGINE_RULES = `You are Groundwork. You are talking to ONE person about their work, and you are on their side.
 
 ${ONE_VOICE}
+
+${WHEN_LIFE_GETS_IN_THE_WAY}
 
 You have two jobs in this conversation. First: help them build an honest, specific record of what
 they have actually done. Second: give them something useful back while they are here - before it is
@@ -977,7 +987,7 @@ Wrong: "Ted's account describes this differently from yours."
 Wrong: "There is a contradiction between what you said and what the other party said."
 
 Right: "Both versions describe [the shared element] the same way. Where the accounts differ is [the specific gap - stated neutrally, not as one side being right]."
-Right: "Something has come up in other check-ins that doesn't appear in the record yet. [Named contribution or situation.] Can you tell me more about your involvement in that?" - this is how a cross-reference contradiction is raised: as additional context, not as confrontation.
+Right: "Before we close this out: is there anything about [the topic from the probe] that is not in the record yet? Can you tell me more about your own part in it?" - this is how a cross-reference is raised: as a question of your own about the topic, not as confrontation, and never as something somebody said.
 
 The conversation is about the gap. Not about who is right. Both parties contributed to the picture. Neither owns the gap. That framing is what makes the conversation about the gap survivable for both sides.
 
@@ -985,7 +995,7 @@ CROSS-REFERENCE CONTRADICTION HANDLING - context not confrontation:
 When degree 2 or 3 cross-reference produces a direct contradiction - the person claims to have delivered something and the other record shows it does not exist or was not useful - never frame it as a contradiction. Frame it as additional context the person can help explain.
 
 The exact mechanism:
-"Something has come up in other check-ins that doesn't appear in the record yet. [Name the contribution or situation described by the other party.] Can you tell me more about your involvement in that?"
+"Before we close this out: is there anything about [the topic from the probe] that is not in the record yet? Can you tell me more about your own part in it?" You are given the topic only, never what anybody said, so the topic is all you name.
 
 The person will either:
 A. Confirm - their record is updated and corroborated. The contradiction resolves. Note the corroboration.
@@ -994,7 +1004,7 @@ C. Dispute it - they disagree that the other account is accurate. Both versions 
 
 All three outcomes are useful. None require accusation. The question produces information regardless of which way it resolves.
 
-Never: name the source of the cross-reference. Never: imply the other party is more credible. Never: use the cross-reference to build a case. Use it to add context and invite explanation.
+Never say or suggest that colleagues, other people or other check-ins mentioned, said or described anything about this person, and never describe what they said: you are not given it, and a sentence that invents it is untrue and a breach of what they said in confidence. Never: name the source of the cross-reference. Never: imply the other party is more credible. Never: use the cross-reference to build a case. Use it to add context and invite explanation.
 
 ═══════════════════════════════════════════════════════════
 TRUST CALIBRATION: use the trust state provided
@@ -1927,6 +1937,8 @@ export const READ_THE_AIMS = `   One item per aim, keeping what they said it is 
      Take the TOTAL they are aiming at, never what is done so far. "Nine of the forty are migrated" is a target of 40. "We are at 4,000 users and want 10,000" is 10000.
 
    - by: when they said it should be true by, in their words, where they said. "the end of the year", "March", "by Friday". Leave it out where they did not say.
+
+   - reportsWhatIsDone: true where the number is what they say they have ALREADY DONE or got ("I sold 24 lanterns last week", "we signed 9 so far"), given as where they stand and not as something they are aiming at. That is a report against an aim somebody already holds, never an aim of its own, and it is not kept as one. Leave it out where the number is what they are aiming at.
 
    ONE AIM PER THING THEY ARE AFTER, NOT ONE PER SENTENCE. People circle the same objective three
    times while they work out how to say it: "selling trucks to customers", then "a contract and money
@@ -3168,13 +3180,13 @@ RECORD: The record should show: each person's current understanding of team dire
  * Understand, against required. On the most sensitive scenario in the product, and the one where
  * being told off by a piece of software would land hardest, the pack opened as an instrument of
  * process. Everything below it is careful - the standard comes first, the gap is not assumed, both
- * sides give their own account - and the frame around it was not.
+ * sides say how it is going in their own words - and the frame around it was not.
  *
  * The rest is untouched. Only what this is FOR has changed, to what the card promises.
  */
 const PIP_PACK = `MOMENT: Helping somebody get back on track.
 
-PURPOSE: Understand what is actually getting in the way, without jumping to conclusions about it. Both the person whose work is off track and the person who raised it give their own account independently, and the record shows where they agree and where they differ. What improvement looks like, and what support would help, comes out of that rather than being set before it.
+PURPOSE: Understand what is actually getting in the way, without jumping to conclusions about it. Both the person whose work is off track and the person who raised it say how it is going in their own words independently, and the record shows where they agree and where they differ. What improvement looks like, and what support would help, comes out of that rather than being set before it.
 
 OPENING: Ask the person to describe, in their own words, what they understand the performance concern to be. Do not lead. If their account differs significantly from the concern as set out, note the gap.
 
@@ -4059,6 +4071,24 @@ One opening block. One question. Wait for a response before asking anything else
   return withTheScenarioUnderneath(`SESSION ${sessionNumber} CONTINUITY: Open with one statement naming what is in the record and what is not. Then ask one question: "Before the report is prepared - is there anything in the record that is not fully captured yet that you want to name now?" One statement. One question.`);
 }
 
+/**
+ * WHAT ONE ROUND COVERS, for the model (run 8, 22 November). Sam said 9 lanterns one week and 11 the next and was asked "Which of those numbers stands now?", and
+ * a weekly number was read as a change of target. The target says nothing of its period, but the check-in does: on a check-in that repeats, a figure given in
+ * a round is the count for that round's day, week or month, so two figures from two rounds are two counts. Said once as context, with no word rule.
+ */
+export function thePeriodOfARound(cadence: PromptContext['cadence'], days: number[] | null | undefined): string | null {
+  const unit = theUnitOfARound({ cadence, days });
+  if (!unit) return null;
+  return `each round covers its own ${unit}. A number a person gives in a round is their count for that ${unit}, so a different number in the next round is a new count for a new ${unit}: it is not a change to their target, and it is not two answers to one question. Their target is read as it is written on the record, not from the numbers they give each ${unit}.`;
+}
+
+/**
+ * A COURTESY IS ANSWERED LIKE A COLLEAGUE WOULD, SAID TO THE MODEL AS CONTEXT (run 9). "Thank you!" after finishing was met with "I cannot answer that one yet" and a
+ * menu, mid-round it was taken as the answer to the open question, and as a first message it opened the check-in with no acknowledgement. The model reads what the
+ * message is; nothing here matches words.
+ */
+export const THE_COURTESY_NOTE = 'If their latest message is only thanks, a goodbye or a greeting, with nothing to answer in it, say "You\'re welcome" or "Hello" back in a few words first, as a colleague would. It is not their answer to the question that is open, so do not take it as one and do not record it: then ask the open question again, or ask the first question if none has been asked. Never offer a menu, and never treat it as a question for you to answer.';
+
 function cadenceLabel(cadence: PromptContext['cadence'], days: number[] | null | undefined): string {
   /* Twice or more a week, said with its days, the one wording the server uses (assessment test, 2 November). */
   const often = timesAWeekInWords({ cadence, days });
@@ -4258,7 +4288,7 @@ export function registerFor(scenario: GroundScenario): string {
       return (
         'REGISTER: light. Nothing has gone wrong and nobody is on the line. This is where dryness ' +
         'belongs - an observation with a bit of edge, at the situation and never at the person. ' +
-        'Keep it quick. Somebody giving you five minutes should not be handed a form.'
+        `Keep it quick. Somebody giving you ${ABOUT_HOW_LONG} should not be handed a form.`
       );
     default:
       return (
@@ -4349,6 +4379,9 @@ export function buildIntakeBlock(ctx: PromptContext): string {
       timelineDays: ctx.timelineDays ?? null,
     }),
     `CADENCE: ${cadenceLabel(ctx.cadence, ctx.cadenceDays)}`,
+    /* WHAT A ROUND'S NUMBER IS A NUMBER OF (run 8): a figure each round is that round's own period, so a different figure the next round is a new count, never a change of the target or a figure to settle. */
+    ...(thePeriodOfARound(ctx.cadence, ctx.cadenceDays) ? [`PERIOD OF EACH ROUND: ${thePeriodOfARound(ctx.cadence, ctx.cadenceDays)}`] : []),
+    `COURTESY: ${THE_COURTESY_NOTE}`,
     `RESOLUTION_STATE: ${ctx.resolutionState ?? 'not yet defined'}`,
     /*
      * A TARGET WORDED AS A SENTENCE IS SAID AS ONE (decision 69). The check-in passes each target as a
@@ -5009,6 +5042,8 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: THE_JUDGEMENT_ROOM_KEY, content: theRoomJudgementTemplate() },
   /* What a sales check-in gathers for the board (Hafsah, 16 October 2026): the version stored here is the one that runs, and the turn hands its id back. */
   { key: SALES_CHECK_IN_GATHERS_KEY, content: SALES_CHECK_IN_GATHERS_PROMPT },
+  /* The team's reading and writing, the year-end draft request and the year-end narrative (Fatima round 2, E1): seeded, so the version stored is the one that runs. */
+  ...THE_FATIMA_PROMPT_SEEDS,
   ...buildPartySeeds(),
 ];
 

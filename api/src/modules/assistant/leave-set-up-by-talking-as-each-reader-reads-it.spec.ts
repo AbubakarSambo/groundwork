@@ -1,4 +1,5 @@
-import { anOrganisationToSetUp } from './an-organisation-to-set-up-for-specs';
+import { anOrganisationToSetUp, theOpening, theSaidBack } from './an-organisation-to-set-up-for-specs';
+import { THE_POLICY, THE_POLICY_ASKED, THE_POLICY_RULES } from './the-leave-policy-asked-for-specs';
 
 /**
  * DECISION 85, LEAVE: AN ADMIN SETS UP THE LEAVE PROCESS BY TALKING TO ASK GROUNDWORK.
@@ -9,7 +10,9 @@ import { anOrganisationToSetUp } from './an-organisation-to-set-up-for-specs';
  * same SuitesService methods the Suites page uses, and the rules history keeps it as Grace's change.
  */
 
-const OPENING = 'I will ask you a few questions about how leave requests work, one at a time, and I will not set anything until you say yes. How many days of leave does each person have in a year?';
+/* Changed 20 November 2026: the opening offers to work from a written policy, and the say-back lists one rule a line (Hafsah's screenshots). */
+const OPENING = theOpening('leave requests', 'How many days of leave does each person have in a year?');
+const HERE_IS_HOW = 'Here is how leave requests will work. Leave requests will be switched on.';
 
 /** Hafsah's example of decision 85, said the way an admin would say it. */
 const GRACES_ANSWERS = [
@@ -19,13 +22,16 @@ const GRACES_ANSWERS = [
   'Yes, the department head approves it too',
   'Yes',
   'It goes to the department head',
+  /* The leave policy's questions (Hafsah, 20 November 2026), asked after who approves and before who holds each job. */
+  ...THE_POLICY,
   'Wairimu',
   'Omar',
   'me',
 ];
 
-const THE_RULES_SAID = [
+const THE_RULES = [
   'Each person has 21 days of leave a year.',
+  ...THE_POLICY_RULES,
   'A leave request goes to the person’s manager first.',
   'When the manager has approved it, it goes to the head of the person’s team to approve as well.',
   'It is approved only when the head of the team approves it, and a no from anybody on the way ends it.',
@@ -36,9 +42,10 @@ const THE_RULES_SAID = [
   'You look after HR, so you see every leave request on the leave board, when it is asked for and when it is decided.',
   'If the manager has not answered after two working days, or is on leave that day, it goes to the head of the person’s team.',
   'If the head of the team has not answered after two working days, or is on leave that day, it goes to an admin.',
-].join(' ');
+];
+const THE_RULES_SAID = THE_RULES.join(' ');
 
-const SAID_BACK = `Here is how leave requests will work. Leave requests will be switched on. ${THE_RULES_SAID} Shall I set it up like this? Nothing changes until you say yes.`;
+const SAID_BACK = theSaidBack(HERE_IS_HOW, THE_RULES);
 
 describe('Grace, an admin, sets up the leave process by talking', () => {
   it('is asked only what is missing, one question at a time, in plain words', async () => {
@@ -49,6 +56,7 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
       'Does anybody approve it after the manager, for example the head of the person’s team? You can say no.',
       'Does HR need to see all requests?',
       "What happens if the manager doesn't respond within two working days?",
+      ...THE_POLICY_ASKED,
       'Who heads Finance? You can say nobody yet.',
       'Who heads Sales? You can say nobody yet.',
       'Who looks after HR? You can say nobody yet.',
@@ -69,10 +77,13 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
     const grace = o.as('u-grace');
     const page: any = await o.suites.forReader(grace);
     const leave = page.groups.flatMap((g: any) => g.suites).find((s: any) => s.key === 'leave');
-    expect(leave).toMatchObject({ on: true, answers: { days: 21, approver: 'Their manager' } });
+    /* Batch S, S1: "Who approves?" is no longer saved: it was kept and never read. Who approves is the approval steps. */
+    expect(leave).toMatchObject({ on: true, answers: { days: 21 } });
+    expect(leave.answers.approver).toBeUndefined();
     const steps = (await o.suites.workflows(grace)).suites.find((s) => s.key === 'leave')!;
     expect(steps).toMatchObject({ set: true, steps: [['manager', 'departmentHead', 'admin'], ['departmentHead', 'admin']], escalateAfter: 2 });
-    expect((await o.suites.leaveRules(grace)).rules).toEqual({ tellHr: 'every' });
+    /* The policy's answers that differ from nothing set: the country. Monday to Friday, no notice and nothing carried over are what nothing set means. */
+    expect((await o.suites.leaveRules(grace)).rules).toEqual({ country: 'Kenya', tellHr: 'every' });
     expect((await o.suites.duties(grace)).said).toEqual(['Grace Achieng looks after HR.', 'Wairimu Kamau heads Finance.', 'Fatuma Hassan heads Operations.', 'Omar Said heads Sales.']);
 
     /* What was said back is what is stored: the same sentences, read again from the store. */
@@ -115,7 +126,7 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
     expect(o.writes).toEqual([]);
     expect(await o.says('u-grace', 'yes')).toContain('If the manager has not answered after three working days');
     expect((await o.suites.workflows(o.as('u-grace'))).suites.find((s) => s.key === 'leave')!.escalateAfter).toBe(3);
-    expect((await o.suites.leaveRules(o.as('u-grace'))).rules).toEqual({ tellHr: 'approved' });
+    expect((await o.suites.leaveRules(o.as('u-grace'))).rules).toEqual({ country: 'Kenya', tellHr: 'approved' });
   });
 
   it('stopping part way changes nothing', async () => {
@@ -131,15 +142,15 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
     expect(replies[2]).toBe('I set who approves by their job, not by name, so it keeps working when people change jobs. Which job does Omar do here? For example, does Omar head a team, hold a team’s budget, look after HR, look after finance, or is Omar the chief executive?');
     expect(replies[3]).toBe('Does anybody approve it after Omar, for example the head of the person’s team? You can say no.');
     expect(replies[5]).toBe("What happens if Omar doesn't respond within two working days?");
-    const said = await o.says('u-grace', 'It waits');
-    expect(said).toBe([
-      'Here is how leave requests will work. Leave requests will be switched on.',
+    await o.talk('u-grace', ['It waits', ...THE_POLICY.slice(0, -1)]);
+    const said = await o.says('u-grace', THE_POLICY[THE_POLICY.length - 1]);
+    expect(said).toBe(theSaidBack(HERE_IS_HOW, [
       'Each person has 25 days of leave a year.',
+      ...THE_POLICY_RULES,
       'A leave request goes to Omar, who looks after finance.',
       'HR is not shown leave requests.',
       'If somebody does not answer, it waits for them. Groundwork does not pass it on by itself.',
-      'Shall I set it up like this? Nothing changes until you say yes.',
-    ].join(' '));
+    ]));
     await o.says('u-grace', 'yes');
     expect((await o.suites.duties(o.as('u-grace'))).said).toContain('Omar Said looks after finance.');
     expect((await o.suites.workflows(o.as('u-grace'))).suites.find((s) => s.key === 'leave')!.steps).toEqual([['finance', 'admin']]);
@@ -147,27 +158,26 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
 
   it('Grace, who looks after HR, names herself as the approver and is asked and told as "you"', async () => {
     const o = anOrganisationToSetUp({ suites: { duties: { isOn: false, answers: { departmentHeads: { Operations: 'u-fatuma' }, hr: 'u-grace' } } } });
-    const r = await o.talk('u-grace', ['Set up our employee leave process', '21', 'Grace', 'No', 'No', 'Three working days, then an admin']);
+    const r = await o.talk('u-grace', ['Set up our employee leave process', '21', 'Grace', 'No', 'No', 'Three working days, then an admin', ...THE_POLICY]);
     expect(r[2]).toBe('Does anybody approve it after you, for example the head of the person’s team? You can say no.');
     expect(r[4]).toBe("What happens if you don't respond within two working days?");
-    expect(r[5]).toBe([
-      'Here is how leave requests will work. Leave requests will be switched on.',
+    expect(r[r.length - 1]).toBe(theSaidBack(HERE_IS_HOW, [
       'Each person has 21 days of leave a year.',
+      ...THE_POLICY_RULES,
       'A leave request goes to you.',
       'You look after HR, so that part comes to you.',
       'HR is not shown leave requests.',
       'If you have not answered after three working days, or are on leave that day, it goes to an admin.',
-      'Shall I set it up like this? Nothing changes until you say yes.',
-    ].join(' '));
+    ]));
     expect(r.join(' ')).not.toMatch(/Grace/);
   });
 
   it('the fallback for HR is said only when nobody looks after HR', async () => {
     const nobody = anOrganisationToSetUp();
-    const r1 = await nobody.talk('u-grace', ['Set up our employee leave process', '21', 'HR', 'No', 'No', 'It waits', 'Nobody yet']);
+    const r1 = await nobody.talk('u-grace', ['Set up our employee leave process', '21', 'HR', 'No', 'No', 'It waits', ...THE_POLICY, 'Nobody yet']);
     expect(r1[r1.length - 1]).toContain('If nobody is named to look after HR, it goes to an admin instead.');
     const joy = anOrganisationToSetUp({ suites: { duties: { isOn: false, answers: { hr: 'u-miriam' } } } });
-    const r2 = await joy.talk('u-grace', ['Set up our employee leave process', '21', 'HR', 'No', 'No', 'It waits']);
+    const r2 = await joy.talk('u-grace', ['Set up our employee leave process', '21', 'HR', 'No', 'No', 'It waits', ...THE_POLICY]);
     expect(r2[r2.length - 1]).toContain('A leave request goes to Miriam, who looks after HR.');
     expect(r2.join(' ')).not.toContain('If nobody is named to look after HR');
   });
@@ -198,11 +208,11 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
 
   it('longer leave said as the first answer: the rest of leave is asked for by its length', async () => {
     const o = anOrganisationToSetUp();
-    const r = await o.talk('u-grace', ['Set up our employee leave process', '21', 'Leave of more than 10 days is approved by the head of their team', 'the manager', 'no', 'no', 'it waits', 'nobody yet', 'nobody yet']);
+    const r = await o.talk('u-grace', ['Set up our employee leave process', '21', 'Leave of more than 10 days is approved by the head of their team', 'the manager', 'no', 'no', 'it waits', ...THE_POLICY, 'nobody yet', 'nobody yet']);
     expect(r[2]).toBe('Who approves leave of up to ten working days?');
-    expect(r[8]).toBe([
-      'Here is how leave requests will work. Leave requests will be switched on.',
+    expect(r[r.length - 1]).toBe(theSaidBack(HERE_IS_HOW, [
       'Each person has 21 days of leave a year.',
+      ...THE_POLICY_RULES,
       'A leave request of up to ten working days goes to the person’s manager.',
       'If the person has no manager in Groundwork, it goes to an admin instead.',
       'A leave request of more than ten working days goes to the head of the person’s team.',
@@ -211,8 +221,7 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
       'Nobody is named as the head of Finance and Sales yet, so for people in those teams that part goes to the next person on the list.',
       'HR is not shown leave requests.',
       'If somebody does not answer, it waits for them. Groundwork does not pass it on by itself.',
-      'Shall I set it up like this? Nothing changes until you say yes.',
-    ].join(' '));
+    ]));
   });
 
   it('a change before the yes can add, move or drop leave by length, and nothing is written until the yes', async () => {
@@ -222,7 +231,7 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
     expect(added).toBe('I have changed that. Who is the chief executive? You can say nobody yet.');
     const said = await o.says('u-grace', 'nobody yet');
     expect(said).toContain('A leave request of up to ten working days goes to the person’s manager first.');
-    expect(said).toContain('When the head of the team has approved it, it goes to the chief executive to approve as well. It is approved only when the chief executive approves it');
+    expect(said).toContain('- When the head of the team has approved it, it goes to the chief executive to approve as well.\n- It is approved only when the chief executive approves it');
     expect(said).toContain('Nobody is named as the chief executive yet, so that part goes to the next person on the list.');
     const longer = await o.says('u-grace', 'make it 15 working days for longer leave');
     expect(longer).toContain('A leave request of more than 15 working days goes to the person’s manager first.');
@@ -233,15 +242,16 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
 
   it('when leave is already on, the days already set are not asked again', async () => {
     const o = anOrganisationToSetUp({ suites: { leave: { isOn: true, answers: { days: 18, approver: 'Their manager' } } } });
-    expect(await o.says('u-grace', 'set up leave requests')).toBe('I will ask you a few questions about how leave requests work, one at a time, and I will not set anything until you say yes. Who approves annual leave?');
+    expect(await o.says('u-grace', 'set up leave requests')).toBe(theOpening('leave requests', 'Who approves annual leave?'));
   });
 });
 
 /** Hafsah's own example of decision 85: "If it's more than 10 working days, department head also approves." */
-const LONGER_ANSWERS = ['Set up our employee leave process', '21', 'Their manager', "If it's more than 10 working days, the department head also approves", 'Yes', 'It waits', 'Wairimu', 'Omar', 'me'];
+const LONGER_ANSWERS = ['Set up our employee leave process', '21', 'Their manager', "If it's more than 10 working days, the department head also approves", 'Yes', 'It waits', ...THE_POLICY, 'Wairimu', 'Omar', 'me'];
 
-const LONGER_SAID = [
+const LONGER_RULES = [
   'Each person has 21 days of leave a year.',
+  ...THE_POLICY_RULES,
   'A leave request of up to ten working days goes to the person’s manager.',
   'If the person has no manager in Groundwork, it goes to an admin instead.',
   'A leave request of more than ten working days goes to the person’s manager first.',
@@ -252,7 +262,8 @@ const LONGER_SAID = [
   /* Said to Grace, who looks after HR: she is "you", never "Grace". */
   'You look after HR, so you see every leave request on the leave board, when it is asked for and when it is decided.',
   'If somebody does not answer, it waits for them. Groundwork does not pass it on by itself.',
-].join(' ');
+];
+const LONGER_SAID = LONGER_RULES.join(' ');
 
 describe('Grace sets up leave by length, as Hafsah said it', () => {
   it('is asked only what is missing, and reads the two lengths said back', async () => {
@@ -261,10 +272,11 @@ describe('Grace sets up leave by length, as Hafsah said it', () => {
     expect(r.slice(3)).toEqual([
       'Does HR need to see all requests?',
       "What happens if the manager doesn't respond within two working days?",
+      ...THE_POLICY_ASKED,
       'Who heads Finance? You can say nobody yet.',
       'Who heads Sales? You can say nobody yet.',
       'Who looks after HR? You can say nobody yet.',
-      `Here is how leave requests will work. Leave requests will be switched on. ${LONGER_SAID} Shall I set it up like this? Nothing changes until you say yes.`,
+      theSaidBack(HERE_IS_HOW, LONGER_RULES),
     ]);
     expect(o.writes).toEqual([]);
   });
@@ -274,7 +286,7 @@ describe('Grace sets up leave by length, as Hafsah said it', () => {
     await o.talk('u-grace', LONGER_ANSWERS);
     expect(await o.says('u-grace', 'yes')).toBe(`I have set it up, and leave requests are switched on. ${LONGER_SAID} You can change any of it by telling me, or on the Suites page.`);
     const grace = o.as('u-grace');
-    expect((await o.suites.leaveRules(grace)).rules).toEqual({ tellHr: 'every', thresholds: [{ above: 10, steps: [['manager', 'admin'], ['departmentHead', 'admin']] }] });
+    expect((await o.suites.leaveRules(grace)).rules).toEqual({ country: 'Kenya', tellHr: 'every', thresholds: [{ above: 10, steps: [['manager', 'admin'], ['departmentHead', 'admin']] }] });
     expect((await o.suites.workflows(grace)).suites.find((s) => s.key === 'leave')!.steps).toEqual([['manager', 'admin']]);
     expect((await o.assistant.theSetUpAsStored(grace, 'leave')).join(' ')).toBe(LONGER_SAID);
     const history = await o.suites.rulesHistory(grace);
@@ -284,8 +296,9 @@ describe('Grace sets up leave by length, as Hafsah said it', () => {
   it('setting leave up again without a length takes the length away, as the said-back says', async () => {
     const o = anOrganisationToSetUp();
     await o.talk('u-grace', [...LONGER_ANSWERS, 'yes']);
+    /* The policy is already stored, so it is not asked again, and it is kept as it was. */
     await o.talk('u-grace', ['Set up our employee leave process', 'Their manager', 'No', 'Yes', 'It waits', 'yes']);
-    expect((await o.suites.leaveRules(o.as('u-grace'))).rules).toEqual({ tellHr: 'every' });
+    expect((await o.suites.leaveRules(o.as('u-grace'))).rules).toEqual({ country: 'Kenya', tellHr: 'every' });
   });
 });
 

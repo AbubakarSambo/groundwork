@@ -103,7 +103,7 @@ export function shallIKeep(k: Keepable, ask: string = 'Ask Groundwork'): string 
 /** After the yes. */
 export function iHaveKept(k: { kind: string; text: string }, ask: string = 'Ask Groundwork'): string {
   const as = AS_A[(k.kind as MemoryKind)] ?? 'something to remember';
-  return `I have kept "${k.text.replace(/[.!?]+$/, '')}" as ${as} for the whole organisation. Later check-ins and ${ask} can now use it. You can see it on the Company page.`;
+  return `I have kept "${k.text.replace(/[.!?]+$/, '')}" as ${as} for the whole organisation. Later check-ins and ${ask} can now use it. You can see it on the Desk.`;
 }
 
 /** After the no. Nothing was kept, and it is said. */

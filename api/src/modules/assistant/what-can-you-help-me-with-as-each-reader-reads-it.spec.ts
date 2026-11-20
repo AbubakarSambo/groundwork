@@ -87,40 +87,42 @@ beforeAll(() => jest.useFakeTimers({ now: new Date('2026-10-01T09:00:00Z'), doNo
 
 const ASKED = ['What can you help me with?', 'help', 'what can you do', 'What can I ask you?', 'How can you help', 'how do I use this'];
 
+/* Batch S, S5 (19 November): the answer is now read from the one guide in what-the-assistant-can-do.ts, so its sentences changed. The answer used to
+   begin "Here is what you can ask me." and count check-ins; it now says what the reader can do, with an example each, and no longer ends with a privacy
+   note (no privacy notes in messages). What each reader may and may not be offered is checked as before. */
 describe('what can you help me with', () => {
   it.each(ASKED)('"%s" is answered, never "I cannot answer that one yet"', async (q) => {
     const s = svc({});
     const r = await said(s, q);
     expect(r.lane).toBe('what_can_you_do');
     expect(r.text).not.toContain('cannot answer');
-    expect(r.text).toMatch(/^Here is what you can ask me\./);
+    expect(r.text).toMatch(/^Here is what I can help you with\./);
   });
 
-  it('a member in a check-in with leave and spending on, and one request waiting, reads their own list', async () => {
+  it('a member in a check-in with leave and spending on reads them, with an example each, and nothing a lead does', async () => {
     const s = svc({ waitingLeave: [], role: 'MEMBER' });
     s.prisma.groundParticipant = { findMany: jest.fn(async () => [{ groundId: 'g1', partyType: 'PARTICIPANT' }]) };
     const r = await said(s, 'What can you help me with?');
-    expect(r.text).toContain('You are in 1 check-in right now');
-    expect(r.text).toContain('Leave, spending and hours are switched on for you');
-    expect(r.text).not.toContain('You run');
-    expect(r.text).toContain('Whatever you ask me stays between you and me.');
+    expect(r.text).toContain('You can ask what you said you would do. For example, say "What did I say I would do?"');
+    expect(r.text).toContain('You can ask for leave. For example, say "I would like leave on 20 and 21 October."');
+    expect(r.text).not.toContain('how your team is doing');
+    expect(r.text).not.toContain('stays between you and me');
   });
 
-  it('a lead who runs two check-ins is offered the lead questions, and is told what waits', async () => {
+  it('a lead who runs two check-ins is offered the lead things first, and is told what waits', async () => {
     const s = svc({ role: 'LEAD', waitingLeave: [{ id: 'w1', name: 'Amina Otieno', startsOn: '2026-10-08', endsOn: '2026-10-09', mayDecide: true }] });
     s.prisma.groundParticipant = { findMany: jest.fn(async () => [{ groundId: 'g1', partyType: 'INITIATOR' }, { groundId: 'g2', partyType: 'INITIATOR' }]) };
     const r = await said(s, 'what can you do');
-    expect(r.text).toContain('You are in 2 check-ins right now');
-    expect(r.text).toContain('You run 2 check-ins, so you can also ask who needs you this week');
-    expect(r.text).toContain('1 request waits for you to approve.');
+    expect(r.text.split('\n\n')[1]).toBe('1 request waits for you to approve. Ask me what is waiting for you to approve, or tell me to approve or decline one.');
+    expect(r.text.split('\n\n')[2]).toBe('You can set up a check-in. For example, say "Get updates from my team on deals, payments and visits."');
+    expect(r.text).toContain('You can ask how your team is doing.');
   });
 
-  it('a person with every suite off and no check-in is told so, and is not offered what is not there', async () => {
+  it('a person with every suite off and no check-in is not offered what is not there', async () => {
     const s = svc({ leaveOff: true, spendOff: true });
     (s as any).service.timeSheets = undefined;
     const r = await said(s, 'help');
-    expect(r.text).toContain('You are not in a check-in right now');
-    expect(r.text).toContain('are not switched on for you');
+    expect(r.text).not.toMatch(/ask for leave|ask to spend|hours you worked|what you said you would do/);
     expect(r.text).not.toContain('waits for you');
   });
 
@@ -128,7 +130,7 @@ describe('what can you help me with', () => {
     const s = svc({ role: 'GUEST' });
     (s as any).service.timeSheets = undefined;
     const r = await said(s, 'what can you help me with');
-    expect(r.text).toContain('are not switched on for you');
+    expect(r.text).not.toMatch(/ask for leave|ask to spend/);
   });
 
   it('help with something specific still goes where it went', async () => {

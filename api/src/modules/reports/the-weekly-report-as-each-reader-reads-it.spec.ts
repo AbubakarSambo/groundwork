@@ -348,7 +348,7 @@ describe('the parts on their own', () => {
 
   it('says "maybe 30 units" as they said it, never as a date or a count of its own', () => {
     const { theSentenceAbout } = jest.requireActual('./the-weekly-sentence-about-each-person');
-    expect(theSentenceAbout({ label: 'Participant A', checkedIn: true, lines: [{ text: 'Green Mart wants maybe 30 units.', type: 'numbers', documented: false }] }))
+    expect(theSentenceAbout({ label: 'Participant A', checkedIn: true, lines: [{ text: 'Green Mart wants maybe 30 units.', type: 'numbers', documented: false, saidWordForWord: true }] }))
       .toBe('This week Participant A said “Green Mart wants maybe 30 units”.');
   });
 

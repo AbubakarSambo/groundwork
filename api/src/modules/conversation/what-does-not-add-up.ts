@@ -59,6 +59,11 @@ export interface WhatToCheck {
   customers?: string[] | null;
   /** The first names of the people in the check-in, so "with Grace" is a person and not a business. */
   people?: string[];
+  /**
+   * What one round covers ('week', 'month'...), from the check-in's schedule (theUnitOfARound), where it repeats. A figure said in a round is the
+   * count for that period, so on a check-in that repeats, 9 one week and 11 the next are two counts, never one thing counted differently (run 9).
+   */
+  roundUnit?: string | null;
 }
 
 export interface ADifference {
@@ -168,6 +173,8 @@ export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
     if (!/^(PROGRESS|SUCCESS_DEFINITION|COMMITMENT|INTENT|WORRY)$/.test(s.type)) continue;
     if (/^\s*(to|aiming|aim|hoping|planning|target|goal)\b/i.test(clean(s.text))) continue;
     /* One customer's units are compared only with the same customer's; a number about no customer only with another about none. */
+    /* A figure about no customer, said in a round that covers its own period, is that period's count and is not set against another's. */
+    if (input.roundUnit && !input.customers) continue;
     const about = input.customers ? (theCustomerALineIsAbout(s.text, input.customers) ?? (aDealsFigure(s.text, input.customers, input.people ?? []) ? `a deal: ${s.text}` : '')) : '';
     const read = whatIsNotAnAimIn(s.text, !!input.customers);
     for (const n of numbersWithUnits(read)) {

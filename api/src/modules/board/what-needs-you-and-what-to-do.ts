@@ -12,6 +12,7 @@
  * Nothing is offered that the product cannot do. A choice is never made up: "Yes" and "No" only for a
  * question the lead wrote that is answered yes or no.
  */
+import { REFERENCES_AND_RESOURCES } from '../../common/the-tab-names';
 
 export type APlace = 'check-in' | 'context';
 
@@ -113,7 +114,7 @@ export function whatToDoAboutADecision(
         choices: [{ label: theYesFor(d.question), route: route(true) }, { label: 'No', route: route(false) }],
       };
     }
-    return { label: 'Open the Context page', says: 'Write down what you decided on the Context page, and close this line there.', goesTo: 'context' };
+    return { label: `Open ${REFERENCES_AND_RESOURCES}`, says: `Write down what you decided under ${REFERENCES_AND_RESOURCES}, and close this line there.`, goesTo: 'context' };
   }
   if (d.source === 'blocker' && d.waitsOn) {
     const on = d.waitsOn.participantId;
@@ -126,8 +127,8 @@ export function whatToDoAboutADecision(
       return {
         label: first ? `Ask ${first}` : 'Ask them',
         says: name
-          ? `Tell Groundwork on the Context page what to ask ${name}, and it will ask in ${name}'s next check-in.`
-          : 'Tell Groundwork on the Context page what to ask, and it will ask in their next check-in.',
+          ? `Tell Groundwork under ${REFERENCES_AND_RESOURCES} what to ask ${name}, and it will ask in ${name}'s next check-in.`
+          : `Tell Groundwork under ${REFERENCES_AND_RESOURCES} what to ask, and it will ask in their next check-in.`,
         goesTo: 'context',
       };
     }
@@ -147,7 +148,7 @@ export function whatToDoAboutADecision(
 export function anActionWithItsLabel<A extends { label?: string; goesTo?: APlace | null; choices?: AChoice[] } | null | undefined>(action: A): A {
   if (!action || typeof action !== 'object') return action;
   if (typeof action.label === 'string' && action.label.trim()) return action;
-  const label = action.choices?.length ? 'Decide it' : action.goesTo === 'context' ? 'Open the Context page' : 'Open your check-in';
+  const label = action.choices?.length ? 'Decide it' : action.goesTo === 'context' ? `Open ${REFERENCES_AND_RESOURCES}` : 'Open your check-in';
   return { ...action, label };
 }
 

@@ -60,7 +60,7 @@ describe('how is the team doing', () => {
     const r = await said(s, 'How is the team doing?');
     expect(r.lane).toBe('how_is_the_team');
     expect(r.text).toBe(
-      'Amani says the Green Mart proposal has not gone out yet, and Baraka says nobody told the warehouse about the sales promises. All three people have answered. One thing is in the way. The one that has waited longest is "The Green Mart proposal", since 2 October.\n\nThis is what your board and your latest report say, and only you can read it here.',
+      'Amani says the Green Mart proposal has not gone out yet, and Baraka says nobody told the warehouse about the sales promises. All three people have answered. One thing is in the way. The one that has waited longest is "The Green Mart proposal", since 2 October.\n\nThis is what your board and your latest report say.',
     );
     expect(r.text).not.toContain('cannot answer');
     expect(s.board.get).toHaveBeenCalledWith('g-sales', 'u-wairimu');
@@ -87,7 +87,9 @@ describe('how is the team doing', () => {
     const r = await said(s, 'How is the sales team doing?');
     expect(r.lane).toBe('how_is_the_team');
     expect(r.text).toContain('All three people have answered.');
-    expect(r.text).toContain('This is what the boards and the latest reports say, and only you can read it here.');
+    /* No privacy note in a message (Batch S round 2, T11). */
+    expect(r.text).toContain('This is what the boards and the latest reports say.');
+    expect(r.text).not.toContain('only you can read it here');
     expect(s.board.get).toHaveBeenCalledTimes(1);
     expect(s.board.get).toHaveBeenCalledWith('g-sales', 'u-grace');
   });

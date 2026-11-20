@@ -68,7 +68,7 @@ describe.each([['a forming report', false], ['a released report', true]])('%s, a
        on a forming report they are told it is not shared yet instead, and the ratings check below
        still runs on everything they are sent. Everybody else is served the report itself. */
     if (!released && userId === 'amani-user') {
-      expect(served).toContain("The team's picture of session 1 is not shared yet.");
+      expect(served).toContain("The team's picture of check-in 1 is not shared yet.");
       expect(served).not.toContain('stock count as late');
     } else {
       /* The report itself was served, not a refusal. */

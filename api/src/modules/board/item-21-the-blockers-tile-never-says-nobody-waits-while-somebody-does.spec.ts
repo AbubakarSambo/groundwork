@@ -84,7 +84,7 @@ async function theTileAs(userId: string, role = 'MEMBER'): Promise<{ value?: str
 }
 
 describe('the Blockers tile, with three waits from an earlier session still open', () => {
-  const READS = 'You said, "We haven\'t actually gotten to that part yet, specifically." There is 1 more worry on record. Nobody named a new wait this session, and 3 waits from earlier sessions are still open.';
+  const READS = 'You said, "We haven\'t actually gotten to that part yet, specifically." There is 1 more worry on record. Nobody named a new wait this check-in, and 3 waits from earlier check-ins are still open.';
 
   it('Ada, who runs it, reads that three earlier waits are still open', async () => {
     expect(await theTileAs('u-ada')).toEqual({ value: '2 worries', sub: READS });
@@ -111,6 +111,6 @@ describe('the tile itself', () => {
   });
   it('with one earlier wait and no worry, it says so', () => {
     expect(atAGlanceTiles({ ...base, waitsFromEarlier: 1 }).find((t) => t.label === 'Blockers')!.sub)
-      .toBe('Nobody named anything new holding work up this session, and 1 wait from an earlier session is still open.');
+      .toBe('Nobody named anything new holding work up this check-in, and 1 wait from an earlier check-in is still open.');
   });
 });

@@ -79,17 +79,17 @@ export async function isTheTeamPictureNowShared(prisma: any, groundId: string, r
 
 /** What releasing says back to the lead, before and after: the session, and who it goes to. */
 export function whatReleasingThisSessionDoes(sessionNumber: number): string {
-  return `This shares the team's picture of session ${sessionNumber} with everyone in the check-in.`;
+  return `This shares the team's picture of check-in ${sessionNumber} with everyone in the check-in.`;
 }
 
 /** What somebody who reads only what is released is told while a session's picture is not shared. */
 export function thisSessionIsNotSharedYet(sessionNumber: number): string {
-  return `The team's picture of session ${sessionNumber} is not shared yet.`;
+  return `The team's picture of check-in ${sessionNumber} is not shared yet.`;
 }
 
 /** And what they are told when they can read an earlier session's picture meanwhile. */
 export function youAreReadingAnEarlierSession(released: number, held: number): string {
-  return `You are reading the team's picture of session ${released}. The team's picture of session ${held} is not shared yet.`;
+  return `You are reading the team's picture of check-in ${released}. The team's picture of check-in ${held} is not shared yet.`;
 }
 
 /** The sessions released, with this one added. */

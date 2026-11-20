@@ -158,17 +158,18 @@ describe('what Joyce is told, and what Amina reads', () => {
     expect(src).toMatch(/THE_LEAN_CORE, theirLanguage, aComplaintBlock/);
   });
 
-  it('Amina reads what Joyce said, about whom, where, and why it comes to her', () => {
+  /* Changed in batch 2 (round 52, H2a): the admin's copy describes the complaint in plain words and never quotes it. */
+  it('Amina reads what Joyce\'s complaint is about, about whom, where, and why it comes to her, described and never quoted', () => {
     const m = theComplaintAsTheyReadIt(
       { userId: 'u-amina', name: 'Amina Yusuf', firstName: 'Amina', email: 'amina@baridi.test', holds: 'an admin' },
       { personName: 'Joyce Mwangi', leadName: 'Daniel Otieno', checkIn: 'Sales team', on: '3 November', organisation: 'Baridi Appliances' },
-      ['Daniel shouts at me in front of customers'],
+      ['Daniel shouts at her in front of customers.'],
     );
     expect(m.subject).toBe('Joyce Mwangi has made a complaint about Daniel Otieno');
     expect(m.lines).toEqual([
       'Hello Amina,',
-      'Joyce Mwangi said this about Daniel Otieno in their check-in for "Sales team" on 3 November. It comes to you because you are an admin of Baridi Appliances.',
-      '“Daniel shouts at me in front of customers”',
+      'Joyce Mwangi made a complaint about Daniel Otieno in their check-in for "Sales team" on 3 November. It comes to you because you are an admin of Baridi Appliances.',
+      'Daniel shouts at her in front of customers.',
       'You may want to speak to Joyce about it.',
     ]);
   });
@@ -190,6 +191,7 @@ describe('what Joyce is told, and what Amina reads', () => {
     const r = await new AComplaintIsToldListener(prisma, email, undefined).onAssessmentReady({ checkInId: 'ci-j', groundId: 'g', participantId: 'p-joyce', sessionNumber: 1, howItEnded: 'finished by the person' });
     expect(r.told).toBe(1);
     expect(sent).toEqual(['amina@baridi.test']);
-    expect(email.sendTeamAlert.mock.calls[0][2]).toContain('“Daniel shouts at me in front of customers”');
+    expect(email.sendTeamAlert.mock.calls[0][2]).toContain('Daniel shouts at her in front of customers.');
+    expect(email.sendTeamAlert.mock.calls[0][2].join(' ')).not.toMatch(/“|shouts at me/);
   });
 });

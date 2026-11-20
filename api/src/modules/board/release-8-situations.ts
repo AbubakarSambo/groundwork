@@ -132,10 +132,8 @@ export interface ASituationBoard {
 const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 const inAList = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
-/** An empty board says what will fill it (the approved journey, stage 10): "Nothing is on this board yet. Blockers appear here as your team's check-ins come in." */
-const theEmptyBoard = (what: string[]): string => (what.length
-  ? `Nothing is on this board yet. ${inAList(what).replace(/^./, (c) => c.toUpperCase())} ${what.length === 1 ? 'appears' : 'appear'} here as your team’s check-ins come in.`
-  : 'Nothing is on this board yet. It fills in after the first check-in.');
+/** An empty board says what will fill it (the approved journey, stage 10): "Nothing is on this board yet." */
+const theEmptyBoard = (_what: string[]): string => 'Nothing is on this board yet.';
 
 /**
  * This situation's board for this reader, from the board already served to them. `runsIt` decides whether

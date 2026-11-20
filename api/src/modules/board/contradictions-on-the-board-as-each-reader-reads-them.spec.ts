@@ -14,7 +14,7 @@ const KWAMES = commitment('k-kwame', 'p-kwame', 'I\'ll be following up with each
 });
 const WITH_ONE: Setup = { ...SALES_RUN, commitments: [...(SALES_RUN.commitments ?? []).filter((c: any) => c.id !== 'k-kwame'), KWAMES] };
 const says = (b: any) => (b.contradictions ?? []).map((c: any) => c.says);
-const AS_THE_LEAD_READS_IT = 'Kwame Mensah\'s commitment, "I\'ll be following up with each client directly over the next week to chase down the missing documents", was marked done in session 1, and in session 2 Kwame Mensah said it again as something still to do.';
+const AS_THE_LEAD_READS_IT = 'Kwame Mensah\'s commitment, "I\'ll be following up with each client directly over the next week to chase down the missing documents", was marked done in check-in 1, and in check-in 2 Kwame Mensah said it again as something still to do.';
 
 describe('Contradictions, as each person reads them', () => {
   it('Bisi, who runs it, reads both things the record says, in one sentence, with the sessions', async () => {
@@ -23,7 +23,7 @@ describe('Contradictions, as each person reads them', () => {
 
   it('Kwame reads his own, as "you"', async () => {
     expect(says(await boardAs(WITH_ONE, ...KWAME))).toEqual([
-      'Your commitment, "I\'ll be following up with each client directly over the next week to chase down the missing documents", was marked done in session 1, and in session 2 you said it again as something still to do.',
+      'Your commitment, "I\'ll be following up with each client directly over the next week to chase down the missing documents", was marked done in check-in 1, and in check-in 2 you said it again as something still to do.',
     ]);
   });
 

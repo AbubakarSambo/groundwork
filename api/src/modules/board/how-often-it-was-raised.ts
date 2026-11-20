@@ -1,4 +1,5 @@
 import { aDayPeopleRead, asDate } from './one-count-for-the-sessions';
+import { theDayZone } from '../../common/the-organisations-own-day';
 
 /**
  * HOW OFTEN A BLOCKER WAS RAISED (request 107 c; the prototype's "Raised: 3 times, 1 Sep to 23 Sep").
@@ -16,7 +17,7 @@ export function howOftenItWasRaised(raisedAt: { at: Date | string | null; checkI
   const days = rows.map((r) => asDate(r.at)).filter((d): d is Date => !!d).sort((a, b) => a.getTime() - b.getTime());
   const first = days[0] ?? null;
   const last = days[days.length - 1] ?? null;
-  const iso = (d: Date | null) => (d ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d) : null);
+  const iso = (d: Date | null) => (d ? new Intl.DateTimeFormat('en-CA', { timeZone: theDayZone(), year: 'numeric', month: '2-digit', day: '2-digit' }).format(d) : null);
   const firstRaisedAt = iso(first);
   const lastRaisedAt = iso(last);
   let says: string;

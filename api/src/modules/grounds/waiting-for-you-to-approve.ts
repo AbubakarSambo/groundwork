@@ -7,7 +7,7 @@ import { whatTheMoneyIsFor } from '../suites/a-request-in-words';
  * plain sentences and only to the person who approves them.
  *
  * It is worked out from the boards' own reads, which already say, row by row, whether this reader is
- * the one who approves it (`mayApproveFor`, who-approves.ts). Nothing here decides who approves.
+ * the one who approves it (`decidesIt`, who-may-decide.ts). Nothing here decides who approves.
  *   - Leave is said as dates only, never the reason or the kind (decision 31).
  *   - Hours are said as what was sent and for which day, never as how much somebody works, and with no
  *     comparison (decision 10: hours are for billing only).

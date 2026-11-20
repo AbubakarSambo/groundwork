@@ -13,7 +13,7 @@ describe('a role written as a job title is said as one, in full sentences', () =
   it('Femi Okonkwo (re-d, sales)', () => {
     const [g] = gapsOverTime([{ participantId: 'p-femi', label: 'Femi Okonkwo', expected: 'Relationship officer, Lagos mainland. Target 12 approved facilities this quarter.', ...record }]);
     expect(g.say).toBe('Femi Okonkwo is a relationship officer for Lagos mainland, with a goal of 12 approved facilities this quarter. '
-      + 'Since then, the record holds 1 session, 6 lines of what was said, 3 with a name, a number or a date in them, none backed by a document and 2 commitments still open.');
+      + 'Since then, the record holds 1 check-in, 6 lines of what was said, 3 with a name, a number or a date in them, none backed by a document and 2 commitments still open.');
   });
 
   it.each([

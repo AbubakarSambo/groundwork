@@ -153,7 +153,7 @@ export function draftThePicture(i: PictureInput): Drafted[] {
   /* Who this rests on, and how much there is to go on. Both are counts. */
   out.push({
     key: 'basis',
-    text: `${someOfThemHave(i.answered, i.ofPeople, 'answered this session.')} ${i.confidence.saying}`,
+    text: `${someOfThemHave(i.answered, i.ofPeople, 'answered this check-in.')} ${i.confidence.saying}`,
     mustKeep: [i.confidence.saying],
   });
 
@@ -256,7 +256,7 @@ export function draftThePicture(i: PictureInput): Drafted[] {
       /* Three endings, because there are three kinds of pattern and the middle one is neither
          praise nor a problem with the person. See CARRYING_CODES. */
       /* A sentence, never the person and the signal joined by a colon (request 101 a). */
-      text: `${p.signal} This has come up for ${p.who === 'You' ? 'you' : p.who} across ${p.periodsObserved} sessions${
+      text: `${p.signal} This has come up for ${p.who === 'You' ? 'you' : p.who} across ${p.periodsObserved} check-ins${
         p.positive ? ', which is a good sign' : p.carrying ? ', and that is worth somebody looking at' : ''
       }.`,
       mustKeep: [p.signal],

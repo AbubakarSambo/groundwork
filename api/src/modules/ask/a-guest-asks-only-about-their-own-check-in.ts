@@ -47,7 +47,7 @@ import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { readAMove } from '../assistant/a-change-said-back-first';
 import { GroundScenario } from '@prisma/client';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
-
+import { whoCanReadWhatYouSay } from '../grounds/who-may-read-this-check-in';
 export type AGuestsQuestion =
   | 'agreed' | 'stuck' | 'mine' | 'report' | 'next' | 'a_request' | 'outside' | 'help'
   | 'said' | 'purpose' | 'who_reads' | 'next_step' | 'done' | 'move';
@@ -263,14 +263,15 @@ export function whatTheCheckInIsFor(label: string, told: string | null): Reply {
  * this kind of check-in, and left out where the kind is not known, which is the more private reading.
  * Nothing here is looked up about the host organisation: only the kind of check-in is read.
  */
-export function whoReadsWhatTheySay(label: string, scenario: GroundScenario | null | undefined, ask: string = askName(null)): Reply {
+export function whoReadsWhatTheySay(label: string, scenario: GroundScenario | null | undefined, ask: string = askName(null), peersVisibleToEachOther: boolean | null = null, leadFirstName: string | null = null): Reply {
   const admins = !scenario || isEvaluationCheckIn(scenario)
     ? ''
-    : ' Admins of the organisation that runs this check-in can read every check-in.';
+    : ' Admins of the organisation that runs this check-in can read its board and reports.';
+  /* Who reads what you say is one sentence with one owner (grounds/who-may-read-this-check-in.ts). */
   return rules('guest_who_reads', text(
-    `The people in ${label}, including the person who runs it, can see what you say in it.${admins} Your own report and your questions to ${ask} stay private. `
-    + 'What you say is used to build the shared picture for this check-in and nothing else, and it does not train a model. '
-    + 'Your answers are stored on our servers, and they are processed by Google\'s models to build the record.',
+    `${whoCanReadWhatYouSay({ scenario, peersVisibleToEachOther }, leadFirstName)}${admins} Your questions to ${ask} stay private. `
+    + 'What you say is used to build the shared picture for this check-in, and it does not train a model. '
+    + 'Your answers are stored on our servers and read by Google\'s models to build the record.',
   ));
 }
 

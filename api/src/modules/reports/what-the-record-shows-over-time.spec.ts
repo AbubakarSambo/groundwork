@@ -25,7 +25,7 @@ describe('what the record shows over time', () => {
         statedInSession: 1, saidAgainIn: [2, 3, 5], saidWordForWord: true, whenSaidWordForWord: true,
       }], labelOf, 6);
       /* Changed 29 Sep 2026: full sentences, no colon, dash or semicolon joins (review, item 5). */
-      expect(c.say).toBe('In session 1, Marcus Oyelaran said, "I will arrange meetings with the technical team". The time Marcus Oyelaran gave for it was "next week". Marcus Oyelaran said it again in sessions 2, 3 and 5. It has been open for 5 sessions, and nobody has said whether it happened.');
+      expect(c.say).toBe('In check-in 1, Marcus Oyelaran said, "I will arrange meetings with the technical team". The time Marcus Oyelaran gave for it was "next week". Marcus Oyelaran said it again in check-ins 2, 3 and 5. It has been open for 5 check-ins, and nobody has said whether it happened.');
     });
 
     it('says "you" in lower case in the middle of a sentence when the person is the reader (request 87)', () => {
@@ -33,7 +33,7 @@ describe('what the record shows over time', () => {
         participantId: 'you', text: 'call the client', whenSaid: 'on Wednesday 30 September', explicit: true,
         status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], ...over,
       }], () => 'You', 1, 'Hafsah')[0].say;
-      expect(row()).toBe('In session 1, you committed to call the client. The time you gave for it was on Wednesday 30 September. Nobody has said yet whether it happened.');
+      expect(row()).toBe('In check-in 1, you committed to call the client. The time you gave for it was on Wednesday 30 September. Nobody has said yet whether it happened.');
       expect(row({ source: 'PASTE', statedInSession: null })).toBe('In what Hafsah pasted in, you committed to call the client. The time you gave for it was on Wednesday 30 September. Nobody has said yet whether it happened.');
       expect(row({ status: 'DONE', settledBy: 'PROVEN' })).toContain('A document you added shows it was done.');
       expect(row({ explicit: false, saidWordForWord: false })).toContain('Hafsah committed you to call the client');
@@ -71,7 +71,7 @@ describe('what the record shows over time', () => {
         status, source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], settledBy,
         saidWordForWord: true, whenSaidWordForWord: true,
       }], labelOf, 3)[0].say;
-      expect(row('SAID')).toBe('In session 1, Marcus Oyelaran said, "I will continue to monitor client health closely." The time Marcus Oyelaran gave for it was "next". Marcus Oyelaran said later that it was done.');
+      expect(row('SAID')).toBe('In check-in 1, Marcus Oyelaran said, "I will continue to monitor client health closely." The time Marcus Oyelaran gave for it was "next". Marcus Oyelaran said later that it was done.');
       expect(row('PROVEN')).toMatch(/A document Marcus Oyelaran added shows it was done\.$/);
       expect(row('CONFIRMED')).toMatch(/The colleague who received it confirmed that it was done\.$/);
       expect(row('SAID', 'NOT_DONE')).toMatch(/Marcus Oyelaran said later that it was not done\.$/);
@@ -88,7 +88,7 @@ describe('what the record shows over time', () => {
         participantId: 'marcus', text: 'lead that review with the team', whenSaid: null, explicit: true,
         status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 2, saidAgainIn: [], saidWordForWord: false,
       }], labelOf, 2);
-      expect(c.say).toBe('In session 2, Marcus Oyelaran committed to lead that review with the team. Nobody has said yet whether it happened.');
+      expect(c.say).toBe('In check-in 2, Marcus Oyelaran committed to lead that review with the team. Nobody has said yet whether it happened.');
       expect(c.say).not.toContain('"');
     });
 
@@ -99,7 +99,7 @@ describe('what the record shows over time', () => {
         statedInSession: 1, saidAgainIn: [], saidWordForWord: false, whenSaidWordForWord: false,
       }], labelOf, 1);
       expect(c.say).toBe(
-        'In session 1, Marcus Oyelaran committed to reach out to the InfoSec team to push the security review forward. '
+        'In check-in 1, Marcus Oyelaran committed to reach out to the InfoSec team to push the security review forward. '
         + 'The time Marcus Oyelaran gave for it was as soon as the 29th arrives. Nobody has said yet whether it happened.',
       );
       expect(c.say).not.toContain('"');
@@ -120,28 +120,28 @@ describe('what the record shows over time', () => {
         participantId: 'marcus', text: 'lead that review with the team', whenSaid: null, explicit: true,
         status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 2, saidAgainIn: [], saidWordForWord: false,
       }], labelOf, 2);
-      expect(c1.say).toContain('In session 2, Marcus Oyelaran committed to lead that review with the team.');
+      expect(c1.say).toContain('In check-in 2, Marcus Oyelaran committed to lead that review with the team.');
 
       const [c2] = commitmentsOverTime([{
         participantId: 'priti', text: "I'll reach out to the InfoSec team to push the security review forward.",
         whenSaid: null, explicit: true, status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [],
         saidWordForWord: false,
       }], priti, 1);
-      expect(c2.say).toContain('In session 1, Priti Sharma committed to reach out to the InfoSec team to push the security review forward.');
+      expect(c2.say).toContain('In check-in 1, Priti Sharma committed to reach out to the InfoSec team to push the security review forward.');
 
       /* "my" is said about the person ("their") rather than hiding what they committed to (request 123, item 9). */
       const [c3] = commitmentsOverTime([{
         participantId: 'priti', text: 'I will get my documents sorted out.', whenSaid: null, explicit: true,
         status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], saidWordForWord: false,
       }], priti, 1);
-      expect(c3.say).toContain('In session 1, Priti Sharma committed to get their documents sorted out.');
+      expect(c3.say).toContain('In check-in 1, Priti Sharma committed to get their documents sorted out.');
 
       /* An "I" left deeper in the sentence still cannot be said safely in our voice. */
       const [c4] = commitmentsOverTime([{
         participantId: 'priti', text: 'I will ask the team after I have the figures.', whenSaid: null, explicit: true,
         status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], saidWordForWord: false,
       }], priti, 1);
-      expect(c4.say).toContain('In session 1, Priti Sharma made a commitment, which is in the record.');
+      expect(c4.say).toContain('In check-in 1, Priti Sharma made a commitment, which is in the record.');
       for (const say of [c1.say, c2.say, c3.say]) {
         expect(say).not.toContain('"');
         expect(say).not.toMatch(/\bmy\b|\bI\b|\bI'll\b|\bme\b|\bour\b/);
@@ -178,7 +178,7 @@ describe('what the record shows over time', () => {
       }], labelOf, 6);
       expect(d.say).toContain('Amina Bello is waiting on Marcus Oyelaran');
       expect(d.say).toContain('This is work Marcus Oyelaran owes Amina Bello, not the other way round');
-      expect(d.say).toContain('4 sessions');
+      expect(d.say).toContain('4 check-ins');
       /* One sentence with the thing it is about since 1 October 2026: see the next test. */
       expect(d.say).toContain('and nothing on record says anybody has chased it since');
     });
@@ -204,7 +204,7 @@ describe('what the record shows over time', () => {
        * nothing, at the top of the lead's list of what is still open.
        */
       expect(d.say).toBe(
-        'Amina Bello is waiting on Marcus Oyelaran for "the signed lease" for 4 sessions now, and nothing on record says anybody has chased it since. '
+        'Amina Bello is waiting on Marcus Oyelaran for "the signed lease" for 4 check-ins now, and nothing on record says anybody has chased it since. '
         + 'This is work Marcus Oyelaran owes Amina Bello, not the other way round.',
       );
       expect(d.say).not.toMatch(/\b(escalat\w*|bottleneck|alignment|leverage|stakeholder|deliverable|cadence|pipeline)\b/i);
@@ -224,7 +224,7 @@ describe('what the record shows over time', () => {
         what: 'the signed lease', fromParticipantId: 'amina', onParticipantId: 'marcus',
         onLabel: null, status: 'WAITING', escalatedAt: new Date('2026-09-01'), statedInSession: 2,
       }], labelOf, 6);
-      expect(stampOnly.say).toContain('for 4 sessions now, and nothing on record says anybody has chased it since.');
+      expect(stampOnly.say).toContain('for 4 check-ins now, and nothing on record says anybody has chased it since.');
       expect(stampOnly.say).not.toMatch(/went back about it|taken above/);
       expect(stampOnly.chased).toBe(false);
       const [d] = dependenciesOverTime([{
@@ -232,7 +232,7 @@ describe('what the record shows over time', () => {
         onLabel: null, status: 'WAITING', escalatedAt: null, triedSaid: 'I chased Marcus twice by email.', statedInSession: 2,
       } as any], labelOf, 6);
       /* In the same sentence as the thing, since 1 October 2026 (see above). */
-      expect(d.say).toContain('for 4 sessions now, and it has been chased more than once since.');
+      expect(d.say).toContain('for 4 check-ins now, and it has been chased more than once since.');
       expect(d.chased).toBe(true);
       expect(Object.keys(d)).not.toContain('escalated');
     });
@@ -252,9 +252,9 @@ describe('what the record shows over time', () => {
         seenInSessions: [2, 4, 6], periodsObserved: 1, lastPeriodNumber: 6, status: 'SURFACED',
       }], nameOf, labelOf, 6);
       expect(p.name).toBe('Intro Evasion');
-      expect(p.say).toContain('sessions 2, 4, 6 of 6');
+      expect(p.say).toContain('check-ins 2, 4, 6 of 6');
       expect(p.say).toContain('not consecutively');
-      expect(p.say).toContain('Enough sessions to be a pattern');
+      expect(p.say).toContain('Enough check-ins to be a pattern');
     });
 
     it('says plainly when one or two sessions is not yet a pattern', () => {
@@ -277,7 +277,7 @@ describe('what the record shows over time', () => {
          it: ..." until 27 September 2026. */
       expect(g.say).toBe(
         'The role written down for Marcus Oyelaran is to build the government relationships and confirm the real approval pathway independently. '
-        + 'Since then, the record holds 6 sessions, 44 lines of what was said, 18 with a name, a number or a date in them, '
+        + 'Since then, the record holds 6 check-ins, 44 lines of what was said, 18 with a name, a number or a date in them, '
         + 'none backed by a document, 5 commitments still open and 9 things somebody else here is waiting for.',
       );
       expect(g.say).not.toMatch(/fail|poor|should|underperform/i);
@@ -297,7 +297,7 @@ describe('what the record shows over time', () => {
       }]);
       expect(g.say).toBe(
         'Ngozi Eze is a relationship officer for Ikeja, with a goal of 14 approved facilities this quarter. '
-        + 'Since then, the record holds 1 session, 6 lines of what was said, 1 with a name, a number or a date in it, '
+        + 'Since then, the record holds 1 check-in, 6 lines of what was said, 1 with a name, a number or a date in it, '
         + 'none backed by a document and 1 commitment still open.',
       );
       /* tools/score_run.py, "role description used as a name", the same expression. */
@@ -360,7 +360,7 @@ describe('what the record shows over time', () => {
         commitments, dependencies, patterns: [], documentsAttached: 0, anybodySaidWhoArrangedThings: false,
       });
       const all = questions.join(' | ');
-      expect(all).toContain('said again in 3 sessions');
+      expect(all).toContain('said again in 3 check-ins');
       expect(all).toContain('nothing on record says anybody has gone back about it');
       expect(all).toContain('who arranged the meetings');
       expect(all).toContain('one thing in writing');
@@ -379,7 +379,7 @@ describe('what the record shows over time', () => {
         commitments, dependencies: [], patterns: [], documentsAttached: 1, anybodySaidWhoArrangedThings: true,
       });
       expect(questions[0]).toBe(
-        'Lead that review with the team has been said again in 3 sessions and nobody has said whether it happened. '
+        'Lead that review with the team has been said again in 3 check-ins and nobody has said whether it happened. '
         + 'Ask Marcus Oyelaran what it is waiting on, and decide whether it is still wanted.',
       );
       expect(questions[0]).not.toContain('"');

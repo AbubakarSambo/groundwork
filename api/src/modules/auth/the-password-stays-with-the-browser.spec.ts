@@ -59,7 +59,8 @@ describe('the same browser opens the confirmation', () => {
     const saved = await svc.entrySave(ADDRESS, { payload: { firstName: 'Ama' } }, PASSWORD);
     const res: any = await svc.verifyEmail({ token: link(), passwordKey: saved.passwordKey } as any);
     expect(await bcrypt.compare(PASSWORD, db.users[0].passwordHash)).toBe(true);
-    expect(res.needsPassword).toBe(false);
+    /* Changed in batch 2, group 6 (S14): a link never asks for a password, so no answer carries a password step. */
+    expect(res).not.toHaveProperty('needsPassword');
     expect(res).not.toHaveProperty('passwordSetupToken');
     const signedIn = await svc.login({ email: ADDRESS, password: PASSWORD } as any);
     expect(signedIn.accessToken).toBe('a-session');
@@ -73,10 +74,9 @@ describe('another browser opens it (no key, or the wrong key)', () => {
     const res: any = await svc.verifyEmail({ token: link(), ...(key ? { passwordKey: key } : {}) } as any);
     expect(db.users[0].passwordHash ?? null).toBeNull();
     expect(db.pending).toBeNull();
-    /* They can still choose a password: the step comes, as after a sign-up by link. */
-    expect(res.needsPassword).toBe(true);
-    expect(res.passwordSetupToken).toEqual(expect.any(String));
-    expect(db.tokens.some((t) => t.type === TokenType.PASSWORD_SETUP)).toBe(true);
+    /* Changed in batch 2, group 6 (S14): a link never asks for a password, so no answer carries a password step. */
+    expect(res).not.toHaveProperty('passwordSetupToken');
+    expect(db.tokens.some((t) => t.type === TokenType.PASSWORD_SETUP)).toBe(false);
     /* The stranger's password opens nothing. */
     await expect(svc.login({ email: ADDRESS, password: PASSWORD } as any)).rejects.toBeInstanceOf(UnauthorizedException);
   });
@@ -103,7 +103,7 @@ describe('another browser opens it (no key, or the wrong key)', () => {
     await byLink.svc.entrySave(ADDRESS, { payload: { firstName: 'Ama' } });
     const b: any = await byLink.svc.verifyEmail({ token: byLink.link() } as any);
     expect(Object.keys(a).sort()).toEqual(Object.keys(b).sort());
-    expect({ needsPassword: a.needsPassword, justCreated: a.justCreated }).toEqual({ needsPassword: b.needsPassword, justCreated: b.justCreated });
+    expect(a.justCreated).toEqual(b.justCreated);
   });
 });
 

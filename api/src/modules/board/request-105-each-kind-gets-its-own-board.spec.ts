@@ -97,7 +97,7 @@ const LOANS: Setup = {
   items: [
     item('l-1', 'loan', 'Grinding machine', { ownerParticipantId: 'p-sunday', stage: 'Repaying' }),
     item('l-2', 'loan', 'Freezer', { ownerParticipantId: 'p-hauwa', stage: 'Repaying' }),
-    item('l-3', 'loan', 'Tricycle', { ownerParticipantId: 'p-yakubu', stage: 'Late' }),
+    item('l-3', 'loan', 'Tricycle', { ownerParticipantId: 'p-yakubu', stage: 'Late', fields: { 'In the way': 'Repayment is due before market day.' } }),
   ],
   /* Musa: "I never received the machine. ... I've called the field officer eleven times. Nothing happened." */
   dependencies: [handoff('d-musa', 'p-musa', 'the grinding machine', { onLabel: 'the field officer', status: 'BLOCKING', sourceCheckInId: 'c1-p-musa' })],
@@ -110,10 +110,10 @@ describe('asset loans', () => {
       heading: 'Where the cohort stands',
       says: '4 people are in this cohort.',
       groups: [
-        { group: 'repaying', count: 2, says: 'The loan records show 2 loans being repaid.', who: ['Sunday Eze', 'Hauwa Ibrahim'] },
-        { group: 'behind', count: 1, says: 'The loan records show 1 loan behind on repayment.', who: ['Yakubu Sani'] },
-        { group: 'blocked', count: 1, says: '1 person is waiting on something that stops them, and it has not been cleared.', who: ['Musa Danjuma'] },
-        { group: 'not heard from', count: 1, says: '1 person has not checked in yet.', who: ['Yakubu Sani'] },
+        { group: 'repaying', title: 'Repaying', count: 2, cause: null, says: 'The loan records show 2 loans being repaid.', who: ['Sunday Eze', 'Hauwa Ibrahim'] },
+        { group: 'behind', title: 'Behind on repayment', count: 1, cause: 'They say “Repayment is due before market day” is in the way.', says: 'The loan records show 1 loan behind on repayment.', who: ['Yakubu Sani'] },
+        { group: 'blocked', title: 'Stopped by something', count: 1, cause: 'They say they are waiting on “the grinding machine”.', says: '1 person is waiting on something that stops them, and it has not been cleared.', who: ['Musa Danjuma'] },
+        { group: 'not heard from', title: 'Not heard from', count: 1, cause: null, says: '1 person has not checked in yet.', who: ['Yakubu Sani'] },
       ],
     });
     expect(b.supportGiven).toEqual({ heading: 'Support given, and whether it helped', state: 'not-known', why: NO_SUPPORT_ON_RECORD });
@@ -129,7 +129,7 @@ describe('asset loans', () => {
 
   it('without loan records, it says so rather than counting nothing', async () => {
     const b = await boardAs({ ...LOANS, items: [] }, ...LEAD);
-    expect(b.whereTheCohortStands.groups[0]).toEqual({ group: 'repaying', state: 'not-known', why: 'No loan record says who is repaying or who is behind yet.' });
+    expect(b.whereTheCohortStands.groups[0]).toEqual({ group: 'repaying', title: 'Repaying', state: 'not-known', why: 'No loan record says who is repaying or who is behind yet.' });
   });
 
   it('Musa, who checks in, is served none of it, and nobody else\'s loan', async () => {
@@ -167,7 +167,7 @@ describe('a law firm matter', () => {
       heading: 'Where the matter stands',
       /* `state` added on 5 October (request 134 item 7), like the other sections of this board. */
       state: 'filled',
-      says: ['The reply to the supplier is due on 2 October.', 'Nothing is in the way that has not been cleared.', '1 thing is waiting for a decision.'],
+      says: ['The reply to the supplier is due on 2 October.', 'Nothing is in the way that has not been cleared.', '1 thing is waiting for a decision.', 'This is from the matter’s record and from what 1 person said in their check-ins. A document counts only where it is attached to the matter.'],
     });
     expect(b.whatYouNeedToDecide.heading).toBe('What you need to decide');
     expect(b.whatYouNeedToDecide.items).toEqual([expect.objectContaining({ question: 'People in this check-in said different things about what the service agreement means.', owner: 'You' })]);
@@ -175,7 +175,7 @@ describe('a law firm matter', () => {
       heading: 'What changed this week, and what it changed',
       state: 'filled',
       sessionNumber: 1,
-      says: 'In session 1, 2 things were said about the matter.',
+      says: 'In check-in 1, 2 things were said about the matter.',
       lines: [
         expect.objectContaining({ participantId: 'p-frank', text: 'Frank Mbeki said, "The supplier has acknowledged every ticket within two hours so far."' }),
         expect.objectContaining({ participantId: 'p-frank', text: 'Frank Mbeki said, "Three fixes have taken over a week."' }),
@@ -235,8 +235,9 @@ describe('MarketView where next', () => {
     const b = await boardAs(DESCRIBED, ...LEAD);
     expect(b.byWhoTheyAre.state).toBe('filled');
     expect(b.byWhoTheyAre.groups).toEqual([
-      { group: 'Agroprocessor', count: 1, answered: 1, says: '1 person, 1 answered.' },
-      { group: 'Researcher', count: 1, answered: 0, says: '1 person, 0 answered.' },
+      /* Each group carries its people's ids, so the board can count who in each group named each priority. Only where the lead's own words made the groups. */
+      { group: 'Agroprocessor', count: 1, answered: 1, says: '1 person, 1 answered.', participantIds: ['p-martin'] },
+      { group: 'Researcher', count: 1, answered: 0, says: '1 person, 0 answered.', participantIds: ['p-ade'] },
     ]);
   });
   it('Martin, who checks in, is still served none of it, not even the lead’s words about who anybody is', async () => {
@@ -338,6 +339,6 @@ describe('on an evaluation check-in', () => {
     const { GroundScenario } = require('@prisma/client');
     const pip = { ...LOANS, scenario: GroundScenario.PIP, createdByUserId: 'u-setup' };
     expect(kindsFields(await boardAs(pip, 'u-sunday', 'MEMBER'))).toEqual([]);
-    expect(kindsFields(await boardAs(pip, ...SETUP_ADMIN))).toEqual(['supportGiven', 'whereTheCohortStands']);
+    expect(kindsFields(await boardAs(pip, ...SETUP_ADMIN))).toEqual(['supportGiven', 'theOpening', 'whereTheCohortStands']);
   });
 });

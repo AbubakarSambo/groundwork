@@ -30,6 +30,6 @@ import { DecisionsInABatchService } from './the-decisions-in-a-batch.service';
   imports: [SuggestionsModule],
   controllers: [SuitesController],
   providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, ReviewsProposedService, ReviewsProposedCron, ARequestToldOnWhatsApp, AReviewToldOnWhatsApp, AReviewAppealToldService, AnAppealWaitsForANewAdmin, ARequestWaitsTooLongCron, SpendingForFinanceService, ARequestFiledFromItsForm, ApprovalsQueueService, TheApproversSummaryCron, DecisionsInABatchService],
-  exports: [SuitesService, LeaveBoardService, TimeSheetsService, ReviewsService, ReviewsProposedService, SpendingService, EquipmentService, ARequestToldOnWhatsApp, SpendingForFinanceService, ApprovalsQueueService],
+  exports: [SuitesService, RoleMapService, LeaveBoardService, TimeSheetsService, ReviewsService, ReviewsProposedService, SpendingService, EquipmentService, ARequestToldOnWhatsApp, SpendingForFinanceService, ApprovalsQueueService],
 })
 export class SuitesModule {}

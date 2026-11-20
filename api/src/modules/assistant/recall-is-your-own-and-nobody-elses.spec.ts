@@ -11,28 +11,30 @@ import { STOPWORDS } from '../knowledge/knowledge.service';
  * another - the exact thing it exists to prevent. Driven on the running server with two people who
  * had both mentioned the same subject: each got their own sentence back and neither saw the other's.
  */
-const SRC = readFileSync(join(__dirname, 'assistant.service.ts'), 'utf8')
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .replace(/^\s*\/\/.*$/gm, '');
+const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const SRC = strip(readFileSync(join(__dirname, 'assistant.service.ts'), 'utf8'));
+/* The recall query moved into the one reader of Ask questions (15 November 2026); the same assertions now read it there. */
+const RECALL = strip(readFileSync(join(__dirname, 'a-persons-own-ask-turns.ts'), 'utf8'));
 
 describe('recall is your own and nobody else’s', () => {
   it('scopes the query by person in the where clause, not afterwards', () => {
     /* A filter applied after the fact is one somebody can refactor away while the query still
        "works". The boundary belongs where the rows are chosen. */
-    const q = SRC.slice(SRC.indexOf('FROM assistant_turns'), SRC.indexOf('ORDER BY created_at DESC'));
+    const q = RECALL.slice(RECALL.indexOf('FROM assistant_turns'), RECALL.indexOf('ORDER BY created_at DESC'));
     expect(q).toContain('organization_id = ');
     expect(q).toContain('person_external_id = ');
   });
 
   it('and there is exactly one query against that table', () => {
     /* So the guard above cannot be true of one query and false of a second added later. */
-    expect([...SRC.matchAll(/FROM assistant_turns/g)]).toHaveLength(1);
+    expect([...RECALL.matchAll(/FROM assistant_turns/g)]).toHaveLength(1);
+    expect([...SRC.matchAll(/FROM assistant_turns/g)]).toHaveLength(0);
   });
 
   it('reads only what the person themselves said, never the assistant', () => {
     /* Quoting our own earlier reply back as something they told us would be the product treating
        its own words as evidence. */
-    expect(SRC).toMatch(/role = 'person'/);
+    expect(RECALL).toMatch(/role = 'person'/);
   });
 });
 

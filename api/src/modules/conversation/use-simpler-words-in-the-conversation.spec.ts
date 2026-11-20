@@ -54,14 +54,14 @@ const prompt = async (scenario: any, partyType: any, sessionNumber: number, on: 
 const READERS: [string, any][] = [['the lead', PartyType.INITIATOR], ['a participant', PartyType.PARTICIPANT]];
 
 describe.each(READERS)('the conversation, as %s', (_n, party) => {
-  it.each([[GroundScenario.OKR_ALIGNMENT, 1], [GroundScenario.NEW_HIRE, 2], [GroundScenario.PIP, 5]])('is unchanged with the switch off (%s, session %i)', async (sc, n) => {
+  it.each([[GroundScenario.OKR_ALIGNMENT, 1], [GroundScenario.NEW_HIRE, 2], [GroundScenario.PIP, 5]])('is unchanged with the switch off (%s, check-in %i)', async (sc, n) => {
     const never = await prompt(sc, party, n, undefined);
     const off = await prompt(sc, party, n, false);
     expect(off).toBe(never);
     expect(off).not.toMatch(/SIMPLER WORDS/);
   });
 
-  it.each([[GroundScenario.OKR_ALIGNMENT, 1], [GroundScenario.NEW_HIRE, 2], [GroundScenario.PIP, 5]])('gets the plain-words rule and nothing else with it on (%s, session %i)', async (sc, n) => {
+  it.each([[GroundScenario.OKR_ALIGNMENT, 1], [GroundScenario.NEW_HIRE, 2], [GroundScenario.PIP, 5]])('gets the plain-words rule and nothing else with it on (%s, check-in %i)', async (sc, n) => {
     const off = await prompt(sc, party, n, false);
     const on = await prompt(sc, party, n, true);
     expect(on).toMatch(/THIS CHECK-IN USES SIMPLER WORDS, FOR EVERYBODY IN IT/);

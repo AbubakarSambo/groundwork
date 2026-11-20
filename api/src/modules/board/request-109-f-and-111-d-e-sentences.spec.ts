@@ -15,10 +15,10 @@ describe('the time a person gave is said once', () => {
   } as any, 1);
 
   it('Amani reads her own promise with its day once', () => {
-    expect(amanis('You')).toBe('In session 1, you said, "I will deliver the Tuskys cookers on 9 October." Nobody has said yet whether it happened.');
+    expect(amanis('You')).toBe('In check-in 1, you said, "I will deliver the Tuskys cookers on 9 October." Nobody has said yet whether it happened.');
   });
   it('Rukia, who runs it, reads the same, with Amani\'s name', () => {
-    expect(amanis('Amani Wekesa')).toBe('In session 1, Amani Wekesa said, "I will deliver the Tuskys cookers on 9 October." Nobody has said yet whether it happened.');
+    expect(amanis('Amani Wekesa')).toBe('In check-in 1, Amani Wekesa said, "I will deliver the Tuskys cookers on 9 October." Nobody has said yet whether it happened.');
   });
   it('a time the words do not hold is still said', () => {
     const s = aCommitmentSaid({ who: 'You', what: 'I will send the price list.', when: 'by Friday', statedInSession: 1, restatedIn: [], status: 'UNKNOWN', theySaidIt: true, settledBy: null, fromAPaste: false, leadLabel: 'Rukia Otieno', saidWordForWord: true, whenSaidWordForWord: true } as any, 1);
@@ -37,7 +37,7 @@ describe('the work plan counts the sessions the report counts (111 d)', () => {
       ],
       { personMayBeRead: () => true, commitmentMayBeRead: () => true, nameOf: () => 'Amani Wekesa', meId: null, theLeadsId: null } as any,
     );
-    expect(rows[0].says).toContain('It has been open for 1 session, and nobody has said whether it happened.');
+    expect(rows[0].says).toContain('It has been open for 1 check-in, and nobody has said whether it happened.');
   });
 });
 
@@ -51,8 +51,8 @@ describe('the board\'s headline has no colon (109 f)', () => {
 describe('"Seen in 1 sessions." (109 f)', () => {
   it('one session is one session', () => {
     const [p] = patternsOverTime([{ participantId: 'p-a', code: 'D1', observationText: 'Visits reported without names.', seenInSessions: [1], periodsObserved: 1, lastPeriodNumber: 1, status: 'SURFACED' }], () => 'x', () => 'Amani Wekesa', 2);
-    expect(JSON.stringify(p)).not.toMatch(/1 sessions|sessions 1 /);
-    expect(JSON.stringify(p)).toContain('It was seen in session 1 of 2');
+    expect(JSON.stringify(p)).not.toMatch(/1 check-ins|check-ins 1 /);
+    expect(JSON.stringify(p)).toContain('It was seen in check-in 1 of 2');
   });
 });
 

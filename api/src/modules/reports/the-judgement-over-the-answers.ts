@@ -524,7 +524,7 @@ export function theRoom(
   sharedNames = '',
 ): string {
   const lines: string[] = [
-    `${people.length} people, ${sessions} ${sessions === 1 ? 'session' : 'sessions'}.`,
+    `${people.length} people, ${sessions} ${sessions === 1 ? 'check-in' : 'check-ins'}.`,
     '',
   ];
   for (const p of people) {
@@ -532,7 +532,7 @@ export function theRoom(
     if (p.role) lines.push(`    taken on for: ${p.role}`);
     if (p.finding) lines.push(`    what the record holds: ${p.finding}`);
     for (const x of p.patterns) {
-      lines.push(`    seen in sessions ${x.seenInSessions.join(', ')} (${x.name}): ${x.observation}`);
+      lines.push(`    seen in check-ins ${x.seenInSessions.join(', ')} (${x.name}): ${x.observation}`);
     }
     for (const c of p.openCommitments.slice(0, 6)) {
       /* As what was promised, with the time they gave, so a move can ask whether it happened by then (request 134 item 4). */

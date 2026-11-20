@@ -39,3 +39,20 @@ describe('the wording check for sentences the product composes', () => {
     expect(rules('Not backed by anything. Done: the stock count.', { whole: true })).toContain('pieces joined with a colon');
   });
 });
+
+describe('task 1.6: doubled quotation marks, and two people with a verb for one', () => {
+  it('finds a doubled or left-open quotation mark in a sentence the product wrote', () => {
+    expect(rules('You said ““Nothing is blocking me””.')).toContain('doubled quote marks');
+  });
+  it('leaves a single pair of quotation marks round somebody\'s words alone', () => {
+    expect(rules('You said “Nothing is blocking me”.')).not.toContain('doubled quote marks');
+  });
+  it('finds two people as the subject of a verb for one', () => {
+    expect(rules('Mary and Sam has not checked in yet.')).toContain('two people with a verb for one');
+    expect(rules('You and Sam is waiting on finance.')).toContain('two people with a verb for one');
+  });
+  it('accepts the right verb for two people', () => {
+    expect(rules('Mary and Sam have not checked in yet.')).not.toContain('two people with a verb for one');
+    expect(rules('Mary has not checked in yet, and Sam is waiting.')).not.toContain('two people with a verb for one');
+  });
+});

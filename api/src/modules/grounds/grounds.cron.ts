@@ -1,3 +1,4 @@
+import { theQuietHoursNow } from '../../common/the-clock';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { aTeamMembersOpeningFor } from '../conversation/the-one-thing-today';
 import { theSameWordsAgain, rememberTheWords, writeDownTheSkip } from '../engagement/never-the-same-words-twice';
@@ -8,7 +9,6 @@ import { theCheckInIsOpen } from '../whatsapp/what-goes-to-a-phone';
 import { theOrganisationsPausedNow } from '../billing/the-trial-grace';
 import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
 import { owesThisSession } from './the-lead-checks-in-when-they-choose';
-import { THE_MOST_REPORT_READY_REMINDERS, howManyReportReadyRemindersWereSent } from '../email/the-report-is-ready-reminder';
 import { NOT_HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
@@ -28,6 +28,9 @@ import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED, 
 import { AN_ANSWER } from './an-answer-includes-a-refusal';
 import { recordRoundCompletion } from './round-completion';
 import { awayUntilOn, leaveOfThePeopleOn, whoOnACheckInIsAway } from '../suites/who-is-away';
+import { advanceThePersistentJobs } from '../outstanding/the-persistent-jobs';
+import { actOnTheJobs } from '../year-end/the-year-end-owner';
+import { theRealPorts } from '../year-end/the-year-end-ports';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { ConfigService } from '@nestjs/config';
@@ -166,6 +169,21 @@ export class GroundsCron implements OnApplicationBootstrap {
    * instant everywhere the app runs, not "3am wherever this process's clock
    * thinks it is."
    */
+  /**
+   * THE TWO STANDING JOBS EVERY PRINCIPAL HAS (Fatima, increment 3), recomputed from the record each night.
+   * Nothing is held in the process, so a restart loses nothing, and it runs once across copies of the API.
+   * It writes the jobs' own rows, and then the year-end owner decides whether anything is worth saying, and to whom.
+   */
+  @Cron('15 4 * * *', { timeZone: 'UTC' })
+  async advanceThePrincipalsJobs() {
+    await onceAcrossCopies(this.prisma, 'advance-the-principals-jobs', theDay(), async () => {
+      const now = theQuietHoursNow();
+      await advanceThePersistentJobs(this.prisma, now);
+      /* Then the jobs act: a draft, a decision, a gap or new coverage, and only when it is meaningful (year-end/the-year-end-owner.ts). */
+      await actOnTheJobs(this.prisma, theRealPorts(this.email, this.whatsapp, this.prisma), now);
+    });
+  }
+
   /**
    * SEND THE INVITES THAT WERE HELD BACK UNTIL SOMEBODY'S FIRST DAY.
    *
@@ -383,7 +401,8 @@ export class GroundsCron implements OnApplicationBootstrap {
       // GW-06: notify all parties that their ground has stalled.
       const stalledGrounds = await this.prisma.ground.findMany({
         where: { id: { in: staleIds } },
-        select: { id: true, label: true, initiatorId: true, participants: { select: { id: true, email: true, userId: true } } },
+        /* Somebody who has left the check-in is not mailed that it ran out of time (N50). */
+        select: { id: true, label: true, initiatorId: true, participants: { where: { leftAt: null }, select: { id: true, email: true, userId: true } } },
       });
       const frontend = this.config.get<string>('resend.frontendUrl') || '';
       for (const g of stalledGrounds) {
@@ -1040,7 +1059,7 @@ export class GroundsCron implements OnApplicationBootstrap {
 
   async sendTheMissedCheckInsInner(now: Date = new Date()): Promise<{ tried: number }> {
     const result = await sendTheMissedCheckInsToThePeople(
-      { prisma: this.prisma, email: this.email as any, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      { prisma: this.prisma, email: this.email as any, whatsapp: this.whatsapp as any, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
       now,
     ).catch((err: any) => { this.logger.warn(`The missed check-ins notices could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`Missed check-ins: ${result.tried} tried.`);
@@ -1449,8 +1468,6 @@ export class GroundsCron implements OnApplicationBootstrap {
 
   private async sendRemindersInner() {
     const now = new Date();
-    const throttleBefore = new Date(now.getTime() - NUDGE_THROTTLE_DAYS * 24 * 60 * 60 * 1000);
-    const frontend = this.config.get<string>('resend.frontendUrl') || '';
 
     /*
      * THE RETURN-NUDGE HALF OF THIS JOB IS GONE (NL-021). Two engines sent the same nudge: this one
@@ -1467,68 +1484,12 @@ export class GroundsCron implements OnApplicationBootstrap {
      */
     const activationNudges = 0;
 
-    // 3. Reveal reminders: a party whose report has been released but who has
-    // not activated their own ReportActivation yet. Distinct from the
-    // (legacy, no-longer-fires) activation reminder above, which is about
-    // Ground.billingActivatedAt - this is about ReportActivation, the
-    // per-party "I'm ready to see it" confirmation each non-initiator must
-    // make individually (ReportsService.get() - one party's activation has
-    // no effect on any other party, so a party can sit on PENDING forever
-    // with their report ready and nobody nudging them). The initiator is
-    // exempt from this gate entirely (see get()) and never gets a row, so
-    // this is scoped to PARTICIPANT rows only. Same throttle
-    // (NUDGE_THROTTLE_DAYS) and same opt-out (user.emailNotifications) as
-    // every other reminder in this sweep.
     /*
-     * IT NEVER STAMPS `lastNudgedAt` (decision 139, must-fix 3). That column says a reminder to CHECK IN went, and the lead's
-     * letter and her "has not started" email say "reminded" from it. This mail stamped it too, so Wairimu read "I have already
-     * sent reminders to Brian this week" in a week Brian was sent two of these and no reminder (final evaluation, profile 1).
-     * Its own three-day wait is read from the record of messages instead, like its cap of two.
+     * THERE IS NO "YOUR REPORT IS READY TO VIEW" REMINDER (fix plan 16 November, group 6). A report event is one mail to each person who
+     * joined, sent by `tellThemTheReportIsReady` and nowhere else. This sweep used to send the same news a second time, worded differently.
      */
-    const pendingReveal = await this.prisma.groundParticipant.findMany({
-      where: {
-        userId: { not: null },
-        ...NOT_HELD_FOR_A_SEAT,
-        partyType: PartyType.PARTICIPANT,
-        ground: { status: { notIn: A_GROUND_NO_MESSAGE_IS_ABOUT }, report: { releasedAt: { not: null } } },
-        reportActivations: { none: { status: ReportActivationStatus.ACTIVATED } },
-        /*
-         * U.10 REVIEW: "Your report for 'Sales team, Q3' is ready to view" told Faraji this before
-         * he had checked in at all. This query only asked whether the GROUND's report had been
-         * released, never whether THIS participant had answered anything - so anybody added to a
-         * ground where somebody else's report went out got the same email, about a report that, for
-         * them, does not yet exist to view. A reveal reminder is about a party's own report being
-         * ready; a party who has never checked in has no report of their own to be ready.
-         */
-        checkIns: { some: { status: CheckInStatus.COMPLETED } },
-      },
-      select: {
-        id: true,
-        email: true,
-        ground: { select: { id: true, label: true, organizationId: true, report: { select: { releasedAt: true } } } },
-        user: { select: { emailNotifications: true } },
-      },
-    });
-
-    let revealReminders = 0;
-    for (const p of pendingReveal) {
-      if (p.user?.emailNotifications === false) continue;
-      try {
-        /* At most two for a person and a report (decision 117, D14). Not being able to count is not leave to send. */
-        if ((await howManyReportReadyRemindersWereSent(this.prisma as any, p.email, p.ground.label)) >= THE_MOST_REPORT_READY_REMINDERS) continue;
-        /* Not again within NUDGE_THROTTLE_DAYS of the last one that went, read from the record of messages. */
-        if ((await howManyReportReadyRemindersWereSent(this.prisma as any, p.email, p.ground.label, throttleBefore)) > 0) continue;
-        /* The day it became ready, in the organisation's own zone (messages test, 19 October, finding 1), never "a few days". */
-        const zone = (p.ground as any).organizationId ? await theOrganisationsZone(this.prisma as any, (p.ground as any).organizationId).catch(() => null) : null;
-        await this.email.sendActivationRevealReminder(p.email, p.ground.label, `${frontend}/grounds/${p.ground.id}/report`, (p.ground as any).report?.releasedAt ?? null, zone);
-        revealReminders++;
-      } catch (err: any) {
-        this.logger.error(`Reveal reminder failed for participant ${p.id}: ${err.message}`);
-      }
-    }
-
-    if (returnNudges || activationNudges || revealReminders) {
-      this.logger.log(`Reminders sent - ${returnNudges} return-nudge(s), ${activationNudges} activation reminder(s), ${revealReminders} reveal reminder(s).`);
+    if (returnNudges || activationNudges) {
+      this.logger.log(`Reminders sent - ${returnNudges} return-nudge(s), ${activationNudges} activation reminder(s).`);
     }
   }
 

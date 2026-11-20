@@ -71,7 +71,7 @@ export class ReportsController {
    * and the conversation worth having.
    */
   @Get('session/:sessionNumber')
-  @ApiOperation({ summary: "One session's report, in the promised shape" })
+  @ApiOperation({ summary: "One check-in's report, in the promised shape" })
   async sessionReport(
     @Param('groundId') groundId: string,
     @Param('sessionNumber', ParseIntPipe) sessionNumber: number,
@@ -148,7 +148,7 @@ export class ReportsController {
   /* No role gate here. The person who runs a check-in may be a member with "Can open check-ins", and the
      service already refuses everybody but the lead (and an admin where the lead has left): decision 76. */
   @Post('release')
-  @ApiOperation({ summary: "Release the team's picture of the current session to everyone in the check-in" })
+  @ApiOperation({ summary: "Release the team's picture of the current check-in to everyone in the check-in" })
   async release(
     @Param('groundId') groundId: string,
     @CurrentUser('id') userId: string,

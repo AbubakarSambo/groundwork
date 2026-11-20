@@ -257,7 +257,6 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendAbsenceReminder: 'we decided to send it',
   sendSessionReady: 'we decided to send it',
   sendActivationReminder: 'we decided to send it',
-  sendActivationRevealReminder: 'we decided to send it',
   sendFeedbackRequest: 'we decided to send it',
   sendStalledNotification: 'we decided to send it',
   /*
@@ -306,6 +305,14 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendTheRoutineMessageByEmail: 'we decided to send it',
   sendTheMessageByEmail: 'we decided to send it',
   sendTheAnswerByEmail: 'asked for',
+  /* The answer to something a team member forwarded to their assistant: they did something, and this is the reply. */
+  sendTheAssistantsReply: 'asked for',
+  /* The year-end files: the principal's own work, handed over (Fatima, increment 4). Held for quiet hours, never the day's routine message. */
+  sendTheYearEndFiles: 'asked for',
+  /* An introduction somebody asked for by adding a person or naming a contact, with their go-ahead (executive-onboarding). */
+  sendTheIntroduction: 'asked for',
+  /* A short note that there is new coverage, a gap or a decision: Groundwork decides to send it, so it is the day's routine message. */
+  sendTheYearEndProgress: 'we decided to send it',
 };
 
 export function whatThisMailIs(sender: string): WhatKindOfMail {

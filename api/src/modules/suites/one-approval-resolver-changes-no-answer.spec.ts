@@ -1,6 +1,6 @@
 import { theirSignIn } from './a-roster-entry-and-its-sign-in';
 import { readDuties, whoHolds } from './who-holds-each-duty';
-import { mayApproveFor, whoApprovesFor } from './who-approves';
+import { whoApprovesFor } from './who-approves';
 import { decidesIt, theOneWhoDecides, theStepsFor, whoMayDecide, couldBeNamed } from './who-may-decide';
 import { ReviewsService } from './the-reviews.service';
 import { SpendingService } from './the-spending.service';
@@ -42,6 +42,23 @@ const DIRECTORY = [
   e('p-r10', null, 'Sales', 'p-lead'),           // no sign-in at all (a review can still be about them)
   e('p-r11', 'u-r11', 'Ops', 'p-lead2'),         // their manager is matched to a sign-in by address
 ];
+/**
+ * THE ONE INTENDED DIFFERENCE (Batch S, S2, Hafsah 19 November 2026: "approvals that follow the role map"). BEFORE_ below is the
+ * record of the rule of 3 October and is not changed. Since S2 a manager whose membership role is MEMBER decides for the people
+ * who report to them, where before they were skipped and an admin decided. Every row where the new resolver differs from BEFORE
+ * must be exactly that case: the requester's own manager, somebody else, signing in as a member, and now the only one who
+ * decides. Any other difference fails.
+ */
+function theMemberManagerOf(ext: string): string | null {
+  const mx = entry(ext).managerExternalId;
+  const m = mx ? DIRECTORY.find((p) => p.externalId === mx && p.active) : null;
+  const id = m?.linkedUserId ?? null;
+  return id && id !== signInOf(ext) && roles[id] === 'MEMBER' ? id : null;
+}
+function isTheIntendedDifference(ext: string, before: string[], after: string[]): boolean {
+  const m = theMemberManagerOf(ext);
+  return !!m && JSON.stringify(after) === JSON.stringify([m]) && !before.includes(m);
+}
 const REQUESTERS = ['p-r1', 'p-r2', 'p-r3', 'p-r4', 'p-r5', 'p-r6', 'p-r7', 'p-r8', 'p-r10', 'p-r11', 'p-lead', 'p-member'];
 
 function matches(row: any, where: any): boolean {
@@ -163,12 +180,12 @@ describe('leave and time sheets: every answer, every requester, every reader', (
         for (const reader of READERS) {
           const input = { organizationId: ORG, readerId: reader, readerRole: roles[reader] ?? null, personUserId: person, managerExternalId: entry(ext).managerExternalId };
           if (await BEFORE_mayApproveFor(prisma, input)) before.push(reader);
-          if (await mayApproveFor(prisma, input)) after.push(reader);
           if (decidesIt(who, { userId: reader, role: roles[reader] ?? null }, person)) afterResolver.push(reader);
         }
         TABLE.push(['leave and time', String(answer), ext, said(before), said(after)]);
-        expect(after).toEqual(before);
-        expect(afterResolver).toEqual(before);
+        /* mayApproveFor had no caller and is gone (Batch S, S2): the resolver alone is compared with BEFORE. */
+        after.push(...afterResolver);
+        if (JSON.stringify(afterResolver) !== JSON.stringify(before)) expect([ext, isTheIntendedDifference(ext, before, afterResolver)]).toEqual([ext, true]);
       });
     }
   }
@@ -179,7 +196,10 @@ describe('leave and time sheets: every answer, every requester, every reader', (
       const input = { organizationId: ORG, personUserId: signInOf(ext)!, managerExternalId: entry(ext).managerExternalId };
       const b = await BEFORE_whoApprovesFor(prisma, input);
       const a = await whoApprovesFor(prisma, input);
-      expect([ext, a.kind, (a as any).userId]).toEqual([ext, b.kind, (b as any).userId]);
+      const m = theMemberManagerOf(ext);
+      /* The one intended difference: their member manager is named, where before an admin was. */
+      if (m && b.kind === 'admin') expect([ext, a.kind, (a as any).userId]).toEqual([ext, 'manager', m]);
+      else expect([ext, a.kind, (a as any).userId]).toEqual([ext, b.kind, (b as any).userId]);
     }
   });
 });
@@ -198,7 +218,7 @@ describe('reviews: every answer, every person, every reader', () => {
           if (await (svc as any).writes({ userId: reader, organizationId: ORG }, role, p, writer)) after.push(reader);
         }
         TABLE.push(['reviews', String(writer), ext, said(before), said(after)]);
-        expect(after).toEqual(before);
+        if (JSON.stringify(after) !== JSON.stringify(before)) expect([ext, writer, isTheIntendedDifference(ext, before, after)]).toEqual([ext, 'Their manager', true]);
       });
     }
   }
@@ -231,8 +251,15 @@ describe('spending: every answer, every amount, every set of duties, every reque
             const before = READERS.filter((u) => BEFORE_spendMayDecide(u, roles[u] ?? null, r, whoBefore));
             const after = READERS.filter((u) => (svc as any).mayDecide({ userId: u, organizationId: ORG }, roles[u] ?? null, r, whoAfter));
             TABLE.push([`spending, KES ${amount}`, `above ${above}; ${dutiesSaid}`, ext, said(before), said(after)]);
-            expect([ext, whoAfter]).toEqual([ext, whoBefore]);
-            expect([ext, after]).toEqual([ext, before]);
+            const m = theMemberManagerOf(ext);
+            if (m && whoBefore.kind === 'admin' && amount <= 20000) {
+              /* The one intended difference: up to the limit, their member manager decides, where before an admin did. */
+              expect([ext, whoAfter]).toEqual([ext, { kind: 'manager', userId: m }]);
+              expect([ext, after]).toEqual([ext, [m]]);
+            } else {
+              expect([ext, whoAfter]).toEqual([ext, whoBefore]);
+              expect([ext, after]).toEqual([ext, before]);
+            }
           }
         });
       }
@@ -254,6 +281,29 @@ describe('spending: every answer, every amount, every set of duties, every reque
         }
       }
     }
+  });
+});
+
+describe('what stays true under the new rule (Batch S, S2)', () => {
+  it('a guest never approves, nobody approves their own request, only their own manager decides at the manager step, and with no manager an admin does', async () => {
+    const prisma = aPrisma();
+    for (const ext of REQUESTERS.filter((x) => signInOf(x))) {
+      const person = signInOf(ext)!;
+      const who = await theOneWhoDecides(prisma, theStepsFor('leave')[0], { organizationId: ORG, requesterUserId: person, managerExternalId: entry(ext).managerExternalId });
+      const deciders = READERS.filter((u) => decidesIt(who, { userId: u, role: roles[u] ?? null }, person));
+      expect([ext, deciders.filter((u) => roles[u] === 'GUEST')]).toEqual([ext, []]);
+      expect([ext, deciders.includes(person)]).toEqual([ext, false]);
+      if (who.kind === 'manager') {
+        const mx = entry(ext).managerExternalId;
+        const own = DIRECTORY.find((p) => p.externalId === mx && p.active);
+        expect([ext, deciders]).toEqual([ext, [who.userId]]);
+        expect([ext, who.userId === own?.linkedUserId || (own?.email && userEmails[who.userId] === own.email)]).toEqual([ext, true]);
+        expect([ext, deciders.some((u) => roles[u] === 'MEMBER' && u !== who.userId)]).toEqual([ext, false]);
+      }
+    }
+    /* p-r4 has no manager at all: an admin decides. */
+    const none = await theOneWhoDecides(prisma, theStepsFor('leave')[0], { organizationId: ORG, requesterUserId: 'u-r4', managerExternalId: null });
+    expect(none).toEqual({ kind: 'admin', rule: 'admin' });
   });
 });
 

@@ -15,6 +15,9 @@
  * And STOP means stop. A person can end this by the means the channel itself offers.
  */
 
+/** The kind of send for the missed-check-ins notice on WhatsApp. */
+export const MISSED_CHECK_INS_KIND = 'missed-check-ins';
+
 export const SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export function insideTheServiceWindow(lastInboundAt: Date | string | null | undefined, now: Date = new Date()): boolean {
@@ -35,8 +38,16 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   'requests-waiting',
   /* A check-in left halfway (a-check-in-left-halfway.ts): the reminder to carry on, the half-hour warning, and the clock closing it. */
   'carry-on', 'closes-in-half-an-hour', 'closed-by-the-clock',
+  /* Two check-ins missed in a row, told to the person who is writing on WhatsApp: a normal message, inside the 24 hours only, never a template (engagement/missed-check-ins-told-first.ts). */
+  MISSED_CHECK_INS_KIND,
   /* The lead's own nudge (engagement/the-leads-own-nudge.ts): Groundwork writes it for her, so the 24 hours, the template, quiet hours and STOP hold. */
   'lead-nudge',
+  /* The year-end work (Fatima, increment 4): a short progress line, the draft being ready, and the final being sent. */
+  'year-end-progress', 'year-end-draft-ready', 'year-end-final',
+  /* An introduction from Groundwork to somebody an admin or a senior person named (executive-onboarding): Groundwork writes first, so the 24 hours, the approved template, the night and STOP all hold. */
+  'introduction', 'team-introduction',
+  /* The team loop (Fatima, increment 6a): a nudge that helps one person, and the ask for an update that she gave as a standing instruction. Groundwork writes first, so the 24 hours, the template, the night and STOP hold. */
+  'team-nudge', 'team-ask',
 ]);
 
 /**
@@ -70,6 +81,12 @@ export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
   'anchor-follow-up',
   /* A check-in left halfway: the one reminder to carry on is the day's first message; the half-hour warning is a closing. */
   'carry-on', 'closes-in-half-an-hour',
+  /* The missed-check-ins notice is the day's routine message. */
+  MISSED_CHECK_INS_KIND,
+  /* A year-end progress line is the day's routine message. The draft being ready and the final are the work she waits for, so they are not (see ONLY_HELD_BY_NOT_NOW). */
+  'year-end-progress',
+  /* A nudge to a team member is the day's one routine message to them, whichever door it used. The ask she gave as a standing instruction is hers, so it is not (see ONLY_HELD_BY_NOT_NOW). */
+  'team-nudge',
 ]);
 /**
  * APPROVALS GO STRAIGHT AWAY (decision 92, item 3). Telling an approver that a request waits for them
@@ -89,7 +106,7 @@ export const APPROVALS: ReadonlySet<string> = new Set(['request-waiting', 'reque
  * THE LEAD'S OWN NUDGE (nudges that get answers, 20 October). The lead pressed "Nudge Peter": it is not the day's routine message, so it
  * neither counts towards the one a day nor is held by it, but Peter's own "Not now" today holds it, as STOP and quiet hours do.
  */
-export const ONLY_HELD_BY_NOT_NOW: ReadonlySet<string> = new Set(['closed-by-the-clock', 'lead-nudge']);
+export const ONLY_HELD_BY_NOT_NOW: ReadonlySet<string> = new Set(['closed-by-the-clock', 'lead-nudge', 'year-end-draft-ready', 'year-end-final', 'introduction', 'team-introduction', 'team-ask']);
 /** The messages that mark a day a check-in opens or closes, when two may go. */
 export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon', 'closes-in-half-an-hour']);
 /**

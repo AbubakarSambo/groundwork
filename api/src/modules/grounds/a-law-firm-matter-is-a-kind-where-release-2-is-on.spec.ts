@@ -47,8 +47,8 @@ describe('a law firm matter may be given where Release 2 is on', () => {
     expect(ground.kindOfWorkSetBy).toBe('read');
   });
 
-  it('where Release 2 is off, it is refused as before, in a full sentence', async () => {
+  it('where the stored Release 2 switch says off, it is given all the same (every kind of work is offered, 15 November 2026)', async () => {
     const { svc } = build(false);
-    await expect(svc.setKindOfWork('lit', 'u-wanjiru', { kind: 'a law firm matter' })).rejects.toThrow(/^Groundwork does not offer that kind of work yet\. Choose one of these: /);
+    await expect(svc.setKindOfWork('lit', 'u-wanjiru', { kind: 'a law firm matter' })).resolves.toMatchObject({ kindOfWork: 'a law firm matter', kindOfWorkSetBy: 'lead' });
   });
 });

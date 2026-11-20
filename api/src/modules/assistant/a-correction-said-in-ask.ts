@@ -62,10 +62,10 @@ export function aChangeOfTheirs(message: string): boolean {
 /** A sale, a payment or a signing said done: it is their word until something shows it (Joseph's "Mama Pima is a done deal"). */
 const SAID_DONE = /\b(?:done\s+deal|sold|paid|signed|closed|came\s+through|delivered)\b/i;
 
-export function theChangePutOnRecord(found: { sentence: string; at: Date; label: string | null }, message: string): string {
+export function theChangePutOnRecord(found: { sentence: string; at: Date; label: string | null }, message: string, onAPhoneChat = false): string {
   const said = `I checked. On ${onTheDay(found.at)}${found.label ? `, in “${found.label}”,` : ','} you wrote: “${found.sentence.replace(/[“”"]/g, '')}”`;
   const proof = SAID_DONE.test(message) ? ' It counts as done once something shows it, such as the payment message or the signed order.' : '';
-  return `${said} What you have just told me is not on your record yet.${proof} To put it there, press Add something on your check-in, or say it in your next check-in.`;
+  return `${said} What you have just told me is not on your record yet.${proof} To put it there, ${onAPhoneChat ? 'say it in your next check-in' : 'press Add something on your check-in, or say it in your next check-in'}.`;
 }
 
 /**

@@ -153,13 +153,13 @@ describe('the Movement tile says a number a person can read (re-d, sales, sessio
   it('one target that moved by 31 million reads as one target that moved, never "+31000000" (request 107 d)', () => {
     const m = movement(atAGlanceTiles({ ...base, movedOnTargets: 31000000, targetsMoved: 1 }));
     expect(m.value).toBe('1 target');
-    expect(m.sub).toBe('1 target changed this session.');
+    expect(m.sub).toBe('1 target changed this check-in.');
     expect(m.value).not.toMatch(/\d{3,}/);
   });
   it('two targets counted in different things are said as how many moved, never added together', () => {
     const m = movement(atAGlanceTiles({ ...base, movedOnTargets: 31000011, targetsMoved: 2 }));
     expect(m.value).toBe('2 targets');
-    expect(m.sub).toBe('2 targets changed this session.');
+    expect(m.sub).toBe('2 targets changed this check-in.');
   });
 });
 

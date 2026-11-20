@@ -1,3 +1,4 @@
+import { aPersonWhoWasRemoved, REMOVED_FROM_THE_CHECK_IN_AT_SIGN_IN, REMOVED_FROM_THE_CHECK_IN_BY_LINK } from '../participants/held-for-a-seat';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { TheWaysToStopMail } from '../engagement/the-ways-to-stop-mail';
 import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
@@ -431,7 +432,7 @@ export class AuthService {
       const already = await this.prisma.user.findUnique({ where: { email: pending.email }, include: { organization: true } });
       if (already) {
         await this.prisma.pendingSignup.delete({ where: { id: pending.id } }).catch(() => undefined);
-        return goOnTo(await this.withPasswordSetup(await this.buildAuthResponse(already as unknown as UserWithOrg, 'link'), already.id), pending.next);
+        return goOnTo(await this.buildAuthResponse(already as unknown as UserWithOrg, 'link'), already.id);
       }
 
       /*
@@ -515,7 +516,7 @@ export class AuthService {
           })).catch(() => null);
           if (open?.id) onward = `/checkin/${open.id}`;
         }
-        return goOnTo({ ...(await this.readyAfter(pending, await this.buildAuthResponse(invited as unknown as UserWithOrg, 'link'), invited.id)), justCreated: true }, onward);
+        return goOnTo({ ...(await this.buildAuthResponse(invited as unknown as UserWithOrg, 'link')), justCreated: true }, onward);
       }
 
       /*
@@ -575,7 +576,7 @@ export class AuthService {
 
         this.logger.log(`${pending.email} joined the organisation that already listed them`);
         /* This link has just made the account (U.2): the client says "Your email is confirmed". */
-        return goOnTo({ ...(await this.readyAfter(pending, await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true }, pending.next);
+        return goOnTo({ ...(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link')), justCreated: true }, pending.next);
       }
 
       /*
@@ -638,7 +639,7 @@ export class AuthService {
             });
             this.logger.log(`${pending.email} joined ${chosen.name} ${chosen.how === 'link' ? 'by its invite link' : 'by email domain'} on confirming`);
             /* Joined, so not back to the invite link's "Join" button: on to Today. */
-            return { ...(await this.readyAfter(pending, await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true, next: '/today' };
+            return { ...(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link')), justCreated: true, next: '/today' };
           }
           problem = `${chosen.name} has no room for another person on its plan right now. Ask an admin there to make room, or to invite you when there is.`;
         }
@@ -714,7 +715,7 @@ export class AuthService {
 
       /* This link has just made the account and its organisation (U.2). */
       /* Chosen on "Where do you work?": on to the new organisation's Today, not back to where they came from. */
-      return goOnTo({ ...(await this.readyAfter(pending, await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id)), justCreated: true }, dto.createMyOwn ? '/today' : pending.next);
+      return goOnTo({ ...(await this.buildAuthResponse(created as unknown as UserWithOrg, 'link')), justCreated: true }, dto.createMyOwn ? '/today' : pending.next);
     }
 
     const tokenRecord = await this.consumeToken(dto.token, TokenType.EMAIL_VERIFICATION, { allowExpiredMessage: 'This verification link has expired. Please request a new one.' });
@@ -731,7 +732,7 @@ export class AuthService {
       return { user: tokenRecord.user };
     });
 
-    return goOnTo(await this.withPasswordSetup(await this.buildAuthResponse(user as unknown as UserWithOrg, 'link'), user.id), tokenRecord.next);
+    return goOnTo(await this.buildAuthResponse(user as unknown as UserWithOrg, 'link'), user.id);
   }
 
   async setPassword(dto: SetPasswordDto): Promise<AuthResponseDto> {
@@ -778,7 +779,7 @@ export class AuthService {
     password?: string,
     /* Where in the app they were going (U.3 review). Only a path inside this app is kept. */
     next?: string,
-  ): Promise<{ message: string; email: string; draftToken?: string; passwordKey?: string }> {
+  ): Promise<{ message: string; email: string; draftToken?: string; passwordKey?: string; removedSays?: string }> {
     const lower = email.toLowerCase();
     const goingTo = aPathInThisApp(next);
     const message = 'Check your email for your sign-in link.';
@@ -801,6 +802,11 @@ export class AuthService {
      * opens nothing, so the answer never says which addresses have accounts.
      */
     let passwordKey: string | undefined = password ? crypto.randomBytes(32).toString('hex') : undefined;
+
+    /* Somebody who was removed is sent nothing, and is told so plainly (aPersonWhoWasRemoved; run 5, 19 November: the page said a link was sent). */
+    if (!user && (await aPersonWhoWasRemoved(this.prisma as any, lower))) {
+      return { message, email: lower, removedSays: REMOVED_FROM_THE_CHECK_IN_AT_SIGN_IN, ...theSameShapeAsANewAddress(draft), ...(passwordKey ? { passwordKey } : {}) };
+    }
 
     if (!user) {
       /**
@@ -1454,31 +1460,6 @@ export class AuthService {
     });
   }
 
-  /**
-   * The last step of a waiting sign-up becoming an account. One that Google proved (U.3 review) signs
-   * in with Google and is never sent to choose a password; every other one is, as before.
-   */
-  private async readyAfter(pending: { googleId?: string | null }, res: AuthResponseDto, userId: string): Promise<AuthResponseDto> {
-    return pending.googleId ? { ...res, needsPassword: false } : this.withPasswordSetup(res, userId);
-  }
-
-  private async withPasswordSetup(res: AuthResponseDto, userId: string): Promise<AuthResponseDto> {
-    if (!res.needsPassword) return res;
-    await this.aNewLinkEndsTheOlderOnes(userId, TokenType.PASSWORD_SETUP);
-    const token = crypto.randomBytes(32).toString('hex');
-    await this.prisma.emailVerificationToken.create({
-      data: {
-        userId,
-        token: hashed(token),
-        type: TokenType.PASSWORD_SETUP,
-        /** Short: this is handed straight to the screen in front of them, not emailed. Named in
-            how-long-a-link-lasts.ts so the difference from the emailed one is a decision on
-            record rather than two literals that look like a mistake. */
-        expiresAt: expiresAtFor('set a password on the screen you are already on'),
-      },
-    });
-    return { ...res, passwordSetupToken: token };
-  }
 
   /**
    * DOES THIS PERSON BELONG TO AN ORGANISATION OTHER THAN THE ONE THEY ARE ACTIVE IN.
@@ -1505,12 +1486,6 @@ export class AuthService {
 
   private async buildAuthResponse(user: UserWithOrg, via: SignedInVia = 'password'): Promise<AuthResponseDto> {
     return {
-      /**
-       * Computed here rather than at each call site, because there are five doors into the app
-       * (password, magic link, verify-email, Google, entry handover) and a signal only some of them
-       * set is worse than no signal at all.
-       */
-      needsPassword: !(user as unknown as { passwordHash?: string | null }).passwordHash,
       /* `via` reaches the back-office door: a session that began with an emailed link says 'link' (B16). */
       accessToken: this.generateToken(user, via),
       user: this.theUserShape(user, await this.belongsElsewhere(user.id, user.organizationId)),
@@ -1638,6 +1613,9 @@ export class AuthService {
      * link this route consumes, say only that.
      */
     if (tokenRecord.type !== expectedType) throw new BadRequestException(NOT_A_LINK_WE_KNOW);
+
+    /* A sign-in whose owner was removed says so, plainly: the link in their hands is the proof it is theirs (fix plan 17 November, group C2). */
+    if ((tokenRecord as any).user?.deletedAt) throw new BadRequestException(REMOVED_FROM_THE_CHECK_IN_BY_LINK);
 
     /*
      * AND THE SENTENCE IS DERIVED FROM THE TYPE. See how-long-a-link-lasts.ts. `usedAt` is still

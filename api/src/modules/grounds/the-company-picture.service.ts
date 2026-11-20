@@ -1,3 +1,4 @@
+import { whatEachCheckInFeeds } from './what-a-check-in-feeds';
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron } from '@nestjs/schedule';
@@ -98,7 +99,7 @@ export class CompanyPictureService {
         where: { organizationId },
         select: { userId: true, team: true, user: { select: { firstName: true, lastName: true, email: true } } },
       }),
-      this.prisma.person.findMany({ where: { organizationId }, select: { externalId: true, displayName: true, givenName: true, familyName: true, email: true } }),
+      this.prisma.person.findMany({ where: { organizationId }, select: { externalId: true, displayName: true, givenName: true, familyName: true, email: true, linkedUserId: true } }),
       this.prisma.groundParticipant.findMany({ where: { ground: { organizationId } }, select: { nameGiven: true, email: true } }),
     ]);
 
@@ -121,7 +122,10 @@ export class CompanyPictureService {
 
     const teamOfUser = new Map<string, string>();
     for (const m of memberships as any[]) if (m.team?.trim()) teamOfUser.set(m.userId, m.team.trim());
-    const gs = (grounds as any[]).map((g) => ({ ...g, team: teamOfUser.get(g.initiatorId) ?? null }));
+    /* What each check-in feeds, by the one rule the Desk reads too (what-a-check-in-feeds.ts): tied to a priority, or the one its lead owns. */
+    const personOfUser = new Map((persons as any[]).filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p.externalId as string]));
+    const feeds = whatEachCheckInFeeds(grounds as any[], live as any[], personOfUser);
+    const gs = (grounds as any[]).map((g) => ({ ...g, subjectExternalId: feeds.get(g.id) ?? null, team: teamOfUser.get(g.initiatorId) ?? null }));
     const since = now.getTime() - 30 * DAY;
     const finished = (g: any) => (g.checkIns ?? []).filter((c: any) => c.status === 'COMPLETED' && !c.isSetup && c.completedAt && new Date(c.completedAt).getTime() >= since).length;
 

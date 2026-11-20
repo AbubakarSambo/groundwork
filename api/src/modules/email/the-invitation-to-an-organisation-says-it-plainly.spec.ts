@@ -22,7 +22,7 @@ describe('the invitation to join an organisation, as the person reads it', () =>
     s.sendEmail = jest.fn(async (m: any) => { sent = m; });
     await s.sendUserInvite('faith@msingi.test', 'Faith', 'tok', 'Msingi Foods');
     const read = sent.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-    expect(read).toContain("The people in each check-in you join, and your organisation's admins, can read what you say in it.");
+    expect(read).toContain("Admins can read the board and the team reports. The people in a check-in see short lines from what you say once the team's report is shared. Nobody reads your conversation.");
     expect(read).toContain('Your questions to Ask Msingi Foods stay private.');
     expect(read).not.toMatch(/structured|surfaces|alignment/i);
   });

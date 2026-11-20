@@ -204,12 +204,6 @@ export const LANGUAGES_WE_CONVERSE_IN: Record<string, string> = {
   en: 'English', ha: 'Hausa', sw: 'Swahili', yo: 'Yoruba', ig: 'Igbo', fr: 'French', pt: 'Portuguese', ar: 'Arabic', am: 'Amharic', es: 'Spanish',
 };
 
-export function languageBlock(code: string | null | undefined): string {
-  if (!code || code === 'en' || !LANGUAGES_WE_CONVERSE_IN[code]) return '';
-  const name = LANGUAGES_WE_CONVERSE_IN[code];
-  return `THIS PERSON WRITES IN ${name.toUpperCase()}. Ask and answer in ${name}, in plain everyday words. Keep every name, number, date and place exactly as they wrote it. If they switch to English, follow them. Nothing else about how you work changes.`;
-}
-
 /**
  * A NUMBER IS NOT ALWAYS A MENU PICK. With two check-ins open, any bare one-or-two-digit text was read
  * as a choice from the list - so "7", typed in answer to "how many did you close?", switched check-in.
@@ -240,7 +234,7 @@ export const NOT_NOW_SAYING = 'All right. I will not write to you first again to
 
 /** The words that close a session. Matched before the status is looked at, so "finish" on a session not yet opened gets an honest answer. */
 /* "end" and "end session" too, as the opening line says on the phone (26 October). Never "stop", which is WhatsApp's own opt-out. */
-export const A_FINISH_WORD = /^\s*(finish|complete|done|close|end|end session|end it)\s*[.!]?\s*$/i;
+export const A_FINISH_WORD = /^\s*(finish|complete|done|close|end|end session|end check-?in|end it)\s*[.!]?\s*$/i;
 
 /** Which organisation, when a number is on more than one roster. Same shape as the check-in list. */
 export function whichOrganisationAsText(orgs: { id: string; name: string }[]): string {

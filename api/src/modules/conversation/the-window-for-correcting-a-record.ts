@@ -67,7 +67,7 @@ export function whetherItCanStillBeCorrected({
     saying:
       windowDays === 0
         ? 'This report has been shared, so the account behind it is final. Anything you want to add goes in your next check-in, where it is recorded as a change rather than as a correction.'
-        : `Corrections to this session closed on ${day}, ${windowDays} day${windowDays === 1 ? '' : 's'} after the report went out. Anything you want to add goes in your next check-in, where it is recorded as a change rather than as a correction.`,
+        : `Corrections to this check-in closed on ${day}, ${windowDays} day${windowDays === 1 ? '' : 's'} after the report went out. Anything you want to add goes in your next check-in, where it is recorded as a change rather than as a correction.`,
   };
 }
 

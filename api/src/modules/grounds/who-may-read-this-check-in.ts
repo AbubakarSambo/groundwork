@@ -28,6 +28,7 @@
 
 import { GroundScenario } from '@prisma/client';
 import { isEvaluationCheckIn, EVALUATION_SCENARIOS } from '../reports/is-this-an-evaluation-check-in';
+import { peersAreNamedByDefaultOn } from '../reports/peers-are-named';
 
 export interface Viewer {
   /** Who is reading. Needed to tell whether an admin was given access to an evaluation check-in (decision 5, request 78). */
@@ -271,4 +272,30 @@ export function groundsAViewerMayList(
       ...(viewer?.role === 'LEAD' && leadsOfTheirDepartment.length ? [{ initiatorId: { in: leadsOfTheirDepartment }, scenario: { notIn: EVALUATION_SCENARIOS } }] : []),
     ],
   };
+}
+
+/**
+ * THE ONE SENTENCE ABOUT WHO READS WHAT A PARTICIPANT SAYS (Hafsah, 15 November 2026, docs/copy-audit-15-nov.md group 1).
+ *
+ * It was written ten times in ten wordings (the invitation page, the invitation email, the nudge, the assistant, Ask for a guest,
+ * the end card), two of them false. This is its one owner. The invitation page reads it served on the preview, the invitation
+ * email and the nudge read it here, and the end card reads it served on the check-in.
+ *
+ * Wording is the prototype's own (join-invite.txt, "Who sees your answers"). Where people are named to each other it ends with
+ * the team report the lead shares; where they are not (an evaluation check-in, a cohort, or the lead's switch), a participant is
+ * given none of the team's picture, so the true sentence there is that the person who runs it reads their report. A new hire is an
+ * evaluation check-in, on the server's own list (`isEvaluationCheckIn`), so the client never decides this.
+ *
+ * It does not name admins (Hafsah: not on the invitation) and says nothing about training a model or who at Groundwork reads what
+ * (undecided). Who may read what stays the rules above; this only says it.
+ */
+export function whoCanReadWhatYouSay(
+  g: { scenario?: any; peersVisibleToEachOther?: boolean | null } | null | undefined,
+  leadFirstName?: string | null,
+): string {
+  const lead = (leadFirstName ?? '').trim() || 'The person who runs it';
+  const together = g ? (g.peersVisibleToEachOther ?? peersAreNamedByDefaultOn(g)) : true;
+  return together
+    ? `You see your own report straight away. ${lead} shares a team report when it is ready. Nobody else reads your conversation.`
+    : `You see your own report straight away. ${lead} reads it too. Nobody else reads your conversation.`;
 }

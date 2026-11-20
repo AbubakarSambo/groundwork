@@ -9,7 +9,11 @@ import { RULES_AN_ADMIN_MAY_SET, RULE_IN_WORDS, STEP_SUITES, WORKFLOWS_REFUSED, 
 import { theStepsFor, type Step } from './who-may-decide';
 import { saidAsADate } from './a-request-is-recorded';
 import { LEAVE_RULES_REFUSED, LEAVE_RULES_ROW, changeLeaveRules, leaveRulesFrom, theLeaveRulesSaid, type LeaveRules } from './the-leave-rules';
-import { SPEND_RULES_REFUSED, SPEND_RULES_ROW, changeSpendRules, spendRulesFrom, theCardsAnswers, theSpendRulesSaid, withTheCardsAnswers, type SpendRules } from './the-spending-rules';
+import { PLACES_REFUSED, checkThePlaces, readThePlaces, writeThePlaces, type TheLeavePlaces } from './the-leave-places';
+import { SPEND_RULES_REFUSED, SPEND_RULES_ROW, changeSpendRules, spendRulesFrom, theSpendRulesOf, theCardsAnswers, theSpendRulesSaid, withTheCardsAnswers, type SpendRules } from './the-spending-rules';
+import { FOR_WHOM_REFUSED, FOR_WHOM_ROW, SETTINGS, SUITE_OF, changeForWhom, forWhomFrom, readForWhom, theExceptionsSaid, theNumberSaid, whoSaid, type ASetting, type AnException } from './who-a-rule-is-for';
+import { thePeopleHere } from './the-people-and-their-lines';
+import { CHECKED_SUITES, whatIsMissing, type ACheckedSuite, type TheSetupCheck } from './the-setup-check';
 import { TIME_RULES_REFUSED, TIME_RULES_ROW, changeTimeRules, timeRulesFrom, theTimeRulesSaid, type TimeRules } from './the-time-sheet-rules';
 
 /** The words the server says when it refuses, in plain full sentences. */
@@ -130,6 +134,18 @@ export interface TheTimeRules {
   said: string[];
 }
 
+/** Who each suite's numbers are for (who-a-rule-is-for.ts), as whoever sets them up reads them. */
+export interface TheForWhom {
+  settings: { setting: ASetting; exceptions: AnException[]; said: string[] }[];
+  /** The job titles, teams and people here, to choose from. */
+  titles: string[];
+  teams: string[];
+  people: { id: string; name: string }[];
+  /** Each setting's number for everyone, which an exception differs from, and the spending currency. */
+  everyone: Partial<Record<ASetting, number | null>>;
+  currency: string | null;
+}
+
 export const RULES_HISTORY_REFUSED = 'Only an admin can read how the suites’ rules were changed.';
 
 export interface ForALead {
@@ -200,7 +216,7 @@ export class SuitesService {
     const answers = { ...answersUnderTheQuestionsOwnIds(s, rows.get(s.key)?.answers, adminIds) } as Record<string, unknown>;
     if (s.key !== 'spend') return answers as Answers;
     delete answers.limit; delete answers.above;
-    const card = theCardsAnswers(spendRulesFrom(rows.get(SPEND_RULES_ROW)?.answers));
+    const card = theCardsAnswers(theSpendRulesOf(rows.get(SPEND_RULES_ROW)?.answers, rows.get('spend')?.answers));
     return { ...answers, ...(card.limit !== null ? { limit: card.limit } : {}), ...(card.above ? { above: card.above } : {}) } as Answers;
   }
 
@@ -420,6 +436,91 @@ export class SuitesService {
     return this.leaveRules(reader);
   }
 
+  /** The leave policy's offices, who works from each, and every place's public holidays (the-leave-places.ts), for whoever sets up leave. */
+  async leavePlaces(reader: Reader): Promise<TheLeavePlaces> {
+    if (!(await this.maySetUp(reader, 'leave'))) throw new ForbiddenException(LEAVE_RULES_REFUSED.onlyAnAdmin);
+    const rules = leaveRulesFrom((await this.rows(reader.organizationId)).get(LEAVE_RULES_ROW)?.answers);
+    return readThePlaces(this.prisma, reader.organizationId, rules.country ?? null, await this.people(reader.organizationId));
+  }
+
+  /**
+   * Whoever sets up leave sets the offices (an office left out is removed, and nobody is tied to it any more) and each place's public
+   * holidays, a year at a time. Each change is kept in the rules history.
+   */
+  async setLeavePlaces(reader: Reader, input: unknown): Promise<TheLeavePlaces> {
+    if (!(await this.maySetUp(reader, 'leave'))) throw new ForbiddenException(LEAVE_RULES_REFUSED.onlyAnAdmin);
+    const org = reader.organizationId;
+    const people = await this.people(org);
+    const checked = checkThePlaces(input, new Set(people.map((p) => p.id)));
+    if ('refused' in checked) throw new BadRequestException(checked.refused);
+    const before = await this.leavePlaces(reader);
+    const officesAfter = checked.change.offices?.map((o) => o.name.toLowerCase()) ?? before.offices.map((o) => o.name.toLowerCase());
+    if ((checked.change.holidays ?? []).some((h) => h.office && !officesAfter.includes(h.office.toLowerCase()))) throw new BadRequestException(PLACES_REFUSED.badOffice);
+    await writeThePlaces(this.prisma, org, checked.change);
+    const after = await this.leavePlaces(reader);
+    const kept = (x: TheLeavePlaces) => ({ offices: x.offices.map((o) => ({ name: o.name, country: o.country, people: o.people.map((p) => p.id) })), holidays: x.holidays.map((h) => ({ office: h.office, on: h.on, name: h.name, confirmed: h.confirmed })) });
+    await this.keepTheChange(reader, 'leavePlaces', { isOn: false, answers: kept(before) }, { isOn: false, answers: kept(after) });
+    return after;
+  }
+
+  /**
+   * WHO EACH SUITE'S NUMBERS ARE FOR (Batch S, S1, who-a-rule-is-for.ts): the exceptions an admin set for a job title, an app role,
+   * a team or one person, said back with who each covers today. Whoever may set up a suite reads and sets its own: an admin every
+   * one, whoever holds the HR duty leave, and whoever holds the finance duty time sheets and spending. The screen and the chat both
+   * write through `setForWhom`.
+   */
+  async forWhom(reader: Reader): Promise<TheForWhom> {
+    const mine = await this.suitesTheySetUp(reader);
+    const settings = SETTINGS.filter((x) => mine.has(SUITE_OF[x]));
+    if (!settings.length) throw new ForbiddenException(REFUSED.onlyAnAdmin);
+    const org = reader.organizationId;
+    const [forWhom, people, rows] = await Promise.all([readForWhom(this.prisma, org), thePeopleHere(this.prisma, org), this.rows(org)]);
+    const currency = typeof (rows.get('spend')?.answers as any)?.currency === 'string' ? (rows.get('spend')!.answers as any).currency : null;
+    const leaveDays = (rows.get('leave')?.answers as any)?.days;
+    return {
+      everyone: {
+        'leave.days': typeof leaveDays === 'number' ? leaveDays : null,
+        'time.hoursAWeek': timeRulesFrom(rows.get(TIME_RULES_ROW)?.answers).hoursAWeek ?? null,
+        'spend.limit': theCardsAnswers(theSpendRulesOf(rows.get(SPEND_RULES_ROW)?.answers, rows.get('spend')?.answers)).limit,
+      },
+      currency,
+      settings: settings.map((setting) => ({ setting, exceptions: forWhom[setting] ?? [], said: theExceptionsSaid(forWhom, setting, people, currency) })),
+      titles: [...new Set(people.map((p) => p.title).filter((t): t is string => !!t))].sort((a, b) => a.localeCompare(b)),
+      teams: [...new Set(people.map((p) => p.team).filter((t): t is string => !!t))].sort((a, b) => a.localeCompare(b)),
+      people: people.filter((p) => p.name).map((p) => ({ id: p.userId, name: p.name })),
+    };
+  }
+
+  /** One exception set, or removed with a number of null. Kept in the rules history like any other change. */
+  async setForWhom(reader: Reader, input: unknown): Promise<TheForWhom> {
+    const setting = (input as any)?.setting as ASetting;
+    if (!SETTINGS.includes(setting)) throw new BadRequestException(FOR_WHOM_REFUSED.badSetting);
+    if (!(await this.maySetUp(reader, SUITE_OF[setting]))) throw new ForbiddenException(this.refusalFor(SUITE_OF[setting]));
+    const org = reader.organizationId;
+    const where = { organizationId_suite: { organizationId: org, suite: FOR_WHOM_ROW } };
+    const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });
+    const changed = changeForWhom(forWhomFrom(row?.answers), input);
+    if ('refused' in changed) throw new BadRequestException(changed.refused);
+    const answers = changed.forWhom as never;
+    await this.prisma.organizationSuite.upsert({
+      where,
+      create: { organizationId: org, suite: FOR_WHOM_ROW, isOn: false, answers, changedById: reader.userId },
+      update: { answers, changedById: reader.userId },
+    });
+    await this.keepTheChange(reader, FOR_WHOM_ROW, row ? { isOn: false, answers: row.answers } : null, { isOn: false, answers });
+    return this.forWhom(reader);
+  }
+
+  /**
+   * THE SETUP CHECK (Batch S, S3, the-setup-check.ts): what a suite is missing before its approvals follow the reporting lines,
+   * and the step that fixes each, for whoever may set it up.
+   */
+  async setupCheck(reader: Reader, key: string): Promise<TheSetupCheck> {
+    if (!CHECKED_SUITES.includes(key as ACheckedSuite)) throw new NotFoundException(REFUSED.noSuchSuite);
+    if (!(await this.maySetUp(reader, key))) throw new ForbiddenException(this.refusalFor(key));
+    return whatIsMissing(this.prisma, reader.organizationId, key as ACheckedSuite, reader.userId);
+  }
+
   /**
    * RELEASE 9: the leave days a year, from a policy an admin approved (modules/policy). Only the days are written; whether the
    * leave suite is on, and every other answer, stays as it was. Kept in the history like any other change.
@@ -446,7 +547,7 @@ export class SuitesService {
   async spendRules(reader: Reader): Promise<TheSpendRules> {
     if (!(await this.maySetUp(reader, 'spend'))) throw new ForbiddenException(SPEND_RULES_REFUSED.onlyAnAdmin);
     const rows = await this.rows(reader.organizationId);
-    const rules = spendRulesFrom(rows.get(SPEND_RULES_ROW)?.answers);
+    const rules = theSpendRulesOf(rows.get(SPEND_RULES_ROW)?.answers, rows.get('spend')?.answers);
     const spend = (rows.get('spend')?.answers ?? {}) as Record<string, unknown>;
     const people = await this.people(reader.organizationId);
     const first = (id: string | null | undefined) => people.find((p) => p.id === id)?.name.split(/\s+/)[0] ?? null;
@@ -458,7 +559,7 @@ export class SuitesService {
   private async theCardsAnswersIntoTheSteps(reader: Reader, given: Record<string, unknown>): Promise<void> {
     const where = { organizationId_suite: { organizationId: reader.organizationId, suite: SPEND_RULES_ROW } };
     const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });
-    const kept = spendRulesFrom(row?.answers);
+    const kept = theSpendRulesOf(row?.answers, (await this.rows(reader.organizationId)).get('spend')?.answers);
     const next = withTheCardsAnswers(kept, given);
     if (next === kept) return;
     const answers = next as never;
@@ -479,7 +580,7 @@ export class SuitesService {
     const org = reader.organizationId;
     const where = { organizationId_suite: { organizationId: org, suite: SPEND_RULES_ROW } };
     const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });
-    const changed = changeSpendRules(spendRulesFrom(row?.answers), input);
+    const changed = changeSpendRules(theSpendRulesOf(row?.answers, (await this.rows(reader.organizationId)).get('spend')?.answers), input);
     if ('refused' in changed) throw new BadRequestException(changed.refused);
     /* A step may name a person only from this organisation. */
     const ids = new Set((await this.people(org)).map((p) => p.id));
@@ -591,6 +692,7 @@ export class SuitesService {
           : r.suite === LEAVE_RULES_ROW ? `${who} changed the leave rules on ${on}.`
           : r.suite === SPEND_RULES_ROW ? `${who} changed the spending rules on ${on}.`
           : r.suite === TIME_RULES_ROW ? `${who} changed the time sheet rules on ${on}.`
+          : r.suite === FOR_WHOM_ROW ? `${who} changed the numbers set for some people on ${on}.`
           : !r.before?.isOn && r.after?.isOn ? `${who} switched on ${name} on ${on}.`
           : r.before?.isOn && !r.after?.isOn ? `${who} switched off ${name} on ${on}.`
           : `${who} changed the answers for ${name} on ${on}.`;
@@ -652,6 +754,12 @@ export class SuitesService {
       const to = said(after);
       for (const l of to) if (!from.includes(l)) out.push(`This was added. ${l}`);
       for (const l of from) if (!to.includes(l)) out.push(`This was taken away. ${l}`);
+    } else if (suite === FOR_WHOM_ROW) {
+      const said = (x: unknown) => { const f = forWhomFrom(x); return SETTINGS.flatMap((k) => (f[k] ?? []).map((e) => `${whoSaid(e.who, (id) => nameOf.get(id))} ${theNumberSaid(k, e.value)}.`)); };
+      const from = said(before);
+      const to = said(after);
+      for (const l of to) if (!from.includes(l)) out.push(`This was added. ${l}`);
+      for (const l of from) if (!to.includes(l)) out.push(`This was taken away. ${l}`);
     } else if (suite === WORKFLOWS_ROW) {
       const wb = workflowsFrom(before);
       const wa = workflowsFrom(after);
@@ -709,7 +817,7 @@ export class SuitesService {
     const rows = await this.rows(reader.organizationId);
     const suite = rows.get('spend');
     if (!suite?.isOn) throw new NotFoundException(SPEND_FORM_REFUSED.notOn);
-    const rules = spendRulesFrom(rows.get(SPEND_RULES_ROW)?.answers);
+    const rules = theSpendRulesOf(rows.get(SPEND_RULES_ROW)?.answers, suite.answers);
     const answers = (suite.answers ?? {}) as Record<string, unknown>;
     return {
       currency: typeof answers.currency === 'string' ? answers.currency : null,

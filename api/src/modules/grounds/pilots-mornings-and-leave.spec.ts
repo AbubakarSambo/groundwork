@@ -29,10 +29,11 @@ describe('a daily check-in opens at 8 in the morning where the team is', () => {
     expect(whenTheRoundCloses(daily as any, openedAtMidnight)?.toISOString()).toBe('2026-10-21T05:00:00.000Z');
   });
 
-  it('a weekly check-in still opens at the start of its day', () => {
+  /* Changed 20 November 2026 (channel test W27, Hafsah: sessions open at 8 where the team is): every rhythm now opens at 8, not only daily. */
+  it('a weekly check-in opens at 8 too', () => {
     const weekly = { ...daily, cadence: Cadence.WEEKLY };
     const next = whenTheNextSessionOpens(weekly as any, new Date('2026-10-19T05:00:00Z'), new Date('2026-10-19T12:00:00Z'));
-    expect(next.getUTCHours()).toBe(21);
+    expect(next.getUTCHours()).toBe(5);
   });
 });
 

@@ -72,7 +72,7 @@ export function liftsInReport(
  */
 export const A_LINE_WE_COULD_NOT_RESTATE =
   '[One line here repeated somebody\'s exact words closely enough to identify them, and could not be '
-  + 'restated. Nothing was removed from the record: it is in their own session.]';
+  + 'restated. Nothing was removed from the record: it is in their own check-in.]';
 
 /**
  * THE REPORT DELETES NOTHING. Decided by the product owner, 11 September 2026, and it is the second

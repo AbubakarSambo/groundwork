@@ -42,7 +42,7 @@ const stand = (b: any, id: string) => (b.objectives ?? []).find((o: any) => o.id
 
 const THE_QUESTION = 'Will we reach 40 approved facilities and 120 million naira disbursed this quarter?';
 const THE_ANSWER = 'So far it is 11 of the 40 approved facilities. 29 more are needed. So far it is 31 million of the 120 million naira disbursed. 89 million more are needed.';
-const APPROVED_STANDS = { word: 'Behind', says: 'At the pace it has kept since session 1, it would be about 31 by the last session, short of the aim of 40.' };
+const APPROVED_STANDS = { word: 'Behind', says: 'At the pace it has kept since check-in 1, it would be about 31 by the last check-in, short of the aim of 40.' };
 
 describe('(a) the headline question, as Bisi, who runs it, reads it', () => {
   it('asks the team aims in the lead\'s own words, with the time she said, and answers from the counts', async () => {
@@ -150,7 +150,7 @@ describe('(b) where each target stands, as Bisi reads it', () => {
   it('reads each team target off its pace, and puts no word on a person\'s own target', async () => {
     const b = await boardAs(RUN, ...BISI);
     expect(stand(b, 'o-approved')).toEqual(APPROVED_STANDS);
-    expect(stand(b, 'o-disbursed')).toEqual({ word: 'Behind', says: 'At the pace it has kept since session 1, it would be about 79 million by the last session, short of the aim of 120 million.' });
+    expect(stand(b, 'o-disbursed')).toEqual({ word: 'Behind', says: 'At the pace it has kept since check-in 1, it would be about 79 million by the last check-in, short of the aim of 120 million.' });
     expect(stand(b, 'o-femi')).toBeNull();
     expect(stand(b, 'o-kwame')).toBeNull();
   });
@@ -162,7 +162,7 @@ describe('(b) where each target stands, as Bisi reads it', () => {
 
   it('says why there is no word yet, after one session', async () => {
     const b = await boardAs({ ...RUN, snapshots: [{ objectiveId: 'o-approved', sessionNumber: 1, count: 6 }] as any }, ...BISI);
-    expect(stand(b, 'o-approved')).toEqual({ word: null, says: 'It needs a count from two sessions before its pace can be read, so how it stands cannot be said yet.' });
+    expect(stand(b, 'o-approved')).toEqual({ word: null, says: 'It needs a count from two check-ins before its pace can be read, so how it stands cannot be said yet.' });
   });
 });
 
@@ -174,10 +174,10 @@ describe('(b) the thresholds', () => {
   });
   it('Close where the pace covers at least 90% of the way, Behind where it covers less', () => {
     /* 6 in session 1 and 19 in session 3: 6.5 a session, so about 38 by session 6, which is 96% of the way from 6 to 40. */
-    expect(whereThisTargetStands(t(19), [{ sessionNumber: 1, count: 6 }, { sessionNumber: 3, count: 19 }], 6)).toEqual({ word: 'Close', says: 'At the pace it has kept since session 1, it would be about 39 by the last session, close to the aim of 40.' });
+    expect(whereThisTargetStands(t(19), [{ sessionNumber: 1, count: 6 }, { sessionNumber: 3, count: 19 }], 6)).toEqual({ word: 'Close', says: 'At the pace it has kept since check-in 1, it would be about 39 by the last check-in, close to the aim of 40.' });
     /* 6 then 12: about 36 by session 6, 88% of the way. */
     expect(whereThisTargetStands(t(12), counts(6, 12), 6)?.word).toBe('Behind');
-    expect(whereThisTargetStands(t(37), [{ sessionNumber: 1, count: 6 }, { sessionNumber: 6, count: 37 }], 6)).toEqual({ word: 'Close', says: 'The last session has been counted, and it is 37, close to the aim of 40.' });
+    expect(whereThisTargetStands(t(37), [{ sessionNumber: 1, count: 6 }, { sessionNumber: 6, count: 37 }], 6)).toEqual({ word: 'Close', says: 'The last check-in has been counted, and it is 37, close to the aim of 40.' });
     expect(whereThisTargetStands(t(30), [{ sessionNumber: 1, count: 6 }, { sessionNumber: 6, count: 30 }], 6)?.word).toBe('Behind');
   });
   it('Met, Within and Over limit, and nothing where nobody said which way', () => {

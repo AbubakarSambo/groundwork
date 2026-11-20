@@ -1,6 +1,14 @@
 import { GroundsCron } from '../grounds/grounds.cron';
 import { organisationsThatTurnedWhatsAppOn } from './only-where-whatsapp-is-turned-on';
 
+/* A WORKING DAY, WHATEVER DAY THE TESTS RUN (CI after batch 1, 7 November 2026). The morning sweep skips a day the team does not work
+   (isAWorkingDay), so on a Saturday or a Sunday it rightly sent nothing and these failed. Only the date is fixed: Wednesday 4 November,
+   21:30 UTC, when CI last ran them; timers stay real. */
+const ALL_BUT_THE_DATE = ['hrtime', 'nextTick', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'cancelAnimationFrame', 'requestIdleCallback', 'cancelIdleCallback', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout'] as const;
+beforeAll(() => { jest.useFakeTimers({ now: new Date('2026-11-04T21:30:00Z'), doNotFake: [...ALL_BUT_THE_DATE] }); });
+afterAll(() => { jest.useRealTimers(); });
+
+
 /*
  * Decision 88: nothing new on WhatsApp reaches an existing client until that organisation turns
  * WhatsApp on. The 08:30 reminder, the reminder before a check-in opens and the lead's daily summary

@@ -49,7 +49,7 @@ describe('the scenario, as the template and the release plan give it', () => {
     expect(END_STATES.COLLECTIONS.map((e) => e.label)).toEqual([
       'What is owed is being paid as agreed.',
       'Some payments, each one named, need attention.',
-      'It is not settled yet, and it will be checked again next session.',
+      'It is not settled yet, and it will be checked again next check-in.',
     ]);
   });
 });
@@ -115,14 +115,11 @@ describe('a new check-in can collect what is owed only where Release 2 is on', (
     return { svc: Object.assign(Object.create(GroundsService.prototype), { prisma, billing }) as GroundsService, billing };
   }
 
-  it('off, it is refused in a full sentence before anything is spent', async () => {
+  it('a stored off or an unreadable row no longer refuses it: it goes on to the checks every check-in has (15 November 2026: every board is on for every organisation, so a stored switch of false (or a row that cannot be read) no longer changes this.)', async () => {
     for (const state of [false, 'broken'] as const) {
       const { svc, billing } = grounds(state);
-      await expect(svc.create(MUCHEMI_ORG.id, MUCHEMI_PEOPLE.partner.userId, { scenario: 'COLLECTIONS', label: 'Fee notes' } as any, 'ADMIN'))
-        .rejects.toThrow('Collecting what is owed is not open to your organisation yet, so choose another situation for this check-in.');
-      expect(billing.canCreateGround).not.toHaveBeenCalled();
-      await expect(svc.createForLead(MUCHEMI_ORG.id, 'u-admin', { scenario: 'COLLECTIONS', label: 'Fee notes', leadEmail: 'wanjiru@muchemi.test' } as any))
-        .rejects.toThrow('Collecting what is owed is not open to your organisation yet, so choose another situation for this check-in.');
+      await expect(svc.create(MUCHEMI_ORG.id, MUCHEMI_PEOPLE.partner.userId, { scenario: 'COLLECTIONS', label: 'Fee notes' } as any, 'ADMIN')).rejects.toThrow('reached the billing gate');
+      expect(billing.canCreateGround).toHaveBeenCalled();
     }
   });
 
@@ -132,10 +129,10 @@ describe('a new check-in can collect what is owed only where Release 2 is on', (
     expect(billing.canCreateGround).toHaveBeenCalled();
   });
 
-  it('the picker is told yes only where the switch is on, and no where its row cannot be read', async () => {
+  it('the picker is told yes whatever the stored switch says, or cannot say (15 November 2026: every board is on for every organisation, so a stored switch of false (or a row that cannot be read) no longer changes this.)', async () => {
     expect(await grounds(true).svc.situationsOffered(MUCHEMI_ORG.id)).toEqual({ collections: true });
-    expect(await grounds(false).svc.situationsOffered('org-drop')).toEqual({ collections: false });
-    expect(await grounds('broken').svc.situationsOffered('org-drop')).toEqual({ collections: false });
+    expect(await grounds(false).svc.situationsOffered('org-drop')).toEqual({ collections: true });
+    expect(await grounds('broken').svc.situationsOffered('org-drop')).toEqual({ collections: true });
   });
 
   it('every other situation is never asked about the switch, so nothing changes for it', async () => {
@@ -181,8 +178,8 @@ describe('the stall rule is a suggestion until the partner confirms it', () => {
     expect(b.made.map((m) => m.text)).toEqual([theCollectionsStallRuleDeclined]);
   });
 
-  it('it is not offered once set, once she said not now, or where Release 2 is off', async () => {
-    for (const c of [aCollectionsCheckIn([theCollectionsStallRuleAsALine('fee note')]), aCollectionsCheckIn([theCollectionsStallRuleDeclined]), aCollectionsCheckIn([], false)]) {
+  it('it is not offered once set, or once she said not now', async () => {
+    for (const c of [aCollectionsCheckIn([theCollectionsStallRuleAsALine('fee note')]), aCollectionsCheckIn([theCollectionsStallRuleDeclined])]) {
       expect((await c.svc.waiting(MUCHEMI_FEE_NOTES.id, MUCHEMI_PEOPLE.partner.userId)).proposals).toEqual([]);
     }
   });

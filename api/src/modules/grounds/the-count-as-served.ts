@@ -17,12 +17,15 @@ import type { ThisSession } from './this-sessions-count';
  */
 export interface TheCountAsServed {
   session: number;
+  /** How many sessions the check-in plans (thePlannedSessionsOf, the one owner), or null while it runs until somebody ends it. Every page
+      reads this rather than working it out again (round 50: 51 on one page and 103 on another for the same check-in). */
+  planned: number | null;
   bySession: Record<number, TheServedCount>;
   said: Pick<ThisSession, 'says' | 'whoSays' | 'notJoinedSays' | 'notCountedSays' | 'everyoneIn' | 'othersHaveAnswered'> | null;
 }
 
 export function theCountAsServed(
-  clock: { session: number; said: ThisSession | null },
+  clock: { session: number; said: ThisSession | null; planned?: number | null },
   bySession: Record<number, TheServedCount> | null | undefined,
   /** `onlyThese`: the people a reader walled from the others may see (their own row). Null: they are shown everybody. */
   reader: { onlyThese: ReadonlySet<string> | null },
@@ -31,6 +34,7 @@ export function theCountAsServed(
   const s = clock.said;
   return {
     session: clock.session,
+    planned: clock.planned ?? null,
     bySession: reader.onlyThese ? forThesePeople(all, reader.onlyThese) : all,
     said: reader.onlyThese || !s
       ? null

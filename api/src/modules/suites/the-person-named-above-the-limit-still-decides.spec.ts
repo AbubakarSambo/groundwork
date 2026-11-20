@@ -14,8 +14,9 @@ describe('spending above the limit', () => {
     expect(rules.thresholds).toEqual([{ above: 100000, steps: [[{ named: 'u-fatuma' }]] }]);
     expect(theStepsFor('spend', rules, 150000)).toEqual([[{ named: 'u-fatuma' }]]);
   });
-  it('is the manager, or else an admin, up to the limit', () => {
-    expect(theStepsFor('spend', rules, 90000)).toEqual([['manager', 'admin']]);
+  /* Batch S, S2 (Hafsah, 19 November 2026): up to the limit the manager approves, then their manager's manager, then an admin. */
+  it('is the manager, or else their manager, or else an admin, up to the limit', () => {
+    expect(theStepsFor('spend', rules, 90000)).toEqual([['manager', 'managersManager', 'admin']]);
   });
   it('steps set on the board for that amount are what the card reads back, so the two can never disagree', () => {
     const board = { thresholds: [{ above: 100000, steps: [['manager'], ['finance'], ['admin']] as any }] };

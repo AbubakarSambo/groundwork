@@ -31,7 +31,7 @@ import { isAgainstAGoalTheyStated, whatTheySaidThisWasFor } from './against-the-
 import { saysSomethingCheckable } from '../board/reads';
 import { PatternStatus, TurnRole, GroundStatus, CheckInStatus, Prisma } from '@prisma/client';
 import { mirrorDetection } from '../detectors/mirror-a-detection';
-import { isBackedByADocument } from '../reports/backed-by-a-document';
+import { theFactsOnRecord } from '../conversation/the-facts-on-record';
 import {
   PATTERN_DETECTION_PROMPT,
   PATTERN_DETECTION_PROMPT_KEY,
@@ -811,12 +811,21 @@ export class PatternsService {
             id: true,
             user: { select: { firstName: true, lastName: true, email: true } },
             checkIns: { where: { status: CheckInStatus.COMPLETED }, select: { sessionNumber: true } },
-            recordEntries: { select: { text: true, anchoredDocumentId: true, anchoredOrigin: true, recallBased: true } },
           },
         },
       },
     });
     if (!ground) return;
+    /*
+     * READ FROM THE ASSESSMENTS, AS EVERY OTHER PATTERN IS (issue 52, Hafsah, 4 November 2026). The definition is kept whole: who names
+     * whom, a shared claim both frame as settled, and no independent anchor. What each person said is now their assessment's items,
+     * through the one reader (theFactsOnRecord, as the lead reads them), and a claim with proof behind it is an anchor, as a line backed
+     * by a document was. One source, so this can never read a line the board does not.
+     */
+    const facts = await theFactsOnRecord(this.prisma as any, { groundId, reader: { kind: 'the lead', judgements: true } }).catch(() => []);
+    const saidBy = new Map<string, { text: string; proved: boolean }[]>();
+    for (const f of facts) saidBy.set(f.participantId, [...(saidBy.get(f.participantId) ?? []), { text: f.words, proved: f.proved }]);
+    const participants = ground.participants.map((p) => ({ ...p, recordEntries: saidBy.get(p.id) ?? [] }));
 
     const STOP = new Set([
       'the', 'and', 'that', 'this', 'with', 'have', 'has', 'for', 'was', 'were', 'are', 'our',
@@ -843,10 +852,10 @@ export class PatternsService {
     const hasCompletion = (entries: { text: string }[]) =>
       entries.some((e) => COLLUSION_COMPLETION_WORDS.some((w) => e.text.toLowerCase().includes(w)));
     const hasDocAnchor = (p: any) =>
-      p.recordEntries.some((r: any) => isBackedByADocument(r)) ||
+      p.recordEntries.some((r: any) => r.proved) ||
       ground.documents.some((d: any) => d.participantId === p.id);
 
-    const eligible = ground.participants.filter((p) => (p.checkIns?.length ?? 0) >= 3);
+    const eligible = participants.filter((p) => (p.checkIns?.length ?? 0) >= 3);
     if (eligible.length < 2) return;
 
     for (let x = 0; x < eligible.length; x++) {
@@ -870,7 +879,7 @@ export class PatternsService {
         // Independent anchor: a document for either party, OR a THIRD participant whose
         // record references the shared claim (corroborated outside the pair).
         const thirdPartyRefs = sharedTopicTokens.length
-          ? ground.participants.some(
+          ? participants.some(
               (p) =>
                 p.id !== a.id &&
                 p.id !== b.id &&
@@ -923,39 +932,6 @@ export class PatternsService {
       `PARTY A (${aName}) record:\n${aText}\n\nPARTY B (${bName}) record:\n${bText}\n\nAnswer YES or NO.`;
     const reply = await this.anthropic.respond(COLLUSION_CONFIRM_PROMPT, [{ role: 'user', content: question }]);
     return reply.trim().toUpperCase().startsWith('YES');
-  }
-
-  /**
-   * Gap #32 - Org-wide mention tracking for Degree 3 cross-reference.
-   * Returns all record entries from ALL grounds in the given organisation where
-   * the specified participant email is mentioned, so cross-ground mention
-   * patterns can be detected across the entire org rather than a single ground.
-   */
-  async getOrgWideMentions(orgId: string, mentionEmail: string): Promise<{ groundId: string; text: string }[]> {
-    // Get all participants across the org whose email matches.
-    const orgGrounds = await this.prisma.ground.findMany({
-      where: { organizationId: orgId },
-      select: { id: true },
-    });
-    const groundIds = orgGrounds.map((g) => g.id);
-
-    if (groundIds.length === 0) return [];
-
-    // Query record entries from all grounds in the org and filter by mention
-    // of the target email or name fragment in the text. Because names are
-    // free-text we search for the email prefix (the local part before @) as a
-    // pragmatic proxy for name mentions.
-    const namePart = mentionEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ').toLowerCase();
-
-    const entries = await this.prisma.recordEntry.findMany({
-      where: {
-        participant: { groundId: { in: groundIds } },
-        text: { contains: namePart, mode: 'insensitive' },
-      },
-      select: { text: true, participant: { select: { groundId: true } } },
-    });
-
-    return entries.map((e) => ({ groundId: e.participant.groundId, text: e.text }));
   }
 
   /**

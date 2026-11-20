@@ -35,7 +35,8 @@ const GROUND = {
 };
 
 function serviceFor(ground: any = GROUND) {
-  const none = { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) };
+  /* findFirst: the board reads the lead's first check-in for "Your full report is ready in a moment" (3 November 2026). */
+  const none = { findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null), count: jest.fn(async () => 0) };
   const prisma: any = {
     ground: { findUnique: jest.fn(async () => ground) },
     /* The board reads the viewer's row to work out whether they are an admin of THIS organisation -

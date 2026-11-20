@@ -58,3 +58,13 @@ describe('a difference between people named for the reader', () => {
     expect(say('the price list', 'People in this check-in')).toBe('People in this check-in said different things about the price list.');
   });
 });
+
+/* Run 6, 20 November: a topic that already says people differ was put after "see" and ended "differently differently", or after "about" with no verb to read. */
+describe('a topic that itself says people differ', () => {
+  const topic = 'Lucy Njeri and participants count sales differently';
+  it('is said as its own sentence, named or not', () => {
+    expect(peopleSaidDifferentThingsAbout(topic, 'You, Lucy and Asha')).toBe('You, Lucy and Asha see this differently. Lucy Njeri and participants count sales differently.');
+    expect(peopleSaidDifferentThingsAbout(topic)).toBe('People said different things. Lucy Njeri and participants count sales differently.');
+    expect(peopleSaidDifferentThingsAbout(topic, 'You, Lucy and Asha')).not.toMatch(/differently differently/);
+  });
+});

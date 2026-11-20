@@ -162,6 +162,34 @@ describe('the missed notice for somebody on WhatsApp', () => {
     await sendTheMissedCheckInsToThePeople({ prisma, email, frontendUrl: 'https://app.test' }, NOW);
     expect(email.sendMissedCheckIns).not.toHaveBeenCalled();
   });
+  it('goes now as a normal message when he wrote within the 24 hours, once, and never by email', async () => {
+    const { prisma } = world();
+    onWhatsApp(prisma);
+    prisma.whatsAppInboundMessage = { findFirst: jest.fn(async () => ({ messageId: 'ours:+254700000002:wamid.1', handledAt: new Date(NOW.getTime() - 5 * 60 * 60 * 1000) })) };
+    prisma.whatsAppSend = { findFirst: jest.fn(async () => null) };
+    const email = { sendMissedCheckIns: jest.fn().mockResolvedValue('sent') };
+    const whatsapp = { sendFor: jest.fn().mockResolvedValue({ sent: true }) };
+    await sendTheMissedCheckInsToThePeople({ prisma, email, whatsapp, frontendUrl: 'https://app.test' }, NOW);
+    expect(email.sendMissedCheckIns).not.toHaveBeenCalled();
+    expect(whatsapp.sendFor).toHaveBeenCalledTimes(1);
+    const [org, phone, text, ctx] = whatsapp.sendFor.mock.calls[0];
+    expect([org, phone, ctx.kind]).toEqual(['org1', '+254700000002', 'missed-check-ins']);
+    expect(text.startsWith("You've missed your last two check-ins.")).toBe(true);
+    expect(text).toContain('If something is in the way, you can tell Amani why on your Today page.');
+    /* Told once: the next day's sweep says nothing more. */
+    await sendTheMissedCheckInsToThePeople({ prisma, email, whatsapp, frontendUrl: 'https://app.test' }, NOW);
+    expect(whatsapp.sendFor).toHaveBeenCalledTimes(1);
+  });
+  it('sends nothing when he last wrote more than 24 hours ago: it waits for his next opening, and no template is used', async () => {
+    const { prisma } = world();
+    onWhatsApp(prisma);
+    prisma.whatsAppInboundMessage = { findFirst: jest.fn(async () => ({ messageId: 'ours:+254700000002:wamid.1', handledAt: new Date(NOW.getTime() - 30 * 60 * 60 * 1000) })) };
+    prisma.whatsAppSend = { findFirst: jest.fn(async () => null) };
+    const whatsapp = { sendFor: jest.fn().mockResolvedValue({ sent: true }) };
+    await sendTheMissedCheckInsToThePeople({ prisma, email: { sendMissedCheckIns: jest.fn() }, whatsapp, frontendUrl: 'https://app.test' }, NOW);
+    expect(whatsapp.sendFor).not.toHaveBeenCalled();
+    expect(await theMissedNoticeOnWhatsApp(prisma, 'u-brian', 'p-brian', NOW)).not.toBeNull();
+  });
   it('is said in full sentences for his WhatsApp check-in, with the way to give a reason, and only once', async () => {
     const { prisma } = world();
     const said = await theMissedNoticeOnWhatsApp(prisma, 'u-brian', 'p-brian', NOW);

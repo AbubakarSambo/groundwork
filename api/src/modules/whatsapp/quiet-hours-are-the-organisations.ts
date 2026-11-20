@@ -1,3 +1,4 @@
+import { theQuietHoursNow } from '../../common/the-clock';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { inQuietHours, nextAllowedMoment } from '../email/nothing-lands-at-3am';
 
@@ -18,7 +19,7 @@ export function isHeldForTheNight(error?: string | null): boolean {
 }
 
 /** Null when a message may go now; otherwise the moment it may (seven in the morning in the organisation's zone, at the earliest). */
-export async function heldUntilTheMorning(prisma: any, organizationId: string | null | undefined, now: Date = new Date()): Promise<Date | null> {
+export async function heldUntilTheMorning(prisma: any, organizationId: string | null | undefined, now: Date = theQuietHoursNow()): Promise<Date | null> {
   if (!organizationId) return null;
   const zone = await theOrganisationsZone(prisma, organizationId).catch(() => null);
   if (!inQuietHours(now, zone, null)) return null;

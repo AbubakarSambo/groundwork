@@ -107,7 +107,18 @@ export function theSuiteRefusal(err: unknown): string | null {
  * `speaker` is who says it: Ask Groundwork speaks as "I", and the leave page, which nobody speaks on, says "Groundwork"
  * (request 162, item 4: "so Groundwork cannot say how many you have left").
  */
-export function daysOfLeaveLeftSaid(mine: { perYear: number | null; daysLeft: number | null; kinds: { name: string; perYear: number | null; daysLeft: number | null }[] }, speaker: 'I' | 'Groundwork' = 'I'): string {
+export function daysOfLeaveLeftSaid(
+  mine: { perYear: number | null; daysLeft: number | null; kinds: { key?: string; name: string; perYear: number | null; daysLeft: number | null; eachTime?: number }[] },
+  speaker: 'I' | 'Groundwork' = 'I',
+  /** The type of leave asked about ("how many sick days do I have left"), as the model read it. That one is said, and nothing else. */
+  asked?: string | null,
+): string {
+  const theOne = asked ? mine.kinds.find((k) => k.key === asked) : undefined;
+  if (theOne) {
+    if (theOne.daysLeft != null) return `You have ${days(Math.max(0, theOne.daysLeft))} of ${lowerFirst(theOne.name)} left this year${theOne.perYear != null ? `, out of ${theOne.perYear}` : ''}.`;
+    if (theOne.eachTime != null) return `${theOne.name} is up to ${days(theOne.eachTime)} each time it is taken, so there is no number left for the year.`;
+    return `Your organisation has not set a number of days of ${lowerFirst(theOne.name)}, so ${speaker} cannot say how many you have left.`;
+  }
   const withDays = mine.kinds.filter((k) => k.daysLeft != null);
   if (withDays.length > 1) {
     const parts = withDays.map((k) => `${days(Math.max(0, k.daysLeft as number))} of ${lowerFirst(k.name)}`);

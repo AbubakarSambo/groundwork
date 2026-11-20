@@ -1,4 +1,4 @@
-import { CADENCE_WORDS, type Cadence } from './what-the-context-chat-heard';
+import { howOftenItRuns } from './the-check-ins-own-schedule';
 
 /**
  * A YES THAT CHANGES NOTHING IS NOT OFFERED (B-085).
@@ -34,7 +34,7 @@ export function alreadyHowItIs(
     }
   }
   if (proposal.kind === 'cadence' && g.cadenceStated && proposal.cadence === g.cadence) {
-    return `People already check in ${CADENCE_WORDS[proposal.cadence as Cadence] ?? 'at that rhythm'}, so nothing needs to change.`;
+    return `People already check in ${howOftenItRuns({ cadence: proposal.cadence })}, so nothing needs to change.`;
   }
   return null;
 }

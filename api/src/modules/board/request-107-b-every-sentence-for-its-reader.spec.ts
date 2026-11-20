@@ -116,7 +116,7 @@ describe('the coaching probe names the person, and says "you" to the reader', ()
   it('a wait with no subject has one now', () => {
     const p = whatToProbe({ ...base, holdingUp: [], answeredThisSession: false, whoInASentence: 'Rukia Otieno', waitingOn: [{ what: 'the budget', who: 'Juma', daysOld: 4, escalated: false }] });
     expect(p.probe).toEqual([
-      'Rukia Otieno has not answered this session, so nothing below is from this round.',
+      'Rukia Otieno has not answered this check-in, so nothing below is from this round.',
       'Rukia Otieno has been waiting for 4 days on Juma for the budget.',
     ]);
   });
@@ -126,8 +126,8 @@ describe('"their own" after what "you" did is "your own"', () => {
   it('reads as the reader\'s own', () => {
     expect(theVerbAgreesWithYouIn("Wanjiku's progress depends on you completing their own open actions."))
       .toBe("Wanjiku's progress depends on you completing your own open actions.");
-    expect(theVerbAgreesWithYouIn('Across two sessions, you have not closed their own commitment.'))
-      .toBe('Across two sessions, you have not closed your own commitment.');
+    expect(theVerbAgreesWithYouIn('Across two check-ins, you have not closed their own commitment.'))
+      .toBe('Across two check-ins, you have not closed your own commitment.');
   });
   it('leaves somebody else\'s own alone (run-19, sales)', () => {
     const t = 'You set a team disbursement target of N120 million but you have not given each person their own target.';

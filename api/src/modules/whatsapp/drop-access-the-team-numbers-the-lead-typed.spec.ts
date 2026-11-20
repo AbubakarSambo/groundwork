@@ -126,7 +126,7 @@ describe('Drop Access: Grace types the team\'s numbers, on every place a number 
     for (const w of REPS) expect(row(w).phone).toBe(NUMBER[w]);
     expect(row('grace').phone).toBe(NUMBER.grace);
     /* Kevin and Peter were sent their first message the moment their number was added; Mercy and Joseph too. */
-    for (const w of REPS) expect(row(w).says).toBe('Waiting for their first message on WhatsApp.');
+    for (const w of REPS) expect(row(w).says).toBe('They have not written on WhatsApp yet.');
   });
 
   it('People shows each number in their row, in the words the page says', async () => {
@@ -135,10 +135,10 @@ describe('Drop Access: Grace types the team\'s numbers, on every place a number 
       const m = page.data.find((x: any) => x.id === PEOPLE[w].id);
       return `${m.phoneNumber ? `Their WhatsApp number is ${m.phoneNumber}. ` : ''}${m.whatsappSays ?? ''}`;
     };
-    expect(line('kevin')).toBe('Their WhatsApp number is +254712345678. Waiting for their first message on WhatsApp.');
-    expect(line('mercy')).toBe('Their WhatsApp number is +254712345679. Waiting for their first message on WhatsApp.');
-    expect(line('joseph')).toBe('Their WhatsApp number is +254712345680. Waiting for their first message on WhatsApp.');
-    expect(line('peter')).toBe('Their WhatsApp number is +254712345681. Waiting for their first message on WhatsApp.');
+    expect(line('kevin')).toBe('Their WhatsApp number is +254712345678. They have not written on WhatsApp yet.');
+    expect(line('mercy')).toBe('Their WhatsApp number is +254712345679. They have not written on WhatsApp yet.');
+    expect(line('joseph')).toBe('Their WhatsApp number is +254712345680. They have not written on WhatsApp yet.');
+    expect(line('peter')).toBe('Their WhatsApp number is +254712345681. They have not written on WhatsApp yet.');
     expect(line('grace')).toBe('Their WhatsApp number is +254712345600. Not connected yet. Nothing has been sent to this number.');
   });
 
@@ -184,7 +184,7 @@ describe('Drop Access: Grace types the team\'s numbers, on every place a number 
     expect(kevinsEntry.phone).toBe('+254712345699');
     expect(kevinsEntry.whatsappLastInboundAt).toBeNull();
     const rows = await whereEachPersonIsOnWhatsApp(d.prisma, { groundId: SALES, organizationId: DROP, userId: PEOPLE.grace.id, role: 'ADMIN' });
-    expect(rows.find((r) => r.participantId === pid('kevin'))).toMatchObject({ phone: '+254712345699', says: 'Waiting for their first message on WhatsApp.' });
+    expect(rows.find((r) => r.participantId === pid('kevin'))).toMatchObject({ phone: '+254712345699', says: 'They have not written on WhatsApp yet.' });
     /* The session's opening went to his old number; the new number is still told, as a first contact, from Groundwork's number. */
     const toNew = fetchSpy.mock.calls.map(([url, init]: any[]) => ({ url: String(url), body: JSON.parse(init.body) })).filter((c) => c.body.to === '254712345699');
     expect(toNew).toHaveLength(1);

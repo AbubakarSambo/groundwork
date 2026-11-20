@@ -9,7 +9,7 @@ import { BISI, FEMI, JUMA, KWAME, SALES_RUN, SETUP_ADMIN, boardAs, type Setup } 
  */
 const sides = (b: any) => (b.obligations ?? []).map((s: any) => s.who);
 const side = (b: any, who: string) => (b.obligations ?? []).find((s: any) => s.who === who);
-const FEMIS = 'In session 2, Femi Okonkwo said, "I will visit a few of them again this week to see if I can collect the statements myself." Nobody has said yet whether it happened.';
+const FEMIS = 'In check-in 2, Femi Okonkwo said, "I will visit a few of them again this week to see if I can collect the statements myself." Nobody has said yet whether it happened.';
 
 describe('Obligations, as each person reads them', () => {
   it('Bisi, who runs it, reads every side, her own as "You", and the party outside the check-in', async () => {
@@ -17,7 +17,7 @@ describe('Obligations, as each person reads them', () => {
     expect(sides(b)).toEqual(['You', 'Femi Okonkwo', 'Ngozi Eze', 'Kwame Mensah', 'Mr. Adebayo']);
     expect(side(b, 'You')).toEqual({
       participantId: 'p-bisi', who: 'You',
-      promised: ['In session 2, you said, "I\'ll follow up directly with the committee members." Nobody has said yet whether it happened.'],
+      promised: ['In check-in 2, you said, "I\'ll follow up directly with the committee members." Nobody has said yet whether it happened.'],
       othersWaitFor: ['Kwame Mensah says the work is waiting on you for the approval of five applications.'],
     });
     expect(side(b, 'Femi Okonkwo').promised).toEqual([FEMIS]);
@@ -32,7 +32,7 @@ describe('Obligations, as each person reads them', () => {
   it('Femi, where people see each other, reads only his own side, as "You"', async () => {
     const b = await boardAs(SALES_RUN, ...FEMI);
     expect(sides(b)).toEqual(['You']);
-    expect(side(b, 'You').promised[0]).toMatch(/^In session 2, you said, "I will visit/);
+    expect(side(b, 'You').promised[0]).toMatch(/^In check-in 2, you said, "I will visit/);
     expect(JSON.stringify(b.obligations)).not.toMatch(/Bisi|Kwame|Ngozi|Adebayo|committee members/);
   });
 

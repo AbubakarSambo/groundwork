@@ -24,15 +24,15 @@ describe('What I don’t know yet, as each reader reads it', () => {
     expect(read.whatIDontKnowYet).toEqual([
       {
         title: '“What is getting in the way now?”',
-        says: 'Groundwork asked Baraka this in session 1 and once more since, and Baraka has not answered it yet. It won’t be asked again. You could ask Baraka yourself.',
+        says: 'Groundwork asked Baraka this in check-in 1 and once more since, and Baraka has not answered it yet. It won’t be asked again. You could ask Baraka yourself.',
       },
       {
         title: '“What do you need from other people?”',
-        says: 'Groundwork asked Amani this in session 2, and Amani has not answered it yet. They’ll be asked again in a later check-in.',
+        says: 'Groundwork asked Amani this in check-in 2, and Amani has not answered it yet. They’ll be asked again in a later check-in.',
       },
       {
         title: '“How are you making your number?”',
-        says: 'Groundwork asked Neema this in session 2, and nothing on record can confirm the answer yet. They’ll be asked again in a later check-in.',
+        says: 'Groundwork asked Neema this in check-in 2, and nothing on record can confirm the answer yet. They’ll be asked again in a later check-in.',
       },
     ]);
     /* The engine's own working note on the gap goes nowhere. */
@@ -60,6 +60,6 @@ describe('What I don’t know yet, as each reader reads it', () => {
 
   it('a gap with no plain question is named for what it is, and a person with no name on record is "a colleague"', () => {
     const items = whatIDontKnowYet([{ participantId: 'p-x', what: 'an engine note nobody should read', firstRound: 3, asked: 1, certain: true }], 4, () => null);
-    expect(items).toEqual([{ title: 'Something the check-in asked', says: 'Groundwork asked a colleague this in session 3, and they have not answered it yet. They’ll be asked again in a later check-in.' }]);
+    expect(items).toEqual([{ title: 'Something the check-in asked', says: 'Groundwork asked a colleague this in check-in 3, and they have not answered it yet. They’ll be asked again in a later check-in.' }]);
   });
 });

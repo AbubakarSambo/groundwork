@@ -21,8 +21,8 @@ import type { ARule, Rule, Step, WhoDecides } from './who-may-decide';
  * (the-spending-rules.ts), the one place that says it. Only its working days before a request is
  * passed on are kept here.
  *
- * NOTHING CHANGES BY ITSELF. With nothing kept, leave and time sheets have the one step they had
- * before (the manager, else an admin), and nothing is ever passed on: escalation runs only for a suite whose
+ * NOTHING CHANGES BY ITSELF. With nothing kept, leave and time sheets have one step (`THE_LINE_STEP`: the manager, else
+ * their manager's manager, else an admin), and nothing is ever passed on: escalation runs only for a suite whose
  * number of working days an admin has set.
  */
 export const WORKFLOWS_ROW = 'workflows';
@@ -39,7 +39,14 @@ export interface AWorkflow {
 export type Workflows = Partial<Record<StepSuite, AWorkflow>>;
 
 /** The rules an admin may put in a step. A person is never named here: rules survive people changing jobs. */
-export const RULES_AN_ADMIN_MAY_SET: Rule[] = ['manager', 'departmentHead', 'budgetOwner', 'finance', 'hr', 'chiefExecutive', 'admin'];
+export const RULES_AN_ADMIN_MAY_SET: Rule[] = ['manager', 'managersManager', 'departmentHead', 'budgetOwner', 'finance', 'hr', 'chiefExecutive', 'admin'];
+
+/**
+ * THE STEP EVERY REQUEST TAKES WHEN NOTHING ELSE IS SET (Batch S, S2): the person's manager, else their manager's manager, else an
+ * admin. Leave, time sheets, reviews written by the manager, and spending below every amount all read it here. Somebody with no
+ * manager is named by the setup check (the-setup-check.ts), so an admin is never the answer in silence.
+ */
+export const THE_LINE_STEP: Rule[] = ['manager', 'managersManager', 'admin'];
 
 export const MAX_STEPS = 5;
 export const MAX_RULES_IN_A_STEP = 8;
@@ -50,7 +57,7 @@ export const WORKFLOWS_REFUSED = {
   onlyAnAdmin: 'Only an admin, or whoever looks after HR or finance, can set the approval steps.',
   /** A duty holder setting steps for a suite that is not theirs. */
   notYourSuite: 'Whoever looks after HR sets the approval steps for leave, and whoever looks after finance sets them for time sheets and spending. An admin sets them all.',
-  badSteps: `Give between one and ${MAX_STEPS} steps, each a list of who decides, chosen from the person's manager, the head of their team, whoever holds their team's budget, finance, HR, the chief executive and an admin.`,
+  badSteps: `Give between one and ${MAX_STEPS} steps, each a list of who decides, chosen from the person's manager, their manager's manager, the head of their team, whoever holds their team's budget, finance, HR, the chief executive and an admin.`,
   badDays: `Give the number of working days as a whole number from 1 to ${MAX_DAYS}, or nothing to never pass a request on.`,
   spendIsByAmount: 'Who approves a request to spend is set by amount, on the spending page. Only the days before a request is passed on are set here.',
 };
@@ -151,6 +158,7 @@ export function changeWorkflows(kept: Workflows, input: unknown): { workflows: W
 /** A rule, as an admin reads it in the said-back workflow. */
 export const RULE_IN_WORDS: Record<Rule, string> = {
   manager: 'the person’s manager',
+  managersManager: 'their manager’s manager',
   departmentHead: 'whoever heads their team',
   budgetOwner: 'whoever holds their team’s budget',
   finance: 'whoever looks after finance',
@@ -202,7 +210,11 @@ export async function whoInWords(prisma: PrismaService, who: WhoDecides, team: s
   switch (who.rule) {
     case 'finance': return `${first} in finance`;
     case 'hr': return `${first} in HR`;
-    case 'chiefExecutive': return `${first}, the chief executive`;
+    case 'chiefExecutive': {
+      /* Their own title where the directory has one ("Grace, the managing director"), not a duty's name (Batch S, round 2, T1). */
+      const t = (await Promise.resolve((prisma as any).person?.findFirst?.({ where: { linkedUserId: who.userId, active: true }, select: { title: true } })).catch(() => null))?.title?.trim();
+      return t ? `${first}, the ${/^[A-Z]{2,}/.test(t) ? t : `${t.charAt(0).toLowerCase()}${t.slice(1)}`}` : `${first}, the chief executive`;
+    }
     case 'departmentHead': return team ? `${first}, who heads ${team}` : first;
     case 'budgetOwner': return team ? `${first}, who holds the ${team} budget` : first;
     default: return first;

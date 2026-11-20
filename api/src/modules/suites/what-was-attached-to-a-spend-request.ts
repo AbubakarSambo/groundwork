@@ -31,16 +31,26 @@ export async function theWordsOfAnAttachment(file: { buffer: Buffer; mimetype?: 
   throw new BadRequestException('Attach a PDF, a photo or a text file.');
 }
 
-/** The person who asked attaches one file to their own request while it is still waiting. */
+/** The person who asked attaches one file to their own request while it is still waiting: from the form. */
 export async function attachToASpendRequest(prisma: any, reader: { userId: string; organizationId: string }, id: string, kind: unknown, file: any) {
+  return keepWhatWasAttached(prisma, reader, id, kind, String(file?.originalname ?? 'the file'), () => theWordsOfAnAttachment(file));
+}
+
+/**
+ * THE ONE WRITE OF A FILE ON A SPENDING REQUEST, for the form and for a request made in a chat alike (staging check S13, 4 November
+ * 2026): a receipt added in Ask stayed in the conversation, so the approver read nothing of it. Only the person who asked, only while it
+ * waits. Its name, which it is, and its words are kept on the request, where the approver and finance read them.
+ */
+export async function keepWhatWasAttached(prisma: any, reader: { userId: string; organizationId: string }, id: string, kind: unknown, fileName: string, theWords: () => Promise<string | null>) {
   const r = await prisma.spendRequest.findUnique({ where: { id }, select: { id: true, organizationId: true, userId: true, status: true } });
   if (!r || r.organizationId !== reader.organizationId) throw new NotFoundException('That request could not be found.');
   if (r.userId !== reader.userId) throw new ForbiddenException('Only the person who asked can attach to this request.');
   if (r.status !== 'waiting') throw new BadRequestException('This request is already decided, so nothing more can be attached.');
   const k: AnAttachedKind = kind === 'receipt' ? 'receipt' : 'quote';
-  const words = await theWordsOfAnAttachment(file);
-  await prisma.spendRequest.update({ where: { id }, data: { attachedName: String(file.originalname ?? 'the file').slice(0, 200), attachedKind: k, attachedText: words } });
-  return { id, attached: { name: String(file.originalname ?? 'the file').slice(0, 200), kind: k }, says: `${KINDS[k].charAt(0).toUpperCase()}${KINDS[k].slice(1)} is attached to your request.` };
+  const words = await theWords();
+  const name = fileName.slice(0, 200);
+  await prisma.spendRequest.update({ where: { id }, data: { attachedName: name, attachedKind: k, attachedText: words } });
+  return { id, attached: { name, kind: k }, says: `${KINDS[k].charAt(0).toUpperCase()}${KINDS[k].slice(1)} is attached to your request.` };
 }
 
 /** How the approver and finance read it, in a full sentence. */

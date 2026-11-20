@@ -50,7 +50,9 @@ describe('the setup chat', () => {
      * context are theirs to change later, so the answer carries more weight than it should.
      */
     expect(ONBOARD).toMatch(/Is this a one-off check-in, or something that you will track over time\?/);
-    expect(ONBOARD).toMatch(/Context and Setup tabs once this first conversation is done/);
+    /* Changed in batch 2, group 6 (S16): the tabs are named from the one constant, so a rename reaches setup too. */
+    expect(ONBOARD).toMatch(/\$\{REFERENCES_AND_RESOURCES\} and \$\{PEOPLE_AND_SETUP\} tabs once this first conversation is done/);
+    expect(ONBOARD).not.toMatch(/Context and Setup tabs/);
     /* One ask. The second sentence tells them where the rest lives; it is not a second question. */
     expect(ONBOARD).toMatch(/The second sentence is not a second ask/);
   });

@@ -200,7 +200,6 @@ export class TheFreeMonthEmails {
     });
     let any = false;
     for (const admin of admins) {
-      if (!admin.email) continue;
       const what = `free-month.${ENDS_SOON}.${org.id}.${until.toISOString().slice(0, 10)}.${admin.id}`;
       if (await hasBeenToldOnce(this.prisma, what)) continue;
       if (await isAlreadyHeld(this.prisma, ENDS_SOON, admin.email)) continue;
@@ -237,7 +236,6 @@ export class TheFreeMonthEmails {
     const adminNames = theNamesOf(people.filter((p: any) => p.role === UserRole.ADMIN));
     let any = false;
     for (const person of people) {
-      if (!person.email) continue;
       const what = `trial-grace.${org.id}.${pausesAt.toISOString().slice(0, 10)}.${which}.${person.id}`;
       if (await hasBeenToldOnce(this.prisma, what)) continue;
       const words = thePausesSoonEmail({

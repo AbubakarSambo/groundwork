@@ -24,12 +24,18 @@ describe('what the context chat says it can take', () => {
       'SOMETHING THAT HAS CHANGED',
       'MORE OF WHAT SUCCESS LOOKS LIKE',
       'A GOAL OR A TARGET',
+      'A LIMIT',
       'A LIST OF THINGS TO BE DONE',
       'A DOCUMENT',
       'SOMEBODY NEW WHO SHOULD BE IN THIS',
     ]) {
       expect(prompt).toContain(thing);
     }
+  });
+
+  it('keeps a limit the lead states ("our discount ceiling is 5 percent") as a limit, never as what doing well looks like', () => {
+    expect(prompt).toContain('It is a limit, not a goal');
+    expect(prompt).toContain('never offer it as what doing well looks like or as a target to reach');
   });
 
   it('and says where each one lands', () => {

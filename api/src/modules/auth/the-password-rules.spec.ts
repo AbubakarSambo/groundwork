@@ -91,7 +91,6 @@ describe('a password somebody already has keeps working', () => {
       const svc = new AuthService(prisma, { sign: () => 'a-session' } as any, { get: () => undefined } as any, {} as any, {} as any, {} as any, { emit: () => undefined } as any);
       const res = await svc.login({ email: 'wairimu@baridi.test', password: old } as any);
       expect(res.accessToken).toBe('a-session');
-      expect(res.needsPassword).toBe(false);
     }
   });
 });

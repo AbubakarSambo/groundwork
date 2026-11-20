@@ -40,6 +40,17 @@ export function deadlineOf(g: HasAClock): Date | null {
 }
 
 /**
+ * THE LAST DAY OF THE CHECK-IN, AS A DAY PEOPLE READ: the one owner of the end date every page shows (batch 2, group 2; round 50: 26
+ * October 2027 on the check-in page and 25 October on the board). An end the lead chose is that day. Otherwise it is the day the clock
+ * runs out. `deadlineOf` stays the instant lateness is measured against: the chosen day's last millisecond in UTC, which read in Lagos
+ * is already the next day, so it is never shown as the date.
+ */
+export function theLastDayOf(g: HasAClock): Date | null {
+  if (g.runsUntilEnded) return null;
+  return g.endsAt ? new Date(g.endsAt) : deadlineOf(g);
+}
+
+/**
  * Whole days left, never negative.
  *
  * FLOOR RATHER THAN ROUND, and it is the opposite call from the one in the suggestions lane. There,

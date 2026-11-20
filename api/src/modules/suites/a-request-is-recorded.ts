@@ -1,3 +1,4 @@
+import { theDayZone } from '../../common/the-organisations-own-day';
 import { Logger } from '@nestjs/common';
 import type { PrismaService } from '../prisma/prisma.service';
 
@@ -79,7 +80,7 @@ export async function theRecordOf(prisma: PrismaService, organizationId: string,
 
 /** "2 October", in the organisations' own time (Africa/Lagos, as the boards are dated). */
 export function saidAsADate(at: Date): string {
-  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', timeZone: 'Africa/Lagos' }).format(at);
+  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', timeZone: theDayZone() }).format(at);
 }
 
 const capital = (x: string) => `${x.charAt(0).toUpperCase()}${x.slice(1)}`;

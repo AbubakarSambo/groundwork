@@ -1,3 +1,4 @@
+import { mayReadTheLine, thePerson } from '../conversation/who-may-read-a-line';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 
 /**
@@ -99,14 +100,14 @@ export async function theNewsThesePromisesWaitOn(
   const billFacts = (Array.isArray(bills) ? bills : []).map((b) => ({ number: b.fields?.Number ?? null, client: b.fields?.Client ?? null, matter: b.fields?.Matter ?? null }));
   const lines: any[] = ((await Promise.resolve(prisma.recordEntry?.findMany?.({
     where: { disputedAt: null, type: 'PROGRESS', participant: { groundId: { in: ids } } },
-    select: { participantId: true, text: true, createdAt: true, participant: { select: { groundId: true, userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } },
+    select: { participantId: true, text: true, createdAt: true, aboutParticipantId: true, standing: true, participant: { select: { groundId: true, userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } },
   })).catch(() => [])) ?? []) as any[];
   for (const { p, text } of which) {
     const news = theNewsAPromiseWaitsOn(text, billFacts);
     if (!news) continue;
     const made = new Date(p.createdAt).getTime();
     const given = (Array.isArray(lines) ? lines : [])
-      .filter((l) => l.participantId !== p.participantId && (!p.userId || l.participant?.userId !== p.userId) && new Date(l.createdAt).getTime() > made)
+      .filter((l) => l.participantId !== p.participantId && (!p.userId || l.participant?.userId !== p.userId) && new Date(l.createdAt).getTime() > made && mayReadTheLine(l, thePerson(p.participantId)))
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       .find((l) => aLineGivesTheNews(String(l.text ?? ''), news));
     if (!given) continue;
