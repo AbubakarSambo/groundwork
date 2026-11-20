@@ -16,7 +16,14 @@
  * the one reader of the assessments (a-question-is-answered-from-the-documents.ts).
  */
 
-export type WhatTheyMean = 'question' | 'correction' | 'update' | 'greeting' | 'other';
+/*
+ * TIME OFF, ASKED FOR IN ANY WORDS (Hafsah's screenshot of 19 November 2026, cleantex on staging, with Leave requests on): "how do i
+ * apply for leave", "I want to apply for leave" and "can i get 3 days off?" were answered "Your organisation has not written anything
+ * down about that here", "I cannot answer that one yet" and "There are no documents here". The rules read a request for leave only when
+ * it named a day, so a request with no days fell through. The model now says when somebody wants time off, and Ask asks for the days.
+ * It still decides nothing: the days are read by the rules and the request is sent only on the person's yes.
+ */
+export type WhatTheyMean = 'question' | 'correction' | 'update' | 'time_off' | 'greeting' | 'other';
 
 export interface TheMessageUnderstood {
   kind: WhatTheyMean;
@@ -31,6 +38,7 @@ Say which kind it is:
 - question: they want to know something.
 - correction: they say something Groundwork showed them is wrong, or give the true figure or fact instead ("that's not right", "I sent it on Monday", "it should be 4 out of 14", "I have raised two fee notes this month", "she is excellent with clients").
 - update: they tell Groundwork something new about their work that is not a correction.
+- time_off: they want time off for themselves (leave, a holiday, days off), or ask how to ask for it ("how do I apply for leave", "can I get 3 days off?"). A question about leave they have already asked for, or how many days they have left, is a question.
 - greeting: hello, thanks, or similar, with nothing else.
 - other: anything else.
 
@@ -42,7 +50,7 @@ export const UNDERSTAND_SCHEMA = {
   input_schema: {
     type: 'object',
     properties: {
-      kind: { type: 'string', enum: ['question', 'correction', 'update', 'greeting', 'other'] },
+      kind: { type: 'string', enum: ['question', 'correction', 'update', 'time_off', 'greeting', 'other'] },
       about: { type: 'string' },
     },
     required: ['kind'],
@@ -52,7 +60,7 @@ export const UNDERSTAND_SCHEMA = {
 /** What the model said, made safe: an unknown kind is "other", and whatever else it says is not read. */
 export function whatTheModelSaid(raw: any): TheMessageUnderstood | null {
   if (!raw || typeof raw !== 'object') return null;
-  const kinds: WhatTheyMean[] = ['question', 'correction', 'update', 'greeting', 'other'];
+  const kinds: WhatTheyMean[] = ['question', 'correction', 'update', 'time_off', 'greeting', 'other'];
   const kind = kinds.includes(raw.kind) ? (raw.kind as WhatTheyMean) : 'other';
   const about = typeof raw.about === 'string' && raw.about.trim() ? raw.about.trim().slice(0, 120) : null;
   return { kind, about };

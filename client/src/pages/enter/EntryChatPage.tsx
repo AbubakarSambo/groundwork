@@ -3096,9 +3096,7 @@ export function EntryChatPage() {
            finance officer in charge of billing") goes into the setup's conversation, so it is saved with it; a report made before
            the correction does not hold it, so it is not sent, and the server makes the report from the whole conversation instead. */
         reportSummary: sessionReport && reportMadeFrom === history.length ? sessionReport : undefined,
-        // The setter's own part in this, as the interview extracted it. Lands on their participant row.
-        roleAsDescribed: (reportMadeFrom === history.length ? sessionReport?.yourRole?.trim() : undefined) || undefined,
-        inviteNote: inviteNote.trim() || undefined,
+        /* The setter's own part is read by the server from the report above (`theSettersRole`), so it is not sent a second time. */
         // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
         // on the second contributor and silently drop them.

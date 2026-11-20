@@ -158,7 +158,8 @@ describe('leave is never answered with a shrug', () => {
     const out = await said(s, 'I need Monday and Wednesday off next week.');
     expect(out).toEqual({
       lane: 'ask_for_leave',
-      text: 'I could not tell exactly which days you mean, so I have not sent anything. Tell me the first day and the last day, for example "from next Monday to next Wednesday", and I will ask again.',
+      /* Updated 19 November 2026: the example is now a whole sentence the rules read as leave; the days alone were not read. */
+      text: 'I could not tell exactly which days you mean, so I have not sent anything. Tell me the first day and the last day in one sentence, for example "I want leave from next Monday to next Wednesday", and I will ask again.',
     });
     expect(s.proposals).toEqual([]);
     expect(s.ask).not.toHaveBeenCalled();
