@@ -24,7 +24,7 @@ export function phaseSpineSentence(
   if (!phaseSpine) return null
   const parts: string[] = []
   if (phaseSpine.currentSession) {
-    parts.push(planned ? `Session ${phaseSpine.currentSession} of ${planned}.` : `Session ${phaseSpine.currentSession}.`)
+    parts.push(planned ? `Check-in ${phaseSpine.currentSession} of ${planned}.` : `Check-in ${phaseSpine.currentSession}.`)
   }
   if (phaseSpine.endsAt) parts.push(`Runs until ${whenItWas(phaseSpine.endsAt, 'dayAndMonthLong')}.`)
   return parts.length ? parts.join(' ') : null

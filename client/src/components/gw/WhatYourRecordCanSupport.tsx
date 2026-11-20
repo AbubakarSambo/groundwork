@@ -63,9 +63,9 @@ function howMuchItSupports(score?: number): { says: string } {
 function howTheAnswersAreGoing(trend: string | undefined, comparedWith: number | null): string | null {
   if (!trend || trend === 'new') return null
   if (!comparedWith) return null
-  if (trend === 'rising') return `Your answers are getting more checkable than session ${comparedWith}.`
-  if (trend === 'falling') return `Your recent answers carry less detail than session ${comparedWith} did.`
-  return `Your answers are about as checkable as session ${comparedWith}.`
+  if (trend === 'rising') return `Your answers are getting more checkable than check-in ${comparedWith}.`
+  if (trend === 'falling') return `Your recent answers carry less detail than check-in ${comparedWith} did.`
+  return `Your answers are about as checkable as check-in ${comparedWith}.`
 }
 
 export function WhatYourRecordCanSupport({
@@ -148,7 +148,7 @@ export function WhatYourRecordCanSupport({
               return (
                 <div key={d.sessionNumber} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                   <div
-                    title={held ? `Session ${d.sessionNumber}` : `Session ${d.sessionNumber} - not yet`}
+                    title={held ? `Check-in ${d.sessionNumber}` : `Check-in ${d.sessionNumber} - not yet`}
                     style={{
                       width: '100%', height: 22, borderRadius: 3, position: 'relative',
                       background: held ? 'var(--gw-paper-2)' : 'transparent',
@@ -182,7 +182,7 @@ export function WhatYourRecordCanSupport({
               named here, and they are the same three the card below asks for - so a person reading
               a short bar can see what a taller one would have taken.
             */}
-            How specific each session was. A bar fills with dates, numbers, and saying who you were
+            How specific each check-in was. A bar fills with dates, numbers, and saying who you were
             waiting on. Dashed ones have not happened yet.
           </div>
         </div>

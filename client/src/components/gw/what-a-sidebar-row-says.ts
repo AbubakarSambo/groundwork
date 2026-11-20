@@ -36,10 +36,10 @@ export function whatTheRowSays(f: RowFacts): string {
   let state: string | null = null
   switch (f.attention.kind) {
     case 'yours':
-      state = `session ${of(f.attention.sessionNumber)} is ready for you`
+      state = `check-in ${of(f.attention.sessionNumber)} is ready for you`
       break
     case 'overdue':
-      state = `your session ${of(f.attention.sessionNumber)} is ${f.attention.daysLate} days past its date`
+      state = `your check-in ${of(f.attention.sessionNumber)} is ${f.attention.daysLate} days past its date`
       break
     case 'waiting':
       /* The served sentence, whole: "2 of 4 have checked in; Peter and Mary haven't joined yet." Every page says this one. */
@@ -48,8 +48,8 @@ export function whatTheRowSays(f: RowFacts): string {
       if (f.closed) state = 'this check-in has ended'
       else if (f.roundsDone != null && f.planned) {
         state = f.roundsDone === 0
-          ? `nobody has finished a whole session yet, out of ${f.planned}`
-          : `everybody has finished ${f.roundsDone} of ${f.planned} sessions`
+          ? `nobody has finished a whole check-in yet, out of ${f.planned}`
+          : `everybody has finished ${f.roundsDone} of ${f.planned} check-ins`
       }
   }
 

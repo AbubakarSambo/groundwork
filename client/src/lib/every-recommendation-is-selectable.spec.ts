@@ -74,15 +74,11 @@ describe('every recommendation the picker makes', () => {
      * `components/gw/WhatThisCheckInStillNeeds.tsx` - a pre-existing duplicate this repoint also
      * corrects, since checking the same file twice was never proving the "both screens" this test's
      * own name and comment claim.
+     *
+     * REPOINTED AGAIN (batch 1, group 10, 4 November 2026): People and setup as pictured is the only People
+     * and setup page now, and its "How often" picker is the one that sets the check-in's cadence.
      */
-    /* REPOINTED (batch 1): People and setup is `PeopleAndSetupAsPictured.tsx` now, and its "How often" list is its own
-       HOW_OFTEN, which holds every cadence (checked below), so it does not map SELECTABLE_CADENCES. */
-    const people = readFileSync(resolve(__dirname, '../pages/grounds/PeopleAndSetupAsPictured.tsx'), 'utf8')
-    expect(people).not.toMatch(/TIMED_CADENCES\.map/)
-    for (const key of ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'SEQUENTIAL', 'ONE_TIME']) {
-      expect(people, `People and setup does not offer ${key}`).toMatch(new RegExp(`key: '${key}'`))
-    }
-    for (const file of ['../components/gw/WhatThisCheckInStillNeeds.tsx']) {
+    for (const file of ['../pages/grounds/PeopleAndSetupAsPictured.tsx', '../components/gw/WhatThisCheckInStillNeeds.tsx']) {
       const src = readFileSync(resolve(__dirname, file), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/^\s*\/\/.*$/gm, '')

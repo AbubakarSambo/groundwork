@@ -65,10 +65,23 @@ async function read(who: 'grace' | 'kevin', on: boolean): Promise<string[]> {
 }
 
 const BOARD_ONLY_CHANGES = 'Last updated on Tuesday 20 October at 8am. The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.'
+/* Changed in batch 2, group 6 (issue 40): the explanation after "Last updated on…" is gone with the switch off too, so it is not
+   among the notes the switch-off board keeps; both boards read the status line alone. */
 const GONE_FOR_BOTH = [
-  BOARD_ONLY_CHANGES,
-  'Something here wrong? Anyone can correct what’s about their own work in their check-in; the change and the original both show here.',
   'A reason with no source stays unverified. An unknown reason is flagged, because it can’t be learned from.',
+]
+/* 15 November 2026 (boards made leaner): these notes are gone for everybody now, whatever the direct-morning setting, so the switched-off board no longer keeps them. */
+const GONE_FOR_EVERYBODY_NOW = [
+  ...GONE_FOR_BOTH,
+  'These are about the work. Open anyone to see what they said and what the proof shows.',
+  'Named after three check-ins in a row, never after one. Each describes the work',
+  'Nothing has come up three check-ins in a row yet. When something does, it shows here, and the person it is about sees it first.',
+  'Each person sees what’s about them, and can answer it in their own words.',
+  'Each one moving towards a decision. You always choose',
+  'Open anyone to see what they said and what the proof shows.',
+  'Nothing has come up three check-ins in a row yet.',
+  'Built from what each person shared in their private check-in. Use it to see what’s going on and guide the conversation. It’s not a verdict.',
+  'How to read this board',
 ]
 const GONE_FOR_GRACE = [
   'These are about the work. Open anyone to see what they said and what the proof shows.',
@@ -102,16 +115,16 @@ const NEW_LINES = [
 describe('Grace’s board, as she runs "Sales team, Q4"', () => {
   it('with the direct morning off, every note reads as it did', async () => {
     const off = await read('grace', false)
-    for (const l of [...GONE_FOR_BOTH, ...GONE_FOR_GRACE]) expect(off).toContain(l)
+    for (const l of GONE_FOR_GRACE.filter((x) => !GONE_FOR_EVERYBODY_NOW.includes(x))) expect(off).toContain(l)
+    for (const l of GONE_FOR_EVERYBODY_NOW) expect(off).not.toContain(l)
+    expect(off).not.toContain(BOARD_ONLY_CHANGES)
   })
 
   it('with it on, no note explains the board, says who sees what, or defends it, and nothing new is shown', async () => {
     const off = await read('grace', false)
     const on = await read('grace', true)
-    for (const l of [...GONE_FOR_BOTH, ...GONE_FOR_GRACE]) expect(on).not.toContain(l)
+    for (const l of [...GONE_FOR_EVERYBODY_NOW, ...GONE_FOR_GRACE]) expect(on).not.toContain(l)
     expect(on).toContain('Last updated on Tuesday 20 October at 8am.')
-    expect(on).toContain('Open anyone to see what they said and what the proof shows.')
-    expect(on).toContain('Nothing has come up three check-ins in a row yet.')
     /* The deals, the target and what needs her are all still there. */
     for (const l of ['Will we reach 120 units sold by 30 October?', 'What needs you in this check-in', 'Every deal, day by day', 'Lost deals, and why', 'The team today']) expect(on).toContain(l)
     for (const l of on) expect([...off, ...NEW_LINES]).toContain(l)
@@ -121,13 +134,15 @@ describe('Grace’s board, as she runs "Sales team, Q4"', () => {
 describe('Kevin’s board, as a rep in "Sales team, Q4"', () => {
   it('with the direct morning off, every note reads as it did', async () => {
     const off = await read('kevin', false)
-    for (const l of [...GONE_FOR_BOTH, ...GONE_FOR_KEVIN]) expect(off).toContain(l)
+    for (const l of GONE_FOR_KEVIN.filter((x) => !GONE_FOR_EVERYBODY_NOW.includes(x))) expect(off).toContain(l)
+    for (const l of GONE_FOR_EVERYBODY_NOW) expect(off).not.toContain(l)
+    expect(off).not.toContain(BOARD_ONLY_CHANGES)
   })
 
   it('with it on, it is the team’s report, his deals carry no privacy note, and nothing new is shown', async () => {
     const off = await read('kevin', false)
     const on = await read('kevin', true)
-    for (const l of [...GONE_FOR_BOTH, ...GONE_FOR_KEVIN]) expect(on).not.toContain(l)
+    for (const l of [...GONE_FOR_EVERYBODY_NOW, ...GONE_FOR_KEVIN]) expect(on).not.toContain(l)
     expect(on).toContain('Today’s team report is shared.')
     expect(on).toContain('Open today’s team report.')
     expect(on).toContain('Your deals, day by day')

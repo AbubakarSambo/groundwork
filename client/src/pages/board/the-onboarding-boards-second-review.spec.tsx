@@ -46,8 +46,8 @@ const PARTICIPANTS = [
 const PHASE_SPINE_BETWEEN_ROUNDS = {
   startsAt: null, endsAt: null, currentSession: 4, plannedSessions: 6,
   sessions: [
-    { n: 4, state: 'done', date: '2026-09-26T16:12:36.813Z', opensOn: null, says: 'Session 4 finished on 26 September.' },
-    { n: 5, state: 'upcoming', date: null, opensOn: '2026-10-12T16:11:17.452Z', says: 'Session 5 opens on 12 October.' },
+    { n: 4, state: 'done', date: '2026-09-26T16:12:36.813Z', opensOn: null, says: 'Check-in 4 finished on 26 September.' },
+    { n: 5, state: 'upcoming', date: null, opensOn: '2026-10-12T16:11:17.452Z', says: 'Check-in 5 opens on 12 October.' },
   ],
 }
 
@@ -65,15 +65,15 @@ function boardAsLead(overrides: any = {}) {
       { section: 'Timeline', holds: '', state: 'not-known' as const, why: 'Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.' },
     ],
     workPlan: [
-      { id: 'wp-1', participantId: 'p-tobi', who: 'Tobi Adewale', says: 'In session 2, Tobi Adewale made a commitment, which is in the record.', when: null, state: 'open' as const, statedInSession: 2 },
+      { id: 'wp-1', participantId: 'p-tobi', who: 'Tobi Adewale', says: 'In check-in 2, Tobi Adewale made a commitment, which is in the record.', when: null, state: 'open' as const, statedInSession: 2 },
     ],
     timeline: [
-      { on: '2026-09-26', says: 'On 26 September, the first answers for session 1 came in.' },
+      { on: '2026-09-26', says: 'On 26 September, the first answers for check-in 1 came in.' },
     ],
     startingState: null,
     personHistory: [
-      { participantId: 'p-amina', who: 'You', says: 'You have answered 4 sessions.', sessions: [] },
-      { participantId: 'p-tobi', who: 'Tobi Adewale', says: 'Tobi Adewale has answered 4 sessions and made 7 commitments.', sessions: [] },
+      { participantId: 'p-amina', who: 'You', says: 'You have answered 4 check-ins.', sessions: [] },
+      { participantId: 'p-tobi', who: 'Tobi Adewale', says: 'Tobi Adewale has answered 4 check-ins and made 7 commitments.', sessions: [] },
     ],
     divergence: {
       items: [{
@@ -111,21 +111,21 @@ describe('fix 1: the new hire reads the same open sections as his lead, not one 
     me = { id: 'u-tobi', firstName: 'Tobi', role: 'MEMBER' }
     renderBoard(boardAsLead({
       myParticipantId: 'p-tobi', canEditFrame: false,
-      personHistory: [{ participantId: 'p-tobi', who: 'You', says: 'You have answered 4 sessions.', sessions: [] }],
+      personHistory: [{ participantId: 'p-tobi', who: 'You', says: 'You have answered 4 check-ins.', sessions: [] }],
     }))
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
     expect(screen.getByText('Where you both see it differently')).toBeTruthy()
     expect(screen.queryByText('The whole check-in')).toBeNull()
   })
 
-  it('a sales participant is unchanged: her own view still leads, with the rest folded below it', async () => {
+  it('a sales participant: her own view still leads, with the rest open below it, under no fold', async () => {
     me = { id: 'u-tobi', firstName: 'Tobi', role: 'MEMBER' }
     renderBoard(boardAsLead({
       family: 'DELIVERY', kindOfWork: 'sales org', myParticipantId: 'p-tobi', canEditFrame: false,
       teamPicture: { shared: true },
     }))
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-    expect(screen.getByText('The whole check-in')).toBeTruthy()
+    expect(screen.queryByText('The whole check-in')).toBeNull()
   })
 })
 
@@ -136,7 +136,7 @@ describe('fix 2: every history heading is true of what is under it', () => {
     renderBoard(boardAsLead())
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
     const tobis = screen.getByText(/^Tobi’s history/).closest('section') as HTMLElement
-    expect(within(tobis).getByText('Tobi Adewale has answered 4 sessions and made 7 commitments.')).toBeTruthy()
+    expect(within(tobis).getByText('Tobi Adewale has answered 4 check-ins and made 7 commitments.')).toBeTruthy()
     expect(screen.queryByText('Your own record')).toBeNull()
   })
 
@@ -144,7 +144,7 @@ describe('fix 2: every history heading is true of what is under it', () => {
     me = { id: 'u-tobi', firstName: 'Tobi', role: 'MEMBER' }
     renderBoard(boardAsLead({
       myParticipantId: 'p-tobi', canEditFrame: false,
-      personHistory: [{ participantId: 'p-tobi', who: 'You', says: 'You have answered 4 sessions and made 7 commitments.', sessions: [] }],
+      personHistory: [{ participantId: 'p-tobi', who: 'You', says: 'You have answered 4 check-ins and made 7 commitments.', sessions: [] }],
     }))
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
     expect(screen.getByText('Your history')).toBeTruthy()

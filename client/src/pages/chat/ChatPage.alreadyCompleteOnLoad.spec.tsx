@@ -67,19 +67,27 @@ beforeEach(() => {
   })
 })
 
+/*
+ * CHANGED IN BATCH 2, GROUP 5: a finished session opened fresh used to get the Done page ("Done.
+ * Thanks, Jordan.", "Read yours"). That page is gone (Hafsah, items 54 and 55): a finished check-in
+ * opens as its conversation, settled, in the Check-in tab, and its report is in My work. The
+ * pop-up belongs only to the moment of finishing, so it is not drawn here either.
+ */
 describe('a finished session, opened fresh (not just finished in this render)', () => {
-  it('shows the Done page, not the old inline "already complete" view', async () => {
+  it('shows its conversation, settled, with no Done page and no pop-up', async () => {
     renderChat()
-    expect(await screen.findByRole('heading', { name: 'Done. Thanks, Jordan.' }, { timeout: 5000 })).toBeTruthy()
+    expect(await screen.findByText('Sent the quote.', {}, { timeout: 5000 })).toBeTruthy()
+    expect(screen.getByText('What happened with Green Mart?')).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: /Done\. Thanks/ })).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.queryByText(/Open the team board/)).toBeNull()
     expect(screen.queryByText(/Back to check-ins/)).toBeNull()
     expect(screen.queryByText(/stays on this session/)).toBeNull()
   })
 
-  it('offers "Read yours" and "Something here isn\'t right", both reachable from it', async () => {
+  it('cannot be typed into: the session is over', async () => {
     renderChat()
-    expect(await screen.findByRole('heading', { name: 'Done. Thanks, Jordan.' }, { timeout: 5000 })).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Read yours' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Something here isn’t right' })).toBeTruthy()
+    await screen.findByText('Sent the quote.', {}, { timeout: 5000 })
+    expect((screen.getByRole('textbox', { name: 'Your answer' }) as HTMLTextAreaElement).disabled).toBe(true)
   })
 })

@@ -8,7 +8,7 @@ import { todayApi, type Need } from '@/api/today'
 import { outstandingNotAlreadyShown } from './outstanding-not-already-shown'
 import { withComingUpTellingTwoApart } from './tell-apart-coming-up'
 import { useAuthStore } from '@/stores/auth'
-import { Page, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp, Panel } from '@/components/gw/ui'
+import { Page, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp, Panel, Skeleton } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { AdminFirstRun } from '@/pages/grounds/an-admin-lands-on-a-check-in-list'
 import { partOfTheDay, whenItComes } from './when-it-comes'
@@ -126,7 +126,8 @@ export function TodayPage() {
   const myReviews = useQuery({ queryKey: ['suite-reviews-mine-today'], queryFn: reviewsApi.mineQuietly, enabled: !!user && suitesOn.reviews, retry: false })
   const myReviewAppeals = (Array.isArray(myReviews.data) ? myReviews.data : []).filter(r => r.mayAppeal || r.appealSays)
 
-  const now = new Date()
+  /* The server's day, so a run on the test clock reads the same day on the screen (in production the two are the same). */
+  const now = data?.now ? new Date(data.now) : new Date()
   /* Signup asks for "Your name" in one field, stored whole as `firstName` (AuthPage.tsx), so a real
      signup ("Rukia Otieno") used to greet "Morning, Rukia Otieno". The prototype's greeting is a
      first name alone ("Morning, Wairimu") - firstWordOfAName takes only the first word of it. */
@@ -234,6 +235,17 @@ export function TodayPage() {
           {/* Appeals to decide (C3, U.13): an admin's only. The server refuses anybody else. */}
           {user?.role === 'ADMIN' && <AppealsToDecide />}
 
+          {/* SINCE YESTERDAY (C1): what moved since the round before, for the check-in the line is about. It comes first, so the page opens with
+              what has moved and then says what needs you (design playbook, rule 4: lead with what is going well, then what needs attention). */}
+          {data?.sinceYesterday && (
+            <Section heading={data.sinceYesterday.heading}>
+              <Panel>
+                <p className="t-body">{data.sinceYesterday.says}</p>
+                {data.sinceYesterday.also && <p className="t-small mut">{data.sinceYesterday.also}</p>}
+              </Panel>
+            </Section>
+          )}
+
           {/* ONE LIST, AS THE PROTOTYPE: what the lead's nudge adds (needs you, overdue on the team, risks) are rows in
               "What needs you", most important first, never sections of their own. */}
           <Section heading="What needs you" note={allNeeds > 1 ? `${allNeeds} things, most important first` : undefined}>
@@ -264,7 +276,7 @@ export function TodayPage() {
                 ))}
               </EdgeList>
             )}
-            {isLoading && <Note>Loading…</Note>}
+            {isLoading && <Skeleton what="Getting what needs you" shape="rows" />}
             {isError && (
               <div>
                 <Note tone="error">What needs you didn’t load. Try again.</Note>
@@ -299,16 +311,6 @@ export function TodayPage() {
                   />
                 ))}
               </EdgeList>
-            </Section>
-          )}
-
-          {/* SINCE YESTERDAY (C1): what moved since the round before, for the check-in the line is about. */}
-          {data?.sinceYesterday && (
-            <Section heading={data.sinceYesterday.heading}>
-              <Panel>
-                <p className="t-body">{data.sinceYesterday.says}</p>
-                {data.sinceYesterday.also && <p className="t-small mut">{data.sinceYesterday.also}</p>}
-              </Panel>
             </Section>
           )}
 

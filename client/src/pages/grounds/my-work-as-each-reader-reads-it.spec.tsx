@@ -142,7 +142,8 @@ describe('My work, as each reader reads it', () => {
     vi.mocked(groundsApi.myWork).mockResolvedValue(SERVED_TO_MERCY as any)
     wrap(<MyWorkPage groundId="g-sales" />)
     expect(await screen.findByRole('heading', { name: 'Mercy’s work' })).toBeTruthy()
-    expect(screen.getByText('What you need to do, what you’ve done, and how to get better. Grace sees this page too.')).toBeTruthy()
+    /* Changed 15 November 2026 (Hafsah): the served topLine is an explainer and a privacy note, so My work no longer draws it. */
+    expect(screen.queryByText('What you need to do, what you’ve done, and how to get better. Grace sees this page too.')).toBeNull()
     expect(screen.getByText('sold, 3 with proof')).toBeTruthy()
     expect(screen.getByText('your target')).toBeTruthy()
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
@@ -181,7 +182,8 @@ describe('My work, as each reader reads it', () => {
     vi.mocked(groundsApi.myWork).mockResolvedValue(SERVED_TO_GRACE as any)
     wrap(<MyWorkPage groundId="g-sales" />)
     expect(await screen.findByLabelText('Whose work')).toBeTruthy()
-    expect(screen.getByText('What Mercy needs to do, what Mercy has done, and how Mercy can get better. Mercy sees this page too.')).toBeTruthy()
+    /* Changed 15 November 2026 (Hafsah): the served topLine is an explainer and a privacy note, so My work no longer draws it. */
+    expect(screen.queryByText('What Mercy needs to do, what Mercy has done, and how Mercy can get better. Mercy sees this page too.')).toBeNull()
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
     expect(headings).toEqual(['Mercy’s work', 'To do', 'What Mercy achieved', 'How Mercy is performing', 'Coaching', 'Mercy’s deals'])
     expect(screen.getByText('Asked of Mercy')).toBeTruthy()

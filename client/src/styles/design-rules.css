@@ -1,0 +1,45 @@
+/* THE DESIGN RULES, IN ONE FILE (Hafsah's design brief, item 9, 19 November 2026; docs/DESIGN-GAPS.md).
+   Loaded last, so where it speaks it wins. It holds the rules as variables, and the few places where a screen broke one of them:
+   a coloured bar down the left of a row, a heavy box round the selected menu item, a boxed organisation switcher, a hard focus ring,
+   and text running the full width of a wide screen. Change a rule here once, never in a component.
+   Groundwork is always light. Colour means one thing each: the accent is the main action, green is done or good, amber needs you, red is a real problem. */
+:root {
+  /* No more than seven text sizes. Nothing new is written at any other size; what is older is moved over one screen at a time. */
+  --gw-text-1: 13px; --gw-text-2: 14px; --gw-text-3: 16px; --gw-text-4: 18px; --gw-text-5: 21px; --gw-text-6: 24px; --gw-text-7: 30px;
+  /* Spacing is a 4 and 8 pixel grid: 4, 8, 12, 16, 24, 32, 48. */
+  --gw-s-1: 4px; --gw-s-2: 8px; --gw-s-3: 12px; --gw-s-4: 16px; --gw-s-5: 24px; --gw-s-6: 32px; --gw-s-7: 48px;
+  /* One corner for cards, one for buttons, one for pills. */
+  --gw-r-card: 12px; --gw-r-button: 8px; --gw-r-pill: 999px;
+  /* A card is a step off the page, with a soft 1px line and a very faint shadow; a pop-up keeps its own, heavier one. */
+  --gw-card-line: 1px solid var(--gw-border);
+  --gw-card-shadow: 0 1px 2px rgba(26, 25, 22, .04);
+  /* The keyboard focus ring (--gw-focus-ring) is defined beside the accent in index.css: 3 pixels, the accent at 60 per cent. */
+}
+
+/* A row that needs something has a small dot, not a coloured bar (rule 5). Green is done, amber needs you, red is a real problem. */
+.item { grid-template-columns: 12px minmax(0, 1fr) auto; gap: 12px 16px; }
+.item .sp { width: 10px; height: 10px; border-radius: 50%; align-self: start; margin-top: 7px; }
+@media (max-width: 640px) { .item { grid-template-columns: 12px minmax(0, 1fr); } }
+/* The same dot where a card or a line carried a coloured left border: navy for a decision, amber for needs you, dark for the heaviest. */
+.gwui-tb-need-main, .gwui-scn-pattern, .pb-unknown { border-left: 0; position: relative; padding-left: 22px; }
+.gwui-tb-need-main::before, .gwui-scn-pattern::before, .pb-unknown::before { content: ""; position: absolute; left: 0; top: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--gw-navy); }
+.gwui-tb-need-amber .gwui-tb-need-main::before, .gwui-scn-pattern-attention::before, .pb-unknown::before { background: var(--gw-amber-t); }
+.gwui-tb-need-dark .gwui-tb-need-main::before { background: var(--gw-text); }
+.gwui-scn-pattern { padding-left: 22px; }
+
+/* The selected item in the side menu: a soft tint and darker text, no box (rule 6). */
+.gw-rl-nav.on, .nav.on { background: var(--gw-blue-bg); box-shadow: none; color: var(--gw-navy-d); }
+/* The organisation switcher is a row of the menu, not a boxed widget. */
+.gw-rl-org { border: 0; background: transparent; border-radius: 8px; min-height: 44px; padding: 0 10px; margin: 4px 10px 8px; }
+.gw-rl-org:hover { background: var(--gw-card); }
+
+/* The focus ring, soft and still there (rules 6 and 10). */
+:focus-visible { outline: 3px solid var(--gw-focus-ring); outline-offset: 2px; }
+
+/* Reading text stays to about 700 pixels (rule 7). Cards, tables and boards keep the page's width. */
+.wrap :is(p, .t-body, .item .s, .gwui-panel-text, .gwui-panel-text-muted, .gwui-note, .gwui-empty-line) { max-width: var(--gw-read); }
+
+/* Tap targets are at least 44 pixels high on a phone (rule 10): the small button, the chip, the view pills and the segmented choices. */
+@media (max-width: 860px) {
+  .btn.sm, .chip, .views a, .seg button { min-height: 44px; }
+}

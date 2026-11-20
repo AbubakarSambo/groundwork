@@ -62,7 +62,7 @@ export function WhoIsStillOut({ groundId, sessionNumber, myUserId }: { groundId:
     const state = done
       ? `${name} ${have} answered.`
       : isDeclined
-        ? `${name} ${have} said no to this session.`
+        ? `${name} ${have} said no to this check-in.`
         : going
         ? `${name} ${isSelf ? 'are' : 'is'} part way through.`
         : !p.userId

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { InvitePage } from './InvitePage'
@@ -40,20 +40,28 @@ function renderInvite() {
 
 beforeEach(() => { vi.clearAllMocks() })
 
-describe('the invite page prefills the name the lead already gave', () => {
-  it('splits a full name on the first space into First and Last', async () => {
+/*
+ * CHANGED 15 NOVEMBER 2026 (audit of the check-in pages, row 15). The name fields were prefilled and still drawn, with a help line
+ * about the shared report. The lead's name for this person is now used without being asked again: the fields are drawn only when no
+ * name was given, and what the lead typed is still what is sent on accepting.
+ */
+describe('the invite page uses the name the lead already gave, and asks only when none was given', () => {
+  it('does not ask for a name the lead already gave, and sends it split on the first space', async () => {
     ;(participantsApi.preview as any).mockResolvedValue({
       groundLabel: 'Renewals', initiatorName: 'Hafsah', leadFirstName: 'Hafsah',
       scenario: 'NEW_PROJECT', alreadyAccepted: false, nameGiven: 'Musa Bello',
     })
+    ;(participantsApi.accept as any).mockResolvedValue({ groundId: 'g1', token: 't', user: {} })
     renderInvite()
-    const first = await screen.findByLabelText('First name') as HTMLInputElement
-    const last = screen.getByLabelText('Last name') as HTMLInputElement
-    expect(first.value).toBe('Musa')
-    expect(last.value).toBe('Bello')
+    const button = await screen.findByRole('button', { name: /Answer today’s check-in now/i })
+    expect(screen.queryByLabelText('First name')).toBeNull()
+    expect(screen.queryByLabelText('Last name')).toBeNull()
+    expect(screen.queryByText(/Your name is optional/)).toBeNull()
+    fireEvent.click(button)
+    await waitFor(() => expect(participantsApi.accept).toHaveBeenCalledWith('tok', expect.objectContaining({ firstName: 'Musa', lastName: 'Bello' })))
   })
 
-  it('leaves both fields empty when no name was given', async () => {
+  it('asks for a name, empty, when none was given', async () => {
     ;(participantsApi.preview as any).mockResolvedValue({
       groundLabel: 'Renewals', initiatorName: 'Hafsah', leadFirstName: 'Hafsah',
       scenario: 'NEW_PROJECT', alreadyAccepted: false,
@@ -63,18 +71,16 @@ describe('the invite page prefills the name the lead already gave', () => {
     const last = screen.getByLabelText('Last name') as HTMLInputElement
     expect(first.value).toBe('')
     expect(last.value).toBe('')
+    expect(screen.queryByText(/Your name is optional/)).toBeNull()
   })
 
-  it('still lets the invited person change what was prefilled', async () => {
+  it('still asks for the phone number, which stays editable', async () => {
     ;(participantsApi.preview as any).mockResolvedValue({
       groundLabel: 'Renewals', initiatorName: 'Hafsah', leadFirstName: 'Hafsah',
       scenario: 'NEW_PROJECT', alreadyAccepted: false, nameGiven: 'Musa Bello',
     })
     renderInvite()
-    const first = await screen.findByLabelText('First name') as HTMLInputElement
-    first.focus()
-    ;(first as any).value = 'Amani'
-    first.dispatchEvent(new Event('input', { bubbles: true }))
-    expect((screen.getByLabelText('First name') as HTMLInputElement).value).toBe('Amani')
+    await screen.findByRole('button', { name: /Answer today’s check-in now/i })
+    expect(document.getElementById('invite-phone')).toBeTruthy()
   })
 })

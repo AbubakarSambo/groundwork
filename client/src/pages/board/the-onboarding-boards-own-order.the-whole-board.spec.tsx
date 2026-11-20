@@ -45,8 +45,8 @@ const NOT_KNOWN_WORK_RECORDS = [
 const PHASE_SPINE_BETWEEN_ROUNDS = {
   startsAt: null, endsAt: null, currentSession: 4, plannedSessions: 6,
   sessions: [
-    { n: 4, state: 'done', date: '2026-09-26T16:12:36.813Z', opensOn: null, says: 'Session 4 finished on 26 September.' },
-    { n: 5, state: 'upcoming', date: null, opensOn: '2026-10-12T16:11:17.452Z', says: 'Session 5 opens on 12 October.' },
+    { n: 4, state: 'done', date: '2026-09-26T16:12:36.813Z', opensOn: null, says: 'Check-in 4 finished on 26 September.' },
+    { n: 5, state: 'upcoming', date: null, opensOn: '2026-10-12T16:11:17.452Z', says: 'Check-in 5 opens on 12 October.' },
   ],
 }
 
@@ -61,8 +61,8 @@ function boardAsLead(overrides: any = {}) {
     workRecords: NOT_KNOWN_WORK_RECORDS,
     startingState: 'Tobi owns the five largest client relationships.',
     personHistory: [
-      { participantId: 'p-amina', who: 'You', says: 'You have answered 4 sessions.', sessions: [] },
-      { participantId: 'p-tobi', who: 'Tobi Adewale', says: 'Tobi Adewale has answered 4 sessions and made 7 commitments.', sessions: [] },
+      { participantId: 'p-amina', who: 'You', says: 'You have answered 4 check-ins.', sessions: [] },
+      { participantId: 'p-tobi', who: 'Tobi Adewale', says: 'Tobi Adewale has answered 4 check-ins and made 7 commitments.', sessions: [] },
     ],
     divergence: {
       items: [{
@@ -132,7 +132,7 @@ describe('the onboarding board’s own order (day-30-and-60.txt)', () => {
     me = { id: 'u-amina', firstName: 'Amina', role: 'MEMBER' }
     renderBoard(boardAsLead())
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-    const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
+    const fold = document.body as HTMLElement
     expect(within(fold).getByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.')).toBeTruthy()
     expect(within(fold).queryByText('Deal grid')).toBeNull()
     expect(within(fold).queryByText('Forecast')).toBeNull()
@@ -150,8 +150,6 @@ describe('the onboarding board’s own order (day-30-and-60.txt)', () => {
       ],
     }))
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-    const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
-    expect(within(fold).queryByText('Empower Tobi on pricing')).toBeNull()
     expect(screen.getByText('Empower Tobi on pricing')).toBeTruthy()
   })
 
@@ -191,7 +189,7 @@ describe('the onboarding board’s own order (day-30-and-60.txt)', () => {
     renderBoard(boardAsLead({ myParticipantId: 'p-tobi', canEditFrame: false }))
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
     expect(screen.queryByText('Start my check-in')).toBeNull()
-    expect(screen.getByText('Session 5 opens on 12 October.')).toBeTruthy()
+    expect(screen.getByText('Check-in 5 opens on 12 October.')).toBeTruthy()
   })
 
   it('still offers the lead "Your check-in" between rounds - she always has something to do', async () => {

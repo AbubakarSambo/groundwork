@@ -33,7 +33,7 @@ describe('the paywall overlay', () => {
   })
 
   it('tells everybody else the true fact and nothing more', () => {
-    expect(OVERLAY).toContain('Only an organisation admin can add sessions. We have told them you are waiting.')
+    expect(OVERLAY).toContain('Only an organisation admin can add check-ins. I have told them you are waiting.') /* one voice, "I" (S15, 7 November) */
     expect(OVERLAY).not.toContain('Your initiator has been notified')
   })
 })

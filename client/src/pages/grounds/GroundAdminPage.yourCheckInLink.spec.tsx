@@ -14,6 +14,11 @@ import { groundsApi } from '@/api/grounds'
  * one, or land on the Check-in tab otherwise; and it must not be shown at all to somebody who does
  * not answer this check-in themselves (an admin who is not a party).
  */
+/* The conversation itself is ChatPage's own (pages/chat specs); here it is a stand-in that shows which one the tab draws and what
+   the tab puts under it (batch 2, group 5). */
+vi.mock('@/pages/chat/ChatPage', () => ({
+  ChatPage: ({ checkInId, settled }: any) => <div data-testid="the-conversation" data-check-in={checkInId}>{settled}</div>,
+}))
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
 vi.mock('@/api/participantRequests', () => ({ participantRequestsApi: { list: vi.fn().mockResolvedValue([]) } }))
 vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn() } }))
@@ -78,7 +83,8 @@ describe('"Your check-in" in the header', () => {
     expect(screen.queryByRole('button', { name: 'Your check-in' })).toBeNull()
   })
 
-  it('opens the reader\'s own open session directly when there is one', async () => {
+  /* Changed in batch 2, group 5: the conversation is drawn in the Check-in tab, so "Your check-in" goes there and the tab opens it. */
+  it('opens the reader\'s own open session in the Check-in tab when there is one', async () => {
     ;(groundsApi.get as any).mockResolvedValue(baseGround({
       checkIns: [
         { id: 'ci-open', participantId: 'p-lead', sessionNumber: 1, status: 'IN_PROGRESS' },
@@ -87,7 +93,8 @@ describe('"Your check-in" in the header', () => {
     renderPage()
     const button = await screen.findByRole('button', { name: 'Your check-in' })
     await userEvent.click(button)
-    expect(await screen.findByText('The check-in itself')).toBeTruthy()
+    expect(await screen.findByRole('tab', { name: 'Check-in', selected: true })).toBeTruthy()
+    expect(screen.queryByText('The check-in itself')).toBeNull()
   })
 
   it('goes to the Check-in tab when the reader has no open session right now', async () => {
@@ -95,8 +102,8 @@ describe('"Your check-in" in the header', () => {
     renderPage()
     const button = await screen.findByRole('button', { name: 'Your check-in' })
     await userEvent.click(button)
-    /* Changed in F5 (stage 11): the lead's Check-in tab with nothing open is "Check in yourself"; the ask box is gone (one Ask, from the header). */
-    expect(await screen.findByRole('button', { name: 'Check in yourself' })).toBeTruthy()
+    /* Changed in batch 2, group 5: the lead's Check-in tab with nothing open is the box that starts her check-in. */
+    expect(await screen.findByRole('textbox', { name: 'Write anything you want me to remember' })).toBeTruthy()
   })
 
   /*

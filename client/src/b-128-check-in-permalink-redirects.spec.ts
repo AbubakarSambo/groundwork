@@ -15,7 +15,8 @@ describe('B-128: the hyphenated check-in permalink redirects to the real route',
     expect(APP).toMatch(/<Route path="\/check-in\/:checkInId" element={<ChatRedirect \/>} \/>/)
   })
 
-  it('keeps the real route at /checkin/:checkInId', () => {
-    expect(APP).toContain('<Route path="/checkin/:checkInId" element={<RequireOrgSetup><ChatPage /></RequireOrgSetup>} />')
+  /* Changed in batch 2, group 5: /checkin/:id is kept for links already sent, and finds the conversation in its check-in's tab. */
+  it('keeps /checkin/:checkInId working, as the way into the conversation in its tab', () => {
+    expect(APP).toContain('<Route path="/checkin/:checkInId" element={<RequireOrgSetup><TheConversationLivesInItsTab /></RequireOrgSetup>} />')
   })
 })

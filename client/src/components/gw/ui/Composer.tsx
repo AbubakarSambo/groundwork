@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 
 /**
@@ -22,7 +23,7 @@ export function Composer({
   sendText, plusGlyph = '+',
   /* Not "or hold to speak": there is no voice yet, so the box promised what it could not do (26 October 2026). */
   inputRef, placeholder = 'Type your answer', ariaLabel = 'Your answer', maxLength, autoFocus,
-  rows = 1, variant = 'checkin',
+  variant = 'checkin',
 }: {
   value: string
   onChange: (value: string) => void
@@ -56,22 +57,44 @@ export function Composer({
   ariaLabel?: string
   maxLength?: number
   autoFocus?: boolean
-  /**
-   * FAULT 7 (live walk, 6 October 2026): A LONGER PLACEHOLDER WAS CLIPPED AT 375px.
-   *
-   * The setup composer's own placeholder ("Type your response, or add a document.") is longer
-   * than the check-in composer's ("Type your answer") and shares the same single-row box,
-   * which only ever shows one line - at a narrow width, with the wide "+ Doc" and "Send" buttons
-   * beside it, the placeholder wrapped onto a second line nobody could see. Given only by the
-   * caller with the longer placeholder; every other `Composer` keeps the default `rows={1}` it
-   * already had.
-   */
-  rows?: number
   /** Which of the prototype's two composers this is. */
   variant?: 'checkin' | 'ask'
 }) {
   const plusWide = plusGlyph.length > 1
   const ask = variant === 'ask'
+  /*
+   * A BOX THAT SHOWS ITS WHOLE PLACEHOLDER (Fatima round 2, D3; the same fault as fault 7 above, fixed at its cause). The field is one row high, so a placeholder
+   * longer than the width (Ask's "Ask about the company, your work or your check-ins." at 390px) wrapped onto a line nobody could see and read as a box cut in half.
+   * While the box is empty its least height is the height of its placeholder, measured at the width it really has, so every caller's box shows what it says and
+   * no caller has to guess a number of rows. Once there are words in it the caller's own growing takes over. The browser measures: nothing is guessed from the
+   * number of characters.
+   */
+  const own = useRef<HTMLTextAreaElement | null>(null)
+  const setRef = useCallback((el: HTMLTextAreaElement | null) => {
+    own.current = el
+    if (inputRef) (inputRef as { current: HTMLTextAreaElement | null }).current = el
+  }, [inputRef])
+  useEffect(() => {
+    const fit = () => {
+      const el = own.current
+      if (!el) return
+      /* Nothing to scroll while it is empty, and a scrollbar would narrow the box and wrap the placeholder onto a line more than was measured. */
+      if (value) { el.style.minHeight = ''; el.style.overflowY = ''; return }
+      el.style.overflowY = 'hidden'
+      const cs = getComputedStyle(el)
+      const probe = document.createElement('div')
+      probe.setAttribute('aria-hidden', 'true')
+      probe.style.cssText = `position:absolute;visibility:hidden;pointer-events:none;box-sizing:border-box;white-space:pre-wrap;overflow-wrap:break-word;width:${el.offsetWidth}px;font-family:${cs.fontFamily};font-size:${cs.fontSize};font-weight:${cs.fontWeight};letter-spacing:${cs.letterSpacing};line-height:${cs.lineHeight};padding:${cs.padding};border:${cs.borderTopWidth} solid transparent`
+      probe.textContent = placeholder
+      document.body.appendChild(probe)
+      const needed = Math.min(probe.offsetHeight, 120)
+      document.body.removeChild(probe)
+      el.style.minHeight = needed > 48 ? `${needed}px` : ''
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [placeholder, value])
   /* The prototype's two composers: the check-in's (.ci-c: "+", the field, "↑") and Ask's (.asst-comp: the paperclip,
      the field, "Send"). The field is the prototype's .input, kept a textarea so a pasted plan keeps its line breaks. */
   return (
@@ -94,7 +117,7 @@ export function Composer({
         </button>
       )}
       <textarea
-        ref={inputRef}
+        ref={setRef}
         value={value}
         onChange={e => onChange(e.target.value)}
         onKeyDown={onKeyDown}
@@ -103,7 +126,6 @@ export function Composer({
         aria-label={ariaLabel}
         maxLength={maxLength}
         autoFocus={autoFocus}
-        rows={rows}
         className="input"
       />
       <button

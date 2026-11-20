@@ -69,9 +69,9 @@ describe('the coverage percentage beside a person, as the lead reads it', () => 
     await screen.findByText('Where work is landing')
     expect([...container.querySelectorAll('[data-testid="coverage-percent"]')].map((n) => n.textContent)).toEqual(['10%', '70%', '30%'])
     expect([...container.querySelectorAll('[data-testid="coverage-percent-says"]')].map((n) => n.textContent)).toEqual([
-      '10% of Rukia Otieno’s work is landing in what other people describe as theirs.',
-      '70% of Brian Mwangi’s work is landing in what other people describe as theirs.',
-      '30% of Amani Njeri’s work is landing in what other people describe as theirs.',
+      '10% of Rukia Otieno’s work is on other people’s tasks.',
+      '70% of Brian Mwangi’s work is on other people’s tasks.',
+      '30% of Amani Njeri’s work is on other people’s tasks.',
     ])
     const text = container.textContent ?? ''
     expect(text.indexOf('Rukia Otieno')).toBeLessThan(text.indexOf('Brian Mwangi'))

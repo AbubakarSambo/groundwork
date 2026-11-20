@@ -31,10 +31,3 @@ export function theRelease4Order(kind: string | null | undefined, runsIt: boolea
   /* A template the lead attached shows as its own folded part, at the end. */
   return order ? [...order, 'template'] : null
 }
-
-export const RELEASE_4_FOLD_AFTER: APicturedSection = 'teamToday'
-
-/** Where a type's board folds: after the team today, except MarketView Q4's and leadership's, each already about one screen long (mvq4.jpg, leadership-board.jpg). */
-export function whereItFolds(kind: string | null | undefined): APicturedSection | undefined {
-  return kind === 'MarketView Q4' || kind === 'leadership' ? undefined : RELEASE_4_FOLD_AFTER
-}

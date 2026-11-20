@@ -59,7 +59,7 @@ describe('Button', () => {
   it('the danger kind is always the prototype\'s one solid red, never an outline or a red-text quiet button', () => {
     render(<Button kind="danger">Remove</Button>)
     expect(screen.getByRole('button', { name: 'Remove' })).toHaveClass('danger')
-    expect(PROTO).toMatch(/\.btn\.danger\{background:var\(--con\);color:#fff\}/)
+    expect(PROTO).toMatch(/\.btn\.danger\{background:var\(--con\);color:var\(--gw-white\)\}/)
     expect(CSS).not.toMatch(/gwui-btn-danger-solid/)
     expect(CSS).not.toMatch(/gwui-btn-quiet-danger/)
   })
@@ -106,7 +106,7 @@ describe('Tag', () => {
 
   it('is 26px tall, round-ended, 13.5px bold - never a label on a person', () => {
     expect(PROTO).toMatch(/\.tag\{[^}]*min-height:26px/)
-    expect(PROTO).toMatch(/\.tag\{[^}]*border-radius:13px/)
+    expect(PROTO).toMatch(/\.tag\{[^}]*border-radius:999px/)
     expect(PROTO).toMatch(/\.tag\{[^}]*font-size:14px/)
     expect(PROTO).toMatch(/\.tag\{[^}]*font-weight:700/)
   })
@@ -201,10 +201,10 @@ describe('EdgeRow', () => {
     expect(item.textContent?.match(/ready/gi)?.length).toBe(1)
   })
 
-  it('title 17px bold, line 15px muted, 16px above and below, 4px edge', () => {
-    expect(PROTO).toMatch(/\.item \.h\{font-size:17px/)
+  it('title 18px bold, line 14px muted, 16px above and below, seven text sizes (the edge is a dot, set in design-rules.css)', () => {
+    expect(PROTO).toMatch(/\.item \.h\{font-size:18px/)
     expect(PROTO).toMatch(/\.item \.h\{[^}]*font-weight:700/)
-    expect(PROTO).toMatch(/\.item \.s\{font-size:15px/)
+    expect(PROTO).toMatch(/\.item \.s\{font-size:14px/)
     expect(PROTO).toMatch(/\.item\{[^}]*grid-template-columns:4px minmax\(0,1fr\) auto/)
     expect(PROTO).toMatch(/\.item\{[^}]*padding:16px 0/)
   })
@@ -368,7 +368,7 @@ describe('FieldRow', () => {
     expect(CSS).toContain('var(--gwui-field-label-w, 220px)')
     expect(CSS).toMatch(/\.gwui-field-row-label \{[^}]*font-size: 16px/)
     expect(CSS).toMatch(/\.gwui-field-row \{[^}]*border-top: 1px solid var\(--gw-border\)/)
-    expect(CSS).toMatch(/\.gwui-field-row \{[^}]*padding: 14px 0/)
+    expect(CSS).toMatch(/\.gwui-field-row \{[^}]*padding: 12px 0/)
   })
 })
 
@@ -385,9 +385,9 @@ describe('Folded', () => {
     expect(details.open).toBe(true)
   })
 
-  it('is a Panel-shaped 12px-corner box, 20 by 22px inside, closed', () => {
+  it('is a Panel-shaped 12px-corner box, 16 by 24px inside, closed', () => {
     expect(CSS).toMatch(/\.gwui-folded \{[^}]*border-radius: 12px/)
-    expect(CSS).toMatch(/\.gwui-folded-summary \{[^}]*padding: 20px 22px/)
+    expect(CSS).toMatch(/\.gwui-folded-summary \{[^}]*padding: 16px 24px/)
   })
 })
 
@@ -416,9 +416,9 @@ describe('Toast', () => {
 
   it('ink fill, white 15px text, 10px corners, centred 90px up', () => {
     expect(CSS).toMatch(/\.gwui-toast \{[^}]*background: var\(--gw-text\)/)
-    expect(CSS).toMatch(/\.gwui-toast \{[^}]*color: #fff/)
-    expect(CSS).toMatch(/\.gwui-toast \{[^}]*font-size: 15px/)
-    expect(CSS).toMatch(/\.gwui-toast \{[^}]*border-radius: 10px/)
+    expect(CSS).toMatch(/\.gwui-toast \{[^}]*color: var\(--gw-white\)/)
+    expect(CSS).toMatch(/\.gwui-toast \{[^}]*font-size: 14px/)
+    expect(CSS).toMatch(/\.gwui-toast \{[^}]*border-radius: 8px/)
     expect(CSS).toMatch(/\.gwui-toast \{[^}]*bottom: 90px/)
   })
 })

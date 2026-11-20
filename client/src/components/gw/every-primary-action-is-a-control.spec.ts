@@ -79,7 +79,8 @@ describe('a glyph carries a name', () => {
     expect(board).toContain('aria-label={`One more: ${o.name}`}')
     /* Moved from the dead ReportBody (ReportPage.tsx) to SessionReportPage.tsx, which is already
        the one session the download is for - see the comment at the top of ReportPage.tsx. */
-    expect(read('pages/report/SessionReportPage.tsx')).toContain('aria-label={`Download your session ${data.sessionNumber} record`}')
+    /* Batch 2, group 5: SessionReportPage.tsx is gone; your own report is drawn in My work (MyWorkPage.tsx). */
+    expect(read('pages/grounds/MyWorkPage.tsx')).toContain('aria-label={`Download your session ${row.sessionNumber} record`}')
     expect(read('pages/grounds/GroundAdminPage.tsx')).toMatch(/aria-label=\{`Session \$\{ci\.sessionNumber\}:/)
   })
   it('the session chip has a space in the string, not in the CSS', () => {

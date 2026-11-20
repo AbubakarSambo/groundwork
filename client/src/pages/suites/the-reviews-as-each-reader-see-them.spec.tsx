@@ -122,7 +122,7 @@ describe('the board of the next reviews', () => {
      */
     expect(rows).toEqual([
       ['Person', 'Written with', 'Where it stands', 'What you can do'],
-      ['PersonAisha Otieno', 'Written withWairimu Kamau', 'Started on 2 October. Aisha can read it and add a view of her own.', 'Open it'],
+      ['PersonAisha Otieno', 'Written withWairimu Kamau', 'Started on 2 October. Aisha can read it and add a view of her own.', 'Open the review'],
       ['PersonMiriam Wanjiku', 'Written withWairimu Kamau', 'Ready to start.', 'Start it'],
     ])
     expect(within(region).getByRole('link', { name: 'Open Aisha Otieno’s review' })).toHaveAttribute('href', '/suite/reviews/r-a')
@@ -277,7 +277,8 @@ describe('one review', () => {
     expect(save).toBeDisabled()
     fireEvent.change(within(decision).getByLabelText('Your reasons, in a sentence or two'), { target: { value: 'Nine sales, all paid.' } })
     fireEvent.click(save)
-    await waitFor(() => expect(reviewsApi.decide).toHaveBeenCalledWith('r-a', 'Aisha leads supermarkets.', 'Nine sales, all paid.'))
+    /* Batch S, S4: the decision also carries what happens next and a date to look again, empty here. */
+    await waitFor(() => expect(reviewsApi.decide).toHaveBeenCalledWith('r-a', 'Aisha leads supermarkets.', 'Nine sales, all paid.', { nextSteps: '', lookAgainOn: '' }))
     expect(await screen.findByText('Aisha sees your decision and your reasons.')).toBeInTheDocument()
   })
 

@@ -98,7 +98,7 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
             they asked for anything - `wantsTheReport !== false` is the default, not something a
             person had to request. Two full sentences in place of one joined with a semicolon.
           */}
-          {reachable.length ? `${reachable.length === 1 ? 'One person who answered gets' : `${reachable.length} people who answered get`} a link to this session's report, once.` : ''}{declined.length ? ` ${declined.length} ${declined.length === 1 ? 'person' : 'people'} said no thanks.` : ''}
+          {reachable.length ? `${reachable.length === 1 ? 'One person who answered gets' : `${reachable.length} people who answered get`} a link to this check-in's report, once.` : ''}{declined.length ? ` ${declined.length} ${declined.length === 1 ? 'person' : 'people'} said no thanks.` : ''}
           {everybodyAlreadyTold && ' Everybody who asked for it already has it.'}
         </p>
         {!nothingLeftToSend && (

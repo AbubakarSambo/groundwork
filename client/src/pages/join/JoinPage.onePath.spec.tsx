@@ -72,24 +72,29 @@ describe('ONE-PATH: join lands in the real engine', () => {
     expect((screen.getByRole('button', { name: /Email me my link/i }) as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('keeps the privacy assurance', async () => {
+  /*
+   * CHANGED 15 NOVEMBER 2026 (Hafsah, audit of the check-in pages, row 7). The three-sentence privacy box on this page is gone: the
+   * invitation says who can read what, and the rule that what you say about somebody else never appears in a report is the backend's,
+   * not a promise on this screen. What stays here is the guard that the page never makes the false promise it once made.
+   */
+  it('carries no privacy box, and never promises that nobody reads what you write', async () => {
     renderJoin()
     await screen.findByText(/has asked how this is going from where you sit/i)
-    /*
-     * THE PROMISE CHANGED BECAUSE IT WAS NOT TRUE, AND WHAT REPLACED IT IS ALREADY WRITTEN DOWN.
-     *
-     * This asserted "Nobody ever reads what you write". What is written is read: it is summarised
-     * and cross referenced, and the result goes in front of the other people in the check-in. The
-     * honest version of this promise has existed for a long time in
-     * what-happens-to-what-you-write.ts, calibrated line by line - your own words about your own
-     * work can appear in the report, what you say about somebody ELSE never does.
-     *
-     * So this guards the two halves that make the promise mean anything, and the second half is the
-     * one that would be quietly dropped: without it the box is a boast, and with it it is a rule.
-     */
-    expect(screen.getByText(/used to build the shared report and nothing else/i)).toBeTruthy()
-    expect(screen.getByText(/Anything you say about somebody else never does/i)).toBeTruthy()
+    expect(screen.queryByText(/used to build the shared report and nothing else/i)).toBeNull()
+    expect(screen.queryByText(/Anything you say about somebody else never does/i)).toBeNull()
     expect(screen.queryByText(/Nobody ever reads what you write/i)).toBeNull()
+  })
+
+  it('asks for the first name, the email, the part they play and the phone, and no longer for a last name or a department', async () => {
+    renderJoin()
+    await screen.findByText(/has asked how this is going from where you sit/i)
+    expect(screen.getByLabelText('First name')).toBeTruthy()
+    expect(screen.getByLabelText('Email')).toBeTruthy()
+    expect(screen.getByLabelText(/Your part in this/)).toBeTruthy()
+    expect(document.getElementById('join-phone')).toBeTruthy()
+    expect(screen.queryByLabelText('Last name')).toBeNull()
+    expect(screen.queryByLabelText('Department')).toBeNull()
+    expect(screen.queryByText(/This saves your place/)).toBeNull()
   })
 
   it('source-level: JoinPage runs no pipeline and signs nobody in', () => {

@@ -31,7 +31,7 @@ describe('Composer', () => {
     expect(field.className).toBe('input')
     expect(rule('.input')).toMatch(/border:1px solid var\(--rule2-crisp\)/)
     expect(rule('.input')).toMatch(/background:var\(--surface\)/)
-    expect(rule('.input')).toMatch(/border-radius:10px/)
+    expect(rule('.input')).toMatch(/border-radius:8px/)
   })
 
   it('the "+" is a 48px square, and only appears when offered', () => {
@@ -69,15 +69,28 @@ describe('Composer', () => {
   })
 
   /**
-   * FAULT 7 (live walk, 6 October 2026): A TALLER FIELD FOR A LONGER PLACEHOLDER, ONLY WHEN ASKED.
-   * `rows` defaults to 1 (every existing caller is unaffected); the setup composer passes 2 so its
-   * own longer placeholder has somewhere to wrap instead of being cut off at a narrow width.
+   * FATIMA ROUND 2, D3 (and fault 7 before it): THE BOX SHOWS ALL OF ITS PLACEHOLDER. At 390px Ask's "Ask about the company, your work or your check-ins." wrapped onto a second
+   * line in a box one row high, and read as a box cut in half. While the box is empty its least height is the height of the placeholder at the width it has. jsdom lays nothing
+   * out, so the measurement is given (a probe 72px high); the test holds that the box takes it while it is empty, gives it back when there are words, and ignores a short one.
    */
-  it('keeps rows=1 by default, and takes a caller\'s own rows when given', () => {
-    const { rerender } = render(<Composer value="" onChange={() => {}} onSend={() => {}} />)
-    expect(screen.getByPlaceholderText('Type your answer').getAttribute('rows')).toBe('1')
-    rerender(<Composer value="" onChange={() => {}} onSend={() => {}} rows={2} />)
-    expect(screen.getByPlaceholderText('Type your answer').getAttribute('rows')).toBe('2')
+  it('while empty, its least height is the height of its own placeholder; with words in it, the caller\'s own growing takes over', () => {
+    const tall = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(72)
+    try {
+      const { rerender } = render(<Composer value="" onChange={() => {}} onSend={() => {}} placeholder="Ask about the company, your work or your check-ins." />)
+      const box = screen.getByPlaceholderText('Ask about the company, your work or your check-ins.') as HTMLTextAreaElement
+      expect(box.style.minHeight).toBe('72px')
+      rerender(<Composer value="What is outstanding?" onChange={() => {}} onSend={() => {}} placeholder="Ask about the company, your work or your check-ins." />)
+      expect(box.style.minHeight).toBe('')
+      tall.mockReturnValue(24)
+      rerender(<Composer value="" onChange={() => {}} onSend={() => {}} placeholder="Type your answer" />)
+      expect((screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement).style.minHeight).toBe('')
+    } finally { tall.mockRestore() }
+  })
+
+  it('still hands the box to a caller who asked for it', () => {
+    const ref = { current: null as HTMLTextAreaElement | null }
+    render(<Composer value="" onChange={() => {}} onSend={() => {}} inputRef={ref} />)
+    expect(ref.current).toBe(screen.getByPlaceholderText('Type your answer'))
   })
 
   it('the attach menu is the caller\'s own content, shown above the "+" only while open', async () => {

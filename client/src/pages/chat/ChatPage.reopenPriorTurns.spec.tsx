@@ -40,7 +40,7 @@ describe('#3 REOPEN: a correction session renders the prior session read-only', 
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 2, groundId: 'g1' },
       // the correction session's own opener
-      turns: [{ id: 'c1', role: 'AI', content: "You're returning to session 1. What would you like to correct or add?" }],
+      turns: [{ id: 'c1', role: 'AI', content: "You're returning to check-in 1. What would you like to correct or add?" }],
       // the prior (corrected) session's turns
       priorTurns: [
         { id: 'p1', role: 'AI', content: 'What does success look like?' },
@@ -50,13 +50,13 @@ describe('#3 REOPEN: a correction session renders the prior session read-only', 
     })
   })
 
-  it('shows the prior turns, labelled as the earlier session and read-only', async () => {
+  it('shows the prior turns under "What you said before.", and says nothing about not being able to change them', async () => {
     renderChat()
     // the prior account renders...
     await screen.findByText(/Finance self-serving month-end numbers by Q3/i, {}, { timeout: 4000 })
-    // ...labelled as the earlier session...
-    expect(screen.getByText(/From your earlier session 1/i)).toBeTruthy()
-    // ...and framed as an update, not a replacement (read-only intent)
-    expect(screen.getByText(/recorded as an update, not a replacement/i)).toBeTruthy()
+    // ...labelled plainly (15 November, audit row 10)...
+    expect(screen.getByText('What you said before.')).toBeTruthy()
+    // ...with no explainer: nothing says it cannot be changed, because the conversation is where it is corrected.
+    expect(screen.queryByText(/not change it|not a replacement|stays on record/i)).toBeNull()
   })
 })

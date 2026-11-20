@@ -70,7 +70,7 @@ describe('sayWhatTheySaid', () => {
   })
 
   it('does the same for the reader\'s own row, with no re-conjugation needed for past tense', () => {
-    expect(sayWhatTheySaid('Amani Wekesa', "stated the rewrite was 'shipped' in session 2.", 'Amani Wekesa'))
-      .toBe("You stated the rewrite was 'shipped' in session 2.")
+    expect(sayWhatTheySaid('Amani Wekesa', "stated the rewrite was 'shipped' in check-in 2.", 'Amani Wekesa'))
+      .toBe("You stated the rewrite was 'shipped' in check-in 2.")
   })
 })

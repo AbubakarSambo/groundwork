@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, within, fireEvent } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WhatNeedsYou, TheTeamToday, HeadlineAndGap, TheOpenDeal, OpenIssues, WhatKeepsComingUp } from './ThePicturedSalesBoard'
 import { YourTeamPersonByPerson } from './YourTeamPersonByPerson'
 import { TheMatterBoard } from './TheMatterBoard'
-import { PROJECT_ORDER, PROJECT_FOLD_AFTER } from '../release-5-orders'
-import { RELEASE_4_ORDERS, whereItFolds } from '../release-4-orders'
+import { PROJECT_ORDER } from '../release-5-orders'
+import { RELEASE_4_ORDERS } from '../release-4-orders'
 import NIGHT from '../__fixtures__/night-run-2-boards.json'
 import TEAM from './__fixtures__/your-team-served.json'
 import MATTER from './__fixtures__/matter-served.json'
@@ -29,7 +29,7 @@ const KEVIN = '9f2e58a4-06d8-4a0a-bddc-03cd96df027c'
 describe('The team today: who is delivering (S3)', () => {
   it('Grace reads each person’s own number against their own target, and what they said, on their row', () => {
     wrap(<TheTeamToday b={grace} deals={null} today="2026-10-20" groundId="g" />)
-    const kevin = screen.getByRole('link', { name: 'Kevin' }).closest('.pb-row') as HTMLElement
+    const kevin = screen.getByRole('link', { name: 'Kevin' }).closest('tr') as HTMLElement
     expect(within(kevin).getByText('49 sold, 46 with proof of payment. Kevin’s target is 30.')).toBeTruthy()
     expect(within(kevin).getByText('Kevin Omondi has checked in, and has been waiting on Paul for a reply to their calls since 14 October.')).toBeTruthy()
     /* The reason said short is gone where the sentence is there. */
@@ -39,11 +39,11 @@ describe('The team today: who is delivering (S3)', () => {
 
 describe('What needs you: the lead’s own items (S2, S4, S11)', () => {
   it('Grace reads the people not yet told their target, a target nobody owns, and her own open promise, with no team-size condition', () => {
-    const b = { ...grace, leadActions: [...grace.leadActions, { id: 'own-c1', says: 'In session 2, you said “I will do that now.” It has been open for 4 sessions.', because: null, action: { label: 'Open your check-in' } }] }
+    const b = { ...grace, leadActions: [...grace.leadActions, { id: 'own-c1', says: 'In check-in 2, you said “I will do that now.” It has been open for 4 check-ins.', because: null, action: { label: 'Open your check-in' } }] }
     wrap(<WhatNeedsYou b={b} renderActions={(a: any) => <span>{a?.label}</span>} groundId="g" deals={null} sessionRows={[]} />)
     expect(text()).toContain('people have not been told their target')
     expect(text()).toContain("One target has nobody's name on it, so everybody on this check-in can see it.")
-    expect(text()).toContain('In session 2, you said “I will do that now.” It has been open for 4 sessions.')
+    expect(text()).toContain('In check-in 2, you said “I will do that now.” It has been open for 4 check-ins.')
   })
 })
 
@@ -54,14 +54,13 @@ describe('To close the gap, and every deal (S7, S8, S9, S15)', () => {
     { id: 'c', kind: 'deal', name: 'Juja Hardware', owner: 'Joseph Kariuki', group: 'possible', valueLine: '5 units, KES 22,500 if you agree KES 4,500', nextStep: 'Get that price to Juja Hardware' },
     { id: 'd', kind: 'deal', name: 'Upper Hill Offices', owner: 'Peter Njoroge', group: 'possible', valueLine: null, nextStep: 'If no reply, drop it' },
   ]
-  it('each gap row says what the deal holds, and the fourth can be opened and read', () => {
+  it('each gap row says what the deal holds, and the fourth is read open', () => {
     const b = { headline: { question: 'Will we reach 120 units sold by 30 October?' }, objectives: [{ id: 'o', target: 120, count: 75, ownerParticipantId: null }], toCloseTheGap: { heading: 'To close the gap, all four and more', says: 'Two of them have no number of units yet.' } }
     wrap(<HeadlineAndGap b={b} deals={{ rows }} groups={{ possible: rows }} />)
     expect(screen.getByText('Grace, 20 units')).toBeTruthy()
     expect(screen.getByText('Joseph, 5 units, KES 22,500 if you agree KES 4,500')).toBeTruthy()
-    const more = screen.getByText('and 1 more')
-    expect(getComputedStyle(more).display).not.toBe('none')
-    fireEvent.click(more)
+    /* Every deal that could close the gap is read open (Hafsah, 13 November 2026), so there is no "and 1 more" to press. */
+    expect(screen.queryByText('and 1 more')).toBeNull()
     expect(getComputedStyle(screen.getByText('Upper Hill Offices')).display).not.toBe('none')
   })
   it('the opened deal reads the whole next step, and who to speak to at the customer', () => {
@@ -105,7 +104,8 @@ describe('Your team, person by person (S6)', () => {
 describe('The matter board (M4, M5)', () => {
   it('Wanjiru reads each decision with what she can do about it, and where this is heading', () => {
     const m = { ...(MATTER as any).matter.wanjiru, decide: { heading: 'What you need to decide', rows: [{ question: 'Brian is waiting on you for guidance on the double-billing claim.', why: 'They cannot move until it comes.', action: { label: 'Reply in your check-in' } }], empty: null } }
-    const b = { whereThisIsHeading: { heading: 'Where this is heading', outcomes: [], outcomesSays: 'No outcome is clear yet.', signals: [], signalsSays: 'No signal yet.', whatWouldSettleIt: [], whatWouldSettleItSays: 'Nothing on record yet.', whoDecides: 'You decide.', groundworkDoesNotChoose: 'Groundwork does not choose.' } }
+    /* A board with a piece of work on it (an empty board draws no outcomes and no 'Record the decision', 15 November 2026). */
+    const b = { workRecords: [{ section: 'Work plan', rows: [{ id: 'w1' }] }], whereThisIsHeading: { heading: 'Where this is heading', outcomes: [], outcomesSays: 'No outcome is clear yet.', signals: [], signalsSays: 'No signal yet.', whatWouldSettleIt: [], whatWouldSettleItSays: 'Nothing on record yet.', whoDecides: 'You decide.' } }
     wrap(<TheMatterBoard board={m} b={b} renderActions={(a: any) => <button>{a.label}</button>} onRecordTheDecision={() => undefined} />)
     expect(screen.getByRole('button', { name: 'Reply in your check-in' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Where this is heading' })).toBeTruthy()
@@ -117,12 +117,10 @@ describe('The release boards’ first screens (R4-1, R5-1)', () => {
     for (const kind of ['support desk', 'distribution operations', 'engineering release', 'sales org']) {
       const o = RELEASE_4_ORDERS[kind]
       expect(o.indexOf('teamToday')).toBeLessThan(o.indexOf('everySale'))
-      expect(whereItFolds(kind)).toBe('teamToday')
     }
   })
   it('a project has What needs you on its first screen and its Blockers', () => {
     expect(PROJECT_ORDER).toContain('needsYou')
     expect(PROJECT_ORDER).toContain('blockers')
-    expect(PROJECT_FOLD_AFTER).toBe('needsYou')
   })
 })

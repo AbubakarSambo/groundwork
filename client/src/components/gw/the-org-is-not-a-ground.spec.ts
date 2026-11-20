@@ -46,7 +46,8 @@ const labels = (u: any) => navItemsFor(u).map(i => i.label)
 describe('who sees what', () => {
   it('an admin sees the organisation\'s pages', () => {
     // The design system's names for the organisation's pages: People, Connections, Plan and billing.
-    expect(labels(admin)).toEqual(['Today', 'Company', 'You', 'All check-ins', 'Boards', 'People', 'Connections', 'Suites', 'Plan and billing', 'Settings'])
+    /* "Company" reads "Desk" now (S7, 20 November 2026): the Company page was renamed the Desk, same place. */
+    expect(labels(admin)).toEqual(['Today', 'Desk', 'You', 'All check-ins', 'Boards', 'People', 'Connections', 'Suites', 'Plan and billing', 'Settings'])
   })
 
   it('a lead gets the boards door and nothing else that is the org\'s', () => {
@@ -54,7 +55,7 @@ describe('who sees what', () => {
       A lead oversees a department's check-ins, so the one page across several is theirs. People,
       Connect and Billing are the organisation's and would bounce them.
     */
-    expect(labels(lead)).toEqual(['Today', 'Company', 'You', 'Suites', 'All check-ins', 'Boards', 'Settings'])
+    expect(labels(lead)).toEqual(['Today', 'Desk', 'You', 'Suites', 'All check-ins', 'Boards', 'Settings'])
   })
 
   /*
@@ -64,11 +65,11 @@ describe('who sees what', () => {
    * reads with the door this reader was missing.
    */
   it('a team member sees the check-ins, Boards and their own settings, and nothing that would bounce them', () => {
-    expect(labels(member)).toEqual(['Today', 'Company', 'You', 'All check-ins', 'Boards', 'Settings'])
+    expect(labels(member)).toEqual(['Today', 'Desk', 'You', 'All check-ins', 'Boards', 'Settings'])
   })
 
   it('a guest from another company is not offered this organisation\'s Company page', () => {
-    expect(labels({ role: 'GUEST' })).not.toContain('Company')
+    expect(labels({ role: 'GUEST' })).not.toContain('Desk')
   })
 
   it('Suites goes to the one Suites page, and only for an admin or a lead', () => {

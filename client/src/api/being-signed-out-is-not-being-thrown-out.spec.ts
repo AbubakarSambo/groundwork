@@ -22,6 +22,11 @@ describe('where a 401 sends somebody', () => {
     expect(client).toContain("'/auth?why=session-expired'")
   })
 
+  it('says nothing about expiring to somebody who never had a sign-in on this address (a first visit)', () => {
+    expect(client).toContain('const hadASession = !!error.config?.headers?.Authorization')
+    expect(client).toContain("(hadASession ? '/auth?why=session-expired' : '/auth')")
+  })
+
   it('carries where they were, in the parameter the sign-in page already reads', () => {
     expect(client).toContain('next=${encodeURIComponent(wasAt)}')
     expect(authPage).toMatch(/searchParams\.get\('next'\)/)

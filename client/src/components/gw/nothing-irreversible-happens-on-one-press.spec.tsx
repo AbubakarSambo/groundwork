@@ -57,7 +57,7 @@ describe('the six sites', () => {
     expect(panel).toContain('As the lead, your answer closes this check-in.')
     const save = read('pages/home/SaveCard.tsx')
     expect(save.match(/<StartOver onClear=\{onClear\} \/>/g)?.length).toBe(2)
-    expect(save).toContain('This throws away this session and everything in it.')
+    expect(save).toContain('This throws away this check-in and everything in it.')
   })
   it('and every one of the three integration mutations now says when it fails', () => {
     const integrations = read('pages/org/IntegrationsPage.tsx')

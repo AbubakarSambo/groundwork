@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -294,7 +295,7 @@ function OverviewSection({ overview }: { overview: AdminOverview }) {
           <Stat val={overview.totalSubscribedOrgs} label="Subscribed orgs" accent />
         )}
         {overview.totalSessionsBalance !== undefined && (
-          <Stat val={overview.totalSessionsBalance} label="Sessions in balance" />
+          <Stat val={overview.totalSessionsBalance} label="Check-ins in balance" />
         )}
       </div>
     </section>
@@ -451,7 +452,7 @@ function DetectionAccuracySection() {
     <section>
       <div style={SL}>Detection accuracy{rows.length > 0 ? ` (${rows.length} codes)` : ''}</div>
       {isLoading ? (
-        <div style={{ ...C, fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>Loading…</div>
+        <Skeleton what="Getting this section" shape="lines" count={2} />
       ) : rows.length === 0 ? (
         <div style={{ ...C, fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>
           No detections have been surfaced yet.
@@ -508,7 +509,7 @@ function FeedbackSection({ feedback }: { feedback: AdminFeedback[] }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {feedback.map(f => (
-            <div key={f.id} style={{ ...C, borderLeft: `3px solid ${f.feltFair === true ? 'var(--gw-green-b)' : f.feltFair === false ? 'var(--gw-amber-b)' : 'var(--gw-border)'}` }}>
+            <div key={f.id} style={{ ...C }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: f.note ? 5 : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   {f.feltFair != null && (
@@ -671,7 +672,7 @@ function AdminManagementSection({
 function WritersSection() {
   const { data, isLoading, error } = useQuery({ queryKey: ['admin-writers'], queryFn: adminApi.writers, staleTime: 60 * 1000 })
   /* A health check that renders nothing on failure reads as a clean bill of health. Say which it is. */
-  if (isLoading) return <div style={{ ...C, marginTop: 16, fontSize: 12, color: 'var(--gw-sub)' }}>Reading the writers...</div>
+  if (isLoading) return <Skeleton what="Getting the writers" shape="lines" count={1} />
   if (error || !data) return <div style={{ ...C, marginTop: 16, fontSize: 12, color: 'var(--gw-sub)' }}>The writers check could not run. Reload to try it again.</div>
   const rows = [...data.rows].sort((a, b) => Number(b.flagged) - Number(a.flagged) || a.table.localeCompare(b.table))
   return (
@@ -983,11 +984,11 @@ export function AdminDashboardPage() {
       <div style={{ maxWidth: 900, margin: '0 auto', width: '100%', padding: '24px 16px 80px', display: 'flex', flexDirection: 'column', gap: 36 }}>
 
         {isLoading && (
-          <div style={{ fontSize: 13, color: 'var(--gw-muted)', padding: 32, textAlign: 'center' }}>Loading…</div>
+          <Skeleton what="Getting this section" shape="lines" count={2} />
         )}
 
         {error && (
-          <div style={{ ...C, borderLeft: '3px solid var(--gw-danger)', fontSize: 13, color: 'var(--gw-danger)' }}>
+          <div style={{ ...C, fontSize: 13, color: 'var(--gw-danger)' }}>
             {(error as Error).message ?? 'Could not load the dashboard - try again.'}
           </div>
         )}
@@ -1022,7 +1023,7 @@ export function AdminDashboardPage() {
       {disablingCodeId && (
         <OtpModal
           title="Disable access code"
-          description="This will immediately prevent new redemptions. Existing redeemed sessions are unaffected. An OTP challenge is required."
+          description="This will immediately prevent new redemptions. Existing redeemed check-ins are unaffected. An OTP challenge is required."
           onConfirm={handleDisableCode}
           onClose={() => setDisablingCodeId(null)}
         />

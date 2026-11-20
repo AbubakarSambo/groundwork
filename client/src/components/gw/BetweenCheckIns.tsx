@@ -10,7 +10,7 @@ import { GroundworkIsWriting } from './ui/GroundworkIsWriting'
 import { QuickReplies } from './ui/QuickReplies'
 import { Composer } from './ui/Composer'
 import { Button } from './ui/Button'
-import { theNextOne } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { theNextOne, WRITE_ANYTHING_YOU_WANT_ME_TO_REMEMBER } from '@/lib/what-the-end-of-a-check-in-can-say'
 
 /**
  * BETWEEN CHECK-INS (B3, docs/prototype/screens/B3-the-check-in/between-check-ins.jpg/.txt).
@@ -169,7 +169,7 @@ export function BetweenCheckIns({ groundLabel, myCheckIns, groundId, canChangeTh
               onSend={send}
               disabled={mode === 'note' ? addNote.isPending : asking}
               sendDisabled={!draft.trim() || (mode === 'note' ? addNote.isPending : asking)}
-              placeholder={mode === 'note' ? 'Note something for your next check-in…' : 'Ask, or add a note'}
+              placeholder={WRITE_ANYTHING_YOU_WANT_ME_TO_REMEMBER}
               sendLabel={mode === 'note' ? 'Save' : 'Send'}
             />
           }
@@ -187,11 +187,6 @@ export function BetweenCheckIns({ groundLabel, myCheckIns, groundId, canChangeTh
               void ask(item)
             }}
           />
-          {mode === 'note' && (
-            <Bubble mine={false}>
-              Notes are yours alone. They are not part of the record, and your next check-in will ask you about them.
-            </Bubble>
-          )}
           {exchanges.map((ex, i) => (
             <Bubble key={i} mine={ex.mine}>{ex.text}</Bubble>
           ))}

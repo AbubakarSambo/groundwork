@@ -93,7 +93,7 @@ export const REBUILT_PAGES: string[] = [
    * `.gwui-compare-table` in `gw-ui.css` - see docs/the-parts-against-the-prototype.md.
    */
   'pages/company/CompanyPage.tsx',
-  'pages/company/CompanyContextPage.tsx',
+  /* CompanyContextPage.tsx is gone (S7, 20 November 2026): company context is part of the Desk now. */
   /*
    * GROUP 2, PIECE 4 (E-suites, docs/prototype/screens/E-suites): the Suites page and each suite's
    * board. New shared parts this piece added: `.gwui-suite-head`/`.gwui-suite-switch`,
@@ -137,7 +137,7 @@ export const REBUILT_PAGES: string[] = [
    * with every button reduced to the page's one true primary action ("Start a new check-in") -
    * see docs/the-parts-against-the-prototype.md for what this piece found and added.
    */
-  'pages/report/SessionReportPage.tsx',
+  /* `SessionReportPage.tsx` was deleted in batch 2, group 5: a person's own report is drawn in My work. */
   /*
    * GROUP 3, PIECE 2 (continued): `ReportPage.tsx` came OFF this list (1 October 2026), the moment
    * its only content, `ReportBody`, was deleted - see the comment at the top of `ReportPage.tsx`
@@ -159,6 +159,9 @@ export const REBUILT_PAGES: string[] = [
   'pages/chat/ChatPage.tsx',
   'components/gw/checkin/TheCheckInHeader.tsx',
   'components/gw/checkin/TheEndCard.tsx',
+  /* Batch 2, group 5: the end's one pop-up (TheDonePage.tsx is gone) and the line and the box under a finished conversation. */
+  'components/gw/UntilTheNextOne.tsx',
+  'pages/chat/TheConversationLivesInItsTab.tsx',
   /*
    * GROUP 3, PIECE 4 (starting a check-in, docs/prototype/screens/B1-starting-a-check-in):
    * `SaveCard.tsx` so far - the anonymous entry chat's own "keep this conversation" card. New
@@ -187,7 +190,8 @@ export const REBUILT_PAGES: string[] = [
    * GroundAdminPage.tsx's own equivalent states were (`Page narrow` + `Empty` + `Button`, the
    * shared `gwui-page-shell`, `gw-bd` for the tab content column). Its four tabs were already
    * rebuilt components (`BetweenCheckIns`, `YourWork`, `SharedReportForAParty`, `ContextPage`,
-   * `WhoIsInThis`, `MyParticipation`) before this page itself joined the list.
+   * `MyParticipation`) before this page itself joined the list. (`WhoIsInThis` was on that list too; it went with the old People
+   * and setup page, 7 November 2026.)
    */
   'pages/grounds/GroundParticipantPage.tsx',
   /*

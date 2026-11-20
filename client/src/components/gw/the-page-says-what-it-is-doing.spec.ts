@@ -49,15 +49,14 @@ describe('waits are statuses', () => {
          <p role="status">. Pinned in two halves: the shared line is a status paragraph, and the
          loading sentence is rendered through it. */
       ['pages/invite/InvitePage.tsx', /function OneLineStatus[\s\S]*?<p role="status"[^>]*>\{children\}<\/p>/],
-      ['pages/invite/InvitePage.tsx', /<OneLineStatus>Loading your invitation…<\/OneLineStatus>/],
+      ['pages/invite/InvitePage.tsx', /<Skeleton what="Getting your invitation"/],
       /* Group 3 drift list, piece 1 (1 October 2026): rebuilt from the shared `Note`, which renders a
          <p>, not a <div>, and carries only `role="status"` - `aria-live="polite"` is implicit on that
          role, so the explicit attribute was redundant and is not reproduced. Still the only thing on
          the screen while the report loads. */
-      ['pages/report/SessionReportPage.tsx', /<Note role="status">Getting your report\.\.\.<\/Note>/],
       /* U.20: the prototype's own word for this wait (F4-small-states/states.txt, "Getting the
          board"), in place of the page's earlier "Loading the board…". */
-      ['pages/board/BoardPage.tsx', /<div role="status"[^>]*>Getting the board<\/div>/],
+      ['pages/board/BoardPage.tsx', /<Skeleton what="Getting the board"/],
       /* U.8 review: opening a session can take up to a minute, and after four seconds of silence
          the status now also says so ("Getting your first question ready. This can take up to a
          minute."), nested inside the same status element rather than a second live region - so

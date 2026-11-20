@@ -38,7 +38,7 @@ describe('HowThisHasMoved reads the real wire shape', () => {
       }],
     })
     renderPanel()
-    expect(await screen.findByText('At the end of session 1, on 27 September, people saw one thing differently.')).toBeTruthy()
+    expect(await screen.findByText('At the end of check-in 1, on 27 September, people saw one thing differently.')).toBeTruthy()
     expect(await screen.findByText('You are aiming for six shops.')).toBeTruthy()
   })
 
@@ -51,7 +51,7 @@ describe('HowThisHasMoved reads the real wire shape', () => {
       }],
     })
     renderPanel(false)
-    expect(await screen.findByText('At the end of session 1, on 27 September, everybody saw it the same way.')).toBeTruthy()
+    expect(await screen.findByText('At the end of check-in 1, on 27 September, everybody saw it the same way.')).toBeTruthy()
     expect(screen.queryByText('You have received answers from all three people.')).toBeNull()
   })
 

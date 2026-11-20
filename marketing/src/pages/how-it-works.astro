@@ -1,5 +1,7 @@
 ---
 import Nav from '../components/Nav.astro';
+/* How long a check-in takes, from its one owner (api/src/common/how-long-a-check-in-takes.ts), never a copy (issue 16). */
+import { ABOUT_HOW_LONG } from '../../../api/src/common/how-long-a-check-in-takes';
 import Layout from '../layouts/Layout.astro';
 const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 ---
@@ -55,7 +57,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
           <div class="gw-drawn-num">4</div>
           <div>
             <div style="font-size:16px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Check in as the work goes on</div>
-            <div style="font-size:14px;color:var(--gw-sub);line-height:1.7;">Groundwork runs regular check-ins and prompts people automatically when it is their turn, so you are not left chasing anyone. Each one records where things stand: progress, priorities, changes, commitments, risks, concerns, and any evidence. A check-in takes about ten minutes.</div>
+            <div style="font-size:14px;color:var(--gw-sub);line-height:1.7;">Groundwork runs regular check-ins and prompts people automatically when it is their turn, so you are not left chasing anyone. Each one records where things stand: progress, priorities, changes, commitments, risks, concerns, and any evidence. A check-in takes {ABOUT_HOW_LONG}.</div>
           </div>
         </div>
         <div style="display:flex;gap:20px;padding:24px 0;border-bottom:1px solid var(--gw-border);">

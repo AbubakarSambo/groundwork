@@ -79,8 +79,10 @@ describe('neither page keeps its own copy of the rule', () => {
        * What matters here is unchanged: the page asks, and does not keep its own copy.
        */
       expect(src).toMatch(/whichSessionAreWeOn\(|whichSessionIsThisCheckInOn\(/)
-      /* Only the admin roster tallies who has done the session; the participant page asks about one person (above). */
-      if (page.endsWith('GroundAdminPage.tsx')) expect(src).toMatch(/hasDoneThisSession\(/)
+      /* UPDATED (batch 1, group 10, 4 November 2026): the participant's page no longer draws a roster of who has done this
+         session (WhoIsInThis went with the old People and setup page), so it has no "done" to work out. A page that still works it
+         out asks the shared helper; one that doesn't must not keep a copy, which the lines below hold. */
+      if (/\bdone\s*:/.test(src)) expect(src).toMatch(/hasDoneThisSession\(/)
       /* And it must not re-derive the round rule beside the helper that holds it. */
       expect(src).not.toMatch(/Math\.min\(\.\.\.perParticipantDone\)/)
       /**

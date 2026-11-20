@@ -80,7 +80,7 @@ describe('an associate and the accounts person read only their own', () => {
 
   it('Njeri, who follows up none, reads that none are hers', () => {
     draw(S.boards.njeri)
-    expect(screen.getAllByText('No fee note that you follow up is on record yet. Each one shows here once you name it in a check-in.').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('No fee note that you follow up is on record yet.').length).toBeGreaterThan(0)
     expect(text()).not.toMatch(/Kasarani|Jamii|Nyota|Upendo|Baraka|KES/)
   })
 })

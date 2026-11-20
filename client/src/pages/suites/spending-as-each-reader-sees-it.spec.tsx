@@ -190,7 +190,8 @@ describe('what the server says about each request is drawn, not the screen’s o
     const how = await screen.findByRole('region', { name: 'How people use it' })
     expect(within(how).getByText('Can I spend KES 18,000 on fuel for the Kisumu deliveries?')).toBeInTheDocument()
     expect(within(how).getByText('Operations has KES 38,000 left this month, so yes, that fits. I have sent it to your lead to approve.')).toBeInTheDocument()
-    expect(within(how).getByText('In their check-in, in chat, or on WhatsApp. Nobody fills in a form.')).toBeInTheDocument()
+    /* Batch S, round 2 (W16): there is a form beside it, so the page no longer says nobody fills one in. */
+    expect(within(how).getByText('In their check-in, in chat, on WhatsApp, or with the request form.')).toBeInTheDocument()
   })
 
   /*

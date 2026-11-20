@@ -58,13 +58,13 @@ describe('request 107 (a): "asked for, not answered" reads as one sentence', () 
     me = { id: 'u-lead', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(baseBoard([{
       who: 'Rukia Mwangi', what: 'How are you making your number?',
-      says: 'In session 1, Rukia Mwangi was asked, "How are you making your number?" Rukia Mwangi has not answered it yet.',
+      says: 'In check-in 1, Rukia Mwangi was asked, "How are you making your number?" Rukia Mwangi has not answered it yet.',
       sinceRound: 1, certain: true,
     }]))
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
-    expect(screen.getByText('In session 1, Rukia Mwangi was asked, "How are you making your number?" Rukia Mwangi has not answered it yet.')).toBeInTheDocument()
+    expect(screen.getByText('In check-in 1, Rukia Mwangi was asked, "How are you making your number?" Rukia Mwangi has not answered it yet.')).toBeInTheDocument()
     expect(document.body.textContent).not.toContain('Rukia Mwangi — How are you making your number?')
-    expect(document.body.textContent).not.toContain('open since session 1')
+    expect(document.body.textContent).not.toContain('open since check-in 1')
   })
 
   it('draws the engine\'s own sentence, as Rukia herself, in "you"', async () => {
@@ -72,13 +72,13 @@ describe('request 107 (a): "asked for, not answered" reads as one sentence', () 
     renderBoard({
       ...baseBoard([{
         who: 'Rukia Mwangi', what: 'How are you making your number?',
-        says: 'In session 1, you were asked, "How are you making your number?" You have not answered it yet.',
+        says: 'In check-in 1, you were asked, "How are you making your number?" You have not answered it yet.',
         sinceRound: 1, certain: true,
       }]),
       myParticipantId: 'p-rukia', canEditFrame: false,
     })
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
-    expect(screen.getByText('In session 1, you were asked, "How are you making your number?" You have not answered it yet.')).toBeInTheDocument()
+    expect(screen.getByText('In check-in 1, you were asked, "How are you making your number?" You have not answered it yet.')).toBeInTheDocument()
   })
 
   it('falls back to one plain sentence, not "who — what", for an older payload with no `says`', async () => {
@@ -88,8 +88,8 @@ describe('request 107 (a): "asked for, not answered" reads as one sentence', () 
       sinceRound: 1, certain: true,
     } as any]))
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
-    expect(screen.getByText('In session 1, Rukia Mwangi was asked, "How are you making your number?" Rukia Mwangi has not answered it yet.')).toBeInTheDocument()
+    expect(screen.getByText('In check-in 1, Rukia Mwangi was asked, "How are you making your number?" Rukia Mwangi has not answered it yet.')).toBeInTheDocument()
     expect(document.body.textContent).not.toContain('Rukia Mwangi — How are you making your number?')
-    expect(document.body.textContent).not.toContain('open since session 1')
+    expect(document.body.textContent).not.toContain('open since check-in 1')
   })
 })

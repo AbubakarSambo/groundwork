@@ -13,7 +13,7 @@ import { apiClient } from '@/api/client'
  *
  * Walked live in the sweep bed, 11 October, as Dov and Amani, in the real dev server (never in a
  * production build): the Check-in tab's silent auto-open sent one real `POST
- * /check-ins/:id/open`, the server answered 503, and the page still read "Opening your check-in…"
+ * /check-ins/:id/open`, the server answered 503, and the page still read "Getting your first question."
  * forty seconds later with no note and no "Try again". Read from the query client's own mutation
  * cache in the browser, the request HAD settled to an error - but `useOpenSession` carried the
  * probe through `useMutation`, whose subscription to that result is rebuilt by React's
@@ -88,7 +88,7 @@ describe('a failed open under StrictMode', () => {
     )
     await waitFor(() => expect(apiClient.post).toHaveBeenCalledWith('/check-ins/c-open/open', {}, expect.anything()))
     expect(await screen.findByRole('button', { name: 'Try again' }, { timeout: 6000 })).toBeTruthy()
-    expect(screen.queryByText('Opening your check-in…')).toBeNull()
+    expect(screen.queryByText('Getting your first question.')).toBeNull()
     // Only the one attempt - the hook's own guard is unchanged.
     expect(apiClient.post).toHaveBeenCalledTimes(1)
   }, 20000)

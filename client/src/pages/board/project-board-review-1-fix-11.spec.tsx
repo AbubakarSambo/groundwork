@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BoardPage } from './BoardPage'
@@ -42,7 +42,7 @@ const LEAD_BOARD = {
     {
       id: 'b1', who: 'Aisha Wanjiku', name: 'a fix for the pipeline', state: 'blocking' as const,
       says: 'Aisha Wanjiku is waiting on the pipeline for a fix for the pipeline.',
-      raised: { times: 1, firstRaisedAt: '2026-09-29', lastRaisedAt: '2026-09-29', says: 'This was raised once, on 29 September.', sessions: [1], inSessions: 'It was raised in session 1.' },
+      raised: { times: 1, firstRaisedAt: '2026-09-29', lastRaisedAt: '2026-09-29', says: 'This was raised once, on 29 September.', sessions: [1], inSessions: 'It was raised in check-in 1.' },
       proof: { state: 'none', says: 'Nothing on record proves it yet.' }, timeGiven: 'No time has been given for it.',
       wouldClearIt: null, wouldClearItSays: 'Nobody has said what would clear it yet.', holdingUp: null,
     },
@@ -93,12 +93,9 @@ describe('fix 11, on a project board', () => {
     expect(whoCheckedIn).toBeGreaterThanOrEqual(0)
     expect(blockers).toBeGreaterThan(whoCheckedIn)
 
-    // "Open issues" is not above the fold...
-    const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
-    expect(within(fold).getByText('Open issues')).toBeTruthy()
-    // ...only inside it.
-    const beforeFold = body.slice(0, body.indexOf('Everything else from this check-in'))
-    expect(beforeFold.includes('Open issues')).toBe(false)
+    // "Open issues" is still on the board. The fold called "Everything else from this check-in" is gone (it opened by default, so it was a heading that hid nothing).
+    expect(screen.getByText('Open issues')).toBeTruthy()
+    expect(screen.queryByText('Everything else from this check-in')).toBeNull()
   })
 
   it('draws yourShareSays as "Your share" for the engineering participant, not only sales', async () => {

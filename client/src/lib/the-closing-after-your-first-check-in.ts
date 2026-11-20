@@ -117,19 +117,20 @@ export function theClosingAfterYourFirstCheckIn(s: TheSchedule, today: Date = ne
   const often = howOftenTheTeamChecksIn(s)
   const starts = aStartStillToCome(s, today)
   const until = often ? staysOpenUntil(s, today) : null
+  /* Short, and never saying the schedule twice: the header line above already carries the rhythm. "As you set it" was filler (audit of the check-in pages, 15 November 2026, row 21). */
   const team = until
-    ? ` Your team's first check-in is open now and stays open until ${until}, and after that they check in ${often}, as you set it.`
+    ? ` Your team's first check-in is open now, then ${often}.`
     : starts
     ? often === 'once'
-      ? ` Your team checks in once, on ${starts}, as you set it.`
+      ? ` Your team checks in once, on ${starts}.`
       : often
-        ? ` Your team's first check-in opens on ${starts}, and after that they check in ${often}, as you set it.`
-        : ` Your team's first check-in opens on ${starts}, as you set it.`
-    : often ? ` Your team will check in ${often}, as you set it.` : ''
+        ? ` Your team's first check-in opens on ${starts}, then ${often}.`
+        : ` Your team's first check-in opens on ${starts}.`
+    : often ? ` Your team will check in ${often}.` : ''
   return {
-    before: `That's your first check-in done. Come back any time to add updates.${team} You can change how often `,
-    link: 'in setup',
-    after: '.',
+    before: `That's your first one done.${team} `,
+    link: 'Change how often',
+    after: '',
   }
 }
 

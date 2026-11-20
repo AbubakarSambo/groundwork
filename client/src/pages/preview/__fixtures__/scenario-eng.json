@@ -1,0 +1,529 @@
+{
+  "kind": "eng",
+  "title": "Engineering release",
+  "subtitle": "5 engineers. Daily check-ins. Release on 30 Sep.",
+  "leadName": "Wairimu Kamau",
+  "updated": "Last updated on Wednesday 23 September at 6pm. The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.",
+  "question": "Deliver the major release by 30 September?",
+  "headline": "People say 96 of the 100 tasks are done. 4 tasks that the release needs are still left",
+  "bar": 96,
+  "under": "None of the tasks has been released yet. 3 of the 4 tasks left are waiting for other people.",
+  "reported": "Reported: 96% of tasks done, 94% of features tested.",
+  "targets": {
+    "heading": "Where each target stands",
+    "rows": [
+      {
+        "name": "Tasks done",
+        "value": "96 of 100",
+        "status": "Close",
+        "tone": "attention"
+      },
+      {
+        "name": "On time",
+        "value": "86% of 90%",
+        "status": "Close",
+        "tone": "attention"
+      },
+      {
+        "name": "Critical bugs within 48h",
+        "value": "91% of 100%",
+        "status": "Close",
+        "tone": "attention"
+      },
+      {
+        "name": "Features tested",
+        "value": "94% of 100%",
+        "status": "Close",
+        "tone": "attention"
+      },
+      {
+        "name": "Blockers raised within a day",
+        "value": "78% of 95%",
+        "status": "Behind",
+        "tone": "concern"
+      }
+    ]
+  },
+  "needs": {
+    "heading": "What needs you in this check-in",
+    "open": "Open",
+    "rows": [
+      {
+        "what": "Nobody has said whether customers use any of the work",
+        "sub": "People say 96 tasks are done, but none of them has been released or used yet.",
+        "edge": "blue",
+        "strip": "This comes from work that is claimed but not proven."
+      },
+      {
+        "what": "Two things the team waits for have nobody responsible for them",
+        "sub": "They are the API response format and the data structure.",
+        "edge": "amber",
+        "strip": "This comes from a blocker that keeps coming back."
+      },
+      {
+        "what": "The data structure has come up 4 times since 8 September",
+        "sub": "It was promised for 15 September. 2 of Samuel’s tasks are waiting for it.",
+        "edge": "amber",
+        "strip": "This comes from a blocker that keeps coming back."
+      },
+      {
+        "what": "David: nothing checkable, for 2 weeks in a row",
+        "sub": "He says “worked on it”, but gives no error, code link or what he tried.",
+        "edge": "dark",
+        "chip": "From a pattern"
+      },
+      {
+        "what": "Decide what the release will include if the other teams are late",
+        "sub": "This is needed by 30 September.",
+        "edge": "blue",
+        "chip": "Decision needed"
+      }
+    ]
+  },
+  "items": {
+    "heading": "Every task, and what shows it",
+    "note": "Ringed is someone’s word; filled is proven. Select one for its detail",
+    "legend": [
+      "Proof shows it",
+      "Someone said it"
+    ],
+    "columns": [
+      "Task",
+      "Owner",
+      "Stage now",
+      "What shows it",
+      "Next"
+    ],
+    "rows": [
+      {
+        "name": "Payment integration",
+        "owner": "Aisha",
+        "stage": "Tested",
+        "on": false,
+        "shows": "The engineer’s word",
+        "next": "Link the test run, then the production deploy"
+      },
+      {
+        "name": "Login fix",
+        "owner": "Miriam",
+        "stage": "Tested",
+        "on": false,
+        "shows": "The engineer’s word",
+        "next": "Link the pull request and test run"
+      },
+      {
+        "name": "Dashboard filter",
+        "owner": "Brian",
+        "stage": "Fixed",
+        "on": false,
+        "shows": "The engineer’s word",
+        "next": "Link the merged change"
+      },
+      {
+        "name": "Customer API",
+        "owner": "Brian",
+        "stage": "60% done",
+        "on": false,
+        "shows": "The engineer’s word",
+        "next": "Name the format owner and get a date",
+        "flag": "No owner",
+        "flagTone": "red"
+      },
+      {
+        "name": "API migration",
+        "owner": "David",
+        "stage": "Blocked",
+        "on": false,
+        "shows": "None",
+        "next": "Post the exact error and what was tried",
+        "flag": "Blocked",
+        "flagTone": "red"
+      },
+      {
+        "name": "Reporting system",
+        "owner": "Samuel",
+        "stage": "Blocked",
+        "on": false,
+        "shows": "The engineer’s word",
+        "next": "Written delivery date from the data team",
+        "flag": "Blocked",
+        "flagTone": "red"
+      },
+      {
+        "name": "Permissions",
+        "owner": "Miriam",
+        "stage": "In progress",
+        "on": false,
+        "shows": "The engineer’s word",
+        "next": "Write the reproduction before fixing"
+      }
+    ],
+    "detail": {
+      "title": "Payment integration",
+      "pairs": [
+        [
+          "Change",
+          "Callback fix; main payment flows"
+        ],
+        [
+          "Test",
+          "Described, not linked"
+        ],
+        [
+          "Deploy",
+          "Production test on 24 Sep"
+        ]
+      ],
+      "next": "Link the test run, then the production deploy",
+      "button": "Not right? Tell the check-in",
+      "foot": "Something here wrong? Anyone can correct what’s about their own work in their check-in; the change and the original both show here."
+    }
+  },
+  "team": {
+    "heading": "The team today",
+    "note": "Each person’s line, their last 10 check-ins, and what keeps coming up",
+    "foot": "These are about the work. Open anyone to see what they said and what the proof shows.",
+    "rows": [
+      {
+        "name": "David",
+        "line": "10 of 12 tasks",
+        "tag": "Nothing checkable",
+        "tone": "concern",
+        "sessions": "1111110111",
+        "comingUp": "Problems reported late, for 2 weeks in a row"
+      },
+      {
+        "name": "Samuel",
+        "line": "8 of 10 tasks",
+        "tag": "Stuck on a dependency",
+        "tone": "attention",
+        "sessions": "1110111111"
+      },
+      {
+        "name": "Brian",
+        "line": "9 of 12 tasks",
+        "tag": "Behind the pace",
+        "tone": "attention",
+        "sessions": "1011111111",
+        "comingUp": "Waiting for other people, in the last 3 check-ins"
+      },
+      {
+        "name": "Miriam",
+        "line": "12 of 12 tasks",
+        "tag": "On pace",
+        "tone": "proven",
+        "sessions": "1111111111"
+      },
+      {
+        "name": "Aisha",
+        "line": "13 of 12 tasks",
+        "tag": "On pace",
+        "tone": "proven",
+        "sessions": "1101111111"
+      }
+    ]
+  },
+  "shape": {
+    "kind": "bars",
+    "heading": "Reported vs evidence, stage by stage",
+    "note": "The shape of the work",
+    "rows": [
+      {
+        "label": "Worked on",
+        "fill": 39,
+        "count": "18 said, 7 met"
+      },
+      {
+        "label": "Written",
+        "fill": 0,
+        "count": "0 met"
+      },
+      {
+        "label": "Merged",
+        "fill": 0,
+        "count": "0 met"
+      },
+      {
+        "label": "Tested",
+        "fill": 0,
+        "count": "0 met"
+      },
+      {
+        "label": "Deployed",
+        "fill": 0,
+        "count": "0 met"
+      },
+      {
+        "label": "Used",
+        "fill": 0,
+        "count": "0 met"
+      }
+    ],
+    "key": "Outlined: what people reported. Filled: what meets the criteria.",
+    "foot": "96 tasks are reported complete with no stage evidence. The solid bars fill once check-ins link the pull request, test run and deploy."
+  },
+  "groups": {
+    "heading": "By area of work",
+    "cards": [
+      {
+        "title": "Payments",
+        "stats": [
+          {
+            "n": "13",
+            "l": "tasks done"
+          },
+          {
+            "n": "0",
+            "l": "blocked"
+          },
+          {
+            "n": "0",
+            "l": "released, and proven"
+          }
+        ],
+        "text": "Production test due 24 Sep.",
+        "names": "Aisha"
+      },
+      {
+        "title": "Dashboard and reporting",
+        "stats": [
+          {
+            "n": "17",
+            "l": "tasks done"
+          },
+          {
+            "n": "2",
+            "l": "blocked"
+          },
+          {
+            "n": "0",
+            "l": "released, and proven"
+          }
+        ],
+        "text": "Both blocked on other teams.",
+        "names": "Brian, Samuel"
+      },
+      {
+        "title": "Platform and API",
+        "stats": [
+          {
+            "n": "22",
+            "l": "tasks done"
+          },
+          {
+            "n": "1",
+            "l": "blocked"
+          },
+          {
+            "n": "0",
+            "l": "released, and proven"
+          }
+        ],
+        "text": "API migration stalled.",
+        "names": "David, Miriam, Brian"
+      }
+    ]
+  },
+  "who": {
+    "heading": "Who checked in",
+    "note": "The last 10 sessions, one row each",
+    "rows": [
+      {
+        "name": "David",
+        "sessions": "1111110111"
+      },
+      {
+        "name": "Samuel",
+        "sessions": "1110111111"
+      },
+      {
+        "name": "Brian",
+        "sessions": "1011111111"
+      },
+      {
+        "name": "Miriam",
+        "sessions": "1111111111"
+      },
+      {
+        "name": "Aisha",
+        "sessions": "1101111111"
+      }
+    ]
+  },
+  "blockers": {
+    "heading": "Blockers",
+    "note": "Each with its history and the one thing that would clear it",
+    "rows": [
+      {
+        "title": "API response format",
+        "tag": "Blocking",
+        "tone": "concern",
+        "waiting": "No owner reported",
+        "raised": "3 times, 16 Sep to 23 Sep",
+        "affects": "Customer API",
+        "proof": "No one has confirmed owning it",
+        "clear": "Name an owner and a date today. Then: Customer API can finish (40% left)"
+      },
+      {
+        "title": "Data structure for reporting",
+        "tag": "Blocking",
+        "tone": "concern",
+        "waiting": "Data team",
+        "raised": "4 times, 8 Sep to 23 Sep",
+        "affects": "Reporting system; 2 delayed tasks",
+        "proof": "Unverified",
+        "clear": "Written date, or take it to the data lead. Then: Reporting system restarts",
+        "promised": "15 Sep (missed)"
+      },
+      {
+        "title": "API errors in the migration",
+        "tag": "Blocking",
+        "tone": "concern",
+        "waiting": "David",
+        "raised": "2 times, 22 Sep to 23 Sep",
+        "affects": "API migration",
+        "proof": "No error text given",
+        "clear": "Post the exact error and what was tried. Then: API migration can complete",
+        "promised": "Resolve by 24 Sep"
+      },
+      {
+        "title": "Release scope if dependencies slip",
+        "tag": "Decision",
+        "tone": "action",
+        "waiting": "Engineering lead",
+        "raised": "2 times, 21 Sep to 23 Sep",
+        "affects": "Release on 30 Sep",
+        "proof": "Decision pending",
+        "clear": "Decide what ships without the customer API and reporting. Then: The team knows what ships on 30 Sep",
+        "promised": "Decide by 26 Sep"
+      }
+    ]
+  },
+  "keeps": {
+    "heading": "What keeps coming up",
+    "note": "Named after three check-ins in a row, never after one. Each describes the work",
+    "personHeading": "About each person’s work",
+    "people": [
+      {
+        "name": "David",
+        "text": "Problems reported late, for 2 weeks in a row"
+      },
+      {
+        "name": "Brian",
+        "text": "Waiting for other people, in the last 3 check-ins"
+      }
+    ],
+    "sayHeading": "How what people say can run ahead of what happened",
+    "say": [
+      {
+        "title": "“Shipped” without usage",
+        "text": "Work called finished with no deploy or usage evidence.",
+        "who": "Team-wide"
+      },
+      {
+        "title": "Status by definition",
+        "text": "“Done” meaning written or merged; 6 tasks lack test evidence.",
+        "who": "Team-wide"
+      },
+      {
+        "title": "External attribution",
+        "text": "Blocked on someone else, with no owner confirming.",
+        "who": "Brian, David, Samuel"
+      }
+    ],
+    "foot": "Each person sees what’s about them, and can answer it in their own words."
+  },
+  "heading": {
+    "heading": "Where this is heading",
+    "note": "Get a new project off to a good start",
+    "outcomesLabel": "The possible outcomes",
+    "outcomes": [
+      "Start as planned",
+      "Settle goal and owners first",
+      "Rescope"
+    ],
+    "signalsLabel": "The signals behind them",
+    "signals": [
+      {
+        "line": "96 of 100 tasks said done, none deployed",
+        "onRecord": false,
+        "from": "From the engineers’ check-ins"
+      },
+      {
+        "line": "Two things the team waits for have nobody responsible for them",
+        "onRecord": false,
+        "from": "From two blockers’ history"
+      },
+      {
+        "line": "Payments tested in production",
+        "onRecord": true,
+        "from": "From the test run"
+      }
+    ],
+    "settleLabel": "What would settle it",
+    "settle": "Named owners, with dates, for the API format and the data structure by Friday.",
+    "decider": "The engineering lead decides.",
+    "deciderNote": "Groundwork lays out the outcomes and the proof. It doesn’t choose.",
+    "button": "Record the decision"
+  },
+  "overTime": "Over time",
+  "reports": {
+    "heading": "Reports",
+    "note": "Each person’s own, the team’s once shared, and a weekly one",
+    "open": "Open",
+    "rows": [
+      {
+        "name": "Today’s team report",
+        "text": "The day’s gaps: what moved, what didn’t, who’s missing"
+      },
+      {
+        "name": "Your own report",
+        "text": "Only you see it"
+      },
+      {
+        "name": "This week",
+        "text": "Patterns, once they’ve held for two weeks"
+      }
+    ]
+  },
+  "everySession": "Every session",
+  "others": {
+    "heading": "The other boards you’re in",
+    "rows": [
+      {
+        "name": "Sales team, Q3",
+        "tag": "Today’s report ready",
+        "tone": "proven"
+      },
+      {
+        "name": "Kwame, first 90 days",
+        "tag": "Decide how it ends",
+        "tone": "action"
+      },
+      {
+        "name": "Leadership, Q3",
+        "tag": "Your turn",
+        "tone": "action"
+      },
+      {
+        "name": "Supplier review",
+        "tag": "Waiting on Omar",
+        "tone": "sand"
+      },
+      {
+        "name": "Daniel, the next six weeks",
+        "tag": "Both accounts in",
+        "tone": "action"
+      },
+      {
+        "name": "Faith, first 90 days",
+        "tag": "Just started",
+        "tone": "action"
+      }
+    ]
+  },
+  "askBox": {
+    "placeholder": "Ask about this board, for example “Why is Green Mart next quarter?”",
+    "button": "Ask"
+  }
+}

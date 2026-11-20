@@ -55,19 +55,22 @@ describe('#4 END-CONFIRM: finishing a check-in requires explicit confirmation', 
   })
 
   /*
-   * CHANGED 26 OCTOBER 2026 (Hafsah: "End session" is always visible, and ending early keeps everything said). This file pinned the
-   * old confirm step, where "Finish my check-in now" brought up the end card and only "That’s right, finish" finalised. Now the
-   * person's own End session ends it at once, as their own end, and nothing is finalised before they press it.
+   * CHANGED 15 NOVEMBER 2026 (Hafsah, audit of the check-in pages, row 29). On 26 October "End session" ended it at once. It is now
+   * "Pause", and pressing it brings up the end card ("What I wrote down"); only "That’s right, finish" finalises, and that is still
+   * the person's own end, so the server accepts it with anything said.
    */
-  it('nothing is finalised until End session is pressed', async () => {
+  it('nothing is finalised until “That’s right, finish” is pressed', async () => {
     renderChat()
-    await screen.findByText('End session', {}, { timeout: 4000 })
+    fireEvent.click(await screen.findByText('Pause', {}, { timeout: 4000 }))
+    await screen.findByRole('button', { name: 'That’s right, finish' })
     expect((conversationApi.complete as any)).not.toHaveBeenCalled()
   })
 
-  it('End session ends it at once, as the person’s own end', async () => {
+  it('Pause shows what was written down first, and finishing from there is the person’s own end', async () => {
     renderChat()
-    fireEvent.click(await screen.findByText('End session', {}, { timeout: 4000 }))
+    fireEvent.click(await screen.findByText('Pause', {}, { timeout: 4000 }))
+    expect(await screen.findByRole('region', { name: 'What I wrote down' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'That’s right, finish' }))
     await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalledWith(expect.any(String), true))
   })
 })

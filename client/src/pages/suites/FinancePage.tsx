@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { financeApi, type ATotal, type FinanceRequest, type FinanceView, type TheMonthsTotals } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, TextField, Select } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, TextField, Select, Skeleton } from '@/components/gw/ui'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
 import { midSentence } from '@/lib/a-colleague'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { TheAttachedFile } from './TheAttachedFile'
 
 /**
  * THE REQUESTS FOR FINANCE (#/suite/spend/finance). Decision 85, item 2: "Finance verifies, codes,
@@ -94,7 +95,7 @@ export function FinancePage() {
         subtitle="These requests to spend have been approved. Check each one, write the budget line it is paid from, note the receipt or quote, and mark it paid."
       />
 
-      {isLoading && <Note>Loading…</Note>}
+      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
           <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only whoever looks after finance, or an admin, can open this.'} role={user?.role} /></Note>
@@ -120,7 +121,7 @@ export function FinancePage() {
               {monthChoices().map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </Select>}
           >
-            {totals.isLoading && <Note>Loading…</Note>}
+            {totals.isLoading && <Skeleton what="Getting this page" shape="rows" />}
             {totals.data && <TheTotals t={totals.data} />}
           </Section>
 
@@ -194,7 +195,12 @@ function TheTotals({ t }: { t: TheMonthsTotals }) {
 const title = (r: FinanceRequest, currency: string | null) => `${r.name}: ${withCurrency(currency, r.amount)} for ${midSentence(r.what)}`
 
 function Said({ r }: { r: FinanceRequest }) {
-  return <>{r.said.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}</>
+  return (
+    <>
+      {r.said.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
+      {r.attached && <TheAttachedFile a={r.attached} firstName={r.name.split(' ')[0] || r.name} />}
+    </>
+  )
 }
 
 function ARequest({ r, view }: { r: FinanceRequest; view: FinanceView }) {

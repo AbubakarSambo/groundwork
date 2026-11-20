@@ -136,3 +136,24 @@ export function checkInHeaderTabs({
     { key: 'report', label: 'Report', to: `/grounds/${id}?tab=report` },
   ]
 }
+
+/**
+ * WHERE A CONVERSATION AND A PERSON'S OWN REPORT LIVE (fix plan, batch 2, group 5). One owner for
+ * both addresses, so nothing builds its own.
+ *
+ * A check-in's conversation is drawn in its Check-in tab (`c` names which one), and a person's
+ * own report in My work (`report` names which session's). `/checkin/:id` and
+ * `/checkin/:id/report` still work for links already sent in emails and messages: they only
+ * redirect here (App.tsx, TheConversationLivesInItsTab).
+ */
+export function whereAConversationLives(checkInId: string, groundId?: string | null, rest?: URLSearchParams | null): string {
+  if (!groundId) return `/checkin/${checkInId}${rest && rest.toString() ? `?${rest.toString()}` : ''}`
+  const q = new URLSearchParams(rest ?? undefined)
+  q.set('tab', 'chat')
+  q.set('c', checkInId)
+  return `/grounds/${groundId}?${q.toString()}`
+}
+
+export function whereYourReportLives(groundId: string, checkInId?: string | null): string {
+  return `/grounds/${groundId}?tab=mywork${checkInId ? `&report=${checkInId}` : ''}`
+}

@@ -41,8 +41,9 @@ describe('per-row guards', () => {
      * `SessionReportPage.tsx`, which already IS one session - there is no row to disambiguate, so
      * there is exactly one button and `downloadRecord.isPending` alone says whether it is working.
      */
-    const session = read('report/SessionReportPage.tsx')
-    expect(session).toContain("downloadRecord.isPending ? 'Downloading…' : 'Download your record'")
+    /* Batch 2, group 5: SessionReportPage.tsx is gone; your own report is drawn in My work (MyWorkPage.tsx). */
+    const session = read('grounds/MyWorkPage.tsx')
+    expect(session).toContain("download.isPending ? 'Downloading…' : 'Download your record'")
   })
   it('"Send again" on a delivery row is guarded per row', () => {
     expect(read('org/IntegrationsPage.tsx')).toContain("disabled={replay.isPending && replay.variables === d.id}")

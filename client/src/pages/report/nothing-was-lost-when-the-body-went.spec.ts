@@ -29,7 +29,8 @@ const read = (...p: string[]) => readFileSync(path.join(__dirname, ...p), 'utf8'
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 const GUIDE = strip(read('../../components/gw/WhatToWalkInWith.tsx'))
-const SESSION = strip(read('SessionReportPage.tsx'))
+/* Batch 2, group 5: the session report page is gone; the corrections it carried are on your report in My work. */
+const SESSION = strip(read('../grounds/MyWorkPage.tsx')) + strip(read('../../components/gw/TheCheckInYouJustFinished.tsx'))
 const BOARD = strip(read('../board/BoardPage.tsx'))
 const PARTY = strip(read('../../components/gw/SharedReportForAParty.tsx'))
 
@@ -53,8 +54,8 @@ describe('the three things that had nowhere else to be', () => {
     expect(SESSION).toContain('startSelfCorrection')
   })
 
-  it('and how it is put together is at the foot of the board', () => {
-    expect(BOARD).toContain('How this board is put together')
+  it('and the board no longer explains how it is put together (removed 15 November; it was an explainer, not something to read or do)', () => {
+    expect(BOARD).not.toContain('How this board is put together')
   })
 })
 

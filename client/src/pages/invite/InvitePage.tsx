@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -5,18 +6,16 @@ import { InvitationExpired } from './InvitationExpired'
 import { theLastDay } from '@/lib/a-date-reads-the-same-everywhere'
 import { participantsApi } from '@/api'
 import type { InvitePreview } from '@/api/participants'
-import type { GroundScenario } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
-import { Page, Mark, PageTitle, Panel, SubHeading, Callout, Note, Button, FieldLabel, TextField, Modal, Stack } from '@/components/gw/ui'
+import { Page, Mark, PageTitle, Panel, SubHeading, Note, Button, FieldLabel, TextField, Stack } from '@/components/gw/ui'
 import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { keepTheNumberForWhenTheySignIn, saveMyNumber } from '@/lib/a-number-given-before-signing-in'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
 import { opensStraightOnTheQuestion, whereTheLinkGoes } from './the-link-opens-on-the-question'
-import { isEvaluationScenario } from '@/lib/scenario-catalog'
-import { askNameFor } from '@/lib/ask-name'
+import { GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
 
 /**
  * The participant invite landing. ONE PATH: accepting the invite signs the
@@ -78,7 +77,6 @@ export function InvitePage() {
   /* The server's sentence for somebody signed in and not yet let in. Rendered, not navigated past. */
   /* The invited person cannot fix anything themselves and has no other way in; a toast that dismisses is not a failure surface. */
   const [failed, setFailed] = useState('')
-  const [declinedQuietly, setDeclinedQuietly] = useState(false)
   const setAuth = useAuthStore((s) => s.setAuth)
   const signedIn = useAuthStore((s) => !!s.isAuthenticated)
   const signedInEmail = useAuthStore((s) => s.user?.email ?? null)
@@ -91,10 +89,6 @@ export function InvitePage() {
   /* Optional, always asked (Hafsah, 30 October 2026); saved to them through PATCH /auth/me, as Settings saves it, once they are signed in. */
   const [phone, setPhone] = useState('')
   const whatsappOn = useWhatsAppIsOn()
-  /* "What happens to what you write" (design-audit.md section 3, U.20 fifth review): kept out of
-     the page's flow, reachable from a plain link rather than an always-open section or the old
-     folding panel. Its content is the Modal's children, below. */
-  const [showWhatHappens, setShowWhatHappens] = useState(false)
 
   const { data: answer, isLoading, isError } = useQuery({
     queryKey: ['invite', token],
@@ -105,8 +99,11 @@ export function InvitePage() {
   /* An expired invitation opens "This link has expired" (U.3), which carries nothing but the lead's first name. */
   const expired = answer && answer.expired === true ? answer : null
   /* Held for a seat (U.4 third review): the page is the refusal, with no button to answer. */
-  const held = answer && (answer as any).heldForASeat === true ? (answer as { saying: string }) : null
+  const held = answer && ((answer as any).heldForASeat === true || (answer as any).removed === true) ? (answer as { saying: string }) : null
   const preview: InvitePreview | undefined = answer && answer.expired !== true && !held ? (answer as InvitePreview) : undefined
+  /* The phone field starts with the number already on record, as the lead gave it in setup (staging check S17); they can change it. */
+  const numberOnRecord = preview?.phone ?? null
+  useEffect(() => { if (numberOnRecord) setPhone((typed) => typed || numberOnRecord) }, [numberOnRecord])
 
   const accept = useMutation({
     mutationFn: () => participantsApi.accept(token, { firstName: firstName || undefined, lastName: lastName || undefined }),
@@ -164,6 +161,12 @@ export function InvitePage() {
         void saveMyNumber(phone)
         const checkInId = (res as any).checkInId as string | null
         const groundId = (res as any).groundId as string
+        /* A link that names where it goes (the "report is ready" mail) goes there, for the person already signed in as well as the person
+           who is signing in now. It used to open the check-in either way, so Joel pressed "Your report is ready" and started a new check-in. */
+        if (next.startsWith('/grounds/')) {
+          navigate(next, { replace: true })
+          return
+        }
         navigate(checkInId ? whereTheLinkGoes(checkInId, preview?.scenario) : `/grounds/${groundId}/p`, { replace: true })
         return
       }
@@ -213,7 +216,7 @@ export function InvitePage() {
     onError: (err: any) => {
       /* The server's own sentence when there is one: it says which thing refused and what to do. Kept on
          the page, because this is the one person with no other route in. */
-      const said = err?.response?.data?.message ?? (err?.response ? 'Could not start your session. Please try again.' : 'We could not reach Groundwork just then. Check your connection and try again.')
+      const said = err?.response?.data?.message ?? (err?.response ? 'Could not start your check-in. Please try again.' : 'We could not reach Groundwork just then. Check your connection and try again.')
       setFailed(said)
       toast.error(said)
     },
@@ -326,7 +329,7 @@ export function InvitePage() {
     return (
       <Page narrow>
         <Mark />
-        <OneLineStatus>{straightToTheReport ? 'Opening your report…' : 'Opening your question…'}</OneLineStatus>
+        <OneLineStatus>{straightToTheReport ? 'Opening your report…' : GETTING_YOUR_FIRST_QUESTION_READY}</OneLineStatus>
       </Page>
     )
   }
@@ -335,7 +338,7 @@ export function InvitePage() {
     return (
       <Page narrow>
         <Mark />
-        <OneLineStatus>Opening your check-in…</OneLineStatus>
+        <OneLineStatus>{GETTING_YOUR_FIRST_QUESTION_READY}</OneLineStatus>
       </Page>
     )
   }
@@ -345,7 +348,7 @@ export function InvitePage() {
       not complete, and the way through it is the same as any other broken link: open it again from
       the email, or sign in. */}
   if (!token) return <Page narrow><Mark /><LinkProblem kind="invite" detail="This invitation link is not complete. Open the link from your email again." /></Page>
-  if (isLoading) return <Page narrow><Mark /><OneLineStatus>Loading your invitation…</OneLineStatus></Page>
+  if (isLoading) return <Page narrow><Mark /><Skeleton what="Getting your invitation" shape="lines" count={2} /></Page>
   if (expired) return <InvitationExpired token={token} leadFirstName={expired.leadFirstName} />
   if (held) { const card = heldForASeatCard(held.saying); return <Page narrow><Mark /><PageTitle title={card.heading} subtitle={card.sub} /></Page> }
   if (isError || !preview) return (
@@ -429,7 +432,7 @@ export function InvitePage() {
       <Page narrow>
         <Mark />
         <PageTitle
-          title="You already have an account"
+          title="You have already joined"
           subtitle={`Sign in to pick up this check-in, “${preview.groundLabel}”.`}
         />
         <Stack gap={10}>
@@ -481,7 +484,6 @@ export function InvitePage() {
         <PageTitle title={theInvitationWords?.heading ?? theInvitation(preview)} subtitle={(preview.organisationName || preview.endsAt) ? whereAndUntil(preview) : undefined} />
 
         <Stack gap={19}>
-          <Callout>{whoCanReadThis(preview.scenario, preview.organisationName)}</Callout>
 
           {/*
             A SCENARIO'S OWN INVITATION WORDS (piece 11; docs/anchor-scenario-plan.md section 5 row
@@ -511,13 +513,15 @@ export function InvitePage() {
                     <p className="gwui-panel-text">{preview.schedule}</p>
                   </div>
                 )}
-                <div>
-                  <SubHeading>Who sees your answers</SubHeading>
-                  <p className="gwui-panel-text">
-                    You see your own report straight away. {preview.leadFirstName ?? 'The person who runs it'} shares a team report
-                    with everyone in it.
-                  </p>
-                </div>
+                {preview.whoCanReadWhatYouSay && (
+                  <div>
+                    <SubHeading>Who sees your answers</SubHeading>
+                    {/* The one sentence, served by the server, so this page never guesses who may read what. */}
+                    <p className="gwui-panel-text">{preview.whoCanReadWhatYouSay}</p>
+                    {/* Where answers are kept and who processes them is said on the public privacy page. */}
+                    <p className="gwui-panel-text"><a href="https://myground.work/privacy-and-ai" target="_blank" rel="noreferrer">How Groundwork handles your answers</a></p>
+                  </div>
+                )}
                 {/* "Your number" (U.20 ninth round): shown only when the server says WHO would see
                     this person's own share of a target, through the engine's own visibility rule
                     (targetsFor, participants.service.ts's preview) - never the number itself, since
@@ -537,7 +541,7 @@ export function InvitePage() {
 
             {/*
               U.6 review: a check-in that opens later is not answered today. Its first check-in's day
-              is said, here, before the button rather than under "What happens to what you write", and
+              is said, here, before the button rather than lower down, and
               nothing offers to answer now.
             */}
             {opensLater && (
@@ -554,24 +558,26 @@ export function InvitePage() {
                 <form onSubmit={(e) => { e.preventDefault(); setFailed(''); if (!accept.isPending) accept.mutate() }}>
                   <Stack gap={10}>
                     {failed && <Note tone="error">{failed}</Note>}
-                    <div className="gwui-field-pair">
-                      <FieldLabel htmlFor="invite-first">
-                        First name
-                        <TextField id="invite-first" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Optional" />
-                      </FieldLabel>
-                      <FieldLabel htmlFor="invite-last">
-                        Last name
-                        <TextField id="invite-last" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
-                      </FieldLabel>
-                    </div>
+                    {/* The lead already typed a name for this person, so it is only asked when none was given (audit of the check-in pages, row 15). */}
+                    {!preview?.nameGiven?.trim() && (
+                      <div className="gwui-field-pair">
+                        <FieldLabel htmlFor="invite-first">
+                          First name
+                          <TextField id="invite-first" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Optional" />
+                        </FieldLabel>
+                        <FieldLabel htmlFor="invite-last">
+                          Last name
+                          <TextField id="invite-last" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
+                        </FieldLabel>
+                      </div>
+                    )}
                     <PhoneNumberField id="invite-phone" value={phone} onChange={setPhone} whose="yours" whatsappOn={whatsappOn} />
                   </Stack>
-                  <p className="gwui-field-help">Your name is optional. If you add it, the others will see it on the shared report.</p>
                   {/* Whether they go straight in or wait for an admin, as the invitation said it (Hafsah, 12 October). */}
                   {preview?.whatHappensWhenYouJoin && <p className="gwui-field-help">{preview.whatHappensWhenYouJoin}</p>}
                   <div className="gwui-form-actions">
                     <Button type="submit" size="big" wide disabled={accept.isPending} >
-                      {accept.isPending ? 'Setting up your session…' : theInvitationWords?.button ?? 'Answer today’s check-in now'}
+                      {accept.isPending ? 'Getting your first question.' : theInvitationWords?.button ?? 'Answer today’s check-in now'}
                     </Button>
                   </div>
                 </form>
@@ -587,73 +593,6 @@ export function InvitePage() {
           </Stack>
         </Stack>
       </Stack>
-
-      {/*
-          THE PRIVACY BRIEFING - REACHABLE, NOT IN THE PAGE'S FLOW (Hafsah, pictured at 1440px
-          against join-invite.jpg: the always-open section made the page twice the prototype's
-          length, and the prototype has no such section at all). It used to arrive on the NEXT
-          screen, after "Add my version" - a disclosure shown after the decision it is meant to
-          inform - so it still has to be reachable from here, just not printed in full every time.
-          One plain link under the button's line opens the same four claims, unchanged, in the
-          shared Modal. Accepting from this page still stamps the acknowledgement (accept.onSuccess),
-          so the chat opens straight onto the first question instead of repeating this back at them.
-      */}
-      <p style={{ textAlign: 'center' }}>
-        <Button kind="quiet" onClick={() => setShowWhatHappens(true)}>What happens to what you write</Button>
-      </p>
-      {showWhatHappens && (
-        <Modal title="What happens to what you write" onClose={() => setShowWhatHappens(false)}>
-          <h2 className="gwui-empty-panel-title">What happens to what you write</h2>
-          {/* The fourth heading used to be styled differently from the other three (plain, muted
-              text rather than a heading) - Hafsah's first review. All four are SubHeading now. */}
-          <div className="gwui-subheading-list">
-            {/*
-              REPLACES THE OLD "NOBODY YOU WORK WITH READS IT" PANEL (Hafsah, 29 September, item 11,
-              conflict A): it told a participant that no manager and no admin ever saw their words,
-              which decision 1 in CLAUDE.md's privacy rules makes untrue for every check-in. This
-              says instead what is actually true of THIS check-in, built the same way as the
-              callout above (`whoCanReadThis`), so the two can never disagree.
-            */}
-            <div>
-              <SubHeading>Who can read what you write</SubHeading>
-              <p className="gwui-note">{whoCanReadThis(preview.scenario, preview.organisationName)}</p>
-            </div>
-            <div>
-              <SubHeading>We cannot show it to ourselves either</SubHeading>
-              <p className="gwui-note">When we look at a check-in to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
-            </div>
-            <div>
-              <SubHeading>Nothing here trains a model</SubHeading>
-              <p className="gwui-note">What you say is used to build the shared picture and nothing else.</p>
-            </div>
-            <div>
-              <SubHeading>And the part we are not going to dress up</SubHeading>
-              <p className="gwui-note">Your answers are stored on our servers, and they are processed by Google's models to build the record. We are not going to tell you they are unreadable to any human being anywhere, because that would not be true yet.</p>
-            </div>
-          </div>
-          <Button kind="secondary" onClick={() => setShowWhatHappens(false)}>Close</Button>
-        </Modal>
-      )}
-
-      {/* "By joining, you agree that your contribution record belongs to you." is gone (U.3 review): it
-          is not on the prototype, it is jargon, and nothing records it as a consent. */}
-
-      <div className="gwui-foot-divider">
-        <Note>
-          You never have to take part. If you would rather not, you can close this page. Nothing is
-          shared, and saying no is never held against you.
-        </Note>
-        {/* "/" for a signed-out invitee bounces to the marketing site - ejecting somebody from the product the
-            moment they decline, right after a paragraph promising declining is never held against them. A
-            settled state instead: nothing was shared, and they can come back. */}
-        {declinedQuietly ? (
-          <p role="status" className="gwui-note">
-            Nothing has been shared and nobody is told. This link keeps working if you change your mind.
-          </p>
-        ) : (
-          <Button kind="quiet" onClick={() => setDeclinedQuietly(true)}>Not right now</Button>
-        )}
-      </div>
     </Page>
   )
 }
@@ -678,39 +617,13 @@ export function heldForASeatCard(saying: string): { heading: string; sub?: strin
   return { heading: saying }
 }
 
-/**
- * WHO CAN READ THIS CHECK-IN, BUILT FROM ITS OWN SETTINGS (Hafsah, 29 September, item 11,
- * conflict A). The prototype's first line, "The people in this check-in, including your manager,
- * can see what you say in it.", is always true - decision 1 in CLAUDE.md's privacy rules makes it
- * so for every check-in. The admins sentence is added only when it is true of THIS check-in: never
- * on a performance plan, a promotion or a renewal (decision 5, corrected 29 September to cover all
- * three the same way as a performance plan), and left out too when the scenario is not known,
- * which is the more private reading. `isEvaluationScenario` (`scenario-catalog.ts`) is a
- * client-side stand-in for a field the engine does not send yet (request 78); once it does, this
- * should read that field instead of guessing from the scenario.
- */
-export function whoCanReadThis(scenario: GroundScenario | null | undefined, organisationName?: string | null): string {
-  /*
-   * B-205: "YOUR ORGANISATION" IS NOT TRUE FOR EVERYONE WHO READS IT. The preview is served before
-   * anyone has signed in, so the server has no way yet to say whether the person opening this link
-   * belongs to the organisation running the check-in or is a guest in it (an outsider added to
-   * "Sales team, Q4" read it as if it were their own company). Naming the organisation instead of
-   * calling it "yours" is true for both a colleague and a guest, without needing to tell them apart -
-   * noted for the engine (docs/requests-to-engine.md) in case a field for that distinction is ever
-   * worth adding. Left out entirely, as before, when there is no organisation name to put in its
-   * place.
-   */
-  const admins = (!scenario || isEvaluationScenario(scenario) || !organisationName)
-    ? ''
-    : ` Admins at ${organisationName} can read every check-in.`
-  return `The people in this check-in, including your manager, can see what you say in it.${admins} Your own report and your questions to ${askNameFor(organisationName)} stay private.`
-}
-
 /** "Akinyi invited you to the Deal progress check-in" (the approved journey, stage 6), with the check-in's own name. */
 export function theInvitation(p: { leadFirstName?: string | null; initiatorName: string; groundLabel: string }): string {
   const who = (p.leadFirstName ?? '').trim() || p.initiatorName.trim() || 'Someone'
-  const name = p.groundLabel.trim()
-  return /\bcheck-?in$/i.test(name) ? `${who} invited you to the ${name.replace(/^the\s+/i, '')}` : `${who} invited you to the ${name} check-in`
+  const name = p.groundLabel.trim().replace(/^the\s+/i, '')
+  /* A name that already says whose it is ("Stella's check-in") reads as a name, with no "the" before it (staging check S17). */
+  const the = /^\S+['’]s\s/.test(name) ? '' : 'the '
+  return /\bcheck-?in$/i.test(name) ? `${who} invited you to ${the}${name}` : `${who} invited you to ${the}${name} check-in`
 }
 
 /**

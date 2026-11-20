@@ -33,12 +33,7 @@ import {
 const FULL_SOURCE = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
 const FILLS_IN_SOURCE = readFileSync(join(__dirname, 'FillsInAsYouTalk.tsx'), 'utf8')
 
-const BRIEFING_START = FULL_SOURCE.indexOf('  if (showAdminBriefing) {')
-const BRIEFING_END = FULL_SOURCE.indexOf('  /**\n   * THE ONE CARD THAT IS NOT A CONVERSATION.')
-if (BRIEFING_START === -1 || BRIEFING_END === -1 || BRIEFING_END <= BRIEFING_START) {
-  throw new Error('the 4d-4 briefing source range markers moved - update this spec to find the new ones')
-}
-const BRIEFING_RANGE = stripComments(FULL_SOURCE.slice(BRIEFING_START, BRIEFING_END))
+/* The lead's "You're up first" briefing (showAdminBriefing) was deleted on 15 November 2026: nothing ever showed it (audit of the check-in pages, row 27). */
 
 const CHECKIN_START = FULL_SOURCE.indexOf('{/* U.6: the panel that fills in as you talk')
 const CHECKIN_END = FULL_SOURCE.indexOf('{/* Doc context overlay */}')
@@ -50,12 +45,6 @@ const CHECKIN_RANGE = stripComments(FULL_SOURCE.slice(CHECKIN_START, CHECKIN_END
 const FILLS_IN_STRIPPED = stripComments(FILLS_IN_SOURCE)
 
 describe('4d-4: the source this piece rebuilt carries no old class or banned inline style', () => {
-  it('the lead\'s first-check-in briefing uses none of the old classes or inline styles', () => {
-    expect(oldClassesUsed(BRIEFING_RANGE)).toEqual([])
-    expect(bannedInlineStyleProps(BRIEFING_RANGE)).toEqual([])
-    expect(bannedStyleReferenceProps(BRIEFING_RANGE)).toEqual([])
-    expect(tooSmallFontSizes(BRIEFING_RANGE)).toEqual([])
-  })
   it('the fills-in panel wrapper, the check-in messages, bubbles, and invite bar use none of the old classes or inline styles', () => {
     expect(oldClassesUsed(CHECKIN_RANGE)).toEqual([])
     expect(bannedInlineStyleProps(CHECKIN_RANGE)).toEqual([])

@@ -144,7 +144,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
       <PageTitle
         crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label, to: `/grounds/${groundId}/board` }, { label: 'Reports' }]}
         /* one-session.jpg: a shared session is named by its number; today's, not shared yet, by its day. */
-        title={collections ? collections.title : onboardingSubject ? `${onboardingSubject}, session ${sessionNumber}` : teamsDay?.title ? teamsDay.title : rep.released ? `Session ${sessionNumber}` : sessionDay ? `The team’s report, ${aDay(sessionDay)}` : `The team’s report, session ${sessionNumber}`}
+        title={collections ? collections.title : onboardingSubject ? `${onboardingSubject}, check-in ${sessionNumber}` : teamsDay?.title ? teamsDay.title : rep.released ? `Check-in ${sessionNumber}` : sessionDay ? `The team’s report, ${aDay(sessionDay)}` : `The team’s report, check-in ${sessionNumber}`}
       />
       {/* team-report.jpg: when it last changed and who checked in on the left, "Yesterday" and "This week" as buttons on the right. */}
       <div className="pb-report-head">
@@ -155,7 +155,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
               <p className="pb-updated">{`Last updated on ${aDay(lastIn.completedAt)} at ${aTime(lastIn.completedAt)}${lastInName ? `, when ${lastInName} checked in` : ''}.${direct ? '' : ' It only changes when something new comes in, such as a check-in, a document or a number from another system.'}`}</p>
             )}
           <p className="pb-report-count">
-            {`Session ${sessionNumber}. ${answered.length} of ${counting.length} people checked in.`}
+            {`Check-in ${sessionNumber}. ${answered.length} of ${counting.length} people checked in.`}
             {notIn.length > 0 && ` ${listed(notIn)} had not checked in${lastIn ? ` by ${aTime(lastIn.completedAt)}` : ' yet'}.`}
           </p>
         </div>
@@ -219,7 +219,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
           ? <div className="pb-in-short">{((teamsDay.inShort ?? []) as string[]).map((l) => <p className="pb-read" key={l}>{l}</p>)}</div>
           : ((rep.pictureLines ?? []) as string[]).length
           ? <div className="pb-in-short">{(rep.pictureLines as string[]).map((l) => <p className="pb-read" key={l}>{l}</p>)}</div>
-          : <p className="gwui-panel-text">{rep.finding?.text ?? 'Nothing is written for this session yet.'}</p>}
+          : <p className="gwui-panel-text">{rep.finding?.text ?? 'Nothing is written for this check-in yet.'}</p>}
       </Section>
 
       {/* team-report.jpg: the lead's own question, in a dark-edged box with the heading inside it. The other check-ins' team
@@ -361,7 +361,7 @@ export function ThePicturedTeamReport({ groundId, sessionNumber, ground }: { gro
 
       </>)}
 
-      <Link to={`/grounds/${groundId}?tab=report`} className="pb-wide-btn">Every session</Link>
+      <Link to={`/grounds/${groundId}?tab=report`} className="pb-wide-btn">Every check-in</Link>
 
       {/* sales-team-report.txt: the closing line, how sure Groundwork is about this report (T-12). */}
       {teamsDay?.howSure && <p className="pb-how-sure">{teamsDay.howSure}</p>}

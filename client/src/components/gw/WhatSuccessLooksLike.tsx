@@ -131,7 +131,8 @@ export function WhatSuccessLooksLike({
     )
   }
 
-  const { count, of } = data.spokenTo
+  /* A record that carries no count draws without one rather than failing the page. */
+  const { count, of } = data.spokenTo ?? { count: 0, of: 0 }
   const conditions = data.conditions ?? []
   const definitions = data.definitions ?? []
 

@@ -33,7 +33,7 @@ describe('B-201: a stranger at /grounds/:id/session/:n reads GroundGone, not an 
     ;(groundsApi.get as any).mockRejectedValue({ response: { status: 403 } })
     renderRound()
     expect(await screen.findByText('This check-in isn’t available any more')).toBeTruthy()
-    expect(screen.queryByText('Every session')).toBeNull()
+    expect(screen.queryByText('Every check-in')).toBeNull()
     expect(screen.queryByText(/Session 1/)).toBeNull()
   })
 
@@ -41,7 +41,7 @@ describe('B-201: a stranger at /grounds/:id/session/:n reads GroundGone, not an 
     ;(groundsApi.get as any).mockRejectedValue({ response: { status: 404 } })
     renderRound()
     expect(await screen.findByText('This check-in isn’t available any more')).toBeTruthy()
-    expect(screen.queryByText('Every session')).toBeNull()
+    expect(screen.queryByText('Every check-in')).toBeNull()
     expect(screen.queryByText(/Session 1/)).toBeNull()
   })
 })

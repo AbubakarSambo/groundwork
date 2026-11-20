@@ -46,7 +46,7 @@ export function LeadsGuidePage() {
 
   return (
     <div style={{ padding: '40px 32px', maxWidth: 720 }}>
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 'var(--gw-space-block)' }}>
         <button
           onClick={() => navigate('/grounds')}
           style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
@@ -55,16 +55,16 @@ export function LeadsGuidePage() {
         </button>
       </div>
 
-      <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '-.02em' }}>
+      <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 'var(--gw-space-line)', letterSpacing: '-.02em' }}>
         Running a check-in
       </h1>
-      <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 32, lineHeight: '22px' }}>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 'var(--gw-space-section)', lineHeight: '22px' }}>
         For anybody about to lead one. Four things about how it works, and what you can see as the person who set it up. Send this link to your team.{' '}
         <TextAction onClick={copyTheLink} strong>{copied ? 'Copied ✓' : 'Copy the link'}</TextAction>
       </p>
 
-      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 12 }}>How to run one</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 34 }}>
+      <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', margin: '0 0 var(--gw-space-block)' }}>How to run one</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 'var(--gw-space-section)' }}>
         {HOW_TO_STEPS.map((s, i) => (
           <div key={s.title} style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '15px 17px' }}>
             <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
@@ -74,7 +74,7 @@ export function LeadsGuidePage() {
                 */}
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-sub)', flexShrink: 0 }}>{i + 1}</span>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>{s.title}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 'var(--gw-space-line)' }}>{s.title}</div>
                 <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px', margin: 0 }}>{s.body}</p>
               </div>
             </div>
@@ -88,8 +88,8 @@ export function LeadsGuidePage() {
         * first question anybody asks their manager after being invited, and an admin who cannot
         * answer it loses the room.
         */}
-      <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '15px 17px', marginBottom: 34 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>What an admin can see</div>
+      <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '15px 17px', marginBottom: 'var(--gw-space-section)' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 'var(--gw-space-line)' }}>What an admin can see</div>
         {/*
           FAULT 4, 6 Oct 2026: THIS USED TO SAY AN ADMIN "NEVER SEES ANYBODY'S CHECK-IN ITSELF" -
           the opposite of decision 5 (docs/decisions.md), which an admin can act on only if this

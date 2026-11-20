@@ -2,21 +2,11 @@ import { apiClient } from './client'
 import type { User } from '@/types'
 
 export interface MagicLinkResponse { message: string; email: string }
-/**
- * `needsPassword` is optional on the type because older responses will not carry it, and a missing
- * flag must read as "no password step needed" rather than sending everybody to set one. The server
- * computes it in `buildAuthResponse`, so every door returns it.
- */
+/** An emailed link signs in and goes on: no password step and no "Your email is confirmed" page after it (batch 2, group 6). */
 export interface VerifyEmailResponse {
   accessToken: string
   user: User
-  needsPassword?: boolean
-  passwordSetupToken?: string
-  /**
-   * True when opening this link has just created the account (a waiting sign-up became real). The
-   * page then says "Your email is confirmed" before going on. Not sent by the server yet; absent, the
-   * page goes straight on, as it always has.
-   */
+  /** True when opening this link has just created the account (a waiting sign-up became real). */
   justCreated?: boolean
   /** Where they were going when they asked for this link, such as "/j/coamana-6rr7". Only a path in this app. */
   next?: string
@@ -128,7 +118,7 @@ export const authApi = {
   /* `next`: where in the app they were going, such as an organisation's invite link. The server keeps
      it with the link and hands it back when the link is opened (U.3 review). */
   entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }, hp?: string, password?: string, next?: string | null) =>
-    apiClient.post<MagicLinkResponse & { draftToken?: string; passwordKey?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}), ...(password ? { password } : {}), ...(next ? { next } : {}) }).then(r => r.data),
+    apiClient.post<MagicLinkResponse & { draftToken?: string; passwordKey?: string; removedSays?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}), ...(password ? { password } : {}), ...(next ? { next } : {}) }).then(r => r.data),
 
   requestPasswordSetup: () =>
     apiClient.post<{ token: string }>('/auth/request-password-setup').then(r => r.data),

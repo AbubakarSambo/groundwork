@@ -20,7 +20,7 @@ const base: RowFacts = {
 describe('what a sidebar row says', () => {
   it('to a participant or lead whose turn it is', () => {
     expect(whatTheRowSays({ ...base, attention: { kind: 'yours', sessionNumber: 2 } }))
-      .toBe('Coamana growth, Q3 paying customers. Session 2 of 12 is ready for you, and one thing is still open.')
+      .toBe('Coamana growth, Q3 paying customers. Check-in 2 of 12 is ready for you, and one thing is still open.')
   })
 
   /* Changed 3 November (F5 part 3): the row says the server's one count sentence whole (api grounds/this-sessions-count.ts), the
@@ -41,15 +41,15 @@ describe('what a sidebar row says', () => {
 
   it('when it is late', () => {
     expect(whatTheRowSays({ ...base, attention: { kind: 'overdue', sessionNumber: 2, daysLate: 9 } }))
-      .toBe('Coamana growth, Q3 paying customers. Your session 2 of 12 is 9 days past its date, and one thing is still open.')
+      .toBe('Coamana growth, Q3 paying customers. Your check-in 2 of 12 is 9 days past its date, and one thing is still open.')
   })
 
   it('counts sessions the way the check-in\'s card does, and says so, so the two never disagree', () => {
     // The card beside it reads "0 of 12 sessions done" from roundsDone: sessions EVERYBODY finished.
     expect(whatTheRowSays({ ...base, alignment: null }))
-      .toBe('Coamana growth, Q3 paying customers. Nobody has finished a whole session yet, out of 12.')
+      .toBe('Coamana growth, Q3 paying customers. Nobody has finished a whole check-in yet, out of 12.')
     expect(whatTheRowSays({ ...base, roundsDone: 3, alignment: { agreed: 4, open: 0 } }))
-      .toBe('Coamana growth, Q3 paying customers. Everybody has finished 3 of 12 sessions, and 4 things are agreed and nothing is still open.')
+      .toBe('Coamana growth, Q3 paying customers. Everybody has finished 3 of 12 check-ins, and 4 things are agreed and nothing is still open.')
   })
 
   it('says a closed one has ended, and nothing at all it does not know', () => {
@@ -59,7 +59,7 @@ describe('what a sidebar row says', () => {
 
   it('is sentences, never pieces joined by full stops', () => {
     const said = whatTheRowSays({ ...base, attention: { kind: 'yours', sessionNumber: 2 } })
-    expect(said).not.toMatch(/sessions done\.|\. \d+ open\./)
+    expect(said).not.toMatch(/check-ins done\.|\. \d+ open\./)
     expect(said.split('. ')).toHaveLength(2)
   })
 })

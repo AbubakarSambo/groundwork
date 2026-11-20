@@ -609,6 +609,10 @@ export type BoardPresent = {
    * order is by join date and not by level - Groundwork does not keep which level each person
    * works at (api/src/modules/board/each-kind-gets-its-own-board.ts, `NO_LEVEL_ON_RECORD`).
    */
+  /** The plain sentences a pictured board opens with: the answer, where it stands, what puts it at risk, and how each is known. */
+  theOpening?: { heading: string; says: string[]; howKnown: string }
+  /** The pieces only a written read of the record can give, each sentence with how it is known (api: the-boards-own-read.ts). Served to whoever runs the check-in. */
+  theBoardsOwnRead?: { howKnown: string; pieces: { id: string; heading: string; form: 'one' | 'list'; place: 'top' | 'end'; sentences: { says: string; how: 'said' | 'shown' }[] }[] }
   whatEachLevelUnderstood?: {
     heading: string
     state: 'filled' | 'none-yet'
@@ -651,11 +655,16 @@ export type BoardPresent = {
     says: string
     groups: ({
       group: string
+      /** The tile's own name, such as "Behind on repayment". */
+      title?: string
       count: number
       says: string
+      /** What people said in their check-ins is behind it, in their words; null where nobody said. */
+      cause?: string | null
       who: string[] | null
     } | {
       group: string
+      title?: string
       state: 'not-known'
       why: string
     })[]
@@ -776,7 +785,6 @@ export type BoardPresent = {
     whatWouldSettleIt: string[]
     whatWouldSettleItSays: string | null
     whoDecides: string
-    groundworkDoesNotChoose: string
     recordTheDecision: string | null
     decided: string | null
   } | null
@@ -792,7 +800,7 @@ export type BoardPresent = {
   whatTheSystemsShow?: {
     heading: string
     state: 'filled' | 'not-known'
-    numbers?: { key: string; source: string; value: number; unit: string | null; measuredAt: string; says: string }[]
+    numbers?: { key: string; /** What it counts, in the organisation's own words (the description the system sends). */ label?: string; source: string; value: number; unit: string | null; measuredAt: string; says: string }[]
     whatANumberIsNot?: string[]
     /** Only on `'not-known'`: why nothing can be said yet. */
     why?: string
@@ -818,7 +826,7 @@ export type BoardPresent = {
 
   /** REQUEST 107 (c), part 3: grouped by site, county, team or queue, where a line names one. */
   byArea?:
-    | { state: 'filled'; heading: string; areas: { area: string; records: number; says: string }[] }
+    | { state: 'filled'; heading: string; areas: { area: string; records: number; says: string; recordIds?: string[] }[] }
     | { state: 'not-known'; why: string }
 
   /**
@@ -835,7 +843,7 @@ export type BoardPresent = {
     why?: string
     /** Who each person is in the lead's own words, served to the lead alone. */
     note?: string
-    groups?: { group: string; count: number; answered: number; says: string }[]
+    groups?: { group: string; count: number; answered: number; says: string; participantIds?: string[] }[]
   }
 
   /**

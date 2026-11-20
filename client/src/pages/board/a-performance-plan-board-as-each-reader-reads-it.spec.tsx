@@ -1,3 +1,4 @@
+/* S18 (staging check, 4 November): how often is said in the one wording every page uses (howOftenTheTeamChecksIn); "Weekly, Mondays." was a second wording. */
 import { it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -67,8 +68,8 @@ it('Wairimu reads the suggestion and the way into his case', async () => {
   expect(screen.queryByText(/Daniel was also told/)).toBeNull()
   expect(screen.queryByText(/visits without the shop’s name/i)).toBeNull()
   expect(screen.getByText('Open Daniel’s case').closest('a')?.getAttribute('href')).toBe('/grounds/g-pip/person/p-d')
-  expect(screen.getByText('Daniel and you. Weekly, Mondays. Session 4 of 6.')).toBeTruthy()
-  expect(screen.getByText('Every session')).toBeTruthy()
+  expect(screen.getByText('Daniel and you. Every Monday. Check-in 4 of 6.')).toBeTruthy()
+  expect(screen.getByText('Every check-in')).toBeTruthy()
 })
 
 it('Daniel does not read the lead’s suggestion or the way into his own case', async () => {

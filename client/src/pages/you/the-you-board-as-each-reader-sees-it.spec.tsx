@@ -23,7 +23,7 @@ import { patternsApi } from '@/api/patterns'
 const EMPTY: YourBoard = { checkIns: [], turns: [], goals: [], saidYoudDo: [], todos: [], coaching: null, ownReports: [] }
 
 const MIRIAMS: YourBoard = {
-  checkIns: [{ id: 's', label: 'Sales team, Q3', youRunIt: false, line: 'You have finished 38 sessions.', to: '/grounds/s' }],
+  checkIns: [{ id: 's', label: 'Sales team, Q3', youRunIt: false, line: 'You have finished 38 check-ins.', to: '/grounds/s' }],
   turns: [{ key: 'turn-s', title: 'Your own check-in for Sales team, Q3', detail: null, action: { label: 'Start it', to: '/checkin/c39' } }],
   goals: [
     { id: 'g1', says: 'Close Westgate Deli and Lakeside Supermarket this quarter.', checkIn: 'Sales team, Q3' },
@@ -41,8 +41,8 @@ const MIRIAMS: YourBoard = {
 const WAIRIMUS: YourBoard = {
   ...EMPTY,
   checkIns: [
-    { id: 'l', label: 'Leadership, Q3', youRunIt: false, line: 'You have finished 12 sessions.', to: '/grounds/l' },
-    { id: 's', label: 'Sales team, Q3', youRunIt: true, line: 'You run this check-in. You have finished 38 sessions.', to: '/grounds/s' },
+    { id: 'l', label: 'Leadership, Q3', youRunIt: false, line: 'You have finished 12 check-ins.', to: '/grounds/l' },
+    { id: 's', label: 'Sales team, Q3', youRunIt: true, line: 'You run this check-in. You have finished 38 check-ins.', to: '/grounds/s' },
   ],
   saidYoudDo: [{ id: 'k9', text: 'Bring the enterprise pipeline numbers', when: 'Today, 6pm', checkIn: 'Leadership, Q3', state: 'open', stateSays: 'Open' }],
 }
@@ -108,7 +108,7 @@ describe('Miriam reads her own You board', () => {
     expect(within(section('Your own reports')).getByText('23 September')).toBeInTheDocument()
     const each = section('Your work in each')
     expect(within(each).getByText('Sales team, Q3')).toBeInTheDocument()
-    expect(within(each).getByText('You have finished 38 sessions.')).toBeInTheDocument()
+    expect(within(each).getByText('You have finished 38 check-ins.')).toBeInTheDocument()
     expect(hrefOf(each, 'Open')).toBe('/grounds/s')
     const data = screen.getByRole('region', { name: 'Your data' })
     expect(within(data).getByText('Everything you’ve written, in every check-in, as one file.')).toBeInTheDocument()
@@ -145,7 +145,7 @@ describe('Wairimu reads her own, as someone who runs a check-in and takes part i
     const { container } = open(WAIRIMU, WAIRIMUS)
     await screen.findByRole('heading', { name: 'Your work in each' })
     const each = section('Your work in each')
-    expect(within(each).getByText('You run this check-in. You have finished 38 sessions.')).toBeInTheDocument()
+    expect(within(each).getByText('You run this check-in. You have finished 38 check-ins.')).toBeInTheDocument()
     expect(within(section('What you said you’d do')).getByText('Bring the enterprise pipeline numbers')).toBeInTheDocument()
     expect(container.textContent).not.toContain('Westgate')
     expect(screen.queryByRole('heading', { name: 'Your goals' })).toBeNull()
@@ -162,8 +162,8 @@ describe('two check-ins on "Your work in each" share one label (walkthrough pass
     const board: YourBoard = {
       ...EMPTY,
       checkIns: [
-        { id: 'c1', label: 'Help a new hire get started', youRunIt: false, line: 'You have finished 1 session.', to: '/grounds/c1' },
-        { id: 'c2', label: 'Help a new hire get started', youRunIt: false, line: 'You have finished 2 sessions.', to: '/grounds/c2' },
+        { id: 'c1', label: 'Help a new hire get started', youRunIt: false, line: 'You have finished 1 check-in.', to: '/grounds/c1' },
+        { id: 'c2', label: 'Help a new hire get started', youRunIt: false, line: 'You have finished 2 check-ins.', to: '/grounds/c2' },
       ],
     }
     open(MIRIAM, board)
@@ -186,7 +186,7 @@ describe('Grace, an admin who runs check-ins but has never been one’s own subj
   it('does not print the "Your board" heading with nothing under it', async () => {
     open(GRACE, {
       ...EMPTY,
-      checkIns: [{ id: 's', label: 'Sales team, Q3', youRunIt: true, line: 'You run this check-in. You have finished 38 sessions.', to: '/grounds/s' }],
+      checkIns: [{ id: 's', label: 'Sales team, Q3', youRunIt: true, line: 'You run this check-in. You have finished 38 check-ins.', to: '/grounds/s' }],
     })
     await screen.findByRole('heading', { name: 'Your work in each' })
     expect(screen.queryByRole('heading', { name: 'Your board' })).not.toBeInTheDocument()
@@ -274,7 +274,7 @@ describe('Daniel, when Groundwork has made a suggestion about him (C3, U.13, wha
   const DANIEL = { id: 'u-d', firstName: 'Daniel', role: 'MEMBER' }
   const DANIELS: YourBoard = {
     ...EMPTY,
-    checkIns: [{ id: 'd', label: 'Daniel, the next six weeks', youRunIt: false, line: 'You have finished 3 sessions.', to: '/grounds/d' }],
+    checkIns: [{ id: 'd', label: 'Daniel, the next six weeks', youRunIt: false, line: 'You have finished 3 check-ins.', to: '/grounds/d' }],
     suggestionsAboutYou: [{
       id: 's-d', checkIn: { id: 'd', label: 'Daniel, the next six weeks' }, leadName: 'Wairimu',
       facts: 'In the last 4 weeks, you kept 11 of your 20 commitments. When fewer than 6 in 10 are kept, Groundwork suggests extra help to your manager.',

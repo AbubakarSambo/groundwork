@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { CARD, LABEL } from './OpsLayout'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -108,7 +109,7 @@ export function OpsTable<T>({
   filteredOutOf?: number
 }) {
   if (rows === undefined) {
-    return <p style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Working it out…</p>
+    return <Skeleton what="Getting this table" shape="lines" count={2} />
   }
 
   /*

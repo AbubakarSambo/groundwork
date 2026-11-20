@@ -14,11 +14,11 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * say, "What it asks", "Who sees your answers", and "Answer today's check-in now". Hafsah asked for
  * the prototype's page (26 September), so this file now reads that, rendered as the person sees it.
  *
- * DECIDED, 29 September, item 11 conflict A: "Nobody else reads your answers." and "Wairimu reads
+ * DECIDED, 29 September, item 11 conflict A: "Nobody else reads your conversation." and "Wairimu reads
  * the report, not your words." are dropped for good, not shown while a decision is pending - they
  * are not true, since decision 1 in CLAUDE.md's privacy rules lets the people in a check-in and its
  * organisation's admins read what somebody said in it. The box on who can see what you say is now
- * built from the check-in's own scenario (`whoCanReadThis`, InvitePage.tsx): the admins sentence is
+ * built from the check-in's own scenario (`whoCanReadWhatYouSay`, served): the admins sentence is
  * left out on a performance plan, a promotion or a renewal, and left out too when the scenario is
  * not known. "What happens to what you write" carries the same true sentence in its own panel,
  * "Who can read what you write", replacing the old "Nobody you work with reads it".
@@ -32,6 +32,8 @@ const PREVIEW = {
   groundLabel: 'Sales team, Q3',
   initiatorName: 'Wairimu Kamau',
   leadFirstName: 'Wairimu',
+  /* Served by the server's one owner (api grounds/who-may-read-this-check-in.ts whoCanReadWhatYouSay), never composed here. */
+  whoCanReadWhatYouSay: 'You see your own report straight away. Wairimu shares a team report when it is ready. Nobody else reads your conversation.',
   organisationName: 'Baridi Appliances',
   endsAt: '2026-09-30T00:00:00.000Z',
   schedule: 'About ten minutes each weekday.',
@@ -54,6 +56,13 @@ function open(preview: any = PREVIEW) {
 }
 
 describe('the invitation a participant reads', () => {
+  /* Staging check S17 (4 November): Stella gave Rita's number in setup, and the invitation's phone field was empty. */
+  it('starts the phone field with the number the lead gave', async () => {
+    open({ ...PREVIEW, phone: '+254 712 345 678' })
+    await screen.findByRole('heading', { name: 'Wairimu invited you to the Sales team, Q3 check-in' })
+    const field = document.getElementById('invite-phone') as HTMLInputElement | null
+    expect(field?.value).toBe('+254 712 345 678')
+  })
   /*
    * U.20 fifth review (Hafsah, pictured at 1440px): "What happens to what you write" moved from an
    * always-open section before the form to a plain link under the button's own line, so the person
@@ -66,14 +75,13 @@ describe('the invitation a participant reads', () => {
     const text = document.body.textContent ?? ''
     const order = [
       'Baridi Appliances, until 30 September.',
-      'The people in this check-in, including your manager, can see what you say in it.',
       'What it asks',
       'About ten minutes each weekday.',
       'Who sees your answers',
-      'You see your own report straight away. Wairimu shares a team report',
+      /* 15 November 2026 (rows 12 and 14, and Hafsah's wording): the callout and the modal are gone; this one short block is all that is said. */
+      'You see your own report straight away. Wairimu shares a team report when it is ready. Nobody else reads your conversation.',
       'Answer today’s check-in now',
       'About ten minutes. You choose how you sign in afterwards.',
-      'What happens to what you write',
     ].map(t => text.replace(/\s+/g, ' ').indexOf(t))
     expect(order.every(i => i > -1)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
@@ -83,7 +91,7 @@ describe('the invitation a participant reads', () => {
     open()
     await screen.findByText('Who sees your answers')
     const text = document.body.textContent ?? ''
-    expect(text).not.toMatch(/Nobody else reads your answers/)
+    /* Changed 15 November 2026: "Nobody else reads your conversation." is back, as the end of the server's one sentence (Hafsah's decision), so it is no longer barred; "reads the report, not your words" still is. */
     expect(text).not.toMatch(/reads the report, not your words/)
     expect(text).not.toMatch(/Why you\.|What it takes\.|What you get back\./)
     /* The old block's "About ten minutes" is gone; the note under "Answer today's check-in now" says it once (fix list, item 4). */
@@ -113,44 +121,21 @@ describe('the invitation a participant reads', () => {
   })
 })
 
-describe('who can read this, built from the check-in\'s own scenario (item 11, conflict A)', () => {
-  /* Decision 5 (corrected 29 September) keeps a performance plan, a promotion or a renewal from an
-     admin with no access to it, the same as a performance plan alone. The invitation must never
-     promise admins can read a check-in where the server would actually refuse them. */
-  it('says admins can read an ordinary check-in', async () => {
-    open({ ...PREVIEW, scenario: 'NEW_PROJECT' })
+/* Changed 15 November 2026 (Hafsah): the page no longer builds the "who can read this" sentence from the scenario, so the cases for admins and for
+   the evaluation scenarios moved to the server's own spec (api grounds/who-can-read-what-you-say.spec.ts). Here the page is held to drawing
+   exactly what it is served, once, and to naming no admins. */
+describe('who sees your answers, as served', () => {
+  it('draws the served sentence once, under "Who sees your answers", and nothing of its own', async () => {
+    open({ ...PREVIEW, whoCanReadWhatYouSay: 'You see your own report straight away. Wairimu reads it too. Nobody else reads your conversation.' })
     await screen.findByText('Who sees your answers')
-    /*
-     * B-205: NAMED, NOT CLAIMED AS "YOURS". The preview is read before anyone signs in, so the
-     * server cannot yet tell a colleague of Baridi Appliances from an outsider added as a guest to
-     * one of its check-ins - "Admins in your organisation can read every check-in." was read, and
-     * believed, by exactly such an outsider. Naming the organisation is true either way.
-     */
-    expect(screen.getByText(/Admins at Baridi Appliances can read every check-in\./)).toBeTruthy()
+    expect(screen.getAllByText('You see your own report straight away. Wairimu reads it too. Nobody else reads your conversation.')).toHaveLength(1)
+    expect(document.body.textContent).not.toMatch(/Admins at|can see what you say in it/)
   })
 
-  it.each(['PIP', 'RECOGNITION', 'CONTRACT_RENEWAL'])('leaves out the admins line on %s', async (scenario) => {
-    open({ ...PREVIEW, scenario })
-    await screen.findByText('Who sees your answers')
-    const text = document.body.textContent ?? ''
-    expect(text).not.toMatch(/Admins at Baridi Appliances can read every check-in\./)
-    expect(screen.getByText('The people in this check-in, including your manager, can see what you say in it. Your own report and your questions to Ask Baridi Appliances stay private.')).toBeTruthy()
-  })
-
-  it('leaves the admins line out too when the scenario is not known - the more private reading', async () => {
-    open({ ...PREVIEW, scenario: undefined })
-    await screen.findByText('Who sees your answers')
-    const text = document.body.textContent ?? ''
-    expect(text).not.toMatch(/Admins at Baridi Appliances can read every check-in\./)
-  })
-
-  /* B-205: with no organisation name to name, the line has nothing true left to say, so it is left
-     out rather than falling back to the old, unnamed "your organisation" claim. */
-  it('leaves the admins line out when there is no organisation to name', async () => {
-    open({ ...PREVIEW, scenario: 'NEW_PROJECT', organisationName: null })
-    await screen.findByText('Who sees your answers')
-    const text = document.body.textContent ?? ''
-    expect(text).not.toMatch(/Admins .* can read every check-in\./)
+  it('draws no block at all when nothing is served, rather than guessing', async () => {
+    open({ ...PREVIEW, whoCanReadWhatYouSay: undefined })
+    await screen.findByText('What it asks')
+    expect(screen.queryByText('Who sees your answers')).toBeNull()
   })
 })
 
@@ -158,6 +143,9 @@ describe('the two lines built from the record', () => {
   it('names the lead by first name', () => {
     expect(theInvitation(PREVIEW)).toBe('Wairimu invited you to the Sales team, Q3 check-in')
     expect(theInvitation({ ...PREVIEW, leadFirstName: null })).toBe('Wairimu Kamau invited you to the Sales team, Q3 check-in')
+    /* Staging check S17 (4 November): never "the Stella's check-in". */
+    expect(theInvitation({ ...PREVIEW, leadFirstName: 'Stella', groundLabel: "Stella's check-in" })).toBe("Stella invited you to Stella's check-in")
+    expect(theInvitation({ ...PREVIEW, leadFirstName: 'Stella', groundLabel: 'Sales updates' })).toBe('Stella invited you to the Sales updates check-in')
   })
 
   /*
@@ -193,11 +181,13 @@ describe('the rest of the page, as the participant reads it (U.3 review)', () =>
     expect(screen.getByText('A check-in at Coamana.')).toBeTruthy()
   })
 
-  it('says the name line and the way out in plain sentences, with no dashes', async () => {
+  /* Changed 15 November 2026 (audit rows 13 and 15): the name help line and the "You never have to take part" note with its "Not right now" button are gone. */
+  it('reads in plain sentences with no dashes, and has no reassurance note or button that does nothing', async () => {
     open()
     await screen.findByText('Who sees your answers')
-    expect(read()).toContain('Your name is optional. If you add it, the others will see it on the shared report.')
-    expect(read()).toContain('You never have to take part. If you would rather not, you can close this page. Nothing is shared, and saying no is never held against you.')
+    expect(read()).not.toContain('Your name is optional')
+    expect(read()).not.toContain('You never have to take part')
+    expect(screen.queryByRole('button', { name: 'Not right now' })).toBeNull()
     expect(read()).not.toMatch(/ - /)
     expect(read()).not.toMatch(/obligated|declining is never shown as a negative/)
   })
@@ -221,7 +211,8 @@ describe('the rest of the page, as the participant reads it (U.3 review)', () =>
     expect(document.querySelector('.gwui-page-narrow .gwui-mark')).not.toBeNull()
     expect(document.querySelector('.gw-hdr')).toBeNull()
     expect(document.querySelector('.gw-box-blue')).toBeNull()
-    expect(document.querySelector('.gwui-callout')?.textContent).toMatch(/^\s*The people in this check-in, including your manager, can see what you say in it\./)
+    /* The tinted callout is gone (row 14): the same sentence now sits in "Who sees your answers". */
+    expect(document.querySelector('.gwui-callout')).toBeNull()
   })
 })
 
@@ -265,14 +256,11 @@ describe('"You choose how you sign in afterwards" (U.6 review)', () => {
 })
 
 
-describe('the opening day is not under "What happens to what you write" (U.6 review)', () => {
-  it('comes before that heading', async () => {
+describe('the opening day, on an invitation to a check-in that opens later (U.6 review)', () => {
+  it('is said before the button, and there is no privacy heading left to put it under', async () => {
     open({ ...PREVIEW, opensOn: '2099-10-05T00:00:00.000Z' })
     const line = await screen.findByText('Your first check-in opens on Monday 5 October.')
-    const heading = screen.getByText('What happens to what you write')
-    expect(line.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    /* U.20: the panel is no longer a folding <details> (the prototype has none on join-invite.jpg),
-       so there is nothing left that could hide the line inside it - this is now simply true. */
-    expect(heading.closest('details')).toBeNull()
+    expect(screen.queryByText('What happens to what you write')).toBeNull()
+    expect(line.closest('details')).toBeNull()
   })
 })

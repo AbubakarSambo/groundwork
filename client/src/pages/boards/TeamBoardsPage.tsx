@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -71,7 +72,7 @@ export function TeamBoardsPage() {
   }, [active?.id])
 
   if (isLoading) {
-    return <div style={WRAP}><p style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Loading your boards.</p></div>
+    return <div style={WRAP}><Skeleton what="Getting your boards" shape="lines" count={2} /></div>
   }
 
   if (tabs.length === 0) {

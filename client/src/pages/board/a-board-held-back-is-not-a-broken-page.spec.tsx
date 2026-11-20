@@ -30,7 +30,7 @@ function renderBoard() {
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={['/grounds/g1/board']}>
-        <Routes><Route path="/grounds/:id/board" element={<BoardPage />} /></Routes>
+        <Routes><Route path="/grounds/:id/board" element={<BoardPage />} /><Route path="/grounds/:id" element={<div>The check-in itself</div>} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -67,12 +67,15 @@ describe('a board held back until you answer', () => {
     expect(await screen.findByRole('button', { name: /do my check-in/i })).toBeTruthy()
   })
 
-  it('still says plainly when a check-in has no board at all, which is a different fact', async () => {
+  /* Changed 15 November 2026 (Hafsah): a check-in with no board has no board page. Whoever lands on the address is sent straight to
+     the check-in (or the report, where there is one), and nothing is drawn or said in between. */
+  it('sends somebody who lands on a check-in with no board straight to the check-in, with no page in between', async () => {
     ;(boardApi.get as any).mockResolvedValue({
       groundId: 'g1', renders: false, mode: 'PRIVATE', family: 'SENSING',
       reason: 'There is no board for this check-in yet.',
     })
     renderBoard()
-    expect(await screen.findByText(/No shared board here/i)).toBeTruthy()
+    expect(await screen.findByText('The check-in itself')).toBeTruthy()
+    expect(screen.queryByText(/No shared board here/i)).toBeNull()
   })
 })

@@ -17,7 +17,9 @@ import { join } from 'path'
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 const read = (...p: string[]) => strip(readFileSync(join(__dirname, ...p), 'utf8'))
 
-const PAGE = read('SessionReportPage.tsx')
+/* Batch 2, group 5: the report page and the whole-report page are gone. A person's own report is drawn in My work (Hafsah, 4
+   November, item 55), so the rules below are read where it lives now. The shared half is the session's own page (RoundReportPage). */
+const PAGE = read('..', 'grounds', 'MyWorkPage.tsx')
 const ENTRY = read('..', 'enter', 'EntryChatPage.tsx')
 const PARTY = read('..', '..', 'components', 'gw', 'SharedReportForAParty.tsx')
 const CHAT = read('..', 'chat', 'ChatPage.tsx')
@@ -45,38 +47,19 @@ describe('the report that opens is the report they read', () => {
      */
     expect(PAGE).toContain('<TheReportYouSawAtTheEnd')
     expect(PAGE).toContain('<TheCheckInYouJustFinished')
-    expect(PAGE).toMatch(/data\??\.report\s*\n?\s*\?/)
+    expect(PAGE).toMatch(/session\??\.report\s*\n?\s*\?/)
   })
 
-  it('falls back to what that session privately produced, rather than to a second shared report', () => {
-    /*
-     * IT USED TO FALL BACK TO `SessionReportCard`, on the grounds that a signed-in session ends on
-     * that card so it is "the report you saw". True at the end of a session, where the card is the
-     * only thing on the screen. False here, because this page also carries the shared report a few
-     * lines down - and once a round closes the card's own state IS the cross reference, so the top
-     * of the page drew "WHERE THIS STANDS, ACROSS EVERYONE" and the bottom drew it again.
-     *
-     * Read back on the rendered page: "there's my report which is not even a shared report and
-     * then the whole report, I have no fucking clue what is happening."
-     *
-     * So the private half falls back to the one private thing the session produced - the solo
-     * record written for this person when their own check-in completed - and the shared half stays
-     * the only place the cross reference appears.
-     */
+  it('draws your own report and never a second shared one beside it', () => {
+    /* Changed in batch 2: the whole-report page put the shared report under your own, the layers Hafsah asked to remove. */
     expect(PAGE).not.toContain('<SessionReportCard')
-    expect(PAGE).toContain('soloArtifact')
-    expect(PAGE).toContain('<TheSessionsReport')
-  })
-
-  it('and each half says whose it is', () => {
-    /* Two reports on one page is fine. Two reports on one page both called "report" is not. */
-    /* U.9: the prototype's names, "Your report" and "The team’s report" (own-report.txt). */
-    expect(PAGE).toContain('>Your report<')
-    expect(PAGE).toContain('>The team’s report<')
+    expect(PAGE).not.toContain('<TheSessionsReport')
+    expect(PAGE).toContain('heading="Your report"')
   })
 
   it('can be corrected from the page that shows it', () => {
-    expect(PAGE).toContain('startSelfCorrection')
+    expect(read('..', '..', 'components', 'gw', 'TheCheckInYouJustFinished.tsx')).toContain('startSelfCorrection')
+    expect(PAGE).toContain('<InferenceReviewPanel')
   })
 
   it('is where a finished session links, from every list of sessions', () => {
@@ -94,7 +77,7 @@ describe('the report that opens is the report they read', () => {
     const LIST = read('..', '..', 'components', 'gw', 'TheReportIsAListOfSessions.tsx')
     const MINE = read('..', '..', 'components', 'gw', 'WhatYouAreCarryingForward.tsx')
     expect(LIST).toContain('/report`)')
-    expect(PARTY).toContain('/report`)')
+    expect(PARTY).toContain('whereYourReportLives(')
     for (const src of [PARTY, LIST, MINE]) {
       expect(src).not.toMatch(/navigate\(`\/checkin\/\$\{(ci|r)\.id\}`\)/)
     }
@@ -111,8 +94,10 @@ describe('the report that opens is the report they read', () => {
     expect(MINE).not.toContain('are on Report')
   })
 
-  it('and the end of a signed-in session offers it directly', () => {
-    expect(CHAT).toContain('/report`)')
-    expect(CHAT).toContain('Open my report')
+  it('and the end of a signed-in session says where it is, in Groundwork’s last line in the chat, rather than opening a page or a pop-up', () => {
+    /* Changed in batch 2 (item 54): "Open my report" was a button on the end page; the end is now "Done. Your report is in My work." */
+    expect(CHAT).toContain('Your report is ready in')
+    expect(CHAT).not.toContain('DoneYourReportIsInMyWork')
+    expect(CHAT).not.toContain('Open my report')
   })
 })

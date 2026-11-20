@@ -8,7 +8,7 @@ import {
 import { documentsApi } from '@/api/documents'
 import {
   Section, Panel, Button, Note, Callout, Stack, FlexRow, Tag, Text, TextField, TextArea, Select, FieldLabel, FieldRows, FieldRow,
-  RowList, Row, SubHeading, Folded,
+  RowList, Row, SubHeading, Folded, Skeleton
 } from '@/components/gw/ui'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { AddADocument } from '@/components/gw/AddADocument'
@@ -57,7 +57,7 @@ export function ReferencesAndResourcesPage({ groundId, ground, isTheLead }: { gr
     queryFn: () => groundsApi.referencesAndResources(groundId),
     enabled: !!groundId,
   })
-  if (isLoading) return <Note role="status">Getting References and resources…</Note>
+  if (isLoading) return <Skeleton what="Getting References and resources" shape="rows" />
   if (error || !data) return <Callout tone="warning">References and resources could not be read just now. Try again in a moment.</Callout>
   if (!data.on) return null
   /* The direct morning (lib/the-direct-morning.tsx): said once for the page, from what it is served. */

@@ -40,8 +40,8 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * `notOpenYet` exactly as the pills were - nobody is late for a session that has not opened);
  * whether peers are hidden from each other on this ground (kept as the note under the summary line);
  * and the closing sentence about what the report will show once everyone has answered (kept, same
- * place). Nothing the pills said is dropped; `WhoIsInThis.tsx` itself is untouched and still used and
- * tested on its own (nobody-is-late-before-it-opens.spec.tsx).
+ * place). Nothing the pills said is dropped. `WhoIsInThis.tsx` itself was deleted on 7 November 2026; its rules
+ * are checked on the page that draws the roster now (people-and-setup-as-each-reader-reads-it.spec.tsx).
  */
 export function WhosInItRoster({
   ground, isInitiator, isOrgAdmin, colleagues, addManyParticipants,
@@ -62,7 +62,7 @@ export function WhosInItRoster({
   fixingEmailValue: string
   setFixingEmailValue: (v: string) => void
   fixEmail: { mutate: (v: { participantId: string; email: string }) => void; isPending: boolean }
-  resendInvite: { mutate: (id: string) => void; isPending: boolean; variables?: string }
+  resendInvite: { mutate: (id: string) => void; isPending: boolean; variables?: string; isSuccess?: boolean; data?: any }
   /** Controlled from CheckInPeopleAndSetup.tsx, whose "Who's in it" heading carries the two openers. */
   showAdd: boolean
   showLink: boolean
@@ -210,7 +210,7 @@ export function whereThisPersonIs(p: any, c: {
   fixingEmailValue: string
   setFixingEmailValue: (v: string) => void
   fixEmail: { mutate: (v: { participantId: string; email: string }) => void; isPending: boolean }
-  resendInvite: { mutate: (id: string) => void; isPending: boolean; variables?: string }
+  resendInvite: { mutate: (id: string) => void; isPending: boolean; variables?: string; isSuccess?: boolean; data?: any }
 }): { name: string; when: string; statusText: string; tone: TagTone; sessionLine: string | null; help?: { tone: 'look' | 'concern'; text: string; action?: React.ReactNode } } {
   const { ground, isInitiator, isOrgAdmin, isNotCounted, sessionParties, notOpenYet, fixingEmailId, setFixingEmailId, fixingEmailValue, setFixingEmailValue, fixEmail, resendInvite } = c
   const { name, inASentence, nameless } = nameWithoutGuessing(p)
@@ -269,8 +269,8 @@ export function whereThisPersonIs(p: any, c: {
   const sessionLine = notOpenYet || !session || notLetIn || !!(p as any).notJoinedYet
     ? null
     : session.done
-      ? `${session.isSelf ? 'You have' : `${atTheStart(name)} has`} checked in for this session.`
-      : `${session.isSelf ? 'You have' : `${atTheStart(name)} has`} not checked in for this session yet.`
+      ? `${session.isSelf ? 'You have' : `${atTheStart(name)} has`} checked in for this check-in.`
+      : `${session.isSelf ? 'You have' : `${atTheStart(name)} has`} not checked in for this check-in yet.`
 
   let help: { tone: 'look' | 'concern'; text: string; action?: React.ReactNode } | undefined
   if (bounced) {
@@ -356,9 +356,13 @@ export function whereThisPersonIs(p: any, c: {
         : undefined,
     }
   } else if (!p.userId && isInitiator) {
+    /* A message that fades is gone before it is read, and in the app's pane it is not seen at all: what the server did is said in the page, on the row. */
+    const justSent = resendInvite.isSuccess && resendInvite.variables === p.id
     help = {
       tone: 'look',
-      text: waitsForItsStart(p) ? 'Their invitation goes out on the morning the check-in starts.' : 'They have not joined yet.',
+      text: justSent
+        ? (resendInvite.data?.sent === false ? 'Their invitation already went today, so it was not sent a second time. Their link still works.' : 'Their invitation was sent again just now.')
+        : waitsForItsStart(p) ? 'Their invitation goes out on the morning the check-in starts.' : 'They have not joined yet.',
       action: !waitsForItsStart(p)
         ? <button type="button" className="gw-link t-small" disabled={resendInvite.isPending} onClick={() => resendInvite.mutate(p.id)}>
             {resendInvite.isPending && resendInvite.variables === p.id ? 'Sending…' : 'Resend invite'}

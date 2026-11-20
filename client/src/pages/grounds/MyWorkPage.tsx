@@ -1,12 +1,19 @@
 import { TheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
 import { ThatsNotRight } from '@/components/gw/ThatsNotRight'
 import { useState, type ReactNode } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { conversationApi } from '@/api/conversation'
+import { reportsApi } from '@/api/reports'
+import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
+import { Link, useSearchParams } from 'react-router-dom'
 import { groundsApi, type MyWork, type ABehaviourRead } from '@/api/grounds'
 import { TheirRecord } from '@/components/gw/TheirRecord'
+import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFinished'
+import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import {
   Section, Panel, Note, Callout, Stack, Folded, FlexRow, Tag, Text, Select, RowList, Row, FieldRows, FieldRow,
+  PartBoundary, Skeleton
 } from '@/components/gw/ui'
 
 /**
@@ -42,14 +49,14 @@ export function MyWorkPage({ groundId, rest, onAllYourReports }: {
     queryFn: () => groundsApi.myWork(groundId, person),
     enabled: !!groundId,
   })
-  if (isLoading) return <Note role="status">Getting My work…</Note>
+  if (isLoading) return <Skeleton what="Getting My work" shape="rows" />
   if (error || !data) return <Callout tone="warning">My work could not be read just now. Try again in a moment.</Callout>
   /* The server says the switch is off: today's page, as it was handed in. */
   if (!data.on) return <>{rest}</>
   /* The direct morning (lib/the-direct-morning.tsx): said once for the page and the rest of My work inside it. */
   return (
     <TheDirectMorning on={isTheDirectMorningOn(data)}>
-      <ThePage groundId={groundId} served={data} onPerson={setPerson} rest={rest} onAllYourReports={onAllYourReports} />
+      <PartBoundary><ThePage groundId={groundId} served={data} onPerson={setPerson} rest={rest} onAllYourReports={onAllYourReports} /></PartBoundary>
     </TheDirectMorning>
   )
 }
@@ -83,8 +90,49 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
       )}
 
       {/* THEIR NAME AND THREE NUMBERS */}
-      <div data-gw-my-work-top>
-        <Section heading={served.heading} note={served.topLine}>
+      <PartBoundary><TheTop served={served} /></PartBoundary>
+
+      {/* THE FOCUS THIS WEEK, from the most important Needs work. Not served where the organisation keeps judgements of a person off. */}
+      {/* B7: the focus is the one dark band on the page, named inside the band, not a section heading of its own. */}
+      {judged && (served.focus
+        ? <section aria-label={`${your} focus this week`} data-gw-my-work-focus className="gwui-focus-band"><p className="gw-focus-label">{`${your} focus this week`}</p><p className="gwui-focus-line">{served.focus.line}</p><p className="gwui-focus-why">{served.focus.why}</p></section>
+        : <Note tone="muted">{served.focusEmpty}</Note>)}
+
+      <PartBoundary><ToDo served={served} askedOf={self ? 'Asked of you' : `Asked of ${first}`} /></PartBoundary>
+      <PartBoundary><Achieved served={served} heading={self ? 'What you achieved' : `What ${first} achieved`} /></PartBoundary>
+      <PartBoundary>
+        {judged
+          ? <Performing served={served} heading={self ? 'How you’re performing' : `How ${first} is performing`} />
+          : <Section heading={self ? 'How you’re performing' : `How ${first} is performing`}><Note tone="muted">{served.performing.note}</Note></Section>}
+      </PartBoundary>
+      <PartBoundary>{(judged || served.coaching.better.length > 0) && <Coaching served={served} />}</PartBoundary>
+
+      {/* THEIR RECORD, AND THE COACHING GROUNDWORK GAVE THEM: only where the server sends it (the direct morning). */}
+      {served.record && <PartBoundary><TheirRecord record={served.record} asOneFold /></PartBoundary>}
+
+      {/* THE PERSON'S OWN REPORT, HERE (batch 2, group 5): it used to be a page of its own, then a whole-report page. */}
+      {self && !served.reports.private && served.reports.items.length > 0 && <PartBoundary><YourReport groundId={groundId} items={served.reports.items} /></PartBoundary>}
+
+      {/* YOUR CHECK-INS AND YOUR REPORTS, side by side */}
+      <div className="gwui-two-up">
+        <PartBoundary><YourCheckInsPanel served={served} judged={judged} /></PartBoundary>
+        <PartBoundary><YourReportsPanel served={served} self={self} onAllYourReports={onAllYourReports} /></PartBoundary>
+      </div>
+
+      <PartBoundary><Items groundId={groundId} served={served} /></PartBoundary>
+
+      {/* B7 ends with the deals. Everything the page carried before B7 stays, folded under one line, so nothing is lost and the page is B7's length. */}
+      {rest && <Folded summary={self ? 'More from your check-ins' : `More from ${first}’s check-ins`}>{rest}</Folded>}
+    </Stack>
+    </div>
+  )
+}
+
+function TheTop({ served }: { served: Served }) {
+  return (
+    <div data-gw-my-work-top>
+        {/* The server's topLine is an explainer and a privacy note, so it is not drawn (Hafsah, 15 November 2026). */}
+        <Section heading={served.heading}>
           {/* B7: three small chips, the number large and its words beside it, not three wide tiles. */}
           <div className="gwui-chips" role="list" aria-label="Your numbers">
             {served.numbers.map((n, i) => (
@@ -93,25 +141,11 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
           </div>
         </Section>
       </div>
+  )
+}
 
-      {/* THE FOCUS THIS WEEK, from the most important Needs work. Not served where the organisation keeps judgements of a person off. */}
-      {/* B7: the focus is the one dark band on the page, named inside the band, not a section heading of its own. */}
-      {judged && (served.focus
-        ? <section aria-label={`${your} focus this week`} data-gw-my-work-focus className="gwui-focus-band"><p className="gw-focus-label">{`${your} focus this week`}</p><p className="gwui-focus-line">{served.focus.line}</p><p className="gwui-focus-why">{served.focus.why}</p></section>
-        : <Note tone="muted">{served.focusEmpty}</Note>)}
-
-      <ToDo served={served} askedOf={self ? 'Asked of you' : `Asked of ${first}`} />
-      <Achieved served={served} heading={self ? 'What you achieved' : `What ${first} achieved`} />
-      {judged
-        ? <Performing served={served} heading={self ? 'How you’re performing' : `How ${first} is performing`} />
-        : <Section heading={self ? 'How you’re performing' : `How ${first} is performing`}><Note tone="muted">{served.performing.note}</Note></Section>}
-      {(judged || served.coaching.better.length > 0) && <Coaching served={served} />}
-
-      {/* THEIR RECORD, AND THE COACHING GROUNDWORK GAVE THEM: only where the server sends it (the direct morning). */}
-      {served.record && <TheirRecord record={served.record} asOneFold />}
-
-      {/* YOUR CHECK-INS AND YOUR REPORTS, side by side */}
-      <div className="gwui-two-up">
+function YourCheckInsPanel({ served, judged }: { served: Served; judged: boolean }) {
+  return (
         <Panel heading={served.checkIns.heading}>
           {served.checkIns.emptySays ? <Note tone="muted">{served.checkIns.emptySays}</Note> : (
             <FieldRows>
@@ -121,6 +155,11 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
             </FieldRows>
           )}
         </Panel>
+  )
+}
+
+function YourReportsPanel({ served, self, onAllYourReports }: { served: Served; self: boolean; onAllYourReports?: () => void }) {
+  return (
         <Panel heading={served.reports.heading}>
           {served.reports.private ? <Note tone="muted">{served.reports.private}</Note> : served.reports.items.length === 0 ? (
             <Note tone="muted">{served.reports.emptySays}</Note>
@@ -131,7 +170,9 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
                   <Row key={r.checkInId} columns="minmax(110px, auto) 1fr auto" inset="panel">
                     <Text size="14" weight={600} as="span">{r.when}</Text>
                     <span>{r.line}</span>
-                    <Link to={`/checkin/${r.checkInId}/report`}>Read</Link>
+                    {self
+                      ? <ReadThisOne checkInId={r.checkInId} />
+                      : <Link to={`/checkin/${r.checkInId}/report`}>Read</Link>}
                   </Row>
                 ))}
               </RowList>
@@ -139,14 +180,6 @@ function ThePage({ groundId, served, onPerson, rest, onAllYourReports }: {
             </Stack>
           )}
         </Panel>
-      </div>
-
-      <Items groundId={groundId} served={served} />
-
-      {/* B7 ends with the deals. Everything the page carried before B7 stays, folded under one line, so nothing is lost and the page is B7's length. */}
-      {rest && <Folded summary={self ? 'More from your check-ins' : `More from ${first}’s check-ins`}>{rest}</Folded>}
-    </Stack>
-    </div>
   )
 }
 
@@ -293,5 +326,71 @@ function Items({ groundId, served }: { groundId: string; served: Served }) {
         </Panel>
       )}
     </Section>
+  )
+}
+
+/**
+ * ONE OF YOUR OWN REPORTS, DRAWN ON MY WORK (Hafsah, 4 November, issue 55).
+ *
+ * The session named in the address (`report`, from a link or "Read" below), or else the latest.
+ * The same report the old report page drew (TheCheckInYouJustFinished, as pictured), so nothing
+ * in it is lost; only the page around it is gone.
+ */
+function YourReport({ groundId, items }: { groundId: string; items: { checkInId: string; when: string }[] }) {
+  const [searchParams] = useSearchParams()
+  const asked = searchParams.get('report')
+  const chosen = items.find((r) => r.checkInId === asked) ?? items[0]
+  const { data: ground } = useQuery({ queryKey: ['ground', groundId], queryFn: () => groundsApi.get(groundId), enabled: !!groundId, retry: false })
+  /* The on-time credit, served to the person whose report it is (api engagement/who-answers-and-when.ts). */
+  const { data: session } = useQuery({ queryKey: ['session-report', chosen.checkInId], queryFn: () => conversationApi.sessionReport(chosen.checkInId), enabled: !!chosen.checkInId, retry: false })
+  /* The claims read from what they said rather than quoted, each correctable: walled to this reader at the read. */
+  const { data: groundReport } = useQuery({ queryKey: ['report', groundId], queryFn: () => reportsApi.get(groundId), enabled: !!groundId && !!(ground as any)?.report, retry: false })
+  const download = useMutation({
+    mutationFn: () => conversationApi.download(chosen.checkInId),
+    onSuccess: () => toast.success('Your record is downloading.'),
+    onError: () => toast.error('Could not download that record. Try again.'),
+  })
+  const row = (((ground as any)?.checkIns ?? []) as any[]).find((c) => c.id === chosen.checkInId)
+  if (!row?.sessionNumber) return null
+  const inferences = (groundReport as any)?.inferences
+  return (
+    <section id="your-report" aria-label="Your report" data-gw-your-report={chosen.checkInId}>
+      <Section heading="Your report" note={chosen.when}>
+        <Stack gap={12}>
+          {session?.onTime && <p className="t-small">{session.onTime}</p>}
+          {/* Where the session's own report stands, in the server's sentence, when there is none to draw (where-a-sessions-report-stands.ts). */}
+          {session && !session.report && session.state && session.state !== 'ready' && session.says && <p className="t-small" role="status">{session.says}</p>}
+          {/* A session answered before signing in kept the report it ended on; that one is drawn, the same as the end showed it. */}
+          {session?.report
+            ? <TheReportYouSawAtTheEnd report={session.report} />
+            : <TheCheckInYouJustFinished checkInId={chosen.checkInId} groundId={groundId} sessionNumber={row.sessionNumber} light pictured />}
+          {Array.isArray(inferences) && inferences.length > 0 && <InferenceReviewPanel groundId={groundId} inferences={inferences} />}
+          <div>
+            <button type="button" className="gw-link t-small" disabled={download.isPending} onClick={() => download.mutate()} aria-label={`Download your check-in ${row.sessionNumber} record`}>
+              {download.isPending ? 'Downloading…' : 'Download your record'}
+            </button>
+          </div>
+        </Stack>
+      </Section>
+    </section>
+  )
+}
+
+/** "Read" opens that session's report above, on this page, rather than on a page of its own. */
+function ReadThisOne({ checkInId }: { checkInId: string }) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  return (
+    <button
+      type="button"
+      className="gw-link"
+      onClick={() => {
+        const next = new URLSearchParams(searchParams)
+        next.set('report', checkInId)
+        setSearchParams(next, { replace: true })
+        document.getElementById('your-report')?.scrollIntoView?.({ block: 'start' })
+      }}
+    >
+      Read
+    </button>
   )
 }

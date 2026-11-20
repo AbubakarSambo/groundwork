@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { boardApi } from '@/api/board'
@@ -5,6 +6,7 @@ import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Panel, Tag, Button } from '@/components/gw/ui'
 import { aShortDay } from './pictured/ThePicturedSalesBoard'
+import { THE_LEGEND } from './pictured/TheBar'
 import './pictured/pictured-board.css'
 
 /**
@@ -64,7 +66,7 @@ export function ThePersonPage() {
   const { data: ground } = useQuery({ queryKey: ['ground', id], queryFn: () => groundsApi.get(id!), enabled: !!id })
   const b: Any = board
   const g: Any = ground
-  if (!b || !g) return <Page><PageTitle subtitle="Loading this person’s page…" /></Page>
+  if (!b || !g) return <Page><Skeleton what="Getting this person’s page" shape="lines" count={2} /></Page>
   const runsIt = !!user?.id && g.initiatorId === user.id
   const person = (b.participants ?? []).find((p: Any) => p.id === participantId)
   const title = b.title ?? 'This check-in'
@@ -113,11 +115,10 @@ export function ThePersonPage() {
         subtitle={subtitle || undefined}
         action={<Button kind="secondary" to={`/grounds/${id}?tab=context`}>{`Ask ${first} something`}</Button>}
       />
-      <p className="pb-updated">{`You see what the reports and the proof show about ${first}’s work. ${first}’s word-for-word check-ins stay with ${first}.`}</p>
 
       {/* Only a check-in that keeps deals has a section for them (a performance plan's case has none). */}
       {dealSection && (
-      <Section heading={`${first}’s deals`} note={`Ringed is ${first}’s word; filled is proven`}>
+      <Section heading={`${first}’s deals`} note={THE_LEGEND}>
         {deals.length ? (
           <div className="pb-person-deals">
             {deals.map((r) => {
@@ -142,7 +143,7 @@ export function ThePersonPage() {
       </Section>
       )}
 
-      <Section heading={`${first}’s check-ins`} note={g.cadence === 'DAILY' ? `Last ${cells.length} weekdays: ${done} of ${cells.length}` : `Last ${cells.length} sessions: ${done} of ${cells.length}`}>
+      <Section heading={`${first}’s check-ins`} note={g.cadence === 'DAILY' ? `Last ${cells.length} weekdays: ${done} of ${cells.length}` : `Last ${cells.length} check-ins: ${done} of ${cells.length}`}>
         <div className="pb-squares pb-person-squares">
           {cells.map((c, i) => <span key={i} className={`pb-sq${c === 'done' ? '' : ' pb-sq-miss'}`} aria-label={c === 'done' ? 'Checked in' : 'Missed'} />)}
         </div>
@@ -153,7 +154,7 @@ export function ThePersonPage() {
             const when = sessionDate.get(n)
             return (
               <div className="pb-person-day" key={n}>
-                <b>{when ? aDayInWords(new Date(when), now) : `Session ${n}`}</b>
+                <b>{when ? aDayInWords(new Date(when), now) : `Check-in ${n}`}</b>
                 <span>{said}</span>
                 <span>{will.length ? <><span className="pb-sub">Committed to: </span>{will.join(' ')}</> : null}</span>
               </div>
@@ -188,12 +189,11 @@ export function ThePersonPage() {
         </Section>
       </div>
 
-      <Section heading="What to probe them on" note="Only you see this. Questions to ask">
+      <Section heading="What to probe them on" >
         <Panel>
           {(probe?.probe ?? []).length
             ? probe.probe.map((q: string) => <p className="pb-read" key={q}>{q}</p>)
             : <p className="gwui-panel-text">Nothing to ask about yet.</p>}
-          <p className="pb-foot">From gaps in their work.</p>
         </Panel>
       </Section>
 
@@ -202,7 +202,6 @@ export function ThePersonPage() {
           {notes.length
             ? notes.map((n) => <p className="pb-read" key={n.id}>{`“${n.text}”`}</p>)
             : <p className="gwui-panel-text">{`You have not written anything about ${first} yet.`}</p>}
-          <p className="gwui-panel-text">{`Shapes the questions ${first}’s check-in asks. ${first} never sees it as your words.`}</p>
           <div><Button kind="quiet" to={`/grounds/${id}?tab=context`}>Change</Button></div>
         </Panel>
       </Section>

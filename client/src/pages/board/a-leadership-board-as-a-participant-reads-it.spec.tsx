@@ -29,7 +29,7 @@ function open() {
     groundId: 'g-lead', renders: true, mode: 'SHARED', family: 'DELIVERY', sections: [], title: 'Leadership, Q3', scenario: 'OKR_ALIGNMENT',
     myParticipantId: 'p-wairimu', canEditFrame: false, readOnlyNote: null, lastChangedAt: '2026-09-16T15:00:00Z',
     participants: [{ id: 'p-amani', name: 'Amani Njoroge', partyType: 'INITIATOR', managingOnly: false }, { id: 'p-wairimu', name: 'Wairimu Kamau', partyType: 'PARTICIPANT', managingOnly: false }],
-    workPlan: [{ id: 'w1', participantId: 'p-wairimu', who: 'You', says: 'In session 11, you said, "Bring the pipeline numbers". It is open.', when: 'today, 6pm', state: 'open' }],
+    workPlan: [{ id: 'w1', participantId: 'p-wairimu', who: 'You', says: 'In check-in 11, you said, "Bring the pipeline numbers". It is open.', when: 'today, 6pm', state: 'open' }],
     teamPicture: { shared: false, says: 'Today’s team picture is not shared yet.', yourOwnReport: null },
   })
   ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-amani', leadFirstName: 'Amani', leadAnswersToo: true, cadence: 'WEEKLY', cadenceAnchorDay: 3, participants: [], checkIns: [], roundCompletions: [] })
@@ -47,7 +47,9 @@ function open() {
 describe('a leadership check-in, as a participant', () => {
   it('reads that she is a participant, the priorities, her own part and the company board link', async () => {
     open()
-    expect(await screen.findByText('You’re a participant here. Amani runs it; you see the shared picture and your own part in full.')).toBeTruthy()
+    /* The line telling her she is a participant is gone (it said what the title and tabs already say). */
+    expect(await screen.findByText('Grow revenue 50%')).toBeTruthy()
+    expect(screen.queryByText(/You’re a participant here/)).toBeNull()
     expect(await screen.findByText('Grow revenue 50%')).toBeTruthy()
     expect(screen.getByText('At risk')).toBeTruthy()
     expect(screen.getByText('Nobody owns it yet')).toBeTruthy()

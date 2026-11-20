@@ -42,7 +42,7 @@ describe('nothing that describes the mechanism assumes two parties', () => {
 
   it('and the report card says everyone, which is true at any size', () => {
     const code = strip(readFileSync(join(__dirname, '../../components/gw/TheCheckInYouJustFinished.tsx'), 'utf8'))
-    expect(code).toMatch(/everyone reads the same report/)
+    expect(code).toMatch(/The team’s report is shared\./)
     /*
      * "once everyone has opened the report" went with the sentence around it, which said "You can
      * still only see your own" on a card that was at that moment displaying a cross reference of
@@ -52,7 +52,8 @@ describe('nothing that describes the mechanism assumes two parties', () => {
     /* The sentence changed again when the card became A · session: it no longer describes the
        state of the comparison, because it no longer shows one. What it says instead is whose half
        this is and when the other one opens - and that also holds at two people and at twelve. */
-    expect(code).toMatch(/The shared picture opens to everybody at the same moment/)
+    /* Changed 15 November 2026: the line is the team's-report one ("The team’s report is not shared yet."), true at any size too. */
+    expect(code).toMatch(/The team’s report is not shared yet\./)
     expect(code).not.toMatch(/only see your own/)
   })
 

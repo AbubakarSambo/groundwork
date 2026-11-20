@@ -87,13 +87,14 @@ export async function streamMessage(
       if (!line) continue
       const data = line.slice(6)
       if (data === '[DONE]') return
-      try {
-        const evt = JSON.parse(data)
-        if (evt.type === 'delta') handlers.onDelta(evt.text)
-        else if (evt.type === 'done') handlers.onDone(evt)
-        else if (evt.type === 'suggestions') handlers.onSuggestions?.(evt.suggestedAnswers)
-        else if (evt.type === 'error') handlers.onError?.(evt.message)
-      } catch { /* ignore malformed keepalive lines */ }
+      let evt: any
+      try { evt = JSON.parse(data) } catch { continue /* a malformed keepalive line */ }
+      /* Outside the parse, so a handler that refuses (the error event) is heard: it used to be swallowed with the keepalives, and the
+         waiting bubble stayed on "Groundwork is writing" for ever after a message sent to a check-in already closed. */
+      if (evt.type === 'delta') handlers.onDelta(evt.text)
+      else if (evt.type === 'done') handlers.onDone(evt)
+      else if (evt.type === 'suggestions') handlers.onSuggestions?.(evt.suggestedAnswers)
+      else if (evt.type === 'error') handlers.onError?.(evt.message)
     }
   }
 }
@@ -155,7 +156,7 @@ export const conversationApi = {
    */
   sessionReport: (checkInId: string) =>
     apiClient.get(`/check-ins/${checkInId}/session-report`, { skipNotFoundToast: true, skipForbiddenToast: true } as any)
-      .then(r => r.data as { report: import('./entry').EntryReport | null; finishedAt: string | null; sessionNumber: number | null; groundId: string | null; isInitiator: boolean; state?: 'ready' | 'open' | 'not-kept'; says?: string; onTime?: string }),
+      .then(r => r.data as { report: import('./entry').EntryReport | null; finishedAt: string | null; sessionNumber: number | null; groundId: string | null; isInitiator: boolean; state?: 'ready' | 'open' | 'being-read' | 'not-kept'; says?: string; onTime?: string }),
 
   documentReceived: (checkInId: string) =>
     apiClient.post<{ reply: string }>(`/check-ins/${checkInId}/document-received`).then(r => r.data),

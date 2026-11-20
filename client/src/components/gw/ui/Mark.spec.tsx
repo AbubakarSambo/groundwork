@@ -40,7 +40,7 @@ describe('Mark', () => {
   it('matches auth-kit\'s already-checked mark values: 18px bold navy, 9px gap', () => {
     expect(CSS).toMatch(/\.gwui-mark \{[^}]*font-size: 18px/)
     expect(CSS).toMatch(/\.gwui-mark \{[^}]*font-weight: 700/)
-    expect(CSS).toMatch(/\.gwui-mark \{[^}]*gap: 9px/)
+    expect(CSS).toMatch(/\.gwui-mark \{[^}]*gap: 8px/)
     expect(CSS).toMatch(/\.gwui-mark \{[^}]*color: var\(--gw-navy\)/)
   })
 
@@ -88,8 +88,8 @@ describe('Callout', () => {
 
   it('matches the prototype\'s injected values (s44.js): background var(--chat) i.e. var(--gw-bg), 10px corners', () => {
     expect(CSS).toMatch(/\.gwui-callout \{[^}]*background: var\(--gw-bg\)/)
-    expect(CSS).toMatch(/\.gwui-callout \{[^}]*border-radius: 10px/)
-    expect(CSS).toMatch(/\.gwui-callout \{[^}]*padding: 10px 14px/)
+    expect(CSS).toMatch(/\.gwui-callout \{[^}]*border-radius: 8px/)
+    expect(CSS).toMatch(/\.gwui-callout \{[^}]*padding: 8px 12px/)
   })
 })
 
@@ -109,7 +109,7 @@ describe('SubHeading', () => {
   })
 
   it('a list of them keeps a gap between blocks', () => {
-    expect(CSS).toMatch(/\.gwui-subheading-list \{[^}]*gap: 20px/)
+    expect(CSS).toMatch(/\.gwui-subheading-list \{[^}]*gap: 16px/)
   })
 })
 

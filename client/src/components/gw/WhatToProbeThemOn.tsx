@@ -168,7 +168,7 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
               markInferred={weigh.whatNobodyHasEvidenceFor.length > 0}
             />
             {startedAt && startedAt.length > 0 && (
-              <Block title="Where this stood at the start" lines={startedAt.map(s => s.session > 1 ? `${s.text} Added at session ${s.session}.` : s.text)} note="Written at the beginning and left as it was. Read what people shared above against it." />
+              <Block title="Where this stood at the start" lines={startedAt.map(s => s.session > 1 ? `${s.text} Added at check-in ${s.session}.` : s.text)} note="Written at the beginning and left as it was. Read what people shared above against it." />
             )}
             {restedOn && restedOn.length > 0 && (
               <Block title={readerRunsIt ? 'What you said it rested on' : 'What your lead said it rested on'} lines={restedOn} note={direct ? 'Read anything unmet above against these first.' : 'These were not in their hands. Read anything unmet above against them first.'} />

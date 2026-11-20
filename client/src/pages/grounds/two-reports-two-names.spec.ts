@@ -43,16 +43,16 @@ describe('two reports do not share one name', () => {
     expect(CODE).not.toMatch(/allActivated/)
   })
 
-  it('and the header still speaks for the shared one, which was never wrong', () => {
-    expect(CODE).toMatch(/'report sent to everyone'/)
-    expect(CODE).toMatch(/report\?\.releasedAt/)
+  /* Changed in batch 2, group 5 (Hafsah, item 42): the Check-in tab's status line, which said "report sent to everyone", went
+     with the page in between. Whether the shared report is out is said once, on the board's Reports rows. */
+  it('and the check-in page no longer says a report state of its own', () => {
+    expect(CODE).not.toMatch(/'report sent to everyone'/)
   })
 
   it('the two no longer use one word for two things', () => {
     /* If a future edit renames either to a bare "report", they collide again. The header's word is
        "sent to everyone", which can only mean the shared one; the per-person state is "shown
        theirs", which can only mean their own. */
-    expect(CODE).toMatch(/'report sent to everyone'/)
     const VIEW = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheSessionsReport.tsx'), 'utf8')
     expect(VIEW).not.toMatch(/report (reveal|status)/i)
   })

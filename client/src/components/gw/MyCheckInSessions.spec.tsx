@@ -55,19 +55,19 @@ afterEach(() => vi.restoreAllMocks())
 describe('the session history under My work', () => {
   it('lists every past session with turns, newest first', async () => {
     mount()
-    expect(await screen.findByText(/Session 2, on/)).toBeInTheDocument()
+    expect(await screen.findByText(/Check-in 2, on/)).toBeInTheDocument()
     const rows = (await screen.findAllByRole('button')).map(b => b.textContent)
-    const i2 = rows.findIndex(t => t?.includes('Session 2'))
-    const i1 = rows.findIndex(t => t?.includes('Session 1'))
+    const i2 = rows.findIndex(t => t?.includes('Check-in 2'))
+    const i1 = rows.findIndex(t => t?.includes('Check-in 1'))
     expect(i2).toBeGreaterThanOrEqual(0)
     expect(i2).toBeLessThan(i1)
     // The empty in-progress session has no turns, so it is not a row to open.
-    expect(screen.queryByText(/Session 3, on/)).toBeNull()
+    expect(screen.queryByText(/Check-in 3, on/)).toBeNull()
   })
 
   it('a row is closed until opened, and opening it shows that session\'s own turns', async () => {
     mount()
-    const row = await screen.findByRole('button', { name: /Session 1, on/ })
+    const row = await screen.findByRole('button', { name: /Check-in 1, on/ })
     expect(screen.queryByText('Sent it. They liked it but want to wait until after December.')).toBeNull()
     await userEvent.click(row)
     expect(await screen.findByText('Sent it. They liked it but want to wait until after December.')).toBeInTheDocument()

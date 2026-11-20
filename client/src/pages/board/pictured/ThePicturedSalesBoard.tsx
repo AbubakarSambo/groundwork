@@ -1,19 +1,20 @@
+import { TICKET_KINDS, isATicketsKind, theTicketGrid } from './TheTicketsBoard'
+import { theShapeOfTheRecords } from './the-shape-of-a-list'
 import { theZoneDatesAreIn } from '@/lib/a-date-reads-the-same-everywhere'
-import { timesAWeek } from '@/lib/cadence'
+import { howOftenTheTeamChecksIn } from '@/lib/the-closing-after-your-first-check-in'
 import { ItsEvidence } from '@/components/gw/ItsEvidence'
 import { useMemo, useState, type ReactNode } from 'react'
-import { FoldTheRest } from './FoldTheRest'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
 import { toast } from 'sonner'
-import { Section, Panel, Tag, Button, EdgeList, EdgeRow } from '@/components/gw/ui'
+import { Section, Panel, Tag, Button, EdgeList, EdgeRow, Table, Dot, OnAPhoneShowFirst } from '@/components/gw/ui'
 import { checkInLinksApi } from '@/api/check-in-links'
-import { whenTheBoardLastChanged } from '../when-the-board-last-changed'
 import { TheDealsCanBeChanged, WhatShowsItBlock } from '../WorkRecords'
 import './pictured-board.css'
 import { useTheDirectMorning } from '@/lib/the-direct-morning'
 import { TheNudgeButton } from './TheNudgeButton'
+import { TheBar, CORRECT_IT_HERE } from './TheBar'
 import { theMorningLines, theMorningNeedsNotOnTheBoard, nothingNeedsYou, WhatIsClosing } from './TheMorningOnTheBoard'
 import { theClocksSessionSaid } from '@/lib/the-one-count'
 import { EachAccountSideBySide, KnownBelievedUnknown } from './TheSituationsSections'
@@ -64,23 +65,16 @@ export function theScheduleInWords(
   g: { cadence?: string | null; workingDays?: number[] | null; cadenceAnchorDay?: number | null; cadenceDays?: number[] | null } | null | undefined,
   opensAt: string | null | undefined,
 ): string | null {
-  const cadence = g?.cadence
-  const anchorDay = g?.cadenceAnchorDay ?? null
-  const days = [...new Set(g?.workingDays ?? [])].sort().join(',')
-  /* Twice or more a week reads its days, the one wording every page uses (lib/cadence.ts timesAWeek). */
-  const often = timesAWeek(cadence, g?.cadenceDays)
-  if (often) return `${often[0].toUpperCase()}${often.slice(1)}.`
+  /* How often, in the one wording every page uses (howOftenTheTeamChecksIn, staging check S18): never "Daily on weekdays" here and
+     "Every weekday, Monday to Friday" on the next page. */
+  const often = g ? howOftenTheTeamChecksIn(g) : null
+  if (!often) return null
   /*
    * ONLY A DAILY CHECK-IN OPENS AT AN HOUR, 8 IN THE MORNING WHERE THE ORGANISATION IS (the server's theHourItOpens). Every other rhythm opens
    * at the start of its day, and its "from 10pm" was that midnight read in another zone (fix plan, pattern 4; quarter test, Faith's 90 days).
    */
-  const from = cadence === 'DAILY' && opensAt ? ', from 8am' : ''
-  if (cadence === 'DAILY') return days === '1,2,3,4,5' ? `Daily on weekdays${from}.` : `Every day${from}.`
-  const day = anchorDay != null ? ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'][anchorDay] : null
-  if (cadence === 'WEEKLY') return day ? `Weekly, ${day}.` : `Weekly${from}.`
-  if (cadence === 'FORTNIGHTLY') return day ? `Every two weeks, ${day}.` : `Every two weeks${from}.`
-  if (cadence === 'MONTHLY') return `Monthly${from}.`
-  return null
+  const from = g?.cadence === 'DAILY' && opensAt ? ', from 8am' : ''
+  return `${often[0].toUpperCase()}${often.slice(1)}${from}.`
 }
 
 /** "23 Sep", as the picture writes a day: never "23 Sept". */
@@ -139,7 +133,6 @@ export function HeadlineAndGap({ b, deals, groups }: { b: Any; deals: Any; group
   const done = aim?.count ?? null
   const target = aim?.target ?? null
   const gapAfterLikely = target != null && done != null ? Math.max(0, target - done - likely) : null
-  const pct = (n: number) => (target ? Math.max(0, Math.min(100, (100 * n) / target)) : 0)
   /*
    * THE SERVER COUNTS THE GAP BY WHAT EACH DEAL HOLDS (Drop Access, 17 October): "To close the gap, all seven of these" was said
    * of 55 units over seven deals holding 13 between them. Where the server sent its own heading, that is the one read, with its
@@ -160,10 +153,7 @@ export function HeadlineAndGap({ b, deals, groups }: { b: Any; deals: Any; group
         {headline?.question && <p className="pb-q">{headline.question}</p>}
         {headline?.answer && <p className="pb-answer">{headline.answer}</p>}
         {target != null && done != null && (
-          <div className="pb-bar" role="img" aria-label={`${done} of ${target} done, ${likely} more likely.`}>
-            <span className="pb-bar-done" style={{ width: `${pct(done)}%` }} />
-            <span className="pb-bar-likely" style={{ width: `${pct(Math.min(likely, target - done))}%` }} />
-          </div>
+          <TheBar of={target} shown={done} likely={Math.min(likely, target - done)} label={`${done} of ${target} done, ${likely} more likely.`} />
         )}
         {deals && (
           <>
@@ -188,14 +178,8 @@ export function HeadlineAndGap({ b, deals, groups }: { b: Any; deals: Any; group
         <Panel>
           <h2 className="pb-gap-h">{gapHeading}</h2>
           {gapSays && <p className="pb-note">{gapSays}</p>}
-          {/* Three, as "two of these three"; the rest behind "and N more" (Hafsah, 25 October). */}
-          {possible.slice(0, 3).map((d: Any) => <AGapRow key={d.id} d={d} releaseOne={!!b.releaseOneSalesBoard} />)}
-          {possible.length > 3 && (
-            <details className="pb-fold">
-              <summary>{`and ${possible.length - 3} more`}</summary>
-              {possible.slice(3).map((d: Any) => <AGapRow key={d.id} d={d} releaseOne={!!b.releaseOneSalesBoard} />)}
-            </details>
-          )}
+          {/* Every one of them, open (Hafsah, 13 November 2026): the list of deals that could close the gap is read, not folded. */}
+          <OnAPhoneShowFirst items={possible} first={6} render={(d: Any) => <AGapRow key={d.id} d={d} releaseOne={!!b.releaseOneSalesBoard} />} />
         </Panel>
       )}
     </div>
@@ -232,7 +216,6 @@ export function WhatTheTargetAssumes({ b }: { b: Any }) {
           <ul className="pb-bullets">
             {o.assumes.map((a: string) => <li key={a}>{a}</li>)}
           </ul>
-          <p className="gwui-panel-text">If one of these stops being true, the target needs a second look.</p>
         </Panel>
       ))}
     </>
@@ -274,11 +257,14 @@ export function WhatNeedsYou({ b, renderActions, groundId, deals, sessionRows, m
    * "Today’s report shares itself at 6:30pm. Read it first if you like, or share it now." with "Share now" and "Hold it".
    * The words are the server's, from when this check-in's report really shares itself.
    */
-  if (!readOnly && today && !today.shared && today.answered > 0) {
+  /* Whether it is shared is the server's one answer, the same that says "Today’s report is shared with the team." (fix plan 16 November, group 5):
+     the list row it was read from before is not refreshed by sharing, so the button stayed beside the sentence that said it was done. */
+  const todayIsShared = sharing ? sharing.shared : !!today?.shared
+  if (!readOnly && today && !todayIsShared && today.answered > 0) {
     const says = (sharing?.says ?? 'Today’s report is ready to share.').replace(/\.$/, '')
     items.push({
       key: 'share-today', kind: 'look', title: says,
-      detail: sharing?.held ? 'Share it when you are ready.' : 'Read it first if you like, or share it now.',
+      detail: 'Share it when you are ready.',
       node: (
         <span className="pb-own-team-actions">
           <Button kind="secondary" size="small" onClick={() => shareNow.mutate()} disabled={shareNow.isPending}>Share now</Button>
@@ -396,23 +382,6 @@ export function WhatNeedsYou({ b, renderActions, groundId, deals, sessionRows, m
 const DAY = 86_400_000
 export const isoDay = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: theZoneDatesAreIn(), year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
 
-/** Weekdays from the Monday four weeks before this one to the Friday of next week: six weeks, thirty days. */
-function theSixWeeks(now: Date): { days: string[]; mondays: string[] } {
-  const today = new Date(`${isoDay(now)}T12:00:00Z`)
-  const dow = (today.getUTCDay() + 6) % 7
-  const monday = new Date(today.getTime() - dow * DAY - 28 * DAY)
-  const days: string[] = []
-  const mondays: string[] = []
-  for (let w = 0; w < 6; w += 1) {
-    for (let d = 0; d < 5; d += 1) {
-      const at = new Date(monday.getTime() + (w * 7 + d) * DAY)
-      days.push(at.toISOString().slice(0, 10))
-      if (d === 0) mondays.push(at.toISOString().slice(0, 10))
-    }
-  }
-  return { days, mondays }
-}
-
 function lastContactIn(r: Any, today: string): string {
   /* A customer gone quiet reads "no reply since", from the last day somebody heard from them (standing decision 4, 18 October). */
   if (r.notAnsweringSince && (r.group === 'cold' || r.noReplySince)) return `no reply since ${aShortDay(r.noReplySince ?? r.notAnsweringSince)}`
@@ -424,77 +393,116 @@ function lastContactIn(r: Any, today: string): string {
   return `${days} days ago`
 }
 
-function TheDays({ r, days, today }: { r: Any; days: string[]; today: string }) {
-  const how = new Map<string, string>()
-  for (const c of r.contactHistory ?? []) how.set(c.on, /proof/i.test(c.how ?? '') ? 'proof' : 'said')
-  const silentFrom = (r.group === 'cold' || r.noReplySince) && r.notAnsweringSince ? r.notAnsweringSince : null
-  return (
-    <div className="pb-days" aria-label={`${r.name}, the last six weeks`}>
-      {days.map((d) => {
-        /* The day the next step is booked for, ahead of today or on it (the kit's "Next step booked"). */
-        if (r.nextOn === d && d >= today && r.group !== 'cold') return <span key={d}><span className="pb-dot pb-dot-next" /></span>
-        if (d > today) return <span key={d} />
-        const h = how.get(d)
-        /* After the customer stopped answering, a day somebody spoke about it is a follow-up with no reply. */
-        const cls = silentFrom && d >= silentFrom && h ? 'pb-dot-noreply' : h === 'proof' ? 'pb-dot-proof' : h === 'said' ? 'pb-dot-said' : 'pb-dot-none'
-        return <span key={d}><span className={`pb-dot ${cls}${d === today ? ' pb-dot-today' : ''}`} /></span>
-      })}
-    </div>
-  )
+/**
+ * THE LAST SIX WEEKS OF ONE DEAL, one dot for each week, from the contact the deal's own history holds: filled where a document, a photo
+ * or a payment showed contact that week, ringed where somebody said it, and faint where nothing is on record. The week of today is the
+ * last dot. (The strip the deals table had before it became an open table, as one small cell and not thirty dots.)
+ */
+function theLastSixWeeks(r: Any, today: string): ('proof' | 'said' | 'none')[] {
+  const monday = new Date(`${today}T12:00:00Z`)
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7))
+  const start = monday.getTime() - 5 * 7 * DAY
+  const weeks: ('proof' | 'said' | 'none')[] = Array.from({ length: 6 }, () => 'none')
+  for (const c of r.contactHistory ?? []) {
+    const w = Math.floor((Date.parse(`${c.on}T12:00:00Z`) - start) / (7 * DAY))
+    if (w < 0 || w > 5 || Number.isNaN(w)) continue
+    if (/proof/i.test(c.how ?? '')) weeks[w] = 'proof'
+    else if (weeks[w] === 'none') weeks[w] = 'said'
+  }
+  return weeks
 }
 
-export function EveryDealDayByDay({ b, section, now, groundId, heading = 'Every deal, day by day', note = 'Grouped by what the proof says about closing this quarter', ownTag = null }: { b: Any; section: Any; now: Date; groundId: string; heading?: string; note?: string; ownTag?: string | null }) {
+export function EveryDealDayByDay({ b, section, now, groundId, heading = 'Every deal, day by day', note = 'Select a deal for its detail.', ownTag = null }: { b: Any; section: Any; now: Date; groundId: string; heading?: string; note?: string; ownTag?: string | null }) {
   /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
   const direct = useTheDirectMorning()
   const rows: Any[] = (section?.rows ?? []).filter((r: Any) => r.kind === 'deal')
   const [openId, setOpenId] = useState<string | null>(null)
-  const { days, mondays } = useMemo(() => theSixWeeks(now), [now])
   const today = isoDay(now)
   if (!section) return null
   const byId = new Map(rows.map((r) => [r.id, r]))
-  /* The first deal as the grid draws it is open to begin with, as pictured. */
-  const firstShown = (section.groups ?? []).flatMap((g: Any) => g.rowIds ?? []).map((id: string) => byId.get(id)).find(Boolean)
-  const open = (openId && byId.get(openId)) || firstShown || rows[0] || null
+  /* One flat table, in the server's own order (the likeliest to close first); the group is said in the open deal's "Why it's here". */
+  const inOrder: Any[] = [...new Set([...(section.groups ?? []).flatMap((g: Any) => g.rowIds ?? []), ...rows.map((r) => r.id)])].map((id) => byId.get(id)).filter(Boolean)
+  /* The first deal is open to begin with, as pictured. */
+  const open = (openId && byId.get(openId)) || inOrder[0] || null
   const lost: Any[] = Array.isArray(section.lost) ? section.lost : []
   return (
     <>
     <Section heading={heading} note={direct && note === 'Only yours' ? undefined : note}>
-      {/* Each line of the key only where a row on the grid carries that mark (board review, sales piece D, item 3). */}
-      <div className="pb-legend">
-        {rows.some((r) => r.mark === 'proven' || (r.contactHistory ?? []).some((c: Any) => /proof/i.test(c.how ?? ''))) && <span><span className="pb-dot pb-dot-proof" />Contact with proof: a photo, a quote, a payment</span>}
-        {rows.some((r) => r.mark === 'said' || (r.contactHistory ?? []).some((c: Any) => !/proof/i.test(c.how ?? ''))) && <span><span className="pb-dot pb-dot-said" />Contact in their words</span>}
-        {/* The kit's "Next step booked", where a row's next step has its day on the grid (quality pass, 18 October, B-11). */}
-        {rows.some((r) => r.nextOn && r.nextOn >= today && r.group !== 'cold') && <span><span className="pb-dot pb-dot-next" />Next step booked</span>}
-        {rows.some((r) => (r.group === 'cold' || r.noReplySince) && r.notAnsweringSince) && <span><span className="pb-dot pb-dot-noreply" />Follow-up, no reply</span>}
-      </div>
       <TheDealsCanBeChanged groundId={groundId} section={section} participants={(b.participants ?? []).map((x: Any) => ({ id: x.id, name: x.name }))} canEdit={!!b.canEditFrame}>
       {(api) => (<>
       {rows.length === 0 ? (
         <p className="gwui-panel-text">{lost.length
           ? 'No deal is open now. The deals that were lost are listed under Lost deals, and why.'
-          : 'No deal is on record yet. A deal appears here once somebody names a customer in a check-in, or one is added here.'}</p>
+          : 'No deal is on record yet.'}</p>
       ) : (
-        <div className="pb-grid">
-          <table>
-            <thead>
-              <tr>
-                <th>Deal</th>
-                <th>Stage now</th>
-                <th>Last contact</th>
-                {mondays.map((m) => <th key={m} className="pb-week">{aShortDay(`${m}T12:00:00Z`)}</th>)}
-                <th>Next step</th>
-              </tr>
-            </thead>
-            <tbody>
-              {!(section.groups ?? []).length && <GroupRows g={{ group: 'all', heading: null, reason: null, rowIds: rows.map((r) => r.id) }} byId={byId} openId={open?.id ?? null} onOpen={setOpenId} days={days} today={today} api={api} claims={!ownTag && !!b.canEditFrame} releaseOne={!!b.releaseOneSalesBoard} />}
-              {(section.groups ?? []).map((g: Any) => (
-                <GroupRows key={g.group} g={g} byId={byId} openId={open?.id ?? null} onOpen={setOpenId} days={days} today={today} api={api} claims={!ownTag && !!b.canEditFrame} releaseOne={!!b.releaseOneSalesBoard} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+        {/* The key, one line, with the marks the table uses (the prototype's "Ringed is someone's word; filled is proven"). */}
+        <p className="pb-legend">
+          {inOrder.some((r) => r.mark === 'proven') && <span><span className="pb-dot pb-dot-proof" />Contact with proof: a photo, a quote, a payment</span>}
+          {inOrder.some((r) => r.mark !== 'proven') && <span><span className="pb-dot pb-dot-said" />Contact in their words</span>}
+          <span><span className="pb-dot pb-dot-none" />No contact that week</span>
+        </p>
+        <Table
+          caption="Every deal, with its rep, its stage and what shows it"
+          phone="stack"
+          what="deals"
+          summary={theShapeOfTheRecords(inOrder, 'deals')}
+          columns={[
+            { key: 'deal', header: 'Deal', rowHeader: true, width: '24%' },
+            { key: 'rep', header: 'Rep', width: '11%' },
+            { key: 'stage', header: 'Stage now', width: '13%' },
+            { key: 'shows', header: 'What shows it', width: '17%' },
+            { key: 'weeks', header: 'Last six weeks', width: '12%' },
+            { key: 'next', header: 'Next step' },
+          ]}
+          rows={inOrder.map((r) => {
+            const picked = r.id === open?.id
+            const value = r.valueLine ?? ('value' in r ? r.value : aValueKeptWithIt(r.fields))
+            const last = lastContactIn(r, today)
+            return {
+              deal: (
+                <>
+                  {picked && <span className="gwui-scb-selected" aria-hidden />}
+                  <button type="button" className="pb-deal-pick" aria-pressed={picked} onClick={() => setOpenId(r.id)}>{r.name}</button>
+                  {value && <span className="gwui-table-sub">{value}</span>}
+                  {/* The day the customer said they will buy (boards audit S12: it went with the morning's deal list). */}
+                  {r.buyingDate && <span className="gwui-table-sub">{theBuyingDay(r.buyingDate, today)}</span>}
+                </>
+              ),
+              rep: firstName(r.owner) || 'Nobody is named for it yet.',
+              stage: r.stage ? <Tag tone="plain">{r.stage}</Tag> : (b.releaseOneSalesBoard ? NOT_CONTACTED_YET : 'No stage said yet.'),
+              shows: (
+                <>
+                  <Dot filled={r.mark === 'proven'} />{PROOF_TAG[r.mark ?? 'said'] ?? 'In their words'}
+                  {last && <span className="gwui-table-sub">{/^no reply/.test(last) ? last : `Last contact ${last}`}</span>}
+                </>
+              ),
+              weeks: (
+                <span className="pb-weeks" role="img" aria-label={`${r.name}, the last six weeks, oldest first: ${theLastSixWeeks(r, today).map((w) => (w === 'proof' ? 'contact with proof' : w === 'said' ? 'contact in their words' : 'no contact')).join(', ')}.`}>
+                  {theLastSixWeeks(r, today).map((w, i) => <span key={i} className={`pb-dot pb-dot-${w}`} />)}
+                </span>
+              ),
+              next: (
+                <span className={r.group === 'cold' ? 'pb-next-stall' : r.next || r.nextStep ? 'pb-next' : 'pb-next-none'}>
+                  {r.group === 'cold' ? 'Stall rule reached' : r.nextStep ?? r.next ?? NOTHING_BOOKED}
+                  {/* Somebody says this deal is theirs: the lead's yes makes it so (decision 76, item 3). */}
+                  {!ownTag && !!b.canEditFrame && r.ownerClaim && (
+                    <span className="pb-claim">
+                      <span>{r.ownerClaim.says}</span>
+                      <span className="pb-issue-acts">
+                        <Button kind="secondary" size="small" disabled={api.claimPending} onClick={() => api.claim(r, true)}>Yes</Button>
+                        <Button kind="secondary" size="small" disabled={api.claimPending} onClick={() => api.claim(r, false)}>No</Button>
+                      </span>
+                    </span>
+                  )}
+                </span>
+              ),
+            }
+          })}
+        />
+        </>
       )}
-      {!direct && <p className="pb-below">Something here wrong? Anyone can correct what’s about their own work in their check-in; the change and the original both show here.</p>}
+      <p className="pb-below">{CORRECT_IT_HERE}</p>
       {open && <TheOpenDeal r={open} groupNote={(section.groups ?? []).find((g: Any) => g.rowIds?.includes(open.id))} today={today} groundId={groundId} onChange={b.canEditFrame ? () => api.edit(open) : null} ownTag={ownTag} />}
       </>)}
       </TheDealsCanBeChanged>
@@ -515,11 +523,9 @@ export const NO_LESSON_ON_RECORD = 'Nothing on record teaches anything from it y
 export const NO_REASON_GIVEN_YET = 'Nobody has said why yet.'
 
 export function LostDeals({ lost, myParticipantId }: { lost: Any[]; myParticipantId: string | null }) {
-  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
-  const direct = useTheDirectMorning()
   if (!lost.length) return null
   return (
-    <Section heading="Lost deals, and why" note={direct ? undefined : LOST_NOTE}>
+    <Section heading="Lost deals, and why">
       <div className="pb-grid pb-lost">
         <table>
           <thead>
@@ -555,44 +561,6 @@ export function LostDeals({ lost, myParticipantId }: { lost: Any[]; myParticipan
  * at Contacted; only a deal added here that nobody has contacted is left with no stage, and it says so.
  */
 export const NOT_CONTACTED_YET = 'Not contacted yet.'
-
-function GroupRows({ g, byId, openId, onOpen, days, today, api, claims, releaseOne = false }: { g: Any; byId: Map<string, Any>; openId: string | null; onOpen: (id: string) => void; days: string[]; today: string; api: { claim: (row: Any, yes: boolean) => void; claimPending: boolean }; claims: boolean; releaseOne?: boolean }) {
-  const rows = (g.rowIds ?? []).map((id: string) => byId.get(id)).filter(Boolean)
-  /* A lost deal is never in a group: it is listed under "Lost deals, and why" (LostDeals). */
-  if (!rows.length) return null
-  const heading = g.group === 'cold' ? 'Cold' : g.heading
-  return (
-    <>
-      {heading && <tr className="pb-group"><td colSpan={10}><b>{heading}</b>{g.reason}</td></tr>}
-      {rows.map((r: Any) => (
-        <tr key={r.id} className={`pb-deal${r.id === openId ? ' pb-on' : ''}`} onClick={() => onOpen(r.id)} aria-selected={r.id === openId}>
-          <td>
-            <div className="pb-deal-name">{r.name}</div>
-            <div className="pb-deal-sub">{[firstName(r.owner) || 'Nobody is named for it yet.', r.valueLine ?? ('value' in r ? r.value : aValueKeptWithIt(r.fields))].filter(Boolean).join(', ')}</div>
-            {/* The day the customer said they will buy (boards audit S12: it went with the morning's deal list). */}
-            {r.buyingDate && <div className="pb-deal-sub">{theBuyingDay(r.buyingDate, today)}</div>}
-          </td>
-          <td><span className="pb-stage"><span className={`pb-dot ${r.mark === 'proven' ? 'pb-dot-proof' : 'pb-dot-said'}`} />{r.stage ? <span className="tag plain pb-stage-word">{r.stage}</span> : releaseOne ? NOT_CONTACTED_YET : 'No stage said yet.'}</span></td>
-          <td className="pb-last">{lastContactIn(r, today)}</td>
-          <td colSpan={6}><TheDays r={r} days={days} today={today} /></td>
-          <td className={r.group === 'cold' ? 'pb-next pb-next-stall' : r.next ? 'pb-next' : 'pb-next pb-next-none'}>
-            {r.group === 'cold' ? 'Stall rule reached' : r.nextStep ?? r.next ?? NOTHING_BOOKED}
-            {/* Somebody says this deal is theirs: the lead's yes makes it so (decision 76, item 3). */}
-            {claims && r.ownerClaim && (
-              <div className="pb-claim" onClick={(e) => e.stopPropagation()}>
-                <span>{r.ownerClaim.says}</span>
-                <span className="pb-issue-acts">
-                  <Button kind="secondary" size="small" disabled={api.claimPending} onClick={() => api.claim(r, true)}>Yes</Button>
-                  <Button kind="secondary" size="small" disabled={api.claimPending} onClick={() => api.claim(r, false)}>No</Button>
-                </span>
-              </div>
-            )}
-          </td>
-        </tr>
-      ))}
-    </>
-  )
-}
 
 /** "Buys on 30 October.", or "Was to buy on 16 October." once the day has passed. */
 export function theBuyingDay(day: string, today: string): string {
@@ -711,10 +679,12 @@ export function aTagForTheWork(reason: string, deals: Any[], today: string, work
 }
 
 export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: Any; deals: Any; today: string; groundId: string }) {
-  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
-  const direct = useTheDirectMorning()
   const rows: Any[] = b.eachPersonToday ?? []
   const dealsOf = (pid: string) => (dealSection?.rows ?? []).filter((d: Any) => d.kind === 'deal' && d.ownerParticipantId === pid)
+  /* Tickets, incidents and tasks: each person's own records on the board, counted, with how many a document backs (the one bar). */
+  const theWork = isATicketsKind(b.kindOfWork) ? TICKET_KINDS[b.kindOfWork] : null
+  const workGrid = theWork ? theTicketGrid(b) : null
+  const workOf = (pid: string): Any[] => (workGrid?.rows ?? []).filter((w: Any) => w.ownerParticipantId === pid)
   if (!rows.length) return null
   /* What keeps coming up about this person's work, from the patterns this reader is served. */
   const theirWorkPattern = (pid: string): string | null => {
@@ -733,11 +703,29 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
     return [done, `${first}’s target is ${Number(o.target).toLocaleString('en-GB')}.`].filter(Boolean).join(' ')
   }
   return (
-    <Section heading="The team today" note="Each person’s line, their last 10 check-ins, and what keeps coming up">
+    <Section heading="The team today">
       {/* Who has answered this session, the one count Today, the check-in's page and Ask say (api this-sessions-count.ts). */}
       {theClocksSessionSaid(b)?.says && <p className="pb-foot" data-testid="the-team-today-count">{theClocksSessionSaid(b)!.says}</p>}
-      <div className="pb-rows">
-        {rows.map((r) => {
+      {/* One open table, a row for every person (Hafsah, 13 November 2026), in the prototype's order: the person, their line, the tag, the last ten check-ins, and what keeps coming up. */}
+      <Table
+        caption="The team today, one row for each person"
+        phone="stack"
+        hideHeader
+        columns={theWork ? [
+          { key: 'who', header: 'Person', rowHeader: true, width: '11%' },
+          { key: 'line', header: 'Their line this week', width: '14%' },
+          { key: 'work', header: `Their ${theWork.many} on record`, width: '15%' },
+          { key: 'tag', header: 'What their work shows', width: '16%' },
+          { key: 'squares', header: 'Their last 10 check-ins', width: '15%' },
+          { key: 'keeps', header: 'What keeps coming up', width: '29%' },
+        ] : [
+          { key: 'who', header: 'Person', rowHeader: true, width: '14%' },
+          { key: 'line', header: 'Their line this week', width: '15%' },
+          { key: 'tag', header: 'What their work shows', width: '19%' },
+          { key: 'squares', header: 'Their last 10 check-ins', width: '17%' },
+          { key: 'keeps', header: 'What keeps coming up', width: '35%' },
+        ]}
+        rows={rows.map((r) => {
           /*
            * ABOUT TODAY (Hafsah's point 10): where the server says whether they checked in today, "Not in yet" is for somebody who
            * has not, never for somebody who did and whose next session has opened since.
@@ -750,23 +738,27 @@ export function TheTeamToday({ b, deals: dealSection, today, groundId }: { b: An
           const tag = r.lastIn ? { word: `Last in ${r.lastIn}`, tone: 'plain' as const } : aTagForTheWork(says ? '' : reason, dealsOf(r.participantId), today, r.workTag)
           /* Each sentence once: the person's line already is what the board says of them, so it is not said again under it (round 3: every row read its line twice). */
           const more = [...new Set([theirTarget(r.participantId, firstName(r.who)), says, ...morning.filter((l) => l.participantId === r.participantId).map((l) => l.text)].filter(Boolean) as string[])].filter((x) => x !== r.line)
-          return (
-            <div className="pb-row pb-row-team" key={r.participantId}>
-              <Link className="pb-row-name pb-name-link" to={`/grounds/${groundId}/person/${r.participantId}`}>{firstName(r.who)}</Link>
-              <span>{r.line}{more.map((x) => <span className="pb-row-more" key={x}>{x}</span>)}</span>
-              <span>{tag && <Tag tone={tag.tone}>{tag.word}</Tag>}</span>
+          return {
+            who: <Link className="pb-name-link" to={`/grounds/${groundId}/person/${r.participantId}`}>{firstName(r.who)}</Link>,
+            line: <>{r.line}{more.map((x) => <span className="pb-row-more" key={x}>{x}</span>)}{/* "Nudge Peter": served to the lead alone, with the direct morning on (TheNudgeButton.tsx). */}{r.nudge && <span className="pb-row-more"><TheNudgeButton groundId={groundId} nudge={r.nudge} /></span>}</>,
+            ...(theWork ? { work: (() => {
+              const mine = workOf(r.participantId)
+              const proven = mine.filter((w) => w.mark === 'proven').length
+              if (!mine.length) return <span className="pb-sub">None on record yet</span>
+              return <><b>{mine.length}</b>{` ${mine.length === 1 ? theWork.one : theWork.many}`}<TheBar of={mine.length} shown={proven} said={mine.length - proven} label={`${firstName(r.who)} has ${mine.length} ${mine.length === 1 ? theWork.one : theWork.many}, ${proven} shown by a document`} /></>
+            })() } : {}),
+            tag: tag ? { tag: tag.word, tone: tag.tone } : null,
+            /* A person with no check-in yet has no squares to draw: the cell says so in words, never an empty cell (boards pass 4, defect 9). */
+            squares: lastTen(b, r.participantId).length === 0 ? <span className="pb-sub">No check-in yet.</span> : (
               <span className="pb-squares" aria-label={`${firstName(r.who)}, the last 10 check-ins`}>
                 {lastTen(b, r.participantId).map((s, i) => <span key={i} className={`pb-sq${s === 'miss' ? ' pb-sq-miss' : s === 'up' ? ' pb-sq-up' : ''}`} />)}
               </span>
-              {/* What keeps coming up, then what to coach this week, about the work (quality pass, 18 October, Q6). */}
-              <span className="pb-sub">{[r.keepsComingUp ?? theirWorkPattern(r.participantId), r.thisWeek].filter(Boolean).join(' ')}</span>
-              {/* "Nudge Peter": served to the lead alone, with the direct morning on (TheNudgeButton.tsx). */}
-              {r.nudge && <span className="pb-row-nudge"><TheNudgeButton groundId={groundId} nudge={r.nudge} /></span>}
-            </div>
-          )
+            ),
+            /* What keeps coming up, then what to coach this week, about the work (quality pass, 18 October, Q6). */
+            keeps: <span className="pb-sub">{[r.keepsComingUp ?? theirWorkPattern(r.participantId), r.thisWeek].filter(Boolean).join(' ')}</span>,
+          }
         })}
-      </div>
-      <p className="pb-foot">{direct ? 'Open anyone to see what they said and what the proof shows.' : 'These are about the work. Open anyone to see what they said and what the proof shows.'}</p>
+      />
     </Section>
   )
 }
@@ -787,9 +779,9 @@ export function Blockers({ b, groundId }: { b: Any; groundId: string }) {
   if (!rows.length) return null
   const leadId = b.myParticipantId
   return (
-    <Section heading="Blockers" note="Each with its history and the one thing that would clear it">
+    <Section heading="Blockers">
       <div className="pb-cards">
-        {rows.map((x) => {
+        <OnAPhoneShowFirst items={rows} first={5} render={(x) => {
           const isADecision = !!leadId && x.onParticipantId === leadId
           const tag = BLOCKER_TAG[isADecision ? 'decision' : x.state] ?? BLOCKER_TAG.waiting
           const on = isADecision ? 'You' : (x.on ?? x.onLabel ?? (x.says?.match(/waiting on (.+?) for /)?.[1]) ?? null)
@@ -811,7 +803,7 @@ export function Blockers({ b, groundId }: { b: Any; groundId: string }) {
               <div className="pb-clear"><b>Would clear it:</b> {x.wouldClearIt ?? x.wouldClearItSays}</div>
             </div>
           )
-        })}
+        }} />
       </div>
     </Section>
   )
@@ -820,8 +812,6 @@ export function Blockers({ b, groundId }: { b: Any; groundId: string }) {
 /* ------------------------------------------------------------------ what keeps coming up */
 
 export function WhatKeepsComingUp({ b }: { b: Any }) {
-  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
-  const direct = useTheDirectMorning()
   /* A promise carried over three check-ins running is about the work too (standing decision 5, as changed on 18 October). */
   const carried: Any[] = (b.keepsComingUp ?? []).map((x: Any, i: number) => ({ id: `carried-${i}`, participantId: x.participantId, yours: x.yours, about: 'the work', whatHappened: x.says }))
   const all: Any[] = [...(b.patterns ?? []), ...carried]
@@ -830,11 +820,11 @@ export function WhatKeepsComingUp({ b }: { b: Any }) {
   const aboutWhatIsSaid = all.filter((p) => p.about === 'what is said against what happened')
   const byHeading = new Map<string, Any[]>()
   for (const p of aboutWhatIsSaid) byHeading.set(p.heading, [...(byHeading.get(p.heading) ?? []), p])
+  /* No heading stands over nothing (boards pass 4, defect 14: a "What keeps coming up" heading with only a button under it). */
+  if (all.length === 0) return null
   return (
-    <Section heading="What keeps coming up" note={direct ? undefined : 'Named after three check-ins in a row, never after one. Each describes the work'}>
-      {all.length === 0 ? (
-        <Panel><p className="gwui-panel-text">{direct ? 'Nothing has come up three check-ins in a row yet.' : 'Nothing has come up three check-ins in a row yet. When something does, it shows here, and the person it is about sees it first.'}</p></Panel>
-      ) : (
+    <Section heading="What keeps coming up">
+      {(
         <div className="pb-two">
           <Panel>
             <h3 className="pb-small-h">About each person’s work</h3>
@@ -844,7 +834,6 @@ export function WhatKeepsComingUp({ b }: { b: Any }) {
                 <span>{p.whatHappened ?? p.heading}</span>
               </div>
             ))}
-            {!aboutTheWork.length && <p className="gwui-panel-text">Nothing about anybody’s work yet.</p>}
           </Panel>
           <Panel>
             <h3 className="pb-small-h">How what people say can run ahead of what happened</h3>
@@ -857,50 +846,54 @@ export function WhatKeepsComingUp({ b }: { b: Any }) {
                 ))}</span>
               </div>
             ))}
-            {!byHeading.size && <p className="gwui-panel-text">Nothing yet.</p>}
           </Panel>
         </div>
       )}
-      {!direct && <p className="pb-foot">Each person sees what’s about them, and can answer it in their own words.</p>}
     </Section>
   )
 }
 
 /* ------------------------------------------------------------------ reported vs criteria met */
 
-export function ReportedAgainstCriteria({ b, heading = 'Reported vs criteria met, stage by stage' }: { b: Any; heading?: string }) {
-  const data = b.reportedAgainstCriteria
+/** The stage bars alone: what people reported at each stage, ringed, with what a document or the rules back filled inside. */
+export function TheStageBars({ data }: { data: Any }) {
   const stages: Any[] = data?.stages ?? []
-  if (!data) return null
   const most = Math.max(1, ...stages.map((s) => s.reported ?? 0))
   /* Only where the record says what each stage needs does the board say what "meets the criteria". */
   const criteriaKnown = stages.some((s) => s.met != null)
   return (
+    <>
+      {stages.length ? (
+        <div className="pb-bars">
+          {stages.map((s) => (
+            <FragmentRow key={s.stage}>
+              <span>{s.stage}</span>
+              <TheBar form="stage" label={s.says} of={most} said={s.reported ?? 0} shown={s.lost ? (s.withAReason ?? 0) : (s.met ?? s.withProof ?? 0)} />
+              <span>{s.lost ? `${s.reported} lost, ${s.withAReason ?? 0} with a reason` : s.met != null ? (s.reported == null ? `${s.met} met` : `${s.reported} said, ${s.met} met`) : `${s.reported} said, ${s.withProof} with proof`}</span>
+            </FragmentRow>
+          ))}
+        </div>
+      ) : (
+        <p className="gwui-panel-text">{data.says ?? data.why}</p>
+      )}
+      {criteriaKnown
+        ? <p className="pb-foot">Outlined: what people reported. Filled: what meets the criteria.</p>
+        : <p className="pb-foot">Outlined: what people reported. Filled: what has proof behind it.</p>}
+    </>
+  )
+}
+
+export function ReportedAgainstCriteria({ b, heading = 'Reported vs criteria met, stage by stage' }: { b: Any; heading?: string }) {
+  const data = b.reportedAgainstCriteria
+  if (!data) return null
+  const criteriaKnown = (data.stages ?? []).some((s: Any) => s.met != null)
+  return (
     <Section heading={heading} note="The shape of the work">
       <Panel>
-        {stages.length ? (
-          <div className="pb-bars">
-            {stages.map((s) => (
-              <FragmentRow key={s.stage}>
-                <span>{s.stage}</span>
-                <span className="pb-hbar" aria-label={s.says}>
-                  <span className="pb-out" style={{ width: `${(100 * (s.reported ?? 0)) / most}%` }} />
-                  <span className="pb-in" style={{ width: `calc(${(100 * (s.lost ? (s.withAReason ?? 0) : (s.met ?? s.withProof ?? 0))) / most}% - 8px)` }} />
-                </span>
-                <span>{s.lost ? `${s.reported} lost, ${s.withAReason ?? 0} with a reason` : s.met != null ? (s.reported == null ? `${s.met} met` : `${s.reported} said, ${s.met} met`) : `${s.reported} said, ${s.withProof} with proof`}</span>
-              </FragmentRow>
-            ))}
-          </div>
-        ) : (
-          <p className="gwui-panel-text">{data.says ?? data.why}</p>
-        )}
-        {criteriaKnown
-          ? <p className="pb-foot">Outlined: what people reported. Filled: what meets the criteria.</p>
-          : <p className="pb-foot">Outlined: what people reported. Filled: what has proof behind it.</p>}
+        <TheStageBars data={data} />
       </Panel>
-      {criteriaKnown
-        ? <p className="pb-foot">Dashed: what reps reported. Solid: criteria met (for Won, a signed order or a payment record).</p>
-        : data.why && <p className="pb-foot">{data.why}</p>}
+      {/* The stage bars say what the outline and the fill mean, for every kind of work, so there is no second key here (boards pass 4, defects 5 and 6). */}
+      {!criteriaKnown && data.why && <p className="pb-foot">{data.why}</p>}
     </Section>
   )
 }
@@ -912,7 +905,7 @@ export function WhoCheckedIn({ b }: { b: Any }) {
   const rows: Any[] = (b.checkInGrid?.rows ?? []).filter((r: Any) => !r.managingOnly)
   if (!rows.length) return null
   return (
-    <Section heading="Who checked in" note="The last 10 sessions, one row each">
+    <Section heading="Who checked in" note="The last 10 check-ins, one row each">
       <div className="pb-who-grid">
         {rows.map((r) => (
           <FragmentRow key={r.participantId}>
@@ -962,7 +955,7 @@ export function Reports({ b, groundId, sessionRows, navigate, now }: { b: Any; g
   if (!sessionRows.length) return null
   const yesterday = new Date(now.getTime() - DAY)
   const titleOf = (r: Any) => {
-    if (!r.opened) return `Session ${r.sessionNumber}`
+    if (!r.opened) return `Check-in ${r.sessionNumber}`
     const day = aShortDay(r.opened)
     if (sameDay(r.opened, now)) return `Today, ${day}`
     if (sameDay(r.opened, yesterday)) return `Yesterday, ${day}`
@@ -994,7 +987,7 @@ export function Reports({ b, groundId, sessionRows, navigate, now }: { b: Any; g
   lastMonday.setUTCDate(lastMonday.getUTCDate() - ((lastMonday.getUTCDay() + 6) % 7) - 7)
   const [first, second] = sessionRows
   return (
-    <Section heading="Reports" note={direct ? undefined : 'Every session has two: each person’s own, and the team’s once you share it'}>
+    <Section heading="Reports" note={direct ? undefined : 'Every check-in has two: each person’s own, and the team’s once you share it'}>
       <div className="pb-rows">
         {sessionRow(first)}
         {row('this-week', 'This week', `Week ${week} so far.${written ? ` Written ${written}.` : ''}`,
@@ -1004,8 +997,8 @@ export function Reports({ b, groundId, sessionRows, navigate, now }: { b: Any; g
         {sessionRows.length > 5 && row('last-week', `Week ${week - 1}`, 'Last week’s report.', null,
           <Button kind="secondary" size="small" onClick={() => navigate(`/grounds/${groundId}/report/week?week=${lastMonday.toISOString().slice(0, 10)}`)}>Open</Button>)}
       </div>
-      <div><Button kind="quiet" to={`/grounds/${groundId}?tab=report`}>{`All ${sessionRows.length} sessions`}</Button></div>
-      <Link to={`/grounds/${groundId}?tab=report`} className="pb-wide-btn">Every session</Link>
+      <div><Button kind="quiet" to={`/grounds/${groundId}?tab=report`}>{`All ${sessionRows.length} check-ins`}</Button></div>
+      <Link to={`/grounds/${groundId}?tab=report`} className="pb-wide-btn">Every check-in</Link>
     </Section>
   )
 }
@@ -1013,13 +1006,11 @@ export function Reports({ b, groundId, sessionRows, navigate, now }: { b: Any; g
 /* ------------------------------------------------------------------ help, other teams */
 
 export function HelpNobodyMentioned({ b }: { b: Any }) {
-  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
-  const direct = useTheDirectMorning()
   const h = b.helpNobodyMentioned
   const lines: string[] = Array.isArray(h?.rows) ? h.rows.map((r: Any) => r.says ?? r.text ?? String(r)) : Array.isArray(h?.lines) ? h.lines : h?.says ? [h.says] : []
   if (!h || !lines.length) return null
   return (
-    <Section heading="Help nobody mentioned" note={direct ? undefined : 'You see the help, not who said it'}>
+    <Section heading="Help nobody mentioned">
       <Panel>{lines.map((l) => <p className="gwui-panel-text" key={l}>{l}</p>)}</Panel>
     </Section>
   )
@@ -1030,7 +1021,7 @@ export function WaitingOnOtherTeams({ groundId }: { groundId: string }) {
   const waiting: Any[] = (data as Any)?.waitingOnOtherTeams ?? []
   if (!waiting.length) return null
   return (
-    <Section heading="Waiting on other teams" note="These show on their boards too">
+    <Section heading="Waiting on other teams">
       <EdgeList label="Waiting on other teams">
         {waiting.map((w) => (
           <EdgeRow
@@ -1056,8 +1047,6 @@ function TheQuietOne({ quiet }: { quiet: { label: string; says: string } }) {
 }
 
 export function OpenIssues({ b, renderActions }: { b: Any; renderActions: (a: Any) => ReactNode }) {
-  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
-  const direct = useTheDirectMorning()
   const data = b.openIssues
   const all: Any[] = Array.isArray(data?.issues) ? data.issues : []
   /* Every issue, in the engine's order, as the prototype draws all four (boards audit S10). */
@@ -1066,7 +1055,7 @@ export function OpenIssues({ b, renderActions }: { b: Any; renderActions: (a: An
   /* The kit shows Open issues only with issues in it (quality pass, 18 October, B-25; standing decision 4 of the findings). */
   if (b.releaseOneSalesBoard && !all.length) return null
   return (
-    <Section heading="Open issues" note={direct ? undefined : 'Each one moving towards a decision. You always choose'}>
+    <Section heading="Open issues">
       {all.length === 0 ? (
         <Panel><p className="gwui-panel-text">{data.why ?? 'Nothing is open.'}</p></Panel>
       ) : (
@@ -1122,10 +1111,15 @@ const OUTCOME_ORDER = ['ALIGNED', 'REACH_WITH_A_CHANGE', 'GAPS_IDENTIFIED', 'KEE
 export function WhereThisIsHeading({ b, onRecordTheDecision, readOnly = false }: { b: Any; onRecordTheDecision: () => void; readOnly?: boolean }) {
   const d = b.whereThisIsHeading
   if (!d) return null
+  /* A board with nothing on it draws no outcomes and no 'Record the decision': nobody has answered, no piece of work and no figure is on record, so there is nothing to decide. */
+  const answered = ((b.checkInGrid?.rows ?? []) as Any[]).some((r) => Object.values(r.cells ?? {}).includes('done'))
+  const anyWork = ((b.workRecords ?? []) as Any[]).some((x) => (x.rows ?? []).length > 0)
+  const anyFigure = ((b.objectives ?? []) as Any[]).some((o) => o.count != null)
+  if (!answered && !anyWork && !anyFigure && !(d.signals ?? []).length && !d.decided) return null
   const rank = (v: string) => (OUTCOME_ORDER.includes(v) ? OUTCOME_ORDER.indexOf(v) : 99)
   const outcomes: Any[] = (d.outcomes ?? []).filter((o: Any) => o.value !== 'NOT_YET').sort((a: Any, c: Any) => rank(a.value) - rank(c.value))
   return (
-    <Section heading={d.heading ?? 'Where this is heading'} note={d.about}>
+    <Section heading={d.heading ?? 'Where this is heading'}>
       <div className="pb-heading">
         <div>
           <h3 className="pb-small-h">The possible outcomes</h3>
@@ -1140,7 +1134,7 @@ export function WhereThisIsHeading({ b, onRecordTheDecision, readOnly = false }:
           <h3 className="pb-small-h">The signals behind them</h3>
           {(d.signals ?? []).length ? (d.signals ?? []).map((s: Any, i: number) => (
             <div className="pb-signal" key={i}>
-              <span className={`pb-dot ${i === 0 ? 'pb-dot-proof' : 'pb-dot-said'}`} />
+              <span className={`pb-dot ${s.mark === 'proven' ? 'pb-dot-proof' : 'pb-dot-said'}`} />
               <span><b>{s.says}</b><span className="pb-from">{s.from}</span></span>
             </div>
           )) : <p className="gwui-panel-text">{d.signalsSays}</p>}
@@ -1152,7 +1146,6 @@ export function WhereThisIsHeading({ b, onRecordTheDecision, readOnly = false }:
           </Panel>
           <div className="pb-decides">
             <b>{d.whoDecides}</b>
-            <p>{d.groundworkDoesNotChoose}</p>
             {d.decided ? <p>{d.decided}</p> : readOnly ? null : <button type="button" className="btn sec" onClick={onRecordTheDecision}>{d.recordTheDecision ?? 'Record the decision'}</button>}
           </div>
         </div>
@@ -1164,11 +1157,9 @@ export function WhereThisIsHeading({ b, onRecordTheDecision, readOnly = false }:
 /* ------------------------------------------------------------------ ask, and what Groundwork recommends */
 
 export function GroundworkRecommends({ offers, onAnswer, busy }: { offers: PicturedBoardProps['recommendations']; onAnswer: (id: string, yes: boolean) => void; busy: boolean }) {
-  /* The direct morning (lib/the-direct-morning.tsx): no note that explains the board or says who sees what. */
-  const direct = useTheDirectMorning()
   if (!offers.length) return null
   return (
-    <Section heading="Groundwork recommends" foot={direct ? undefined : 'One suggestion at a time, only when there’s a real need. Say no once and it won’t come back.'}>
+    <Section heading="Groundwork recommends">
       <EdgeList label="Groundwork recommends">
         {offers.map((o) => (
           <EdgeRow
@@ -1191,9 +1182,6 @@ export function GroundworkRecommends({ offers, onAnswer, busy }: { offers: Pictu
 
 /* ------------------------------------------------------------------ the board */
 
-export function TheUpdatedLine({ at }: { at: string | null | undefined }) {
-  return <p className="pb-updated">{whenTheBoardLastChanged(at)}</p>
-}
 
 export function ThePicturedSalesBoard(p: PicturedBoardProps) {
   const { b } = p
@@ -1212,8 +1200,8 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
       {/* What's closing, on the first screen as Hafsah's 24 October decision keeps it: the morning's lines, served to the lead alone. */}
       <WhatIsClosing b={b} heading="What’s closing" />
       <TheTeamToday b={b} deals={deals} today={isoDay(now)} groundId={p.groundId} />
-      {/* Everything else, folded under its own heading (FoldTheRest): the same sections and words, opened with a tap. */}
-      <FoldTheRest>
+      {/* Everything else, open under its own heading: lists of people and deals are tables to read, not folded lines (Hafsah, 13 November 2026). */}
+      <div>
         {/* What the target assumes is the lead's own setup words, so it no longer opens the board (Hafsah's change 4 to the
             approved journey, 1 November 2026); it is kept here, with the rest. */}
         <WhatTheTargetAssumes b={b} />
@@ -1229,7 +1217,7 @@ export function ThePicturedSalesBoard(p: PicturedBoardProps) {
         <HelpNobodyMentioned b={b} />
         <WaitingOnOtherTeams groundId={p.groundId} />
         <WhereThisIsHeading b={b} onRecordTheDecision={p.onRecordTheDecision} readOnly={p.readOnly} />
-      </FoldTheRest>
+      </div>
       <Reports b={b} groundId={p.groundId} sessionRows={p.sessionRows} navigate={p.navigate} now={now} />
       <GroundworkRecommends offers={p.recommendations} onAnswer={p.onAnswerRecommendation} busy={p.recommendationBusy} />
       {p.kindOfWork}

@@ -13,7 +13,7 @@ import { NineColumnsIsNotAPhoneScreen, theShapeOfIt, theSentenceFor } from './ni
 describe('the sessions-this-phase row, as a sentence', () => {
   it('names the one session, for somebody on only one', () => {
     const shape = theShapeOfIt({ '1': 'not-started' }, [1])
-    expect(theSentenceFor('Faraji Odhiambo', shape)).toBe('Faraji Odhiambo has not started session 1.')
+    expect(theSentenceFor('Faraji Odhiambo', shape)).toBe('Faraji Odhiambo has not started check-in 1.')
   })
 
   it('renders that sentence on the phone-width grid', () => {
@@ -23,7 +23,7 @@ describe('the sessions-this-phase row, as a sentence', () => {
         sessions={[1]}
       />,
     )
-    expect(screen.getByText('Faraji Odhiambo has not started session 1.')).toBeTruthy()
+    expect(screen.getByText('Faraji Odhiambo has not started check-in 1.')).toBeTruthy()
     expect(screen.queryByText(/1 of 1/)).toBeNull()
   })
 
@@ -43,12 +43,12 @@ describe('the sessions-this-phase row, as a sentence', () => {
 
   it('counts several sessions in one phrase, not doubled', () => {
     const shape = theShapeOfIt({ '1': 'done', '2': 'done', '3': 'done' }, [1, 2, 3])
-    expect(theSentenceFor('Aisha Otieno', shape)).toBe('Aisha Otieno has checked in for 3 of 3 sessions so far.')
+    expect(theSentenceFor('Aisha Otieno', shape)).toBe('Aisha Otieno has checked in for 3 of 3 check-ins so far.')
   })
 
   it('says who was not part of the run at all, plainly', () => {
     const shape = theShapeOfIt({}, [1, 2])
-    expect(theSentenceFor('A colleague', shape)).toBe('A colleague is not on any of these sessions.')
+    expect(theSentenceFor('A colleague', shape)).toBe('A colleague is not on any of these check-ins.')
   })
 
   /*
@@ -67,7 +67,7 @@ describe('the sessions-this-phase row, as a sentence', () => {
         openSessions={[1]}
       />,
     )
-    expect(screen.getByText('Faraji Odhiambo has not started session 1.')).toBeTruthy()
+    expect(screen.getByText('Faraji Odhiambo has not started check-in 1.')).toBeTruthy()
     expect(screen.queryByText(/the other/)).toBeNull()
   })
 
@@ -82,17 +82,17 @@ describe('the sessions-this-phase row, as a sentence', () => {
    */
   it('names the one other session he was not part of, rather than only counting it', () => {
     const shape = theShapeOfIt({ '1': 'not-started' }, [1, 2])
-    expect(theSentenceFor('Faraji Odhiambo', shape)).toBe('Faraji Odhiambo has not started session 1, and was not part of session 2.')
+    expect(theSentenceFor('Faraji Odhiambo', shape)).toBe('Faraji Odhiambo has not started check-in 1, and was not part of check-in 2.')
   })
 
   it('names several other sessions he was not part of', () => {
     const shape = theShapeOfIt({ '1': 'not-started' }, [1, 2, 3])
-    expect(theSentenceFor('Faraji Odhiambo', shape)).toBe('Faraji Odhiambo has not started session 1, and was not part of sessions 2 and 3.')
+    expect(theSentenceFor('Faraji Odhiambo', shape)).toBe('Faraji Odhiambo has not started check-in 1, and was not part of check-ins 2 and 3.')
   })
 
   it('reads the same way for "A colleague"', () => {
     const shape = theShapeOfIt({ '1': 'done' }, [1, 2])
-    expect(theSentenceFor('A colleague', shape)).toBe('A colleague has checked in for session 1, and was not part of session 2.')
+    expect(theSentenceFor('A colleague', shape)).toBe('A colleague has checked in for check-in 1, and was not part of check-in 2.')
   })
 
   it('renders the named session on the phone-width grid', () => {
@@ -102,7 +102,7 @@ describe('the sessions-this-phase row, as a sentence', () => {
         sessions={[1, 2]}
       />,
     )
-    expect(screen.getByText('Faraji Odhiambo has not started session 1, and was not part of session 2.')).toBeTruthy()
+    expect(screen.getByText('Faraji Odhiambo has not started check-in 1, and was not part of check-in 2.')).toBeTruthy()
     expect(screen.queryByText(/the other 1/)).toBeNull()
   })
 })
@@ -118,22 +118,22 @@ describe('the sessions-this-phase row, as a sentence', () => {
 describe('the reader\'s own sentence, said to them rather than about them', () => {
   it('says "You have checked in for both sessions so far." for the reader, on full attendance', () => {
     const shape = theShapeOfIt({ '1': 'done', '2': 'done' }, [1, 2])
-    expect(theSentenceFor('Rukia Otieno', shape, true)).toBe('You have checked in for both sessions so far.')
+    expect(theSentenceFor('Rukia Otieno', shape, true)).toBe('You have checked in for both check-ins so far.')
   })
 
   it('says "You have checked in for 2 of 3 sessions so far." for the reader, on partial attendance', () => {
     const shape = theShapeOfIt({ '1': 'done', '2': 'done', '3': 'not-started' }, [1, 2, 3])
-    expect(theSentenceFor('Rukia Otieno', shape, true)).toBe('You have checked in for 2 of 3 sessions so far.')
+    expect(theSentenceFor('Rukia Otieno', shape, true)).toBe('You have checked in for 2 of 3 check-ins so far.')
   })
 
   it('says "You have not started session 2." for the reader, named by session', () => {
     const shape = theShapeOfIt({ '2': 'not-started' }, [2])
-    expect(theSentenceFor('Rukia Otieno', shape, true)).toBe('You have not started session 2.')
+    expect(theSentenceFor('Rukia Otieno', shape, true)).toBe('You have not started check-in 2.')
   })
 
   it('leaves every other person\'s sentence in the third person, unchanged apart from "so far"', () => {
     const shape = theShapeOfIt({ '1': 'done', '2': 'done' }, [1, 2])
-    expect(theSentenceFor('Amani Wekesa', shape, false)).toBe('Amani Wekesa has checked in for 2 of 2 sessions so far.')
+    expect(theSentenceFor('Amani Wekesa', shape, false)).toBe('Amani Wekesa has checked in for 2 of 2 check-ins so far.')
   })
 
   it('renders the reader\'s own sentence in the second person on the phone-width grid, by participant id', () => {
@@ -147,8 +147,8 @@ describe('the reader\'s own sentence, said to them rather than about them', () =
         myParticipantId="p-rukia"
       />,
     )
-    expect(screen.getByText('You have checked in for both sessions so far.')).toBeTruthy()
-    expect(screen.getByText('Amani Wekesa has checked in for 2 of 2 sessions so far.')).toBeTruthy()
+    expect(screen.getByText('You have checked in for both check-ins so far.')).toBeTruthy()
+    expect(screen.getByText('Amani Wekesa has checked in for 2 of 2 check-ins so far.')).toBeTruthy()
     expect(screen.queryByText(/Rukia Otieno has checked in/)).toBeNull()
   })
 
@@ -159,7 +159,7 @@ describe('the reader\'s own sentence, said to them rather than about them', () =
         sessions={[1, 2]}
       />,
     )
-    expect(screen.getByText('Rukia Otieno has checked in for 2 of 2 sessions so far.')).toBeTruthy()
+    expect(screen.getByText('Rukia Otieno has checked in for 2 of 2 check-ins so far.')).toBeTruthy()
   })
 
   /*
@@ -202,7 +202,7 @@ describe('a row not let in yet reads that, not the usual attendance sentence', (
     )
     expect(screen.getByText('Faraji Odhiambo is waiting to be let in.')).toBeTruthy()
     expect(screen.queryByText(/has not started/)).toBeNull()
-    expect(screen.queryByText('Session 2')).toBeNull()
+    expect(screen.queryByText('Check-in 2')).toBeNull()
   })
 
   it('leaves everybody else\'s row drawn the usual way', () => {
@@ -216,6 +216,6 @@ describe('a row not let in yet reads that, not the usual attendance sentence', (
       />,
     )
     expect(screen.getByText('Faraji Odhiambo is waiting to be let in.')).toBeTruthy()
-    expect(screen.getByText('Amani Wekesa has checked in for 2 of 2 sessions so far.')).toBeTruthy()
+    expect(screen.getByText('Amani Wekesa has checked in for 2 of 2 check-ins so far.')).toBeTruthy()
   })
 })

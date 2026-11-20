@@ -51,6 +51,6 @@ it('draws the decision, each account and what is known, believed and unknown', a
   expect(screen.getByText('Frostline sent the repair log.')).toBeTruthy()
   expect(screen.queryByText('Frostline sent the repair log. (Grace said it)')).toBeNull()
   expect(screen.getByText('Whether Frostline can repair in Mombasa')).toBeTruthy()
-  expect(screen.getByText('For you to decide once Omar’s account is in.')).toBeTruthy()
+  expect(screen.getByText('For you to decide once Omar’s answer is in.')).toBeTruthy()
 })
 

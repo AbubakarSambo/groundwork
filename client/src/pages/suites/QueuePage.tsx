@@ -3,10 +3,11 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queueApi, leaveBoardApi, spendApi, decisionsApi, type AQueueItem, type ADecisionResult } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tabs, FieldLabel, TextArea } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tabs, FieldLabel, TextArea, Skeleton } from '@/components/gw/ui'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
 import { useSuitesKnownOffStore } from '@/stores/suites-known-off'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
+import { TheAttachedFile } from './TheAttachedFile'
 
 /**
  * A LINK TO THE QUEUE, FOR TODAY AND THE SUITES PAGE, ONLY FOR SOMEBODY THE QUEUE SERVES ITEMS TO.
@@ -226,7 +227,7 @@ export function QueuePage() {
         title="Waiting for you to decide"
       />
 
-      {isLoading && <Note>Loading…</Note>}
+      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
           <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only people in this organisation can read what waits for them.'} role={user?.role} /></Note>
@@ -370,6 +371,7 @@ function AQueueRow({ item, selected, onToggle, onChanged, onDeclined }: {
         <p className="gwui-panel-text">{item.waitedSays}</p>
         {item.clash && <p className="gwui-panel-text">{item.clash.says}</p>}
         {item.standingIn && <p className="gwui-panel-text">{item.standingIn.says}</p>}
+        {item.attached && <TheAttachedFile a={item.attached} firstName={item.firstName} />}
         {problem && <Note tone="error">{problem}</Note>}
         {declining && (
           <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); decide.mutate('decline') }}>

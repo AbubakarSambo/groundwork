@@ -10,12 +10,12 @@ import { sessionsCompletedSentence } from './MyParticipation'
  */
 describe('sessionsCompletedSentence', () => {
   it('says how many are done, out of the total', () => {
-    expect(sessionsCompletedSentence(1, 12)).toBe('You have completed 1 session, out of 12.')
-    expect(sessionsCompletedSentence(3, 12)).toBe('You have completed 3 sessions, out of 12.')
+    expect(sessionsCompletedSentence(1, 12)).toBe('You have completed 1 check-in, out of 12.')
+    expect(sessionsCompletedSentence(3, 12)).toBe('You have completed 3 check-ins, out of 12.')
   })
 
   it('says nothing about a total nobody knows', () => {
-    expect(sessionsCompletedSentence(2, null)).toBe('You have completed 2 sessions.')
-    expect(sessionsCompletedSentence(0, null)).toBe('You have completed 0 sessions.')
+    expect(sessionsCompletedSentence(2, null)).toBe('You have completed 2 check-ins.')
+    expect(sessionsCompletedSentence(0, null)).toBe('You have completed 0 check-ins.')
   })
 })

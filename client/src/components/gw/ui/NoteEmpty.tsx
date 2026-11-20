@@ -39,6 +39,7 @@ export function Note({ tone, center, role, children }: {
 }) {
   const className = [
     'gwui-note',
+    'gw-line',
     tone === 'error' && 'gwui-note-error',
     tone === 'amber' && 'gwui-note-amber',
     tone === 'green' && 'gwui-note-green',
@@ -99,7 +100,7 @@ export function Empty({ title, children, action }: {
   action?: React.ReactNode
 }) {
   if (!title) {
-    return <p className="gwui-empty-line">{children}</p>
+    return <p className="gwui-empty-line gw-line">{children}</p>
   }
   return (
     <Panel>

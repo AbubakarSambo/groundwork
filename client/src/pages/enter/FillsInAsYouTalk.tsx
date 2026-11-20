@@ -1,6 +1,6 @@
 import type React from 'react'
 import type { Cadence } from '@/components/gw/when-the-check-ins-land'
-import { workingDaysOf } from '@/components/gw/when-the-check-ins-land'
+import { theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
 import { HOW_OFTEN } from './TheSetup'
 import { Panel, SubHeading, Note, RowList, Row, Stack, Button } from '@/components/gw/ui'
 import { IT_IS_SOMETHING_ELSE } from './ThisSoundsLike'
@@ -99,7 +99,6 @@ export function theAnchorRows(k: WhatTheAnchorConversationKnows): { label: strin
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const WEEKDAYS = [1, 2, 3, 4, 5]
 const theDate = (s: string) => { const d = new Date(`${s}T00:00:00`); return `${d.getDate()} ${MONTHS[d.getMonth()]}` }
 const andList = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
 
@@ -156,9 +155,11 @@ export function notYetAdded(k: Pick<WhatSetupKnows, 'mentioned' | 'added'>): str
 }
 
 export function theRows(k: WhatSetupKnows): { label: string; set: boolean; value: string | null }[] {
-  const days = workingDaysOf(k.workingDays)
-  const weekdays = days.length === 5 && WEEKDAYS.every((d) => days.includes(d))
-  const often = k.cadenceChosen ? (HOW_OFTEN.find(([c]) => c === k.cadence)?.[1] ?? null) : null
+  /* How often, in the one wording every page uses (theRhythmInFull, staging check S18): "Every weekday, Monday to Friday", never
+     the picker's "Every day" with ", weekdays" after it. */
+  const often = k.cadenceChosen
+    ? (k.cadence === 'SEQUENTIAL' ? (HOW_OFTEN.find(([c]) => c === k.cadence)?.[1] ?? null) : theRhythmInFull({ cadence: k.cadence, workingDays: k.workingDays, startsAt: k.startsOn || null }, { stop: false }))
+    : null
   /* Setup page, piece 3a: an end she said ("until 30 December") or "when I end it" fills this row
      too, with no start date said; a start said with no end still reads "From". */
   const when = k.runsUntilEnded
@@ -177,7 +178,7 @@ export function theRows(k: WhatSetupKnows): { label: string; set: boolean; value
   const whoIsSet = k.people ? k.people.length > 0 && !(k.noEmailYet ?? []).length : k.added.length > 0 && notYet.length === 0
   return [
     { label: FILLS_IN.name, set: !!k.name.trim(), value: k.name.trim() || null },
-    { label: FILLS_IN.howOften, set: !!often, value: often ? (weekdays && k.cadence !== 'ONE_TIME' ? `${often}, weekdays` : often) : null },
+    { label: FILLS_IN.howOften, set: !!often, value: often },
     { label: FILLS_IN.whenItRuns, set: !!when, value: when },
     { label: FILLS_IN.whoIsIn, set: whoIsSet, value: who },
   ]

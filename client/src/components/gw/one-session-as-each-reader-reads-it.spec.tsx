@@ -51,7 +51,7 @@ describe('one session, as each reader reads its top', () => {
       ],
     }) as any)
     renderIt()
-    expect(await screen.findByText('Session 37 of 65. 2 of 3 people checked in.')).toBeTruthy()
+    expect(await screen.findByText('Check-in 37 of 65. 2 of 3 people checked in.')).toBeTruthy()
     /* E10: it says how it was shared. */
     expect(screen.getByText('Shared with the team when this session closed.')).toBeTruthy()
     expect(screen.getByText('Aisha has checked in.')).toBeTruthy()
@@ -69,7 +69,7 @@ describe('one session, as each reader reads its top', () => {
       ],
     }) as any)
     renderIt()
-    expect(await screen.findByText('Session 37 of 65. 1 of 2 people checked in.')).toBeTruthy()
+    expect(await screen.findByText('Check-in 37 of 65. 1 of 2 people checked in.')).toBeTruthy()
     expect(screen.getByText('You have checked in.')).toBeTruthy()
     expect(screen.getByText('a colleague has not checked in yet.')).toBeTruthy()
     expect(document.body.textContent).not.toContain('Shared with the team')
@@ -86,8 +86,8 @@ describe('one session, as each reader reads its top', () => {
   })
 
   it('says one person, and leaves out the count when nobody is counted', () => {
-    expect(sessionAndWhoCheckedIn(2, null, 1, 1)).toBe('Session 2. 1 of 1 person checked in.')
-    expect(sessionAndWhoCheckedIn(2, null, 0, 0)).toBe('Session 2.')
+    expect(sessionAndWhoCheckedIn(2, null, 1, 1)).toBe('Check-in 2. 1 of 1 person checked in.')
+    expect(sessionAndWhoCheckedIn(2, null, 0, 0)).toBe('Check-in 2.')
     expect(hasCheckedIn({ who: 'Brian', isYou: true, answered: false })).toBe('You have not checked in yet.')
     expect(lastUpdated('2026-09-23T18:30:00.000Z')).toMatch(/^Last updated on Wednesday 23 September at 6:30pm\. /)
   })
@@ -114,7 +114,7 @@ describe('one session, as each reader reads its top', () => {
         <MemoryRouter><TheSessionsReport groundId="g1" sessionNumber={37} totalInThisRound={6} /></MemoryRouter>
       </QueryClientProvider>,
     )
-    expect(await screen.findByText('Session 37 of 65. 2 of 6 people checked in.')).toBeTruthy()
+    expect(await screen.findByText('Check-in 37 of 65. 2 of 6 people checked in.')).toBeTruthy()
   })
 
   it('draws nothing for "last updated" when the date is not a real date, the shape the server sends today', async () => {

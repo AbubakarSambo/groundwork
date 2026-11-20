@@ -62,3 +62,21 @@ export function whoTheSessionCounts<T extends { id?: string }>(people: T[] | nul
   const on = new Set(theCountOf(ground, sessionNumber)?.onTheCheckIn ?? [])
   return (people ?? []).filter((p) => !!p.id && on.has(p.id))
 }
+
+/**
+ * WHO HAS ANSWERED, FOR A BOARD'S OWN SECTIONS (fix plan 16 November, group 5; end-to-end I-4). The lead's board read "Waiting. Hasn't answered
+ * yet." under three people's names on the page that said "3 of 6 have checked in": two sections of the board worked out who had answered from
+ * the grid of check-ins, each its own way (the last column, or any column), while the sentence came from the one count. Every section reads the
+ * one count now: the clock's session, the people it counts, and who of them has answered.
+ *
+ * Only a payload that carries no count at all (the server always sends one) falls back to the grid's latest session, so a board is never drawn
+ * as if nobody had answered because a field is missing.
+ */
+export function whoHasAnsweredOnTheBoard(b: unknown): { counted: string[]; answered: Set<string>; session: number | null } {
+  const c = theCountOf(b, served(b)?.session)
+  if (c) return { counted: c.onTheCheckIn, answered: new Set(c.answered), session: served(b)?.session ?? null }
+  const grid = (b as { checkInGrid?: { sessions?: number[]; rows?: { participantId: string; managingOnly?: boolean; cells?: Record<string, string> }[] } } | null)?.checkInGrid
+  const last = (grid?.sessions ?? []).slice(-1)[0] ?? null
+  const rows = (grid?.rows ?? []).filter((r) => !r.managingOnly)
+  return { counted: rows.map((r) => r.participantId), answered: new Set(rows.filter((r) => (last != null ? r.cells?.[String(last)] === 'done' : Object.values(r.cells ?? {}).includes('done'))).map((r) => r.participantId)), session: last }
+}

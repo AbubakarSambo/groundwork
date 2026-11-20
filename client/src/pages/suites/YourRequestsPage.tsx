@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { yourRequestsApi, reviewsApi, type YourRequest, type YourHours, type YourReview } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
-import { Page, PageTitle, Section, Button, Note, Callout, Empty, RowList, Row, Tag, FieldLabel, TextArea } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Button, Note, Callout, Empty, RowList, Row, Tag, FieldLabel, TextArea, Skeleton } from '@/components/gw/ui'
 import { maySwitchSuitesOn, SuiteOffMessage } from '@/lib/suite-is-off'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -117,7 +117,7 @@ function YourOwnReview({ y }: { y: YourReview }) {
         <p className="gwui-panel-text">{y.says}</p>
         {y.appealSays && <p className="gwui-panel-text">{y.appealSays}</p>}
       </div>
-      <Link className="gwui-plain-link" to={`/suite/reviews/${y.id}`} aria-label={`Open your review, ${month}`}>Open it</Link>
+      <Link className="gwui-plain-link" to={`/suite/reviews/${y.id}`} aria-label={`Open your review, ${month}`}>Open your review</Link>
     </Row>
   )
 }
@@ -165,7 +165,7 @@ function SuiteSection<T>({ heading, q, isOff, off, role, action, children }: {
     if (!maySwitchSuitesOn(role)) return null
     return <Section heading={heading}><Empty><SuiteOffMessage message={off} role={role} /></Empty></Section>
   }
-  if (q.isLoading) return <Section heading={heading}><Note>Loading…</Note></Section>
+  if (q.isLoading) return <Section heading={heading}><Skeleton what="Getting this page" shape="rows" /></Section>
   if (q.isError) {
     const refused = refusalOf(q.error)
     if (refused?.status === 403 || refused?.status === 404) {

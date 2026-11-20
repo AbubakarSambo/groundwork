@@ -59,19 +59,20 @@ describe('opening the confirmation', () => {
 
   it('in that browser, sends the key, then forgets it once the account is made', async () => {
     localStorage.setItem('gw_password_key', 'k'.repeat(64))
-    ;(authApi.verifyEmail as any).mockResolvedValue({ user, accessToken: 't', justCreated: true, needsPassword: false })
+    ;(authApi.verifyEmail as any).mockResolvedValue({ user, accessToken: 't', justCreated: true })
     n += 1
     at(`/verify-email?token=same-${n}`, <MagicVerifyPage />, '/verify-email')
-    await screen.findByRole('heading', { name: 'Your email is confirmed' })
+    /* Changed in batch 2, group 6 (S14): no "Your email is confirmed" page; the link goes straight on. */
+    await waitFor(() => expect(authApi.verifyEmail).toHaveBeenCalled())
     expect(authApi.verifyEmail).toHaveBeenCalledWith(`same-${n}`, undefined, 'k'.repeat(64))
     await waitFor(() => expect(localStorage.getItem('gw_password_key')).toBeNull())
   })
 
   it('in another browser, sends no key, exactly as a sign-up by link', async () => {
-    ;(authApi.verifyEmail as any).mockResolvedValue({ user, accessToken: 't', justCreated: true, needsPassword: true, passwordSetupToken: 'pst' })
+    ;(authApi.verifyEmail as any).mockResolvedValue({ user, accessToken: 't', justCreated: true })
     n += 1
     at(`/verify-email?token=other-${n}`, <MagicVerifyPage />, '/verify-email')
-    await screen.findByRole('heading', { name: 'Your email is confirmed' })
+    await waitFor(() => expect(authApi.verifyEmail).toHaveBeenCalled())
     expect(authApi.verifyEmail).toHaveBeenCalledWith(`other-${n}`)
     expect(document.body.textContent).not.toMatch(/password/i)
   })

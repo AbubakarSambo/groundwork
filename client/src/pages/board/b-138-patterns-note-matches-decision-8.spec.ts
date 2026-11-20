@@ -18,12 +18,13 @@ describe('the patterns section tells decision 8\'s rule, not its opposite', () =
     expect(SRC).not.toContain('A pattern appears only after three check-ins in a row,')
   })
 
-  it('the default note and the empty state both say "in a row or not"', () => {
-    expect(SRC).toContain('Shown only after the same thing comes up in three check-ins, in a row or not. Each describes the work.')
-    expect(SRC).toContain('Nothing to show here yet. A pattern appears only after the same thing comes up in three check-ins, in a row or not, and the person it is about always sees it first.')
+  /* 15 November 2026 (boards made leaner): the note explaining when a pattern appears, and the empty-state sentence, were removed as explanation. The section is not drawn while there is no pattern, and nothing now states the rule at all, so nothing can state it wrongly. */
+  it('draws no note about when a pattern appears, and no empty state', () => {
+    expect(SRC).not.toContain('Shown only after the same thing comes up in three check-ins')
+    expect(SRC).not.toContain('Nothing to show here yet. A pattern appears only after')
   })
 
-  it('the asset-loans cohort heading keeps its own note, also matching decision 8', () => {
-    expect(SRC).toContain("'Shown only after the same thing comes up in three check-ins, in a row or not'")
+  it('names the asset-loans cohort section by the plain heading, with no note of its own', () => {
+    expect(SRC).not.toContain('One person, a place, or the model?')
   })
 })

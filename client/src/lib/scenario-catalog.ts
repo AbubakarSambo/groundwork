@@ -321,7 +321,7 @@ export const COACH_CARD = {
    * somebody is already paying for. A person who read the card and then the page has no way to know
    * which is real, and the one they will remember is the cheaper one.
    */
-  cost: 'Coaching is $7,500 a year for twelve sessions, or $700 per month with no retainer. The software works without it, and most teams run it themselves.',
+  cost: 'Coaching is $7,500 a year for twelve check-ins, or $700 per month with no retainer. The software works without it, and most teams run it themselves.',
 } as const
 
 
@@ -431,6 +431,8 @@ export const SCENARIO_FACTS: Record<ScenarioKey, ScenarioFacts> = {
  */
 export function isEvaluationScenario(scenario: string | null | undefined): boolean {
   if (!scenario) return false
+  /* A new person's first 90 days is an evaluation check-in too, on the server's own list (api/src/modules/reports/is-this-an-evaluation-check-in.ts, ALSO_AN_EVALUATION), so the client no longer disagrees with it. */
+  if (scenario === 'NEW_HIRE') return true
   const facts = (SCENARIO_FACTS as Record<string, ScenarioFacts>)[scenario]
   return facts?.group === 'person'
 }

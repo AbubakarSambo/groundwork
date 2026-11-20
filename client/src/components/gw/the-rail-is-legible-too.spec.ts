@@ -71,7 +71,7 @@ describe('the rail is legible too', () => {
     const CSS = readFileSync(join(__dirname, '../../index.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
     const rules = [...CSS.matchAll(/([^{}]*\.gw-(?:rl|ci|rail)[^{}]*)\{([^}]*)\}/g)]
     expect(rules.length).toBeGreaterThan(20)
-    const ALLOWED = /^(var\(--gw-(text|sub|navy|green-t|red-t|amber-t|muted)\)|#fff|inherit)$/
+    const ALLOWED = /^(var\(--gw-(text|sub|navy|green-t|red-t|amber-t|muted)\)|var\(--gw-white\)|#fff|inherit)$/
     const bad: string[] = []
     for (const [, sel, body] of rules) {
       for (const m of body.matchAll(/(?:^|;|\s)color:\s*([^;]+);/g)) {
@@ -79,7 +79,7 @@ describe('the rail is legible too', () => {
         if (!ALLOWED.test(v)) bad.push(`${sel.trim()} color: ${v}`)
         // White text only where the rule also paints a solid dark fill under it. Amber-t (#8A5C1A)
         // joined in U.5 for Today's count, as the prototype draws it: white on it is about 5.8 to 1.
-        if (v === '#fff' && !/background:\s*var\(--gw-(navy|green-t|amber-t)\)/.test(body)) bad.push(`${sel.trim()} is white on no fill`)
+        if ((v === '#fff' || v === 'var(--gw-white)') && !/background:\s*var\(--gw-(navy|green-t|amber-t)\)/.test(body)) bad.push(`${sel.trim()} is white on no fill`)
       }
     }
     expect(bad).toEqual([])

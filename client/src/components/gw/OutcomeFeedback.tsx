@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { outcomeFeedbackApi } from '@/api/feedback'
-import { Panel, Callout } from './ui'
+import { Panel } from './ui'
 
 /**
  * DID THIS FEEL FAIR? MOVED FROM THE DEAD REPORT BODY TO THE BOARD, WHERE A CLOSED CHECK-IN
@@ -44,7 +44,7 @@ export function OutcomeFeedback({ groundId }: { groundId: string }) {
   const submit = useMutation({
     mutationFn: (feltFair: boolean) => outcomeFeedbackApi.submit(groundId, feltFair, note.trim() || undefined),
     onSuccess: () => {
-      toast.success('Thank you. That is recorded.')
+      toast.success('Thank you.')
       setNote('')
       qc.invalidateQueries({ queryKey: ['outcome-feedback', groundId] })
     },
@@ -55,30 +55,23 @@ export function OutcomeFeedback({ groundId }: { groundId: string }) {
 
   return (
     <Panel>
-      <div className="gwui-fs-13 gwui-ink-muted gwui-mb-10" style={{ letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700 }}>
-        This check-in has closed
-      </div>
-
       {answered && (
         <div className="gwui-fs-13 gwui-mb-10">
-          You said this process {mine!.feltFair ? 'felt fair' : 'did not feel fair'}.
+          You said this {mine!.feltFair ? 'felt fair' : 'did not feel fair'}.
           {mine!.note && <span className="gwui-ink-sub"> "{mine!.note}"</span>}
           <span className="gwui-ink-muted"> You can change that below.</span>
         </div>
       )}
 
-      <div className="gwui-mb-10">
-        <Callout title="Did this process feel fair, and grounded in what was actually said?">
-          Your answer is not shown to the other parties.
-        </Callout>
-      </div>
+      {/* Plain: no label above it and no privacy line under it (audit of the check-in pages, 15 November 2026, row 25). Who sees the answer is the backend's rule. */}
+      <p className="gwui-fs-13 gwui-mb-10" style={{ fontWeight: 700 }}>Did this feel fair?</p>
 
       <textarea
         value={note}
         onChange={e => setNote(e.target.value)}
         maxLength={2000}
         rows={2}
-        placeholder="Anything you want to add (optional)"
+        placeholder="Anything to add?"
         className="gwui-rule gwui-fs-13 gwui-pt-8 gwui-pb-8 gwui-pl-10 gwui-pr-10 gwui-mb-10"
         style={{ width: '100%', boxSizing: 'border-box', borderRadius: 7, fontFamily: 'inherit', outline: 'none', resize: 'vertical' }}
       />

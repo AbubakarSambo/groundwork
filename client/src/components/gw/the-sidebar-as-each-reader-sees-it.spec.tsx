@@ -278,11 +278,12 @@ describe('Today in the sidebar (C1, U.5), as layout-computer.txt draws it', () =
 
 describe('Company and You in the sidebar (D2, U.15; C2, U.12), as layout-computer.txt draws them', () => {
   /* U.15: Company sits between Today and You, so You moved from the second place to the third. */
-  it('Company sits straight after Today and goes to the Company page', () => {
+  /* Renamed (S7, 20 November 2026): the Company page is the Desk, so the item reads "Desk" and goes to the same place. */
+  it('the Desk sits straight after Today and goes to the Desk', () => {
     const { rail } = shell(LEAD)
     const pages = [...rail.querySelectorAll('.gw-rl-pages a')]
     expect(pages[1].getAttribute('href')).toBe('/company')
-    expect(pages[1].textContent).toBe('Company')
+    expect(pages[1].textContent).toBe('Desk')
   })
 
   it('You sits after Company and goes to the You board', () => {
@@ -297,7 +298,8 @@ describe('Suites in the sidebar (E, U.17), as the prototype draws it for each re
   it('a lead has Suites straight after You, and no organisation pages', () => {
     const { rail } = shell({ ...LEAD, role: 'LEAD' })
     const pages = [...rail.querySelectorAll('.gw-rl-pages a')]
-    expect(pages.slice(0, 4).map(a => a.textContent)).toEqual(['Today', 'Company', 'You', 'Suites'])
+    /* "Company" reads "Desk" now (S7, 20 November 2026). */
+    expect(pages.slice(0, 4).map(a => a.textContent)).toEqual(['Today', 'Desk', 'You', 'Suites'])
     expect(pages[3].getAttribute('href')).toBe('/settings/suites')
     expect(within(rail).queryByRole('link', { name: /People|Connections|Plan and billing/ })).toBeNull()
   })

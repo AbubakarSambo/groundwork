@@ -25,7 +25,24 @@ import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 export interface APersonOnALine { name: string | null; email: string | null; phone: string | null }
 
 export function readTheLines(pasted: string): Promise<APersonOnALine[]> {
-  return entryApi.peopleOnLines(pasted)
+  return entryApi.peopleOnLines(pasted).then((people) => withTheNameOnTheirLine(people, pasted))
+}
+
+/**
+ * THE NAME ON THEIR OWN LINE, WHERE THE TEAM READER KEPT NONE (staging check S10, 4 November 2026). The one team reader keeps a name
+ * beside an address only when it is two words or more, so "oops, b@x.com" is never somebody called Oops. The setup page writes a line for
+ * each person the conversation named, and Stella named her reps "Rita" and "Remy": their lines came back with no name, so the first
+ * press of "Send 2 invitations" read them as left out and saved nothing, and the invitations went without their names. Here the name
+ * is the first part of the line the address is on, exactly as the line says it.
+ */
+export function withTheNameOnTheirLine<T extends { name: string | null; email: string | null }>(people: T[], lines: string): T[] {
+  const each = lines.split('\n')
+  return people.map((p) => {
+    if (p.name || !p.email) return p
+    const line = each.find((l) => l.toLowerCase().includes(p.email!.toLowerCase()))
+    const first = line?.split(',')[0]?.trim() ?? ''
+    return first && !first.includes('@') ? { ...p, name: first } : p
+  })
 }
 
 /** One line for a person: "Sarah Chebet, sarah@x.com, +254 712 345 678", with whatever is known. */
@@ -46,16 +63,21 @@ function andList(names: string[]): string {
  * emails here when you have them", because a name already on a line was never written again.
  */
 export function withTheNamedAdded(now: string, prefilled: string[]): string {
-  const nameOf = (l: string) => l.split(',')[0].trim().toLowerCase()
+  /*
+   * WHO A LINE IS ABOUT IS THE NAME ON IT, WHETHER IT WAS TYPED "Ruth, ruth@x.com" OR "Ruth Njeri ruth@x.com +254 700 000 000", AND "Ruth" IS "Ruth Njeri"
+   * (fix plan 16 November, group 3). It was the text before the first comma, so a line typed with spaces was never found, and the conversation's bare
+   * "Ruth" was added under it as somebody else, and again for each name; a full name typed in the box was not the "Ruth" the conversation named.
+   */
+  const words = (l: string) => l.split(',')[0].split(/\s+/).filter((w) => w && !w.includes('@') && !/^\+?[\d()-]{6,}$/.test(w)).map((w) => w.toLowerCase())
+  const sameName = (a: string[], b: string[]) => !!a.length && !!b.length && (a.length <= b.length ? a : b).every((w, i) => w === (a.length <= b.length ? b : a)[i])
   const partsOf = (l: string) => l.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean)
-  const said = new Map(prefilled.map((l) => [nameOf(l), l]))
   const lines = now.split('\n').map((l) => l.trim()).filter(Boolean)
   const kept = lines.map((l) => {
-    const fuller = said.get(nameOf(l))
+    const fuller = prefilled.find((p) => sameName(words(p), words(l)))
     return fuller && partsOf(l).every((x) => partsOf(fuller).includes(x)) ? fuller : l
   })
-  const have = new Set(lines.map(nameOf))
-  return [...kept, ...prefilled.filter((l) => !have.has(nameOf(l)))].join('\n')
+  const have = lines.map(words)
+  return [...kept, ...prefilled.filter((p) => !have.some((h) => sameName(h, words(p))))].join('\n')
 }
 
 /** How many people the box holds now: one per line with something on it. */

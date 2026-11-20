@@ -48,7 +48,7 @@ describe('ConversationCard', () => {
     /* UPDATED 24 October: pinned in the prototype's own stylesheet, .ci-focus and .ci-card, and its phone rule for a focused check-in. */
     const PROTO = readFileSync(join(__dirname, '../../../styles/prototype.css'), 'utf8')
     expect(PROTO).toMatch(/\.ci-focus\{max-width:560px;margin:0 auto\}/)
-    expect(PROTO).toMatch(/\.ci-card\{[^}]*border:1px solid var\(--rule\);border-radius:16px/)
+    expect(PROTO).toMatch(/\.ci-card\{[^}]*border:1px solid var\(--rule\);border-radius:12px/)
     expect(PROTO).toMatch(/body\.focus \.ci-card\{border-radius:0;border-left:0;border-right:0/)
   })
 

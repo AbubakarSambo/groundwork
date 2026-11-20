@@ -98,7 +98,7 @@ describe('a lead who only manages: the rest of My work leaves her out, same as "
     renderPage('record')
     expect(await screen.findByText('No reports yet.')).toBeTruthy()
     expect((groundsApi.myWork as any).mock.calls[0][0]).toBe('g1')
-    expect(screen.queryByText('Session 1, your own')).toBeNull()
+    expect(screen.queryByText('Check-in 1, your own')).toBeNull()
   })
 
   it('reads "You check in when you choose" under "Your sessions" on People and setup', async () => {

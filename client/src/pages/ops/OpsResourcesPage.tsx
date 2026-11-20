@@ -63,14 +63,11 @@ function Row({ resource }: { resource: OpsResource }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ops', 'resources'] }),
   })
 
-  const flagged = resource.standing.flagged.length > 0
-
   return (
     <div
       style={{
         ...CARD,
         marginBottom: 12,
-        borderLeft: flagged ? '3px solid var(--gw-red-t)' : undefined,
       }}
     >
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline' }}>

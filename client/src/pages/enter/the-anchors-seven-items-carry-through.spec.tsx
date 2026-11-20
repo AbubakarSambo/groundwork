@@ -191,9 +191,9 @@ describe('the anchor’s seven items on the report call', () => {
     seedAnchorCheckIn()
     renderPage('/start')
     await waitFor(() => expect(screen.getAllByText('I keep our biggest accounts renewing.').length).toBeGreaterThan(0))
-    fireEvent.click(screen.getByRole('button', { name: 'End session' }))
-    const dialog = await screen.findByRole('dialog', { name: 'End this session?' })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'End session' }))
+    fireEvent.click(screen.getByRole('button', { name: 'End check-in' }))
+    const dialog = await screen.findByRole('dialog', { name: 'End this check-in?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'End check-in' }))
     await waitFor(() => expect(entryApi.report).toHaveBeenCalled())
     const call = (entryApi.report as any).mock.calls[0]
     expect(call[4]).toMatchObject({
@@ -225,9 +225,9 @@ describe('the anchor’s seven items on the report call', () => {
     }))
     renderPage('/start')
     await waitFor(() => expect(screen.getAllByText('A new project is starting.').length).toBeGreaterThan(0))
-    fireEvent.click(screen.getByRole('button', { name: 'End session' }))
-    const dialog = await screen.findByRole('dialog', { name: 'End this session?' })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'End session' }))
+    fireEvent.click(screen.getByRole('button', { name: 'End check-in' }))
+    const dialog = await screen.findByRole('dialog', { name: 'End this check-in?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'End check-in' }))
     await waitFor(() => expect(entryApi.report).toHaveBeenCalled())
     const call = (entryApi.report as any).mock.calls[0]
     expect(call[4]).toBeUndefined()

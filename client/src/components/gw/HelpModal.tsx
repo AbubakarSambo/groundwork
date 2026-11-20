@@ -56,12 +56,12 @@ function Tab0({ onNext, mayStart }: { onNext: () => void; mayStart: boolean }) {
           * will refuse them on.
           */}
         {mayStart && (
-          <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-navy)' }}>
+          <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>1. Start a check-in</div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>Pick the situation, set how long it runs and how often people check in, then add the people. Takes {SETUP_TAKES}.</div>
           </div>
         )}
-        <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-green-b)' }}>
+        <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>{mayStart ? '2. ' : ''}Everyone answers on their own</div>
           {/*
             * WHAT PEOPLE SAY CAN BE SHOWN TO THE OTHERS IN THE CHECK-IN (Hafsah's privacy decision).
@@ -70,7 +70,7 @@ function Tab0({ onNext, mayStart }: { onNext: () => void; mayStart: boolean }) {
             */}
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>Each person gets a link and answers Groundwork one to one. What you say may be quoted word for word to the other people in your check-in, in its report.</div>
         </div>
-        <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-amber-b)' }}>
+        <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>{mayStart ? '3. ' : ''}Read the report together</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: '21px' }}>It releases to everyone at once and shows where people agree and where they do not. The gaps are the conversation.</div>
         </div>
@@ -134,7 +134,7 @@ const USE_CASES = [
   { accent: 'var(--gw-navy)', accentText: 'var(--gw-navy)', label: 'What was agreed',               title: 'Go back to what people actually said', body: 'When people remember an agreement differently, what everybody said at the time is still there, with the date on it. Nobody has to rely on memory, and nobody has to win the argument about whose memory it is.' },
   { accent: 'var(--gw-navy)', accentText: 'var(--gw-navy)', label: 'Work terms and conditions',     title: 'Say out loud what you each expect', body: 'Start one to get what each of you expects, what you are each taking on, and what good looks like. It is not a contract and it is not an HR file. It moves as the work moves, and both of you write your own.' },
   { accent: 'var(--gw-amber-b)', accentText: 'var(--gw-amber-t)', label: 'Project alignment',             title: 'Agree on what success looks like before the work starts', body: 'The brief you gave and the brief they heard are almost never the same. Open a check-in before the project starts. Everybody says what they are building and what done looks like. The gap shows up now rather than at month three.' },
-  { accent: 'var(--gw-amber-b)', accentText: 'var(--gw-amber-t)', label: 'Pre-agreed resolution',         title: 'Agree on the resolution state before the check-in opens', body: 'Everybody picks what they are aiming at before the first session. Agreeing on where you are trying to get to changes how the whole thing feels: it becomes something you are doing together rather than something being done to somebody.' },
+  { accent: 'var(--gw-amber-b)', accentText: 'var(--gw-amber-t)', label: 'Pre-agreed resolution',         title: 'Agree on the resolution state before the check-in opens', body: 'Everybody picks what they are aiming at before the first check-in. Agreeing on where you are trying to get to changes how the whole thing feels: it becomes something you are doing together rather than something being done to somebody.' },
 ]
 
 function Tab2({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
@@ -142,7 +142,7 @@ function Tab2({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
     <div style={{ padding: 24 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {USE_CASES.map((c, i) => (
-          <div key={i} style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: '14px 16px', borderLeft: `3px solid ${c.accent}` }}>
+          <div key={i} style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: '14px 16px' }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: c.accentText, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 5 }}>{c.label}</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>{c.title}</div>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' }}>{c.body}</div>
@@ -222,12 +222,12 @@ const TRY_IT = [
     body: 'Add anything after a + in your own address and it still arrives with you, but Groundwork treats it as somebody else. Invite you+sam@ as the second person, and open their invitation in a private window. You cannot be both people in one browser.',
   },
   {
-    title: 'Do the second session today',
-    body: 'On the Setup tab, set the rhythm to "When the lead checks in". There is no clock on that one, so the next session opens the moment you finish yours. The second session is where Groundwork starts referring back to what was said the first time.',
+    title: 'Do the second check-in today',
+    body: 'On the People and setup tab, set the rhythm to "When the lead checks in". There is no clock on that one, so the next check-in opens the moment you finish yours. The second check-in is where Groundwork starts referring back to what was said the first time.',
   },
   {
     title: 'See how it ends',
-    body: 'Also on Setup, shorten the timeframe so the run is two or three sessions. On the last one everybody is asked how it should close. Almost nobody reaches that screen on a trial, and it is the one that shows what you are left holding.',
+    body: 'Also on People and setup, shorten the timeframe so the run is two or three check-ins. On the last one everybody is asked how it should close. Almost nobody reaches that screen on a trial, and it is the one that shows what you are left holding.',
   },
 ]
 

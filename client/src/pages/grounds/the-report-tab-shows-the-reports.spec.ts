@@ -54,7 +54,7 @@ describe('the report tab is a list of sessions', () => {
     const board = LIST.indexOf('{EVERY_SESSION.board}')
     expect(board).toBeGreaterThan(-1)
     /* Before the rows, which is the whole of "first item on the page". */
-    expect(board).toBeLessThan(LIST.indexOf('Session {r.sessionNumber}'))
+    expect(board).toBeLessThan(LIST.indexOf('Check-in {r.sessionNumber}'))
   })
 
   it('and carries nothing else - no report body, no picker, no resolution', () => {
@@ -65,7 +65,7 @@ describe('the report tab is a list of sessions', () => {
 
   it('lists the sessions, newest first, and each row opens that session', () => {
     expect(TAB).toContain('rows={sessionRows}')
-    expect(LIST).toContain('Session {r.sessionNumber}')
+    expect(LIST).toContain('Check-in {r.sessionNumber}')
     expect(LIST).toMatch(/navigate\(`\/checkin\/\$\{r\.myCheckInId\}\/report`\)/)
     expect(SESSION_ROWS).toMatch(/\(a, b\) => b - a/)
   })

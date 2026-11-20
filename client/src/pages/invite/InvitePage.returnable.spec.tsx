@@ -44,11 +44,11 @@ vi.mock('react-router-dom', async () => {
   return { ...actual, useNavigate: () => (to: string) => { navigated.push(to) } }
 })
 
-function renderInvite() {
+function renderInvite(url = '/join?token=tok') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/join?token=tok']}>
+      <MemoryRouter initialEntries={[url]}>
         <Routes><Route path="/join" element={<InvitePage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -92,6 +92,17 @@ describe('coming back to an invite link you have already used', () => {
 
     // THE POINT: click, get distracted, come back - and land back in the session.
     await waitFor(() => expect(navigated).toContain('/checkin/ci9'))
+  })
+
+  /* End-to-end check of 16 November, M-2: "Your report is ready" opened a new check-in for somebody already signed in. The link names the report. */
+  it('goes to the report the mail named, not to a check-in, when this is the browser they joined on', async () => {
+    ;(participantsApi.accept as any).mockResolvedValue({ resumed: true, groundId: 'g1', checkInId: 'ci9' })
+    renderInvite('/join?token=tok&next=%2Fgrounds%2Fg1%2Fsession%2F2')
+
+    fireEvent.click(await screen.findByRole('button', { name: /Email me a sign-in link/i }))
+
+    await waitFor(() => expect(navigated).toContain('/grounds/g1/session/2'))
+    expect(navigated.some(to => to.startsWith('/checkin/'))).toBe(false)
   })
 
   /* U.3: somebody still waiting for an admin, coming back on the same browser. */

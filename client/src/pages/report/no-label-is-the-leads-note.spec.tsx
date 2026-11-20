@@ -50,12 +50,12 @@ describe('the record-shape flag never names somebody with the lead’s note', ()
     render(
       <WhatToProbeThemOn
         reads={[]}
-        arcAdvisories={[{ participantId: 'p-b', note: 'The answers stop after the first session.', features: [] }]}
+        arcAdvisories={[{ participantId: 'p-b', note: 'The answers stop after the first check-in.', features: [] }]}
         nameFor={nameFor}
       />,
     )
     expect(screen.getByText('Another colleague')).toBeTruthy()
-    expect(screen.getByText('The answers stop after the first session.')).toBeTruthy()
+    expect(screen.getByText('The answers stop after the first check-in.')).toBeTruthy()
     expect(whereTheNoteIs()).toEqual({ asTheirNote: [], elsewhere: [] })
     expect(document.body.textContent).not.toContain(PRIVATE_NOTE)
   })

@@ -64,7 +64,7 @@ describe('the session report, withheld until you answer', () => {
       writtenPicture: null,
       whyNoQuestion: null,
     })
-    expect(await screen.findByText(/Session 3/)).toBeInTheDocument()
+    expect(await screen.findByText(/Check-in 3/)).toBeInTheDocument()
     expect(screen.queryByText('There is a picture forming, and you have not answered yet')).toBeNull()
   })
 })

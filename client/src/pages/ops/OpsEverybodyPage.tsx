@@ -150,7 +150,6 @@ export function OpsEverybodyPage() {
           style={{
             ...CARD,
             marginBottom: 16,
-            borderLeft: `3px solid ${board.data.quarter.ready ? 'var(--gw-green-t)' : 'var(--gw-amber-t)'}`,
           }}
         >
           <div style={{ ...LABEL, fontSize: 10 }}>The period</div>

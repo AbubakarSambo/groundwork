@@ -8,7 +8,7 @@ interface EntryStore {
 }
 
 export const useEntryStore = create<EntryStore>()((set) => ({
-  groundName: 'Entry session',
+  groundName: 'Entry check-in',
   sessions: 1,
   setGroundName: (name) => set({ groundName: name }),
   setSessions: (n) => set({ sessions: n }),

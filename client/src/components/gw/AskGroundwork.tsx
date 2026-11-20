@@ -13,7 +13,6 @@ import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-canno
 import { Mark } from './kit'
 import { Composer } from './ui/Composer'
 import { GroundworkIsWriting } from './ui/GroundworkIsWriting'
-import { PRIVATE_LINE } from './what-ask-groundwork-says'
 import { STILL_READING_WHAT_YOU_WROTE } from '@/lib/opening-is-slow'
 import { whatTheServerSaid } from '@/lib/what-the-server-said'
 
@@ -24,6 +23,8 @@ const STILL_READING = 'Reading it now.'
 const SAID_AFTER_UPLOAD = "I've uploaded it."
 /** The picker's target when the document is for the whole organisation, not a check-in (the server's FOR_THE_ORGANISATION). */
 const FOR_THE_ORGANISATION = 'organisation'
+/** The picker's target when the file is for a report they asked for (the server's REPORT_ON_REQUEST_KIND, S8). */
+const FOR_THE_REPORT = 'report_on_request'
 /** The picker's target when the "+" beside the message box opened it: the file is chosen first, and Ask decides where it goes. */
 const CHOSEN_FIRST = 'chosen-first'
 /** What the "+" says to Ask once a file is chosen: the same words a person could type (Hafsah, 15 October). */
@@ -407,10 +408,10 @@ export function AskGroundwork({
   const uploadTo = async (file: File, groundId: string) => {
     setProblem(null)
     /* AN ADMIN'S DOCUMENT FOR THE WHOLE ORGANISATION (fix list, item 3): read and said back by the server in one step. */
-    if (groundId === FOR_THE_ORGANISATION) {
+    if (groundId === FOR_THE_ORGANISATION || groundId === FOR_THE_REPORT) {
       setReading(true)
       try {
-        const reply = await askApi.addADocumentForTheOrganisation(file)
+        const reply = await (groundId === FOR_THE_REPORT ? askApi.addToTheReport(file) : askApi.addADocumentForTheOrganisation(file))
         setSaid((s) => [...s, { from: 'you' as const, says: `Here is ${file.name}.` }, { from: 'groundwork' as const, reply }])
       } catch (err: unknown) {
         const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -578,7 +579,6 @@ export function AskGroundwork({
             </select>
           </label>
         )}
-        <p className="t-tiny mut gw-full">{PRIVATE_LINE}</p>
       </div>
 
       <div className="asst-body">
@@ -596,8 +596,8 @@ export function AskGroundwork({
         {/* The questions you could ask, as the prototype's chips, after what has been said, until you ask something this visit. */}
         {page.data?.canAsk && (page.data?.starters ?? []).length > 0 && said.length === 0 && (
           <div role="group" aria-label="Questions you could ask" className="gw-chips">
-            {/* Three, as the prototype's Ask. */}
-            {(page.data?.starters ?? []).slice(0, 3).map((q) => (
+            {/* All of them: the server cuts the list once, to a short one with the reader's own role first (ask-name.ts, askStartersFor). Cut here as well, a lead's and an admin's own lines were never seen. */}
+            {(page.data?.starters ?? []).map((q) => (
               <button key={q} type="button" className={chip} disabled={sending || reading} onClick={() => ask(q)}>{q}</button>
             ))}
           </div>

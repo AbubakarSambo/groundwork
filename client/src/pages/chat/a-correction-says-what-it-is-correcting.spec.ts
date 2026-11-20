@@ -32,7 +32,7 @@ describe('a correction session', () => {
   })
 
   it('and the page adds no line of its own about it, and no lone session number', () => {
-    expect(CHAT).not.toMatch(/Correcting session/)
+    expect(CHAT).not.toMatch(/Correcting check-in/)
     expect(CHAT).not.toContain('`Session ${sessionNumber}`')
   })
 })

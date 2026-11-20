@@ -8,6 +8,8 @@ export interface InvitePreview {
   initiatorName: string
   roleAsDescribed: string | null
   email: string
+  /** Their own number on record (the one person record), as the lead gave it; null when nobody has given one. */
+  phone?: string | null
   alreadyAccepted: boolean
   /** They answered through an open link and have no sign-in yet; a report link should go straight through. */
   hasAnswered?: boolean
@@ -17,6 +19,8 @@ export interface InvitePreview {
   /** U.3: the organisation, the lead's first name, the end date and how often it asks. */
   organisationName?: string | null
   leadFirstName?: string | null
+  /** The one sentence about who reads what they say, from its one owner on the server (grounds/who-may-read-this-check-in.ts). */
+  whoCanReadWhatYouSay?: string
   endsAt?: string | null
   /** When their first check-in opens, only when that is later than now (U.6 review). */
   opensOn?: string | null
@@ -55,6 +59,8 @@ export interface InvitePreview {
 export interface ExpiredInvitePreview { expired: true; leadFirstName: string | null }
 /** A guest held for a seat (U.4 third review): the refusal, and nothing else. */
 export interface HeldInvitePreview { heldForASeat: true; saying: string; expired?: undefined }
+/** Somebody removed from the check-in who opens its old link: the refusal, and nothing else. */
+export interface RemovedInvitePreview { removed: true; saying: string; expired?: undefined }
 
 export interface AcceptInviteResponse {
   accessToken: string
@@ -72,7 +78,7 @@ export const participantsApi = {
      server's own sentence for its description - a second, differently-worded message on top of
      the page's one, Hafsah's first review, U.20 sixth review. */
   preview: (token: string) =>
-    apiClient.get<InvitePreview | ExpiredInvitePreview | HeldInvitePreview>('/participants/invite', { params: { token }, skipNotFoundToast: true } as any).then((r) => r.data),
+    apiClient.get<InvitePreview | ExpiredInvitePreview | HeldInvitePreview | RemovedInvitePreview>('/participants/invite', { params: { token }, skipNotFoundToast: true } as any).then((r) => r.data),
   /** "Send me a fresh link" (U.3). Always the same reply, whoever asks. */
   freshLink: (token: string, email: string) =>
     apiClient.post<{ says: string }>('/participants/fresh-link', { token, email }).then((r) => r.data),

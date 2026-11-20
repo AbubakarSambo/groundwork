@@ -55,6 +55,6 @@ describe('what you are carrying forward', () => {
    */
   it('does not show the clipped fragment beside the heading', () => {
     mount({ summary: 'What you shared: You have finished the refund endpoint.' })
-    expect(screen.queryByText('the line the next session opens from')).toBeNull()
+    expect(screen.queryByText('the line the next check-in opens from')).toBeNull()
   })
 })

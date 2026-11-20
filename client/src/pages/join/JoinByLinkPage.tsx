@@ -169,7 +169,7 @@ export function JoinByLinkPage() {
         </Button>
         {!signedIn && (
           <Button kind="secondary" wide size="big" onClick={() => navigate(`/auth?next=${encodeURIComponent(here)}`)}>
-            I already have an account
+            I already use Groundwork
           </Button>
         )}
       </div>

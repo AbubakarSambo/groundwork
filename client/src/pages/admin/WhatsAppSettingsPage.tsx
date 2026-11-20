@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -148,7 +149,7 @@ function TheConnection() {
   return (
     <div style={card}>
       <h2 style={{ fontSize: 15, margin: 0 }}>Is it connected?</h2>
-      {connection.isLoading && <p style={small}>Asking Meta…</p>}
+      {connection.isLoading && <Skeleton what="Asking WhatsApp for the connection" shape="lines" count={1} />}
       {connection.error && <p style={{ ...small, color: 'var(--gw-red-t)' }}>{said(connection.error, 'Groundwork could not check the connection. Try again.')}</p>}
       {connection.data && (
         <p style={{ fontSize: 14, margin: '8px 0 0', lineHeight: '22px', color: connection.data.connected ? 'var(--gw-green-t)' : 'var(--gw-text)' }}>
@@ -217,7 +218,7 @@ export function WhatsAppSettingsPage() {
         in the System tab.
       </p>
 
-      {settings.isLoading && <p style={small}>Reading…</p>}
+      {settings.isLoading && <Skeleton what="Getting the settings" shape="lines" count={1} />}
       {settings.error && <p style={{ ...small, color: 'var(--gw-red-t)' }}>{said(settings.error, 'This page could not be read. Try again.')}</p>}
 
       {page && (

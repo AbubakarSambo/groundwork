@@ -155,7 +155,7 @@ describe('Grace, an admin, on Growth', () => {
       ;(groundsApi.list as any).mockResolvedValueOnce([{ id: 'g1', label: 'Faith, first 90 days' }])
       renderIt()
       await waitFor(() => expect(screen.getByText('Your check-ins')).toBeTruthy())
-      expect(await screen.findByText('Your check-in has unlimited sessions and reports on this plan. Nothing is counted or charged per session.')).toBeTruthy()
+      expect(await screen.findByText('Your check-in has unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.')).toBeTruthy()
       expect(screen.queryByText(/All 1 of your check-ins/)).toBeNull()
     })
 
@@ -167,7 +167,7 @@ describe('Grace, an admin, on Growth', () => {
       ])
       renderIt()
       await waitFor(() => expect(screen.getByText('Your check-ins')).toBeTruthy())
-      expect(await screen.findByText('Both of your check-ins have unlimited sessions and reports on this plan. Nothing is counted or charged per session.')).toBeTruthy()
+      expect(await screen.findByText('Both of your check-ins have unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.')).toBeTruthy()
       expect(screen.queryByText(/All 2 of your check-ins/)).toBeNull()
     })
 
@@ -180,7 +180,7 @@ describe('Grace, an admin, on Growth', () => {
       ])
       renderIt()
       await waitFor(() => expect(screen.getByText('Your check-ins')).toBeTruthy())
-      expect(await screen.findByText('All 3 of your check-ins have unlimited sessions and reports on this plan. Nothing is counted or charged per session.')).toBeTruthy()
+      expect(await screen.findByText('All 3 of your check-ins have unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.')).toBeTruthy()
     })
   })
 })
@@ -245,7 +245,7 @@ describe('Grace, inside the free trial’s months', () => {
     const { groundsApi } = await import('@/api/grounds')
     ;(groundsApi.list as any).mockResolvedValueOnce([{ id: 'g1', label: 'Sales check-in', sessionsBalance: 0, isFreeGround: false, org: { freeExtensionUsed: false } }])
     renderIt()
-    expect(await screen.findByText('Your check-in has unlimited sessions and reports on this plan. Nothing is counted or charged per session.')).toBeTruthy()
+    expect(await screen.findByText('Your check-in has unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.')).toBeTruthy()
     expect(text()).not.toMatch(/sessions? left|Free extension available|Add sessions/)
   })
 

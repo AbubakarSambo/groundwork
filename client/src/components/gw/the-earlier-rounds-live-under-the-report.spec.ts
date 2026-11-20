@@ -58,9 +58,8 @@ describe('what it shows', () => {
     expect(code).toContain('whenItWas(m.takenAt')
   })
 
-  it('says nothing has been rewritten since', () => {
-    expect(PANEL).toContain('Nothing here has been')
-    expect(PANEL).toContain('rewritten since')
+  it('does not explain itself (the "Nothing here has been rewritten since" note was removed 15 November with the board explainers)', () => {
+    expect(PANEL).not.toContain('rewritten since')
   })
 
   it('and marks a round that was changed after it closed', () => {

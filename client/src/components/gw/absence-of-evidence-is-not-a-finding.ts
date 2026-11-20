@@ -48,7 +48,7 @@ export function whatToCallIt(coverage: Coverage, closed: boolean): WhatToCallIt 
       return {
         status: 'Too little to say',
         aboutTheEvidence: true,
-        note: 'This is built on very little. It is not a finding that people disagree, it is that not enough has been said yet. Another session would give it something to work with.',
+        note: 'This is built on very little. It is not a finding that people disagree, it is that not enough has been said yet. Another check-in would give it something to work with.',
       };
   }
 }

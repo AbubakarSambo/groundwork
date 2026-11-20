@@ -79,7 +79,7 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
                     * day-one lines is the finding.
                     */}
                   {e.capturedAtSession > 1 && (
-                    <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}> · added at session {e.capturedAtSession}</span>
+                    <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}> · added at check-in {e.capturedAtSession}</span>
                   )}
                 </li>
               ))}
@@ -93,7 +93,7 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
                   * `canShowMovement` is the module's own gate. One session is a position, not a
                   * movement, and saying what has changed off a single session would be inventing an arc.
                   */}
-                The report will compare this against where things end up once a second session is done.
+                The report will compare this against where things end up once a second check-in is done.
               </div>
             )}
           </>
@@ -119,7 +119,7 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
         <div style={{ marginTop: 10 }}>
           <Panel>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
-              From your first session, in your own words
+              From your first check-in, in your own words
             </div>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginBottom: 10 }}>
               Tick the ones that describe where things actually stood. Nothing here is rewritten, and once
@@ -133,8 +133,8 @@ export function StartingPointPanel({ groundId, canRecord }: { groundId: string; 
                   * session has not happened, and one where everything said has already been recorded.
                   */}
                 {(candidateData?.alreadyRecorded?.length ?? 0) > 0
-                  ? 'Everything from your first session is already on the record here.'
-                  : 'Nothing to choose from yet. This fills in once you have done your first check-in.'}
+                  ? 'Everything from your first check-in is already on the record here.'
+                  : 'Nothing to choose from yet.'}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>

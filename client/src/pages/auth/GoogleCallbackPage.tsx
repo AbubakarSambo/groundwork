@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { toast } from 'sonner'
 import { rememberTheFirstCheckInClosing } from '@/lib/the-closing-after-your-first-check-in'
 import { useEffect, useRef } from 'react'
@@ -120,7 +121,7 @@ export function GoogleCallbackPage() {
         <span className="gw-logo">Groundwork</span>
       </div>
       <div className="gw-bd" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '70vh', textAlign: 'center' }}>
-        <div className="gw-sub-t" style={{ textAlign: 'center' }}>Signing you in…</div>
+        <Skeleton what="Signing you in" shape="lines" count={1} />
       </div>
     </div>
   )

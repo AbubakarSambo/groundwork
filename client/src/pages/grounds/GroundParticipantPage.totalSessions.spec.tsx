@@ -44,7 +44,7 @@ function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/grounds/g1/p']}>
+      <MemoryRouter initialEntries={['/grounds/g1/p?tab=record']}>
         <Routes>
           <Route path="/grounds/:id/p" element={<GroundParticipantPage />} />
         </Routes>
@@ -73,19 +73,19 @@ describe('BUG8: participant view derives session total from timeline + cadence',
   it('a 90-day MONTHLY ground shows "of 3", not "of 6"', async () => {
     ;(groundsApi.get as any).mockResolvedValue(groundWith(90, 'MONTHLY'))
     renderPage()
-    await waitFor(() => expect(screen.getAllByText(/Session 1 of 3/i).length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getAllByText(/Check-in 1 of 3/i).length).toBeGreaterThan(0))
     expect(screen.queryByText(/of 6/i)).toBeNull()
   })
 
   it('a 90-day FORTNIGHTLY ground shows "of 6" (derived, not hardcoded)', async () => {
     ;(groundsApi.get as any).mockResolvedValue(groundWith(90, 'FORTNIGHTLY'))
     renderPage()
-    await waitFor(() => expect(screen.getAllByText(/Session 1 of 6/i).length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getAllByText(/Check-in 1 of 6/i).length).toBeGreaterThan(0))
   })
 
   it('a 30-day WEEKLY ground shows "of 4"', async () => {
     ;(groundsApi.get as any).mockResolvedValue(groundWith(30, 'WEEKLY'))
     renderPage()
-    await waitFor(() => expect(screen.getAllByText(/Session 1 of 4/i).length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getAllByText(/Check-in 1 of 4/i).length).toBeGreaterThan(0))
   })
 })

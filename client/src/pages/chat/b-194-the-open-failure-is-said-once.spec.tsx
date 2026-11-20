@@ -29,7 +29,7 @@ vi.mock('@/api/documents', () => ({ documentsApi: { upload: vi.fn() } }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 import { toast } from 'sonner'
 
-const MESSAGE = 'The conversation could not be reached just now, so this session cannot continue this minute.'
+const MESSAGE = 'The conversation could not be reached just now, so this check-in cannot continue this minute.'
 
 function renderChat() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })

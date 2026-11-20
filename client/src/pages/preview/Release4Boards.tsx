@@ -1,6 +1,6 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ThePicturedBoard } from '@/pages/board/pictured/ThePicturedBoard'
-import { theRelease4Order, whereItFolds } from '@/pages/board/release-4-orders'
+import { theRelease4Order } from '@/pages/board/release-4-orders'
 import { Button, PageTitle } from '@/components/gw/ui'
 import supportDesk from './__fixtures__/release-4-support-desk.json'
 import operations from './__fixtures__/release-4-operations.json'
@@ -9,7 +9,7 @@ import salesOrg from './__fixtures__/release-4-sales-org.json'
 import subscriptions from './__fixtures__/release-4-subscriptions.json'
 import leadership from './__fixtures__/release-4-leadership.json'
 import project from './__fixtures__/release-5-project.json'
-import { PROJECT_ORDER, PROJECT_FOLD_AFTER } from '@/pages/board/release-5-orders'
+import { PROJECT_ORDER } from '@/pages/board/release-5-orders'
 import { useQueryClient } from '@tanstack/react-query'
 
 /**
@@ -41,7 +41,6 @@ export function Release4Boards() {
       <ThePicturedBoard
         order={b.releaseFiveProjects ? PROJECT_ORDER : theRelease4Order(b.kindOfWork, !t.member) ?? []}
         leadFirstName={b._leadFirstName ?? null}
-        foldAfter={b.releaseFiveProjects ? PROJECT_FOLD_AFTER : whereItFolds(b.kindOfWork)}
         b={b}
         groundId={b.groundId}
         sessionRows={[]}

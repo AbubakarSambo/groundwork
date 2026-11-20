@@ -1,13 +1,11 @@
-import { useTheDirectMorning, isTheDirectMorningOn } from '@/lib/the-direct-morning'
+import { THATS_NOT_RIGHT } from '@/components/gw/ThatsNotRight'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { reportsApi } from '@/api/reports'
 import { conversationApi } from '@/api/conversation'
-import { Folded } from './two-accounts-side-by-side'
 import { WhatSuccessLooksLike } from './WhatSuccessLooksLike'
-import { TheFiveThingsThatMakeItCheckable } from './TheFiveThingsThatMakeItCheckable'
 import { groundsApi } from '@/api/grounds'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { CLOSE_SHEET, Block } from './the-shape-every-close-is-drawn-in'
@@ -119,7 +117,7 @@ function Row({ row, onTakeBack, busy, light = false }: { row: MyRow; onTakeBack:
                 minHeight: 44, display: 'inline-flex', alignItems: 'center',
               }}
             >
-              Something here isn’t right
+              {THATS_NOT_RIGHT}
             </button>
           )}
       </div>
@@ -194,6 +192,9 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
     queryFn: () => conversationApi.artifact(checkInId),
     enabled: !!checkInId,
     retry: false,
+    /* B-134, carried here when the report page went (batch 2): read again until it has arrived, for about two minutes, so My
+       work opened straight after the pop-up fills in on its own. */
+    refetchInterval: (q: any) => (q?.state?.data?.artifact || (q?.state?.dataUpdateCount ?? 0) >= 24 ? false : 5_000),
   })
 
   /* The check-in itself, for two things the template's sheet carries and this had neither of: the
@@ -202,14 +203,6 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
   const ground = useQuery({
     queryKey: ['ground', groundId],
     queryFn: () => groundsApi.get(groundId),
-    enabled: !!groundId,
-    retry: false,
-  })
-  /* The direct morning (lib/the-direct-morning.tsx): no privacy note, and the team's report is called the team's report. */
-  const direct = useTheDirectMorning() || isTheDirectMorningOn(ground.data)
-  const mySpecificity = useQuery({
-    queryKey: ['my-specificity', groundId],
-    queryFn: () => groundsApi.getMySpecificity(groundId),
     enabled: !!groundId,
     retry: false,
   })
@@ -273,8 +266,6 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
    */
   /* In the light own report every fold is the same one line that opens (FoldedLine); elsewhere the old fold stays. */
   /* A plain call, not a component made here, so a fold that is open stays open when the page draws again. */
-  const theFold = (summary: string, children: React.ReactNode) =>
-    light ? <FoldedLine name={summary}>{children}</FoldedLine> : <Folded summary={summary}>{children}</Folded>
   const didWell = said.filter(x => !x.disputedAt && (x.mark === 'proven' || x.mark === 'confirmed'))
   const hasFor = !!(d?.againstSuccess?.stated || mySuccess)
   const didWellJSX = light && didWell.length > 0 ? (
@@ -394,9 +385,6 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
       */}
       {said.length > 0 && (
         <Block n={next()} label="What you said" shownAs={light ? 'What you told me' : undefined}>
-          <p className="gw-small" style={{ margin: '0 0 10px', color: 'var(--gw-sub)', maxWidth: '68ch' }}>
-            These were taken from what you wrote, not typed by you. If one is wrong, say so.
-          </p>
           <div className="gw-quotes">
             {said.map(row => (
               <Row
@@ -484,7 +472,6 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           {note?.showingUp && (
             <div style={{ marginTop: 12, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '11px 13px' }}>
               {/* Navy on the blue tint, never a grey ink on a tinted ground. */}
-              {!direct && <div className="gw-stamp" style={{ color: 'var(--gw-navy)', marginBottom: 6 }}>Written for you. It is not part of the shared picture.</div>}
               <p className="gw-p" style={{ margin: 0, color: 'var(--gw-navy)', maxWidth: '68ch' }}>{note.showingUp}</p>
               {note.whyItMatters && <p className="gw-small" style={{ margin: '6px 0 0', color: 'var(--gw-navy)', maxWidth: '68ch' }}>{note.whyItMatters}</p>}
               {(note.beforeNextTime ?? []).length > 0 && (
@@ -498,44 +485,6 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
       )}
     </>
   )
-  const checkableJSX = (
-    <>
-      {/*
-        ── How much you gave it. Folded and last: a caveat above the thing it qualifies reads as a
-        verdict on it.
-
-        U.9 RE-REVIEW, ITEM A: SHOWN ONCE, NOT TWICE. This block used to draw its own copy of the
-        specificity bar (HowSpecificThisSessionWas), and SessionReportPage draws the same bar again
-        above this whole card - one page, the same reader's own rating, twice. The bar stays where
-        it always sits first, at the top of the page; this fold keeps only what it alone has, the
-        five things it is made of.
-      */}
-      {d?.howClearThisWas?.level && (
-        <div className="gw-blk" style={{ paddingTop: 0, paddingBottom: 0 }}>
-          {/* U.9 THIRD REVIEW, ITEM 4: THE PROTOTYPE'S OWN WORDS, NOT A PARAPHRASE OF THEM.
-              docs/prototype/screens/B3-the-check-in/done.txt: "How checkable today's check-in
-              was". */}
-          {theFold("How checkable today’s check-in was", <>
-            {/* The bar says how much; these five say of WHAT, which is the difference between a
-                reading somebody can act on and a mark they cannot. Same read as the one on the
-                run-long page, scoped to this sitting rather than across every one. */}
-            <TheFiveThingsThatMakeItCheckable
-              dimensions={thisSitting?.specificityDimensions ?? null}
-              sessionNumber={sessionNumber}
-              mostUseful={mySpecificity.data?.mostUseful ?? null}
-              strongest={mySpecificity.data?.strongest ?? null}
-            />
-            {!direct && (
-              <p className="gw-small" style={{ margin: 0, color: 'var(--gw-sub)', maxWidth: '68ch' }}>
-                Yours alone. It is a read of how checkable this sitting is, not a mark on you.
-              </p>
-            )}
-          </>)}
-        </div>
-      )}
-    </>
-  )
-
   /*
    * YOUR OWN REPORT, AS PICTURED (own-report.jpg, screen 42). "What you did well" in its own panel, the session's own two
    * sentences, "What you told us" as a list with each line's mark and where it comes from, "One thing to think about" in
@@ -600,11 +549,11 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           {closed ? 'Where this ended, in your own words' : 'What you said this time'}
         </div>
         <div className="gw-stamp" style={{ marginTop: 4, color: 'var(--gw-sub)' }}>
-          {`Session ${sessionNumber}${d?.plannedSessions ? ` of ${d.plannedSessions}` : ''}`}
+          {`Check-in ${sessionNumber}${d?.plannedSessions ? ` of ${d.plannedSessions}` : ''}`}
           {/* The date this sitting happened. A report with no date on it is a report somebody
               cannot place against anything else that was going on that week. */}
           {thisSitting?.completedAt ? `, on ${whenItWas(thisSitting.completedAt, 'dayAndMonth')}` : ''}
-          {direct ? '.' : '. Only you read this part.'}
+          .
         </div>
       </div>
 
@@ -622,7 +571,6 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
               {(open.length > 0 || couldTry.length > 0) && <FoldedLine name="What is still open for you" fact={`${open.length + couldTry.length} still open`}>{openJSX}</FoldedLine>}
             </div>
           )}
-          {checkableJSX}
         </>
       ) : (
         <>
@@ -631,7 +579,6 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           {saidJSX}
           {openJSX}
           {carryJSX}
-          {checkableJSX}
         </>
       )}
 
@@ -671,7 +618,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
         >
           {/* The shared half is a different report and it lives on its own page. It is not copied
               here: that copy is what made one finding reach one person on four screens. */}
-          {direct ? 'See the team’s report for this session' : 'See the shared picture for this session'}
+          See the team’s report for this check-in
         </button>
         {/*
           A REPORT YOU CANNOT ARGUE WITH IS A REPORT YOU STOP TRUSTING.
@@ -697,10 +644,6 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
             >
               {correct.isPending ? 'Opening…' : 'Something here isn’t right'}
             </button>
-            <div className="gw-mini" style={{ color: 'var(--gw-sub)', marginTop: 3, maxWidth: '68ch' }}>
-              This opens a short session to correct or add to what you said. Nothing is overwritten.
-              The change is shown alongside the original.
-            </div>
           </div>
         )}
         {/*
@@ -713,11 +656,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber, 
           already scoped to `sessionNumber` above - this session's own state, not the ground's.
         */}
         <div className="gw-mini" style={{ color: 'var(--gw-sub)', maxWidth: '68ch' }}>
-          {direct
-            ? (d?.released ? 'The team’s report is shared.' : 'The team’s report is not shared yet.')
-            : d?.released
-            ? 'The shared picture is open, and everyone reads the same report.'
-            : 'This half is yours. The shared picture opens to everybody at the same moment.'}
+          {d?.released ? 'The team’s report is shared.' : 'The team’s report is not shared yet.'}
         </div>
       </div>
     </div>

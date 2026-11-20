@@ -46,7 +46,7 @@ const NOT_KNOWN_WORK_RECORDS = [
 const STARTING_STATE_OBJECT = {
   heading: 'What was agreed at the start',
   rows: [
-    { when: 'Day 1', whose: 'Tobi Adewale', says: 'In session 1, Tobi Adewale said, "I will read the contract for each of the five clients."', what: null, kind: 'commitment' },
+    { when: 'Day 1', whose: 'Tobi Adewale', says: 'In check-in 1, Tobi Adewale said, "I will read the contract for each of the five clients."', what: null, kind: 'commitment' },
     { when: 'By day 30', whose: 'Tobi Adewale', says: 'A goal was agreed for Tobi Adewale, to be met by day 30.', what: 'Know the five biggest clients and what each one buys', kind: 'goal' },
     { when: 'By day 90', whose: 'Tobi Adewale', says: 'A goal was agreed for Tobi Adewale, to be met by day 90.', what: 'Own the relationship with all five clients', kind: 'goal' },
   ],
@@ -63,8 +63,8 @@ function boardAsLead(overrides: any = {}) {
     workRecords: NOT_KNOWN_WORK_RECORDS,
     startingState: STARTING_STATE_OBJECT,
     personHistory: [
-      { participantId: 'p-amina', who: 'You', says: 'You have answered 4 sessions.', sessions: [] },
-      { participantId: 'p-tobi', who: 'Tobi Adewale', says: 'Tobi Adewale has answered 4 sessions and made 7 commitments.', sessions: [] },
+      { participantId: 'p-amina', who: 'You', says: 'You have answered 4 check-ins.', sessions: [] },
+      { participantId: 'p-tobi', who: 'Tobi Adewale', says: 'Tobi Adewale has answered 4 check-ins and made 7 commitments.', sessions: [] },
     ],
     divergence: { items: [], agreements: [], whyNothingYet: 'Nothing has come up yet where you see it differently.' },
     decisions: [],
@@ -102,7 +102,7 @@ describe('"What was agreed at the start" as an object (request 123)', () => {
     expect(screen.queryByText('By day 60')).toBeNull()
     expect(screen.queryByText('After day 90')).toBeNull()
 
-    expect(screen.getByText('In session 1, Tobi Adewale said, "I will read the contract for each of the five clients."')).toBeTruthy()
+    expect(screen.getByText('In check-in 1, Tobi Adewale said, "I will read the contract for each of the five clients."')).toBeTruthy()
     expect(screen.getByText('A goal was agreed for Tobi Adewale, to be met by day 30.')).toBeTruthy()
     expect(screen.getByText('Know the five biggest clients and what each one buys')).toBeTruthy()
     expect(screen.getByText('A goal was agreed for Tobi Adewale, to be met by day 90.')).toBeTruthy()

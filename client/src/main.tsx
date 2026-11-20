@@ -12,6 +12,7 @@ import '@fontsource/literata/500.css'
 import './index.css'
 import './styles/prototype.css'
 import './styles/product.css'
+import './styles/design-rules.css'
 import './lib/posthog'
 import { registerServiceWorker } from './lib/service-worker'
 

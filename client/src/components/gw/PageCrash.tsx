@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
-import { Page, Mark, PageTitle, Button, Note } from '@/components/gw/ui'
+import { Page, Mark, PageTitle, Button } from '@/components/gw/ui'
 
 /**
  * NOTHING CAUGHT A RENDER ERROR, ANYWHERE. W8-63.
@@ -18,9 +18,9 @@ import { Page, Mark, PageTitle, Button, Note } from '@/components/gw/ui'
  * learns the button is a lie. It offers the two things that work: go somewhere else, or
  * reload from scratch.
  *
- * The error text is shown. This is a product people use at work to sort out disagreements
- * with colleagues; if it breaks, the person needs something to paste to whoever they ask
- * for help, and hiding it behind "an unexpected error occurred" helps nobody.
+ * THE ERROR TEXT IS NOT SHOWN (Hafsah, 15 November 2026). It used to print the raw message under the
+ * heading ("Cannot read properties of undefined"), which tells a person nothing they can use. The
+ * message goes to the console (componentDidCatch below); the page says the one plain line.
  *
  * WORDING, FROM THE PROTOTYPE (F4-small-states/crash.txt): the mark, "Something broke on
  * this page", "Reload the page" and "Go to Today". The prototype's "Nothing you wrote is lost;
@@ -37,11 +37,11 @@ import { Page, Mark, PageTitle, Button, Note } from '@/components/gw/ui'
  * somebody is already looking into it when nobody is. The API would need to receive these
  * errors (a report-a-crash endpoint) before that sentence could be shown truthfully.
  */
-export class PageCrash extends Component<{ children: ReactNode }, { message: string | null }> {
-  state: { message: string | null } = { message: null }
+export class PageCrash extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
 
-  static getDerivedStateFromError(error: unknown) {
-    return { message: error instanceof Error ? error.message : String(error) }
+  static getDerivedStateFromError() {
+    return { failed: true }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
@@ -51,7 +51,7 @@ export class PageCrash extends Component<{ children: ReactNode }, { message: str
   }
 
   render() {
-    if (this.state.message === null) return this.props.children
+    if (!this.state.failed) return this.props.children
 
     return (
       <Page narrow>
@@ -63,9 +63,6 @@ export class PageCrash extends Component<{ children: ReactNode }, { message: str
         <div className="gwui-button-row">
           <Button onClick={() => window.location.reload()}>Reload the page</Button>
           <Button kind="quiet" onClick={() => { window.location.href = '/today' }}>Go to Today</Button>
-        </div>
-        <div style={{ fontFamily: 'ui-monospace, monospace', wordBreak: 'break-word' }}>
-          <Note tone="muted">{this.state.message}</Note>
         </div>
       </Page>
     )

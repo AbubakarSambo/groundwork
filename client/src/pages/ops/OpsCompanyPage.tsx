@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { opsApi } from '@/api/ops'
@@ -61,7 +62,7 @@ export default function OpsCompanyPage() {
   }
 
   const d = detail.data
-  if (!d) return <section style={PAGE}><p style={NOTHING}>Working it out…</p></section>
+  if (!d) return <section style={PAGE}><Skeleton what="Getting this company" shape="lines" count={2} /></section>
 
   return (
     <section style={PAGE}>

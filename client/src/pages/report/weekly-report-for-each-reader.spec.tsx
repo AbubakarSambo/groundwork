@@ -1,3 +1,4 @@
+/* S18 (staging check, 4 November): how often is said in the one wording every page uses (howOftenTheTeamChecksIn); "Weekly, Mondays." was a second wording. */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -44,7 +45,7 @@ describe('the weekly report, for each reader', () => {
       inNumbers: [{ figure: '67%', of: 'of check-ins made this week', says: '2 of the 3 check-ins due this week were made.' }],
       eachPerson: [{ who: 'Aisha', isYou: false, says: 'Aisha named Green Mart this week, and gave a next step and a date.' }],
       acrossTheTeam: ['Green Mart came up in what Aisha and Baraka said this week.'],
-      threeInARow: [{ who: 'Baraka', isYou: false, says: 'The work stops until there is another call. This came up in 3 check-ins, in sessions 3, 4 and 5.' }],
+      threeInARow: [{ who: 'Baraka', isYou: false, says: 'The work stops until there is another call. This came up in 3 check-ins, in check-ins 3, 4 and 5.' }],
       whatChanged: { moved: ['Aisha committed to call Mama Fresh by Thursday, and it is now done.'], dropped: ['Baraka committed to visit Kwik Stores, and it has been dropped.'], result: ['The targets that moved.'] },
       forNextWeek: [{ do: 'Decide whether a price range counts as a budget.', why: 'Aisha is waiting on you for it.', comesFrom: 'This comes from a blocker.' }],
     } as any)
@@ -55,7 +56,7 @@ describe('the weekly report, for each reader', () => {
     expect(screen.getByText('67%')).toBeTruthy()
     expect(screen.getByText('Aisha named Green Mart this week, and gave a next step and a date.')).toBeTruthy()
     expect(screen.getByText('Green Mart came up in what Aisha and Baraka said this week.')).toBeTruthy()
-    expect(screen.getByText('The work stops until there is another call. This came up in 3 check-ins, in sessions 3, 4 and 5.')).toBeTruthy()
+    expect(screen.getByText('The work stops until there is another call. This came up in 3 check-ins, in check-ins 3, 4 and 5.')).toBeTruthy()
     expect(screen.getByText('Decide whether a price range counts as a budget.')).toBeTruthy()
     expect(screen.getByText('This comes from a blocker.')).toBeTruthy()
     expect(screen.getByText('Sales team, Q3')).toBeTruthy()
@@ -161,7 +162,7 @@ describe('a week nothing has come into yet (faith90-weekly-report.jpg, screen 58
     renderWeek()
     expect(await screen.findByText('Nothing here yet.')).toBeTruthy()
     expect(screen.getByText('It fills in once people start checking in.')).toBeTruthy()
-    expect(screen.getByText('2 people. Weekly, Mondays.')).toBeTruthy()
+    expect(screen.getByText('2 people. Every Monday.')).toBeTruthy()
     expect(screen.getAllByRole('link', { name: 'Your check-in' }).every((a) => a.getAttribute('href') === '/grounds/g1')).toBe(true)
   })
 })

@@ -33,8 +33,8 @@ function renderIt(boardRenders = true, onOpenSession = vi.fn(), onOpenBoard = vi
 describe('every session, as the lead reads it', () => {
   it('opens with the prototype heading and the sentence under it', () => {
     renderIt()
-    expect(screen.getByRole('heading', { name: 'Every session' })).toBeTruthy()
-    expect(document.body.textContent).toContain('Below is the board, then one line for each session, newest first. Open a session to see its report.')
+    expect(screen.getByRole('heading', { name: 'Every check-in' })).toBeTruthy()
+    expect(document.body.textContent).toContain('Below is the board, then one line for each check-in, newest first. Open a check-in to see its report.')
   })
 
   it('puts the board first, as "The board" and "Everything so far"', () => {
@@ -47,13 +47,13 @@ describe('every session, as the lead reads it', () => {
 
   it('reads each row as the prototype does, newest first', () => {
     renderIt()
-    const rows = screen.getAllByRole('button').filter((b) => /Session \d+/.test(b.textContent ?? ''))
-    expect(rows[0].textContent).toContain('Session 38')
+    const rows = screen.getAllByRole('button').filter((b) => /Check-in \d+/.test(b.textContent ?? ''))
+    expect(rows[0].textContent).toContain('Check-in 38')
     expect(rows[0].textContent).toContain('Wed, 23 Sept')
     expect(rows[0].textContent).toContain('5 of 6 checked in')
     expect(rows[0].textContent).toContain('Not shared')
     expect(rows[0].textContent).toContain('Omar has not checked in yet.')
-    expect(rows[1].textContent).toContain('Session 37')
+    expect(rows[1].textContent).toContain('Check-in 37')
     expect(rows[1].textContent).toContain('Tue, 22 Sept')
     expect(rows[1].textContent).toContain('6 of 6 checked in')
     expect(rows[1].textContent).toMatch(/Shared$/)
@@ -68,7 +68,7 @@ describe('every session, as the lead reads it', () => {
 
   it('opens a session with no check-in of the reader on it through the lead’s view of the round', () => {
     const { onOpenSession } = renderIt()
-    fireEvent.click(screen.getAllByRole('button').find((b) => b.textContent?.includes('Session 37'))!)
+    fireEvent.click(screen.getAllByRole('button').find((b) => b.textContent?.includes('Check-in 37'))!)
     expect(onOpenSession).toHaveBeenCalledWith(37)
   })
 
@@ -89,9 +89,9 @@ describe('every session, as the lead reads it', () => {
         <TheReportIsAListOfSessions rows={rows} boardRenders={false} onOpenBoard={vi.fn()} onOpenSession={vi.fn()} />
       </MemoryRouter>,
     )
-    const buttons = screen.getAllByRole('button').filter((b) => /Session \d+/.test(b.textContent ?? ''))
-    const session2 = buttons.find((b) => b.textContent?.includes('Session 2'))!
-    const session1 = buttons.find((b) => b.textContent?.includes('Session 1'))!
+    const buttons = screen.getAllByRole('button').filter((b) => /Check-in \d+/.test(b.textContent ?? ''))
+    const session2 = buttons.find((b) => b.textContent?.includes('Check-in 2'))!
+    const session1 = buttons.find((b) => b.textContent?.includes('Check-in 1'))!
     expect(session2.textContent).toMatch(/Shared$/)
     expect(session1.textContent).toContain('Not shared')
   })

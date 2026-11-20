@@ -45,8 +45,8 @@ describe('Grace’s board, with her morning drawn where each line belongs', () =
       eachPerson: [],
     }
     wrap(<TheTeamToday b={b} deals={{ rows: [] }} today="2026-10-20" groundId="g1" />)
-    const kevin = screen.getByRole('link', { name: 'Kevin' }).closest('.pb-row') as HTMLElement
-    const mercy = screen.getByRole('link', { name: 'Mercy' }).closest('.pb-row') as HTMLElement
+    const kevin = screen.getByRole('link', { name: 'Kevin' }).closest('tr') as HTMLElement
+    const mercy = screen.getByRole('link', { name: 'Mercy' }).closest('tr') as HTMLElement
     expect(within(kevin).getByText("Kevin's sale to Roysambu Gym has no proof yet, so ask Kevin for the payment record.")).toBeTruthy()
     expect(within(mercy).getByText('Mercy has 2 sales with proof, so tell Mercy well done.')).toBeTruthy()
     expect(kevin.textContent).not.toContain('Mercy has 2 sales')

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { whereYourReportLives } from '@/pages/grounds/ground-tabs'
 import { useNavigate } from 'react-router-dom'
 import { TheSharedPictureAPartyReads } from './the-shared-picture-a-party-reads'
 import { howCheckable } from './how-checkable-was-that-session'
@@ -63,6 +64,7 @@ export interface SharedReportForAPartyProps {
 }
 
 export function SharedReportForAParty({
+  groundId,
   report,
   ground,
   onOpenBoard,
@@ -202,9 +204,9 @@ export function SharedReportForAParty({
                 line, keeps them apart whatever the width.
               */}
               <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '4px 12px' }}>
-                <span>Your sessions</span>
+                <span>Your check-ins</span>
                 <span style={{ fontSize: 12 }}>
-                  {mySessions.length === 1 ? 'You have one finished session, with its own report.' : `You have ${mySessions.length} finished sessions, each with its own report.`}
+                  {mySessions.length === 1 ? 'You have one finished check-in, with its own report.' : `You have ${mySessions.length} finished check-ins, each with its own report.`}
                 </span>
               </summary>
               <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginTop: 6 }}>
@@ -213,10 +215,10 @@ export function SharedReportForAParty({
                   return (
                     <button
                       key={ci.id}
-                      onClick={() => navigate(`/checkin/${ci.id}/report`)}
+                      onClick={() => navigate(whereYourReportLives(groundId, ci.id))}
                       /* B-203: same missing-accessible-name shape as the two buttons above this fold -
                          said here per row, since each one opens a different session's own report. */
-                      aria-label={`Open your report for session ${ci.sessionNumber}`}
+                      aria-label={`Open your report for check-in ${ci.sessionNumber}`}
                       style={{
                         display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
                         gap: 10, padding: '11px 13px', background: 'white', border: 'none',
@@ -225,7 +227,7 @@ export function SharedReportForAParty({
                       }}
                     >
                       <span>
-                        <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Check-in {ci.sessionNumber}</span>
                         <span style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'block' }}>
                           {ci.completedAt ? `You checked in on ${whenItWas(ci.completedAt, 'day')}.` : 'You checked in.'}
                         </span>
@@ -255,7 +257,7 @@ export function SharedReportForAParty({
               </div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
                 {ground?.sessionProgress?.requestingUserIsMissing
-                  ? "You haven't completed this session yet. That's part of what's holding the report."
+                  ? "You haven't completed this check-in yet. That's part of what's holding the report."
                   : 'The report generates once all parties have checked in.'}
               </div>
             </div>

@@ -46,10 +46,10 @@ const PROGRAMME_BOARD = {
   workRecords: [
     {
       section: 'Deal grid', holds: 'trader groups', state: 'filled',
-      stages: ['Enrolled', 'Session 1', 'Session 2', 'Completed'],
+      stages: ['Enrolled', 'Check-in 1', 'Check-in 2', 'Completed'],
       rows: [
         {
-          id: 'w-1', kind: 'group', name: 'Gikomba traders, group A', stage: 'Session 1',
+          id: 'w-1', kind: 'group', name: 'Gikomba traders, group A', stage: 'Check-in 1',
           owner: null, ownerParticipantId: null, due: null, fields: {}, from: 'lead', mark: 'none',
         },
       ],
@@ -105,11 +105,8 @@ describe('the trader training programme board, as the lead', () => {
     expect(byCounty).toBeGreaterThan(theTeamToday)
     expect(screen.queryByText('By area')).toBeNull()
 
-    // "Open issues" is not above the fold...
-    const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
-    expect(within(fold).getByText('Open issues')).toBeTruthy()
-    // ...only inside it.
-    const beforeFold = body.slice(0, body.indexOf('Everything else from this check-in'))
-    expect(beforeFold.includes('Open issues')).toBe(false)
+    // "Open issues" is still on the board. The fold called "Everything else from this check-in" is gone (it opened by default, so it was a heading that hid nothing).
+    expect(screen.getByText('Open issues')).toBeTruthy()
+    expect(screen.queryByText('Everything else from this check-in')).toBeNull()
   })
 })

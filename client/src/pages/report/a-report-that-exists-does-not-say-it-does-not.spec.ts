@@ -47,7 +47,7 @@ describe('a report that exists', () => {
     const LIST = strip(readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheReportIsAListOfSessions.tsx'), 'utf8'))
     expect(LIST).not.toContain('No report yet')
     /* The one empty state it does have is about sessions, not about the report. */
-    expect(LIST).toContain('No session has finished yet')
+    expect(LIST).toContain('No check-in has finished yet')
   })
 
   it('and is never described as having nothing in it', () => {

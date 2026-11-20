@@ -65,7 +65,7 @@ describe('a check-in that never opens', () => {
     await vi.advanceTimersByTimeAsync(160_000)
 
     // THE REGRESSION: this screen used to stay blank and silent forever.
-    expect(await screen.findByText(/Could not open your session/i)).toBeTruthy()
+    expect(await screen.findByText(/Could not open your check-in/i)).toBeTruthy()
     expect(await screen.findByRole('button', { name: /Try again/i })).toBeTruthy()
   })
 
@@ -75,7 +75,7 @@ describe('a check-in that never opens', () => {
     renderChat()
     await vi.advanceTimersByTimeAsync(50_000)
 
-    expect(await screen.findByText(/Could not open your session/i)).toBeTruthy()
+    expect(await screen.findByText(/Could not open your check-in/i)).toBeTruthy()
     // The open request genuinely never fired - this is the harder half of the
     // failure, and the one no error handler could ever have caught.
     expect((conversationApi.open as any)).not.toHaveBeenCalled()
@@ -99,11 +99,11 @@ describe('a check-in that never opens', () => {
 
     renderChat()
     await vi.advanceTimersByTimeAsync(60_000)
-    expect(screen.queryByText(/Could not open your session/i)).toBeNull()
+    expect(screen.queryByText(/Could not open your check-in/i)).toBeNull()
 
     await vi.advanceTimersByTimeAsync(30_000)
     expect(await screen.findByText(/What are you aiming for this quarter\?/i)).toBeTruthy()
-    expect(screen.queryByText(/Could not open your session/i)).toBeNull()
+    expect(screen.queryByText(/Could not open your check-in/i)).toBeNull()
     expect((conversationApi.open as any)).toHaveBeenCalledTimes(1)
   })
 
@@ -118,7 +118,7 @@ describe('a check-in that never opens', () => {
     await vi.advanceTimersByTimeAsync(50_000)
 
     // A healthy opening must never be accused of failing.
-    expect(screen.queryByText(/Could not open your session/i)).toBeNull()
+    expect(screen.queryByText(/Could not open your check-in/i)).toBeNull()
     expect(await screen.findByText(/How has the week gone\?/i)).toBeTruthy()
   })
 })

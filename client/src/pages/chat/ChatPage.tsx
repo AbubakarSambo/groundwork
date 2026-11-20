@@ -4,7 +4,7 @@ import { WaitingForYouToConfirm } from '@/components/gw/ThePlanPage'
 import { CheckInOnWhatsApp } from '@/components/gw/CheckInOnWhatsApp'
 import { useState, useEffect, useRef } from 'react'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
-import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
@@ -13,13 +13,10 @@ import { closingMessageText } from '@/lib/a-closing-message-claims-nothing-it-do
 import type { ConnectWhatsApp } from '@/types'
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
-import { YourNextCheckIn } from '@/components/gw/YourNextCheckIn'
-import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFinished'
-import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
-import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
 import { GroundGone } from '@/components/gw/GroundGone'
+import { whereAConversationLives, whereYourReportLives } from '@/pages/grounds/ground-tabs'
 import { Bubble } from '@/components/gw/ui/Bubble'
 import { GroundworkIsWriting, WritingDots } from '@/components/gw/ui/GroundworkIsWriting'
 import { ConversationCard } from '@/components/gw/ui/ConversationCard'
@@ -29,9 +26,8 @@ import { IdeaOffer } from '@/components/gw/checkin/IdeaOffer'
 import { RequestOffer, OpenTheRequest } from '@/components/gw/checkin/RequestOffer'
 import type { TheIdeaOfferInTheCheckIn, TheRequestOfferInTheCheckIn, TheRequestToOpen } from '@/api/anchorShapes'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
-import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
-import { whenTheNextOneOpens, whoElseAnswers, whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
-import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
+import { TheReportIsComing } from '@/components/gw/TheReportIsComing'
+import { whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { toast } from 'sonner'
 import { useCheckInFocusStore } from '@/stores/check-in-focus'
 import '@/components/gw/ui/gw-ui.css'
@@ -138,8 +134,30 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
  */
 const AN_OPEN_MAY_TAKE = 150_000
 
-export function ChatPage() {
-  const { checkInId } = useParams<{ checkInId: string }>()
+/**
+ * THE CONVERSATION, DRAWN INSIDE ITS CHECK-IN'S OWN TAB (fix plan, batch 2, group 5).
+ *
+ * It used to be a page of its own at `/checkin/:id`, cut off from the tabs, and finishing led to
+ * three more pages (the end page, the report page and the whole report). Now the Check-in tab
+ * draws it (TheCheckInTab.tsx), `/checkin/:id` only redirects there, and the end is the last
+ * messages plus one small pop-up. The one place it still stands alone is the bare frame: one
+ * question opened from a team update's link, which goes to the board when it is answered.
+ * `settled` is what the tab draws under a finished conversation: the line about the next one and
+ * the box to add something.
+ */
+/** What somebody who types into a check-in that is already finished reads, in the chat. */
+export const THIS_CHECK_IN_IS_FINISHED = 'This check-in is finished, so I did not add what you typed. Anything new can go in your next check-in.'
+
+export function ChatPage({ checkInId: checkInIdGiven, groundId: groundIdGiven, settled, onBack, backTitle }: {
+  checkInId?: string
+  groundId?: string
+  settled?: React.ReactNode
+  /** When the page draws this card alone (a check-in that is due), the card's name is the way back to the board. */
+  onBack?: () => void
+  backTitle?: string
+} = {}) {
+  const params = useParams<{ checkInId: string }>()
+  const checkInId = checkInIdGiven ?? params.checkInId
   const navigate = useNavigate()
   const location = useLocation()
   const user = useAuthStore(s => s.user)
@@ -160,7 +178,7 @@ export function ChatPage() {
    */
   const [sessionNumber, setSessionNumber] = useState<number>((location.state as any)?.sessionNumber ?? 1)
   const groundLabel: string   = (location.state as any)?.groundLabel ?? ''
-  const [groundId, setGroundId] = useState<string | undefined>((location.state as any)?.groundId)
+  const [groundId, setGroundId] = useState<string | undefined>(groundIdGiven ?? (location.state as any)?.groundId)
   /** ROUND 6, ITEM 2: the two cards fold behind one quiet link and this panel. */
   /*
    * THE CHECK-IN ITSELF, for its name on the way back ("← Sales team, Q3") and, at the end, for who
@@ -182,7 +200,6 @@ export function ChatPage() {
    * quiet line, nowhere near the composer.
    */
   const [connectWhatsApp, setConnectWhatsApp] = useState<ConnectWhatsApp | null>(null)
-  const isInitiator: boolean  = (location.state as any)?.isInitiator ?? false
 
   const [msgs, setMsgs]               = useState<Msg[]>([])
   /**
@@ -204,7 +221,6 @@ export function ChatPage() {
     m.id === 'loading' || (m.role === 'AI' && m.content.trim() === '…')
 
   const [priorTurns, setPriorTurns]   = useState<Msg[]>([])
-  const [priorSessionNumber, setPriorSessionNumber] = useState<number | null>(null)
   // #3: a normal returning session (not self-correction) gets a read-only
   // recap of the person's own prior record entries - the same data the
   // model's PRIOR_SESSION prompt block already reads, but shown to the
@@ -212,7 +228,8 @@ export function ChatPage() {
   // the AI's opening line happens to mention it.
   const [displayedMsgs, setDisplayedMsgs] = useState<Msg[]>([])
   const [streamingId, setStreamingId] = useState<string | null>(null)
-  const [input, setInput]             = useState('')
+  /* What the lead wrote under her last conversation to check in again arrives ready to send (UntilTheNextOne). */
+  const [input, setInput]             = useState<string>(typeof (location.state as any)?.draft === 'string' ? (location.state as any).draft : '')
   const [loading, setLoading]         = useState(false)
   /* True once a reply has been outstanding long enough for somebody to start doubting it. */
   const [opened, setOpened]           = useState(false)
@@ -258,7 +275,7 @@ export function ChatPage() {
   /** The served sentence for why opening failed, read once and shown where the person can keep
       reading it (the banner below), not only in a toast that fades. Falls back to a plain one of
       ours when the server sent nothing usable. */
-  const [openFailedMessage, setOpenFailedMessage] = useState('Could not open your session. This is usually a temporary issue.')
+  const [openFailedMessage, setOpenFailedMessage] = useState('Could not open your check-in. This is usually a temporary issue.')
   /** B-201: the HTTP status the open request failed with, read once, so a stranger's two different
       reasons for not reaching this check-in (it was never theirs; the id is made up) can be told
       apart from everything else that can go wrong, without the server's own two different
@@ -377,7 +394,7 @@ export function ChatPage() {
     onSuccess: res => {
       /* The session whose round had closed was closed as missed and today's opened instead: this page follows it, so what is said goes there. */
       if (res.checkInId && res.checkInId !== checkInId) {
-        navigate(`/checkin/${res.checkInId}`, { replace: true, state: { ...((location.state as any) ?? {}), sessionNumber: sessionNumber + 1 } })
+        navigate(whereAConversationLives(res.checkInId, res.groundId ?? groundId), { replace: true, state: { ...((location.state as any) ?? {}), sessionNumber: sessionNumber + 1 } })
         return
       }
       setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, ideaOffer: res.ideaOffer, requestOffer: res.requestOffer, openTheRequest: res.openTheRequest }])
@@ -419,7 +436,7 @@ export function ChatPage() {
              state, not a failure to retry. */
           if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
           if (t.checkIn?.status === 'COMPLETED') {
-            setDone(true); setCompleted(true); setJustFinished(true)
+            setDone(true); setCompleted(true)
             setOpened(true); setOpenFailed(false)
             return
           }
@@ -438,7 +455,7 @@ export function ChatPage() {
        * persistent ("this check-in is on hold", "not yet theirs") until "Try again" is pressed,
        * not a blip that fades on its own. One sentence, said once, is enough.
        */
-      setOpenFailedMessage(message || 'Could not open your session. This is usually a temporary issue.')
+      setOpenFailedMessage(message || 'Could not open your check-in. This is usually a temporary issue.')
       setOpenFailed(true)
     },
   })
@@ -464,9 +481,6 @@ export function ChatPage() {
     onError: () => toast.error('Could not record that. Try again.'),
   })
 
-  /* What the product measured about their own answers, told to them rather than kept behind the
-     curtain. Comes back on the completion response; see WhatYouGaveUs. */
-  const [whatYouGave, setWhatYouGave] = useState<WhatYouGave | null>(null)
   /* The end card's parts that only the engine can write, sent with the reply that closes the
      conversation (request 7). Null until it does; the card shows what is there. */
   const [endCard, setEndCard] = useState<TheEndCardData | null>(null)
@@ -490,12 +504,13 @@ export function ChatPage() {
     return () => { stillHere = false }
   }, [done, completed, declined, endCard, checkInId])
   /*
-   * THE DONE PAGE (done.txt) replaces the conversation the moment somebody finishes here. A check-in
-   * finished earlier and opened again still shows its conversation and its report, as before.
+   * JUST FINISHED, HERE AND NOW: the pop-up "Done. Your report is in My work." shows over the
+   * conversation, which stays where it is (issue 54). A check-in finished earlier and opened again
+   * shows its conversation and nothing over it.
    */
   const [justFinished, setJustFinished] = useState(false)
-  /* What moved through stages, sent with the completion when the engine has it (request 7). */
-  const [whatChanged, setWhatChanged] = useState<WhatChanged | null>(null)
+  /* Whether the end card came from "Pause" before the conversation closed itself: finishing then says it was ended early. */
+  const [pausedEarly, setPausedEarly] = useState(false)
   /* This person's own sessions, for when the next one opens. Only while the end is on screen. */
   const myStatus = useQuery({
     queryKey: ['my-checkin-status', groundId, 'end'],
@@ -512,13 +527,11 @@ export function ChatPage() {
      * THE ONE-LINE QUESTION ENDS ON THE BOARD. Hafsah, 21 Sep 2026: "I check in on the update scenario...
      * then it should take me to the team board." Somebody who came through the one-line link has one
      * thing to see once they have answered: the board that everybody's answers build. Everybody else
-     * gets the finished screen below, with the board as its first button.
+     * stays in the conversation, with the pop-up that says the report is in My work.
      */
-    onSuccess: (res: any) => {
+    onSuccess: () => {
       setCompleted(true)
       setJustFinished(true)
-      if (res?.whatChanged) setWhatChanged(res.whatChanged as WhatChanged)
-      if (res?.whatYouGave) setWhatYouGave(res.whatYouGave as WhatYouGave)
       /*
        * SCREEN FAULT 3 (FINAL WALK): "YOUR TURN" AND "NOBODY HAS CHECKED IN YET" RIGHT AFTER
        * FINISHING. Finishing a session marks this person's own check-in COMPLETED on the server,
@@ -533,7 +546,6 @@ export function ChatPage() {
         qc.invalidateQueries({ queryKey: ['board', groundId] })
       }
       qc.invalidateQueries({ queryKey: ['grounds'] })
-      if (bareFrame && groundId) navigate(`/grounds/${groundId}/board?done=1`, { replace: true })
     },
     /**
      * ALREADY COMPLETE IS NOT A FAILURE.
@@ -602,12 +614,12 @@ export function ChatPage() {
         setMsgs(v => [...v, {
           id: `ai-cannot-finish-yet-${Date.now()}`,
           role: 'AI',
-          content: 'I need a little more from you before this check-in can close. Please answer one or two more questions, then finish again.',
+          content: 'I need one or two more answers before I can close this.',
         }])
         requestAnimationFrame(() => taRef.current?.focus())
         return
       }
-      toast.error(message || 'Could not complete this session.')
+      toast.error(message || 'Could not complete this check-in.')
     },
   })
 
@@ -710,7 +722,6 @@ export function ChatPage() {
           // Reopen (#3): the prior session's turns, read-only, so the person sees what they said.
           if (t.priorTurns && t.priorTurns.length > 0) {
             setPriorTurns(t.priorTurns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
-            setPriorSessionNumber(t.priorSessionNumber ?? null)
           }
           if (t.connectWhatsApp) setConnectWhatsApp(t.connectWhatsApp)
           /*
@@ -753,18 +764,9 @@ export function ChatPage() {
             })))
           }
           /**
-            * ROUND 6, ITEM 4: A SESSION THAT WAS ALREADY FINISHED GETS THE SAME DONE PAGE AS
-            * ONE JUST FINISHED NOW.
-            *
-            * Loading `/checkin/:id` for a session completed earlier used to set `completed`
-            * alone - `justFinished` was only ever set by the two live-finish paths below (the
-            * normal finish, and the "already complete" refusal caught while sending) - so the
-            * early return to `TheDonePage` never fired here, and the OLD inline "already
-            * complete" block further down rendered instead: its own report blocks, a dash-joined
-            * sentence, "Open the team board →", and a "Back to check-ins" link cut off at the
-            * bottom - none of it the prototype's Done page. `justFinished` is what that early
-            * return actually keys on, so this sets it too - the prototype shows the same Done
-            * page whether you just finished or are opening a finished check-in fresh.
+            * A SESSION FINISHED EARLIER OPENS AS ITS CONVERSATION, SETTLED (batch 2, group 5): no
+            * done page and no pop-up, which belong to the moment of finishing. Under it the tab
+            * draws the line about the next one and the box to add something (`settled`).
             *
             * B-129: NOT NESTED INSIDE THE TURNS CHECK ANY MORE. A session this page has never
             * opened keeps no turns of its own on this endpoint - only a session that was actually
@@ -777,7 +779,7 @@ export function ChatPage() {
             * other. `status` is read from the check-in itself, same as `sessionNumber` and
             * `groundId` just above, never from whether turns happened to come back.
             */
-          if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true); setJustFinished(true) }
+          if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true) }
           /** Reopening a session already declined must show the settled state, not the composer. */
           if (t.checkIn?.status === 'DECLINED') { setDone(true); setDeclined(true) }
           if ((t.turns && t.turns.length > 0) || t.checkIn?.status === 'COMPLETED' || t.checkIn?.status === 'DECLINED') {
@@ -963,8 +965,14 @@ export function ChatPage() {
            */
           setMsgs(v => v.filter(m => m.id !== localId))
           setDisplayedMsgs(v => v.filter(m => m.id !== localId))
-          setInput(message)
-          toast.error(whatTheServerSaid(sendErr, 'That did not send. Your message is back in the box, try again.'))
+          /* A check-in the server calls finished answers in words, in the chat, and the box is left empty: the typed words were not taken and nothing is left to retry (run 5, 19 November). */
+          if (/already (finished|complete)/i.test(whatTheServerSaid(sendErr, ''))) {
+            setDone(true); setCompleted(true)
+            setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: THIS_CHECK_IN_IS_FINISHED }))
+          } else {
+            setInput(message)
+            toast.error(whatTheServerSaid(sendErr, 'That did not send. Your message is back in the box, try again.'))
+          }
         }
         setLoading(false)
       } else {
@@ -978,9 +986,16 @@ export function ChatPage() {
     const content = input.trim()
     /* `done` blocked this too, so Enter did nothing once the engine had signalled a close - the
        other half of the input going dead. What locks the record is `completed`. */
-    if (!content || loading || completed || declined || !opened) return
+    if (!content || loading || declined || !opened) return
+    if (completed) {
+      setInput('')
+      setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: THIS_CHECK_IN_IS_FINISHED }))
+      return
+    }
     setInput('')
     if (taRef.current) { try { taRef.current.style.height = '38px' } catch { /* ref detached */ } }
+    /* Typing after "Pause" is carrying on: the end card goes and comes back at the next close. */
+    if (pausedEarly) { setPausedEarly(false); setDone(false) }
     sendStreaming(content)
   }
 
@@ -1023,7 +1038,7 @@ export function ChatPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
     if (!f) return
-    if (!groundId) { toast.error('Context missing. Please open this session from your check-in page.'); e.currentTarget.value = ''; return }
+    if (!groundId) { toast.error('I could not tell which check-in this is for. Open it from your check-in page.'); e.currentTarget.value = ''; return }
     setPendingDoc(f)
     setDocContext('')
     setDocContextMode(true)
@@ -1035,7 +1050,7 @@ export function ChatPage() {
      It closes in uploadDoc.onSuccess now, and the commit button is disabled while it runs. */
   function submitDocWithContext() {
     if (!pendingDoc || uploadDoc.isPending) return
-    if (!groundId) { toast.error('Context missing. Please open this session from your check-in page.'); return }
+    if (!groundId) { toast.error('I could not tell which check-in this is for. Open it from your check-in page.'); return }
     uploadDoc.mutate({ file: pendingDoc, ctx: docContext })
   }
 
@@ -1048,10 +1063,6 @@ export function ChatPage() {
     uploadDoc.mutate({ file, ctx: '' })
   }
 
-  /** Leave the check-in for its own page. Nothing is sent: every answer is saved as it is given. */
-  function leave() {
-    navigate(groundId ? `/grounds/${groundId}${isInitiator ? '' : '/p'}` : '/grounds')
-  }
 
   /*
    * NO LONE "Session 1" AT THE BOTTOM OF AN ORDINARY SESSION (U.8 review). The prototype's own
@@ -1142,22 +1153,6 @@ export function ChatPage() {
     return <GroundGone />
   }
 
-  if (justFinished && groundId && checkInId && !bareFrame) {
-    return (
-      <div className="gwui-ci-done-wrap">
-        <TheDonePage
-          firstName={firstWordOfAName(user?.firstName)}
-          checkInId={checkInId}
-          groundId={groundId}
-          sessionNumber={sessionNumber}
-          myUserId={user?.id}
-          isInitiator={isInitiator || !!(ground.data as any)?.viewerIsInitiator}
-          whatChanged={whatChanged}
-        />
-      </div>
-    )
-  }
-
   /* Only answers the server has acknowledged count: an echo of a send that never landed is not an answer. */
   const anAnswerHasLanded = msgs.some((m) => m.role === 'PERSON' && !String(m.id).startsWith('local-'))
 
@@ -1173,8 +1168,8 @@ export function ChatPage() {
       classes rather than an inline style.
     */
     <TheDirectMorning on={direct}>
-    <div className="main">
-      <div className="wrap">
+    <div className={bareFrame ? 'main' : 'gwui-ci-in-tab'}>
+      <div className={bareFrame ? 'wrap' : 'gwui-ci-in-tab-frame'}>
       {/**
         * THE WAY OUT, ON THE LEFT, AND POINTED AT THE GROUND.
         *
@@ -1192,11 +1187,14 @@ export function ChatPage() {
                   /* The check-in's own name, as the prototype has it, and End session, small and quiet, always on screen (Hafsah,
                      3 November evening). Before any answer has landed, ending it is saying no to this session, so it asks first. */
                   title={checkInName || 'Your check-in'}
-                  onEnd={opened && !done && !completed && !declined ? () => (anAnswerHasLanded ? complete.mutate(true) : setConfirmingDecline(true)) : undefined}
-                  ending={complete.isPending}
-                  /* The way back is the name itself, on the same line (TheCheckInHeader). Not in the bare frame. */
-                  onBack={!bareFrame ? leave : undefined}
-                  backTitle="Leave this session. Everything you have said is already saved."
+                  onBack={onBack}
+                  backTitle={backTitle}
+                  /* Before any answer, leaving is skipping this check-in, so it asks first. After one, "Pause" brings up the end card, so
+                     finishing early shows what was written down like any other finish (audit of the check-in pages, row 29). */
+                  endLabel={anAnswerHasLanded ? 'Pause' : 'Skip this one'}
+                  onEnd={opened && !done && !completed && !declined ? () => {
+                    if (anAnswerHasLanded) { setPausedEarly(true); setDone(true) } else setConfirmingDecline(true)
+                  } : undefined}
                 />
         )}
         banners={(
@@ -1204,7 +1202,7 @@ export function ChatPage() {
                 {/* Clarification session banner */}
                 {isClarificationSession && (
                   <div className="gwui-ci-banner-info">
-                    <strong>Clarification session.</strong> Something in your report was inferred, not quoted directly. Tell me what was actually happening and I will update the record.
+                    I worked part of your report out instead of quoting you. Tell me what really happened and I will fix it.
                   </div>
                 )}
 
@@ -1224,7 +1222,7 @@ export function ChatPage() {
           </>
         )}
         bodyRef={msgsRef}
-        footer={(
+        footer={completed && (settled || bareFrame) ? (settled ?? null) : (
                   <div>
                     {/* No line above the box (Hafsah, 3 November evening): a closing or correcting session is named in the first message, and
                         the lead's context and people are on the check-in's own tabs. */}
@@ -1294,18 +1292,6 @@ export function ChatPage() {
                       way to return on another device, no sign-in anywhere on screen. One line, under the
                       thing they are typing into, says all three.
                     */}
-                    {bareFrame && (
-                      <div className="gwui-ci-signin-note">
-                        {user?.email ? `Signed in as ${user.email}. ` : ''}
-                        Your link reopens this any time, or{' '}
-                        <button
-                          onClick={() => navigate('/auth')}
-                          className="gwui-plain-link"
-                        >
-                          sign in with your email
-                        </button>.
-                      </div>
-                    )}
                   </div>
         )}
       >
@@ -1337,7 +1323,7 @@ export function ChatPage() {
             <div className="gwui-ci-prior">
               <div className="gwui-ci-prior-label">
                 {/* REVIEW ROUND 3, ITEM 7: A SENTENCE, NOT A DOT-JOINED FRAGMENT. */}
-                From your earlier session{priorSessionNumber != null ? ` ${priorSessionNumber}` : ''}. You can read it, not change it.
+                What you said before.
               </div>
               <div className="gwui-ci-prior-list">
                 {priorTurns.map(m => (
@@ -1345,9 +1331,6 @@ export function ChatPage() {
                     {nothingInternalReachesTheBubble(m.content)}
                   </div>
                 ))}
-              </div>
-              <div className="gwui-ci-prior-foot">
-                This stays on record as it is. What you add below is recorded as an update, not a replacement.
               </div>
             </div>
           )}
@@ -1451,10 +1434,9 @@ export function ChatPage() {
             <TheEndCard
               engine={endCard}
               beingWritten={cardIsBeingWritten}
-              leadName={whoElseAnswers(ground.data as any)}
               nextOpens={whenTheNextOneOpens(myStatus.data?.checkIns, checkInId, new Date(), myStatus.data)}
               othersCanSeeWhatYouSay={(ground.data as any)?.aTeamReportComes}
-              whoReadsIt={(ground.data as any)?.viewerIsInitiator ? null : whoRunsThis(ground.data as any)}
+              whoCanReadWhatYouSay={(ground.data as any)?.viewerIsInitiator ? null : (ground.data as any)?.whoCanReadWhatYouSay}
               finishing={complete.isPending}
               /*
                 HALF A MINUTE OF "SAVING…" READS AS A HANG. W8-16. Completing runs two model calls
@@ -1462,7 +1444,7 @@ export function ChatPage() {
                 so the wait says what is happening.
               */
               whileFinishing={<SlowStep steps={CLOSING_STEPS} />}
-              onFinish={() => complete.mutate(false)}
+              onFinish={() => complete.mutate(pausedEarly)}
               onChange={(line) => { setDone(false); if (line) setInput(`${aCorrectionOf(line)} `); requestAnimationFrame(() => taRef.current?.focus()) }}
             />
           )}
@@ -1474,8 +1456,22 @@ export function ChatPage() {
           {completed && groundId && (ground.data as any)?.viewerIsInitiator && (
             <WaitingForYouToConfirm groundId={groundId} lookAgain onlyTheTargetsYouGave />
           )}
+          {/* THE END, SAID BY GROUNDWORK IN THE CONVERSATION (Hafsah, 15 November): the last line says where the report is, with a plain link, in place of a pop-up with Close. */}
+          {/* The one question from a team update's link ends here too: the answer landed, where the report goes, and when the next one opens. */}
+          {justFinished && completed && !declined && bareFrame && groundId && (
+            <Bubble mine={false}><TheReportIsComing groundId={groundId} /></Bubble>
+          )}
+          {justFinished && completed && !declined && !bareFrame && groundId && (
+            <Bubble mine={false}>
+              <p>
+                Done.{user?.firstName ? ` Thanks, ${user.firstName}.` : ''} Your report is ready in{' '}
+                <Link to={whereYourReportLives(groundId, checkInId)} className="gwui-plain-link">My work</Link>.
+              </p>
+            </Bubble>
+          )}
           {/* THE END OF A SESSION (fix list, item 5): the next one can be answered on WhatsApp. Only where the server serves the way to connect. */}
-          {(done || completed) && !declined && connectWhatsApp && (
+          {/* Said once, at the end of a person's first check-in, and only where the server offers it (it never offers it to somebody who has already written from their WhatsApp number). Audit of the check-in pages, row 30. */}
+          {(done || completed) && !declined && sessionNumber <= 1 && connectWhatsApp && (
             <CheckInOnWhatsApp link={connectWhatsApp.link} label={connectWhatsApp.says} testId="check-in-on-whatsapp-next-time" />
           )}
           {/* Manual fallback: "done" flips on the AI's close marker, or when the
@@ -1509,17 +1505,7 @@ export function ChatPage() {
           {declined && (
             <div className="gwui-stack-10">
               <div className="gwui-ci-settled-box">
-                <div className="gwui-ci-settled-title">You declined this session.</div>
-                <div className="gwui-ci-settled-body">
-                  That is recorded. The report for this session will say you declined and will not guess at
-                  what you would have said. Nothing you write here counts towards it now.
-                  {' '}If there is another session, you can take part in that one.
-                </div>
-              </div>
-              <div className="gwui-ci-back-wrap">
-                <button onClick={() => navigate('/grounds')} className="gwui-ci-back-link">
-                  ← Back to check-ins
-                </button>
+                <div className="gwui-ci-settled-title">Skipped. The report will say so.</div>
               </div>
             </div>
           )}
@@ -1528,21 +1514,11 @@ export function ChatPage() {
             <div className="gwui-stack-10">
               <div className="gwui-ci-confirm-box">
                 <div className="gwui-ci-confirm-title">
-                  Not taking part in this session?
+                  Skip this check-in? The report will say you skipped it.
                 </div>
-                {/*
-                  Everything that follows from it, before they do it. A final action whose consequences
-                  are discovered afterwards is a trap, however quiet the button was.
-                */}
-                <ul className="gwui-ci-confirm-list">
-                  <li>This cannot be undone for this session.</li>
-                  <li>The session finishes without your answers, so nobody is left waiting on you.</li>
-                  <li>The report will say you declined. It will not guess at what you would have said.</li>
-                  {!direct && <li>Nothing you have written here is shown to anyone.</li>}
-                </ul>
                 <div className="gwui-ci-confirm-actions">
                   <Button kind="primary" onClick={() => decline.mutate()} disabled={decline.isPending}>
-                    {decline.isPending ? 'Recording…' : 'Yes, I am not taking part'}
+                    {decline.isPending ? 'Recording…' : 'Yes, skip it'}
                   </Button>
                   <Button kind="secondary" onClick={() => setConfirmingDecline(false)}>
                     Keep going
@@ -1552,81 +1528,8 @@ export function ChatPage() {
             </div>
           )}
 
-          {/* The way to say no is End session before any answer has landed, in the header, one step from final: the confirm above spells it out. */}
+          {/* The way to say no is "Skip this one" before any answer has landed, in the header: the confirm above asks first. */}
 
-          {completed && groundId && checkInId && (
-            <div className="gwui-stack-10">
-              <TheCheckInYouJustFinished checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} />
-              {/* What we measured about their answers, said to them - see WhatYouGaveUs. */}
-              <WhatYouGaveUs it={whatYouGave} />
-              {/* When the next one opens: the thing people asked after finishing. See YourNextCheckIn. */}
-              <YourNextCheckIn groundId={groundId} />
-              {/* And, for whoever is running it, the state of the round they are now waiting on. */}
-              {isInitiator && <WhoIsStillOut groundId={groundId} sessionNumber={sessionNumber} myUserId={user?.id} />}
-              {/*
-                * WHERE THE REPORT LIVES, AND WHERE THE PEOPLE GO.
-                *
-                * The only way out of a finished session was "Back to check-ins", which is the list of
-                * every check-in in the organisation. So the report somebody had just read had no
-                * second home they could find - "the report showed up but I have no place else to see
-                * the report i just saw" - and there was nowhere to add the people who still have to
-                * check in, from the screen where you have just realised you need them.
-                *
-                * Both live on the check-in itself, one click away, and neither was linked from here.
-                */}
-              {/*
-                * "SEE THE FULL REPORT" WAS A PROMISE THIS BUTTON COULD NOT KEEP.
-                *
-                * It went to the ground's Report tab, which holds the SHARED report - the one that
-                * does not exist until everybody has checked in. So somebody who had just read their
-                * own report pressed a button offering more of it and landed on "waiting for
-                * sessions": "when I click the report, it redirects me somewhere else. Why can't I
-                * see the same report I just saw at the end of a check-in."
-                *
-                * The report she wants is the one directly above this button, and it stays there -
-                * this page renders it for any completed session of yours. What was missing was a
-                * sentence saying which report is which, and that is what replaces the button.
-                */}
-              <p className="gwui-ci-finished-note">
-                This report is yours and it stays on this session - the button below opens it on
-                its own, and it is also under Report, in Your sessions. The shared report, where
-                what everybody said sits side by side, appears once the others have checked in.
-              </p>
-              {/*
-                PRIMARY-BUTTONS-NEVER-TOGETHER: "Open the team board" is the one navy action on this
-                panel. "Open my report" and "Open this check-in" only go elsewhere, so they are
-                secondary, same as every other page that keeps one true primary action.
-              */}
-              <div className="gwui-ci-finished-actions">
-                {/* The check-in itself, where the people, the sessions and the setup all live.
-                    Deliberately not deep-linked to a tab: the tab keys and their labels differ
-                    ("settings" is shown as "Setup"), and a link that lands on the wrong one is
-                    worse than a link that lands on the page and lets somebody look. */}
-                {/*
-                  THE REPORT, ON ITS OWN, WITH NOTHING ELSE ON THE PAGE.
-                  It is rendered above this block too - but above a screen's worth of transcript,
-                  which is why it kept reading as gone. This opens the same report by itself.
-                */}
-                {/* The board first: the whole run in one place, and where the Report tab now leads too. */}
-                {groundId && (
-                  <Button kind="primary" onClick={() => navigate(`/grounds/${groundId}/board`)}>
-                    Open the team board →
-                  </Button>
-                )}
-                <Button kind="secondary" onClick={() => navigate(`/checkin/${checkInId}/report`)}>
-                  Open my report
-                </Button>
-                <Button kind="secondary" onClick={() => navigate(`/grounds/${groundId}`)}>
-                  Open this check-in
-                </Button>
-              </div>
-              <div className="gwui-ci-back-wrap">
-                <button onClick={() => navigate('/grounds')} className="gwui-ci-back-link">
-                  ← Back to check-ins
-                </button>
-              </div>
-            </div>
-          )}
       </ConversationCard>
 
       </div>
@@ -1707,7 +1610,7 @@ export function ChatPage() {
               </button>
               <button onClick={submitDocWithContext} disabled={uploadDoc.isPending}
                 className="gwui-ci-sheet-submit">
-                {uploadDoc.isPending ? 'Adding…' : 'Add to session'}
+                {uploadDoc.isPending ? 'Adding…' : 'Add to check-in'}
               </button>
             </div>
           </div>

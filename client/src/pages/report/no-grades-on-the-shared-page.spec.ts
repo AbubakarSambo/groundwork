@@ -87,7 +87,7 @@ describe('no grades on the shared page', () => {
     expect(AT_THE_TOP).toContain('Where what you have shared stands')
     /* And the read itself, which is the point: how specific each session was, in bars a person can
        act on because the sentence under them names what fills one. */
-    expect(AT_THE_TOP).toContain('How specific each session was')
+    expect(AT_THE_TOP).toContain('How specific each check-in was')
     /* And the actionable half - the one thing that would make the next session land harder - moved
        with the specificity read it belongs to. */
     const FIVE = readFileSync(

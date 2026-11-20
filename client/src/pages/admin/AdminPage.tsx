@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -128,7 +129,7 @@ function CoachingSwitch() {
     <div style={{ ...C, padding: '14px 16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>Coaching in the session</div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>Coaching in the check-in</div>
           <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
             The coach's read of where each person is, and what it would say next. {data.count === 0
               ? 'Nothing has been read yet.'
@@ -1067,8 +1068,8 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
           <Stat val={dash.orgs.total} label="Total orgs" />
           <Stat val={dash.orgs.withActiveCareFee} label="Active billing" accent />
           <Stat val={dash.grounds.total} label="Check-ins created" />
-          <Stat val={dash.checkIns.totalCompleted} label="Sessions completed" />
-          <Stat val={rateText(dash.checkIns.session2RateOfThoseDue)} of={dash.checkIns.session2RateOfThoseDue.of} label="Came back for session 2, of those whose session 2 was due" />
+          <Stat val={dash.checkIns.totalCompleted} label="Check-ins completed" />
+          <Stat val={rateText(dash.checkIns.session2RateOfThoseDue)} of={dash.checkIns.session2RateOfThoseDue.of} label="Came back for check-in 2, of those whose check-in 2 was due" />
         </div>
       </section>
 
@@ -1077,7 +1078,7 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Stat val={dash.orgs.createdLast30Days} label="New orgs (30d)" />
           <Stat val={dash.grounds.openedLast7Days} label="Check-ins opened" />
-          <Stat val={dash.checkIns.completedLast7Days} label="Sessions completed" />
+          <Stat val={dash.checkIns.completedLast7Days} label="Check-ins completed" />
           <Stat val={dash.grounds.resolvedLast30Days} label="Resolved (30d)" />
         </div>
       </section>
@@ -1140,7 +1141,7 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
       <ParticipantsSection participants={data.activation?.participants} />
 
       <section>
-        <div style={SL}>Session retention</div>
+        <div style={SL}>Check-in retention</div>
         <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {visible.map(row => (
             <div key={row.session} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1172,18 +1173,18 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
         <div style={SL}>Avg days to first check-in</div>
         <div style={{ ...C, display: 'inline-block' }}>
           <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.avgDaysToFirstCheckin.value ?? ' - '}</div>
-          <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>days, over {data.avgDaysToFirstCheckin.n} first sessions</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>days, over {data.avgDaysToFirstCheckin.n} first check-ins</div>
         </div>
       </section>
 
       {(data.avgSessionMinutes ?? []).length > 0 && (
         <section>
-          <div style={SL}>Avg session duration (min)</div>
+          <div style={SL}>Avg check-in duration (min)</div>
           <div style={C}>
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <thead>
                 <tr>
-                  <th style={{ fontSize: 10, fontWeight: 700, color: 'var(--gw-muted)', textAlign: 'left', paddingBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>Session</th>
+                  <th style={{ fontSize: 10, fontWeight: 700, color: 'var(--gw-muted)', textAlign: 'left', paddingBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>Check-in</th>
                   <th style={{ fontSize: 10, fontWeight: 700, color: 'var(--gw-muted)', textAlign: 'right', paddingBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>Avg min</th>
                   <th style={{ fontSize: 10, fontWeight: 700, color: 'var(--gw-muted)', textAlign: 'right', paddingBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>Over</th>
                 </tr>
@@ -1245,11 +1246,11 @@ export function DropoffsTab({ data }: { data: UsageFunnelData }) {
 const ACTIVATION_STAGE_LABELS: Record<ActivationStage, string> = {
   created: 'Created',
   peopleAdded: 'Somebody besides the lead was added',
-  firstResponse: 'Somebody besides the lead finished a session',
+  firstResponse: 'Somebody besides the lead finished a check-in',
   enoughToReport: 'A report was made',
   firstInsight: 'The report went out',
   leadActed: 'The lead acted on it',
-  secondRound: 'A second session finished',
+  secondRound: 'A second check-in finished',
 }
 const ACTIVATION_STAGE_ORDER: ActivationStage[] = ['created', 'peopleAdded', 'firstResponse', 'enoughToReport', 'firstInsight', 'leadActed', 'secondRound']
 
@@ -1257,7 +1258,7 @@ const ACTIVATION_NOW_LABELS: Record<ActivationNowBucket, string> = {
   test: 'Test (a week old or more, nobody but the lead ever added)',
   abandonedBeforeValue: 'Abandoned before a report (over a fortnight old, nothing moving for a fortnight)',
   abandonedAfterValue: 'Abandoned after the report (the report went out over a fortnight ago, nothing moved since)',
-  active: 'Active (a session started or finished in the last fortnight)',
+  active: 'Active (a check-in started or finished in the last fortnight)',
 }
 const ACTIVATION_NOW_ORDER: ActivationNowBucket[] = ['test', 'abandonedBeforeValue', 'abandonedAfterValue', 'active']
 
@@ -1303,7 +1304,7 @@ function ActivationSection({ activation }: { activation: ActivationFunnel | null
         <div style={SL}>Leads who came back</div>
         <div style={{ ...C, display: 'inline-block' }}>
           <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>{activation.leadsWhoCameBack}</div>
-          <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>leads with a second session</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>leads with a second check-in</div>
         </div>
       </section>
 
@@ -1402,7 +1403,7 @@ function PeopleInOrg({ organizationId }: { organizationId: string }) {
     queryFn: () => promptsApi.peopleIn(organizationId),
   })
 
-  if (isLoading) return <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '8px 0' }}>Loading the people…</div>
+  if (isLoading) return <Skeleton what="Getting the people" shape="lines" count={1} />
   /* Said, not swallowed: an empty panel where a list should be reads as nobody being there. */
   if (error) return <div style={{ fontSize: 12, color: 'var(--gw-red-t)', padding: '8px 0' }}>Could not load the people in this organisation.</div>
   if (!data?.people?.length) return <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '8px 0' }}>Nobody has a login here yet.</div>
@@ -1608,20 +1609,20 @@ function UsageTab({ data }: { data: UsageStatsData }) {
           {/* Three objects, three words: a session is what one person gives, a check-in is the thing
               they give it on, a report is what comes out. These three tiles used to say "check-ins"
               over two different tables. */}
-          <Stat val={data.sessionsCompleted} label="Sessions completed" accent />
+          <Stat val={data.sessionsCompleted} label="Check-ins completed" accent />
           <Stat val={data.checkInsCreated} label="Check-ins created" />
           <Stat val={data.reportsReleased} label="Reports released" />
         </div>
       </section>
 
       <section>
-        <div style={SL}>Sessions - last 14 days</div>
+        <div style={SL}>Check-ins - last 14 days</div>
         <div style={{ ...C, paddingBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
             {sessionsLast14Days.map(({ date, count }) => (
               <div key={date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                 <div
-                  title={`${count} session${count !== 1 ? 's' : ''}`}
+                  title={`${count} check-in${count !== 1 ? 's' : ''}`}
                   style={{
                     width: '100%', borderRadius: '3px 3px 0 0',
                     height: `${Math.max((count / maxCount) * 60, count > 0 ? 4 : 2)}px`,
@@ -1692,7 +1693,7 @@ function InAppFeedback() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {rows.map(f => (
-            <div key={f.id} style={{ ...C, borderLeft: `3px solid ${f.status === 'new' ? 'var(--gw-navy)' : 'var(--gw-border)'}` }}>
+            <div key={f.id} style={{ ...C }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{f.pill}</div>
@@ -1749,7 +1750,7 @@ function FeedbackTab({ data }: { data: FeedbackSummaryData }) {
           <div style={SL}>Did it feel fair · recent answers</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {(data.recent ?? []).map(f => (
-              <div key={f.id} style={{ ...C, borderLeft: `3px solid ${f.feltFair ? 'var(--gw-green-b)' : 'var(--gw-amber-b)'}` }}>
+              <div key={f.id} style={{ ...C }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: f.note ? 5 : 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{
@@ -1781,7 +1782,7 @@ function FeedbackTab({ data }: { data: FeedbackSummaryData }) {
 function ErrorsTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ ...C, borderLeft: '3px solid var(--gw-amber-b)' }}>
+      <div style={{ ...C }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>No error sink connected</div>
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px' }}>
           Connect Sentry or add a <code style={{ fontSize: 11, background: 'var(--gw-bg)', padding: '1px 5px', borderRadius: 3 }}>POST /ops/errors</code> endpoint to surface recent exceptions here.
@@ -1855,7 +1856,7 @@ function CoachTab({ rows, onChanged }: { rows: CoachRequestRow[]; onChanged: () 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {rows.map(r => (
-        <div key={r.id} style={{ ...C, borderLeft: `3px solid ${r.status === 'new' ? 'var(--gw-navy)' : r.status === 'declined' ? 'var(--gw-border)' : 'var(--gw-green-b)'}` }}>
+        <div key={r.id} style={{ ...C }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 5 }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>
               {r.name} &middot; {r.orgName}
@@ -2235,7 +2236,7 @@ export function AdminPage() {
 
       <div style={{ maxWidth: 760, margin: '0 auto', width: '100%', padding: '20px 16px 64px' }}>
         {loading && (
-          <div style={{ fontSize: 13, color: 'var(--gw-muted)', padding: 32, textAlign: 'center' }}>Loading…</div>
+          <Skeleton what="Getting this tab" shape="lines" count={2} />
         )}
 
         {tab === 'system'   && !dashLoading  && dash     && <SystemTab dash={dash} />}

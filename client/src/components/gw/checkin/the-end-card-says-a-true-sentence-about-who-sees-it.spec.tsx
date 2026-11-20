@@ -3,31 +3,29 @@ import { render, screen } from '@testing-library/react'
 import { TheEndCard } from './TheEndCard'
 
 /**
- * GROUP 3'S REVIEW, BATCH A FAULT 2: THE END CARD LEFT OUT THE PROTOTYPE'S LINE ENTIRELY.
+ * WHAT THE END CARD SAYS ABOUT WHO SEES WHAT YOU WROTE, AFTER HAFSAH'S RULING OF 15 NOVEMBER.
  *
- * "Your team will see what you said today, and a short summary of what moved." was dropped with a
- * comment saying it was waiting on "item 11, conflict A" - but that was decided 29 September. The
- * line is back, built from `othersCanSeeWhatYouSay` (`ground.aTeamReportComes`, already on the page -
- * nothing new asked of the server): shown where somebody else answers this check-in too, and
- * replaced with the true sentence where nobody else does.
+ * It used to carry three variants ("Your team will see what you said today...", "Nobody else answers this check-in, but X runs it...",
+ * "Nobody else answers this check-in, so what you said today stays yours alone."). Who sees what is the backend's rule and is not
+ * explained on this screen; the one sentence kept is the lone participant's, that the lead reads it (the lone-participant spec).
+ * The false variant, "stays yours alone", is gone for good: a lead can read what a lone participant said.
  */
-const base = { engine: null, leadName: null, nextOpens: null, finishing: false, onFinish: () => {}, onChange: () => {} }
+const base = { engine: null, nextOpens: null, finishing: false, onFinish: () => {}, onChange: () => {} }
 
-describe('the end card says a true sentence about who sees what you wrote', () => {
-  it('shows the prototype\'s line where a team report comes from this check-in', () => {
-    render(<TheEndCard {...base} othersCanSeeWhatYouSay={true} />)
-    expect(screen.getByText('Your team will see what you said today, and a short summary of what moved.')).toBeTruthy()
+describe('the end card says only the one sentence that would surprise a person', () => {
+  it('says nothing about who sees what where a team report comes from this check-in', () => {
+    render(<TheEndCard {...base} othersCanSeeWhatYouSay={true} whoCanReadWhatYouSay="You see your own report straight away. Wairimu shares a team report when it is ready. Nobody else reads your conversation." />)
+    expect(screen.queryByText(/Your team will see what you said today/)).toBeNull()
+    expect(screen.queryByText(/Nobody else reads your conversation/)).toBeNull()
   })
 
-  it('shows the true sentence instead, where nobody else answers this check-in', () => {
+  it('never says a lone participant\'s words stay theirs alone', () => {
     render(<TheEndCard {...base} othersCanSeeWhatYouSay={false} />)
-    expect(screen.getByText('Nobody else answers this check-in, so what you said today stays yours alone.')).toBeTruthy()
-    expect(screen.queryByText(/Your team will see what you said today/)).toBeNull()
+    expect(screen.queryByText(/stays yours alone/)).toBeNull()
   })
 
-  it('says neither sentence while the setting is not yet known, rather than guessing', () => {
+  it('says nothing while the setting is not yet known, rather than guessing', () => {
     render(<TheEndCard {...base} />)
-    expect(screen.queryByText(/Your team will see what you said today/)).toBeNull()
-    expect(screen.queryByText(/Nobody else answers this check-in/)).toBeNull()
+    expect(screen.queryByText(/Nobody else reads your conversation/)).toBeNull()
   })
 })

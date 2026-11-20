@@ -121,8 +121,8 @@ describe('the chat as it first opens (signed out, atTheDoor)', () => {
     const markRow = container.querySelector('.gwui-ec-frame > .gwui-mark-row')
     expect(markRow).toBeTruthy()
     const css = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'ui', 'gw-ui.css'), 'utf8')
-    expect(css).toMatch(/\.gwui-ec-frame > \.gwui-mark-row \{ padding-left: 20px; padding-right: 20px; \}/)
-    expect(css).toMatch(/\.gwui-ec-messages \{\s*flex: 1; overflow-y: auto; padding: 18px 20px;/)
+    expect(css).toMatch(/\.gwui-ec-frame > \.gwui-mark-row \{ padding-left: 16px; padding-right: 16px; \}/)
+    expect(css).toMatch(/\.gwui-ec-messages \{\s*flex: 1; overflow-y: auto; padding: 16px 16px;/)
   })
 })
 

@@ -14,6 +14,7 @@ import { atTheStart } from '@/lib/a-colleague'
 import { Panel, SubHeading, Note, Callout, EdgeList, EdgeRow, FoldedLine, SmallMenu, UpdatedLine } from '@/components/gw/ui'
 import { whenTheBoardLastChangedInShort } from '@/pages/board/when-the-board-last-changed'
 import { splitAtFieldNames, readableWithoutFieldNames } from '@/lib/no-field-names-on-the-page'
+import { REFERENCES_AND_RESOURCES } from '@/lib/the-references-tab'
 
 /**
  * ONE SESSION'S SHARED REPORT.
@@ -265,10 +266,10 @@ function Row({ label, children, style }: {
  * a session's report reaches the people in it by itself, when the session closes. The sentence says so, the way the
  * prototype says when ("Shared with the team that evening").
  */
-export const SHARED_WITH_THE_TEAM = 'Shared with the team when this session closed.'
+export const SHARED_WITH_THE_TEAM = 'Shared with the team when this check-in closed.'
 
 export function sessionAndWhoCheckedIn(n: number, planned: number | null, answered: number, of: number): string {
-  const session = planned ? `Session ${n} of ${planned}.` : `Session ${n}.`
+  const session = planned ? `Check-in ${n} of ${planned}.` : `Check-in ${n}.`
   if (!of) return session
   return `${session} ${answered} of ${of} ${of === 1 ? 'person' : 'people'} checked in.`
 }
@@ -479,9 +480,9 @@ function movementSentence(value: string, sub: string): string {
      * this value alone, so it says what it can: the size of the move, not an invented count.
      */
     const n = Number(gained[1])
-    return `A target moved by ${n < 10 ? smallWord(n) : n} this session.`
+    return `A target moved by ${n < 10 ? smallWord(n) : n} this check-in.`
   }
-  if (value === 'None' && /no target moved this session/.test(sub)) return 'No target moved this session.'
+  if (value === 'None' && /no target moved this session/.test(sub)) return 'No target moved this check-in.'
   /*
    * GROUP 3'S REVIEW, BATCH A FAULT 6: THIS REGEX NEVER MATCHED WHAT THE SERVER ACTUALLY SENDS.
    * `what-this-session-holds.ts` writes "6 targets are set, and no round has closed to measure
@@ -493,7 +494,7 @@ function movementSentence(value: string, sub: string): string {
   const set = sub.match(/^(\d+) targets? (?:is|are )?set, and no round has closed to measure from\.?$/)
   if (set) {
     const n = Number(set[1])
-    return `Nothing has moved yet. ${capitalize(smallWord(n))} target${n === 1 ? '' : 's'} ${n === 1 ? 'is' : 'are'} set, and no session has closed to measure ${n === 1 ? 'it' : 'them'} against.`
+    return `Nothing has moved yet. ${capitalize(smallWord(n))} target${n === 1 ? '' : 's'} ${n === 1 ? 'is' : 'are'} set, and no check-in has closed to measure ${n === 1 ? 'it' : 'them'} against.`
   }
   return `Nothing has moved yet. ${withPeriod(capitalize(sub))}`
 }
@@ -537,13 +538,15 @@ function blockersSentence(value: string, sub: string): string {
 function howMuchWasSaidSentence(value: string): string {
   const pct = value.match(/^(\d+)% documented$/)
   if (pct) return `${pct[1]} of every 100 things people said have a document behind them.`
-  if (value === 'All from memory') return 'Nothing said this session was anchored to a document. It is all from memory.'
+  if (value === 'All from memory') return 'Nothing said this check-in was anchored to a document. It is all from memory.'
   return 'There is nothing on record yet, so there is nothing to check against a document.'
 }
 
 export function tileSentence(r: { label: string; value: string; sub: string }): string {
   const value = (r.value ?? '').trim()
   const sub = (r.sub ?? '').trim()
+  /* A read that is still to come is said as the one sentence the server sends, never as "nothing here". */
+  if (value === 'Not read yet' && sub) return withPeriod(sub)
   switch (r.label) {
     case 'Differences': return differencesSentence(value, sub)
     case 'Movement': return movementSentence(value, sub)
@@ -601,7 +604,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
   const lastChanged: string | null = (current as any)?.updatedAt ?? (current as any)?.createdAt ?? null
   const lastChangedLine = lastChanged ? lastUpdated(lastChanged) : null
   /* The read is computed when asked for and takes ten to twenty seconds. Say so, or it looks stuck. */
-  if (isLoading) return <Note role="status">Reading everybody&apos;s side of this session. It takes a moment.</Note>
+  if (isLoading) return <Note role="status">Reading everybody&apos;s side of this check-in. It takes a moment.</Note>
   if (isError || !data) return null
 
   /**
@@ -888,7 +891,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
     <>
       {/* ── What each person said they did. Folded: long, and their own work only. */}
       {themed.length > 0 && (
-        <Row n={next()} label="What people said this session">
+        <Row n={next()} label="What people said this check-in">
           <div className="gwui-sr-toggle-row">
             <span className="gwui-sr-muted-inline">Each person&apos;s own work, in their own words.</span>
             {/*
@@ -920,7 +923,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
                     </div>
                     {p.saying && <div className="gwui-sr-person-saying">{p.saying}</div>}
                     {/* The product's own finding for this person, from the record: purpose, standing, the lead's number against theirs, the gap. */}
-                    {p.finding && <div className="gwui-sr-person-finding" style={{ borderLeftWidth: 3, borderLeftStyle: 'solid', borderLeftColor: p.hasGap ? 'var(--gw-amber-b)' : 'var(--gw-border)' }}>{p.finding}</div>}
+                    {p.finding && <div className="gwui-sr-person-finding">{p.finding}</div>}
                     {p.lines?.length ? (
                       <div className="gwui-sr-lines-gap">
                         {p.lines.map((l: string, j: number) => (
@@ -1029,7 +1032,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
       */}
       <div className="gwui-sr-head">
         <div className="gwui-sr-head-title">
-          {sessionAndWhoCheckedIn(d.sessionNumber, d.plannedSessions ?? null, answered, ofPeople)}
+          {sessionAndWhoCheckedIn(d.sessionNumber ?? sessionNumber, d.plannedSessions ?? null, answered, ofPeople)}
         </div>
         {final && (
           <div className="gwui-sr-head-shared">{SHARED_WITH_THE_TEAM}</div>
@@ -1118,7 +1121,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound, l
                   <FoldedLine name="What everybody said good looks like" fact={glance.goodLooksLike ?? null}>
                     {successJSX}
                     {/* The mapping table: what everybody said good looks like lives on Context, with the targets. */}
-                    <Link to={`/grounds/${groundId}?tab=context`} className="gwui-plain-link">Open the Context page</Link>
+                    <Link to={`/grounds/${groundId}?tab=context`} className="gwui-plain-link">Open {REFERENCES_AND_RESOURCES}</Link>
                   </FoldedLine>
                 )}
                 {/* Its label is a sentence of its own ("Nobody has said what bigger goal this is part of."), so it is kept inside. */}

@@ -21,10 +21,12 @@ export const CHECK_IN_TABS = [
 
 export type CheckInTabKey = typeof CHECK_IN_TABS[number]['key']
 
-export function CheckInHeader({ crumbs, title, subtitle, action, active, tabHref, tabs, onSelectTab, trailing }: {
+export function CheckInHeader({ crumbs, title, subtitle, meta, action, active, tabHref, tabs, onSelectTab, trailing, updated }: {
   crumbs?: Crumb[]
   title: string
   subtitle?: string
+  /** One small line that belongs to the header, under the subtitle (PageTitle's meta). */
+  meta?: React.ReactNode
   action?: React.ReactNode
   active: string
   /** Builds the href for a tab, e.g. (key) => `/grounds/${id}/${key}`. Ignored when `tabs` is given. */
@@ -45,11 +47,13 @@ export function CheckInHeader({ crumbs, title, subtitle, action, active, tabHref
    * on the page to sit) uses this slot rather than being dropped.
    */
   trailing?: React.ReactNode
+  /** The board's "Last updated on …" sentence, drawn small on the title's own row. */
+  updated?: string
 }) {
   const items = tabs ?? CHECK_IN_TABS.map(t => ({ key: t.key, label: t.label, to: tabHref ? tabHref(t.key) : undefined }))
   return (
     <div className="gwui-cih">
-      <PageTitle crumbs={crumbs} title={title} subtitle={subtitle} action={action} />
+      <PageTitle crumbs={crumbs} title={title} subtitle={subtitle} meta={meta} action={action} updated={updated} />
       <div className={trailing ? 'gwui-cih-tabs gwui-cih-tabs-row' : 'gwui-cih-tabs'}>
         <Tabs active={active} items={items} onChange={onSelectTab} />
         {trailing && <div className="gwui-cih-trailing">{trailing}</div>}

@@ -59,6 +59,8 @@ export interface ForTheLead {
 }
 
 export interface WhatNeedsYou {
+  /** The day Today is read on, from the server's one clock. The screen says the same day the server does. */
+  now?: string
   needs: Need[]
   count: number
   line: string | null

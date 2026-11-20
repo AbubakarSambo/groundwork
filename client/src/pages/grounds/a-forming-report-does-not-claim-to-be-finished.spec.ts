@@ -32,14 +32,14 @@ const LIST = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheRe
 
 describe('what the lead is told before everyone has answered', () => {
   it('never claims everybody finished', () => {
-    expect(CODE).not.toContain('Everybody has completed their sessions')
+    expect(CODE).not.toContain('Everybody has completed their check-ins')
   })
 
   it('says releasing happens by itself, and names the early one for what it does', () => {
     expect(CODE).toContain('the report goes out to everybody on its own')
     /* "Session", not "round" (real-user walk, Kijani Foods, fault 2): the wording rule says
        "session" everywhere a person reads about one of these. */
-    expect(CODE).toContain('Close this session now and publish what there is')
+    expect(CODE).toContain('Close this check-in now and publish what there is')
     expect(CODE).toContain('anybody who has not answered loses their turn')
   })
 

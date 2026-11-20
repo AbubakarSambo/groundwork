@@ -39,7 +39,7 @@ export function statusSentence(label: string): string {
  * them from reading as a contradiction.
  */
 export function sessionsCompletedSentence(completedCount: number, totalSessions: number | null): string {
-  const done = completedCount === 1 ? '1 session' : `${completedCount} sessions`
+  const done = completedCount === 1 ? '1 check-in' : `${completedCount} check-ins`
   /* No total means no total: "3 of" with nothing after it is not a count. */
   if (totalSessions == null) return `You have completed ${done}.`
   return `You have completed ${done}, out of ${totalSessions}.`
@@ -114,7 +114,7 @@ export function MyParticipation({
               <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{statusSentence(whatThisStatusMeans(ground.status))}</div>
             </div>
             <div style={{ padding: '13px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>Sessions completed</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>Check-ins completed</div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{sessionsCompletedSentence(completedCount, totalSessions)}</div>
             </div>
           </div>

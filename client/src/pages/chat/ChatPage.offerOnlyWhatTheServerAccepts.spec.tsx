@@ -8,7 +8,7 @@ import { conversationApi, streamMessage } from '@/api/conversation'
 /**
  * DO NOT OFFER TO FINISH SOMETHING THE SERVER WILL REFUSE.
  *
- * CHANGED 26 OCTOBER 2026 (Hafsah): End session is always there, from the first message, so every case below now finds it.
+ * CHANGED 26 OCTOBER 2026 (Hafsah), AND 15 NOVEMBER (the button is now called Pause, and is there once an answer has landed): every case below finds it.
  * The manual fallback ("Finish my check-in now", once "Not seeing a wrap-up? Complete session") appears once
  * three answers exist. It counted every PERSON message on screen, including the
  * ones echoed locally the instant somebody pressed send, before the server had
@@ -74,7 +74,7 @@ describe('the completion offer follows the server, not the screen', () => {
     renderChat()
     // The transcript load is deferred by up to 2s of jitter, so the default
     // 1s findBy timeout races it.
-    expect(await screen.findByText('End session', {}, { timeout: 5000 })).toBeTruthy()
+    expect(await screen.findByText('Pause', {}, { timeout: 5000 })).toBeTruthy()
   })
 
   it('does not appear on two answers, however many are on screen', async () => {
@@ -96,7 +96,7 @@ describe('the completion offer follows the server, not the screen', () => {
      * two answers, which is the exact bug it claims to prevent.
      */
     await screen.findByText(/Answer number 2/i, {}, { timeout: 5000 })
-    expect(await screen.findByText('End session', {}, { timeout: 5000 })).toBeTruthy() /* changed 26 October: End session is always there */
+    expect(await screen.findByText('Pause', {}, { timeout: 5000 })).toBeTruthy() /* changed 26 October: End session is always there */
   })
 
   it('is still reachable at all, which the first version of this fix broke', async () => {
@@ -113,7 +113,7 @@ describe('the completion offer follows the server, not the screen', () => {
       turns: serverTurns(4),
     })
     renderChat()
-    expect(await screen.findByText('End session', {}, { timeout: 5000 })).toBeTruthy()
+    expect(await screen.findByText('Pause', {}, { timeout: 5000 })).toBeTruthy()
   })
 })
 
@@ -153,7 +153,7 @@ describe('a send that never lands does not unlock the offer', () => {
     await typeAndSend('My third answer, which never arrives')
 
     await waitFor(() => expect(screen.getByText(/never arrives/i)).toBeTruthy())
-    expect(await screen.findByText('End session', {}, { timeout: 5000 })).toBeTruthy() /* changed 26 October: End session is always there */
+    expect(await screen.findByText('Pause', {}, { timeout: 5000 })).toBeTruthy() /* changed 26 October: End session is always there */
   })
 
   it('offers it once the third answer is acknowledged by a reply', async () => {
@@ -168,6 +168,6 @@ describe('a send that never lands does not unlock the offer', () => {
     await screen.findByText(/Answer number 2/i, {}, { timeout: 5000 })
     await typeAndSend('My third answer, which does land')
 
-    expect(await screen.findByText('End session', {}, { timeout: 5000 })).toBeTruthy()
+    expect(await screen.findByText('Pause', {}, { timeout: 5000 })).toBeTruthy()
   })
 })

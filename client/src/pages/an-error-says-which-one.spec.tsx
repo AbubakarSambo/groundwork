@@ -36,9 +36,11 @@ describe('the screens', () => {
     expect(board).not.toContain('You may not be a party to this check-in, or it may no longer exist.')
   })
   it('the session report tells a 404 from a 403', () => {
-    const page = read('report/SessionReportPage.tsx')
-    expect(page).toContain("'This session is no longer here'")
-    expect(page).not.toMatch(/status === 403 \|\| \(error as any\)\?\.response\?\.status === 404\s*\?\s*'This session is not yours to open'/)
+    /* Batch 2, group 5: SessionReportPage.tsx is gone; your own report is drawn in My work (MyWorkPage.tsx). */
+    /* Its 404 and 403 now land on the one shared refusal (TheConversationLivesInItsTab draws GroundGone), never "not yours". */
+    const page = read('chat/TheConversationLivesInItsTab.tsx')
+    expect(page).toContain('<GroundGone />')
+    expect(page).not.toContain('not yours to open')
   })
   it('the probe says the sentence it extracted, on the page, not in a toast', () => {
     /*

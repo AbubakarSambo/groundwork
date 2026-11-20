@@ -66,7 +66,7 @@ describe('an at-a-glance tile reads as full sentences, not stacked pieces', () =
 
   it('Movement, targets set but no round closed yet', () => {
     expect(tileSentence({ label: 'Movement', value: 'Nothing yet', sub: '2 targets set, and no round has closed to measure from' }))
-      .toBe('Nothing has moved yet. Two targets are set, and no session has closed to measure them against.')
+      .toBe('Nothing has moved yet. Two targets are set, and no check-in has closed to measure them against.')
   })
 
   /*
@@ -78,7 +78,7 @@ describe('an at-a-glance tile reads as full sentences, not stacked pieces', () =
    */
   it('Movement, the exact sentence the server actually sends ("are", with a trailing period)', () => {
     expect(tileSentence({ label: 'Movement', value: 'Nothing yet', sub: '6 targets are set, and no round has closed to measure from.' }))
-      .toBe('Nothing has moved yet. Six targets are set, and no session has closed to measure them against.')
+      .toBe('Nothing has moved yet. Six targets are set, and no check-in has closed to measure them against.')
   })
 
   /* Board review, 30 September, item 6: "'One target is set, and no session has closed to measure
@@ -86,7 +86,7 @@ describe('an at-a-glance tile reads as full sentences, not stacked pieces', () =
      the plural "them" the way the multi-target case above reads correctly. */
   it('Movement, one target set but no round closed yet - "it", not "them"', () => {
     expect(tileSentence({ label: 'Movement', value: 'Nothing yet', sub: '1 target set, and no round has closed to measure from' }))
-      .toBe('Nothing has moved yet. One target is set, and no session has closed to measure it against.')
+      .toBe('Nothing has moved yet. One target is set, and no check-in has closed to measure it against.')
   })
 
   /*
@@ -98,13 +98,13 @@ describe('an at-a-glance tile reads as full sentences, not stacked pieces', () =
    * no longer invents a count: "A target moved by 96 this session."
    */
   it('Movement, one target moved, by a small amount', () => {
-    expect(tileSentence({ label: 'Movement', value: '+1', sub: 'targets moved this session' }))
-      .toBe('A target moved by one this session.')
+    expect(tileSentence({ label: 'Movement', value: '+1', sub: 'targets moved this check-in' }))
+      .toBe('A target moved by one this check-in.')
   })
 
   it('Movement, one target moved, by a figure too large to say as a word', () => {
-    expect(tileSentence({ label: 'Movement', value: '+96', sub: 'Targets moved this session.' }))
-      .toBe('A target moved by 96 this session.')
+    expect(tileSentence({ label: 'Movement', value: '+96', sub: 'Targets moved this check-in.' }))
+      .toBe('A target moved by 96 this check-in.')
   })
 
   it('Blockers, with the thing itself named', () => {
@@ -140,5 +140,14 @@ describe('an at-a-glance tile reads as full sentences, not stacked pieces', () =
   it('How much was said, nothing on record yet', () => {
     expect(tileSentence({ label: 'How much was said', value: 'Nothing on record yet', sub: 'no answers to read' }))
       .toBe('There is nothing on record yet, so there is nothing to check against a document.')
+  })
+})
+
+describe('a tile whose read is still to come says so and never "nothing here" (fix plan 16 November, group 1)', () => {
+  const sub = 'Groundwork is still working out what people said. This page will fill in when it has.'
+  it('every tile says the one sentence', () => {
+    for (const label of ['Differences', 'Movement', 'Blockers', 'How much was said']) {
+      expect(tileSentence({ label, value: 'Not read yet', sub })).toBe(sub)
+    }
   })
 })

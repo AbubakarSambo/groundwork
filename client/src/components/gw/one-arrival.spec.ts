@@ -180,10 +180,10 @@ describe('the check-in is not a trap', () => {
      * draw the back button before the header.
      */
     /* Changed 3 November 2026: the way back moved into the header, on the left of the same line as End session (TheCheckInHeader.tsx). */
-    expect(CHAT).toMatch(/backTitle="Leave this session\. Everything you have said is already saved\."/)
+    expect(CHAT).toMatch(/backTitle="Leave this check-in\. Everything you have said is already saved\."/)
     expect(CHAT).toMatch(/onBack=\{!bareFrame \? leave : undefined\}/)
     const HEADER = strip(readFileSync(join(__dirname, 'checkin/TheCheckInHeader.tsx'), 'utf8'))
-    expect(HEADER.indexOf('ci-h-arrow')).toBeLessThan(HEADER.indexOf('End session'))
+    expect(HEADER.indexOf('ci-h-arrow')).toBeLessThan(HEADER.indexOf('End check-in'))
   })
 
   it('and it returns you to the check-in, not to the list of every ground', () => {
