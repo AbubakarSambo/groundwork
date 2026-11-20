@@ -34,7 +34,7 @@ describe('today’s report on the lead’s board', () => {
     vi.mocked(reportsApi.sharing).mockResolvedValue({ sessionNumber: 38, shared: false, held: false, at: '6:30pm', says: 'Today’s report shares itself at 6:30pm.' })
     renderIt()
     expect(await screen.findByText('Today’s report shares itself at 6:30pm')).toBeTruthy()
-    expect(screen.getByText('Read it first if you like, or share it now.')).toBeTruthy()
+    expect(screen.getByText('Share it when you are ready.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Hold it' }))
     await waitFor(() => expect(reportsApi.hold).toHaveBeenCalledWith('g1'))
     fireEvent.click(screen.getByRole('button', { name: 'Share now' }))
@@ -56,5 +56,14 @@ describe('today’s report on the lead’s board', () => {
     expect(screen.queryByText(/shares itself/)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Hold it' })).toBeNull()
     expect(reportsApi.sharing).not.toHaveBeenCalled()
+  })
+
+  it('after she shares it, "Share now" is not offered beside the words that say it is shared, even where the list row was read before', async () => {
+    /* The row the board read the session from still says it is not shared: sharing does not refresh it (end-to-end I-4). The server's sharing answer decides. */
+    vi.mocked(reportsApi.sharing).mockResolvedValue({ sessionNumber: 38, shared: true, held: false, at: '6:30pm', says: 'Today’s report is shared with the team.' })
+    renderIt()
+    await new Promise((r) => setTimeout(r, 30))
+    expect(screen.queryByRole('button', { name: 'Share now' })).toBeNull()
+    expect(screen.queryByText('Share it when you are ready.')).toBeNull()
   })
 })

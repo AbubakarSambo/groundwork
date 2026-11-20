@@ -16,7 +16,7 @@ const GREENFIELD = {
   topic: 'The value of the signed deal with Greenfield Supermarket is reported differently in the same week.',
   positions: [
     { view: `${L.get('p-mercy')} first reported the Greenfield deal as 25 units for KES 120,000.`, participantLabel: L.get('p-mercy') },
-    { view: `In a later session the same week, ${L.get('p-mercy')} stated the same deal was for KES 125,000.`, participantLabel: L.get('p-mercy') },
+    { view: `In a later check-in the same week, ${L.get('p-mercy')} stated the same deal was for KES 125,000.`, participantLabel: L.get('p-mercy') },
   ],
   settledBy: 'Confirm the final amount for the Greenfield deal and update the record.',
 };

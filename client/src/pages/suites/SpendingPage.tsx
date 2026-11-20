@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { spendApi, type SpendBoard, type SpendWaiting } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, Select, TextField, TextArea, Tag, ExampleExchange } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, Select, TextField, TextArea, Tag, ExampleExchange, Skeleton } from '@/components/gw/ui'
 import { AskAQuestion } from './AskAQuestion'
 import { ApprovalStepsByAmount } from './ApprovalStepsByAmount'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
@@ -76,7 +76,7 @@ export function SpendingPage() {
         subtitle="People ask to spend by telling Groundwork. It checks the budget and the rules, then sends the request to the right person."
       />
 
-      {isLoading && <Note>Loading…</Note>}
+      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
           <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>
@@ -136,7 +136,7 @@ export function SpendingPage() {
                 { mine: false, text: 'Operations has KES 38,000 left this month, so yes, that fits. I have sent it to your lead to approve.' },
               ]}
             />
-            <p className="gwui-panel-text">In their check-in, in chat, or on WhatsApp. Nobody fills in a form.</p>
+            <p className="gwui-panel-text">In their check-in, in chat, on WhatsApp, or with the request form.</p>
           </Section>
 
           {(data.teams ?? []).length > 0 && <SetABudget teams={data.teams} />}

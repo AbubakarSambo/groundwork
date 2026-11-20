@@ -236,15 +236,15 @@ export const SCENARIOS: ScenarioCard[] = [
     agreed: 'Agree what the team is working on and what each person owns.',
     tests: 'Each check-in asks what that person did since last time. Work drifting off what was agreed shows up week by week, not at the end.',
     examples: [
-      'You want to know what your team is actually doing, every week.',
+      'You want to know what your team is actually doing.',
       'A quick read every two weeks from each person on what is moving and what is stuck.',
       'You want a lightweight recurring signal without calling a meeting.',
     ] },
   { cardKey: 'DRIFT', scenario: 'DRIFT', label: SCENARIO_LABELS.DRIFT,
-    desc: "Pin down what was agreed, what exists now, and the gap between them. The check-ins ask whether that gap is closing. The same thing unresolved three sessions running is a pattern, not bad luck.",
+    desc: "Pin down what was agreed, what exists now, and the gap between them. The check-ins ask whether that gap is closing. The same thing unresolved three check-ins running is a pattern, not bad luck.",
     moment: 'Understand why a project is off track and what needs to change.',
     agreed: 'Pin down what was agreed, what exists now, and the gap between them.',
-    tests: 'The check-ins ask whether that gap is closing. The same thing unresolved three sessions running is a pattern, not bad luck.',
+    tests: 'The check-ins ask whether that gap is closing. The same thing unresolved three check-ins running is a pattern, not bad luck.',
     examples: [
       'The project is eight weeks late and everyone has a different reason.',
       'A project blew up or is badly behind and everyone has a different story about why.',
@@ -344,7 +344,7 @@ export const SCENARIOS: ScenarioCard[] = [
     desc: 'Ask a group what they know, once, and read the answers together. Each person is taken through what they are trying to grow, what stops them, and where they would go if it went. The report comes back as a direction: the regions, markets, value chains, actors and data gaps the room named, and how many named each.',
     moment: 'You have a decision to make about where to focus, and the people who know are not in your team.',
     agreed: 'Nothing. Nobody is committing to anything and nobody is being tracked.',
-    tests: 'Nothing over time. There is one session, and the value is in reading twenty accounts against each other rather than in asking anybody twice.',
+    tests: 'Nothing over time. There is one check-in, and the value is in reading twenty accounts against each other rather than in asking anybody twice.',
     examples: [
       'Where should we expand next, and what data would we need to do it?',
       'Which value chains matter most to the people who actually trade in them?',
@@ -394,9 +394,9 @@ export const SCENARIOS: ScenarioCard[] = [
       'Sudden bad news hit the team and you want honest reads before any decisions get made.',
     ] },
   { cardKey: 'REALIGN_TEAM', scenario: 'REALIGN_TEAM', label: SCENARIO_LABELS.REALIGN_TEAM,
-    desc: "Each person gives their own read before the group talks, so the loudest version does not become the official one. The first session sets out what you agree on and what you do not. The check-ins after it ask whether the gap closed or only went quiet.",
+    desc: "Each person gives their own read before the group talks, so the loudest version does not become the official one. The first check-in sets out what you agree on and what you do not. The check-ins after it ask whether the gap closed or only went quiet.",
     moment: "Understand different views when people don't see a situation the same way.",
-    agreed: 'Each person gives their own read before the group talks. The first session sets out what you agree on and what you do not.',
+    agreed: 'Each person gives their own read before the group talks. The first check-in sets out what you agree on and what you do not.',
     tests: 'The check-ins after it ask whether the gap closed or only went quiet.',
     examples: [
       'You and your ops lead have stopped agreeing on what matters.',
@@ -1424,7 +1424,7 @@ export function CreateGroundPage() {
                   <div>
                     <FieldLabel htmlFor="own-situation">{theWords.describeOwnQuestion}</FieldLabel>
                     <p className="gwui-panel-text-muted">
-                      {theWords.describeOwnHelp} We will suggest the closest situation and you can change
+                      {theWords.describeOwnHelp} I will suggest the closest situation and you can change
                       it, because what gets picked decides the questions people are asked.
                     </p>
                     <TextArea id="own-situation" rows={4} value={ownDescription}
@@ -1468,7 +1468,7 @@ export function CreateGroundPage() {
                   {routedTo && (
                     <Callout tone="info">
                       From what you wrote, this looks like <b>{SCENARIOS.find(c => c.scenario === routedTo)?.label}</b>.
-                      That is what we will set up. If it is not right, pick a card above instead, because
+                      That is what I will set up. If it is not right, pick a card above instead, because
                       your description is kept either way.
                     </Callout>
                   )}
@@ -1609,8 +1609,8 @@ export function CreateGroundPage() {
                         money, contradicting itself. A paid plan really is
                         unlimited; the free tier is not, and should say so once. */}
                     {groundsUsed != null && !appliedAccessCode
-                      ? <>Your free plan includes {freeLimit} check-ins, with unlimited sessions and reports in each. You have used <b>{groundsUsed}</b>.</>
-                      : <>This one is covered. Unlimited sessions and reports.</>}
+                      ? <>Your free plan includes {freeLimit} check-ins, with unlimited check-ins and reports in each. You have used <b>{groundsUsed}</b>.</>
+                      : <>This one is covered. Unlimited check-ins and reports.</>}
                   </Callout>
                   {/* The warning stays, but only when they are actually near the
                       wall. Repeating the count when they have eight left is noise. */}
@@ -1637,7 +1637,7 @@ export function CreateGroundPage() {
                     <Stack gap={10}>
                       <h3 className="t-h3">{noPlan ? 'No plan yet' : 'Subscribe to create more'}</h3>
                       <p className="gwui-panel-text-muted">
-                        {noPlan ?? `Your free plan includes ${freeLimit} check-ins. Subscribe for unlimited check-ins, sessions, and reports.`}
+                        {noPlan ?? `Your free plan includes ${freeLimit} check-ins. Subscribe for unlimited check-ins and reports.`}
                       </p>
                       {/* A LINK, NOT A BUTTON: it only goes to the pricing page, and this step's one
                           primary action is "Continue →" once a code is applied below. */}

@@ -127,7 +127,7 @@ export function TheFiveThingsThatMakeItCheckable({
           somebody's account of what happened; in an app it reads as a login, and nobody stops to
           work out which. So the sentence says the thing instead of naming it.
         */}
-        {sessionNumber ? `Session ${sessionNumber} was mostly about the situation around you. ` : ''}
+        {sessionNumber ? `Check-in ${sessionNumber} was mostly about the situation around you. ` : ''}
         {/* Her sentence, minus the one word she banned: "five things make an account something a
             reader can check" - account means their account of what happened and reads as a login. */}
         Five things make a check-in something a reader can check. Add one or two next time.

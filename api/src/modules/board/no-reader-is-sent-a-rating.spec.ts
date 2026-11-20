@@ -175,7 +175,7 @@ describe.each([
   ['a team check-in where people see each other', 'OKR_ALIGNMENT', true],
   ['a team check-in where people see only themselves', 'OKR_ALIGNMENT', false],
   ['a performance plan', 'PIP', true],
-])('the session report, on %s', (_what, scenario, peersVisible) => {
+])('the check-in report, on %s', (_what, scenario, peersVisible) => {
   it.each(READERS)('%s is sent no rating of anybody', async (_who, [userId, role], own) => {
     const served = await sessionReportAs(userId, role as any, scenario as string, peersVisible as boolean).catch((e) => ({ refused: String(e?.message ?? e) }));
     expect(ratingsIn(withoutTheDocumentsOwnLevel(served), own)).toEqual([]);

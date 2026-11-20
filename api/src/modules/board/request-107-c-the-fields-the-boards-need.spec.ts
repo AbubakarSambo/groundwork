@@ -131,8 +131,8 @@ describe('3. the work by area, where a record holds one', () => {
     expect(b.byArea).toEqual({
       state: 'filled', heading: 'By team',
       areas: [
-        { area: 'Industrial Area', records: 1, says: 'Industrial Area has 1 deal on record.' },
-        { area: 'Westlands', records: 1, says: 'Westlands has 1 deal on record.' },
+        { area: 'Industrial Area', records: 1, says: 'Industrial Area has 1 deal on record.', recordIds: [expect.any(String)] },
+        { area: 'Westlands', records: 1, says: 'Westlands has 1 deal on record.', recordIds: [expect.any(String)] },
       ],
     });
   });

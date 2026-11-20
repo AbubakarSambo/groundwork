@@ -4,7 +4,7 @@ import { TheLeadsOwnWayIn } from '@/components/gw/TheLeadsOwnWayIn'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
-import { Page, PageTitle, Section, Note, Button, NumberTiles, EdgeList, EdgeRow } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Note, Button, NumberTiles, EdgeList, EdgeRow, Skeleton } from '@/components/gw/ui'
 import { whatWentWrong, whyYouCannotSeeThis } from './why-you-cannot-see-this'
 import './weekly-report.css'
 import { TheCheckInsOwnHeader, YourCheckIn } from './pictured/TheCheckInsOwnHeader'
@@ -85,7 +85,7 @@ export default function WeeklyReportPage() {
     return (
       <Page>
         <PageTitle crumbs={crumbs} title="This week" />
-        <Note role="status">Getting this week's report…</Note>
+        <Skeleton what="Getting this week's report" shape="lines" />
       </Page>
     )
   }

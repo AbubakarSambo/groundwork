@@ -49,13 +49,13 @@ function renderReportTab(props: Partial<React.ComponentProps<typeof SharedReport
 describe('the participant’s "Your sessions" list reads as sentences', () => {
   it('says how many sessions, and each row as its own sentences, not dot-joined fragments', () => {
     renderReportTab()
-    expect(screen.getByText('Your sessions')).toBeTruthy()
-    expect(screen.getByText('You have one finished session, with its own report.')).toBeTruthy()
-    expect(screen.getByText('Session 1')).toBeTruthy()
+    expect(screen.getByText('Your check-ins')).toBeTruthy()
+    expect(screen.getByText('You have one finished check-in, with its own report.')).toBeTruthy()
+    expect(screen.getByText('Check-in 1')).toBeTruthy()
     expect(screen.getByText('You checked in on 27 Sept 2026.')).toBeTruthy()
     expect(screen.getByText('What you said was specific in places.')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/Finished 27 Sept 2026 · /)
-    expect(document.body.textContent).not.toContain('Your sessions · 1')
+    expect(document.body.textContent).not.toContain('Your check-ins · 1')
   })
 })
 

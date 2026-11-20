@@ -334,3 +334,17 @@ describe('a goal from an objective is written to its reader, as one from a targe
     expect(src).toContain('theirOwnWords ? text : aboutTheReaderAsYou(asTheReader(text), myFirstNames)');
   });
 });
+
+describe('a check-in answered and then corrected is one check-in finished on the You board', () => {
+  it('reads "one check-in", not "two", when two finished rows are the same session', () => {
+    const { theSessionsDoneBy } = require('./the-sessions-done');
+    const rows = [
+      { participantId: 'p-joel', sessionNumber: 2, status: 'COMPLETED', isSetup: false },
+      { participantId: 'p-joel', sessionNumber: 2, status: 'COMPLETED', isSetup: false },
+      { participantId: 'p-joel', sessionNumber: 3, status: 'IN_PROGRESS', isSetup: false },
+    ];
+    expect(theSessionsDoneBy(rows, 'p-joel')).toBe(1);
+    const src = require('fs').readFileSync(__dirname + '/your-board.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(src).toContain('sessionsLine(doneCount)');
+  });
+});

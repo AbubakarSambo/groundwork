@@ -41,7 +41,7 @@ export function YourPeopleAndSetup({ groundId }: { groundId: string }) {
         <FieldRows>
           <FieldRow label="Your role" value={m.yourRole} />
           <FieldRow label="Your status" value={statusSentence(whatThisStatusMeans(m.status as any))} />
-          <FieldRow label="Your sessions" value={sessionsCompletedSentence(m.yourSessionsDone, m.sessionsPlanned)} />
+          <FieldRow label="Your check-ins" value={sessionsCompletedSentence(m.yourSessionsDone, m.sessionsPlanned)} />
           {m.runsIt && <FieldRow label="Runs it" value={m.runsIt} />}
         </FieldRows>
         {/* The direct morning: no note about who sees what. Who sees what is the backend's rule, the same either way. */}

@@ -18,7 +18,7 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 
 export const LEAD_LOSES =
-  "If you turn these emails off, you won't receive Groundwork's email insights about team progress, stalled engagement, emerging differences, people who may need attention, positive contributions or recommendations for what to do next, and reminders that your check-in is open or running out of time. You can still access Groundwork directly.";
+  "If you turn these emails off, you won't receive Groundwork's email insights about team progress, stalled engagement, emerging differences, positive contributions or recommendations for what to do next, and reminders that your check-in is open or running out of time. You can still access Groundwork directly.";
 export const PARTICIPANT_LOSES =
   "If you turn these emails off, you won't receive Groundwork's email summaries about your progress, open commitments, blockers, things you're waiting on, or useful changes between check-ins, and reminders that your check-in is open or running out of time. You can still use Groundwork directly.";
 export const OTHER_LOSES =

@@ -54,10 +54,10 @@ describe('the one count, by name', () => {
 describe('the probe list, in the grid’s own state', () => {
   const base = { who: 'David', whoInASentence: 'David', participantId: 'p-david', role: null, answeredThisSession: false, patterns: [], waitingOn: [], holdingUp: [], concrete: [], documentsAttached: 0, sessionNumber: 1, totalSessions: null, scenario: null } as any;
   it('says David started and has not finished, never that he has not answered', () => {
-    expect(whatToProbe({ ...base, startedThisSession: true }).probe[0]).toBe('David has started this session and not finished it yet, so nothing below is from this round.');
+    expect(whatToProbe({ ...base, startedThisSession: true }).probe[0]).toBe('David has started this check-in and not finished it yet, so nothing below is from this round.');
   });
   it('and somebody who has not started is said as before', () => {
-    expect(whatToProbe(base).probe[0]).toBe('David has not answered this session, so nothing below is from this round.');
+    expect(whatToProbe(base).probe[0]).toBe('David has not answered this check-in, so nothing below is from this round.');
   });
 });
 

@@ -60,7 +60,8 @@ describe('the end-of-session card, as the person who just finished reads it', ()
     /* UPDATED FOR B-147: "Check-in 1" was itself check-in-means-session, the exact mistake the
        audit found repeated across the product for naming one sitting of a check-in. "Session 1" is
        the product's one word for it. */
-    expect(await screen.findByText('Session 1, on 27 Sept. Only you read this part.')).toBeTruthy()
+    /* Changed 15 November 2026: "Check-in 1", not "Session 1", and no "Only you read this part" note (Hafsah, audit row 23). */
+    expect(await screen.findByText('Check-in 1, on 27 Sept.')).toBeTruthy()
     expect(document.body.textContent).not.toContain('YOURS · NOBODY ELSE READS THIS HALF')
   })
 

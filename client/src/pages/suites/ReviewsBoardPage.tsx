@@ -5,7 +5,7 @@ import { reviewsApi, type NextReview, type YourReview, type AppealToDecide, type
 import { useAuthStore } from '@/stores/auth'
 import { useSuitesOnForYou } from '@/hooks/useSuitesOnForYou'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Page, PageTitle, Section, Panel, Button, Note, Empty, Tag, RowList, Row } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Note, Empty, Tag, RowList, Row, Skeleton } from '@/components/gw/ui'
 import { maySeeSuites, SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
@@ -99,7 +99,7 @@ export function ReviewsBoardPage() {
         <p className="gwui-panel-text">From proof in each person’s check-ins, their own view of their work, and their manager’s view. A person decides, not Groundwork.</p>
       </Panel>
 
-      {isLoading && <Note>Loading…</Note>}
+      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {yours.length > 0 && (
         <Section heading="Your reviews">
           <RowList label="Your reviews">
@@ -200,7 +200,7 @@ function AReviewRow({ n }: { n: NextReview }) {
       </td>
       <td>
         {n.reviewId
-          ? <Link className="gwui-plain-link" to={`/suite/reviews/${n.reviewId}`} aria-label={`Open ${n.name}’s review`}>Open it</Link>
+          ? <Link className="gwui-plain-link" to={`/suite/reviews/${n.reviewId}`} aria-label={`Open ${n.name}’s review`}>Open the review</Link>
           : n.stands === 'not-yet'
             ? <Tag>Not yet</Tag>
             : n.mayStart && <Button kind="secondary" size="small" onClick={() => start.mutate()} disabled={start.isPending} aria-label={`Start ${n.name}’s review`}>Start it</Button>}
@@ -224,7 +224,7 @@ function AnAppealRow({ a }: { a: AppealToDecide }) {
         <b>{`${a.firstName}’s review, ${month}`}</b>
         <p className="gwui-panel-text">{`${a.name} has appealed the decision.${by}`}</p>
       </div>
-      <Link className="gwui-plain-link" to={`/suite/reviews/${a.id}`} aria-label={`Open ${a.name}’s appeal`}>Open it</Link>
+      <Link className="gwui-plain-link" to={`/suite/reviews/${a.id}`} aria-label={`Open ${a.name}’s appeal`}>Open the appeal</Link>
     </Row>
   )
 }
@@ -238,7 +238,7 @@ function AnAppealWaitingRow({ a }: { a: AppealWaitingForAnotherAdmin }) {
         <b>{`${a.firstName}’s review, ${month}`}</b>
         <p className="gwui-panel-text">{a.says}</p>
       </div>
-      <Link className="gwui-plain-link" to={`/suite/reviews/${a.id}`} aria-label={`Open ${a.name}’s appeal`}>Open it</Link>
+      <Link className="gwui-plain-link" to={`/suite/reviews/${a.id}`} aria-label={`Open ${a.name}’s appeal`}>Open the appeal</Link>
     </Row>
   )
 }
@@ -251,7 +251,7 @@ function YourOwn({ y }: { y: YourReview }) {
         <b>{`Your review, ${month}`}</b>
         <p className="gwui-panel-text">{y.says}</p>
       </div>
-      <Link className="gwui-plain-link" to={`/suite/reviews/${y.id}`} aria-label={`Open your review, ${month}`}>Open it</Link>
+      <Link className="gwui-plain-link" to={`/suite/reviews/${y.id}`} aria-label={`Open your review, ${month}`}>Open your review</Link>
     </Row>
   )
 }

@@ -150,7 +150,7 @@ export function DeliveredPanel({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
               <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>
-                {raised ? 'Raised in a session' : 'Waiting to be asked about'}
+                {raised ? 'Raised in a check-in' : 'Waiting to be asked about'}
               </div>
               {/* Gone once a session has raised it: taking it back afterwards would edit the run-up
                   to a conversation that has already happened. */}

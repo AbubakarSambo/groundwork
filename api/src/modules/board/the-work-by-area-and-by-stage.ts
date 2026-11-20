@@ -27,7 +27,7 @@ const AREA_KEYS: [RegExp, string][] = [
 const plural = (n: number, kind: string) => `${n} ${n === 1 ? kind : `${kind}s`}`;
 
 export type TheWorkByArea =
-  | { state: 'filled'; heading: string; areas: { area: string; records: number; says: string }[] }
+  | { state: 'filled'; heading: string; areas: { area: string; records: number; says: string; recordIds: string[] }[] }
   | { state: 'not-known'; why: string };
 
 export const NO_AREA_ON_RECORD = 'Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet.';
@@ -58,10 +58,11 @@ export function theWorkByArea(sections: AServedSection[] | null | undefined): Th
     areas: [...areas.entries()].map(([area, rs]) => {
       /* The area's own row is not work in it: "Kiambu County has 1 county on record" (request 132 d). */
       const inIt = rs.filter((r) => !(r.kind === 'county' && r.name.trim() === area));
-      if (!inIt.length) return { area, records: 0, says: `${area} is on record, and no piece of work in it is on record yet.` };
+      if (!inIt.length) return { area, records: 0, says: `${area} is on record, and no piece of work in it is on record yet.`, recordIds: [] };
       const kinds = [...new Set(inIt.map((r) => r.kind))];
       const counted = kinds.length === 1 ? plural(inIt.length, kinds[0]) : plural(inIt.length, 'record');
-      return { area, records: inIt.length, says: `${area} has ${counted} on record.` };
+      /* The ids of the records in it, so a board that draws each area's own figures reads them from these rows and never groups them again. */
+      return { area, records: inIt.length, says: `${area} has ${counted} on record.`, recordIds: inIt.map((r) => r.id) };
     }),
   };
 }

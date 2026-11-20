@@ -34,7 +34,7 @@ export const WHATSAPP_HALFWAY_MESSAGES_FROM = new Date('2026-10-05T00:00:00Z');
 export const ANSWERED_HERE = 'answered-here';
 
 /** The turn the 11-hour sweep injects. It is the app's own warning, not anybody's activity, so no clock restarts at it. */
-export const THE_WARNING_TURN = 'This session closes in 30 minutes if nothing else is said. Add anything you still want on the record now.';
+export const THE_WARNING_TURN = 'This check-in closes in 30 minutes if nothing else is said. Add anything you still want on the record now.';
 
 /** The last turn that is not the injected warning: the person's or Groundwork's real last word. The 12 hours are counted from it. */
 export async function theLastRealTurn(prisma: any, checkInId: string): Promise<{ createdAt: Date; role: string } | null> {

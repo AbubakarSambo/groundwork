@@ -62,7 +62,11 @@ describe('the dashboard uses the screen it is given', () => {
        narrows is the conversation itself (check-in-start.jpg). So GroundAdminPage.tsx now narrows
        only `chat`, and everything else - `checkins`, `myrecord`, `docs`, `report`, `settings` -
        widens to the shared `Page` frame's own maximum, 1150. */
-    expect(CHECK_IN).toMatch(/maxWidth: tab === 'chat' \? 600 : \d+/)
+    /* CHANGED IN BATCH 2, GROUP 5 (Hafsah, item 3): on a computer the conversation runs the full width beside the sidebar, like
+       Slack, and the reading width moved onto each message (gw-ui.css, `.gwui-ci-in-tab .ci-b > .bub`), so the Check-in tab is
+       no longer a 600 column. */
+    expect(CHECK_IN).toMatch(/maxWidth: tab === 'chat' \? undefined : 1150/)
+    expect(CHECK_IN).toContain("gwui-ci-tab-body")
     /* GroundParticipantPage.tsx's own `docs` tab draws the very same `ContextPage` the lead's page
        does, and context.jpg is the same screen either way - so it widens here too, beside `record`
        and `settings`; the conversation and the party's own report (own-report.jpg draws it as a
@@ -83,7 +87,7 @@ describe('the dashboard uses the screen it is given', () => {
      * GROUP 3 REVIEW, BATCH B: widened from "People and setup" alone to every tab except the
      * conversation - see the test above for why.
      */
-    expect(CHECK_IN).toMatch(/tab === 'chat' \? 600 : 1150/)
+    expect(CHECK_IN).toMatch(/tab === 'chat' \? undefined : 1150/)
     expect(CHECK_IN).toMatch(/from '@\/components\/gw\/ui\/Page'/)
   })
 

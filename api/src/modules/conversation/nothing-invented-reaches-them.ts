@@ -232,7 +232,7 @@ function callsTheReaderByName(sentence: string, readerName?: string | null): boo
  * Dele is the person who set the check-in up. The model has every name in the check-in in its
  * context and attached the wrong one to the person it was addressing, in the second sentence of
  * their own session. Telling somebody they are a different colleague, on the screen where they are
- * about to give their own account, is the clearest possible signal that nothing here is really
+ * about to say how it is going in their own words, is the clearest possible signal that nothing here is really
  * about them.
  *
  * The rule above catches the reader's OWN name. This catches every other one, and the two together
@@ -432,6 +432,15 @@ export class SentenceGate {
  * again. Telling them the model hallucinated is both alarming and useless to them.
  */
 export const ASK_AGAIN = 'That did not come out right. Say that again and I will pick it up.';
+
+/**
+ * WHAT IS SAID WHEN THE SCREEN LEFT NOTHING OF A REPLY. On the turn that closes there is nothing to ask again (the close that follows is
+ * written from what is saved), so it is a thank-you; a bare acknowledgement is "Noted."; anything else asks again. (Fix plan 16 November, group 2:
+ * Joel and Mary were told "That did not come out right" in front of the close, with an empty box under it.)
+ */
+export function whatIsSaidWhenNothingIsLeft(o: { closing: boolean; acknowledgement: boolean }): string {
+  return o.closing ? 'Thank you.' : o.acknowledgement ? 'Noted.' : ASK_AGAIN;
+}
 
 /**
  * WHAT THE MODEL IS TOLD WHEN IT IS ASKED AGAIN. Named, not described: "you wrote 30 August" lets

@@ -12,7 +12,7 @@ const AS_THE_SERVER_SENDS_IT_TO_THE_LEAD = {
   whatToDo: [{ move: 'Agree what qualified means.', because: 'It changes how 4 sales are counted.' }],
   theCountsBehindThis: {
     says: [
-      '7 sessions were answered and 3 were missed.',
+      '7 check-ins were answered and 3 were missed.',
       '5 commitments were made. Of these, 2 were kept, 1 was not kept and 2 are still open.',
       '2 waits are still open and 1 has been cleared.',
       '1 of the 3 lines on the record is backed by a document.',
@@ -23,7 +23,7 @@ const AS_THE_SERVER_SENDS_IT_TO_THE_LEAD = {
 describe('the counts behind this, as the lead reads them', () => {
   it('is folded under the judgement, and opens to the counts as full sentences', () => {
     const { getByRole, queryByText, getByText } = render(<TheJudgement it={AS_THE_SERVER_SENDS_IT_TO_THE_LEAD} />)
-    expect(queryByText('7 sessions were answered and 3 were missed.')).toBeNull()
+    expect(queryByText('7 check-ins were answered and 3 were missed.')).toBeNull()
     fireEvent.click(getByRole('button', { name: 'See the counts behind this' }))
     for (const line of AS_THE_SERVER_SENDS_IT_TO_THE_LEAD.theCountsBehindThis.says) expect(getByText(line)).toBeTruthy()
     expect(getByRole('button', { name: 'Hide the counts' })).toBeTruthy()

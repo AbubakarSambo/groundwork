@@ -4,6 +4,10 @@ import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { hasBeenToldOnce, nowToldOnce, isAlreadyHeld } from './a-message-sent-once';
 import { whoTheyAre } from './one-routine-message-a-day';
 import { theyAreConnectedOnWhatsApp } from '../whatsapp/connect-whatsapp';
+import { theNumberOnRecord } from '../whatsapp/one-number-for-a-person';
+import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
+import { inboundKeysFrom } from '../whatsapp/one-number-per-conversation';
+import { MISSED_CHECK_INS_KIND, SERVICE_WINDOW_MS } from '../whatsapp/a-message-outside-the-window';
 
 /**
  * MISSED CHECK-INS, TOLD TO THE PERSON FIRST, BY EMAIL (decision 136, change 8).
@@ -21,6 +25,8 @@ export interface TheMissedDoors {
   prisma: any;
   email: { sendMissedCheckIns: (to: string, subject: string, lines: string[], linkLabel: string, linkUrl: string, groundId?: string) => Promise<'sent' | 'held' | 'suppressed' | unknown> };
   frontendUrl: string;
+  /** Where a normal message to somebody writing on WhatsApp goes. Absent: the notice waits for their next opening, as before. */
+  whatsapp?: { sendFor: (org: string, phone: string, text: string, context: { checkInId?: string; kind?: string }) => Promise<{ sent: boolean }> };
 }
 
 export async function sendTheMissedCheckInsToThePeople(deps: TheMissedDoors, now: Date = new Date()): Promise<{ tried: number }> {
@@ -43,7 +49,11 @@ export async function sendTheMissedCheckInsToThePeople(deps: TheMissedDoors, now
         /* An opening already went to them today: the notice rides with the next opening, or goes another day, never as a second message today. */
         if (await anOpeningWentToThemToday(prisma, user.email, now)) continue;
         /* Somebody on WhatsApp is never emailed this: it is said in their WhatsApp check-in, and stays on Today (Hafsah, 14 October). */
-        if (await theyAreConnectedOnWhatsApp(prisma, { organizationId: t.organizationId, userId, email: user.email })) continue;
+        if (await theyAreConnectedOnWhatsApp(prisma, { organizationId: t.organizationId, userId, email: user.email })) {
+          /* Inside the 24 hours after they last wrote, it goes now as a normal message; outside, it waits for their next opening (theMissedNoticeOnWhatsApp). */
+          if (deps.whatsapp && await tellThemOnWhatsAppInTheWindow(deps, t, userId, user.email, key, now)) tried++;
+          continue;
+        }
         const link = t.openCheckInId ? `${base}/checkin/${t.openCheckInId}` : `${base}/today`;
         const [first, ...rest] = t.text.split(/(?<=\.)\s+/);
         const went = await deps.email.sendMissedCheckIns(user.email, `${first.replace(/\.$/, '')} on "${t.label}"`, [first, rest.join(' '), `If something is in the way, you can tell ${t.leadName ?? 'your manager'} why on your Today page.`], t.openCheckInId ? 'Check in now' : 'Open Today', link, t.groundId);
@@ -106,4 +116,31 @@ export { nowToldOnce as rememberTheMissedNoticeTold };
 export async function theMissedNoticeOnWhatsApp(prisma: any, userId: string | null | undefined, participantId: string, now: Date = new Date()): Promise<{ key: string; text: string } | null> {
   const n = await theMissedNoticeToFold(prisma, userId, participantId, now);
   return n ? { key: n.key, text: n.lines.join(' ') } : null;
+}
+
+/**
+ * THE MISSED NOTICE ON WHATSAPP, INSIDE THE 24 HOURS (roadmap: "the missed check-ins notice on WhatsApp"). Somebody who writes on WhatsApp is not emailed it.
+ * When they wrote to Groundwork in the last 24 hours it goes now, as an ordinary message with the same words as the app and the opening show, and is
+ * remembered as told once it was sent. No template is used or added: outside the window nothing is sent here, and the notice rides in the first message
+ * after they next write. The one-message-a-day rule holds it like any routine message, and an opening that went today comes first.
+ */
+export async function tellThemOnWhatsAppInTheWindow(deps: TheMissedDoors, t: { organizationId: string; openCheckInId: string | null; text: string; leadName?: string | null }, userId: string, email: string, key: string, now: Date): Promise<boolean> {
+  const { prisma } = deps;
+  try {
+    const phone = await theNumberOnRecord(prisma, t.organizationId, { userId, email });
+    if (!phone) return false;
+    const forms = formsOfTheSameNumber(phone);
+    const last = await prisma.whatsAppInboundMessage?.findFirst?.({
+      where: { OR: forms.flatMap((f: string) => [{ messageId: { startsWith: inboundKeysFrom('ours', f) } }, { messageId: { startsWith: inboundKeysFrom('theirs', f) } }]) },
+      orderBy: { handledAt: 'desc' }, select: { handledAt: true },
+    });
+    if (!last?.handledAt || now.getTime() - new Date(last.handledAt).getTime() >= SERVICE_WINDOW_MS) return false;
+    if (await anOpeningWentToThemToday(prisma, email, now)) return false;
+    const sent = await deps.whatsapp!.sendFor(t.organizationId, phone, `${t.text} If something is in the way, you can tell ${t.leadName ?? 'your manager'} why on your Today page.`, { ...(t.openCheckInId ? { checkInId: t.openCheckInId } : {}), kind: MISSED_CHECK_INS_KIND });
+    if (!sent.sent) return false;
+    await nowToldOnce(prisma, key, 'sent');
+    return true;
+  } catch {
+    return false;
+  }
 }

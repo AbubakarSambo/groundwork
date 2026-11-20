@@ -1,3 +1,4 @@
+import { REFERENCES_AND_RESOURCES, PEOPLE_AND_SETUP } from '../../common/the-tab-names';
 import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
 import { notTheLeadHerself, herSetupWordsAsATurn, howSheDescribesHerself, aLineThatDescribesNothing } from './the-lead-is-you-in-her-report';
 import { theSettersRole } from '../../common/a-role-or-nothing';
@@ -43,6 +44,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService, RECOMMENDED_MOMENT, DEFAULT_TIMELINE_DAYS } from '../grounds/grounds.service';
 import { EmailService } from '../email/email.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
+import { THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, theSetupWords } from '../board/the-kind-of-work';
+import { theScenarioAKindImplies } from '../board/the-switchboard';
 import { ConversationService } from '../conversation/conversation.service';
 import { GroundworkEvents, CheckInCompletedEvent, SetupReadEvent } from '../../common';
 import {
@@ -66,6 +69,7 @@ import { SESSION_CLOSE_MARKER } from '../conversation/prompt-library';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { whyAJoinLinkRefuses } from '../grounds/a-ground-that-has-ended';
 import { theThingsThatCannotBeMissed } from '../conversation/the-last-thing-it-reads-is-the-thing-it-must-not-miss';
+import { whatYouAskedLastTurn } from '../conversation/you-asked-that-last-turn';
 import { knownDontAsk, whatSetupKnowsNow, type WhatSetupHasSoFar, type WhatSetupKnows } from './what-setup-knows';
 import { whatTheyAskedFor } from './what-they-asked-for-in-so-many-words';
 import { theAddressesTheyGave, withoutThePersonSettingItUp } from './the-people-the-lead-named-are-other-people';
@@ -257,11 +261,11 @@ Use straight quotes only. Keep questions short. One question at a time.`.trim();
 
 export const FAQ_PROMPT = `${VOCABULARY_RULE}
 
-FAQ MODE. Answer the person's question about how Groundwork works in one or two plain sentences, then stop. Do not start a check-in. Do not ask a follow up unless it is needed for clarity. Do not use dashes of any kind. Use straight quotes. Reference facts only: What you write stays private until everyone has checked in. Everybody else answers separately, without seeing yours. The report shows where people agree, where they differ, and what the gap means. Everybody in it is told the moment it is ready. A check-in takes ${ABOUT_HOW_LONG}. Ten grounds are free, each with unlimited sessions and reports. A subscription lifts that cap. Nothing is charged per session, and participants are never charged at all. For anything else: hello@myground.work.`;
+FAQ MODE. Answer the person's question about how Groundwork works in one or two plain sentences, then stop. Do not start a check-in. Do not ask a follow up unless it is needed for clarity. Do not use dashes of any kind. Use straight quotes. Reference facts only: Everybody answers separately, without seeing what the others said. The lead sees each answer on the board as it comes in. The report shows where people agree, where they differ, and what the gap means. The lead chooses how it is shared: by the lead, at a set time, or by itself once everyone is in. A check-in takes ${ABOUT_HOW_LONG}. A number of check-ins are free, each with unlimited reports, and the pricing page shows the current number. A subscription lifts that cap. Nothing is charged per check-in, and participants are never charged at all. For anything else: hello@myground.work.`;
 
 export const ENTRY_REPORT_PROMPT = `${VOCABULARY_RULE}
 
-You are Groundwork. A person has just completed their first check-in session. Generate their session 1 report: what you saw in their account, where clarity exists, where it does not, and what to do next.
+You are Groundwork. A person has just completed their first check-in session. Generate their session 1 report: what you saw in what they said, where clarity exists, where it does not, and what to do next.
 
 Rules:
 - Begin the report with a single framing line, exactly: "This is what you said in session 1. Nobody else has checked in yet."
@@ -310,7 +314,7 @@ ONE THING IN THE RULES ABOVE DOES NOT APPLY HERE. They say to use people's names
 
 const ENTRY_REPORT_SCHEMA = {
   name: 'emit_entry_report',
-  description: "Emit the session 1 report for the initiator's own account.",
+  description: "Emit the session 1 report from the initiator's own words.",
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -395,12 +399,12 @@ const ENTRY_REPORT_SCHEMA = {
       },
       suggestedParties: {
         type: 'array',
-        description: 'Roles or functions that should be in this check-in but were not mentioned by the person checking in. Only suggest a role if the conversation makes it clear this person exists and their account would materially change the picture. Do not suggest roles that are already confirmed as participants. Return an empty array if none.',
+        description: 'Roles or functions that should be in this check-in but were not mentioned by the person checking in. Only suggest a role if the conversation makes it clear this person exists and what they would say would materially change the picture. Do not suggest roles that are already confirmed as participants. Return an empty array if none.',
         items: {
           type: 'object',
           properties: {
             role: { type: 'string', description: 'The role or function - e.g. Chief Clinical Officer, CFO, Board Chair.' },
-            reason: { type: 'string', description: 'One sentence on why their account matters for this check-in.' },
+            reason: { type: 'string', description: 'One sentence on why what they would say matters for this check-in.' },
           },
           required: ['role', 'reason'],
         },
@@ -672,6 +676,16 @@ export class EntryService {
     return theSituationSheChose(picked);
   }
 
+  /** The kind of work the model reads from these words, or none. The same read setup keeps on the check-in (grounds.service readTheKindOfWork). */
+  private async kindFromTheWords(words: string): Promise<string | null> {
+    try {
+      const answer = await this.anthropic.extract<{ kind?: string }>(THE_KIND_OF_WORK_PROMPT, [{ role: 'user', content: theSetupWords({ brief: words }) }], THE_KIND_OF_WORK_SCHEMA);
+      return oneOfTheKinds(answer?.kind);
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * Which situation this is. The prompt, its precedence rule and the reading of the answer live in
    * which-situation-this-is.ts; below the confidence bar the scenario is null and the flow keeps the
@@ -698,8 +712,17 @@ export class EntryService {
        * A name survives stripping and reads at the call site, so whoever adds the next direct call
        * still has to say in the open which kind theirs is.
        */
+      const kindInFlight = this.kindFromTheWords(description);
       const notAReplyToAnybody = await this.anthropic.respond(prompt, [{ role: 'user', content: 'Classify.' }]);
+      const kind = await kindInFlight;
       const read = readTheClassification(notAReplyToAnybody);
+      /*
+       * A KIND OF WORK THE MODEL NAMES OVERRIDES THE SITUATION IT READ (Hafsah, 15 November 2026). The kind's switchboard row says which
+       * situation the check-in and its report run as, so the conversation, the board and the report agree: a support desk is never
+       * "discovery" and a sales organisation never a "cohort check", sure read or unsure. A situation the person picked never gets here.
+       */
+      const kindImplies = theScenarioAKindImplies(kind);
+      if (kindImplies) return { scenario: kindImplies, confidence: 'high' };
       if (read) return read;
     } catch { /* fall through */ }
     /* No answer at all: the broad category the person picked, said with the confidence it deserves. */
@@ -952,7 +975,7 @@ Your job is to gather these things through natural conversation:
    dates, the cadence and the context are theirs to change afterwards - Hafsah's wording, 15
    September 2026:
    "Is this a one-off check-in, or something that you will track over time? You can set context and
-    change the settings on the Context and Setup tabs once this first conversation is done."
+    change the settings on the ${REFERENCES_AND_RESOURCES} and ${PEOPLE_AND_SETUP} tabs once this first conversation is done."
    Ask it as one question. The second sentence is not a second ask and does not need an answer.
    NEVER SEND THAT SECOND SENTENCE ON ITS OWN, AND NEVER AS THE WHOLE REPLY (B-012). After "We are
    rolling out the new stock system in four depots... I have not decided who leads Nakuru and Eldoret
@@ -1131,6 +1154,8 @@ Rules:
     }
     /* What setup knows, the server's one reading as of the last turn (what-setup-knows). */
     const settled = knownDontAsk(soFar);
+    const ourEarlierTurns = (messages as { role: string; content: string }[]).filter((m) => m.role === 'assistant').map((m) => m.content ?? '');
+    const alreadyAskedHere = whatYouAskedLastTurn(ourEarlierTurns[ourEarlierTurns.length - 1], ourEarlierTurns.slice(0, -1).reverse());
     const whatTheLeadHas = await this.whatThisLeadAlreadyHas(askedBy);
     const theyAreKnownHere = whatTheyAlreadyHave(whatTheLeadHas);
     /* The reading of the conversation knows them too, so "my team" or "the four I just added" puts those people in peopleNamed. */
@@ -1139,6 +1164,8 @@ Rules:
       + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '')
       + (theyAreKnownHere ? `\n\n---\n\n${theyAreKnownHere}` : '')
       + (settled ? `\n\n---\n\n${settled}` : '')
+      /* The questions setup has already asked, from the transcript, the same block a check-in is handed (fix plan 16 November, group 8). */
+      + (alreadyAskedHere ? `\n\n---\n\n${alreadyAskedHere}` : '')
       /* Setup is the lead's first check-in (26 October 2026). See setup-is-the-first-check-in. */
       + `\n\n---\n\n${THE_FIRST_UPDATE_TOO}`
       /* Last, after everything. See the-last-thing-it-reads-is-the-thing-it-must-not-miss. */
@@ -1176,8 +1203,10 @@ Fields:
 - whoInvolved: who else is part of this
 - peopleNamed: an array with ONE ENTRY PER INDIVIDUAL PERSON, named where you have a name and described
   by their role where you do not ("Priya", "Tom", "the finance lead"). A team, a company, a client or a
-  department is NOT an entry: "my team" is zero people, not one. Leave it out entirely if no individual
-  has been identified - an empty list is an honest answer and is handled.
+  department is NOT an entry: "my team" is zero people, not one. THE PERSON WRITING IS NEVER AN ENTRY: when
+  they say "I am Kofi", "my name is Kofi" or "this is Kofi", Kofi is the one typing, who is setting this up,
+  and is not somebody to invite. Leave it out entirely if no individual has been identified - an empty
+  list is an honest answer and is handled.
 - peoplePhones: for each person in peopleNamed whose phone number they typed, that person's name exactly as
   in peopleNamed and the number exactly as they typed it. Only numbers they typed; leave it out if none.
 - peopleRoles: for each person in peopleNamed whose job or part in this they described, that person's name
@@ -1667,7 +1696,7 @@ from finishing at all.`;
      *
      * Her report offered "Microchip Solutions" and "Mass General" with an
      * "+ Add them" button next to two of her direct reports, and adding a client
-     * sends that client an invitation to give their own account of her team's
+     * sends that client an invitation to say how it is going in their own words of her team's
      * performance. One click, by somebody skimming.
      *
      * Asking the extractor to be careful about this is the version that fails
@@ -3116,13 +3145,7 @@ from finishing at all.`;
       return { user, checkIn };
     });
 
-    if (!existingAccount) {
-      const setupToken = crypto.randomBytes(32).toString('hex');
-      await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token: hashed(setupToken), type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
-      });
-      this.email.sendAddPasswordEmail(email, user.firstName, setupToken).catch(() => null);
-    }
+    /* No "Set a password" email after joining (batch 2, group 6, S14): an emailed link signs them back in. */
     if (queuedForApproval) {
       tellTheAdminsSomebodyIsWaiting({ prisma: this.prisma, email: this.email, logger: this.logger }, ground.organizationId, ground.id, ground.initiatorId, email, { cameThroughTheLink: true })
         .catch((err: any) => this.logger.warn(`Could not tell the admins about ${email}: ${err.message}`));

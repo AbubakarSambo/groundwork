@@ -90,14 +90,13 @@ describe('switching a suite on or off', () => {
   it('a suite with questions stays off until every one is answered', async () => {
     const { svc, as, rows } = setup();
     await expect(svc.switch(as('grace'), 'leave', { on: true })).rejects.toThrow(new BadRequestException(REFUSED.answerFirst));
-    await expect(svc.switch(as('grace'), 'leave', { on: true, answers: { days: 21 } })).rejects.toThrow(BadRequestException);
-    await expect(svc.switch(as('grace'), 'leave', { on: true, answers: { days: 21, approver: 'Anybody' } })).rejects.toThrow(BadRequestException);
-    await expect(svc.switch(as('grace'), 'leave', { on: true, answers: { days: -3, approver: 'Their manager' } })).rejects.toThrow(BadRequestException);
+    /* Batch S, S1: "Who approves?" is no longer asked for leave (it was kept and never read); the days a year are the one question. */
+    await expect(svc.switch(as('grace'), 'leave', { on: true, answers: { days: -3 } })).rejects.toThrow(BadRequestException);
     expect(rows).toHaveLength(0);
-    const page = (await svc.switch(as('grace'), 'leave', { on: true, answers: { days: '21', approver: 'Their manager', extra: 'dropped' } })) as ForAnAdmin;
+    const page = (await svc.switch(as('grace'), 'leave', { on: true, answers: { days: '21', extra: 'dropped' } })) as ForAnAdmin;
     const leave = page.groups.flatMap((g) => g.suites).find((s) => s.key === 'leave')!;
     expect(leave.on).toBe(true);
-    expect(leave.answers).toEqual({ days: 21, approver: 'Their manager' });
+    expect(leave.answers).toEqual({ days: 21 });
   });
 
   it('a person question names only somebody in this organisation, never a guest', async () => {

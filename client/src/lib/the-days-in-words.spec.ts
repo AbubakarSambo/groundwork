@@ -21,7 +21,7 @@ describe('the days, in full sentences', () => {
     expect(theRhythmInFull({ cadence: 'DAILY', workingDays: [] })).toBe('Every day.')
     expect(theRhythmInFull({ cadence: 'WEEKLY', cadenceAnchorDay: 4 }, { untilEnded: true })).toBe('Every Thursday, until you end it.')
     expect(theClosingAfterYourFirstCheckIn({ cadence: 'DAILY', workingDays: [1, 2, 3, 4, 5] }).before)
-      .toContain('Your team will check in every weekday, Monday to Friday, as you set it.')
+      .toContain('Your team will check in every weekday, Monday to Friday.')
   })
 
   it('the header says the rhythm, not a count, when there is no end', () => {

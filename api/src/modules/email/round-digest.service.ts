@@ -64,7 +64,8 @@ export class RoundDigestService {
         where: { id: e.groundId },
         select: {
           organizationId: true, label: true,
-          participants: { select: { email: true } },
+          /* Not somebody who has left, nor somebody held for a seat: nothing is sent to them (run 7). */
+          participants: { where: { leftAt: null, awaitingSeat: false }, select: { email: true } },
         },
       });
       if (!ground) return;

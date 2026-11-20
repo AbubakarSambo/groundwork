@@ -42,7 +42,7 @@ describe('what Wairimu reads', () => {
         'In "Sales team, Q4", 5 of 6 have checked in; Omar hasn’t started yet.',
         'What is new is that Groundwork now follows up with each person about the thing they said they would do, in their own words and only to them.',
         'On Fridays, when your team has done something that week, Groundwork also sends you a short letter about it. The email that tells you a shared picture is ready now says what the picture found.',
-        'The link at the bottom of any of these emails stops the ones I decide to send. So does Settings, where you can also turn them back on. Emails you ask for, such as sign-in links and reports, always reach you.',
+        'The link at the bottom of any of these emails stops the ones I decide to send. So does Settings, where you can also turn them back on.',
       ],
       linkLabel: 'See your check-ins',
       linkUrl: 'https://app.test/grounds',

@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -745,7 +746,7 @@ export function PromptVersioningPage() {
 
         {/* Sidebar */}
         <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid var(--gw-border)', background: 'var(--gw-bg)', overflowY: 'auto', paddingTop: 12 }}>
-          {allLoading && <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 16px' }}>Loading…</div>}
+          {allLoading && <Skeleton what="Getting the prompts" shape="lines" count={2} />}
           {uniqueKeys.map((k) => {
             const isSelected = k === selectedKey
             const activeVer = activeVersionForKey(k)
@@ -777,7 +778,7 @@ export function PromptVersioningPage() {
 
         {/* Main panel */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
-          {(keyLoading || draftLoading) && <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>}
+          {(keyLoading || draftLoading) && <Skeleton what="Getting this prompt" shape="lines" count={2} />}
 
           {!keyLoading && !draftLoading && (
             <>

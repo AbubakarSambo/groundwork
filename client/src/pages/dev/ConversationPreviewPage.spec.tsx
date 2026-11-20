@@ -67,8 +67,8 @@ describe('the conversation preview page calls nothing', () => {
     // The end card: its parts and both buttons. The light prototype's s68 renames the first part "What goes in
     // your record" and folds the other two behind one line, without their numbers (sales-first.md, section 5).
     expect(screen.getByText('What goes in your record')).toBeTruthy()
-    expect(screen.getByText('Why answering matters, and what happens next')).toBeTruthy()
-    expect(screen.getByText('Why answering matters')).toBeTruthy()
+    /* Changed 15 November 2026 (Hafsah): the fold "Why answering matters, and what happens next" is gone from the end card. */
+    expect(screen.queryByText(/Why answering matters/)).toBeNull()
     expect(screen.getByText('What happens next')).toBeTruthy()
     expect(screen.getByText('That’s right, finish')).toBeTruthy()
     /* Changed in F5: "That’s not right" on each line in place of "Change something". */
@@ -78,7 +78,8 @@ describe('the conversation preview page calls nothing', () => {
     // GROUP 3 REVIEW, BATCH B: check-in-end-card.jpg keeps "Pause" in the header, so it shows
     // in all three states drawn on this page, not only the two still in conversation.
     // Changed 3 November evening: End session, small and quiet, sits where Pause was, in every state's header.
-    expect(screen.getAllByText('End session').length).toBe(3)
+    /* Changed 15 November 2026: the quiet button is called Pause (Hafsah). */
+    expect(screen.getAllByText('Pause').length).toBe(3)
 
     // The three headings, one per state.
     expect(screen.getByText(/As it opens/)).toBeTruthy()

@@ -146,7 +146,7 @@ describe('Grace, an admin who only reads it', () => {
 describe('on the board', () => {
   it('the top tells Wairimu the last session is done and takes her to the ending page', async () => {
     renderAs('wairimu', false, { place: 'board-top', nearTheEnd: true, lastSessionDone: true })
-    expect(await screen.findByText('The last session is done')).toBeTruthy()
+    expect(await screen.findByText('The last check-in is done')).toBeTruthy()
     expect(screen.getByText('It’s yours to decide how this ends.')).toBeTruthy()
     const link = screen.getByRole('link', { name: 'Decide how it ends' })
     expect(link.getAttribute('href')).toBe('/grounds/g1/end')

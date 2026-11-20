@@ -74,11 +74,16 @@ export function aComplaintAboutTheLeadBlock(leadFullName: string, leadFirstName:
   ].join('\n');
 }
 
-/** The email to each person who hears it. Their words, who said them, about whom, in which check-in, and why it comes to them. */
+/**
+ * The email to each person who hears it. What the complaint is about, who made it, about whom, in which check-in, and why it comes to
+ * them. It DESCRIBES the complaint and never quotes it (round 52, H2a: the admin's copy quoted "She's clueless." word for word): the
+ * read's own plain description (`what` on the item), each as its own sentence, with no quotation marks. Needs Hafsah: one line to
+ * change if she prefers the person's words.
+ */
 export function theComplaintAsTheyReadIt(
   to: SomeoneWhoHearsIt,
   about: { personName: string; leadName: string; checkIn: string | null; on: string | null; organisation: string | null },
-  words: string[],
+  described: string[],
 ): { subject: string; lines: string[] } {
   const person = about.personName;
   const firstOf = (n: string) => n.split(/\s+/)[0] || n;
@@ -89,17 +94,18 @@ export function theComplaintAsTheyReadIt(
     subject: `${person} has made a complaint about ${about.leadName}`,
     lines: [
       `Hello ${to.firstName || to.name},`,
-      `${person} said this about ${about.leadName}${inWhat}${when}. ${why}`,
-      ...words.map((w) => `“${w}”`),
+      `${person} made a complaint about ${about.leadName}${inWhat}${when}. ${why}`,
+      ...described.map((d) => { const s = d.trim().replace(/^["“”']+|["“”']+$/g, ''); return `${s.charAt(0).toUpperCase()}${s.slice(1)}${/[.?!]$/.test(s) ? '' : '.'}`; }),
       `You may want to speak to ${firstOf(person)} about it.`,
     ],
   };
 }
 
-/** The words of a complaint kept from the lead, in the order they were said. Only the complaint itself, not what came with it. */
-export function theComplaintsWords(a: TheAssessment | null): string[] {
-  return (a?.keptFromTheLead?.items ?? []).filter((i) => i.readAs === 'aboutTheLead').map((i) => i.words.trim()).filter(Boolean);
+/** What each complaint kept from the lead is about, in the read's plain words, in the order said. Only the complaint itself. */
+export function whatTheComplaintSays(a: TheAssessment | null): string[] {
+  return (a?.keptFromTheLead?.items ?? []).filter((i) => i.readAs === 'aboutTheLead' && (i.words.trim() || typeof i.what === 'string'))
+    .map((i) => (typeof i.what === 'string' && i.what.trim() ? i.what.trim() : 'They said something against how they are treated or led.'));
 }
 
 /** Read from a stored column, for a listener that has only the check-in. */
-export const theComplaintsWordsIn = (column: unknown) => theComplaintsWords(theAssessmentIn(column));
+export const whatTheComplaintSaysIn = (column: unknown) => whatTheComplaintSays(theAssessmentIn(column));

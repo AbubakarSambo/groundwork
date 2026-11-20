@@ -53,7 +53,7 @@ describe('the metric', () => {
   /* CHANGED 3 November 2026: GroundChat.tsx no longer says the length (it failed before this change); the sentence the product says is the check-in's opening line. */
   it('the sentence the product says matches the number the metric is judged against', () => {
     const { THE_CHECK_IN_LINE } = require('../conversation/the-opening-line');
-    expect(THE_CHECK_IN_LINE).toBe('This takes about ten minutes. You can stop any time with End session.');
+    expect(THE_CHECK_IN_LINE).toBe('This takes about ten minutes. You can stop any time with End check-in.');
     expect(WHAT_WE_SAY_MINUTES).toBe(10);
   });
 });

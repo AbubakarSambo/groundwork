@@ -1,3 +1,5 @@
+import { theDaysLeftOfEach } from './the-leave-board.service';
+import { leaveDaysInWords, overTheAllowanceSaid } from './a-leave-request-as-the-approver-reads-it';
 import { whatWasAttachedSaid } from './what-was-attached-to-a-spend-request';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -6,10 +8,12 @@ import { decidesIt, theStepsFor, whoDecidesNow, type DecidesNow } from './who-ma
 import { dutiesFrom } from './who-holds-each-duty';
 import { loadLookups, type Lookups } from './the-lookups';
 import { WORKFLOWS_ROW, workflowsFrom, type AWorkflow } from './the-approval-steps';
-import { LEAVE_RULES_ROW, leaveRulesFrom, type LeaveRules } from './the-leave-rules';
-import { SPEND_RULES_ROW, spendRulesFrom, theCardsAnswers } from './the-spending-rules';
+import { LEAVE_RULES_ROW, everyDayCounts, inASentence, leaveRulesFrom, theCalendarRulesOf, theKindOf, theRulesThatApply, type LeaveRules } from './the-leave-rules';
+import { readLeaveCalendars } from './the-leave-calendar';
+import { SPEND_RULES_ROW, theSpendRulesOf, theCardsAnswers, withTheLimitFor } from './the-spending-rules';
+import { theRuleForEach } from './who-a-rule-is-for';
 import { DUTIES_ROW } from './who-holds-each-duty';
-import { workingDays } from './the-leave-board.service';
+import { theDaysOf } from './the-leave-board.service';
 import { workingDaysSince } from './a-request-waits-too-long';
 import { leaveInWords, spendInWords, whatTheMoneyIsFor, whereItIsOnTheBoard } from './a-request-in-words';
 import { theClashSaid, whoIsOffNamed } from './a-leave-request-as-the-approver-reads-it';
@@ -44,6 +48,8 @@ export interface AQueueItem {
   /** The leave or spending request's id. */
   id: string;
   suite: 'leave' | 'spend';
+  /** The type of leave as people say it ("Sick leave"), or left out for spending and when no types are set. */
+  leaveKind?: string | null;
   /** Who asked: their full name, and first name. */
   name: string;
   firstName: string;
@@ -159,7 +165,7 @@ export class ApprovalsQueueService {
 
     return {
       counts, page, pageSize, pages, says: theQueueSaid(counts),
-      items: await this.putIntoWords(onThePage, { reader, lookups: read.lookups, spendAnswers: read.spendAnswers, late, today }),
+      items: await this.putIntoWords(onThePage, { reader, lookups: read.lookups, spendAnswers: read.spendAnswers, leaveRules: read.leaveRules, late, today }),
     };
   }
 
@@ -198,11 +204,12 @@ export class ApprovalsQueueService {
     const lookups = await loadLookups(this.prisma, org, today, { duties: dutiesFrom(suites[DUTIES_ROW]?.answers) });
 
     const workflows = workflowsFrom(suites[WORKFLOWS_ROW]?.answers);
-    const leaveAnswers = {
+    const leaveRules = leaveRulesFrom(suites[LEAVE_RULES_ROW]?.answers) as LeaveRules;
+    const leaveAnswers: { workflow?: AWorkflow; rules: LeaveRules; calendars?: Awaited<ReturnType<typeof readLeaveCalendars>> } = {
       workflow: workflows.leave as AWorkflow | undefined,
-      rules: leaveRulesFrom(suites[LEAVE_RULES_ROW]?.answers) as LeaveRules,
+      rules: leaveRules,
     };
-    const spendRules = spendRulesFrom(suites[SPEND_RULES_ROW]?.answers);
+    const spendRules = theSpendRulesOf(suites[SPEND_RULES_ROW]?.answers, suites.spend?.answers);
     const sa = (suites.spend?.answers ?? {}) as Record<string, unknown>;
     const spendAnswers = {
       currency: typeof sa.currency === 'string' ? sa.currency : null,
@@ -215,31 +222,35 @@ export class ApprovalsQueueService {
       spendOn ? (this.prisma.spendRequest.findMany({ where: { organizationId: org, status: 'waiting' } }) as Promise<Row[]>) : Promise.resolve([] as Row[]),
     ]);
 
+    /* Each person's leave calendar (the-leave-calendar.ts), so the days are the ones the leave board says. Read only when leave waits. */
+    if (leaveRows?.length) leaveAnswers.calendars = await readLeaveCalendars(this.prisma, org, theCalendarRulesOf(leaveRules));
     /* Who decides each request now, in memory. */
     type Waiting = { suite: 'leave' | 'spend'; row: Row; now: DecidesNow; since: Date; days?: number };
     const waiting: Waiting[] = [];
     const asker = (r: Row) => ({ organizationId: org, requesterUserId: r.userId, managerExternalId: lookups.entryOf.get(r.userId)?.managerExternalId ?? null });
     for (const r of leaveRows ?? []) {
-      const days = workingDays(r.startsOn as Date, r.endsOn as Date);
-      const now = await whoDecidesNow(this.prisma, theStepsFor('leave', leaveAnswers, days), { ...asker(r), team: lookups.entryOf.get(r.userId)?.department ?? null }, r, { lookups, on: today });
+      const days = theDaysOf(r as any, leaveAnswers);
+      const now = await whoDecidesNow(this.prisma, theStepsFor('leave', leaveAnswers, days, (r as any).kind ?? null), { ...asker(r), team: lookups.entryOf.get(r.userId)?.department ?? null }, r, { lookups, on: today });
       waiting.push({ suite: 'leave', row: r, now, since: r.stepSince ?? r.askedAt ?? today, days });
     }
+    /* How much each person's manager approves on their own, where an admin set it for some people (who-a-rule-is-for.ts). */
+    const limitOf = spendRows?.length ? await theRuleForEach(this.prisma, org, 'spend.limit').catch(() => new Map<string, number>()) : new Map<string, number>();
     for (const r of spendRows ?? []) {
       const team = r.team?.trim() || lookups.entryOf.get(r.userId)?.department?.trim() || null;
-      const now = await whoDecidesNow(this.prisma, theStepsFor('spend', spendAnswers, num(r.amount)), { ...asker(r), team }, r, { lookups, on: today });
+      const now = await whoDecidesNow(this.prisma, theStepsFor('spend', withTheLimitFor(spendAnswers, limitOf.get(r.userId)), num(r.amount)), { ...asker(r), team }, r, { lookups, on: today });
       waiting.push({ suite: 'spend', row: r, now, since: r.stepSince ?? r.createdAt ?? today });
     }
     /* Oldest first, and by id after that, so no two pages ever hold the same request. */
     waiting.sort((a, b) => a.since.getTime() - b.since.getTime() || a.row.id.localeCompare(b.row.id));
     const allow = (suite: 'leave' | 'spend') => workflows[suite]?.escalateAfter;
     const late = (m: { suite: 'leave' | 'spend'; since: Date }) => { const a = allow(m.suite); return !!a && workingDaysSince(m.since, today) >= a; };
-    return { leaveOn, spendOn, lookups, spendAnswers, waiting, late };
+    return { leaveOn, spendOn, lookups, spendAnswers, leaveRules, waiting, late };
   }
 
   /** Only the page asked for is put into words: its names, and the leave already approved in its teams. */
   private async putIntoWords(
     page: { suite: 'leave' | 'spend'; row: Row; now: DecidesNow; since: Date; days?: number }[],
-    c: { reader: { userId: string; organizationId: string }; lookups: Lookups; spendAnswers: { currency: string | null }; late: (m: any) => boolean; today: Date },
+    c: { reader: { userId: string; organizationId: string }; lookups: Lookups; spendAnswers: { currency: string | null }; leaveRules?: LeaveRules; late: (m: any) => boolean; today: Date },
   ): Promise<AQueueItem[]> {
     if (!page.length) return [];
     const org = c.reader.organizationId;
@@ -256,6 +267,8 @@ export class ApprovalsQueueService {
       : [];
     const ids = [...page.flatMap((m) => [m.row.userId, ...(m.row.approvedByIds ?? []), ...(standingInForOf(m.now) ? [standingInForOf(m.now) as string] : [])]), ...approved.map((a) => a.userId)];
     const names = await this.namesOf(ids);
+    /* Each leave request's days left, so a request over the allowance says so (Batch S, round 2, T9). */
+    const daysLeft = await theDaysLeftOfEach(this.prisma, org, leaveOnPage.map((r) => ({ id: r.id, userId: r.userId, kind: (r as any).kind ?? null, startsOn: r.startsOn as Date }))).catch(() => new Map<string, number | null>());
     const fullOf = (id: string) => names.get(id)?.full ?? '';
     const firstOf = (id: string) => names.get(id)?.first ?? '';
     const you = (id: string) => (id === c.reader.userId ? 'you' : firstOf(id));
@@ -276,7 +289,13 @@ export class ApprovalsQueueService {
         : null;
       if (m.suite === 'leave') {
         const startsOn = dayOf(r.startsOn as Date); const endsOn = dayOf(r.endsOn as Date);
-        const days = m.days ?? workingDays(r.startsOn as Date, r.endsOn as Date);
+        const days = m.days ?? 0;
+        /* The type of leave and any rule that applies, such as notice that is too short, as the leave board says them (the-leave-rules.ts). */
+        const rules = c.leaveRules ?? {};
+        const kind = theKindOf((r as any).kind ?? null, rules);
+        const what = leaveInWords(startsOn, endsOn);
+        const applies = theRulesThatApply(rules, { kind, startsOn, endsOn, days, askedOn: dayOf((r.askedAt as Date | undefined) ?? c.today), hereSince: null }, { name: first || 'This person' });
+        const every = everyDayCounts(rules, kind);
         const off = team
           ? whoIsOffNamed(
             approved.filter((a) => a.userId !== r.userId && c.lookups.entryOf.get(a.userId)?.department?.trim() === team && overlaps(a, r as { startsOn: Date; endsOn: Date }))
@@ -284,8 +303,8 @@ export class ApprovalsQueueService {
             r as { startsOn: Date; endsOn: Date })
           : { count: 0, names: [] as string[], busiest: 0 };
         return {
-          id: r.id, suite: 'leave', name: fullOf(r.userId), firstName: first, team, waitingSince: m.since.toISOString(), workingDaysWaiting: waited, pastTheDeadline,
-          says: `${first} asked for ${leaveInWords(startsOn, endsOn)}, which is ${days} working ${days === 1 ? 'day' : 'days'}.`,
+          id: r.id, suite: 'leave', leaveKind: kind?.name ?? null, name: fullOf(r.userId), firstName: first, team, waitingSince: m.since.toISOString(), workingDaysWaiting: waited, pastTheDeadline,
+          says: `${first} asked for ${kind ? `${inASentence(kind)}${what.slice('leave'.length)}` : what}, which is ${leaveDaysInWords(days, every)}.${(() => { const o = overTheAllowanceSaid(first || 'They', days, daysLeft.get(r.id) ?? null, every); return o ? ` ${o}` : ''; })()}${applies.length ? ` ${applies.join(' ')}` : ''}`,
           waitedSays, where, amount: null, line: null, startsOn, endsOn,
           clash: team && off.count ? { count: off.busiest, names: off.names, says: theClashSaid(team, off.names, startsOn === endsOn, off.busiest) } : null,
           standingIn,

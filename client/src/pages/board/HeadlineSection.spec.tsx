@@ -76,8 +76,8 @@ describe('HeadlineSection: the glance line moves inside the box while there is n
       />,
     )
     expect(screen.getByText('Will we reach 25 sales by 30 September?')).toBeTruthy()
-    expect(screen.getByText('None of the 12 sessions is done yet.')).toBeTruthy()
-    expect(screen.getByText('4 of 6 people have answered this session.')).toBeTruthy()
+    expect(screen.getByText('None of the 12 check-ins is done yet.')).toBeTruthy()
+    expect(screen.getByText('4 of 6 people have answered this check-in.')).toBeTruthy()
   })
 
   it('draws no box at all when there is neither an answer nor a glance', () => {
@@ -101,6 +101,6 @@ describe('HeadlineSection: the glance line moves inside the box while there is n
       />,
     )
     expect(screen.getByText('Not yet. 21 are sold.')).toBeTruthy()
-    expect(screen.queryByText('None of the 12 sessions is done yet.')).toBeNull()
+    expect(screen.queryByText('None of the 12 check-ins is done yet.')).toBeNull()
   })
 })

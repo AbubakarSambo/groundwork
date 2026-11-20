@@ -20,7 +20,8 @@ import path from 'path'
  * the old assertions pinned the very defect this fix removes.
  */
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const CODE = readFileSync(path.join(__dirname, '..', 'report', 'SessionReportPage.tsx'), 'utf8')
+/* Batch 2, group 5: the session report page is gone and a person's own report is drawn in My work, so the rule is read there. */
+const CODE = readFileSync(path.join(__dirname, 'MyWorkPage.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/^\s*\/\/.*$/gm, '')
 
@@ -34,27 +35,14 @@ describe('what now is not a button that does not work', () => {
     expect(CODE).not.toContain('What now?')
   })
 
-  it('still offers the link to this report, from the page that is the report', () => {
-    expect(CODE).toContain('Copy the link')
-    expect(CODE).toMatch(/\/checkin\/\$\{checkInId\}\/report/)
+  it('and the report has an address of its own, in My work, that a link can open', () => {
+    const TABS = readFileSync(path.join(__dirname, 'ground-tabs.ts'), 'utf8')
+    expect(TABS).toContain('tab=mywork')
+    expect(TABS).toContain('&report=')
   })
 
-  it('and still says what that link is not', () => {
-    /* Owner-scoped. Offering "copy the link" beside a private report without saying so invites
-       somebody to send it to a colleague who will be told the record does not exist. */
-    /* "Entitled" was jargon (real-user walk, Kijani Foods, fault 6): plain words for the same
-       fact, that opening the link is not what lets someone read this. */
-    expect(CODE).toContain('opens only for people who may already read this')
-  })
-
-  /** A copy that silently fails is worse than no button: the person walks away with nothing. */
-  it('says so if the copy fails', () => {
-    /* Either shape of catch - the block form, or `.catch()` on the clipboard promise. What is
-       being protected is that a failure is SAID, not which syntax says it. */
-    /* Or the helper's boolean (fix plan C14): copy() resolves false where the API is absent, and the caller says so. */
-    expect(CODE).toMatch(/(catch \{|\.catch\(|else toast\.error|await copy\()[\s\S]{0,160}toast\.error/)
-  })
-
+  /* "Copy the link to this report" and its line went with the report page (batch 2, group 5): the report's own address in My
+     work is the link now, so there is no copy button and no failure for it to say. */
   /** The prose that told people to do what the removed buttons used to do stays gone. */
   it('no longer instructs where it can act', () => {
     expect(CODE).not.toContain('Use the report link or a shared doc')
@@ -62,7 +50,4 @@ describe('what now is not a button that does not work', () => {
     expect(CODE).not.toMatch(/Nobody can do that part for\s+you/)
   })
 
-  it('still draws nothing at the foot of a page that has refused the reader', () => {
-    expect(CODE).toMatch(/\{!isLoading && !isError && \(\s*<div className="gw-print-none">/)
-  })
 })

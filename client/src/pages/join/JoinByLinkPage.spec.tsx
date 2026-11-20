@@ -43,7 +43,7 @@ describe('the link, for somebody without an account', () => {
     expect(await screen.findByText('People there use Groundwork for short check-ins on their work. Join with your email.')).toBeTruthy()
     expect(screen.getByText('localhost:5173/j/baridi-7k2p')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Join Baridi Appliances' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'I already have an account' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'I already use Groundwork' })).toBeTruthy()
     expect(document.body.textContent).toContain('Not from Baridi Appliances? Create your own organisation instead.')
     expect(document.body.textContent).not.toMatch(/\d+ people/)
   })
@@ -69,7 +69,7 @@ describe('the link, for somebody signed in', () => {
     await waitFor(() => expect(post).toHaveBeenCalledWith('/join-links/baridi-7k2p/join'))
     await waitFor(() => expect(setAuth).toHaveBeenCalledWith({ id: 'u1' }, 'tok'))
     expect(assign).toHaveBeenCalledWith('/today')
-    expect(screen.queryByRole('button', { name: 'I already have an account' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'I already use Groundwork' })).toBeNull()
   })
 
   /* Item 11, 29 September: an email domain that does not match the organisation's own does not

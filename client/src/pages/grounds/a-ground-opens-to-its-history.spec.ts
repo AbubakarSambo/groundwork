@@ -18,7 +18,7 @@ import { describe, it, expect } from 'vitest'
  * ROUND 4, ITEM A STEP 3: THE CHECK-IN TAB IS THE FOCUSED CONVERSATION, NOT A READING OF THE
  * HISTORY. `GroundChat`'s three jobs (the live conversation, the session history, "who is in
  * this") are untangled: the history moved to My work (`MyCheckInSessions.tsx`), the roster to
- * People and setup (`WhoIsInThis.tsx`), and what is left on THIS tab is only the hand-off to the
+ * People and setup (now `PeopleAndSetupAsPictured.tsx`), and what is left on THIS tab is only the hand-off to the
  * focused conversation at `/checkin/:id` - through the same paywall-aware `probeSession` as
  * always, now fired by opening the tab rather than by a button inside a history view.
  */

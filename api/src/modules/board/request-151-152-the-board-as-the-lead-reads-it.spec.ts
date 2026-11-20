@@ -23,7 +23,7 @@ describe('an action always says what its button is (request 152, 1)', () => {
       decisions: [{ question: 'Whether to open Karen first.', action: { label: '  ', says: 's', goesTo: 'context' } }],
     });
     expect(board.leadActions[0].action.label).toBe('Open your check-in');
-    expect(board.decisions[0].action.label).toBe('Open the Context page');
+    expect(board.decisions[0].action.label).toBe('Open References and resources');
     expect(anActionWithItsLabel({ label: 'Ask Amani', goesTo: 'context' }).label).toBe('Ask Amani');
   });
 

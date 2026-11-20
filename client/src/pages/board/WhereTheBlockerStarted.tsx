@@ -70,9 +70,8 @@ export function WhereTheBlockerStarted() {
         trailing={<TheOtherBoardsYouAreIn groundId={id!} label="Views" plain />}
       />
       <h2 className="pb-trace-title">Where the blocker started</h2>
-      <p className="pb-trace-intro">A blocker in one check-in can point at another team. Groundwork follows it back through each check-in it touches.</p>
       {!data ? null : traces.length === 0 ? (
-        <Panel><p className="gwui-panel-text">Nothing on record follows a blocker here back to another team yet. When a wait on another team is traced, each step shows here.</p></Panel>
+        <Panel><p className="gwui-panel-text">Nothing on record follows a blocker here back to another team yet.</p></Panel>
       ) : traces.map((t) => {
         const asker = t.steps.find((s) => s.owner && s.checkInId === id)?.owner ?? null
         return (

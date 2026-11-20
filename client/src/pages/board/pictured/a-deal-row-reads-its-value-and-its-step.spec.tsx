@@ -27,6 +27,8 @@ it('Grace reads the value beside the rep, never another detail, and the step on 
   expect(row('Upper Hill Offices').textContent).not.toContain('Paul')
   expect(row('Upper Hill Offices').textContent).toContain('Visit Upper Hill Offices again')
   expect(row('Upper Hill Offices').textContent).not.toContain('said the next step is')
-  expect(row('Kilele Hotel').textContent).toContain('Kevin, KES 200,000')
+  /* The value sits under the deal's name and the rep has a column of their own (the open table, 13 November 2026). */
+  expect(row('Kilele Hotel').textContent).toContain('KES 200,000')
+  expect(row('Kilele Hotel').textContent).toContain('Kevin')
   expect(row('Kilele Hotel').textContent).toContain('Nothing booked')
 })

@@ -22,6 +22,7 @@ import { TheEngineModule } from './modules/conversation/the-engine.module';
 import { ReportsModule } from './modules/reports';
 import { PatternsModule } from './modules/patterns';
 import { LearningModule } from './modules/learning/learning.module';
+import { MemoryModule } from './modules/memory/memory.module';
 import { BoardModule } from './modules/board';
 import { ResolutionModule } from './modules/resolution';
 import { SuggestionsModule } from './modules/suggestions';
@@ -85,6 +86,7 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
     ReportsModule,
     PatternsModule,
     LearningModule,
+    MemoryModule,
     BoardModule,
     ResolutionModule,
     SuggestionsModule,

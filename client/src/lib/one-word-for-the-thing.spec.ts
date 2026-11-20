@@ -51,8 +51,10 @@ const CODE_NOT_COPY = [
   /* Same file: the reminders row's day/days pluraliser reads `ground.chaseAfterDays` inside a
      template literal the `>...<` matcher also catches as prose. */
   /\(\(ground as any\)\?\.chaseAfterDays/,
-  /* A component prop, `<ContextPage ground={ground} />` - the data model's name, between two JSX tags. */
-  /\bground=\{ground\}/,
+  /* DirectionPage.tsx: the list of check-ins the direction is set for, read from `grounds.data` inside JSX; code, never shown. */
+  /\(\(grounds\.data as any\[\]\) \?\? \[\]\)\.filter/,
+  /* GroundParticipantPage.tsx: `<ContextPage ground={ground} ...>` passes the record to a component inside JSX; code, never shown. */
+  /<ContextPage ground=\{ground\}/,
 ]
 
 describe('one word for the thing a person opens', () => {
@@ -137,8 +139,8 @@ describe('one word for the thing a person opens', () => {
          * false positives on `/grounds/:id` paths - which are the data model and must never change.
          */
         /[a-z] [a-z]/.test(prose) &&
-        // Code that reads like prose to a regex: keys, paths, property access, statements.
-        !/queryKey|navigate\(|window\.location|sessionStorage|localStorage|setQueryData|\(ground as any\)|ground\?\.|ground\.\w|^(import|export|const|let|return|if|type|interface|await|function)\b|^\w+[:.]|id="|to: '|grounds as any|grounds\.length|grounds\.map|grounds\.data/g
+        // Code that reads like prose to a regex: keys, paths, property access, statements. "(ground as" covers every cast, not only "as any" (release branch, 20 November 2026: a typed cast in session-rows.ts was read as words).
+        !/queryKey|navigate\(|window\.location|sessionStorage|localStorage|setQueryData|\(ground as |ground\?\.|ground\.\w|^(import|export|const|let|return|if|type|interface|await|function)\b|^\w+[:.]|id="|to: '|grounds as any|grounds\.length|grounds\.map|grounds\.data/g
           .test(bare)
       if (isBareProse) hits.push(prose)
 
@@ -190,6 +192,7 @@ describe('and the two words stay distinct', () => {
     /* Changed 3 November evening: the check-in page no longer says anything about the session (Hafsah: no explanation lines), so the
        word is pinned where a person still reads it, on the finished check-in: "Session 3 of 12". */
     const finished = readFileSync(join(SRC, 'components/gw/TheCheckInYouJustFinished.tsx'), 'utf8')
-    expect(finished).toContain('{`Session ${sessionNumber}${d?.plannedSessions ? ` of ${d.plannedSessions}` : \'\'}`}')
+    /* Changed 15 November 2026 (Hafsah, audit of the check-in pages: say check-in, not session): the finished check-in now reads "Check-in 3 of 12". */
+    expect(finished).toContain('{`Check-in ${sessionNumber}${d?.plannedSessions ? ` of ${d.plannedSessions}` : \'\'}`}')
   })
 })

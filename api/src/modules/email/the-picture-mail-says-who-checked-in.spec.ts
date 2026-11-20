@@ -29,7 +29,13 @@ async function theMails(session2: { participantId: string; status: string }[], g
     ground: { findUnique: jest.fn(async () => ({ id: 'g', label: 'Sales team, Q4', initiatorId: 'u-grace', scenario: 'GOAL_ALIGNMENT', participants: people, ...ground })) },
     reportNotice: { findMany: jest.fn(async () => []), create: jest.fn(async () => ({})), deleteMany: jest.fn() },
     checkIn: {
-      findMany: jest.fn(async ({ where }: any) => (where.closedReason ? [] : session2)),
+      /* Changed 16 November (fix plan, group 6): who joined is asked of every round; Mercy and Joseph checked in for round 1, so they have joined
+         and still have a report to read, and it is this round's own rows that say who answered. */
+      findMany: jest.fn(async ({ where }: any) => {
+        if (where.closedReason) return [];
+        if (where.status?.in) return [...session2, { participantId: 'mercy', status: 'COMPLETED' }, { participantId: 'joseph', status: 'COMPLETED' }].filter((r) => where.status.in.includes(r.status));
+        return session2;
+      }),
     },
   };
   service.config = { get: () => 'http://localhost:5196' };
@@ -52,20 +58,20 @@ describe('the shared picture mail says who checked in, from the session\'s own r
   it('never tells Mercy, who had not answered, that everybody has checked in', async () => {
     const read = await theMails(tuesday);
     expect(read('mercy@dropaccess.test')).not.toContain('Everybody on Sales team, Q4 has now checked in');
-    expect(read('mercy@dropaccess.test')).toContain('Kevin Omondi and Amos Kiprono have checked in for session 2 of Sales team, Q4, and the shared picture is made from what they said.');
+    expect(read('mercy@dropaccess.test')).toContain('Kevin Omondi and Amos Kiprono have checked in for check-in 2 of Sales team, Q4, and the shared picture is made from what they said.');
     expect(read('mercy@dropaccess.test')).toContain('You and Joseph Kariuki have not checked in for it yet.');
   });
 
   it('tells Kevin, who did answer, that he is one of the two and who is still to come', async () => {
     const read = await theMails(tuesday);
-    expect(read('kevin@dropaccess.test')).toContain('You and Amos Kiprono have checked in for session 2 of Sales team, Q4, and the shared picture is made from what you each said.');
+    expect(read('kevin@dropaccess.test')).toContain('You and Amos Kiprono have checked in for check-in 2 of Sales team, Q4, and the shared picture is made from what you each said.');
     expect(read('kevin@dropaccess.test')).toContain('Mercy Wairimu and Joseph Kariuki have not checked in for it yet.');
   });
 
   it('says it by count, never by name, where people in the check-in are not named to each other', async () => {
     const read = await theMails(tuesday, { peersVisibleToEachOther: false });
     const mercy = read('mercy@dropaccess.test');
-    expect(mercy).toContain('Two other people have checked in for session 2 of Sales team, Q4, and the shared picture is made from what they said.');
+    expect(mercy).toContain('Two other people have checked in for check-in 2 of Sales team, Q4, and the shared picture is made from what they said.');
     expect(mercy).toContain('You and one other person have not checked in for it yet.');
     expect(mercy).not.toMatch(/Kevin|Amos|Joseph/);
   });

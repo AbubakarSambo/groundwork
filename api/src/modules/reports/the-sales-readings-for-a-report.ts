@@ -1,3 +1,4 @@
+import { NOT_A_QUIET_CLOSE } from '../grounds/an-answer-includes-a-refusal';
 import { isASalesKind } from '../board/the-kind-of-work';
 import { theReleaseOneSalesBoardIsOn } from '../board/release-one-sales-board';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
@@ -97,7 +98,9 @@ export async function withTheSalesReadings<T>(prisma: Prisma, groundId: string, 
   const runsIt = isTheLead || (!me && theyRunThisCheckIn(requestingUserId, ground as any));
 
   const checkIns = ((await (prisma.checkIn?.findMany?.({
-    where: { groundId, sessionNumber, status: 'COMPLETED', isSetup: false },
+    /* A session the clock closed with nothing said is not a check-in made, as the board and the count read it (staging S20: "Last updated
+       ... when Associate checked in" beside a board that said nobody had). */
+    where: { groundId, sessionNumber, status: 'COMPLETED', isSetup: false, AND: [NOT_A_QUIET_CLOSE] },
     select: { id: true, participantId: true, completedAt: true },
   }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[];
   const done = checkIns.filter((c) => c.completedAt).sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());

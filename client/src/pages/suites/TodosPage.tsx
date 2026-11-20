@@ -3,7 +3,7 @@ import { todosApi } from '@/api/suites'
 import type { TodoList } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Skeleton } from '@/components/gw/ui'
 import { SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
@@ -106,7 +106,7 @@ export function TodosPage() {
         subtitle="Everything people said they will do, in each check-in. Nobody has to write it down twice."
       />
 
-      {isLoading && <Note>Loading…</Note>}
+      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
           <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin or a lead can open this board.'} role={user?.role} /></Note>

@@ -4,7 +4,6 @@ import { join } from 'path'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { CheckInRow } from './ui'
-import { TheCheckInHeader } from './TheCheckInHeader'
 
 /**
  * SCREEN FAULT 10: TAP TARGETS UNDER 40px ON A PHONE, FOUND ON THE WALK.
@@ -29,7 +28,7 @@ describe('the check-ins list row title', () => {
   it('carries the 40px tap class', () => {
     mount(
       <table><tbody>
-        <CheckInRow to="/grounds/g1" name="Sales team, Q3" forWhat="OKRs" stands="Session 1" />
+        <CheckInRow to="/grounds/g1" name="Sales team, Q3" forWhat="OKRs" stands="Check-in 1" />
       </tbody></table>,
     )
     expect(screen.getByRole('link', { name: 'Sales team, Q3' }).className).toContain('gwui-tap-44')
@@ -37,13 +36,10 @@ describe('the check-ins list row title', () => {
 })
 
 describe('the check-in header', () => {
-  it('gives the breadcrumb and the tabs the same 40px floor on a phone', () => {
-    mount(
-      <TheCheckInHeader
-        id="g1" title="Sales team, Q3" canRunThisCheckIn isAParty active="chat"
-      />,
-    )
-    expect(screen.getByRole('link', { name: 'Check-ins' }).className).toContain('gwui-tap-44')
+  /* Changed 16 November 2026: the old header gave the breadcrumb the gwui-tap-44 class in an inline-styled link. The one shared header
+     (CheckInHeader, through PageTitle) gives every crumb the same 40px floor from one rule in prototype.css, so the floor is read there. */
+  it('gives the breadcrumb a 40px floor on a phone, from the one rule every header shares', () => {
+    expect(readFileSync(join(__dirname, '..', '..', 'styles', 'prototype.css'), 'utf8')).toMatch(/\.crumb a\{display:inline-flex;align-items:center;min-height:40px\}/)
   })
 
   /* 44px at every width since 21 October: Hafsah's 44px rule covers links and tabs, not only buttons. */

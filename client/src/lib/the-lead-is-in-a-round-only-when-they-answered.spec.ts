@@ -25,4 +25,17 @@ describe('who is in a round, as the server counted it', () => {
     expect(whoTheSessionCounts(people, served(['p-brian'], []), 4)).toEqual([])
     expect(theCountOf({}, 1)).toBeNull()
   })
+  /* Moved here from invited-not-joined-yet-run-3.spec.tsx (night quality run 3, decision 8 redone; changed 1 November 2026, Hafsah
+     approved) when the old "Who is in this" roster it sat beside was deleted: Amina was invited and never joined, and she is still
+     on the check-in, so she is in the count and named as not joined. */
+  it('counts Amina, invited and not joined yet, and names her as not joined', () => {
+    const run3 = [
+      { id: 'p-amina', partyType: 'PARTICIPANT', notJoinedYet: true },
+      { id: 'p-jared', partyType: 'PARTICIPANT' },
+      { id: 'p-hassan', partyType: 'PARTICIPANT' },
+    ]
+    const ground = { theCount: { session: 4, said: null, bySession: { 4: { sessionNumber: 4, onTheCheckIn: ['p-amina', 'p-jared', 'p-hassan'], answered: ['p-hassan'], notYet: ['p-jared'], notJoined: ['p-amina'], declined: [], notLetIn: [] } } } }
+    expect(whoTheSessionCounts(run3, ground, 4).map((p) => p.id)).toEqual(['p-amina', 'p-jared', 'p-hassan'])
+    expect(theCountOf(ground, 4)?.notJoined).toEqual(['p-amina'])
+  })
 })

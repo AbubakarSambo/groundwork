@@ -52,7 +52,7 @@ describe('and it is applied wherever a reply is drawn', () => {
     'pages/enter/EntryChatPage.tsx',
     'pages/chat/ChatPage.tsx',
     'components/gw/ContextChat.tsx',
-    'components/gw/GroundChat.tsx',
+    'components/gw/MyCheckInSessions.tsx', /* where GroundChat's Message now lives; GroundChat.tsx itself was deleted on 15 November 2026 */
   ]
 
   for (const file of surfaces) {

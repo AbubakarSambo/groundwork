@@ -24,6 +24,11 @@ import { groundsApi } from '@/api/grounds'
  * read-only admin lands on Context.
  */
 let currentUser: { id: string; role: string; email: string }
+/* The conversation itself is ChatPage's own (pages/chat specs); here it is a stand-in that shows which one the tab draws and what
+   the tab puts under it (batch 2, group 5). */
+vi.mock('@/pages/chat/ChatPage', () => ({
+  ChatPage: ({ checkInId, settled }: any) => <div data-testid="the-conversation" data-check-in={checkInId}>{settled}</div>,
+}))
 vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: currentUser, isAuthenticated: true }),
 }))
@@ -88,7 +93,8 @@ describe('the read-only redirect waits for the check-in to load', () => {
     resolve(ground())
     /* Check-in's own content - not Context's, which the bug would have shown instead. Changed in F5 (stage 11): with nothing open,
        the lead's Check-in tab is "Check in yourself", with no ask box of its own. */
-    expect(await screen.findByRole('button', { name: 'Check in yourself' })).toBeTruthy()
+    /* Changed in batch 2, group 5: with nothing open the lead's Check-in tab is the box that starts her check-in. */
+    expect(await screen.findByRole('textbox', { name: 'Write anything you want me to remember' })).toBeTruthy()
     expect(screen.queryByText('No check-in open right now')).toBeNull()
     expect(screen.queryByText('What this check-in is for')).toBeNull()
   })

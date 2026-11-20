@@ -40,8 +40,8 @@ describe('A claim is read by how it stands, from the one source (round 51)', () 
   it('the assessment reads whether something cannot be true as said, by its meaning, on every item', () => {
     expect(THE_ASSESSMENT_PROMPT).toContain('`cannotBeTrue`');
     expect(THE_ASSESSMENT_PROMPT).toContain('a promise for a day that had already passed when they said it');
-    expect((THE_ASSESSMENT_SCHEMA.input_schema.properties.claims as any).items.properties.cannotBeTrue).toBeDefined();
-    expect((THE_ASSESSMENT_SCHEMA.input_schema.properties.promises as any).items.properties.cannotBeTrue).toBeDefined();
+    /* Said once, in `marks`, and put back on its item by the item's words (fix plan 16 November, group 1: the request had grown too big for the model). */
+    expect((THE_ASSESSMENT_SCHEMA.input_schema.properties.marks as any).items.properties.cannotBeTrue).toBeDefined();
   });
 
   it('the one place says how each stands: the same words in another section stand with them', () => {

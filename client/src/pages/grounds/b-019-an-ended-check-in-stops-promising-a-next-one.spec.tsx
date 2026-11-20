@@ -16,6 +16,11 @@ import { reportsApi } from '@/api/reports'
  * whether the ground itself had already ended. Fixed by reading `howItEnded(ground)` first and
  * showing that instead, with a way to the board.
  */
+/* The conversation itself is ChatPage's own (pages/chat specs); here it is a stand-in that shows which one the tab draws and what
+   the tab puts under it (batch 2, group 5). */
+vi.mock('@/pages/chat/ChatPage', () => ({
+  ChatPage: ({ checkInId, settled }: any) => <div data-testid="the-conversation" data-check-in={checkInId}>{settled}</div>,
+}))
 vi.mock('@/stores/auth', () => ({
   useAuthStore: (sel: any) => sel({ user: { id: 'u-amani', firstName: 'Amani', lastName: 'Wekesa', email: 'amani@x.test' }, isAuthenticated: true }),
 }))

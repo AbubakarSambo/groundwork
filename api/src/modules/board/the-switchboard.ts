@@ -27,7 +27,7 @@ import { COLLECTIONS_TYPES, COLLECTIONS_TYPE_LABEL, theCollectionsTypeRead } fro
  */
 
 /** The switchboard's types. Each is the department or kind of work, in the release plan's words. */
-export const CHECK_IN_TYPES = ['sales team', 'invoices or fee notes', 'loans', 'legal matter'] as const;
+export const CHECK_IN_TYPES = ['sales team', 'invoices or fee notes', 'loans', 'legal matter', 'support tickets', 'incidents', 'engineering tasks', 'trader programme', 'government programme', 'where next', 'founder check-in', 'quarter metrics', 'sales organisation', 'leadership team', 'funded project', 'client delivery'] as const;
 export type ACheckInType = (typeof CHECK_IN_TYPES)[number];
 
 /** What a lead reads for each type. The collections two are the B8 picture's ("Fee notes and invoices", "Loan repayments"). */
@@ -36,14 +36,26 @@ export const CHECK_IN_TYPE_LABEL: Record<ACheckInType, string> = {
   'invoices or fee notes': COLLECTIONS_TYPE_LABEL['invoices or fee notes'],
   loans: COLLECTIONS_TYPE_LABEL.loans,
   'legal matter': 'A legal matter',
+  'support tickets': 'A support desk',
+  incidents: 'Operations and its incidents',
+  'engineering tasks': 'An engineering release',
+  'trader programme': 'A trader training programme',
+  'government programme': 'A government programme',
+  'where next': 'Where to focus next',
+  'founder check-in': 'A founder’s own check-in',
+  'quarter metrics': 'A quarter’s numbers',
+  'sales organisation': 'A sales organisation with several teams',
+  'leadership team': 'A leadership team',
+  'funded project': 'A funded project',
+  'client delivery': 'Work delivered to a client',
 };
 
 /** The organisation switch each row sits behind (Organization columns). */
-export type ASwitch = 'release1SalesBoardOn' | 'release2CollectionsOn';
+export type ASwitch = 'release1SalesBoardOn' | 'release2CollectionsOn' | 'release4TeamsOn' | 'release5ProjectsOn';
 export type TheSwitches = Partial<Record<ASwitch, boolean>>;
 
 /** The boards the table can pick. "today" is the product as it draws a check-in now. */
-export type ABoard = 'today' | 'the sales board' | 'the collections board' | 'the loans board' | 'the matter board';
+export type ABoard = 'today' | 'the sales board' | 'the collections board' | 'the loans board' | 'the matter board' | 'the tickets board' | 'the sales organisation board' | 'the programme board' | 'the numbers board' | 'the leadership board' | 'the project board';
 
 /** The reports a row picks (release plan, Part 2, "Report shapes"). */
 export interface TheReports {
@@ -59,7 +71,13 @@ export interface TheReports {
 }
 
 export interface ASwitchboardRow {
+  /**
+   * The scenario this row's REPORTS are shaped for. It no longer decides the board: the board follows the type alone (board assessment,
+   * 15 November: a board chosen by scenario and by kind of work both could disagree, and a scenario read wrongly hid the right board).
+   */
   scenario: GroundScenario;
+  /** Only for the two collections types, which belong to one scenario and exist nowhere else: the board is picked only in this scenario. */
+  boardOnlyIn?: GroundScenario;
   type: ACheckInType;
   board: Exclude<ABoard, 'today'>;
   reports: TheReports;
@@ -79,18 +97,69 @@ export const THE_SWITCHBOARD: readonly ASwitchboardRow[] = [
   {
     scenario: GroundScenario.COLLECTIONS, type: 'invoices or fee notes', board: 'the collections board',
     reports: { team: 'full', own: true, weekly: true, weeklyNumbers: ['collected this week', 'due', 'overdue', 'paid with proof'] },
-    switch: 'release2CollectionsOn', release: 'Release 2, pull request 2', built: true,
+    switch: 'release2CollectionsOn', release: 'Release 2, pull request 2', built: true, boardOnlyIn: GroundScenario.COLLECTIONS,
   },
   {
     scenario: GroundScenario.COLLECTIONS, type: 'loans', board: 'the loans board',
     reports: { team: 'full', own: true, weekly: true, weeklyNumbers: ['collected this week', 'due', 'overdue', 'paid with proof'] },
-    switch: 'release2CollectionsOn', release: 'Release 2, pull request 2', built: true,
+    switch: 'release2CollectionsOn', release: 'Release 2, pull request 2', built: true, boardOnlyIn: GroundScenario.COLLECTIONS,
   },
   {
     scenario: GroundScenario.PULSE_CHECK, type: 'legal matter', board: 'the matter board',
     reports: { team: 'full', own: true, weekly: true, special: ['each matter’s fees, in one line'] },
     switch: 'release2CollectionsOn', release: 'Release 2, pull request 3', built: true,
   },
+  /*
+   * THE TICKETS FAMILY (Release 4, pilot of November 2026): support, operations and engineering are one board shape, tickets, incidents
+   * or tasks moving through stages, drawn by the pictured tickets board. Each is "keep the team on track" (release plan, Part 2,
+   * OKR_ALIGNMENT), behind the Release 4 switch, which is off for every organisation until staff switch it on. Their reports are
+   * today's: this row picks only the board, so the report is the short team report.
+   */
+  ...(['support tickets', 'incidents', 'engineering tasks'] as const).map((type): ASwitchboardRow => ({
+    scenario: GroundScenario.OKR_ALIGNMENT, type, board: 'the tickets board',
+    reports: { team: 'short', own: true, weekly: true },
+    switch: 'release4TeamsOn', release: 'Release 4', built: true,
+  })),
+  /*
+   * THE PROGRAMME FAMILY (Release 4, pilot of November 2026): a trader training programme (check how the same role is going), a
+   * government programme (keep a read on live work) and a where-next workshop (work out where to focus), each drawn by its own pictured
+   * board from the figures people said. Behind the same Release 4 switch, off for every organisation until staff switch it on. Their
+   * reports are today's: each row picks only the board.
+   */
+  ...([[GroundScenario.COHORT_CHECK, 'trader programme'], [GroundScenario.PULSE_CHECK, 'government programme'], [GroundScenario.DISCOVERY, 'where next']] as const).map(([scenario, type]): ASwitchboardRow => ({
+    scenario, type, board: 'the programme board',
+    reports: { team: 'short', own: true, weekly: true },
+    switch: 'release4TeamsOn', release: 'Release 4', built: true,
+  })),
+  /*
+   * THE NUMBER-TRACKING FAMILY (Release 4, pilot of November 2026): a founder's own check-in (keep a read on live work) and a quarter's
+   * metrics for a product (set goals and keep the team on track), each drawn by its own pictured board from the figures people said
+   * beside any a system sent. Behind the same Release 4 switch, off for every organisation until staff switch it on. Their reports are
+   * today's: each row picks only the board.
+   */
+  ...([[GroundScenario.PULSE_CHECK, 'founder check-in'], [GroundScenario.OKR_ALIGNMENT, 'quarter metrics']] as const).map(([scenario, type]): ASwitchboardRow => ({
+    scenario, type, board: 'the numbers board',
+    reports: { team: 'short', own: true, weekly: true },
+    switch: 'release4TeamsOn', release: 'Release 4', built: true,
+  })),
+  /*
+   * THE REST OF THE KINDS THE PRODUCT DRAWS (15 November). A sales organisation is drawn as the engineering board is (salesorg.jpg is the
+   * same shape, by team), a leadership team has its own priorities board, and a funded project or client delivery its plan board. They had
+   * no row, so the table did not know they had a board. Each picks only the board; reports are today's. These mappings are judgements,
+   * written out in docs/board-switchboard-judgements-15-nov.md for Hafsah to confirm.
+   */
+  {
+    scenario: GroundScenario.OKR_ALIGNMENT, type: 'sales organisation', board: 'the sales organisation board',
+    reports: { team: 'short', own: true, weekly: true }, switch: 'release4TeamsOn', release: 'Release 4', built: true,
+  },
+  {
+    scenario: GroundScenario.BOARD_STRATEGY, type: 'leadership team', board: 'the leadership board',
+    reports: { team: 'short', own: true, weekly: true }, switch: 'release4TeamsOn', release: 'Release 4', built: true,
+  },
+  ...(['funded project', 'client delivery'] as const).map((type): ASwitchboardRow => ({
+    scenario: GroundScenario.WORKPLAN_BUDGET, type, board: 'the project board',
+    reports: { team: 'short', own: true, weekly: true }, switch: 'release5ProjectsOn', release: 'Release 5', built: true,
+  })),
 ];
 
 /** The types a scenario offers the lead to choose from in "What it is", where it has types of its own. Others keep the kind of work. */
@@ -110,7 +179,25 @@ const THE_TYPE_OF_A_KIND: Record<string, ACheckInType> = {
   'sales team': 'sales team',
   'a law firm matter': 'legal matter',
   'asset loans': 'loans',
+  'support desk': 'support tickets',
+  'distribution operations': 'incidents',
+  'engineering release': 'engineering tasks',
+  'trader training programme': 'trader programme',
+  'a government programme': 'government programme',
+  'MarketView where next': 'where next',
+  "founder's own check-in": 'founder check-in',
+  'MarketView Q4': 'quarter metrics',
+  'sales org': 'sales organisation',
+  leadership: 'leadership team',
+  'a funded project': 'funded project',
+  'client delivery': 'client delivery',
 };
+
+/**
+ * THE KIND OF WORK A TYPE IS DRAWN AS: the inverse of the table above, so that the board a lead sees follows the type the switchboard
+ * names, from one place, and the screen reads it. A type the lead confirmed beats the kind of work read from her words.
+ */
+export const THE_KIND_OF_A_TYPE: Partial<Record<ACheckInType, string>> = Object.fromEntries(Object.entries(THE_TYPE_OF_A_KIND).map(([k, t]) => [t, k]));
 
 /**
  * A KIND OF WORK THE SWITCHBOARD NEEDS, WHERE ITS SWITCH IS ON (messages test, 19 October, finding 19). "a law firm matter" is how a
@@ -125,6 +212,17 @@ export async function aKindTheSwitchboardNeeds(prisma: any, kindOfWork: unknown,
   if (!rows.length) return false;
   const switches = await theSwitchesOf(prisma, organizationId);
   return rows.some((r) => switches[r.switch] === true);
+}
+
+/**
+ * THE SITUATION A KIND OF WORK BELONGS TO, WHERE THE SITUATION READ IS UNSURE (board assessment, 15 November, fix 1 and 2). The kind
+ * of work is read from the person's words by the model; when it names a kind the switchboard has a row for, that row's scenario is the
+ * situation the check-in and its report are run as, so a person is not asked "which situation is this?" about work Groundwork has
+ * already recognised. Never over a sure situation read, and never over a situation the person picked.
+ */
+export function theScenarioAKindImplies(kindOfWork: unknown): GroundScenario | null {
+  const type = theTypeOfAKind(kindOfWork);
+  return type ? THE_SWITCHBOARD.find((r) => r.type === type)?.scenario ?? null : null;
 }
 
 export function theTypeOfAKind(kindOfWork: unknown): ACheckInType | null {
@@ -185,10 +283,10 @@ export interface WhatTheSwitchboardPicks {
   because: 'no row for this pair' | 'its switch is off' | 'its board is not built yet' | 'its row';
 }
 
-/** The row for a scenario and a type, or nothing. */
+/** The row for a type, or nothing. The scenario matters only to the two collections types, which belong to their own scenario. */
 export function theRowFor(scenario: string | null | undefined, type: string | null | undefined): ASwitchboardRow | null {
-  if (!scenario || !type) return null;
-  return THE_SWITCHBOARD.find((r) => r.scenario === scenario && r.type === type) ?? null;
+  if (!type) return null;
+  return THE_SWITCHBOARD.find((r) => r.type === type && (!r.boardOnlyIn || r.boardOnlyIn === scenario)) ?? null;
 }
 
 /** THE ONE PLACE: scenario plus type, with the organisation's switches, picks the board and the reports. */
@@ -197,18 +295,17 @@ export function whatTheSwitchboardPicks(scenario: string | null | undefined, typ
   if (!row) return { board: 'today', reports: 'today', row: null, because: 'no row for this pair' };
   if (switches[row.switch] !== true) return { board: 'today', reports: 'today', row, because: 'its switch is off' };
   if (!row.built) return { board: 'today', reports: 'today', row, because: 'its board is not built yet' };
-  return { board: row.board, reports: row.reports, row, because: 'its row' };
+  /* The scenario now decides one thing here: whether this row's report shape applies. Any other scenario keeps today's reports. */
+  return { board: row.board, reports: row.scenario === scenario ? row.reports : 'today', row, because: 'its row' };
 }
 
 /** The organisation's switches, read once. A row that cannot be read is every switch off. */
 export async function theSwitchesOf(prisma: any, organizationId: string | null | undefined): Promise<TheSwitches> {
-  if (!organizationId) return {};
-  try {
-    const o = await prisma?.organization?.findUnique?.({ where: { id: organizationId }, select: { release1SalesBoardOn: true, release2CollectionsOn: true } });
-    return { release1SalesBoardOn: o?.release1SalesBoardOn === true, release2CollectionsOn: o?.release2CollectionsOn === true };
-  } catch {
-    return {};
-  }
+  /* Every board is on (Hafsah, 15 November 2026: everything has a board; reverses the October hide, decisions 88 and 91). Which board to draw no
+     longer reads the organisation's switches. The Release 1 switch itself is untouched: it still governs sales messaging (conversation, reports,
+     nudges, WhatsApp and email), so existing clients' messages do not change. */
+  void prisma; void organizationId;
+  return { release1SalesBoardOn: true, release2CollectionsOn: true, release4TeamsOn: true, release5ProjectsOn: true };
 }
 
 /**
@@ -220,6 +317,8 @@ export interface TheSwitchboardServed {
   type: ACheckInType | null;
   typeConfirmed: boolean;
   board: ABoard;
+  /** The kind of work the screen draws, read from the type the switchboard names: the one owner of which board is drawn. Null where nothing is picked. */
+  drawnAs: string | null;
   reports: 'today' | 'full' | 'short';
 }
 
@@ -228,8 +327,9 @@ export async function whatTheSwitchboardServes(
   ground: { organizationId?: string | null } & Parameters<typeof theTypeOnRecord>[0],
 ): Promise<TheSwitchboardServed | null> {
   const switches = await theSwitchesOf(prisma, ground.organizationId ?? null);
-  if (switches.release2CollectionsOn !== true) return null;
   const t = theTypeOnRecord(ground);
   const pick = whatTheSwitchboardPicks(ground.scenario, t.type, switches);
-  return { type: t.type, typeConfirmed: t.confirmed, board: pick.board, reports: pick.reports === 'today' ? 'today' : pick.reports.team };
+  /* Nothing is served where Release 2 is off, as before, except a Release 4 or 5 board where that release is on and picks it. */
+  if (switches.release2CollectionsOn !== true && !(pick.board !== 'today' && (pick.row?.switch === 'release4TeamsOn' || pick.row?.switch === 'release5ProjectsOn'))) return null;
+  return { type: t.type, typeConfirmed: t.confirmed, board: pick.board, drawnAs: pick.board !== 'today' && t.type ? THE_KIND_OF_A_TYPE[t.type] ?? null : null, reports: pick.reports === 'today' ? 'today' : pick.reports.team };
 }

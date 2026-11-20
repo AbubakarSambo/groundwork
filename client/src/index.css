@@ -95,6 +95,12 @@
   --gw-green: #085041;
   --gw-navy: #0C447C;
   --gw-navy-d: #042C53;
+  /* White, for text on the accent and for a surface that must be pure white: the one name for it (design rules). */
+  --gw-white: #FFFFFF;
+  /* Reading text is never wider than this, however wide the screen (design rules). */
+  --gw-read: 700px;
+  /* The keyboard focus ring: the accent at 60 per cent, so it is soft and still 3 to 1 against the page (design rules, styles/design-rules.css). */
+  --gw-focus-ring: color-mix(in srgb, var(--gw-navy) 60%, transparent);
   /* THE FILL INSIDE A WHITE CARD: progress tracks, "Waiting on" pills, quoted boxes. The prototype's
      cream fill, so a card reads cream and white with no grey in it. The page itself is --gw-page. */
   --gw-bg: #F7F1E5;
@@ -169,7 +175,7 @@
    * nobody has named. Same value, so nothing renders differently.
    */
   --gw-clay-b: #EDD0CB;
-  --gw-radius: 6px;
+  --gw-radius: 8px;
 
   /**
    * The two off-whites the product uses above the background, named. They were
@@ -243,7 +249,7 @@
   /* The kit's corners: 8px on a button, 12px on a panel or card, 14px on a pop-up window. */
   --gw-radius-btn: 8px;
   --gw-radius-card: 12px;
-  --gw-radius-pop: 14px;
+  --gw-radius-pop: 12px;
   /* THE ONLY SHADOWS IN THE PRODUCT, and only on something that sits above the page: a pop-up
      window (modal), a menu, a toast, a sheet that slides in. A card, a button, a bubble or a row
      on the page has none; it is told apart by its line, not by a shadow under it. */
@@ -253,9 +259,9 @@
   --gw-shadow-sheet: -12px 0 40px rgba(26, 25, 22, .1);
 }
 
-/* THE PROTOTYPE'S FOCUS RING, FOR EVERYTHING (app.css: :focus-visible{outline:3px solid var(--act);outline-offset:2px;border-radius:6px}).
+/* THE PROTOTYPE'S FOCUS RING, FOR EVERYTHING (app.css: :focus-visible{outline:3px solid var(--act);outline-offset:2px;border-radius:8px}).
    On keyboard focus only. A part with its own ring keeps it; anything without one no longer falls back to the browser's thin blue line. */
-:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--gw-focus-ring); outline-offset: 2px; }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 * { border-color: var(--gw-border); }
@@ -301,17 +307,17 @@ button, input, select, textarea { font-family: inherit; }
 
 .gw-chat-msgs {
   flex: 1;
-  padding: 14px 16px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   overflow-y: auto;
 }
 
 /* ── MESSAGES ────────────────────────────────────────────── */
 .gw-msg {
   max-width: 92%;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 8px;
   font-size: 13px;
   line-height: 21px;
@@ -345,7 +351,7 @@ button, input, select, textarea { font-family: inherit; }
   align-self: flex-start;
   color: var(--gw-muted);
   font-style: italic;
-  font-size: 12px;
+  font-size: 13px;
   border-bottom-left-radius: 3px;
   display: flex;
   align-items: center;
@@ -370,7 +376,7 @@ button, input, select, textarea { font-family: inherit; }
 
 /* ── CHAT INPUT BAR ──────────────────────────────────────── */
 .gw-chat-bar {
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-top: 1px solid var(--gw-border);
   display: flex;
   gap: 8px;
@@ -382,7 +388,7 @@ button, input, select, textarea { font-family: inherit; }
   flex: 1;
   resize: none;
   height: 38px;
-  padding: 8px 10px;
+  padding: 8px 8px;
   font-size: 13px;
   line-height: 18px;
   border: 1px solid var(--gw-border);
@@ -398,10 +404,10 @@ button, input, select, textarea { font-family: inherit; }
 .gw-send-btn {
   /* The kit's primary button (app.css .btn.pri): flat navy, white, bold, 8px corners, 44px. */
   min-height: 44px;
-  padding: 0 18px;
+  padding: 0 16px;
   border-radius: var(--gw-radius-btn);
   background: var(--gw-navy);
-  color: #fff;
+  color: var(--gw-white);
   border: 0;
   cursor: pointer;
   font-size: 16px;
@@ -442,7 +448,7 @@ button, input, select, textarea { font-family: inherit; }
 .gw-back {
   /* The kit's secondary button, small: the surface colour with a hairline drawn inside it. */
   min-height: 44px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--gw-text);
   cursor: pointer;
@@ -461,7 +467,7 @@ button, input, select, textarea { font-family: inherit; }
   /* The kit's primary button, full width. */
   width: 100%;
   min-height: 44px;
-  padding: 10px 18px;
+  padding: 8px 16px;
   border-radius: var(--gw-radius-btn);
   background: var(--gw-navy);
   color: white;
@@ -469,7 +475,7 @@ button, input, select, textarea { font-family: inherit; }
   font-weight: 700;
   border: 0;
   cursor: pointer;
-  margin-top: 10px;
+  margin-top: 8px;
   font-family: inherit;
   transition: background 0.1s;
   display: block;
@@ -482,7 +488,7 @@ button, input, select, textarea { font-family: inherit; }
   /* The kit's secondary button, full width: the surface colour, a hairline inside, bold. */
   width: 100%;
   min-height: 44px;
-  padding: 10px 18px;
+  padding: 8px 16px;
   border-radius: var(--gw-radius-btn);
   background: var(--gw-card);
   color: var(--gw-text);
@@ -502,9 +508,9 @@ button, input, select, textarea { font-family: inherit; }
 .gw-btn-sm {
   /* The kit's chip (app.css .chip): a rounded choice, the surface colour with a hairline inside. */
   min-height: 44px;
-  padding: 0 14px;
-  border-radius: 20px;
-  font-size: 15px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 14px;
   border: 0;
   box-shadow: var(--gw-hairline);
   background: var(--gw-card);
@@ -521,7 +527,7 @@ button, input, select, textarea { font-family: inherit; }
 /* ── FORMS ───────────────────────────────────────────────── */
 
 .gw-label {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--gw-sub);
   display: block;
   margin-bottom: 4px;
@@ -545,10 +551,10 @@ button, input, select, textarea { font-family: inherit; }
      10px corners and the stronger warm line at 1.5px. */
   width: 100%;
   min-height: 48px;
-  padding: 10px 16px;
+  padding: 8px 16px;
   font-size: 16px;
   border: 1px solid var(--rule2-crisp);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--gw-card);
   color: var(--gw-text);
   font-family: inherit;
@@ -560,12 +566,12 @@ button, input, select, textarea { font-family: inherit; }
    state anybody using a keyboard can see. */
 .gw-input:focus, .gw-select:focus{ border-color: var(--gw-navy); }
 /* The prototype's focus ring (:focus-visible{outline:3px solid var(--act);outline-offset:2px}), on keyboard focus only. */
-.gw-input:focus-visible, .gw-select:focus-visible, .gw-auth-input:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+.gw-input:focus-visible, .gw-select:focus-visible, .gw-auth-input:focus-visible { outline: 3px solid var(--gw-focus-ring); outline-offset: 2px; }
 
-.gw-er { font-size: 12px; color: var(--gw-red-t); margin-top: 5px; min-height: 16px; }
+.gw-er { font-size: 13px; color: var(--gw-red-t); margin-top: 4px; min-height: 16px; }
 
 /* ── BODY / CONTENT ──────────────────────────────────────── */
-.gw-bd { padding: 20px 16px; flex: 1; overflow-y: auto; }
+.gw-bd { flex: 1; overflow-y: auto; } /* no padding: the page that holds it owns the space (docs/spacing-audit-15-nov.md, C4) */
 
 /* Viewport-fixed action bar, offset to match .gw-main-content's sidebar
    margin so it centers with the page content instead of the raw viewport. */
@@ -574,7 +580,7 @@ button, input, select, textarea { font-family: inherit; }
    Every usage is now an <h1>, so `margin-top` and the browser's own font-size have to be
    overridden here or every page shifts. The rendered result is byte-identical to the div. */
 
-.gw-sub-t { font-size: 13px; color: var(--gw-sub); margin-bottom: 20px; line-height: 21px; }
+.gw-sub-t { font-size: 12px; color: var(--gw-sub); margin-bottom: 16px; line-height: 21px; }
 
 /* ── INFO BOXES ──────────────────────────────────────────── */
 
@@ -595,7 +601,7 @@ button, input, select, textarea { font-family: inherit; }
 /* ── SCROLLBAR ───────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--gw-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--gw-border); border-radius: 8px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gw-muted); }
 
 /* ── TABS (ground admin / participant) ───────────────────── */
@@ -632,7 +638,7 @@ button, input, select, textarea { font-family: inherit; }
    you asked for arrives underneath the thing you clicked to get there. */
 /* Clears the app header when a jump link lands, or the heading you asked for
    arrives underneath it. Only the header now, since the bar does not follow. */
-.cg-group { margin-top: 28px; scroll-margin-top: calc(var(--gw-hdr-h) + 12px); }
+.cg-group { margin-top: 24px; scroll-margin-top: calc(var(--gw-hdr-h) + 12px); }
 
 /* THE SITUATION PICKER: FOUR ACROSS, SAID RATHER THAN INFERRED.
    auto-fill with a 275px minimum worked out to three columns inside a 1160px body, because the
@@ -662,7 +668,7 @@ button, input, select, textarea { font-family: inherit; }
    flex CHILDREN, and the status and the actions are siblings inside the same trailing group. */
 .ga-participant-row {
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px;
-  background: white; border: 1px solid var(--gw-border); border-radius: 8px; padding: 11px 14px;
+  background: white; border: 1px solid var(--gw-border); border-radius: 8px; padding: 12px 12px;
 }
 .ga-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .ga-status-dot-done { background: var(--gw-green-b); }
@@ -676,7 +682,7 @@ button, input, select, textarea { font-family: inherit; }
 .ga-name-cell { flex: 1; min-width: 0; }
 /* The sessions grid, the help strip and the shared-report preview all sit indented under a row,
    lined up under its name rather than its status dot and avatar. */
-.ga-row-indent { margin-left: 40px; margin-top: 6px; }
+.ga-row-indent { margin-left: 32px; margin-top: 4px; }
 
 /* ── ANIMATIONS ──────────────────────────────────────────── */
 @keyframes gw-pulse { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
@@ -691,9 +697,6 @@ button, input, select, textarea { font-family: inherit; }
 
 /* ── MOBILE BOTTOM TAB BAR ───────────────────────────────── */
 
-@media (max-width: 640px) {
-  .gw-bd { padding-bottom: 72px; }
-}
 
 /* ── THREE-PANEL GROUND VIEW ─────────────────────────────── */
 
@@ -748,8 +751,8 @@ button, input, select, textarea { font-family: inherit; }
      */
     bottom: 148px !important;
     right: 16px !important;
-    padding: 7px 12px !important;
-    font-size: 12px !important;
+    padding: 8px 12px !important;
+    font-size: 13px !important;
   }
 }
 
@@ -761,13 +764,13 @@ button, input, select, textarea { font-family: inherit; }
 .gw-feedback-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   background: var(--gw-navy);
   color: white;
   border: none;
-  border-radius: 20px;
-  padding: 8px 14px;
-  font-size: 12px;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
@@ -888,7 +891,7 @@ button, input, select, textarea { font-family: inherit; }
   position: fixed; top: 8px; left: 8px; z-index: 1000;
   transform: translateY(-200%);
   background: var(--gw-navy); color: white; font-size: 13px; font-weight: 700;
-  padding: 10px 16px; border-radius: 8px; text-decoration: none; line-height: 20px;}
+  padding: 8px 16px; border-radius: 8px; text-decoration: none; line-height: 20px;}
 .gw-skip:focus { transform: translateY(0); outline: 2px solid white; outline-offset: 2px; }
 
 /* A page title that happens to sit in the header strip. Neutralises the h1 defaults so the
@@ -897,25 +900,25 @@ button, input, select, textarea { font-family: inherit; }
 /* The report's own manual: present, one line high, open on request. */
 .gw-legend > summary {
   list-style: none; cursor: pointer;
-  padding: 13px 0; font-size: 13px; font-weight: 700; color: var(--gw-sub);
-  display: flex; align-items: center; gap: 7px; line-height: 20px;}
+  padding: 12px 0; font-size: 13px; font-weight: 700; color: var(--gw-sub);
+  display: flex; align-items: center; gap: 8px; line-height: 20px;}
 .gw-legend > summary::-webkit-details-marker { display: none; }
-.gw-legend > summary::after { content: '›'; font-size: 15px; line-height: 1; color: var(--gw-muted); }
+.gw-legend > summary::after { content: '›'; font-size: 14px; line-height: 1; color: var(--gw-muted); }
 .gw-legend[open] > summary::after { content: '⌄'; }
 .gw-legend > summary:hover { color: var(--gw-text); }
-.gw-legend > div { padding-bottom: 6px; }
+.gw-legend > div { padding-bottom: 4px; }
 @media (max-width: 760px) { .gw-legend > div { grid-template-columns: 1fr !important; } }
 
 /* The report's own manual: present, one line high, opened on request. */
 .gw-legend > summary {
   list-style: none; cursor: pointer;
-  padding: 13px 0; font-size: 13px; font-weight: 700; color: var(--gw-sub);
-  display: flex; align-items: center; gap: 7px; line-height: 20px;}
+  padding: 12px 0; font-size: 13px; font-weight: 700; color: var(--gw-sub);
+  display: flex; align-items: center; gap: 8px; line-height: 20px;}
 .gw-legend > summary::-webkit-details-marker { display: none; }
-.gw-legend > summary::after { content: '\203A'; font-size: 15px; line-height: 1; color: var(--gw-muted); }
+.gw-legend > summary::after { content: '\203A'; font-size: 14px; line-height: 1; color: var(--gw-muted); }
 .gw-legend[open] > summary::after { content: '\2304'; }
 .gw-legend > summary:hover { color: var(--gw-text); }
-.gw-legend > div { padding-bottom: 6px; }
+.gw-legend > div { padding-bottom: 4px; }
 @media (max-width: 760px) { .gw-legend > div { grid-template-columns: 1fr !important; } }
 
 /* A folded list under the board says it can open. The native marker is off (listStyle none) so the
@@ -934,10 +937,10 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
    Small       14.5, and Tiny 13: never smaller than 13
    The two Literata sizes step down on a phone so a long name still fits in the width. */
 
-.gw-t-h2    { font-family: var(--gw-font-ui); font-size: 22px; line-height: 28px; font-weight: 700; }
+.gw-t-h2    { font-family: var(--gw-font-ui); font-size: 21px; line-height: 28px; font-weight: 700; }
 .gw-t-h3    { font-family: var(--gw-font-ui); font-size: 18px; line-height: 23px; font-weight: 700; }
 .gw-t-body  { font-size: 16px; line-height: 1.5; }
-.gw-t-small { font-size: 15px; line-height: 22px; }
+.gw-t-small { font-size: 14px; line-height: 22px; }
 
 /* ── BUTTONS, TAGS AND THE "WHAT NEEDS YOU" ROW (A1, the design system) ──
    Built by `Button`, `Tag` and `NeedsYouRow` in components/gw/kit.tsx. One set of shapes, so a
@@ -945,17 +948,17 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 
    Buttons are at least 44px tall, which is a thumb, and say exactly what happens. */
 .gw-b {
-  min-height: 44px; padding: 0 18px; border-radius: 8px; border: 0;
+  min-height: 44px; padding: 0 16px; border-radius: 8px; border: 0;
   font: inherit; font-family: var(--gw-font-ui); font-size: 16px; font-weight: 700; line-height: 19px;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   cursor: pointer; white-space: nowrap; text-decoration: none; text-align: center;
   transition: background .1s;
 }
-.gw-b:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+.gw-b:focus-visible { outline: 3px solid var(--gw-focus-ring); outline-offset: 2px; }
 .gw-b:disabled, .gw-b[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
-.gw-b-primary { background: var(--gw-navy); color: #fff; }
+.gw-b-primary { background: var(--gw-navy); color: var(--gw-white); }
 .gw-b-primary:hover:not(:disabled) { background: var(--gw-navy-d); }
-.gw-b-secondary { background: #fff; color: var(--gw-text); box-shadow: inset 0 0 0 1px var(--rule2-crisp); }
+.gw-b-secondary { background: var(--gw-white); color: var(--gw-text); box-shadow: inset 0 0 0 1px var(--rule2-crisp); }
 /* ROUND 2, ITEM H: was --gw-paper-2, which is now the page colour and would no longer show a
    hover at all against this button's white base. The prototype hovers a white surface to the page
    cream (app.css: .orgmenu/.usermenu/.viewsmenu a:hover{background:var(--paper)}), which is
@@ -963,8 +966,8 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-b-secondary:hover:not(:disabled) { background: var(--gw-page); }
 .gw-b-quiet { background: transparent; color: var(--gw-navy); padding: 0 8px; }
 .gw-b-quiet:hover:not(:disabled) { text-decoration: underline; }
-.gw-b-big { min-height: 54px; font-size: 17px; padding: 0 22px; line-height: 26px;}
-.gw-b-small { min-height: 44px; font-size: 15px; padding: 0 12px; line-height: 23px;}
+.gw-b-big { min-height: 54px; font-size: 18px; padding: 0 24px; line-height: 26px;}
+.gw-b-small { min-height: 44px; font-size: 14px; padding: 0 12px; line-height: 23px;}
 .gw-b-wide { width: 100%; }
 @media (max-width: 640px) {
   /* A long label wraps rather than pushing the page sideways, and a small button is still a thumb. */
@@ -974,8 +977,8 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 
 /* A tag is a short fact about a thing, never a label on a person. Each colour means one thing. */
 .gw-tag {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 10px;
-  border-radius: 13px; font-size: 14px; font-weight: 700; line-height: 17px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 0 8px;
+  border-radius: 999px; font-size: 14px; font-weight: 700; line-height: 17px; white-space: nowrap;
 }
 .gw-tag-proven    { background: var(--gw-green-bg); color: var(--gw-green-t); box-shadow: inset 0 0 0 1px var(--gw-green-b); }
 .gw-tag-attention { background: var(--gw-amber-bg); color: var(--gw-amber-t); box-shadow: inset 0 0 0 1px var(--gw-amber-b); }
@@ -990,15 +993,15 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
   display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: 16px; align-items: center;
   padding: 16px 0; border-bottom: 1px solid var(--gw-border);
 }
-.gw-need-edge { align-self: stretch; border-radius: 2px; }
+.gw-need-edge { align-self: stretch; border-radius: 8px; }
 .gw-need-ready  .gw-need-edge { background: var(--gw-green-t); }
 .gw-need-decide .gw-need-edge { background: var(--gw-navy); }
 .gw-need-look   .gw-need-edge { background: var(--gw-amber-t); }
-.gw-need-h { font-size: 17px; font-weight: 700; line-height: 22px; color: var(--gw-text); overflow-wrap: anywhere; }
-.gw-need-s { font-size: 15px; line-height: 22px; color: var(--gw-sub); margin-top: 2px; overflow-wrap: anywhere; }
+.gw-need-h { font-size: 18px; font-weight: 700; line-height: 22px; color: var(--gw-text); overflow-wrap: anywhere; }
+.gw-need-s { font-size: 14px; line-height: 22px; color: var(--gw-sub); margin-top: 2px; overflow-wrap: anywhere; }
 .gw-need-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 640px) {
-  .gw-need { grid-template-columns: 4px minmax(0, 1fr); gap: 10px 16px; }
+  .gw-need { grid-template-columns: 4px minmax(0, 1fr); gap: 8px 16px; }
   .gw-need-acts { grid-column: 2; }
 }
 /* Read aloud by a screen reader, not drawn: for a reason a colour carries on screen. */
@@ -1015,12 +1018,12 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-mk { width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex: none; vertical-align: -2px; }
 .gw-mk-lg { width: 18px; height: 18px; }
 .gw-mk-proven    { background: var(--gw-green-t); }
-.gw-mk-confirmed { background: var(--gw-green-t); box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--gw-green-t); width: 10px; height: 10px; margin: 2px; }
+.gw-mk-confirmed { background: var(--gw-green-t); box-shadow: 0 0 0 2px var(--gw-white), 0 0 0 4px var(--gw-green-t); width: 10px; height: 10px; margin: 2px; }
 .gw-mk-said      { box-shadow: inset 0 0 0 2px var(--gw-text); }
 .gw-mk-memory    { border: 2px dashed var(--gw-muted); }
 .gw-mk-none      { box-shadow: inset 0 0 0 1px var(--rule2-crisp); }
-.gw-mk-key { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--gw-sub); list-style: none; line-height: 20px;}
-.gw-mk-key li { display: inline-flex; align-items: center; gap: 6px; }
+.gw-mk-key { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--gw-sub); list-style: none; line-height: 20px;}
+.gw-mk-key li { display: inline-flex; align-items: center; gap: 4px; }
 
 /* The stage ladder: a mark per stage, joined by a line in the colour of the stage it leads to. */
 .gw-ladder { min-width: 0; }
@@ -1029,37 +1032,37 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-ladder-ln-proven, .gw-ladder-ln-confirmed { background: var(--gw-green-t); }
 .gw-ladder-ln-said { background: var(--gw-text); }
 .gw-ladder-ln-memory { background: var(--gw-muted); }
-.gw-ladder-stages { display: flex; justify-content: space-between; gap: 4px; margin-top: 6px; font-size: 13px; color: var(--gw-sub); list-style: none; line-height: 20px;}
+.gw-ladder-stages { display: flex; justify-content: space-between; gap: 4px; margin-top: 4px; font-size: 13px; color: var(--gw-sub); list-style: none; line-height: 20px;}
 .gw-ladder-stages li { min-width: 0; overflow-wrap: anywhere; text-align: center; }
 .gw-ladder-stages li:first-child { text-align: left; }
 .gw-ladder-stages li:last-child { text-align: right; }
-.gw-ladder-says { margin-top: 8px; font-size: 15px; color: var(--gw-sub); line-height: 23px;}
+.gw-ladder-says { margin-top: 8px; font-size: 14px; color: var(--gw-sub); line-height: 23px;}
 
 /* ── THE SIDEBAR (A1, layout-computer) ─────────────────────────
    Light, on the page's own paper. Drawn by AppSidebar in components/gw/AppShell.tsx. The current
    row and a hovered row are white with a line, never a colour that means something. */
 .gw-rl { background: var(--gw-page); border-right: 1px solid var(--gw-border); color: var(--gw-text); font-family: var(--gw-font-ui); }
-.gw-rl-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 14px 12px 8px; flex-shrink: 0; }
-.gw-rl-top.folded { flex-direction: column; padding: 14px 0 8px; }
-.gw-rl-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--gw-navy); text-decoration: none; font-size: 17px; font-weight: 700; letter-spacing: -.02em; min-height: 44px; line-height: 26px;}
+.gw-rl-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 12px 12px 8px; flex-shrink: 0; }
+.gw-rl-top.folded { flex-direction: column; padding: 12px 0 8px; }
+.gw-rl-brand { display: inline-flex; align-items: center; gap: 8px; color: var(--gw-navy); text-decoration: none; font-size: 18px; font-weight: 700; letter-spacing: -.02em; min-height: 44px; line-height: 26px;}
 .gw-rl-ic, .gw-rl-top .gw-tap44 { width: 44px; height: 44px; border-radius: 8px; border: 0; background: transparent; color: var(--gw-sub); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font: inherit; font-size: 18px; flex: none; }
 .gw-rl-ic:hover, .gw-rl-top .gw-tap44:hover { background: var(--gw-card); color: var(--gw-text); }
 /* The speech bubble beside the mark (D1): drawn pressed while Ask Groundwork is open beside the page. */
 .gw-ask-open[aria-expanded="true"] { background: var(--gw-card); color: var(--gw-navy); }
-.gw-rl-org { margin: 4px 10px 8px; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--gw-border); background: var(--gw-card); cursor: pointer; font: inherit; color: var(--gw-text); text-align: left; width: calc(100% - 20px); }
-.gw-rl-org:focus-visible, .gw-rl-me:focus-visible, .gw-rl-menu-item:focus-visible, .gw-ci-row:focus-visible, .gw-rl-nav:focus-visible, .gw-rl-fold:focus-visible, .gw-rl-h-link:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 1px; }
-.gw-rl-sq { width: 30px; height: 30px; border-radius: 8px; background: var(--gw-navy); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex: none; line-height: 20px;}
-.gw-rl-org-name { display: block; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 23px;}
+.gw-rl-org { margin: 4px 8px 8px; display: flex; align-items: center; gap: 8px; padding: 8px 8px; border-radius: 8px; border: 1px solid var(--gw-border); background: var(--gw-card); cursor: pointer; font: inherit; color: var(--gw-text); text-align: left; width: calc(100% - 20px); }
+.gw-rl-org:focus-visible, .gw-rl-me:focus-visible, .gw-rl-menu-item:focus-visible, .gw-ci-row:focus-visible, .gw-rl-nav:focus-visible, .gw-rl-fold:focus-visible, .gw-rl-h-link:focus-visible { outline: 3px solid var(--gw-focus-ring); outline-offset: 1px; }
+.gw-rl-sq { width: 30px; height: 30px; border-radius: 8px; background: var(--gw-navy); color: var(--gw-white); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex: none; line-height: 20px;}
+.gw-rl-org-name { display: block; font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 23px;}
 .gw-rl-org-role { display: block; font-size: 13px; color: var(--gw-sub); line-height: 20px;}
-.gw-rl-start { padding: 0 10px 8px; flex-shrink: 0; }
-.gw-rl-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 10px 10px; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
+.gw-rl-start { padding: 0 8px 8px; flex-shrink: 0; }
+.gw-rl-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
 .gw-rl-scroll.folded { align-items: center; padding: 4px 0; gap: 4px; }
-.gw-rl-h { display: flex; align-items: center; justify-content: space-between; padding: 14px 10px 4px; font-size: 13px; font-weight: 700; color: var(--gw-sub); line-height: 20px;}
+.gw-rl-h { display: flex; align-items: center; justify-content: space-between; padding: 12px 8px 4px; font-size: 13px; font-weight: 700; color: var(--gw-sub); line-height: 20px;}
 .gw-rl-h-link { color: var(--gw-sub); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
 .gw-rl-h-link:hover { color: var(--gw-text); text-decoration: underline; }
 .gw-rl-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
 .gw-rl-pages { margin-top: 12px; }
-.gw-rl-empty { font-size: 13px; color: var(--gw-sub); padding: 6px 10px; line-height: 20px;}
+.gw-rl-empty { font-size: 13px; color: var(--gw-sub); padding: 4px 8px; line-height: 20px;}
 .gw-rail-row { position: relative; display: flex; align-items: flex-start; gap: 0; }
 /* THE NAME KEEPS ITS ROOM. The pin and the pencil used to be two 32px buttons always in the row,
    which with the 72px "Your turn" left the name about 57px and broke it mid-word ("Coaman / a").
@@ -1085,91 +1088,92 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
   .gw-row-acts { position: static; opacity: 1; pointer-events: auto; background: none; }
   .gw-rail-row:hover .gw-rail-bdg, .gw-rail-row:focus-within .gw-rail-bdg { visibility: visible; }
 }
-.gw-ci-row { position: relative; flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 8px; min-height: 44px; padding: 8px 8px 8px 10px; border-radius: 8px; text-decoration: none; color: var(--gw-text); font-size: 15px; line-height: 20px; }
+.gw-ci-row { position: relative; flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 8px; min-height: 44px; padding: 8px 8px 8px 8px; border-radius: 8px; text-decoration: none; color: var(--gw-text); font-size: 14px; line-height: 20px; }
 .gw-ci-row:hover { background: var(--gw-card); }
 /* The prototype's selected check-in (.ci-row.on): a light blue tint and bold, no box around it. */
 .gw-ci-row.on { background: var(--gw-blue-bg); font-weight: 700; }
 .gw-ci-row.closed { color: var(--gw-sub); }
-.gw-ci-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 6px; background: var(--gw-rule-2); }
+.gw-ci-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 4px; background: var(--gw-rule-2); }
 .gw-ci-dot-turn { background: var(--gw-green-t); }
 .gw-ci-dot-late { background: var(--gw-red-t); }
 /* Long names wrap rather than being cut off: a name that loses its end is a different name. */
 .gw-ci-nm { flex: 1 1 110px; min-width: 110px; overflow-wrap: break-word; word-break: normal; }
-.gw-rail-bdg { flex: none; font-size: 13px; font-weight: 700; line-height: 16px; border-radius: 10px; padding: 2px 8px; white-space: nowrap; }
-.gw-rail-bdg-turn { background: var(--gw-green-t); color: #fff; }
+.gw-rail-bdg { flex: none; font-size: 13px; font-weight: 700; line-height: 16px; border-radius: 8px; padding: 2px 8px; white-space: nowrap; }
+.gw-rail-bdg-turn { background: var(--gw-green-t); color: var(--gw-white); }
 .gw-rail-bdg-late { background: var(--gw-red-bg); color: var(--gw-red-t); box-shadow: inset 0 0 0 1px var(--gw-red-b); }
 .gw-rail-bdg-proven { background: var(--gw-green-bg); color: var(--gw-green-t); }
 .gw-rail-bdg-attention { background: var(--gw-amber-bg); color: var(--gw-amber-t); }
 .gw-rail-bdg-plain { background: var(--gw-bg); color: var(--gw-sub); }
 .gw-rename { border: 0; background: none; color: var(--gw-sub); cursor: pointer; font-size: 13px; line-height: 1; flex-shrink: 0; font-family: inherit; }
-.gw-rl-rename-input { width: 100%; border: 1px solid var(--rule2-crisp); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font: inherit; font-size: 15px; padding: 6px 8px; line-height: 23px;}
-.gw-rl-fold { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; margin-top: 8px; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 700; color: var(--gw-sub); cursor: pointer; text-align: left; border-radius: 8px; line-height: 20px;}
+.gw-rl-rename-input { width: 100%; border: 1px solid var(--rule2-crisp); border-radius: 8px; background: var(--gw-card); color: var(--gw-text); font: inherit; font-size: 14px; padding: 4px 8px; line-height: 23px;}
+.gw-rl-fold { display: flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 8px; margin-top: 8px; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 700; color: var(--gw-sub); cursor: pointer; text-align: left; border-radius: 8px; line-height: 20px;}
 .gw-rl-fold:hover { color: var(--gw-text); background: var(--gw-card); }
-.gw-rl-nav { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border-radius: 8px; font-size: 15px; color: var(--gw-text); text-decoration: none; line-height: 23px;}
+.gw-rl-nav { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px; border-radius: 8px; font-size: 14px; color: var(--gw-text); text-decoration: none; line-height: 23px;}
 .gw-rl-nav svg { color: var(--gw-sub); flex: none; }
 .gw-rl-nav:hover { background: var(--gw-card); }
 .gw-rl-nav.on { background: var(--gw-card); font-weight: 700; box-shadow: inset 0 0 0 1px var(--gw-border); }
 .gw-rl-nav.on svg { color: var(--gw-navy); }
 .gw-rl-nav.icon { width: 44px; height: 44px; padding: 0; justify-content: center; }
 /* Today's count (C1): a round amber mark with the number, at the end of the row. */
-.gw-rl-count { margin-left: auto; min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; background: var(--gw-amber-t); color: #fff; font-size: 13px; font-weight: 700; line-height: 20px;}
+.gw-rl-count { margin-left: auto; min-width: 22px; height: 22px; padding: 0 4px; box-sizing: border-box; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: var(--gw-amber-t); color: var(--gw-white); font-size: 13px; font-weight: 700; line-height: 20px;}
 .gw-rl-needs { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gw-border); display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .gw-rl-ini { width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; text-decoration: none; line-height: 20px;}
-.gw-rl-ini.turn { background: var(--gw-green-t); color: #fff; }
+.gw-rl-ini.turn { background: var(--gw-green-t); color: var(--gw-white); }
 .gw-rl-ini.late { background: var(--gw-red-bg); color: var(--gw-red-t); box-shadow: inset 0 0 0 1px var(--gw-red-b); }
-.gw-rl-entry { padding: 9px 10px; border-radius: 8px; background: var(--gw-card); border: 1px solid var(--gw-border); margin-bottom: 6px; font-size: 15px; line-height: 23px;}
-.gw-rl-foot { border-top: 1px solid var(--gw-border); padding: 10px; flex-shrink: 0; }
-.gw-rl-me { all: unset; box-sizing: border-box; cursor: pointer; display: flex; gap: 10px; align-items: center; width: 100%; min-height: 44px; border-radius: 8px; padding: 2px; }
+.gw-rl-entry { padding: 8px 8px; border-radius: 8px; background: var(--gw-card); border: 1px solid var(--gw-border); margin-bottom: 4px; font-size: 14px; line-height: 23px;}
+.gw-rl-foot { border-top: 1px solid var(--gw-border); padding: 8px; flex-shrink: 0; }
+.gw-rl-me { all: unset; box-sizing: border-box; cursor: pointer; display: flex; gap: 8px; align-items: center; width: 100%; min-height: 44px; border-radius: 8px; padding: 2px; }
 .gw-rl-me:hover { background: var(--gw-card); }
 .gw-rl-av { width: 34px; height: 34px; border-radius: 50%; background: var(--gw-blue-bg); color: var(--gw-navy); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex: none; }
-.gw-rl-menu { position: fixed; z-index: 60; width: 280px; max-width: calc(100vw - 20px); background: var(--gw-card); border: 1px solid var(--gw-rule-2); border-radius: 12px; box-shadow: var(--gw-shadow-menu); padding: 6px; display: flex; flex-direction: column; }
+.gw-rl-menu { position: fixed; z-index: 60; width: 280px; max-width: calc(100vw - 20px); background: var(--gw-card); border: 1px solid var(--gw-rule-2); border-radius: 12px; box-shadow: var(--gw-shadow-menu); padding: 4px; display: flex; flex-direction: column; }
 .gw-rl-menu-org { top: 118px; }
 .gw-rl-menu-me { bottom: 70px; width: 236px; }
-.gw-rl-menu-h { font-size: 13px; font-weight: 700; color: var(--gw-sub); padding: 8px 10px 4px; line-height: 20px;}
-.gw-rl-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px; border-radius: 8px; border: 0; background: transparent; font: inherit; font-size: 15px; color: var(--gw-text); text-decoration: none; cursor: pointer; text-align: left; line-height: 23px;}
-.gw-rl-menu-item b { display: block; font-size: 15px; line-height: 23px;}
+.gw-rl-menu-h { font-size: 13px; font-weight: 700; color: var(--gw-sub); padding: 8px 8px 4px; line-height: 20px;}
+.gw-rl-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 4px 8px; border-radius: 8px; border: 0; background: transparent; font: inherit; font-size: 14px; color: var(--gw-text); text-decoration: none; cursor: pointer; text-align: left; line-height: 23px;}
+.gw-rl-menu-item b { display: block; font-size: 14px; line-height: 23px;}
 .gw-rl-menu-item:hover:not(.static) { background: var(--gw-page); }
 .gw-rl-menu-item.static { cursor: default; }
 .gw-rl-menu-item:disabled { cursor: default; }
-.gw-rl-menu hr { border: 0; border-top: 1px solid var(--gw-border); margin: 6px 0; }
-.gw-rl-menu-note { padding: 8px 10px; font-size: 13px; color: var(--gw-sub); display: flex; flex-direction: column; gap: 8px; line-height: 20px;}
+.gw-rl-menu hr { border: 0; border-top: 1px solid var(--gw-border); margin: 4px 0; }
+.gw-rl-menu-note { padding: 8px 8px; font-size: 13px; color: var(--gw-sub); display: flex; flex-direction: column; gap: 8px; line-height: 20px;}
 /* Pinning a check-in to the top of the sidebar. Quiet until the row is pointed at or focused, and
    always shown on a pinned row and on a device that cannot hover. */
-.gw-pin { border: 0; background: none; color: var(--gw-sub); cursor: pointer; line-height: 0; flex-shrink: 0; opacity: 0; border-radius: 6px; }
+.gw-pin { border: 0; background: none; color: var(--gw-sub); cursor: pointer; line-height: 0; flex-shrink: 0; opacity: 0; border-radius: 8px; }
 /* The two buttons on a row: each its own 32x36 target, touching and never overlapping. */
-.gw-rail-row .gw-pin, .gw-rail-row .gw-rename { position: relative; width: 32px; height: 44px; padding: 0; margin: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; }
+.gw-rail-row .gw-pin, .gw-rail-row .gw-rename { position: relative; width: 32px; height: 44px; padding: 0; margin: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
 .gw-rail-row:hover .gw-pin, .gw-pin:focus-visible, .gw-pin.on { opacity: 1; }
-.gw-pin:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 1px; }
+.gw-pin:focus-visible { outline: 3px solid var(--gw-focus-ring); outline-offset: 1px; }
 .gw-pin.on { color: var(--gw-navy); }
 @media (hover: none) { .gw-pin { opacity: 1; } }
 
 /* ── "MORE" ON A PHONE, AND THE BOTTOM BAR (A1, layout-phone and more-menu-phone) ── */
 
-.gw-phone-bar-item { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 52px; padding: 6px 4px; font-size: 13px; line-height: 14px; color: var(--gw-sub); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gw-phone-bar-item { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 52px; padding: 4px 4px; font-size: 13px; line-height: 14px; color: var(--gw-sub); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gw-phone-bar-item.on { color: var(--gw-text); font-weight: 700; }
 .gw-phone-bar-item.start { color: var(--gw-navy); }
-.gw-phone-bar-item:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: -3px; }
+.gw-phone-bar-item:focus-visible { outline: 3px solid var(--gw-focus-ring); outline-offset: -3px; }
 /* Five words in the bar since Chat came (U.14): on the narrowest phones each gets a fifth of the width, so a little smaller. */
+/* The one text size below 13: a 320px phone has 64px for each word of the bar. */
 @media (max-width: 360px) { .gw-phone-bar-item { font-size: 12px; padding: 6px 0; } }
 
 /* ── "JUMP TO" (A1) ─────────────────────────────────────────── */
-.gw-rl-jump { display: flex; align-items: center; gap: 10px; width: calc(100% - 20px); margin: 0 10px 6px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 15px; color: var(--gw-sub); cursor: pointer; text-align: left; flex-shrink: 0; line-height: 23px;}
+.gw-rl-jump { display: flex; align-items: center; gap: 8px; width: calc(100% - 20px); margin: 0 8px 4px; min-height: 44px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 14px; color: var(--gw-sub); cursor: pointer; text-align: left; flex-shrink: 0; line-height: 23px;}
 .gw-rl-jump:hover { background: var(--gw-card); color: var(--gw-text); }
-.gw-rl-jump:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 1px; }
+.gw-rl-jump:focus-visible { outline: 3px solid var(--gw-focus-ring); outline-offset: 1px; }
 .gw-rl-jump kbd { margin-left: auto; font: inherit; font-size: 13px; color: var(--gw-sub); line-height: 20px;}
 .gw-jump-bg { background: rgba(26, 25, 22, .35); display: flex; align-items: flex-start; justify-content: center; padding: 12vh 16px 16px; }
 .gw-jump { width: 100%; max-width: 560px; background: var(--gw-card); border: 1px solid var(--gw-rule-2); border-radius: var(--gw-radius-pop); box-shadow: var(--gw-shadow-modal); overflow: hidden; display: flex; flex-direction: column; max-height: 70vh; }
-.gw-jump-input { border: 0; border-bottom: 1px solid var(--gw-border); padding: 16px 18px; font: inherit; font-size: 17px; color: var(--gw-text); background: var(--gw-card); outline: none; min-width: 0; line-height: 26px;}
-.gw-jump-list { overflow-y: auto; padding: 6px; }
-.gw-jump-h { font-size: 13px; font-weight: 700; color: var(--gw-sub); padding: 10px 12px 4px; line-height: 20px;}
-.gw-jump-item { display: flex; flex-direction: column; gap: 2px; min-height: 44px; justify-content: center; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 15px; color: var(--gw-text); overflow-wrap: anywhere; line-height: 23px;}
+.gw-jump-input { border: 0; border-bottom: 1px solid var(--gw-border); padding: 16px 16px; font: inherit; font-size: 18px; color: var(--gw-text); background: var(--gw-card); outline: none; min-width: 0; line-height: 26px;}
+.gw-jump-list { overflow-y: auto; padding: 4px; }
+.gw-jump-h { font-size: 13px; font-weight: 700; color: var(--gw-sub); padding: 8px 12px 4px; line-height: 20px;}
+.gw-jump-item { display: flex; flex-direction: column; gap: 2px; min-height: 44px; justify-content: center; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--gw-text); overflow-wrap: anywhere; line-height: 23px;}
 .gw-jump-item span { font-size: 13px; color: var(--gw-sub); line-height: 20px;}
 .gw-jump-item.on { background: var(--gw-page); box-shadow: inset 0 0 0 1px var(--gw-border); }
-.gw-jump-none { padding: 14px 12px; font-size: 15px; color: var(--gw-sub); line-height: 23px;}
+.gw-jump-none { padding: 12px 12px; font-size: 14px; color: var(--gw-sub); line-height: 23px;}
 
 /* "Talk to us" at the foot of the Help window, on every tab. */
-.gw-help-talk { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 24px 20px; border-top: 1px solid var(--gw-border); }
-.gw-help-talk p { font-size: 15px; color: var(--gw-sub); line-height: 23px; flex: 1; min-width: 200px; }
+.gw-help-talk { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 24px 16px; border-top: 1px solid var(--gw-border); }
+.gw-help-talk p { font-size: 14px; color: var(--gw-sub); line-height: 23px; flex: 1; min-width: 200px; }
 
 /* ── SIGNING IN (A2) ─────────────────────────────────────────
    Built by AuthCard, AuthSplit, AuthField, PasswordField and PasswordRules in
@@ -1177,29 +1181,29 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
    the cream page, a Literata heading and one plain sentence. Sign-in adds the dark panel. */
 
 .gw-auth-fld { margin-bottom: 16px; }
-.gw-auth-label { display: block; font-size: 15px; font-weight: 700; color: var(--gw-text); margin-bottom: 8px; line-height: 23px;}
-.gw-auth-input { width: 100%; min-height: 48px; padding: 0 16px; font: inherit; font-size: 16px; color: var(--gw-text); background: #fff; border: 1px solid var(--rule2-crisp); border-radius: 10px; outline: none; }
+.gw-auth-label { display: block; font-size: 14px; font-weight: 700; color: var(--gw-text); margin-bottom: 8px; line-height: 23px;}
+.gw-auth-input { width: 100%; min-height: 48px; padding: 0 16px; font: inherit; font-size: 16px; color: var(--gw-text); background: var(--gw-white); border: 1px solid var(--rule2-crisp); border-radius: 8px; outline: none; }
 .gw-auth-input:focus { border-color: var(--gw-navy); }
 .gw-auth-input::placeholder { color: var(--gw-muted); }
 
-.gw-auth-actions { display: grid; gap: 10px; margin-top: 4px; }
+.gw-auth-actions { display: grid; gap: 8px; margin-top: 4px; }
 
-.gw-auth-link { background: none; border: 0; padding: 0; font: inherit; font-size: 15px; font-weight: 700; color: var(--gw-navy); cursor: pointer; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; line-height: 23px;}
+.gw-auth-link { background: none; border: 0; padding: 0; font: inherit; font-size: 14px; font-weight: 700; color: var(--gw-navy); cursor: pointer; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; line-height: 23px;}
 .gw-auth-link:hover { text-decoration: underline; }
-.gw-auth-link:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; border-radius: 4px; }
-.gw-auth-small { font-size: 15px; line-height: 23px; color: var(--gw-sub); margin: 16px 0 0; }
+.gw-auth-link:focus-visible { outline: 3px solid var(--gw-focus-ring); outline-offset: 2px; border-radius: 8px; }
+.gw-auth-small { font-size: 14px; line-height: 23px; color: var(--gw-sub); margin: 16px 0 0; }
 
 /* "Choose an organisation" (A3, #/orgs): one bordered row per organisation. */
-.gw-org-rows { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 10px; }
-.gw-org-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 12px 14px; border: 1px solid var(--gw-border); border-radius: 10px; background: #fff; font: inherit; color: var(--gw-text); text-align: left; cursor: pointer; }
+.gw-org-rows { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
+.gw-org-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 12px 12px; border: 1px solid var(--gw-border); border-radius: 8px; background: var(--gw-white); font: inherit; color: var(--gw-text); text-align: left; cursor: pointer; }
 .gw-org-row:hover:not(:disabled) { border-color: var(--gw-navy); }
-.gw-org-row:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+.gw-org-row:focus-visible { outline: 3px solid var(--gw-focus-ring); outline-offset: 2px; }
 .gw-org-row:disabled { cursor: default; }
 .gw-org-row-text { display: flex; flex-direction: column; min-width: 0; }
 .gw-org-row-text b { font-size: 16px; }
-.gw-org-row-text span { font-size: 15px; color: var(--gw-sub); line-height: 23px;}
+.gw-org-row-text span { font-size: 14px; color: var(--gw-sub); line-height: 23px;}
 .gw-org-row-new { margin-left: auto; flex: none; }
-.gw-org-rows-foot { text-align: center; margin: 20px 0 0; }
+.gw-org-rows-foot { text-align: center; margin: 16px 0 0; }
 .gw-rl-menu-join { color: var(--gw-navy); font-weight: 700; }
 
 /* The invitation's facts (A3, join-invite.txt): "What it asks", "Who sees your answers". */
@@ -1207,7 +1211,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 /* "Almost in" (A3, join-waiting.txt): the three steps, done and still to happen. */
 
 /* "Stop these reminders" (A3, stop.txt): the two ways on, in a soft box. */
-.gw-stop-choices { display: grid; gap: 14px; justify-items: stretch; text-align: left; margin-top: 4px; padding: 18px 20px; border: 1px solid var(--gw-border); border-radius: 10px; background: var(--gw-page); }
+.gw-stop-choices { display: grid; gap: 12px; justify-items: stretch; text-align: left; margin-top: 4px; padding: 16px 16px; border: 1px solid var(--gw-border); border-radius: 8px; background: var(--gw-page); }
 .gw-stop-choices .gw-b { width: 100%; }
 
 /* A new organisation's welcome card and "Get <organisation> going" (A3, U.3; moves to Today in U.5). */
@@ -1222,7 +1226,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
 .gw-rl-sq-plus { background: var(--gw-page); color: var(--gw-text); }
 /* "Who can join" (A4 people.txt), on the People page. */
 
-.gw-org-row-static .gw-org-row-text { min-width: 0; overflow-wrap: break-word; } .gw-org-row-static { gap: 10px; padding: 12px; }
+.gw-org-row-static .gw-org-row-text { min-width: 0; overflow-wrap: break-word; } .gw-org-row-static { gap: 8px; padding: 12px; }
 .gw-auth-small a { color: var(--gw-navy); text-decoration: underline; }
 
 /* The People page and one person's page (U.4, A4 people.txt and one-person.txt). */
@@ -1248,12 +1252,12 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
    columns on a computer; on a phone each row becomes a short stack, and nothing is wider than the
    screen. */
 
-.gw-ci-waiting { margin-bottom: 24px; padding: 16px 18px; border-radius: 12px; background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b-soft); }
+.gw-ci-waiting { margin-bottom: 24px; padding: 16px 16px; border-radius: 12px; background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b-soft); }
 .gw-ci-waiting h2 { margin: 0 0 4px; color: var(--gw-amber-t); }
 .gw-ci-waiting > p { margin: 0 0 12px; color: var(--gw-sub); }
 
-.gw-ci-waiting-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
-.gw-ci-waiting-acts textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--gw-border); font: inherit; font-size: 15px; resize: vertical; line-height: 23px;}
+.gw-ci-waiting-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+.gw-ci-waiting-acts textarea { width: 100%; box-sizing: border-box; padding: 8px 8px; border-radius: 8px; border: 1px solid var(--gw-border); font: inherit; font-size: 14px; resize: vertical; line-height: 23px;}
 
 /* U.6: the setup panel that fills in as you talk sits beside the conversation on a wide screen only. */
 .gw-fills-in { display: none; }
@@ -1284,7 +1288,7 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
    `.gwui-plain-link`s (Hafsah's button-count review, 1 October), so the rule for the pill shape is
    gone - nothing in this file draws it any more. */
 .gwui-ci-tab {
-  padding: 0 0 10px; font-size: 14px; font-weight: 500; color: var(--gw-sub);
+  padding: 0 0 8px; font-size: 14px; font-weight: 500; color: var(--gw-sub);
   text-decoration: none; white-space: nowrap; background: none; border: none;
   border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit;
 }

@@ -9,7 +9,8 @@ describe('a name Groundwork made up is not said as the organisation', () => {
   it.each(["Wanjiru's workspace", 'Wanjiru’s workspace', 'My workspace', 'Wanjiru Kamau\'s workspace'])('%s reads "Ask Groundwork"', (made) => {
     expect(askName(made)).toBe('Ask Groundwork');
     expect(whoSeesWhatYouSayIn({ scenario: 'OKR_ALIGNMENT', peersVisibleToEachOther: null, organization: { name: made } })).toBe(
-      'The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Groundwork stay private.',
+      /* Changed 15 November 2026: the one owner's sentence (whoCanReadWhatYouSay); the Ask name is pinned by the line above. */
+      'You see your own report straight away. The person who runs it shares a team report when it is ready. Nobody else reads your conversation.',
     );
   });
   it('a real name is used once one is given', () => {

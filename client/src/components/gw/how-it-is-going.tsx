@@ -68,11 +68,11 @@ function roundsSentence(progress: Glance['progress']): string {
   const roundsDone = roundsPlanned ? Math.min(progress.roundsDone, roundsPlanned) : progress.roundsDone
   const verb = roundsDone === 1 ? 'is' : 'are'
   /* None done yet reads as a sentence, not "0 of the 12 sessions are done." */
-  if (roundsDone === 0) return roundsPlanned ? `None of the ${roundsPlanned} sessions is done yet.` : 'No session is done yet.'
+  if (roundsDone === 0) return roundsPlanned ? `None of the ${roundsPlanned} check-ins is done yet.` : 'No check-in is done yet.'
   if (roundsPlanned && roundsDone < roundsPlanned) {
-    return `${spellOne(roundsDone)} of the ${roundsPlanned} sessions ${verb} done.`
+    return `${spellOne(roundsDone)} of the ${roundsPlanned} check-ins ${verb} done.`
   }
-  return `${spellOne(roundsDone)} ${roundsDone === 1 ? 'session is' : 'sessions are'} done.`
+  return `${spellOne(roundsDone)} ${roundsDone === 1 ? 'check-in is' : 'check-ins are'} done.`
 }
 
 /**
@@ -88,7 +88,7 @@ function roundsSentence(progress: Glance['progress']): string {
  */
 function answeredSentence(progress: Glance['progress'], readerIsTheOnlyPerson?: boolean): string {
   const { answeredThisRound: a, ofPeople: n } = progress
-  if (a === 0) return 'Nobody has answered this session yet.'
+  if (a === 0) return 'Nobody has answered this check-in yet.'
   /*
    * THE FOUNDER'S OWN CHECK-IN BOARD, AND ANY OTHER ONE-PERSON CHECK-IN READ BY THAT PERSON
    * (founder.txt): "The one person in this session has answered." talks about the reader in the
@@ -96,11 +96,11 @@ function answeredSentence(progress: Glance['progress'], readerIsTheOnlyPerson?: 
    * the way the rest of the board already speaks to "you". A reader who is NOT that person (a
    * read-only admin, say) still reads the third-person sentence, unchanged.
    */
-  if (n === 1) return readerIsTheOnlyPerson ? 'You have answered this session.' : 'The one person in this session has answered.'
+  if (n === 1) return readerIsTheOnlyPerson ? 'You have answered this check-in.' : 'The one person in this check-in has answered.'
   /* Reviewer, 14 October: "Everybody has answered" went out before the reps had even been contacted.
      Everybody is only everybody when nobody invited is still to join. */
-  if (a === n) return (progress.notJoinedYet ?? 0) > 0 ? 'Everybody who has joined has answered this session.' : 'Everybody has answered this session.'
-  return `${a} of ${n} people ${a === 1 ? 'has' : 'have'} answered this session.`
+  if (a === n) return (progress.notJoinedYet ?? 0) > 0 ? 'Everybody who has joined has answered this check-in.' : 'Everybody has answered this check-in.'
+  return `${a} of ${n} people ${a === 1 ? 'has' : 'have'} answered this check-in.`
 }
 
 /**

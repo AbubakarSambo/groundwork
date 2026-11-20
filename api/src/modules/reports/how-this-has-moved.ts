@@ -15,6 +15,8 @@
  * started rating people.
  */
 
+import { withoutAStoredCount } from './the-picture-in-plain-sentences';
+
 export interface KeptRound {
   round: number;
   sharedPicture: string;
@@ -26,6 +28,8 @@ export interface KeptRound {
 
 export interface Movement {
   round: number;
+  /** The same number, under the name every page reads: a row served without it was said as "On 4 December", a day that is no round's, instead of "At the end of check-in 3, on 4 December" (run 10). */
+  sessionNumber: number;
   takenAt: string;
   /** The one line that round's picture opened with. */
   says: string;
@@ -35,9 +39,13 @@ export interface Movement {
   amended: string | null;
 }
 
-/** The first sentence of a picture, which is what that round led with. */
+/**
+ * The first sentence of a picture, which is what that round led with. A count of who had answered is not what a round led with: it was
+ * true on the day it was written ("One of the five people has answered so far" stayed under 23 December after all five had), so, as
+ * on the board and the lists, it is left out and what follows it is read first (withoutAStoredCount, the one owner of that rule).
+ */
 function opening(picture: string): string {
-  const t = (picture ?? '').trim();
+  const t = withoutAStoredCount((picture ?? '').trim());
   if (!t) return '';
   const end = t.search(/[.!?](\s|$)/);
   const first = end === -1 ? t : t.slice(0, end + 1);
@@ -64,6 +72,7 @@ export function howThisHasMoved(rounds: KeptRound[]): Movement[] {
     .sort((a, b) => a.round - b.round)
     .map((r) => ({
       round: r.round,
+      sessionNumber: r.round,
       takenAt: new Date(r.takenAt).toISOString().slice(0, 10),
       says: opening(r.sharedPicture),
       differences: count(r.divergences),

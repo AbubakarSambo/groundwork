@@ -17,7 +17,7 @@ vi.mock('@/api/conversation', () => ({
 }))
 vi.mock('@/api/documents', () => ({ documentsApi: { upload: vi.fn() } }))
 
-const LINE = 'This takes about ten minutes. You can stop any time with End session.\n\nKevin, Ngong Road Minimart said they would pay KES 25,000 for 5 units on delivery tomorrow.'
+const LINE = 'This takes about ten minutes. You can stop any time with End check-in.\n\nKevin, Ngong Road Minimart said they would pay KES 25,000 for 5 units on delivery tomorrow.'
 const QUESTION = 'Is the delivery set for tomorrow, and who is taking it?'
 
 function renderChat() {

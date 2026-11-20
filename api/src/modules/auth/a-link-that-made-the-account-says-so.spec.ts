@@ -64,16 +64,15 @@ describe('verify-email says justCreated only when this link made the account', (
     const res = await service({ pending: waiting }).verifyEmail({ token: 'link' } as any);
     expect(res.justCreated).toBe(true);
     expect(res.user.email).toBe('wairimu@baridi.test');
-    /* No password yet, so the password step still follows the card. */
-    expect(res.needsPassword).toBe(true);
-    expect(res.passwordSetupToken).toEqual(expect.any(String));
+    /* Changed in batch 2, group 6 (S14): a link never asks for a password, so no answer carries a password step. */
+    expect(res).not.toHaveProperty('needsPassword');
+    expect(res).not.toHaveProperty('passwordSetupToken');
   });
 
   it('a sign-up that chose a password gets it on the account, so no password step follows', async () => {
     /* U.3 review, a security fix: in the browser that chose it, which presents its key. */
     const res = await service({ pending: { ...waiting, passwordHash: 'a-bcrypt-hash', passwordKeyHash: hashed('the-key') } }).verifyEmail({ token: 'link', passwordKey: 'the-key' } as any);
     expect(res.justCreated).toBe(true);
-    expect(res.needsPassword).toBe(false);
     expect(res).not.toHaveProperty('passwordSetupToken');
   });
 

@@ -1,3 +1,4 @@
+/* 7 November 2026: one voice, "I" (Hafsah's fixed rule; staging check S15), so "We’ve asked" reads "I have asked". */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -32,7 +33,7 @@ describe('after a real invitation', () => {
   it('names the admin who was asked, as the prototype does', async () => {
     ;(authApi.myWaiting as any).mockResolvedValue(AFTER_AN_INVITATION)
     open()
-    expect(await screen.findByText('You’re from outside Baridi Appliances, so an admin there has to let you in. We’ve asked Grace Achieng.')).toBeTruthy()
+    expect(await screen.findByText('You’re from outside Baridi Appliances, so an admin there has to let you in. I have asked Grace Achieng.')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Almost in' })).toBeTruthy()
     /* U.20 (the invitation's rebuild): the page now uses the shared `Steps`/`Step` part
        (components/gw/ui), whose class is `gwui-steps` rather than the old page-only `gw-steps` -
@@ -92,7 +93,7 @@ describe('when the true reason is that the plan has no free seat (U.8 re-review)
   it('says the true reason, not that Faraji is a stranger to his own organisation', async () => {
     ;(authApi.myWaiting as any).mockResolvedValue({ ...AFTER_AN_INVITATION, heldForASeat: true })
     open()
-    expect(await screen.findByText('Baridi Appliances has no free seat right now, so an admin there has to make room before you can start. We’ve asked Grace Achieng.')).toBeTruthy()
+    expect(await screen.findByText('Baridi Appliances has no free seat right now, so an admin there has to make room before you can start. I have asked Grace Achieng.')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/You’re from outside/)
   })
 })
@@ -101,7 +102,7 @@ describe('after a link shared with many people', () => {
   it('names nobody and offers no reminder', async () => {
     ;(authApi.myWaiting as any).mockResolvedValue({ ...AFTER_AN_INVITATION, admin: null, inviterFirstName: null })
     open()
-    expect(await screen.findByText('You’re from outside Baridi Appliances, so an admin there has to let you in. We’ve asked the admins there.')).toBeTruthy()
+    expect(await screen.findByText('You’re from outside Baridi Appliances, so an admin there has to let you in. I have asked the admins there.')).toBeTruthy()
     expect(screen.getByText('You asked to join')).toBeTruthy()
     expect(screen.getByText('I’ll email you the moment they do, and your first check-in will be waiting.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Remind/ })).toBeNull()

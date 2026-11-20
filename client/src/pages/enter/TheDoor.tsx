@@ -7,7 +7,8 @@ import { Panel, PageTitle, TextArea, Button, QuickReplies, Stack, Note } from '@
  *
  * One box and one question. The examples put their words in the box; nothing is sent until the
  * person presses the button, and what they send opens the setup conversation exactly as describing
- * it in their own words always has. The list of every situation is one link away.
+ * it in their own words always has. The list of every situation is one link away, under the box and above the examples, so a short
+ * window (a shared screen) never pushes it below the fold of the page's own scroller (pilot, 12 November).
  *
  * REBUILT FROM THE SHARED PARTS (group 3, piece 4d-1, B1-starting-a-check-in): `Panel` for the
  * white bordered box, `FieldLabel`/`TextArea` for the question and the field, `Button` for
@@ -45,17 +46,17 @@ export function TheDoor({
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
             aria-label={THE_DOOR.heading}
           />
+          <Note>
+            {RATHER_PICK.before}{' '}
+            <button type="button" onClick={onSeeEverySituation} className="gwui-plain-link">
+              {RATHER_PICK.link}
+            </button>
+            .
+          </Note>
           <QuickReplies items={[...THE_EXAMPLES]} onPick={setText} label="Examples" />
           <Button onClick={send} disabled={!text.trim()}>{THE_DOOR.button}</Button>
         </Stack>
       </Panel>
-      <Note>
-        {RATHER_PICK.before}{' '}
-        <button type="button" onClick={onSeeEverySituation} className="gwui-plain-link">
-          {RATHER_PICK.link}
-        </button>
-        .
-      </Note>
     </div>
   )
 }

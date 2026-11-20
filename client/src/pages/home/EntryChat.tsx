@@ -110,7 +110,7 @@ export function EntryChat() {
         <div>
           {/* Was the production URL typed in, so a staging build sent people to production. */}
           <a href={MARKETING_URL} className="gw-logo" style={{ textDecoration: 'none', color: 'inherit' }}>Groundwork</a>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{MODE_LABEL[mode]} · Entry session</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{MODE_LABEL[mode]} · Entry check-in</div>
         </div>
         <button className="gw-back" onClick={() => navigate('/')}>Back</button>
       </div>
@@ -148,7 +148,7 @@ export function EntryChat() {
         {!done && (
           <>
             <div style={{ padding: '4px 14px', borderTop: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: '15px' }}>
-              Your words are private. Nothing is saved until you choose to save it.
+              We keep what you type here for two days so you can come back to it.
             </div>
             <div className="gw-chat-bar">
               <textarea

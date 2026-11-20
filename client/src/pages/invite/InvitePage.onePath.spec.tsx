@@ -30,6 +30,7 @@ const PREVIEW = {
   groundLabel: 'Groundwork project',
   initiatorName: 'Sarah Okonkwo',
   leadFirstName: 'Sarah',
+  whoCanReadWhatYouSay: 'You see your own report straight away. Sarah shares a team report when it is ready. Nobody else reads your conversation.',
   scenario: 'NEW_PROJECT',
   roleAsDescribed: null,
   alreadyAccepted: false,
@@ -91,7 +92,7 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
      opens it before checking the words are still there.
 
      UPDATED 29 September, item 11 conflict A: the callout is now built from the check-in's own
-     scenario (`whoCanReadThis`), not a fixed sentence, and the two held sentences ("Nobody else
+     scenario (`whoSeesYourAnswers`), not a fixed sentence, and the two held sentences ("Nobody else
      reads your answers.", "Wairimu reads the report, not your words.") are dropped for good, not
      just held - they are not true once admins and the people in a check-in can read it (decision 1).
      NEW_PROJECT is not a performance plan, a promotion or a renewal, so the admins sentence is
@@ -103,15 +104,18 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
      guest (one read "Admins in your organisation can read every check-in." about an organisation
      that was not theirs). Naming the organisation is true either way, so PREVIEW above now carries
      `organisationName` and the assertions read the named form. */
-  it('keeps the privacy panel once, reachable from a link, and says what the prototype says', async () => {
+  /* CHANGED 15 NOVEMBER 2026 (audit of the check-in pages, rows 12 and 14): the privacy modal behind "What happens to what you write" is
+     deleted, and the callout is folded into "Who sees your answers", so the one true sentence about who can read it is said once. */
+  it('says who can read it once, inside "Who sees your answers", with no privacy modal behind a link', async () => {
     renderInvite()
     await screen.findByText('Sarah invited you to the Groundwork project check-in' /* F5, stage 6 */)
-    expect(screen.getByText(/The people in this check-in, including your manager, can see what you say in it\. Admins at Acme Inc can read every check-in\. Your own report and your questions to Ask\s+Acme Inc stay private\./)).toBeTruthy()
+    expect(screen.getAllByText('You see your own report straight away. Sarah shares a team report when it is ready. Nobody else reads your conversation.')).toHaveLength(1)
+    expect(document.body.textContent).not.toMatch(/can see what you say in it|Admins at/)
+    expect(screen.getByText('Who sees your answers')).toBeTruthy()
     expect(screen.queryByText('Nobody you work with reads it')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'What happens to what you write' }))
-    expect(screen.getByText('Who can read what you write')).toBeTruthy()
-    expect(screen.getAllByText(/Admins at Acme Inc can read every check-in\./).length).toBe(2)
-    expect(screen.queryByText(/Nobody else reads your answers/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'What happens to what you write' })).toBeNull()
+    expect(screen.queryByText(/dress up/)).toBeNull()
+    /* Changed 15 November 2026: "Nobody else reads your conversation." is back, as the end of the server's one sentence (Hafsah's decision), so it is no longer barred; "reads the report, not your words" still is. */
     expect(screen.queryByText(/reads the report, not your words/i)).toBeNull()
     expect(screen.getByText('About ten minutes. You choose how you sign in afterwards.')).toBeTruthy()
   })

@@ -55,7 +55,7 @@ const AT_A_GLANCE = {
     team: ['Today: 2 of 3 checked in'],
     plan: ['2 open'],
     risk: ['1 blocking. The biggest: Price objections, raised once'],
-    rest: ['3 sessions so far, each with its reports'],
+    rest: ['3 check-ins so far, each with its reports'],
   },
   needsTheLead: '1 thing: Wairimu Kamau needs to get back to Brian Ochieng.',
   assumesEach: {},
@@ -71,7 +71,7 @@ function board(overrides: any = {}) {
     kindOfWork: 'sales org',
     workRecords,
     objectives: [{ id: 'o1', name: 'The team is aiming for 25 freezers sold.', target: 25, count: 21, ownerParticipantId: null, assumes: [] }],
-    workPlan: [{ id: 'w1', who: 'Miriam Wanjiru', what: 'Collect the deposit from Westgate Deli.', state: 'open', says: 'In session 2, Miriam Wanjiru said, "Collect the deposit from Westgate Deli."' }],
+    workPlan: [{ id: 'w1', who: 'Miriam Wanjiru', what: 'Collect the deposit from Westgate Deli.', state: 'open', says: 'In check-in 2, Miriam Wanjiru said, "Collect the deposit from Westgate Deli."' }],
     leadActions: [{ id: 'la1', says: 'You need to get back to Brian Ochieng, who is waiting on you for a stopping rule.', because: 'It was first said on 5 October.', action: { label: 'Reply in your check-in', goesTo: 'check-in' } }],
     howItIsGoing: { latestSummary: null, glance: { progress: { roundsDone: 3, roundsPlanned: 12, answeredThisRound: 2, ofPeople: 3 }, inTheWay: { count: 0, oldest: null, daysWaiting: null } } },
     atAGlance: AT_A_GLANCE,
@@ -121,7 +121,7 @@ describe('the light sales board, as Wairimu, who runs it', () => {
 
     expect(screen.getByText(/^Updated Wed 23 Sep, \d{1,2}(:\d\d)?(am|pm)/)).toBeTruthy()
     // The full sentence is one tap away behind the ⓘ, not gone.
-    expect(screen.getByText(/^Last updated on Wednesday 23 September at \d{1,2}(:\d\d)?(am|pm)\. The board only changes when something new comes in/)).toBeTruthy()
+    expect(screen.getByText(/^Last updated on Wednesday 23 September at \d{1,2}(:\d\d)?(am|pm)\.$/)).toBeTruthy() /* Changed in batch 2, group 6 (Hafsah, 4 November, issue 40): the status line stays, its explanation goes for everybody. */
     expect(screen.getByText('Tap any line to see more')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Views' })).toBeTruthy()
 
@@ -149,12 +149,13 @@ describe('the light sales board, as Wairimu, who runs it', () => {
     expect(boxNamed('Deals and targets').contains(deals)).toBe(true)
   })
 
-  it('puts the work plan under "Plan and commitments", folded, with its words unchanged inside', async () => {
+  it('puts the work plan under "Plan and commitments", open, with its words unchanged inside', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'LEAD' }
     renderBoard(board())
     await screen.findByRole('heading', { name: 'Everything else' })
     const plan = await vi.waitFor(() => lineNamed('Work plan'))
-    expect(plan.hasAttribute('open')).toBe(false)
+    /* Open to begin with, not folded (Hafsah, 13 November 2026). */
+    expect(plan.hasAttribute('open')).toBe(true)
     expect(plan.querySelector('.gwui-fold-fact')?.textContent).toBe('2 open')
     expect(boxNamed('Plan and commitments').contains(plan)).toBe(true)
     expect(within(plan).getByText(/Collect the deposit from Westgate Deli/)).toBeTruthy()
@@ -166,7 +167,8 @@ describe('the light sales board, as Grace, an admin who reads it', () => {
     me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
     renderBoard(board({ leadActions: [], readOnlyNote: 'You can read this check-in’s board and reports. Wairimu Kamau runs it.' }))
     const glance = await screen.findByRole('region', { name: 'At a glance' })
-    expect(within(glance).getByText('For you as an admin. The lead runs this check-in.')).toBeTruthy()
+    /* "For you as an admin. The lead runs this check-in." was removed (15 November 2026): the reader knows their own role. */
+    expect(within(glance).queryByText(/The lead runs this check-in/)).toBeNull()
     expect(within(glance).getByText('Deals and targets')).toBeTruthy()
     /* Each fact on its own line, never two joined with a dot (boards audit O1, 30 October; this read the joined line). */
     expect(within(glance).getByText('2 deals, each with what shows it')).toBeTruthy()
@@ -174,9 +176,10 @@ describe('the light sales board, as Grace, an admin who reads it', () => {
     expect(glance.textContent).not.toContain(' · ')
     expect(within(glance).getByText('What needs the lead')).toBeTruthy()
     expect(within(glance).getByText('1 thing: Wairimu Kamau needs to get back to Brian Ochieng.')).toBeTruthy()
-    const full = screen.getByText('Open the full board').closest('details') as HTMLElement
-    expect(full.hasAttribute('open')).toBe(false)
-    // Everything is still there inside it, folded the same way as the lead's.
+    /* The full board is open to begin with (Hafsah, 13 November 2026), so its button offers to close it. */
+    const full = screen.getByText('Close the full board').closest('details') as HTMLElement
+    expect(full.hasAttribute('open')).toBe(true)
+    // Everything is there inside it, as the lead reads it.
     await vi.waitFor(() => expect(full.contains(lineNamed('Every deal, day by day'))).toBe(true))
     expect(within(full).getByText('Westgate Deli')).toBeTruthy()
     // An admin is never told "What needs you": it is not hers to do.
@@ -185,7 +188,7 @@ describe('the light sales board, as Grace, an admin who reads it', () => {
 })
 
 describe('the sales board, as Miriam, a team member', () => {
-  it('keeps her own view, with the short "Updated" line and the deal key behind ⓘ, and never gets the lead’s summary', async () => {
+  it('keeps her own view, with the short "Updated" line and the deal key in plain sight, and never gets the lead’s summary', async () => {
     me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
     renderBoard(board({
       atAGlance: undefined, myParticipantId: 'p-miriam', canEditFrame: false,
@@ -193,9 +196,9 @@ describe('the sales board, as Miriam, a team member', () => {
     }))
     await screen.findByText('Your deals, day by day')
     expect(screen.getByText(/^Updated Wed 23 Sep, \d{1,2}(:\d\d)?(am|pm)/)).toBeTruthy()
-    const key = screen.getByLabelText('What the marks mean').closest('details') as HTMLElement
-    expect(key.hasAttribute('open')).toBe(false)
-    expect(within(key).getByText(/Contact in their words/)).toBeTruthy()
+    /* The key is read as a line, not behind ⓘ (Hafsah, 13 November 2026). */
+    expect(screen.queryByLabelText('What the marks mean')).toBeNull()
+    expect(screen.getAllByText(/Contact in their words/).length).toBeGreaterThan(0)
     expect(screen.queryByText('At a glance')).toBeNull()
     expect(screen.queryByText('Everything else')).toBeNull()
   })

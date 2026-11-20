@@ -1,4 +1,5 @@
 import { workingDaysOf } from '../grounds/which-days-this-team-works';
+import { aRoundCouldHaveBeenAnswered, whenACheckInBegan } from '../grounds/a-round-that-could-be-answered';
 /**
  * WHO HAS ANSWERED TODAY, BY THEIR USUAL TIME, AND WHO KEEPS ANSWERING ON TIME (nudges that get answers; Hafsah, 20 October 2026; behind
  * `organizations.direct_morning_on`, organisation/the-direct-morning-switch.ts, wherever it changes what somebody reads).
@@ -20,6 +21,7 @@ import { workingDaysOf } from '../grounds/which-days-this-team-works';
  * FACTS ONLY. Nothing here is a label on a person: a sentence built from it says what happened and on which day.
  */
 
+import { theyAnsweredIn, whenTheyAnswered } from '../board/a-day-they-checked-in';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 
 export const AN_HOUR_AFTER_THEIR_USUAL_TIME = 60;
@@ -37,6 +39,8 @@ export interface ASessionOnRecord {
   availableFrom?: Date | string | null;
   createdAt?: Date | string | null;
   closedReason?: string | null;
+  /** Their first answer in it (one is enough), where it was read: this is what says they answered, whatever closed the session. */
+  turns?: { id?: string; createdAt?: Date | string | null }[] | null;
   /**
    * The check-in opens a session each working day (cadence DAILY), and the working days it opens on. A daily session not answered stays
    * open, and no new one opens until it is, so one open session can stand for several working days missed (final real-model check, item 5:
@@ -44,6 +48,15 @@ export interface ASessionOnRecord {
    */
   opensDaily?: boolean;
   workingDays?: number[] | null;
+  /**
+   * When Groundwork paused for the organisation this check-in belongs to, if it is paused now (billing/the-trial-grace.ts, the one owner
+   * of that date). A round that opened then was never sent to anybody and nothing about the work went out, so nobody could answer it:
+   * it is neither a miss nor a check-in made (run 5, 19 November: "so call Asha" for rounds of 19 and 26 January in a paused organisation).
+   * Set once, where the sessions are read.
+   */
+  pausedFrom?: Date | string | null;
+  /** When this person joined, set once where the sessions are read (a-round-that-could-be-answered). */
+  joinedAt?: Date | string | null;
 }
 
 export interface TheirDay {
@@ -71,6 +84,8 @@ export interface TheirDay {
    * opened five to nine days after the one before; 'time' otherwise. Absent on a day built before this was kept, which reads as 'day'.
    */
   onTimeEvery?: 'day' | 'week' | 'time';
+  /** Groundwork is paused for the organisation: nothing is open and nobody can answer, so nothing is late and nothing is missed (run 10: "has checked in" beside "hasn't checked in since 13 January"). */
+  paused?: boolean;
 }
 
 const DAY = 86_400_000;
@@ -105,18 +120,23 @@ export function aTimeOfDay(d: Date, zone: string): string {
 }
 
 const openedAt = (c: ASessionOnRecord): Date | null => (c.availableFrom ? new Date(c.availableFrom) : c.createdAt ? new Date(c.createdAt) : null);
-/** Answered: finished by the person. A session the clock closed is not an answer. */
-export const wasAnswered = (c: ASessionOnRecord): boolean =>
-  String(c.status ?? '').toUpperCase() === 'COMPLETED' && !!c.completedAt && !/auto|expired|timed|missed/i.test(String(c.closedReason ?? ''));
+/**
+ * Answered, read by the one owner of "checked in" (board/a-day-they-checked-in.ts): they said something in it, whatever closed it. A
+ * round the clock closed after they gave their number is an answer; one closed with nothing from them is not.
+ */
+const asHappened = (c: ASessionOnRecord) => ({ ...c, answers: Array.isArray(c.turns) ? c.turns.length : null, firstAnsweredAt: c.turns?.[0]?.createdAt ?? null });
+export const wasAnswered = (c: ASessionOnRecord): boolean => String(c.status ?? '').toUpperCase() === 'COMPLETED' && theyAnsweredIn(asHappened(c));
+/** When they answered in it: their first answer, else when it was finished. */
+export const whenAnswered = (c: ASessionOnRecord): Date | null => whenTheyAnswered(asHappened(c));
 
 /** Their usual time of day, from their own answers; null with fewer than three answered on the day they opened. */
 export function theirUsualTime(sessions: ASessionOnRecord[], zone: string, beforeDay: string): number | null {
   const sameDay = sessions
-    .filter((c) => !c.isSetup && wasAnswered(c) && openedAt(c) && aDayIn(new Date(c.completedAt as any), zone) < beforeDay)
-    .filter((c) => aDayIn(new Date(c.completedAt as any), zone) === aDayIn(openedAt(c)!, zone))
-    .sort((a, b) => new Date(b.completedAt as any).getTime() - new Date(a.completedAt as any).getTime())
+    .filter((c) => !c.isSetup && wasAnswered(c) && whenAnswered(c) && openedAt(c) && aDayIn(whenAnswered(c)!, zone) < beforeDay)
+    .filter((c) => aDayIn(whenAnswered(c)!, zone) === aDayIn(openedAt(c)!, zone))
+    .sort((a, b) => whenAnswered(b)!.getTime() - whenAnswered(a)!.getTime())
     .slice(0, SESSIONS_READ)
-    .map((c) => minutesIn(new Date(c.completedAt as any), zone))
+    .map((c) => minutesIn(whenAnswered(c)!, zone))
     .sort((a, b) => a - b);
   if (sameDay.length < ANSWERS_FOR_A_USUAL_TIME) return null;
   const mid = Math.floor(sameDay.length / 2);
@@ -137,7 +157,7 @@ export function theirDay(participantId: string, all: ASessionOnRecord[], now: Da
   const mine = all.filter((c) => c.participantId === participantId && !c.isSetup && openedAt(c) && openedAt(c)! <= now)
     .sort((a, b) => openedAt(a)!.getTime() - openedAt(b)!.getTime() || Number(a.sessionNumber ?? 0) - Number(b.sessionNumber ?? 0));
   const usual = theirUsualTime(mine, zone, today);
-  const answeredOn = (c: ASessionOnRecord) => (wasAnswered(c) && new Date(c.completedAt as any) <= now ? aDayIn(new Date(c.completedAt as any), zone) : null);
+  const answeredOn = (c: ASessionOnRecord) => (wasAnswered(c) && whenAnswered(c) && whenAnswered(c)! <= now ? aDayIn(whenAnswered(c)!, zone) : null);
 
   /* What is due today: a session open now, or answered today. */
   const answeredTodaySessions = mine.filter((c) => answeredOn(c) === today);
@@ -150,11 +170,12 @@ export function theirDay(participantId: string, all: ASessionOnRecord[], now: Da
     const opened = openedAt(c);
     if (!day || !opened || day !== aDayIn(opened, zone)) return false;
     const by = lateAfterFor(usual, opened, zone);
-    return !!by && minutesIn(new Date(c.completedAt as any), zone) <= by.minutes;
+    return !!by && minutesIn(whenAnswered(c)!, zone) <= by.minutes;
   };
   const answeredToday = answeredTodaySessions.length > 0;
   const answeredOnTimeToday = answeredTodaySessions.some(onTimeFor);
-  const lateToday = dueToday && !answeredToday && !!lateAfter && nowMinutes > lateAfter.minutes;
+  const paused = mine.some((c) => !!c.pausedFrom && new Date(c.pausedFrom).getTime() <= now.getTime());
+  const lateToday = !paused && dueToday && !answeredToday && !!lateAfter && nowMinutes > lateAfter.minutes;
 
   const days = mine.map(answeredOn).filter((k): k is string => !!k).sort();
   const lastCheckedIn = days.length ? days[days.length - 1] : null;
@@ -163,7 +184,12 @@ export function theirDay(participantId: string, all: ASessionOnRecord[], now: Da
   /* A day they answered any session on is a day they checked in (polish round 15; board/a-day-they-checked-in.ts). */
   const answeredDays = new Set(days);
   const missed = new Set<string>();
+  /* A round that opened before the person joined, before anybody had said anything in the check-in, or once Groundwork was paused could not have been
+     answered: never a miss (the one owner, a-round-that-could-be-answered). */
+  const checkInBeganAt = whenACheckInBegan(all.map((c) => ({ isSetup: c.isSetup, turns: c.turns })));
+  const couldNotAnswer = (c: ASessionOnRecord) => !aRoundCouldHaveBeenAnswered(openedAt(c), { pausedFrom: c.pausedFrom, joinedAt: c.joinedAt, checkInBeganAt });
   for (const c of mine) {
+    if (couldNotAnswer(c)) continue;
     const k = aDayIn(openedAt(c)!, zone);
     if (k >= today || (lastCheckedIn && k <= lastCheckedIn)) continue;
     if (answeredOn(c) === k || (c.opensDaily && answeredDays.has(k))) continue;
@@ -172,9 +198,12 @@ export function theirDay(participantId: string, all: ASessionOnRecord[], now: Da
   /* A daily session still open is missed on each working day since it opened, up to yesterday: no new session opened on those days. */
   for (const c of mine) {
     if (!c.opensDaily || answeredOn(c) || String(c.status ?? '').toUpperCase() === 'COMPLETED' || /auto|expired|timed|missed/i.test(String(c.closedReason ?? ''))) continue;
+    if (couldNotAnswer(c)) continue;
     const works = new Set<number>(workingDaysOf(c.workingDays));
+    const pausedDay = c.pausedFrom ? aDayIn(new Date(c.pausedFrom), zone) : null;
     for (let k = aDayIn(openedAt(c)!, zone), n = 0; k < today && n < 400; k = plus(k, 1), n++) {
       if (lastCheckedIn && k <= lastCheckedIn) continue;
+      if (pausedDay && k >= pausedDay) break;
       if (works.has(noon(k).getUTCDay())) missed.add(k);
     }
   }
@@ -199,7 +228,7 @@ export function theirDay(participantId: string, all: ASessionOnRecord[], now: Da
   }
   const gaps = runningOpened.slice(1).map((d, i) => Math.round((new Date(`${runningOpened[i]}T12:00:00Z`).getTime() - new Date(`${d}T12:00:00Z`).getTime()) / 86_400_000));
   const onTimeEvery: TheirDay['onTimeEvery'] = gaps.every((g) => g <= 4) ? 'day' : gaps.every((g) => g >= 5 && g <= 9) ? 'week' : 'time';
-  return { participantId, dueToday, answeredToday, answeredOnTimeToday, lateAfter, lateToday, lastCheckedIn, missedDays, onTimeRunning, onTimeLastDay, onTimeEvery };
+  return { participantId, dueToday, answeredToday, answeredOnTimeToday, lateAfter, lateToday, lastCheckedIn, missedDays, onTimeRunning, onTimeLastDay, onTimeEvery, paused };
 }
 
 /** Whether the days follow one another, counting only the days the team works. */
@@ -278,7 +307,7 @@ export async function onTimeForThemselves(prisma: any, groundId: string | null |
     const zone = (g?.organizationId ? await theOrganisationsZone(prisma, g.organizationId).catch(() => null) : null) ?? THE_PRODUCTS_OWN_ZONE;
     const sessions: ASessionOnRecord[] = (await prisma?.checkIn?.findMany?.({
       where: { groundId, participantId },
-      select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true },
+      select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } },
     })) ?? [];
     /* Whether it opens each working day, read the same way as the lead's morning (the-direct-morning.ts). */
     const daily = String(g?.cadence ?? '').toUpperCase() === 'DAILY';

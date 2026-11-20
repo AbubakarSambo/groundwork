@@ -146,7 +146,8 @@ describe('the bar, since 20 September 2026', () => {
     expect(service).not.toContain('return { ready: false, ask: THE_ONE_CONCRETE_THING };');
   });
   it('answers a bare acknowledgement rather than saying it did not come out right', () => {
-    expect(service).toContain("reply = screened.text || (isAnAcknowledgement(message) ? 'Noted.' : ASK_AGAIN);");
+    /* Changed 16 November 2026 (fix plan group 2): the choice is whatIsSaidWhenNothingIsLeft, which says a thank-you on the turn that closes; its own spec reads what it says. */
+    expect(service).toContain('reply = screened.text || whatIsSaidWhenNothingIsLeft({ closing: closingNow, acknowledgement: isAnAcknowledgement(message) });');
     expect(isAnAcknowledgement('Ok.')).toBe(true);
     expect(isAnAcknowledgement('No.')).toBe(true);
     expect(isAnAcknowledgement('It is on the system.')).toBe(false);

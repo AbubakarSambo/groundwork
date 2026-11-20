@@ -1,11 +1,11 @@
 /* weekly-report.jpg: the weekly report as pictured, built from the prototype's classes (panel, pad, g4, list, item).
    Only what the prototype has no class for is here: a number large, with what it counts under it, and "What changed" as two columns. */
 .wr-tile { display: grid; gap: 4px; }
-.wr-tile b { font-family: var(--name); font-weight: 500; font-variant-numeric: lining-nums; font-size: 26px; }
+.wr-tile b { font-family: var(--name); font-weight: 500; font-variant-numeric: lining-nums; font-size: 24px; }
 .wr-changed { display: grid; gap: 0; }
-.wr-changed-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; padding: 14px 0; border-top: 1px solid var(--rule); }
+.wr-changed-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--rule); }
 .wr-changed-row:first-child { border-top: 0; padding-top: 0; }
 .wr-changed-row b { font-size: 14px; padding-top: 2px; }
 @media (max-width: 600px) { .wr-changed-row { grid-template-columns: 1fr; } }
-.wr-nothing-h { font-family: var(--name); font-weight: 500; font-size: 26px; margin: 24px 0 8px; }
+.wr-nothing-h { font-family: var(--name); font-weight: 500; font-size: 24px; margin: 24px 0 8px; }
 .wr-nothing-p { color: var(--muted); margin: 0 0 16px; }

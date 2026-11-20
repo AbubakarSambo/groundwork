@@ -1,3 +1,4 @@
+import { theirWordsAsSaid, theWordsAlone, mayBeQuoted } from '../conversation/their-words-as-said';
 /**
  * LAYER 3: THE NEXT STEP FOR EACH PATTERN (Hafsah's brief of 31 October 2026, part 4).
  *
@@ -122,13 +123,15 @@ function atRung(p: APatternAcrossAssessments, rung: number, startedIn: AnInterve
   };
 }
 
-/** Each instance as a plain sentence: the day, and their words. */
+/**
+ * Each instance as a plain sentence: the day, and their words in quotation marks only when they typed them word for word
+ * (their-words-as-said.ts); otherwise what it was about, said plainly (round 50 and round 52: a reworded line read as their quote).
+ */
 export function theInstancesAsSentences(p: Pick<APatternAcrossAssessments, 'instances'>): string {
   return p.instances.map((i) => {
     const when = i.on ? `On ${theDay(i.on)}` : `In check-in ${i.sessionNumber}`;
-    const w = (i.words[0] ?? '').trim().replace(/^"+|"+$/g, '');
-    /* Their own full stop ends the sentence, inside the quotation marks; none is added after it. */
-    return w ? `${when}, the words were "${/[.?!]$/.test(w) ? w : `${w}.`}"` : `${when}, it was about ${i.item}.`;
+    const w = i.words[0] ?? '';
+    return mayBeQuoted(i.saidWordForWord) && theWordsAlone(w) ? `${when}, the words were ${theirWordsAsSaid(w, true)}.` : `${when}, it was about ${theWordsAlone(i.item) || 'this'}.`;
   }).join(' ');
 }
 const theDay = (on: string) => new Date(`${on.slice(0, 10)}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });

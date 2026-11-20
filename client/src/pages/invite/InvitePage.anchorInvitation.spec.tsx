@@ -12,7 +12,7 @@ import { participantsApi } from '@/api/participants'
  *
  * Only when the preview serves `anchorInvitation` does the page draw its own heading, lines and
  * button; every other invitation is exactly as it reads today. The prototype's own sentence about
- * who can read this (`whoCanReadThis`) is kept either way.
+ * who can read this (`whoSeesYourAnswers`) is kept either way.
  */
 
 vi.mock('@/api/participants', () => ({
@@ -56,7 +56,7 @@ beforeEach(() => {
 describe('the invitation, for an anchor Ground', () => {
   it('draws the engine’s own heading, lines and button when anchorInvitation is served', async () => {
     ;(participantsApi.preview as any).mockResolvedValue({
-      groundLabel: 'Help my team understand', initiatorName: 'Hafsah', leadFirstName: 'Hafsah',
+      groundLabel: 'Help my team understand', initiatorName: 'Hafsah', leadFirstName: 'Hafsah', whoCanReadWhatYouSay: 'You see your own report straight away. Hafsah shares a team report when it is ready. Nobody else reads your conversation.',
       scenario: 'HELP_TEAM_UNDERSTAND', alreadyAccepted: false, anchorInvitation,
     })
     renderInvite()
@@ -67,12 +67,12 @@ describe('the invitation, for an anchor Ground', () => {
     expect(screen.getByRole('button', { name: anchorInvitation.button })).toBeTruthy()
     expect(screen.queryByText('Answer today’s check-in now')).toBeNull()
     // The prototype's own sentence about who can read this stays, unchanged.
-    expect(screen.getByText(/The people in this check-in, including your manager, can see what you say in it\./)).toBeTruthy()
+    expect(screen.getByText(/You see your own report straight away\./)).toBeTruthy()
   })
 
   it('is exactly as today when anchorInvitation is not served', async () => {
     ;(participantsApi.preview as any).mockResolvedValue({
-      groundLabel: 'Sales targets', initiatorName: 'Hafsah', leadFirstName: 'Hafsah',
+      groundLabel: 'Sales targets', initiatorName: 'Hafsah', leadFirstName: 'Hafsah', whoCanReadWhatYouSay: 'You see your own report straight away. Hafsah shares a team report when it is ready. Nobody else reads your conversation.',
       scenario: 'NEW_PROJECT', alreadyAccepted: false,
     })
     renderInvite()

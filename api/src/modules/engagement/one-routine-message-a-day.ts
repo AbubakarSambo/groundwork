@@ -20,13 +20,15 @@ import { formsOfTheSameNumber } from '../whatsapp/a-number-whatsapp-can-reach';
  * weekly letter (on a Friday it outranks the WhatsApp summary of the morning), and a participant being blocked.
  */
 export const ROUTINE_EMAILS: ReadonlySet<string> = new Set([
-  'sendNudge', 'sendAbsenceReminder', 'sendActivationReminder', 'sendActivationRevealReminder', 'sendFeedbackRequest',
+  'sendNudge', 'sendAbsenceReminder', 'sendActivationReminder', 'sendFeedbackRequest',
   'sendRoundDigest', 'sendTestCheckInMovesOn', 'sendHeresWhatIsNew', 'sendYourWeek', 'sendLeadFirstCheckIn', 'sendTheReportFollowUp', 'sendWhoHasGoneQuiet', 'sendWaitingOnThePeople', 'sendWhoHasNotStarted', 'sendTheLeadsDailyNudge', 'sendMissedCheckIns',
   /* The free month's reminder to an admin (15 October): Groundwork decides to send it, so it is the day's one. Not the four weeks'
      countdown after it (sendGroundworkPausesSoon, 2 November): a day's email held to another day would say the wrong number of days. */
   'sendFreeMonthEndsSoon',
   /* The day's routine WhatsApp message, by email when WhatsApp could not take it (whatsapp/by-email-instead.ts): still the day's one. */
   'sendTheRoutineMessageByEmail',
+  /* The year-end progress note (Fatima, increment 4): only when something meaningful is new, and then still the day's one. */
+  'sendTheYearEndProgress',
   /* Not 'sendTimeRunningOut' (Release 1, pull request 5): "runs out in 7 days" is the only warning before a check-in is stalled, and the
      summary's lines can be cut for room, so it stays an email of its own rather than waiting for the summary and folding into it
      (docs/release-questions.md). It never holds the summary back: the summary is never held by the day's count. */

@@ -46,14 +46,14 @@ describe('when nothing threads the sessions together', () => {
 
   it('does not list every previous commitment as abandoned', () => {
     const items = say(r, 'Commitments').items.map((i) => i.text);
-    expect(items.some((t) => t.startsWith('From last session, not mentioned again'))).toBe(false);
+    expect(items.some((t) => t.startsWith('From last check-in, not mentioned again'))).toBe(false);
   });
 
   it('and does not claim nothing moved', () => {
     expect(say(r, 'What changed since last session').saying)
-      .toContain('does not thread across sessions');
+      .toContain('does not thread across check-ins');
     expect(say(r, 'What changed since last session').saying)
-      .not.toContain('Nothing in this session contradicts');
+      .not.toContain('Nothing in this check-in contradicts');
   });
 
   it('and still shows what was actually said', () => {

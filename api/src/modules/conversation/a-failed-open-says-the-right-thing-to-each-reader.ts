@@ -9,10 +9,10 @@
  * first name where there is one, and "the person who set this check-in up" only where there is none.
  */
 export const THE_ENGINE_COULD_NOT_BE_REACHED =
-  'The conversation could not be reached just now, so this session cannot continue this minute. Nothing you have already said has been lost. Please try again shortly, and if it keeps happening tell the person who set this check-in up, because it is a problem on my side and not anything you did.';
+  'The conversation could not be reached just now, so this check-in cannot continue this minute. Nothing you have already said has been lost. Please try again shortly, and if it keeps happening tell the person who set this check-in up, because it is a problem on my side and not anything you did.';
 
 export function whenTheConversationCannotBeReached(reader: { isTheLead: boolean; leadFirstName?: string | null }): string {
-  const start = 'The conversation could not be reached just now, so this session cannot continue this minute. Nothing you have already said has been lost.';
+  const start = 'The conversation could not be reached just now, so this check-in cannot continue this minute. Nothing you have already said has been lost.';
   if (reader.isTheLead) {
     return `${start} Please try again in a few minutes. If it keeps happening, it is a problem on my side and not anything you did, and I am looking into it.`;
   }

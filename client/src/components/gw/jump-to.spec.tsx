@@ -100,11 +100,12 @@ describe('"Jump to" in the sidebar, as a participant uses it', () => {
     const box = screen.getByRole('combobox', { name: 'Jump to a check-in, a person or a page' })
     await waitFor(() => expect(box).toHaveFocus())
     /* U.5: Today is a page now, so "Jump to" offers it, first of the pages as in the sidebar.
-       U.12: You too, after Today, as in the sidebar. U.15: and Company, between the two.
+       U.12: You too, after Today, as in the sidebar. U.15: and Company, between the two, which reads
+       "Desk" now (S7, 20 November 2026: the Company page was renamed the Desk).
        HAFSAH, 10 OCTOBER (B-146): and "Boards", after "All check-ins" - a member now has a door
        to the boards of the check-ins they take part in, the same as a lead and an admin already
        do, since the server already scopes /boards to what each reader may read. */
-    expect(options()).toEqual(['Coamana growth, Q3 paying customers', 'Leadership, Q3', 'Today', 'Company', 'You', 'All check-ins', 'Boards', 'Your settings'])
+    expect(options()).toEqual(['Coamana growth, Q3 paying customers', 'Leadership, Q3', 'Today', 'Desk', 'You', 'All check-ins', 'Boards', 'Your settings'])
     fireEvent.change(box, { target: { value: 'q3' } })
     expect(options()).toEqual(['Coamana growth, Q3 paying customers', 'Leadership, Q3', 'Kavon BadieIn Coamana growth, Q3 paying customers'])
     fireEvent.keyDown(box, { key: 'ArrowDown' })

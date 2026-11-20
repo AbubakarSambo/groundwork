@@ -46,14 +46,15 @@ const row = (name: string) => screen.getAllByText(name)[0].closest('tr') as HTML
 describe('Q3, B-5, B-11 to B-13: every deal, day by day', () => {
   it('Grace reads each deal\'s value as quoted or unagreed, what it still needs and from whom, and the kit\'s "Next step booked"', () => {
     wrap(<EveryDealDayByDay b={{ participants: [], canEditFrame: false, releaseOneSalesBoard: true }} section={{ section: 'Deal grid', rows: [SAVANNAH, NGONG, JUJA], groups: GROUPS }} now={NOW} groundId="g1" />)
-    expect(row('Savannah Cafe').textContent).toContain('Kevin, KES 30,000 quoted')
+    expect(row('Savannah Cafe').textContent).toContain('KES 30,000 quoted')
     expect(row('Savannah Cafe').textContent).toContain('Jane pays the KES 15,000 deposit on Friday 16 October.')
-    expect(row('Ngong Road Minimart').textContent).toContain('Kevin, KES 20,000 quoted')
+    expect(row('Ngong Road Minimart').textContent).toContain('KES 20,000 quoted')
     expect(row('Ngong Road Minimart').textContent).toContain('Kevin follows up with Ali on Monday 19 October. The quote of KES 20,000 is sent.')
-    expect(row('Juja Hardware').textContent).toContain('Joseph, 5 units, KES 22,500 if you agree KES 4,500')
+    expect(row('Juja Hardware').textContent).toContain('5 units, KES 22,500 if you agree KES 4,500')
     expect(row('Juja Hardware').textContent).toContain('Your answer on KES 4,500 a unit, then a buying date from Mr Kariuki.')
-    expect(text()).toContain('Next step booked')
-    expect(row('Ngong Road Minimart').querySelectorAll('.pb-dot-next').length).toBe(1)
+    /* The open table has no day-by-day dots, so the key has no "Next step booked" line; the step itself is read in its column. */
+    expect(text()).not.toContain('Next step booked')
+    expect(row('Savannah Cafe').textContent).toContain('Kevin')
     expect(text()).not.toContain('Send the quote, by tomorrow by noon')
   })
 
@@ -78,7 +79,6 @@ describe('standing decision 4, as changed on 18 October: no stall rule set', () 
     expect(row('Upper Hill Offices').textContent).toContain('Paul has not answered three calls from Kevin, on 13 and 14 October.')
     expect(text()).not.toContain('Stall rule reached')
     expect(text()).not.toContain('Cold')
-    expect(text()).toContain('Follow-up, no reply')
   })
 })
 

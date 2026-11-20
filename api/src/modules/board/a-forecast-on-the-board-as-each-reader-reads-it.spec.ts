@@ -24,8 +24,8 @@ const WITH_TARGETS: Setup = {
 };
 const TEAMS = {
   objectiveId: 'o-team',
-  says: 'If it keeps moving at the pace it has since session 1, it would be about 21 by session 4, against an aim of 40.',
-  restsOn: 'It was 6 in session 1 and 11 in session 2, and this check-in runs for 4 sessions.',
+  says: 'If it keeps moving at the pace it has since check-in 1, it would be about 21 by check-in 4, against an aim of 40.',
+  restsOn: 'It was 6 in check-in 1 and 11 in check-in 2, and this check-in runs for 4 check-ins.',
   cannotTellYou: WHAT_A_FORECAST_CANNOT_TELL_YOU,
 };
 
@@ -65,7 +65,7 @@ describe('A forecast, as each person reads it', () => {
     const asJuma = (await boardAs(WITH_TARGETS, ...JUMA)).forecast;
     expect(asJuma).toBeDefined();
     expect(asJuma).toEqual((await boardAs(WITH_TARGETS, ...BISI)).forecast);
-    expect(asJuma[0].says).toBe('If it keeps moving at the pace it has since session 1, it would be about 21 by session 4, against an aim of 40.');
+    expect(asJuma[0].says).toBe('If it keeps moving at the pace it has since check-in 1, it would be about 21 by check-in 4, against an aim of 40.');
   });
 
   it('a limit is read as a limit, and a number that has not moved says so', async () => {
@@ -74,7 +74,7 @@ describe('A forecast, as each person reads it', () => {
       objectives: [target('o-team', 'Bad debt written off this quarter', 5, 2, { direction: 'LIMIT' })],
       snapshots: [{ objectiveId: 'o-team', sessionNumber: 1, count: 2 } as any, { objectiveId: 'o-team', sessionNumber: 3, count: 2 } as any],
     }, ...BISI);
-    expect(b.forecast[0].says).toBe('It has not moved since session 1, so if nothing changes it would still be 2 by session 4, against a limit of 5.');
+    expect(b.forecast[0].says).toBe('It has not moved since check-in 1, so if nothing changes it would still be 2 by check-in 4, against a limit of 5.');
   });
 
   it('is never served on an evaluation check-in, to anybody', async () => {

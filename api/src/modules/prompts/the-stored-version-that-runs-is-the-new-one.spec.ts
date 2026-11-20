@@ -1,5 +1,5 @@
 import { PromptsService, SEEDED_ON_START } from './prompts.service';
-import { SEED_PROMPTS, ONE_VOICE } from '../conversation/prompt-library';
+import { SEED_PROMPTS, ONE_VOICE, WHEN_LIFE_GETS_IN_THE_WAY } from '../conversation/prompt-library';
 
 /**
  * THE STORED VERSION THAT RUNS IS THE NEW ONE (fix plan, release batch 1, groups 5 and 6; CLAUDE.md, "The engine's instructions live in
@@ -43,5 +43,7 @@ describe('after a start, from the rows the bed holds', () => {
       expect(t.rows.find((r) => r.id === before[KEYS.indexOf(key)].id)!.isActive).toBe(false);
     }
     expect((await prompts.getActive('system')).content).toContain(ONE_VOICE);
+    /* Batch 2, group 1: the caring reply to something wrong in their life runs from the stored version too. */
+    expect((await prompts.getActive('system')).content).toContain(WHEN_LIFE_GETS_IN_THE_WAY);
   });
 });

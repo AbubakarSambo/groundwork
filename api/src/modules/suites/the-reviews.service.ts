@@ -6,6 +6,7 @@ import { answersUnderTheQuestionsOwnIds } from './the-answers-under-the-question
 import { suiteOf } from './the-ten-suites';
 import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { whatThisReviewIs } from './what-a-review-is';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
 import { aRequestsHistory, recordIt } from './a-request-is-recorded';
@@ -49,6 +50,7 @@ export const REVIEW_REFUSED = {
   noSuchLine: 'That line is not in this review.',
   sayWhatIsTrue: 'Say what is true, in a sentence or two.',
   sayWhatAndWhy: 'Say what you decided, and why, in a sentence or two.',
+  badLookAgain: 'Give the day to look at it again as a date from today on, or leave it empty.',
 };
 
 export interface Reader { userId: string; organizationId: string }
@@ -219,6 +221,8 @@ export interface ForTheWriter {
    * person's reasons, and the reviewer, with where it stands. Null for everybody else, and when there is none.
    */
   appeal: AppealForTheAdmin | AppealForTheReviewer | null;
+  /** What it is drawn from, who reads it and what happens next, in plain sentences (what-a-review-is.ts, Batch S, S4). */
+  about: string[];
 }
 
 /** The person's own review: the facts, their own view, and the decision with its reasons. */
@@ -259,6 +263,8 @@ export interface ForThePerson {
   mayAppealSays: string | null;
   /** Their appeal, once made. Null before. */
   appeal: YourAppeal | null;
+  /** What it is drawn from, who reads it and what happens next, in plain sentences (what-a-review-is.ts, Batch S, S4). */
+  about: string[];
 }
 
 /** The sentence over the two views side by side, said to the person the review is about. */
@@ -539,6 +545,7 @@ export class ReviewsService {
         mayAppeal: !!decision && !wasAppealed(row as any),
         mayAppealSays: decision && !wasAppealed(row as any) ? youMayAppealSaid(await this.firstNameOf((row as any).decidedById ?? null, directory) ?? writerFirst) : null,
         appeal: decision && wasAppealed(row as any) ? await this.yourAppeal(row as any, writerFirst, directory) : null,
+        about: await this.aboutIt(row, person, reader, writerId, writerFirst, directory),
       };
     }
     const writes = await this.writes(reader, role, person, answers.writer);
@@ -579,7 +586,33 @@ export class ReviewsService {
         : null,
       briefing,
       appeal: decision && wasAppealed(row as any) ? await this.appealForTheReader(row as any, person, reader, role, directory) : null,
+      about: await this.aboutIt(row, person, reader, writerId, writerFirst, directory),
     };
+  }
+
+  /** The one block that says what this review is drawn from, who reads it and what happens next, for this reader (what-a-review-is.ts). */
+  private async aboutIt(row: any, person: Person, reader: Reader, writerId: string | null, writerFirst: string | null, directory: Map<string, Person>): Promise<string[]> {
+    const db = this.prisma as any;
+    const release7 = (await Promise.resolve(db.organization?.findUnique?.({ where: { id: reader.organizationId }, select: { release7PeopleOn: true } })).catch(() => null))?.release7PeopleOn === true;
+    const duties = await Promise.resolve(db.organizationSuite?.findUnique?.({ where: { organizationId_suite: { organizationId: reader.organizationId, suite: DUTIES_ROW } }, select: { answers: true } })).catch(() => null);
+    const hrId = dutiesFrom(duties?.answers).hr ?? null;
+    const decided = row.decision && row.decisionReasons && row.decidedAt;
+    const decidedNowId: string | null = row.appealOutcome === 'changed' && row.appealDecidedById ? row.appealDecidedById : (row.decidedById ?? null);
+    return whatThisReviewIs({
+      person: { first: this.firstOf(person), reads: person.userId === reader.userId },
+      writer: { first: writerFirst, reads: !!writerId && writerId === reader.userId },
+      from: row.recordFrom ? new Date(row.recordFrom) : null,
+      to: new Date(row.startedAt ?? Date.now()),
+      hasRecord: Array.isArray(row.recordRead),
+      hasWords: !!row.managersWords?.trim(),
+      hasTheirView: !!row.theirView?.trim(),
+      others: { release7, hr: hrId && hrId !== reader.userId ? await this.firstNameOf(hrId, directory) : hrId === reader.userId ? 'you' : null },
+      decided: decided ? {
+        byFirst: await this.firstNameOf(decidedNowId, directory), byReader: decidedNowId === reader.userId, on: new Date(row.decidedAt),
+        nextSteps: row.nextSteps ?? null, lookAgainOn: row.lookAgainOn ? new Date(row.lookAgainOn) : null,
+      } : null,
+      appealed: wasAppealed(row),
+    });
   }
 
   /** The writer's own words. */
@@ -667,18 +700,23 @@ export class ReviewsService {
   }
 
   /** The writer decides, with reasons. The person reads both. */
-  async decide(reader: Reader, id: string, input: { decision?: string; reasons?: string }) {
+  async decide(reader: Reader, id: string, input: { decision?: string; reasons?: string; nextSteps?: string | null; lookAgainOn?: string | null }) {
     const answers = await this.suiteAnswers(reader.organizationId);
     const { row, person } = await this.theReview(reader, id);
     if (!(await this.writes(reader, await this.roleOf(reader), person, answers.writer))) throw new ForbiddenException(REVIEW_REFUSED.onlyTheWriter);
     const says = (input.decision ?? '').trim();
     const reasons = (input.reasons ?? '').trim();
     if (!says || !reasons) throw new BadRequestException(REVIEW_REFUSED.sayWhatAndWhy);
+    /* What happens next (Batch S, S4): the next steps in the writer's words, and a day to look at it again, from today on. Both may be left out. */
+    const nextSteps = (input.nextSteps ?? '').trim().slice(0, 2000) || null;
+    const again = (input.lookAgainOn ?? '').trim();
+    if (again && (!/^\d{4}-\d{2}-\d{2}$/.test(again) || Number.isNaN(Date.parse(`${again}T00:00:00Z`)) || again < new Date().toISOString().slice(0, 10))) throw new BadRequestException(REVIEW_REFUSED.badLookAgain);
     /* Once the person has appealed, an admin other than the reviewer decides (decision 113); the reviewer cannot change it from under them. */
     if (wasAppealed(row as any)) throw new BadRequestException(APPEAL_REFUSED.appealedAlready);
     await this.prisma.performanceReview.update({
       where: { id: row.id },
-      data: { decision: says.slice(0, 1000), decisionReasons: reasons.slice(0, 2000), decidedById: reader.userId, decidedAt: new Date() },
+      data: { decision: says.slice(0, 1000), decisionReasons: reasons.slice(0, 2000), decidedById: reader.userId, decidedAt: new Date(), nextSteps, lookAgainOn: again ? new Date(`${again}T00:00:00Z`) : null } as Record<string, unknown> as never,
+      /* `as never` only because api/node_modules (and its generated client) is shared with other worktrees; the fields are in this schema and migration. */
     });
     /* One record of who did what (decision 85, build step 5): who decided and when, never the words. */
     await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'reviews', ref: row.id, kind: 'decided', byUserId: reader.userId, basis: { row: 'performance_reviews', id: row.id } });

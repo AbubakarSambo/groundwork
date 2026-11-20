@@ -50,7 +50,7 @@ const RECOGNISABLE: { scenario: string; says: string; patterns: RegExp[] }[] = [
   {
     scenario: 'PULSE_CHECK',
     says: 'a regular read on live work',
-    patterns: [/\b(pulse|regular read|how (things are|it is) going|weekly read)\b/i],
+    patterns: [/\b(pulse|regular read|how (things are|it is) going|weekly read|updates? from (my|our|the) (team|people|staff))\b/i],
   },
   {
     scenario: 'CONTRACT_REVIEW',
@@ -121,35 +121,6 @@ export function whoWouldBeAsked(roster: OnTheRoster[], me: string): OnTheRoster[
   return roster.filter((p) => p.active && p.managerExternalId === me && p.externalId !== me);
 }
 
-/**
- * The confirmation. Names everybody who will be emailed.
- *
- * Not a count. "And 4 others" is how somebody presses yes on a mistake, and the
- * mistake is a colleague receiving an invitation to account for themselves that
- * nobody meant to send.
- */
-export function askBeforeOpeningIt(input: {
-  says: string;
-  label: string;
-  people: OnTheRoster[];
-}): string {
-  const names = input.people.map((p) => p.displayName ?? p.externalId);
-
-  if (names.length === 0) {
-    return (
-      `I can open a check-in about ${input.says} - "${input.label}". `
-      + 'Nobody reports to you on the roster, so tell me who should be in it and I will name them back before anything is sent.'
-    );
-  }
-
-  return (
-    `I can open a check-in about ${input.says} - "${input.label}" - and ask `
-    + saidAsAList(names)
-    + `. ${names.length === 1 ? 'That is who reports' : 'They are who report'} to you on the roster; say if it should be somebody else. `
-    + `${names.length === 1 ? 'They will be emailed' : 'They will each be emailed'} an invitation. Open it?`
-  );
-}
-
 /** Every name, always. The list is the safeguard. */
 export function saidAsAList(names: string[]): string {
   if (names.length === 1) return names[0];
@@ -166,3 +137,9 @@ export function whyItCannotBeOpened(input: { label: string | null; people: numbe
   }
   return null;
 }
+
+/**
+ * SAYING "GET UPDATES FROM MY TEAM ON ..." IS ASKING FOR A NEW CHECK-IN, even for somebody who already has one going (chat is king, step 2).
+ * Without this the sentence was answered only for a person with no check-in at all.
+ */
+export const ASKS_FOR_A_NEW_ONE_BY_SAYING_SO = /^\s*(?:please\s+|can\s+you\s+)?(?:get|collect|gather|have)\s+(?:me\s+)?(?:updates?|reports?)\s+from\s+(?:my|our|the)\s+(?:team|people|staff)\b/i;

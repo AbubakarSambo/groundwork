@@ -1,0 +1,750 @@
+{
+  "kind": "salesorg",
+  "title": "Sales org, Q3",
+  "subtitle": "20 reps in 4 teams. Daily check-ins. A head of sales and 4 team leads.",
+  "leadName": "Wairimu Kamau",
+  "updated": "Last updated on Wednesday 23 September at 6pm. The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.",
+  "aim": "Close 100 sales worth KES 8 million in Q3?",
+  "hero": {
+    "headline": "87 of the 100 sales are done. 13 more are needed by 30 September",
+    "progress": 87,
+    "lines": [
+      "Only 11 sales meet every rule and have a buying date before 30 September."
+    ],
+    "small": "Reported qualified: 299, criteria met: 165.",
+    "targetsHeading": "Where each target stands",
+    "targets": [
+      {
+        "name": "Sales",
+        "value": "87 of 100",
+        "status": "Close",
+        "tone": "attention"
+      },
+      {
+        "name": "Revenue",
+        "value": "KES 7.0 million of KES 8 million",
+        "status": "Close",
+        "tone": "attention"
+      },
+      {
+        "name": "Qualified",
+        "value": "299 of 320",
+        "status": "Not settled",
+        "tone": "attention"
+      },
+      {
+        "name": "Check-in rate",
+        "value": "91% of 95%",
+        "status": "Close",
+        "tone": "attention"
+      },
+      {
+        "name": "Follow-up within 48h",
+        "value": "86% of 90%",
+        "status": "Close",
+        "tone": "attention"
+      }
+    ]
+  },
+  "needs": {
+    "heading": "What needs you in this check-in",
+    "items": [
+      {
+        "what": "Kamau and Juma are drifting",
+        "detail": "Each of them missed 3 or more days in each of the last 2 weeks. Ask their team leads to talk with them.",
+        "source": "From a weekly pattern",
+        "block": false,
+        "edge": "info"
+      },
+      {
+        "what": "People said 299 sales are qualified, but only 165 meet the rules",
+        "detail": "Most of the difference is in Industrial Area and Kisumu.",
+        "source": "This comes from the rules for each sales stage.",
+        "block": true,
+        "edge": "att"
+      },
+      {
+        "what": "Omondi: visits unnamed, for 2 weeks in a row",
+        "detail": "His team lead should go through 3 of his visits with him.",
+        "source": "From a weekly pattern",
+        "block": false,
+        "edge": "att"
+      },
+      {
+        "what": "3 sales reps have not been told their target",
+        "detail": "They are Kamau, Juma and Nekesa.",
+        "source": "This comes from the targets.",
+        "block": true,
+        "edge": "dark"
+      },
+      {
+        "what": "Nekesa’s qualified sales have no buying dates",
+        "detail": "for 2 weeks in a row.",
+        "source": "From a weekly pattern",
+        "block": false,
+        "edge": "info"
+      }
+    ],
+    "button": "Open"
+  },
+  "proof": {
+    "heading": "Every sale, and what shows it",
+    "note": "Ringed is someone’s word; filled is proven. Select one for its detail",
+    "legend": [
+      "Proof shows it",
+      "Someone said it"
+    ],
+    "columns": [
+      "Deal",
+      "Rep",
+      "Stage now",
+      "What shows it",
+      "Next"
+    ],
+    "rows": [
+      {
+        "name": "Gikomba Cold Store",
+        "who": "Akinyi",
+        "stage": "Quoted",
+        "onRecord": true,
+        "shows": "Quote photo",
+        "next": "Buying date",
+        "selected": true
+      },
+      {
+        "name": "Kariokor Meats",
+        "who": "Akinyi",
+        "stage": "Qualified",
+        "onRecord": false,
+        "shows": "Rep said",
+        "next": "Hold 30 Sep as the date"
+      },
+      {
+        "name": "Industrial Foods",
+        "who": "Mwangi",
+        "stage": "Won",
+        "onRecord": true,
+        "shows": "Payment record",
+        "next": "None"
+      },
+      {
+        "name": "Nyali Fresh",
+        "who": "Fatuma",
+        "stage": "Committed",
+        "onRecord": true,
+        "shows": "Deposit photo",
+        "next": "Delivery"
+      },
+      {
+        "name": "Enterprise Road visits (9)",
+        "sub": "Nothing checkable",
+        "subTone": "con",
+        "who": "Omondi",
+        "stage": "Contacted",
+        "onRecord": false,
+        "shows": "No names",
+        "next": "Name each customer"
+      },
+      {
+        "name": "Kondele Meats",
+        "who": "Atieno",
+        "stage": "Qualified",
+        "onRecord": false,
+        "shows": "Rep said, all four",
+        "next": "Send the quote with a photo"
+      },
+      {
+        "name": "Lakeview Supermarket",
+        "sub": "No date",
+        "subTone": "att",
+        "who": "Nekesa",
+        "stage": "Qualified",
+        "onRecord": false,
+        "shows": "Rep said",
+        "next": "Ask for a buying date"
+      }
+    ],
+    "detail": {
+      "title": "Gikomba Cold Store",
+      "rows": [
+        [
+          "Value",
+          "KES 180,000"
+        ]
+      ],
+      "nextLabel": "Next:",
+      "next": "Buying date"
+    },
+    "correct": {
+      "button": "Not right? Tell the check-in",
+      "foot": "Something here wrong? Anyone can correct what’s about their own work in their check-in; the change and the original both show here."
+    }
+  },
+  "team": {
+    "heading": "The team today",
+    "note": "Each person’s line, their last 10 check-ins, and what keeps coming up",
+    "foot": "These are about the work. Open anyone to see what they said and what the proof shows.",
+    "rows": [
+      {
+        "name": "Kamau",
+        "line": "2 of 5 sales",
+        "status": "Drifting",
+        "tone": "concern",
+        "pips": "1111110111",
+        "said": "Missed 3+ days in each of the last 2 weeks"
+      },
+      {
+        "name": "Omondi",
+        "line": "2 of 5 sales",
+        "status": "Nothing checkable",
+        "tone": "concern",
+        "pips": "1110111111",
+        "said": "Visits without the shop’s name, for 2 weeks in a row"
+      },
+      {
+        "name": "Juma",
+        "line": "1 of 5 sales",
+        "status": "Drifting",
+        "tone": "concern",
+        "pips": "1011111111",
+        "said": "Missed 3+ days in each of the last 2 weeks"
+      },
+      {
+        "name": "Otieno",
+        "line": "3 of 5 sales",
+        "status": "Behind the pace",
+        "tone": "attention",
+        "pips": "1111111111",
+        "said": "Customers called “interested”, with no need or budget given, for 2 weeks in a row"
+      },
+      {
+        "name": "Baraka",
+        "line": "3 of 5 sales",
+        "status": "Behind the pace",
+        "tone": "attention",
+        "pips": "1101111111",
+        "said": ""
+      },
+      {
+        "name": "Nekesa",
+        "line": "3 of 5 sales",
+        "status": "Stops before the date",
+        "tone": "attention",
+        "pips": "1111100111",
+        "said": "Qualified deals without a buying date, for 2 weeks in a row"
+      },
+      {
+        "name": "Wafula",
+        "line": "2 of 5 sales",
+        "status": "Safe work",
+        "tone": "attention",
+        "pips": "1111111111",
+        "said": "Following up old customers, for 3 weeks in a row"
+      },
+      {
+        "name": "Wanjiru",
+        "line": "6 of 5 sales",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "1111111111",
+        "said": ""
+      },
+      {
+        "name": "Achieng",
+        "line": "5 of 5 sales",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "1011111111",
+        "said": ""
+      },
+      {
+        "name": "Njeri",
+        "line": "5 of 5 sales",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "0111011111",
+        "said": ""
+      },
+      {
+        "name": "Mwangi",
+        "line": "6 of 5 sales",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "1111011111",
+        "said": ""
+      },
+      {
+        "name": "Akinyi",
+        "line": "5 of 5 sales",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "1110001111",
+        "said": ""
+      },
+      {
+        "name": "Kiprono",
+        "line": "4 of 5 sales",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "1011011111",
+        "said": ""
+      },
+      {
+        "name": "Wambui",
+        "line": "5 of 5 sales",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "1010111101",
+        "said": ""
+      },
+      {
+        "name": "Fatuma",
+        "line": "6 of 5 sales",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "1111111101",
+        "said": ""
+      },
+      {
+        "name": "Zawadi",
+        "line": "5 of 5 sales",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "0011011111",
+        "said": ""
+      },
+      {
+        "name": "Halima",
+        "line": "5 of 5 sales",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "1111111111",
+        "said": ""
+      },
+      {
+        "name": "Atieno",
+        "line": "5 of 5 sales",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "1111111111",
+        "said": ""
+      },
+      {
+        "name": "Ochieng",
+        "line": "4 of 5 sales",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "1011111111",
+        "said": ""
+      },
+      {
+        "name": "Adhiambo",
+        "line": "5 of 5 sales",
+        "status": "On pace",
+        "tone": "proven",
+        "pips": "1101111111",
+        "said": ""
+      }
+    ]
+  },
+  "shape": {
+    "heading": "Reported vs criteria met, across 4 teams",
+    "note": "The shape of the work",
+    "foot": "Dashed: reported. Solid: criteria met (for Won, proven by payment).",
+    "legend": "Outlined: what people reported. Filled: what meets the criteria.",
+    "max": 1480,
+    "rows": [
+      {
+        "label": "Contacted",
+        "said": 1480,
+        "met": 1310,
+        "value": "1,480 said, 1,310 met"
+      },
+      {
+        "label": "Need established",
+        "said": null,
+        "met": 760,
+        "value": "760 met"
+      },
+      {
+        "label": "Pitched",
+        "said": 590,
+        "met": 350,
+        "value": "590 said, 350 met"
+      },
+      {
+        "label": "Qualified",
+        "said": 299,
+        "met": 165,
+        "value": "299 said, 165 met"
+      },
+      {
+        "label": "Quoted",
+        "said": 260,
+        "met": 140,
+        "value": "260 said, 140 met"
+      },
+      {
+        "label": "Won",
+        "said": 87,
+        "met": 71,
+        "value": "87 said, 71 met"
+      }
+    ]
+  },
+  "cards": {
+    "heading": "By team",
+    "cards": [
+      {
+        "title": "Westlands",
+        "stats": [
+          [
+            "21/25",
+            "sales"
+          ],
+          [
+            "Watch",
+            "team read"
+          ],
+          [
+            "3 of 5",
+            "on pace"
+          ]
+        ],
+        "line": "Otieno: behind the pace",
+        "who": "Wanjiru, Otieno, Achieng, Kamau, Njeri"
+      },
+      {
+        "title": "Industrial Area",
+        "stats": [
+          [
+            "22/25",
+            "sales"
+          ],
+          [
+            "Watch",
+            "team read"
+          ],
+          [
+            "4 of 5",
+            "on pace"
+          ]
+        ],
+        "line": "Omondi: nothing checkable",
+        "who": "Mwangi, Akinyi, Kiprono, Wambui, Omondi"
+      },
+      {
+        "title": "Mombasa",
+        "stats": [
+          [
+            "20/25",
+            "sales"
+          ],
+          [
+            "Watch",
+            "team read"
+          ],
+          [
+            "3 of 5",
+            "on pace"
+          ]
+        ],
+        "line": "Baraka: behind the pace",
+        "who": "Fatuma, Baraka, Zawadi, Juma, Halima"
+      },
+      {
+        "title": "Kisumu",
+        "stats": [
+          [
+            "19/25",
+            "sales"
+          ],
+          [
+            "Watch",
+            "team read"
+          ],
+          [
+            "3 of 5",
+            "on pace"
+          ]
+        ],
+        "line": "Nekesa: stops before the date",
+        "who": "Atieno, Ochieng, Nekesa, Wafula, Adhiambo"
+      }
+    ]
+  },
+  "checked": {
+    "heading": "Who checked in",
+    "note": "The last 10 sessions, one row each",
+    "foot": "Sorted by team. A gap is a missed session.",
+    "rows": [
+      {
+        "name": "Kamau",
+        "sessions": "1111110111"
+      },
+      {
+        "name": "Omondi",
+        "sessions": "1110111111"
+      },
+      {
+        "name": "Juma",
+        "sessions": "1011111111"
+      },
+      {
+        "name": "Otieno",
+        "sessions": "1001101001"
+      },
+      {
+        "name": "Baraka",
+        "sessions": "1101111111"
+      },
+      {
+        "name": "Nekesa",
+        "sessions": "1111110111"
+      },
+      {
+        "name": "Wafula",
+        "sessions": "1111111111"
+      },
+      {
+        "name": "Wanjiru",
+        "sessions": "1111111111"
+      },
+      {
+        "name": "Achieng",
+        "sessions": "1011111111"
+      },
+      {
+        "name": "Njeri",
+        "sessions": "0111111111"
+      },
+      {
+        "name": "Mwangi",
+        "sessions": "1111011111"
+      },
+      {
+        "name": "Akinyi",
+        "sessions": "1110101111"
+      },
+      {
+        "name": "Kiprono",
+        "sessions": "1011011111"
+      },
+      {
+        "name": "Wambui",
+        "sessions": "1011111101"
+      },
+      {
+        "name": "Fatuma",
+        "sessions": "1111111101"
+      },
+      {
+        "name": "Zawadi",
+        "sessions": "1011011111"
+      },
+      {
+        "name": "Halima",
+        "sessions": "1111111111"
+      },
+      {
+        "name": "Atieno",
+        "sessions": "1111111111"
+      },
+      {
+        "name": "Ochieng",
+        "sessions": "1011111111"
+      },
+      {
+        "name": "Adhiambo",
+        "sessions": "1101111111"
+      }
+    ]
+  },
+  "blockers": {
+    "heading": "Blockers",
+    "note": "Each with its history and the one thing that would clear it",
+    "items": [
+      {
+        "title": "Stock of 600L freezers",
+        "tag": "Blocking",
+        "tone": "concern",
+        "waiting": "Operations",
+        "raised": "9 times, 14 Sep to 23 Sep",
+        "affects": "11 deals across 3 teams",
+        "promised": "22 Sep (missed)",
+        "proof": "Unverified",
+        "clear": "Written delivery dates from operations.",
+        "then": "11 deals can quote a delivery date"
+      },
+      {
+        "title": "Price objections",
+        "tag": "Waiting",
+        "tone": "attention",
+        "waiting": "All reps",
+        "raised": "31 times, 8 Sep to 23 Sep",
+        "affects": "18 open deals",
+        "promised": null,
+        "proof": "Unverified: few give a competitor or figure",
+        "clear": "Get the competitor and figure first.",
+        "then": "18 deals can move to a buying date"
+      },
+      {
+        "title": "Stopping rule for old leads",
+        "tag": "Decision",
+        "tone": "action",
+        "waiting": "Head of sales",
+        "raised": "4 times, 16 Sep to 23 Sep",
+        "affects": "Time spent on old leads",
+        "promised": "Decide by 20 Sep (missed)",
+        "proof": "Decision pending",
+        "clear": "Set it this week.",
+        "then": "Reps move time to new leads"
+      }
+    ]
+  },
+  "keeps": {
+    "heading": "What keeps coming up",
+    "note": "Named after three check-ins in a row, never after one. Each describes the work",
+    "foot": "Each person sees what’s about them, and can answer it in their own words.",
+    "left": {
+      "heading": "About each person’s work",
+      "rows": [
+        {
+          "name": "Kamau",
+          "line": "Missed 3+ days in each of the last 2 weeks"
+        },
+        {
+          "name": "Omondi",
+          "line": "Visits without the shop’s name, for 2 weeks in a row"
+        },
+        {
+          "name": "Juma",
+          "line": "Missed 3+ days in each of the last 2 weeks"
+        },
+        {
+          "name": "Otieno",
+          "line": "Customers called “interested”, with no need or budget given, for 2 weeks in a row"
+        },
+        {
+          "name": "Nekesa",
+          "line": "Qualified deals without a buying date, for 2 weeks in a row"
+        },
+        {
+          "name": "Wafula",
+          "line": "Following up old customers, for 3 weeks in a row"
+        }
+      ]
+    },
+    "right": {
+      "heading": "How what people say can run ahead of what happened",
+      "items": [
+        {
+          "title": "Drifting",
+          "text": "Check-ins missed, so nothing else can be seen.",
+          "who": "Kamau, Juma"
+        },
+        {
+          "title": "Activity for outcome",
+          "text": "Visits reported without names.",
+          "who": "Omondi"
+        },
+        {
+          "title": "Safe work",
+          "text": "Old leads chased instead of new pitches.",
+          "who": "Wafula"
+        }
+      ]
+    }
+  },
+  "reports": {
+    "overTime": "Over time",
+    "heading": "Reports",
+    "note": "Each person’s own, the team’s once shared, and a weekly one",
+    "rows": [
+      {
+        "name": "Today’s team report",
+        "text": "The day’s gaps: what moved, what didn’t, who’s missing",
+        "link": "Open"
+      },
+      {
+        "name": "Your own report",
+        "text": "Only you see it",
+        "link": "Open"
+      },
+      {
+        "name": "This week",
+        "text": "Patterns, once they’ve held for two weeks",
+        "link": "Open"
+      }
+    ]
+  },
+  "boards": {
+    "everySession": "Every session",
+    "heading": "The other boards you’re in",
+    "items": [
+      {
+        "name": "Sales team, Q3",
+        "tag": "Today’s report ready",
+        "tone": "proven"
+      },
+      {
+        "name": "Kwame, first 90 days",
+        "tag": "Decide how it ends",
+        "tone": "action"
+      },
+      {
+        "name": "Leadership, Q3",
+        "tag": "Your turn",
+        "tone": "action"
+      },
+      {
+        "name": "Supplier review",
+        "tag": "Waiting on Omar",
+        "tone": "plain"
+      },
+      {
+        "name": "Daniel, the next six weeks",
+        "tag": "Both accounts in",
+        "tone": "action"
+      },
+      {
+        "name": "Faith, first 90 days",
+        "tag": "Just started",
+        "tone": "action"
+      }
+    ]
+  },
+  "heading": {
+    "heading": "Where this is heading",
+    "note": "Set goals and keep the team on track",
+    "outcomesLabel": "The possible outcomes",
+    "outcomes": [
+      "On course",
+      "Reach it with a change",
+      "Change the target"
+    ],
+    "signalsLabel": "The signals behind them",
+    "signals": [
+      {
+        "line": "Kamau and Juma are drifting",
+        "from": "Each of them missed 3 or more days in each of the last 2 weeks. Ask their team leads to talk with them.",
+        "onRecord": false
+      },
+      {
+        "line": "People said 299 sales are qualified, but only 165 meet the rules",
+        "from": "Most of the difference is in Industrial Area and Kisumu.",
+        "onRecord": false
+      },
+      {
+        "line": "Omondi: visits unnamed, for 2 weeks in a row",
+        "from": "His team lead should go through 3 of his visits with him.",
+        "onRecord": false
+      }
+    ],
+    "settleLabel": "What would settle it",
+    "settle": "Only 11 sales meet every rule and have a buying date before 30 September.",
+    "decider": "Head of sales decides.",
+    "deciderNote": "Groundwork lays out the outcomes and the proof. It doesn’t choose.",
+    "button": "Record the decision"
+  }
+}

@@ -18,14 +18,9 @@ export const THE_RELEASE_2_COLLECTIONS = 'release2CollectionsOn';
 
 type Reader = { organization?: { findUnique: (a: any) => Promise<any> } } | any;
 
-export async function theRelease2CollectionsIsOn(prisma: Reader, organizationId: string | null | undefined): Promise<boolean> {
-  if (!organizationId) return false;
-  try {
-    const org = await prisma?.organization?.findUnique?.({ where: { id: organizationId }, select: { release2CollectionsOn: true } });
-    return org?.release2CollectionsOn === true;
-  } catch {
-    return false;
-  }
+/** ALWAYS ON (Hafsah, 15 November 2026: everything has a board; reverses the October hide, decisions 88 and 91). The column is no longer read and nothing stored is changed. */
+export async function theRelease2CollectionsIsOn(_prisma?: Reader, _organizationId?: string | null): Promise<boolean> {
+  return true;
 }
 
 /** The same, read from a check-in. */

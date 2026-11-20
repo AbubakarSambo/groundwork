@@ -91,7 +91,7 @@ describe('the thin-record refusal is said in the conversation, not only in a toa
 
     // The plain, permanent sentence appears in the conversation.
     expect(await screen.findByText(
-      /I need a little more from you before this check-in can close\. Please answer one or two more questions, then finish again\./i,
+      /I need one or two more answers before I can close this\./i,
       {},
       { timeout: 4000 },
     )).toBeTruthy()

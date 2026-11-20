@@ -23,7 +23,7 @@ const DIVERGENCES = [
     atStake: 'If this holds, the team cannot know if it is on track to meet the 120-unit goal, regardless of individual effort.',
     positions: [
       { view: 'Defines a completed sale as one confirmed by a signed order or proof of payment.', participantLabel: 'the initiator' },
-      { view: 'Reported a target of 40 units in one session, 120 units in another, and later a specific sale of 3 units.', participantLabel: 'Participant A' },
+      { view: 'Reported a target of 40 units in one check-in, 120 units in another, and later a specific sale of 3 units.', participantLabel: 'Participant A' },
       { view: '', participantLabel: 'Participant B' },
       { view: 'Reported a personal sales target of 120 units.', participantLabel: 'Participant C' },
     ],

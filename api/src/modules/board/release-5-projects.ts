@@ -9,14 +9,9 @@
 import { BILL, F, NOT_YET_RAISED, aDay } from './the-collections-record';
 import { FROM_A_MILESTONE, type AMilestoneKept } from './raising-invoices-on-time';
 
-export async function theRelease5ProjectsIsOn(prisma: any, organizationId: string | null | undefined): Promise<boolean> {
-  if (!organizationId) return false;
-  try {
-    const o = await prisma?.organization?.findUnique?.({ where: { id: organizationId }, select: { release5ProjectsOn: true } });
-    return o?.release5ProjectsOn === true;
-  } catch {
-    return false;
-  }
+/** ALWAYS ON (Hafsah, 15 November 2026: everything has a board; reverses the October hide, decisions 88 and 91). The column is no longer read and nothing stored is changed. */
+export async function theRelease5ProjectsIsOn(_prisma?: any, _organizationId?: string | null): Promise<boolean> {
+  return true;
 }
 
 export const THE_PROJECT_KIND = 'a funded project';

@@ -21,14 +21,14 @@ const friday = new Date(2026, 8, 25, 9, 0).toISOString()
 
 const LEAD_READ = {
   count: 3,
-  line: 'In Sales team, Q3, 5 of 6 have checked in for session 38; Omar hasn’t yet.',
+  line: 'In Sales team, Q3, 5 of 6 have checked in for check-in 38; Omar hasn’t yet.',
   needs: [
     { key: 'turn-f', kind: 'decide', title: 'Your first check-in for Faith, first 90 days', detail: 'About ten minutes. Everyone else’s answers are read against yours.', action: { label: 'Start it', to: '/checkin/f1' }, groundId: 'f', organizationId: 'o' },
-    { key: 'end-k', kind: 'decide', title: 'Decide how Kwame, first 90 days ends', detail: 'The last session is done.', action: { label: 'Decide', to: '/grounds/k' }, groundId: 'k', organizationId: 'o' },
+    { key: 'end-k', kind: 'decide', title: 'Decide how Kwame, first 90 days ends', detail: 'The last check-in is done.', action: { label: 'Decide', to: '/grounds/k' }, groundId: 'k', organizationId: 'o' },
     { key: 'turn-l', kind: 'decide', title: 'Your own check-in for Leadership, Q3', detail: 'About ten minutes.', action: { label: 'Start it', to: '/checkin/l2' }, groundId: 'l', organizationId: 'o' },
   ],
   comingUp: [
-    { at: tomorrowAt4, what: 'Session 39 of Sales team, Q3 opens.', to: '/grounds/s' },
+    { at: tomorrowAt4, what: 'Check-in 39 of Sales team, Q3 opens.', to: '/grounds/s' },
     { at: friday, what: 'Kwame, first 90 days ends.', to: '/grounds/k' },
   ],
 }
@@ -82,7 +82,7 @@ describe('Today, as the lead', () => {
   it('greets her, says the date and who has checked in, in full sentences', async () => {
     open(WAIRIMU, LEAD_READ)
     expect(screen.getByRole('heading', { level: 1, name: 'Morning, Wairimu' })).toBeTruthy()
-    expect(await screen.findByText('Wednesday 23 September. In Sales team, Q3, 5 of 6 have checked in for session 38; Omar hasn’t yet.')).toBeTruthy()
+    expect(await screen.findByText('Wednesday 23 September. In Sales team, Q3, 5 of 6 have checked in for check-in 38; Omar hasn’t yet.')).toBeTruthy()
   })
 
   /* Signup stores whatever was typed for "Your name" whole, in `firstName` (AuthPage.tsx), so an
@@ -99,7 +99,7 @@ describe('Today, as the lead', () => {
     expect(screen.getByRole('heading', { name: 'What needs you' })).toBeTruthy()
     expect(rows()).toEqual([
       { title: 'Your first check-in for Faith, first 90 days', detail: 'About ten minutes. Everyone else’s answers are read against yours.', action: [['Start it', '/checkin/f1']] },
-      { title: 'Decide how Kwame, first 90 days ends', detail: 'The last session is done.', action: [['Decide', '/grounds/k']] },
+      { title: 'Decide how Kwame, first 90 days ends', detail: 'The last check-in is done.', action: [['Decide', '/grounds/k']] },
       { title: 'Your own check-in for Leadership, Q3', detail: 'About ten minutes.', action: [['Start it', '/checkin/l2']] },
     ])
   })
@@ -126,10 +126,10 @@ describe('Today, as the lead', () => {
     open(WAIRIMU, LEAD_READ)
     const aside = await screen.findByRole('complementary', { name: 'Coming up' })
     expect([...aside.querySelectorAll('.gw-when-row')].map(li => li.textContent)).toEqual([
-      'Tomorrow, 4pmSession 39 of Sales team, Q3 opens.',
+      'Tomorrow, 4pmCheck-in 39 of Sales team, Q3 opens.',
       'FridayKwame, first 90 days ends.',
     ])
-    expect(within(aside).getByRole('link', { name: 'Session 39 of Sales team, Q3 opens.' })).toHaveAttribute('href', '/grounds/s')
+    expect(within(aside).getByRole('link', { name: 'Check-in 39 of Sales team, Q3 opens.' })).toHaveAttribute('href', '/grounds/s')
   })
 
   it('a member never sees the admin’s welcome card or checklist', async () => {

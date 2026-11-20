@@ -46,7 +46,7 @@ describe('the activation funnel on the usage tab', () => {
        not a second check-in, so it now says "session" - the product's one word for that, not
        "round" (which this label already said, not "check-in" - a different B-147 cleanup from
        the one below). */
-    expect(screen.getByText('A second session finished')).toBeTruthy()
+    expect(screen.getByText('A second check-in finished')).toBeTruthy()
     expect(screen.getByText('10')).toBeTruthy()
 
     expect(screen.getByText('Leads who came back')).toBeTruthy()

@@ -24,7 +24,7 @@ const overTime = { sessions: 1, commitments: [], dependencies: [], patterns: [],
 const ground = (report: any): any => ({ scenario: GroundScenario.NEW_PROJECT, peersVisibleToEachOther: true, participants: PEOPLE, report });
 const readAs = (report: any, participantId: string | null, isLead: boolean) =>
   (Object.create(ReportsService.prototype) as ReportsService).theReportAsItWasShared(ground(report), participantId, isLead) as any;
-const SINCE = 'Since then, the record holds 1 session, 12 lines of what was said, 2 with a name, a number or a date in them and none backed by a document.';
+const SINCE = 'Since then, the record holds 1 check-in, 12 lines of what was said, 2 with a name, a number or a date in them and none backed by a document.';
 
 describe('a short role that says what it covers', () => {
   it('Ifeoma, who runs it, reads what each role covers', () => {

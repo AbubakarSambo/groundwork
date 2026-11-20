@@ -53,7 +53,7 @@ describe('one row per person, one cell per session', () => {
 
   /** Half-done is its own state, and it is the one the old label got wrong. */
   it('and says so when some are done and some are not', () => {
-    expect(CODE).toContain('Some sessions done, some still open')
+    expect(CODE).toContain('Some check-ins done, some still open')
   })
 
   /**

@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -457,7 +458,7 @@ export function IntegrationsPage() {
                     </div>
                     {open && (
                       <Stack gap={10}>
-                        {jobDetail.isPending && <p className="gwui-panel-text-muted">Loading…</p>}
+                        {jobDetail.isPending && <Skeleton what="Getting the detail" shape="lines" count={1} />}
                         {(jobDetail.data?.failures ?? []).map(f => (
                           <p key={f.index} className="gwui-panel-text-muted">
                             {f.externalId

@@ -28,8 +28,6 @@ export const ONE_OFF_USES_PER_FILE: Record<string, number> = {
   'pages/board/BoardPage.tsx': 501,
   'pages/board/TheSwitchboardsSections.tsx': 32,
   'pages/board/WorkRecords.tsx': 70,
-  'pages/company/CompanyContextPage.tsx': 1,
-  'pages/company/CompanyPage.tsx': 2,
   'pages/grounds/GroundParticipantPage.tsx': 1,
   'pages/invite/InvitePage.tsx': 2,
   'pages/join/WaitingForAnAdminPage.tsx': 2,

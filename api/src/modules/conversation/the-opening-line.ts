@@ -5,7 +5,7 @@ import { ABOUT_HOW_LONG } from '../../common/how-long-a-check-in-takes';
  * The first message stays exactly as it was; this line is added to it, in front. The web says "End session"; WhatsApp says "Reply END".
  * The length is the one owner's (common/how-long-a-check-in-takes.ts). Setup's opening line is the client's (EntryChatPage.tsx).
  */
-export const THE_CHECK_IN_LINE = `This takes ${ABOUT_HOW_LONG}. You can stop any time with End session.`;
+export const THE_CHECK_IN_LINE = `This takes ${ABOUT_HOW_LONG}. You can stop any time with End check-in.`;
 export const THE_CHECK_IN_LINE_ON_WHATSAPP = `This takes ${ABOUT_HOW_LONG}. Reply END to stop any time.`;
 
 /** The first message of a check-in with the line in front of it, once. */

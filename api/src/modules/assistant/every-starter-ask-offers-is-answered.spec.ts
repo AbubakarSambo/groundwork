@@ -1,4 +1,4 @@
-import { askStartersFor, askStarters } from './ask-name';
+import { askStartersFor } from './ask-name';
 import { whoReadsWhatAMemberSays } from './about-your-check-ins-and-the-company';
 import { EVALUATION_SCENARIOS } from '../reports/is-this-an-evaluation-check-in';
 import { askGroundwork, textOf } from './request-92-harness';
@@ -14,11 +14,12 @@ const THE_COMPANY_PAGES_OWN = ['Is the strategy moving?'];
 
 function everyStarterServed(): string[] {
   const all = new Set<string>(THE_COMPANY_PAGES_OWN);
-  for (const has of [true, false]) for (const ctx of [true, false]) askStarters(has, ctx).forEach((s) => all.add(s));
+  /* The old fixed list (askStarters) is gone; every starter comes from the one guide (Batch S, S5), so admins, HR and approvers are walked too. */
   for (const isAGuest of [true, false]) for (const takesPartInOne of [true, false]) for (const runsOne of [true, false])
-    for (const leaveIsOn of [true, false]) for (const spendingIsOn of [true, false]) for (const contextIsHere of [true, false]) {
-      askStartersFor({ isAGuest, takesPartInOne, hasOneToUse: takesPartInOne || runsOne, runsOne, leaveIsOn, spendingIsOn, contextIsHere }).forEach((s) => all.add(s));
-    }
+    for (const leaveIsOn of [true, false]) for (const spendingIsOn of [true, false]) for (const contextIsHere of [true, false])
+      for (const isAnAdmin of [true, false]) for (const looksAfterHr of [true, false]) for (const waitingForYou of [0, 1]) {
+        askStartersFor({ isAGuest, takesPartInOne, hasOneToUse: takesPartInOne || runsOne, runsOne, leaveIsOn, spendingIsOn, contextIsHere, isAnAdmin, looksAfterHr, waitingForYou }).forEach((s) => all.add(s));
+      }
   return [...all];
 }
 
@@ -26,7 +27,7 @@ describe('what Ask offers is answered', () => {
   it('serves the starters this spec knows about', () => {
     expect(everyStarterServed()).toEqual(expect.arrayContaining([
       'What did I say I would do?', 'What is my check-in for, and who reads it?', 'When is my next check-in?',
-      "What are the company's priorities right now?", 'Ask for leave, or to spend money.', 'Ask for leave.', 'Ask to spend money.', 'Is the strategy moving?',
+      "What are the company's priorities right now?", 'Ask for leave.', 'Ask to spend money.', 'Is the strategy moving?',
     ]));
   });
 
@@ -37,7 +38,7 @@ describe('what Ask offers is answered', () => {
   ] as const;
 
   for (const starter of everyStarterServed()) {
-    if (starter === 'Add a document or some context to my check-in.') continue; // answered by the context lane, which has its own specs
+    if (starter === 'Add a document or some context to my check-in.' || starter === 'Add a document for the whole organisation.') continue; // answered by the context and document lanes, which have their own specs
     for (const [who, o] of readers) {
       it(`"${starter}" is answered for ${who}`, async () => {
         const { service } = askGroundwork({ userId: o.userId, role: o.role, participants: [{ id: 'pp1', groundId: 'g1', userId: 'u-miriam', partyType: 'PARTICIPANT', managingOnly: false }] });
@@ -70,12 +71,13 @@ describe('what each reader reads in answer', () => {
   it('Amina is told when her next check-in opens, in a full sentence', async () => {
     const reply: any = await as('u-amina').service.respond('org-a', 'p1', 'When is my next check-in?');
     expect(reply.lane).toBe('when_is_my_next_check_in');
-    expect(textOf(reply)).toMatch(/^Your next check-in in "Sales team, Q4" opens on \d{1,2} \w+ \d{4}\.$/);
+    /* Changed 20 November 2026 (channel test W27): Ask says the day and the hour the way the check-in says them, in the organisation's day. */
+    expect(textOf(reply)).toMatch(/^Your next check-in in "Sales team, Q4" opens on [A-Z][a-z]+day \d{1,2} [A-Z][a-z]+ at \d{1,2}(:\d{2})?[ap]m\.$/);
   });
 
   it('Amina is told what it is for, and who can see what she says in it (privacy sweep, 7 October)', async () => {
     const reply: any = await as('u-amina').service.respond('org-a', 'p1', 'What is my check-in for, and who reads it?');
-    expect(textOf(reply)).toBe('This is what "Sales team, Q4" is for. This check-in is about how the Q4 sales target is going. The people in "Sales team, Q4", including Wanjiku, who runs it, can see what you say in it. Admins can read its board and reports. Your own report and your questions to Ask Baridi stay private.');
+    expect(textOf(reply)).toBe('This is what "Sales team, Q4" is for. This check-in is about how the Q4 sales target is going. You see your own report straight away. Wanjiku shares a team report when it is ready. Nobody else reads your conversation. Admins can read its board and reports. Your questions to Ask Baridi stay private.');
   });
 
   it('Amina never reads what the lead wrote as a brief', async () => {
@@ -113,7 +115,8 @@ describe('what each reader reads in answer', () => {
   });
 
   it('and with none set, Ask says so, and Is the strategy moving? says there is nothing to say yet', async () => {
-    expect(textOf(await as('u-amina').service.respond('org-a', 'p1', "What are the company's priorities right now?"))).toBe('The company has not set any priorities here yet. When it does, they will be on the Company page and I will tell you them.');
+    /* Changed: the Company page is called the Desk now (S7; round 2, browser test row 40). */
+    expect(textOf(await as('u-amina').service.respond('org-a', 'p1', "What are the company's priorities right now?"))).toBe('The company has not set any priorities here yet. When it does, they will be on the Desk and I will tell you them.');
     expect(textOf(await as('u-amina').service.respond('org-a', 'p1', 'Is the strategy moving?'))).toBe('The company has not set any priorities here yet, so there is no strategy to say anything about.');
   });
 
@@ -248,10 +251,10 @@ describe('"What did I say about ...?" finds what she said in her own check-ins',
 describe('who can see what a member says, said for each kind of check-in', () => {
   const g = { label: 'Sales team, Q4', organization: null as any, scenario: 'OKR_ALIGNMENT' };
   it('where people see each other', () => {
-    expect(whoReadsWhatAMemberSays({ ...g, peersVisibleToEachOther: true }, 'Wairimu')).toBe('The people in "Sales team, Q4", including Wairimu, who runs it, can see what you say in it. Admins can read its board and reports. Your own report and your questions to Ask Groundwork stay private.');
+    expect(whoReadsWhatAMemberSays({ ...g, peersVisibleToEachOther: true }, 'Wairimu')).toBe('You see your own report straight away. Wairimu shares a team report when it is ready. Nobody else reads your conversation. Admins can read its board and reports. Your questions to Ask Groundwork stay private.');
   });
   it('where they do not, it says so', () => {
-    expect(whoReadsWhatAMemberSays({ ...g, peersVisibleToEachOther: false }, 'Wairimu')).toBe('Wairimu runs "Sales team, Q4" and can see what you say in it. The other people taking part do not see what you say. Admins can read its board and reports. Your own report and your questions to Ask Groundwork stay private.');
+    expect(whoReadsWhatAMemberSays({ ...g, peersVisibleToEachOther: false }, 'Wairimu')).toBe('You see your own report straight away. Wairimu reads it too. Nobody else reads your conversation. Admins can read its board and reports. Your questions to Ask Groundwork stay private.');
   });
   it('on an evaluation check-in it does not say that admins read it', () => {
     expect(whoReadsWhatAMemberSays({ ...g, scenario: EVALUATION_SCENARIOS[0], peersVisibleToEachOther: false }, 'Wairimu')).not.toContain('Admins');
@@ -278,6 +281,6 @@ describe('"What did I say I would do?" for somebody with no seat yet (decision 1
     h.prisma.personObjective = { findMany: jest.fn(async () => []) };
     const t = textOf(await h.service.respond('org-a', 'p1', 'What did I say I would do?'));
     expect(t).toContain('In "Sales team, Q3", you said you would send the Kisumu list by Friday.');
-    expect(t).toContain('You are in "Sales team, Q3", but there is no seat for you on the plan yet, so you cannot answer a new session.');
+    expect(t).toContain('You are in "Sales team, Q3", but there is no seat for you on the plan yet, so you cannot answer a new check-in.');
   });
 });

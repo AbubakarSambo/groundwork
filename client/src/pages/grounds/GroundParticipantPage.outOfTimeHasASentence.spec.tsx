@@ -64,11 +64,12 @@ describe('B-215: the participant header gives a full sentence, not the bare word
     const sentence = await screen.findByText(/This check-in ran past the time it was given, so nobody can add to it for now\./i)
     expect(screen.queryByText('Out of time')).toBeNull()
     /*
-     * B-215 (REVIEW 6): GREEN IS THE COLOUR FOR A CHECK-IN THAT GENUINELY ENDED - a stalled one has
-     * not, and Mira can still give it more time. This line read green regardless, the same colour
-     * as a real ending; it now reads the neutral/amber tone Mira's own "Out of time" box uses.
+     * B-215 (REVIEW 6): A STALLED CHECK-IN IS NOT A CHECK-IN THAT GENUINELY ENDED, so its sentence must never read green.
+     * Changed 16 November 2026 (spacing work): the sentence used to be its own coloured span (amber for a stalled one). The 15 November
+     * header commit made it the header's one subtitle line, in the header's own muted ink for every state, so the colour check no
+     * longer has a span to read. What still matters is pinned: the sentence is in the header's subtitle, and it is not green.
      */
-    expect(sentence.className).toContain('gwui-note-amber')
+    expect(sentence.className).toContain('gw-pt-sub')
     expect(sentence.className).not.toContain('gwui-note-green')
   })
 

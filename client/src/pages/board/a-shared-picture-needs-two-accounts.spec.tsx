@@ -59,30 +59,48 @@ const two = [...one, { id: 'p2', name: 'Ada', role: null, managingOnly: false, s
 describe('a shared picture needs two accounts', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('tells the lead there is one person here, and that adding somebody is what changes it', async () => {
+  /*
+   * CHANGED 15 NOVEMBER (board explainers removed, Hafsah: "what the board does is still there; is it on
+   * the list?"). These four used to pin the orange note "This board compares what people said, and there
+   * is one person on this check-in. ... It will build once the person running this check-in adds
+   * somebody." That note told the lead nothing and let them do nothing, so a board with one person now
+   * shows what there is and explains nothing about why it is thin. They now pin that it is gone, for
+   * the lead, for a party who cannot add anybody, and for a lead who only manages.
+   */
+  const noExplainer = () => {
+    expect(document.body.textContent).not.toMatch(/compares what people said/i)
+    expect(document.body.textContent).not.toMatch(/Add somebody and it will build/i)
+    expect(document.body.textContent).not.toMatch(/once the person running this check-in adds somebody/i)
+    expect(document.body.textContent).not.toMatch(/fills in once/i)
+    expect(screen.queryByText('Where people differ')).toBeNull()
+  }
+
+  it('says nothing about the board being thin to a lead who can add somebody', async () => {
     ;(boardApi.get as any).mockResolvedValue(board(one, true))
     renderBoard()
-    expect(await screen.findByText(/there is one person on this check-in/i)).toBeTruthy()
-    expect(screen.getByText(/Add somebody and it will build/i)).toBeTruthy()
+    expect((await screen.findAllByText(/Kano sprint/)).length).toBeGreaterThan(0)
+    noExplainer()
   })
 
-  it('tells a party who cannot add anybody who can', async () => {
+  it('says nothing about it to a party who cannot add anybody', async () => {
     ;(boardApi.get as any).mockResolvedValue(board(one, false))
     renderBoard()
-    expect(await screen.findByText(/once the person running this check-in adds somebody/i)).toBeTruthy()
+    expect((await screen.findAllByText(/Kano sprint/)).length).toBeGreaterThan(0)
+    noExplainer()
   })
 
-  it('and says nothing at all once two people are on it', async () => {
+  it('and draws no empty comparison section once two people are on it with nothing to compare', async () => {
     ;(boardApi.get as any).mockResolvedValue(board(two, true))
     renderBoard()
-    expect(await screen.findByText(/Where people differ/i)).toBeTruthy()
-    expect(screen.queryByText(/one person on this check-in/i)).toBeNull()
+    expect((await screen.findAllByText(/Kano sprint/)).length).toBeGreaterThan(0)
+    noExplainer()
   })
 
-  it('a managing-only lead is not the second account', async () => {
+  it('a managing-only lead is not the second person, and nothing explains it', async () => {
     ;(boardApi.get as any).mockResolvedValue(board([...one, { id: 'p9', name: 'Ada', role: null, managingOnly: true, signedOffAt: null }], true))
     renderBoard()
-    expect(await screen.findByText(/there is one person on this check-in/i)).toBeTruthy()
+    expect((await screen.findAllByText(/Kano sprint/)).length).toBeGreaterThan(0)
+    noExplainer()
   })
 })
 
@@ -103,10 +121,12 @@ describe('a lead who does not check in', () => {
     ;(boardApi.get as any).mockResolvedValue(withGlance([leadWhoOnlyManages, kito], 'p-lead'))
     ;(await import('@/api/grounds')).groundsApi.get = vi.fn().mockResolvedValue({ initiatorId: 'u1', participants: [] }) as any
     const { container } = renderBoard()
-    expect(await screen.findByText(/there is one person on this check-in/i)).toBeTruthy()
-    expect(container.textContent).toContain('The one person in this session has answered.')
-    expect(container.textContent).not.toContain('You have answered this session.')
-    expect(container.textContent).toContain('This board compares what people said, and there is one person on this check-in.')
+    expect((await screen.findAllByText(/Kano sprint/)).length).toBeGreaterThan(0)
+    expect(container.textContent).toContain('The one person in this check-in has answered.')
+    expect(container.textContent).not.toContain('You have answered this check-in.')
+    /* Removed with the board explainers (15 November): a board with one person shows what there is and does not explain why it is thin. */
+    expect(container.textContent).not.toContain('This board compares what people said')
+    expect(container.textContent).not.toContain('It will build once')
     expect(container.textContent).not.toMatch(/compares accounts/)
   })
 })

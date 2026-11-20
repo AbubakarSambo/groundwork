@@ -1,3 +1,5 @@
+import { aRoundCouldHaveBeenAnswered } from './a-round-that-could-be-answered';
+import { CHECK_INS_ARE_PAUSED } from '../billing/the-trial-grace';
 import { theClocksSessionIn, type TheCountAsServed } from './the-count-as-served';
 import { A_CHECK_IN_TAKES } from '../../common/how-long-a-check-in-takes';
 import { theDayInWords } from '../board/the-day-in-words';
@@ -149,6 +151,8 @@ export interface Reader {
   userId: string;
   role?: string | null;
   organizationId: string;
+  /** When Groundwork paused for this organisation, if it is paused now: a round that opened then could not be answered, so Today does not say who missed it. */
+  pausedFrom?: Date | string | null;
   /**
    * NOT LET INTO THE ORGANISATION YET (U.8 third review, PRIVACY).
    *
@@ -290,8 +294,19 @@ export function whatNeedsYou(
     /* READY, NOT SENT (Hafsah, 3 November 2026): until the lead sends the invitations she held, the line is how many are ready to send. */
     if (!over && iRunIt && (g.readyToSend ?? 0) > 0 && !lineReadyToSend) lineReadyToSend = { groundId: g.id, count: g.readyToSend!, label: sendTheInvitations(g.readyToSend!) };
 
+    /*
+     * PAUSED: NO CHECK-IN IS OPEN, AND TODAY SAYS SO (run 8, day 70). Joel read "Your check-in for Sales updates is open" and "Check in now", which led to
+     * "isn't available any more". While the organisation is paused nothing is offered to start; whoever is not told by the quiet note on paying (a team
+     * member, who is not an admin and runs nothing) reads the one sentence the WhatsApp reply says.
+     */
+    const paused = !!reader.pausedFrom;
+    if (paused && !over && me && !isAdmin && !iRunIt) {
+      otherTurns.push({ key: `paused-${g.id}`, kind: 'look', title: CHECK_INS_ARE_PAUSED, detail: null, action: { label: 'Read what is kept', to: `/grounds/${g.id}` }, ...base });
+    }
+
     /* Your turn: the earliest open session of yours that is not done. Being two behind is one thing to do. */
-    if (!over && me && !heldFromMyOwn) {
+    let aTurnOfMineIsOpenHere = false;
+    if (!over && me && !heldFromMyOwn && !paused) {
       const next = sessions
         .filter((c) => c.participantId === me.id && c.status !== 'COMPLETED' && hasOpened(c, at))
         .sort((a, b) => a.sessionNumber - b.sessionNumber)[0];
@@ -335,6 +350,7 @@ export function whatNeedsYou(
         else if (days > A_WHILE) lateTurns.push(need);
         else otherTurns.push(need);
         myOpenTurn ??= g.label;
+        aTurnOfMineIsOpenHere = true;
       }
     }
 
@@ -365,12 +381,13 @@ export function whatNeedsYou(
     /* Every planned session is done, and how it ends is yours to decide. */
     const planned = g.glance?.progress?.roundsPlanned ?? null;
     const done = g.glance?.progress?.roundsDone ?? 0;
-    if (!over && iRunIt && planned && done >= planned) {
+    /* Not while a check-in of your own here is still open: "Decide how it ends" beside "Your next check-in" for the same check-in said two opposite things (Mira's Today, runs 6 to 9). */
+    if (!over && iRunIt && planned && done >= planned && !aTurnOfMineIsOpenHere) {
       decisions.push({
         key: `end-${g.id}`,
         kind: 'decide',
         title: `Decide how ${g.label} ends`,
-        detail: 'The last session is done.',
+        detail: 'The last check-in is done.',
         action: { label: 'Decide', to: `/grounds/${g.id}` },
         ...base,
       });
@@ -401,6 +418,8 @@ export function whatNeedsYou(
       /* Somebody an admin has not let in cannot be asked, so is neither counted nor named (request 95, decision 77). */
       const notLetInIds = new Set((g.participants ?? []).filter(isNotLetInYet).map((p) => p.id));
       const rows = sessions.filter((c) => c.sessionNumber === n && !notLetInIds.has(c.participantId));
+      /* While paused nothing is open, and a round that opened in a pause was never sent to anybody: nobody has "not checked in" or "did not check in before it closed" for it (run 6, day 90). */
+      const couldNotBeAnswered = !!reader.pausedFrom || rows.length > 0 && rows.every((c) => !aRoundCouldHaveBeenAnswered(c.availableFrom ?? null, { pausedFrom: reader.pausedFrom }));
       /*
        * ONE COUNT (U.5 review). The list row says "1 of 2 answered" from the check-in's own rule for
        * who is expected this session (someone whose invitation has lapsed, or who has not joined, is
@@ -446,7 +465,7 @@ export function whatNeedsYou(
         /* A session left quiet on a day they answered another is no miss: that day they checked in. */
         .filter((c: any) => !opensDaily || !aQuietSessionOnADayTheyCheckedIn({ ...c, answers: Array.isArray(c.turns) ? c.turns.length : null }, theirSessions(c.participantId), THE_PRODUCTS_OWN_ZONE))
         .map((c) => c.participantId))];
-      if (n > 0 && total > 1 && answered < total && (waitingIds.length > 0 || missedIds.length > 0) && (!line || total > line.people)) {
+      if (!couldNotBeAnswered && n > 0 && total > 1 && answered < total && (waitingIds.length > 0 || missedIds.length > 0) && (!line || total > line.people)) {
         const who = (id: string) => {
           const p = byId.get(id);
           return { name: p?.user?.firstName?.trim() || null, isMe: !!p?.userId && p.userId === reader.userId };

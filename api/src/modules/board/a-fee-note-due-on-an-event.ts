@@ -1,3 +1,4 @@
+import { mayReadTheLine, EVERYBODY } from '../conversation/who-may-read-a-line';
 import { whatTheSwitchboardServes } from './the-switchboard';
 import { theOrganisationsZone, THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { BILL, F, NOT_YET_RAISED, aDay, theCollectionsTypeFor } from './the-collections-record';
@@ -279,8 +280,8 @@ export async function fileTheFeeNotesDueOnAnEvent(
     const lines = (((await prisma.recordEntry.findMany({
       where: { checkInId: e.checkInId, disputedAt: null },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, text: true, participantId: true, createdAt: true },
-    })) ?? []) as any[]).map((l) => ({ ...l, text: String(l.text ?? '').replace(/\[[^\]]*\]/g, '').trim() })).filter((l) => l.text);
+      select: { id: true, text: true, participantId: true, createdAt: true, aboutParticipantId: true, standing: true },
+    })) ?? []) as any[]).filter((l) => mayReadTheLine(l, EVERYBODY)).map((l) => ({ ...l, text: String(l.text ?? '').replace(/\[[^\]]*\]/g, '').trim() })).filter((l) => l.text);
     if (!lines.length) return 0;
     const bills = await theBillsThatWait(prisma, ground.organizationId);
     if (!bills.length) return 0;

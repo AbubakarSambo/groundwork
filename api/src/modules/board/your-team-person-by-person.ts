@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { readThePersonsRecord, type AStoredPersonsRecord } from './the-persons-record-store';
 import { theRecordInWords, type TheRecordInWords } from './the-persons-record-in-words';
@@ -118,7 +119,7 @@ export async function yourTeamPersonByPerson(
   })).catch(() => null);
   if (!ground || ground.initiatorId !== o.leadUserId) return null;
   const judgements = await thePersonJudgementsAreOn(prisma, ground.organizationId);
-  const zone = String((await Promise.resolve(prisma?.organization?.findUnique?.({ where: { id: ground.organizationId }, select: { timeZone: true } })).catch(() => null))?.timeZone ?? '') || 'Africa/Nairobi';
+  const zone = (await theOrganisationsZone(prisma, ground.organizationId).catch(() => null)) ?? 'Africa/Nairobi';
   const team = ((ground.participants ?? []) as any[]).filter((p) => p.userId !== ground.initiatorId && p.partyType !== 'INITIATOR' && !p.managingOnly && !p.leftAt);
   if (!team.length) return null;
   const items: any[] = (await Promise.resolve(prisma?.workItem?.findMany?.({ where: { groundId: ground.id }, select: { id: true, name: true, stage: true, ownerParticipantId: true, dueAt: true, fields: true } })).catch(() => [])) ?? [];

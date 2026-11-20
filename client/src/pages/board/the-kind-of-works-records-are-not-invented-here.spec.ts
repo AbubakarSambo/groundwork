@@ -32,7 +32,7 @@ const ITEM_KINDS_FOR_HOLDS: Record<string, string[]> = {
   'commitments and decisions': ['commitment', 'decision'],
   'loans and their repayments': ['loan'],
   'priorities people named': ['priority'],
-  'subscriptions': ['subscription'],
+  'subscriptions and the metrics people state': ['subscription', 'metric'],
   'deadlines': ['deadline'],
   'the parties': ['party'],
   'counties and their projects': ['county', 'project'],

@@ -65,7 +65,7 @@ describe('the team’s report, as Grace reads it', () => {
     expect(screen.getByText('Four sales moved forward today, but none of them has proof yet.')).toBeTruthy()
     const text = document.body.textContent ?? ''
     expect(text).not.toContain('This is what changed since the last round')
-    expect(text).not.toContain('Session 5 of')
+    expect(text).not.toContain('Check-in 5 of')
     expect(screen.getByLabelText('Savannah Cafe: Won')).toBeTruthy()
     expect(screen.getByLabelText('Tuskys Westgate: Quoted')).toBeTruthy()
     /* Each person's short line, not every line they said; "Will do" as before. */

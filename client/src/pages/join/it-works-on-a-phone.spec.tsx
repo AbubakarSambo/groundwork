@@ -21,16 +21,13 @@ import { join } from 'node:path'
 const SRC = readFileSync(join(__dirname, 'AnswerFirstPage.tsx'), 'utf8')
 const CODE = SRC.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
 
-describe('the brief does not eat the screen', () => {
-  it('is whole while they are deciding whether to start', () => {
-    expect(CODE).toMatch(/phase === 'reading' \? \(/)
+/* Changed 15 November 2026 (Hafsah): the question is the heading in every phase, with no caption and no "tap to read it again" fold. It is one
+   heading, so it does not eat the screen; the schedule line under it is only said before the first answer. */
+describe('the question stays at the top as the heading', () => {
+  it('is a heading, and there is no folded caption', () => {
     expect(CODE).toMatch(/<h1 style=\{\{ fontSize: 20/)
-  })
-
-  it('and folds to one line once they are answering', () => {
-    expect(CODE).toMatch(/<details style=\{\{ marginBottom: 14 \}\}>/)
-    /* U.6 review: now a full sentence, "… Tap to read it again." */
-    expect(CODE).toMatch(/Tap to read it again\./)
+    expect(CODE).not.toMatch(/Tap to read it again/)
+    expect(CODE).not.toMatch(/<details/)
   })
 })
 
@@ -53,10 +50,9 @@ describe('the composer stays where a thumb is', () => {
  * sits and what it does are unchanged.
  */
 describe('finishing is visible', () => {
-  /* The one inside the pinned composer - there is an earlier `setPhase('address')` on the path
-     the engine takes when it closes the session itself. */
+  /* The one inside the pinned composer ("I am done" calls askWhoTheyAre, as the engine's own close does). */
   const theTag = () => {
-    const at = CODE.lastIndexOf("setPhase('address')")
+    const at = CODE.lastIndexOf("onClick={askWhoTheyAre}")
     return CODE.slice(CODE.lastIndexOf('<button', at), at + 200)
   }
   it('is a button, not an underlined link', () => {
@@ -70,7 +66,7 @@ describe('finishing is visible', () => {
   })
 
   it('and sits beside the send button rather than under the input', () => {
-    expect(CODE).toMatch(/justifyContent: 'space-between'[^}]*\}\}>\s*<button className="btn sec" onClick=\{\(\) => setPhase\('address'\)\}/)
+    expect(CODE).toMatch(/justifyContent: 'space-between'[^}]*\}\}>\s*<button className="btn sec" onClick=\{askWhoTheyAre\}/)
   })
 
   /* Nobody should press it wondering whether it throws away what they have just typed. */

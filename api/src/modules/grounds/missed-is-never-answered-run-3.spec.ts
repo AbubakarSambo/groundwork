@@ -51,8 +51,8 @@ describe('a session closed with nothing said is missed, never answered; somebody
     console.log(`THE LEAD READS, OVER TIME:\n${text}`);
     expect(text).not.toMatch(/Amina/);
     expect(text).not.toMatch(/Jared Okoth has answered/);
-    expect(text).toMatch(/In session 2, Jared Okoth did not check in before it closed\./);
-    expect(text).toMatch(/Hassan Mwenda has answered 3 sessions/);
+    expect(text).toMatch(/In check-in 2, Jared Okoth did not check in before it closed\./);
+    expect(text).toMatch(/Hassan Mwenda has answered 3 check-ins/);
   });
 
   /* CHANGED 1 NOVEMBER 2026: everyone on the check-in is counted (the one count, approved by Hafsah after the prototype's "5 of 6 have

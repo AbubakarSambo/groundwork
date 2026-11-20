@@ -27,7 +27,7 @@ describe('onboarding wrap-up jump safety net', () => {
   })
 
   it('keeps a clean closer verbatim when ready fires without a question', () => {
-    const cleanCloser = 'Thanks. I have what I need. Next you will add the people involved, then end the session.'
+    const cleanCloser = 'Thanks. I have what I need. Next you will add the people involved, then end the check-in.'
     expect(onboardDisplayReply(cleanCloser, true)).toBe(cleanCloser)
   })
 

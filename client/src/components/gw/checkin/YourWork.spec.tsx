@@ -46,10 +46,12 @@ function mount(overrides: Partial<Parameters<typeof YourWork>[0]> = {}) {
 }
 
 describe('Your work', () => {
-  it('the title and subtitle, without the pattern clause while there is no pattern', async () => {
+  /* Changed in batch 2, group 6 (issue 41): the subtitle was an explainer and a privacy note, and is gone. */
+  it('the title, and no line explaining the page or who sees it', async () => {
     mount()
     expect(await screen.findByRole('heading', { name: 'Your work' })).toBeTruthy()
-    expect(screen.getByText('Everything you’ve said, and what the proof shows. Only you see this page.')).toBeTruthy()
+    expect(screen.queryByText(/what the proof shows/)).toBeNull()
+    expect(screen.queryByText(/Only you see this page/)).toBeNull()
     expect(screen.queryByText(/apart from the pattern below/)).toBeNull()
   })
 
@@ -62,7 +64,7 @@ describe('Your work', () => {
        UPDATED FOR B-147: "check-ins so far" was itself the one-check-ins-mean-sessions mistake the
        audit found repeated across the product - this tile counts SESSIONS of the one check-in,
        not separate check-ins, so "session" (the product's one word for that) replaces it. */
-    expect(screen.getByText('sessions so far')).toBeTruthy()
+    expect(screen.getByText('check-ins so far')).toBeTruthy()
     expect(screen.queryByText(/promises kept this month/)).toBeNull()
   })
 
@@ -159,18 +161,18 @@ describe('Your work', () => {
       </QueryClientProvider>,
     )
     expect(await screen.findByText('Your reports')).toBeTruthy()
-    expect(screen.getByText('Session 1, your own')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Read' })).toHaveAttribute('href', '/checkin/ci1/report')
+    expect(screen.getByText('Check-in 1, your own')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Read' })).toHaveAttribute('href', '/grounds/g1?tab=mywork&report=ci1') /* Changed in batch 2, group 5: the report is in My work. */
   })
 
   it('"Every session" and "Who has answered" only for the lead, as quiet links', async () => {
     mount()
-    expect(screen.queryByRole('button', { name: 'Every session' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Every check-in' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Who has answered' })).toBeNull()
     const onSeeEverySession = vi.fn()
     const onSeeRoster = vi.fn()
     mount({ onSeeEverySession, onSeeRoster })
-    const everySession = await screen.findAllByRole('button', { name: 'Every session' })
+    const everySession = await screen.findAllByRole('button', { name: 'Every check-in' })
     everySession[0].click()
     expect(onSeeEverySession).toHaveBeenCalled()
     const roster = screen.getAllByRole('button', { name: 'Who has answered' })

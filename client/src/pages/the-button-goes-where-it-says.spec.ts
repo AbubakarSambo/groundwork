@@ -34,7 +34,8 @@ describe('destinations', () => {
   it('declining settles on the page instead of bouncing to the marketing site', () => {
     const invite = read('invite/InvitePage.tsx')
     expect(invite).not.toMatch(/onClick=\{\(\) => navigate\('\/'\)\}/)
-    expect(invite).toContain('Nothing has been shared and nobody is told.')
+    /* Changed 15 November 2026 (audit row 13): the "Not right now" button, which only changed the page, and its message are deleted. */
+    expect(invite).not.toContain('Nothing has been shared and nobody is told.')
   })
   it('the lost-token exit lands on the link form, not the password form', () => {
     /* U.2 review: a link with no token opens "That link didn’t work", which carries the way to ask
@@ -69,6 +70,7 @@ describe('destinations', () => {
      * the heading above the button already calls it. The button now says the same thing the
      * heading, and the rest of this section, say.
      */
+    /* REPOINTED (batch 1, group 10, 4 November 2026): "Ending it" is on People and setup as pictured, the only People and setup page. */
     const admin = read('grounds/GroundAdminPage.tsx')
     const page = read('grounds/PeopleAndSetupAsPictured.tsx')
     expect(admin).not.toMatch(/<button disabled[^>]*>\s*Close this check-in/)

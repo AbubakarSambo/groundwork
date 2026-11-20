@@ -1,3 +1,5 @@
+import { mayReadTheLine, EVERYBODY, theReader, theLinesThisReaderMayRead } from '../conversation/who-may-read-a-line';
+import { howManyReadsAreStillToCome } from '../conversation/the-read-is-owed';
 import { theSessionsHeld } from './the-sessions-held';
 import { notABlockerTheyRaised } from '../board/not-a-blocker-they-raised';
 import { thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
@@ -28,9 +30,13 @@ import { theRecordsClock, theDayItBegan, wholeDaysTo } from '../board/a-wait-is-
 import { THE_REPORT_IN_SIMPLER_WORDS } from '../grounds/what-is-sent-in-simpler-words';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
-import { theLinesAboutAColleaguesTargetLeftOut } from './their-words-about-a-target-follow-the-setting';
-/* The standard the lead set, which is the target's own place in a report read (not her words in setup). */
-const THE_STANDARD_AS_SET = [['stated'], ['againstSuccess', 'stated']] as const;
+
+/* The target's own places in a report read, which the lead's-aims rule never takes out: the standard the lead set (not her words in
+   setup), and the counts said from the record ("The team's approved facilities went from 0 to 11", "Your approved facilities went from
+   0 to 5"). Those are worded by the product for this reader, from targets this reader may read (targetsFor), so a team member keeps the
+   team's counts and their own (CI after batch 1, 7 November 2026: the privacy fix of 4 November took them out of Today, the check-in
+   and the Movement tile's line, because each names a target). */
+const THE_STANDARD_AS_SET = [['stated'], ['againstSuccess', 'stated'], ['sinceLast'], ['sinceLast', 'says'], ['sinceLast', 'also']] as const;
 import { theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
 import { whatIDontKnowYet } from './what-i-dont-know-yet';
 import { theOpenQuestionsThenTheDeals } from './the-sales-team-report-from-the-record';
@@ -111,6 +117,10 @@ import { withTheCollectionsReadings } from './the-collections-readings-for-a-rep
 import { theMarksOfAReport, markTheRows, withTheMarksOnItsLines, WHAT_EACH_MARK_SAYS } from './the-mark-on-every-line';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS, type HowALineIsKnown } from './how-a-line-is-known';
 import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
+import { theUnitOfARound } from '../grounds/the-check-ins-own-schedule';
+import { aFigureForAnotherPeriodIsNotADisagreement } from './a-figure-for-another-period-is-not-a-disagreement';
+import { sessionsAPauseOpened } from '../grounds/a-round-that-could-be-answered';
+import { whenTheseOrganisationsPaused } from '../billing/the-trial-grace';
 import { whatDoesNotAddUpPerPerson, withoutUncountedAlls } from './the-picture-gets-what-the-conversation-gets';
 import { factsAbout, type PersonFacts } from './the-facts-about-a-person';
 import {
@@ -453,7 +463,7 @@ export const REPORT_SCHEMA = {
         /* First experience, round 2 (31 October 2026): a law firm's lead read "You and David Kimani describe the immediate work to be done
            in different terms" when she had given the firm's plan and David his first task in it, and called it a fake disagreement. */
         description:
-          "The gap. For each topic, where each person stands - never framed as one side being right. A gap is only where two accounts of the same fact cannot both be true (rule 14a): a plan and one person's part in it, or the same work said in more or less detail, agree and are not a gap. Leave it empty when nobody contradicts anybody.\n\nORDER MATTERS: put the gap that matters most FIRST, and order the rest after it. Significance is about the WORK: how much of the ground's purpose is exposed if the gap holds, how many people it reaches, and whether it undermines something the other agreements depend on. It is never about who is more at fault - you are ranking gaps, not people.",
+          "The gap. For each topic, where each person stands - never framed as one side being right. A gap is only where two accounts of the same fact cannot both be true (rule 14a): a plan and one person's part in it, or the same work said in more or less detail, agree and are not a gap. Two people measuring the same aim in different units (units sold, money received) is not a gap either. A gap about a figure needs two people who each gave a figure for the same thing on the lines above; never a figure, a target or a share nobody gave. Leave it empty when nobody contradicts anybody.\n\nORDER MATTERS: put the gap that matters most FIRST, and order the rest after it. Significance is about the WORK: how much of the ground's purpose is exposed if the gap holds, how many people it reaches, and whether it undermines something the other agreements depend on. It is never about who is more at fault - you are ranking gaps, not people.",
       },
       centralQuestion: { type: 'string', description: 'The one question that, answered honestly, moves things forward.' },
       inferences: {
@@ -568,7 +578,7 @@ Do not say "party" or "parties" in anything the reader sees. Say the person's la
 
 6. LABEL INFERENCES, AND THE TEST IS WHETHER SOMEBODY SAID IT. An inference is a claim YOU concluded that no participant stated in their own account: something you read across two accounts, filled in from context, or drew out as an implication. A claim somebody actually made is not an inference even when you have put it in your own words - rewording what a person said does not make it yours. List every inference in the inferences array with its id, text, participantLabel and reason, where text is the sentence as it appears in the report. Leave the array empty only if every claim in the report traces back to something a participant actually said.
 7. CROSS-REFERENCE SESSIONS. Each record entry is labeled with the session it came from (e.g. "[the initiator session 1]", "[participant A session 3]"). If the same party's position has changed across sessions, name that change explicitly - "in session 1 the initiator described X; by session 3 they described Y." If a commitment from an earlier session has not been followed up in later sessions, name it. The longitudinal arc is the product's core value. A report that reads as a snapshot of only the latest session has failed.
-8. NO FALSE CONSENSUS. Do not write "both agree" or "everyone is aligned" unless every party's record contains explicit matching statements on that specific point. If parties described the same topic differently in any session, that is a divergence - surface it. Smoothing a disagreement into apparent consensus is a more serious error than noting the gap.
+8. NO FALSE CONSENSUS. Do not write "both agree" or "everyone is aligned" unless every party's record contains explicit matching statements on that specific point. If two parties said things about the same item that cannot both be true, that is a divergence - surface it. Smoothing a disagreement into apparent consensus is a more serious error than noting the gap. BEING MORE SPECIFIC IS NEVER A DIVERGENCE. One person giving a number, a name or a date where others said less, or where others said it was going as planned without giving one, is not a difference between them: the others did not say the opposite, they said less. Such a person is the one who gave the evidence, so never write them up as a difference, and never as the odd one out. A divergence needs two sides, each said by somebody, that conflict.
 9. SURFACE HIDDEN CONTRIBUTORS. If any party's record references someone else's input, work, or decisions - someone who is NOT themselves a party with their own account on this ground - name them in hiddenContributors with the evidence.
 
 NOBODY ON THE PARTY ROSTER IS EVER A HIDDEN CONTRIBUTOR. Not by name, and not as "the initiator", "the lead", "the manager", "party A" or "participant B". Run over every report this has ever produced, half of what came back named somebody sitting in the check-in - which is the read looking at the people in front of it and calling them absent. If the only person you can point at is on the roster, return nothing.
@@ -1192,8 +1202,13 @@ export class ReportsService {
       .catch(() => [] as { name: string; target: number | null; ownerParticipantId: string | null; direction?: string | null }[]);
     const answering = (ground.participants ?? []).filter((p: any) => !p.managingOnly).length;
     /* A deal's units are not a target (Drop Access run 1, item 27): they are not summed as one. */
-    const numbers = howTheNumbersSit(withoutADealsFigure(objectivesForTheSums as any[], await theCustomersIfReleaseOne(this.prisma, groundId), (ground.participants ?? []).map((p: any) => p.user?.firstName ?? '').filter(Boolean)), answering);
-    if (numbers.says) groundContextLines.push(numbers.says);
+    /* WHAT EACH PERSON AIMS AT IS THEIRS AND THE LEAD'S, NOT THE ROOM'S (run 7: "Participant B (35) ... do not align", and "Mary Wanjiku has stated a personal sales target higher than the entire team's"
+       in the mail to her colleagues). This report is written for everybody in the check-in, so where each person sees only their own target the sums are not given the aims of
+       individuals at all, and nothing is said about how they add up: the writer is never handed what it must not say. */
+    const aimsAreOwnersOnly = (ground as any).whoSeesTargets !== 'EVERYBODY';
+    const numbers = howTheNumbersSit(withoutADealsFigure((objectivesForTheSums as any[]).filter((o) => !aimsAreOwnersOnly || !o.ownerParticipantId), await theCustomersIfReleaseOne(this.prisma, groundId), (ground.participants ?? []).map((p: any) => p.user?.firstName ?? '').filter(Boolean)), answering);
+    const someoneHasAnAimOfTheirOwn = (objectivesForTheSums as any[]).some((o) => o.ownerParticipantId && typeof o.target === 'number' && o.target > 0);
+    if (numbers.says && !(aimsAreOwnersOnly && someoneHasAnAimOfTheirOwn)) groundContextLines.push(numbers.says);
     /*
      * WHAT THE RECORD ALREADY COUNTS, SO A REPORT NEVER SAYS IT IS NOT KNOWN (final real-model check, item 12). The board said 40 units
      * sold, and the report said "You do not have a current count of units sold." because Grace said she did not know it. Each target's
@@ -1266,7 +1281,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const parties = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, partyType: true, createdAt: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } },
+      select: { id: true, partyType: true, createdAt: true, roleAsDescribed: true, managingOnly: true, leftAt: true, nameGiven: true, organisationGiven: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } },
     });
     /* Whether this ground's lead only asks - see the-lead-who-only-asks. It changes one roster line. */
     const itsSituation = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
@@ -1291,13 +1306,15 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * it. The reads that COUNT still filter it out; this is the read the report is written from, so
      * the claim and the objection arrive together and the report can say the accounts differ.
      */
-    const theRecordAsItIs = await this.prisma.recordEntry.findMany({
-      where: { participant: { groundId } },
+    /* The team report is read by everybody in the check-in: no line the lead said about one of them (who-may-read-a-line.ts). */
+    /* Somebody who has left is not in the picture (fix plan 17 November, group C2): what they said stays in the record, and is not read into a new report. */
+    const theRecordAsItIs = (await this.prisma.recordEntry.findMany({
+      where: { participant: { groundId, leftAt: null } },
       include: {
         participant: { select: { id: true } },
         checkIn: { select: { sessionNumber: true, completedAt: true } },
       },
-    });
+    })).filter((r: any) => mayReadTheLine(r, EVERYBODY, (ground as any).whoSeesTargets));
     const records = theRecordAsItIs.map(withTheDisputeAttached)
       /* A name in their words becomes that person's label here, once, so every read below - the
          corpus, the facts about each person, the network read - gets the same text. See
@@ -1364,7 +1381,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
     );
     /* The direct morning (the-direct-morning-is-written-straight): the code's block goes LAST, after the stored version and every code
        block, so it runs whatever version is stored. */
-    const systemPrompt = withTheDirectMorning(synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock() + "\n\n" + HOW_TO_READ_A_DISPUTED_LINE + (theSituation ? "\n\n" + theSituation : "") + ((ground as any).simplerWords ? "\n\n" + THE_REPORT_IN_SIMPLER_WORDS : ""), THE_DIRECT_TEAM_REPORT);
+    const theRoundsPeriod = aFigureForAnotherPeriodIsNotADisagreement((ground as any).cadence, (ground as any).cadenceDays);
+    const systemPrompt = withTheDirectMorning(synthesisVersion.content + "\n\n" + SYNTHESIS_RULES + "\n\n" + buildLeadershipPatternBlock() + "\n\n" + HOW_TO_READ_A_DISPUTED_LINE + (theRoundsPeriod ? "\n\n" + theRoundsPeriod : "") + (theSituation ? "\n\n" + theSituation : "") + ((ground as any).simplerWords ? "\n\n" + THE_REPORT_IN_SIMPLER_WORDS : ""), THE_DIRECT_TEAM_REPORT);
 
 
     // Note any invited party who contributed no record - surfaced as an absence,
@@ -1381,7 +1399,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
       ...records.map((r) => r.participant.id),
       ...completedCheckInParticipantIds.map((c) => c.participantId),
     ]);
-    const absent = parties.filter((p) => !contributorIds.has(p.id));
+    /* Somebody invited who has not joined is not on this ground as far as the report goes: the model is never given them, so it cannot say what they think (run 10: "Ruth states sales are blocked", and Ruth never opened a session). One owner of who has joined: whoHasNotJoinedYet. */
+    const neverJoined = await whoHasNotJoinedYet(this.prisma, parties as any[]).catch(() => new Set<string>());
+    const onTheGround = (parties as any[]).filter((p) => !neverJoined.has(p.id) || contributorIds.has(p.id));
+    const absent = onTheGround.filter((p) => !contributorIds.has(p.id) && !p.leftAt);
     const header = absent.length
       ? `NOTE: ${absent.length} invited part${absent.length === 1 ? 'y' : 'ies'} did not contribute a record: ${absent
           .map((p) => labelById.get(p.id))
@@ -1405,7 +1426,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     });
     // Measure contribution by total character count of PERSON turns, not turn count.
     // A single detailed message (e.g. 50-submission analysis) should not read as "thin."
-    const turnCounts = participantsWithTurns.map((p) => {
+    const turnCounts = participantsWithTurns.filter((p) => onTheGround.some((o: any) => o.id === p.id)).map((p) => {
       const personTurns = p.checkIns.flatMap((c) => c.turns).filter((t) => t.role === 'PERSON');
       const charCount = personTurns.reduce((sum, t) => sum + (t.content?.length ?? 0), 0);
       return { label: labelById.get(p.id) ?? p.partyType, turns: personTurns.length, charCount };
@@ -1420,7 +1441,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       recordEntryCountByParty.set(r.participant.id, (recordEntryCountByParty.get(r.participant.id) ?? 0) + 1);
     }
     const saidByLabel = new Map(turnCounts.map((t) => [t.label, t.charCount]));
-    const rosterLines = parties.map((p) => {
+    const rosterLines = onTheGround.map((p) => {
       const label = labelById.get(p.id) ?? 'a party';
       // WHO LEADS WHOM. Without this the leadership-gap rules have nothing to
       // match: they open with "where one party leads another", and a roster of
@@ -1450,11 +1471,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * The roster already lists the labels. What was missing was the sentence saying those are the
      * only strings that may appear in participantLabel.
      */
-    const theOnlyLabels = `USE THESE LABELS AND NO OTHERS. Every participantLabel you write must be one of these strings, copied exactly: ${parties
+    const theOnlyLabels = `USE THESE LABELS AND NO OTHERS. Every participantLabel you write must be one of these strings, copied exactly: ${onTheGround
       .map((p: any) => `"${labelById.get(p.id)}"`)
       .join(', ')}. Never "Person", never "the participant", never a name, and never a label you have invented - each reader's own copy swaps these for the real names they are allowed to see, and a label that is not on this list is swapped for nothing.\n\n`;
 
-    const roster = `PARTY ROSTER (exhaustive - there are exactly ${parties.length} parties on this ground, no others exist):\n${rosterLines.join('\n')}\n\n${theOnlyLabels}`;
+    const roster = `PARTY ROSTER (exhaustive - there are exactly ${onTheGround.length} parties on this ground, no others exist):\n${rosterLines.join('\n')}\n\n${theOnlyLabels}`;
 
     const maxChars = Math.max(...turnCounts.map((p) => p.charCount), 1);
     const thinParties = turnCounts.filter((p) => p.charCount < maxChars * 0.15);
@@ -1652,7 +1673,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           .map((o) => ({ name: o.name, target: o.target, count: o.count ?? 0, yours: o.ownerParticipantId === p.id, setByThem: o.setByParticipantId === p.id })),
       })),
       roundNow,
-      { customers: theCustomers, people: theFirstNames },
+      { customers: theCustomers, people: theFirstNames, roundUnit: theUnitOfARound({ cadence: (ground as any).cadence, days: (ground as any).cadenceDays }) },
     );
 
     const privateFileNames = namesNotEverybodyMayOpen(
@@ -1677,7 +1698,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
         /* And the week it was said in: a difference is only ever between two statements of one week. See a-difference-is-within-one-week. */
         const week = `, week of ${theWeekItWasSaidIn(new Date((r.checkIn as any)?.completedAt ?? r.createdAt))}`;
         /* A file only its owner can open is not named in what everybody reads. See a-private-file-is-not-named. */
-        return `[${label}${session}${week}] (${r.type}) ${withoutPrivateFileNames(r.text, privateFileNames)}`;
+        /* How it stands, from the assessment that wrote the line (theStandingOf): proven, or their word. A line that cannot be true never
+           reaches here (who-may-read-a-line.ts), so no gap can be drawn from a figure nobody could have given (batch 2, group 2; S3). */
+        const stands = (r as any).standing === 'proved' ? ', proven' : (r as any).standing === 'said' ? ', their word' : '';
+        return `[${label}${session}${week}] (${r.type}${stands}) ${withoutPrivateFileNames(r.text, privateFileNames)}`;
       }).join('\n') +
       (factsFromTheAssessments.length
         ? `\n\nWHAT EACH PERSON SAID, AS THEIR CONVERSATION'S ASSESSMENT HOLDS IT (their own words, for what the lines above do not already hold):\n` +
@@ -1729,7 +1753,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * back as "AI response could not be parsed" and cost the whole report. A report without its
      * grounding is worse than one with it and far better than none.
      */
-    const grounding = await this.whatTheRecordShows(groundId, labelById).catch((err: any) => {
+    const grounding = await this.whatTheRecordShows(groundId, labelById, (ground as any).whoSeesTargets).catch((err: any) => {
       this.logger?.warn?.(`Grounding the synthesis for ground ${groundId} failed: ${err.message}`);
       return '';
     });
@@ -2084,7 +2108,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const DIFFICULTY_KEYWORDS = ['struggle', 'hard', 'difficult', 'unclear', 'behind', 'worried', 'frustrated', 'failed', 'challenging'];
 
     const engagementParties = await Promise.all(
-      parties.map(async (p) => {
+      parties.filter((p) => !p.leftAt).map(async (p) => {
         const [sessions, allEntries, documentsAttached] = await Promise.all([
           this.prisma.checkIn.count({ where: { participantId: p.id, status: CheckInStatus.COMPLETED } }),
           this.prisma.recordEntry.findMany({ where: { disputedAt: null, participantId: p.id }, select: { text: true } }),
@@ -2460,7 +2484,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * read, so "the tractor owner" becomes "you" on her own page and her name on the lead's.
      */
     const theFacts = parties
-      .filter((p: any) => !p.managingOnly)
+      .filter((p: any) => !p.managingOnly && !p.leftAt)
       .map((p: any) => factsAbout({
         participantId: p.id,
         label: labelById.get(p.id) ?? 'a party',
@@ -2472,6 +2496,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         /* On a sales check-in, one customer's figure is only set against the same customer's (the-facts-about-a-person). */
         customers: theCustomers,
         people: theFirstNames,
+        roundUnit: theUnitOfARound({ cadence: (ground as any).cadence, days: (ground as any).cadenceDays }),
       }, roundNow))
       .filter((f): f is NonNullable<typeof f> => !!f);
     const howManyDifferences = Array.isArray((result as any).divergences) ? (result as any).divergences.length : 0;
@@ -3272,7 +3297,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         select: { successLooksLike: true, version: true, conditions: true },
       }),
       this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, ...whoseLines, ...theLinesAboutAColleaguesTargetLeftOut((ground as any).whoSeesTargets, me, viewerIsLead) } as any,
+        where: { disputedAt: null, ...whoseLines, ...theLinesThisReaderMayRead(theReader(viewerIsLead, me?.id), (ground as any).whoSeesTargets) } as any,
         orderBy: { createdAt: 'asc' },
         select: { type: true, text: true, participantId: true },
       }).then(async (lines) => [...lines, ...(await this.whatSuccessWasSaid(groundId, readableParticipantIds, isInitiator, lines, undefined,
@@ -3281,6 +3306,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     ]);
 
     return whereYouAreAgainstWhatYouNamed({
+      readsStillToCome: await howManyReadsAreStillToCome(this.prisma, groundId),
       /* What this read was allowed to look at, so its words can say "you have not" rather than
          "nobody" when it only ever saw one person's rows. */
       counting: readableParticipantIds.length === ground.participants.length ? 'everyone' : 'only-yours',
@@ -3420,16 +3446,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
       : me ? [me.id] : [];
     const mine = new Set(me ? [me.id] : []);
     /* A colleague's words about their own target, where each person sees only their own (their-words-about-a-target-follow-the-setting). */
-    const theTargetWordsWall = theLinesAboutAColleaguesTargetLeftOut((ground as any).whoSeesTargets, me, viewerIsLead);
+    const theLinesTheyMayRead = theLinesThisReaderMayRead(theReader(viewerIsLead, me?.id), (ground as any).whoSeesTargets);
 
     const [entries, previousEntries, baseline, startingPoint, checkIn] = await Promise.all([
       this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, ...theTargetWordsWall, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber } },
+        where: { disputedAt: null, ...theLinesTheyMayRead, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber } },
         select: { type: true, text: true, recallBased: true, anchoredOrigin: true, dimensionThreadKey: true, participantId: true, confirmedAt: true, anchoredDocumentId: true },
       }),
       sessionNumber > 1
         ? this.prisma.recordEntry.findMany({
-          where: { disputedAt: null, ...theTargetWordsWall, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: sessionNumber - 1 } },
+          where: { disputedAt: null, ...theLinesTheyMayRead, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: sessionNumber - 1 } },
           select: { type: true, text: true, dimensionThreadKey: true, participantId: true },
         })
         : Promise.resolve([]),
@@ -3598,6 +3624,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     })();
     const shape = theSessionReport({
       sessionNumber,
+      readsStillToCome: await howManyReadsAreStillToCome(this.prisma, groundId),
       releaseOne: await theReleaseOneSalesBoardIsOnFor(this.prisma, groundId).catch(() => false),
       runsUntilEnded: !!(ground as any).runsUntilEnded,
       whoEndsIt,
@@ -3862,7 +3889,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * the report.
      */
     const everyEntrySoFar = await this.prisma.recordEntry.findMany({
-      where: { disputedAt: null, ...theTargetWordsWall, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: { lte: sessionNumber } } },
+      where: { disputedAt: null, ...theLinesTheyMayRead, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: { lte: sessionNumber } } },
       orderBy: { createdAt: 'asc' },
       select: { type: true, text: true, participantId: true },
     }).then(async (lines) => [...lines, ...(await this.whatSuccessWasSaid((ground as any).id, readableParticipantIds, isInitiator, lines, sessionNumber, undefined, me?.id ?? null))]);
@@ -3875,6 +3902,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       })).then((o: any) => (typeof o?.name === 'string' && o.name.trim() ? o.name.trim() : null)).catch(() => null)
       : null;
     const againstSuccess = whereYouAreAgainstWhatYouNamed({
+      readsStillToCome: await howManyReadsAreStillToCome(this.prisma, groundId),
       counting: readableParticipantIds.length === ground.participants.length ? 'everyone' : 'only-yours',
       stated: baseline?.successLooksLike ?? theTargetTheLeadSet ?? null,
       leadHasSaidIt: everyEntrySoFar.some(
@@ -4430,6 +4458,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
         amendedNote: true,
       },
     })).filter((round: any) => !onlyReleased || isThisSessionReleased(ground.report as any, round.sessionNumber));
+    /* A round the pause opened was never sent to anybody, so nothing is "over time" about it (run 9: an "On 20 January" entry written in the pause). */
+    const pausedFrom = (await whenTheseOrganisationsPaused(this.prisma, [ground.organizationId], new Date()).catch(() => new Map<string, Date>())).get(ground.organizationId) ?? null;
+    const theRowsOfTheRounds = pausedFrom ? await Promise.resolve((this.prisma as any).checkIn?.findMany?.({ where: { groundId, isSetup: false }, select: { sessionNumber: true, availableFrom: true, createdAt: true } })).catch(() => []) : [];
+    const openedByThePause = sessionsAPauseOpened((theRowsOfTheRounds ?? []) as any[], pausedFrom);
+    const roundsOfTheRecord = kept.filter((round: any) => !openedByThePause.has(round.sessionNumber));
 
     /*
      * Named, not spread. The same rule the rest of this API follows, and the reason is the same:
@@ -4445,7 +4478,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * while the report tab beside it said "Both agree". Four endpoints serve this text and only the
      * report's own read had the rule; this is one of the three that did not.
      */
-    const cleaned = kept.map((round: any) => ({
+    const cleaned = roundsOfTheRecord.map((round: any) => ({
       ...round,
       sharedPicture: typeof round.sharedPicture === 'string' ? notTheWordParty(round.sharedPicture) : round.sharedPicture,
     }));
@@ -4537,15 +4570,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
     });
   }
 
-  private async whatTheRecordShows(groundId: string, labelById: Map<string, string>): Promise<string> {
+  private async whatTheRecordShows(groundId: string, labelById: Map<string, string>, whoSeesTargets?: string | null): Promise<string> {
     const [objectives, blockers, deliveries, saidWhy] = await Promise.all([
-      this.prisma.personObjective.findMany({
+      /* WHAT EACH PERSON AIMS AT IS THEIRS AND THE LEAD'S: this block is written into the report everybody in the check-in reads, so where each person sees only their own target it
+         is given no person's aim, which is what put "Participant B: My own aim is 35 a week" into the writer's hands (run 7). */
+      whoSeesTargets === 'EVERYBODY' ? this.prisma.personObjective.findMany({
         where: { groundId },
         select: {
           participantId: true, text: true, dueDate: true, dueSaid: true, status: true,
           seenBySubject: true, awareness: true, kind: true,
         },
-      }),
+      }) : Promise.resolve([] as any[]),
       this.prisma.groundDependency.findMany({
         where: { groundId, status: 'WAITING' },
         select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true, triedSaid: true, takenFurther: true, blockerKind: true },
@@ -4558,7 +4593,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
        */
       Promise.all([
         this.prisma.delivery.findMany({ where: { groundId }, select: { participantId: true, text: true } }),
-        Promise.resolve(this.prisma.recordEntry?.findMany?.({ where: { participant: { groundId }, type: 'PROGRESS' as any, disputedAt: null }, select: { participantId: true, text: true } }) ?? []).catch(() => [] as { participantId: string; text: string }[]),
+        Promise.resolve(this.prisma.recordEntry?.findMany?.({ where: { participant: { groundId }, type: 'PROGRESS' as any, disputedAt: null }, select: { participantId: true, text: true, aboutParticipantId: true, standing: true } }) ?? []).then((rows: any[]) => (rows ?? []).filter((r) => mayReadTheLine(r, EVERYBODY))).catch(() => [] as { participantId: string; text: string }[]),
       ]).then(([added, onTheRecord]) => [...added, ...(onTheRecord ?? [])]),
       /*
        * WHAT THEY SAID ABOUT WHY, AS A CLASSIFICATION AND NEVER AS WORDS.
@@ -5605,10 +5640,22 @@ happened, and what is in the way.`;
       ((await (this.prisma.checkIn?.findMany?.({ where: { groundId, sessionNumber, status: CheckInStatus.COMPLETED, ...aQuietCloseWhere }, select: { participantId: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[])) as any[])
         .map((c: any) => c.participantId),
     );
+    /*
+     * ONLY PEOPLE WHO JOINED HAVE A REPORT TO READ (fix plan 16 November, group 6; Hafsah can reverse this by deleting the one line
+     * below that reads `joined`). Somebody who never started a check-in here keeps the invitation and its reminders and nothing else:
+     * Ruth, Sam and Asha were told "Your report is ready" six times each in five weeks. The person who runs the check-in is always told.
+     */
+    const joined = new Set(
+      ((await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: { in: [CheckInStatus.IN_PROGRESS, CheckInStatus.COMPLETED, CheckInStatus.DECLINED] } }, select: { participantId: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[])) as any[])
+        .map((c: any) => c.participantId),
+    );
     const owed = ground.participants.filter((p) =>
       !already.has(p.id)
+      && (p.userId === ground.initiatorId || joined.has(p.id))
       && !saidNothing.has(p.id)
       && (!onlyParticipantId || p.id === onlyParticipantId)
+      /* Somebody who has left is not told a report is ready (fix plan 17 November, group C2). */
+      && !(p as any).leftAt
       && !!p.email
       && !p.email.endsWith(AN_UNCLAIMED_ADDRESS)
       /* Somebody who was asked and said no is not sent it. Null is nobody asked, which is everybody the lead invited. */
@@ -5619,7 +5666,8 @@ happened, and what is in the way.`;
      * of the day goes with whoever answered, so the mail says who did rather than "everybody has now checked in".
      */
     const thisSession = ((await (this.prisma.checkIn?.findMany?.({ where: { groundId, sessionNumber }, select: { participantId: true, status: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[])) as any[]);
-    const asked: SomebodyAskedThisSession[] = thisSession.map((c: any) => {
+    /* Nobody who has left is named as one who was asked (run 4, 18 November: "You and Mary Wanjiku have not checked in" after Mary was removed). */
+    const asked: SomebodyAskedThisSession[] = thisSession.filter((c: any) => !(ground.participants.find((x) => x.id === c.participantId) as any)?.leftAt).map((c: any) => {
       const who = ground.participants.find((x) => x.id === c.participantId) as any;
       const name = [who?.user?.firstName, who?.user?.lastName].filter((x: any) => typeof x === 'string' && x.trim()).join(' ').trim() || (who?.nameGiven ?? '').trim() || null;
       return { participantId: c.participantId, name, answered: c.status === CheckInStatus.COMPLETED && !saidNothing.has(c.participantId) };
@@ -7275,12 +7323,13 @@ happened, and what is in the way.`;
 
   private async readTheDirectionInChunks(ground: any): Promise<TheDirection | null> {
     const labels = labelsForParties(ground.participants as any);
-    const entries = await this.prisma.recordEntry.findMany({
+    /* The direction is part of the team report: no line the lead said about one of them (who-may-read-a-line.ts). */
+    const entries = (await this.prisma.recordEntry.findMany({
       where: { disputedAt: null, participant: { groundId: ground.id } },
       orderBy: { createdAt: 'asc' },
-      select: { text: true, participantId: true },
+      select: { text: true, participantId: true, aboutParticipantId: true, standing: true, type: true },
       take: 600,
-    });
+    })).filter((r: any) => mayReadTheLine(r, EVERYBODY, ground.whoSeesTargets));
     if (entries.length < 2) return null;
 
     const byLabel = new Map<string, string[]>();

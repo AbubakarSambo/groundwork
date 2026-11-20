@@ -93,8 +93,8 @@ export function theShapeOfIt(cells: Record<string, string>, sessions: (number | 
 /** "session 2." for one, "sessions 2 and 3." for two, "sessions 2, 3 and 4." for more - never a
     bare count with nothing named. */
 function namedSessions(ns: (number | string)[]): string {
-  if (ns.length === 1) return `session ${ns[0]}`
-  return `sessions ${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`
+  if (ns.length === 1) return `check-in ${ns[0]}`
+  return `check-ins ${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`
 }
 
 /**
@@ -136,17 +136,17 @@ const SELF_VERB_FOR: Record<Cell, string> = {
  */
 export function theSentenceFor(name: string, shape: ReturnType<typeof theShapeOfIt>, isReader = false): string | null {
   const subject = isReader ? 'You' : name
-  if (shape.of === 0) return isReader ? 'You are not on any of these sessions.' : `${name} is not on any of these sessions.`
+  if (shape.of === 0) return isReader ? 'You are not on any of these check-ins.' : `${name} is not on any of these check-ins.`
   if (!shape.usual) {
     if (shape.notOn === 0) return null
-    return isReader ? `You are on ${shape.of} of these sessions.` : `${name} is on ${shape.of} of these sessions.`
+    return isReader ? `You are on ${shape.of} of these check-ins.` : `${name} is on ${shape.of} of these check-ins.`
   }
   const verb = (isReader ? SELF_VERB_FOR : VERB_FOR)[shape.usual]
   const who = shape.onlySession != null
-    ? `${subject} ${verb} session ${shape.onlySession}`
+    ? `${subject} ${verb} check-in ${shape.onlySession}`
     : isReader && shape.howMany === shape.of && shape.of === 2
-      ? `You ${verb} both sessions so far`
-      : `${subject} ${verb} ${shape.howMany} of ${shape.of} sessions so far`
+      ? `You ${verb} both check-ins so far`
+      : `${subject} ${verb} ${shape.howMany} of ${shape.of} check-ins so far`
   /*
    * U.10 RE-REVIEW: NAME THE SESSION, NOT ONLY ITS COUNT. "...and was not part of the other 1."
    * said how many sessions this person was not on, never which ones - read live, it took a second
@@ -215,7 +215,7 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions, myP
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {shape.rest.map((e) => (
                   <span key={String(e.s)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Session {e.s}</span>
+                    <span style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Check-in {e.s}</span>
                     <Tag tone={TONE[e.state]}>{WHAT_A_CELL_MEANS[e.state]}</Tag>
                   </span>
                 ))}

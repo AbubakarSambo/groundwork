@@ -252,7 +252,7 @@ describe('the founder’s own check-in: a Work plan with none yet', () => {
     renderBoard(FOUNDER)
     expect(await screen.findByText('This is your own check-in as a founder, about your own commitments and decisions.')).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Every item, and what shows it' })).toBeTruthy()
-    expect(screen.getByText('No commitments and decisions have come up yet. They appear here when someone names one in a check-in, or when you add one below.')).toBeTruthy()
+    expect(screen.getByText('No commitments and decisions have come up yet. You can add one below.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add one' })).toBeTruthy()
   })
 
@@ -260,7 +260,7 @@ describe('the founder’s own check-in: a Work plan with none yet', () => {
     me = { id: 'u-akinyi', firstName: 'Akinyi', role: 'MEMBER' }
     renderBoard({ ...FOUNDER, myParticipantId: 'p-akinyi', canEditFrame: false })
     expect(await screen.findByText("This is a founder's own check-in, about their own commitments and decisions.")).toBeTruthy()
-    expect(screen.getByText('No commitments and decisions have come up yet. They appear here when someone names one in a check-in.')).toBeTruthy()
+    expect(screen.getByText('No commitments and decisions have come up yet.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Add one' })).toBeNull()
   })
 })
@@ -278,7 +278,8 @@ describe('nobody has said the kind of work yet: every section not-known', () => 
   it('the lead is asked to choose a kind, and every section reads as not-known, said once', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(NO_KIND)
-    expect(await screen.findByText('Nobody has said what kind of work this check-in is about yet. Choose one, so its board can keep the right kind of record.')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Choose the kind of work' })).toBeTruthy()
+    expect(screen.queryByText(/Nobody has said what kind of work this check-in is about yet/)).toBeNull()
     /* Was pinned at 2 (the same sentence shown once per section), the exact repeated-line fault
        found live on a role-handover board (real-user walk, Kijani Foods, fault 4b): the collapsing
        this sentence already gets on a project or onboarding board was never scoped to apply here

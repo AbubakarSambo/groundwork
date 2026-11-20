@@ -2,7 +2,6 @@ import { theActivationFunnel } from '../engagement/the-activation-funnel';
 import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
-import { SEED_PROMPTS } from '../conversation/prompt-library';
 import { seatsByOrganisation } from '../../common/seats';
 import { Prisma } from '@prisma/client';
 import { A_CUSTOMER, A_REAL_CHECK_IN, A_REAL_SESSION, CLOSED_BY_THE_CLOCK, usageEventsByCustomers, aMean, inRange, session2RateOfThoseDue, sinceFor } from './what-the-platform-has-actually-done';
@@ -61,6 +60,8 @@ export class PromptsService implements OnModuleInit {
    * hand through /prompts writes the admin's user id.
    */
   async onModuleInit() {
+    /* Read here, not at the top of the file: the seeds include prompts whose code imports this service, and a top-level import would make the two wait for each other. */
+    const { SEED_PROMPTS } = require('../conversation/prompt-library') as typeof import('../conversation/prompt-library');
     let kept = 0;
     for (const seed of SEED_PROMPTS) {
       const active = await this.prisma.promptVersion.findFirst({ where: { key: seed.key, isActive: true } });

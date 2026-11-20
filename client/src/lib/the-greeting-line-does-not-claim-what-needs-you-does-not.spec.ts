@@ -11,7 +11,7 @@ describe('todayGreetingLine: screen fault 4, final walk', () => {
   })
 
   it('leaves every other line untouched, with or without anything needing the reader', () => {
-    expect(todayGreetingLine('In Sales team, Q3, 5 of 6 have checked in for session 38; Omar hasn’t yet.', 2)).toBe('In Sales team, Q3, 5 of 6 have checked in for session 38; Omar hasn’t yet.')
+    expect(todayGreetingLine('In Sales team, Q3, 5 of 6 have checked in for check-in 38; Omar hasn’t yet.', 2)).toBe('In Sales team, Q3, 5 of 6 have checked in for check-in 38; Omar hasn’t yet.')
     expect(todayGreetingLine('Your check-in for Sales team, Q3 is open.', 0)).toBe('Your check-in for Sales team, Q3 is open.')
   })
 

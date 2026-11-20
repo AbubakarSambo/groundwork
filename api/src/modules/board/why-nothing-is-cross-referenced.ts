@@ -25,11 +25,11 @@ export function whyNothingIsCrossReferenced(a: {
 }): string {
   const expected = a.peopleExpected ?? 0;
   if (expected > 0 && expected < 2) {
-    return 'There is nothing to compare yet. This compares what different people said, and there is only one person on this check-in.';
+    return 'There is nothing to compare yet.';
   }
   const waiting = a.stillToAnswer ?? null;
   if (waiting == null) {
-    return 'Nothing cross-referenced yet. This fills in once more than one person has answered.';
+    return 'Nothing is cross-referenced yet.';
   }
   if (waiting > 0) {
     return `Nothing cross-referenced yet. ${waiting === 1 ? 'One person has' : `${waiting} people have`} still to answer.`;

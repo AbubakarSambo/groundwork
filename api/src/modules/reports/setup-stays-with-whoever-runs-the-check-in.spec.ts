@@ -1,6 +1,7 @@
+import { theLinesThisReaderMayRead, thePerson, THE_LEAD } from '../conversation/who-may-read-a-line';
 import { EntryService } from '../entry/entry.service';
 import { makeService, person, entry } from './__fixtures__/a-cohort-for-the-session-report';
-import { theLinesAboutAColleaguesTargetLeftOut } from './their-words-about-a-target-follow-the-setting';
+
 import { wasCopiedInOneGo } from '../../../scripts/setup-words-copied-into-the-leads-first-check-in';
 
 /**
@@ -61,7 +62,10 @@ function aSalesTeam(whoSeesTargets: 'THEIR_OWN' | 'EVERYBODY') {
 function matches(row: any, where: any): boolean {
   if (!where) return true;
   if (where.OR && !where.OR.some((w: any) => matches(row, w))) return false;
-  if (where.NOT && matches(row, where.NOT)) return false;
+  /* Prisma takes NOT as one clause or a list; a line about somebody, or one that cannot be true, is read as Prisma reads it. */
+  if (where.NOT && [].concat(where.NOT).some((w: any) => matches(row, w))) return false;
+  if (where.aboutParticipantId !== undefined && (where.aboutParticipantId?.not === null ? !row.aboutParticipantId || (where.aboutParticipantId.notIn ?? []).includes(row.aboutParticipantId) : false)) return false;
+  if (where.standing !== undefined && row.standing !== where.standing?.equals) return false;
   const pid = where.participantId;
   if (pid?.in && !pid.in.includes(row.participantId)) return false;
   if (pid?.not && pid.not === row.participantId) return false;
@@ -130,10 +134,10 @@ describe("a person's words about their target follow the target setting", () => 
     expect(await reads.band('user-baraka')).toContain(TARGET);
   });
 
-  it('the rule the board reads its lines with is the same one', () => {
-    expect(theLinesAboutAColleaguesTargetLeftOut('THEIR_OWN', { id: 'baraka' }, false)).toEqual({ NOT: { type: 'SUCCESS_DEFINITION', participantId: { not: 'baraka' } } });
-    expect(theLinesAboutAColleaguesTargetLeftOut('THEIR_OWN', { id: 'lead' }, true)).toEqual({});
-    expect(theLinesAboutAColleaguesTargetLeftOut('EVERYBODY', { id: 'baraka' }, false)).toEqual({});
+  it('the rule the board reads its lines with is the same one, the one rule for who may read a line', () => {
+    expect(theLinesThisReaderMayRead(thePerson('baraka'), 'THEIR_OWN')).toEqual({ NOT: [{ standing: { not: null, equals: 'cannot be true' } }, { aboutParticipantId: { not: null, notIn: ['baraka'] }, participantId: { not: 'baraka' } }, { type: 'SUCCESS_DEFINITION', participantId: { not: 'baraka' } }] });
+    expect(theLinesThisReaderMayRead(THE_LEAD, 'THEIR_OWN')).toEqual({});
+    expect(theLinesThisReaderMayRead(thePerson('baraka'), 'EVERYBODY')).toEqual({ NOT: [{ standing: { not: null, equals: 'cannot be true' } }, { aboutParticipantId: { not: null, notIn: ['baraka'] }, participantId: { not: 'baraka' } }] });
   });
 });
 

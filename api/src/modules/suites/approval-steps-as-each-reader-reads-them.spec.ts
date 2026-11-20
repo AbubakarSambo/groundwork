@@ -188,7 +188,9 @@ describe('nothing already switched on changes: today’s answers are one step ea
         const { prisma } = setup({ duties });
         /* Spending's settings are kept as the lowest of its steps by amount. */
         const steps = (theStepsFor as any)(suite, suite === 'spend' ? withTheCardsAnswers({}, answers) : answers, amount);
-        expect(steps).toEqual([BEFORE_theStepsFor(suite, answers, amount)]);
+        /* Batch S, S2 (Hafsah, 19 November 2026): the manager's step now passes up to their own manager before an admin. */
+        const NOW = (r: ARule[]): ARule[] => (r[0] === 'manager' ? ['manager', 'managersManager', ...r.slice(1)] : r);
+        expect(steps).toEqual([NOW(BEFORE_theStepsFor(suite, answers, amount))]);
         for (const requester of ['u-aisha', 'u-miriam', 'u-otieno', 'u-wairimu', 'u-omar']) {
           const request = { organizationId: ORG, requesterUserId: requester };
           const before = await BEFORE_theOneWhoDecides(prisma, BEFORE_theStepsFor(suite, answers, amount), request);
@@ -350,9 +352,10 @@ describe('the admin sets the steps, and nobody else can', () => {
     const { suites, as } = setup();
     const before = await suites.workflows(as('u-grace'));
     expect(before.suites.find((s) => s.key === 'leave')).toMatchObject({
-      set: false, steps: [['manager', 'admin']], escalateAfter: null,
+      /* Batch S, S2: the step every request takes is the manager, then their manager, then an admin. */
+      set: false, steps: [['manager', 'managersManager', 'admin']], escalateAfter: null,
       said: [
-        'A leave request goes to the person’s manager, or else an admin.',
+        'A leave request goes to the person’s manager, or else their manager’s manager, or else an admin.',
         'Groundwork never passes leave requests on by itself. An admin can set a number of working days after which it does.',
       ],
     });
@@ -369,7 +372,7 @@ describe('the admin sets the steps, and nobody else can', () => {
     });
     /* Cleared back to how it always ran. */
     const cleared = await suites.setWorkflows(as('u-grace'), { leave: null });
-    expect(cleared.suites.find((s) => s.key === 'leave')).toMatchObject({ set: false, steps: [['manager', 'admin']], escalateAfter: null });
+    expect(cleared.suites.find((s) => s.key === 'leave')).toMatchObject({ set: false, steps: [['manager', 'managersManager', 'admin']], escalateAfter: null });
   });
 
   it('a step that names a person, an unknown rule, or a wrong number of days is refused in a plain sentence', async () => {

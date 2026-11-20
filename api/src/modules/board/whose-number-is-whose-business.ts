@@ -138,5 +138,8 @@ export function whatTheLeadShouldKnow(targets: Target[], whoSees: WhoSees): stri
   const unowned = targets.filter((t) => !t.ownerParticipantId && t.target != null);
   if (!unowned.length || unowned.length === targets.length) return null;
   const n = unowned.length;
-  return `${n === 1 ? 'One target has' : `${n} targets have`} nobody's name on ${n === 1 ? 'it' : 'them'}, so everybody on this check-in can see ${n === 1 ? 'it' : 'them'}. Set whose ${n === 1 ? 'it is' : 'they are'} to keep each person's number to them.`;
+  /* Said which (run 8: "One target has nobody's name on it" never said which). By its number, never its words: a name in a target's text is not an owner, and is not repeated here. */
+  const numbers = [...new Set(unowned.map((t) => Number(t.target)))].map((x) => x.toLocaleString('en-GB'));
+  const which = n <= 3 ? ` (the ${numbers.length > 1 ? 'targets' : 'target'} of ${numbers.length > 1 ? `${numbers.slice(0, -1).join(', ')} and ${numbers[numbers.length - 1]}` : numbers[0]})` : '';
+  return `${n === 1 ? 'One target has' : `${n} targets have`} nobody's name on ${n === 1 ? 'it' : 'them'}${which}, so everybody on this check-in can see ${n === 1 ? 'it' : 'them'}. Set whose ${n === 1 ? 'it is' : 'they are'} to keep each person's number to them.`;
 }

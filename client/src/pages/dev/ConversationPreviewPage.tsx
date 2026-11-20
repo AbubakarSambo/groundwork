@@ -119,7 +119,6 @@ function ConversationFrame({
         {endCard && (
           <TheEndCard
             engine={{ inYourRecord: END_CARD_RECORD, next: END_CARD_NEXT }}
-            leadName="Wairimu"
             nextOpens="Your next check-in opens tomorrow at 4pm."
             finishing={false}
             onFinish={noop}

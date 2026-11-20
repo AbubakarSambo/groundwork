@@ -11,6 +11,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// A STRETCH WHEN GROUNDWORK WAS PAUSED FOR AN ORGANISATION (N51). The pause is a state read from the free month, so its start was never kept: an
+/// organisation that chose a plan had the rounds of its pause counted as missed. Written by billing/the-trial-grace.ts when it first sees the pause
+/// and when it first sees the pause over. No row means no pause was ever seen, which every count reads as before.
+model OrganizationPause {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  pausedFrom     DateTime  @map("paused_from")
+  resumedAt      DateTime? @map("resumed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([organizationId])
+  @@map("organization_pauses")
+}
+
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
@@ -491,8 +505,12 @@ model Organization {
   suites             OrganizationSuite[]
   /// Requests for time off, for the leave suite (E2, U.17).
   leaveRequests      LeaveRequest[]
+  /// The leave policy's offices and public holidays (21 November 2026). The rest of the policy is in the leave rules.
+  leaveOffices       LeaveOffice[]
+  publicHolidays     PublicHoliday[]
   /// What a lead confirmed is true of the whole company (week 20), kept next to the knowledge cards.
   memories           OrganizationMemory[]
+  memoryFiles        MemoryFile[]
   /// Hours for billing, for the time sheets suite (E3, U.17). Never evidence about anybody's work.
   timeEntries        TimeEntry[]
   timeWeeks          TimeWeek[]
@@ -680,6 +698,7 @@ model Organization {
   assistantTurns      AssistantTurn[]
   assistantProposals  AssistantProposal[]
   knowledgeCards      KnowledgeCard[]
+  deskDocuments       DeskDocument[]
   knowledgeRetrievals KnowledgeRetrieval[]
   roles               Role[]
   primaryActionEvents PrimaryActionEvent[]
@@ -1524,6 +1543,7 @@ model GroundParticipant {
   gaps                       CheckInGap[]
   /// Board targets that are this person's own. See GroundObjective.ownerParticipantId.
   objectivesOwned            GroundObjective[] @relation("ObjectiveOwner")
+  objectivesSaid             GroundObjectiveSaid[] @relation("ObjectiveSaid")
   whatWorked                 WhatWorked[]
   id                         String            @id @default(uuid())
   groundId                   String            @map("ground_id")
@@ -1983,11 +2003,19 @@ model RecordEntry {
   /// the person themselves, and never by a departure. See conversation/confirmed-by-who-received-it.ts.
   confirmedAt              DateTime? @map("confirmed_at")
   confirmedByParticipantId String?   @map("confirmed_by_participant_id")
+  /// WHOM THE LINE IS ABOUT, WHEN THE LEAD SAID IT ABOUT SOMEBODY ELSE'S WORK (Hafsah, batch 2 item 1). Set by the one writer from
+  /// the assessment (whoMaySee, conversation/the-assessment.ts). A line with it set is read by the lead and that person only, never by
+  /// the rest of the team: every reader of colleagues' lines takes conversation/who-may-read-a-line.ts. Null on every other line.
+  aboutParticipantId       String?   @map("about_participant_id")
+  /// HOW WHAT WAS SAID STANDS (theStandingOf, the assessment's one reading): "proved", "said" or "cannot be true". Null on lines written
+  /// before it, read as "said". A line that cannot be true as said is read by the lead only, worded as what was said.
+  standing                 String?   @db.VarChar(16)
 
   participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Restrict)
   checkIn     CheckIn?          @relation(fields: [checkInId], references: [id], onDelete: SetNull)
 
   @@index([participantId])
+  @@index([aboutParticipantId])
   @@map("record_entries")
 }
 
@@ -2205,10 +2233,34 @@ model GroundObjective {
   ground    Ground                    @relation(fields: [groundId], references: [id], onDelete: Cascade)
   owner     GroundParticipant?        @relation("ObjectiveOwner", fields: [ownerParticipantId], references: [id], onDelete: SetNull)
   snapshots GroundObjectiveSnapshot[]
+  said      GroundObjectiveSaid[]
 
   @@index([groundId])
   @@index([ownerParticipantId])
   @@map("ground_objectives")
+}
+
+/// WHAT A PERSON SAID THEY HAD DONE AGAINST A TARGET, SAID AND NOT PROVEN. One row per person per target, the newest round's number.
+/// "I sold 24 this week" against the team's target of 30 is Asha's 24 here: the target is not changed, nothing is added to what the
+/// deals count, and no new aim is made. The deals on the board are the only proof; this is only what was said.
+model GroundObjectiveSaid {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  objectiveId   String   @map("objective_id")
+  participantId String   @map("participant_id")
+  count         Int
+  /// The sentence the number was read from.
+  said          String   @db.Text
+  sessionNumber Int      @map("session_number")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  objective   GroundObjective   @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+  participant GroundParticipant @relation("ObjectiveSaid", fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([objectiveId, participantId])
+  @@index([groundId])
+  @@map("ground_objective_said")
 }
 
 /// AN OBJECTIVE'S COUNT AS IT STOOD WHEN A ROUND CLOSED. Written by recordRoundCompletion, one row per
@@ -2958,6 +3010,10 @@ model PerformanceReview {
   decisionReasons        String?   @map("decision_reasons") @db.Text
   decidedById            String?   @map("decided_by_id")
   decidedAt              DateTime? @map("decided_at")
+  /// WHAT HAPPENS NEXT (Batch S, S4): the next steps the writer set when deciding, in their words, and the day they look at it
+  /// again with the person. Both read by the person and everybody who may read the review (the-reviews.service.ts, `aboutIt`).
+  nextSteps              String?   @map("next_steps") @db.Text
+  lookAgainOn            DateTime? @map("look_again_on") @db.Date
   /// THE RECORD, INTERPRETED (decision 85, item 4; build step 12). What Groundwork understands from the
   /// record about the person's work in the review's period: the check-ins they took part in, the goals
   /// and work-plan items they own, what they committed to and how each was settled, and what they said
@@ -3091,7 +3147,8 @@ model LeaveRequest {
   userId         String    @map("user_id")
   startsOn       DateTime  @map("starts_on") @db.Date
   endsOn         DateTime  @map("ends_on") @db.Date
-  /// Only annual leave for now: the only kind the prototype shows.
+  /// The type of leave: the key of a type in the leave rules ("annual", "sick", "maternity", or a custom
+  /// type's key). "annual" when the organisation has set no types, as every request before them was.
   kind           String    @default("annual") @db.VarChar(16)
   standInUserId  String?   @map("stand_in_user_id")
   /// waiting, approved or declined.
@@ -3116,6 +3173,44 @@ model LeaveRequest {
   @@index([organizationId, status])
   @@index([organizationId, userId])
   @@map("leave_requests")
+}
+
+/// AN OFFICE, FOR THE LEAVE CALENDAR (21 November 2026). An organisation with offices in other
+/// countries names each, with its country, and gives each its own public holidays. A person is tied to
+/// one through `OrganizationMembership.officeId`; anyone not tied to one uses the organisation's own.
+model LeaveOffice {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String   @db.VarChar(80)
+  /// The country, as the admin says it: "Nigeria".
+  country        String   @db.VarChar(80)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, name])
+  @@map("leave_offices")
+}
+
+/// A PUBLIC HOLIDAY, ONE DATED ROW (21 November 2026). For the organisation's own country when
+/// `officeId` is null, or for one office. Only a confirmed row counts in the leave calendar: the model
+/// may draft a country's list for the admin to check, because holidays such as Eid move every year,
+/// and nothing counts until the admin confirms it.
+model PublicHoliday {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  officeId       String?  @map("office_id")
+  on             DateTime @db.Date
+  name           String   @db.VarChar(80)
+  confirmed      Boolean  @default(false)
+  /// True when the model drafted it, until the admin confirms it.
+  drafted        Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, on])
+  @@map("public_holidays")
 }
 
 /// THE SUITES AN ORGANISATION HAS SWITCHED ON (E, U.17). One row per suite an admin has ever switched,
@@ -3604,6 +3699,63 @@ model WhatsAppInboundMessage {
 
   @@unique([organizationId, messageId])
   @@map("whatsapp_inbound_messages")
+}
+
+/// MAIL A TEAM MEMBER FORWARDED TO THEIR ORGANISATION'S ASSISTANT (assistant+<slug>@myground.work). Not InboundMessage, which is the
+/// company's own inbox for prospects and is never evidence. One row per distinct thing a known person sent: the original words are kept
+/// here, the files go through the documents pipeline as the person's own, and a sender nobody could be matched to leaves a row with
+/// no words in it, so that they are answered once and not on every attempt.
+model InboundForward {
+  id             String  @id @default(uuid())
+  organizationId String  @map("organization_id")
+  /// Null where the sender was not matched to exactly one person.
+  personId       String? @map("person_id")
+  userId         String? @map("user_id")
+
+  /// The provider's own id, so a redelivery is not a second copy.
+  providerId  String? @unique @map("provider_id")
+  /// What was sent, whatever id it had: the same thing forwarded twice is one row for that person.
+  contentHash String? @map("content_hash")
+
+  fromAddress String   @map("from_address")
+  toAddress   String   @map("to_address")
+  /// KEPT, NO_CHECK_IN (kept, nothing open to offer it to), WHICH_ONE (several check-ins were open, so the person was asked which; held until they say) or NOT_MATCHED (nothing from the message is stored).
+  status      String
+  subject     String?  @db.Text
+  body        String?  @db.Text
+  /// Name, type, size and hash of each attachment. The bytes go to the documents pipeline, not here.
+  attachments Json?
+  groundId    String?  @map("ground_id")
+  checkInId   String?  @map("check_in_id")
+  documentIds Json?    @map("document_ids")
+  receivedAt  DateTime @map("received_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([organizationId, personId, contentHash])
+  @@index([organizationId, fromAddress])
+  @@map("inbound_forwards")
+}
+
+/// THE ORIGINAL OF A VOICE NOTE, AS A REFERENCE. What came in (WhatsApp's media id, or the mail and attachment ids), what it was heard as,
+/// and whether the transcriber was unsure. The transcript also goes into the person's check-in as their own words, like typed text; this row
+/// is the private record of where those words came from, and no route serves it.
+model VoiceNote {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  personId       String?  @map("person_id")
+  userId         String?  @map("user_id")
+  /// whatsapp or email.
+  channel        String
+  reference      String
+  mimeType       String   @map("mime_type")
+  fileName       String   @map("file_name")
+  /// Null where it could not be read.
+  transcript     String?  @db.Text
+  wasUnsure      Boolean  @default(false) @map("was_unsure")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([organizationId, personId])
+  @@map("voice_notes")
 }
 
 /// WHICH ORGANISATION A NUMBER WRITING TO THE PLATFORM NUMBER MEANS. The platform webhook has no
@@ -4224,6 +4376,28 @@ enum KnowledgeKind {
 /// `key` is the customer's own name for the thing and is stable across versions. `(org, key)` is
 /// therefore NOT unique - the whole history lives under one key, and exactly one row of it has a
 /// null `effectiveTo`.
+/// ONE DOCUMENT ON THE DESK (S7, 20 November 2026): what the document is called, who added it, and the two or three
+/// sentence summary the model wrote when it was added, KEPT so nobody has to wait for it again. The words themselves are
+/// the knowledge cards under `key` (KnowledgeService.ingestDocument), which stay their only owner; this row never holds them.
+/// `textHash` is the words the summary was written from, so the same words sent again are not summarised again.
+model DeskDocument {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  key            String
+  title          String
+  summary        String?  @db.Text
+  textHash       String   @map("text_hash") @db.VarChar(64)
+  sourceRef      String?  @map("source_ref")
+  addedByUserId  String?  @map("added_by_user_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key])
+  @@map("desk_documents")
+}
+
 model KnowledgeRetrieval {
   id               String   @id @default(uuid())
   organizationId   String   @map("organization_id")
@@ -4657,6 +4831,10 @@ model Commitment {
   resolvedAt       DateTime? @map("resolved_at")
   /// When somebody was last asked about it, so they are not asked twice in a day.
   lastFollowedUpAt DateTime? @map("last_followed_up_at")
+  /// Who it waits on, in the words that were said ("the Permanent Secretary's office"), when it is stuck on somebody's approval or reply.
+  waitingOn        String?   @map("waiting_on")
+  /// What shows it was done: "material:<id>" for a document the person sent. Null on a KEPT row means only their word (team-loop).
+  provenBy         String?   @map("proven_by")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -6363,6 +6541,10 @@ model OrganizationMembership {
   /// Who they report to here: another person's user id in this organisation. An id rather than a
   /// relation, so a person leaving never deletes the line above them; unresolved reads as nobody.
   reportsToUserId String?  @map("reports_to_user_id")
+  /// The office they work from, for their leave calendar (the-leave-calendar.ts): a `LeaveOffice` id here.
+  /// An id rather than a relation, so removing an office never removes the person. None: the
+  /// organisation's own country and holidays.
+  officeId        String?  @map("office_id")
   /// HELD FOR A SEAT (U.4 re-review). A guest from another organisation, added to a check-in here
   /// when the plan had no seat for them. They are on the People page ("No seat on your plan") and
   /// on the no-seat card, hold no seat (common/seats.ts), and are not offered the check-in until a
@@ -6598,6 +6780,8 @@ model ScheduledEmail {
   context   Json?
   notBefore DateTime  @map("not_before")
   sentAt    DateTime? @map("sent_at")
+  /// The files a held mail carries, [{ filename, contentType, contentBase64 }], so the copy that goes in the morning is the copy that was meant. email/attachments.ts holds the limits.
+  attachments Json?
   createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([sentAt, notBefore])
@@ -9014,4 +9198,461 @@ model OutboxClaim {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("outbox_claims")
+}
+
+
+/// A MEMORY FILE (memory system, step 2): the plain-language book about one thing that matters (the organisation, a team, a person, a
+/// project), built from the assessments and the record, every statement citing what it rests on. ONE WRITER (memory/the-memory-writer.ts),
+/// every version kept, a write refused if the file changed since the version it was based on. Sections carry who reads them; nothing is
+/// stored as one block of Markdown, because the Markdown a reader gets is rendered from the sections they may read (the librarian).
+/// docs/groundwork-memory-system.md, sections 3 and 8.
+model MemoryFile {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  /// org.md, team/<ground id>.md, person/<participant id>.md or project/<subject id>.md.
+  path           String   @db.VarChar(120)
+  /// org | team | person | project.
+  kind           String   @db.VarChar(8)
+  version        Int
+  /// The front matter: subject, scope, who writes it, when it was built, what it was built from, when to check it next.
+  header         Json
+  /// [{ key, title, readers, statements: [{ text, cites, asOf }] }]
+  sections       Json
+  /// A fingerprint of everything it was built from, so the same record again writes nothing.
+  builtFrom      String   @map("built_from")
+  /// The version this one was built on top of, for the compare-and-swap.
+  basedOnVersion Int?     @map("based_on_version")
+  madeBy         String   @default("the memory writer") @map("made_by") @db.VarChar(40)
+  why            String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, path, version])
+  @@index([organizationId, kind])
+  @@map("memory_files")
+}
+
+// ---------------------------------------------------------------------------
+// Fatima, increment 3: a person who acts for a senior person, two standing jobs, and what the
+// outstanding register keeps that the commitments it reads do not.
+// ---------------------------------------------------------------------------
+
+/// A PERSON WHO MAY ACT FOR A SENIOR PERSON (the principal), such as an executive assistant.
+///
+/// What it grants is the principal's own reading and nothing more: the principal's outstanding list, the
+/// principal's decisions, and the principal's replies. A private note, somebody else's questions to Ask and
+/// coaching of other people stay private, because the reader is computed from the principal, never widened
+/// for the delegate (outstanding/a-delegate-acts-for-a-principal.ts). Revoking sets `revokedAt`; the row is
+/// kept so the record of what was done stays.
+model Delegate {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  principalUserId String   @map("principal_user_id")
+  /// How the delegate is found when they sign in. Always lower case.
+  delegateEmail  String    @map("delegate_email")
+  delegateName   String    @map("delegate_name")
+  /// Filled when the delegate has a sign-in. The grant works by address before that.
+  delegateUserId String?   @map("delegate_user_id")
+  /// chat | admin
+  createdVia     String    @default("chat") @map("created_via")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  revokedAt      DateTime? @map("revoked_at")
+  revokedVia     String?   @map("revoked_via")
+
+  @@index([organizationId, principalUserId])
+  @@index([delegateEmail])
+  @@map("delegates")
+}
+
+/// What a delegate did, as "Amina Yusuf for Fatima". Never removed when the grant is revoked.
+model DelegateAction {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  principalUserId String   @map("principal_user_id")
+  delegateId      String   @map("delegate_id")
+  delegateName    String   @map("delegate_name")
+  action          String
+  summary         String   @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([organizationId, principalUserId, createdAt])
+  @@map("delegate_actions")
+}
+
+/// ONE STANDING ASSIGNMENT THAT OUTLIVES A MESSAGE (spec 31): its state, its next action, who may act on it,
+/// its deadline, the last time something meaningful arrived, and what the record covers so far. Everything is
+/// recomputed from the record by the nightly job, so a restart loses nothing.
+model PersistentJob {
+  id                       String    @id @default(uuid())
+  organizationId           String    @map("organization_id")
+  principalUserId          String    @map("principal_user_id")
+  /// annual_report | outstanding_register
+  kind                     String
+  title                    String
+  /// collecting | draft_ready
+  state                    String    @default("collecting")
+  nextAction               String?   @map("next_action") @db.Text
+  authorisedActorUserId    String?   @map("authorised_actor_user_id")
+  deadline                 DateTime? @db.Date
+  lastMeaningfulContactAt  DateTime? @map("last_meaningful_contact_at")
+  /// { months: {"2026-01": n}, workstreams: {label: n}, people: {name: n}, gaps: ["2026-03"] }
+  coverage                 Json      @default("{}")
+  /// A standing instruction's own settings (kind `standing:<id>`): her words, who is asked, when, and the run last done. Empty on the two year-end jobs.
+  details                  Json      @default("{}")
+  lastCheckedAt            DateTime? @map("last_checked_at")
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+
+  @@unique([organizationId, principalUserId, kind])
+  @@map("persistent_jobs")
+}
+
+/// WHAT THE OUTSTANDING REGISTER KEEPS THAT THE COMMITMENTS IT READS DO NOT. One row per source row (a
+/// commitment, a dependency, a to-do, an obligation or a request), so the register stays a view over them and
+/// there is no second copy of any of them.
+model RegisterNote {
+  id               String    @id @default(uuid())
+  organizationId   String    @map("organization_id")
+  principalUserId  String    @map("principal_user_id")
+  /// commitment | dependency | obligation | todo | request
+  sourceKind       String    @map("source_kind")
+  sourceId         String    @map("source_id")
+  /// Rows sharing a key are one item. Set only when a person said they are the same.
+  registerKey      String?   @map("register_key")
+  /// A real date read from the words, always marked as inferred. The words themselves are never changed.
+  dueOn            DateTime? @map("due_on") @db.Date
+  /// decision | external. Says what an open item is waiting for.
+  awaiting         String?
+  decisionQuestion String?   @map("decision_question") @db.Text
+  decisionOptions  String[]  @default([]) @map("decision_options")
+  carryForward     Boolean?  @map("carry_forward")
+  lastVerifiedAt   DateTime? @map("last_verified_at")
+  /// Rows somebody was asked about and said are not the same thing, so they are never asked again.
+  notTheSameAs     String[]  @default([]) @map("not_the_same_as")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@unique([principalUserId, sourceKind, sourceId])
+  @@index([organizationId, principalUserId])
+  @@map("register_notes")
+}
+
+
+/// ONE VERSION OF THE YEAR-END WORK (Fatima, increment 4). One row per version, never changed once approved: a later change is a new row
+/// whose parent is this one. `content` is everything the report, the presentation, the register and the evidence index are written from,
+/// so a change made once is in all of them. `edits` are what the principal asked for, replayed over the record whenever the draft is
+/// rebuilt from newer evidence. status: draft | revised | approved | final.
+model YearEndDraft {
+  id               String    @id @default(uuid())
+  organizationId   String    @map("organization_id")
+  principalUserId  String    @map("principal_user_id")
+  year             Int
+  version          Int
+  status           String    @default("draft")
+  content          Json
+  changeNote       String?   @map("change_note") @db.Text
+  changedByUserId  String?   @map("changed_by_user_id")
+  channel          String?
+  parentId         String?   @map("parent_id")
+  approvedAt       DateTime? @map("approved_at")
+  approvedByUserId String?   @map("approved_by_user_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@unique([organizationId, principalUserId, year, version])
+  @@map("year_end_drafts")
+}
+
+/// WHAT HAPPENED, ONE ROW EACH, NEVER CHANGED. Delivery states (generated, queued, sent, delivered, approved, failed) and what was told or
+/// asked (told, asked). `subject` makes a row say once: unique per principal, kind and subject, so a second try is refused by the database.
+model YearEndLog {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  principalUserId String   @map("principal_user_id")
+  kind            String
+  subject         String
+  version         Int?
+  recipient       String?
+  detail          String?  @db.Text
+  data            Json?
+  at              DateTime @default(now())
+
+  @@unique([principalUserId, kind, subject])
+  @@index([principalUserId, at])
+  @@map("year_end_log")
+}
+
+/// SOMEBODY THE PRINCIPAL SAID MAY RECEIVE THE FILES, AND CONFIRMED. Only she can add one; a delegate cannot.
+model YearEndRecipient {
+  id              String    @id @default(uuid())
+  organizationId  String    @map("organization_id")
+  principalUserId String    @map("principal_user_id")
+  email           String
+  name            String?
+  confirmedAt     DateTime  @map("confirmed_at")
+  revokedAt       DateTime? @map("revoked_at")
+
+  @@unique([principalUserId, email])
+  @@map("year_end_recipients")
+}
+
+
+/// A SENIOR PERSON ADDED BY AN ADMIN, WHO NEVER REGISTERS (Fatima, increment 5). One row per person. Her identity is the admin's act:
+/// the admin gave her address and number, and `verifiedVia` says so until she writes back. `preferences` and `permissions` are
+/// recorded with sensible defaults that she can change by saying so. `permissions` is the client's approval for the four things the
+/// work needs: data handling, team outreach, confidential information and messaging, with who confirmed them and when.
+model PrincipalSetup {
+  id              String    @id @default(uuid())
+  organizationId  String    @map("organization_id")
+  principalUserId String    @map("principal_user_id")
+  email           String
+  whatsappNumber  String?   @map("whatsapp_number")
+  /// admin until she replies from the address or number the admin gave, then reply.
+  verifiedVia     String    @default("admin") @map("verified_via")
+  repliedAt       DateTime? @map("replied_at")
+  /// { channel, reportFormat, quietBeforeHour, quietAfterHour, followUps, reviewBeforeSending, pausedUntil, paused }
+  preferences     Json      @default("{}")
+  /// { dataHandling, teamOutreach, confidentialInformation, messaging, confirmedByUserId, confirmedAt }
+  permissions     Json      @default("{}")
+  addedByUserId   String    @map("added_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([organizationId, principalUserId])
+  @@index([email])
+  @@map("principal_setups")
+}
+
+/// ONE INTRODUCTION TO ONE PERSON ON ONE CHANNEL, AND WHAT HAPPENED TO IT. Email and WhatsApp are separate rows with separate states.
+/// state: queued | sent | held | suppressed | failed. A WhatsApp introduction Meta does not yet allow is held, with the reason in plain words,
+/// and tried again; it is never sent another way. `sendKey` is unique, so a retry or a second copy of the API cannot send it twice.
+model IntroductionDelivery {
+  id              String    @id @default(uuid())
+  organizationId  String    @map("organization_id")
+  principalUserId String    @map("principal_user_id")
+  /// principal | team
+  audience        String
+  /// The address or number it went to, lower case.
+  recipient       String
+  channel         String
+  state           String
+  reason          String?   @db.Text
+  /// The words exactly as written, so a retry sends the same words and nothing is written twice.
+  subject         String?
+  text            String    @db.Text
+  replyTo         String?   @map("reply_to")
+  sendKey         String    @unique @map("send_key")
+  attempts        Int       @default(0)
+  lastTriedAt     DateTime? @map("last_tried_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([organizationId, principalUserId])
+  @@map("introduction_deliveries")
+}
+
+/// SOMEBODY SHE GAVE A NAME AND A CONTACT FOR, AND WHETHER SHE SAID GROUNDWORK MAY WRITE TO THEM. state: proposed | confirmed |
+/// introduced | held_external | declined. An outside person (not on the roster, not at her organisation, not called her team) needs her own
+/// yes for that person, and is never sent the team's introduction.
+model OutreachContact {
+  id              String    @id @default(uuid())
+  organizationId  String    @map("organization_id")
+  principalUserId String    @map("principal_user_id")
+  name            String
+  email           String?
+  phone           String?
+  /// Lower-case email, else the number: one person once.
+  contactKey      String    @map("contact_key")
+  /// team | external
+  kind            String
+  state           String    @default("proposed")
+  personId        String?   @map("person_id")
+  proposedAt      DateTime  @default(now()) @map("proposed_at")
+  proposedByUserId String?  @map("proposed_by_user_id")
+  confirmedAt     DateTime? @map("confirmed_at")
+  confirmedByUserId String? @map("confirmed_by_user_id")
+  introducedAt    DateTime? @map("introduced_at")
+  /// Set when they first write back from the address or number given: that is how their identity is verified.
+  verifiedAt      DateTime? @map("verified_at")
+
+  @@unique([principalUserId, contactKey])
+  @@map("outreach_contacts")
+}
+
+/// WHAT IS MISSING, WHO WAS ASKED, AND WHETHER THEY ANSWERED. One row per thing and person, written by the one code that asks
+/// (year-end/the-year-end-owner.ts). state: open | asked | answered. Never a form; the person is asked once, in a message.
+model InformationGap {
+  id              String    @id @default(uuid())
+  organizationId  String    @map("organization_id")
+  principalUserId String    @map("principal_user_id")
+  gapKey          String    @map("gap_key")
+  what            String    @db.Text
+  askedOfEmail    String?   @map("asked_of_email")
+  askedOfName     String?   @map("asked_of_name")
+  state           String    @default("open")
+  askedAt         DateTime? @map("asked_at")
+  answeredAt      DateTime? @map("answered_at")
+  /// Where the answer came from when it was not a reply to the question: "material:<id>" for something they had already sent.
+  answeredFrom    String?   @map("answered_from")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@unique([principalUserId, gapKey, askedOfEmail])
+  @@index([askedOfEmail, state])
+  @@map("information_gaps")
+}
+
+/// A BATCH OF WHAT SHE (OR HER ASSISTANT) FORWARDED, ANSWERED ONCE. Forwards arriving within a few minutes of each other join one batch;
+/// when it has been quiet, one message goes: the acknowledgement and the first picture. `acknowledgedAt` is claimed by one writer only.
+model IntakeBatch {
+  id              String    @id @default(uuid())
+  organizationId  String    @map("organization_id")
+  principalUserId String    @map("principal_user_id")
+  /// Who sent them, so the reply goes back to them: the principal or her assistant.
+  fromUserId      String    @map("from_user_id")
+  fromAddress     String    @map("from_address")
+  channel         String
+  openedAt        DateTime  @default(now()) @map("opened_at")
+  lastItemAt      DateTime  @map("last_item_at")
+  acknowledgedAt  DateTime? @map("acknowledged_at")
+
+  @@index([principalUserId, acknowledgedAt])
+  @@map("intake_batches")
+}
+
+/// EVERY THING SENT TO HER ASSISTANT WITH NO CHECK-IN TO PUT IT IN, ORIGINALS KEPT. One row per message, file, voice note, or file found
+/// inside an archive. `bytes` is the original exactly as it came; `text` is what was read from it; `duplicateOfId` is set when the same
+/// bytes were already kept (the row is kept so the count is true, the bytes are not stored twice). kind: message | file | voice | archive.
+/// state: kept | duplicate | unreadable | not_opened. Words in here are somebody's account of things, never instructions.
+model PrincipalMaterial {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  principalUserId String   @map("principal_user_id")
+  batchId         String?  @map("batch_id")
+  fromUserId      String?  @map("from_user_id")
+  fromAddress     String   @map("from_address")
+  channel         String
+  kind            String
+  fileName        String   @map("file_name")
+  mimeType        String   @map("mime_type")
+  hash            String?
+  bytes           Bytes?
+  size            Int?
+  text            String?  @db.Text
+  subject         String?  @db.Text
+  state           String
+  because         String?  @db.Text
+  duplicateOfId   String?  @map("duplicate_of_id")
+  insideArchive   String?  @map("inside_archive")
+  unsure          Json?
+  receivedAt      DateTime @map("received_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([principalUserId, batchId])
+  @@index([principalUserId, hash])
+  @@map("principal_material")
+}
+
+/// WHAT A PAYMENT TRACKER SAID, ONE ROW PER ROW OF THE SHEET (Fatima, increment 6b; plan section 12). Not a ledger: it keeps what the tracker claimed, so a
+/// claim can be held up against the record (the spend request, the correspondence, the proof). Whether a payment is paid is never a column here: "paid" is
+/// worked out each time from the proof, in `principal-work/the-payments-reconcile.ts`. `lineKey` is unique per principal, so the same sheet read twice adds nothing.
+model PaymentTrackerLine {
+  id                String   @id @default(uuid())
+  organizationId    String   @map("organization_id")
+  principalUserId   String   @map("principal_user_id")
+  /// A hash of the file's bytes and the row, so a second reading of the same sheet is refused by the database.
+  lineKey           String   @map("line_key")
+  fileName          String   @map("file_name")
+  rowNumber         Int      @map("row_number")
+  /// The payee and the reference (or the due date) the same payment is known by, lower case.
+  paymentKey        String   @map("payment_key")
+  payee             String
+  reference         String?
+  description       String?  @db.Text
+  /// Kept as written in the sheet. Arithmetic is done on whole minor units in code, never on this column.
+  amount            Decimal? @db.Decimal(18, 2)
+  currency          String?
+  owner             String?
+  dueOn             DateTime? @map("due_on") @db.Date
+  /// What the sheet said about the payment and its approval, normalised: paid, scheduled, pending, cancelled, on hold; approved, pending, rejected.
+  statedStatus      String?  @map("stated_status")
+  statedApproval    String?  @map("stated_approval")
+  evidence          String?  @db.Text
+  rawRow            Json     @map("raw_row")
+  sentByUserId      String?  @map("sent_by_user_id")
+  receivedAt        DateTime @map("received_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@unique([principalUserId, lineKey])
+  @@index([principalUserId, paymentKey])
+  @@map("payment_tracker_lines")
+}
+
+/// ONE INSTITUTION'S WEEKLY REPORT, KEPT BY WEEK (Fatima, increment 6b; plan section 13): the developments it reported, each with its source and date, the
+/// links to what the office already has, and the follow-ups, which stay PROPOSED until she confirms them. Unique per principal, institution and week, so
+/// the same week forwarded twice is one row (a changed report for the same week is a new revision of it).
+model WeeklyDigest {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  principalUserId String   @map("principal_user_id")
+  institution     String
+  /// ISO week of the report's date, "2026-W46".
+  weekKey         String   @map("week_key")
+  reportDate      DateTime? @map("report_date") @db.Date
+  revision        Int      @default(1)
+  contentHash     String   @map("content_hash")
+  fromFile        String?  @map("from_file")
+  sentByUserId    String?  @map("sent_by_user_id")
+  /// [{ title, said, quote, date, source, relatedKeys }]
+  developments    Json
+  /// [{ text, state: "proposed" | "confirmed" | "dropped", developmentIndex }]
+  followUps       Json     @map("follow_ups")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([principalUserId, institution, weekKey])
+  @@map("weekly_digests")
+}
+
+/// A REPORT SOMEBODY ASKED FOR IN THE CHAT (Batch S, S8). Asked in Ask, by email to the assistant or on WhatsApp. The chat says what it can draw
+/// on for this reader, collects what they add, sends an outline to check, and on their yes writes the report from only the sources they chose.
+/// Private to the person who asked: no route serves it to anybody else. `status` is gathering, outline, built or stopped.
+model ReportOnRequest {
+  id              String    @id @default(uuid())
+  organizationId  String    @map("organization_id")
+  userId          String    @map("user_id")
+  status          String
+  /// Where they asked: chat, email or whatsapp. The report goes back where they asked.
+  channel         String
+  asked           String    @db.Text
+  /// The outline they are checking: sections, each with the ids of the sources it would use.
+  outline         Json?
+  /// The sources they may use, as they were read when the outline was made, and which they chose.
+  sources         Json?
+  report          String?   @db.Text
+  /// The stored prompt version that wrote the report, when one ran.
+  promptVersionId String?   @map("prompt_version_id")
+  builtAt         DateTime? @map("built_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@index([organizationId, userId, status])
+  @@map("reports_on_request")
+}
+
+/// WHAT A PERSON ADDED FOR ONE REPORT THEY ASKED FOR: a file uploaded in Ask, an email forwarded to the assistant, a document sent on WhatsApp.
+/// Read once (one row per thing, by its hash), kept as text, and private to them.
+model ReportMaterial {
+  id             String   @id @default(uuid())
+  requestId      String   @map("request_id")
+  organizationId String   @map("organization_id")
+  userId         String   @map("user_id")
+  via            String
+  name           String
+  text           String   @db.Text
+  contentHash    String   @map("content_hash")
+  receivedAt     DateTime @default(now()) @map("received_at")
+
+  @@unique([requestId, contentHash])
+  @@index([requestId])
+  @@map("report_materials")
 }

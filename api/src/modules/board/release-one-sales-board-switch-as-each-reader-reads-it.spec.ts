@@ -139,7 +139,7 @@ describe('a sales team is served the sales board a sales organisation is', () =>
       const org = await boardAs(run('sales org', on), reader[0], reader[1]);
       expect(team.kindOfWork).toBe('sales team');
       expect(org.kindOfWork).toBe('sales org');
-      expect(JSON.stringify({ ...team, kindOfWork: null })).toBe(JSON.stringify({ ...org, kindOfWork: null }));
+      expect(JSON.stringify({ ...team, kindOfWork: null, switchboard: null })).toBe(JSON.stringify({ ...org, kindOfWork: null, switchboard: null }));
     }
   });
 });

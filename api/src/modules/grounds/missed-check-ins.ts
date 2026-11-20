@@ -12,7 +12,9 @@ import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { aQuietSessionOnADayTheyCheckedIn } from '../board/a-day-they-checked-in';
 import { THE_PRODUCTS_OWN_ZONE } from '../../common/the-organisations-own-day';
 import { theSessionClock } from '../board/one-count-for-the-sessions';
+import { whenTheseOrganisationsPaused, thePausesThatAreOver } from '../billing/the-trial-grace';
 import { whoHoldsTheClock, thePlannedSessionsOf } from './this-sessions-count';
+import { aRoundCouldHaveBeenAnswered, whenACheckInBegan } from './a-round-that-could-be-answered';
 
 /**
  * REPEATEDLY MISSING CHECK-INS (decision 136, change 8).
@@ -30,7 +32,8 @@ import { whoHoldsTheClock, thePlannedSessionsOf } from './this-sessions-count';
  *   1. two missed in a row: the PERSON is told first, with what it does to the team;
  *   2. three of the last four missed: the lead is told, in the daily nudge and on the board, as facts;
  *   3. it goes on (four of the last five): Groundwork suggests a support plan, the lead decides;
- *   4. it still goes on (five of the last six): Groundwork suggests a formal process in the performance suite.
+ *   4. it still goes on (five of the last six): Groundwork says what happened and leaves the next step to the lead (no named process: it
+ *      is never a label on a person, fix plan 17 November, group C).
  * Each stage counts only while the latest closed session was missed: somebody who came back is not chased.
  * Only people who have JOINED and been let in are ever read (decision 8, night run 3): somebody invited who has
  * not come in yet, or is still waiting for an admin, has missed nothing and is told nothing, nor is their lead.
@@ -96,7 +99,7 @@ const theClockOf = (rows: ASessionOfTheirs[], now: Date) =>
  * sessions and sessions in approved leave are left out. ONLY ROUNDS DUE TO THEM COUNT: a session past the check-in's clock
  * (`o.theClocksSession`, from theSessionClock over everybody who holds it) was not yet theirs to answer, so it is never missed.
  */
-export function theirClosedSessions(rows: ASessionOfTheirs[], leave: Stretch[] = [], now: Date = new Date(), o: { opensDaily?: boolean; zone?: string; theClocksSession?: number } = {}): { sessionNumber: number; missed: boolean; reason: string | null }[] {
+export function theirClosedSessions(rows: ASessionOfTheirs[], leave: Stretch[] = [], now: Date = new Date(), o: { opensDaily?: boolean; zone?: string; theClocksSession?: number; pausedFrom?: Date | null; pausesOver?: { from: Date; until: Date }[] | null; joinedAt?: Date | string | null; checkInBeganAt?: Date | string | null } = {}): { sessionNumber: number; missed: boolean; reason: string | null }[] {
   const sessions = rows.filter((r) => !r.isSetup).sort((a, b) => a.sessionNumber - b.sessionNumber);
   const clockAt = o.theClocksSession ?? (sessions.length ? theClockOf(sessions, now) : 1);
   const out: { sessionNumber: number; missed: boolean; reason: string | null }[] = [];
@@ -121,6 +124,12 @@ export function theirClosedSessions(rows: ASessionOfTheirs[], leave: Stretch[] =
     const from = at(s.availableFrom) ?? at(s.createdAt) ?? now;
     const to = at(s.completedAt) ?? (next ? at(next.availableFrom) ?? at(next.createdAt) : null) ?? now;
     if (overlaps(from, to, leave)) return;
+    /* A round that opened before the person joined or before anybody had said anything in the check-in is neither missed nor answered by them. */
+    if (became === 'missed' && !aRoundCouldHaveBeenAnswered(from, { joinedAt: o.joinedAt, checkInBeganAt: o.checkInBeganAt, pausesOver: o.pausesOver })) return;
+    /* Nor one that ended inside a pause that is over now (N51). */
+    if (became === 'missed' && (o.pausesOver ?? []).some((p) => to.getTime() > p.from.getTime() && to.getTime() <= p.until.getTime())) return;
+    /* A round that ended while the organisation was paused was never open to anybody ("No check-ins open and no messages go out"): it is no miss. */
+    if (became === 'missed' && o.pausedFrom && to.getTime() > o.pausedFrom.getTime()) return;
     if (became === 'missed' && o.opensDaily && aQuietSessionOnADayTheyCheckedIn(asItHappened(s), theirs, o.zone ?? THE_PRODUCTS_OWN_ZONE)) return;
     out.push({ sessionNumber: s.sessionNumber, missed: became === 'missed', reason: s.missedReason?.trim() || null });
   });
@@ -136,6 +145,15 @@ async function theClocksOf(prisma: any, people: any[], now: Date): Promise<Map<s
     const rows = onIt.flatMap((p) => (p.checkIns ?? []).filter((c: any) => !c.isSetup).map((c: any) => ({ ...c, participantId: p.id })));
     if (!rows.length) continue;
     out.set(groundId, theSessionClock(rows, whoHoldsTheClock(onIt), thePlannedSessionsOf(onIt[0]?.ground ?? {}), now).currentSession);
+  }
+  return out;
+}
+
+/** When each of these check-ins began: the first time anybody said something in it (whenACheckInBegan), from everybody's rows. */
+function whenEachBegan(people: any[]): Map<string, Date | null> {
+  const out = new Map<string, Date | null>();
+  for (const groundId of new Set(people.map((p) => p.groundId as string))) {
+    out.set(groundId, whenACheckInBegan(people.filter((p) => p.groundId === groundId).flatMap((p) => p.checkIns ?? [])));
   }
   return out;
 }
@@ -191,10 +209,10 @@ export async function whoHasMissedCheckIns(prisma: any, groundIds: string[], now
   const people: any[] = await prisma.groundParticipant.findMany({
     where: { groundId: { in: groundIds }, leftAt: null },
     select: {
-      id: true, groundId: true, userId: true, partyType: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true,
+      id: true, groundId: true, userId: true, partyType: true, managingOnly: true, nameGiven: true, cameThroughTheLink: true, joinedAt: true,
       user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
       /* Whether it opens each working day: a quiet session on a day they answered another is then no miss (board/a-day-they-checked-in.ts). */
-      ground: { select: { cadence: true, cadenceDays: true, timelineDays: true, runsUntilEnded: true } },
+      ground: { select: { organizationId: true, cadence: true, cadenceDays: true, timelineDays: true, runsUntilEnded: true } },
       checkIns: {
         select: {
           id: true, sessionNumber: true, status: true, isSetup: true, optional: true, closedReason: true, availableFrom: true,
@@ -208,9 +226,12 @@ export async function whoHasMissedCheckIns(prisma: any, groundIds: string[], now
   if (!theirs.length) return [];
   const leave = await leaveOfThePeopleOn(prisma, [...new Set(theirs.map((p) => p.groundId as string))]).catch(() => new Map<string, Stretch[]>());
   const clocks = await theClocksOf(prisma, people, now);
+  const began = whenEachBegan(people);
+  const pausedSince = await whenTheseOrganisationsPaused(prisma, theirs.map((p) => p.ground?.organizationId), now);
+  const pausesOver = await thePausesThatAreOver(prisma, theirs.map((p) => p.ground?.organizationId));
   const out: SomebodyWhoMissed[] = [];
   for (const p of theirs) {
-    const closed = theirClosedSessions(p.checkIns ?? [], leave.get(p.id) ?? [], now, { opensDaily: opensDaily(p), theClocksSession: clocks.get(p.groundId) });
+    const closed = theirClosedSessions(p.checkIns ?? [], leave.get(p.id) ?? [], now, { opensDaily: opensDaily(p), theClocksSession: clocks.get(p.groundId), pausedFrom: pausedSince.get(p.ground?.organizationId) ?? null, pausesOver: pausesOver.get(p.ground?.organizationId) ?? null, joinedAt: p.joinedAt ?? null, checkInBeganAt: began.get(p.groundId) ?? null });
     const stand = whereTheyStand(closed);
     if (stand.stage === 0) continue;
     const latest = [...(p.checkIns ?? [])].filter((c: any) => !c.isSetup).sort((a: any, b: any) => b.sessionNumber - a.sessionNumber);
@@ -235,7 +256,7 @@ export async function whoHasMissedCheckIns(prisma: any, groundIds: string[], now
  * board said "nothing here needs you this week". This counts back from the session before his latest:
  * the session numbers missed in a row there, oldest first. The lead and managing-only rows are never read.
  */
-export function theMissesJustBefore(rows: ASessionOfTheirs[], leave: Stretch[] = [], now: Date = new Date(), o: { opensDaily?: boolean; theClocksSession?: number } = {}): number[] {
+export function theMissesJustBefore(rows: ASessionOfTheirs[], leave: Stretch[] = [], now: Date = new Date(), o: { opensDaily?: boolean; theClocksSession?: number; pausedFrom?: Date | null; pausesOver?: { from: Date; until: Date }[] | null; joinedAt?: Date | string | null; checkInBeganAt?: Date | string | null } = {}): number[] {
   const sessions = rows.filter((r) => !r.isSetup);
   if (!sessions.length) return [];
   const latest = Math.max(...sessions.map((s) => s.sessionNumber));
@@ -252,9 +273,9 @@ export async function whoMissedTheCheckInsJustBefore(prisma: any, groundId: stri
   const people: any[] = await prisma.groundParticipant.findMany({
     where: { groundId, leftAt: null },
     select: {
-      id: true, groundId: true, userId: true, partyType: true, managingOnly: true, cameThroughTheLink: true,
+      id: true, groundId: true, userId: true, partyType: true, managingOnly: true, cameThroughTheLink: true, joinedAt: true,
       user: { select: { awaitingOrgApproval: true } },
-      ground: { select: { cadence: true, cadenceDays: true, timelineDays: true, runsUntilEnded: true } },
+      ground: { select: { organizationId: true, cadence: true, cadenceDays: true, timelineDays: true, runsUntilEnded: true } },
       checkIns: {
         select: {
           id: true, sessionNumber: true, status: true, isSetup: true, optional: true, closedReason: true, availableFrom: true,
@@ -268,8 +289,11 @@ export async function whoMissedTheCheckInsJustBefore(prisma: any, groundId: stri
   if (!theirs.length) return out;
   const leave = await leaveOfThePeopleOn(prisma, [groundId]).catch(() => new Map<string, Stretch[]>());
   const clocks = await theClocksOf(prisma, people ?? [], now);
+  const began = whenEachBegan(people ?? []);
+  const pausedSince = await whenTheseOrganisationsPaused(prisma, theirs.map((p) => p.ground?.organizationId), now);
+  const pausesOver = await thePausesThatAreOver(prisma, theirs.map((p) => p.ground?.organizationId));
   for (const p of theirs) {
-    const run = theMissesJustBefore(p.checkIns ?? [], leave.get(p.id) ?? [], now, { opensDaily: opensDaily(p), theClocksSession: clocks.get(groundId) });
+    const run = theMissesJustBefore(p.checkIns ?? [], leave.get(p.id) ?? [], now, { opensDaily: opensDaily(p), theClocksSession: clocks.get(groundId), pausedFrom: pausedSince.get(p.ground?.organizationId) ?? null, pausesOver: pausesOver.get(p.ground?.organizationId) ?? null, joinedAt: p.joinedAt ?? null, checkInBeganAt: began.get(groundId) ?? null });
     if (run.length) out.set(p.id, run);
   }
   return out;
@@ -354,7 +378,7 @@ export function theirReasonBesideIt(name: string, reason: string | null | undefi
 /** The next step, a suggestion only: the lead decides, and Groundwork does nothing by itself. */
 export function theNextStepSuggested(name: string, stage: Stage): string | null {
   if (stage === A_SUPPORT_PLAN) return `${name} has kept missing check-ins since you were told. If talking has not helped, a support plan is the next step you could take.`;
-  if (stage === A_FORMAL_PROCESS) return `${name} has still kept missing check-ins. If a support plan has not helped, a formal process in the performance suite is the next step you could take.`;
+  if (stage === A_FORMAL_PROCESS) return `${name} has still kept missing check-ins. If a support plan has not helped, what to do next is your decision.`;
   return null;
 }
 
@@ -421,6 +445,8 @@ export async function whatThePersonIsToldAboutMissing(prisma: any, userId: strin
   for (const f of found) {
     const g = await prisma.ground.findUnique({ where: { id: f.groundId }, select: { label: true, organizationId: true } }).catch(() => null);
     if (!g) continue;
+    /* NOT WHILE THE ORGANISATION IS PAUSED (run 8, day 70): "You've missed your last six check-ins" with "Check in now" was said to Joel in a pause, when no check-in can be opened. Today says it is paused instead (what-needs-you.ts). */
+    if ((await whenTheseOrganisationsPaused(prisma, [g.organizationId], now).catch(() => new Map<string, Date>())).has(g.organizationId)) continue;
     const open = await prisma.checkIn.findFirst({
       where: { participantId: f.participantId, isSetup: false, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] }, OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
       orderBy: { sessionNumber: 'desc' }, select: { id: true },

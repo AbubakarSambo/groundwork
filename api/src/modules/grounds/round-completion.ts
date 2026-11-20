@@ -5,7 +5,7 @@ import { GroundworkEvents, RoundCompletedEvent } from '../../common/events';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT, NOT_A_QUIET_CLOSE } from './an-answer-includes-a-refusal';
 import { whoOnACheckInIsAway } from '../suites/who-is-away';
 import { whoIsNotLetInYet } from './who-an-admin-did-not-let-in';
-import { whoASessionCounts } from './the-lead-checks-in-when-they-choose';
+import { whoARoundWaitsFor } from './who-a-round-waits-for';
 
 /**
  * A ROUND CLOSING, DECIDED IN ONE PLACE.
@@ -37,7 +37,7 @@ export async function recordRoundCompletion(
 ): Promise<boolean> {
   const everyone = await prisma.groundParticipant.findMany({
     /* Decision 133: the lead is counted only when they answered this round, never waited on. */
-    where: { groundId, ...whoASessionCounts(roundNumber, AN_ANSWER) },
+    where: { groundId, ...whoARoundWaitsFor(roundNumber) },
     select: { id: true, userId: true },
   });
   /*

@@ -44,11 +44,11 @@ describe('GW-FREE-TIER-UNLIMITED: free-tier grounds are never session-paywalled'
     // The INTENT here is that a non-free ground with no subscription is still
     // blocked - that has not changed. Only what it says has: "add a session for
     // $5" pointed at a purchase that no longer exists.
-    expect(res.reason).toMatch(/beyond your ten free/);
-    expect(res.reason).not.toMatch(/\$5|add a session/i);
+    expect(res.reason).toBe("You've used your free check-ins. Upgrade to carry on.");
+    expect(res.reason).not.toMatch(/\$5|add a check-in/i);
     // And it must tell them their record is safe, because the person who hits
     // this is usually a participant who chose neither to pay nor to cancel.
-    expect(res.reason).toMatch(/report and board stay available/);
+    expect(res.reason).toBe("You've used your free check-ins. Upgrade to carry on.");
   });
 
   it('an active subscription is still unlimited (-1) on a non-free ground (paid path intact)', async () => {

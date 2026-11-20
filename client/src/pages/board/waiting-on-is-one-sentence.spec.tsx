@@ -43,7 +43,7 @@ const BOARD = {
     {
       id: '1c288046-9957-4b20-b09f-2c44bea1e8b4', who: 'Aisha Wanjiku', name: 'a fix for the pipeline', state: 'blocking' as const,
       says: 'Aisha Wanjiku is waiting on the pipeline for a fix for the pipeline.',
-      raised: { times: 1, firstRaisedAt: '2026-09-29', lastRaisedAt: '2026-09-29', says: 'This was raised once, on 29 September.', sessions: [1], inSessions: 'It was raised in session 1.' },
+      raised: { times: 1, firstRaisedAt: '2026-09-29', lastRaisedAt: '2026-09-29', says: 'This was raised once, on 29 September.', sessions: [1], inSessions: 'It was raised in check-in 1.' },
       proof: { state: 'none', says: 'Nothing on record proves it yet. It rests on what Aisha Wanjiku said.' },
       timeGiven: 'No time has been given for it.', wouldClearIt: null, wouldClearItSays: 'Nobody has said what would clear it yet.',
       holdingUp: 'Aisha Wanjiku said that once it is cleared, "I will deploy the refund endpoint to staging on Thursday 1 October."',

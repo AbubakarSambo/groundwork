@@ -1,3 +1,4 @@
+import { GroundScenario } from '@prisma/client';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { theClassifierPrompt, readTheClassification, PRECEDENCE_RULE } from './which-situation-this-is';
@@ -14,7 +15,17 @@ describe('the prompt', () => {
     expect(p).toContain(PRECEDENCE_RULE);
     expect(PRECEDENCE_RULE).toMatch(/^RULE, not a hint/);
     expect(p).toMatch(/"confidence": "high" \| "low"/);
-    expect(p).toContain('Do not guess with "high"');
+    expect(p).toContain('A wrong answer given as "high" is worse than "low"');
+  });
+});
+
+describe('the scenarios the classifier can name', () => {
+  it('names every scenario the product has, so none can be reached only by clicking a card', () => {
+    const p = theClassifierPrompt('Our finance manager leaves in three weeks and I want what is in her head written down');
+    for (const key of Object.values(GroundScenario)) expect(p).toContain(`${key} - `);
+  });
+  it('tells the model that thin input is low confidence, so the conversation can ask instead of guessing', () => {
+    expect(theClassifierPrompt('My team is not happy')).toMatch(/too thin to tell/);
   });
 });
 

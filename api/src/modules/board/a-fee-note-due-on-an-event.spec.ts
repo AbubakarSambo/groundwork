@@ -105,15 +105,12 @@ describe('Muchemi & Co (test): the litigation daily makes two fee notes due, and
   });
 });
 
-describe('with Release 2 off, nothing is read and nothing is written', () => {
-  it('every session of the litigation daily leaves every fee note as it was', async () => {
-    const world = theWorldWithTheLitigationDaily({ release2On: false });
-    const before = JSON.stringify(world.items);
-    for (const [, n] of MUCHEMI_LITIGATION_SESSIONS) {
-      const prisma = await readSession(world, n);
-      expect(prisma.workItem.update).not.toHaveBeenCalled();
-    }
-    expect(JSON.stringify(world.items)).toBe(before);
+describe('with the stored Release 2 switch off, it is read all the same (15 November 2026: every board is on for every organisation, so a stored switch of false (or a row that cannot be read) no longer changes this.)', () => {
+  it('the litigation daily is read for fee notes whatever the stored switch says', async () => {
+    const off = theWorldWithTheLitigationDaily({ release2On: false });
+    const on = theWorldWithTheLitigationDaily({ release2On: true });
+    for (const [, n] of MUCHEMI_LITIGATION_SESSIONS) { await readSession(off, n); await readSession(on, n); }
+    expect(JSON.stringify(off.items)).toBe(JSON.stringify(on.items));
   });
 
   it('a fee notes check-in, or any check-in that is not a legal matter, is not read for events at all', async () => {

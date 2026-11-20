@@ -21,10 +21,10 @@ const REPORT = {
     },
     {
       topic: 'The value of the signed deal with Greenfield Supermarket is reported differently in the same week.',
-      evidence: ["In one session, Mercy Wairimu's record celebrates the Greenfield deal as being 'in the bag' for KES 120,000.", 'A later session from Mercy Wairimu records that the signed order for the same 25 units is actually for KES 125,000.'],
+      evidence: ["In one check-in, Mercy Wairimu's record celebrates the Greenfield deal as being 'in the bag' for KES 120,000.", 'A later check-in from Mercy Wairimu records that the signed order for the same 25 units is actually for KES 125,000.'],
       positions: [
         { view: 'Mercy Wairimu first reported the Greenfield deal as 25 units for KES 120,000.', participantLabel: 'Mercy Wairimu' },
-        { view: 'In a later session the same week, Mercy Wairimu stated the same deal was for KES 125,000.', participantLabel: 'Mercy Wairimu' },
+        { view: 'In a later check-in the same week, Mercy Wairimu stated the same deal was for KES 125,000.', participantLabel: 'Mercy Wairimu' },
       ],
       settledBy: 'Confirm the final amount for the Greenfield deal and update the record.',
     },

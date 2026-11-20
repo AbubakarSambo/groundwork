@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import PROJECT from '@/pages/preview/__fixtures__/release-5-project.json'
 import { ThePicturedBoard } from './ThePicturedBoard'
-import { PROJECT_ORDER, PROJECT_FOLD_AFTER } from '../release-5-orders'
+import { PROJECT_ORDER } from '../release-5-orders'
 import { useAskStore } from '@/stores/ask'
 
 /* Release 5, hand-written data only: Mastercard market study (test), its board drawn by the engine (release-5-projects) from its
@@ -12,7 +12,7 @@ import { useAskStore } from '@/stores/ask'
 const draw = () => render(
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
     <MemoryRouter>
-      <ThePicturedBoard order={PROJECT_ORDER} foldAfter={PROJECT_FOLD_AFTER} b={PROJECT as any} groundId="mastercard-test"
+      <ThePicturedBoard order={PROJECT_ORDER} b={PROJECT as any} groundId="mastercard-test"
         sessionRows={[]} renderActions={() => null} overTime={null} recommendations={[]} onAnswerRecommendation={() => undefined}
         recommendationBusy={false} onRecordTheDecision={() => undefined} navigate={() => undefined} />
     </MemoryRouter>

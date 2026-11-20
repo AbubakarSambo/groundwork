@@ -1,0 +1,525 @@
+{
+  "kind": "ops",
+  "title": "Distribution operations",
+  "subtitle": "4 depot managers. Daily check-ins. Each problem is written down once, then followed up.",
+  "leadName": "Wairimu Kamau",
+  "updated": "Last updated on Wednesday 23 September at 6pm. The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.",
+  "question": "Dispatch on time, every day, safely?",
+  "headline": "95.8% of orders left on time this month. The target is 98%",
+  "bar": 96,
+  "under": "3 of this month’s 4 big problems had a cause we have seen before. Fixing the forklift in Mombasa would close most of the gap on its own.",
+  "reported": "Downtime 9.5h against a 6h limit.",
+  "targets": {
+    "heading": "Where each target stands",
+    "rows": [
+      {
+        "name": "On-time dispatch",
+        "value": "95.8% of 98%",
+        "status": "Behind",
+        "tone": "attention"
+      },
+      {
+        "name": "Major incidents",
+        "value": "4 of ≤ 3 a month",
+        "status": "Over limit",
+        "tone": "concern"
+      },
+      {
+        "name": "Safety incidents",
+        "value": "0 of 0",
+        "status": "Met",
+        "tone": "proven"
+      },
+      {
+        "name": "Downtime",
+        "value": "9.5h of ≤ 6h a month",
+        "status": "Over limit",
+        "tone": "concern"
+      },
+      {
+        "name": "Preventive maintenance",
+        "value": "70% of 100%",
+        "status": "Behind",
+        "tone": "attention"
+      }
+    ]
+  },
+  "needs": {
+    "heading": "What needs you in this check-in",
+    "open": "Open",
+    "rows": [
+      {
+        "what": "Forklift 3 in Mombasa broke down for the third time in 5 weeks",
+        "sub": "It is the same hydraulic leak. New seals have been promised since 12 September.",
+        "edge": "blue",
+        "chip": "From a pattern (equipment)"
+      },
+      {
+        "what": "The seal supplier has missed its delivery date twice",
+        "sub": "It has come up 4 times since 3 September. The forklift has stood still for 6 hours so far.",
+        "edge": "amber",
+        "strip": "This comes from a blocker that keeps coming back."
+      },
+      {
+        "what": "Kisumu’s Monday trucks leave late",
+        "sub": "They left late 3 Mondays in a row, but it is getting better since the coaching.",
+        "edge": "amber",
+        "chip": "From the coaching loop"
+      },
+      {
+        "what": "Nairobi’s generator test is 2 months late",
+        "sub": "The power cut on 22 September lasted 3 hours, because the generator did not start.",
+        "edge": "dark",
+        "strip": "This comes from the plan."
+      },
+      {
+        "what": "Decide whether to get a backup transporter for Kisumu",
+        "sub": "This has come up 3 times. The operations lead needs to decide.",
+        "edge": "blue",
+        "chip": "Decision needed"
+      }
+    ]
+  },
+  "items": {
+    "heading": "Every % on time, and what shows it",
+    "note": "Ringed is someone’s word; filled is proven. Select one for its detail",
+    "legend": [
+      "Proof shows it",
+      "Someone said it"
+    ],
+    "columns": [
+      "Incident",
+      "Owner",
+      "Stage now",
+      "What shows it",
+      "Next"
+    ],
+    "rows": [
+      {
+        "name": "Forklift 3 stopped: hydraulic leak",
+        "owner": "Fatuma",
+        "stage": "Mombasa",
+        "on": true,
+        "shows": "Equipment log",
+        "next": "Written delivery date for the seals",
+        "flag": "Repeat",
+        "flagTone": "amber"
+      },
+      {
+        "name": "Truck no-show on Monday",
+        "owner": "Ochieng",
+        "stage": "Kisumu",
+        "on": true,
+        "shows": "Dispatch system",
+        "next": "Backup transporter decision",
+        "flag": "Repeat",
+        "flagTone": "amber"
+      },
+      {
+        "name": "Power outage; generator failed to start",
+        "owner": "Kamau",
+        "stage": "Nairobi",
+        "on": false,
+        "shows": "Manager said",
+        "next": "Test the generator this week",
+        "flag": "Plan missed",
+        "flagTone": "amber"
+      },
+      {
+        "name": "Mis-picked orders",
+        "owner": "Njeri",
+        "stage": "Nakuru",
+        "on": true,
+        "shows": "Returns log",
+        "next": "Confirm the shadowing happened"
+      },
+      {
+        "name": "Loading bay flooded",
+        "owner": "Fatuma",
+        "stage": "Mombasa",
+        "on": false,
+        "shows": "Manager said",
+        "next": "Add drain clearing to the plan"
+      }
+    ],
+    "detail": {
+      "title": "Forklift 3 stopped: hydraulic leak",
+      "pairs": [
+        [
+          "Impact",
+          "2.5h down; 14 orders late"
+        ],
+        [
+          "Cause",
+          "Worn seals (manager said)"
+        ],
+        [
+          "Fix",
+          "Topped up fluid"
+        ],
+        [
+          "Prevention",
+          "Replace seals: part not in stock"
+        ]
+      ],
+      "next": "Written delivery date for the seals",
+      "button": "Not right? Tell the check-in",
+      "foot": "Something here wrong? Anyone can correct what’s about their own work in their check-in; the change and the original both show here."
+    }
+  },
+  "team": {
+    "heading": "The team today",
+    "note": "Each person’s line, their last 10 check-ins, and what keeps coming up",
+    "foot": "These are about the work. Open anyone to see what they said and what the proof shows.",
+    "rows": [
+      {
+        "name": "Fatuma",
+        "line": "2 of 3 checks done",
+        "tag": "Waiting on a supplier",
+        "tone": "concern",
+        "sessions": "1111110111"
+      },
+      {
+        "name": "Ochieng",
+        "line": "Done 2 of the last 3 Fridays",
+        "tag": "Behind the pace",
+        "tone": "attention",
+        "sessions": "1110111111",
+        "comingUp": "Late dispatch on Mondays, for 3 weeks in a row"
+      },
+      {
+        "name": "Kamau",
+        "line": "Skipped for 2 months",
+        "tag": "Plan missed",
+        "tone": "attention",
+        "sessions": "1011111111"
+      },
+      {
+        "name": "Njeri",
+        "line": "Started this week",
+        "tag": "On pace",
+        "tone": "proven",
+        "sessions": "1111111111"
+      }
+    ]
+  },
+  "shape": {
+    "kind": "heat",
+    "heading": "Incidents by site and type, last 8 weeks",
+    "note": "The shape of the work",
+    "columns": [
+      "Equipment",
+      "Transport",
+      "Power",
+      "Picking",
+      "Weather"
+    ],
+    "rows": [
+      {
+        "site": "Mombasa",
+        "counts": [
+          3,
+          0,
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "site": "Kisumu",
+        "counts": [
+          0,
+          3,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "site": "Nairobi",
+        "counts": [
+          1,
+          0,
+          1,
+          1,
+          0
+        ]
+      },
+      {
+        "site": "Nakuru",
+        "counts": [
+          0,
+          1,
+          0,
+          2,
+          0
+        ]
+      }
+    ],
+    "foot": "Darker cells repeat. A cell of 3 or more points to the site itself."
+  },
+  "groups": {
+    "heading": "By site",
+    "cards": [
+      {
+        "title": "Mombasa",
+        "stats": [
+          {
+            "n": "94.1%",
+            "l": "on time"
+          },
+          {
+            "n": "6",
+            "l": "incidents"
+          },
+          {
+            "n": "6h",
+            "l": "downtime"
+          }
+        ],
+        "text": "Forklift 3 drives most of it.",
+        "names": "Fatuma"
+      },
+      {
+        "title": "Kisumu",
+        "stats": [
+          {
+            "n": "95.9%",
+            "l": "on time"
+          },
+          {
+            "n": "3",
+            "l": "incidents"
+          },
+          {
+            "n": "0h",
+            "l": "downtime"
+          }
+        ],
+        "text": "Monday transport.",
+        "names": "Ochieng"
+      },
+      {
+        "title": "Nairobi",
+        "stats": [
+          {
+            "n": "97.4%",
+            "l": "on time"
+          },
+          {
+            "n": "3",
+            "l": "incidents"
+          },
+          {
+            "n": "3.5h",
+            "l": "downtime"
+          }
+        ],
+        "text": "Generator test overdue.",
+        "names": "Kamau"
+      },
+      {
+        "title": "Nakuru",
+        "stats": [
+          {
+            "n": "98.6%",
+            "l": "on time"
+          },
+          {
+            "n": "3",
+            "l": "incidents"
+          },
+          {
+            "n": "0h",
+            "l": "downtime"
+          }
+        ],
+        "text": "New-picker errors.",
+        "names": "Njeri"
+      }
+    ]
+  },
+  "who": {
+    "heading": "Who checked in",
+    "note": "The last 10 sessions, one row each",
+    "rows": [
+      {
+        "name": "Fatuma",
+        "sessions": "1111110111"
+      },
+      {
+        "name": "Ochieng",
+        "sessions": "1110111111"
+      },
+      {
+        "name": "Kamau",
+        "sessions": "1011111111"
+      },
+      {
+        "name": "Njeri",
+        "sessions": "1111111111"
+      }
+    ]
+  },
+  "blockers": {
+    "heading": "Blockers",
+    "note": "Each with its history and the one thing that would clear it",
+    "rows": [
+      {
+        "title": "Hydraulic seals for Forklift 3",
+        "tag": "Blocking",
+        "tone": "concern",
+        "waiting": "Parts supplier",
+        "raised": "4 times, 3 Sep to 23 Sep",
+        "affects": "Forklift 3; 6h downtime; 14 orders late",
+        "proof": "Supplier dates in writing: none",
+        "clear": "Buy from the second supplier if no date by Friday. Then: Forklift 3 fixed; most of Mombasa's downtime recovered",
+        "promised": "12 Sep, then 19 Sep (both missed)"
+      },
+      {
+        "title": "Backup transporter for Kisumu",
+        "tag": "Decision",
+        "tone": "action",
+        "waiting": "Ops lead",
+        "raised": "3 times, 7 Sep to 21 Sep",
+        "affects": "Monday dispatch in Kisumu",
+        "proof": "Decision pending",
+        "clear": "Choose one of the two quotes. Then: Monday dispatch in Kisumu covered"
+      },
+      {
+        "title": "Generator service",
+        "tag": "Waiting",
+        "tone": "attention",
+        "waiting": "Kamau",
+        "raised": "2 times, 22 Sep to 23 Sep",
+        "affects": "Nairobi power resilience",
+        "proof": "Self-reported",
+        "clear": "Book the service this week. Then: Nairobi can ride out the next outage"
+      }
+    ]
+  },
+  "keeps": {
+    "heading": "What keeps coming up",
+    "note": "Named after three check-ins in a row, never after one. Each describes the work",
+    "personHeading": "About each person’s work",
+    "people": [
+      {
+        "name": "Ochieng",
+        "text": "Late dispatch on Mondays, for 3 weeks in a row"
+      }
+    ],
+    "sayHeading": "How what people say can run ahead of what happened",
+    "say": [
+      {
+        "title": "“Sorted” without prevention",
+        "text": "Fixed for today, with nothing stopping the repeat.",
+        "who": "Fatuma, Kamau"
+      },
+      {
+        "title": "Plan skipped when busy",
+        "text": "Maintenance dropped on high-volume days.",
+        "who": "Kamau"
+      }
+    ],
+    "foot": "Each person sees what’s about them, and can answer it in their own words."
+  },
+  "askedOf": {
+    "heading": "Asked of Operations by other teams",
+    "title": "Sales: stock for Green Mart’s January order",
+    "text": "Asked by Wairimu, 16 Sept. The Mombasa depot’s count is due Friday.",
+    "button": "Open in Sales"
+  },
+  "heading": {
+    "heading": "Where this is heading",
+    "note": "Set goals and keep the team on track",
+    "outcomesLabel": "The possible outcomes",
+    "outcomes": [
+      "On course",
+      "Reach it with a change",
+      "Change the target"
+    ],
+    "signalsLabel": "The signals behind them",
+    "signals": [
+      {
+        "line": "Forklift 3 in Mombasa broke down for the third time in 5 weeks",
+        "text": "It is the same hydraulic leak. New seals have been promised since 12 September.",
+        "onRecord": false
+      },
+      {
+        "line": "The seal supplier has missed its delivery date twice",
+        "text": "It has come up 4 times since 3 September. The forklift has stood still for 6 hours so far.",
+        "onRecord": false
+      },
+      {
+        "line": "Kisumu’s Monday trucks leave late",
+        "text": "They left late 3 Mondays in a row, but it is getting better since the coaching.",
+        "onRecord": false
+      }
+    ],
+    "settleLabel": "What would settle it",
+    "settle": "3 of this month’s 4 big problems had a cause we have seen before. Fixing the forklift in Mombasa would close most of the gap on its own.",
+    "decider": "Operations lead decides.",
+    "deciderNote": "Groundwork lays out the outcomes and the proof. It doesn’t choose.",
+    "button": "Record the decision"
+  },
+  "overTime": "Over time",
+  "reports": {
+    "heading": "Reports",
+    "note": "Each person’s own, the team’s once shared, and a weekly one",
+    "open": "Open",
+    "rows": [
+      {
+        "name": "Today’s team report",
+        "text": "The day’s gaps: what moved, what didn’t, who’s missing"
+      },
+      {
+        "name": "Your own report",
+        "text": "Only you see it"
+      },
+      {
+        "name": "This week",
+        "text": "Patterns, once they’ve held for two weeks"
+      }
+    ]
+  },
+  "everySession": "Every session",
+  "others": {
+    "heading": "The other boards you’re in",
+    "rows": [
+      {
+        "name": "Sales team, Q3",
+        "tag": "Today’s report ready",
+        "tone": "proven"
+      },
+      {
+        "name": "Kwame, first 90 days",
+        "tag": "Decide how it ends",
+        "tone": "action"
+      },
+      {
+        "name": "Leadership, Q3",
+        "tag": "Your turn",
+        "tone": "action"
+      },
+      {
+        "name": "Supplier review",
+        "tag": "Waiting on Omar",
+        "tone": "sand"
+      },
+      {
+        "name": "Daniel, the next six weeks",
+        "tag": "Both accounts in",
+        "tone": "action"
+      },
+      {
+        "name": "Faith, first 90 days",
+        "tag": "Just started",
+        "tone": "action"
+      }
+    ]
+  },
+  "askBox": {
+    "placeholder": "Ask about this board, for example “Why is Green Mart next quarter?”",
+    "button": "Ask"
+  }
+}

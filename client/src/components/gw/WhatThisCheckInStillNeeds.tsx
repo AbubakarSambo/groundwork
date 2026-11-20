@@ -99,7 +99,7 @@ export function WhatThisCheckInStillNeeds({
         {missing === 1 ? 'One thing this check-in still needs' : `${missing === 2 ? 'Two' : missing === 3 ? 'Three' : 'Four'} things this check-in still needs`}
       </div>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: '19px', marginBottom: 11 }}>
-        Nothing to do with the session you just finished. These are about how it runs.
+        Nothing to do with the check-in you just finished. These are about how it runs.
       </div>
 
       {cadenceUnset && (
@@ -126,7 +126,7 @@ export function WhatThisCheckInStillNeeds({
           <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>When does this start?</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 7 }}>
             No start date is set, so everything is counted from the day you opened this. A date
-            decides two real things: session one stays shut until then, and anybody added before it
+            decides two real things: check-in one stays shut until then, and anybody added before it
             is invited on the day rather than now.
           </div>
           {renderStartDate ?? (
@@ -142,7 +142,7 @@ export function WhatThisCheckInStillNeeds({
         <div style={{ marginBottom: 13 }}>
           <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>When is the next one?</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-            Your next session opens on {whenItWas(nextOpens, 'dayAndMonthLong')}. The rhythm is set on People and setup.
+            Your next check-in opens on {whenItWas(nextOpens, 'dayAndMonthLong')}. The rhythm is set on People and setup.
           </div>
         </div>
       )}
@@ -169,7 +169,7 @@ export function WhatThisCheckInStillNeeds({
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 7 }}>
             {briefStandard
               ? <>Your brief says &ldquo;{briefStandard}&rdquo;. That is being read as the standard until you set one here.</>
-              : <>You said it in the session. It is not set as the standard, so nothing is being read against it.</>}
+              : <>You said it in the check-in. It is not set as the standard, so nothing is being read against it.</>}
           </div>
           <button className="btn sec sm"
             onClick={onGoToSetup}

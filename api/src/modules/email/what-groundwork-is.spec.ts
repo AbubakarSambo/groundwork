@@ -34,10 +34,10 @@ describe('where it belongs', () => {
 
 describe('what it says', () => {
   it('says what the product is and who sees what somebody writes', () => {
-    expect(WHAT_GROUNDWORK_IS).toMatch(/each give their own account/);
+    expect(WHAT_GROUNDWORK_IS).toMatch(/each say how it is going in their own words/);
     /* Changed on 7 October: it said "not shown to anybody until the record is released ... does not quote you", which is not true (decision 4).
        It now says what the invitation says: who can read what a person says. */
-    expect(WHAT_GROUNDWORK_IS).toMatch(/The people in this check-in, including your manager, can see what you say in it\./);
+    expect(WHAT_GROUNDWORK_IS).toMatch(/Nobody else reads your conversation\./);
     expect(WHAT_GROUNDWORK_IS).not.toMatch(/not shown to anybody|does not quote you|privately/);
   });
 
@@ -50,7 +50,7 @@ describe('what it says', () => {
 
 describe('appending it', () => {
   it('adds it to a mail about the work', () => {
-    expect(withWhatGroundworkIs('<p>hello</p>', 'sendReportReady')).toContain('each give their own account');
+    expect(withWhatGroundworkIs('<p>hello</p>', 'sendReportReady')).toContain('each say how it is going in their own words');
   });
 
   it('leaves a door alone', () => {
@@ -58,7 +58,7 @@ describe('appending it', () => {
   });
 
   it('does not say it twice where a template says it already', () => {
-    const already = '<p>Groundwork is where the people involved in a piece of work each give their own account.</p>';
+    const already = '<p>Groundwork is where the people involved in a piece of work each say how it is going in their own words.</p>';
     expect(withWhatGroundworkIs(already, 'sendReportReady')).toBe(already);
   });
 });

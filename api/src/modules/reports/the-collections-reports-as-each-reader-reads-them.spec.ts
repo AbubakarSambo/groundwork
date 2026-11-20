@@ -70,7 +70,7 @@ describe('each person\'s own report, about their own bills only', () => {
 
   it('Njeri, who follows up none, reads that none are hers', async () => {
     const r = (await read(MUCHEMI_FEE_NOTES.id, 3, 'u-njeri')).collectionsOwnReport;
-    expect(r.inShort).toEqual(['No fee note that you follow up is on record yet. Each one shows here once you name it in a check-in.']);
+    expect(r.inShort).toEqual(['No fee note that you follow up is on record yet.']);
     expect(JSON.stringify(r)).not.toMatch(/KES|Kasarani|Brian|Aisha/);
   });
 

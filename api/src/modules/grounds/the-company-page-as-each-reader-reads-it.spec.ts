@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { CompanyService, NOT_YOUR_COMPANY } from './company.service';
+import { CompanyService, NOT_YOUR_COMPANY, NOT_YOUR_DESK } from './company.service';
 import { CompanyController } from './company.controller';
 
 /**
@@ -200,10 +200,12 @@ describe('Kofi, a guest from another company, is refused', () => {
     expect(prisma.subject.findMany).not.toHaveBeenCalled();
   });
 
-  it('through the route, too', async () => {
+  /* Changed for the Desk (S7, 20 November 2026): through the route he reads one plain sentence, not a 403 error. Still
+     nothing of the organisation's is served. */
+  it('through the route, as one plain sentence', async () => {
     const { svc } = setup();
     const route = new CompanyController(svc);
-    await expect(route.page({ id: 'u-kofi', email: 'kofi@elsewhere.test', organizationId: ORG, role: 'GUEST' } as any)).rejects.toThrow(NOT_YOUR_COMPANY);
+    expect(await route.page({ id: 'u-kofi', email: 'kofi@elsewhere.test', organizationId: ORG, role: 'GUEST' } as any)).toEqual({ name: 'Baridi Appliances', outsider: NOT_YOUR_DESK('Baridi Appliances') });
   });
 });
 
@@ -221,12 +223,13 @@ describe('what nobody is served', () => {
 
 
 describe('what the lead confirmed for the organisation, on the company page (week 20)', () => {
+  /* Changed for the Desk (S7, 20 November 2026): "Admins, leads and anyone who runs a check-in can read this. Everyone else
+     cannot." was a privacy note on screen, and is no longer served. Who is served the part is unchanged. */
   const kept = {
-    readBy: 'Admins, leads and anyone who runs a check-in can read this. Everyone else cannot.',
     items: [{ id: 'mem1', kind: 'rule', says: "Every quote over 1 million needs Amina's sign-off", source: 'Picked up from your check-in on 22 September' }],
   };
 
-  it('Grace, an admin, reads it with its source line, and who can read it', async () => {
+  it('Grace, an admin, reads it with its source line', async () => {
     expect((await setup().read('grace')).whatWeKeep).toEqual(kept);
   });
 

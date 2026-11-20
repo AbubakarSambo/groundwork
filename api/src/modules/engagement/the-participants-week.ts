@@ -137,11 +137,6 @@ export interface TheirWeek {
    * it is told to her as what they said, and never counted as a request waiting on her.
    */
   saidToWaitOnYou?: { who: string | null; what: string; checkIn: string; note?: string }[];
-  /**
-   * The check-ins whose report is ready for this person to read, by name (decision 117, D14). The "your report is ready" email goes at most twice
-   * for a report; after that the report is told here, in the regular summary, and only here.
-   */
-  reportsReady?: string[];
 }
 
 /** The day the first thing counted was said, where that is less than four weeks ago; otherwise null and the count says "in the last four weeks". */
@@ -161,8 +156,6 @@ export function theirWeekInWords(firstName: string | null | undefined, w: TheirW
   const facts: string[] = [];
   if (kept) facts.push(kept.of === kept.kept && kept.of === 1 ? 'You kept the one thing you said you would do' : kept.of === kept.kept ? `You kept all ${aNumberInWords(kept.of)} things you said you would do` : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} ${thing(kept.of)} you said you would do`);
   if (w.waitingOnYou.length) facts.push(`${aNumberInWords(w.waitingOnYou.length)} ${w.waitingOnYou.length === 1 ? 'request is' : 'requests are'} waiting on you`);
-  const reports = (w.reportsReady ?? []).filter((l) => !!l?.trim());
-  if (reports.length) facts.push(reports.length === 1 ? 'Your report is ready to read' : `${cap(aNumberInWords(reports.length))} of your reports are ready to read`);
   if (!facts.length && w.open.length) facts.push(`${cap(aNumberInWords(w.open.length))} ${thing(w.open.length)} you said you would do ${w.open.length === 1 ? 'is' : 'are'} still open`);
   if (!facts.length && w.waitingOn.length) facts.push(`You are waiting on ${aNumberInWords(w.waitingOn.length)} ${thing(w.waitingOn.length)}`);
   if (!facts.length) return null;
@@ -175,7 +168,6 @@ export function theirWeekInWords(firstName: string | null | undefined, w: TheirW
     const when = w.keptSince ? `since ${w.keptSince}` : 'in the last four weeks';
     lines.push(kept.of === 1 ? `You kept the one thing you said you would do ${when}${which}.` : kept.kept === kept.of ? `You kept all ${aNumberInWords(kept.of)} things you said you would do ${when}${which}.` : `You kept ${aNumberInWords(kept.kept)} of the ${aNumberInWords(kept.of)} things you said you would do ${when}${which}.`);
   }
-  if (reports.length) lines.push(reports.length === 1 ? `Your report for "${trimmed(reports[0])}" is ready to read.` : `Your reports for ${listed(quoted(reports.slice(0, 3)))} are ready to read.`);
   if (w.openSaid?.length) {
     /* EACH ON ITS OWN, WITH WHERE AND WHEN IT WAS SAID (messages test, 19 October, finding 14): "Follow up with her" in a list of three said
        nothing about which customer or when. The latest first; the rest are counted, and are on their page. */
@@ -232,13 +224,11 @@ export async function sendTheParticipantsWeeks(
     orderBy: { id: 'asc' },
     ...page,
   }), 1000);
-  const open = new Map<string, { labels: Set<string>; participantIds: string[]; groundIds: string[]; reportsReady: Set<string> }>();
+  const open = new Map<string, { labels: Set<string>; participantIds: string[]; groundIds: string[]}>();
   for (const r of rows) {
     const stillGoing = (r.checkIns?.length ?? 0) > 0 || thereIsASessionToCome(r.ground, now);
     if (!stillGoing) continue;
-    const o = open.get(r.userId) ?? { labels: new Set<string>(), participantIds: [], groundIds: [], reportsReady: new Set<string>() };
-    /* Their own report is ready: it was released, they are a person who checks in, and they have answered since the messages began. */
-    if (r.ground?.report?.releasedAt && r.partyType === 'PARTICIPANT' && (r.checkIns?.length ?? 0) > 0) o.reportsReady.add(r.ground.label);
+    const o = open.get(r.userId) ?? { labels: new Set<string>(), participantIds: [], groundIds: [] };
     o.labels.add(r.ground.label);
     o.groundIds.push(r.groundId);
     o.participantIds.push(r.id);
@@ -294,7 +284,6 @@ export async function sendTheParticipantsWeeks(
           const claim = onlyClaimed.get(`${i.checkIn}|${(i.what ?? '').trim().toLowerCase()}`);
           return { ...i, note: whatTheyTriedInFull(claim ?? {}, i.who) };
         }),
-        reportsReady: [...mine.reportsReady],
         theirOwnWords: (Array.isArray(ownLines) ? ownLines : []).map((l) => String(l?.text ?? '')).filter(Boolean),
       };
       const words = theirWeekInWords(user.firstName, week);

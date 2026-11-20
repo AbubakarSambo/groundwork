@@ -104,27 +104,21 @@ describe('the status badge says something or says nothing', () => {
 describe('an invited person reads the disclosure before they commit, once', () => {
   const INVITE = read('./InvitePage.tsx')
 
-  it('the invite page carries the privacy briefing itself', () => {
-    /**
-     * It used to arrive on the NEXT screen, after "Add my version" - a disclosure shown after
-     * the decision it is meant to inform.
-     *
-     * UPDATED 29 September, item 11 conflict A: "Nobody you work with reads it" said no manager
-     * and no admin ever saw a person's words, which decision 1 in CLAUDE.md's privacy rules makes
-     * untrue for every check-in. It is replaced by "Who can read what you write", built from the
-     * check-in's own settings (`whoCanReadThis`) so it can never say something the server does not
-     * actually do.
-     */
-    expect(INVITE).toMatch(/What happens to what you write/)
-    expect(INVITE).toMatch(/Who can read what you write/)
+  /**
+   * CHANGED 15 NOVEMBER 2026 (Hafsah, audit of the check-in pages, row 12): the link "What happens to what you write" and the four-part
+   * briefing it opened are deleted, including the paragraph about Google's models. The invitation's one sentence about who can read it
+   * (`whoSeesYourAnswers`, now inside "Who sees your answers") stays. Who can read what is the backend's rule and does not change.
+   */
+  it('the invitation no longer carries a privacy briefing behind a link', () => {
+    expect(INVITE).not.toMatch(/What happens to what you write/)
+    expect(INVITE).not.toMatch(/Nothing here trains a model/)
     expect(INVITE).not.toMatch(/Nobody you work with reads it/)
-    expect(INVITE).toMatch(/Nothing here trains a model/)
+    expect(INVITE).toMatch(/preview\.whoCanReadWhatYouSay/)
+    expect(INVITE).not.toMatch(/whoCanReadThis/)
   })
 
-  it('including the claim we deliberately do not dress up', () => {
-    /** The honest half is the half most likely to be quietly dropped in a move like this. */
-    expect(INVITE).toMatch(/not going to dress up/)
-    expect(INVITE).toMatch(/processed by Google's models/)
+  it('and no longer says the people in the check-in can see what you say in it, which misstated that the whole conversation is shared', () => {
+    expect(INVITE).not.toMatch(/can see what you say in it/)
   })
 
   it('and accepting stamps the acknowledgement so the chat opens on the first question', () => {

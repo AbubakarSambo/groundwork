@@ -302,7 +302,7 @@ function TrackedElsewhere({
       </div>
       {stale && (
         <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 2 }}>
-          That is old enough to have changed. Worth a look before the next session.
+          That is old enough to have changed. Worth a look before the next check-in.
         </div>
       )}
 

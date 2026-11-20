@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useId } from 'react'
+import { PartBoundary } from './PartBoundary'
 import './gw-ui.css'
 
 /**
@@ -51,7 +52,7 @@ export function Section({ heading, note, action, foot, children, id, headingRef 
         {note && <span className="t-small mut">{note}</span>}
         {action && <span className="gw-sec-action">{action}</span>}
       </div>
-      {children !== undefined && <div>{children}</div>}
+      {children !== undefined && <div><PartBoundary>{children}</PartBoundary></div>}
       {foot && <p className="note">{foot}</p>}
     </section>
     </InsideASection.Provider>

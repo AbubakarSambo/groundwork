@@ -15,13 +15,13 @@ const coach = (over: Record<string, any>) => whatToWorkOnNext({
 describe('request 127 (6): a kind of work nobody set is said as a reading', () => {
   it('the lead reads the session count on its own, then where the kind of work comes from', () => {
     expect(coach({}).whyItMatters).toBe(
-      'This is session 1 of 4. What you have said so far reads as founder or CEO work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.',
+      'This is check-in 1 of 4. What you have said so far reads as founder or CEO work. Nothing repeats yet, which is normal this early. What decides whether the later check-ins are worth anything is what you can point at.',
     );
-    expect(coach({}).whyItMatters).not.toMatch(/session 1 of 4 of /);
+    expect(coach({}).whyItMatters).not.toMatch(/check-in 1 of 4 of /);
   });
 
   it('a role the person gave is still said as theirs', () => {
     expect(coach({ detectedFunction: null, functionConfidence: null, role: 'Poultry farmer', roleToSay: 'Poultry farmer' }).whyItMatters)
-      .toMatch(/^This is session 1 of 4 of your work as poultry farmer\./);
+      .toMatch(/^This is check-in 1 of 4 of your work as poultry farmer\./);
   });
 });

@@ -10,9 +10,17 @@
  * honest default. The default is the important half.
  */
 import { quotedThenEnding } from './a-quote-takes-no-second-mark';
+import { askedOnWhatsApp } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 import { parseAskAPerson } from './a-line-or-a-note-typed-in-chat';
 import { SET_UP_A_SUITE_PATTERNS } from './a-suite-set-up-by-talking';
 import { WHAT_YOU_CAN_HELP_WITH_PATTERNS } from './what-you-can-ask-here';
+import { ASKS_FOR_A_NEW_ONE_BY_SAYING_SO } from './what-a-new-check-in-would-be';
+import { SWITCH_A_SUITE_PATTERNS } from './a-suite-switched-by-talking';
+import { A_PERSONS_HISTORY_PATTERNS } from './a-persons-history-by-asking';
+import { A_PERIOD_REPORT_PATTERNS } from './a-quarter-or-a-year-by-asking';
+import { CONNECT_A_PLATFORM_PATTERNS } from './connecting-a-platform-by-asking';
+import { THE_ROLE_MAP_PATTERNS } from './the-role-map-by-asking';
+import { SET_UP_A_DELEGATE_PATTERNS, STOP_A_DELEGATE_PATTERNS } from '../outstanding/a-delegate-acts-for-a-principal';
 import { WHAT_IS_DUE_PATTERNS, WHO_APPROVES_PATTERNS, WHO_IS_AWAY_PATTERNS, YOUR_REQUESTS_PATTERNS } from './your-own-requests-asked-about';
 
 /** A sentence that asks one named person something. Shares its reading with the lane that acts on it. */
@@ -69,6 +77,16 @@ export type Lane =
   | 'what_is_due'
   /** Who is off, from approved leave, as far as this reader may know. */
   | 'who_is_away'
+  /** Onboarding, leaving, the role map, to-dos, customers or equipment switched on or off by saying so (chat is king). */
+  | 'switch_a_suite'
+  /** A person's history from their check-ins and the lead's notes, for the lead of a check-in they are in (chat is king, section 8). */
+  | 'performance_history'
+  /** A quarterly or annual report from the check-ins, the Desk and References and resources, as the asker may read them. */
+  | 'period_report'
+  /** Being guided through connecting Slack, Teams or WhatsApp, for an admin. */
+  | 'connect_a_platform'
+  /** The role map, read by an admin. */
+  | 'role_map'
   /** "What can you help me with?": what this reader can do here, from what the router offers them. */
   | 'what_can_you_do'
   /** "When is my next check-in?": when each check-in of yours opens, read from your own. */
@@ -79,6 +97,16 @@ export type Lane =
   | 'company_priorities'
   /** "Is the strategy moving?": how the priorities are moving, as the Company page says it to you. */
   | 'is_the_strategy_moving'
+  /** Naming somebody, such as an executive assistant, who may act for you. Said back first, and written only on a yes. */
+  | 'set_up_a_delegate'
+  /** Taking that right away from them. Said back first, and written only on a yes. */
+  | 'stop_a_delegate'
+  /** "What is outstanding?": the principal's outstanding register, read to her or to the person she let act for her. */
+  | 'what_is_outstanding'
+  /** "What needs my decision?": the questions waiting for the principal, with their options. */
+  | 'what_needs_my_decision'
+  /** "Which items can the team close this week?": what one person can finish or prove within seven days. */
+  | 'what_can_the_team_close'
   | 'unplaced';
 
 export interface Routed {
@@ -112,6 +140,42 @@ const RULES = [
    * this (a-suite-set-up-by-talking.ts).
    */
   rule('set_up_a_suite', SET_UP_A_SUITE_PATTERNS),
+  /*
+   * CHAT IS KING, SECTION 8: four things the screens have and the chat had not. Each is narrow, and each sits here so a general lane below
+   * ("how is the team", "who is ...", "what came of it") never reads its words first.
+   */
+  rule('switch_a_suite', SWITCH_A_SUITE_PATTERNS),
+  rule('performance_history', A_PERSONS_HISTORY_PATTERNS),
+  rule('period_report', A_PERIOD_REPORT_PATTERNS),
+  rule('connect_a_platform', CONNECT_A_PLATFORM_PATTERNS),
+  rule('role_map', THE_ROLE_MAP_PATTERNS),
+  /*
+   * ACTING FOR A SENIOR PERSON (Fatima, increment 3). Stopping is matched before starting, because "X can no
+   * longer act for me" holds the words of "X can act for me". Both sit above the to-do and commitment lanes,
+   * whose "for me" and "remind me" shapes would otherwise take a sentence about somebody's access.
+   */
+  rule('stop_a_delegate', STOP_A_DELEGATE_PATTERNS),
+  rule('set_up_a_delegate', SET_UP_A_DELEGATE_PATTERNS),
+  /*
+   * THE THREE QUESTIONS ASKED OF THE OUTSTANDING REGISTER. Above `where_am_i_up_to`, whose "what is
+   * outstanding" is the onboarding checklist, and above `what_should_we_talk_about`, which reads "what needs
+   * my decision" as a suggestion. A reader with no register falls back to those lanes in the service, so
+   * nobody who is not a principal or a delegate loses the answer they had.
+   */
+  rule('what_can_the_team_close', [
+    /\bwhich\s+items?\s+can\s+(?:the\s+team|we|they)\s+close\b/i,
+    /\bwhat\s+can\s+(?:the\s+team|we)\s+close\s+(?:this\s+week|now|soon)\b/i,
+  ]),
+  rule('what_needs_my_decision', [
+    /\bwhat\s+needs\s+(?:my|her|his|[\w'’]+'s)\s+decisions?\b/i,
+    /\bwhat\s+needs\s+(?:a|an|the)\s+decision\b/i,
+    /\bwhich\s+decisions?\s+(?:are\s+waiting|need\s+me|do\s+i\s+(?:need|have)\s+to\s+make)\b/i,
+  ]),
+  rule('what_is_outstanding', [
+    /\bwhat(?:'s|\s+is|\s+are)\s+(?:still\s+)?outstanding\b/i,
+    /\bwhat\s+(?:matters|items)\s+(?:are\s+)?(?:still\s+)?outstanding\b/i,
+    /\bthe\s+outstanding\s+(?:list|matters|register|items)\b/i,
+  ]),
   /*
    * TO-DOS, FIRST, AND ON THE WORD "TO-DO" OR A SHAPE THAT IS ONLY A NOTE TO SELF.
    *
@@ -223,6 +287,7 @@ const RULES = [
      */
     /^(?!.*\bhow\s+(?:do|does|did|to|can|should)\b).*\b(?:start|begin|open|set\s+up|kick\s+off|run)\s+(?:my|our|the|a|this)?\s*(?:check[\s-]?in|session|ground|round)\b/i,
     /^(?!.*\bhow\s+(?:do|does|did|to|can|should)\b).*\b(?:check[\s-]?in|session)\s+(?:set\s+up\s+)?for\s+me\b/i,
+    ASKS_FOR_A_NEW_ONE_BY_SAYING_SO,
     /\bready\s+to\s+(?:start|begin)\s+(?:my|our|the)?\s*check[\s-]?in\b/i,
     /\bcan\s+i\s+(?:start|do|take)\s+(?:my|our|the)?\s*check[\s-]?in\b/i,
   ]),
@@ -627,7 +692,8 @@ export function whatICanDoWith(input: string): { line: string; options: { key: s
   const trimmed = (input ?? '').trim();
   /* A greeting is not a failed question (B-106). */
   if (/^\s*((hi|hello|hey|hiya|yo)(\s+there)?|good\s+(morning|afternoon|evening))\s*[.!]*\s*$/i.test(trimmed)) {
-    return { line: 'Hello. Ask me something, or pick one of these.', options: OPTIONS_THE_SHRUG_OFFERS.map((o) => ({ key: o.key as string, label: o.label })) };
+    /* On WhatsApp this is only reached with nothing open, and the person is told so rather than only invited to ask (run 9). */
+    return { line: askedOnWhatsApp() ? 'Hello. You have no check-in open right now, and I will message you here when the next one opens. You can ask me something in the meantime.' : 'Hello. Ask me something, or pick one of these.', options: OPTIONS_THE_SHRUG_OFFERS.map((o) => ({ key: o.key as string, label: o.label })) };
   }
   const short = trimmed.length <= 60 ? trimmed : `${trimmed.slice(0, 57)}…`;
   return {

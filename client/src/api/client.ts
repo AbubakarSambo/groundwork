@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
+import { fillTheShape } from './shapes'
 
 declare module 'axios' {
   export interface AxiosRequestConfig {
@@ -53,6 +54,7 @@ apiClient.interceptors.response.use(
     if (response.data?.success === true && 'data' in response.data) {
       response.data = response.data.data
     }
+    response.data = fillTheShape(response.config?.url ?? '', response.data)
     return response
   },
   (error: AxiosError<{ message?: string; errors?: Record<string, string[]> }>) => {
@@ -83,9 +85,12 @@ apiClient.interceptors.response.use(
         useAuthStore.getState().logout()
         const wasAt = window.location.pathname + window.location.search
         const goingHome = wasAt === '/' || wasAt.startsWith('/auth')
+        /* A first visit, on an address the browser has never held a sign-in for, sent no token: that is not somebody who was signed out for being away, so it is the ordinary sign-in with no sentence about expiring. */
+        const hadASession = !!error.config?.headers?.Authorization
+        const why = hadASession ? 'why=session-expired&' : ''
         window.location.href = goingHome
-          ? '/auth?why=session-expired'
-          : `/auth?why=session-expired&next=${encodeURIComponent(wasAt)}`
+          ? (hadASession ? '/auth?why=session-expired' : '/auth')
+          : `/auth?${why}next=${encodeURIComponent(wasAt)}`
       }
       return Promise.reject(error)
     }

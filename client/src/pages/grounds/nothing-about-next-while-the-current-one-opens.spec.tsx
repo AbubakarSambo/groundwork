@@ -84,7 +84,7 @@ describe('the header says nothing about the next session while this one is openi
      * moment there is more than one match, so this now waits for at least one.
      */
     await screen.findAllByText(/Jordan - Probation/i)
-    expect(screen.queryByText(/Your next session opens on/i)).toBeNull()
+    expect(screen.queryByText(/Your next check-in opens on/i)).toBeNull()
   })
 
   it('once nothing is opening, the same data reads the next session\'s date honestly', async () => {
@@ -102,6 +102,6 @@ describe('the header says nothing about the next session while this one is openi
      * triggering the Check-in tab's own auto-open.
      */
     renderPage('?tab=context')
-    expect(await screen.findByText(/Your next session opens on/i)).toBeTruthy()
+    expect(await screen.findByText(/Your next check-in opens on/i)).toBeTruthy()
   })
 })

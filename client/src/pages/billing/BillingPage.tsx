@@ -16,7 +16,7 @@ import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { aPersonsSentenceForAServerError } from '@/lib/a-persons-sentence-for-a-server-error'
 import { ADoorYouCannotOpen } from '@/components/gw/a-door-you-cannot-open-says-so'
 import {
-  Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Button, Tag, Note, TextField, FieldLabel, SwitchRow,
+  Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Button, Tag, Note, TextField, FieldLabel, SwitchRow, Skeleton
 } from '@/components/gw/ui'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE', 'ENTERPRISE']
@@ -245,7 +245,7 @@ export function BillingPage() {
   }
 
   if (groundsLoading || codesLoading) {
-    return <Page><p className="gwui-panel-text-muted">Loading…</p></Page>
+    return <Page><Skeleton what="Getting your plan and billing" shape="cards" /></Page>
   }
 
   const orgName = (user as any)?.organization?.name?.trim() || (user as any)?.organizationName || ''
@@ -472,7 +472,7 @@ export function BillingPage() {
           <Stack gap={10}>
             <p className="gwui-panel-text"><b>Your first {freeGrounds} check-ins are free.</b></p>
             <p className="gwui-panel-text-muted">
-              Create up to {freeGrounds} check-ins with unlimited sessions and reports, no card required. The free plan covers {freeTeam} people including you. Subscribe when your team outgrows it.
+              Create up to {freeGrounds} check-ins with unlimited check-ins and reports, no card required. The free plan covers {freeTeam} people including you. Subscribe when your team outgrows it.
             </p>
           </Stack>
         </Panel>
@@ -647,10 +647,10 @@ export function BillingPage() {
              */}
             <p className="gwui-panel-text-muted">
               {grounds.length === 1
-                ? 'Your check-in has unlimited sessions and reports on this plan. Nothing is counted or charged per session.'
+                ? 'Your check-in has unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.'
                 : grounds.length === 2
-                ? 'Both of your check-ins have unlimited sessions and reports on this plan. Nothing is counted or charged per session.'
-                : `All ${grounds.length} of your check-ins have unlimited sessions and reports on this plan. Nothing is counted or charged per session.`}
+                ? 'Both of your check-ins have unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.'
+                : `All ${grounds.length} of your check-ins have unlimited check-ins and reports on this plan. Nothing is counted or charged per check-in.`}
             </p>
           </Panel>
         ) : grounds.length === 0 ? (
@@ -692,18 +692,18 @@ export function BillingPage() {
                     value={(
                       <span className="gwui-invite-actions">
                         {isSubscribed ? (
-                          <Tag tone="proven">Unlimited sessions</Tag>
+                          <Tag tone="proven">Unlimited check-ins</Tag>
                         ) : allFreeRows ? null : isFree ? (
                           <Tag tone="proven">Free check-in</Tag>
                         ) : balance !== undefined ? (
-                          <Tag tone={balance > 0 ? 'plain' : 'concern'}>{balance} session{balance !== 1 ? 's' : ''} left</Tag>
+                          <Tag tone={balance > 0 ? 'plain' : 'concern'}>{balance} check-in{balance !== 1 ? 's' : ''} left</Tag>
                         ) : null}
                         {!isSubscribed && !allFreeRows && !extUsed && <Tag tone="proven">Free extension available</Tag>}
                         {!isSubscribed && !allFreeRows && extUsed && <Tag tone="plain">Free extension used</Tag>}
                       </span>
                     )}
                     action={!isFree && !isSubscribed
-                      ? <Button kind="secondary" size="small" onClick={() => navigate('/billing/checkout', { state: { groundId: g.id, groundName: g.label } })}>Add sessions</Button>
+                      ? <Button kind="secondary" size="small" onClick={() => navigate('/billing/checkout', { state: { groundId: g.id, groundName: g.label } })}>Add check-ins</Button>
                       : undefined}
                   />
                 )
@@ -724,14 +724,14 @@ export function BillingPage() {
         <Section heading="Share Groundwork with another organisation" note="A code they can use to start">
           <Panel>
             <Stack gap={12}>
-              <p className="gwui-panel-text-muted">A code gives another organisation sessions on us. Useful for a supplier or partner you want to check in with.</p>
+              <p className="gwui-panel-text-muted">A code gives another organisation check-ins on us. Useful for a supplier or partner you want to check in with.</p>
               {codes.length > 0 && (
                 <FieldRows>
                   {(codes as any[]).map((c: any) => (
                     <FieldRow
                       key={c.code}
                       label={c.code}
-                      value={`${c.sessionsGranted} session${c.sessionsGranted !== 1 ? 's' : ''} granted, ${c.sessionsUsed ?? 0} used${c.note ? `, ${c.note}` : ''}.`}
+                      value={`${c.sessionsGranted} check-in${c.sessionsGranted !== 1 ? 's' : ''} granted, ${c.sessionsUsed ?? 0} used${c.note ? `, ${c.note}` : ''}.`}
                       action={<Button kind="secondary" size="small" onClick={() => copyToClipboard(c.code)}>{copied === c.code ? 'Copied' : 'Copy'}</Button>}
                     />
                   ))}

@@ -871,6 +871,8 @@ export function AppSidebar() {
    * indistinguishable from a genuine MEMBER, but the organisation's name always arrives with it.
    */
   const orgName = user?.organizationName ?? ''
+  /* An organisation with no name on record is shown by what it is to the reader, never as an empty box with a question mark. */
+  const orgShown = orgName.trim() || 'Your organisation'
 
   function startRename(g: Ground) {
     setRenamingId(g.id)
@@ -985,9 +987,9 @@ export function AppSidebar() {
     const keepsRoom = actsWidth > 0 && !hasBadge
     const dot = attention.kind === 'overdue' ? 'late' : attention.kind === 'yours' ? 'turn' : 'quiet'
     const why = attention.kind === 'overdue'
-      ? `Session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
+      ? `Check-in ${attention.sessionNumber} is ${attention.daysLate} days past its date`
       : attention.kind === 'yours'
-        ? `Session ${attention.sessionNumber} is ready for you`
+        ? `Check-in ${attention.sessionNumber} is ready for you`
         : null
     /* The whole row in sentences, for the pointer and for a screen reader. See what-a-sidebar-row-says. */
     const says = whatTheRowSays({
@@ -1121,21 +1123,21 @@ export function AppSidebar() {
               onClick={() => { setOrgOpen(v => !v); setMeOpen(false) }}
               aria-haspopup="true"
               aria-expanded={orgOpen}
-              title={orgName}
+              title={orgShown}
             >
-              <span className="gw-rl-sq" aria-hidden>{initialsOf(orgName)}</span>
+              <span className="gw-rl-sq" aria-hidden>{initialsOf(orgShown)}</span>
               {!collapsed && (
                 <>
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <b className="gw-rl-org-name">{orgName}</b>
-                    {orgName && <span className="gw-rl-org-role">{roleWord(user?.role)}</span>}
+                    <b className="gw-rl-org-name">{orgShown}</b>
+                    <span className="gw-rl-org-role">{roleWord(user?.role)}</span>
                   </span>
                   <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden style={{ flex: 'none', color: 'var(--gw-sub)' }}>
                     <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </>
               )}
-              {collapsed && orgName && <span className="gw-sr-only">{orgName}, {roleWord(user?.role)}</span>}
+              {collapsed && <span className="gw-sr-only">{orgShown}, {roleWord(user?.role)}</span>}
             </button>
             {orgOpen && (
               <div className="gw-rl-menu gw-rl-menu-org" style={{ left: collapsed ? 70 : 10 }}>
@@ -1318,9 +1320,9 @@ export function AppSidebar() {
                     key={g.id}
                     to={`/grounds/${g.id}`}
                     title={attention.kind === 'overdue'
-                      ? `${g.label}. Session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
+                      ? `${g.label}. Check-in ${attention.sessionNumber} is ${attention.daysLate} days past its date`
                       : attention.kind === 'yours'
-                        ? `${g.label}. Session ${attention.sessionNumber} is ready for you`
+                        ? `${g.label}. Check-in ${attention.sessionNumber} is ready for you`
                         : g.label}
                     aria-label={g.label}
                     className={`gw-rl-ini ${attention.kind === 'overdue' ? 'late' : 'turn'}`}
@@ -1416,14 +1418,14 @@ export function AppSidebar() {
             <NavLink to="/grounds" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
               <PhoneIcon d="checkins" />Check-ins
             </NavLink>
-            {/* Somebody who may not start a check-in has Company in its place, as ask-on-a-phone.txt shows. */}
+            {/* Somebody who may not start a check-in has the Desk in its place, where ask-on-a-phone.txt shows Company (S7). */}
             {user?.mayOpenCheckIns !== false ? (
               <NavLink to="/start?new=1" className="gw-phone-bar-item start">
                 <PhoneIcon d="start" />Start
               </NavLink>
             ) : user?.role !== 'GUEST' ? (
               <NavLink to="/company" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>
-                <PhoneIcon d="company" />Company
+                <PhoneIcon d="company" />Desk
               </NavLink>
             ) : null}
             <NavLink to="/chat" className={({ isActive }) => `gw-phone-bar-item${isActive ? ' on' : ''}`}>

@@ -3,7 +3,7 @@ import { CheckInStatus } from '@prisma/client';
 import { awayUntilOn, type Stretch } from '../suites/who-is-away';
 import { atAGlance, type AtAGlance } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
-import { isNotLetInYet } from './who-an-admin-did-not-let-in';
+import { theSessionRowsOf, theRoundsDone } from './the-sessions-done';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { notTheWordParty } from '../reports/not-the-word-party';
 import { inOneFormOfNumber, theStoryHasSomeoneToPointTo, theCountSaidRight } from '../reports/the-picture-in-plain-sentences';
@@ -69,28 +69,8 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
    * has not let in, neither keeps a round from being done nor holds the open round back. Anything
    * they did answer still counts.
    */
-  const heldOut = new Set(((it.participants ?? []) as any[]).filter(isNotLetInYet).map((p: any) => p.id));
-  const sessions = (it.checkIns ?? []).filter((ci) => !(ci as any).isSetup)
-    .filter((ci: any) => !(ci.participantId && heldOut.has(ci.participantId) && ci.status !== CheckInStatus.COMPLETED && ci.status !== CheckInStatus.DECLINED));
-
-  /*
-   * A round is done when EVERY party's check-in for it is COMPLETED, which is the rule the ground
-   * page uses. Counting check-in rows instead reads as double on a two-party ground ("24 of 12").
-   */
-  const numbers = [...new Set(sessions.map((ci) => ci.sessionNumber))];
-  /* A row for somebody who was away when it opened, or is away now and has not answered, is not
-     waited on (week 23). Anything they did answer still counts. */
-  const excused = (ci: any): boolean => {
-    if (ci.status === CheckInStatus.COMPLETED || !it.leave || !ci.participantId) return false;
-    const mine = it.leave.get(ci.participantId);
-    if (!mine) return false;
-    const opened = ci.availableFrom ?? ci.createdAt;
-    return !!awayUntilOn(mine, now) || (!!opened && !!awayUntilOn(mine, new Date(opened)));
-  };
-  const roundsDone = numbers.filter((n) => {
-    const row = sessions.filter((ci) => ci.sessionNumber === n);
-    return row.every((ci) => ci.status === CheckInStatus.COMPLETED || excused(ci)) && row.some((ci) => ci.status === CheckInStatus.COMPLETED);
-  }).length;
+  const sessions = theSessionRowsOf(it.checkIns as any[], (it.participants ?? []) as any[]) as typeof it.checkIns;
+  const roundsDone = theRoundsDone(sessions as any[], it.leave, now);
 
   /*
    * Cut to three sentences here rather than on a screen, because a screen cannot tell where a

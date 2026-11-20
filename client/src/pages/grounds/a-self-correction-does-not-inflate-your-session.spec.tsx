@@ -12,7 +12,7 @@ import { reportsApi } from '@/api/reports'
  * "This is your session N of M." used to read `completedCheckIns.length + 1` - a count of
  * completed ROWS. A self-corrected session (the same session answered twice, `isSelfCorrection`
  * marking the second row) leaves two completed rows for the one session actually finished, so
- * Esther, who had finished and then corrected session 1, read "This is your session 3 of 6." - two
+ * Esther, who had finished and then corrected session 1, read "Check-in 3 of 6." - two
  * past where she actually was, and disagreeing with every other reading of the same check-ins. It
  * now reads `mySessionNumber`, computed with the shared `whichSessionAreWeOn` rule (lib/which-
  * session-are-we-on.ts): the open session if there is one, otherwise the highest session number
@@ -35,7 +35,7 @@ function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/grounds/g1/p']}>
+      <MemoryRouter initialEntries={['/grounds/g1/p?tab=record']}>
         <Routes>
           <Route path="/grounds/:id/p" element={<GroundParticipantPage />} />
         </Routes>
@@ -68,8 +68,8 @@ describe('a self-correction does not inflate "This is your session N of M"', () 
       signals: [],
     })
     renderPage()
-    expect(await screen.findByText('This is your session 2 of 6.')).toBeTruthy()
-    expect(screen.queryByText('This is your session 3 of 6.')).toBeNull()
+    expect(await screen.findByText(/Check-in 2 of 6\./)).toBeTruthy()
+    expect(screen.queryByText(/Check-in 3 of 6\./)).toBeNull()
   })
 
   it('and once every session is corrected shut with none open, reads the highest one actually finished', async () => {
@@ -84,6 +84,6 @@ describe('a self-correction does not inflate "This is your session N of M"', () 
       signals: [],
     })
     renderPage()
-    expect(await screen.findByText('This is your session 1 of 6.')).toBeTruthy()
+    expect(await screen.findByText(/Check-in 1 of 6\./)).toBeTruthy()
   })
 })

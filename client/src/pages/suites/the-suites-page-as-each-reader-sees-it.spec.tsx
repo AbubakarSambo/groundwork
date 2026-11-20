@@ -29,6 +29,12 @@ vi.mock('@/api/suites', () => ({
     'Over KES 10,000, Wanjiru approves.',
     'Once it is approved, Omar in finance checks it, notes the receipt or quote, and records it paid.',
   ] })) },
+  /* The leave policy under the leave suite's settings (21 November 2026), in the server's own sentences. */
+  leavePolicyApi: {
+    rules: vi.fn(async () => ({ rules: {}, hr: null, said: ['There are no kinds of leave set, so every request is simply leave, and each person has 21 days a year.'] })),
+    places: vi.fn(async () => ({ offices: [], holidays: [], people: [], country: null, said: [] })),
+    setRules: vi.fn(), setPlaces: vi.fn(),
+  },
   yourRequestsApi: {
     leave: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
     spending: vi.fn(() => Promise.reject(Object.assign(new Error('off'), { response: { status: 404 } }))),
@@ -193,6 +199,9 @@ describe('Grace, an admin, reads the Suites page', () => {
     expect(within(c).getByText('Change your answers below, then save them.')).toBeInTheDocument()
     expect(within(c).getByLabelText('How many days of leave does each person have in a year?')).toHaveValue(21)
     expect(within(c).getByLabelText('Who approves a request for time off?')).toHaveValue('Their manager')
+    /* The whole leave policy is read under the settings, in the server's sentences, with a place to change each part. */
+    expect(await within(c).findByText('There are no kinds of leave set, so every request is simply leave, and each person has 21 days a year.')).toBeInTheDocument()
+    expect(within(c).getByText('Types of leave')).toBeInTheDocument()
     fireEvent.change(within(c).getByLabelText('How many days of leave does each person have in a year?'), { target: { value: '25' } })
     ;(suitesApi.switch as any).mockResolvedValue(withOn('leave', { days: 25, approver: 'Their manager' }))
     fireEvent.click(within(c).getByRole('button', { name: 'Save' }))
@@ -255,7 +264,8 @@ describe('Grace, an admin, reads the Suites page', () => {
       ['Commitments', 'What people said they would do, and whether they did.', 'Each check-in', '/grounds'],
       ['Teams and who reports to whom', 'Each person’s team, level and manager.', 'People', '/org/members'],
       ['Roles and permissions', 'Who can start check-ins, and who can see what.', 'People', '/org/members'],
-      ['Company documents', 'The handbook, learnings and resources.', 'Company context', '/company/context'],
+      /* Changed: the Company page is called the Desk now (S7; round 2, browser test row 40). */
+      ['Company documents', 'The handbook, learnings and resources.', 'Desk', '/company'],
       ['Numbers from other systems', 'Sales, payments and usage, shown beside what people say.', 'Connections', '/settings/connections'],
       ['Slack or Teams', 'Notices in the channels your team already uses.', 'Connections', '/settings/connections'],
     ])

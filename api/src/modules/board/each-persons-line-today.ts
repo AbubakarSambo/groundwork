@@ -2,7 +2,7 @@
  * "THE TEAM TODAY", EACH PERSON'S LINE FROM THEIR LAST CHECK-IN (Hafsah's point 10, 17 October; board-as-lead.txt: Aisha
  * "Visited John Butchery and Fresh Foods; sent 1 quote", Omar "Hasn't checked in today", "Not in yet").
  *
- * Grace's board read "Joseph Kariuki has not checked in for this session yet." for every rep, on the day each of them had
+ * Grace's board read "Joseph Kariuki has not checked in yet." for every rep, on the day each of them had
  * checked in: the next session had opened, and the row was read against it. The kit's row is about today: a person who
  * checked in today reads their line from that check-in; a person who has not reads the kit's "Hasn't checked in today".
  *

@@ -1,6 +1,9 @@
-import { Section, Panel, Tag, ProofMark } from '@/components/gw/ui'
+import { theMatterWithoutTheClient } from '@/lib/the-matter-without-the-client'
+import type React from 'react'
+import { Section, Panel, Tag, ProofMark, Table } from '@/components/gw/ui'
 import type { TheCollectionsBoard as TheBoard, TheCollectionsTeamReport, TheCollectionsOwnReport } from '@/lib/collect-whats-owed'
 import './pictured-board.css'
+import { TheBar } from './TheBar'
 import { theMorningNeedsNotOnTheBoard, WhatIsClosing, YourTeamToday } from './TheMorningOnTheBoard'
 
 /**
@@ -16,6 +19,10 @@ const GROUP_TONE: Record<string, 'proven' | 'attention' | 'concern' | 'plain'> =
   paid: 'proven', 'on-track': 'proven', 'behind-in-touch': 'attention', blocked: 'attention', 'not-heard': 'concern', 'on-event': 'plain', 'not-raised': 'plain',
 }
 
+/* The width of each column of the table (the loans' six, the bills' eight), so a date such as '15 September' keeps its word whole instead of breaking in the middle of it. */
+const LOAN_WIDTHS = ['17%', '13%', '13%', '19%', '19%', '19%']
+const FEE_NOTE_WIDTHS = ['13%', '8%', '9%', '8%', '13%', '17%', '16%', '16%']
+
 type ARoute = { method: 'POST'; path: string; body: Record<string, unknown> }
 
 export function TheCollectionsBoard({ board: c, b = null, onRecordTheDecision, onAnswer, answering }: { board: TheBoard; /** The whole board as served, for the lead's morning (`theMorning`), served to her alone. */ b?: unknown; onRecordTheDecision?: () => void; onAnswer?: (route: ARoute) => void; answering?: boolean }) {
@@ -28,12 +35,7 @@ export function TheCollectionsBoard({ board: c, b = null, onRecordTheDecision, o
         <div>
           <p className="pb-q">{c.question}</p>
           <p className="pb-answer">{c.answer}</p>
-          {c.bar && (
-            <div className="pb-bar" role="img" aria-label={`${c.bar.proven}% paid with proof, and ${c.bar.said}% on somebody’s word only.`}>
-              <span className="pb-bar-done" style={{ width: `${c.bar.proven}%` }} />
-              <span className="pb-bar-likely" style={{ width: `${c.bar.said}%` }} />
-            </div>
-          )}
+          {c.bar && <TheBar of={100} shown={c.bar.proven} said={c.bar.said} label={`${c.bar.proven}% paid with proof, and ${c.bar.said}% on somebody’s word only.`} />}
           <p className="pb-note">{c.answerFrom}</p>
         </div>
         <Panel heading={c.needsYou.heading}>
@@ -93,41 +95,37 @@ export function TheCollectionsBoard({ board: c, b = null, onRecordTheDecision, o
 
       <Section heading={c.every.heading} note={c.every.note} foot={c.every.foot ?? undefined}>
         {c.every.rows.length ? (
-          <div className="pb-grid">
-            <table>
-              <thead><tr>{c.every.columns.map((h) => <th key={h}>{h}</th>)}</tr></thead>
-              <tbody>
-                {c.every.rows.map((r) => (
-                  <tr key={r.id}>
-                    {loans ? (
-                      <>
-                        <td><b>{r.who}</b>{r.amount && <div className="pb-sub">{r.amount}</div>}</td>
-                        <td>{r.business}</td>
-                        <td>{r.sales}</td>
-                        <td>{r.repayment && <Tag tone={r.repayment.tone}>{r.repayment.says}</Tag>}<div className="pb-sub">{r.payment.says}</div></td>
-                        <td>{r.inTheWay}</td>
-                        <td>{r.next}</td>
-                      </>
-                    ) : (
-                      <>
-                        <td><b>{r.who}</b>{r.matter && <div className="pb-sub">{r.matter}</div>}</td>
-                        <td>{r.number ?? 'Not raised yet'}</td>
-                        <td>{r.amount ?? 'Not said yet'}</td>
-                        <td>{r.followsUp}</td>
-                        <td>{r.fallsDue}</td>
-                        <td>
-                          {r.payment.mark !== 'none' && <ProofMark mark={r.payment.mark} />} {r.payment.says}
-                          {r.proof.map((p) => <div className="pb-sub" key={p}>{p}</div>)}
-                        </td>
-                        <td>{r.inTheWay}</td>
-                        <td>{r.next}</td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table
+            caption={c.every.heading}
+            phone="stack"
+            minWidth={loans ? 720 : 960}
+            columns={c.every.columns.map((h, i) => ({ key: `c${i}`, header: h, rowHeader: i === 0, width: (loans ? LOAN_WIDTHS : FEE_NOTE_WIDTHS)[i] }))}
+            rows={c.every.rows.map((r) => {
+              const cells: React.ReactNode[] = loans
+                ? [
+                  <><b>{r.who}</b>{r.amount && <div className="pb-sub">{r.amount}</div>}</>,
+                  r.business,
+                  r.sales,
+                  <>{r.repayment && <Tag tone={r.repayment.tone}>{r.repayment.says}</Tag>}<div className="pb-sub">{r.payment.says}</div></>,
+                  r.inTheWay,
+                  r.next,
+                ]
+                : [
+                  <><b>{r.who}</b>{theMatterWithoutTheClient(r.who, r.matter) && <div className="pb-sub">{theMatterWithoutTheClient(r.who, r.matter)}</div>}</>,
+                  r.number ?? 'Not raised yet',
+                  r.amount ?? 'Not said yet',
+                  r.followsUp,
+                  r.fallsDue,
+                  <>
+                    {r.payment.mark !== 'none' && <ProofMark mark={r.payment.mark} />} {r.payment.says}
+                    {r.proof.map((p) => <div className="pb-sub" key={p}>{p}</div>)}
+                  </>,
+                  r.inTheWay,
+                  r.next,
+                ]
+              return Object.fromEntries(cells.map((v, i) => [`c${i}`, v]))
+            })}
+          />
         ) : <Panel><p className="gwui-panel-text">{c.every.empty}</p></Panel>}
       </Section>
 
@@ -170,7 +168,7 @@ export function TheCollectionsBoard({ board: c, b = null, onRecordTheDecision, o
             <div>
               <h3 className="pb-small-h">The signals behind them</h3>
               {c.heading.signals.length ? c.heading.signals.map((s) => (
-                <div className="pb-signal" key={s.says}>
+                <div className="pb-signal" key={s.says} style={{ gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12, alignItems: 'start' }}>
                   <span><b>{s.says}</b><span className="pb-sub">{` ${s.from}.`}</span></span>
                   <Tag tone={s.tone === 'concern' ? 'concern' : 'attention'}>{s.tone === 'concern' ? 'Concern' : 'Watch'}</Tag>
                 </div>
@@ -178,7 +176,6 @@ export function TheCollectionsBoard({ board: c, b = null, onRecordTheDecision, o
               <Panel heading="What would settle it"><p className="gwui-panel-text">{c.heading.whatWouldSettleIt}</p></Panel>
               <div className="pb-decides">
                 <b>{c.heading.whoDecides}</b>
-                <p>{c.heading.groundworkDoesNotChoose}</p>
                 {onRecordTheDecision && <button type="button" className="btn sec" onClick={onRecordTheDecision}>Record the decision</button>}
               </div>
             </div>

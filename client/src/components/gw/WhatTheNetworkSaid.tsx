@@ -60,7 +60,7 @@ export function WhatTheNetworkSaid({ picture }: { picture: any }) {
   return (
     <section aria-label="What the accounts add up to" className="gwui-mt-6">
       {p.thePicture && (
-        <div className={`${CARD} gwui-accent-left-blue`} style={{ background: 'white', borderRadius: 10 }}>
+        <div className={CARD} style={{ background: 'white', borderRadius: 10 }}>
           <div className="gwui-fs-16 gwui-ink-text" style={{ lineHeight: '26px', whiteSpace: 'pre-wrap' }}>{p.thePicture}</div>
         </div>
       )}

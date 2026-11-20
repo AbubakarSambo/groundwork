@@ -43,7 +43,8 @@ describe('the settings card is the lowest of the steps by amount', () => {
   it('Grace reads the whole route where it is set, with finance’s part after the last approval', async () => {
     const o = await muchemi();
     expect((await o.suites.spendRules(o.as('u-grace'))).said.slice(0, 3)).toEqual([
-      'Up to KES 10,000, the person’s manager approves, or else an admin.',
+      /* Batch S, S2: the step below the limit names the manager's manager before an admin. */
+      'Up to KES 10,000, the person’s manager approves, or else their manager’s manager, or else an admin.',
       'Over KES 10,000, Fatuma approves.',
       'Once it is approved, Omar in finance checks it, notes the receipt or quote, and records it paid.',
     ]);

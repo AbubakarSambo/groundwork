@@ -29,15 +29,7 @@ export function HowThisHasMoved({ groundId, viewerRunsThisCheckIn }: { groundId:
   if (!moved.length) return null
 
   return (
-    <div className="gwui-mt-22">
-      <div className="gwui-fs-14-5 gwui-ink-navy gwui-mb-2" style={{ fontWeight: 700 }}>
-        How this has moved
-      </div>
-      <div className="gwui-fs-13-5 gwui-ink-muted gwui-mb-12" style={{ lineHeight: '22px', maxWidth: 560 }}>
-        What the report said at the end of each session, as it stood then. Nothing here has been
-        rewritten since.
-      </div>
-
+    <div>
       <div className="gwui-gap-8" style={{ display: 'flex', flexDirection: 'column' }}>
         {moved.map((m, i) => {
           /*
@@ -55,8 +47,8 @@ export function HowThisHasMoved({ groundId, viewerRunsThisCheckIn }: { groundId:
            */
           const dateText = whenItWas(m.takenAt, 'dayAndMonthLong')
           const opening = m.sessionNumber != null
-            ? `At the end of session ${m.sessionNumber}${dateText ? `, on ${dateText}` : ''}`
-            : dateText ? `On ${dateText}` : 'At the end of this session'
+            ? `At the end of check-in ${m.sessionNumber}${dateText ? `, on ${dateText}` : ''}`
+            : dateText ? `On ${dateText}` : 'At the end of this check-in'
           const sawDifferently = m.differences > 0
             ? `${opening}, people saw ${m.differences === 1 ? 'one thing' : `${m.differences} things`} differently.`
             : `${opening}, everybody saw it the same way.`

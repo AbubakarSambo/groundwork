@@ -62,7 +62,7 @@ export function countTheRecord(r: TheRecordToCount): TheCountsBehindThis {
   const backedLines = lines.filter((l) => !!l.anchoredDocumentId).length;
 
   const says: string[] = [];
-  says.push(`${a(answered, 'session was', 'sessions were')} answered and ${missed} ${was(missed)} missed.`);
+  says.push(`${a(answered, 'check-in was', 'check-ins were')} answered and ${missed} ${was(missed)} missed.`);
   if (commitments.length === 0) {
     says.push('Nobody has made a commitment on the record yet.');
   } else {

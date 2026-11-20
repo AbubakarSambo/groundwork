@@ -255,7 +255,6 @@ export function TheFrame({ item }: { item: { id: string; title: string; descript
       style={{
         background: 'white',
         border: '1px solid var(--gw-border)',
-        borderLeft: `3px solid ${s?.solid ? 'var(--gw-green)' : 'var(--gw-navy)'}`,
         borderRadius: 8,
         padding: '12px 14px',
         marginBottom: 10,

@@ -57,6 +57,21 @@ export const suitesApi = {
    * never ask `/suites/{leave,spend,time,reviews}/mine` for a suite that is off.
    */
   mine: async (): Promise<SuitesOnForYou> => (await apiClient.get('/suites/mine', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
+  /** What a suite is missing before its approvals follow the reporting lines (GET /suites/setup/:key, Batch S). */
+  setupCheck: async (key: string): Promise<TheSetupCheck> => (await apiClient.get(`/suites/setup/${key}`, { skipForbiddenToast: true, skipNotFoundToast: true } as any)).data,
+  /** The numbers set for some people (GET /suites/for-whom, Batch S). */
+  forWhom: async (): Promise<TheForWhom> => (await apiClient.get('/suites/for-whom', { skipForbiddenToast: true } as any)).data,
+  setForWhom: async (change: { setting: ASetting; who: { kind: WhoKind; value: string }; value: number | null }): Promise<TheForWhom> =>
+    (await apiClient.put('/suites/for-whom', change)).data,
+}
+export interface TheSetupCheck { ready: boolean; said: string[]; noManager: { userId: string; name: string }[] }
+export type ASetting = 'leave.days' | 'time.hoursAWeek' | 'spend.limit'
+export type WhoKind = 'person' | 'team' | 'title' | 'appRole'
+export interface TheForWhom {
+  settings: { setting: ASetting; exceptions: { who: { kind: WhoKind; value: string }; value: number }[]; said: string[] }[]
+  titles: string[]
+  teams: string[]
+  people: { id: string; name: string }[]
 }
 export interface SuitesOnForYou { leave: boolean; spend: boolean; time: boolean; reviews: boolean; any: boolean; says: string }
 
@@ -294,7 +309,8 @@ export interface AReviewAsPictured {
   decidesHeading: string
   decides: string
 }
-export type AReview = (ReviewForTheWriter | ReviewForThePerson) & { asPictured?: AReviewAsPictured }
+/** Batch S, S4: what the review is drawn from, who reads it and what happens next, in the server's sentences. */
+export type AReview = (ReviewForTheWriter | ReviewForThePerson) & { asPictured?: AReviewAsPictured; about?: string[] }
 
 /**
  * AN ADMIN'S LIST OF APPEALS (decision 113, GET /suites/reviews/appeals). Not drawn until now
@@ -334,8 +350,8 @@ export const reviewsApi = {
   updateFromTheRecord: async (id: string): Promise<AReview> => (await apiClient.post(`/suites/reviews/${id}/update-from-the-record`)).data,
   correct: async (id: string, lineKey: string, text: string): Promise<AReview> =>
     (await apiClient.post(`/suites/reviews/${id}/lines/${encodeURIComponent(lineKey)}/correction`, { text })).data,
-  decide: async (id: string, decision: string, reasons: string): Promise<AReview> =>
-    (await apiClient.post(`/suites/reviews/${id}/decision`, { decision, reasons })).data,
+  decide: async (id: string, decision: string, reasons: string, next: { nextSteps?: string; lookAgainOn?: string } = {}): Promise<AReview> =>
+    (await apiClient.post(`/suites/reviews/${id}/decision`, { decision, reasons, ...(next.nextSteps ? { nextSteps: next.nextSteps } : {}), ...(next.lookAgainOn ? { lookAgainOn: next.lookAgainOn } : {}) })).data,
   appeal: async (id: string, why: string): Promise<AReview> => (await apiClient.post(`/suites/reviews/${id}/appeal`, { why })).data,
   addToTheAppeal: async (id: string, text: string): Promise<AReview> => (await apiClient.post(`/suites/reviews/${id}/appeal/more`, { text })).data,
   decideTheAppeal: async (id: string, input: { outcome: 'stands' | 'changed'; reasons: string; decision?: string }): Promise<AReview> =>
@@ -481,6 +497,8 @@ export interface AQueueItem {
   clash: { count: number; names: string[]; says: string } | null
   /** Set only when the reader reads this because they stand in for somebody on leave. */
   standingIn: { name: string; until: string | null; says: string } | null
+  /** A request to spend: what the person attached, with its words, for the approver to open (Batch S, round 2, T5). */
+  attached?: { name: string; kind: string | null; words: string | null } | null
 }
 export interface TheQueue {
   counts: { all: number; leave: number; spend: number; pastTheDeadline: number }
@@ -582,6 +600,8 @@ export interface FinanceRequest {
   paidOn: string | null
   /** The request in full sentences, with "you" for the reader. */
   said: string[]
+  /** What the person attached, with its words, for finance to open (Batch S, round 2, T5). */
+  attached?: { name: string; kind: string | null; words: string | null } | null
 }
 export interface FinanceView {
   reader: 'finance' | 'admin'
@@ -719,4 +739,50 @@ export const fileARequestApi = {
     (await apiClient.get('/suites/leave/form', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
   spendForm: async (): Promise<SpendFormInfo> =>
     (await apiClient.get('/suites/spend/form', { skipNotFoundToast: true, skipForbiddenToast: true } as any)).data,
+}
+
+/**
+ * THE LEAVE POLICY (GET and PUT /suites/leave/rules, GET and PUT /suites/leave/places; 21 November 2026). The types of leave, the
+ * working week, whether weekends and public holidays count, how annual leave builds up and what is carried over are the leave
+ * rules; offices and public holidays are their own rows. `said` is the server's own full sentences. Ask sets all of it too.
+ */
+export interface ALeaveType {
+  key?: string
+  name: string
+  days: number | null
+  per?: 'occasion'
+  paid?: boolean
+  noticeDays?: number
+  whoFor?: string
+  adoptive?: boolean
+  document?: string
+  documentAfterDays?: number
+  everyDay?: boolean
+  steps?: unknown
+}
+export interface TheLeavePolicyRules {
+  kinds?: ALeaveType[]
+  workingWeek?: number[]
+  weekendsCount?: boolean
+  holidaysCount?: boolean
+  country?: string
+  accrual?: 'start' | 'monthly'
+  yearStarts?: number
+  carryOver?: number | 'all'
+  carryExpires?: number
+  [other: string]: unknown
+}
+export interface TheLeaveRules { rules: TheLeavePolicyRules; said: string[]; hr: string | null }
+export interface AnOffice { id: string; name: string; country: string; people: { id: string; name: string }[] }
+export interface APublicHoliday { id: string; office: string | null; on: string; when: string; name: string; confirmed: boolean; drafted: boolean }
+export interface TheLeavePlaces { offices: AnOffice[]; holidays: APublicHoliday[]; people: { id: string; name: string }[]; country: string | null; said: string[] }
+export interface ALeavePlacesChange {
+  offices?: { name: string; country: string; people?: string[] }[]
+  holidays?: { office: string | null; year: number; list: { on: string; name: string; confirmed: boolean }[] }[]
+}
+export const leavePolicyApi = {
+  rules: async (): Promise<TheLeaveRules> => (await apiClient.get('/suites/leave/rules', { skipForbiddenToast: true } as any)).data,
+  setRules: async (change: Partial<Record<keyof TheLeavePolicyRules, unknown>>): Promise<TheLeaveRules> => (await apiClient.put('/suites/leave/rules', change)).data,
+  places: async (): Promise<TheLeavePlaces> => (await apiClient.get('/suites/leave/places', { skipForbiddenToast: true } as any)).data,
+  setPlaces: async (change: ALeavePlacesChange): Promise<TheLeavePlaces> => (await apiClient.put('/suites/leave/places', change)).data,
 }

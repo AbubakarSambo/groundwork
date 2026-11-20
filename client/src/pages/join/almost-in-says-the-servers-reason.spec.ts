@@ -24,6 +24,7 @@ describe('Almost in reads the server’s sentence', () => {
   })
 
   it('an older server with no sentence still gets the prototype’s words', () => {
-    expect(youAreFromOutside(base)).toBe('You’re from outside Brightloom d2tbx, so an admin there has to let you in. We’ve asked Ada Obi.')
+    /* One voice, "I" (staging check S15, 7 November 2026): "We’ve asked" reads "I have asked". */
+    expect(youAreFromOutside(base)).toBe('You’re from outside Brightloom d2tbx, so an admin there has to let you in. I have asked Ada Obi.')
   })
 })

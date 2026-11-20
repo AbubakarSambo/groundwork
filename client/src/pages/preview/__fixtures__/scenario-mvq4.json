@@ -1,0 +1,129 @@
+{
+  "kind": "mvq4",
+  "title": "MarketView, Q4",
+  "subtitle": "Sales and product. Daily, weekdays. Numbers from MarketView and Paystack.",
+  "leadName": "Wairimu Kamau",
+  "updated": "Last updated on Wednesday 23 September at 6pm. The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.",
+  "answer": {
+    "label": "Will MarketView reach 40 paying subscribers and 200 weekly users this quarter?",
+    "answer": "Not quite yet. 31 of 40 paid on Paystack; 162 of 200 weekly users.",
+    "bar": {
+      "value": 31,
+      "max": 40
+    },
+    "needsHeading": "What needs you",
+    "needs": [
+      {
+        "title": "One sale named but not paid",
+        "text": "Sahel Agro, due Friday. Asked in the check-in."
+      },
+      {
+        "title": "9 subscriptions to go in 5 weeks",
+        "text": "At this quarter’s pace, 36 is likely."
+      },
+      {
+        "title": "2 renewals not paid",
+        "text": "Both due this week."
+      }
+    ]
+  },
+  "systems": {
+    "heading": "What the systems show",
+    "note": "Updated this morning",
+    "headers": {
+      "target": "Target",
+      "goal": "Goal",
+      "now": "Now",
+      "source": "Source",
+      "against": "Against goal"
+    },
+    "rows": [
+      {
+        "target": "Paid subscriptions",
+        "goal": "40 this quarter",
+        "now": "31",
+        "source": "From Paystack",
+        "against": "31 of 40"
+      },
+      {
+        "target": "Weekly active users",
+        "goal": "200",
+        "now": "162",
+        "source": "From MarketView",
+        "against": "162 of 200"
+      },
+      {
+        "target": "Reports downloaded",
+        "goal": "None",
+        "now": "418 this week",
+        "source": "From MarketView",
+        "against": "Up 12%"
+      },
+      {
+        "target": "Renewals",
+        "goal": "all 9 due",
+        "now": "7",
+        "source": "From Paystack",
+        "against": "7 of 9"
+      }
+    ],
+    "differLabel": "Where what people said and the systems differ",
+    "differ": [
+      {
+        "saidLabel": "Sales said:",
+        "said": "three new subscriptions this week",
+        "showsLabel": "Paystack shows:",
+        "shows": "two paid, one invoice open",
+        "tag": "Asked in check-in",
+        "tone": "attention"
+      },
+      {
+        "saidLabel": "Product said:",
+        "said": "usage up since the new dashboard",
+        "showsLabel": "MarketView shows:",
+        "shows": "weekly users went up from 148 to 162",
+        "tag": "Matches",
+        "tone": "proven"
+      }
+    ]
+  },
+  "heading": {
+    "heading": "Where this is heading",
+    "note": "Set goals and keep the team on track",
+    "outcomesLabel": "The possible outcomes",
+    "outcomes": [
+      {
+        "title": "On course"
+      },
+      {
+        "title": "Reach it with a change"
+      },
+      {
+        "title": "Change the target"
+      }
+    ],
+    "signalsLabel": "The signals behind them",
+    "signals": [
+      {
+        "line": "31 of 40 paid, on Paystack",
+        "from": "9 to go in 5 weeks",
+        "kind": "shown"
+      },
+      {
+        "line": "Weekly users 162, up from 148",
+        "from": "From MarketView",
+        "kind": "shown"
+      },
+      {
+        "line": "One sale named but not paid",
+        "from": "Sahel Agro, due Friday",
+        "kind": "said"
+      }
+    ],
+    "settleLabel": "What would settle it",
+    "settle": "Whether Sahel Agro and the two renewals pay this week.",
+    "decider": "The head of sales decides.",
+    "deciderNote": "Groundwork lays out the outcomes and the proof. It doesn’t choose.",
+    "button": "Record the decision"
+  }
+}

@@ -27,7 +27,6 @@ import { describe, it, expect } from 'vitest'
 
 const ADMIN = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
 const PARTICIPANT = readFileSync(join(__dirname, 'GroundParticipantPage.tsx'), 'utf8')
-const CHAT = readFileSync(join(__dirname, '../../components/gw/GroundChat.tsx'), 'utf8')
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('the lead who is a party can start their check-in', () => {
@@ -49,16 +48,7 @@ describe('the lead who is a party can start their check-in', () => {
   })
 })
 
-describe('the button says what the rest of the product says', () => {
-  it('it uses the word "check in"', () => {
-    expect(strip(CHAT)).toMatch(/Check in for session \$\{openSessionNumber\}/)
-    expect(strip(CHAT)).toMatch(/'Check in now →'/)
-  })
-
-  it('and no longer leads with our internal noun', () => {
-    expect(strip(CHAT)).not.toMatch(/`Continue session \$\{/)
-  })
-})
+/* The "Check in now" button of GroundChat.tsx went with that file (deleted 15 November 2026, nothing drew it). */
 
 describe('the handoff, and the payment path it protects', () => {
   /**

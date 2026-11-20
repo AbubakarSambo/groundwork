@@ -51,10 +51,10 @@ beforeEach(() => {
 })
 
 async function answerWhereDoYouWork(button: string) {
-  expect(await screen.findByRole('heading', { name: 'Your email is confirmed' })).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+  /* Changed in batch 2, group 6 (S14): no "Your email is confirmed, Continue" page in between; the choice comes first. */
   await screen.findByRole('heading', { name: 'Where do you work?' })
-  vi.mocked(authApi.verifyEmail).mockResolvedValueOnce({ user: lead, accessToken: 't', justCreated: true, next: '/today', needsPassword: true, passwordSetupToken: 'pw' } as any)
+  expect(screen.queryByRole('heading', { name: 'Your email is confirmed' })).toBeNull()
+  vi.mocked(authApi.verifyEmail).mockResolvedValueOnce({ user: lead, accessToken: 't', justCreated: true, next: '/today' } as any)
   fireEvent.click(screen.getByRole('button', { name: button }))
 }
 
@@ -73,11 +73,13 @@ describe('the setup, after "Where do you work?"', () => {
     expect(navigated).not.toHaveBeenCalledWith('/today', expect.anything())
   })
 
-  it('with nothing to save, still goes on to Today by way of choosing a password', async () => {
+  /* Changed in batch 2, group 6 (S14): straight to Today, never by way of "Choose a password". */
+  it('with nothing to save, goes straight on to Today', async () => {
     localStorage.clear()
     vi.mocked(entryApi.commit).mockRejectedValue({ response: { data: { message: 'NO_ENTRY_SESSION' } } })
     open()
     await answerWhereDoYouWork('Create')
-    await waitFor(() => expect(navigated).toHaveBeenCalledWith('/set-password?token=pw&next=%2Ftoday', { replace: true }))
+    await waitFor(() => expect(navigated).toHaveBeenCalledWith('/today', { replace: true }))
+    expect(navigated).not.toHaveBeenCalledWith(expect.stringContaining('/set-password'), expect.anything())
   })
 })

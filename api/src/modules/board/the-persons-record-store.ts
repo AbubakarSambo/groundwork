@@ -1,10 +1,14 @@
 import { createHash } from 'crypto';
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { theDealsOnRecord } from './a-sales-aim-is-counted-from-the-deals';
 import { isASalesKind, oneOfTheKinds } from './the-kind-of-work';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
 import { theRecordForPromises, thePromisesSaidDone } from '../conversation/a-promise-said-done-is-kept';
 import { theMPesaCodesSaid } from '../conversation/an-mpesa-code-is-asked-about-once';
 import { withTheSaleEachCodeAnswered } from './a-deals-proof-is-about-that-deal';
+import { fallsInLeave, leaveOfThePeopleOn } from '../suites/who-is-away';
+import { aRoundIsCounted, whenACheckInBegan } from '../grounds/a-round-that-could-be-answered';
+import { whenTheseOrganisationsPaused, thePausesThatAreOver } from '../billing/the-trial-grace';
 import { thePersonJudgementsAreOn } from '../organisation/person-judgements';
 import { thePersonsRecord, theCoachingFollowedUp, theCoachingTheRecordStillHolds, theRecordForOneSession, type ThePersonsInputs, type ThePersonsRecord, type ACoaching, type AnItemOfTheirs } from './the-persons-record';
 import { theRecordInWords, type TheRecordInWords } from './the-persons-record-in-words';
@@ -47,11 +51,11 @@ export async function readTheInputs(prisma: any, groundId: string, now: Date = n
     select: {
       id: true, organizationId: true, kindOfWork: true, initiatorId: true, cadence: true, cadenceDays: true, workingDays: true,
       organization: { select: { timeZone: true } },
-      participants: { select: { id: true, userId: true, managingOnly: true, user: { select: { firstName: true, lastName: true } } } },
+      participants: { select: { id: true, userId: true, managingOnly: true, joinedAt: true, user: { select: { firstName: true, lastName: true } } } },
     },
   });
   if (!ground) return null;
-  const zone = ground.organization?.timeZone || 'Africa/Lagos';
+  const zone = ground.organization?.timeZone || (await theOrganisationsZone(prisma, ground.organizationId).catch(() => null)) || 'Africa/Lagos';
   const sales = isASalesKind(oneOfTheKinds(ground.kindOfWork));
   const people = ((ground.participants ?? []) as any[]).filter((p) => !p.managingOnly);
   if (!people.length) return { ground, inputs: [] };
@@ -61,7 +65,7 @@ export async function readTheInputs(prisma: any, groundId: string, now: Date = n
   const [checkIns, rows, commitments, deps, turns, workItems, evidence] = await Promise.all([
     safe<any[]>(prisma.checkIn?.findMany?.({
       where: { groundId, participantId: { in: ids }, isSetup: false, isSelfCorrection: false, isClarification: false, isPostSignOff: false, optional: false },
-      select: { id: true, participantId: true, sessionNumber: true, status: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true, specificityDimensions: true, _count: { select: { turns: { where: { role: 'PERSON' } } } } },
+      select: { id: true, participantId: true, sessionNumber: true, status: true, closedReason: true, availableFrom: true, createdAt: true, completedAt: true, specificityLevel: true, specificityDimensions: true, _count: { select: { turns: { where: { role: 'PERSON' } } } } },
     }), []),
     safe<any[]>(prisma.recordEntry?.findMany?.({
       where: { participantId: { in: ids }, disputedAt: null },
@@ -102,8 +106,17 @@ export async function readTheInputs(prisma: any, groundId: string, now: Date = n
     : [];
   const checkInOf = new Map((checkIns as any[]).map((c) => [c.id, c]));
 
+  /* A ROUND THAT COULD NOT HAVE BEEN ANSWERED IS NOT A ROUND THEY DID NOT DO (run 7, 22 November): the person's page, the board and the lead's lines all
+     read "did 2 of 11" from here, and rounds that opened in a pause counted. The one owner of when a round could be answered is asked once, here. */
+  const pausedFrom = (await whenTheseOrganisationsPaused(prisma, [ground.organizationId], now).catch(() => new Map<string, Date>())).get(ground.organizationId) ?? null;
+  const pausesOver = (await thePausesThatAreOver(prisma, [ground.organizationId]).catch(() => new Map<string, { from: Date; until: Date }[]>())).get(ground.organizationId) ?? null;
+  const checkInBeganAt = whenACheckInBegan((checkIns as any[]).map((c) => ({ turns: (turns as any[]).filter((x) => x.checkInId === c.id && x.role === 'PERSON').slice(0, 1) })));
+  /* A round that opened on approved leave is no round they did not do, as in every other count of misses (N49). One they answered anyway still counts. */
+  const leave = await leaveOfThePeopleOn(prisma, [groundId]).catch(() => new Map<string, { from: Date; to: Date }[]>());
   const inputs = people.map((p): ThePersonsInputs => {
-    const theirCheckIns = (checkIns as any[]).filter((c) => c.participantId === p.id);
+    const theirCheckIns = (checkIns as any[]).filter((c) => c.participantId === p.id
+      && aRoundIsCounted({ ...c, personTurns: c._count?.turns ?? null }, { pausedFrom, pausesOver, joinedAt: p.joinedAt ?? null, checkInBeganAt }, true)
+      && (String(c.status ?? '').toUpperCase() === 'COMPLETED' || !(c.availableFrom ?? c.createdAt) || !fallsInLeave(new Date(c.availableFrom ?? c.createdAt), leave.get(p.id) ?? [])));
     const theirIds = new Set(theirCheckIns.map((c) => c.id));
     const theirTurns = (turns as any[]).filter((x) => x.checkInId && (theirIds.has(x.checkInId) || checkInOf.get(x.checkInId)?.participantId === p.id));
     return {
@@ -155,7 +168,7 @@ export async function rebuildThePersonsRecords(prisma: any, groundId: string, no
   const read = await readTheInputs(prisma, groundId, now);
   if (!read || !read.inputs.length) return 0;
   if (!(await thePersonJudgementsAreOn(prisma, read.ground.organizationId))) return 0;
-  const zone = read.ground.organization?.timeZone || 'Africa/Lagos';
+  const zone = read.ground.organization?.timeZone || (await theOrganisationsZone(prisma, read.ground.organizationId).catch(() => null)) || 'Africa/Lagos';
   let wrote = 0;
   for (const input of read.inputs) {
     const record = thePersonsRecord(input);

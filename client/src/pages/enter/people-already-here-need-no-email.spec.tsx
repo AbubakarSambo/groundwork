@@ -69,7 +69,7 @@ describe('a lead who added her team on People first', () => {
   it('finds them in the box by name, and the save takes them as those colleagues with nothing typed again', async () => {
     seedHerSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
     /* Changed in F5 (stage 5): both are colleagues, so nobody needs an email and setup ends on one button. */
     expect(await screen.findByText('Ben Juma')).toBeTruthy()
     fireEvent.click(await screen.findByRole('button', { name: 'Send 2 invitations' }))
@@ -84,7 +84,7 @@ describe('a lead who added her team on People first', () => {
   it('a colleague picked from the list goes into the same box, kept with the setup, and is saved with the rest', async () => {
     seedHerSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
     /* Changed in F5 (stage 5): the full setup, with the picker, opens from Change beside the name. */
     fireEvent.click((await screen.findAllByRole('button', { name: 'Change' }))[0])
     /* Waits for exactly one: while the setup panel swaps in, a slow runner briefly has two boxes with this name, and

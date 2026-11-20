@@ -24,7 +24,7 @@ describe('a person with no role is still coached, and told no role', () => {
     const note = coach({ detectedFunction: 'SALES', functionConfidence: 0.9, sessionNumber: 2 });
     expect(note.role).not.toBeNull();
     expect(note.role!.goingWrong).toContain('hard to check later');
-    expect(note.whyItMatters).toBe('This is session 2 of 3 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.');
+    expect(note.whyItMatters).toBe('This is check-in 2 of 3 of this work. Nothing repeats yet, which is normal this early. What decides whether the later check-ins are worth anything is what you can point at.');
     expect(JSON.stringify(note)).not.toMatch(jobNames);
   });
 

@@ -34,7 +34,7 @@ describe('the longitudinal read belongs to the lead', () => {
   it('gives the lead all of it, except the patterns while they are not served', () => {
     const lead = overTimeForThisReader(whole, { isLead: true, participantId: 'anyone' })!;
     /* Changed 30 Sep 2026 (request 87): the lead is also served `inSessions`, the heading's "in 3 sessions". */
-    expect(lead).toEqual({ ...whole, patterns: [], inSessions: 'in 3 sessions' });
+    expect(lead).toEqual({ ...whole, patterns: [], inSessions: 'in 3 check-ins' });
   });
 
   it('gives a participant their own commitments and nobody else\'s', () => {

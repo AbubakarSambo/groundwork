@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { createPortal } from 'react-dom'
 import { SectionPlacement, Box, FoldedLine, type PlaceASection } from '@/components/gw/ui'
 import type { GlanceBox, GlanceLine, TheBoardAtAGlance } from '@/api/board'
-import { DealRowsAreShortOnAPhone } from './WorkRecords'
 
 /**
  * THE LIGHT SALES BOARD (docs/light-rebuild/sales-first.md, section 1; the light prototype's s57,
@@ -14,7 +13,7 @@ import { DealRowsAreShortOnAPhone } from './WorkRecords'
  *
  * - to the top, under "What needs you" (what needs the lead, and what to settle together);
  * - beside the headline (the quick read, which the mapping table puts with the headline);
- * - into one of five boxes, as a folded line: its name, one fact, a chevron;
+ * - into one of five boxes, as a line: its name, one fact, a chevron, open by itself (Hafsah, 13 November 2026);
  * - or, when no rule names it, back where it always drew. Nothing is ever dropped here.
  *
  * The facts on each line and box are the server's `atAGlance` (rule 3: from the record, never read
@@ -34,8 +33,6 @@ type Fold = {
   parts: RegExp[]
   /** One folded line for each block with this name ("What the target of 25 assumes", one per target). */
   onePerBlock?: boolean
-  /** Open by itself on a laptop, closed on a phone ("Every deal, day by day"). */
-  openOnALaptop?: boolean
 }
 
 export const BOX_NAMES: Record<GlanceBox, string> = {
@@ -63,7 +60,7 @@ export function boxName(box: GlanceBox, glance: TheBoardAtAGlance): string {
  */
 export const FOLDS: Fold[] = [
   /* Deals and targets */
-  { key: 'deals', box: 'work', name: 'Every deal, day by day', line: 'deals', parts: [/^Every deal, day by day$/], openOnALaptop: true },
+  { key: 'deals', box: 'work', name: 'Every deal, day by day', line: 'deals', parts: [/^Every deal, day by day$/] },
   { key: 'assumes', box: 'work', name: 'What the target assumes', parts: [/^What the target of .+ assumes$/], onePerBlock: true },
   { key: 'reported', box: 'work', name: 'Reported, stage by stage', line: 'reported', parts: [/^Reported, stage by stage$/] },
   { key: 'overTime', box: 'work', name: 'Targets over time', line: 'targetsOverTime', parts: [/^Over time$/, /^What the team is aiming for$/, /^What success looks like$/] },
@@ -102,7 +99,7 @@ export const FOLDS: Fold[] = [
   { key: 'answersSay', box: 'rest', name: 'What the answers say', parts: [/^What the answers say$/] },
   { key: 'evidence', box: 'rest', name: 'Evidence index', parts: [/^Evidence index$/] },
   { key: 'alignment', box: 'rest', name: 'Alignment feed', parts: [/^Alignment feed$/] },
-  { key: 'howToRead', box: 'rest', name: 'How to read this board', parts: [/^How to read this board$/, /^How this board is put together$/] },
+  { key: 'howToRead', box: 'rest', name: 'How to read this board', parts: [/^How to read this board$/] },
 ]
 
 /** Drawn first, under "What needs you" (the mapping table: "What to settle together" goes there). */
@@ -113,7 +110,6 @@ const BESIDE_THE_HEADLINE: RegExp[] = [/^The quick read$/]
 type Slots = {
   glance: TheBoardAtAGlance
   readerRunsIt: boolean
-  onALaptop: boolean
   el: (id: string) => HTMLElement | null
   slot: (id: string) => (el: HTMLElement | null) => void
 }
@@ -138,7 +134,6 @@ export function findTheFold(heading: string): { fold: Fold; part: number } | nul
  */
 export function TheLightSalesBoard({ glance, readerRunsIt, children }: { glance: TheBoardAtAGlance; readerRunsIt: boolean; children: ReactNode }) {
   const [els, setEls] = useState<Record<string, HTMLElement | null>>({})
-  const [onALaptop] = useState(() => typeof window === 'undefined' || typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 700px)').matches)
   const setters = useMemo(() => new Map<string, (el: HTMLElement | null) => void>(), [])
   const slot = useCallback((id: string) => {
     let s = setters.get(id)
@@ -148,7 +143,7 @@ export function TheLightSalesBoard({ glance, readerRunsIt, children }: { glance:
     }
     return s
   }, [setters])
-  const value = useMemo<Slots>(() => ({ glance, readerRunsIt, onALaptop, el: (id) => els[id] ?? null, slot }), [glance, readerRunsIt, onALaptop, els, slot])
+  const value = useMemo<Slots>(() => ({ glance, readerRunsIt, el: (id) => els[id] ?? null, slot }), [glance, readerRunsIt, els, slot])
 
   const place: PlaceASection = (heading, section, { note, key }) => {
     const portal = (id: string, node: ReactElement) => {
@@ -164,7 +159,7 @@ export function TheLightSalesBoard({ glance, readerRunsIt, children }: { glance:
     const { fold, part } = found
     if (fold.onePerBlock) {
       return portal(`fold:${fold.key}`, (
-        <FoldedLine name={heading} fact={key ? glance.assumesEach?.[key] ?? null : null}>
+        <FoldedLine name={heading} fact={key ? glance.assumesEach?.[key] ?? null : null} defaultOpen>
           <div className="gwui-light-part" data-main="1">{section}</div>
         </FoldedLine>
       ))
@@ -181,9 +176,7 @@ export function TheLightSalesBoard({ glance, readerRunsIt, children }: { glance:
 
   return (
     <LightSlots.Provider value={value}>
-      <DealRowsAreShortOnAPhone.Provider value={true}>
-        <SectionPlacement.Provider value={place}>{children}</SectionPlacement.Provider>
-      </DealRowsAreShortOnAPhone.Provider>
+      <SectionPlacement.Provider value={place}>{children}</SectionPlacement.Provider>
     </LightSlots.Provider>
   )
 }
@@ -221,7 +214,7 @@ export function TheLightBoxes() {
       <div>
         <div className="gwui-boxes">
           {BOX_ORDER.map((box) => (
-            <Box key={box} name={boxName(box, s.glance)} facts={s.glance.boxes?.[box] ?? []} defaultOpen={box === 'work' && s.onALaptop}>
+            <Box key={box} name={boxName(box, s.glance)} facts={s.glance.boxes?.[box] ?? []} defaultOpen>
               {FOLDS.filter((f) => f.box === box).map((f) => (
                 f.onePerBlock
                   ? <div key={f.key} ref={s.slot(`fold:${f.key}`)} className="gwui-light-folds" />
@@ -230,7 +223,7 @@ export function TheLightBoxes() {
                       key={f.key}
                       name={f.name}
                       fact={(f.line && s.glance.lines[f.line]) || <span ref={s.slot(`fact:${f.key}`)} />}
-                      defaultOpen={!!f.openOnALaptop && s.onALaptop}
+                      defaultOpen
                     >
                       {f.parts.map((_, i) => (
                         <div key={i} ref={s.slot(`part:${f.key}:${i}`)} className="gwui-light-part" data-main={i === 0 ? '1' : undefined} />
@@ -253,14 +246,13 @@ export function TheLightBoxes() {
  */
 export function TheLightSummaryFirst() {
   const s = useContext(LightSlots)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   if (!s) return null
   return (
     <>
       <section className="sec gwui-light-glance" aria-labelledby="gwui-light-glance-h">
         <div className="sec-h">
           <h2 id="gwui-light-glance-h" className="t-h2">At a glance</h2>
-          <span className="t-small mut">For you as an admin. The lead runs this check-in.</span>
         </div>
         <div>
           <div className="gwui-light-glance-rows">
@@ -280,7 +272,7 @@ export function TheLightSummaryFirst() {
           </div>
         </div>
       </section>
-      <details className="gwui-light-full" onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+      <details className="gwui-light-full" open onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
         <summary className="gwui-light-full-btn">{open ? 'Close the full board' : 'Open the full board'}</summary>
         <div className="gwui-light-full-body">
           <TheLightNeedsYou title="What needs the lead" />

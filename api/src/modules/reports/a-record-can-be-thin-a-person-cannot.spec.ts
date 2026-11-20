@@ -120,7 +120,7 @@ describe('what a claim rests on, said at the claim', () => {
   });
 
   it('says where to go and look', () => {
-    expect(provenanceLine(p())).toMatch(/session 4/);
+    expect(provenanceLine(p())).toMatch(/check-in 4/);
   });
 });
 
@@ -128,8 +128,8 @@ describe('somebody contradicting themselves', () => {
   const c = { earlier: { text: 'a', session: 3 }, later: { text: 'b', session: 9 } };
 
   it('names both sessions so it can be checked', () => {
-    expect(selfContradictionLine(c)).toMatch(/session 3/);
-    expect(selfContradictionLine(c)).toMatch(/session 9/);
+    expect(selfContradictionLine(c)).toMatch(/check-in 3/);
+    expect(selfContradictionLine(c)).toMatch(/check-in 9/);
   });
 
   it('is not a gotcha, and the wording is the whole difference', () => {
@@ -168,9 +168,9 @@ describe('the patterns above would still catch the thing they are for', () => {
   const caught = (text: string) => patterns.some((p) => p.test(text));
 
   it.each([
-    'the initiator was vague on evidence in session 12',
+    'the initiator was vague on evidence in check-in 12',
     'Low specificity across the record',
-    'Their account was thin this session',
+    'Their account was thin this check-in',
     'A poor contribution from one party',
     'Specificity score: 42%',
   ])('still catches: %s', (text) => {

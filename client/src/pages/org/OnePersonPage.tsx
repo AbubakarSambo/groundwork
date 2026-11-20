@@ -7,7 +7,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, statusWord, A_FAILURE, whatRemovingSays } from './people-here'
 import { useSaveTheirNumber } from './their-number'
-import { Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, ChoiceCards, Tag, Button, TextField, Select, Note } from '@/components/gw/ui'
+import { AskFirst, RemoveFromTheOrganisation } from './ask-first-in-the-page'
+import { Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, ChoiceCards, Tag, Button, TextField, Select, Note, Skeleton } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { WHAT_AN_ADMIN_CANNOT_READ_WITHOUT_ACCESS } from '@/lib/what-an-admin-cannot-read-without-access'
 
@@ -132,15 +133,8 @@ export function OnePersonPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['org-owner'] }); toast.success('Handed over. They now own this organisation.') },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? A_FAILURE),
   })
-  const removeThem = useMutation({
-    mutationFn: (removedName: string) => apiClient.delete(`/users/${id}`).then(() => removedName),
-    onSuccess: (removedName) => {
-      qc.invalidateQueries({ queryKey: ['org-members'] })
-      toast.success(`${removedName} no longer has access to ${orgName}.`)
-      navigate('/org/members')
-    },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? A_FAILURE),
-  })
+  /* What is being asked first, in the page (ask-first-in-the-page.tsx): the browser's own confirm box is swallowed by the app's pane. */
+  const [asking, setAsking] = useState<null | 'admin' | 'handOver' | 'remove'>(null)
 
   if (isError) {
     return (
@@ -152,7 +146,7 @@ export function OnePersonPage() {
   if (isLoading) {
     return (
       <Page>
-        <Note>Loading…</Note>
+        <Skeleton what="Getting this person" shape="lines" />
       </Page>
     )
   }
@@ -217,9 +211,7 @@ export function OnePersonPage() {
              * apply the moment they are chosen, as "Changes apply straight away" still promises.
              */
             if (next === 'ADMIN') {
-              if (window.confirm(`Make ${name} an admin of ${orgName}?\n\nAn admin can see everyone's check-ins, change anyone's role, and manage billing.`)) {
-                role.mutate({ what: next as RoleWrite, first })
-              }
+              setAsking('admin')
               return
             }
             role.mutate({ what: next as RoleWrite, first })
@@ -229,9 +221,7 @@ export function OnePersonPage() {
         {ownerId === user?.id && !isMe && m.role === 'ADMIN' && (
           <Button
             kind="quiet"
-            onClick={() => {
-              if (window.confirm(`Hand this organisation to ${name}?\n\nThey become the person who cannot be removed by other admins, and you stop being that person. You stay an admin.`)) handOver.mutate()
-            }}
+            onClick={() => setAsking('handOver')}
           >Hand over</Button>
         )}
       </Section>
@@ -312,17 +302,34 @@ export function OnePersonPage() {
               <p className="gwui-panel-text-muted">{whatRemovingSays(name, orgName, m.alsoIn).detail}</p>
               <Button
                 kind="secondary"
-                disabled={removeThem.isPending}
-                onClick={() => {
-                  const says = whatRemovingSays(name, orgName, m.alsoIn)
-                  if (window.confirm(`${says.question}\n\n${says.detail}`)) {
-                    removeThem.mutate(name)
-                  }
-                }}
+                onClick={() => setAsking('remove')}
               >Remove</Button>
             </div>
           </Panel>
         </Section>
+      )}
+      {asking === 'admin' && (
+        <AskFirst
+          title={`Make ${name} an admin`}
+          question={`Make ${name} an admin of ${orgName}?`}
+          detail="An admin can see everyone's check-ins, change anyone's role, and manage billing."
+          yes="Make an admin" working="Changing…" pending={role.isPending}
+          onYes={() => role.mutate({ what: 'ADMIN' as RoleWrite, first }, { onSettled: () => setAsking(null) })}
+          onClose={() => setAsking(null)}
+        />
+      )}
+      {asking === 'handOver' && (
+        <AskFirst
+          title="Hand over the organisation"
+          question={`Hand this organisation to ${name}?`}
+          detail="They become the person who cannot be removed by other admins, and you stop being that person. You stay an admin."
+          yes="Hand over" working="Handing over…" pending={handOver.isPending}
+          onYes={() => handOver.mutate(undefined, { onSettled: () => setAsking(null) })}
+          onClose={() => setAsking(null)}
+        />
+      )}
+      {asking === 'remove' && (
+        <RemoveFromTheOrganisation id={id ?? m.id} name={name} orgName={orgName} alsoIn={m.alsoIn} onClose={() => setAsking(null)} onRemoved={() => navigate('/org/members')} />
       )}
     </Page>
   )

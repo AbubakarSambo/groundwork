@@ -1,4 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { readForWhom, theRuleFor } from './who-a-rule-is-for';
+import { thePersonForRules } from './the-people-and-their-lines';
 import { answersUnderTheQuestionsOwnIds } from './the-answers-under-the-questions-own-ids';
 import { suiteOf } from './the-ten-suites';
 import { thisSuiteIsOff } from './a-suite-that-is-off-says-what-to-do';
@@ -302,7 +304,7 @@ export class TimeSheetsService {
    * approved these hours at an earlier step, with "Omar had already approved these hours, so this step
    * was passed." kept in the record for each.
    */
-  private async passOnFrom(organizationId: string, personId: string, monday: Date, people: Map<string, { department: string | null; managerExternalId: string | null }>, answers: { approver: string | null; workflow?: AWorkflow }, from: { step: number; escalatedTo: number }, approvedByIds: string[], total: number, record = true) {
+  private async passOnFrom(organizationId: string, personId: string, monday: Date, people: Map<string, { department: string | null; managerExternalId: string | null }>, answers: { workflow?: AWorkflow }, from: { step: number; escalatedTo: number }, approvedByIds: string[], total: number, record = true) {
     const moved = await passWhatTheyAlreadyApproved(this.prisma, theStepsFor('time', answers), {
       organizationId, requesterUserId: personId,
       managerExternalId: people.get(personId)?.managerExternalId ?? null, team: people.get(personId)?.department ?? null,
@@ -417,7 +419,7 @@ export class TimeSheetsService {
   }
 
   /** Whoever approves the step a week is on is told on WhatsApp (decision 82, item 1). */
-  async tellWhoApproves(organizationId: string, personId: string, monday: Date, entries: { client: string; onDay: Date; minutes: number }[], state: WeekState, answers?: { clients: string[]; approver: string | null; workflow?: AWorkflow }): Promise<void> {
+  async tellWhoApproves(organizationId: string, personId: string, monday: Date, entries: { client: string; onDay: Date; minutes: number }[], state: WeekState, answers?: { clients: string[]; workflow?: AWorkflow }): Promise<void> {
     if (!this.told || !entries.length) return;
     try {
       const a = answers ?? (await this.suiteAnswers(organizationId));
@@ -473,7 +475,7 @@ export class TimeSheetsService {
    */
   async standing(reader: Reader, today = new Date(), knownRole?: string | null): Promise<{ said: string | null; stillNeeds: boolean }> {
     await this.suiteAnswers(reader.organizationId);
-    const rules = await readTimeRules(this.prisma, reader.organizationId);
+    const rules = await this.theirTimeRules(reader);
     if (!anyTimeRule(rules)) return { said: null, stillNeeds: false };
     const role = knownRole !== undefined ? knownRole : await this.roleOf(reader);
     const me = await theirRosterEntry(this.prisma, reader.organizationId, reader.userId, { department: true }).catch(() => null);
@@ -487,6 +489,17 @@ export class TimeSheetsService {
     return { said: whereYouStand(rules, minutes, today), stillNeeds: stillNeedsHours(rules, minutes) };
   }
 
+  /** The time sheet rules as they hold for this person: the hours a week are theirs (who-a-rule-is-for.ts, `theRuleFor`). */
+  private async theirTimeRules(reader: Reader): Promise<TimeRules> {
+    const rules = await readTimeRules(this.prisma, reader.organizationId);
+    const forWhom = await readForWhom(this.prisma, reader.organizationId);
+    if (!forWhom['time.hoursAWeek']?.length) return rules;
+    const hours = theRuleFor(await thePersonForRules(this.prisma, reader.organizationId, reader.userId), forWhom, 'time.hoursAWeek', rules.hoursAWeek);
+    const out: TimeRules = { ...rules };
+    if (hours) out.hoursAWeek = hours; else delete out.hoursAWeek;
+    return out;
+  }
+
   /**
    * THIS WEEK DRAFTED FROM THE PERSON'S OWN RECORD (decision 85, build step 11), for that person only:
    * their check-in sessions, kept commitments and the items they own that changed, matched to the
@@ -498,7 +511,7 @@ export class TimeSheetsService {
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
     if (!role || role === 'GUEST') throw new ForbiddenException(TIME_REFUSED.notInIt);
-    const rules = await readTimeRules(this.prisma, reader.organizationId);
+    const rules = await this.theirTimeRules(reader);
     const me = await theirRosterEntry(this.prisma, reader.organizationId, reader.userId, { externalId: true }).catch(() => null);
     const monday = lagosMonday(today);
     const given = await this.prisma.timeEntry.findMany({
@@ -696,7 +709,7 @@ export class TimeSheetsService {
     return [...listed.filter((c) => used.has(c)), ...[...used].filter((c) => !listed.includes(c)).sort()];
   }
 
-  private async suiteAnswers(organizationId: string): Promise<{ clients: string[]; approver: string | null; workflow?: AWorkflow }> {
+  private async suiteAnswers(organizationId: string): Promise<{ clients: string[]; workflow?: AWorkflow }> {
     const suite = await this.prisma.organizationSuite.findUnique({
       where: { organizationId_suite: { organizationId, suite: 'time' } },
       select: { isOn: true, answers: true },
@@ -705,7 +718,6 @@ export class TimeSheetsService {
     const a = answersUnderTheQuestionsOwnIds(suiteOf('time')!, suite.answers) as Record<string, unknown>;
     return {
       clients: Array.isArray(a.clients) ? a.clients.filter((c): c is string => typeof c === 'string') : [],
-      approver: typeof a.approver === 'string' && a.approver ? a.approver : null,
       /* The steps an admin set (the-approval-steps.ts). None: one step, as before. */
       workflow: await readWorkflow(this.prisma, organizationId, 'time'),
     };
@@ -726,7 +738,7 @@ export class TimeSheetsService {
   }
 
   /** Who approves this person's week now, from the step it is on, by the one approval resolver (who-may-decide.ts). */
-  private now(organizationId: string, personId: string, people: Map<string, { department: string | null; managerExternalId: string | null }>, answers: { approver: string | null; workflow?: AWorkflow }, state: { step: number; escalatedTo: number }): Promise<DecidesNow> {
+  private now(organizationId: string, personId: string, people: Map<string, { department: string | null; managerExternalId: string | null }>, answers: { workflow?: AWorkflow }, state: { step: number; escalatedTo: number }): Promise<DecidesNow> {
     return whoDecidesNow(this.prisma, theStepsFor('time', answers), {
       organizationId, requesterUserId: personId,
       managerExternalId: people.get(personId)?.managerExternalId ?? null, team: people.get(personId)?.department ?? null,

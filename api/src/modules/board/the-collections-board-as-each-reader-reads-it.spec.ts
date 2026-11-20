@@ -116,7 +116,7 @@ describe('an associate reads only the fee notes they follow up', () => {
 describe('the accounts person, who follows up no fee note, reads none', () => {
   it('Njeri reads that none are hers, and no client, amount or colleague', async () => {
     const b: any = await board(MUCHEMI_FEE_NOTES.id, NJERI);
-    expect(b.answer).toBe('No fee note that you follow up is on record yet. Each one shows here once you name it in a check-in.');
+    expect(b.answer).toBe('No fee note that you follow up is on record yet.');
     expect(b.every.rows).toEqual([]);
     const words = everyWord(b);
     for (const theirs of ['Kasarani', 'Jamii', 'Nyota', 'Upendo', 'Baraka', 'KES', 'Brian', 'Aisha']) expect(words).not.toContain(theirs);
@@ -174,12 +174,10 @@ describe('the board serves it only where the switchboard picks it, and is unchan
     expect(served.collections.every.rows.map((r: any) => r.number)).toEqual(['FN-008', 'FN-005', null, 'FN-004']);
   });
 
-  it('off: no collections key at all, for every reader', async () => {
-    const world = theCollectionsWorld({ release2On: false });
-    for (const g of world.grounds) for (const reader of [WANJIRU, BRIAN, HALIMA, MUSA]) {
-      expect(await (service(world) as any).theCollectionsBoardIfPicked(g, reader, MUCHEMI_NOW)).toEqual({});
-    }
-    expect(await board(MUCHEMI_FEE_NOTES.id, WANJIRU, world)).toBeNull();
+  it('a stored off serves the same board as on (15 November 2026: every board is on for every organisation, so a stored switch of false (or a row that cannot be read) no longer changes this.)', async () => {
+    const off = theCollectionsWorld({ release2On: false });
+    expect(await board(MUCHEMI_FEE_NOTES.id, WANJIRU, off)).toEqual(await board(MUCHEMI_FEE_NOTES.id, WANJIRU, theCollectionsWorld()));
+    expect(await board(MUCHEMI_FEE_NOTES.id, WANJIRU, off)).not.toBeNull();
   });
 
   it('on, while the lead has not confirmed the type: today\'s board, as the switchboard picks', async () => {

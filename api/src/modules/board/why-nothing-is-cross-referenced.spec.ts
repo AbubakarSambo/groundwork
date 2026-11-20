@@ -24,12 +24,12 @@ describe('why nothing is cross-referenced', () => {
     expect(t).not.toMatch(/fills in|more than one person/i);
   });
 
-  it('and on a one-person check-in it says the thing that will not change by waiting', () => {
-    expect(whyNothingIsCrossReferenced({ stillToAnswer: 0, peopleExpected: 1 })).toMatch(/one person on this check-in/);
+  it('and on a one-person check-in it says only that there is nothing to compare, with no explanation of the board', () => {
+    expect(whyNothingIsCrossReferenced({ stillToAnswer: 0, peopleExpected: 1 })).toBe('There is nothing to compare yet.');
   });
 
   it('with no counts at all it claims nothing about the roster', () => {
-    expect(whyNothingIsCrossReferenced({ stillToAnswer: null, peopleExpected: 0 })).toBe('Nothing cross-referenced yet. This fills in once more than one person has answered.');
+    expect(whyNothingIsCrossReferenced({ stillToAnswer: null, peopleExpected: 0 })).toBe('Nothing is cross-referenced yet.');
   });
 
   it('the board sends it and the page prints it', () => {

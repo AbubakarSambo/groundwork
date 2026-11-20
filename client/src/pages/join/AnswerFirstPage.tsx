@@ -7,7 +7,6 @@ import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 import { Mark } from '@/components/gw/ui'
 import { MARKETING_URL } from '@/lib/marketing'
 import { useAuthStore } from '@/stores/auth'
-import { PhoneNumberField } from '@/components/gw/PhoneNumberField'
 import { keepTheNumberForWhenTheySignIn } from '@/lib/a-number-given-before-signing-in'
 
 /**
@@ -28,14 +27,18 @@ import { keepTheNumberForWhenTheySignIn } from '@/lib/a-number-given-before-sign
 type Turn = { who: 'them' | 'it'; text: string }
 
 /**
- * WHAT "DONE" WAITS FOR, SAID (U.6 review). The button stayed greyed out until the name, the
- * organisation and the email were all there, and nothing said so. What is required is unchanged.
+ * THE LAST THREE THINGS, ASKED IN THE CHAT (Hafsah, 15 November 2026, audit of the check-in pages, row 20). The person's name,
+ * organisation and email are still all needed (her decision of 23 September), and the phone number is still taken and still
+ * editable; they are asked one at a time as Groundwork's own lines, not as a form that appears after the conversation.
  */
-export function whatIsStillNeeded(name: string, org: string, email: string): string {
-  const missing = [!name.trim() && 'your name', !org.trim() && 'your organisation', !email.trim() && 'your email'].filter(Boolean) as string[]
-  const list = missing.length <= 1 ? missing.join('') : `${missing.slice(0, -1).join(', ')} and ${missing[missing.length - 1]}`
-  return `Add ${list} to finish.`
+type Step = 'name' | 'org' | 'email' | 'phone'
+const ASKS: Record<Step, string> = {
+  name: 'Last thing. What is your name?',
+  org: 'And which organisation are you with?',
+  email: 'Where should I send the report?',
+  phone: 'What is your phone number? You can skip this.',
 }
+const PLACEHOLDERS: Record<Step, string> = { name: 'Your name', org: 'Where you work', email: 'you@work.com', phone: 'Your phone number' }
 
 export function AnswerFirstPage() {
   const [params] = useSearchParams()
@@ -81,8 +84,8 @@ export function AnswerFirstPage() {
     try { return window.localStorage.getItem(`gw-answer-${token}`) ? 'talking' : 'reading' } catch { return 'reading' }
   })
   const [email, setEmail] = useState('')
+  const [step, setStep] = useState<Step | null>(null)
   /* Optional, always asked (Hafsah, 30 October 2026); saved to them through PATCH /auth/me when that address signs in here. */
-  const [phone, setPhone] = useState('')
   const takes = useACheckInTakes()
   const [name, setName] = useState('')
   /* WHO THEY ANSWERED FOR. On a link sent across a network the organisation is the unit the whole
@@ -93,6 +96,8 @@ export function AnswerFirstPage() {
   const [whatYouGave, setWhatYouGave] = useState<WhatYouGave | null>(null)
   const [sentTo, setSentTo] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  /* The last three questions are begun once, however many times the close arrives. */
+  const askedRef = useRef(false)
 
   useEffect(() => {
     if (!token) { setProblem('That link is missing its code.'); return }
@@ -103,69 +108,90 @@ export function AnswerFirstPage() {
 
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }) }, [turns, phase])
 
-  async function begin() {
-    if (busy) return
-    setBusy(true)
+  /* Starts the conversation, returning its key, or null when it did not start (the reason is on screen). */
+  async function begin(): Promise<string | null> {
     try {
       const started = await openLinkApi.start(token)
       remember(started.key)
       setPhase('talking')
       if (started.reply) setTurns([{ who: 'it', text: started.reply }])
+      return started.key
     } catch (err: any) {
       /*
        * THE ELEVENTH PERSON IN THE ROOM WAS TOLD NOTHING.
        *
        * These routes are rate limited, and a hundred people scanning one QR code on one wifi hit
-       * that limit within seconds. The 429 was caught, `problem` was set - and `problem` was only
-       * rendered on the address screen, so on this screen the button simply went back to saying
-       * "Start". Proven on a phone, 23 September 2026: 429 in the network log, nothing at all on
-       * the screen. The limit itself is fixed in a-room-of-people-is-not-one-person; this is the
-       * half that matters when it is hit anyway.
+       * that limit within seconds. The 429 was caught, `problem` was set, and nothing rendered it.
+       * The reason is shown above the box now, and what they typed stays in the box.
        */
       const status = err?.response?.status
       setProblem(
         status === 429
-          ? 'A lot of people are starting at the same time. Wait a few seconds and press Start again - nothing is lost.'
+          ? 'A lot of people are starting at the same time. Wait a few seconds and send it again. Nothing is lost.'
           : err?.response?.data?.message ?? 'That did not start. Try the link again.',
       )
-    } finally { setBusy(false) }
+      return null
+    }
+  }
+
+  /* Moves on to the last three questions, once, as Groundwork's own lines. */
+  function askWhoTheyAre() {
+    setPhase('address')
+    if (askedRef.current) return
+    askedRef.current = true
+    setStep('name')
+    setTurns(t => [...t, { who: 'it', text: ASKS.name }])
+  }
+
+  async function answerTheStep(said: string) {
+    const say = (text: string) => setTurns(t => [...t, { who: 'them', text: said }, { who: 'it', text }])
+    setInput('')
+    setProblem('')
+    if (step === 'name') { setName(said); say(ASKS.org); setStep('org') }
+    else if (step === 'org') { setOrg(said); say(ASKS.email); setStep('email') }
+    else if (step === 'email') {
+      if (!looksLikeAnAddress(said)) { say(`That does not look like an email address. ${ASKS.email}`); return }
+      setEmail(said.trim()); say(ASKS.phone); setStep('phone')
+    } else if (step === 'phone') {
+      setTurns(t => [...t, { who: 'them', text: said }])
+      await finish(said)
+    }
   }
 
   async function say() {
     const said = input.trim()
-    if (!said || !key || busy) return
-    setBusy(true)
-    setInput('')
-    setTurns(t => [...t, { who: 'them', text: said }])
-    try {
-      const back = await openLinkApi.say(key, said)
-      setTurns(t => [...t, { who: 'it', text: back.reply }])
-      /*
-       * WHEN IT HAS CLOSED, THE PAGE CLOSES.
-       *
-       * Read live, 22 September 2026: the conversation said "your report is ready now, speak soon"
-       * and the box stayed open under it, so the person typed two more questions into a session that
-       * had already ended and got answers to neither. The engine says when a session is over; this
-       * page took the reply and ignored the flag beside it. Now the close moves straight on to the
-       * one thing left - who they are and where the report goes - which is what the ending is for.
-       */
-      if (back.sessionComplete) setPhase('address')
-    } catch (err: any) {
-      setTurns(t => [...t, { who: 'it', text: err?.response?.data?.message ?? 'That did not send. Say it again.' }])
-    } finally { setBusy(false) }
-  }
-
-  async function finish(withEmail: boolean) {
-    if (!key || busy) return
-    if (withEmail && !name.trim()) { setProblem('Your name.'); return }
-    if (withEmail && !org.trim()) { setProblem('Your organisation.'); return }
-    if (withEmail && !looksLikeAnAddress(email)) { setProblem('That does not look like an email address.'); return }
+    if (!said || busy) return
+    if (phase === 'address') { await answerTheStep(said); return }
     setBusy(true)
     setProblem('')
     try {
-      /* The name goes either way; the address and the wish for the report only where they said yes. */
-      const done = await openLinkApi.finish(key, withEmail ? email.trim() : undefined, name.trim() || undefined, withEmail, org.trim() || undefined)
-      if (withEmail) keepTheNumberForWhenTheySignIn(email, phone)
+      /* The first answer starts the conversation, so opening the link does not (a mail scanner opening it starts nothing). */
+      const k = key ?? await begin()
+      if (!k) return
+      setInput('')
+      setTurns(t => [...t, { who: 'them', text: said }])
+      try {
+        const back = await openLinkApi.say(k, said)
+        setTurns(t => [...t, { who: 'it', text: back.reply }])
+        /*
+         * WHEN IT HAS CLOSED, THE PAGE CLOSES. Read live, 22 September 2026: the conversation said
+         * "your report is ready now, speak soon" and the box stayed open under it. The engine says
+         * when a session is over; the close moves straight on to the last three questions.
+         */
+        if (back.sessionComplete) askWhoTheyAre()
+      } catch (err: any) {
+        setTurns(t => [...t, { who: 'it', text: err?.response?.data?.message ?? 'That did not send. Say it again.' }])
+      }
+    } finally { setBusy(false) }
+  }
+
+  async function finish(phoneGiven: string) {
+    if (!key || busy) return
+    setBusy(true)
+    setProblem('')
+    try {
+      const done = await openLinkApi.finish(key, email.trim(), name.trim() || undefined, true, org.trim() || undefined)
+      keepTheNumberForWhenTheySignIn(email, phoneGiven)
       setSentTo(done.at)
       /* What we measured about their own answers, told to them. See WhatYouGaveUs. */
       if ((done as any)?.whatYouGave) setWhatYouGave((done as any).whatYouGave as WhatYouGave)
@@ -176,17 +202,15 @@ export function AnswerFirstPage() {
     } catch (err: any) {
       const said = err?.response?.data?.message ?? 'That did not finish. Try again.'
       /*
-       * A RECORD THAT IS STILL THIN SENDS THEM BACK TO THE CONVERSATION, NOT TO A DEAD END.
-       *
-       * The product refuses to close a check-in with one answer in it, which is right and is the
-       * reason the reports are worth reading. Read live on the open link: the refusal arrived on
-       * the address screen, where there is nothing to answer, so the only thing left to press was
-       * the button that had just failed. Its own words say what to do - answer one or two more
-       * questions - so the page does that: back to the chat, with the reason above the box.
+       * A RECORD THAT IS STILL THIN SENDS THEM BACK TO THE CONVERSATION, NOT TO A DEAD END. The
+       * product refuses to close a check-in with one answer in it; its own words say what to do,
+       * so the page does that: back to the chat, with the reason in the conversation.
        */
       if (/still thin|more exchanges/i.test(said)) {
         setTurns(t => [...t, { who: 'it', text: said }])
         setPhase('talking')
+        setStep(null)
+        askedRef.current = false
         setProblem('')
       } else {
         setProblem(said)
@@ -262,7 +286,7 @@ export function AnswerFirstPage() {
           It stays whole while they are deciding whether to start, because that is the moment it is
           for. Once they are answering it folds to one line they can open again.
         */}
-        {phase === 'reading' ? (
+        {/* The question is the heading, in every phase (Hafsah, 15 November 2026): no caption and no "tap to read it again", it is just there. */}
           <div style={{ marginBottom: 18 }}>
             {/* U.6 review: the question only where the lead wrote it to be asked; otherwise the
                 check-in's name, as the invitation says it, and when it runs. Never her description. */}
@@ -280,37 +304,15 @@ export function AnswerFirstPage() {
                 {what.askedBy ? `${what.askedBy} invited you to “${what.groundLabel}”` : `You were invited to “${what.groundLabel}”`}
               </h1>
             )}
-            {what.schedule && <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: '6px 0 0' }}>{what.schedule}</p>}
+            {phase === 'reading' && what.schedule && <p style={{ fontSize: 14, color: 'var(--gw-sub)', margin: '6px 0 0' }}>{what.schedule}</p>}
           </div>
-        ) : (
-          <details style={{ marginBottom: 14 }}>
-            <summary style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', listStyle: 'none' }}>
-              {what.theQuestion ? (what.askedBy ? `What ${what.askedBy} asked. Tap to read it again.` : 'What you were asked. Tap to read it again.') : `This is “${what.groundLabel}”. Tap to read it again.`}
-            </summary>
-            <p style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--gw-text)', margin: '8px 0 0' }}>
-              {what.theQuestion || what.groundLabel}
-            </p>
-          </details>
-        )}
 
         {phase === 'reading' && (
           <div>
             <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px' }}>
-              {/*
-                WHAT IT USED TO SAY: "nobody sees what you write". That is not true and it is not a
-                small untruth - the person who sent this link reads every answer, and the report
-                built from them goes back out to everybody who asked for it. A promise of privacy
-                made in the second before somebody types is the worst place in the product to be
-                wrong. Hafsah, 23 September 2026.
-              */}
-              Answer in your own words.{takes ? ` It takes ${inASentence(takes)}.` : ''} The answers help everybody get a
-              shared picture, and you will receive the consolidated report at the end.
+              {takes ? `It takes ${inASentence(takes)}. ` : ''}You will get the report at the end.
             </p>
-            <button className="btn pri" onClick={begin} disabled={busy}
-              style={{ marginTop: 16 }}>
-              {busy ? 'Starting...' : 'Start'}
-            </button>
-            {/* The reason, where the button is. See begin() for the hundred people this is for. */}
+            {/* The reason, above the box, when the first answer did not start the conversation. */}
             {problem && (
               <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 14, marginTop: 12, lineHeight: 1.5 }}>{problem}</div>
             )}
@@ -340,7 +342,7 @@ export function AnswerFirstPage() {
           </div>
         )}
 
-        {phase === 'talking' && (
+        {(phase === 'reading' || phase === 'talking' || phase === 'address') && (
           /*
             PINNED TO THE BOTTOM, AND FINISHING IS NOT HIDDEN UNDER IT.
             
@@ -364,15 +366,24 @@ export function AnswerFirstPage() {
                 id="open-answer" value={input} rows={1}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); say() } }}
-                placeholder="Type your answer" style={{ ...field, flex: 1, resize: 'none', minWidth: 0, maxHeight: 140 }}
+                placeholder={phase === 'address' && step ? PLACEHOLDERS[step] : 'Type your answer'} style={{ ...field, flex: 1, resize: 'none', minWidth: 0, maxHeight: 140 }}
               />
               <button onClick={say} disabled={busy || !input.trim()} aria-label="Send"
                 style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'var(--gw-navy)', color: '#fff', fontSize: 18, cursor: 'pointer', flexShrink: 0, opacity: busy || !input.trim() ? .5 : 1 }}>
                 ↑
               </button>
             </div>
+            {phase === 'address' && problem && (
+              <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13, marginTop: 8 }}>{problem}</div>
+            )}
+            {phase === 'address' && step === 'phone' && (
+              <div style={{ marginTop: 10 }}>
+                <button className="btn sec" disabled={busy} onClick={() => { setTurns(t => [...t, { who: 'them', text: 'Skip' }]); void finish('') }}>Skip</button>
+              </div>
+            )}
+            {phase === 'talking' && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, gap: 10 }}>
-              <button className="btn sec" onClick={() => setPhase('address')}
+              <button className="btn sec" onClick={askWhoTheyAre}
                 >
                 I am done
               </button>
@@ -382,60 +393,7 @@ export function AnswerFirstPage() {
                 Finish and say where to send the report
               </span>
             </div>
-          </div>
-        )}
-
-        {/*
-          WHO THEY ARE, AND IT IS ASKED OF EVERYBODY.
-          
-          This used to open on "Do you want the report?" and only ask for a name and an address if
-          the answer was yes. Hafsah, 23 September 2026: "we need their email and names when they
-          checkin and put their emails" - and the page now promises, before the first answer, that
-          the consolidated report comes back to them. Asking whether they want the thing they were
-          just promised is a question with one real answer, and it was costing the organiser the
-          half of the record that says whose answer this is.
-          
-          So the three are asked outright and all three are needed. Nobody is anonymous by accident
-          and nobody is anonymised by the product - whether the OTHERS see these names is the
-          organiser's choice at the moment they share it, which is a different decision made by a
-          different person. See what-the-respondents-get.ts.
-        */}
-        {phase === 'address' && (
-          <div style={{ marginTop: 16, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px' }}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Last thing: who are you?</div>
-            {/*
-              THE SENTENCE UNDER IT IS GONE. Hafsah, 23 September 2026: "this is not necessary 'the
-              part where it says so you are not anonymises'". She is right - three labelled fields
-              asking for a name, an organisation and an address do not need a paragraph explaining
-              that giving them makes you identifiable. The labels say what each one is for.
-            */}
-            <div style={{ display: 'grid', gap: 8 }}>
-              <label htmlFor="open-name" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Your name</label>
-              <input id="open-name" type="text" autoComplete="name" value={name}
-                onChange={e => { setName(e.target.value); setProblem('') }}
-                placeholder="Your name" style={field} />
-              <label htmlFor="open-org" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Your organisation</label>
-              <input id="open-org" type="text" autoComplete="organization" value={org}
-                onChange={e => { setOrg(e.target.value); setProblem('') }}
-                placeholder="Where you work" style={field} />
-              <label htmlFor="open-email" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Where to send the report</label>
-              <input id="open-email" type="email" autoComplete="email" value={email}
-                onChange={e => { setEmail(e.target.value); setProblem('') }}
-                placeholder="you@work.com" style={field} />
-              {/* Nobody is signed in on this page, so nothing here says WhatsApp (useWhatsAppIsOn answers off until somebody is). */}
-              <PhoneNumberField id="open-phone" value={phone} onChange={setPhone} whose="yours" whatsappOn={false} />
-            </div>
-            {problem && <div role="alert" style={{ color: 'var(--gw-red-t)', fontSize: 13, marginTop: 8 }}>{problem}</div>}
-            {/* U.6 review: "Done" waits for all three, and now it says so. The same three are needed. */}
-            {(!email.trim() || !name.trim() || !org.trim()) && (
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 10 }}>{whatIsStillNeeded(name, org, email)}</div>
             )}
-            <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-              <button className="btn pri" onClick={() => finish(true)} disabled={busy || !email.trim() || !name.trim() || !org.trim()}
-                >
-                Done
-              </button>
-            </div>
           </div>
         )}
 
@@ -446,7 +404,7 @@ export function AnswerFirstPage() {
             <h2 style={{ fontSize: 18, margin: '0 0 8px' }}>That is everything. Thank you.</h2>
             <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: '22px', margin: 0 }}>
               {sentTo
-                ? `The consolidated report goes to ${sentTo} at the end.`
+                ? `The report goes to ${sentTo} at the end.`
                 : 'Your answers are saved.'}
             </p>
             {/*

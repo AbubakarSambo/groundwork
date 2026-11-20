@@ -74,7 +74,7 @@ export function WhatTheRecordShows({ it }: { it: TheRecordOverTime | null | unde
 
       {!!open.length && (
         <>
-          <Head>What people said they would do{it.inSessions ? `, ${it.inSessions}` : (it.sessions ? `, over ${it.sessions} sessions` : '')}</Head>
+          <Head>What people said they would do{it.inSessions ? `, ${it.inSessions}` : (it.sessions ? `, over ${it.sessions} check-ins` : '')}</Head>
           <RowList label="What people said they would do">
             {open.map((c, i) => <Row key={i} columns="1fr">{c.say}</Row>)}
           </RowList>

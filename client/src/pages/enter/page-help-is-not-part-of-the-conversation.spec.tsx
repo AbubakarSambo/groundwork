@@ -73,7 +73,7 @@ describe('the field lead saves her setup', () => {
         <MemoryRouter initialEntries={['/start']}><EntryChatPage /></MemoryRouter>
       </QueryClientProvider>,
     )
-    fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
     await screen.findByLabelText('Your team, one per line')
     fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))

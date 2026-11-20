@@ -79,7 +79,7 @@ describe('Today, as the lead who runs the sales team', () => {
     ]);
     expect(r.needs.map((n) => [n.detail, n.action.label, n.action.to])).toEqual([
       ['About ten minutes.', 'Start it', '/checkin/f1'],
-      ['The last session is done.', 'Decide', '/grounds/g-kwame'],
+      ['The last check-in is done.', 'Decide', '/grounds/g-kwame'],
       ['About ten minutes.', 'Start it', '/checkin/l2'],
     ]);
     expect(r.count).toBe(3);
@@ -257,5 +257,12 @@ describe('Today, as Akinyi, whose daily deal check-in has today\'s report', () =
   it('says "The report" when the report was shared on another day, or the check-in is not daily', () => {
     const r = whatNeedsYou([{ ...deals, report: { releasedAt: ago(30) } }, { ...deals, id: 'g-w', cadence: 'WEEKLY' }], { userId: 'u-akinyi', role: 'MEMBER', organizationId: 'org' }, [], NOW);
     expect(r.needs.filter((n) => n.kind === 'ready').map((n) => n.title)).toEqual(['The report for Deal progress is ready', 'The report for Deal progress is ready']);
+  });
+});
+
+describe('"Decide how it ends" is not offered beside a check-in of your own that is still open (Mira\'s Today, runs 6 to 9)', () => {
+  it('the rule is in the one place Today is built', () => {
+    const src = require('fs').readFileSync(__dirname + '/what-needs-you.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(src).toContain('done >= planned && !aTurnOfMineIsOpenHere');
   });
 });

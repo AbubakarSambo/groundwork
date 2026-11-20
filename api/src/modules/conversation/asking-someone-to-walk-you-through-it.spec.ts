@@ -1,4 +1,4 @@
-import { howThisCompanyDoesIt, whatToLookUp, MOST_CARDS_IN_A_SESSION, MOST_WORDS_IN_A_LOOKUP } from './how-this-company-does-it';
+import { howThisCompanyDoesIt, whatToLookUp, whatIsOnTheDesk, MOST_CARDS_IN_A_SESSION, MOST_WORDS_IN_A_LOOKUP, MOST_CHARS_AT_A_GLANCE } from './how-this-company-does-it';
 
 /**
  * THE COMPANY'S OWN PROCESS, IN THE ROOM.
@@ -95,5 +95,45 @@ describe('what it looks up', () => {
   it('or on nothing at all', () => {
     expect(whatToLookUp(null)).toBeNull();
     expect(whatToLookUp(undefined)).toBeNull();
+  });
+});
+
+/**
+ * THE DESK IN EVERY CHECK-IN (S7, 20 November 2026). The company's documents reached a check-in only after a message of
+ * 40 characters or more, so "We use the Kilele contract" never found the contracting process. Now every turn carries the
+ * Desk at a glance (each document's title and kept summary), and the lookup has no length gate.
+ */
+describe('what is on the Desk, in every check-in', () => {
+  it('a short message that names a process is looked up now', () => {
+    expect(whatToLookUp('We use the Kilele contract')).toBe('kilele contract');
+  });
+
+  it('a short answer is looked up by the question it answers', () => {
+    expect(whatToLookUp(['Yes', 'Did you send the contract to the client?'].join(' '))).toBe('send contract client');
+  });
+
+  it('each document by its title and kept summary, as what the organisation says', () => {
+    const block = whatIsOnTheDesk([
+      { title: 'Leave policy', summary: 'Everyone has 21 days of leave a year.' },
+      { title: 'How contracting works', summary: null },
+    ]);
+    expect(block).toContain('- Leave policy. Everyone has 21 days of leave a year.');
+    expect(block).toContain('- How contracting works.');
+    expect(block).toContain('can be out of date');
+    expect(block).toContain('never test them on it');
+    expect(block).toContain('Do not bring a document up when it does not apply.');
+  });
+
+  it('nothing at all when the Desk is empty', () => {
+    expect(whatIsOnTheDesk([])).toBe('');
+  });
+
+  it('stays small however big the Desk grows', () => {
+    const many = Array.from({ length: 200 }, (_, i) => ({ title: `Document ${i}`, summary: 'S'.repeat(600) }));
+    const block = whatIsOnTheDesk(many);
+    const listed = block.split('\n').filter((l) => l.startsWith('- '));
+    expect(listed.join('\n').length).toBeLessThanOrEqual(MOST_CHARS_AT_A_GLANCE + listed.length);
+    /* The whole block, instructions included, is under a thousand words. */
+    expect(block.length).toBeLessThan(MOST_CHARS_AT_A_GLANCE + 1_000);
   });
 });

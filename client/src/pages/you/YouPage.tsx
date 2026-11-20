@@ -7,7 +7,7 @@ import { myDataApi } from '@/api/my-data'
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import {
-  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row,
+  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row, Skeleton
 } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whatTellsItApart } from '@/lib/tell-apart-the-same-name'
@@ -90,7 +90,7 @@ export function YouPage() {
     <Page>
       <PageTitle title="You" subtitle={data ? theYouSubtitle(data.checkIns ?? [], direct) : 'What’s yours, across your check-ins.'} />
 
-      {isLoading && <Note>Loading…</Note>}
+      {isLoading && <Skeleton what="Getting your page" shape="rows" />}
       {isError && (
         <div>
           <Note tone="error">Your board didn’t load. Try again.</Note>

@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThePicturedBoard } from './ThePicturedBoard'
-import { RELEASE_4_ORDERS, whereItFolds, theRelease4Order } from '../release-4-orders'
+import { RELEASE_4_ORDERS, theRelease4Order } from '../release-4-orders'
 import operations from '../../preview/__fixtures__/release-4-operations.json'
 import engineering from '../../preview/__fixtures__/release-4-engineering.json'
 import salesOrg from '../../preview/__fixtures__/release-4-sales-org.json'
@@ -19,7 +19,7 @@ function draw(b: any) {
   return render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter>
-        <ThePicturedBoard order={RELEASE_4_ORDERS[b.kindOfWork]} foldAfter={whereItFolds(b.kindOfWork)} b={b} groundId={b.groundId}
+        <ThePicturedBoard order={RELEASE_4_ORDERS[b.kindOfWork]} b={b} groundId={b.groundId}
           sessionRows={[]} renderActions={() => null} overTime={null} recommendations={[]} onAnswerRecommendation={() => undefined}
           recommendationBusy={false} onRecordTheDecision={() => undefined} navigate={() => undefined} />
       </MemoryRouter>
@@ -81,7 +81,7 @@ describe('Release 4: each team type, as its lead reads it', () => {
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    expect(screen.getByText('You’re a participant here. Amani runs it; you see the shared picture and your own part in full.')).toBeTruthy()
+    expect(screen.queryByText(/You’re a participant here/)).toBeNull()
     inOrder(['The priorities this quarter', 'Your part'])
     expect(screen.getByText('Bring the pipeline numbers')).toBeTruthy()
     expect(screen.getByText('At risk')).toBeTruthy()

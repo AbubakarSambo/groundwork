@@ -18,7 +18,7 @@ const SETUP = {
       sessions: 1, commitments: [], patterns: [], gaps: [], stillOpen: [], cannotTellYou: [], toSettleFirst: [],
       dependencies: [
         { participantId: 'p-rukia', what: 'a signal to lead client discussions', say: LOST },
-        { participantId: 'p-baraka', what: 'the price list', say: 'Baraka Otieno is waiting on you for the price list for 1 session now.' },
+        { participantId: 'p-baraka', what: 'the price list', say: 'Baraka Otieno is waiting on you for the price list for 1 check-in now.' },
       ],
     },
   },
@@ -28,7 +28,7 @@ describe('item 18: a wait line with nothing in it is not served', () => {
   it('Amina, who runs it, reads no line without its subject, and keeps the one with it', async () => {
     const b = await boardAs(SETUP, ...AMINA);
     const says = (b.overTime?.dependencies ?? []).map((d: any) => d.say);
-    expect(says).toEqual([null, 'Baraka Otieno is waiting on you for the price list for 1 session now.']);
+    expect(says).toEqual([null, 'Baraka Otieno is waiting on you for the price list for 1 check-in now.']);
     expect(b.overTime.dependencies[0].what).toBe('a signal to lead client discussions');
     expect(JSON.stringify(b)).not.toContain(LOST);
   });

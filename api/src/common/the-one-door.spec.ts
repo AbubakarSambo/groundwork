@@ -33,13 +33,15 @@ const theMethod = (src: string, name: string): string => {
 describe('one door to WhatsApp and one to the mail service', () => {
   const WA = path.join(SRC, 'modules/whatsapp/whatsapp.service.ts');
   const MAIL = path.join(SRC, 'modules/email/email.service.ts');
+  /* Reads mail that ARRIVED (the body and attachments of a forward) from the provider's receiving API. It cannot send anything, so it is not a second door out. */
+  const RECEIVING = path.join(SRC, 'modules/email/inbound-mail-client.ts');
 
   it('nothing but the WhatsApp service reaches Meta, and nothing but the mail service reaches a mail provider', () => {
     const offenders: string[] = [];
     for (const f of everyFile()) {
       const c = code(f);
       if (f !== WA && /graph\.facebook\.com|graphBase\(|\/messages`|whatsapp\.graphBaseUrl/.test(c) && !f.endsWith(path.join('config', 'configuration.ts'))) offenders.push(path.relative(SRC, f));
-      if (f !== MAIL && /from ['"](?:resend|nodemailer)['"]|require\(['"](?:resend|nodemailer)['"]\)|api\.resend\.com|\.emails\.send\(|sendMail\(/.test(c)) offenders.push(path.relative(SRC, f));
+      if (f !== MAIL && f !== RECEIVING && /from ['"](?:resend|nodemailer)['"]|require\(['"](?:resend|nodemailer)['"]\)|api\.resend\.com|\.emails\.send\(|sendMail\(/.test(c)) offenders.push(path.relative(SRC, f));
     }
     expect(offenders).toEqual([]);
   });

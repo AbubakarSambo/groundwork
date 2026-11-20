@@ -133,7 +133,7 @@ export class TheLeadsOwnNudgeService {
     /* Only somebody with a session open today that they have not answered. */
     const sessions: ASessionOnRecord[] = await prisma.checkIn.findMany({
       where: { groundId, participantId },
-      select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true },
+      select: { id: true, participantId: true, sessionNumber: true, status: true, isSetup: true, completedAt: true, availableFrom: true, createdAt: true, closedReason: true, turns: { where: { role: 'PERSON' as any }, orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, createdAt: true } } },
     });
     const day = theirDay(participantId, sessions, now, zone);
     if (day.answeredToday) return { nudged: false, at: null, says: `${first} has already checked in today, so no nudge was sent.` };

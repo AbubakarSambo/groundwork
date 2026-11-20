@@ -131,7 +131,7 @@ export function WhatToWorkOnNext({ note, guide }: {
             {/* An absence with no reason reads as the product having nothing to say. */}
             {!note.role && note.whyNoRoleMap && <Note>{note.whyNoRoleMap}</Note>}
             <div>
-              <SubHeading as="h3">Before the next session</SubHeading>
+              <SubHeading as="h3">Before the next check-in</SubHeading>
               <Stack gap={10}>
                 {(note.beforeNextTime ?? []).map((a, i) => <p key={i} className="gwui-panel-text">{a}</p>)}
               </Stack>

@@ -12,10 +12,10 @@ export function theSessionsHeld(
   const sessions = [...new Set(done.map((c) => c.sessionNumber))].sort((a, b) => a - b);
   const day = (d: Date | string) => new Intl.DateTimeFormat('en-GB', { timeZone: zone, weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(d));
   const firstDay = (n: number) => done.filter((c) => c.sessionNumber === n && c.completedAt).map((c) => new Date(c.completedAt as any)).sort((a, b) => a.getTime() - b.getTime())[0];
-  const lines = sessions.map((n) => { const d = firstDay(n); return `  Session ${n} was held${d ? ` on ${day(d)}` : ''}.`; });
+  const lines = sessions.map((n) => { const d = firstDay(n); return `  Check-in ${n} was held${d ? ` on ${day(d)}` : ''}.`; });
   const each = people.map((p) => {
     const mine = [...new Set(done.filter((c) => c.participantId === p.participantId).map((c) => c.sessionNumber))];
-    return `  ${p.who} answered ${mine.length} of the ${sessions.length} sessions.`;
+    return `  ${p.who} answered ${mine.length} of the ${sessions.length} check-ins.`;
   });
-  return [`THE SESSIONS HELD, read from the record. ${sessions.length} ${sessions.length === 1 ? 'session has' : 'sessions have'} been held. Never say a session or a check-in was not held when it is here, and say who did not answer only from these counts.`, ...lines, ...each].join('\n');
+  return [`THE Check-ins HELD, read from the record. ${sessions.length} ${sessions.length === 1 ? 'check-in has' : 'check-ins have'} been held. Never say a check-in or a check-in was not held when it is here, and say who did not answer only from these counts.`, ...lines, ...each].join('\n');
 }

@@ -6,6 +6,7 @@ import { THE_LEAD_ONLY_ASKS } from '../grounds/the-lead-who-only-asks';
 import { whoOnACheckInIsAway } from '../suites/who-is-away';
 import { isHeldAtTheDoor, whoIsNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { whoHasNotJoinedYet } from '../grounds/invited-not-joined-yet';
+import { sessionsAPauseOpened } from '../grounds/a-round-that-could-be-answered';
 
 /**
  * WHO HAS ANSWERED, COUNTED IN ONE PLACE (Hafsah, 1 November 2026: "'who has answered' is counted in one place, and every page reads
@@ -216,13 +217,16 @@ export async function whoHasAnsweredInEachSession(prisma: any, groundId: string,
  * to the clock's own.
  */
 export function eachSessionsServedCount(
-  people: (SomebodyWhoMightAnswer & { checkIns?: { sessionNumber?: number | null }[] | null })[],
+  people: (SomebodyWhoMightAnswer & { checkIns?: { sessionNumber?: number | null; availableFrom?: Date | string | null; createdAt?: Date | string | null }[] | null })[],
   scenario?: string | null,
   upTo = 0,
+  /** When Groundwork paused for the organisation. A round opened after it was never sent to anybody, so it has no count at all (run 9: "0 of 3 checked in" for rounds in the pause). */
+  pausedFrom?: Date | string | null,
 ): Record<number, TheServedCount> {
   const last = Math.max(0, upTo - 1, ...(people ?? []).flatMap((p) => (p.checkIns ?? []).map((c: any) => Number(c.sessionNumber) || 0)));
   const sessions = Array.from({ length: last + 1 }, (_, i) => i + 1);
-  return Object.fromEntries(sessions.map((n) => [n, asServed(whoHasAnswered(people as any, n, scenario))]));
+  const thePauseOpened = sessionsAPauseOpened((people ?? []).flatMap((p) => p.checkIns ?? []), pausedFrom);
+  return Object.fromEntries(sessions.filter((n) => !thePauseOpened.has(n)).map((n) => [n, asServed(whoHasAnswered(people as any, n, scenario))]));
 }
 
 /** The one count of each session kept to the people a reader may see: the same as counting only them, since each person counts alone. */

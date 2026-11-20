@@ -45,7 +45,7 @@ const PAGES = [
   'GroundParticipantPage.tsx',
   '../report/ReportPage.tsx',
   '../board/BoardPage.tsx',
-  '../../components/gw/GroundChat.tsx',
+  '../../components/gw/MyCheckInSessions.tsx', /* GroundChat.tsx was deleted on 15 November 2026; the session summary and its correction moved here */
   // The Context tab, which used to be assembled inline in the two pages above. When it moved, this
   // guard fired for every document and lead-context call - which is exactly what it is for.
   '../../components/gw/ContextPage.tsx',
@@ -61,7 +61,8 @@ const PAGES = [
    * which renders the reader's own report and the per-session shared one. Every capability that
    * was on that tab is in one of these files, and this guard is how a future merge finds out.
    */
-  '../report/SessionReportPage.tsx',
+  /* Batch 2, group 5: the session report page went; your own report, its download and its corrections are on My work. */
+  'MyWorkPage.tsx',
   '../report/RoundReportPage.tsx',
   '../../components/gw/TheReportIsAListOfSessions.tsx',
   /* "Did this feel fair" - moved here from the dead ReportBody, onto the board, where everyone
@@ -239,7 +240,7 @@ describe('no mutation is left with no way to call it', () => {
           invokedDirectly || returnedFromHook || passedAsProp,
           `${name} is declared in ${page} and nothing calls it (directly, or via ${consumerPath ?? 'a consumer'}). ` +
             `Wire it to a control or delete it - a declared mutation with no caller is how the paid ` +
-            `session path survived as code nobody could reach.`,
+            `check-in path survived as code nobody could reach.`,
         ).toBe(true)
       })
     }

@@ -80,7 +80,7 @@ describe('the five things', () => {
        the session is named in the sentence under it. Same requirement: a person must be able to
        tell this is about one session rather than a standing judgement. */
     expect(code(FIVE)).toContain('What would make your next check-in count for more')
-    expect(code(FIVE)).toContain('Session ${sessionNumber} was mostly about the situation around you')
+    expect(code(FIVE)).toContain('Check-in ${sessionNumber} was mostly about the situation around you')
   })
 
   it('and show nothing at all before a session has been read', () => {
@@ -108,7 +108,7 @@ describe('what the record can support', () => {
 
   it('says the direction without an arrow, naming what it compared against', () => {
     /* a-trajectory-is-not-a-score: "no score, no tier, no arrow". */
-    expect(code(SUPPORT)).toContain('more checkable than session ${comparedWith}')
+    expect(code(SUPPORT)).toContain('more checkable than check-in ${comparedWith}')
     expect(code(SUPPORT)).not.toMatch(/[↑↓]/)
   })
 

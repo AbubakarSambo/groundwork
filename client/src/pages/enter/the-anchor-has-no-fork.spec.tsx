@@ -111,7 +111,7 @@ describe('an anchor draft at ready', () => {
      * neither of which the anchor has (one conversation, no fork, no shared report; see
      * docs/anchor-scenario.md). The reveal just confirmed above is the whole header for this draft.
      */
-    expect(screen.queryByText('This is session 1. It is your private report.')).toBeNull()
+    expect(screen.queryByText('This is check-in 1. It is your private report.')).toBeNull()
     expect(screen.queryByText(/Once they check in, everyone gets the shared report/)).toBeNull()
 
     // And then the people step, on the same screen.

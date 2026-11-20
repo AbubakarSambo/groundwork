@@ -39,7 +39,7 @@ export function whoCheckedInForThisPicture(
   const reader = asked.find((p) => p.participantId === readerParticipantId);
   const answered = others.filter((p) => p.answered);
   const notYet = others.filter((p) => !p.answered);
-  const forWhat = `session ${sessionNumber} of ${checkInLabel}`;
+  const forWhat = `check-in ${sessionNumber} of ${checkInLabel}`;
 
   const lines: string[] = [];
   if (reader?.answered) {

@@ -9,7 +9,7 @@ import { overTimeAsServed, overTimeForThisReader } from './what-the-record-shows
  * they have to read right when they are served.
  */
 const STORED_WAIT = 'Support manager. is waiting on the team responsible for the fix for "a fix for the broken export"; nothing on record about escalating it.';
-const STORED_GAP = 'Account manager for Meridian. is down as "Account manager for Meridian" and nothing on record says what that covers. What the record holds: 1 session on record, 5 lines of what they said, 0 with a name, a number or a date in them, 0 backed by a document.';
+const STORED_GAP = 'Account manager for Meridian. is down as "Account manager for Meridian" and nothing on record says what that covers. What the record holds: 1 check-in on record, 5 lines of what they said, 0 with a name, a number or a date in them, 0 backed by a document.';
 const STORED_OWES = 'Data analyst. is waiting on Data engineer. for "access to the production data"; nothing on record about escalating it; this is work Data engineer. owes Data analyst., not the other way round.';
 
 describe('a stored sentence reads right when it is served', () => {

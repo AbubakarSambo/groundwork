@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useState } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -82,11 +83,11 @@ export function PaymentPage() {
         {!groundName && <div style={{ marginBottom: 20 }} />}
 
         {groundLoading ? (
-          <div style={{ fontSize: 13, color: 'var(--gw-muted)', padding: '20px 0' }}>Loading...</div>
+          <Skeleton what="Getting your payment details" shape="lines" count={2} />
         ) : ground?.isFreeGround ? (
           <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px' }}>
             <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: '21px' }}>
-              <strong>This check-in has unlimited free sessions.</strong> There is nothing to purchase here - just continue from the check-in page.
+              <strong>This check-in has unlimited free check-ins.</strong> There is nothing to purchase here - just continue from the check-in page.
             </div>
           </div>
         ) : (
@@ -98,7 +99,7 @@ export function PaymentPage() {
                 grants access and costs nobody anything. */}
             <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: '21px' }}>
-                <strong>Sessions are not charged for.</strong> Every check-in runs as many sessions
+                <strong>Check-ins are not charged for.</strong> Every check-in runs as many check-ins
                 and reports as it needs. An access code is only for the number of check-ins your
                 organisation can run at once.
               </div>

@@ -28,7 +28,7 @@ const THIS_SESSION = {
   waitingOn: ['p-sarah', 'p-david', 'p-fatuma', 'p-james'], notAnswered: ['p-sarah', 'p-david', 'p-fatuma', 'p-james'],
   notCountedSays: null,
   notJoinedSays: 'Two of them were invited and have not joined yet.',
-  says: 'One of the five people has checked in for session 1. Two of them were invited and have not joined yet.',
+  says: 'One of the five people has checked in for check-in 1. Two of them were invited and have not joined yet.',
 }
 const PEOPLE = [
   { id: 'p-aisha', userId: 'u-aisha', partyType: 'INITIATOR', user: { firstName: 'Aisha', lastName: 'Muthoni' } },
@@ -53,14 +53,14 @@ describe('one count on every screen a first-time lead reads', () => {
   it('The team today opens with the served sentence', () => {
     const b = {
       theCount: THE_COUNT,
-      eachPerson: [{ participantId: 'p-sarah', reason: 'has not answered', says: 'Sarah Chebet has not checked in for this session yet.' }],
-      eachPersonToday: [{ participantId: 'p-sarah', who: 'Sarah Chebet', line: 'Sarah Chebet has not checked in for this session yet.' }],
+      eachPerson: [{ participantId: 'p-sarah', reason: 'has not answered', says: 'Sarah Chebet has not checked in for this check-in yet.' }],
+      eachPersonToday: [{ participantId: 'p-sarah', who: 'Sarah Chebet', line: 'Sarah Chebet has not checked in for this check-in yet.' }],
       patterns: [],
     }
     const { container, getByTestId } = render(<MemoryRouter><TheTeamToday b={b} deals={{ rows: [] }} today="2026-10-31" groundId="g1" /></MemoryRouter>)
     expect(getByTestId('the-team-today-count').textContent).toBe(THIS_SESSION.says)
     /* Each person's line once, never twice. */
-    expect(container.textContent!.split('Sarah Chebet has not checked in for this session yet.').length - 1).toBe(1)
+    expect(container.textContent!.split('Sarah Chebet has not checked in for this check-in yet.').length - 1).toBe(1)
   })
 
   it('the report tab\'s and the board\'s session row say the served numbers and the same people', () => {

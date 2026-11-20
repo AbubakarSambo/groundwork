@@ -55,6 +55,8 @@ export interface AnInstance {
   item: string;
   /** Their own words, from that check-in. */
   words: string[];
+  /** True only when the first of `words` was typed word for word: only then is it quoted (their-words-as-said.ts). */
+  saidWordForWord?: boolean;
 }
 
 export interface APatternAcrossAssessments {
@@ -180,7 +182,7 @@ function thePromisesRead(seen: AnAssessmentSeen[]) {
 
 const thePromise = (due: AnItem) => text(due.promise) || text(due.words);
 const promiseInstance = (r: APromiseRead): AnInstance => ({
-  checkInId: r.s.checkInId, sessionNumber: r.s.sessionNumber, on: day(r.s.on), item: thePromise(r.due), words: text(r.due.words) ? [text(r.due.words)] : [],
+  checkInId: r.s.checkInId, sessionNumber: r.s.sessionNumber, on: day(r.s.on), item: thePromise(r.due), words: text(r.due.words) ? [text(r.due.words)] : [], saidWordForWord: r.due.saidWordForWord === true,
 });
 
 /* ---------------------------------------------------------------------------------------------------------------------
@@ -247,7 +249,7 @@ function theClaimsRead(seen: AnAssessmentSeen[]) {
 
 const theClaim = (c: AnItem) => text(c.claim) || text(c.words);
 const claimInstance = (r: AClaimRead): AnInstance => ({
-  checkInId: r.s.checkInId, sessionNumber: r.s.sessionNumber, on: day(r.s.on), item: theClaim(r.claim), words: text(r.claim.words) ? [text(r.claim.words)] : [],
+  checkInId: r.s.checkInId, sessionNumber: r.s.sessionNumber, on: day(r.s.on), item: theClaim(r.claim), words: text(r.claim.words) ? [text(r.claim.words)] : [], saidWordForWord: r.claim.saidWordForWord === true,
 });
 
 /* ---------------------------------------------------------------------------------------------------------------------
@@ -357,7 +359,7 @@ function thePatternsFor(participantId: string, name: string, seen: AnAssessmentS
   /* Overload: their own words about having too much on, once per check-in. */
   const overload = answered(seen).flatMap((s) => {
     const o = ((s.assessment.observations ?? []) as AnItem[]).filter((x) => x.observed === 'overload');
-    return o.length ? [{ checkInId: s.checkInId, sessionNumber: s.sessionNumber, on: day(s.on), item: text(o[0].what) || text(o[0].words), words: o.map((x) => text(x.words)).filter(Boolean).slice(0, 3) }] : [];
+    return o.length ? [{ checkInId: s.checkInId, sessionNumber: s.sessionNumber, on: day(s.on), item: text(o[0].what) || text(o[0].words), words: o.map((x) => text(x.words)).filter(Boolean).slice(0, 3), saidWordForWord: o[0].saidWordForWord === true }] : [];
   });
   found.push(aPattern('overload', participantId, 'too much on', `In ${plural(overload.length, 'check-in', 'check-ins')}, ${first} described having too much on.`, overload));
 
@@ -432,7 +434,7 @@ export function theRecordAcrossTime(
   }
   if (focus && focus.offAPriority >= ITEMS_BEFORE_A_STRENGTH && focus.offAPriority > focus.onAPriority) {
     const off = answered(seen).flatMap((s) => ((s.assessment.areas ?? []) as AnItem[]).filter((a) => a.fitsAPriority === 'no')
-      .map((a) => ({ checkInId: s.checkInId, sessionNumber: s.sessionNumber, on: day(s.on), item: text(a.item) || text(a.area), words: text(a.words) ? [text(a.words)] : [] })));
+      .map((a) => ({ checkInId: s.checkInId, sessionNumber: s.sessionNumber, on: day(s.on), item: text(a.item) || text(a.area), words: text(a.words) ? [text(a.words)] : [], saidWordForWord: a.saidWordForWord === true })));
     const p = aPattern('focus-away-from-the-priorities', participantId, 'needs work', focus.saying, off, { items: ITEMS_BEFORE_A_STRENGTH });
     if (p) patterns.push(p);
   }

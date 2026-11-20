@@ -14,7 +14,7 @@ const WHAT_SHE_ACTUALLY_SAID = [
   'That they need to test the product and resolve bugs',
   'yes, i have we had a call last tuesday',
   'the evidence it that the product is now stable and easy to use, not breaks in the process for cleints',
-  'do you have recommendations on the outcomes for me to track? a client shuld be able to sign-up, setup an org, add people, create checkins and have their team checkin and get the first session reports with no issues',
+  'do you have recommendations on the outcomes for me to track? a client shuld be able to sign-up, setup an org, add people, create checkins and have their team checkin and get the first check-in reports with no issues',
   'all 3 of the above',
   'a friend of ours will be testing',
   'sahar',

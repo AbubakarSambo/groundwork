@@ -9,7 +9,7 @@ import { onlyNumbersTheBlocksHold, numbersNotHeld, theNumbersTheMaterialHolds } 
  * test says so, so nobody mistakes the check for the fix.
  */
 const AMANI_BLOCK = [
-  '2 people, 1 session.',
+  '2 people, 1 check-in.',
   '',
   '--- the initiator (RUNS THIS CHECK-IN - not one of the people being checked in on)',
   '',

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { leavingApi, type LeavingBoard, type LeavingList, type LeavingStepKey } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row, FieldLabel, Select, TextField } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row, FieldLabel, Select, TextField, Skeleton } from '@/components/gw/ui'
 import { SuiteOffMessage } from '@/lib/suite-is-off'
 
 /**
@@ -64,7 +64,7 @@ export function LeavingBoardPage() {
         subtitle="Everything that has to happen when someone leaves, each with an owner, so nothing is forgotten."
       />
 
-      {isLoading && <Note>Loading…</Note>}
+      {isLoading && <Skeleton what="Getting this page" shape="rows" />}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
           <Note tone="error"><SuiteOffMessage message={refused.data?.message ?? 'Only an admin can open this board.'} role={user?.role} /></Note>

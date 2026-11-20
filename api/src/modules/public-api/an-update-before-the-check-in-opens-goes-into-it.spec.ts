@@ -27,14 +27,17 @@ describe('an update sent before the check-in opens goes into it', () => {
 
 /** Mercy, polish round 2: her "yes" to Ask's "Shall I send it to an admin to approve?" opened her check-in, and the leave was never sent. */
 describe('a yes or no to what Ask just said back is Ask\'s', () => {
+  /* Batch S round 2, T2: one resolver now decides who a message is for (assistant/who-a-message-is-for.ts), Ask waiting first. The same
+     two promises are checked: it is asked before anything in the check-in reads the words, and Ask waits for fifteen minutes. */
   const door = fs.readFileSync(path.join(__dirname, 'whatsapp-for-an-organisation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const assistant = fs.readFileSync(path.join(__dirname, '..', 'assistant', 'assistant.service.ts'), 'utf8');
   it('is sent to Ask before anything in the check-in reads it', () => {
-    const toAsk = door.indexOf('(A_YES.test(text) || A_NO.test(text)) && (await this.askWaitsForAYes(organizationId, who.personId))');
+    const toAsk = door.indexOf('(await this.whoIsItFor(organizationId, who.personId, text, current.id, userId))');
     expect(toAsk).toBeGreaterThan(-1);
     expect(toAsk).toBeLessThan(door.indexOf('} else if (pending) {'));
   });
   it('only while Ask waits, for fifteen minutes', () => {
-    expect(door).toContain("state: 'PARKED', createdAt: { gte: new Date(Date.now() - 15 * 60_000) }");
+    expect(assistant).toContain("state: 'PARKED', createdAt: { gte: new Date(Date.now() - 15 * 60_000) }");
   });
 });
 

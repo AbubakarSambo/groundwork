@@ -44,12 +44,29 @@ export const THE_CLOSE_ON_IN_SIMPLER_WORDS: Record<Door, string> = {
   api: 'That is all for today. Thank you for your answers. When this check-in is closed, your answers go into the report.',
 };
 
-/** The close for this door, in the plainer form when the check-in is set to use simpler words. */
-export function theCloseFor(door: Door, simplerWords?: boolean | null): string {
+/**
+ * THE CLOSE WHEN THE LINE BELOW IT IS NOT TRUE (fix plan 16 November, group 2). "Below is what I wrote down ... Is anything wrong?" is said when
+ * a card of lines follows and they have not just been asked. Two times it was said wrongly: after the read-back had already asked "Is anything
+ * wrong?" (it asked twice), and when the model could not read the conversation, so nothing was written down and the card was empty (the person
+ * was told to look at a box with nothing in it). The close is chosen from what is saved, and nothing here depends on the read.
+ */
+export type TheCloseKind = 'usual' | 'already asked' | 'read still to come';
+const THE_CLOSE_ALREADY_ASKED = 'That’s all for today. Below is what I wrote down from your answers.';
+const THE_CLOSE_ALREADY_ASKED_PLAIN = 'That is all for today. Below is what I wrote down from what you said.';
+const THE_CLOSE_READ_STILL_TO_COME = 'That’s all for today. Everything you said is saved, and your report will be ready as soon as Groundwork has finished reading it.';
+const THE_CLOSE_READ_STILL_TO_COME_PLAIN = 'That is all for today. Everything you said is saved. Your report will be ready as soon as Groundwork has finished reading it.';
+
+/** The close for this door, in the plainer form when the check-in is set to use simpler words. Only the web shows a card, so only the web close varies. */
+export function theCloseFor(door: Door, simplerWords?: boolean | null, kind: TheCloseKind = 'usual'): string {
+  if (door === 'web' && kind === 'already asked') return simplerWords ? THE_CLOSE_ALREADY_ASKED_PLAIN : THE_CLOSE_ALREADY_ASKED;
+  if (door === 'web' && kind === 'read still to come') return simplerWords ? THE_CLOSE_READ_STILL_TO_COME_PLAIN : THE_CLOSE_READ_STILL_TO_COME;
   return (simplerWords ? THE_CLOSE_ON_IN_SIMPLER_WORDS : THE_CLOSE_ON)[door] ?? THE_CLOSE;
 }
 
-const EVERY_CLOSE = [...Object.values(THE_CLOSE_ON), ...Object.values(THE_CLOSE_ON_IN_SIMPLER_WORDS)];
+const EVERY_CLOSE = [
+  ...Object.values(THE_CLOSE_ON), ...Object.values(THE_CLOSE_ON_IN_SIMPLER_WORDS),
+  THE_CLOSE_ALREADY_ASKED, THE_CLOSE_ALREADY_ASKED_PLAIN, THE_CLOSE_READ_STILL_TO_COME, THE_CLOSE_READ_STILL_TO_COME_PLAIN,
+];
 
 /**
  * EVERY QUESTION SENTENCE THE MODEL ASKED, TAKEN OUT BEFORE THE CLOSE IS ADDED.
@@ -83,8 +100,8 @@ const NOT_BEFORE_THE_CARD = [
 ];
 
 /** The closing turn, ending on the prototype's sentences. Said once, however often it is run. */
-export function endingOnTheClose(text: string, door: Door = 'web', simplerWords?: boolean | null): string {
-  const close = theCloseFor(door, simplerWords);
+export function endingOnTheClose(text: string, door: Door = 'web', simplerWords?: boolean | null, kind: TheCloseKind = 'usual'): string {
+  const close = theCloseFor(door, simplerWords, kind);
   let out = String(text ?? '');
   for (const c of EVERY_CLOSE) if (out.includes(c)) out = out.split(c).join(' ');
   for (const rx of NOT_BEFORE_THE_CARD) out = out.replace(rx, ' ');

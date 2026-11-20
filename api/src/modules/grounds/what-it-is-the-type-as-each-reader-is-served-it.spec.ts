@@ -107,12 +107,12 @@ describe('with Release 2 on', () => {
   });
 });
 
-describe('with Release 2 off, People and setup is served exactly as before', () => {
-  it('no reader is served a type, and the lead\'s page has exactly the keys it had', async () => {
+/* UPDATED 19 NOVEMBER (rest of the list): Release 2 has been always on since 15 November (Hafsah; release-2-collections.ts reads no column), so a column that says "off" changes nothing. These two tests pinned the October switch; they now pin that the column is not read, and that the page still holds the type. */
+describe('the old Release 2 switch is no longer read: a column that says off changes nothing', () => {
+  it('the lead is served the type, as everybody now is, and a read writes nothing', async () => {
     const { prisma, writes } = theFeeNotesCheckIn({ release2: false });
     const page: any = await read(prisma, 'u-wanjiru');
-    expect(Object.keys(page).sort()).toEqual(['howItRuns', 'joinedWithTheLink', 'kindOfWork', 'kindsOffered', 'on', 'organisationName', 'othersWithAccess', 'problems', 'roleDescribed', 'runsIt', 'sessions', 'view']);
-    expect(Object.keys(await read(prisma, 'u-admin'))).not.toContain('checkInType');
+    expect(Object.keys(page)).toContain('checkInType');
     expect(writes).toEqual([]);
   });
 
@@ -144,10 +144,9 @@ describe('the type is stored only when the lead confirms it', () => {
     expect(writes).toEqual([]);
   });
 
-  it('with Release 2 off, it is refused in a full sentence, and nothing is written', async () => {
-    const { prisma, writes } = theFeeNotesCheckIn({ release2: false });
-    await expect(grounds(prisma).confirmTheType(MUCHEMI_FEE_NOTES.id, 'u-wanjiru', { type: 'invoices or fee notes' })).rejects.toThrow('Choosing the type of a check-in is not open to your organisation yet, so nothing was changed.');
-    expect(writes).toEqual([]);
+  it('with the old Release 2 column off, it is stored all the same, because the switch is no longer read (always on since 15 November)', async () => {
+    const { prisma } = theFeeNotesCheckIn({ release2: false });
+    await expect(grounds(prisma).confirmTheType(MUCHEMI_FEE_NOTES.id, 'u-wanjiru', { type: 'invoices or fee notes' })).resolves.toMatchObject({ checkInType: 'invoices or fee notes' });
   });
 
   it('a check-in whose scenario has no types of its own keeps its kind of work, and nothing is written', async () => {

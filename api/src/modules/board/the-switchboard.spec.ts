@@ -23,8 +23,24 @@ describe('the table', () => {
       ['COLLECTIONS', 'loans', 'the loans board', 'release2CollectionsOn', 'Release 2, pull request 2', true],
       /* Release 2, pull request 3 draws the matter board (the-matter-board.ts), so its row is built now. */
       ['PULSE_CHECK', 'legal matter', 'the matter board', 'release2CollectionsOn', 'Release 2, pull request 3', true],
+      /* The tickets family, behind Release 4's switch (pilot, November 2026): support, operations and engineering share one board. */
+      ['OKR_ALIGNMENT', 'support tickets', 'the tickets board', 'release4TeamsOn', 'Release 4', true],
+      ['OKR_ALIGNMENT', 'incidents', 'the tickets board', 'release4TeamsOn', 'Release 4', true],
+      ['OKR_ALIGNMENT', 'engineering tasks', 'the tickets board', 'release4TeamsOn', 'Release 4', true],
+      /* The programme family, behind the same switch (pilot, November 2026): a trader programme, a government programme and a where-next workshop. */
+      ['COHORT_CHECK', 'trader programme', 'the programme board', 'release4TeamsOn', 'Release 4', true],
+      ['PULSE_CHECK', 'government programme', 'the programme board', 'release4TeamsOn', 'Release 4', true],
+      ['DISCOVERY', 'where next', 'the programme board', 'release4TeamsOn', 'Release 4', true],
+      /* The number-tracking family, behind the same switch (pilot, November 2026): a founder's own check-in and a quarter's metrics. */
+      ['PULSE_CHECK', 'founder check-in', 'the numbers board', 'release4TeamsOn', 'Release 4', true],
+      ['OKR_ALIGNMENT', 'quarter metrics', 'the numbers board', 'release4TeamsOn', 'Release 4', true],
+      /* The kinds that had a board but no row (15 November): a sales organisation, a leadership team, a funded project, client delivery. */
+      ['OKR_ALIGNMENT', 'sales organisation', 'the sales organisation board', 'release4TeamsOn', 'Release 4', true],
+      ['BOARD_STRATEGY', 'leadership team', 'the leadership board', 'release4TeamsOn', 'Release 4', true],
+      ['WORKPLAN_BUDGET', 'funded project', 'the project board', 'release5ProjectsOn', 'Release 5', true],
+      ['WORKPLAN_BUDGET', 'client delivery', 'the project board', 'release5ProjectsOn', 'Release 5', true],
     ]);
-    expect(CHECK_IN_TYPES).toEqual(['sales team', 'invoices or fee notes', 'loans', 'legal matter']);
+    expect(CHECK_IN_TYPES).toEqual(['sales team', 'invoices or fee notes', 'loans', 'legal matter', 'support tickets', 'incidents', 'engineering tasks', 'trader programme', 'government programme', 'where next', 'founder check-in', 'quarter metrics', 'sales organisation', 'leadership team', 'funded project', 'client delivery']);
   });
 
   it('collections reports are full, with the weekly numbers the release plan names', () => {
@@ -42,8 +58,7 @@ describe('what it picks', () => {
   it('a pair with no row picks today\'s board and reports, whatever the switches say', () => {
     for (const sw of [OFF, R2, { release1SalesBoardOn: true, release2CollectionsOn: true }]) {
       expect(whatTheSwitchboardPicks('PULSE_CHECK', null, sw)).toEqual({ board: 'today', reports: 'today', row: null, because: 'no row for this pair' });
-      expect(whatTheSwitchboardPicks('NEW_HIRE', 'sales team', sw).board).toBe('today');
-      expect(whatTheSwitchboardPicks('PULSE_CHECK', 'sales team', sw).board).toBe('today');
+      expect(whatTheSwitchboardPicks('PULSE_CHECK', 'a type nobody has', sw).board).toBe('today');
     }
   });
 
@@ -57,6 +72,9 @@ describe('what it picks', () => {
   it('Release 1\'s row picks the sales board only where Release 1\'s switch is on, as its own code already draws it', () => {
     expect(whatTheSwitchboardPicks('OKR_ALIGNMENT', 'sales team', { release1SalesBoardOn: true }).board).toBe('the sales board');
     expect(whatTheSwitchboardPicks('OKR_ALIGNMENT', 'sales team', R2).board).toBe('today');
+    /* The board follows the type, not the scenario: a sales team read as another situation still reaches its board, as the screen already drew it. */
+    expect(whatTheSwitchboardPicks('NEW_HIRE', 'sales team', { release1SalesBoardOn: true }).board).toBe('the sales board');
+    expect(whatTheSwitchboardPicks('NEW_HIRE', 'sales team', { release1SalesBoardOn: true }).reports).toBe('today');
   });
 
   /* Release 2, pull request 2 drew the collections board and its reports; pull request 3 draws the matter board, so all three rows are built. */
@@ -74,11 +92,13 @@ describe('the type of a check-in, from its own record, at read time', () => {
     expect(theTypeOnRecord(MUCHEMI_LITIGATION)).toEqual({ type: 'legal matter', confirmed: false, from: 'its kind of work' });
   });
 
-  it('a sales team the lead chose herself is a confirmed sales team; a sales org has no type until Release 4', () => {
+  it('a sales team the lead chose herself is a confirmed sales team; a sales org is a sales organisation', () => {
     expect(theTypeOnRecord({ scenario: 'OKR_ALIGNMENT', kindOfWork: 'sales team', kindOfWorkSetBy: 'lead' })).toEqual({ type: 'sales team', confirmed: true, from: 'its kind of work' });
-    expect(theTypeOnRecord({ scenario: 'OKR_ALIGNMENT', kindOfWork: 'sales org', kindOfWorkSetBy: 'lead' }).type).toBeNull();
+    expect(theTypeOnRecord({ scenario: 'OKR_ALIGNMENT', kindOfWork: 'sales org', kindOfWorkSetBy: 'lead' }).type).toBe('sales organisation');
     expect(theTypeOfAKind('asset loans')).toBe('loans');
-    expect(theTypeOfAKind('engineering release')).toBeNull();
+    /* The tickets family has types now (pilot, November 2026), so an engineering release reads as engineering tasks; a sales org still has none. */
+    expect(theTypeOfAKind('engineering release')).toBe('engineering tasks');
+    expect(theTypeOfAKind('sales org')).toBe('sales organisation');
   });
 
   it('a type the lead confirmed wins, and only a type the scenario offers counts', () => {
@@ -100,28 +120,30 @@ describe('what the board and the reports are told', () => {
     organization: { findUnique: jest.fn(async () => { if (sw === 'broken') throw new Error('away'); return sw; }) },
   });
 
-  it('nothing at all where Release 2 is off, or its row cannot be read', async () => {
-    expect(await whatTheSwitchboardServes(prismaFor(OFF), MUCHEMI_LITIGATION)).toBeNull();
-    expect(await whatTheSwitchboardServes(prismaFor({ release1SalesBoardOn: true, release2CollectionsOn: false }), MUCHEMI_LITIGATION)).toBeNull();
-    expect(await whatTheSwitchboardServes(prismaFor('broken'), MUCHEMI_LITIGATION)).toBeNull();
-    expect(await theSwitchesOf(prismaFor('broken'), 'org')).toEqual({});
+  it('serves the same where the stored switch says off, or its row cannot be read (every board is on)', async () => {
+    /* 15 November 2026: every board is on for every organisation. A stored false, a broken row or a missing organisation no longer hides it. */
+    const on = await whatTheSwitchboardServes(prismaFor(R2), MUCHEMI_LITIGATION);
+    expect(on).toMatchObject({ board: 'the matter board' });
+    expect(await whatTheSwitchboardServes(prismaFor(OFF), MUCHEMI_LITIGATION)).toEqual(on);
+    expect(await whatTheSwitchboardServes(prismaFor('broken'), MUCHEMI_LITIGATION)).toEqual(on);
+    expect(await theSwitchesOf(prismaFor('broken'), 'org')).toEqual({ release1SalesBoardOn: true, release2CollectionsOn: true, release4TeamsOn: true, release5ProjectsOn: true });
   });
 
   it('where Release 2 is on: the type, whether it was confirmed, and the board its row picks (the matter board for the litigation daily, read from its own record)', async () => {
-    expect(await whatTheSwitchboardServes(prismaFor(R2), MUCHEMI_LITIGATION)).toEqual({ type: 'legal matter', typeConfirmed: false, board: 'the matter board', reports: 'full' });
-    expect(await whatTheSwitchboardServes(prismaFor(R2), MUCHEMI_FEE_NOTES)).toEqual({ type: null, typeConfirmed: false, board: 'today', reports: 'today' });
+    expect(await whatTheSwitchboardServes(prismaFor(R2), MUCHEMI_LITIGATION)).toEqual({ type: 'legal matter', typeConfirmed: false, board: 'the matter board', drawnAs: 'a law firm matter', reports: 'full' });
+    expect(await whatTheSwitchboardServes(prismaFor(R2), MUCHEMI_FEE_NOTES)).toEqual({ type: null, typeConfirmed: false, board: 'today', drawnAs: null, reports: 'today' });
   });
 
-  it('the board carries no switchboard key at all where Release 2 is off', async () => {
+  it('the board carries the switchboard key whatever the stored switch says', async () => {
     const board = Object.assign(Object.create(BoardService.prototype), { prisma: prismaFor(OFF) });
-    expect(await (board as any).theSwitchboardsPick(MUCHEMI_LITIGATION)).toEqual({});
+    expect(await (board as any).theSwitchboardsPick(MUCHEMI_LITIGATION)).toMatchObject({ switchboard: { board: 'the matter board' } });
     const on = Object.assign(Object.create(BoardService.prototype), { prisma: prismaFor(R2) });
-    expect(await (on as any).theSwitchboardsPick(MUCHEMI_LITIGATION)).toEqual({ switchboard: { type: 'legal matter', typeConfirmed: false, board: 'the matter board', reports: 'full' } });
+    expect(await (on as any).theSwitchboardsPick(MUCHEMI_LITIGATION)).toEqual({ switchboard: { type: 'legal matter', typeConfirmed: false, board: 'the matter board', drawnAs: 'a law firm matter', reports: 'full' } });
   });
 
-  it('a session report is served exactly as before where Release 2 is off, and with the pick where it is on', async () => {
+  it('a session report is served with the pick whatever the stored switch says', async () => {
     const theReport = { inShort: 'Three fee notes moved this week.', sections: [] };
-    for (const [sw, expected] of [[OFF, undefined], [R2, { type: 'legal matter', typeConfirmed: false, board: 'the matter board', reports: 'full' }]] as const) {
+    for (const [sw, expected] of [[OFF, { type: 'legal matter', typeConfirmed: false, board: 'the matter board', drawnAs: 'a law firm matter', reports: 'full' }], [R2, { type: 'legal matter', typeConfirmed: false, board: 'the matter board', drawnAs: 'a law firm matter', reports: 'full' }]] as const) {
       const prisma: any = { ...prismaFor(sw as any), ground: { findUnique: jest.fn(async () => MUCHEMI_LITIGATION) } };
       const reports = Object.assign(Object.create(ReportsService.prototype), { prisma });
       reports.sessionReport = jest.fn(async () => ({ ...theReport }));

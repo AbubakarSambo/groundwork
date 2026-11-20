@@ -48,10 +48,10 @@ export function whatIDontKnowYet(
       const n = g.firstRound ?? 1;
       const askedOnce = g.asked < ASK_TWICE_THEN_LET_IT_GO;
       const known = g.certain === false
-        ? `Groundwork asked ${who} this in session ${n}, and nothing on record can confirm the answer yet.`
+        ? `Groundwork asked ${who} this in check-in ${n}, and nothing on record can confirm the answer yet.`
         : askedOnce
-          ? `Groundwork asked ${who} this in session ${n}, and ${theyHave} not answered it yet.`
-          : `Groundwork asked ${who} this in session ${n} and once more since, and ${theyHave} not answered it yet.`;
+          ? `Groundwork asked ${who} this in check-in ${n}, and ${theyHave} not answered it yet.`
+          : `Groundwork asked ${who} this in check-in ${n} and once more since, and ${theyHave} not answered it yet.`;
       const next = askedOnce
         ? 'They’ll be asked again in a later check-in.'
         : `It won’t be asked again. You could ask ${them} yourself.`;

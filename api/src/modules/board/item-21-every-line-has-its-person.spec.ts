@@ -17,7 +17,7 @@ const setup = {
 describe('how busy or moving, as each reader reads it', () => {
   it('Amina, who runs it, reads the wait without an "also" before nothing', async () => {
     const rows = (await boardAs(setup as any, ...AMINA)).busyOrMoving.eachPerson;
-    expect(rows.find((r: any) => r.participantId === 'p-rukia').says).toBe('Rukia Mwangi named 1 thing the work was waiting on, across 1 answered session.');
+    expect(rows.find((r: any) => r.participantId === 'p-rukia').says).toBe('Rukia Mwangi named 1 thing the work was waiting on, across 1 answered check-in.');
   });
   it.each([['Rukia, who checks in', RUKIA], ['Juma, an admin', JUMA]])('%s reads no "also" before nothing either', async (_w, reader) => {
     const b = await boardAs(setup as any, ...(reader as readonly [string, string]));

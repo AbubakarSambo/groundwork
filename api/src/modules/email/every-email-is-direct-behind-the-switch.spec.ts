@@ -96,7 +96,7 @@ async function everyEmail(on: boolean) {
   const out: Record<string, { subject: string; text: string } | null> = {};
   const lead = theFirstInsight(MONDAYS_REPORT, 'Sales team, Q4', { isTheLead: true })!;
   const rep = theFirstInsight(MONDAYS_REPORT, 'Sales team, Q4', { isTheLead: false })!;
-  await email.sendReportReady(GRACE, 'Sales team, Q4', 'http://localhost:5220/grounds/g/session/1', undefined, DROP, lead.subjectForTheLead ?? undefined, lead.lines, { url: 'http://localhost:5220/chat?about=g', label: 'I can help you do that' }, null);
+  await email.sendReportReady(GRACE, 'Sales team, Q4', 'http://localhost:5220/grounds/g/check-in/1', undefined, DROP, lead.subjectForTheLead ?? undefined, lead.lines, { url: 'http://localhost:5220/chat?about=g', label: 'I can help you do that' }, null);
   out.leadReport = read(GRACE);
   await email.sendReportReady(JOSEPH, 'Sales team, Q4', 'http://localhost:5220/invite?token=t', undefined, DROP, theSharedPictureSubject('Sales team, Q4', null, null), rep.lines, undefined, null);
   out.repReport = read(JOSEPH);
@@ -104,8 +104,6 @@ async function everyEmail(on: boolean) {
   out.invite = read(KEVIN);
   await email.sendParticipantCheckedIn(GRACE, 'Kevin Omondi', 'Sales team, Q4', 'http://localhost:5220/grounds/g', 0, undefined, { groundId: DROP, participantId: KEVINS_PLACE, checkInId: KEVINS_MONDAY });
   out.checkedIn = read(GRACE);
-  await email.sendActivationRevealReminder(KEVIN, 'Sales team, Q4', 'http://localhost:5220/grounds/g/report', new Date('2026-10-12T15:30:00Z'), 'Africa/Nairobi');
-  out.stillWaiting = read(KEVIN);
   await email.sendNudge(DAVID, 'Litigation team daily', 'http://localhost:5220/checkin/c', 'PULSE_CHECK', true, null, DAVIDS_PLACE);
   out.nudge = read(DAVID);
   await email.sendTheAnswerByEmail(GRACE, 'Thank you, your answer for Sales team, Q4 is in', THANKS_YOUR_ANSWER_IS_IN('Sales team, Q4'), null, null, '9594ee31-5f40-41d2-97fe-e87527405712');
@@ -140,7 +138,7 @@ describe('with the direct morning on, every email says what happened and nothing
       'Hi Kevin,',
       'Grace would like to know what you are seeing in Sales team, Q4.',
       'It is a short check-in, about ten minutes, where you say what is actually going on from where you sit.',
-      'The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Drop Access (test) stay private.',
+      'You see your own report straight away. The person who runs it shares a team report when it is ready. Nobody else reads your conversation.',
       'When you join, you go straight in and can check in at once.',
       'Sales rep',
       'Start my check-in →',
@@ -160,10 +158,6 @@ describe('with the direct morning on, every email says what happened and nothing
       'Everyone has now checked in.',
       'Read the check-in →',
     ].join('\n\n'));
-  });
-
-  it('Kevin, the report has been ready a while', () => {
-    expect(m.stillWaiting!.text).toBe(['Your report for Sales team, Q4 has been ready since Monday 12 October.', 'Read the report →', 'If you would rather not get the emails I decide to send, you can stop them here.'].join('\n\n'));
   });
 
   it('David, the reminder: the check-in, how long, and that he is the last', () => {
@@ -201,7 +195,7 @@ describe('the round digest (to Kevin, session 1 of "Sales team, Q4")', () => {
   const facts = { groundLabel: 'Sales team, Q4', sessionNumber: 1, participantCount: 5, accountsGiven: 5, needsAttention: 1, permalink: 'http://localhost:5220/grounds/g' };
   it('on: the link in a sentence, and one way to stop them, in the footer', () => {
     expect(digestBody(facts)).toBe([
-      'Everyone has checked in for session 1 of Sales team, Q4.',
+      'Everyone has checked in for check-in 1 of Sales team, Q4.',
       "5 people took part. One thing somebody is waiting for is still open, and the check-in's board shows who is waiting and for what.",
       "Read it on the check-in's board at http://localhost:5220/grounds/g",
     ].join('\n'));

@@ -49,7 +49,7 @@ describe('GW-BEHAVIOR-ENTRY-C: the assembled entry prompt carries the entry rule
     // never has to improvise about money. The FACT changed: it used to tell
     // people "additional sessions are $5 each", which is a price that does not
     // exist - and the chatbot was saying it out loud to new users.
-    expect(FAQ_PROMPT).toContain('Ten grounds are free');
+    expect(FAQ_PROMPT).toContain('A number of check-ins are free');
     expect(FAQ_PROMPT).toContain('participants are never charged at all');
     expect(FAQ_PROMPT).not.toMatch(/\$5/);
   });

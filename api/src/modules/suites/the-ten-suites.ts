@@ -10,8 +10,11 @@
  * switches on. No prototype screen shows them, so each one below asks only for something that suite's
  * own board, as the prototype draws it, cannot work without, in the fewest plain words. Three suites
  * need nothing first (the role map, to-dos, customers and deals), so they switch on straight away.
- * These are listed for Hafsah in docs/morning-report-ui.md (item 28). Nothing uses the answers until
- * each suite's board is built.
+ * These are listed for Hafsah in docs/morning-report-ui.md (item 28).
+ *
+ * WHO APPROVES is not asked here. Leave and time sheets go to the person's manager, then their manager's manager, then an admin,
+ * unless an admin set other approval steps (the-approval-steps.ts); the setup check (the-setup-check.ts) names anybody with no
+ * manager. The old "Who approves?" answer was kept and never read, so it is gone (Batch S, S1).
  */
 
 export type SuiteKey =
@@ -36,7 +39,8 @@ export interface Suite {
   questions: Question[];
 }
 
-const WHO_APPROVES = ['Their manager', 'An admin'];
+/** Who writes each review with the person: read by who-may-decide.ts (`theStepsFor('reviews')`). */
+const WHO_WRITES = ['Their manager', 'An admin'];
 /** The currencies spending may be in, by their short names, as the prototype writes "KES 18,000" (item 28). */
 export const CURRENCIES = ['KES', 'UGX', 'TZS', 'RWF', 'ETB', 'NGN', 'GHS', 'ZAR', 'USD', 'EUR', 'GBP'];
 
@@ -54,7 +58,6 @@ export const SUITES: readonly Suite[] = [
     line: 'People ask for time off in a check-in or chat. Groundwork checks their days left and who else is off.',
     questions: [
       { id: 'days', kind: 'number', ask: 'How many days of leave does each person have in a year?', min: 0, max: 365 },
-      { id: 'approver', kind: 'choice', ask: 'Who approves a request for time off?', options: WHO_APPROVES },
     ],
   },
   {
@@ -62,7 +65,6 @@ export const SUITES: readonly Suite[] = [
     line: 'People say how many hours they spent, and on which client or project. Used for billing only.',
     questions: [
       { id: 'clients', kind: 'lines', ask: 'Which clients or projects do people give their hours for? Write one on each line.' },
-      { id: 'approver', kind: 'choice', ask: 'Who approves each week’s hours?', options: WHO_APPROVES },
     ],
   },
   {
@@ -70,7 +72,7 @@ export const SUITES: readonly Suite[] = [
     line: 'A review every 6 months, built from what each person did and proved, with their own view beside it.',
     questions: [
       { id: 'every', kind: 'choice', ask: 'How often is each person reviewed?', options: ['Every 6 months', 'Every 12 months'] },
-      { id: 'writer', kind: 'choice', ask: 'Who writes each review with the person?', options: WHO_APPROVES },
+      { id: 'writer', kind: 'choice', ask: 'Who writes each review with the person?', options: WHO_WRITES },
     ],
   },
   {

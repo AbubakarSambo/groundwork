@@ -77,6 +77,18 @@ export interface CompanyLevel {
   fedBy: string | null;
 }
 
+export interface TheDesk {
+  documents: { key: string; title: string; summary: string | null; added: string | null }[];
+  directory: { id: string; name: string; jobTitle: string | null; team: string | null; reportsTo: string | null; phone: string | null }[];
+  mayAdd: boolean;
+}
+
+/** What somebody who does not work here is served instead: one plain sentence, and nothing of the organisation's. */
+export interface NotYourDesk {
+  name: string;
+  outsider: string;
+}
+
 export interface CompanyPage {
   name: string;
   line: string | null;
@@ -100,7 +112,9 @@ export interface CompanyPage {
    * and anybody who runs a check-in; absent for everyone else, not empty. Each item is the lead's
    * own sentence and where it came from, never a participant's words and never a private note.
    */
-  whatWeKeep?: { readBy: string; items: { id: string; kind: string; says: string; source: string }[] };
+  whatWeKeep?: { items: { id: string; kind: string; says: string; source: string }[] };
+  /** THE DESK (S7): the organisation's documents with their kept summaries, the directory, and whether this reader may add a document. */
+  desk?: TheDesk;
 }
 
 export interface OwnerDetail { name: string; title: string | null; linkedUserId: string | null }

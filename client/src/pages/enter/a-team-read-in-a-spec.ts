@@ -10,7 +10,10 @@ export function readLikeTheServer(pasted: string): { name: string | null; email:
     const parts = line.split(',').map((x) => x.trim()).filter(Boolean)
     const email = parts.find((p) => /@/.test(p)) ?? null
     const phone = parts.find((p) => /^\+?\d[\d ()-]{6,}\d$/.test(p)) ?? null
-    const name = parts.find((p) => p !== email && p !== phone) ?? null
+    const said = parts.find((p) => p !== email && p !== phone) ?? null
+    /* As the server reads it: beside an address, a name is two words or more ("oops, b@x.com" is not somebody called Oops), so
+       "Rita, rita@x.test" comes back with no name (staging check S10, which this stub hid by keeping every name). */
+    const name = said && (!email || /\s/.test(said)) ? said : null
     return { name, email: email ? email.toLowerCase() : null, phone }
   })
 }

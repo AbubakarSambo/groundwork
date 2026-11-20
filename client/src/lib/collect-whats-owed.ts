@@ -95,7 +95,6 @@ export interface TheCollectionsBoard {
     signalsSays: string | null
     whatWouldSettleIt: string
     whoDecides: string
-    groundworkDoesNotChoose: string
   }
 }
 

@@ -17,6 +17,8 @@ describe('the exact days, or nothing', () => {
     ['Can I take 2026-11-02 to 2026-11-04 as annual leave', '2026-11-02', '2026-11-04'],
     ['I need next week off', '2026-10-05', '2026-10-09'],
     ['I would like Monday to Wednesday off next week', '2026-10-05', '2026-10-07'],
+    /* Staging S5 (batch 2): Rita's "Monday 16 and Tuesday 17" was read as Tuesday alone. A weekday may carry its day of the month. */
+    ['I am off on Monday 5 and Tuesday 6', '2026-10-05', '2026-10-06'],
   ])('%s', (said, from, to) => {
     expect(readLeaveDates(said, TODAY)).toEqual({ startsOn: from, endsOn: to });
   });

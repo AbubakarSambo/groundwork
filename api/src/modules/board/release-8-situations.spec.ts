@@ -50,8 +50,8 @@ describe('Release 8: each remaining situation shows what it switches on, and not
   });
 
   it('an empty board says what will fill it (the approved journey, stage 10)', () => {
-    expect(theSituationBoard('PULSE_CHECK', {}, { runsIt: true })!.empty).toBe('Nothing is on this board yet. Change since last check-in, blockers and what keeps coming up appear here as your team’s check-ins come in.');
-    expect(theSituationBoard('SNAPSHOT', {}, { runsIt: false })!.empty).toBe('Nothing is on this board yet. What keeps being raised appears here as your team’s check-ins come in.');
+    expect(theSituationBoard('PULSE_CHECK', {}, { runsIt: true })!.empty).toBe('Nothing is on this board yet.');
+    expect(theSituationBoard('SNAPSHOT', {}, { runsIt: false })!.empty).toBe('Nothing is on this board yet.');
   });
 
   it('is not built for a situation a kit picture already draws', () => {

@@ -72,8 +72,9 @@ describe('with "more than 10 working days, the head of the team also approves" s
   it('the steps, by length: up to ten days the manager alone, above ten the manager and then the head of the team', () => {
     const answers = { rules: LONGER };
     expect([1, 10, 11, 15].map((days) => [days, theStepsFor('leave', answers, days)])).toEqual([
-      [1, [['manager', 'admin']]],
-      [10, [['manager', 'admin']]],
+      /* Batch S, S2: with no steps set, the step every request takes is the manager, then their manager, then an admin. */
+      [1, [['manager', 'managersManager', 'admin']]],
+      [10, [['manager', 'managersManager', 'admin']]],
       [11, [['manager', 'admin'], ['departmentHead', 'admin']]],
       [15, [['manager', 'admin'], ['departmentHead', 'admin']]],
     ]);

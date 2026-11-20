@@ -137,7 +137,7 @@ export function OpsQuarterPage() {
           months is furniture. */}
       {canOpen.data && !canOpen.data.ready && (
         <section
-          style={{ ...CARD, marginBottom: 14, borderLeft: '3px solid var(--gw-amber-t)' }}
+          style={{ ...CARD, marginBottom: 14 }}
         >
           <p style={LABEL}>Before this period opens</p>
           <p style={{ fontSize: 14, margin: '5px 0 0', lineHeight: '22px' }}>{canOpen.data.says}</p>

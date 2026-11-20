@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GroundAdminPage } from './GroundAdminPage'
@@ -72,20 +72,24 @@ describe('the header, when the check-in\'s time is up today', () => {
   })
 })
 
+/*
+ * CHANGED IN BATCH 2, GROUP 5 (Hafsah, item 42): the Check-in tab's session line ("The time given to this check-in ends in 2
+ * days.") went with the page in between. How long is left is said once, by the box on every tab, which these now read.
+ */
 describe('the header, with two days left', () => {
-  it('reads "The time given to this check-in ends in 2 days.", not "2 days remain."', async () => {
+  it('reads "Runs out in 2 days" once, and never "2 days remain."', async () => {
     renderPage(2)
-    await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
-    expect(await screen.findByText(/The time given to this check-in ends in 2 days\./)).toBeTruthy()
+    expect(await screen.findByText('Runs out in 2 days')).toBeTruthy()
+    expect(screen.getByText(/This check-in runs out in 2 days\./)).toBeTruthy()
     expect(screen.queryByText(/days remain/)).toBeNull()
+    expect(screen.queryByText(/The time given to this check-in ends in/)).toBeNull()
   })
 })
 
 describe('the header, with one day left', () => {
-  it('reads "...in 1 day.", not "...in 1 days." or "1 day remain."', async () => {
+  it('reads "Runs out tomorrow", not "in 1 days" or "1 day remain."', async () => {
     renderPage(1)
-    await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/i).length).toBeGreaterThan(0))
-    expect(await screen.findByText(/The time given to this check-in ends in 1 day\./)).toBeTruthy()
+    expect(await screen.findByText('Runs out tomorrow')).toBeTruthy()
     expect(screen.queryByText(/1 days\./)).toBeNull()
     expect(screen.queryByText(/day.*remain/)).toBeNull()
   })

@@ -1,16 +1,20 @@
+import { whoHasAnsweredOnTheBoard } from '@/lib/the-one-count'
 import { useACheckInTakes } from '@/lib/how-long-setup-takes'
-import { FoldTheRest } from './FoldTheRest'
 import { AddToTheProject } from './AddToTheProject'
+import { EveryTraderAndWhatShowsIt } from './TheLoansBoard'
+import { EveryTicketAndWhatShowsIt, EachAreaOfTheWork, theIncidentsBySiteAndType, isATicketsKind, theTicketGrid } from './TheTicketsBoard'
+import { WomenAndDropOff } from './TheProgrammeBoard'
+import { WhereNextRanked } from './TheWhereNextBoard'
 import { TheSituationsNote, WhatEachSidePromised, TheRisks, WhatHappenedDayByDay, WhatKeepsBeingRaised, TheSituationsWorkPlan, EachAccountSideBySide, KnownBelievedUnknown, whoAnsweredThisRound } from './TheSituationsSections'
 import { useMemo, useState, type ReactNode } from 'react'
 import { WhatIsClosing } from './TheMorningOnTheBoard'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Section, Panel, Tag, Button, EdgeList, EdgeRow } from '@/components/gw/ui'
+import { Section, Panel, Tag, Button, EdgeList, EdgeRow, Table, OnAPhoneShowFirst } from '@/components/gw/ui'
 import { apiClient } from '@/api/client'
 import { toast } from 'sonner'
 import { reportsApi } from '@/api/reports'
-import { EvidenceIndexSection, BusyOrMovingSection, ContradictionsSection, QuestionsForTheLeadSection, WhereTheCohortStandsSection, SupportGivenSection, ByWhoTheyAreSection, WhereTheyDisagreeSection, WhatTheSystemsShowSection, WhereWhatWasSaidAndTheSystemsDifferSection, WhereTheMatterStandsSection, WhatYouNeedToDecideSection, WhatChangedThisWeekSection, WhatEachLevelUnderstoodSection, WhatTheVisitLogShowsSection, TheCountiesSection } from '../TheSwitchboardsSections'
+import { EvidenceIndexSection, BusyOrMovingSection, ContradictionsSection, QuestionsForTheLeadSection, WhereTheCohortStandsSection, SupportGivenSection, ByWhoTheyAreSection, WhereTheyDisagreeSection, WhatTheSystemsShowSection, WhereWhatWasSaidAndTheSystemsDifferSection, WhereTheMatterStandsSection, TheOpeningSentences, WhatYouNeedToDecideSection, WhatChangedThisWeekSection, WhatEachLevelUnderstoodSection, WhatTheVisitLogShowsSection, TheCountiesSection, TheBoardsOwnReadSection } from '../TheSwitchboardsSections'
 import { aRealOrganisationName } from '@/lib/ask-name'
 import { groundsApi } from '@/api/grounds'
 import { isASalesKind } from '@/lib/a-sales-kind'
@@ -25,6 +29,9 @@ import {
 } from './ThePicturedSalesBoard'
 import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 import './pictured-board.css'
+import { TheBar, THE_LEGEND, CORRECT_IT_HERE } from './TheBar'
+import { theMetricRows, theMetricsPeopleSaid } from './TheMetricsBoard'
+import { SaidVersusDone, TheFoundersFigures } from './TheFounderBoard'
 
 /**
  * ANY BOARD AS PICTURED, SECTION BY SECTION, IN THE ORDER IT IS GIVEN (screen match, 16 October;
@@ -37,17 +44,18 @@ type Any = any
 
 export type APicturedSection =
   | 'lastSession' | 'headline' | 'closing' | 'assumes' | 'needsYou' | 'deals' | 'agreedAtTheStart' | 'changeSinceLast' | 'ninetyDays'
-  | 'history' | 'bothSeeIt' | 'teamToday' | 'blockers' | 'patterns' | 'reported' | 'whoCheckedIn' | 'overTime' | 'reports'
+  | 'history' | 'bothSeeIt' | 'teamToday' | 'blockers' | 'patterns' | 'reported' | 'womenAndDropOff' | 'whoCheckedIn' | 'overTime' | 'reports'
   | 'everySession' | 'otherBoards' | 'help' | 'otherTeams' | 'openIssues' | 'heading' | 'recommends' | 'otherRecords' | 'kindOfWork' | 'yourTeam'
   | 'participantNote' | 'priorities' | 'yourPart' | 'teamReport' | 'companyBoard' | 'template'
   | 'plan' | 'money' | 'stakeholders' | 'projectComingUp' | 'offTrack'
+  | 'readTop' | 'readEnd'
   | 'theDecision' | 'accounts' | 'knownBelievedUnknown'
   | 'suggestion' | 'theCase'
   | 'fillsIn' | 'agreedAndApart' | 'firstSteps' | 'mayBeRelevant'
-  | 'headlineTargets' | 'everySale' | 'byTeam' | 'themes'
+  | 'headlineTargets' | 'everySale' | 'byTeam' | 'themes' | 'saidVersusDone' | 'founderFigures'
   | 'cohortStands' | 'personPlaceOrModel' | 'supportGiven'
   | 'inShort' | 'byWhoTheyAre' | 'whereNextRanked' | 'whereTheyDisagree' | 'cantTellYou'
-  | 'question' | 'systemsShow' | 'saidAndSystemsDiffer'
+  | 'question' | 'systemsShow' | 'saidAndSystemsDiffer' | 'opening'
   | 'matterStands' | 'youNeedToDecide' | 'changedThisWeek'
   | 'eachLevel' | 'visitLog' | 'counties'
   | 'situationNote' | 'situationThemes' | 'obligations' | 'situationTimeline' | 'situationPlan' | 'risks'
@@ -68,7 +76,7 @@ function TheLastSessionIsDone({ b, groundId }: { b: Any; groundId: string }) {
     <Panel className="pb-panel-blue">
       <div className="pb-trace-decision">
         <div>
-          <p className="pb-card-h">The last session is done</p>
+          <p className="pb-card-h">The last check-in is done</p>
           <p className="gwui-panel-text">It’s yours to decide how this ends.</p>
         </div>
         <Button kind="primary" to={`/grounds/${groundId}/end`}>Decide how it ends</Button>
@@ -201,7 +209,8 @@ function WhereYouBothSeeItDifferently({ b, groundId }: { b: Any; groundId: strin
 
 /** "You’re a participant here. Amani runs it; you see the shared picture and your own part in full." */
 function YouAreAParticipantHere({ leadFirstName }: { leadFirstName: string | null }) {
-  return <p className="pb-trace-intro">{`You’re a participant here. ${leadFirstName ?? 'The person who set it up'} runs it; you see the shared picture and your own part in full.`}</p>
+  void leadFirstName
+  return null
 }
 
 /** The organisation's priorities, each with how it is going, as the Company page reads them to this reader. */
@@ -282,7 +291,7 @@ function TheDecision({ b }: { b: Any }) {
   return (
     <Panel className="pb-panel-blue">
       <span className="pb-sub">The decision</span>
-      <p className="pb-answer" style={{ margin: '6px 0 8px', fontSize: 24 }}>{question}</p>
+      <p className="pb-answer">{question}</p>
       <p className="gwui-panel-text">{`Each person answered on their own before any discussion. ${answered.size} of ${people.length} so far${missing.length ? `; ${missing.join(' and ')} ${missing.length === 1 && missing[0] !== 'you' ? 'hasn’t' : 'haven’t'} answered.` : '.'}`}</p>
     </Panel>
   )
@@ -336,7 +345,6 @@ function TheirCase({ b, groundId, personId }: { b: Any; groundId: string; person
   return (
     <Panel>
       <div className="pb-case">
-        <p className="gwui-panel-text">{`Everything on record about ${first}’s work in this check-in: what ${first} said, what ${first} kept to, and what keeps coming up.`}</p>
         <Button kind="primary" to={`/grounds/${groundId}/person/${person.id}`}>{`Open ${first}’s case`}</Button>
       </div>
     </Panel>
@@ -371,15 +379,27 @@ function aTargetsTone(word: string): 'proven' | 'concern' | 'attention' | 'plain
   return 'plain'
 }
 
-function TheHeadlineAndEachTarget({ b, withoutTargets = false }: { b: Any; withoutTargets?: boolean }) {
+function TheHeadlineAndEachTarget({ b, withoutTargets = false, withBar = false, barBesideEachTarget = false, aimBar = null }: { b: Any; withoutTargets?: boolean; withBar?: boolean; barBesideEachTarget?: boolean; aimBar?: { of: number; shown: number; said: number; label: string } | null }) {
   const h = b.headline
   const targets: Any[] = withoutTargets ? [] : (b.objectives ?? []).filter((o: Any) => !o.ownerParticipantId && o.target != null)
   if (!h && !targets.length) return null
+  /* The headline's bar is the first target's count against its target (salesorg.jpg: "87 of the 100"). What the deals on record show with a
+     document is filled; the rest of the count is somebody's word, ringed. Where the record holds no count, no bar is drawn. */
+  const aim = withBar ? targets.find((o) => o.count != null && Number(o.target) > 0) ?? null : null
+  const shown = aim?.fromTheDeals && aim.fromTheDeals.proven != null && Number(aim.fromTheDeals.sold) === Number(aim.count) ? Number(aim.fromTheDeals.proven) : 0
+  const said = aim ? Math.max(0, Number(aim.count) - shown) : 0
   return (
     <div className="pb-head">
       <div>
         {h?.question && <p className="pb-q">{h.question}</p>}
         {h?.answer && <p className="pb-answer">{h.answer}</p>}
+        {aimBar && <TheBar of={aimBar.of} shown={aimBar.shown} said={aimBar.shown ? 0 : aimBar.said} label={aimBar.label} />}
+        {aim && (
+          <>
+            <TheBar of={Number(aim.target)} shown={shown} said={said} label={`${Number(aim.count).toLocaleString('en-GB')} of ${Number(aim.target).toLocaleString('en-GB')}${shown ? `, ${shown.toLocaleString('en-GB')} shown by a document` : ''}.`} />
+            {said > 0 && <p className="pb-foot">{THE_LEGEND}</p>}
+          </>
+        )}
       </div>
       {targets.length > 0 && (
         <Panel>
@@ -390,6 +410,10 @@ function TheHeadlineAndEachTarget({ b, withoutTargets = false }: { b: Any; witho
                 <b>{whatATargetCounts(o.name)}</b>
                 {/* A limit not to go over reads as the picture's "7 of ≤ 5"; Release 4 only, so every other board reads as before. */}
                 <span className="pb-sub">{`${withItsUnit(o.count ?? 0, b.releaseFourTeams ? o.unit : null)} of ${b.releaseFourTeams && o.journey?.direction === 'down' ? '≤ ' : ''}${withItsUnit(o.target, b.releaseFourTeams ? o.unit : null)}`}</span>
+                {/* A founder's money, runway and counts are their own words: each count against its target is one ringed bar, never filled by a word. */}
+                {barBesideEachTarget && o.count != null && Number(o.target) > 0 && (
+                  <span className="pb-target-bar"><TheBar form="stage" of={Number(o.target)} said={Number(o.count)} label={`${whatATargetCounts(o.name)}, ${Number(o.count).toLocaleString('en-GB')} of ${Number(o.target).toLocaleString('en-GB')}, said and not shown by a document`} /></span>
+                )}
               </div>
               {o.stands?.word ? <Tag tone={aTargetsTone(o.stands.word)}>{o.stands.word}</Tag> : o.notSettled ? <Tag tone="plain">Not settled</Tag> : null}
               {/* Release 4: each person's own target of the same name, under the team's (the lead and an admin only; the server decides). */}
@@ -419,12 +443,7 @@ function TheHeadlineAndEachTarget({ b, withoutTargets = false }: { b: Any; witho
 const THE_TABLE: Record<string, { heading: string; item: string; who: string }> = {
   'sales team': { heading: 'Every sale, and what shows it', item: 'Deal', who: 'Rep' },
   'sales org': { heading: 'Every sale, and what shows it', item: 'Deal', who: 'Rep' },
-  'engineering release': { heading: 'Every task, and what shows it', item: 'Task', who: 'Owner' },
-  'support desk': { heading: 'Every ticket, and what shows it', item: 'Ticket', who: 'Agent' },
-  'distribution operations': { heading: 'Every incident, and what shows it', item: 'Incident', who: 'Owner' },
-  'trader training programme': { heading: 'Every trader, and what shows it', item: 'Group', who: 'Officer' },
   "founder's own check-in": { heading: 'Every item, and what shows it', item: 'Item', who: 'Whose' },
-  'asset loans': { heading: 'Every trader, and what shows it', item: 'Loan', who: 'Trader' },
 }
 
 /** Every piece of work in one table, each with what shows it; select one for its detail. */
@@ -436,11 +455,11 @@ function EverySaleAndWhatShowsIt({ section, today, groundId, kindOfWork, me }: {
   const open = rows.find((r) => r.id === openId) ?? null
   if (!rows.length) return null
   return (
-    <Section heading={t.heading} note={kindOfWork === 'asset loans' ? 'Filled is proven; ringed is their word' : 'Ringed is someone’s word; filled is proven. Select one for its detail'}>
+    <Section heading={t.heading} >
       <div className="pb-legend"><span><span className="pb-dot pb-dot-proof" /> Proof shows it</span><span><span className="pb-dot pb-dot-said" /> Someone said it</span></div>
       <div className="pb-rows pb-sale-table" role="table" aria-label="Every sale">
         <div className="pb-sale-row pb-sale-head" role="row"><span>{t.item}</span><span>{t.who}</span><span>Stage now</span><span>What shows it</span><span>Next</span></div>
-        {rows.map((r) => (
+        <OnAPhoneShowFirst items={rows} render={(r) => (
           <button type="button" role="row" key={r.id} className={`pb-sale-row${r.id === openId ? ' pb-sale-open' : ''}`} onClick={() => setOpenId(r.id)}>
             <span><b>{r.name}</b>{r.kind === 'deal' && !r.due && r.group !== 'won' && <span className="pb-sub">No date</span>}</span>
             <span>{me && r.ownerParticipantId === me ? 'You' : r.owner ? firstName(r.owner) : 'Nobody yet'}</span>
@@ -448,11 +467,11 @@ function EverySaleAndWhatShowsIt({ section, today, groundId, kindOfWork, me }: {
             <span>{r.mark === 'proven' ? 'A document backs it' : `${firstName(r.saidBy ?? r.owner)} said it`}</span>
             <span className="pb-sale-next">{r.next ?? r.nextSays ?? ''}</span>
           </button>
-        ))}
+        )} />
       </div>
       {open && <TheOpenDeal r={open} groupNote={null} today={today} groundId={groundId} onChange={null} />}
       {!open?.theirRead && <div style={{ textAlign: 'center' }}><Button kind="quiet" to={`/grounds/${groundId}`}>Not right? Tell the check-in</Button></div>}
-      <p className="pb-foot">Something here wrong? Anyone can correct what’s about their own work in their check-in; the change and the original both show here.</p>
+      <p className="pb-foot">{CORRECT_IT_HERE}</p>
     </Section>
   )
 }
@@ -462,7 +481,10 @@ function EverySaleAndWhatShowsIt({ section, today, groundId, kindOfWork, me }: {
  * helpdesk would count, and the causes people gave in their check-ins. Groundwork holds no helpdesk numbers yet, so
  * the board's own sentence says so, rather than any count.
  */
-function VolumeAndCauses({ b }: { b: Any }) {
+function VolumeAndCauses({ b, now }: { b: Any; now: Date }) {
+  /* Ops: the incidents on record that say their site and their type, counted; nothing where none does. */
+  const heat = b.kindOfWork === 'distribution operations' ? theIncidentsBySiteAndType(b, now) : []
+  if (heat.length) return <Section heading="Incidents by site and type, last 8 weeks" note="The shape of the work"><Panel><IncidentsBySiteAndType rows={heat} /></Panel></Section>
   const t = (b.workRecords ?? []).find((x: Any) => x.section === 'Themes')
   if (!t) return null
   return (
@@ -474,7 +496,7 @@ function VolumeAndCauses({ b }: { b: Any }) {
             ? <IncidentsBySiteAndType rows={t.rows ?? []} />
           : b.releaseFourTeams && (t.rows ?? []).some((r: Any) => typeof r.fields?.count === 'number')
             ? <TheVolumeAndItsCauses rows={t.rows ?? []} />
-            : (t.rows ?? []).map((r: Any) => <p className="gwui-panel-text" key={r.id}><b>{r.name}</b> {r.said ?? ''}</p>)}
+            : <OnAPhoneShowFirst items={t.rows ?? []} render={(r: Any) => <p className="gwui-panel-text" key={r.id}><b>{r.name}</b> {r.said ?? ''}</p>} />}
       </Panel>
     </Section>
   )
@@ -511,24 +533,24 @@ function TheVolumeAndItsCauses({ rows }: { rows: Any[] }) {
   return (
     <div className="pb-volume">
       <div className="pb-volume-tiles">
-        {counts.map((r) => (
+        <OnAPhoneShowFirst items={counts} first={6} render={(r) => (
           <div key={r.id} className="pb-volume-tile">
             <b className="pb-volume-n">{Number(r.fields.count).toLocaleString('en-GB')}</b>
             <span>{r.name}</span>
             <span className="pb-sub"><span className={`pb-dot ${r.mark === 'proven' ? 'pb-dot-proof' : 'pb-dot-said'}`} /> {r.fields.from ?? ''}</span>
           </div>
-        ))}
+        )} />
       </div>
       {causes.length > 0 && (
         <div className="pb-volume-causes">
           <p className="pb-card-h">Causes, from the check-ins</p>
-          {causes.map((r) => (
+          <OnAPhoneShowFirst items={causes} render={(r) => (
             <div key={r.id} className="pb-cause">
               <div className="pb-cause-top"><span>{r.name}</span><b>{r.fields.count}</b></div>
               <span className="pb-cause-bar" style={{ width: `${Math.round((r.fields.count / most) * 100)}%` }} />
               {r.said && <span className="pb-sub">{r.said}</span>}
             </div>
-          ))}
+          )} />
         </div>
       )}
     </div>
@@ -542,14 +564,13 @@ function TheVolumeAndItsCauses({ rows }: { rows: Any[] }) {
 function OnePersonAPlaceOrTheModel({ b }: { b: Any }) {
   const all: Any[] = (b.patterns ?? []).filter((x: Any) => x.whatHappened)
   const nameOf = new Map<string, string>((b.participants ?? []).map((q: Any) => [q.id, firstName(q.name)]))
+  if (!all.length) return null
   return (
-    <Section heading="One person, a place, or the model?" note="Patterns named after three check-ins in a row">
+    <Section heading="What keeps coming up">
       <Panel>
-        {all.length ? all.map((x) => (
+        {all.map((x) => (
           <div className="pb-kv" key={x.id}><b>{x.yours ? 'You' : nameOf.get(x.participantId) ?? ''}</b><span>{x.whatHappened}</span></div>
-        )) : <p className="gwui-panel-text">Nothing has come up three check-ins in a row yet.</p>}
-        {/* Said to whoever runs it; somebody in the cohort judges none of it (browser test, 20 October). */}
-        {b.canEditFrame ? <p className="pb-foot">Whether each is about one person, a place or the way the loans are set up is yours to judge. Groundwork does not label it.</p> : null}
+        ))}
       </Panel>
     </Section>
   )
@@ -558,10 +579,12 @@ function OnePersonAPlaceOrTheModel({ b }: { b: Any }) {
 
 /* ------------------------------------------------------------------ people asked once, each on their own (mvnext-board.jpg) */
 
+/* The people the check-in counts and who of them answered: the one count's own (lib/the-one-count.ts), never worked out again from the grid. */
 const answeredOf = (b: Any) => {
-  const rows: Any[] = (b.checkInGrid?.rows ?? []).filter((r: Any) => !r.managingOnly)
-  const answered = rows.filter((r) => Object.values(r.cells ?? {}).includes('done'))
-  return { rows, answered }
+  const { counted, answered: who } = whoHasAnsweredOnTheBoard(b)
+  const name = new Map<string, string>([...(b.checkInGrid?.rows ?? []), ...(b.participants ?? []).map((x: Any) => ({ participantId: x.id, name: x.name }))].map((r: Any) => [r.participantId, r.name]))
+  const rows: Any[] = counted.map((id) => ({ participantId: id, name: name.get(id) ?? '' }))
+  return { rows, answered: rows.filter((r) => who.has(r.participantId)) }
 }
 
 /** The report's own picture, and how many answered. */
@@ -572,32 +595,9 @@ function InShort({ b, groundId }: { b: Any; groundId: string }) {
   return (
     <Section heading="In short">
       <Panel>
-        <p className="pb-read">{picture ?? 'The report is not written yet. It is written from the answers once they are in.'}</p>
+        <p className="pb-read">{picture ?? 'The report is not written yet.'}</p>
         {rows.length > 0 && <p className="gwui-panel-text">{`${answered.length} of ${rows.length} answered, each on their own, once.`}</p>}
       </Panel>
-    </Section>
-  )
-}
-
-
-/** What people named, grouped by what it is about, with who named it. */
-function WhereNextRanked({ b }: { b: Any }) {
-  const t = (b.workRecords ?? []).find((x: Any) => x.section === 'Themes')
-  const rows: Any[] = t?.rows ?? []
-  if (!rows.length) return null
-  const byTheme = new Map<string, Any[]>()
-  for (const r of rows) { const k = r.fields?.theme ?? 'Named'; byTheme.set(k, [...(byTheme.get(k) ?? []), r]) }
-  return (
-    <Section heading="Where next, ranked" note="From how many said it, and who">
-      <div className="pb-rows">
-        {[...byTheme.entries()].sort((a, c) => c[1].length - a[1].length).map(([theme, rs]) => (
-          <div className="pb-row pb-row-change" key={theme}>
-            <b>{theme}</b>
-            <span>{rs.map((r) => r.name).join('; ')}</span>
-            <span className="pb-sub">{`Named by ${rs.map((r) => firstName(r.owner)).filter(Boolean).join(', ')}`}</span>
-          </div>
-        ))}
-      </div>
     </Section>
   )
 }
@@ -610,14 +610,12 @@ function WhatThisCantTellYou({ b }: { b: Any }) {
   const missing = rows.filter((r) => !done.has(r.participantId))
   const names = missing.map((r) => firstName(r.name))
   const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0]
+  /* Only who has not answered, and only when somebody has not: the rest was a disclaimer that said the same on every board. */
+  if (!missing.length) return null
   return (
     <Section heading="What this can’t tell you">
       <Panel>
-        <p className="gwui-panel-text">
-          {missing.length
-            ? `${list} ${missing.length === 1 ? 'has' : 'have'} not answered, so what ${missing.length === 1 ? 'they' : 'they'} would say is not here. And what people said they would do was said, not tested.`
-            : 'Everybody asked has answered. What people said they would do was said, not tested.'}
-        </p>
+        <p className="gwui-panel-text">{`${list} ${missing.length === 1 ? 'has' : 'have'} not checked in, so what they would say is not here.`}</p>
       </Panel>
     </Section>
   )
@@ -629,24 +627,61 @@ function ByTeam({ b }: { b: Any }) {
   if (!a || a.state !== 'filled' || !(a.areas ?? []).length) return null
   return (
     <Section heading={a.heading === 'By area' && b.kindOfWork === 'engineering release' ? 'By area of work' : (a.heading ?? 'By team')}>
-      <div className="pb-cards4">
-        {a.areas.map((x: Any) => (
-          <Panel key={x.area}>
-            <p className="pb-card-h">{x.area}</p>
-            <p className="gwui-panel-text">{x.says}</p>
-          </Panel>
-        ))}
-      </div>
+      {/* One open table, a row for each team (Hafsah, 13 November 2026). Only what the record holds is drawn: how many records are in the team and the sentence the server sends. The prototype's "on pace" and "team read" have no data behind them, so they are not drawn. */}
+      <Table
+        caption={a.heading === 'By area' && b.kindOfWork === 'engineering release' ? 'By area of work, one row for each' : `${a.heading ?? 'By team'}, one row for each`}
+        phone="stack"
+        columns={[
+          { key: 'area', header: a.heading === 'By team' ? 'Team' : 'Where', rowHeader: true, width: '28%' },
+          /* A column of zeros says nothing the sentence beside it does not (salesorg-1440: 'On record: 0' in every row). */
+          ...(a.areas.some((x: Any) => Number(x.records) > 0) ? [{ key: 'records', header: 'On record', width: '14%' }] : []),
+          { key: 'says', header: 'What the record holds' },
+        ]}
+        rows={a.areas.map((x: Any) => ({ area: x.area, records: x.records, says: x.says }))}
+      />
     </Section>
   )
 }
 
 /* ------------------------------------------------------------------ a check-in nobody has answered yet (faith90-board.jpg) */
 
+/**
+ * A BOARD WITH NOTHING ON IT SAYS WHAT IS MISSING AND WHAT WOULD FILL IT (board assessment, 15 November: an empty board was nine
+ * hundred pixels of nothing). Decided from the record alone: nobody has answered, no piece of work and no figure is on record.
+ * Whether anybody was asked is the people list, so the words are true in both cases.
+ */
+export function theBoardHasNothingOnIt(b: Any): boolean {
+  const { answered } = answeredOf(b)
+  const anyWork = ((b.workRecords ?? []) as Any[]).some((s) => (s.rows ?? []).length > 0)
+  const anyFigure = ((b.objectives ?? []) as Any[]).some((o) => o.count != null) || b.whatTheSystemsShow?.state === 'filled'
+  /* A funded project's plan, money, stakeholders and what is coming up are on the board with nobody checked in (boards pass 4, defect 15). */
+  const p = b.project ?? {}
+  const anyPlan = (b.workPlan ?? []).length > 0 || (p.plan ?? []).length > 0 || (p.money?.months ?? []).length > 0 || (p.stakeholders ?? []).length > 0 || (p.comingUp ?? []).length > 0
+  /* A programme across levels draws what each level understood, the visits and the counties; with none of those, nothing else is drawn, whoever has checked in (boards pass 4, defect 1). */
+  const anyProgramme = (b.whatEachLevelUnderstood?.levels ?? []).length > 0 || (b.whatTheVisitLogShows?.numbers ?? []).length > 0 || (b.theCounties?.counties ?? []).length > 0
+  const aProgrammeWithNoneOfIt = b.kindOfWork === 'a government programme' && !anyWork && !anyProgramme
+  return aProgrammeWithNoneOfIt || (answered.length === 0 && !anyWork && !anyFigure && !anyPlan && !anyProgramme)
+}
+function NothingOnTheBoardYet({ b }: { b: Any }) {
+  const asked = answeredOf(b).rows.length
+  return (
+    <Section heading="Nothing is on this board yet">
+      <Panel>
+        <p className="gwui-panel-text">
+          {answeredOf(b).answered.length > 0
+            ? 'People have checked in, but nobody has said yet what the aim means to them, what each county has reached or where the visits were. They will appear here when somebody does.'
+            : asked === 0
+            ? 'Nobody has checked in yet. Add the people and send the invitations.'
+            : asked === 1 ? 'One person has been invited and nobody has checked in yet.' : `${asked} people have been invited and nobody has checked in yet.`}
+        </p>
+      </Panel>
+    </Section>
+  )
+}
+
 function TheBoardFillsIn({ line }: { line: string | null }) {
   return (
     <div className="pb-fills-in">
-      <h2>The board fills in after the first check-ins.</h2>
       {line && <p>{line}</p>}
     </div>
   )
@@ -670,13 +705,10 @@ function AgreedOnDayOneAndSetUpApart({ b, personId }: { b: Any; personId: string
               </div>
             ))}
           </div>
-          <p className="pb-foot">Groundwork compares everything against it.</p>
         </Panel>
       ) : <div />}
       <div className="pb-apart">
         <h3 className="pb-card-h">Getting set up is kept apart</h3>
-        <p>{`${first ? `${first}’s` : 'Their'} papers, laptop, training and meetings are on the onboarding board. Nothing on that board ever counts here, or in the decision at day 90.`}</p>
-        <p>{`If something was never set up for ${first || 'them'}, it goes on that board as someone else’s job.`}</p>
         <Link to="/suite/onboard" className="pb-wide-btn">See the onboarding board</Link>
       </div>
     </div>
@@ -730,7 +762,7 @@ function ThisMayBeRelevant({ b, groundId }: { b: Any; groundId: string }) {
 
 /* ------------------------------------------------------------------ the board */
 
-export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null; order: APicturedSection[]; personId?: string | null; seeTheSamePictures?: string | null; leadFirstName?: string | null; reportHeading?: string; unknown?: string[]; /** Release 4: every section after this one is folded under its own heading (FoldTheRest); Ask and what Groundwork recommends stay open. */ foldAfter?: APicturedSection }) {
+export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null; order: APicturedSection[]; personId?: string | null; seeTheSamePictures?: string | null; leadFirstName?: string | null; reportHeading?: string; unknown?: string[]; }) {
   const { b } = p
   const now = useMemo(() => new Date(), [])
   const deals = (b.workRecords ?? []).find((s: Any) => s.section === 'Deal grid' && (s.rows ?? []).some((r: Any) => r.kind === 'deal')) ?? null
@@ -750,11 +782,12 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     teamToday: () => <TheTeamToday b={b} deals={deals} today={isoDay(now)} groundId={p.groundId} />,
     blockers: () => <Blockers b={b} groundId={p.groundId} />,
     patterns: () => <WhatKeepsComingUp b={b} />,
-    reported: () => <ReportedAgainstCriteria b={b} heading={b.byArea?.state === 'filled' && b.byArea.heading === 'By team' && (b.byArea.areas ?? []).length > 1 ? `Reported vs criteria met, across ${b.byArea.areas.length} teams` : b.kindOfWork === 'trader training programme' ? 'Drop-off by session' : b.kindOfWork && !isASalesKind(b.kindOfWork) ? 'Reported vs evidence, stage by stage' : undefined} />,
+    womenAndDropOff: () => <WomenAndDropOff b={b} />,
+    reported: () => <ReportedAgainstCriteria b={b} heading={b.byArea?.state === 'filled' && b.byArea.heading === 'By team' && (b.byArea.areas ?? []).length > 1 ? `Reported vs criteria met, across ${b.byArea.areas.length} teams` : b.kindOfWork && !isASalesKind(b.kindOfWork) ? 'Reported vs evidence, stage by stage' : undefined} />,
     whoCheckedIn: () => <WhoCheckedIn b={b} />,
     overTime: () => p.overTime,
     reports: () => <Reports b={b} groundId={p.groundId} sessionRows={p.sessionRows} navigate={p.navigate} now={now} />,
-    everySession: () => <Link to={`/grounds/${p.groundId}?tab=report`} className="pb-wide-btn">Every session</Link>,
+    everySession: () => <Link to={`/grounds/${p.groundId}?tab=report`} className="pb-wide-btn">Every check-in</Link>,
     otherBoards: () => <TheOtherBoardsYouAreIn groundId={p.groundId} />,
     help: () => <HelpNobodyMentioned b={b} />,
     otherTeams: () => <WaitingOnOtherTeams groundId={p.groundId} />,
@@ -779,19 +812,25 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     knownBelievedUnknown: () => <KnownBelievedUnknown b={b} unknown={p.unknown ?? []} leadFirstName={p.leadFirstName ?? null} />,
     suggestion: () => <TheSuggestion b={b} groundId={p.groundId} personId={p.personId ?? null} />,
     theCase: () => <TheirCase b={b} groundId={p.groundId} personId={p.personId ?? null} />,
-    headlineTargets: () => <TheHeadlineAndEachTarget b={b} />,
-    question: () => <TheHeadlineAndEachTarget b={b} withoutTargets />,
+    headlineTargets: () => <TheHeadlineAndEachTarget b={b} withBar={b.kindOfWork === 'sales org' || b.kindOfWork === "founder's own check-in" || b.kindOfWork === 'trader training programme'} barBesideEachTarget={b.kindOfWork === "founder's own check-in"} />,
+    saidVersusDone: () => <SaidVersusDone b={b} />,
+    founderFigures: () => <TheFoundersFigures b={b} />,
+    /* The headline's bar is the first metric that has both a figure and a goal somebody stated: filled where a system shows it, ringed where a person said it. */
+    question: () => <TheHeadlineAndEachTarget b={b} withoutTargets aimBar={b.kindOfWork === 'MarketView Q4' ? theMetricRows(b.whatTheSystemsShow?.state === 'filled' ? (b.whatTheSystemsShow.numbers ?? []) : [], theMetricsPeopleSaid(b)).find((m) => m.bar)?.bar ?? null : null} />,
     eachLevel: () => <WhatEachLevelUnderstoodSection data={b.whatEachLevelUnderstood} />,
     visitLog: () => <WhatTheVisitLogShowsSection data={b.whatTheVisitLogShows} />,
-    counties: () => <TheCountiesSection data={b.theCounties} />,
+    counties: () => <TheCountiesSection data={b.theCounties} rows={theTicketGrid(b)?.rows} />,
+    opening: () => <TheOpeningSentences data={b.theOpening} />,
+    readTop: () => <TheBoardsOwnReadSection data={b.theBoardsOwnRead} place="top" />,
+    readEnd: () => <TheBoardsOwnReadSection data={b.theBoardsOwnRead} place="end" />,
     matterStands: () => <WhereTheMatterStandsSection data={b.whereTheMatterStands} />,
     youNeedToDecide: () => <WhatYouNeedToDecideSection data={b.whatYouNeedToDecide} />,
     changedThisWeek: () => <WhatChangedThisWeekSection data={b.whatChangedThisWeek} />,
-    systemsShow: () => <WhatTheSystemsShowSection data={b.whatTheSystemsShow} />,
+    systemsShow: () => <WhatTheSystemsShowSection data={b.whatTheSystemsShow} rows={theMetricsPeopleSaid(b)} />,
     saidAndSystemsDiffer: () => <WhereWhatWasSaidAndTheSystemsDifferSection data={b.whereWhatWasSaidAndTheSystemsDiffer} />,
-    everySale: () => { const grid = (b.workRecords ?? []).find((x: Any) => (x.section === 'Deal grid' || (x.section === 'Work plan' && b.kindOfWork === "founder's own check-in")) && (x.rows ?? []).length); return grid ? <EverySaleAndWhatShowsIt section={grid} today={isoDay(now)} groundId={p.groundId} kindOfWork={b.kindOfWork ?? null} me={b.myParticipantId ?? null} /> : null },
-    byTeam: () => <ByTeam b={b} />,
-    themes: () => <VolumeAndCauses b={b} />,
+    everySale: () => { const grid = (b.workRecords ?? []).find((x: Any) => (x.section === 'Deal grid' || (x.section === 'Work plan' && b.kindOfWork === "founder's own check-in")) && (x.rows ?? []).length); return grid ? (b.kindOfWork === 'asset loans' ? <EveryTraderAndWhatShowsIt section={grid} groundId={p.groundId} me={b.myParticipantId ?? null} /> : isATicketsKind(b.kindOfWork) ? <EveryTicketAndWhatShowsIt section={grid} kindOfWork={b.kindOfWork} groundId={p.groundId} me={b.myParticipantId ?? null} /> : <EverySaleAndWhatShowsIt section={grid} today={isoDay(now)} groundId={p.groundId} kindOfWork={b.kindOfWork ?? null} me={b.myParticipantId ?? null} />) : null },
+    byTeam: () => (isATicketsKind(b.kindOfWork) ? <EachAreaOfTheWork b={b} /> : <ByTeam b={b} />),
+    themes: () => <VolumeAndCauses b={b} now={now} />,
     cohortStands: () => <WhereTheCohortStandsSection data={b.whereTheCohortStands} />,
     personPlaceOrModel: () => <OnePersonAPlaceOrTheModel b={b} />,
     supportGiven: () => <SupportGivenSection data={b.supportGiven} />,
@@ -817,20 +856,8 @@ export function ThePicturedBoard(p: PicturedBoardProps & { line?: string | null;
     questionsForTheLead: () => (b.questionsForTheLead ?? []).length ? <QuestionsForTheLeadSection rows={b.questionsForTheLead} /> : null,
     companyBoard: () => <div style={{ textAlign: 'center' }}><Button kind="quiet" to="/company">See the company board</Button></div>,
   }
-  const at = p.foldAfter ? p.order.indexOf(p.foldAfter) : -1
-  if (at >= 0) {
-    const open: APicturedSection[] = ['recommends', 'kindOfWork']
-    const head = p.order.slice(0, at + 1)
-    const rest = p.order.slice(at + 1)
-    return (
-      <div className="pb">
-        {head.map((k) => <FragmentKey key={k}>{draw[k]()}</FragmentKey>)}
-        <FoldTheRest>{rest.filter((k) => !open.includes(k)).map((k) => <FragmentKey key={k}>{draw[k]()}</FragmentKey>)}</FoldTheRest>
-        {rest.filter((k) => open.includes(k)).map((k) => <FragmentKey key={k}>{draw[k]()}</FragmentKey>)}
-      </div>
-    )
-  }
-  return <div className="pb">{p.order.map((k) => <FragmentKey key={k}>{draw[k]()}</FragmentKey>)}</div>
+  /* Every section is drawn open, in its order: a list of people, deals, targets or deliveries is a table the reader can see, never a folded line (Hafsah, 13 November 2026, ruling on the pilot's 12 November). */
+  return <div className="pb">{!p.order.includes('participantNote') && theBoardHasNothingOnIt(b) && <NothingOnTheBoardYet b={b} />}{p.order.map((k) => <FragmentKey key={k}>{draw[k]()}</FragmentKey>)}</div>
 }
 function FragmentKey({ children }: { children: ReactNode }) { return <>{children}</> }
 
@@ -840,7 +867,8 @@ function FragmentKey({ children }: { children: ReactNode }) { return <>{children
  */
 export function TheTemplateSection({ b }: { b: Any }) {
   const t = b?.template
-  if (!t) return null
+  /* Whatever is missing from it, a half-drawn template would say "undefined" in a sentence; it is drawn whole or not at all. */
+  if (!t?.name || !t.unitOfWork || !t.rollsUpBy || !t.stallRule || !Array.isArray(t.ladder)) return null
   return (
     <Section heading="How this team’s work moves" note={`From the ${t.name} template`}>
       <p className="t-small">{`One piece of work is ${String(t.unitOfWork).charAt(0).toLowerCase()}${String(t.unitOfWork).slice(1)}. It rolls up by ${String(t.rollsUpBy).charAt(0).toLowerCase()}${String(t.rollsUpBy).slice(1)}. It has stalled when: ${String(t.stallRule).charAt(0).toLowerCase()}${String(t.stallRule).slice(1)}.`}</p>

@@ -42,19 +42,3 @@ describe('the open link', () => {
     expect(await screen.findByText('You have been asked this.')).toBeTruthy()
   })
 })
-
-describe('"Last thing: who are you?" says what Done waits for (U.6 review)', () => {
-  it('names what is still missing', async () => {
-    const { whatIsStillNeeded } = await import('./AnswerFirstPage')
-    expect(whatIsStillNeeded('', '', '')).toBe('Add your name, your organisation and your email to finish.')
-    expect(whatIsStillNeeded('Ama', '', 'a@x.test')).toBe('Add your organisation to finish.')
-    expect(whatIsStillNeeded('Ama', 'Coamana', '')).toBe('Add your email to finish.')
-  })
-  it('and says it on the screen while Done is greyed out', async () => {
-    const { readFileSync } = await import('fs')
-    const { join } = await import('path')
-    const src = readFileSync(join(__dirname, 'AnswerFirstPage.tsx'), 'utf8')
-    expect(src).toContain('{whatIsStillNeeded(name, org, email)}')
-    expect(src).toMatch(/disabled=\{busy \|\| !email\.trim\(\) \|\| !name\.trim\(\) \|\| !org\.trim\(\)\}/)
-  })
-})

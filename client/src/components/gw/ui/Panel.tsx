@@ -1,4 +1,5 @@
 import React from 'react'
+import { PartBoundary } from './PartBoundary'
 import './gw-ui.css'
 
 /**
@@ -22,7 +23,7 @@ export function Panel({ as, pad = true, heading, children, ...rest }: {
 } & React.HTMLAttributes<HTMLElement>) {
   const { className, ...elRest } = rest
   const cls = ['panel', pad && 'pad', className].filter(Boolean).join(' ')
-  const inner = <>{heading && <h3 className="t-h3" style={{ marginBottom: 8 }}>{heading}</h3>}{children}</>
+  const inner = <>{heading && <h3 className="t-h3" style={{ marginBottom: 8 }}>{heading}</h3>}<PartBoundary>{children}</PartBoundary></>
   if (as === 'section') return <section className={cls} {...elRest}>{inner}</section>
   return <div className={cls} {...elRest}>{inner}</div>
 }

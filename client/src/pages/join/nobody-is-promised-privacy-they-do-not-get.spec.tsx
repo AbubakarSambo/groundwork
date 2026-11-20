@@ -22,14 +22,13 @@ describe('what the page promises before somebody types', () => {
   })
 
   /*
-   * THE SECOND VERSION, IN HER WORDS. My first fix named the organiser - "Hafsah reads what you
-   * write, and it goes into one report for everybody". Hafsah, 23 September 2026, replaced it: the
-   * person answering does not need to be told who is reading over their shoulder, they need to know
-   * the answers are pooled and that they get the result. Both sentences are honest; hers is the one
-   * that also gives them a reason to spend the five minutes.
+   * CHANGED 15 NOVEMBER 2026 (Hafsah, audit of the check-in pages, row 18): the paragraph under the question, "The answers help
+   * everybody get a shared picture, and you will receive the consolidated report at the end", is cut to one sentence about what
+   * comes back. "Shared picture" and "consolidated" are not words anybody says, and the Start button before the box is gone.
    */
-  it('and says the answers are pooled and what comes back', () => {
-    expect(CODE).toMatch(/The answers help everybody get a\s*\n?\s*shared picture, and you will receive the consolidated report at the end/)
+  it('says only what comes back, in plain words', () => {
+    expect(CODE).toMatch(/You will get the report at the end\./)
+    expect(CODE).not.toMatch(/shared picture|consolidated/)
   })
 
   /* Changed in F5: the length is the measured one, from its one owner (how-long-setup-takes.ts: a team member's check-in, median
@@ -40,29 +39,22 @@ describe('what the page promises before somebody types', () => {
   })
 })
 
+/*
+ * CHANGED 15 NOVEMBER 2026 (Hafsah, audit row 20): the three things are still all asked of everybody, with no second path (her decision
+ * of 23 September), but one at a time in the chat as Groundwork's own lines, not as a form. The behaviour is pinned in
+ * AnswerFirstPage.inTheChat.spec.tsx; what stays here is that they are still sent together.
+ */
 describe('what it collects at the end', () => {
-  it('asks for the organisation as well as the name and the address', () => {
-    expect(CODE).toMatch(/id="open-org"/)
-    expect(CODE).toMatch(/id="open-email"/)
-    expect(CODE).toMatch(/id="open-name"/)
-  })
-
-  /*
-   * AND OF EVERYBODY, NOT ONLY OF WHOEVER WANTED THE REPORT.
-   *
-   * There were two paths here - "yes send it" asked for a name and an address, "no thanks" asked
-   * for a name optionally - which meant the organiser's record of whose answer this is depended on
-   * a question about mailing. Hafsah, 23 September 2026: "we need their email and names when they
-   * checkin and put their emails." One path, three fields, all needed.
-   */
-  it('and asks all three of everybody, with no second path', () => {
+  it('asks for the organisation as well as the name and the address, with no second path', () => {
+    expect(CODE).toMatch(/org: 'And which organisation are you with\?'/)
+    expect(CODE).toMatch(/email: 'Where should I send the report\?'/)
+    expect(CODE).toMatch(/name: 'Last thing\. What is your name\?'/)
     expect(CODE).not.toMatch(/id="open-org-2"/)
     expect(CODE).not.toMatch(/Do you want the report\?/)
-    expect(CODE).toMatch(/disabled=\{busy \|\| !email\.trim\(\) \|\| !name\.trim\(\) \|\| !org\.trim\(\)\}/)
   })
 
-  it('and sends it', () => {
-    expect(CODE).toMatch(/openLinkApi\.finish\(key,[\s\S]{0,160}?org\.trim\(\) \|\| undefined\)/)
+  it('and sends all three', () => {
+    expect(CODE).toMatch(/openLinkApi\.finish\(key, email\.trim\(\), name\.trim\(\) \|\| undefined, true, org\.trim\(\) \|\| undefined\)/)
   })
 })
 
@@ -70,12 +62,12 @@ describe('when a hundred people start at once', () => {
   it('says so, in words somebody can act on', () => {
     expect(CODE).toMatch(/status === 429/)
     expect(CODE).toMatch(/A lot of people are starting at the same time/)
-    expect(CODE).toMatch(/nothing is lost/)
+    expect(CODE).toMatch(/Nothing is lost/)
   })
 
   /* The half that was actually broken: the message existed and had nowhere to render. */
   it('and renders the reason on the screen the button is on', () => {
-    const reading = CODE.slice(CODE.indexOf("{phase === 'reading' &&"), CODE.indexOf("{(phase === 'talking'"))
+    const reading = CODE.slice(CODE.indexOf("{phase === 'reading' &&"), CODE.indexOf("{(phase === 'talking' || phase === 'address') &&"))
     expect(reading).toMatch(/\{problem && \(/)
     expect(reading).toMatch(/role="alert"/)
   })

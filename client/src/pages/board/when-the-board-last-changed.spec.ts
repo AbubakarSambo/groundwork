@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { whenItRanOutOfTime, whenTheBoardLastChangedInShort, whenTheBoardLastChanged, THE_BOARD_ONLY_CHANGES } from './when-the-board-last-changed'
+import { whenItRanOutOfTime, whenTheBoardLastChangedInShort, whenTheBoardLastChanged } from './when-the-board-last-changed'
 
 /**
  * THE STALLED SENTENCE CARRIES THE REAL END DATE WHEN THE RECORD HAS ONE (join-outoftime.txt:
@@ -39,16 +39,17 @@ describe('whenTheBoardLastChangedInShort', () => {
   })
 })
 
-describe('with the direct morning on', () => {
-  it('says the day and the time, and nothing about how the board works', () => {
-    expect(whenTheBoardLastChanged('2026-10-20T05:00:00.000Z', true)).toMatch(/^Last updated on Tuesday 20 October at \d{1,2}(am|pm)\.$/)
-    expect(whenTheBoardLastChanged('2026-10-20T05:00:00.000Z', true)).not.toContain(THE_BOARD_ONLY_CHANGES)
+/* Changed in batch 2, group 6 (Hafsah, 4 November, issue 40): the status line stays and its explanation goes, for everybody. */
+describe('the line on the board', () => {
+  it('says the day and the time, and nothing about how the board works, switch or no switch', () => {
+    for (const direct of [true, false]) {
+      const said = whenTheBoardLastChanged('2026-10-20T05:00:00.000Z', direct)
+      expect(said).toMatch(/^Last updated on Tuesday 20 October at \d{1,2}(am|pm)\.$/)
+      expect(said).not.toContain('The board only changes')
+    }
   })
   it('says nothing where the record holds no time', () => {
     expect(whenTheBoardLastChanged(null, true)).toBe('')
-  })
-  it('off, it is the sentence it always was', () => {
-    expect(whenTheBoardLastChanged('2026-10-20T05:00:00.000Z', false)).toContain(THE_BOARD_ONLY_CHANGES)
-    expect(whenTheBoardLastChanged(null)).toBe(THE_BOARD_ONLY_CHANGES)
+    expect(whenTheBoardLastChanged(null)).toBe('')
   })
 })

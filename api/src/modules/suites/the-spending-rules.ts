@@ -1,6 +1,6 @@
 import type { PrismaService } from '../prisma/prisma.service';
 import type { ARule, Step } from './who-may-decide';
-import { stepsFrom, RULE_IN_WORDS, MAX_STEPS } from './the-approval-steps';
+import { stepsFrom, RULE_IN_WORDS, MAX_STEPS, THE_LINE_STEP } from './the-approval-steps';
 
 /**
  * THE SPENDING RULES AN ADMIN SETS (decision 85, item 2; build step 9 of
@@ -73,7 +73,7 @@ export const SPEND_RULES_REFUSED = {
   sameCategoryTwice: 'Two categories have the same name. Give each category its own name.',
   badEvidence: 'Say whether a receipt or a quote is needed, and above which amount, from 0 up.',
   badCalled: 'Say what a category is called in 2 to 30 letters, for example "project".',
-  badThresholds: `Give up to ${MAX_THRESHOLDS} amounts, each 0 or more and each only once, and for each between one and ${MAX_STEPS} steps chosen from the person's manager, the head of their team, whoever holds their team's budget, finance, HR, the chief executive, an admin and a person in the organisation.`,
+  badThresholds: `Give up to ${MAX_THRESHOLDS} amounts, each 0 or more and each only once, and for each between one and ${MAX_STEPS} steps chosen from the person's manager, their manager's manager, the head of their team, whoever holds their team's budget, finance, HR, the chief executive, an admin and a person in the organisation.`,
 };
 
 const amountIn = (x: unknown, lo = 0): number | null => (typeof x === 'number' && Number.isFinite(x) && x >= lo && x <= MAX_AMOUNT ? x : null);
@@ -128,11 +128,30 @@ export function spendRulesFrom(answers: unknown): SpendRules {
   return out;
 }
 
+/**
+ * THE SPENDING RULES AS THEY RUN (Batch S, round 2, T6). The steps by amount are the one owner of who approves at each amount. A
+ * card saved before 2 November, or an organisation set up by a seed or an import, kept its limit and "Who approves anything above
+ * that?" in the spending suite's own answers and never in the steps, so its KES 120,000 went to the manager alone. Where the steps
+ * have no card row, those answers are read as the lowest amount and its step, the same as the card writes them now.
+ */
+export function theSpendRulesOf(rulesAnswers: unknown, suiteAnswers?: unknown): SpendRules {
+  const rules = spendRulesFrom(rulesAnswers);
+  if (theCardsRow(rules)) return rules;
+  const a = (suiteAnswers && typeof suiteAnswers === 'object' && !Array.isArray(suiteAnswers) ? suiteAnswers : {}) as Record<string, unknown>;
+  const first = (...xs: unknown[]) => xs.find((x) => x !== undefined && x !== null && x !== '');
+  const n = first(a.limit, a.managerLimit, a.approvalLimit, a.threshold);
+  const limit = typeof n === 'number' ? n : typeof n === 'string' && n.trim() !== '' && Number.isFinite(Number(n)) ? Number(n) : null;
+  if (limit === null || limit < 0) return rules;
+  const above = first(a.above, a.headApprover, a.approverAbove);
+  return withTheCardsAnswers(rules, { limit, above: typeof above === 'string' ? above : null });
+}
+
 export async function readSpendRules(prisma: PrismaService, organizationId: string): Promise<SpendRules> {
-  const row = await (prisma as any).organizationSuite
-    ?.findUnique({ where: { organizationId_suite: { organizationId, suite: SPEND_RULES_ROW } }, select: { answers: true } })
+  const read = (suite: string) => (prisma as any).organizationSuite
+    ?.findUnique({ where: { organizationId_suite: { organizationId, suite } }, select: { answers: true } })
     ?.catch?.(() => null);
-  return spendRulesFrom(row?.answers);
+  const [row, spend] = await Promise.all([read(SPEND_RULES_ROW), read('spend')]);
+  return theSpendRulesOf(row?.answers, spend?.answers);
 }
 
 /**
@@ -265,8 +284,8 @@ function whoApproves(steps: Step[], names: TheRouteNames): string {
   return steps.map((s, i) => `${i ? 'then ' : ''}${ruleWords(s[0], names)} approves${i ? '' : ' first'}${orElse(s, names)}`).join(', and ');
 }
 
-/** The steps below the lowest amount: the person's manager, or else an admin. */
-export const THE_STEPS_BELOW_EVERY_AMOUNT: Step[] = [['manager', 'admin']];
+/** The steps below the lowest amount: the step every request takes (the person's manager, else their manager's manager, else an admin). */
+export const THE_STEPS_BELOW_EVERY_AMOUNT: Step[] = [THE_LINE_STEP];
 
 /**
  * THE WHOLE ROUTE OF A REQUEST TO SPEND, said where it is set: who approves at each amount, and then finance's part. "Up to KES 10,000,
@@ -315,6 +334,18 @@ export function withTheCardsAnswers(rules: SpendRules, given: { limit?: unknown;
   const next: SpendRules = { ...rules };
   if (thresholds.length) next.thresholds = thresholds; else delete next.thresholds;
   return next;
+}
+
+/**
+ * THE STEPS BY AMOUNT FOR ONE PERSON, when an admin set how much their manager approves on their own (who-a-rule-is-for.ts,
+ * `spend.limit`): up to that amount, their manager; above it, the steps set for the lowest amount (the settings card's "Who
+ * approves anything above that?"), or an admin when there are none; above any higher amount, that amount's steps, as for everyone.
+ */
+export function withTheLimitFor(rules: { thresholds?: AThreshold[] | null }, limit: number | null | undefined): { thresholds?: AThreshold[] } {
+  const t = rules.thresholds ?? [];
+  if (limit == null) return { thresholds: t };
+  const above = (theCardsRow({ thresholds: t }) ?? t[0])?.steps ?? ([['admin']] as Step[]);
+  return { thresholds: [{ above: limit, steps: above }, ...t.filter((x) => x.above > limit)] };
 }
 
 /** The rules said back to the admin who sets them, in full sentences: the route first, then categories and evidence. */

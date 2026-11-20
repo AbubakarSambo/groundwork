@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { readsAsAnAdmin, theAdminsWhoAlsoReadYourPeopleNotes } from './who-may-read-this-check-in';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { theReferencesTemplateFor, theCollectionsReferencesTemplate, type TheReferencesTemplate } from './the-references-template';
@@ -279,7 +280,7 @@ async function theEvidencePage(prisma: any, ground: any, view: string, mine: any
   /* The lead and an admin read every piece; a person only what they added; anybody else none. At the read. */
   if (view === 'reader') return null;
   if (view === 'member' && !mine) return null;
-  const timeZone = ground.organization?.timeZone || 'Africa/Lagos';
+  const timeZone = ground.organization?.timeZone || (await theOrganisationsZone(prisma, ground.organizationId).catch(() => null)) || 'Africa/Lagos';
   const where: any = { groundId: ground.id };
   if (view === 'member') where.participantId = mine.id;
   else if (query.person) where.participantId = query.person;
@@ -337,7 +338,7 @@ export async function readReferencesAndResources(
   if (!ground) throw new NotFoundException('That check-in could not be found, so go back to your check-ins and open it from the list.');
 
   const { view, mine, isLead } = await whoIsReading(prisma, ground, input.userId);
-  const timeZone = ground.organization?.timeZone || 'Africa/Lagos';
+  const timeZone = ground.organization?.timeZone || (await theOrganisationsZone(prisma, ground.organizationId).catch(() => null)) || 'Africa/Lagos';
   const leadName = fullName(ground.initiator) || null;
   const leadFirst = firstOf(leadName) || 'the person who runs it';
   const { template, collections } = await theTemplateHere(prisma, ground);

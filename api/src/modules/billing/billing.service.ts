@@ -71,6 +71,9 @@ export const REMINDED_TODAY_ALREADY = 'You already reminded your admins today. Y
 export const NOTHING_IS_PAUSED = 'This check-in is not paused, so there is nobody to remind.';
 export const NO_ADMIN_TO_REMIND = 'Your organisation has no admin to remind yet. Tell the person who runs this check-in.';
 
+/** The one sentence for a spent balance (Hafsah, 15 November). It names no number, because the free count is an admin setting. */
+export const USED_THE_FREE_CHECK_INS = "You've used your free check-ins. Upgrade to carry on.";
+
 export const PAUSED_UNTIL_THEY_SUBSCRIBE = 'This check-in is paused until your team subscribes. Only an admin can do that, and your answers so far are kept.';
 
 export function paidSeatLimitMessage(planLabel: string, cap: number): string {
@@ -314,7 +317,7 @@ export class BillingService {
         // the reassuring half out loud: the person who hits this wall is
         // usually a participant who never chose to pay and never chose to
         // cancel, and their record is safe.
-        reason: 'This check-in is beyond your ten free ones. Resubscribe to continue checking in - the report and board stay available either way.',
+        reason: USED_THE_FREE_CHECK_INS,
         sessionsBalance: 0,
         freeExtensionAvailable: !(org?.freeExtensionUsed ?? false),
       };
@@ -322,7 +325,7 @@ export class BillingService {
 
     const balance = ground?.sessionsBalance ?? 0;
     if (balance > 0) return { allowed: true, sessionsBalance: balance };
-    return { allowed: false, reason: 'This check-in is beyond your ten free ones. Resubscribe to continue checking in - the report and board stay available either way.', sessionsBalance: 0 };
+    return { allowed: false, reason: USED_THE_FREE_CHECK_INS, sessionsBalance: 0 };
   }
 
   /** Free ground limit for organizations without a subscription. */

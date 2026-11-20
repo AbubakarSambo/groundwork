@@ -47,7 +47,7 @@ const BOARD = {
         { who: 'Rukia Otieno', view: 'Rukia Otieno’s opening brief said nine shops had signed.' },
         { who: 'Wairimu Kamau', view: 'Your opening brief said twelve.' },
       ],
-      atStake: 'Whether the target needs revising this session.',
+      atStake: 'Whether the target needs revising this check-in.',
     }],
     agreements: ['The deadline is 20 December.'],
     centralQuestion: null, pointer: '',

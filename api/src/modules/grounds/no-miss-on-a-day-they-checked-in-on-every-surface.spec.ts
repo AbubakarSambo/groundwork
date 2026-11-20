@@ -40,7 +40,7 @@ describe('Kevin, who answered every working day', () => {
     const r: any = { mayReadEveryone: false, meId: 'p-kevin', personMayBeRead: () => true, nameOf: () => 'You', aColleague: () => 'A colleague' };
     const [mine] = thePersonHistory([{ id: 'p-kevin', managingOnly: false }], [], [], KEVIN as any, r, true);
     const text = [mine.says, ...mine.sessions.map((s) => s.says)].join('\n');
-    expect(mine.says).toBe('You have answered 5 sessions, and have made no commitment on record yet.');
+    expect(mine.says).toBe('You have answered 5 check-ins, and have made no commitment on record yet.');
     expect(text).not.toMatch(/missed|did not check in before it closed/);
   });
 

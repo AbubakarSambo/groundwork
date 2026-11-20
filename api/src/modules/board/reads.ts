@@ -527,10 +527,10 @@ export function shapeOf(bySession: Map<number, number>, lastSession: number): st
     const gapStart = gapEnd - longestGap + 1;
     const recovered = late > 0 && gapEnd < lastSession;
     return recovered
-      ? `Nothing checkable from session ${gapStart} to ${gapEnd}, then picked up again. The middle of this period is the part worth asking about, not the total.`
-      : `Nothing checkable since session ${gapStart}.`;
+      ? `Nothing checkable from check-in ${gapStart} to ${gapEnd}, then picked up again. The middle of this period is the part worth asking about, not the total.`
+      : `Nothing checkable since check-in ${gapStart}.`;
   }
-  if (early > 0 && late === 0) return 'Contributed early, nothing checkable in the most recent sessions.';
+  if (early > 0 && late === 0) return 'Contributed early, nothing checkable in the most recent check-ins.';
   if (early === 0 && late > 0) return 'Slow start, contributing now.';
   if (early > 0 && late > 0) return 'Steady across the period.';
   return null;
@@ -1026,7 +1026,7 @@ export function buildCoverage(input: ReadInput, nameOf: NameOf): CoverageResult 
     const base = !remitDefined
       ? 'The role was never defined, so there is no boundary to measure against.'
       : kind === CoverageKind.LEAKING && leakingOut.length >= 2
-        ? `${leakingOut.length} time${leakingOut.length === 1 ? '' : 's'} across ${risingPeriods} session${risingPeriods === 1 ? '' : 's'}, someone else described doing work that sits in this remit, against ${own} thing${own === 1 ? '' : 's'} named here directly.`
+        ? `${leakingOut.length} time${leakingOut.length === 1 ? '' : 's'} across ${risingPeriods} check-in${risingPeriods === 1 ? '' : 's'}, someone else described doing work that sits in this remit, against ${own} thing${own === 1 ? '' : 's'} named here directly.`
         : kind === CoverageKind.LEAKING
           ? `${longestQuietRun} check-ins in a row added nothing specific to the record, and nothing is blocking them. The work has not stopped existing, so it is worth asking where it is going.`
           : kind === CoverageKind.ABSORBING

@@ -1,3 +1,6 @@
+import { whenTheseOrganisationsPaused } from '../billing/the-trial-grace';
+import { theMattersSheActsOn } from '../outstanding/what-an-assistant-acts-on';
+import { theQuietHoursNow } from '../../common/the-clock';
 import { eachQuestionOnce, aDirectionPastItsDay } from './today-says-each-thing-once';
 import { theInvoicesLateToRaiseFor } from '../board/raising-invoices-on-time';
 import { Injectable, Optional } from '@nestjs/common';
@@ -8,7 +11,6 @@ import { connectWhatsAppFor, YOU_CAN_ALSO_CHECK_IN_ON_WHATSAPP } from '../whatsa
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { BoardService } from '../board/board.service';
 import { whatTheBoardAsksOfTheLead } from './what-the-board-asks-of-the-lead';
-import { isShut } from './a-ground-that-has-ended';
 import { isNotLetInYet, whoIsNotLetInYet } from './who-an-admin-did-not-let-in';
 import { whoHasNotJoinedYet } from './invited-not-joined-yet';
 import { theFreeTrialLine } from './the-free-trial-on-today';
@@ -82,7 +84,8 @@ export class WhatNeedsYouService {
   private async whatTheirBoardsAsk(userId: string, here: any[]): Promise<Need[]> {
     const board = this.moduleRef?.get(BoardService, { strict: false });
     if (!board) return [];
-    const mine = here.filter((g) => !!g.initiatorId && g.initiatorId === userId && !isShut(g.status) && !g.closedAt && !g.resolvedAt);
+    /* A check-in that has ended is still read: while its board lists something for the lead, Today cannot say "Nothing needs you right now" (run 8, day 89). The board decides what it lists. */
+    const mine = here.filter((g) => !!g.initiatorId && g.initiatorId === userId);
     const read = await Promise.all(mine.map((g) =>
       Promise.resolve().then(() => board.get(g.id, userId)).then((b) => whatTheBoardAsksOfTheLead(b, g)).catch(() => [] as Need[]),
     ));
@@ -94,7 +97,7 @@ export class WhatNeedsYouService {
   private async aDirectionPastItsDayFor(organizationId: string, role: string): Promise<Need[]> {
     if (role !== 'ADMIN') return [];
     const d = await Promise.resolve((this.prisma as any).directionVersion?.findFirst?.({ where: { organizationId }, orderBy: { version: 'desc' }, select: { now: true, setAt: true } })).catch(() => null);
-    const need = aDirectionPastItsDay(d ?? null, organizationId, new Date());
+    const need = aDirectionPastItsDay(d ?? null, organizationId, theQuietHoursNow());
     return need ? [need] : [];
   }
 
@@ -109,7 +112,7 @@ export class WhatNeedsYouService {
   private async reviewsFor(userId: string, organizationId: string): Promise<Need[]> {
     if (!this.reviews) return [];
     const reader = { userId, organizationId };
-    const now = new Date();
+    const now = theQuietHoursNow();
     const [mine, next] = await Promise.all([
       this.reviews.mine(reader).catch(() => []),
       this.reviews.board(reader, now).then((b) => b.next).catch(() => []),
@@ -306,7 +309,8 @@ export class WhatNeedsYouService {
     }
     /* On approved leave today (week 23): their own check-in says the round does not wait for them. Dates only. */
     const awayUntil = (await whoIsAwayOn(this.prisma, [userId], organizationId).catch(() => new Map<string, string>())).get(userId) ?? null;
-    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...(await this.whatTheirBoardsAsk(userId, here as any[])), ...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance, ...hours, ...letIn, ...directionPast]);
+    const pausedFrom = (await whenTheseOrganisationsPaused(this.prisma, [organizationId], new Date()).catch(() => new Map<string, Date>())).get(organizationId) ?? null;
+    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil, pausedFrom }, waiting.map((w) => ({ ...w, organizationId })), theQuietHoursNow(), [...(await this.whatTheirBoardsAsk(userId, here as any[])), ...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance, ...hours, ...letIn, ...directionPast]);
     /* A net: no address stands in for a name in any sentence on Today (week 12c). */
     const called = new Map<string, string>();
     for (const g of here as any[]) {
@@ -339,6 +343,9 @@ export class WhatNeedsYouService {
       told.needs = [...asNeeds, ...told.needs];
       told.count = told.needs.length;
     }
+    /* What they act on for each person they act for, first, with a plain line saying whose it is (Fatima round 2, D3). Nobody else has these rows. */
+    const actsFor = await theMattersSheActsOn(this.prisma as any, { organizationId, userId, now: theQuietHoursNow() }).catch(() => [] as Need[]);
+    if (actsFor.length) { told.needs = [...(actsFor as Need[]), ...told.needs]; told.count = told.needs.length; }
     const onWhatsApp = await this.checkInOnWhatsAppFor(userId, email, organizationId, told.needs);
     if (onWhatsApp) (told as any).checkInOnWhatsApp = onWhatsApp;
     /* An admin whose organisation is on its free trial reads one line about it (Hafsah, 12 October). Once the free month has ended,
@@ -366,6 +373,8 @@ export class WhatNeedsYouService {
       }
     }
     delete (told as any).lineGroundId;
+    /* The day Today is read on, from the one clock, so a screen run on the test clock says the same day the server does (in production this is the real time). */
+    (told as any).now = theQuietHoursNow().toISOString();
     return forTheLead ? { ...told, forTheLead } : told;
   }
 
@@ -375,7 +384,7 @@ export class WhatNeedsYouService {
   }
 
   /** The person's own missed check-ins, as Today items (decision 136): their words, a way to check in now, and a place to give a reason. */
-  async missedCheckInsOf(userId: string, organizationId: string, now: Date = new Date()): Promise<Need[]> {
+  async missedCheckInsOf(userId: string, organizationId: string, now: Date = theQuietHoursNow()): Promise<Need[]> {
     const told = await whatThePersonIsToldAboutMissing(this.prisma as any, userId, organizationId, now);
     return told.map((t) => {
       const [first, ...rest] = t.text.split(/(?<=\.)\s+/);

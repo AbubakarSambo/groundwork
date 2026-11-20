@@ -10,7 +10,8 @@ const read = (rel: string) => strip(readFileSync(path.join(__dirname, rel), 'utf
 
 describe('empty sections', () => {
   it('the session report says the report is still being written instead of showing an empty box', () => {
-    expect(read('report/SessionReportPage.tsx')).toContain('Your report is still being written. Your answers are saved; this fills in as soon as it is ready.')
+    /* Batch 2, group 5: SessionReportPage.tsx is gone; your own report is drawn in My work (MyWorkPage.tsx). */
+    expect(read('grounds/MyWorkPage.tsx')).toContain('session.says')
   })
   it('the keys list says when there are none, as the deliveries list beside it does', () => {
     /* UPDATED (30 September, the shared-parts rebuild): "Issue" became "Create", the button's own
@@ -19,13 +20,7 @@ describe('empty sections', () => {
        "it is shown once" became "it is shown only once". */
     expect(read('org/IntegrationsPage.tsx')).toContain('No keys yet. Create one above for the system you are connecting. It is shown only once.')
   })
-  it('the "About this check-in" heading is gated with the brief it heads', () => {
-    const chat = read('../components/gw/GroundChat.tsx')
-    const heading = chat.indexOf('About this check-in')
-    const gate = chat.lastIndexOf('{brief && (', heading)
-    expect(gate).toBeGreaterThan(-1)
-    expect(heading - gate).toBeLessThan(400)
-  })
+  /* The "About this check-in" card lived in GroundChat.tsx, deleted on 15 November 2026 because nothing drew it, so its gating test goes with it. */
 })
 
 describe('one status, not three', () => {
@@ -41,11 +36,11 @@ describe('one status, not three', () => {
    * protected (one status, not three fighting for the same corner) still holds: there is no corner
    * at all now, so nothing there can contradict anything.
    */
-  it('the attention line still has precedence; the corner that used to hold "No report yet" is gone entirely, not replaced with a second copy of the fight', () => {
+  /* Changed in batch 2, group 5 (item 42): the Check-in tab's own attention line ("Your turn.") went with the page in between; the
+     sidebar row still reads railAttention. The corner that held "No report yet" stays gone. */
+  it('the corner that used to hold "No report yet" is gone entirely, not replaced with a second copy of the fight', () => {
     const admin = read('grounds/GroundAdminPage.tsx')
-    expect(admin).toMatch(/const attention = railAttention\(ground as any, user\?\.id\)/)
-    expect(admin).toContain('const a = attention')
-    expect(admin.match(/railAttention\(ground as any, user\?\.id\)/g)?.length).toBe(1)
+    expect(admin).not.toContain('railAttention(')
     expect(admin).not.toMatch(/<div[^>]*>No report yet<\/div>/)
     expect(admin).not.toContain('alignRead')
   })

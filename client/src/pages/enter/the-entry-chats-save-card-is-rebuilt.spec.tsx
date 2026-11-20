@@ -351,12 +351,12 @@ describe('changing how many sessions a check-in runs (fault 2, live walk, 6 Octo
     }))
     renderPage()
     /* Opened now from End session, the only way to the card before any answer (the header's count that opened it is gone). */
-    fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
-    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'End session' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'End check-in' }))
 
-    expect(await screen.findByText('This will be session 1. It will be your private report.')).toBeTruthy()
+    expect(await screen.findByText('This will be check-in 1. It will be your private report.')).toBeTruthy()
     expect(screen.getByText('Nothing is on record yet.')).toBeTruthy()
-    expect(screen.queryByText('This is session 1. It is your private report.')).toBeNull()
+    expect(screen.queryByText('This is check-in 1. It is your private report.')).toBeNull()
     expect(screen.queryByText('What you said is on record.')).toBeNull()
   })
 })

@@ -28,7 +28,8 @@ const lostTable = () => screen.getByText('Lost deals, and why').closest('section
 describe('Grace, who runs it', () => {
   it('reads each lost deal once, under Lost deals, and why, never as a row of the open grid', () => {
     wrap(<EveryDealDayByDay b={{ participants: [], canEditFrame: false, releaseOneSalesBoard: true, myParticipantId: 'p-grace' }} section={GRACES} now={NOW} groundId="g1" />)
-    expect(screen.getByText('A reason with no source stays unverified. An unknown reason is flagged, because it can’t be learned from.')).toBeTruthy()
+    /* The rule of the engine, explained to the reader, was removed (15 November 2026). */
+    expect(screen.queryByText(/A reason with no source stays unverified/)).toBeNull()
     const kamau = screen.getAllByText('Kamau Electricals')
     expect(kamau).toHaveLength(1)
     const row = kamau[0].closest('tr')!
@@ -45,7 +46,7 @@ describe('Grace, who runs it', () => {
     expect(within(unknown).getByText('No reason given.')).toBeTruthy()
     expect(within(unknown).getByText('Every lost deal needs a reason.')).toBeTruthy()
     /* The open grid holds only the open deal. */
-    expect(document.querySelectorAll('tr.pb-deal')).toHaveLength(1)
+    expect(document.querySelectorAll('.gwui-table-stack tbody tr')).toHaveLength(1)
     expect(lostTable()).toBeTruthy()
   })
 })

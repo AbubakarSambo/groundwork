@@ -20,12 +20,11 @@ import { join } from 'path'
  */
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
 const SRC = strip(readFileSync(join(__dirname, '..', 'board', 'BoardPage.tsx'), 'utf8'))
-const CSS = readFileSync(join(__dirname, '..', '..', 'index.css'), 'utf8')
 
 describe('the finding comes before the method', () => {
-  it('the legend is a disclosure, not a wall', () => {
-    expect(SRC).toContain('<details className="gw-legend gwui-mt-28">')
-    expect(SRC).toContain('>How this board is put together</summary>')
+  it('the board no longer carries a method legend at all (removed 15 November: it told the lead nothing and let them do nothing)', () => {
+    expect(SRC).not.toContain('<details className="gw-legend')
+    expect(SRC).not.toContain('How this board is put together')
   })
 
   it('and it is closed until asked for', () => {
@@ -33,18 +32,9 @@ describe('the finding comes before the method', () => {
     expect(SRC).not.toMatch(/<details className="gw-legend[^"]*"\s+open/)
   })
 
-  it('the three explanations are kept, not deleted', () => {
+  it('the three method explanations are gone with the legend (removed 15 November)', () => {
     for (const h of ['What is open, first', 'Each gap names both sides', 'Honest closes']) {
-      expect(SRC).toContain(h)
+      expect(SRC).not.toContain(h)
     }
-  })
-
-  it('the summary looks like a control and hides the browser marker', () => {
-    expect(CSS).toMatch(/\.gw-legend > summary \{[^}]*cursor: pointer/)
-    expect(CSS).toContain('.gw-legend > summary::-webkit-details-marker { display: none; }')
-  })
-
-  it('and the three columns become one on a narrow screen', () => {
-    expect(CSS).toMatch(/@media \(max-width: 760px\) \{ \.gw-legend > div \{ grid-template-columns: 1fr/)
   })
 })

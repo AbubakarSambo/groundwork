@@ -1,3 +1,4 @@
+/* S18 (staging check, 4 November): how often is said in the one wording every page uses (howOftenTheTeamChecksIn); "Weekly, Mondays." was a second wording. */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -104,8 +105,8 @@ describe('the check-ins list, as Hafsah reads it (she runs two and is in two)', 
     expect([...table.querySelectorAll('th')].map(th => th.textContent)).toEqual(['Check-in', 'What it’s for', 'Needs you', 'Where it stands'])
     expect(rowsOf(table)).toEqual([
       /* check-ins.jpg: a daily check-in's team report is there to read and share once anybody is in, so it reads "Today’s report ready", not who it waits on. */
-      ['Sales team, Q36 people. Daily, weekdays. Session 6 of 12.', 'Set goals and keep the team on track', 'Today’s report ready', '4 of 5 have checked in; Omar hasn’t started yet.The sales deck is holding it up.'],
-      ['Kwame, first 90 daysKwame and you. Weekly, Mondays. Session 12 of 12, finished.', 'Help a new hire get started', '', 'Decide how it ends'],
+      ['Sales team, Q36 people. Every weekday, Monday to Friday. Check-in 6 of 12.', 'Set goals and keep the team on track', 'Today’s report ready', '4 of 5 have checked in; Omar hasn’t started yet.The sales deck is holding it up.'],
+      ['Kwame, first 90 daysKwame and you. Every Monday. Check-in 12 of 12, finished.', 'Help a new hire get started', '', 'Decide how it ends'],
     ])
     expect(table.textContent).not.toMatch(/Hafsah|·|Led by|Progress|In the way/)
   })
@@ -114,8 +115,8 @@ describe('the check-ins list, as Hafsah reads it (she runs two and is in two)', 
     open(HAFSAH, [SALES, KWAME, LEADERSHIP, STRATEGY, Q2])
     const table = await screen.findByRole('table', { name: 'You’re in' })
     expect(rowsOf(table)).toEqual([
-      ['Leadership, Q3Run by Amani Njoroge. Weekly, Wednesdays. Session 4 of 12.', 'Set goals and keep the team on track', 'Your turn', 'Nobody has checked in yet; you and Amani haven’t started yet.'],
-      ['Company strategy check-inRun by Amani Njoroge. Monthly. Session 2 of 6.', 'Connect goals across the team', '', 'Next: 1 October'],
+      ['Leadership, Q3Run by Amani Njoroge. Every Wednesday. Check-in 4 of 12.', 'Set goals and keep the team on track', 'Your turn', 'Nobody has checked in yet; you and Amani haven’t started yet.'],
+      ['Company strategy check-inRun by Amani Njoroge. Once a month. Check-in 2 of 6.', 'Connect goals across the team', '', 'Next: 1 October'],
     ])
     expect(screen.getByText('You see these boards as a participant: the team’s picture once it’s shared, and your own part in full.')).toBeTruthy()
   })
@@ -133,7 +134,9 @@ describe('the check-ins list, as Hafsah reads it (she runs two and is in two)', 
     useAuthStore.setState({ user: HAFSAH, token: 't', isAuthenticated: true } as any)
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter><GroundsListPage /></MemoryRouter></QueryClientProvider>)
-    expect(screen.getByText('Loading…')).toBeTruthy()
+    /* The wait is grey shapes, announced to a screen reader as a status; the word "Loading" is never drawn (design playbook, rule 1). */
+    expect(screen.getByText('Getting your check-ins').closest('[role="status"]')).toBeTruthy()
+    expect(screen.queryByText('Loading…')).toBeNull()
     expect(document.body.textContent).not.toMatch(/\d+ open|IN PROGRESS|In progress/)
   })
 })
@@ -142,10 +145,10 @@ describe('the check-ins list, as an admin reads it', () => {
   it('shows the organisation’s other check-ins under their own heading, with who runs each', async () => {
     open(ADMIN, [SOMEONE_ELSES])
     const table = await screen.findByRole('table', { name: 'Other check-ins in Coamana' })
-    expect(rowsOf(table)).toEqual([['Warehouse, Q3Run by Peter Otieno. Weekly.', 'Keep a read on live work', '', 'Just started']])
+    expect(rowsOf(table)).toEqual([['Warehouse, Q3Run by Peter Otieno. Every week.', 'Keep a read on live work', '', 'Just started']])
     expect(screen.queryByRole('table', { name: 'You run' })).toBeNull()
     /* U.5 review: and says first that none of these are theirs. */
-    expect(screen.getByText('No check-ins yet. Start one.')).toBeTruthy()
+    expect(screen.getByText('You do not run or take part in a check-in yet. You can start one.')).toBeTruthy()
   })
 
   it('an admin who also runs one is not told they run none', async () => {
@@ -187,13 +190,13 @@ describe('the check-ins list, with none yet', () => {
 
 describe('small cases, said as sentences', () => {
   it('how often', () => {
-    expect(howOften({ id: 'x', label: 'x', cadence: 'ONE_TIME' })).toBe('One time.')
-    expect(howOften({ id: 'x', label: 'x', cadence: 'FORTNIGHTLY', cadenceAnchorDay: 5 })).toBe('Every 2 weeks, Fridays.')
-    expect(howOften({ id: 'x', label: 'x', cadence: 'DAILY', workingDays: [1, 2, 3] })).toBe('Daily.')
+    expect(howOften({ id: 'x', label: 'x', cadence: 'ONE_TIME' })).toBe('Once.')
+    expect(howOften({ id: 'x', label: 'x', cadence: 'FORTNIGHTLY', cadenceAnchorDay: 5 })).toBe('Every other Friday.')
+    expect(howOften({ id: 'x', label: 'x', cadence: 'DAILY', workingDays: [1, 2, 3] })).toBe('Every day from Monday to Wednesday.')
   })
   it('a check-in you run on your own so far says so, and that it needs a second person', () => {
     const r = howARowReads({ id: 'x', label: 'Solo', status: 'ACTIVE', initiatorId: 'u-h', cadence: 'WEEKLY', participants: [p('a', 'u-h', 'Hafsah')], checkIns: [] }, 'u-h', NOW)
-    expect(r.about).toBe('Only you so far. Weekly.')
+    expect(r.about).toBe('Only you so far. Every week.')
     expect(r.also).toBe('It needs a second person for a shared report.')
   })
   it('a round of yours past its date says how long ago it opened, not a mark against you', () => {
@@ -208,12 +211,12 @@ describe('small cases, said as sentences', () => {
     const r = howARowReads({ ...SOMEONE_ELSES, status: 'AWAITING_APPROVAL', initiatorId: 'u-h', otherOrgName: 'Kilimo Traders', participants: [p('a', 'u-h', 'Hafsah', '', 'INITIATOR')] }, 'u-h', NOW)
     expect(r.needs).toEqual({ text: 'Waiting for an admin', tone: 'plain' })
     expect(r.stands).toBe('Not started yet')
-    expect(r.about).toBe('Only you so far. Weekly. It belongs to Kilimo Traders.')
+    expect(r.about).toBe('Only you so far. Every week. It belongs to Kilimo Traders.')
   })
   it('the lead of someone else’s check-in is never told who is late in it', () => {
     const asMiriam = howARowReads(SALES, 'u-m', NOW)
     expect(asMiriam.needs).toBeNull()
-    expect(asMiriam.about).toBe('Run by Hafsah Jumare. Daily, weekdays. Session 6 of 12.')
+    expect(asMiriam.about).toBe('Run by Hafsah Jumare. Every weekday, Monday to Friday. Check-in 6 of 12.')
   })
 
   /**
@@ -237,8 +240,8 @@ describe('small cases, said as sentences', () => {
       glance: { progress: { roundsDone: 0, roundsPlanned: 12, answeredThisRound: 0, ofPeople: 2 } },
     }
     const r = howARowReads(AMANIS_GROUND, 'u-amani', NOW)
-    expect(r.about).toContain('Session 1 of 12.')
-    expect(r.about).not.toContain('Session 2 of 12')
+    expect(r.about).toContain('Check-in 1 of 12.')
+    expect(r.about).not.toContain('Check-in 2 of 12')
     /* And not "0 of 26 sessions done" beside a session that has, in fact, just started. */
     expect(r.stands).toBe('Just started')
   })

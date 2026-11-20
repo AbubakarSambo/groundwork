@@ -37,7 +37,7 @@ export function SessionPaywallModal({
   if (!paywall.show) return null
   return (
     <div
-      role="dialog" aria-modal="true" aria-label="Your session is complete"
+      role="dialog" aria-modal="true" aria-label="Your check-in is complete"
       onKeyDown={e => { if (e.key === 'Escape') paywall.close() }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}
     >
@@ -45,16 +45,16 @@ export function SessionPaywallModal({
 
         {canPayHere ? (
           <>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>Your session is complete.</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>Your check-in is complete.</div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20, lineHeight: '21px' }}>
               Did Groundwork help your team move forward? Choose what works best for you.
             </div>
 
             {paywall.freeExtensionAvailable && (
               <div style={{ border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 12, background: 'var(--gw-green-bg)' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Add one more free session</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Add one more free check-in</div>
                 <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px', marginBottom: 12 }}>
-                  Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Check-in.
+                  Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free check-in and continue your Check-in.
                 </div>
                 <button className="btn sec"
                   onClick={() => paywall.claimFreeExtension.mutate()}
@@ -69,7 +69,7 @@ export function SessionPaywallModal({
             <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Upgrade organisation</div>
               <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: '21px', marginBottom: 12 }}>
-                Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited sessions for everyone in your organisation with one simple monthly subscription.
+                Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited check-ins for everyone in your organisation with one simple monthly subscription.
               </div>
               <button className="btn pri"
                 onClick={() => paywall.createSubscription.mutate('STARTER')}
@@ -88,9 +88,9 @@ export function SessionPaywallModal({
           </>
         ) : (
           <>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 8 }}>Session needed to continue</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 8 }}>Check-in needed to continue</div>
             <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: '21px' }}>
-              Only an organisation admin can add sessions. We have told them you are waiting.
+              Only an organisation admin can add check-ins. I have told them you are waiting.
             </div>
             {groundId && user?.role !== 'GUEST' && (
               remindedSays ? (

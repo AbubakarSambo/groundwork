@@ -20,6 +20,9 @@
 import { whatThisMailIs } from './nothing-goes-out-that-was-turned-off';
 import { whoSeesWhatYouSayIn } from './who-sees-what-you-say';
 
+/** The public page that says where answers are kept and who processes them (marketing/src/pages/privacy-and-ai.astro). */
+export const HOW_GROUNDWORK_HANDLES_YOUR_ANSWERS_URL = 'https://myground.work/privacy-and-ai';
+
 /** True where this footer belongs. */
 /**
  * MAIL THAT IS NOT ABOUT WHAT SOMEBODY SAID IN ONE CHECK-IN (decision 109 review; existing-users check, section 15). The paragraph tells a person who can read what
@@ -71,8 +74,9 @@ export function shouldSayWhatGroundworkIs(sender: string | undefined): boolean {
  */
 export function whatGroundworkIs(whoSees: string): string {
   return '<p style="font-size:13px;color:#4E4236;line-height:1.6;margin-top:20px;border-top:1px solid #EDE5D6;padding-top:12px;">' +
-    'Groundwork is where the people involved in a piece of work each give their own account of it, and get one shared record back. ' +
-    `${whoSees.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`;
+    'Groundwork is where the people involved in a piece of work each say how it is going in their own words, and get one shared record back. ' +
+    `${whoSees.replace(/&/g, '&amp;').replace(/</g, '&lt;')} ` +
+    `<a href="${HOW_GROUNDWORK_HANDLES_YOUR_ANSWERS_URL}">How Groundwork handles your answers</a></p>`;
 }
 
 /** With the wording for a team check-in, for a mail that knows nothing about which check-in it is. */

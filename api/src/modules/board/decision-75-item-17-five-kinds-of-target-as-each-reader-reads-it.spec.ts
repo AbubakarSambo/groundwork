@@ -44,7 +44,7 @@ const row = (b: any, id: string) => (b.objectives ?? []).find((o: any) => o.id =
 const WHAT_BISI_READS = {
   'o-rate': ['The team is aiming to keep follow-up within 48 hours at 90% or more.', 'Rate', null, 'It was 80% at the start and is 86% now, below the aim of 90% or more.', { word: 'Close', says: 'It is 86%, close to the aim of 90% or more.' }],
   'o-zero': ['The team is keeping unexplained transactions at zero.', 'Zero', null, 'There have been 2 so far. This should stay at zero, so any at all is a breach.', { word: 'Over limit', says: 'There have been 2, and this should stay at zero, so any at all is a breach.' }],
-  'o-up': ['The team is aiming for 40 approved facilities this quarter.', 'Up', null, 'It was 6 at the start and is 11 now, and the aim is 40.', { word: 'Behind', says: 'At the pace it has kept since session 1, it would be about 31 by the last session, short of the aim of 40.' }],
+  'o-up': ['The team is aiming for 40 approved facilities this quarter.', 'Up', null, 'It was 6 at the start and is 11 now, and the aim is 40.', { word: 'Behind', says: 'At the pace it has kept since check-in 1, it would be about 31 by the last check-in, short of the aim of 40.' }],
   'o-lower': ['The team is keeping days to approve a facility to no more than 10.', 'Lower is better', null, 'It is 12 now, which is 2 over the limit of 10.', { word: 'Over limit', says: 'It is 12, which is over the limit of 10.' }],
   'o-due': ['The team has a date to meet for credit policy signed off.', 'Deadline', '2026-10-30', 'It is due by 30 October, and it is not done yet.', { word: null, says: 'It is due by 30 October, and it is not done yet.' }],
   'o-late': ['The team has a date to meet for month-end close.', 'Deadline', '2026-09-30', 'It was due by 30 September, and it is not done yet.', { word: 'Behind', says: 'It was due by 30 September, and it is not done yet.' }],
@@ -73,8 +73,8 @@ describe('on the board, as Bisi, who runs it, reads it', () => {
     const b = await boardAs(RUN, ...BISI);
     const says = Object.fromEntries((b.forecast ?? []).map((f: any) => [f.objectiveId, [f.says, f.restsOn]]));
     expect(says['o-rate']).toEqual([
-      'If it keeps changing at the pace it has since session 1, it would be about 100% by session 6, against an aim of 90% or more.',
-      'It was 80% in session 1 and 86% in session 2, and this check-in runs for 6 sessions.',
+      'If it keeps changing at the pace it has since check-in 1, it would be about 100% by check-in 6, against an aim of 90% or more.',
+      'It was 80% in check-in 1 and 86% in check-in 2, and this check-in runs for 6 check-ins.',
     ]);
     expect(says['o-zero'][0]).toBe('It is at 2, and this should stay at zero, so any at all is already a breach whatever the pace.');
     expect(says['o-due']).toBeUndefined();

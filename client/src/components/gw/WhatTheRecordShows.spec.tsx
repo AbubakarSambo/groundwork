@@ -12,19 +12,19 @@ describe('What the record shows: the heading over every session, in the serverâ€
   const open = [{ who: 'Rukia Mwangi', what: 'send the Westgate quote', say: 'Rukia Mwangi committed to send the Westgate quote.' }]
 
   it('reads "in 1 session" after the first round, never "over 1 sessions"', () => {
-    render(<WhatTheRecordShows it={{ sessions: 1, inSessions: 'in 1 session', commitments: open }} />)
-    expect(screen.getByText('What people said they would do, in 1 session')).toBeTruthy()
+    render(<WhatTheRecordShows it={{ sessions: 1, inSessions: 'in 1 check-in', commitments: open }} />)
+    expect(screen.getByText('What people said they would do, in 1 check-in')).toBeTruthy()
     expect(screen.queryByText(/over 1 sessions/)).toBeNull()
   })
 
   it('reads "in 3 sessions" once there have been several', () => {
-    render(<WhatTheRecordShows it={{ sessions: 3, inSessions: 'in 3 sessions', commitments: open }} />)
-    expect(screen.getByText('What people said they would do, in 3 sessions')).toBeTruthy()
+    render(<WhatTheRecordShows it={{ sessions: 3, inSessions: 'in 3 check-ins', commitments: open }} />)
+    expect(screen.getByText('What people said they would do, in 3 check-ins')).toBeTruthy()
   })
 
   it('falls back to the old sentence when an older server sends no inSessions at all', () => {
     render(<WhatTheRecordShows it={{ sessions: 2, commitments: open }} />)
-    expect(screen.getByText('What people said they would do, over 2 sessions')).toBeTruthy()
+    expect(screen.getByText('What people said they would do, over 2 check-ins')).toBeTruthy()
   })
 
   it('before any session, inSessions is null and the heading names nothing', () => {

@@ -126,7 +126,7 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     expect(screen.getAllByText('Another colleague').length).toBeGreaterThan(0)
     expect(screen.getAllByText('A third colleague').length).toBeGreaterThan(0)
     /* The lead reads their own note, beside the name, and says it is theirs. */
-    expect(noNoteAsAName('lead, sessions').length).toBeGreaterThan(0)
+    expect(noNoteAsAName('lead, check-ins').length).toBeGreaterThan(0)
 
     /* "References and resources" (it was "Context and resources", drawn on the client from the ground): served now. */
     expect(openTab(/^References and resources$/)).toBe(true)
@@ -135,7 +135,7 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
 
     /* The Report tab's list of sessions says who it is still waiting on, in a sentence. */
     expect(openTab(/^My work$/)).toBe(true)
-    fireEvent.click(await screen.findByRole('button', { name: 'Every session' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Every check-in' }))
     await waitFor(() => expect(document.body.textContent).toMatch(/not checked in yet\./))
     /* The lead checks in when they choose (change 5, decision 133), so the lead is never listed as not checked in. */
     expect(document.body.textContent).toContain('One colleague and a third colleague have not checked in yet.')
@@ -146,7 +146,8 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
   it('as a participant, on every tab that lists people, with no part of the note anywhere', async () => {
     me = { id: 'u-me', firstName: '', lastName: '', email: null, role: 'MEMBER' }
     ;(groundsApi.get as any).mockResolvedValue(groundFor('participant'))
-    renderAt('/grounds/g1/p', '/grounds/:id/p', <GroundParticipantPage />)
+    /* From My work, where the tabs are drawn: a check-in that is due is the card alone, with no tab bar, and lists nobody. */
+    renderAt('/grounds/g1/p?tab=record', '/grounds/:id/p', <GroundParticipantPage />)
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/).length).toBeGreaterThan(0))
     for (const tab of [null, /^My work$/, /^References and resources$/, /^People and setup$/]) {
       if (tab) expect(openTab(tab)).toBe(true)

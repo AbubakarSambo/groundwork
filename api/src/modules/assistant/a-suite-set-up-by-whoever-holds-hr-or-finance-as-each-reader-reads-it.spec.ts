@@ -1,4 +1,5 @@
-import { anOrganisationToSetUp } from './an-organisation-to-set-up-for-specs';
+import { anOrganisationToSetUp, theOpening, theSaidBack } from './an-organisation-to-set-up-for-specs';
+import { THE_POLICY, THE_POLICY_ASKED, THE_POLICY_RULES } from './the-leave-policy-asked-for-specs';
 
 /**
  * DECISION 85: "The company/admin/HR/finance lead sets up the rules once." Whoever holds the HR duty sets
@@ -13,8 +14,10 @@ import { anOrganisationToSetUp } from './an-organisation-to-set-up-for-specs';
 
 const DUTIES = { duties: { isOn: false, answers: { departmentHeads: { Operations: 'u-fatuma' }, hr: 'u-miriam', finance: 'u-omar' } } };
 
-const MIRIAMS_SAID = [
+const MIRIAMS_RULES = [
   'Each person has 21 days of leave a year.',
+  /* The leave policy's questions (Hafsah, 20 November 2026), answered and said back. */
+  ...THE_POLICY_RULES,
   'A leave request of up to ten working days goes to the person’s manager.',
   'If the person has no manager in Groundwork, it goes to an admin instead.',
   'A leave request of more than ten working days goes to the person’s manager first.',
@@ -27,26 +30,29 @@ const MIRIAMS_SAID = [
   /* Said to Miriam, who looks after HR: she is "you", never "Miriam". */
   'You look after HR, so you see every leave request on the leave board, when it is asked for and when it is decided.',
   'If somebody does not answer, it waits for them. Groundwork does not pass it on by itself.',
-].join(' ');
+];
+const MIRIAMS_SAID = MIRIAMS_RULES.join(' ');
 
 describe('Miriam, who looks after HR, sets up the leave process', () => {
   it('is asked only what is missing, never who holds a job, and reads it said back', async () => {
     const o = anOrganisationToSetUp({ suites: DUTIES });
-    const r = await o.talk('u-miriam', ['Set up our employee leave process', '21', 'Their manager', "If it's more than 10 working days, the department head also approves", 'Yes', 'It waits']);
+    const r = await o.talk('u-miriam', ['Set up our employee leave process', '21', 'Their manager', "If it's more than 10 working days, the department head also approves", 'Yes', 'It waits', ...THE_POLICY]);
     expect(r).toEqual([
-      'I will ask you a few questions about how leave requests work, one at a time, and I will not set anything until you say yes. How many days of leave does each person have in a year?',
+      /* Changed 20 November 2026: the opening offers to work from a written policy, and the say-back lists one rule a line (Hafsah's screenshots). */
+      theOpening('leave requests', 'How many days of leave does each person have in a year?'),
       'Who approves annual leave?',
       'Does anybody approve it after the manager, for example the head of the person’s team? You can say no.',
       'Does HR need to see all requests?',
       "What happens if the manager doesn't respond within two working days?",
-      `Here is how leave requests will work. Leave requests will be switched on. ${MIRIAMS_SAID} Shall I set it up like this? Nothing changes until you say yes.`,
+      ...THE_POLICY_ASKED,
+      theSaidBack('Here is how leave requests will work. Leave requests will be switched on.', MIRIAMS_RULES),
     ]);
     expect(o.writes).toEqual([]);
   });
 
   it('on her yes it is written as her change, and who holds each duty is not touched', async () => {
     const o = anOrganisationToSetUp({ suites: DUTIES });
-    await o.talk('u-miriam', ['Set up our employee leave process', '21', 'Their manager', "If it's more than 10 working days, the department head also approves", 'Yes', 'It waits']);
+    await o.talk('u-miriam', ['Set up our employee leave process', '21', 'Their manager', "If it's more than 10 working days, the department head also approves", 'Yes', 'It waits', ...THE_POLICY]);
     expect(await o.says('u-miriam', 'yes')).toBe(`I have set it up, and leave requests are switched on. ${MIRIAMS_SAID} You can change any of it by telling me, or on the Suites page.`);
     expect(o.changes.map((c) => [c.suite, c.changedById])).toEqual([['leave', 'u-miriam'], ['workflows', 'u-miriam'], ['leaveRules', 'u-miriam']]);
     expect(o.writes).not.toContain('duties');
@@ -59,7 +65,7 @@ describe('Miriam, who looks after HR, sets up the leave process', () => {
 
   it('Grace, the admin, reads Miriam by name where Miriam reads "you"', async () => {
     const o = anOrganisationToSetUp({ suites: DUTIES });
-    await o.talk('u-miriam', ['Set up our employee leave process', '21', 'Their manager', "If it's more than 10 working days, the department head also approves", 'Yes', 'It waits', 'yes']);
+    await o.talk('u-miriam', ['Set up our employee leave process', '21', 'Their manager', "If it's more than 10 working days, the department head also approves", 'Yes', 'It waits', ...THE_POLICY, 'yes']);
     const toMiriam = (await o.assistant.theSetUpAsStored(o.as('u-miriam'), 'leave')).join(' ');
     expect(toMiriam).toBe(MIRIAMS_SAID);
     expect(toMiriam).not.toMatch(/Miriam/);
@@ -96,7 +102,15 @@ describe('Omar, who looks after finance, sets up time sheets', () => {
   it('is asked what is missing, and on his yes it is written as his change', async () => {
     const o = anOrganisationToSetUp({ suites: DUTIES });
     const r = await o.talk('u-omar', ['Set up timesheets', 'Atlas, Internal', 'Their manager', 'No', '40', 'Friday at 17:00', 'It waits']);
-    expect(r[r.length - 1]).toBe('Here is how time sheets will work. Time sheets will be switched on. People give their hours for Atlas and Internal, each week. A week of hours goes to the person’s manager. If the person has no manager in Groundwork, it goes to an admin instead. Each person is asked for 40 hours a week. The hours for each week are due by Friday at 17:00, Lagos time. If somebody does not answer, it waits for them. Groundwork does not pass it on by itself. Shall I set it up like this? Nothing changes until you say yes.');
+    /* Changed 20 November 2026: the opening offers to work from a written policy, and the say-back lists one rule a line (Hafsah's screenshots). */
+    expect(r[r.length - 1]).toBe(theSaidBack('Here is how time sheets will work. Time sheets will be switched on.', [
+      'People give their hours for Atlas and Internal, each week.',
+      'A week of hours goes to the person’s manager.',
+      'If the person has no manager in Groundwork, it goes to an admin instead.',
+      'Each person is asked for 40 hours a week.',
+      'The hours for each week are due by Friday at 17:00, Lagos time.',
+      'If somebody does not answer, it waits for them. Groundwork does not pass it on by itself.',
+    ]));
     await o.says('u-omar', 'yes');
     expect(o.changes.map((c) => [c.suite, c.changedById])).toEqual([['time', 'u-omar'], ['workflows', 'u-omar'], ['timeRules', 'u-omar']]);
   });

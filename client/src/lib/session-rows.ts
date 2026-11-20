@@ -85,6 +85,8 @@ export function buildSessionRows(
   const report = (ground as any)?.report as { releasedAt?: string | null; releasedSessions?: number[] | null } | null | undefined
   const numbers = [...new Set(checkIns.filter((c) => !c.isSetup).map((c) => c.sessionNumber as number))]
     .filter((n) => checkIns.some((c) => c.sessionNumber === n && c.status === 'COMPLETED'))
+    /* A round the server served no count for was opened in a pause and sent to nobody, so it is not a row ("0 of 0 checked in", and one more in "All N check-ins"). A payload that carries no count at all lists as before. */
+    .filter((n) => !(ground as { theCount?: TheCountAsServed | null } | null | undefined)?.theCount || !!theCountOf(ground, n))
     .sort((a, b) => b - a)
 
   return numbers.map((n) => {

@@ -80,7 +80,7 @@ describe('the lead', () => {
       groundId: 'g1', releasedAt: new Date('2026-09-29T10:00:00Z'),
       /* Decision 76, item 4: each session's picture is released on its own, and the lead is told which. */
       releasedSessions: [1], sessionNumber: 1,
-      saying: "This shares the team's picture of session 1 with everyone in the check-in.",
+      saying: "This shares the team's picture of check-in 1 with everyone in the check-in.",
     });
   });
 });
@@ -100,7 +100,7 @@ describe('decision 53 (29 September 2026): the lead has left the organisation', 
       groundId: 'g1', releasedAt: new Date('2026-09-29T10:00:00Z'),
       /* Decision 76, item 4: each session's picture is released on its own, and the lead is told which. */
       releasedSessions: [1], sessionNumber: 1,
-      saying: "This shares the team's picture of session 1 with everyone in the check-in.",
+      saying: "This shares the team's picture of check-in 1 with everyone in the check-in.",
     });
 
     /* Kept on the ground's own audit log (no schema change - see who-shared-it-because-the-lead-left.ts),

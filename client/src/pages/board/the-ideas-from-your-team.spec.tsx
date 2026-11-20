@@ -122,7 +122,7 @@ describe('"Ideas from your team", for a participant, not the lead', () => {
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     renderBoard()
     expect(await screen.findByText('Ideas from your team')).toBeTruthy()
-    const fold = screen.getByText('The whole check-in').closest('details') as HTMLDetailsElement
+    const fold = document.getElementById('the-whole-check-in') as HTMLElement
     expect(fold).toBeTruthy()
     expect(within(fold).queryByText('Ideas from your team')).toBeNull()
   })
@@ -132,7 +132,7 @@ describe('"Ideas from your team", for a participant, not the lead', () => {
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     renderBoard()
     expect(await screen.findByText('Ideas from your team')).toBeTruthy()
-    const fold = screen.getByText('The whole check-in').closest('details') as HTMLDetailsElement
+    const fold = document.getElementById('the-whole-check-in') as HTMLElement
     expect(fold).toBeTruthy()
     expect(within(fold).queryByText('Ideas from your team')).toBeNull()
   })

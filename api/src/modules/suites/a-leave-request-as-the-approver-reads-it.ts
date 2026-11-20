@@ -30,6 +30,8 @@ export interface TheApproversView {
   days: number;
   /** The kind of leave as a person says it ("annual leave"), or null when the organisation has set no kinds. */
   kindName?: string | null;
+  /** True when weekends count as leave days for this request, so its days are not "working days" (the-leave-calendar.ts). */
+  everyDayCounts?: boolean;
   daysLeft: number | null;
   team: string | null;
   /** First names of others in the team already off on any of those days. */
@@ -105,10 +107,32 @@ export function aLeaveRequestAsTheApproverReadsIt(v: TheApproversView): string[]
   const oneDay = v.startsOn === v.endsOn;
   const what = leaveInWords(v.startsOn, v.endsOn);
   const asked = v.kindName ? `${v.kindName}${what.slice('leave'.length)}` : what;
-  const out = [`${name} asked for ${asked}, which is ${v.days} working ${v.days === 1 ? 'day' : 'days'}.`];
+  const out = [`${name} asked for ${asked}, which is ${leaveDaysInWords(v.days, v.everyDayCounts)}.`];
   if (v.daysLeft != null) out.push(`${name} has ${v.daysLeft} ${v.daysLeft === 1 ? 'day' : 'days'}${v.kindName ? ` of ${v.kindName}` : ''} left.`);
+  const over = overTheAllowanceSaid(name, v.days, v.daysLeft, v.everyDayCounts);
+  if (over) out.push(over);
   if (v.team) out.push(theClashSaid(v.team, v.alsoOff, oneDay, v.busiest));
   if (v.standIn) out.push(`${v.standIn} will stand in for ${name}.`);
   out.push(...v.owns, ...(v.more ?? []));
   return out;
 }
+
+/**
+ * OVER THE ALLOWANCE (Batch S, round 2, T9): a request for more working days than are left, said plainly to the person ("you") and
+ * to each approver (by first name). Null when it fits, or when no number of days is set. Nothing stops the request.
+ */
+export function overTheAllowanceSaid(name: string, days: number, daysLeft: number | null, everyDayCounts = false): string | null {
+  if (daysLeft == null || days <= daysLeft) return null;
+  const over = days - daysLeft;
+  const d = (n: number) => leaveDaysInWords(n, everyDayCounts);
+  return name === 'you'
+    ? `This is ${d(over)} more than the ${daysLeft} you have left, so it goes over your allowance. Whoever approves it will see that.`
+    : `This is ${d(over)} more than the ${daysLeft} ${name} has left, so it goes over ${name}’s allowance.`;
+}
+
+/**
+ * "5 working days", or "5 days of leave" when weekends count as leave days (the leave policy, 21 November 2026): a Friday to a Monday
+ * is four days of leave then, and "four working days" would not be true.
+ */
+export const leaveDaysInWords = (n: number, everyDayCounts = false) =>
+  everyDayCounts ? `${n} ${n === 1 ? 'day' : 'days'} of leave` : `${n} working ${n === 1 ? 'day' : 'days'}`;

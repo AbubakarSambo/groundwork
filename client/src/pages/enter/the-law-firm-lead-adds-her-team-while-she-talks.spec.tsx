@@ -91,7 +91,7 @@ describe('the law firm lead, while she is still talking', () => {
     fireEvent.click(within(panel).getByRole('button', { name: 'Change' }))
     const lines = NAMED.map((n) => `${n}, ${n.split(' ')[0].toLowerCase()}@law.test`).join('\n')
     fireEvent.change(within(panel).getByLabelText('Your team, one per line'), { target: { value: lines } })
-    fireEvent.click(screen.getByRole('button', { name: 'End session' }))
+    fireEvent.click(screen.getByRole('button', { name: 'End check-in' }))
     await waitFor(() => expect(screen.getAllByLabelText('Your team, one per line').length).toBeGreaterThan(0))
     for (const box of screen.getAllByLabelText('Your team, one per line')) expect((box as HTMLTextAreaElement).value).toBe(lines)
   })
@@ -105,7 +105,7 @@ describe('the law firm lead on the save card', () => {
   it('saves in one press when none of her four has an email, and says they are not on the check-in yet', async () => {
     seedHerSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
     await screen.findByLabelText('Your team, one per line')
     fireEvent.click(screen.getByRole('button', { name: 'Save this' }))
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
@@ -116,7 +116,7 @@ describe('the law firm lead on the save card', () => {
   it('a correction she makes is saved with the setup, and the report made before it is not sent', async () => {
     seedHerSetup()
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'End session' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'End check-in' }))
     fireEvent.click(await screen.findByText('This isn’t right, correct it'.replace('’', "'")))
     fireEvent.change(screen.getByPlaceholderText('e.g. The deadline is not May - it is March 1.'), { target: { value: 'Esther is my finance officer in charge of billing.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))

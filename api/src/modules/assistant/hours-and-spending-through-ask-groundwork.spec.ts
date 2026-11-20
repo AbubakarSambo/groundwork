@@ -87,6 +87,22 @@ describe('hours said to Ask Groundwork', () => {
     expect(s.prisma.assistantTurn.createMany).not.toHaveBeenCalled();
   });
 
+  /*
+   * STAGING CHECK S13 (4 November): Rita asked to spend in chat and added the receipt there. It stayed in the conversation, and the
+   * approver could not read it. A file she added in the last fifteen minutes goes on the request through the form's own write.
+   */
+  it('a receipt added in Ask goes on the request, where the approver reads it', async () => {
+    const parked = { id: 'pk', kind: 'spend_request', state: 'PARKED', summary: 'x', payload: { amount: 12000, what: 'fuel for the Kisumu trip', currency: 'KES' } };
+    const yes = svc({ parked });
+    const row: any = { id: 's1', organizationId: 'org-a', userId: 'u-me', status: 'waiting', attachedName: null };
+    yes.prisma.spendRequest = { findFirst: jest.fn(async () => row), findUnique: jest.fn(async () => row), update: jest.fn(async ({ data }: any) => Object.assign(row, data)) };
+    yes.prisma.groundParticipant = { findMany: jest.fn(async () => [{ id: 'gp-1' }]) };
+    yes.prisma.groundDocument = { findMany: jest.fn(async () => [{ fileName: 'fuel-receipt.pdf', content: 'Total Kisumu. Diesel KES 12,000.' }]) };
+    const sent = await said(yes, 'yes');
+    expect(sent.text).toBe('I have sent your request to spend KES 12,000 on fuel for the Kisumu trip to Wairimu. It is not approved until they decide, and nothing is spent until then. I attached “fuel-receipt.pdf” to your request, so Wairimu can read it with the request.');
+    expect(row).toMatchObject({ attachedName: 'fuel-receipt.pdf', attachedKind: 'receipt', attachedText: 'Total Kisumu. Diesel KES 12,000.' });
+  });
+
   it('with the suite off, says so plainly and keeps nothing', async () => {
     const s = svc({ off: true });
     const out = await said(s, 'I did 6 hours on Atlas today');

@@ -5,8 +5,8 @@
  * corrected in the next sentence. An invitation is in somebody's inbox, and what
  * it invites them to is accounting for themselves.
  */
+import { askWhoIsInIt, saidBack, theNextStep } from './a-check-in-set-up-by-talking';
 import {
-  askBeforeOpeningIt,
   askWhichSituation,
   saidAsAList,
   whichSituation,
@@ -67,31 +67,31 @@ describe('who would be asked', () => {
   });
 });
 
+/* Batch S, S6 (19 November): askBeforeOpeningIt is replaced by the check-in setup by talking (a-check-in-set-up-by-talking.ts), which asks
+   for the people instead of only telling the lead to. The same four promises are checked on its say-back and its question about people. */
 describe('the confirmation', () => {
-  const people = [person('adam', 'Adam', 'sam'), person('kemi', 'Kemi', 'sam')];
+  const people = [{ name: 'Adam', email: 'adam@x.co' }, { name: 'Kemi', email: 'kemi@x.co' }];
+  const back = saidBack({ updatesOn: 'Adam joining', people, unreachable: [], offered: [], cadence: 'WEEKLY', asked: 'confirm' });
 
   it('names every single person who will be emailed', () => {
-    /* "And 4 others" is how somebody presses yes on a mistake, and the mistake
-       is a colleague receiving an invitation nobody meant to send. */
-    const asked = askBeforeOpeningIt({ says: 'somebody joining', label: 'Adam joining', people });
-    expect(asked).toContain('Adam and Kemi');
-    expect(asked).not.toMatch(/\d+ others?|and others/);
+    expect(back).toContain('Adam (adam@x.co) and Kemi (kemi@x.co)');
+    expect(back).not.toMatch(/\d+ others?|and others/);
   });
 
   it('and says they will be emailed, before anything is', () => {
-    expect(askBeforeOpeningIt({ says: 'x', label: 'y', people })).toContain('emailed an invitation');
+    expect(back).toContain('emailed an invitation');
+    expect(back).toContain('Shall I open it?');
   });
 
-  it('and says the guess is a guess', () => {
-    /* Reporting lines are right often enough to save typing and wrong often
-       enough that they must never be acted on silently. */
-    expect(askBeforeOpeningIt({ says: 'x', label: 'y', people })).toContain('say if it should be somebody else');
+  it('and offers the people on the roster as a guess, never takes them', () => {
+    expect(askWhoIsInIt(people)).toContain('Adam and Kemi report to you, so say yes to ask all of them. Or give me');
   });
 
   it('and asks who, rather than opening an empty one', () => {
-    const asked = askBeforeOpeningIt({ says: 'x', label: 'y', people: [] });
-    expect(asked).toContain('tell me who should be in it');
-    expect(asked).not.toContain('Open it?');
+    const next = theNextStep({ updatesOn: 'x', people: [], unreachable: [], offered: [], cadence: 'WEEKLY', asked: 'people' });
+    expect(next.asked).toBe('people');
+    expect(next.says).toContain('Who should be in it');
+    expect(next.says).not.toContain('Shall I open it?');
   });
 
   it('and reads as a sentence however many there are', () => {
@@ -131,6 +131,8 @@ describe('opening one is the same capability as starting one', () => {
   });
 });
 
+/* Batch S, S6: the opening is now openTheCheckInSetUpByTalking, which the setup reaches only on a yes to a say-back that names everybody. The same
+   guards are read from it: the roster is read again, anybody who has gone is named, and nothing is sent when nobody can be reached. */
 describe('between the offer and the yes', () => {
   const fs = require('fs');
   const path = require('path');
@@ -139,24 +141,19 @@ describe('between the offer and the yes', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/.*$/gm, '');
   const branch = source.slice(
-    source.indexOf('private async resolveParkedOpening'),
+    source.indexOf('private async openTheCheckInSetUpByTalking'),
     source.indexOf('private async resolveParkedDocument'),
   );
 
   it('the roster is read again, not taken from the proposal', () => {
-    /* This is the one act that puts a message in another person's inbox. A
-       parked action carries the roster it was offered under, which is exactly
-       what must not be trusted. */
     expect(branch.length).toBeGreaterThan(400);
     expect(branch).toMatch(/person\.findMany/);
-    expect(branch).toMatch(/active: true/);
+    expect(branch).toMatch(/active: false/);
   });
 
   it('and anybody who has gone is named, not silently skipped', () => {
-    /* A check-in that quietly opened without one of the people somebody agreed
-       to is one they will read the report of and not understand. */
     expect(branch).toMatch(/no longer on the roster/);
-    expect(branch).toMatch(/no email address on the roster/);
+    expect(branch).toMatch(/was not invited/);
   });
 
   it('and nothing is sent when nobody can be reached', () => {
@@ -165,28 +162,8 @@ describe('between the offer and the yes', () => {
 });
 
 describe('a yes with nobody named', () => {
-  const fs = require('fs');
-  const path = require('path');
-  const source = fs
-    .readFileSync(path.join(__dirname, 'assistant.service.ts'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/\/\/.*$/gm, '');
-
-  it('has nothing to say yes to', () => {
-    /**
-     * FOUND BY RUNNING IT. The first version parked a proposal with an empty
-     * list of people, so a "yes" resolved it and answered "none of those people
-     * can be reached now" — about people who had never been named. A parked
-     * action nobody can sensibly say yes to should not exist.
-     */
-    const branch = source.slice(
-      source.indexOf('private async offerToOpenOne'),
-      source.indexOf('private async resolveParkedOpening'),
-    );
-    expect(branch.length).toBeGreaterThan(300);
-    const guard = branch.indexOf('if (people.length === 0) return');
-    const parks = branch.indexOf('assistantProposal.create');
-    expect(guard).toBeGreaterThan(-1);
-    expect(guard).toBeLessThan(parks);
+  it('has nothing to say yes to: the say-back is never reached with nobody in it', () => {
+    expect(theNextStep({ updatesOn: 'x', people: [], unreachable: [], offered: [{ name: 'Adam', email: 'a@x.co' }], cadence: 'WEEKLY', asked: 'people' }).asked).toBe('people');
+    expect(theNextStep({ updatesOn: 'x', people: [], unreachable: ['Adam'], offered: [], cadence: 'WEEKLY', asked: 'people' }).asked).toBe('people');
   });
 });

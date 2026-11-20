@@ -1,3 +1,4 @@
+import { thePlannedSessionsOf } from '../grounds/this-sessions-count';
 import { thePersonJudgementsAreOn, thePersonJudgementsAreOnFor } from '../organisation/person-judgements';
 import { withoutAMissedStepNobodySaid } from './a-missing-proof-is-not-a-missed-step';
 import { aDayIsNotATarget, theNumberIsOnlyADay } from './a-day-is-not-a-target';
@@ -18,6 +19,7 @@ import { theReleaseMoment } from '../grounds/the-release-moment';
 import { theWaitIsConfirmed } from '../grounds/a-wait-is-the-speakers-account';
 import { theRoleBlock, keepWhatTheySaidAboutTheirJob, theirJobAsTheyToldUs, theirJobAsKept, asksAboutTheirJob, THE_REPLY_DID_NOT_ASK_ABOUT_THEIR_JOB, SAYS_WHICH_CHECK_IN_THIS_IS, NEVER_SAY_WHICH_CHECK_IN_THIS_IS, asksAboutTheirJobAgain, withoutTheJobQuestion, THEIR_JOB_WAS_ASKED_ALREADY } from './their-role-in-the-first-check-in';
 import { whereASessionsReportStands } from './where-a-sessions-report-stands';
+import { theReadIsStillToCome } from './the-read-is-owed';
 import { theAimsNameKeepsItsShare, theNameWithItsSum } from './the-aims-name-keeps-its-share';
 import { isWhatSomebodyDoesNotAnAim } from './what-somebody-does-is-not-an-aim';
 import { theParticipantAsServed, theFitAsServed, theCheckInRowAsServed, theyAreTheirOwnWords } from './a-transcript-serves-only-what-is-theirs';
@@ -51,7 +53,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { blockerHasSubstance } from '../board/reads';
 import { PrismaService } from '../prisma/prisma.service';
 import { forHumans, hadCloseMarker as textHadCloseMarker, whatIsNewSince, theFinishedPart } from '../presentation/outbound';
-import { languageBlock } from '../public-api/a-whatsapp-message-is-routed';
+import { WRITE_IN_THEIR_LANGUAGE } from '../public-api/the-language-they-write-in';
 import { withoutTheAnchorBack } from './no-anchor-back-when-they-leave';
 import { NOTHING_KEPT_YET_COME_BACK, nothingRealWasSaid } from './a-finish-too-soon-is-said-plainly';
 import { endStatesFor } from '../resolution/end-states';
@@ -84,14 +86,17 @@ import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent, CommitmentsSettl
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
-import { endingOnTheClose, endsOnTheClose, type Door } from './the-close-says-what-comes-next';
+import { endingOnTheClose, endsOnTheClose, type Door, type TheCloseKind } from './the-close-says-what-comes-next';
 import { whatChangedOnTheirDeals } from './what-changed-on-their-deals';
 import { oneOfTheKinds, isASalesKind } from '../board/the-kind-of-work';
 import { theEndCard, theCardStillStanding, whatTheyWereAskedToShow, type EndCard, type ALineForTheCard } from './the-end-card';
 import { assessTheConversation, theAssessmentOf, theAssessmentIsReady, type TheSetupGiven } from './assess-the-conversation';
-import { theReadBack, THE_READ_BACK_WAS_GIVEN } from './the-read-back';
+import { theReadBackFrom, theReadBackKeptOn, theLinesReadBackIn, THE_READ_BACK_WAS_GIVEN, THE_READ_BACK_ASKS } from './the-read-back';
+import { keepTheCorrectionOnItsItem, withTheReplyToTheReadBack } from './a-correction-is-kept-on-its-item';
+import { checkTheCorrection } from '../assistant/a-correction-is-checked-like-a-claim';
+import { understandTheMessage } from '../assistant/ask-understands-with-the-model';
 import { theSmallStepForThePerson, whatBecameOfTheLastStep } from '../patterns/the-next-step-for-each-pattern';
-import { whatTheyAreWaitingOn, theWorkTheyMentioned, whatTheyPromisedThemselves, whatHappenedToTheirOpenPromises, theAssessmentIn, theReportTheyRead, type TheAssessment } from './the-assessment';
+import { whatTheyAreWaitingOn, theWorkTheyMentioned, whatTheyPromisedThemselves, whatHappenedToTheirOpenPromises, theAssessmentIn, theReportTheyRead, anAimHeldByAnotherPerson, type TheAssessment } from './the-assessment';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { theSettlements, aCommitmentKey, oneOfEach, type AnAnswer } from './what-happened-to-what-they-said';
 import { theProofSettlements, thePrompt as theProofPrompt, WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT, WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA, whatThisLineProves, mayBeSettledByProof } from './settled-by-proof';
@@ -186,11 +191,12 @@ import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causal
 import { theThingsThatCannotBeMissed } from './the-last-thing-it-reads-is-the-thing-it-must-not-miss';
 import { thePatternLine } from './whether-the-pattern-library-is-doing-anything';
 import { whatYouAskedLastTurn } from './you-asked-that-last-turn';
+import { THE_SUMMARY_IS_ON_THE_SCREEN, THE_PERSON_MAY_BE_DONE } from './a-typed-finish-is-a-finish';
 import { theSetTheySpokeToPartOf, whatTheyToldWithoutWhen, askForWhatTheyLeftOut, theCustomersThatAreNotTheirs, withoutTheseCustomers } from './asking-for-what-they-left-out';
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { whatItWouldRestOn, nothingChangedSince, thePreparedOpeningIn, theOpeningAsRead, writeOnlyTheQuestion, whatItWasBasedOn, KEPT_IN_THE_PLAN_AS, type APreparedOpening } from './the-opening-prepared-in-advance';
-import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
+import { SentenceGate, screen, whatIsSaidWhenNothingIsLeft, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
 import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, withoutTheGoodbye, isAnAcknowledgement, takenAsSaidAndOn, saysGoodbye, hasAGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
 import { withoutARecordClaimNobodyHolds } from './a-record-claim-nobody-holds';
@@ -226,7 +232,8 @@ import { TheySay, worthRecording, WHEN_THEY_SAY_IT_IS_MISSING } from './what-the
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { keptForTheOrganisation, MOST_KEPT_IN_A_PROMPT } from '../knowledge/organisation-memory';
 import { whatTheOrganisationKeepsBlock } from '../knowledge/what-the-organisation-keeps';
-import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
+import { howThisCompanyDoesIt, whatToLookUp, whatIsOnTheDesk } from './how-this-company-does-it';
+import { readTheDesk } from '../knowledge/the-desk';
 import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
@@ -235,7 +242,7 @@ import { theCheckInToAddTo, WHAT_WOULD_YOU_LIKE_TO_ADD, ADD_SOMETHING_REFUSED } 
 import { aLastTimeInTheirOwnWords, type AWordTheyWrote, anOpeningWithNothingLeftOver } from './a-last-time-is-their-own-words';
 import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
 import { isShut } from '../grounds/a-ground-that-has-ended';
-import { whenTheNextSessionOpens } from '../grounds/the-check-ins-own-schedule';
+import { theUnitOfARound, whenTheNextSessionOpens } from '../grounds/the-check-ins-own-schedule';
 import { aDailyCheckInWithNoEndSaid } from '../grounds/grounds.service';
 import { withoutTheirWordsHandedBack, withoutAnAnswerToItsOwnQuestion } from './a-reply-neither-hands-back-their-words-nor-answers-itself';
 import { theOrganisationsZone } from '../../common/the-organisations-own-day';
@@ -265,6 +272,7 @@ import { notTheSameQuestionTwiceInARow, notAQuestionAlreadyAnswered } from './th
 import { aDealsFigure, aCountOfPlacesVisited } from '../board/a-deals-units-are-not-a-target';
 import { aCustomerIsNotAPerson } from './no-guessed-pronoun-for-a-named-person';
 import { theRecordLinesIn } from './the-record-from-the-assessment';
+import { mayReadTheLine, thePerson } from './who-may-read-a-line';
 import { whoHearsAComplaintAbout, whoWillSeeIt, aComplaintAboutTheLeadBlock } from './a-complaint-about-the-lead';
 import { theWorkTheySaid, notARemarkAboutUs, ANSWER_THE_REMARK, aboutTheToolNotTheWork } from './a-remark-about-the-tool-is-not-the-work';
 import { nothingYet, withThisTurn, whatToAskAbout, type WhatWeHave, type Claim } from './what-we-have-so-far';
@@ -298,7 +306,7 @@ import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_CLOSE_IS_THREE_SENTENCES, A_
 import { THE_ENGINE_COULD_NOT_BE_REACHED, whenTheConversationCannotBeReached } from './a-failed-open-says-the-right-thing-to-each-reader';
 import { asksItAgainAfterTheAnswer, anAnsweredQuestionAskedAgain, theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, doNotSayItBack, withoutTheSentenceThatSaysItBack, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY, withoutTheQuestionAskedAgain, theyCorrectedUs, asksAboutWhatTheyCorrected, THEY_CORRECTED_YOU, repeatsTheLastAskWordForWord } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
-import { deadlineOf } from '../grounds/when-the-clock-starts';
+import { deadlineOf, theLastDayOf } from '../grounds/when-the-clock-starts';
 import { whenThisIsOver, theyAskedWhenThisIsOver, THE_RUN_IS_WHAT_THEY_ASKED_ABOUT } from './when-this-is-over';
 import { whatTheySaidTheyWouldDo, thingsNobodyOwns, whatIsNotSettled, theQuestionsTheLeadWants, whatSitsBetweenPeople, whatTheyHedged, keepTheirHedge, howThisTeamWorks } from './what-the-context-already-holds';
 import { alreadyAsked, withTheQuestionAsConfirmed } from '../grounds/a-question-asked-word-for-word';
@@ -1940,8 +1948,9 @@ export class ConversationService {
         ...(this.theirEarlierWordsForThisTurn.get((checkIn as any)?.id) ?? []),
         ...(this.knownForThisTurn.get((checkIn as any)?.id) ?? []),
       ];
-      const recordLines: string[] = await (this.prisma.recordEntry?.findMany?.({ where: { participant: { groundId: checkIn.groundId } }, select: { text: true }, take: 2000 }) ?? Promise.resolve([]))
-        .then((rows: any[]) => (rows ?? []).map((r) => r.text ?? '')).catch(() => [] as string[]);
+      /* What this person may read of the record, and nothing the lead said about a colleague (who-may-read-a-line.ts). */
+      const recordLines: string[] = await (this.prisma.recordEntry?.findMany?.({ where: { participant: { groundId: checkIn.groundId } }, select: { text: true, participantId: true, aboutParticipantId: true, standing: true }, take: 2000 }) ?? Promise.resolve([]))
+        .then((rows: any[]) => (rows ?? []).filter((r) => mayReadTheLine(r, thePerson((checkIn as any)?.participantId))).map((r) => r.text ?? '')).catch(() => [] as string[]);
       const held: WhatTheRecordHolds = {
         ...claims,
         blame,
@@ -2468,9 +2477,13 @@ export class ConversationService {
     try {
       const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' } });
       const history = theConversationSoFar(turns);
-      let rawReply = how.streamDraft
-        ? await this.streamTheDraft(checkIn as any, fullSystem, history, turns, message, how.streamDraft)
-        : await this.anthropic.respond(fullSystem, history);
+      /* After the read-back, a correction is answered on the line it names, through the claim probe (the-read-back.ts). */
+      const answeredOnItsLine = (await this.aCorrectionOfTheReadBack(checkIn as any, personTurn.id, message).catch(() => null))
+        ?? (await this.aTypedFinish(turns, message).catch(() => null));
+      let rawReply = answeredOnItsLine
+        ?? (how.streamDraft
+          ? await this.streamTheDraft(checkIn as any, fullSystem, history, turns, message, how.streamDraft)
+          : await this.anthropic.respond(fullSystem, history));
       /*
        * AN EMPTY ANSWER IS ASKED FOR AGAIN BEFORE ANYBODY IS TOLD IT DID NOT COME OUT RIGHT. Grace,
        * the tractor owner, said "I will buy another tractor. The demand is there." and was told "That
@@ -3368,6 +3381,17 @@ export class ConversationService {
       }
 
       /*
+       * AND "YOU SAID LAST TIME ..." IS SOMETHING THEY WROTE, IN EVERY REPLY. It was checked only in the opening, so the second message of week 3
+       * told Amani "You said last time you were waiting on a decision from another team", which he never said. See a-last-time-is-their-own-words.
+       */
+      const theyWroteIt: AWordTheyWrote[] = [...theirWords, ...(this.theirEarlierWordsForThisTurn.get(checkIn.id) ?? [])].map((text) => ({ text, at: new Date() }));
+      const lastTime = aLastTimeInTheirOwnWords(screened.text, theyWroteIt, { keepWhatIsTheirs: true });
+      if (lastTime.changed) {
+        this.logger.warn(`Check-in ${checkIn.id}: cut a "you said last time" that nothing they wrote supports.`);
+        screened = { ...screened, text: afterTheCut(screened.text, lastTime.text, { closing: closingNow, mayRestore: false }) };
+      }
+
+      /*
        * AND NO CALENDAR DAY THAT NOBODY GAVE. "By the end of the quarter, so by December 31st", said as a
        * fact to a woman whose quarter ended on 30 September. A statement naming a day stands only where
        * somebody said it, a document has it, or the product put it. See a-date-nobody-gave.
@@ -3386,7 +3410,9 @@ export class ConversationService {
       }
 
       /* A bare "Ok." that the screen left nothing to reply to is answered, not told it did not come out right (adversarial run, 20 Sep 2026). */
-      reply = screened.text || (isAnAcknowledgement(message) ? 'Noted.' : ASK_AGAIN);
+      /* On the turn that closes there is nothing to ask again: the close is written from what is saved and says what comes next, so a reply the screen
+         emptied is a thank-you, never "That did not come out right" in front of the close (fix plan 16 November, group 2). */
+      reply = screened.text || whatIsSaidWhenNothingIsLeft({ closing: closingNow, acknowledgement: isAnAcknowledgement(message) });
 
       /*
        * AND THE DOCUMENT'S OWN WORDS GO IN FRONT OF IT, WHERE THIS TURN OWES THEM.
@@ -3575,18 +3601,24 @@ export class ConversationService {
         this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
     }
     /*
-     * THE READ-BACK, ONCE, BEFORE THE CLOSE (the-read-back.ts): "Here's what I recorded. ... Is anything wrong?", from the conversation's
-     * own notes, their words for each thing they said, this turn's included. It no longer waits for the assessment (plan round 32: 52
-     * seconds on the full model, a 56-second reply). The close is held for their answer; the next close lands, and the assessment written
-     * then reads the whole conversation, any correction included, and is what every page reads.
+     * THE READ-BACK, ONCE, AS THE LAST MESSAGE BEFORE THE CLOSE (the-read-back.ts; batch 2, group 4): the conversation's assessment, the one
+     * reading every page reads, said back line by line with each line's item kept behind it. It is the whole message: no new question
+     * goes with it. The close is held for their answer, which a correction answers on the line it names.
      */
-    if (sessionComplete && !(checkIn as any).isSelfCorrection && !(await this.prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { closeHeldAt: true } }).catch(() => null))?.closeHeldAt) {
-      await this.theNoteFromTheLastTurnLands(checkIn.id);
-      const notes = await this.prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { whatWeHave: true } }).then((x: any) => (x?.whatWeHave ?? null) as WhatWeHave | null).catch(() => null);
-      const readBack = theReadBack(notes);
+    /* Whether the read-back was already given (the close then does not ask again), and whether the model could not read the conversation (the close then says so plainly and points at nothing). */
+    let theCloseIs: TheCloseKind = 'usual';
+    const heldBefore = sessionComplete && !(checkIn as any).isSelfCorrection
+      ? (await this.prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { closeHeldAt: true } }).catch(() => null))?.closeHeldAt
+      : null;
+    if (heldBefore) theCloseIs = 'already asked';
+    if (sessionComplete && !(checkIn as any).isSelfCorrection && !heldBefore) {
+      const assessed = await this.theAssessmentAtTheClose(checkIn as any).catch(() => null);
+      if (!assessed || assessed.measure?.modelFailed) theCloseIs = 'read still to come';
+      const readBack = theReadBackFrom(assessed);
       if (readBack) {
-        await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { closeHeldAt: new Date() } });
-        aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: [withoutTheGoodbye(aiTurn.content ?? '').trim(), readBack].filter(Boolean).join('\n\n') } });
+        const stored = await this.prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { sessionReport: true } }).catch(() => null);
+        await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { closeHeldAt: new Date(), sessionReport: theReadBackKeptOn(stored?.sessionReport, readBack.lines) as any } });
+        aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: readBack.text } });
         sessionComplete = false;
         this.logger.log(`Check-in ${checkIn.id}: read back what was recorded before the close.`);
       }
@@ -3678,7 +3710,7 @@ export class ConversationService {
     /* AND THE CLOSE ENDS AS THE PROTOTYPE'S DOES, with the card below it. See the-close-says-what-comes-next. */
     if (sessionComplete) {
       /* WhatsApp and the API show no card, so they end on their own next step, never on "Below is". */
-      const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web', await this.usesSimplerWords(checkIn.groundId));
+      const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web', await this.usesSimplerWords(checkIn.groundId), theCloseIs);
       if (closed !== (aiTurn.content ?? '')) aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: closed } });
     }
     /* The product has already said it was written down; the model's own telling of it is taken out, so it is not said twice. */
@@ -4606,10 +4638,17 @@ export class ConversationService {
        */
       theFactsOnRecord(this.prisma, { groundId: ground.id, reader: { kind: 'the person', participantId: checkIn.participantId } })
         .then((facts) => {
-          const before = facts.filter((f) => f.sessionNumber < (checkIn.sessionNumber ?? 1));
-          const last = Math.max(0, ...before.map((f) => f.sessionNumber));
+          /*
+           * THEIR OWN EARLIER CHECK-INS, AND WHAT SOMEBODY ELSE SAID ABOUT THEM THAT THEY MAY READ (staging check S8, 4 November 2026). Rita's
+           * first questions were "What is clear to you about selling the units?": nothing had told the planner that Stella said in setup
+           * Rita had 9 units. Facts from another person's check-in reach here only where the one reader lets this person read them, and
+           * they are counted by their own check-in, never by this person's session numbers, so a lead's setup is not lost to session 1.
+           */
+          const theirs = (f: { participantId: string }) => f.participantId === checkIn.participantId;
+          const before = facts.filter((f) => f.checkInId !== checkIn.id && (!theirs(f) || f.sessionNumber < (checkIn.sessionNumber ?? 1)));
+          const last = Math.max(0, ...before.filter(theirs).map((f) => f.sessionNumber));
           return before
-            .filter((f) => f.sessionNumber === last || WHAT_CARRIES_ON.has(f.section))
+            .filter((f) => !theirs(f) || f.sessionNumber === last || WHAT_CARRIES_ON.has(f.section))
             .map((f) => ({ text: f.words, type: f.section === 'workUpdates' || f.section === 'claims' ? 'PROGRESS' : f.section, createdAt: f.on ? new Date(f.on) : null }))
             .reverse();
         })
@@ -4732,7 +4771,7 @@ export class ConversationService {
           ...rows,
           ...turnsThisSession.filter((t) => t.role === 'PERSON').map((t) => ({ text: t.content, type: 'PROGRESS', session: checkIn.sessionNumber ?? 1 })),
         ];
-        const planned = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null;
+        const planned = thePlannedSessionsOf(ground as any) ?? null;
         return sayWhatDoesNotAddUp({
           said,
           thisSession: checkIn.sessionNumber ?? 1,
@@ -4743,6 +4782,7 @@ export class ConversationService {
           aiTurnsThisSession: turnsThisSession.filter((t) => t.role === 'AI').map((t) => t.content),
           customers: theCustomersHere,
           people: thePeopleHere,
+          roundUnit: theUnitOfARound({ cadence: (ground as any).cadence, days: (ground as any).cadenceDays }),
         });
       })
       .catch(() => '');
@@ -4813,7 +4853,7 @@ export class ConversationService {
       const stage = stageOf(
         checkIn.sessionNumber ?? 1,
         /* Derived from the timeline and the cadence, which is where a planned length lives. */
-        totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
+        thePlannedSessionsOf(ground as any) ?? null,
         !!(checkIn as any).isFinal,
       );
       const still = whatIsStillOwed(owedForThis, this.roleOfTheReaderFor(ground as any, checkIn as any), stage, {
@@ -4924,7 +4964,7 @@ export class ConversationService {
        */
       /* Zero days for a check-in that runs until the lead ends it, which gives no total. */
       /* A daily check-in nobody gave an end runs until the lead ends it, so no "session 2 of 365" is said (E2). */
-      totalSessions: aDailyCheckInWithNoEndSaid(ground as any) ? undefined : totalSessionsFor(ground.timelineDays, ground.cadence, ground.cadenceDays) ?? undefined,
+      totalSessions: aDailyCheckInWithNoEndSaid(ground as any) ? undefined : thePlannedSessionsOf(ground as any) ?? undefined,
       runsUntilEnded: !!(ground as any).runsUntilEnded || aDailyCheckInWithNoEndSaid(ground as any),
       /* Their own words for their part only: for anybody the lead invited it is the lead's sentence about them. */
       roleAsDescribed: aRoleInTheirOwnWords(checkIn.participant as any),
@@ -5188,19 +5228,23 @@ export class ConversationService {
     })().catch(() => [] as any[]);
     const theirWeek = whatTheirWeekLooksLike(theirRecords as any, new Date());
 
-    const lookUp = whatToLookUp(latestMessage);
+    /* What they said, read with the question it answers, so a short answer is looked up by what it is about (S7). */
+    const askedLast = [...turnsThisSession].reverse().find((t) => t.role === 'AI')?.content ?? '';
+    const lookUp = whatToLookUp([latestMessage ?? '', askedLast].join(' '));
     const companyCards = lookUp && this.knowledge
       ? await this.knowledge
           .covering(ground.organizationId, lookUp)
           .catch(() => [])
       : [];
+    /* The Desk at a glance, every turn: each document's title and kept summary (S7). Read, never written here. */
+    const onTheDesk = whatIsOnTheDesk(await readTheDesk(this.prisma, ground.organizationId).catch(() => []));
     /*
      * AND WHAT THE ORGANISATION'S LEAD CONFIRMED IS TRUE OF THE WHOLE COMPANY (week 20). Context to
      * understand people with, in the same place as the written process and never mixed into it: it is
      * not something a person's account is compared with, and it is not quoted to anybody.
      */
     const keptForTheOrg = await keptForTheOrganisation(this.prisma, ground.organizationId, MOST_KEPT_IN_A_PROMPT).catch(() => []);
-    const howWeDoIt = [howThisCompanyDoesIt(companyCards), whatTheOrganisationKeepsBlock(keptForTheOrg)].filter(Boolean).join('\n\n');
+    const howWeDoIt = [howThisCompanyDoesIt(companyCards), onTheDesk, whatTheOrganisationKeepsBlock(keptForTheOrg)].filter(Boolean).join('\n\n');
 
     /*
      * BOUNDED, AND HONEST ABOUT THE BOUND.
@@ -5443,8 +5487,8 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
     const askedWhenThisEnds = theyAskedWhenThisIsOver(latestMessage) ? THE_RUN_IS_WHAT_THEY_ASKED_ABOUT : '';
     const howLongThisRuns = whenThisIsOver({
       sessionNumber: checkIn.sessionNumber ?? 1,
-      roundsPlanned: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).cadenceDays) ?? null,
-      endsOn: deadlineOf(ground as any),
+      roundsPlanned: thePlannedSessionsOf(ground as any) ?? null,
+      endsOn: theLastDayOf(ground as any),
       runsUntilEnded: !!(ground as any).runsUntilEnded,
     });
 
@@ -6101,8 +6145,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Which blocks were actually there, one log line per turn. Two blocks that looked wired and were
        not were found by reading; this is so the next one is found by looking. */
-    /* Their language, when it is not English. See a-whatsapp-message-is-routed.ts: the conversation happens in it, the record stays in English. */
-    const theirLanguage = languageBlock((checkIn as any).participant?.language ?? null);
+    /* Their language, read by the model from their latest message on every turn (the-language-they-write-in.ts); nothing stored decides it. */
+    const theirLanguage = WRITE_IN_THEIR_LANGUAGE;
     /* A COMPLAINT ABOUT THE LEAD (Hafsah, 3 November 2026): somebody who is not the lead is told, if they make one, exactly who sees it. */
     const aComplaintBlock = checkIn.participant.partyType === PartyType.INITIATOR ? '' : await (async () => {
       const lead: any = await this.prisma.user.findUnique({ where: { id: (ground as any).initiatorId }, select: { firstName: true, lastName: true } }).catch(() => null);
@@ -6290,7 +6334,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     /* Best-effort, like every other block here: not knowing the last question makes this turn no
        worse than it was before the block existed, and failing to build a prompt over it would. */
-    let lastAiTurn: { content: string | null } | null = null;
+    let lastAiTurn: { content: string | null; endCard?: unknown } | null = null;
     /* EVERY EARLIER TURN, not only the last one. A block that knows one turn back cannot stop the
        third identical ask: by then it is reporting the repeat rather than preventing it. Six is
        plenty - a session is about ten turns - and it is capped so this cannot grow with the
@@ -6301,7 +6345,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         where: { checkInId: checkIn.id, role: TurnRole.AI },
         orderBy: { createdAt: 'desc' },
         take: 7,
-        select: { content: true },
+        select: { content: true, endCard: true },
       });
       lastAiTurn = recent[0] ?? null;
       earlierAiTurns = recent.slice(1);
@@ -6309,10 +6353,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       /* A try rather than a .catch: a caller whose client has no findMany throws before there is a
          promise to catch on, and this block is never worth failing a turn over. */
     }
-    const askedLastTurn = whatYouAskedLastTurn(
-      lastAiTurn?.content ?? null,
-      earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
-    );
+    const askedLastTurn = [
+      whatYouAskedLastTurn(
+        lastAiTurn?.content ?? null,
+        earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
+      ),
+      /* The summary on the screen is not in the transcript, so the model is told it is there (a-typed-finish-is-a-finish). */
+      lastAiTurn?.endCard ? THE_SUMMARY_IS_ON_THE_SCREEN : '',
+      /* Read last, every turn: a person may say they are done at any point (a-typed-finish-is-a-finish). */
+      THE_PERSON_MAY_BE_DONE,
+    ].filter(Boolean).join('\n\n');
 
     /*
      * THE ANCHOR'S WEEKLY CHECK-IN, ONLY WHEN THE SWITCH IS ON AND THIS CHECK-IN WAS STARTED FROM THE ANCHOR LINK (anchor piece 15).
@@ -7791,7 +7841,7 @@ ${told}` : '';
        made final at session 6 of about 12 and two people had nothing left to open. It reads the one
        count every header and ensureNextSession read. A check-in that runs until the lead ends it has
        no planned last session, so no session is made final. */
-    const planned = ground && !ground.runsUntilEnded ? totalSessionsFor(ground.timelineDays, ground.cadence, ground.cadenceDays) : null;
+    const planned = ground && !ground.runsUntilEnded ? thePlannedSessionsOf(ground as any) : null;
     const isFinal = planned != null && sessionNumber >= planned;
 
     /**
@@ -7970,7 +8020,7 @@ ${told}` : '';
       const patterns = judged ? patterns0 : [];
       const coaching = judged ? coaching0 : null;
       const codeOf = (code: string) => [...POSITIVE_CODES, ...CARRYING_CODES, ...BAD_FAITH_CODES].find((c) => c.code === code);
-      const planned = totalSessionsFor(ground.timelineDays, ground.cadence, ground.cadenceDays) ?? null;
+      const planned = thePlannedSessionsOf(ground as any) ?? null;
       const brief = theBriefForThePlanner({
         /* The situation in words, never its key (Naomi read "NEW_PROJECT" back in a reply). */
         scenarioLabel: `${situationInWords(ground.scenario) ?? 'a check-in'}${aNameAPersonGave(ground.label) ? `, called "${aNameAPersonGave(ground.label)}"` : ''}`,
@@ -8088,7 +8138,7 @@ ${told}` : '';
       this.prisma.checkInGap.findMany({ where: { participantId: checkIn.participantId }, select: { slug: true, asked: true, answeredAt: true } }),
       this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' }, select: { role: true, content: true } }),
     ]);
-    const stage = stageOf(checkIn.sessionNumber ?? 1, totalSessionsFor((ground as any)?.timelineDays, (ground as any)?.cadence, (ground as any)?.cadenceDays) ?? null, !!checkIn.isFinal);
+    const stage = stageOf(checkIn.sessionNumber ?? 1, thePlannedSessionsOf(ground as any) ?? null, !!checkIn.isFinal);
     const role = this.roleOfTheReaderFor(ground as any, { participant: checkIn.participant } as any);
     const still = whatIsStillOwed(owed, role, stage, {
       types: types.map((t) => t.type),
@@ -8134,7 +8184,7 @@ ${told}` : '';
 
     const stage = stageOf(
       checkIn.sessionNumber ?? 1,
-      totalSessionsFor((ground as any)?.timelineDays, (ground as any)?.cadence, (ground as any)?.cadenceDays) ?? null,
+      thePlannedSessionsOf(ground as any) ?? null,
       !!checkIn.isFinal,
     );
     const role = this.roleOfTheReaderFor(ground as any, { participant } as any);
@@ -9057,8 +9107,56 @@ ${told}` : '';
       return {
         participantId: checkIn.participantId, checkInId: checkIn.id, type: l.type as RecordEntryType, verifiability: l.verifiability as any,
         text, saidWordForWord: saidWordForWord(text, whatTheyTyped), dimensionThreadKey: l.dimensionThreadKey,
+        aboutParticipantId: l.aboutParticipantId,
+        standing: l.standing,
       };
     }), whatTheyTyped);
+  }
+
+  /**
+   * A TYPED FINISH CLOSES THE ROUND (run 9, item 7). Two rounds stayed open because the model, told to close on a finish, kept asking. The model that reads what
+   * a message means (understandTheMessage, the same read Ask uses) is asked first, with the question the person was answering; where it says they are finished,
+   * the round closes through the one marker every close uses, in one plain word and with no question. Only a short message is read this way, because a finish is
+   * short and a long one carries something to take in; and only once they have said something, so a "done" before a first answer is not a round.
+   */
+  private async aTypedFinish(turns: { role: TurnRole; content: string | null }[], message: string): Promise<string | null> {
+    if (message.trim().split(/\s+/).length > 12) return null;
+    if (!turns.some((t) => t.role !== TurnRole.AI && (t.content ?? '').trim() && (t.content ?? '') !== message)) return null;
+    const lastAsked = [...turns].reverse().find((t) => t.role === TurnRole.AI)?.content ?? null;
+    const understood = await understandTheMessage(this.anthropic as any, this.prompts as any, message, lastAsked);
+    return understood?.kind === 'finished' ? `Understood. ${SESSION_CLOSE_MARKER}` : null;
+  }
+
+  /**
+   * A CORRECTION OF THE READ-BACK, CHECKED LIKE ANY CLAIM (batch 2, group 4; the first principle). Only once the read-back was given. The
+   * model reads what their reply means; a correction is checked against the lines read back, by their ids, with the same probe Ask uses
+   * (checkTheCorrection). It is kept on the item it corrects, as held up or unproven, and the reply is numbered into the assessment, so the
+   * close keeps that assessment and every page reads the corrected line. What Groundwork says back is the probe's own reply: what it
+   * changed, the proof it needs, or which line they mean. A correction that held up closes the check-in. Null for anything else, which the
+   * conversation answers as before.
+   */
+  private async aCorrectionOfTheReadBack(checkIn: { id: string; participant?: any }, turnId: string, message: string): Promise<string | null> {
+    const row: any = await this.prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { closeHeldAt: true, sessionReport: true } }).catch(() => null);
+    const lines = row?.closeHeldAt ? theLinesReadBackIn(row.sessionReport) : [];
+    if (!lines.length) return null;
+    const understood = await understandTheMessage(this.anthropic as any, this.prompts as any, message, THE_READ_BACK_ASKS).catch(() => null);
+    /* Their answer to "Is anything wrong?" is that nothing is: the check-in closes, in one plain word, with no question (the model understood it, this only acts on it). */
+    if (understood?.kind === 'agreement') return `Understood. ${SESSION_CLOSE_MARKER}`;
+    if (understood?.kind !== 'correction') return null;
+    const firstName = String(checkIn.participant?.user?.firstName ?? 'They');
+    const checked = await checkTheCorrection(this.anthropic as any, this.prompts as any, message, {
+      promises: [], lines: [], numbers: [], documents: [], firstName,
+      facts: lines.map((l) => ({ id: l.id, says: l.says, who: 'You', on: 'this check-in' })),
+    });
+    if (!checked) return null;
+    if (checked.line) {
+      const [checkInId, itemId] = checked.line.id.split('#');
+      const backed = checked.verdict === 'backed';
+      await keepTheCorrectionOnItsItem(this.prisma, { checkInId, itemId, nowSays: checked.line.nowSays, backed, by: null, where: 'check-in' });
+      const now = await this.prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { sessionReport: true } }).catch(() => null);
+      await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionReport: withTheReplyToTheReadBack(now?.sessionReport, { turnId, words: message, at: new Date(), itemId, nowSays: checked.line.nowSays, backed }) as any } });
+    }
+    return checked.verdict === 'backed' ? `${checked.reply} ${SESSION_CLOSE_MARKER}` : checked.reply;
   }
 
   /**
@@ -10353,7 +10451,9 @@ ${told}` : '';
       if (!target) continue;
       /* Read for another person, so a figure only a private document holds is not written (problem 3). */
       if (carriesAPrivateFigure({ name: e.expectation, target: e.targetNumber ?? null }, privateFigures)) continue;
-      if (Number.isFinite(e.targetNumber) && (e.targetNumber as number) > 0) {
+      /* A person's target is one somebody SAID (batch 2, group 2; staging S1, "Remy's target is 30" when Stella gave only the team's 60):
+         the same rule the aims below are read by, so a share the model worked out is never written as anybody's target. */
+      if (Number.isFinite(e.targetNumber) && (e.targetNumber as number) > 0 && numbersInTheirWords.has(Math.round(e.targetNumber as number))) {
         const said = (e.expectation ?? '').trim();
         if (said) theirOwnNumbers.push({ participantId: target, name: said, target: Math.round(e.targetNumber as number) });
       }
@@ -10670,6 +10770,9 @@ ${told}` : '';
     if (!a) return;
     if (!a.about.isTheLead) return this.keepTheAimsTheySetThemselves(checkIn, a);
     const aims = (a.targets ?? [])
+      .filter((t) => (t as any).reportsWhatIsDone !== true)
+      /* An aim held by a named person is about her and stays on the lead's assessment: never a team aim every read is given (anAimHeldByAnotherPerson). */
+      .filter((t) => !anAimHeldByAnotherPerson(t as any, a.about.who))
       .map((t) => ({ name: String(t.aim ?? t.words ?? '').trim(), target: typeof t.target === 'number' ? t.target : null }))
       .filter((t) => t.name);
     if (!aims.length) return;
@@ -10693,6 +10796,8 @@ ${told}` : '';
     const first = (me.user?.firstName ?? a.about.who ?? '').trim().split(/\s+/)[0]?.toLowerCase() ?? '';
     const theirs = (a.targets ?? [])
       .filter((t) => first && String(t.whose ?? '').trim().split(/\s+/)[0]?.toLowerCase() === first)
+      /* "I sold 24 lanterns last week" is where they stand, said against an aim somebody already holds: it is not a new aim of theirs (what-people-said-against-a-target keeps it). */
+      .filter((t) => (t as any).reportsWhatIsDone !== true)
       .map((t) => ({ words: String(t.words ?? '').trim(), target: typeof t.target === 'number' ? t.target : null, unit: typeof t.unit === 'string' ? t.unit : null, by: typeof t.by === 'string' ? t.by : null }))
       .filter((t) => t.words);
     if (!theirs.length) return;
@@ -11344,10 +11449,11 @@ ${told}` : '';
           namedTheThing: typeof d.namedTheThing === 'boolean' ? d.namedTheThing : null,
           status,
           sourceCheckInId: checkInId,
-          /* Dated from the day they said it started (the assessment's sinceDay, assessment test, 2 November: Aisha asked on
-             5 November and the board said "waiting since 16 November", the session's day); where they did not say, the session
-             it was said in, not the moment the row was written. A day after the session is not a since. */
-          createdAt: await this.whenTheSessionWas(checkInId).then((on) => (d.sinceDay && new Date(d.sinceDay) <= on ? new Date(`${d.sinceDay}T12:00:00Z`) : on)),
+          /* Dated from the day it was SAID, the session it was said in, never from the day their words refer to (batch 2, group 3;
+             round 50: Brian said on 5 November that he had asked on 30 October, and the board read "raised a blocker on Friday 30
+             October" and "This was raised once, on 30 October"). "Raised on" and "waiting since" read this; the day it refers to stays
+             in the assessment (sinceDay), where it is read as what they said. */
+          createdAt: await this.whenTheSessionWas(checkInId),
           clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
           /* Their own words for when, word for word, and the day they name if they name one. */
           dueSaid: dueSaidBy(d),
@@ -11561,6 +11667,7 @@ ${told}` : '';
       where: { id: checkIn.id },
       select: {
         sessionReport: true,
+        writesOwed: true,
         completedAt: true,
         sessionNumber: true,
         groundId: true,
@@ -11577,7 +11684,7 @@ ${told}` : '';
       report,
       ...(onTime ? { onTime } : {}),
       /* Whether the report is there, will not come, or the session is still open, in a sentence. A finished session with no report is never going to get one. */
-      ...whereASessionsReportStands({ report, finishedAt: row?.completedAt ?? null }),
+      ...whereASessionsReportStands({ report, finishedAt: row?.completedAt ?? null, readIsStillToCome: theReadIsStillToCome(row), theirOwnReportIsKept: !!(await Promise.resolve(this.prisma.groundParticipant?.findUnique?.({ where: { id: checkIn.participantId }, select: { soloArtifact: true } })).catch(() => null))?.soloArtifact }),
       finishedAt: row?.completedAt ?? null,
       sessionNumber: row?.sessionNumber ?? null,
       groundId: row?.groundId ?? null,

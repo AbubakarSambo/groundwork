@@ -1,3 +1,4 @@
+import { sessionsAPauseOpened } from './a-round-that-could-be-answered';
 import { theyHaveReplied } from './an-answer-includes-a-refusal';
 import { theSessionClock, holdsTheClock, type TheSessionClock } from '../board/one-count-for-the-sessions';
 import { owesThisSession } from './the-lead-checks-in-when-they-choose';
@@ -129,9 +130,18 @@ export function whoSaid(people: any[], rows: any[], session: number, notAnswered
   const unnamed = notJoined.length - named.length;
   const one = (xs: string[]) => xs.length === 1 && xs[0] !== 'you';
   const out: string[] = [];
-  if (started.length) out.push(`${andList(started)} ${one(started) ? 'has' : 'have'} started and not finished yet`);
-  if (notStarted.length) out.push(`${andList(notStarted)} ${one(notStarted) ? 'hasn’t' : 'haven’t'} started yet`);
-  if (missed.length) out.push(`${andList(missed)} didn’t check in before it closed`);
+  /* Somebody with no name is counted in every state, never called "Someone" ("Someone hasn't started yet", Mira's Today): "Neema and one other person haven't started yet". */
+  const said = (xs: string[], one1: string, many: string): string => {
+    const names = xs.filter((n) => n !== SOMEONE);
+    const nameless = xs.length - names.length;
+    const others = nameless === 0 ? [] : [nameless === 1 ? `one other person` : `${nameless} other people`];
+    const subject = names.length ? andList([...names, ...others]) : nameless === 1 ? 'One person' : `${nameless} people`;
+    const singular = (names.length + (nameless ? 1 : 0)) === 1 && xs.length === 1 && names[0] !== 'you';
+    return `${subject} ${singular ? one1 : many}`;
+  };
+  if (started.length) out.push(said(started, 'has started and not finished yet', 'have started and not finished yet'));
+  if (notStarted.length) out.push(said(notStarted, 'hasn’t started yet', 'haven’t started yet'));
+  if (missed.length) out.push(said(missed, 'didn’t check in before it closed', 'didn’t check in before it closed'));
   if (named.length) out.push(`${andList(named)} ${one(named) ? 'hasn’t' : 'haven’t'} joined yet`);
   if (unnamed) out.push(`${unnamed} ${named.length ? 'other ' : ''}${unnamed === 1 ? 'person hasn’t' : 'people haven’t'} joined yet`);
   return out;
@@ -163,15 +173,18 @@ export function thePlannedSessionsOf(g: { runsUntilEnded?: boolean | null; timel
 
 export function theSessionAndItsCount(
   g: WhatTheCountReads,
-  opts: { now?: Date; handOn?: boolean; leave?: Map<string, Stretch[]>; names?: { readerUserId?: string | null } } = {},
+  opts: { now?: Date; handOn?: boolean; leave?: Map<string, Stretch[]>; names?: { readerUserId?: string | null }; pausedFrom?: Date | string | null } = {},
 ): { clock: TheSessionClock; count: ThisSession; bySession: Record<number, TheServedCount> } {
   const now = opts.now ?? new Date();
   const participants = (g.participants ?? []) as any[];
-  const rows = ((g.checkIns ?? []) as any[]).filter((c) => !c.isSetup);
+  /* A round the pause opened was never sent to anybody, so no reader counts it: not the header's round, not the glance, not any session's count (run 10). */
+  const thePauseOpened = sessionsAPauseOpened((g.checkIns ?? []) as any[], opts.pausedFrom);
+  const checkInsAsked = ((g.checkIns ?? []) as any[]).filter((c) => !thePauseOpened.has(Number(c.sessionNumber)));
+  const rows = checkInsAsked.filter((c) => !c.isSetup);
   const planned = thePlannedSessionsOf(g);
   const clock = theSessionClock(rows, whoHoldsTheClock(participants), planned, now, opts.handOn ?? true);
   const progress = howACheckInIsGoing({
-    checkIns: g.checkIns ?? [],
+    checkIns: checkInsAsked,
     participants,
     scenario: g.scenario ?? null,
     dependencies: [],
@@ -196,8 +209,10 @@ export function theSessionAndItsCount(
     participants.map((p) => ({ ...p, awayUntil: awayUntilOn(opts.leave?.get(p.id), now), checkIns: rows.filter((c) => c.participantId === p.id) })),
     g.scenario ?? null,
     clock.currentSession,
+    opts.pausedFrom,
   );
-  const theClocks = bySession[clock.currentSession];
+  /* The clock's session is never one the pause opened now, but where no count was served for it, it falls back to one asked of everybody on the check-in. */
+  const theClocks = bySession[clock.currentSession] ?? eachSessionsServedCount(participants.map((p) => ({ ...p, awayUntil: awayUntilOn(opts.leave?.get(p.id), now), checkIns: rows.filter((c) => c.participantId === p.id) })), g.scenario ?? null, clock.currentSession)[clock.currentSession];
   const one = { counted: theClocks.onTheCheckIn, answered: theClocks.answered.length, ofPeople: theClocks.onTheCheckIn.length, notAnswered: theClocks.onTheCheckIn.filter((id) => !theClocks.answered.includes(id)) };
   /* With only one person counted, the count already says it of them; their name is not said twice. */
   const closedOnThem = new Set(one.notAnswered.filter((id) => !theClocks.notYet.includes(id)));
@@ -205,6 +220,9 @@ export function theSessionAndItsCount(
   const whoSays = missing.length ? `${theClauses(missing).charAt(0).toUpperCase()}${theClauses(missing).slice(1)}.` : null;
   const readerIs = (id: string) => !!opts.names?.readerUserId && participants.find((p) => p.id === id)?.userId === opts.names.readerUserId;
   const othersHaveAnswered = opts.names ? one.counted.some((id) => !one.notAnswered.includes(id) && !readerIs(id)) : null;
+  /* A round that opened in a pause was never sent to anybody (grounds/a-round-that-could-be-answered.ts), so nobody has "not checked in" or "didn't check in before it closed" for it. */
+  /* While Groundwork is paused nothing is open and nobody can answer, so no count of an earlier round is said as if it were today's. */
+  const inAPause = !!opts.pausedFrom;
   const count: ThisSession = {
     session: clock.currentSession,
     answered: one.answered,
@@ -215,8 +233,8 @@ export function theSessionAndItsCount(
     notCountedSays,
     notJoinedSays: progress.notJoinedSays ?? null,
     /* Each person once: where they are named, who has not joined is named among them, so the count's own not-joined sentence is not said too. */
-    says: [opts.names ? theCountWithWhoIsMissing(one.answered, one.ofPeople, missing) : theCountWithWhoIsMissing(one.answered, one.ofPeople, []), opts.names ? null : progress.notJoinedSays, notCountedSays].filter(Boolean).join(' '),
-    whoSays,
+    says: inAPause ? 'Check-ins are paused, so nobody is being asked to check in.' : [opts.names ? theCountWithWhoIsMissing(one.answered, one.ofPeople, missing) : theCountWithWhoIsMissing(one.answered, one.ofPeople, []), opts.names ? null : progress.notJoinedSays, notCountedSays].filter(Boolean).join(' '),
+    whoSays: inAPause ? null : whoSays,
     othersHaveAnswered,
   };
   return { clock, count, bySession };

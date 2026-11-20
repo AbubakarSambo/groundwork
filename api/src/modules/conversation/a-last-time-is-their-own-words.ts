@@ -11,6 +11,10 @@
  * so the product writes the citation and the model only asks the question (the same fix as the session that would not quote a
  * date). A "last time you said" sentence is replaced by the sentence of theirs it is about, word for word, with its day. When
  * nothing they wrote is about it, the claim is cut and only the question after it stays.
+ *
+ * EVERY REPLY, NOT ONLY THE OPENING (fix plan 16 November, group 5; end-to-end I-11). The opening was the only place this ran, so in week 3 the
+ * second message told Amani "You said last time you were waiting on a decision from another team." He had said nothing was blocking him. A reply
+ * in the middle of a check-in is read against everything they have written, here and before (`keepWhatIsTheirs`), and the same claim is cut.
  */
 import { aDaySaidInFull } from '../board/a-day-said-in-full';
 
@@ -71,7 +75,7 @@ function theirSentenceAbout(claim: string, earlier: AWordTheyWrote[]): { sentenc
 }
 
 /** Only the sentences that tell the person what they said before are touched; every other sentence stays as written. */
-export function aLastTimeInTheirOwnWords(reply: string, earlier: AWordTheyWrote[]): { text: string; changed: boolean } {
+export function aLastTimeInTheirOwnWords(reply: string, earlier: AWordTheyWrote[], opts: { keepWhatIsTheirs?: boolean } = {}): { text: string; changed: boolean } {
   if (!reply?.trim() || !(A_LAST_TIME.test(reply) || sentencesOf(reply).some((s) => ALSO_YOU_SAID.test(s)))) return { text: reply, changed: false };
   let changed = false;
   /* A question right after a claim that was cut, pointing back at it ("What exists in the record now to show that?"), points at nothing. */
@@ -91,6 +95,8 @@ export function aLastTimeInTheirOwnWords(reply: string, earlier: AWordTheyWrote[
     const claim = cut > 0 ? s.slice(0, cut) : s;
     const question = cut > 0 ? capital(s.slice(cut + 1).trim()) : null;
     const theirs = theirSentenceAbout(claim, earlier);
+    /* In the middle of a check-in the sentence stays where it is theirs; only a claim of theirs that nothing they wrote supports is cut. */
+    if (theirs && opts.keepWhatIsTheirs) return s;
     changed = true;
     const citation = theirs ? `You wrote on ${onTheDay(theirs.at)}: “${theirs.sentence.replace(/[“”"]/g, '')}”` : '';
     if (theirs && question) return `${citation} ${question}`;

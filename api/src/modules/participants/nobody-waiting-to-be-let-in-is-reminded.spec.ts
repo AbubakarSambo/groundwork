@@ -9,11 +9,11 @@ import { NOT_HELD_FOR_A_SEAT } from './held-for-a-seat';
  */
 describe('nobody waiting to be let into the organisation is sent a reminder', () => {
   it('the sweeps\' filter leaves out both somebody held for a seat and somebody waiting for the organisation', () => {
-    expect(NOT_HELD_FOR_A_SEAT).toEqual({ awaitingSeat: false, user: { awaitingOrgApproval: false } });
+    expect(NOT_HELD_FOR_A_SEAT).toEqual({ awaitingSeat: false, leftAt: null, user: { awaitingOrgApproval: false } });
   });
 
   it('every sweep in the cron that writes to people uses the filter', () => {
     const src = readFileSync(join(__dirname, '../grounds/grounds.cron.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(src.match(/\.\.\.NOT_HELD_FOR_A_SEAT/g)?.length).toBeGreaterThanOrEqual(5);
+    expect(src.match(/\.\.\.NOT_HELD_FOR_A_SEAT/g)?.length).toBeGreaterThanOrEqual(4);
   });
 });

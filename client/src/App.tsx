@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { PageCrash } from '@/components/gw/PageCrash'
 import EveryReportSideBySide from '@/pages/preview/EveryReportSideBySide'
 import { Release4Boards } from '@/pages/preview/Release4Boards'
+import { ScenarioBoards } from '@/pages/preview/ScenarioBoards'
 import PartsSamplePage from '@/pages/dev/PartsSamplePage'
 import ConversationPreviewPage from '@/pages/dev/ConversationPreviewPage'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Link } from 'react-router-dom'
@@ -19,8 +20,7 @@ import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
 import { GoogleFailedPage } from '@/pages/auth/GoogleFailedPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
-import { ChatPage } from '@/pages/chat/ChatPage'
-import SessionReportPage from '@/pages/report/SessionReportPage'
+import { TheConversationLivesInItsTab } from '@/pages/chat/TheConversationLivesInItsTab'
 import RoundReportPage from '@/pages/report/RoundReportPage'
 
 /** Old address for a check-in. Keeps working, lands on the one canonical route. */
@@ -56,7 +56,6 @@ import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { TodayPage } from '@/pages/today/TodayPage'
 import { YouPage } from '@/pages/you/YouPage'
 import { CompanyPage } from '@/pages/company/CompanyPage'
-import { CompanyContextPage } from '@/pages/company/CompanyContextPage'
 import { SuitesPage } from '@/pages/suites/SuitesPage'
 import { OnboardingBoardPage } from '@/pages/suites/OnboardingBoardPage'
 import { LeaveBoardPage } from '@/pages/suites/LeaveBoardPage'
@@ -157,6 +156,7 @@ import { HelpModal } from '@/components/gw/HelpModal'
 import { OfflineNote } from '@/components/gw/OfflineNote'
 import { AppShell } from '@/components/gw/AppShell'
 import { Page } from '@/components/gw/ui/Page'
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { TalkToUsPage } from '@/pages/talk/TalkToUsPage'
 import type { JSX } from 'react'
 
@@ -464,7 +464,7 @@ export function HomeOrChooseAnOrganisation({ home = 'list' }: { home?: 'today' |
   if (go === 'orgs') return <Navigate to="/orgs" replace />
   if (!justIn) return home === 'today' ? <Navigate to={`/today${search}`} replace /> : <GroundsListPage />
   /* Just signed in, and still finding out whether to offer an organisation first. Said, not blank. */
-  if (go === null) return <p className="gw-t-body" style={{ padding: 32, color: 'var(--gw-sub)' }}>Loading…</p>
+  if (go === null) return <Skeleton what="Getting your page" shape="lines" />
   return <Navigate to={`/today${search}`} replace />
 }
 
@@ -583,7 +583,8 @@ export default function App() {
             <Route path="/you" element={<RequireOrgSetup><YouPage /></RequireOrgSetup>} />
             {/* The Company page (D2, U.15) and its context: what each reader is given is the server's. */}
             <Route path="/company" element={<RequireOrgSetup><CompanyPage /></RequireOrgSetup>} />
-            <Route path="/company/context" element={<RequireOrgSetup><CompanyContextPage /></RequireOrgSetup>} />
+            {/* Company context is part of the Desk now (S7): an old link lands on the Desk. */}
+            <Route path="/company/context" element={<Navigate to="/company" replace />} />
             {/* THE SUITES PAGE (E, U.17). What each reader is given is the server's (GET /suites). */}
             <Route path="/settings/suites" element={<RequireOrgSetup><SuitesPage /></RequireOrgSetup>} />
             {/* Release 4: the template library (B1, #/templates). */}
@@ -648,6 +649,9 @@ export default function App() {
             <Route path="/preview/reports" element={<RequirePlatformAdmin><EveryReportSideBySide /></RequirePlatformAdmin>} />
             {/* Release 4's boards from their hand-written test organisations: development builds only, never in production. */}
             {import.meta.env.DEV && <Route path="/release-4-preview" element={<Release4Boards />} />}
+            {/* The eleven example boards of the prototype, with demo data: development builds only, no sign-in, no server. */}
+            {import.meta.env.DEV && <Route path="/scenario-boards" element={<ScenarioBoards />} />}
+            {import.meta.env.DEV && <Route path="/scenario-boards/:kind" element={<ScenarioBoards />} />}
             {/*
               THE SHARED PARTS' SAMPLE PAGE (design-audit.md section 4, step 1), development only.
               `import.meta.env.DEV` is false in a built, production app, so this route does not
@@ -695,14 +699,10 @@ export default function App() {
               docs/requests-to-engine.md.
             */}
             <Route path="/check-in/:checkInId" element={<ChatRedirect />} />
-            <Route path="/checkin/:checkInId" element={<RequireOrgSetup><ChatPage /></RequireOrgSetup>} />
-            {/*
-              THE REPORT ONE SESSION ENDED ON, on its own route.
-              Clicking a finished session used to land on the CHAT above, which is the transcript
-              with a different summary under it - "it sends me back to the chat and the report
-              looks nothing like what I got at the end". This is the report.
-            */}
-            <Route path="/checkin/:checkInId/report" element={<RequireOrgSetup><SessionReportPage /></RequireOrgSetup>} />
+            {/* The conversation lives in its check-in's Check-in tab; this address finds it and goes there (batch 2, group 5). */}
+            <Route path="/checkin/:checkInId" element={<RequireOrgSetup><TheConversationLivesInItsTab /></RequireOrgSetup>} />
+            {/* A person's own report lives in My work; the old page's address finds it there (batch 2, group 5). */}
+            <Route path="/checkin/:checkInId/report" element={<RequireOrgSetup><TheConversationLivesInItsTab report /></RequireOrgSetup>} />
             {/* Billing/pricing stay on plain RequireAuth (not RequireOrgSetup): choosing a paid
                 plan is optional, not part of org setup - the free tier is the default, not a
                 step anyone completes. */}

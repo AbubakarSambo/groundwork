@@ -1,3 +1,4 @@
+import { theDayZone } from '../../common/the-organisations-own-day';
 import { isASalesKind, type AServedRecord, type AServedSection, type KindOfWork } from './the-kind-of-work';
 import { theDayInWords } from './the-day-in-words';
 import { STALLED_AFTER_WORKING_DAYS, hasStalled, workingDaysSince } from './a-deal-that-has-stalled';
@@ -37,7 +38,7 @@ export type ADealGroup = 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'c
 const ORDER: ADealGroup[] = ['likely', 'possible', 'next-quarter', 'cooling', 'cold', 'said-won', 'won'];
 
 const dayKey = (d: Date): string =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  new Intl.DateTimeFormat('en-CA', { timeZone: theDayZone(), year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 const aDay = (s: string | null | undefined): Date | null => (s && /^\d{4}-\d{2}-\d{2}/.test(s) ? new Date(`${s.slice(0, 10)}T12:00:00Z`) : null);
 
 /** The end of a quarter: 31 March, 30 June, 30 September, 31 December, in Lagos time. */

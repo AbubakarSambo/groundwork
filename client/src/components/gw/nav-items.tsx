@@ -21,10 +21,11 @@ const NAV_ITEMS = [
     ),
   },
   {
-    /* COMPANY (D2, U.15): the organisation's priorities and what feeds them, between Today and You,
-       as layout-computer.txt draws it. Everybody in the organisation has it; a guest from another
-       company does not, and the server refuses them too. What each reader is given is the server's. */
-    label: 'Company',
+    /* THE DESK (S7, 20 November 2026; the Company page renamed, D2, U.15): the organisation's shared
+       context and its priorities, between Today and You, as layout-computer.txt places Company.
+       Everybody in the organisation has it; a guest from another company does not, and the server
+       serves them nothing of it. What each reader is given is the server's. */
+    label: 'Desk',
     to: '/company',
     membersOnly: true,
     icon: (active: boolean) => (

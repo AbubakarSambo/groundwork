@@ -38,8 +38,8 @@ describe('my record', () => {
    * What this file protects is the count. It is still one.
    */
   it('lists the sessions once, not twice', () => {
-    expect(RECORD).not.toContain('<Sec title="Sessions on record" />')
-    expect(REPORT_TAB).toContain('Your sessions')
+    expect(RECORD).not.toContain('<Sec title="Check-ins on record" />')
+    expect(REPORT_TAB).toContain('Your check-ins')
     /* And My record keeps none - not the list, and not a line pointing at it. The Report tab is in
        the tab bar; a page does not need to name its neighbours. */
     expect(RECORD).not.toMatch(/mySessions\.map\(/)
@@ -66,7 +66,7 @@ describe('my record', () => {
   })
 
   it('and drops the bars, which were a mark out of a scale nobody could see', () => {
-    expect(RECORD).not.toContain('Specificity across sessions')
+    expect(RECORD).not.toContain('Specificity across check-ins')
     expect(RECORD).not.toMatch(/specificity\.scores\.map/)
   })
 
@@ -84,7 +84,7 @@ describe('my record', () => {
    * session. So one card is about the record, and the other is about a session and names which.
    */
   it('keeps the part that IS about the run, and the part somebody can act on', () => {
-    expect(SUPPORT).toContain('Your answers are getting more checkable than session')
+    expect(SUPPORT).toContain('Your answers are getting more checkable than check-in')
     expect(FIVE).toContain('Add one or two next time')
     expect(FIVE).toContain('mostUseful')
   })
@@ -92,7 +92,7 @@ describe('my record', () => {
   it('and confidence says which of the two reads it is', () => {
     /* One reads the whole record; the other names the single session it read. */
     expect(SUPPORT).toContain('What your record can support')
-    expect(FIVE).toMatch(/Session \$\{sessionNumber\} was mostly about the situation around you/)
+    expect(FIVE).toMatch(/Check-in \$\{sessionNumber\} was mostly about the situation around you/)
   })
 
   it('and neither is a bar or a grade word', () => {

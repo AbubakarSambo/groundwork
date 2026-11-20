@@ -5,6 +5,7 @@ import { authApi } from '@/api/auth'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { Page, Mark } from '@/components/gw/ui'
 import { useAuthStore } from '@/stores/auth'
+import { GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
 
 /**
  * THE ADDRESS ANSWERED.
@@ -98,7 +99,7 @@ export function JoinConfirmPage() {
   return (
     <Page narrow>
       <Mark />
-      <div style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>Starting your session…</div>
+      <div style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>{GETTING_YOUR_FIRST_QUESTION_READY}</div>
     </Page>
   )
 }

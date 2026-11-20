@@ -35,8 +35,8 @@ describe('a report you cannot argue with', () => {
   })
 
   it('and says what pressing it does, since "correct" could mean overwrite', () => {
-    expect(CARD).toMatch(/Nothing is overwritten/)
-    expect(CARD).toMatch(/shown alongside the original/)
+    /* Changed 15 November 2026 (Hafsah, audit row 23): the explainer under the button is gone; the correction opens in the conversation, which says what it changed. */
+    expect(CARD).not.toMatch(/Nothing is overwritten/)
   })
 
   it('but never on a closed check-in', () => {

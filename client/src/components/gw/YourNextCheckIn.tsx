@@ -23,15 +23,15 @@ export function YourNextCheckIn({ groundId }: { groundId: string }) {
     .filter((c) => c.status !== 'COMPLETED')
     .sort((a, b) => a.sessionNumber - b.sessionNumber)[0]
   if (!next) {
-    return <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center' }}>That was the last session planned for this check-in.</p>
+    return <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--gw-sub)', }}>That was the last check-in planned.</p>
   }
   const opens = next.availableFrom ? new Date(next.availableFrom) : null
   const later = !!opens && opens.getTime() > Date.now()
   return (
-    <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center' }}>
+    <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--gw-sub)', }}>
       {later
-        ? <>Your next check-in, session {next.sessionNumber}, opens on <strong style={{ color: 'var(--gw-text)' }}>{whenItWas(opens, 'full')}</strong>. You will get an email that day, and your link will open it.</>
-        : <>Session {next.sessionNumber} is open now if you want to go straight on.</>}
+        ? <>Your next check-in opens on <strong style={{ color: 'var(--gw-text)' }}>{whenItWas(opens, 'full')}</strong>. You will get an email that day, and your link will open it.</>
+        : <>Your next check-in is open now if you want to go straight on.</>}
     </p>
   )
 }

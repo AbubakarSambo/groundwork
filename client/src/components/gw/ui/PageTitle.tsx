@@ -21,7 +21,7 @@ import './gw-ui.css'
  */
 export type Crumb = { label: string; to?: string }
 
-export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, subtitleTone = 'muted', subtitleRole, action, center }: {
+export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, subtitleTone = 'muted', subtitleRole, meta, action, center, updated }: {
   /** The line above the title, e.g. the organisation's name. */
   eyebrow?: string
   /** e.g. [{ label: 'People', to: '/org/members' }, { label: 'Miriam Wanjiku' }]. */
@@ -44,9 +44,16 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, su
   subtitleTone?: 'muted' | 'ink'
   /** `'status'` so a screen reader announces the subtitle as it arrives, for a title-less loading line. */
   subtitleRole?: 'status'
+  /**
+   * THE ONE LINE THAT DESCRIBES THIS PAGE'S HEADER (a status, how far along it is): small, muted, in the title's own column, 6px under
+   * the subtitle. It is part of the header, so it is never a child of the page's stack and never gets a section's gap above it.
+   */
+  meta?: React.ReactNode
   action?: React.ReactNode
   /** Centred, with no title and no avatar - the same title-less loading line above. */
   center?: boolean
+  /** A board's "Last updated on …" line: small, muted, on the title's own row (beside it, or directly under it on a phone with no gap). */
+  updated?: string
 }) {
   /* The prototype's page head: the crumb (.crumb), then the title (.t-title) with its lines under it and the page's
      actions at the right, as on the reports and the board. */
@@ -67,12 +74,15 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, su
         <div className="gw-pt-head">
           {avatarInitials !== undefined && <Avatar initials={avatarInitials} size={56} />}
           <div className="gw-min0">
-            {title && <h1 className="t-title">{title}</h1>}
+            {title && (updated
+              ? <div className="gw-pt-titleline"><h1 className="t-title">{title}</h1><p className="gw-pt-updated">{updated}</p></div>
+              : <h1 className="t-title">{title}</h1>)}
             {subtitle && (
               <p className={subtitleTone === 'ink' ? 't-body gw-pt-sub' : 't-body mut gw-pt-sub'} role={subtitleRole}>
                 {subtitle}
               </p>
             )}
+            {meta && <p className="t-small mut gw-pt-meta gw-line">{meta}</p>}
           </div>
         </div>
         {action}

@@ -52,18 +52,18 @@ function pageFor(viewer: string, opts: { role?: 'MEMBER' | 'ADMIN'; peers?: bool
 
 describe('decision 77 on the check-in page: the header is not held back by somebody not let in', () => {
   it.each([['Rukia, who runs it', 'userRukia', 'MEMBER'], ['Amani, who checks in', 'userAmani', 'MEMBER'], ['Juma, an admin', 'userJuma', 'ADMIN']] as const)(
-    '%s reads "Session 2 of 12." with nothing about session 1 still being open',
+    '%s reads "Check-in 2 of 12." with nothing about check-in 1 still being open',
     async (_who, viewer, role) => {
       const res = await pageFor(viewer, { role });
-      expect(res.sessionClock.says).toBe('Session 2 of 12.');
+      expect(res.sessionClock.says).toBe('Check-in 2 of 12.');
       expect(res.sessionClock.whileOpen).toBeNull();
     },
   );
 
   it('once he is let in, session 1 is open again until he answers', async () => {
     const res = await pageFor('userRukia', { held: false });
-    expect(res.sessionClock.says).toBe('Session 1 of 12.');
-    expect(res.sessionClock.whileOpen).toBe('Session 2 has started for some people, while session 1 is still open.');
+    expect(res.sessionClock.says).toBe('Check-in 1 of 12.');
+    expect(res.sessionClock.whileOpen).toBe('Check-in 2 has started for some people, while check-in 1 is still open.');
     expect(res.waitingToBeLetIn).toBeNull();
   });
 });

@@ -1,3 +1,4 @@
+import { theDayZone } from '../../common/the-organisations-own-day';
 import { anUnansweredAsk, type ADealsLine } from './what-a-deal-still-needs';
 
 /**
@@ -21,7 +22,7 @@ export interface ADealToCoach {
 }
 
 const listed = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
-const aLagosDay = (at: Date | string) => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', timeZone: 'Africa/Lagos' }).format(new Date(at));
+const aLagosDay = (at: Date | string) => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', timeZone: theDayZone() }).format(new Date(at));
 
 export function whatToCoachThisWeek(
   participantId: string,

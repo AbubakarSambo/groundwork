@@ -5,6 +5,7 @@ import { SwitchRow } from '@/components/gw/ui'
 import { DAY_NAMES, ordinal } from '@/components/gw/AnchorDayPicker'
 import type { GroundCadence } from '@/api/grounds'
 import { cadenceLabel, timesAWeek } from '@/lib/cadence'
+import { theRhythmInFull } from '@/lib/the-closing-after-your-first-check-in'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-check-ins-land'
@@ -97,29 +98,12 @@ export function anchorDaySentence(cadence: GroundCadence, anchorDay: number | nu
   return ''
 }
 
-/**
- * HOW MANY OF THEIR OWN SESSIONS A PERSON HAS DONE (screens item c, 8 October). The set-up conversation is a check-in row with
- * `isSetup: true`; it is not a session, so it is never counted ("1 of 4 sessions are done" on day one). Distinct session numbers, so a
- * session answered and then corrected counts once.
- */
-export function sessionsDoneBy(
-  checkIns: { status?: string; isSetup?: boolean; participantId?: string; sessionNumber?: number | null }[],
-  participants: { id: string; userId?: string | null }[],
-  userId: string | null | undefined,
-): number {
-  return new Set(
-    checkIns
-      .filter((c) => c.status === 'COMPLETED' && !c.isSetup && participants.some((p) => p.id === c.participantId && p.userId === userId))
-      .map((c) => c.sessionNumber ?? 0),
-  ).size
-}
-
 export function yourSessionsSentence(done: number, planned: number | null): string {
-  if (planned == null) return `${done} session${done === 1 ? '' : 's'} done so far.`
+  if (planned == null) return `${done} check-in${done === 1 ? '' : 's'} done so far.`
   /* B-012: "9 of 6 sessions are done" is not a possible count. However it is counted, how many are
      done can never be more than how many are planned. */
   const clamped = Math.min(done, planned)
-  return `${clamped} of ${planned} session${planned === 1 ? ' is' : 's are'} done.`
+  return `${clamped} of ${planned} check-in${planned === 1 ? ' is' : 's are'} done.`
 }
 
 export function settingsChangeSentence(c: { changedAt: string; by: 'you' | 'lead' | 'admin'; weeks: { from: number | null; to: number } | null; cadence: { from: GroundCadence | null; to: GroundCadence } | null }): string {
@@ -281,8 +265,10 @@ export function theRhythmLine(ground: { cadence?: any; timelineDays?: number | n
   const anchor = anchorDaySentence(ground.cadence, (ground as any).cadenceAnchorDay, (ground as any).cadenceDays)
   /* The one count, with the days (lib/sessionCount.ts), as the server's totalSessionsFor counts. */
   const n = plannedSessionsFor(ground.timelineDays, ground.cadence, null, (ground as any).cadenceDays)
-  if ((ground as any).runsUntilItIsEnded || n == null) return `${cadenceLabel(ground.cadence, (ground as any).cadenceDays)}, until you end it.${anchor}`
-  return `${cadenceLabel(ground.cadence, (ground as any).cadenceDays)}. ${n} session${n === 1 ? '' : 's'} in total.${anchor}`
+  /* How often, in the one wording every page uses (theRhythmInFull, staging check S18). */
+  const often = theRhythmInFull(ground as any, { stop: false }) ?? cadenceLabel(ground.cadence, (ground as any).cadenceDays)
+  if ((ground as any).runsUntilItIsEnded || n == null) return `${often}, until you end it.${anchor}`
+  return `${often}. ${n} check-in${n === 1 ? '' : 's'} in total.${anchor}`
 }
 
 export function TheReportSharesItself({ ground, canChange }: { ground: any; canChange: boolean }) {

@@ -74,11 +74,7 @@ describe('a pattern reads in full sentences', () => {
   it('an empty board never says no pattern has repeated, and never hints that one is waiting', () => {
     const src = readFileSync(join(__dirname, '..', '..', '..', 'pages', 'board', 'BoardPage.tsx'), 'utf8')
     expect(src).not.toContain('No patterns have repeated often enough to show yet.')
-    /*
-     * B-138, DECISION 8: "Patterns show only after three periods, whether or not they are in a
-     * row." Updated with the fix, which also corrected this sentence's claim that three IN A ROW
-     * were required.
-     */
-    expect(src).toContain('Nothing to show here yet. A pattern appears only after the same thing comes up in three check-ins, in a row or not, and the person it is about always sees it first.')
+    /* 15 November 2026: an empty patterns section is not drawn at all now (no heading over nothing), so there is no empty-state sentence to say anything, rightly or wrongly. */
+    expect(src).not.toContain('Nothing to show here yet. A pattern appears only after')
   })
 })

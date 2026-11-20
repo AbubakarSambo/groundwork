@@ -33,7 +33,7 @@ describe('what the record shows is counted from distinct items, never from one c
   it('two promised days missed, in two check-ins, hold, and name each check-in, day and their words', () => {
     const [p] = holds([slipped(1), slipped(2)]);
     expect(p).toMatchObject({ key: 'slipping-promises', kind: 'needs work', saying: 'Amani has let 2 promised days pass without the work done.' });
-    expect(p.instances).toEqual([1, 2].map((n) => ({ checkInId: `ci-${n}`, sessionNumber: n, on: `2026-11-0${n}`, item: `call client-${n}`, words: [`About client-${n}`] })));
+    expect(p.instances).toEqual([1, 2].map((n) => ({ checkInId: `ci-${n}`, sessionNumber: n, on: `2026-11-0${n}`, item: `call client-${n}`, words: [`About client-${n}`], saidWordForWord: true })));
   });
 
   it('the same promise reported as not kept in three check-ins is one item, not three', () => {

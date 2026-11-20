@@ -272,7 +272,8 @@ describe('the risks', () => {
     expect(risks[0]).toMatch(/^The target “25 shops signed” in “Sales team, Q3” is behind\. /);
     expect(risks).toContain('Bisi says the work has been waiting on Omar for the price list since Monday 21 September.');
     expect(risks).toContain('All three people in “Sales team, Q3” have not answered a check-in for more than a week.');
-    expect(m.mails[0][1]).toBe('One risk is open'.replace('One risk is open', 'Three risks are open'));
+    /* CHANGED 20 NOVEMBER (run 6): the subject names the main item, then how many others there are, instead of only counting. */
+    expect(m.mails[0][1]).toBe('The target “25 shops signed” in “Sales team, Q3” is behind, and two other things are open');
   });
 
   it('a decision somebody is waiting for her to make is hers, and is said with the day it began', async () => {
@@ -505,8 +506,20 @@ describe('the page the link goes to shows everything, in the same sentences', ()
 describe('the subject', () => {
   it('counts each part as a plain fact', () => {
     const o: WhatIsOutstanding = { needsYou: [{ text: 'a' }], overdueOnYourTeam: [{ text: 'b' }, { text: 'c' }], risks: [{ text: 'd' }] };
+    /* An item too short to name anything keeps the counts. */
     expect(theNudgeSubject(o)).toBe('One thing needs you, two are overdue on your team and one risk is open');
     expect(theNudgeParts(o).risks).toEqual(['d.']);
     expect(theWindowForm(null, o, 'https://x.test/today')).toMatch(/^Good morning there\./);
+  });
+
+  /* CHANGED 20 NOVEMBER (run 6): the subject names the main item. */
+  it('names the main thing that needs her, then how many others are open', () => {
+    const o: WhatIsOutstanding = {
+      needsYou: [{ text: 'People in this check-in said different things. The team is measuring sales in different units, so settle it with them.' }, { text: 'Asha is waiting on you since Monday for a price.' }],
+      overdueOnYourTeam: [],
+      risks: [{ text: 'Sam has one buyer who pays late.' }],
+    };
+    expect(theNudgeSubject(o)).toBe('The team is measuring sales in different units, and two other things are open');
+    expect(theNudgeSubject({ needsYou: [{ text: 'Asha is waiting on you since Monday for a price.' }], overdueOnYourTeam: [], risks: [] })).toBe('Asha is waiting on you since Monday for a price');
   });
 });

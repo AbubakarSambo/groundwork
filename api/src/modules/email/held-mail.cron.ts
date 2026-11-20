@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { EmailService } from './email.service';
+import { theQuietHoursNow } from '../../common/the-clock';
 
 /**
  * A MAIL HELD FOR QUIET HOURS IS SENT WHEN ITS MOMENT COMES. The other half of nothing-lands-at-3am:
@@ -17,11 +18,16 @@ export class HeldMailCron {
   @Cron('*/15 * * * *', { timeZone: 'UTC' })
   async sendWhatIsDue() {
     await this.prisma.withAdvisoryLock(CronLock.HELD_MAIL, async () => {
-      const due = await this.prisma.scheduledEmail.findMany({
-        where: { sentAt: null, notBefore: { lte: new Date() } },
+      /* Due by its moment, or held for quiet hours and no longer quiet: the person's hours and zone are read as they are now, so widening them lets it go. */
+      const candidates = await this.prisma.scheduledEmail.findMany({
+        where: { sentAt: null, OR: [{ notBefore: { lte: theQuietHoursNow() } }, { context: { path: ['heldFor'], equals: 'quiet-hours' } }] },
         orderBy: { notBefore: 'asc' },
         take: 200,
       });
+      const due: typeof candidates = [];
+      for (const row of candidates) {
+        if (row.notBefore.getTime() <= theQuietHoursNow().getTime() || await this.email.mayGoNow(row.toAddress)) due.push(row);
+      }
       for (const row of due) {
         /*
          * CLAIMED BEFORE IT IS SENT, SO ONE HELD MAIL IS ONE DECISION (messages test, 19 October, finding 3). On Thursday 15 October

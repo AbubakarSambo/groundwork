@@ -34,7 +34,8 @@ describe('Wanjiru, the partner, reads every matter, each with one line for its f
   it('the matters, where each stands, and the fees line under each', () => {
     draw(S.matter.wanjiru)
     expect(screen.getByText('Two matters are on record in this check-in, Kasarani Foods v. Tumaini Traders and Jamii Clinics employment claim.')).toBeTruthy()
-    const kasarani = document.querySelector('[data-matter="kasarani foods v tumaini traders"]') as HTMLElement
+    /* One open table, a row for each matter. */
+    const kasarani = within(screen.getByRole('table', { name: 'Where each matter stands, with one line for its fees' })).getByRole('rowheader', { name: 'Kasarani Foods v. Tumaini Traders' }).closest('tr') as HTMLElement
     /* Who has the deadline, in the morning's own words (boards audit M3, 30 October). */
     expect(within(kasarani).getByText('The hearing in Kasarani Foods v. Tumaini Traders is due on Thursday 12 November, and David has it. Nothing is in the way that has not been cleared.')).toBeTruthy()
     expect(within(kasarani).getByText('There are three fee notes on this matter, for KES 750,000 in all. FN-004 is paid, with proof. FN-005 fell due on 20 October, when the reply was filed. The fee note not raised yet fell due on 21 October, when the hearing date was set.')).toBeTruthy()
@@ -46,9 +47,27 @@ describe('Wanjiru, the partner, reads every matter, each with one line for its f
     expect(screen.getByText('What you need to decide')).toBeTruthy()
     expect(screen.getByText('Nothing is waiting for a decision yet.')).toBeTruthy()
     const changed = screen.getByRole('region', { name: 'What changed this week, and what it changed' })
-    const brian = changed.querySelector('[data-changed="e-lit-brian-2"]') as HTMLElement
-    expect(brian.textContent).toBe('Brian, on Kasarani Foods v. Tumaini Traders“In Kasarani Foods v. Tumaini Traders, the reply was filed on 20 October.” It made fee note FN-005 due on 20 October.')
+    /* One open table: who, what was said, how it is known, and what it changed, each in its own cell. */
+    const brian = within(changed).getByText('“In Kasarani Foods v. Tumaini Traders, the reply was filed on 20 October.”').closest('tr') as HTMLElement
+    expect(within(brian).getByRole('rowheader').textContent).toBe('Brian, on Kasarani Foods v. Tumaini Traders')
+    expect(within(brian).getAllByRole('cell').map((c) => c.textContent?.trim())).toEqual([
+      '“In Kasarani Foods v. Tumaini Traders, the reply was filed on 20 October.”',
+      expect.stringContaining('Said in a check-in, with no document yet'),
+      'It made fee note FN-005 due on 20 October.',
+    ])
     expect(within(changed).getByRole('list', { name: 'How each line is known' }).textContent).toContain('Said in a check-in, with no document yet')
+  })
+})
+
+describe('where one person’s own record says two different things', () => {
+  it('is drawn under its own heading when the server served it, and not at all when it did not', () => {
+    const rows = [{ id: 'k1', commitmentId: 'c1', participantId: 'p1', who: 'Brian', says: 'Brian said the reply was filed on Tuesday and later that it was not filed yet.' }]
+    render(<MemoryRouter><TheMatterBoard board={S.matter.wanjiru} b={{ contradictions: rows }} /></MemoryRouter>)
+    expect(screen.getByText('Contradictions')).toBeTruthy()
+    expect(screen.getByText(rows[0].says)).toBeTruthy()
+    document.body.innerHTML = ''
+    draw(S.matter.wanjiru)
+    expect(screen.queryByText('Contradictions')).toBeNull()
   })
 })
 

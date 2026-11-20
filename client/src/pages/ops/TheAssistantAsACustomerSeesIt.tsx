@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/gw/ui/Skeleton'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { opsApi } from '@/api/ops'
@@ -709,7 +710,7 @@ export function TheAssistantAsACustomerSeesIt() {
       </header>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 9 }}>
-        {panel.isLoading && <p style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Handshaking…</p>}
+        {panel.isLoading && <Skeleton what="Getting the panel" shape="lines" count={1} />}
 
         {panel.data && !panel.data.ready && (
           /* The refusal names what is missing, because every state this can be

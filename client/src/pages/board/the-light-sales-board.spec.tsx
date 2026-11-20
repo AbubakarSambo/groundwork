@@ -56,7 +56,7 @@ const AT_A_GLANCE = {
     team: ['Today: 2 of 3 checked in'],
     plan: ['2 open'],
     risk: ['1 blocking. The biggest: Price objections, raised once'],
-    rest: ['3 sessions so far, each with its reports'],
+    rest: ['3 check-ins so far, each with its reports'],
   },
   needsTheLead: '1 thing: Wairimu Kamau needs to get back to Brian Ochieng.',
   assumesEach: {},
@@ -72,7 +72,7 @@ function board(overrides: any = {}) {
     kindOfWork: 'sales org',
     workRecords,
     objectives: [{ id: 'o1', name: 'The team is aiming for 25 freezers sold.', target: 25, count: 21, ownerParticipantId: null, assumes: [] }],
-    workPlan: [{ id: 'w1', who: 'Miriam Wanjiru', what: 'Collect the deposit from Westgate Deli.', state: 'open', says: 'In session 2, Miriam Wanjiru said, "Collect the deposit from Westgate Deli."' }],
+    workPlan: [{ id: 'w1', who: 'Miriam Wanjiru', what: 'Collect the deposit from Westgate Deli.', state: 'open', says: 'In check-in 2, Miriam Wanjiru said, "Collect the deposit from Westgate Deli."' }],
     leadActions: [{ id: 'la1', says: 'You need to get back to Brian Ochieng, who is waiting on you for a stopping rule.', because: 'It was first said on 5 October.', action: { label: 'Reply in your check-in', goesTo: 'check-in' } }],
     howItIsGoing: { latestSummary: null, glance: { progress: { roundsDone: 3, roundsPlanned: 12, answeredThisRound: 2, ofPeople: 3 }, inTheWay: { count: 0, oldest: null, daysWaiting: null } } },
     atAGlance: AT_A_GLANCE,
@@ -120,7 +120,7 @@ describe('the sales board as pictured, as Wairimu, who runs it', () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'LEAD' }
     renderBoard(board())
     await screen.findByRole('region', { name: 'Every deal, day by day' })
-    expect(screen.getByText(/^Last updated on Wednesday 23 September at \d{1,2}(:\d\d)?(am|pm)\. The board only changes when something new comes in/)).toBeTruthy()
+    expect(screen.getByText(/^Last updated on Wednesday 23 September at \d{1,2}(:\d\d)?(am|pm)\.$/)).toBeTruthy() /* Changed in batch 2, group 6 (Hafsah, 4 November, issue 40): the status line stays, its explanation goes for everybody. */
     expect(screen.queryByText('Tap any line to see more')).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Everything else' })).toBeNull()
     expect(document.querySelectorAll('details.gwui-box').length).toBe(0)
@@ -133,6 +133,7 @@ describe('the sales board as pictured, as Wairimu, who runs it', () => {
     const deals = await screen.findByRole('region', { name: 'Every deal, day by day' })
     expect(within(deals).getAllByText('Westgate Deli').length).toBeGreaterThan(0)
     expect(within(deals).getAllByText('Nyama Choma Palace').length).toBeGreaterThan(0)
+    /* The one line under the deals saying anyone can correct what is about their own work (kept once a board). */
     expect(within(deals).getByText('Something here wrong? Anyone can correct what’s about their own work in their check-in; the change and the original both show here.')).toBeTruthy()
   })
 

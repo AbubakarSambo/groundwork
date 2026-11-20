@@ -46,7 +46,9 @@ it('Grace reads "Reported vs criteria met" as said and met, with the kit\'s two 
   ] } }
   wrap(<ReportedAgainstCriteria b={b} />)
   const text = document.body.textContent ?? ''
-  for (const s of ['Reported vs criteria met, stage by stage', '5 said, 5 met', '3 said, 1 met', '2 said, 1 met', 'Outlined: what people reported. Filled: what meets the criteria.', 'Dashed: what reps reported. Solid: criteria met (for Won, a signed order or a payment record).']) expect(text).toContain(s)
+  for (const s of ['Reported vs criteria met, stage by stage', '5 said, 5 met', '3 said, 1 met', '2 said, 1 met', 'Outlined: what people reported. Filled: what meets the criteria.']) expect(text).toContain(s)
+  /* Changed 16 November (group 10, boards pass 4 defects 5 and 6): the second key spoke of reps on every kind of board and said the same as the first. */
+  expect(text).not.toContain('Dashed: what reps reported')
   expect(text).not.toContain('with proof')
   expect(text).not.toContain('Nothing on record says what a deal must show')
 })

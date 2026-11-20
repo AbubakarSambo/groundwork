@@ -86,7 +86,8 @@ describe('what the record says a number is', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     /* Off the lines the model reads, and off the line the lead is shown. */
     expect(L).toMatch(/text: cleanText\(s\.text\)/);
-    expect(L).toMatch(/suggestedSaid: cleanText\(n\.said\)/);
+    /* Batch 2, group 2: the line is kept only where the figure landed, and not where the lead said it about somebody. */
+    expect(L).toMatch(/suggestedSaid: from\?\.aboutParticipantId \? null : cleanText\(n\.said\)/);
   });
 
   it("and its examples are not the sentences it is checked on", () => {

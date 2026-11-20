@@ -127,19 +127,19 @@ describe('3. what Groundwork is, and who sees what people say', () => {
        the paragraph (the-footer-says-only-what-is-true.spec). The reminder to a participant is the mail the paragraph is for. */
     await email.sendNudge('lucy@x.test', 'Kenya launch', 'https://app.test/g', undefined, undefined, null, 'p1');
     const read = text(sent[0].html);
-    expect(read).toContain('Groundwork is where the people involved in a piece of work each give their own account of it, and get one shared record back. The people in this check-in, including your manager, can see what you say in it. Your questions to Ask Groundwork stay private.');
+    expect(read).toContain('Groundwork is where the people involved in a piece of work each say how it is going in their own words, and get one shared record back. You see your own report straight away. The person who runs it shares a team report when it is ready. Nobody else reads your conversation. How Groundwork handles your answers');
     expect(read).not.toMatch(/not shown to anybody|does not quote you|privately/i);
   });
 
   it('a cohort, where people do not see each other: whoever runs it can, the others cannot', async () => {
     const { email, sent } = theMails({ scenario: 'COHORT_CHECK', peersVisibleToEachOther: null, organization: { name: 'Baridi Appliances' }, organizationId: 'org-1', overWhatsApp: null });
     await email.sendParticipantInvite('amani@baridi.test', 'Wairimu', 'Founders cohort', 'tok', undefined, { kind: 'PARTICIPANT_INVITE', groundId: 'g-2' });
-    expect(text(sent[0].html)).toContain('Whoever runs this check-in can see what you say in it. The other people taking part do not see what you say.');
+    expect(text(sent[0].html)).toContain('You see your own report straight away. The person who runs it reads it too. Nobody else reads your conversation.');
   });
 
   it('a cohort mail ends with the cohort wording, because the footer is given the check-in’s own sentence', () => {
     const cohort = whoSeesWhatYouSayIn({ scenario: 'COHORT_CHECK', peersVisibleToEachOther: null, organization: { name: 'Baridi Appliances' } });
-    expect(text(withWhatGroundworkIs('<p>hello</p>', 'sendReportReady', cohort))).toBe('hello Groundwork is where the people involved in a piece of work each give their own account of it, and get one shared record back. Whoever runs this check-in can see what you say in it. The other people taking part do not see what you say. Your questions to Ask Baridi Appliances stay private.');
+    expect(text(withWhatGroundworkIs('<p>hello</p>', 'sendReportReady', cohort))).toBe('hello Groundwork is where the people involved in a piece of work each say how it is going in their own words, and get one shared record back. You see your own report straight away. The person who runs it reads it too. Nobody else reads your conversation. How Groundwork handles your answers');
   });
 
   it('the report notice says it too, instead of "it does not quote anybody"', async () => {

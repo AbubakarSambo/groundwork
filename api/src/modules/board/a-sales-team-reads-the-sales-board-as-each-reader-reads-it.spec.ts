@@ -36,7 +36,7 @@ const RUN = (kindOfWork: string): Setup => ({
 });
 
 /** The board as served, with the kind itself set aside: the one place the two are meant to differ. */
-const without = (b: any) => JSON.parse(JSON.stringify({ ...b, kindOfWork: undefined }));
+const without = (b: any) => JSON.parse(JSON.stringify({ ...b, kindOfWork: undefined, /* 15 November 2026: every board is on, so the board now also names the board its kind picks (the sales board for a team, the sales organisation board for an organisation): the second place the two are meant to differ. */ switchboard: undefined }));
 
 describe('a sales team reads the sales board, as each reader reads it', () => {
   it.each([

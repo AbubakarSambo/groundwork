@@ -94,7 +94,7 @@ export function splitMentions(mentioned: Mentioned[]): SplitMentions {
     couldBeAdded,
     alsoCameUp,
     note: alsoCameUp.length
-      ? 'These came up in what you said and are part of the picture. They are not offered as people to add, because they look like they are outside your organisation - and an invitation asks somebody to give their own account of this work.'
+      ? 'These came up in what you said and are part of the picture. They are not offered as people to add, because they look like they are outside your organisation - and an invitation asks somebody to say how it is going in their own words of this work.'
       : null,
   };
 }

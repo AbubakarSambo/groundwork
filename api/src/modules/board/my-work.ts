@@ -1,3 +1,5 @@
+import { theirWordsAsSaid, theWordsAlone, mayBeQuoted } from '../conversation/their-words-as-said';
+import { theOrganisationsZone } from '../../common/the-organisations-own-day';
 import { aWaitSomebodyElseChases } from './a-wait-somebody-else-chases';
 import { notABlockerTheyRaised } from './not-a-blocker-they-raised';
 import { whatTheyTriedFirst } from './what-they-tried-first';
@@ -21,6 +23,8 @@ import { thePraiseFromYourLead } from './the-praise-from-your-lead';
 import { withTheirCountNow } from './an-aim-is-counted-now';
 import { thePromisesOf, thePromisesCounted } from '../grounds/the-promises-counted-once';
 import { theCheckInsCounted } from './a-day-they-checked-in';
+import { aRoundIsCounted, whenACheckInBegan } from '../grounds/a-round-that-could-be-answered';
+import { whenTheseOrganisationsPaused } from '../billing/the-trial-grace';
 import { theFactsOnRecord, type AFact } from '../conversation/the-facts-on-record';
 
 /**
@@ -193,7 +197,7 @@ export interface TheRecordForOnePerson {
   credits: { fromName: string | null; checkInId: string | null }[];
   checkIns: ACheckInRow[];
   /** The person's own first line in each finished check-in. Read for the person alone. */
-  ownLines: { checkInId: string; text: string }[];
+  ownLines: { checkInId: string; text: string; saidWordForWord?: boolean }[];
   /** The person's patterns as the pattern rules serve them to this reader. */
   patterns: { heading: string; kind: string; oneStep?: string | null; yours?: boolean }[];
   teamCoaching: string[];
@@ -518,7 +522,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
   const keep = behaviours.filter((b) => b.verdict === 'Strength').map((b) => theBehaviour(b.key).keepDoing);
 
   /* ------------------------------------------------------------------ your reports: the person's own, for the person alone */
-  const lineOf = new Map(r.ownLines.map((l) => [l.checkInId, l.text]));
+  const capTheFirst = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
+  const lineOf = new Map(r.ownLines.map((l) => [l.checkInId, l]));
   const reports: MyWorkServed['reports'] = self
     ? {
         heading: 'Your reports',
@@ -526,9 +531,10 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
           checkInId: c.id,
           when: aDayWithItsName(c.completedAt ?? c.availableFrom ?? r.now, r.timeZone, r.now),
           /* What they said, worded as said: their word, not a fact the page states. */
-          line: lineOf.get(c.id) ? `You said, “${String(lineOf.get(c.id)).trim().replace(/^[“"]|[”"]$/g, '')}”` : `Session ${c.sessionNumber}.`,
+          /* In quotation marks only when they typed it word for word (their-words-as-said.ts); otherwise said plainly. */
+          line: lineOf.get(c.id) ? (mayBeQuoted(lineOf.get(c.id)!.saidWordForWord) ? `You said ${theirWordsAsSaid(lineOf.get(c.id)!.text, true)}.` : `${capTheFirst(theWordsAlone(lineOf.get(c.id)!.text))}.`) : `Check-in ${c.sessionNumber}.`,
         })),
-        emptySays: 'Your own report for each check-in will show here once you finish one.',
+        emptySays: 'You have no report of your own yet.',
       }
     : {
         heading: `${first}’s reports`,
@@ -618,8 +624,8 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
     numbers: numbers.slice(0, 3),
     focus,
     focusEmpty: self
-      ? 'Nothing needs work yet. Your focus will show here once your check-ins show something to work on.'
-      : `Nothing needs work yet. ${first}’s focus will show here once the check-ins show something to work on.`,
+      ? 'Nothing needs work yet.'
+      : 'Nothing needs work yet.',
     toDo: {
       othersNeed,
       own,
@@ -633,7 +639,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
     performing: {
       note: done.length
         ? `The same seven behaviours in every check-in, read from ${your} last ${plural(done.length, 'check-in')}.`
-        : 'The same seven behaviours in every check-in. Each one shows once the check-ins give enough to read.',
+        : 'The same seven behaviours in every check-in.',
       behaviours,
       libraryNote: '',
     },
@@ -643,7 +649,7 @@ export function myWorkFrom(r: TheRecordForOnePerson, checkInName: string): Omit<
       betterEmpty: self
         ? `Nothing yet. Lines show here from ${herOwn ? 'your' : `${leadFirst}’s`} coaching for the team and from what keeps coming up in your check-ins.`
         : `Nothing yet. Lines show here from your coaching for the team and from what keeps coming up in ${first}’s check-ins.`,
-      keepEmpty: self ? 'Your strengths will show here once your check-ins show them.' : `${first}’s strengths will show here once the check-ins show them.`,
+      keepEmpty: self ? 'You have no strengths on record yet.' : `${first} has no strengths on record yet.`,
     },
     checkIns: {
       heading: `${Your} check-ins`,
@@ -680,7 +686,7 @@ const GROUND_SELECT = {
   cadence: true, cadenceDays: true, workingDays: true, workStages: true,
   participants: {
     select: {
-      id: true, userId: true, email: true, nameGiven: true, partyType: true, managingOnly: true, createdAt: true,
+      id: true, userId: true, email: true, nameGiven: true, partyType: true, managingOnly: true, createdAt: true, joinedAt: true,
       user: { select: { firstName: true, lastName: true } },
     },
   },
@@ -724,7 +730,7 @@ export async function readMyWork(
   }
 
   const reader: 'self' | 'lead' = person.id === mine?.id ? 'self' : 'lead';
-  const timeZone = ground.organization?.timeZone || 'Africa/Lagos';
+  const timeZone = ground.organization?.timeZone || (await theOrganisationsZone(prisma, ground.organizationId).catch(() => null)) || 'Africa/Lagos';
   const name = fullName(person) || 'Somebody invited by email';
   const pid = person.id as string;
   const mayNamePeers = isLead || peersAreNamedOn(ground, theReaderBySignIn(ground, input.userId));
@@ -742,7 +748,7 @@ export async function readMyWork(
   const items = boardRows.filter((row: any) => row?.ownerParticipantId === pid);
   const patterns = ((served?.patterns ?? []) as any[]).filter((p: any) => p?.participantId === pid);
 
-  const [promises, deps, mentions, checkIns, lines, objectives] = await Promise.all([
+  const [promises, deps, mentions, allTheirCheckIns, lines, objectives] = await Promise.all([
     /* Their promises, read once for every page (grounds/the-promises-counted-once.ts). */
     thePromisesOf(prisma, [pid], () => ground.label ?? '', { groundId: ground.id, now }),
     prisma.groundDependency?.findMany?.({ where: { groundId: ground.id, OR: [{ fromParticipantId: pid }, { onParticipantId: pid }] }, orderBy: { createdAt: 'asc' } }).catch(() => []) ?? [],
@@ -763,6 +769,15 @@ export async function readMyWork(
     }).catch(() => []) ?? [],
     prisma.groundObjective?.findMany?.({ where: { groundId: ground.id, ownerParticipantId: pid }, select: { id: true, name: true, target: true, count: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, /* The same order as the You page lists them, so both lead with one target (two-week check, Joseph). */ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }).catch(() => []) ?? [],
   ]);
+
+  /*
+   * A ROUND THAT COULD NOT HAVE BEEN ANSWERED IS NOT A ROUND THEY DID NOT DO (run 9): the board's "did two of nine" asks the one owner, and this page
+   * counted the round the pause opened, so it said "2 of 12" beside it. The same owner, asked the same way as the person's record asks it.
+   */
+  const pausedFrom = (await whenTheseOrganisationsPaused(prisma, [ground.organizationId], now).catch(() => new Map<string, Date>())).get(ground.organizationId) ?? null;
+  const firstWord = await Promise.resolve(prisma.conversationTurn?.findFirst?.({ where: { role: 'PERSON', checkIn: { groundId: ground.id, isSetup: false } }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } })).catch(() => null);
+  const checkInBeganAt = whenACheckInBegan(firstWord?.createdAt ? [{ turns: [{ createdAt: firstWord.createdAt }] }] : []);
+  const checkIns = (allTheirCheckIns as any[]).filter((c) => aRoundIsCounted({ ...c, personTurns: typeof c.answers === 'number' ? c.answers : null }, { pausedFrom, joinedAt: (person as any).joinedAt ?? null, checkInBeganAt }, true));
 
   /*
    * ONE PROMISE, ONE STATE (browser test, 21 October, Kevin). My work read the commitments alone, so a promise Kevin had kept read Late
@@ -790,8 +805,8 @@ export async function readMyWork(
   const doneIds = new Set(done.map((c) => c.id));
   const ownLines = reader === 'self' && done.length
     ? ((await theFactsOnRecord(prisma, { groundId: ground.id, reader: { kind: 'the person', participantId: pid } }).catch(() => [] as AFact[]))
-      .reduce((acc: { checkInId: string; text: string }[], f) => {
-        if (doneIds.has(f.checkInId) && !f.inSetup && !acc.some((x) => x.checkInId === f.checkInId) && f.words.trim()) acc.push({ checkInId: f.checkInId, text: f.words.trim() });
+      .reduce((acc: { checkInId: string; text: string; saidWordForWord?: boolean }[], f) => {
+        if (doneIds.has(f.checkInId) && !f.inSetup && !acc.some((x) => x.checkInId === f.checkInId) && f.words.trim()) acc.push({ checkInId: f.checkInId, text: f.words.trim(), saidWordForWord: f.saidWordForWord });
         return acc;
       }, []))
     : [];
@@ -844,7 +859,7 @@ export async function readMyWork(
    * the page says so in the same words the board uses, instead of saying something untrue.
    */
   const page: typeof built = served?.withheldUntilYouCheckIn && (built as any).items && !((built as any).items.rows ?? []).length
-    ? { ...(built as any), items: { ...(built as any).items, note: '', emptySays: `${reader === 'self' ? 'Your' : `${firstOf(name)}’s`} ${(built as any).items.heading?.replace(/^(Your|\S+’s) /, '') || 'items'} show here again once ${reader === 'self' ? 'you have' : `${firstOf(name)} has`} checked in for this session.` } } as any
+    ? { ...(built as any), items: { ...(built as any).items, note: '', emptySays: `${reader === 'self' ? 'Your' : `${firstOf(name)}’s`} ${(built as any).items.heading?.replace(/^(Your|\S+’s) /, '') || 'items'} show here again once ${reader === 'self' ? 'you have' : `${firstOf(name)} has`} checked in for this check-in.` } } as any
     : built;
   /* The person's record, read from where it is kept and never rebuilt here: the person's own, or, for the lead, the person's in this check-in. */
   const theirRecord = judgements && page.on === true && !(page as any).judgements
@@ -870,7 +885,7 @@ async function theRecordOnTheirPage(prisma: any, o: { groundId: string; organiza
 function emptyFor(label: string | null) {
   return {
     heading: 'My work',
-    topLine: 'Each person’s work shows here once somebody is added to this check-in.',
+    topLine: 'Nobody is on this check-in yet.',
     numbers: [], focus: null, focusEmpty: '',
     toDo: { othersNeed: [], own: [], emptySays: '' },
     achieved: { items: [], note: '', emptySays: '' },

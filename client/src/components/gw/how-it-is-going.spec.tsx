@@ -16,21 +16,21 @@ const glance = (progress: Partial<Glance['progress']> = {}): Glance => ({
 describe('HowItIsGoing: the sessions line', () => {
   it('reads "None of the 12 sessions is done yet." before any round is done', () => {
     render(<HowItIsGoing glance={glance({ roundsDone: 0, roundsPlanned: 12 })} />)
-    expect(screen.getByText('None of the 12 sessions is done yet.')).toBeTruthy()
+    expect(screen.getByText('None of the 12 check-ins is done yet.')).toBeTruthy()
   })
   it('reads "One of the 12 sessions is done." for a single round done, short of the plan', () => {
     render(<HowItIsGoing glance={glance({ roundsDone: 1, roundsPlanned: 12 })} />)
-    expect(screen.getByText('One of the 12 sessions is done.')).toBeTruthy()
+    expect(screen.getByText('One of the 12 check-ins is done.')).toBeTruthy()
   })
 
   it('reads "5 of 12 sessions are done." for more than one, short of the plan', () => {
     render(<HowItIsGoing glance={glance({ roundsDone: 5, roundsPlanned: 12 })} />)
-    expect(screen.getByText('5 of the 12 sessions are done.')).toBeTruthy()
+    expect(screen.getByText('5 of the 12 check-ins are done.')).toBeTruthy()
   })
 
   it('reads "One session is done." once the plan is met, with only one round', () => {
     render(<HowItIsGoing glance={glance({ roundsDone: 1, roundsPlanned: 1 })} />)
-    expect(screen.getByText('One session is done.')).toBeTruthy()
+    expect(screen.getByText('One check-in is done.')).toBeTruthy()
   })
 
   /**
@@ -41,42 +41,42 @@ describe('HowItIsGoing: the sessions line', () => {
    */
   it('clamps to the planned total, rather than reading more sessions done than the check-in is planned for', () => {
     render(<HowItIsGoing glance={glance({ roundsDone: 9, roundsPlanned: 8 })} />)
-    expect(screen.getByText('8 sessions are done.')).toBeTruthy()
-    expect(screen.queryByText(/9 sessions/)).toBeNull()
+    expect(screen.getByText('8 check-ins are done.')).toBeTruthy()
+    expect(screen.queryByText(/9 check-ins/)).toBeNull()
   })
 })
 
 describe('HowItIsGoing: "answered this session", read naturally', () => {
   it('reads "Nobody has answered this session yet." when nobody has', () => {
     render(<HowItIsGoing glance={glance({ answeredThisRound: 0, ofPeople: 6 })} />)
-    expect(screen.getByText(/Nobody has answered this session yet\.$/)).toBeTruthy()
+    expect(screen.getByText(/Nobody has answered this check-in yet\.$/)).toBeTruthy()
   })
 
   it('reads "The one person in this session has answered." when there is only the one', () => {
     render(<HowItIsGoing glance={glance({ answeredThisRound: 1, ofPeople: 1 })} />)
-    expect(screen.getByText(/The one person in this session has answered\.$/)).toBeTruthy()
+    expect(screen.getByText(/The one person in this check-in has answered\.$/)).toBeTruthy()
   })
 
   it('reads "1 of 6 people has answered this session." - "has", because the subject is "1"', () => {
     render(<HowItIsGoing glance={glance({ answeredThisRound: 1, ofPeople: 6 })} />)
-    expect(screen.getByText(/1 of 6 people has answered this session\.$/)).toBeTruthy()
+    expect(screen.getByText(/1 of 6 people has answered this check-in\.$/)).toBeTruthy()
   })
 
   it('reads "4 of 6 people have answered this session." for more than one, short of everybody', () => {
     render(<HowItIsGoing glance={glance({ answeredThisRound: 4, ofPeople: 6 })} />)
-    expect(screen.getByText(/4 of 6 people have answered this session\.$/)).toBeTruthy()
+    expect(screen.getByText(/4 of 6 people have answered this check-in\.$/)).toBeTruthy()
   })
 
   it('reads "Everybody has answered this session." once everybody has, and there is more than one', () => {
     render(<HowItIsGoing glance={glance({ answeredThisRound: 6, ofPeople: 6 })} />)
-    expect(screen.getByText(/Everybody has answered this session\.$/)).toBeTruthy()
+    expect(screen.getByText(/Everybody has answered this check-in\.$/)).toBeTruthy()
   })
 
   /* Reviewer, 14 October: Grace read "Everybody has answered" before her reps had been contacted. */
   it('never says "Everybody" while somebody invited has not joined, and says how many beside it', () => {
     const { container } = render(<HowItIsGoing glance={glance({ answeredThisRound: 2, ofPeople: 2, notJoinedYet: 2,
       notJoinedSays: 'Two of them were invited and have not joined yet.' })} />)
-    expect(container.textContent).toContain('Everybody who has joined has answered this session.')
+    expect(container.textContent).toContain('Everybody who has joined has answered this check-in.')
     expect(container.textContent).toContain('Two of them were invited and have not joined yet.')
     expect(container.textContent).not.toMatch(/Everybody has answered/)
   })

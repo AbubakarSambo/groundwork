@@ -29,7 +29,7 @@ const objectives = [
   {
     id: 'o-facilities', name: 'approved facilities', count: 11, prevCount: 6, target: 40, delta: 5, isNew: false,
     assumes: [], ownerParticipantId: null, owner: null, askedOf: null, suggestedCount: null,
-    stands: { word: 'Behind', says: 'At the pace it has kept since session 1, it would be about 31 by the last session, short of the aim of 40.' },
+    stands: { word: 'Behind', says: 'At the pace it has kept since check-in 1, it would be about 31 by the last check-in, short of the aim of 40.' },
   },
 ]
 
@@ -54,7 +54,7 @@ function baseBoard() {
       about: 'Set goals and keep the team on track',
       outcomes: [
         { value: 'ALIGNED', says: 'OKRs aligned to company direction.', more: null },
-        { value: 'NOT_YET', says: 'Not yet, more sessions needed.', more: null },
+        { value: 'NOT_YET', says: 'Not yet, more check-ins needed.', more: null },
       ],
       outcomesSays: null,
       signals: [
@@ -64,7 +64,6 @@ function baseBoard() {
       whatWouldSettleIt: ['Whether to take the credit committee delays to the Head of Credit.'],
       whatWouldSettleItSays: null,
       whoDecides: 'You decide.',
-      groundworkDoesNotChoose: 'Groundwork lays out the outcomes and the proof. It doesn’t choose.',
       recordTheDecision: 'Record the decision',
       decided: null,
     },
@@ -123,7 +122,7 @@ describe('request 108 (d): "Where this is heading" and "Record the decision"', (
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.getByText('Where this is heading')).toBeInTheDocument()
     expect(screen.getByText('OKRs aligned to company direction.')).toBeInTheDocument()
-    expect(screen.getByText('Not yet, more sessions needed.')).toBeInTheDocument()
+    expect(screen.getByText('Not yet, more check-ins needed.')).toBeInTheDocument()
     expect(screen.getByText('Femi Okonkwo is waiting for the bank statements.')).toBeInTheDocument()
     expect(screen.getByText('Whether to take the credit committee delays to the Head of Credit.')).toBeInTheDocument()
     expect(screen.getByText('You decide.')).toBeInTheDocument()

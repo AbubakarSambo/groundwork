@@ -26,14 +26,14 @@ const draw = () => {
 describe('the lead sees and sets each person’s WhatsApp number', () => {
   beforeEach(() => {
     ;(groundsApi.whereEachPersonIsOnWhatsApp as any).mockResolvedValue([
-      { participantId: 'p-brian', phone: '+254722000202', whatsapp: 'waiting', says: 'Waiting for their first message on WhatsApp.' },
+      { participantId: 'p-brian', phone: '+254722000202', whatsapp: 'waiting', says: 'They have not written on WhatsApp yet.' },
       { participantId: 'p-aisha', phone: null, whatsapp: 'no-number', says: 'No WhatsApp number yet.' },
     ])
   })
 
   it('reads each person’s number and where they are, in full sentences', async () => {
     draw()
-    await waitFor(() => expect(screen.getByText(/Brian Kiptoo's WhatsApp number is \+254722000202\. Waiting for their first message on WhatsApp\./)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Brian Kiptoo's WhatsApp number is \+254722000202\. They have not written on WhatsApp yet\./)).toBeTruthy())
     expect(screen.getByText(/Aisha Hassan has no WhatsApp number yet\./)).toBeTruthy()
   })
 
