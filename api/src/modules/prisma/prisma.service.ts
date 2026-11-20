@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { aNameHasNoSpaceAtItsEnds } from './a-name-has-no-space-at-its-ends';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -36,6 +37,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    */
   private membershipFollowsTheUser() {
     this.$use(async (params, next) => next(theMembershipFollowsTheUser(params)));
+    this.$use(async (params, next) => next(aNameHasNoSpaceAtItsEnds(params)));
   }
 
   async onModuleInit() {

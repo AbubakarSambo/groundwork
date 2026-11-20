@@ -22,8 +22,11 @@ const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/
 const SRC = strip(readFileSync(join(__dirname, 'entry.controller.ts'), 'utf8'));
 
 describe('every array of objects on the entry DTOs declares its item type', () => {
-  it('finds the report summary DTO', () => {
-    expect(SRC).toContain('class EntryReportSummaryDto');
+  /* Updated 19 November 2026: the report's own arrays left this file. The server that writes the report gives it its shape
+     (`the-report-as-it-is-kept.ts`), so no array of the report's passes the pipe item by item, and none can be emptied by it. */
+  it('the report is not checked item by item here any more', () => {
+    expect(SRC).not.toContain('class EntryReportSummaryDto');
+    expect(SRC).toMatch(/@IsObject\(\)\s*reportSummary\?: Record<string, unknown>;/);
   });
 
   it('no @IsArray() of objects is left without a @Type()', () => {

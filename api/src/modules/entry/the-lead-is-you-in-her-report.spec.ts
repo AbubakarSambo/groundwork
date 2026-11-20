@@ -21,8 +21,8 @@ const WHAT_THE_MODEL_WROTE = {
   whatGroundworkSaw: 'Your account describes three active legal matters.',
   alignmentStatus: 'Not yet assessed', alignmentBasis: 'One account.', honestClose: 'x',
   areasRequiringAlignment: [
-    { heading: 'The Matter C submission is at risk', whatWeNoticed: 'Waiting on two signed witness statements.', whyItMatters: 'The deadline could be missed.', whatToDoNext: 'Confirm with the client.' },
-    { heading: "The partner's role has not been described", whatWeNoticed: 'The partner was named as being involved, but their expectations have not been stated.', whyItMatters: 'x', whatToDoNext: 'Ask the partner what they expect from this project.' },
+    { title: 'The Matter C submission is at risk', observation: 'Waiting on two signed witness statements.', whyItMatters: 'The deadline could be missed.', recommendedMove: 'Confirm with the client.' },
+    { title: "The partner's role has not been described", observation: 'The partner was named as being involved, but their expectations have not been stated.', whyItMatters: 'x', recommendedMove: 'Ask the partner what they expect from this project.' },
   ],
   alignmentReached: [],
   suggestedParties: [],
@@ -55,7 +55,9 @@ describe('Hafsah\'s first report on Muchemi & Co', () => {
     const out: any = await service.report(SESSION as any, 'TEAM_UPDATES', 'Litigation', undefined, ['Otieno Ouma', 'the partner'], HER_SETUP_WORDS);
     const everything = JSON.stringify(out);
     expect(everything).not.toMatch(/the partner/i);
-    expect(out.areasRequiringAlignment.map((a: any) => a.heading)).toEqual(['The Matter C submission is at risk']);
+    /* Updated 19 November 2026: the pretend model wrote `heading` and `whatWeNoticed`, names the report's schema does not have and
+       nothing reads. The report now keeps only its own fields (the-report-as-it-is-kept.ts), so the pretend model writes those. */
+    expect(out.areasRequiringAlignment.map((a: any) => a.observation)).toEqual(['Waiting on two signed witness statements.']);
   });
 
   it('keeps the role she gave, and saves no untrue "was not described" as Otieno\'s role', async () => {

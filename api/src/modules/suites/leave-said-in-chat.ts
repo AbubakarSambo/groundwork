@@ -26,7 +26,9 @@ export const LEAVE_SUITE_OFF = 'Leave requests are not switched on in your organ
 export const LEAVE_NOT_SENT = 'I have not sent it. Nothing was kept.';
 export const LEAVE_NOTHING_WAITING = 'There is no leave request waiting to be sent. Tell me the days again and I will ask.';
 /** Leave was asked for, but the days could not be read without guessing. Nothing is sent or kept. */
-export const LEAVE_WHICH_DAYS = 'I could not tell exactly which days you mean, so I have not sent anything. Tell me the first day and the last day, for example "from next Monday to next Wednesday", and I will ask again.';
+/* The example is a whole sentence the rules read as leave: "from next Monday to next Wednesday" on its own names no leave and is not read (checked 19 November 2026). */
+const FOR_EXAMPLE = 'for example "I want leave from next Monday to next Wednesday"';
+export const LEAVE_WHICH_DAYS = `I could not tell exactly which days you mean, so I have not sent anything. Tell me the first day and the last day in one sentence, ${FOR_EXAMPLE}, and I will ask again.`;
 
 /**
  * WHETHER THE WORDS PLAINLY ASK FOR TIME OFF, so days that cannot be read are asked for again rather
@@ -34,6 +36,17 @@ export const LEAVE_WHICH_DAYS = 'I could not tell exactly which days you mean, s
  * next week" was answered "I cannot answer that one yet"). Narrower than `soundsLikeLeave`: "off"
  * counts only where it ends the request or comes before a day, so "I am off to Kisumu" is not one.
  */
+/**
+ * SOMEBODY WANTS TIME OFF AND SAID NO DAYS ("I want to apply for leave", "can I get 3 days off?"). Asked for the days, or told plainly
+ * that leave is not switched on, which is what they would read once they gave them.
+ */
+export const LEAVE_TELL_ME_THE_DAYS = `Tell me the first day and the last day you want off in one sentence, ${FOR_EXAMPLE}. I will say it back to you, and send it only when you say yes.`;
+export const LEAVE_IS_NOT_ON = 'Leave requests are not switched on in your organisation, so I cannot send one for you. An admin can switch them on under Suites.';
+export async function whenNoDaysAreSaid(prisma: any, organizationId: string): Promise<string> {
+  const suite = await Promise.resolve(prisma.organizationSuite?.findUnique?.({ where: { organizationId_suite: { organizationId, suite: 'leave' } } })).catch(() => null);
+  return suite?.isOn ? LEAVE_TELL_ME_THE_DAYS : LEAVE_IS_NOT_ON;
+}
+
 export function plainlyAsksForLeave(message: string): boolean {
   const t = (message ?? '').trim();
   if (!soundsLikeLeave(t)) return false;
@@ -57,6 +70,12 @@ const monthNo = (m: string) => MONTHS.findIndex((x) => x === m || x.slice(0, 3) 
 /** A sentence about time off, in the first person. Somebody else's leave, said by the lead, is not this. */
 const ASKS_FOR_TIME_OFF = /\b(?:days? off|time off|off work|annual leave|leave|holiday|vacation|out of (?:the )?office|away|(?<!sign[- ])(?<!kick[- ])off)\b/i;
 const FIRST_PERSON = /\b(?:i|i'm|i am|i'll|i will|i'd|i would|i need|i want|my)\b/i;
+
+/** Time off is mentioned, by the person, about themselves: enough to ask the model what they mean, never enough to act on. */
+export function mentionsTimeOff(message: string): boolean {
+  const t = (message ?? '').trim();
+  return ASKS_FOR_TIME_OFF.test(t) && FIRST_PERSON.test(t);
+}
 
 export function soundsLikeLeave(message: string): boolean {
   const t = (message ?? '').trim();
